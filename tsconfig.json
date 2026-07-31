@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": false,
+    "noEmit": true,
+    "types": []
+  },
+  "include": [
+    "contract/**/*.ts",
+    "contract/**/*.d.ts",
+    "service/**/*.ts",
+    "helper/**/*.ts",
+    "scripts/**/*.ts",
+    "examples/**/*.ts"
+  ]
+}

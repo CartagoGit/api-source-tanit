@@ -1,0 +1,58 @@
+{
+  "name": "@postman-exporter/cli",
+  "version": "0.1.0",
+  "description": "Generador agnóstico de colecciones Postman v2.1.0 a partir de las rutas y FormRequests de un proyecto Laravel. Pensado para funcionar como paquete reusable: descubre la raíz del proyecto, parsea routes/*.php, deduplica endpoints con el código, enriquece con FormRequests y agrupa las carpetas automáticamente.",
+  "keywords": [
+    "postman",
+    "laravel",
+    "api",
+    "collection",
+    "generator",
+    "openapi",
+    "testing",
+    "devtools",
+    "cli",
+    "bun"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "bun": ">=1.0.0",
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "postman-from-routes": "./scripts/cli.script.ts"
+  },
+  "main": "./scripts/cli.script.ts",
+  "module": "./scripts/cli.script.ts",
+  "exports": {
+    ".": "./scripts/cli.script.ts",
+    "./service/*": "./service/*.service.ts",
+    "./contract/*": "./contract/*.interface.ts",
+    "./helper/*": "./helper/*.helper.ts"
+  },
+  "files": [
+    "contract/",
+    "service/",
+    "helper/",
+    "scripts/",
+    "tsconfig.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run scripts/generate.script.ts",
+    "check": "bun run scripts/diff.script.ts && bun run scripts/validate-json.script.ts",
+    "typecheck": "bunx tsc --noEmit",
+    "enrich": "bun run scripts/enrich.script.ts",
+    "list": "bun run scripts/list-endpoints.script.ts",
+    "stats": "bun run scripts/stats.script.ts",
+    "open": "bun run scripts/open-postman.script.ts",
+    "init": "bun run scripts/init.script.ts",
+    "clean": "rm -f build/*.json",
+    "test": "bun test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

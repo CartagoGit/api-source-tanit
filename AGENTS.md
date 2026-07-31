@@ -1,0 +1,19 @@
+# AGENTS.md — working in `postman-exporter`
+
+> **Source of truth:** [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
+> Read that file once per session — it is the **only** place agent rules
+> live. Do not enumerate tool / skill / proposal ids in your answers; the
+> server (`mcp-vertex_overview`, `mcp-vertex_agent_catalog`) is the live
+> source of truth and changes every week.
+>
+> **Host appendix in effect:** §7 (repo-level rules).
+
+This file is a pointer. All content lives in the bootstrap.
+
+<!-- mcp-vertex:begin -->
+
+# mcp-vertex host hints (auto-generated)
+
+See `../mcp-vertex/docs/mcp-vertex/host-hints/agent-instructions.generated.md` for the live agent catalog.
+
+<!-- mcp-vertex:end -->

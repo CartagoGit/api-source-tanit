@@ -1,0 +1,11 @@
+# Dependencias instaladas localmente por bun/npm (si se llegasen a usar).
+node_modules/
+.bun/
+# Artefactos generados por `bun run build`. El directorio se trackea (con
+# .gitkeep) pero su contenido se regenera.
+build/
+
+# Lockfiles locales (si los hay).
+*.log
+
+.cache/

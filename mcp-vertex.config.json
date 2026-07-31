@@ -1,0 +1,170 @@
+{
+  "$schema": "https://unpkg.com/@mcp-vertex/core/schema/mcp-vertex.config.schema.json",
+  "coreVersion": "0.1.0",
+  "cacheDir": ".cache/mcp-vertex",
+  "docsDir": "docs/mcp-vertex",
+  "convention": {
+    "pluginPathsRoot": "plugins",
+    "sourceRoot": "plugins"
+  },
+  "plugins": {
+    "git": {
+      "options": {
+        "allowForge": true
+      }
+    },
+    "search": {
+      "options": {
+        "roots": ["contract", "service", "helper", "scripts", "plugins", "examples"],
+        "extensions": ["ts", "tsx", "js", "mjs", "cjs", "md", "mdx", "json"],
+        "ignoreDirs": ["node_modules", ".cache", "dist", "build", ".git"]
+      }
+    },
+    "memory": {
+      "options": {
+        "bm25K1": 1.5,
+        "bm25B": 0.75,
+        "titleWeight": 2,
+        "maxNotes": 1000
+      }
+    },
+    "docs": {
+      "options": {
+        "roots": ["docs/mcp-vertex", "README.md", "plugins/postman-exporter/README.md"],
+        "extensions": ["md", "mdx"],
+        "ignoreDirs": ["node_modules", ".cache", "dist"]
+      }
+    },
+    "rules": {
+      "options": {}
+    },
+    "quality": {
+      "options": {}
+    },
+    "conventions": {
+      "options": {
+        "roots": ["contract", "service", "helper", "scripts", "plugins", "examples"]
+      }
+    },
+    "proposals": {
+      "options": {
+        "validationCommand": "bun run check",
+        "namePool": ["falcon", "owl", "crow", "sparrow", "finch"],
+        "orchestration": {
+          "delegateAfterToolCalls": 3
+        }
+      }
+    },
+    "auto-agent-selector": {
+      "options": {
+        "costQualityTradeoff": 8
+      }
+    },
+    "auto-plugin-selector": {
+      "options": {}
+    },
+    "cache": {
+      "options": {
+        "maxAgeDays": 30,
+        "worktrees": {
+          "enabled": true,
+          "keepLastN": 3
+        }
+      }
+    },
+    "deps": {
+      "options": {
+        "manifest": "package.json",
+        "allowNetwork": false,
+        "allowWrite": false
+      }
+    },
+    "env": {
+      "options": {}
+    },
+    "diagram": {
+      "options": {}
+    },
+    "perf": {
+      "options": {}
+    },
+    "security": {
+      "options": {}
+    },
+    "tech-debt": {
+      "options": {}
+    },
+    "link-check": {
+      "options": {}
+    },
+    "audit": {
+      "options": {
+        "auditDir": "docs/mcp-vertex/audits",
+        "topActions": 5,
+        "layers": []
+      }
+    },
+    "changelog": {
+      "options": {}
+    },
+    "issues": {
+      "options": {
+        "scaffoldDir": "docs/mcp-vertex/proposals/retired/issues"
+      }
+    },
+    "refactor": {
+      "options": {}
+    },
+    "forge": {
+      "options": {}
+    },
+    "web-fetch": {
+      "options": {
+        "allowList": []
+      }
+    },
+    "skills-pack": {
+      "options": {}
+    },
+    "prompts-pack": {
+      "options": {}
+    },
+    "i18n": {
+      "options": {}
+    },
+    "test-convention": {
+      "options": {}
+    },
+    "test-policy": {
+      "options": {}
+    },
+    "container": {
+      "options": {}
+    },
+    "api": {
+      "options": {}
+    },
+    "browser": {
+      "options": {}
+    },
+    "observability": {
+      "options": {}
+    },
+    "usage-tracking": {
+      "options": {}
+    },
+    "orchestrator-runner": {
+      "options": {}
+    },
+    "prompt-eval": {
+      "options": {}
+    },
+    "postman-exporter": {
+      "path": "./plugins/postman-exporter/src/index.ts",
+      "options": {
+        "defaultProjectRoot": "${workspaceFolder}/..",
+        "cliScript": "${workspaceFolder}/scripts/cli.script.ts"
+      }
+    }
+  }
+}
