@@ -185,7 +185,7 @@ icon: "$(<icon>)"
 model: GPT-5.4
 description: |
     Bounded subagent for <package>. <One-line role>.
-tools: [read, search, execute?, mcp-project-mcp-vertex/*]
+tools: [read, search, execute?, mcp-vertex/<tool-or-glob>, postman_exporter/<tool>]
 user-invocable: true
 ---
 
@@ -196,7 +196,7 @@ This file is the Copilot adapter; the long contract lives in
 
 ## Compact lane
 
-1. First call `mcp-vertex_overview` once per turn. …
+1. First call `mcp-vertex/mcp-vertex_overview` once per turn. …
 2. …
 
 ## Hard rules
@@ -207,6 +207,29 @@ This file is the Copilot adapter; the long contract lives in
 ## Failure mode
 
 - If <error>, return <outcome>.
+
+## Tools rationale
+
+VS Code's prompt validator accepts **two** shapes for MCP tools in
+the agent `tools:` permission list:
+
+| Shape | Example | When to use |
+| --- | --- | --- |
+| Slash-qualified | `mcp-vertex/mcp-vertex_overview`, `mcp-vertex/mcp-vertex_proposals_proposal_board`, `mcp-vertex/postman_exporter_generate` | **Always** — list each tool by name. The first `mcp-vertex/` is the **server** prefix; the rest is the **tool ID** as emitted by the server (which already includes the `<server>_<plugin>_<tool>` triple). Principle of least privilege. |
+| Slash-glob | `mcp-vertex/*` | **Avoid.** It grants ~190 tools to an agent that usually only needs 5. Use it ONLY when the agent legitimately needs every tool in the namespace. |
+
+The legacy form (`mcp-vertex_overview`, no slash) is renamed by the
+prompt validator on save with a yellow squiggle; the slash form is
+canonical.
+
+**Single-server reality**: `.vscode/mcp.json` registers one server —
+`mcp-vertex`. The plugin tools (`postman_exporter_generate`,
+`postman_exporter_validate`, …) are namespaced **inside** that
+server, not a separate MCP server. So every MCP tool reference in
+this repo uses the `mcp-vertex/...` prefix; the plugin tools are
+reachable as `mcp-vertex/postman_exporter_generate`, etc. The
+`postman_exporter/*` form is **not** a valid MCP server here and
+VS Code will rename it on save.
 ```
 
 ### How to discover it
@@ -216,9 +239,10 @@ registration step is required.
 
 ### Hard rules
 
-- The agent **MUST** declare its `tools` permission list. No `*` — be explicit.
+- The agent **MUST** declare its `tools` permission list using the
+  canonical MCP form: `<server>/<tool-or-glob>`.
 - The agent **MUST** declare a lane (read-only / write / gate-keeper). No two agents share a lane.
-- The agent **MUST** return a discriminated output that the orchestrator can pipe into `proposals_close_slice`.
+- The agent **MUST** return a discriminated output that the orchestrator can pipe into a downstream proposal-close call (when that tool is available in the runtime).
 - The agent **MUST NOT** call git plugin tools. Git is the orchestrator's lane.
 
 ### Acceptance

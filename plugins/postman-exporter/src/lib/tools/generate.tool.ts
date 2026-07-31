@@ -18,7 +18,10 @@ import {
   runBunScript,
 } from "../helpers/runner.helper";
 
-const NAMESPACE = "postman";
+// Note: the `id` must be the short tool name (without any namespace
+// prefix). The server's `qualifiedId` rule (`${corePrefix}_${ns}_${tool.id}`)
+// adds the plugin namespace automatically; pre-prefixing here would
+// produce a double namespace like `mcp-vertex_postman-exporter_postman_exporter_*`.
 
 const OUTPUT = z
   .object({
@@ -35,7 +38,7 @@ export const buildGenerateToolRegistration = (
   workspaceRoot: string,
   defaultProjectRoot: string | undefined,
 ): IToolRegistration => ({
-  id: `${NAMESPACE}_exporter_generate`,
+  id: `generate`,
   tags: ["postman", "generator", "effects"],
   summary:
     "Genera la colección Postman v2.1.0 desde las rutas de un proyecto Laravel host.",

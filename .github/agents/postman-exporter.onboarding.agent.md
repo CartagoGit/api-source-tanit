@@ -5,7 +5,7 @@ icon: "$(rocket)"
 model: GPT-5.4
 description: |
     Bounded subagent for postman-exporter. Inspects a host project, decides which framework adapter applies, and proposes the next concrete step. Read-only — never writes files.
-tools: [read, search, mcp-project-mcp-vertex/*]
+tools: [read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_postman-exporter_summary]
 user-invocable: true
 ---
 
@@ -40,3 +40,11 @@ This file is the Copilot adapter; the long contract lives in `docs/extension-con
 
 - If `postman_exporter_summary` returns `zeroConfig: false` and the bundled `examples/<proy>/config.constant.ts` is missing, the agent must say so explicitly. Do not invent a config.
 - If `mcp-vertex_analyze_project` is unreachable, return a recoverable error: `{ framework: 'unknown', configSuggested: 'abort', nextAgent: 'postman-exporter.onboarding', reasons: ['mcp-vertex unavailable'] }`.
+
+## Tools rationale
+
+Lists its 3 tools by name: `mcp-vertex/mcp-vertex_overview`,
+`mcp-vertex/mcp-vertex_analyze_project` and
+`mcp-vertex/postman_exporter_summary`. No slash-glob (`mcp-vertex/*`)
+— that grant would unlock ~190 tools, most of which this agent
+never needs. The slash form is the principle of least privilege.

@@ -5,7 +5,7 @@ icon: "$(beaker)"
 model: GPT-5.4
 description: |
     Bounded subagent for postman-exporter. Calls `postman_exporter_test` to run the package's gates (typecheck, build, check, vitest) and returns a structured pass/fail report.
-tools: [read, search, execute, mcp-project-mcp-vertex/*]
+tools: [read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_test]
 user-invocable: true
 ---
 
@@ -40,3 +40,11 @@ This file is the Copilot adapter; the long contract lives in `docs/extension-con
 
 - If a step's `durationMs` exceeds the configured timeout (default 30 000 ms), the agent copies the raw error into `step.detail` and marks `ok: false`.
 - If the binary is missing (`bun` not on PATH), the agent returns a recoverable error: `{ ok: false, steps: [{ name: 'runtime', ok: false, detail: 'bun not on PATH' }] }`.
+
+## Tools rationale
+
+Uses `mcp-vertex/mcp-vertex_overview` (host cold-start) plus the one
+plugin tool this lane owns: `mcp-vertex/postman_exporter_test`.
+The plugin tool is namespaced inside the same `mcp-vertex` server
+(registered via `.vscode/mcp.json`); the `postman_exporter/*` form
+is **not** a valid MCP server in this workspace.

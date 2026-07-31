@@ -5,7 +5,7 @@ icon: "$(check)"
 model: GPT-5.4
 description: |
     Bounded subagent for postman-exporter. Calls `postman_exporter_validate` to confirm bidir coverage and schema invariants. Refuses to close a slice if drift > 0.
-tools: [read, search, mcp-project-mcp-vertex/*]
+tools: [read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_validate]
 user-invocable: true
 ---
 
@@ -41,3 +41,11 @@ This file is the Copilot adapter; the long contract lives in `docs/extension-con
 
 - If the JSON file doesn't exist (no `postman-exporter.builder` run yet), return `ok: false` with a `schemaIssues` entry explaining the missing artefact.
 - If the validator's runner times out, return the timeout error verbatim (no retry).
+
+## Tools rationale
+
+Uses `mcp-vertex/mcp-vertex_overview` (host cold-start) plus the one
+plugin tool this lane owns: `mcp-vertex/postman_exporter_validate`.
+The plugin tool is namespaced inside the same `mcp-vertex` server
+(registered via `.vscode/mcp.json`); the `postman_exporter/*` form
+is **not** a valid MCP server in this workspace.
