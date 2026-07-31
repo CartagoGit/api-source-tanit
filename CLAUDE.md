@@ -1,4 +1,4 @@
-# AGENTS.md — working in `@postman-exporter/core`
+# CLAUDE.md — working in `@postman-exporter/core`
 
 > **Source of truth:** [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place agent rules
@@ -6,7 +6,7 @@
 > server (`mcp-vertex_overview`, `mcp-vertex_agent_catalog`) is the live
 > source of truth and changes every week.
 >
-> **Host appendix in effect:** §7 (repo-level rules).
+> **Host appendix in effect:** §8.2 (Claude Code — keep the main thread cheap).
 
 This file is a pointer. All content lives in the bootstrap.
 

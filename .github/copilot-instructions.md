@@ -1,6 +1,6 @@
-# Copilot / agent instructions — `postman-exporter`
+# Copilot / agent instructions — `@postman-exporter/core`
 
-> **Source of truth:** [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md).
+> **Source of truth:** [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place agent rules
 > live. Do not enumerate tool / skill / proposal ids in your answers; the
 > server (`mcp-vertex_overview`, `mcp-vertex_agent_catalog`) is the live
