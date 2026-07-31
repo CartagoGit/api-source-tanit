@@ -1,14 +1,15 @@
 # CLAUDE.md — working in `@postman-exporter/core`
 
-> **Source of truth:** [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
-> Read that file once per session — it is the **only** place agent rules
-> live. Do not enumerate tool / skill / proposal ids in your answers; the
-> server (`mcp-vertex_overview`, `mcp-vertex_agent_catalog`) is the live
-> source of truth and changes every week.
+> **Project bootstrap:** [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](docs/mcp-vertex/AGENT-BOOTSTRAP.md).
+> Read that file once per session — it is the **only** place project
+> rules live. It extends the **universal bootstrap** at
+> [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
+> Read the universal first, then the project one. Project rules
+> override universal rules only where explicitly marked.
 >
 > **Host appendix in effect:** §8.2 (Claude Code — keep the main thread cheap).
 
-This file is a pointer. All content lives in the bootstrap.
+This file is a pointer. All content lives in the project bootstrap.
 
 <!-- mcp-vertex:begin -->
 

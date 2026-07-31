@@ -2,13 +2,26 @@
 id: p00006
 title: "p00006 — document the extension contract (third-party adapters + plugins)"
 kind: feat
-status: ready
+status: superseded
 type: proposal
 track: postman-exporter
 date: 2026-07-31
+superseded_by: docs/mcp-vertex/AGENT-BOOTSTRAP.md
+superseded_at: 2026-08-01
 related:
     - p00002 # framework routers
     - p00005 # agents
+---
+
+> **Superseded.** The contract this proposal described lives in
+> `docs/mcp-vertex/AGENT-BOOTSTRAP.md` (§3.5 file naming, §3.6 plugin
+> options, §3.8 router adapters, §3.2 tool shapes). The original plan
+> for a single `docs/extension-contract.md` itself proclaimed "single
+> source of truth" — which violates the universal bootstrap invariant
+> that the SoT is the bootstrap. The contract is now a section of the
+> project bootstrap, not a standalone doc. Kept here for historical
+> reference; do not transition to `in-progress` or `done`.
+
 ---
 
 # p00006 — document the extension contract

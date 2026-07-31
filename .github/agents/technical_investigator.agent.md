@@ -4,13 +4,13 @@ display-name: TechnicalInvestigator (mcp-vertex)
 icon: $(tools)
 model: MiniMax M3 (minimax)
 description: |
-    Bounded subagent for @postman-exporter/core. The real contract lives in the mcp-vertex MCP server.
+    Bounded subagent for @postman-exporter/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server.
 user-invocable: false
 ---
 
 # technical_investigator
 
-This file is a pointer. Authoritative rules: [`../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
+This file is a pointer. Authoritative rules: [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../../docs/mcp-vertex/AGENT-BOOTSTRAP.md) (project bootstrap, which extends the universal bootstrap at `../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`).
 
 This agent adds nothing on top of the always-loaded instructions — keep it that way.
 
