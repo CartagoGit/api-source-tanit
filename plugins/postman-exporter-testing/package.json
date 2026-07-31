@@ -38,10 +38,11 @@
   },
   "dependencies": {
     "@mcp-vertex/core": "file:../../../mcp-vertex/packages/core",
-    "zod": "3.23.8"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
+    "@types/node": "^20.11.0",
     "typescript": "^5.4.0"
   },
   "engines": {

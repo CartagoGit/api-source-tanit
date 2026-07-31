@@ -12,16 +12,19 @@ import {
 import z from "zod";
 
 import { GenerateInputSchema, type IGenerateOutput } from "../contract/postman-exporter.interface";
+import { NAMESPACE } from "../contract/namespace";
 import {
   parseGenerateOutput,
   parseRequestCount,
   runBunScript,
 } from "../helpers/runner.helper";
 
-// Note: the `id` must be the short tool name (without any namespace
-// prefix). The server's `qualifiedId` rule (`${corePrefix}_${ns}_${tool.id}`)
-// adds the plugin namespace automatically; pre-prefixing here would
-// produce a double namespace like `mcp-vertex_postman-exporter_postman_exporter_*`.
+// Note: the `id` is the short tool name (e.g. `generate`).
+// `server.registerTool` is called with the fully qualified id
+// `${NAMESPACE}_exporter_${id}` because the SDK exposes the tool
+// to the client under the exact name passed to `registerTool` —
+// the host's `qualifiedId` rule is for cross-plugin bookkeeping,
+// not for the MCP surface.
 
 const OUTPUT = z
   .object({
@@ -49,8 +52,8 @@ export const buildGenerateToolRegistration = (
         description:
           "Genera la colección Postman v2.1.0 desde las rutas de un proyecto Laravel host. " +
           "Devuelve rutas de los archivos generados (colección + environments) y métricas.",
-        inputSchema: GenerateInputSchema,
-        outputSchema: OUTPUT,
+        inputSchema: GenerateInputSchema.shape,
+        outputSchema: OUTPUT.shape,
       },
       async (args: z.infer<typeof GenerateInputSchema>) => {
         const projectRoot = args.projectRoot ?? defaultProjectRoot ?? workspaceRoot;

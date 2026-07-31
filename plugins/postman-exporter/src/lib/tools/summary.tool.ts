@@ -13,12 +13,15 @@ import {
   SummaryInputSchema,
   type ISummaryOutput,
 } from "../contract/postman-exporter.interface";
+import { NAMESPACE } from "../contract/namespace";
 import { runBunScript } from "../helpers/runner.helper";
 
-// Note: the `id` must be the short tool name (without any namespace
-// prefix). The server's `qualifiedId` rule (`${corePrefix}_${ns}_${tool.id}`)
-// adds the plugin namespace automatically; pre-prefixing here would
-// produce a double namespace like `mcp-vertex_postman-exporter_postman_exporter_*`.
+// Note: the `id` is the short tool name (e.g. `summary`).
+// `server.registerTool` is called with the fully qualified id
+// `${NAMESPACE}_exporter_${id}` because the SDK exposes the tool
+// to the client under the exact name passed to `registerTool` —
+// the host's `qualifiedId` rule is for cross-plugin bookkeeping,
+// not for the MCP surface.
 
 const OUTPUT = z
   .object({
@@ -45,8 +48,8 @@ export const buildSummaryToolRegistration = (
         description:
           "Inspecciona un proyecto Laravel host sin generar artefactos. Devuelve " +
           "nombre detectado, baseUrl, rutas en código, FormRequests resueltos y modo.",
-        inputSchema: SummaryInputSchema,
-        outputSchema: OUTPUT,
+        inputSchema: SummaryInputSchema.shape,
+        outputSchema: OUTPUT.shape,
       },
       async (args: z.infer<typeof SummaryInputSchema>) => {
         const tmpDir = "/tmp/postman-exporter-summary";
