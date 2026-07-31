@@ -1,9 +1,6 @@
 /**
  * `@postman-exporter/mcp-vertex-plugin` — entry point.
  *
- * Expone el proyecto postman-exporter como tools descubribles por
- * cualquier agente MCP-vertex compatible.
- *
  * Tools:
  *   - postman_exporter_generate
  *   - postman_exporter_validate
@@ -19,7 +16,7 @@
 
 import { definePlugin } from "@mcp-vertex/core/public";
 
-import { PostmanExporterOptionsSchema } from "./lib/contract/postman-exporter.interface";
+import { PostmanExporterOptionsSchema, type IPostmanExporterOptions } from "./lib/contract/postman-exporter.interface";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
 import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
@@ -32,14 +29,18 @@ export default definePlugin({
     "de cualquier proyecto Laravel. Pensado para ser invocado por agentes " +
     "MCP-vertex en proyectos host sin configuración manual.",
   optionsSchema: PostmanExporterOptionsSchema,
-  register(_ctx) {
-    // Tools no necesitan opciones en este slice; la CLI del proyecto
-    // host se autodetecta por convención de rutas (no por env).
+  register(ctx) {
+    const parsed = PostmanExporterOptionsSchema.safeParse(ctx.options);
+    const opts: IPostmanExporterOptions = parsed.success
+      ? parsed.data
+      : {};
+    const workspaceRoot = ctx.workspace.toString();
+
     return {
       tools: [
-        buildGenerateToolRegistration(),
-        buildValidateToolRegistration(),
-        buildSummaryToolRegistration(),
+        buildGenerateToolRegistration(workspaceRoot, opts.defaultProjectRoot),
+        buildValidateToolRegistration(workspaceRoot),
+        buildSummaryToolRegistration(workspaceRoot),
       ],
     };
   },

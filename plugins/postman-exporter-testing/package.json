@@ -1,8 +1,8 @@
 {
-  "name": "@postman-exporter/mcp-vertex-plugin",
+  "name": "@postman-exporter/mcp-vertex-testing-plugin",
   "version": "0.1.0",
   "type": "module",
-  "description": "Plugin MCP-vertex para el proyecto postman-exporter. Genera, valida e inspecciona colecciones Postman v2.1.0 desde rutas Laravel de cualquier proyecto host.",
+  "description": "Plugin MCP-vertex para validar la salud del paquete postman-exporter (typecheck, build, check, test). Pensado para que un agente pregunte '¿está sano este paquete?' con un solo tool call.",
   "author": "Cartago",
   "license": "MIT",
   "keywords": [
@@ -11,8 +11,9 @@
     "plugin",
     "postman",
     "laravel",
-    "api",
-    "collection",
+    "testing",
+    "health-check",
+    "validation",
     "agent",
     "ai"
   ],
@@ -33,9 +34,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json --emitDeclarationOnly false",
-    "check": "tsc --noEmit",
-    "test": "vitest run",
-    "lint": "biome check src"
+    "check": "tsc --noEmit"
   },
   "dependencies": {
     "@mcp-vertex/core": "file:../../../mcp-vertex/packages/core",
@@ -43,8 +42,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.1.0",
-    "typescript": "^5.4.0",
-    "vitest": "^1.6.0"
+    "typescript": "^5.4.0"
   },
   "engines": {
     "bun": ">=1.1.0"

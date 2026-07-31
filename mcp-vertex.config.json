@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@mcp-vertex/core/schema/mcp-vertex.config.schema.json",
+  "$schema": "../mcp-vertex/packages/core/schema/mcp-vertex.config.schema.json",
   "coreVersion": "0.1.0",
   "cacheDir": ".cache/mcp-vertex",
   "docsDir": "docs/mcp-vertex",
@@ -164,6 +164,12 @@
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
         "cliScript": "${workspaceFolder}/scripts/cli.script.ts"
+      }
+    },
+    "postman-exporter-testing": {
+      "path": "./plugins/postman-exporter-testing/src/index.ts",
+      "options": {
+        "timeoutMs": 30000
       }
     }
   }
