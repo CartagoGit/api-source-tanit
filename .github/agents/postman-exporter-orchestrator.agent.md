@@ -2,7 +2,7 @@
 name: postman-exporter-orchestrator
 display-name: Postman Exporter · Orchestrator
 icon: "$(circuit)"
-model: GPT-5.4
+model: MiniMax M3 (minimax)
 description: |
     Bounded orchestrator for postman-exporter. Routes a user request to one of 4 bounded subagents (onboarding / builder / validator / tester) based on the request shape. Never writes code itself; it is a router + state machine.
 tools: [read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save]

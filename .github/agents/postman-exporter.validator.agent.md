@@ -2,7 +2,7 @@
 name: postman-exporter-validator
 display-name: Postman Exporter · Validator
 icon: "$(check)"
-model: GPT-5.4
+model: MiniMax M3 (minimax)
 description: |
     Bounded subagent for postman-exporter. Calls `postman_exporter_validate` to confirm bidir coverage and schema invariants. Refuses to close a slice if drift > 0.
 tools: [read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_validate]

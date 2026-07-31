@@ -2,7 +2,7 @@
 name: postman-exporter-tester
 display-name: Postman Exporter · Tester
 icon: "$(beaker)"
-model: GPT-5.4
+model: MiniMax M3 (minimax)
 description: |
     Bounded subagent for postman-exporter. Calls `postman_exporter_test` to run the package's gates (typecheck, build, check, vitest) and returns a structured pass/fail report.
 tools: [read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_test]

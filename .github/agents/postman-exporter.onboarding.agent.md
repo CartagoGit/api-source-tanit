@@ -2,7 +2,7 @@
 name: postman-exporter-onboarding
 display-name: Postman Exporter · Onboarding
 icon: "$(rocket)"
-model: GPT-5.4
+model: MiniMax M3 (minimax)
 description: |
     Bounded subagent for postman-exporter. Inspects a host project, decides which framework adapter applies, and proposes the next concrete step. Read-only — never writes files.
 tools: [read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_postman-exporter_summary]

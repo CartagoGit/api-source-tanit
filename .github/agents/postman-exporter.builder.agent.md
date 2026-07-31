@@ -2,7 +2,7 @@
 name: postman-exporter-builder
 display-name: Postman Exporter · Builder
 icon: "$(hammer)"
-model: GPT-5.4
+model: MiniMax M3 (minimax)
 description: |
     Bounded subagent for postman-exporter. Calls `postman_exporter_generate` to produce the artefact, reports coverage + folder count, and stops without validating.
 tools: [read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_generate, mcp-vertex/mcp-vertex_postman-exporter_summary]
