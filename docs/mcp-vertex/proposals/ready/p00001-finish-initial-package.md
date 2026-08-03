@@ -2,7 +2,7 @@
 id: p00001
 title: "p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -10,6 +10,36 @@ related:
     - 170672e # init commit (Limpiar residuos del host inicial)
     - e4569a0 # init commit (Plugin MCP-vertex `postman-exporter` + config local)
 ---
+
+## Resolution (2026-08-03)
+
+All three slices shipped:
+
+- **S1** — `where()` constraints + `Route::resource` / `Route::apiResource`
+  expansion in `service/scanners/laravel.scanner.ts`. Closed by
+  PR `2c26624` (8 new unit tests in `tests/unit/laravel-scanner.spec.ts`).
+- **S2** — replaced the `generate --inspect` parse-stdout hack with
+  a dedicated `summarizeProject()` helper. Closed by PR `d7f1de2`
+  (5 integration tests + 8 unit tests + a new CLI script
+  `scripts/summary.script.ts`).
+- **S3** — vitest baseline (renamed to bun:test, same API). Closed by
+  PR `c2f17dc` (88 unit tests across 7 service modules in
+  `tests/unit/`).
+
+## Notes (post-merge)
+
+- The `bun run check` gate pulled in S1 indirectly: the new
+  `where()` constraint encoding diverges routes that used to
+  normalize to the same shape, so the diff script now reports
+  differences that previously got silently merged.
+- The `summary` tool no longer spawns a subprocess. Its `effects`
+  array is `[]` (was `['spawn']`).
+- The scanner registry lived in three scripts and got extracted
+  into `service/scanner-registry.ts` so the proposal-shared
+  `summarizeProject()` can use the same `DiscoveryOrchestrator`
+  instance as the CLI.
+- 188/188 tests green across 18 files.
+
 
 # p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline
 
