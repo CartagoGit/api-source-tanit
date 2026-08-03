@@ -1,0 +1,9 @@
+{
+  "framework": "django",
+  "routes": [
+    { "method": "GET", "uri": "api/users/" },
+    { "method": "GET", "uri": "api/users/<int:id>/" },
+    { "method": "GET", "uri": "api/users/create/" },
+    { "method": "GET", "uri": "health/" }
+  ]
+}
