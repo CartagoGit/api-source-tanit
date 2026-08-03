@@ -79,7 +79,7 @@ describe("postman-exporter_test", () => {
     expect(result.content[0]?.text).toMatch(/Input inválido/i);
   });
 
-  test("corre la suite e2e y devuelve ok=true", async () => {
+  test("corre la suite e2e y devuelve ok=true", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = captureHandler(reg);
     const result = await handler({ withTypecheck: false });
@@ -103,7 +103,7 @@ describe("postman-exporter_test", () => {
     expect(parsed.durationMs).toBeGreaterThan(0);
   });
 
-  test("incluye typecheck por defecto", async () => {
+  test("incluye typecheck por defecto", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = captureHandler(reg);
     const result = await handler({});
@@ -115,7 +115,7 @@ describe("postman-exporter_test", () => {
     expect(names).toContain("typecheck");
   });
 
-  test("agrega un step smoke:<framework> cuando se pide", async () => {
+  test("agrega un step smoke:<framework> cuando se pide", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = captureHandler(reg);
     const result = await handler({

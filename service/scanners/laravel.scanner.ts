@@ -23,6 +23,8 @@ import type {
 } from "../../contract/scanner.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
+const RESOURCE_RE =
+  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*([A-Za-z0-9_\\]+)::class/;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
 const ACTION_RE =
   /\[\s*([A-Za-z0-9_]+)::class\s*,\s*['"]([A-Za-z0-9_]+)['"]\s*\]/;
@@ -33,6 +35,96 @@ const PROVIDER_RE =
 const PROVIDER_PREFIX_RE = /Route::prefix\s*\(\s*['"]([^'"]+)['"]/g;
 const PROVIDER_GROUP_RE =
   /->group\s*\(\s*base_path\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+
+/** Patrón `->where('foo', '\d+')` en el contexto de un route call. */
+const WHERE_RE = /->where\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/g;
+
+/** Rutas RESTful expandidas para `Route::resource` (7 verbos). */
+const RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; action: string }> = [
+  { method: "GET", suffix: "", action: "index" },
+  { method: "GET", suffix: "/create", action: "create" },
+  { method: "POST", suffix: "", action: "store" },
+  { method: "GET", suffix: "/{id}", action: "show" },
+  { method: "GET", suffix: "/{id}/edit", action: "edit" },
+  { method: "PUT", suffix: "/{id}", action: "update" },
+  { method: "DELETE", suffix: "/{id}", action: "destroy" },
+];
+
+/** Rutas RESTful expandidas para `Route::apiResource` (5 verbos, sin UI). */
+const API_RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; action: string }> = [
+  { method: "GET", suffix: "", action: "index" },
+  { method: "POST", suffix: "", action: "store" },
+  { method: "GET", suffix: "/{id}", action: "show" },
+  { method: "PUT", suffix: "/{id}", action: "update" },
+  { method: "DELETE", suffix: "/{id}", action: "destroy" },
+];
+
+/**
+ * Captura las constraints `where('campo', 'regex')` en el rango de
+ * líneas desde la declaración del route hasta su cierre (`;` o `;`).
+ *
+ * @param lines Array de líneas del archivo.
+ * @param startIndex 0-based index de la línea donde está la declaración.
+ * @returns Map nombre → regex (sin las barras de JS).
+ */
+function captureWhereConstraints(
+  lines: string[],
+  startIndex: number,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  // Busca en una ventana de 5 líneas hacia adelante (suficiente para
+  // `Route::get(...)->where('foo', '\d+')->where('bar', '...');`).
+  const end = Math.min(startIndex + 5, lines.length);
+  for (let i = startIndex; i < end; i++) {
+    const line = lines[i] ?? "";
+    let m: RegExpExecArray | null;
+    WHERE_RE.lastIndex = 0;
+    while ((m = WHERE_RE.exec(line)) !== null) {
+      const name = m[1];
+      const pattern = m[2];
+      if (name && pattern) {
+        out.set(name, pattern);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Codifica una URI con constraints where() en la forma
+ * `{name:regex}`. Si no hay constraints, devuelve `{name}`.
+ */
+function encodeWithConstraints(name: string, constraints: Map<string, string>): string {
+  const c = constraints.get(name);
+  if (!c) return `{${name}}`;
+  // Laravel acepta el regex sin delimitadores; Postman también lo acepta
+  // visualmente (ej. `{id:\\\\d+}`), pero por consistencia con otros
+  // scanners usamos `:p` y dejamos la firma en `displayName` si la
+  //我们需要. Devolvemos la URI como `{name:regex}` visualmente.
+  return `{${name}:${c}}`;
+}
+
+/**
+ * Codifica `where()` constraints en una URI ya construida. Si el
+ * campo `{name}` está en `constraints`, se convierte a `{name:regex}`.
+ */
+function encodeWithConstraintsInUri(
+  uri: string,
+  constraints: Map<string, string>,
+): string {
+  if (constraints.size === 0) return uri;
+  return uri.replace(/\{([^}]+)\}/g, (whole, name) => {
+    const c = constraints.get(name);
+    return c ? `{${name}:${c}}` : whole;
+  });
+}
+
+function resolveControllerClass(
+  alias: string,
+  imports: Map<string, string>,
+): string {
+  return imports.get(alias) ?? `App\\Http\\Controllers\\${alias}`;
+}
 
 /** Archivos de rutas que NO son HTTP API. */
 const NON_API_ROUTE_FILES = new Set([
@@ -170,7 +262,7 @@ export class LaravelScanner implements IRouteScanner {
   }
 }
 
-async function parseRoutesFile(
+export async function parseRoutesFile(
   relPath: string,
   initialPrefix: string[],
   projectRoot: string,
@@ -212,6 +304,37 @@ async function parseRoutesFile(
     if (/\}\s*\)/.test(line) && prefixStack.length > initialPrefix.length) {
       prefixStack.pop();
     }
+
+    // Route::resource / Route::apiResource → expande a N routes.
+    const resourceMatch = RESOURCE_RE.exec(line);
+    if (resourceMatch?.[1] && resourceMatch[2] && resourceMatch[3]) {
+      const kind = resourceMatch[1];
+      const resourceUri = resourceMatch[2];
+      const alias = resourceMatch[3];
+      const controllerClass = resolveControllerClass(alias, imports);
+      const whereConstraints = captureWhereConstraints(lines, i);
+      const expanded =
+        kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES;
+      for (const r of expanded) {
+        const rawForThis = (resourceUri + r.suffix).replace(/^\/+/, "");
+        const segments = rawForThis
+          ? [...prefixStack, rawForThis]
+          : [...prefixStack];
+        const full = segments.join("/").replace(/\/+/g, "/");
+        out.push({
+          method: r.method,
+          uri: encodeWithConstraintsInUri(full, whereConstraints),
+          rawUri: rawForThis,
+          sourceFile: relPath,
+          lineNumber: i + 1,
+          prefixChain: [...prefixStack],
+          controllerClass,
+          actionName: r.action,
+        });
+      }
+      continue;
+    }
+
     const rm = ROUTE_METHOD_RE.exec(line);
     if (rm?.[1] !== undefined) {
       const method = rm[1].toUpperCase();
@@ -225,14 +348,17 @@ async function parseRoutesFile(
       if (am?.[1] && am[2]) {
         const alias = am[1];
         actionName = am[2];
-        controllerClass =
-          imports.get(alias) ??
-          `App\\Http\\Controllers\\${alias}`;
+        controllerClass = resolveControllerClass(alias, imports);
       }
+
+      const whereConstraints = captureWhereConstraints(lines, i);
+      const uriWithConstraints = full.replace(/\{([^}]+)\}/g, (whole, name) =>
+        encodeWithConstraints(name, whereConstraints),
+      );
 
       out.push({
         method,
-        uri: full,
+        uri: uriWithConstraints,
         rawUri,
         sourceFile: relPath,
         lineNumber: i + 1,
