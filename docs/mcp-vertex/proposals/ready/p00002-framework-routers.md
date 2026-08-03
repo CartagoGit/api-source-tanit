@@ -2,7 +2,7 @@
 id: p00002
 title: "p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -10,6 +10,42 @@ related:
     - p00001 # finish v0.1 first (this proposal builds on it)
     - plugins/postman-exporter/
 ---
+
+## Resolution (2026-08-03)
+
+The contract was implemented with a different (and cleaner) shape than
+proposed here. Instead of a single `IRouterAdapter` with `detect()` and
+`discover()`, the codebase uses three smaller interfaces in
+[contract/scanner.interface.ts](../../contract/scanner.interface.ts):
+
+- `IProjectScanner` — declaratively scores a project root as a candidate
+  (e.g. `composer.json` + `artisan` for Laravel, `requirements.txt` +
+  `fastapi` for FastAPI, `openapi.yaml` for OpenAPI-3, …).
+- `IRouteScanner` — extracts `ParsedRoute[]` from the resolved
+  `IProjectMatch`. Always returns routes in the same neutral shape, so
+  the agnostic core stays framework-agnostic.
+- `IValidationSpecProvider` — resolves a `ParsedRoute` to
+  `IValidationSpec[]` (per-framework schema introspection, e.g. Laravel
+  `FormRequest`, DRF serializers, class-validator DTOs, OpenAPI
+  `requestBody`).
+
+Twelve scanners ship in `service/scanners/`: laravel, symfony, express,
+fastapi, nestjs, django, flask, nextjs, gin, springboot, aspnet, openapi.
+The dispatcher in `service/discovery.orchestrator.ts` runs each
+`IProjectScanner.detect()` and picks the highest-scoring match.
+
+The per-framework e2e fixtures (`tests/e2e/<framework>-comprehensive.test.ts`)
++ mini fixtures (`tests/smoke-fixtures/<framework>-mini/expected.json`)
+provide the regression coverage that the original acceptance bullets asked
+for, and the smoke runner wired into `postman_exporter_test` (p00003 S2)
+makes "is scanner X still detecting N routes?" a one-line check.
+
+Net result: the goal of "decouple the package from Laravel-only" is met
+with 12 frameworks instead of the 5 originally proposed, and the
+validator pipeline is reusable per framework instead of duplicated. The
+slice body is kept here for historical reference but is no longer
+actionable.
+
 
 # p00002 — multi-framework router layer
 
