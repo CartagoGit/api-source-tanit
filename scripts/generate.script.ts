@@ -38,118 +38,11 @@ import {
   defaultEnvironments,
 } from "../service/environment-builder.service.js";
 import {
-  DiscoveryOrchestrator,
-  type DiscoveryRegistry,
-} from "../service/discovery.orchestrator.js";
-import {
-  LaravelProjectScanner,
-  LaravelScanner,
-  LaravelFormRequestValidationProvider,
-} from "../service/scanners/laravel.scanner.js";
-import {
-  OpenApiProjectScanner,
-  OpenApiScanner,
-  OpenApiValidationProvider,
-} from "../service/scanners/openapi.scanner.js";
-import {
-  ExpressProjectScanner,
-  ExpressScanner,
-  ExpressZodValidationProvider,
-} from "../service/scanners/express.scanner.js";
-import {
-  FastApiProjectScanner,
-  FastApiScanner,
-  FastApiPydanticValidationProvider,
-} from "../service/scanners/fastapi.scanner.js";
-import {
-  SymfonyProjectScanner,
-  SymfonyRouteScanner,
-  SymfonyAttributesValidationProvider,
-} from "../service/scanners/symfony.scanner.js";
-import {
-  NestJsProjectScanner,
-  NestJsRouteScanner,
-  NestJsClassValidatorProvider,
-} from "../service/scanners/nestjs.scanner.js";
-import {
-  DjangoProjectScanner,
-  DjangoRouteScanner,
-  DjangoSerializerProvider,
-} from "../service/scanners/django.scanner.js";
-import {
-  FlaskProjectScanner,
-  FlaskRouteScanner,
-  FlaskPydanticProvider,
-} from "../service/scanners/flask.scanner.js";
-import {
-  NextJsProjectScanner,
-  NextJsRouteScanner,
-  NextJsZodProvider,
-} from "../service/scanners/nextjs.scanner.js";
-import {
-  GinProjectScanner,
-  GinRouteScanner,
-  GinBindingProvider,
-} from "../service/scanners/gin.scanner.js";
-import {
-  SpringBootProjectScanner,
-  SpringBootRouteScanner,
-  SpringBootBeanValidationProvider,
-} from "../service/scanners/springboot.scanner.js";
-import {
-  AspNetProjectScanner,
-  AspNetRouteScanner,
-  AspNetDataAnnotationsProvider,
-} from "../service/scanners/aspnet.scanner.js";
+  defaultOrchestrator,
+} from "../service/scanner-registry.js";
 import { buildSpecsFromScanner } from "../service/adapters/parsed-route-to-spec.adapter.js";
 import type { EndpointSpec } from "../contract/postman.interface.js";
 import type { DiscoveredRoute } from "../contract/postman.interface.js";
-
-/** Registry por defecto del orchestrator (orden = prioridad). */
-const DEFAULT_REGISTRY: DiscoveryRegistry = {
-  detectors: [
-    new LaravelProjectScanner(),
-    new OpenApiProjectScanner(),
-    new FastApiProjectScanner(),
-    new SymfonyProjectScanner(),
-    new NestJsProjectScanner(),
-    new DjangoProjectScanner(),
-    new SpringBootProjectScanner(),
-    new AspNetProjectScanner(),
-    new FlaskProjectScanner(),
-    new NextJsProjectScanner(),
-    new GinProjectScanner(),
-    new ExpressProjectScanner(),
-  ],
-  routeScanners: [
-    new LaravelScanner(),
-    new OpenApiScanner(),
-    new FastApiScanner(),
-    new SymfonyRouteScanner(),
-    new NestJsRouteScanner(),
-    new DjangoRouteScanner(),
-    new SpringBootRouteScanner(),
-    new AspNetRouteScanner(),
-    new FlaskRouteScanner(),
-    new NextJsRouteScanner(),
-    new GinRouteScanner(),
-    new ExpressScanner(),
-  ],
-  validationProviders: [
-    new LaravelFormRequestValidationProvider(),
-    new OpenApiValidationProvider(),
-    new FastApiPydanticValidationProvider(),
-    new SymfonyAttributesValidationProvider(),
-    new NestJsClassValidatorProvider(),
-    new DjangoSerializerProvider(),
-    new SpringBootBeanValidationProvider(),
-    new AspNetDataAnnotationsProvider(),
-    new FlaskPydanticProvider(),
-    new NextJsZodProvider(),
-    new GinBindingProvider(),
-    new ExpressZodValidationProvider(),
-  ],
-};
 
 /** Tipos de los resultados del flujo legacy (Laravel-flavoured). */
 interface LegacyDiscovery {
@@ -231,7 +124,7 @@ async function discoverEndpointsUniversal(): Promise<{
   console.log("→ Rutas detectadas:");
   console.log(describeDiscoveredPaths());
 
-  const orch = new DiscoveryOrchestrator(DEFAULT_REGISTRY);
+  const orch = defaultOrchestrator();
   const { match, scanner, validation } = await orch.detectProject(
     process.env.POSTMAN_PROJECT_ROOT ?? ".",
   );

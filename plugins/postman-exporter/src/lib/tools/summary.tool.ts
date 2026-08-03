@@ -1,11 +1,16 @@
 /**
  * Tool `postman-exporter_summary`.
  *
- * Inspecciona un proyecto Laravel host sin generar artefactos.
- * Devuelve: nombre detectado, baseUrl, rutas en código, FormRequests
- * resueltos, modo (zero-config o con config del host).
+ * Inspecciona un proyecto host sin generar artefactos. Devuelve:
+ * framework detectado, baseUrl, rutas en código, FormRequests
+ * resueltos, modo (zero-config o con config del host), y conteo
+ * de bodies/queries auto-rellenados por la heurística agnóstica.
  *
  * SOLID: S = solo lectura; no muta nada.
+ * D = la llamada se delega a `summarizeProject()` (mismo código
+ *     que usa el CLI `scripts/summary.script.ts`). Esto elimina
+ *     el "hack" previo de shells out a `generate --inspect` y
+ *     parsear stdout con regex.
  *
  * Forma canónica `IToolRegistration`.
  */
@@ -17,11 +22,9 @@ import {
   type IMcpPluginContext,
 } from "@mcp-vertex/core/public";
 
-import {
-  SummaryInputSchema,
-  type ISummaryOutput,
-} from "../contract/postman-exporter.interface";
-import { runBunScript } from "../helpers/runner.helper";
+import { SummaryInputSchema } from "../contract/postman-exporter.interface";
+import { existsSync } from "node:fs";
+import { summarizeProject } from "../../../../../service/summary.service";
 
 const TOOL_ID = "summary";
 
@@ -31,17 +34,18 @@ export function buildSummaryToolRegistration(
   return {
     id: TOOL_ID,
     summary:
-      "Inspecciona un proyecto Laravel host sin generar artefactos. " +
-      "Devuelve nombre detectado, baseUrl, rutas en código, FormRequests resueltos y modo.",
-    tags: ["postman", "laravel", "summary", "spawn"],
-    effects: ["spawn"],
+      "Inspecciona un proyecto host (Laravel, OpenAPI, Express, FastAPI, NestJS, Django, etc.) sin generar artefactos. " +
+      "Devuelve framework, baseUrl, rutas en código, FormRequests, bodies/queries auto-inferidos, modo.",
+    tags: ["postman", "laravel", "summary", "discovery"],
+    effects: [],
     register: async (server) => {
       server.registerTool(
         `${ctx.namespacePrefix}_${TOOL_ID}`,
         {
           description:
-            "Inspecciona un proyecto Laravel host sin generar artefactos. Devuelve " +
-            "nombre detectado, baseUrl, rutas en código, FormRequests resueltos y modo.",
+            "Inspecciona un proyecto host sin escribir archivos. " +
+            "Devuelve { framework, projectName, baseUrl, routesInCode, withFormRequest, " +
+            "withoutFormRequest, bodiesAdded, queriesAdded, zeroConfig, configPath, manualEndpoints }.",
           inputSchema: SummaryInputSchema,
         },
         async (input) => {
@@ -59,53 +63,22 @@ export function buildSummaryToolRegistration(
             | undefined;
           const projectRoot =
             args.projectRoot ?? defaultProjectRoot ?? workspaceRoot;
-          const { existsSync } = await import("node:fs");
           if (!existsSync(projectRoot)) {
             return toolError(
               `projectRoot no existe: ${projectRoot}`,
               "Pasa projectRoot absoluto, o configura defaultProjectRoot.",
             );
           }
-          const cliScriptPath =
-            (ctx.options["cliScript"] as string | undefined) ??
-            `${workspaceRoot}/scripts/cli.script.ts`;
 
-          // Reutilizamos `generate --inspect` para volcar discovery sin
-          // escribir archivos. Si el CLI no tiene --inspect, fallback a
-          // un directorio efímero (legacy).
-          const result = runBunScript(
-            cliScriptPath,
-            [
-              "generate",
-              "--project-root",
-              projectRoot,
-              "--inspect",
-            ],
-            { cwd: workspaceRoot, timeoutMs: 30_000 },
-          );
-          if (!result.ok) {
+          try {
+            const summary = await summarizeProject(projectRoot);
+            return toolJson({ ok: true, ...summary });
+          } catch (err) {
             return toolError(
-              `summary falló (exit=${result.exitCode}): ${result.stderr || result.stdout || "sin detalle"}`,
-              "Asegúrate de que projectRoot apunte a un proyecto válido y de que el CLI soporte --inspect.",
+              `summary falló: ${err instanceof Error ? err.message : String(err)}`,
+              "Comprueba que projectRoot apunte a un proyecto válido y que el directorio sea legible.",
             );
           }
-
-          const frameworkMatch = result.stdout.match(/Framework:\s+(\S+)/);
-          const projectNameMatch = result.stdout.match(/ProjectName:\s+(\S+)/);
-          const routesMatch = result.stdout.match(/Rutas:\s+(\d+)/);
-          const frMatch = result.stdout.match(/Con FR:\s+(\d+)/);
-          const baseUrlMatch = result.stdout.match(/BaseUrl:\s+(\S+)/);
-          const framework = frameworkMatch?.[1]?.trim() ?? "legacy";
-          const projectName = projectNameMatch?.[1]?.trim() ?? "<no detectado>";
-          const out: ISummaryOutput = {
-            projectName,
-            baseUrl: baseUrlMatch?.[1]?.trim() ?? "<inferida por zero-config>",
-            routesInCode: routesMatch ? Number(routesMatch[1]) : 0,
-            formRequestsResolved: frMatch ? Number(frMatch[1]) : 0,
-            zeroConfig: framework === "legacy" && projectName === "<no detectado>",
-            configPath: projectName,
-          };
-          return toolJson({ ok: true, ...out });
         },
       );
     },
