@@ -83,7 +83,7 @@ Three commands, three different outputs, no roll-up. A single
   - 6/6 integration tests pass; 77/77 tests across the suite stay green.
 
 ### S2 — per-framework smoke runner
-- **Status**: ready
+- **Status**: done (2026-08-03, commits cf802f5 + 88c364f)
 - **Files**: <see slice body below>
 - **Gate**: test
   acceptance:
