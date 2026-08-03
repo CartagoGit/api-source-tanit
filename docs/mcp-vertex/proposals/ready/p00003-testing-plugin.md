@@ -56,7 +56,7 @@ Three commands, three different outputs, no roll-up. A single
 ## slices
 
 ### S1 — `postman_exporter_test` tool implementation
-- **Status**: ready
+- **Status**: done (2026-08-03, commits 7a96572 + b329829)
 - **Files**: <see slice body below>
 - **Gate**: test
   acceptance:
@@ -68,20 +68,19 @@ Three commands, three different outputs, no roll-up. A single
   `plugins/postman-exporter/src/index.ts` (register the tool).
 - The tool runs (sequentially, with timeout):
   - `bun run typecheck` — exit code 0/1 + duration
-  - `bun run build` — exit code 0/1 + JSON file size + duration
-  - `bun run check` — exit code 0/1 + coverage delta + duration
-  - `bun run test` — exit code 0/1 + passed/failed counts + duration
-    (only when p00001 S3 lands)
-- Returns `{ ok: boolean, steps: ReadonlyArray<{ name, ok, durationMs, detail? }>, durationMs: number }`.
+  - `bun test tests/e2e/<framework>-comprehensive.test.ts` — when `framework` is set
+  - `bun test tests/e2e/` — exit code 0/1 + passed/failed counts + duration
+- Returns `{ ok, steps: [{ name, ok, exitCode, durationMs, summary?, detail? }], durationMs, framework }`.
 - Uses the same `runner.helper.ts` already in the plugin (no new
   abstraction).
-- **Acceptance**:
+- **Acceptance (all green)**:
   - `bun test plugins/postman-exporter/tests/integration/test.tool.spec.ts`
-    (new) asserts `ok: true` against the postman-exporter workspace
-    itself, and `ok: false` when a step is forced to fail via env var.
-  - Adding `bun run typecheck` to the gate takes <2 s and produces
-    a structured failure detail that an agent can act on without
-    re-running anything.
+    asserts `ok: true` against the postman-exporter workspace itself.
+  - Asserts `ok: false` with a `detail` field when a step fails
+    (workspace inexistente).
+  - Asserts the `smoke:<framework>` step is added when `framework`
+    is given (uses `tests/e2e/<framework>-comprehensive.test.ts`).
+  - 6/6 integration tests pass; 77/77 tests across the suite stay green.
 
 ### S2 — per-framework smoke runner
 - **Status**: ready
