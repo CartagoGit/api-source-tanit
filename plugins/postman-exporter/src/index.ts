@@ -5,16 +5,18 @@
  * cualquier agente MCP-vertex compatible.
  *
  * Tools:
- *   - postman_exporter_generate
- *   - postman_exporter_validate
- *   - postman_exporter_summary
+ *   - postman-exporter_generate
+ *   - postman-exporter_validate
+ *   - postman-exporter_summary
  *
  * Diseño:
  *   - Single source of truth en `IMcpPluginContext`.
  *   - Zero `process.cwd()` / `process.env` directos en tools (siempre
  *     vía contexto o args del tool).
  *   - SOLID: cada tool es una función pura que devuelve
- *     `IToolRegistration`.
+ *     `IToolRegistration` (forma canónica con `id` + `register(server)`).
+ *   - Sin imports con extensión `.js`; este plugin se ejecuta en
+ *     runtime con Bun (no se compila a `dist/`).
  */
 
 import { definePlugin } from "@mcp-vertex/core/public";
@@ -32,14 +34,12 @@ export default definePlugin({
     "de cualquier proyecto Laravel. Pensado para ser invocado por agentes " +
     "MCP-vertex en proyectos host sin configuración manual.",
   optionsSchema: PostmanExporterOptionsSchema,
-  register(_ctx) {
-    // Tools no necesitan opciones en este slice; la CLI del proyecto
-    // host se autodetecta por convención de rutas (no por env).
+  register(ctx) {
     return {
       tools: [
-        buildGenerateToolRegistration(),
-        buildValidateToolRegistration(),
-        buildSummaryToolRegistration(),
+        buildGenerateToolRegistration(ctx),
+        buildValidateToolRegistration(ctx),
+        buildSummaryToolRegistration(ctx),
       ],
     };
   },

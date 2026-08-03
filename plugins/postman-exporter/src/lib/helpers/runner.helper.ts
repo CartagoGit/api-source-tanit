@@ -8,6 +8,28 @@
 
 import { spawnSync } from "node:child_process";
 
+// `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
+// reproduce cuando el host MCP arranca el plugin bajo Bun y el
+// helper usa `node:child_process.spawnSync` (un nivel de indirección
+// que rompe la herencia del bun executable). El plugin asume runtime
+// Bun (lo exige `engines.bun` en su package.json).
+type BunSpawnSync = (opts: {
+  cmd: string[];
+  cwd?: string;
+  env?: Record<string, string | undefined>;
+  stdin?: "inherit" | "ignore" | "pipe";
+  stdout?: "inherit" | "pipe";
+  stderr?: "pipe";
+  timeout?: number;
+}) => {
+  exitCode: number;
+  stdout: ReadableStream<Uint8Array> | undefined;
+  stderr: ReadableStream<Uint8Array> | undefined;
+  success: boolean;
+};
+const bunSpawnSync = (Bun as { spawnSync?: BunSpawnSync }).spawnSync;
+const useBunSpawn = typeof bunSpawnSync === "function";
+
 /** Resultado de ejecutar un script via bun. */
 export interface IRunScriptResult {
   readonly ok: boolean;
@@ -15,6 +37,32 @@ export interface IRunScriptResult {
   readonly stdout: string;
   readonly stderr: string;
   readonly durationMs: number;
+}
+
+/**
+ * Resuelve la path absoluta del binario `bun`. En el host el plugin
+ * corre dentro de un proceso Bun (no Node), pero el helper usa
+ * `node:child_process.spawnSync` para mantener el sync; resolvemos
+ * la path absoluta una vez para sobrevivir a `env` recortadas por
+ * hosts AI (algunos clientes MCP filtran `PATH` antes de spawn).
+ */
+function resolveBunBin(): string {
+  // 1) Variable de entorno explícita (operador puede forzarla).
+  const fromEnv = process.env["MCP_VERTEX_BUN_BIN"];
+  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  // 2) `Bun.which` (disponible en runtime Bun).
+  const w = (Bun as { which?: (bin: string) => string | null }).which?.("bun");
+  if (typeof w === "string" && w.length > 0) return w;
+  // 3) `which` por stdlib (cubre ejecución vía Node puro).
+  try {
+    const { execSync } = require("node:child_process") as typeof import("node:child_process");
+    const out = execSync("command -v bun", { encoding: "utf8" }).trim();
+    if (out.length > 0) return out;
+  } catch {
+    // ignore — caemos al fallback
+  }
+  // 4) Fallback: dejar que spawnSync intente resolver del PATH.
+  return "bun";
 }
 
 /**
@@ -31,12 +79,17 @@ export function runBunScript(
 ): IRunScriptResult {
   const start = Date.now();
   const timeout = options.timeoutMs ?? 60_000;
-  const result = spawnSync("bun", ["run", scriptPath, ...args], {
-    cwd: options.cwd,
-    encoding: "utf8",
-    timeout,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const bunBin = resolveBunBin();
+  const cmd = [bunBin, "run", scriptPath, ...args];
+  const result = useBunSpawn
+    ? runBunSpawnSyncArray(cmd, options.cwd, timeout, process.env)
+    : spawnSync(cmd[0] ?? "bun", cmd.slice(1), {
+        cwd: options.cwd,
+        encoding: "utf8",
+        timeout,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
   if (result.error) {
     return {
       ok: false,
@@ -52,6 +105,37 @@ export function runBunScript(
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
     durationMs: Date.now() - start,
+  };
+}
+
+function runBunSpawnSyncArray(
+  cmd: string[],
+  cwd: string,
+  timeoutMs: number,
+  env: NodeJS.ProcessEnv | undefined,
+): {
+  error?: Error;
+  status: number | null;
+  stdout: string;
+  stderr: string;
+} {
+  const envRecord: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(env ?? {})) {
+    envRecord[k] = v;
+  }
+  const r = bunSpawnSync!({
+    cmd,
+    cwd,
+    env: envRecord,
+    stdin: "ignore",
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: timeoutMs,
+  });
+  return {
+    status: r.exitCode,
+    stdout: r.stdout ? new TextDecoder().decode(r.stdout as unknown as Uint8Array) : "",
+    stderr: r.stderr ? new TextDecoder().decode(r.stderr as unknown as Uint8Array) : "",
   };
 }
 
