@@ -81,23 +81,45 @@ async function loadScannerPair(
   const routeCandidates = [`${cap}Scanner`, `${cap}RouteScanner`];
   try {
     const mod = (await import(
-      `../../../../../../service/scanners/${framework}.scanner`
+      `../../../../../service/scanners/${framework}.scanner`
     )) as Record<string, unknown>;
-    const projectScanner = mod[projectName];
-    let routeScanner: unknown = null;
+    const ProjectScannerClass = mod[projectName] as
+      | (new () => {
+          resolve(
+            projectRoot: string,
+          ): Promise<{ projectRoot: string; framework: string }>;
+        })
+      | undefined;
+    let RouteScannerClass: (new () => {
+      scan(match: {
+        projectRoot: string;
+      }): Promise<ReadonlyArray<unknown>>;
+    }) | null = null;
     for (const candidate of routeCandidates) {
-      if (mod[candidate]) {
-        routeScanner = mod[candidate];
+      const cls = mod[candidate] as
+        | (new () => {
+            scan(match: { projectRoot: string }): Promise<ReadonlyArray<unknown>>;
+          })
+        | undefined;
+      if (cls) {
+        RouteScannerClass = cls;
         break;
       }
     }
-    if (!projectScanner || !routeScanner) return null;
+    if (!ProjectScannerClass || !RouteScannerClass) return null;
     return {
-      projectScanner: projectScanner as never,
-      routeScanner: routeScanner as never,
+      projectScanner: new ProjectScannerClass(),
+      routeScanner: new RouteScannerClass(),
     };
-  } catch {
-    return null;
+  } catch (err) {
+    // Re-throw con contexto para que el lado resol-reportable del step
+    // muestre la causa real. Antes lo tragábamos y devolvíamos `null`,
+    // dejando al usuario sin pistas.
+    throw new Error(
+      `no se pudo cargar service/scanners/${framework}.scanner: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
   }
 }
 
@@ -270,7 +292,7 @@ export function buildTestToolRegistration(
                     match,
                   });
                   const summary = result.ok
-                    ? `${result.expectedCount} routes match`
+                    ? `${result.expectedCount} routes pass`
                     : `missing=${result.missing.length} unexpected=${result.unexpected.length}`;
                   const detail = result.ok
                     ? undefined

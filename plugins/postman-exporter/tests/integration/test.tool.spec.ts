@@ -132,7 +132,7 @@ describe("postman-exporter_test", () => {
     const smokeStep = parsed.steps.find((s) => s.name === "smoke:django");
     expect(smokeStep).toBeDefined();
     expect(smokeStep?.ok).toBe(true);
-    expect(smokeStep?.summary).toMatch(/\d+ pass/);
+    expect(smokeStep?.summary).toMatch(/\d+ routes pass/);
   });
 
   test("devuelve detalle cuando un step falla (framework inexistente vía archivo)", async () => {
