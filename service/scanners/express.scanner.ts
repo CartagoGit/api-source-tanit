@@ -375,44 +375,128 @@ async function findInlineSchema(
   const text = stripComments(raw);
   const lines = text.split("\n");
 
-  // 1) Buscar zod: mejor el `z.object(` más cercano al handler.
-  //    Estrategia: buscar todas las ocurrencias de `z.object(` y preferir
-  //    la que esté más cerca (en líneas) al handler.
+  // 1) Detectar qué framework usa el handler.
+  //    Estrategia (orden de prioridad):
+  //    a. **Schema usado en el handler**: parsear el cuerpo del handler
+  //       buscando `SchemaName.parse(req.body)` o `SchemaName.validate(req.body)`.
+  //       Si el nombre del schema está declarado como `= z.object(...)`, usar zod.
+  //       Si está como `= Joi.object(...)`, usar Joi.
+  //    b. **Anterior más cercano no-header**: si el handler no usa
+  //       `.parse()` ni `.validate()`, usar el schema zod/jod anterior y más
+  //       cercano (skip schemas que parezcan headers).
+  //    c. **Cualquier más cercano**: si no hay nada body-like, fallback.
   const startLine = Math.max(0, route.lineNumber - 1);
-  const allZodMatches = findAllBalanced(text, /\bz\s*\.\s*object\s*\(/);
-  if (allZodMatches.length > 0) {
-    // Encontrar el match más cercano al handler.
-    let best = allZodMatches[0];
-    let bestDist = Number.MAX_SAFE_INTEGER;
-    for (const m of allZodMatches) {
-      const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
-      const dist = Math.abs(lineOfMatch - startLine);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = m;
-      }
-    }
-    const fields = parseFieldsObjectLiteral(text.slice(best.callStart + 1, best.callEnd));
-    if (fields.length > 0) {
-      const bodySpecs = fields.map(zodFieldToSpec);
-      // Headers: buscar `headers: z.object({...})` cerca del handler.
-      const headerSpecs = findZodHeadersNear(text, best.callStart, startLine);
-      return [...bodySpecs, ...headerSpecs];
+  const handlerBody = collectHandlerBody(lines, startLine);
+  const referencedSchemaName = handlerBody
+    ? findReferencedSchemaName(handlerBody)
+    : null;
+  // Resolver a qué framework pertenece el schema referenciado.
+  let prefer: "zod" | "joi" | null = null;
+  if (referencedSchemaName) {
+    if (new RegExp(`\\b${referencedSchemaName}\\s*=\\s*z\\s*\\.\\s*object`).test(text)) {
+      prefer = "zod";
+    } else if (new RegExp(`\\b${referencedSchemaName}\\s*=\\s*Joi\\s*\\.\\s*object`).test(text)) {
+      prefer = "joi";
     }
   }
 
-  // 2) Joi.
+  // 2) Buscar zod (si hay zod en el archivo).
+  const allZodMatches = findAllBalanced(text, /\bz\s*\.\s*object\s*\(/);
+  if (allZodMatches.length > 0) {
+    let best: { callStart: number; callEnd: number } | null = null;
+    // 2a) Schema referenciado en el handler.
+    if (prefer === "zod" && referencedSchemaName) {
+      const match = allZodMatches.find((m) => {
+        const start = Math.max(0, m.callStart - 80);
+        const snippet = text.slice(start, m.callStart);
+        return new RegExp(`\\b${referencedSchemaName}\\s*=\\s*z\\s*\\.\\s*object`).test(snippet);
+      });
+      if (match) best = match;
+    }
+    // 2b) Anterior más cercano no-header.
+    if (!best) {
+      const before = allZodMatches
+        .map((m) => ({
+          m,
+          line: text.slice(0, m.callStart).split("\n").length - 1,
+        }))
+        .filter((x) => x.line < startLine)
+        .sort((a, b) => b.line - a.line);
+      for (const cand of before) {
+        const fields = parseFieldsObjectLiteral(
+          text.slice(cand.m.callStart + 1, cand.m.callEnd),
+        );
+        if (fields.length === 0) continue;
+        if (looksLikeHeaderSchema(fields)) continue;
+        best = cand.m;
+        break;
+      }
+    }
+    // 2c) Fallback al más cercano global.
+    if (!best) {
+      let bestGeneral = allZodMatches[0];
+      let bestDist = Number.MAX_SAFE_INTEGER;
+      for (const m of allZodMatches) {
+        const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
+        const dist = Math.abs(lineOfMatch - startLine);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestGeneral = m;
+        }
+      }
+      best = bestGeneral;
+    }
+    // Si el handler usa Joi explícitamente, NO usar zod.
+    if (prefer !== "joi") {
+      const fields = parseFieldsObjectLiteral(text.slice(best.callStart + 1, best.callEnd));
+      if (fields.length > 0) {
+        const bodySpecs = fields.map(zodFieldToSpec);
+        // Headers: buscar `headers: z.object({...})` cerca del handler.
+        const headerSpecs = findZodHeadersNear(text, best.callStart, startLine);
+        return [...bodySpecs, ...headerSpecs];
+      }
+    }
+  }
+
+  // 3) Joi (misma heurística).
   const allJoiMatches = findAllBalanced(text, /\bJoi\s*\.\s*object\s*\(/);
   if (allJoiMatches.length > 0) {
-    let best = allJoiMatches[0];
-    let bestDist = Number.MAX_SAFE_INTEGER;
-    for (const m of allJoiMatches) {
-      const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
-      const dist = Math.abs(lineOfMatch - startLine);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = m;
+    let best: { callStart: number; callEnd: number } | null = null;
+    if (prefer === "joi" && referencedSchemaName) {
+      const match = allJoiMatches.find((m) => {
+        const start = Math.max(0, m.callStart - 80);
+        const snippet = text.slice(start, m.callStart);
+        return new RegExp(`\\b${referencedSchemaName}\\s*=\\s*Joi\\s*\\.\\s*object`).test(snippet);
+      });
+      if (match) best = match;
+    }
+    if (!best) {
+      let bestBefore = allJoiMatches[0];
+      let bestBeforeDist = Number.MAX_SAFE_INTEGER;
+      for (const m of allJoiMatches) {
+        const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
+        if (lineOfMatch < startLine) {
+          const dist = startLine - lineOfMatch;
+          if (dist < bestBeforeDist) {
+            bestBeforeDist = dist;
+            bestBefore = m;
+          }
+        }
       }
+      if (bestBeforeDist === Number.MAX_SAFE_INTEGER) {
+        let best2 = allJoiMatches[0];
+        let bestDist = Number.MAX_SAFE_INTEGER;
+        for (const m of allJoiMatches) {
+          const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
+          const dist = Math.abs(lineOfMatch - startLine);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best2 = m;
+          }
+        }
+        bestBefore = best2;
+      }
+      best = bestBefore;
     }
     const inner = text.slice(best.callStart + 1, best.callEnd);
     const items = splitTopLevel(inner);
@@ -649,6 +733,93 @@ function findAllBalanced(
  * Parsea `{ field1: z.string(), field2: z.number().int().min(0), ... }`
  * usando split top-level por `,`.
  */
+/**
+ * Recoge el cuerpo del handler (el callback `app.METHOD('/x', (req, res) => { ... })`)
+ * desde `startLine` hasta el `}` de cierre del callback.
+ */
+function collectHandlerBody(lines: string[], startLine: number): string {
+  const out: string[] = [];
+  let parenDepth = 0;
+  let braceDepth = 0;
+  let started = false;
+  for (let i = startLine; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    out.push(line);
+    for (const c of line) {
+      if (c === "(") parenDepth++;
+      else if (c === ")") parenDepth--;
+      else if (c === "{") {
+        braceDepth++;
+        if (braceDepth >= 1) started = true;
+      } else if (c === "}") {
+        braceDepth--;
+        if (started && braceDepth === 0) break;
+      }
+    }
+    if (started && braceDepth === 0) break;
+  }
+  return out.join("\n");
+}
+
+/**
+ * Busca el nombre del schema referenciado en el cuerpo del handler:
+ *   `const body = CreateUserSchema.parse(req.body);` → "CreateUserSchema"
+ *
+ * Busca `.parse(req.body)` o `.validate(req.body)`.
+ */
+function findReferencedSchemaName(handlerBody: string): string | null {
+  const re = /\b([A-Z][\w]*)\s*\.\s*(?:parse|validate)\s*\(\s*req\.body/g;
+  for (const m of handlerBody.matchAll(re)) {
+    const name = m[1];
+    if (!name) continue;
+    return name;
+  }
+  return null;
+}
+
+/**
+ * Heurística: ¿este schema parece un HEADER schema?
+ *
+ * Reconoce:
+ * - Cualquier key con guión (kebab-case HTTP): `X-API-Key`, `Content-Type`, …
+ * - Headers comunes sin guión: `Authorization`, `Accept`, `User-Agent`, …
+ *
+ * Si TODAS las keys del schema son headers, devolvemos true.
+ */
+const HEADER_KEY_NAMES = new Set([
+  "authorization",
+  "accept",
+  "user-agent",
+  "content-type",
+  "cookie",
+  "host",
+  "origin",
+  "referer",
+  "x-request-id",
+  "x-api-key",
+  "x-client-key",
+  "x-csrf-token",
+  "x-forwarded-for",
+  "x-real-ip",
+  "x-trace-id",
+  "x-span-id",
+  "x-correlation-id",
+  "x-session-token",
+  "x-tenant-id",
+  "x-version",
+]);
+
+function looksLikeHeaderSchema(fields: ZodField[]): boolean {
+  if (fields.length === 0) return false;
+  for (const f of fields) {
+    const low = f.name.toLowerCase();
+    if (low.includes("-")) continue; // kebab-case → header
+    if (HEADER_KEY_NAMES.has(low)) continue;
+    return false;
+  }
+  return true;
+}
+
 function parseFieldsObjectLiteral(body: string): ZodField[] {
   const out: ZodField[] = [];
   // Tokenizar por coma top-level.
@@ -661,10 +832,12 @@ function parseFieldsObjectLiteral(body: string): ZodField[] {
       .replace(/\s*\}\s*$/, "")
       .trim();
     if (!cleaned) continue;
-    const m = /^([a-zA-Z_$][\w$]*)\s*:\s*(.+)$/s.exec(cleaned);
+    // Acepta identificadores (`foo`) o quoted keys (`"X-API-Key"`, `'X-API-Key'`).
+    const m =
+      /^(?:["']([^"']+)["']|([a-zA-Z_$][\w$]*))\s*:\s*(.+)$/s.exec(cleaned);
     if (!m) continue;
-    const name = m[1];
-    const expr = m[2]?.trim();
+    const name = m[1] ?? m[2];
+    const expr = m[3]?.trim();
     if (!name || !expr) continue;
     const field = parseZodFieldExpression(name, expr);
     if (field) out.push(field);

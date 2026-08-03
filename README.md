@@ -52,18 +52,43 @@ El scanner detecta automáticamente el framework y adapta el parsing:
 | **Laravel** | `artisan` + `routes/` + `app/` | `Route::get('/path', [Controller::class, 'method'])` | `FormRequest` (class `X extends FormRequest`) |
 | **OpenAPI 3.x** | `openapi.json/yaml/yml` o `swagger.*` | `paths: /pets: get:` | `parameters` + `requestBody` schema |
 | **FastAPI** | `fastapi` en `pyproject.toml` o `requirements.txt` | `@app.get('/path')` + `@router.<METHOD>` | Pydantic `BaseModel` |
-| **Express** | `express`/`fastify`/`@koa/router` en `package.json` | `app.METHOD('/path')` + `router.METHOD('/path')` | (none — usa heurística agnóstica) |
+| **Symfony** | `composer.json` con `symfony/framework-bundle` o `symfony/routing` | `config/routes.yaml` + `config/routes/*.yaml` + `#[Route(...)]` en `src/Controller/` | `#[Assert\NotBlank]`, `#[Assert\Email]`, `#[Assert\Length]`, `#[Assert\Choice]`, `#[Assert\Range]`, `#[Assert\Positive]`, etc. |
+| **NestJS** | `package.json` con `@nestjs/core` | `@Controller('users')` + `@Get()`, `@Post()`, …, `@Get(':id')` | `class-validator` (`@IsString`, `@IsEmail`, `@IsInt`, `@MinLength`, `@MaxLength`, `@IsEnum`, …) |
+| **Django** | `manage.py` + `django`/`djangorestframework` en `requirements.txt` o `pyproject.toml` | `path('users/', view_func)` + `include(...)` | DRF Serializers (`serializers.CharField`, `EmailField`, `IntegerField`, `ChoiceField`, …) |
+| **Flask** | `flask` en `requirements.txt` | `@app.route('/path', methods=['GET', 'POST'])` + Blueprints | (no integrado; bodies por `applyAgnosticInference`) |
+| **Next.js** | `package.json` con `next` | App Router: `app/<segment>/route.ts` con `export async function GET(request)`; Pages Router: `pages/api/<file>.ts` | (no integrado; bodies por inferencia) |
+| **Gin** | `go.mod` con `github.com/gin-gonic/gin` | `router.GET('/path', handler)` + `router.Group('/api/v1')` | (no integrado; bodies por inferencia) |
+| **Spring Boot** | `pom.xml`/`build.gradle` con `spring-boot-starter-web` | `@RequestMapping('/api/v1')` + `@GetMapping`, `@PostMapping`, … | (no integrado; bodies por inferencia) |
+| **ASP.NET** | `*.csproj` con `Microsoft.AspNetCore.App` | `[Route('api/v1')]` + `[HttpGet]`, `[HttpPost]`, … | (no integrado; bodies por inferencia) |
+| **Express** | `express`/`fastify`/`@koa/router` en `package.json` | `app.METHOD('/path')` + `router.METHOD('/path')` | zod (`z.object({...})`) y Joi (`Joi.object({...})`) inline |
 
-Prioridad de detección: **Laravel > OpenAPI > FastAPI > Express** (cuando hay varios, gana el primero).
+Prioridad de detección: **Laravel > OpenAPI > FastAPI > Symfony > NestJS > Django > Spring Boot > ASP.NET > Flask > Next.js > Gin > Express** (cuando hay varios, gana el primero).
 
 ### Validation specs por framework
 
 | Framework | Detecta | Mapeo |
 |---|---|---|
 | **Laravel** | `FormRequest` class (extends FormRequest) | `rules(): array` → `IValidationSpec` con `required`, `string`/`email`/`uuid`, `integer`/`numeric`, `boolean`, `enum (in:opt1,opt2)`, `min:N`, `max:N`, `regex:` |
-| **OpenAPI** | `requestBody.schema`, `parameters` | `required`, `type`, `format`, `enum`, `minLength`, `maxLength`, `minimum`, `maximum`, `pattern` |
+| **OpenAPI** | `requestBody.schema`, `parameters` | `required`, `type`, `format`, `enum`, `minLength`, `maxLength`, `minimum`, `maximum`, `pattern` — **incluye headers** (`in: header` → `ep.headers[]`) |
 | **FastAPI** | Pydantic `BaseModel` | Convención de nombre: `POST /users` → `CreateUserRequest`, `PUT /users/{id}` → `UpdateUserRequest`, `GET /users` → `ListUsersRequest`. Type hints: `str`, `int`, `float`, `bool`, `list`, `dict`, `Optional`. |
-| **Express** | zod/Joi inline | `z.object({...})` y `Joi.object({...})` parseados en el archivo del handler. Tipos: `string`/`number`/`boolean`/`date`/`array`/`object`/`enum`. Chaining: `email`, `url`, `uuid`, `min`, `max`, `optional`, `enum([...])`. |
+| **Symfony** | `#[Assert\Xxx]` en parámetros del controller method | `NotBlank`/`NotNull` → `string`, `Email` → `email`, `Uuid` → `uuid`, `Url`/`Uri` → `url`, `Choice` → `enum`, `Range`/`GreaterThan`/`Positive` → `integer`, `Date`/`DateTime` → `date`/`datetime` |
+| **Express** | zod/Joi inline | `z.object({...})` y `Joi.object({...})` parseados en el archivo del handler. Tipos: `string`/`number`/`boolean`/`date`/`array`/`object`/`enum`. Chaining: `email`, `url`, `uuid`, `min`, `max`, `optional`, `enum([...])`. **Headers**: `headers: z.object({...})` o `headers: Joi.object({...})` en el archivo del handler. |
+
+### Custom headers
+
+El exporter reconoce **custom headers** declarados en el código fuente y los emite como `request.header[]` en la colección Postman. Los headers `Accept` y `Authorization` se añaden automáticamente; los custom se suman sin colisionar.
+
+| Framework | Cómo declarar headers |
+|---|---|
+| **OpenAPI** | `parameters: [{name: "X-API-Key", in: "header", required: true, schema: {type: "string"}}]` |
+| **Express (zod)** | `headers: z.object({ "X-API-Key": z.string().min(32) })` en el mismo archivo del handler |
+| **Express (Joi)** | `headers: Joi.object({ "X-API-Key": Joi.string().min(32) })` |
+| **Symfony** | Próximamente: `#[Assert\NotBlank] string $XApiKey` en un `Request` object (no implementado todavía) |
+
+Placeholders útiles para headers comunes:
+- `Authorization`, `X-Session-Token` → `{{token}}`
+- `X-API-Key`, `X-Client-Key` → `your-api-key-here`
+- `User-Agent`, `X-Request-Id` → `demo-123`
 
 ### Flags CLI
 
@@ -136,16 +161,16 @@ scripts/    → CLI y entrypoints
 
 ### Flujo de generación
 
-1. **`paths.service`** descubre raíz Laravel (`artisan` + `routes/` + `app/`).
-2. **`route-parser`** parsea `routes/*.php` (prefijos, controlador, acción).
-3. **`endpoint-discovery`** construye `EndpointSpec[]` automáticamente y
-   resuelve FormRequest tipado en la firma del controlador.
-4. **`param-inferrer`** añade body/query/path params para endpoints sin FormRequest.
-5. **`collection-builder`** agrupa carpetas con `topGroupFor(uri)`.
-6. **`catalog-enricher`** añade variantes Mínimo/Completo/Enum/Query desde FormRequests.
-7. **`environment-builder`** genera environments Postman.
-8. **`attachLoginAutoToken`** inyecta script de auto-token en el Login.
-9. Se escribe el JSON Postman v2.1.0 + environments.
+1. **`DiscoveryOrchestrator`** ejecuta todos los `IProjectScanner` y elige el de mayor score.
+2. **`IRouteScanner`** específico del framework (12 implementaciones: Laravel, OpenAPI, FastAPI, Symfony, NestJS, Django, Flask, Next.js, Gin, Spring Boot, ASP.NET, Express) parsea las rutas en `ParsedRoute[]`.
+3. **`IValidationSpecProvider`** específico del framework extrae constraints (FormRequest, OpenAPI schema, Pydantic, `#[Assert]`, class-validator, zod/Joi, DRF Serializers) en `IValidationSpec[]` con `location: body|query|path|header|cookie`.
+4. **`parsed-route-to-spec.adapter`** unifica `ParsedRoute + IValidationSpec → EndpointSpec` agnóstico.
+5. **`applyAgnosticInference`** añade body/query/path params para endpoints sin validation provider.
+6. **`collection-builder`** agrupa carpetas con `topGroupFor(uri)` y emite headers custom + body.
+7. **`catalog-enricher`** añade variantes Mínimo/Completo/Enum/Query desde FormRequests (Laravel).
+8. **`environment-builder`** genera environments Postman.
+9. **`attachLoginAutoToken`** inyecta script de auto-token en el Login.
+10. Se escribe el JSON Postman v2.1.0 + environments.
 
 ---
 
@@ -163,19 +188,27 @@ scripts/    → CLI y entrypoints
 
 ## ¿Funciona con otros lenguajes (no Laravel)?
 
-**Hoy no, pero la mayoría del código es agnóstico de Laravel**:
+**Sí**, desde la v3 de este exporter. El core es completamente framework-agnostic
+y los scanners/validators son plugins por tecnología. **12 frameworks** soportados
+hoy: **Laravel**, **OpenAPI 3.x**, **FastAPI**, **Symfony**, **NestJS**, **Django**,
+**Flask**, **Next.js**, **Gin**, **Spring Boot**, **ASP.NET**, **Express** (zod/Joi).
 
-- El parser de rutas PHP (`route-parser.service.ts`) es específico de Laravel.
-- El parser de FormRequest (`form-request-parser.service.ts`) es específico de Laravel.
-- El resto (descubrimiento, builder, environment, inferencia, CLI) es **agnóstico del lenguaje del backend**.
+Cada scanner vive en `service/scanners/<framework>.scanner.ts` con tres clases:
+`IProjectScanner`, `IRouteScanner`, `IValidationSpecProvider`. Para añadir un nuevo
+lenguaje, cópialos y regístralos en `scripts/generate.script.ts`. Ver
+`nestjs.scanner.ts` o `symfony.scanner.ts` para plantillas completas.
 
-**Para hacerlo multi-lenguaje**:
+### Frameworks con validation provider limitado
 
-1. Reescribir `route-parser` como interfaz con implementaciones por lenguaje (`LaravelRouteParser`, `SymfonyRouteParser`, `ExpressRouteParser`, `FastAPIParser`, `DjangoParser`).
-2. Reescribir `form-request-parser` como `SchemaParser` agnóstico con adapters (Laravel FormRequest, Symfony Validator, Zod, JSON Schema, OpenAPI, etc.).
-3. El discovery seleccionaría el adapter según el proyecto detectado.
+Los siguientes frameworks parsean rutas pero **no tienen validation provider
+funcional** todavía (los bodies se generan por inferencia agnóstica en
+`applyAgnosticInference`):
 
-**Es viable** (es ~300-500 líneas extra por adapter), pero **no es trivial**. Si necesitas esto en serio, abrir un issue / RFC y lo planificamos.
+- **Flask**: blueprints y `@app.route()` parseados; bodies inferidos.
+- **Next.js**: App Router y Pages Router parseados; bodies inferidos.
+- **Gin**: routes y Groups parseados; bodies inferidos.
+- **Spring Boot**: `@RequestMapping` + `@GetMapping` parseados; bodies inferidos.
+- **ASP.NET**: `[Route]` + `[HttpGet]` parseados; bodies inferidos.
 
 ---
 

@@ -44,8 +44,11 @@ export function toPostmanUri(laravelUri: string): string {
   // Paso 2: `{param}` (Laravel) → `{{param}}`. Lookbehind negativo para
   // NO matchear si el `{` va precedido de otro `{` (eso es `{{param}}`).
   u = u.replace(/(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g, "{{$1}}");
-  // Quita prefijos `api/vN/` finales redundantes.
-  u = u.replace(/^(api\/v\d+\/)/, "/");
+  // Nota: NO quitamos prefijos `api/vN/` automáticamente. El prefix real
+  // del backend depende del framework:
+  //   - Laravel: RouteServiceProvider quita `api/` → collection va sin él.
+  //   - ASP.NET, Spring Boot, Gin, NestJS: el prefix es real → se conserva.
+  // El scanner debe emitir la URI TAL COMO debe aparecer en Postman.
   if (!u.startsWith("/")) u = "/" + u;
   u = u.replace(/\/+/g, "/");
   if (u.length > 1 && u.endsWith("/")) u = u.slice(0, -1);

@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Sample API with custom headers
+  description: API to verify that custom headers propagate from the OpenAPI spec to the Postman collection.
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+paths:
+  /me:
+    get:
+      summary: Current user info
+      description: Returns the authenticated user.
+      operationId: getCurrentUser
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 32
+        - name: X-Request-Id
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [profile, preferences, all]
+      responses:
+        '200':
+          description: OK
+  /orders:
+    post:
+      summary: Create order
+      operationId: createOrder
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customerName, customerEmail]
+              properties:
+                customerName:
+                  type: string
+                  minLength: 1
+                customerEmail:
+                  type: string
+                  format: email
+                amount:
+                  type: integer
+                  minimum: 1
+      responses:
+        '201':
+          description: Created

@@ -103,6 +103,21 @@ export function parseYamlLite(src: string): unknown {
     return "";
   }
 
+  /**
+   * Quita quotes simples o dobles alrededor de una key YAML.
+   * `'200'` → `200`, `"200"` → `200`, `200` → `200`.
+   * Necesario para OpenAPI responses (`'200': description`) y otros casos.
+   */
+  function unquoteYamlKey(s: string): string {
+    if (
+      (s.startsWith("'") && s.endsWith("'")) ||
+      (s.startsWith('"') && s.endsWith('"'))
+    ) {
+      return s.slice(1, -1);
+    }
+    return s;
+  }
+
   function parseBlock(indent: number): unknown {
     const line = readLine();
     if (line.trim().startsWith("-")) {
@@ -196,11 +211,13 @@ export function parseYamlLite(src: string): unknown {
     while (pos < lines.length) {
       const cur = lines[pos] ?? "";
       if (/^\s*$/.test(cur)) { pos++; continue; }
+      // Saltar comentarios `#` también dentro de mappings.
+      if (/^\s*#/.test(cur)) { pos++; continue; }
       const ci = cur.match(/^(\s*)/)?.[1]?.length ?? 0;
       if (ci < indent) break;
       const mm = cur.trim().match(/^([^:]+):\s*(.*)$/);
       if (!mm) break;
-      const key = (mm[1] ?? "").trim();
+      const key = unquoteYamlKey((mm[1] ?? "").trim());
       const valueRaw = (mm[2] ?? "").trim();
       if (key.startsWith("#")) { pos++; continue; }
       if (valueRaw === "" || valueRaw === "|" || valueRaw === ">") {
@@ -511,19 +528,27 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     for (const p of params) {
       if (!p || typeof p !== "object") continue;
       const pObj = p as Record<string, unknown>;
-      const name = String(pObj.name ?? "");
-      const inLoc = String(pObj.in ?? "query") as IValidationSpec["location"];
-      const required = Boolean(pObj.required);
-      const schema = (pObj.schema ?? {}) as OpenApiSchema;
+      // Resolver $ref en parameters (ej. `{$ref: '#/components/parameters/X'}`).
+      const resolvedP = resolveRef(pObj, spec) ?? pObj;
+      // name, in, required pueden estar en el $ref resuelto o en el original.
+      const name = String(resolvedP.name ?? pObj.name ?? "");
+      const inLoc = String(resolvedP.in ?? pObj.in ?? "query") as IValidationSpec["location"];
+      const required = Boolean(resolvedP.required ?? pObj.required);
+      const schema = (resolvedP.schema ?? {}) as OpenApiSchema;
       fields.push(schemaToField(name, inLoc, required, schema));
     }
     // Request body (JSON)
     const content = (op.requestBody as Record<string, unknown> | undefined)?.content;
     const json = (content as Record<string, unknown> | undefined)?.["application/json"];
     if (json && typeof json === "object") {
-      const schema = ((json as Record<string, unknown>).schema ?? {}) as OpenApiSchema;
-      const required = new Set(schema.required ?? []);
-      for (const [name, sub] of Object.entries(schema.properties ?? {})) {
+      const raw = ((json as Record<string, unknown>).schema ?? {}) as Record<string, unknown>;
+      // Resolver $ref top-level (ej. `{$ref: '#/components/schemas/X'}`).
+      const resolved = resolveRef(raw, spec);
+      const schema = (resolved ?? raw) as OpenApiSchema;
+      // allOf: mergear properties + required de cada subschema.
+      const merged = mergeAllOf(schema, spec);
+      const required = new Set(merged.required ?? []);
+      for (const [name, sub] of Object.entries(merged.properties ?? {})) {
         fields.push(schemaToField(name, "body", required.has(name), sub as OpenApiSchema));
       }
     }
@@ -537,4 +562,67 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
 
 function keyOf(route: ParsedRoute): string {
   return `${route.method} ${route.uri}`.toLowerCase();
+}
+
+/**
+ * Resuelve un $ref local (`#/components/schemas/X`) en el spec.
+ * Soporta un solo nivel de indirección. Devuelve `null` si no resuelve.
+ */
+function resolveRef(obj: any, spec: any): any | null {
+  if (!obj || typeof obj !== "object") return null;
+  const ref = obj.$ref;
+  if (typeof ref !== "string") return null;
+  if (!ref.startsWith("#/")) return null;
+  const path = ref.slice(2).split("/");
+  let current: any = spec;
+  for (const part of path) {
+    if (current && typeof current === "object" && part in current) {
+      current = current[part];
+    } else {
+      return null;
+    }
+  }
+  return current;
+}
+
+/**
+ * Combina un schemaOpenAPI con `allOf: [...]` más profundo.
+ *
+ * Soporta:
+ * - `allOf: [{schemaBody}, {schemaBody2}]` → mergea properties y required.
+ * - `$ref` en items de `allOf`: se resuelve si `spec` se pasa.
+ * - `oneOf`/`anyOf`: NO se mergea (mejor omitir que adivinar).
+ */
+function mergeAllOf(
+  schema: any,
+  spec?: any,
+): { properties: Record<string, OpenApiSchema>; required: string[] } {
+  const properties: Record<string, OpenApiSchema> = {};
+  const required: string[] = [];
+  if (!schema || typeof schema !== "object") return { properties, required };
+  // Resolver $ref en el schema raíz.
+  if (typeof schema.$ref === "string" && spec) {
+    const resolved = resolveRef(schema, spec);
+    if (resolved) return mergeAllOf(resolved, spec);
+  }
+  // Propiedades del schema raíz.
+  for (const [k, v] of Object.entries(schema.properties ?? {})) {
+    properties[k] = v as OpenApiSchema;
+  }
+  for (const r of schema.required ?? []) {
+    if (typeof r === "string" && !required.includes(r)) required.push(r);
+  }
+  // allOf: mergear cada subschema.
+  if (Array.isArray(schema.allOf)) {
+    for (const sub of schema.allOf) {
+      const merged = mergeAllOf(sub, spec);
+      for (const [k, v] of Object.entries(merged.properties)) {
+        properties[k] = v;
+      }
+      for (const r of merged.required) {
+        if (!required.includes(r)) required.push(r);
+      }
+    }
+  }
+  return { properties, required };
 }

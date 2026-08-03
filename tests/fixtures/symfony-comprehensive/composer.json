@@ -1,0 +1,10 @@
+{
+  "name": "acme/symfony-comprehensive",
+  "type": "project",
+  "require": {
+    "php": ">=8.2",
+    "symfony/framework-bundle": "6.4.*",
+    "symfony/routing": "6.4.*",
+    "symfony/validator": "6.4.*"
+  }
+}

@@ -297,9 +297,10 @@ async function parseSingleController(
     if (!m) continue;
     ATTR_ROUTE_RE.lastIndex = 0;
     const attrArgs = m[1] ?? "";
-    const pathMatch = ATTR_PATH_RE.exec(attrArgs);
-    const path = pathMatch?.[1];
-    if (!path) continue;
+    // El path es el PRIMER string quoted al inicio del attribute.
+    // (estamos buscando `#[Route('/path', methods: [...])]`).
+    const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(attrArgs);
+    const path = pathMatch?.[1] ?? "";
     let methods: string[] = [];
     const methodsArr = ATTR_METHODS_RE.exec(attrArgs);
     if (methodsArr?.[1]) {
@@ -511,7 +512,7 @@ function collectAssertsInBlock(block: string[]): IValidationSpec[] {
       // Nombre del parámetro: línea actual + líneas siguientes (puede que
       // `#[Assert\X]` esté en línea separada del `string $name`).
       const tail = block.slice(i, i + 3).join(" ");
-      const paramName = /\\\$([a-zA-Z_][\w]*)/.exec(tail);
+      const paramName = /\$([a-zA-Z_][\w]*)/.exec(tail);
       const name = paramName?.[1];
       if (!name) continue;
       // Required: a menos que la assertion sea NotNull/IsTrue/IsFalse con

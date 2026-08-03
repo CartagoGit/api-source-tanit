@@ -58,7 +58,7 @@ const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   int: "integer",
   float: "number",
   bool: "boolean",
-  list: "array",
+  List: "array",
   dict: "object",
   datetime: "datetime",
   date: "date",
@@ -68,9 +68,36 @@ const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   Literal: "enum",
 };
 
+// Format detection para tipos Pydantic especiales.
+const FORMAT_MAP: Record<string, string> = {
+  EmailStr: "email",
+  HttpUrl: "url",
+  AnyUrl: "url",
+  UUID4: "uuid",
+  UUID: "uuid",
+  IPvAnyAddress: "ip",
+};
+
 function mapType(t: string): IValidationSpec["type"] {
-  const base = t.replace(/Optional\[(.*)\]/, "$1").replace(/List\[(.*)\]/, "$1").replace(/Dict\[.*\]/, "object").replace(/\s+/g, "");
+  // Detectar formatos primero (EmailStr, UUID4, etc → string).
+  for (const name of Object.keys(FORMAT_MAP)) {
+    if (t.includes(name)) return "string";
+  }
+  const base = t
+    .replace(/Optional\[(.*)\]/, "$1")
+    .replace(/List\[(.*)\]/, "List")
+    .replace(/Dict\[.*\]/, "dict")
+    .replace(/Set\[(.*)\]/, "List")
+    .replace(/Tuple\[(.*)\]/, "List")
+    .replace(/\s+/g, "");
   return TYPE_MAP[base] ?? "any";
+}
+
+function mapFormat(t: string): string | undefined {
+  for (const [name, fmt] of Object.entries(FORMAT_MAP)) {
+    if (t.includes(name)) return fmt;
+  }
+  return undefined;
 }
 
 function isRequired(t: string): boolean {
@@ -305,11 +332,13 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
 
     const fields: IValidationSpec[] = [];
     for (const [fieldName, fieldType] of candidate.fields) {
+      const fmt = mapFormat(fieldType);
       fields.push({
         fieldName,
         location: "body",
         type: mapType(fieldType),
         required: isRequired(fieldType),
+        ...(fmt ? { format: fmt } : {}),
       });
     }
     return { endpointKey, fields };
@@ -338,9 +367,10 @@ async function pickModelForRoute(
     for (const file of files) {
       const text = await readFile(file, "utf8").catch(() => "");
       if (!text) continue;
-      // `def handlerName(` seguido de un parámetro tipado con un Model.
+      // `def handlerName(` seguido de un parámetro tipado con un BaseModel.
+      // Match: cualquier model que sea un BaseModel (no solo `*Request`).
       const handlerRe = new RegExp(
-        `def\\s+${escapeRegex(handlerName)}\\s*\\([^)]*?\\s*:\\s*([A-Z]\\w*Request)\\b`,
+        `def\\s+${escapeRegex(handlerName)}\\s*\\([^)]*?\\s*:\\s*([A-Z]\\w*)\\b`,
         "s",
       );
       const m = handlerRe.exec(text);
