@@ -286,19 +286,47 @@ async function parseSingleController(
     return [];
   }
   const text = stripPhpComments(raw);
-  // Para cada #[Route(...)] en el archivo, buscarla en el contexto de su
-  // método público cercano. Estrategia lineal: precedida por `function <name>`
-  // o `public function <name>` en las próximas 2 líneas.
   const lines = text.split("\n");
-  // Marcar líneas con `#[Route(...)]`.
+
+  // 1) Detectar `#[Route('/prefix')] class Name { ... }` para class prefix.
+  //    En Symfony el `#[Route(...)]` va ANTES del `class`. Buscamos
+  //    `class <Name>` y luego un `#[Route]` en las 3 líneas anteriores.
+  let classPrefix = prefix;
+  let classRouteIdx = -1;
   for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (/class\s+\w+/.test(line)) {
+      // Buscar `#[Route(...)]` en las 3 líneas ANTERIORES.
+      for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+        const m = ATTR_ROUTE_RE.exec(lines[j] ?? "");
+        if (m) {
+          ATTR_ROUTE_RE.lastIndex = 0;
+          const args = m[1] ?? "";
+          const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(args);
+          const classPath = pathMatch?.[1] ?? "";
+          // Solo aplicar como class prefix si NO tiene methods.
+          const hasMethods = /methods\s*:/i.test(args);
+          if (!hasMethods && classPath) {
+            classPrefix = (prefix + classPath).replace(/\/+/g, "/");
+            classRouteIdx = j;
+          }
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  // 2) Iterar `#[Route(...)]` en métodos (después de classRouteIdx).
+  //    Esta estrategia reemplaza la convención anterior: ahora acepta
+  //    `#[Route('/path', methods: ['POST'])]` en métodos.
+  const startIter = classRouteIdx >= 0 ? classRouteIdx + 1 : 0;
+  for (let i = startIter; i < lines.length; i++) {
     const line = lines[i] ?? "";
     const m = ATTR_ROUTE_RE.exec(line);
     if (!m) continue;
     ATTR_ROUTE_RE.lastIndex = 0;
     const attrArgs = m[1] ?? "";
-    // El path es el PRIMER string quoted al inicio del attribute.
-    // (estamos buscando `#[Route('/path', methods: [...])]`).
     const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(attrArgs);
     const path = pathMatch?.[1] ?? "";
     let methods: string[] = [];
@@ -325,7 +353,7 @@ async function parseSingleController(
         break;
       }
     }
-    const fullPath = (prefix + path).replace(/\/+/g, "/");
+    const fullPath = (classPrefix + "/" + path).replace(/\/+/g, "/");
     for (const method of methods) {
       const mm = method.toLowerCase();
       if (!HTTP_METHODS.includes(mm)) continue;
@@ -335,7 +363,7 @@ async function parseSingleController(
         rawUri: fullPath,
         sourceFile: relPath,
         lineNumber: i + 1,
-        prefixChain: prefix ? [prefix] : [],
+        prefixChain: classPrefix ? [classPrefix] : [],
         displayName: routeName || methodName || `${mm.toUpperCase()} ${fullPath}`,
         ...(methodName ? { description: methodName } : {}),
       });

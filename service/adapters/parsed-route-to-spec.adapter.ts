@@ -39,9 +39,14 @@ import { exampleForPathParam } from "../param-inferrer.service.js";
  * canónico Postman (`{{param}}` y `/` inicial). */
 export function toPostmanUri(laravelUri: string): string {
   let u = laravelUri.trim();
-  // Paso 1: `:param` (Express) → `{{param}}`.
+  // Paso 1: `<int:id>`, `<str:slug>`, `<id>` (Django) → `{{id}}`.
+  //         DEBE ir antes que `:param` para evitar que `<int:id>` se
+  //         rompa en `<int{{id}}>` (porque `:id` matchearía `:param`).
+  u = u.replace(/<[a-zA-Z_][\w]*:([a-zA-Z_][\w]*)>/g, "{{$1}}");
+  u = u.replace(/<([a-zA-Z_][\w]*)>/g, "{{$1}}");
+  // Paso 2: `:param` (Express) → `{{param}}`.
   u = u.replace(/:([a-zA-Z_][\w]*)/g, "{{$1}}");
-  // Paso 2: `{param}` (Laravel) → `{{param}}`. Lookbehind negativo para
+  // Paso 3: `{param}` (Laravel) → `{{param}}`. Lookbehind negativo para
   // NO matchear si el `{` va precedido de otro `{` (eso es `{{param}}`).
   u = u.replace(/(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g, "{{$1}}");
   // Nota: NO quitamos prefijos `api/vN/` automáticamente. El prefix real

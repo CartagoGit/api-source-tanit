@@ -271,41 +271,167 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
     );
     if (sigIdx < 0) return { endpointKey, fields: [] };
 
-    // 2) Recoger los decorators + cuerpo (bestEffort).
-    const block: string[] = [];
-    let braceDepth = 0;
-    let started = false;
-    for (let i = sigIdx; i < lines.length; i++) {
-      const line = lines[i] ?? "";
-      block.push(line);
+    // 2) Recoger imports para resolver DTOs referenciados.
+    const imports = parseImports(text, abs);
+
+    // 3) Detectar `@Body() <name>: <DtoType>` en la línea de la signature.
+    const sigLine = lines[sigIdx] ?? "";
+    let fields: IValidationSpec[] = [];
+    const bodyMatch = /@Body\s*\(\s*\)\s*[\s\S]*?\s+([a-zA-Z_][\w]*)\s*:\s*([A-Z][\w]*)/.exec(sigLine);
+    if (bodyMatch?.[2]) {
+      const dtoTypeName = bodyMatch[2];
+      const dtoPath = imports.get(dtoTypeName);
+      if (dtoPath) {
+        fields = await parseDtoFile(dtoPath, dtoTypeName);
+      }
+    }
+
+    // 4) Fallback: buscar `@IsXxx() field: type` inline en el handler.
+    if (fields.length === 0) {
+      const tail = lines.slice(Math.max(0, sigIdx - 8), sigIdx + 1).join("\n");
+      const fieldRe = /@([A-Z]\w*)\s*(?:\(([^)]*)\))?\s*(?:[\s\S]*?)\s*([a-zA-Z_][\w]*)\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/g;
+      let m: RegExpExecArray | null;
+      while ((m = fieldRe.exec(tail)) !== null) {
+        const decorator = m[1] ?? "";
+        const args = m[2] ?? "";
+        const fieldName = m[3] ?? "";
+        const fieldType = (m[4] ?? "").trim();
+        if (decorator === "Type") continue;
+        const map = VALIDATOR_MAP[decorator];
+        if (!map) continue;
+        const optional = new RegExp(`@IsOptional\b`).test(tail);
+        fields.push({
+          fieldName,
+          location: "body",
+          type: map.type,
+          required: !optional,
+          ...(map.format ? { format: map.format } : {}),
+        });
+      }
+    }
+
+    return { endpointKey, fields };
+  }
+}
+
+/**
+ * Parsea todos los imports del archivo del controller y devuelve un mapa
+ * `TypeName → ruta absoluta del archivo del DTO`.
+ */
+function parseImports(text: string, controllerAbsPath: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const dir = controllerAbsPath.replace(/[^/\\]+$/, "");
+  // Match: `import { Foo, Bar } from "./path"` o `import { Foo } from "../path"`.
+  const importRe = /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g;
+  let m: RegExpExecArray | null;
+  while ((m = importRe.exec(text)) !== null) {
+    const names = (m[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const relPath = m[2] ?? "";
+    if (!relPath.startsWith(".")) continue; // Skip paquetes npm.
+    // Resolver a .ts file. Asumir extensión `.ts` o `.dto.ts`.
+    const candidates = [
+      join(dir, relPath) + ".ts",
+      join(dir, relPath, "index.ts"),
+      join(dir, relPath) + "/index.ts",
+    ];
+    let absPath: string | null = null;
+    // Sync check: usar existsSync via fs.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs") as typeof import("node:fs");
+    for (const c of candidates) {
+      try {
+        if (fs.existsSync(c)) {
+          absPath = c;
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    if (!absPath) continue;
+    for (const name of names) {
+      out.set(name, absPath);
+    }
+  }
+  return out;
+}
+
+/**
+ * Lee un archivo DTO y devuelve los campos de la class `dtoTypeName`.
+ */
+async function parseDtoFile(
+  dtoPath: string,
+  dtoTypeName: string,
+): Promise<IValidationSpec[]> {
+  let raw: string;
+  try {
+    raw = await readFile(dtoPath, "utf8");
+  } catch {
+    return [];
+  }
+  const text = stripJsComments(raw);
+  const lines = text.split("\n");
+
+  // 1) Encontrar la línea `export class <dtoTypeName>`.
+  const classIdx = lines.findIndex((l) =>
+    new RegExp(`\\b(?:export\\s+)?class\\s+${dtoTypeName}\\b`).test(l),
+  );
+  if (classIdx < 0) return [];
+
+  // 2) Recoger las líneas desde classIdx hasta el cierre `}` de la class.
+  const fields: IValidationSpec[] = [];
+  let braceDepth = 0;
+  let started = false;
+  // Buffer de decorators `@IsXxx(args)` antes del field.
+  let pendingDecorators: Array<{ decorator: string; args: string }> = [];
+  for (let i = classIdx; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (i === classIdx) {
+      // Encontrar la primera `{` para empezar.
       for (const c of line) {
         if (c === "{") {
           braceDepth++;
-          if (braceDepth >= 1) started = true;
-        } else if (c === "}") {
-          braceDepth--;
-          if (started && braceDepth === 0) break;
+          started = true;
+          break;
         }
       }
-      if (started && braceDepth === 0) break;
+      continue;
+    }
+    for (const c of line) {
+      if (c === "{") braceDepth++;
+      else if (c === "}") braceDepth--;
+    }
+    if (started && braceDepth <= 0) break;
+
+    // 3) Si la línea tiene solo decorators (`@Decorator()` o `@Decorator(args)`),
+    //    agregarlos al buffer.
+    const decOnly = line.match(/^\s*@([A-Z]\w*)\s*(?:\(([^)]*)\))?\s*$/);
+    if (decOnly) {
+      const decName = decOnly[1] ?? "";
+      const decArgs = decOnly[2] ?? "";
+      if (decName !== "Type") {
+        pendingDecorators.push({ decorator: decName, args: decArgs });
+      }
+      continue;
     }
 
-    // 3) Recoger TODOS los decorators `@IsXxx() field: type` desde la signature
-    //    hacia atrás (entre `findSignature - 5` y `sigIdx`).
-    const fields: IValidationSpec[] = [];
-    const tail = lines.slice(Math.max(0, sigIdx - 8), sigIdx + 1).join("\n");
-    // Patrón: `@Decorator(args) fieldName: type,` o `@Decorator() fieldName: type;`
-    const fieldRe = /@([A-Z]\w*)\s*(?:\(([^)]*)\))?\s*(?:[\s\S]*?)\s*([a-zA-Z_][\w]*)\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/g;
-    let m: RegExpExecArray | null;
-    while ((m = fieldRe.exec(tail)) !== null) {
-      const decorator = m[1] ?? "";
-      const args = m[2] ?? "";
-      const fieldName = m[3] ?? "";
-      const fieldType = (m[4] ?? "").trim();
-      if (decorator === "Type") continue; // @Type(() => X) es class-transformer, no validator.
+    // 4) Si la línea tiene `field: type` o `field!: type`, consumir el buffer
+    //    y emitir los fields.
+    const fm = /^[\s\S]*?([a-zA-Z_][\w]*)\s*(?:!|:)\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/.exec(line);
+    if (!fm || pendingDecorators.length === 0) {
+      // Línea no-field; limpiar buffer.
+      if (line.trim().length > 0 && !line.match(/^[\s,;]+$/)) {
+        pendingDecorators = [];
+      }
+      continue;
+    }
+    const fieldName = fm[1] ?? "";
+    const fieldType = (fm[2] ?? "").trim();
+
+    for (const { decorator, args } of pendingDecorators) {
       const map = VALIDATOR_MAP[decorator];
       if (!map) continue;
-      const optional = new RegExp(`@IsOptional\b`).test(tail);
+      const optional = decorator === "IsOptional";
       const field: IValidationSpec = {
         fieldName,
         location: "body",
@@ -313,7 +439,7 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
         required: !optional,
         ...(map.format ? { format: map.format } : {}),
       };
-      // Enum: extraer valores.
+      // Enum.
       if (decorator === "IsEnum") {
         const values = args.match(/\[([^\]]+)\]/);
         if (values?.[1]) {
@@ -323,7 +449,7 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
             .filter(Boolean);
         }
       }
-      // Length: extraer min/max.
+      // Length.
       if (decorator === "Length" || decorator === "MinLength" || decorator === "MaxLength") {
         const min = /min\s*:\s*(\d+)/i.exec(args);
         const max = /max\s*:\s*(\d+)/i.exec(args);
@@ -334,7 +460,7 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
           if (max?.[1]) field.maxLength = Number(max[1]);
         }
       }
-      // Min/Max: numéricos.
+      // Min/Max.
       if (decorator === "Min" || decorator === "Max") {
         const v = /(\d+)/.exec(args);
         if (v?.[1]) {
@@ -344,6 +470,8 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
       }
       fields.push(field);
     }
-    return { endpointKey, fields };
+    pendingDecorators = [];
+    void fieldType; // unused pero útil para type-aware rules
   }
+  return fields;
 }
