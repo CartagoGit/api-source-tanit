@@ -171,7 +171,8 @@ export function buildTestToolRegistration(
               cwd: workspaceRoot,
               timeoutMs: 60_000,
             });
-            const summary = parseTestSummary(r.stdout);
+            // bun:test escribe el resumen a stderr, no a stdout.
+            const summary = parseTestSummary(r.stderr || r.stdout);
             const detail = r.ok
               ? undefined
               : extractFailureDetail(r.stderr, r.stdout);
@@ -190,7 +191,8 @@ export function buildTestToolRegistration(
             cwd: workspaceRoot,
             timeoutMs: 120_000,
           });
-          const summary = parseTestSummary(r.stdout);
+          // bun:test escribe el resumen a stderr, no a stdout.
+          const summary = parseTestSummary(r.stderr || r.stdout);
           const detail = r.ok
             ? undefined
             : extractFailureDetail(r.stderr, r.stdout);

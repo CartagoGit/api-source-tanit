@@ -191,20 +191,37 @@ function runBunSpawnSyncArray(
   for (const [k, v] of Object.entries(env ?? {})) {
     envRecord[k] = v;
   }
-  const r = bunSpawnSync!({
-    cmd,
-    cwd,
-    env: envRecord,
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-    timeout: timeoutMs,
-  });
-  return {
-    status: r.exitCode,
-    stdout: r.stdout ? new TextDecoder().decode(r.stdout as unknown as Uint8Array) : "",
-    stderr: r.stderr ? new TextDecoder().decode(r.stderr as unknown as Uint8Array) : "",
-  };
+  try {
+    const r = bunSpawnSync!({
+      cmd,
+      cwd,
+      env: envRecord,
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
+      timeout: timeoutMs,
+    });
+    return {
+      status: r.exitCode,
+      stdout: r.stdout
+        ? new TextDecoder().decode(r.stdout as unknown as Uint8Array)
+        : "",
+      stderr: r.stderr
+        ? new TextDecoder().decode(r.stderr as unknown as Uint8Array)
+        : "",
+    };
+  } catch (err) {
+    // Cwd inválido, binario no encontrado, o spawn bloqueado.
+    // Devolvemos un resultado "fallido" en lugar de tirar la excepción,
+    // para que el caller pueda reportarlo como un step con `ok=false`.
+    const e = err as Error;
+    return {
+      error: e,
+      status: null,
+      stdout: "",
+      stderr: `${e.name}: ${e.message}`,
+    };
+  }
 }
 
 /**
