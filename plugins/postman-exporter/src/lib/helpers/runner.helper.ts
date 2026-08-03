@@ -66,6 +66,73 @@ function resolveBunBin(): string {
 }
 
 /**
+ * Normaliza un cwd para spawnSync. Acepta:
+ *   - paths absolutos (`/foo/bar`)
+ *   - URLs file:// (`file:///foo/bar/`)
+ *   - `process.cwd()` cuando se pasa un string vacío o "."
+ *
+ * `Bun.spawnSync` con `cwd: "file:///..."` falla con ENOENT porque no
+ * entiende el prefijo — necesitamos un path real del FS.
+ */
+export function normalizeCwd(cwd: string | undefined): string {
+  if (!cwd || cwd === "." || cwd === "./") return process.cwd();
+  if (cwd.startsWith("file://")) {
+    try {
+      return new URL(cwd).pathname;
+    } catch {
+      return cwd;
+    }
+  }
+  return cwd;
+}
+
+/**
+ * Ejecuta `bun <args...>` directo desde un cwd, con timeout.
+ * Útil para sub-comandos (`bun test <file>`, `bun run <script>`) que NO
+ * son un script .ts específico.
+ *
+ * Devuelve `ok=false` si el proceso terminó con código != 0 o si el
+ * timeout se agotó.
+ */
+export function runBunCommand(
+  args: ReadonlyArray<string>,
+  options: { readonly cwd: string; readonly timeoutMs?: number } = {
+    cwd: process.cwd(),
+  },
+): IRunScriptResult {
+  const start = Date.now();
+  const timeout = options.timeoutMs ?? 60_000;
+  const bunBin = resolveBunBin();
+  const cmd = [bunBin, ...args];
+  const cwd = normalizeCwd(options.cwd);
+  const result = useBunSpawn
+    ? runBunSpawnSyncArray(cmd, cwd, timeout, process.env)
+    : spawnSync(bunBin, args, {
+        cwd,
+        encoding: "utf8",
+        timeout,
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
+  if (result.error) {
+    return {
+      ok: false,
+      exitCode: result.status ?? 1,
+      stdout: result.stdout ?? "",
+      stderr: result.stderr ?? String(result.error),
+      durationMs: Date.now() - start,
+    };
+  }
+  return {
+    ok: result.status === 0,
+    exitCode: result.status ?? 1,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+    durationMs: Date.now() - start,
+  };
+}
+
+/**
  * Ejecuta un script `.ts` con bun en modo síncrono, con timeout.
  * Devuelve `ok=false` si el proceso terminó con código != 0 o si
  * el timeout se agotó (exit 124).
@@ -81,10 +148,11 @@ export function runBunScript(
   const timeout = options.timeoutMs ?? 60_000;
   const bunBin = resolveBunBin();
   const cmd = [bunBin, "run", scriptPath, ...args];
+  const cwd = normalizeCwd(options.cwd);
   const result = useBunSpawn
-    ? runBunSpawnSyncArray(cmd, options.cwd, timeout, process.env)
+    ? runBunSpawnSyncArray(cmd, cwd, timeout, process.env)
     : spawnSync(cmd[0] ?? "bun", cmd.slice(1), {
-        cwd: options.cwd,
+        cwd,
         encoding: "utf8",
         timeout,
         stdio: ["ignore", "pipe", "pipe"],

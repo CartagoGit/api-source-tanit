@@ -69,6 +69,46 @@ export const SummaryInputSchema = z
 
 export type ISummaryInput = z.infer<typeof SummaryInputSchema>;
 
+/**
+ * Inputs del tool `test`. Por defecto corre la suite e2e completa del
+ * propio paquete postman-exporter (ya en workspace). Si se pasa
+ * `framework`, corre un smoke test contra el fixture correspondiente
+ * (`tests/fixtures/<framework>-comprehensive/`).
+ */
+export const TestInputSchema = z
+  .object({
+    /**
+     * Si se da, corre un smoke test contra el fixture de ese framework.
+     * Valores aceptados: "laravel" | "symfony" | "express" | "fastapi" |
+     * "nestjs" | "django" | "openapi" | "flask" | "nextjs" | "gin" |
+     * "springboot" | "aspnet".
+     */
+    framework: z
+      .enum([
+        "laravel",
+        "symfony",
+        "express",
+        "fastapi",
+        "nestjs",
+        "django",
+        "openapi",
+        "flask",
+        "nextjs",
+        "gin",
+        "springboot",
+        "aspnet",
+      ])
+      .optional(),
+    /**
+     * Si es `true`, corre `bun run typecheck` además de `bun test`.
+     * Default: true.
+     */
+    withTypecheck: z.boolean().optional(),
+  })
+  .strict();
+
+export type ITestInput = z.infer<typeof TestInputSchema>;
+
 // --- Outputs de los tools (estructura resumida) ------------------------------
 
 export interface IGenerateOutput {
@@ -98,4 +138,30 @@ export interface ISummaryOutput {
   readonly formRequestsResolved: number;
   readonly zeroConfig: boolean;
   readonly configPath: string;
+}
+
+/**
+ * Resultado de un step del tool `test`. Cada step es la ejecución de
+ * un sub-comando (`typecheck`, `test e2e`, `smoke:<framework>`).
+ */
+export interface ITestStep {
+  readonly name: string;
+  readonly ok: boolean;
+  readonly exitCode: number;
+  readonly durationMs: number;
+  /** Resumen corto (count de tests, typecheck pass, etc.). */
+  readonly summary?: string;
+  /** Si falló, el primer fragmento del stderr/stdout relevante. */
+  readonly detail?: string;
+}
+
+export interface ITestOutput {
+  readonly ok: boolean;
+  readonly steps: ReadonlyArray<ITestStep>;
+  readonly durationMs: number;
+  /**
+   * Si el input pidió `framework`, nombre del framework para el que se
+   * corrió el smoke. `null` cuando solo se corrió la suite genérica.
+   */
+  readonly framework: string | null;
 }
