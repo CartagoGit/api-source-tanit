@@ -21,6 +21,14 @@
  */
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "./paths.service.js";
+import type { ParsedRoute as NeutralParsedRoute } from "../contract/scanner.interface.js";
+
+/**
+ * Re-export del tipo neutro para no romper imports existentes.
+ * `route-parser.service.ts` se mantiene como IMPLEMENTACIÓN Laravel
+ * del contrato `IRouteScanner` (ver `service/scanners/laravel.scanner.ts`).
+ */
+export type ParsedRoute = NeutralParsedRoute;
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
@@ -30,19 +38,6 @@ const ACTION_RE =
 /** `use App\Http\Controllers\Foo\Bar as Alias;` */
 const USE_RE =
   /use\s+([A-Za-z0-9_\\]+)\s*(?:as\s+([A-Za-z0-9_]+))?\s*;/g;
-
-export interface ParsedRoute {
-  method: string;
-  uri: string;
-  rawUri: string;
-  sourceFile: string;
-  lineNumber: number;
-  prefixChain: string[];
-  /** FQCN del controlador si se pudo resolver (p. ej. App\Http\Controllers\X). */
-  controllerClass?: string;
-  /** Nombre del método del controlador (p. ej. `index`, `store`). */
-  actionName?: string;
-}
 
 /** Elimina comentarios de una y varias líneas para que no se cuenten rutas comentadas. */
 export function stripComments(src: string): string {

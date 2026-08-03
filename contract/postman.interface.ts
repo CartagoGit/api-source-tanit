@@ -81,6 +81,16 @@ export interface EndpointSpec {
   /** Query params opcionales. */
   query?: Array<{ key: string; value: string; description?: string }>;
   /**
+   * Headers personalizados opcionales (ej. `X-API-Key`).
+   * Los headers `Authorization` y `Accept` se añaden automáticamente
+   * en collection-builder; este array es ADICIONAL.
+   */
+  headers?: Array<{
+    key: string;
+    value: string;
+    description?: string;
+  }>;
+  /**
    * Carpeta explícita. Si está, se usa como nombre del folder en lugar
    * del calculado automáticamente por `topGroupFor(uri)`. Útil para
    * agrupar endpoints que viven en prefijos distintos bajo una misma

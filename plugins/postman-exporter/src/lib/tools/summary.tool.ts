@@ -49,48 +49,61 @@ export function buildSummaryToolRegistration(
           if (!parsed.success) {
             return toolError(
               `Input inválido: ${parsed.error.message}`,
-              "Pasa projectRoot (ruta absoluta).",
+              "Pasa projectRoot (ruta absoluta) o configura defaultProjectRoot.",
             );
           }
           const args = parsed.data;
           const workspaceRoot = ctx.workspace.toString();
+          const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
+            | string
+            | undefined;
+          const projectRoot =
+            args.projectRoot ?? defaultProjectRoot ?? workspaceRoot;
+          const { existsSync } = await import("node:fs");
+          if (!existsSync(projectRoot)) {
+            return toolError(
+              `projectRoot no existe: ${projectRoot}`,
+              "Pasa projectRoot absoluto, o configura defaultProjectRoot.",
+            );
+          }
           const cliScriptPath =
             (ctx.options["cliScript"] as string | undefined) ??
             `${workspaceRoot}/scripts/cli.script.ts`;
 
-          // Reutilizamos `generate` con un outputDir efímero para volcar
-          // discovery + cobertura. No es ideal (deja un directorio) pero
-          // es suficiente para inspección; un slice futuro añadirá un
-          // modo `--dry-run` real.
-          const ephemeralDir = "/tmp/postman-exporter-summary-dryrun";
+          // Reutilizamos `generate --inspect` para volcar discovery sin
+          // escribir archivos. Si el CLI no tiene --inspect, fallback a
+          // un directorio efímero (legacy).
           const result = runBunScript(
             cliScriptPath,
             [
               "generate",
               "--project-root",
-              args.projectRoot,
-              "--output-dir",
-              ephemeralDir,
+              projectRoot,
+              "--inspect",
             ],
             { cwd: workspaceRoot, timeoutMs: 30_000 },
           );
           if (!result.ok) {
             return toolError(
               `summary falló (exit=${result.exitCode}): ${result.stderr || result.stdout || "sin detalle"}`,
-              "Asegúrate de que projectRoot apunte a un proyecto Laravel válido.",
+              "Asegúrate de que projectRoot apunte a un proyecto válido y de que el CLI soporte --inspect.",
             );
           }
 
-          const configMatch = result.stdout.match(/Config host:\s+(.+)/);
-          const routesMatch = result.stdout.match(/(\d+)\s+rutas en c[oó]digo/);
-          const frMatch = result.stdout.match(/\(FormRequest:\s+(\d+)/);
+          const frameworkMatch = result.stdout.match(/Framework:\s+(\S+)/);
+          const projectNameMatch = result.stdout.match(/ProjectName:\s+(\S+)/);
+          const routesMatch = result.stdout.match(/Rutas:\s+(\d+)/);
+          const frMatch = result.stdout.match(/Con FR:\s+(\d+)/);
+          const baseUrlMatch = result.stdout.match(/BaseUrl:\s+(\S+)/);
+          const framework = frameworkMatch?.[1]?.trim() ?? "legacy";
+          const projectName = projectNameMatch?.[1]?.trim() ?? "<no detectado>";
           const out: ISummaryOutput = {
-            projectName: configMatch?.[1]?.trim() ?? "<no detectado>",
-            baseUrl: "<inferida por zero-config o config del host>",
+            projectName,
+            baseUrl: baseUrlMatch?.[1]?.trim() ?? "<inferida por zero-config>",
             routesInCode: routesMatch ? Number(routesMatch[1]) : 0,
             formRequestsResolved: frMatch ? Number(frMatch[1]) : 0,
-            zeroConfig: (configMatch?.[1] ?? "").includes("<zero-config>"),
-            configPath: configMatch?.[1]?.trim() ?? "<zero-config>",
+            zeroConfig: framework === "legacy" && projectName === "<no detectado>",
+            configPath: projectName,
           };
           return toolJson({ ok: true, ...out });
         },

@@ -1,7 +1,12 @@
 /**
  * Compara las URIs declaradas en la colección Postman con las URIs reales
- * descubiertas en `routes/*.php`. Imprime diff y sale con código distinto
+ * descubiertas en el código fuente. Imprime diff y sale con código distinto
  * de 0 si hay diferencias.
+ *
+ * Framework-agnostic: usa el `DiscoveryOrchestrator` para obtener el
+ * "source" correcto. Si el orchestrator encuentra un match no-Laravel
+ * (OpenAPI, Express, etc.), compara contra esas rutas en lugar de
+ * `parseAllRoutes()` (Laravel).
  *
  * Uso:
  *   bun scripts/diff.script.ts
@@ -17,19 +22,95 @@ import { walkCollection } from "../helper/postman.helper.js";
 import { outputCollectionPath } from "../service/paths.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import type { PostmanCollection } from "../contract/postman.interface.js";
+import {
+  DiscoveryOrchestrator,
+  type DiscoveryRegistry,
+} from "../service/discovery.orchestrator.js";
+import {
+  LaravelProjectScanner,
+  LaravelScanner,
+  LaravelFormRequestValidationProvider,
+} from "../service/scanners/laravel.scanner.js";
+import {
+  OpenApiProjectScanner,
+  OpenApiScanner,
+  OpenApiValidationProvider,
+} from "../service/scanners/openapi.scanner.js";
+import {
+  ExpressProjectScanner,
+  ExpressScanner,
+  ExpressZodValidationProvider,
+} from "../service/scanners/express.scanner.js";
+import {
+  FastApiProjectScanner,
+  FastApiScanner,
+  FastApiPydanticValidationProvider,
+} from "../service/scanners/fastapi.scanner.js";
+import {
+  SymfonyProjectScanner,
+  SymfonyRouteScanner,
+  SymfonyAttributesValidationProvider,
+} from "../service/scanners/symfony.scanner.js";
+
+const DEFAULT_REGISTRY: DiscoveryRegistry = {
+  detectors: [
+    new LaravelProjectScanner(),
+    new OpenApiProjectScanner(),
+    new FastApiProjectScanner(),
+    new SymfonyProjectScanner(),
+    new ExpressProjectScanner(),
+  ],
+  routeScanners: [
+    new LaravelScanner(),
+    new OpenApiScanner(),
+    new FastApiScanner(),
+    new SymfonyRouteScanner(),
+    new ExpressScanner(),
+  ],
+  validationProviders: [
+    new LaravelFormRequestValidationProvider(),
+    new OpenApiValidationProvider(),
+    new FastApiPydanticValidationProvider(),
+    new SymfonyAttributesValidationProvider(),
+    new ExpressZodValidationProvider(),
+  ],
+};
 
 async function main(): Promise<number> {
   const { config } = await loadProject();
-  const COLLECTION_PATH = await outputCollectionPath(config.name);
+  const argv = process.argv.slice(2);
+  const outputIdx = argv.indexOf("--output");
+  const outputFlag = outputIdx !== -1 ? argv[outputIdx + 1] ?? null : null;
+  const COLLECTION_PATH = outputFlag
+    ? outputFlag
+    : await outputCollectionPath(config.name);
 
-  const routes = await parseAllRoutes(config.filePrefixes);
+  const orch = new DiscoveryOrchestrator(DEFAULT_REGISTRY);
+  const { match, scanner } = await orch.detectProject(
+    process.env.POSTMAN_PROJECT_ROOT ?? ".",
+  );
+
   const sourceKeys = new Set<string>();
   const sourceMap = new Map<string, { method: string; uri: string }>();
-  for (const r of routes) {
-    const uri = stripApiPrefix(r.uri);
-    const key = `${r.method} ${normalizeForComparison(uri)}`;
-    sourceKeys.add(key);
-    sourceMap.set(key, { method: r.method, uri });
+
+  if (match && scanner && match.framework !== "laravel") {
+    // Fuente: scanner del orchestrator (OpenAPI, etc.)
+    const routes = await scanner.scan(match);
+    for (const r of routes) {
+      const key = `${r.method} ${normalizeForComparison(r.uri)}`;
+      sourceKeys.add(key);
+      sourceMap.set(key, { method: r.method, uri: r.uri });
+    }
+    console.log(`(source: ${match.framework} via orchestrator)`);
+  } else {
+    // Fuente: Laravel legacy
+    const routes = await parseAllRoutes(config.filePrefixes);
+    for (const r of routes) {
+      const uri = stripApiPrefix(r.uri);
+      const key = `${r.method} ${normalizeForComparison(uri)}`;
+      sourceKeys.add(key);
+      sourceMap.set(key, { method: r.method, uri });
+    }
   }
 
   const raw = await readFile(COLLECTION_PATH, "utf8");

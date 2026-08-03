@@ -34,12 +34,36 @@ Output por defecto: `${projectRoot}/build/`. Contiene:
 | --- | --- |
 | `bunx postman-from-routes generate` | Genera la colección. |
 | `bunx postman-from-routes generate --envs dev,staging,prod` | Genera environments por entorno. |
+| `bunx postman-from-routes generate --inspect` | Solo imprime discovery (sin escribir artefactos). |
 | `bunx postman-from-routes check` | Cobertura rutas ↔ colección + schema v2.1.0. |
 | `bunx postman-from-routes enrich -- --in-place` | Re-enriquece desde FormRequests. |
 | `bunx postman-from-routes list` | Lista endpoints por zona. |
 | `bunx postman-from-routes stats` | Estadísticas por método y carpeta. |
+| `bunx postman-from-routes scan` | Smoke test del discovery sin generar artefactos. |
 | `bunx postman-from-routes open` | Abre la colección en Postman (mac/win/linux/web). |
 | `bunx postman-from-routes init` | Bootstrap: genera `examples/<proyecto>/config.constant.ts`. |
+
+## Frameworks soportados (auto-detección)
+
+El scanner detecta automáticamente el framework y adapta el parsing:
+
+| Framework | Detección | Formato de rutas | Validation source |
+|---|---|---|---|
+| **Laravel** | `artisan` + `routes/` + `app/` | `Route::get('/path', [Controller::class, 'method'])` | `FormRequest` (class `X extends FormRequest`) |
+| **OpenAPI 3.x** | `openapi.json/yaml/yml` o `swagger.*` | `paths: /pets: get:` | `parameters` + `requestBody` schema |
+| **FastAPI** | `fastapi` en `pyproject.toml` o `requirements.txt` | `@app.get('/path')` + `@router.<METHOD>` | Pydantic `BaseModel` |
+| **Express** | `express`/`fastify`/`@koa/router` en `package.json` | `app.METHOD('/path')` + `router.METHOD('/path')` | (none — usa heurística agnóstica) |
+
+Prioridad de detección: **Laravel > OpenAPI > FastAPI > Express** (cuando hay varios, gana el primero).
+
+### Validation specs por framework
+
+| Framework | Detecta | Mapeo |
+|---|---|---|
+| **Laravel** | `FormRequest` class (extends FormRequest) | `rules(): array` → `IValidationSpec` con `required`, `string`/`email`/`uuid`, `integer`/`numeric`, `boolean`, `enum (in:opt1,opt2)`, `min:N`, `max:N`, `regex:` |
+| **OpenAPI** | `requestBody.schema`, `parameters` | `required`, `type`, `format`, `enum`, `minLength`, `maxLength`, `minimum`, `maximum`, `pattern` |
+| **FastAPI** | Pydantic `BaseModel` | Convención de nombre: `POST /users` → `CreateUserRequest`, `PUT /users/{id}` → `UpdateUserRequest`, `GET /users` → `ListUsersRequest`. Type hints: `str`, `int`, `float`, `bool`, `list`, `dict`, `Optional`. |
+| **Express** | zod/Joi inline | `z.object({...})` y `Joi.object({...})` parseados en el archivo del handler. Tipos: `string`/`number`/`boolean`/`date`/`array`/`object`/`enum`. Chaining: `email`, `url`, `uuid`, `min`, `max`, `optional`, `enum([...])`. |
 
 ### Flags CLI
 

@@ -61,19 +61,29 @@ export function buildGenerateToolRegistration(
           if (!parsed.success) {
             return toolError(
               `Input inválido: ${parsed.error.message}`,
-              "Asegúrate de pasar projectRoot (ruta absoluta a un proyecto Laravel).",
+              "Pasa projectRoot (ruta absoluta) o configura defaultProjectRoot " +
+                "en mcp-vertex.config.json bajo plugins.postman-exporter.options.",
             );
           }
           const args = parsed.data;
 
-          // Workspace activo = raíz del consumer del plugin (postman-exporter
-          // o el proyecto host que lo carga). El plugin corre en ese cwd.
+          // Resolución del projectRoot con fallback documentado:
+          //   args.projectRoot ?? ctx.options.defaultProjectRoot ?? ctx.workspace
+          // Validamos que el resultado apunte a un directorio existente.
           const workspaceRoot = ctx.workspace.toString();
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
             | undefined;
           const projectRoot =
             args.projectRoot ?? defaultProjectRoot ?? workspaceRoot;
+          const { existsSync } = await import("node:fs");
+          if (!existsSync(projectRoot)) {
+            return toolError(
+              `projectRoot no existe: ${projectRoot}`,
+              "Pasa projectRoot absoluto, o configura defaultProjectRoot en " +
+                "mcp-vertex.config.json. Workspace actual: ${workspaceRoot}.",
+            );
+          }
 
           const cliArgs = ["generate", "--project-root", projectRoot];
           if (args.outputDir) cliArgs.push("--output-dir", args.outputDir);

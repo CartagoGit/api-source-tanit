@@ -8,9 +8,9 @@ Cursor, etc.).
 
 | Tool | Función |
 | --- | --- |
-| `postman_exporter_generate` | Genera la colección Postman v2.1.0 desde un proyecto Laravel host. |
-| `postman_exporter_validate` | Valida un JSON Postman v2.1.0 (schema + cobertura bidireccional). |
-| `postman_exporter_summary` | Devuelve estadísticas del proyecto host sin generar nada. |
+| `postman_exporter_generate` | Genera la colección Postman v2.1.0 desde un proyecto Laravel host. `projectRoot` opcional (fallback: `defaultProjectRoot` → workspace). |
+| `postman_exporter_validate` | Valida un JSON Postman v2.1.0 (schema + cobertura bidireccional). `projectRoot` opcional. |
+| `postman_exporter_summary` | Inspecciona el proyecto host sin generar nada. `projectRoot` opcional. |
 
 Cada tool sigue el contrato estándar de mcp-vertex:
 - Input validado con Zod (estricto, `.strict()`).

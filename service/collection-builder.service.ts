@@ -54,6 +54,18 @@ function buildRequest(ep: EndpointSpec): PostmanRequest {
     },
     description: ep.description ?? "",
   };
+  // Headers personalizados opcionales (X-API-Key, headers de OpenAPI, etc.)
+  if (ep.headers && ep.headers.length > 0) {
+    req.header = [
+      ...req.header,
+      ...ep.headers.map((h) => ({
+        key: h.key,
+        value: h.value,
+        type: "text" as const,
+        ...(h.description ? { description: h.description } : {}),
+      })),
+    ];
+  }
   if (ep.body !== undefined) {
     req.body = {
       mode: "raw",

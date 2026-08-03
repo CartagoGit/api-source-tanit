@@ -15,8 +15,9 @@ export const PostmanExporterOptionsSchema = z
   .object({
     /**
      * Ruta por defecto al proyecto Laravel host cuando el agente no
-     * la pasa explícitamente. Si no se da, el plugin exige `projectRoot`
-     * en cada invocación del tool.
+     * la pasa explícitamente. La cadena de fallback completa es:
+     *   `args.projectRoot ?? defaultProjectRoot ?? workspaceRoot`.
+     * Si ninguno resuelve, el tool devuelve un error claro.
      */
     defaultProjectRoot: z.string().min(1).optional(),
     /**
@@ -33,9 +34,16 @@ export type IPostmanExporterOptions = z.infer<
 
 // --- Inputs de los tools ----------------------------------------------------
 
+/**
+ * `projectRoot` ahora es OPCIONAL en los 3 tools.
+ * El fallback canónico en runtime es:
+ *   `args.projectRoot ?? ctx.options.defaultProjectRoot ?? ctx.workspace`.
+ * Decidimos hacerlo en el handler (no en zod) para que el schema
+ * siga siendo declarativo y el comportamiento sea explícito.
+ */
 export const GenerateInputSchema = z
   .object({
-    projectRoot: z.string().min(1),
+    projectRoot: z.string().min(1).optional(),
     outputDir: z.string().min(1).optional(),
     envs: z.array(z.string().min(1)).optional(),
     openAfter: z.boolean().optional(),
@@ -55,7 +63,7 @@ export type IValidateInput = z.infer<typeof ValidateInputSchema>;
 
 export const SummaryInputSchema = z
   .object({
-    projectRoot: z.string().min(1),
+    projectRoot: z.string().min(1).optional(),
   })
   .strict();
 

@@ -1,8 +1,10 @@
 /**
  * Helpers para normalizar URIs antes de comparar.
  *
- * Las URIs tienen tres formas que deben coincidir:
+ * Las URIs tienen cuatro formas que deben coincidir:
  *   - Laravel: `{cliente}` o `{cliente:codigo}`
+ *   - Express: `:clientId`
+ *   - FastAPI: `{client_id}` (mismo formato que Laravel)
  *   - Postman: `{{clienteId}}`
  *
  * `normalizeForComparison` reduce cualquier token parametrizado a `:p`
@@ -18,6 +20,7 @@ export function normalizeForComparison(uri: string): string {
   return uri
     .replace(/\{\{[^}]+\}\}/g, ":p") // {{algo}} → :p
     .replace(/\{[^}]+\}/g, ":p") // {algo} o {algo:regex} → :p
+    .replace(/:[a-zA-Z_][\w]*/g, ":p") // :id (Express) → :p
     .replace(/\/+/g, "/")
     .replace(/\/+$/, "")
     .replace(/^\//, "");

@@ -160,7 +160,7 @@
       "options": {}
     },
     "postman-exporter": {
-      "path": "./plugins/postman-exporter/src/index.ts",
+      "path": "plugins/postman-exporter/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
         "cliScript": "${workspaceFolder}/scripts/cli.script.ts"

@@ -57,12 +57,19 @@ export function buildValidateToolRegistration(
           }
           const args = parsed.data;
           const workspaceRoot = ctx.workspace.toString();
+          const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
+            | string
+            | undefined;
           const cliScriptPath =
             (ctx.options["cliScript"] as string | undefined) ??
             `${workspaceRoot}/scripts/cli.script.ts`;
 
           const cliArgs = ["check"];
-          if (args.projectRoot) cliArgs.push("--project-root", args.projectRoot);
+          if (args.projectRoot) {
+            cliArgs.push("--project-root", args.projectRoot);
+          } else if (defaultProjectRoot) {
+            cliArgs.push("--project-root", defaultProjectRoot);
+          }
           cliArgs.push("--output", args.collectionPath);
 
           const result = runBunScript(cliScriptPath, cliArgs, {
