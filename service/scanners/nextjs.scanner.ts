@@ -242,6 +242,12 @@ async function parsePageRouteFile(
   return out;
 }
 
+function stripJsComments(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/^\s*\/\/.*$/gm, "");
+}
+
 // ---------------------------------------------------------------------------
 // Validation spec provider (no-op por ahora; bodies via inference)
 // ---------------------------------------------------------------------------
@@ -250,14 +256,109 @@ export class NextJsZodProvider implements IValidationSpecProvider {
   readonly framework = "nextjs" as const;
 
   async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
-    return false;
+    return true;
   }
 
   async resolve(
     route: ParsedRoute,
-    _match: IProjectMatch,
+    match: IProjectMatch,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
-    return { endpointKey, fields: [] };
+    if (!route.sourceFile) return { endpointKey, fields: [] };
+    const abs = join(match.projectRoot, route.sourceFile);
+    let raw: string;
+    try {
+      raw = await readFile(abs, "utf8");
+    } catch {
+      return { endpointKey, fields: [] };
+    }
+    const text = stripJsComments(raw);
+    const lines = text.split("\n");
+    // 1) Buscar un `z.object({...})` (referenciado o inline) en el handler.
+    //    Estrategia: encontrar el primer `z.object(` y tomar sus fields.
+    const allZodMatches = findAllBalanced(text, /\bz\s*\.\s*object\s*\(/);
+    if (allZodMatches.length === 0) return { endpointKey, fields: [] };
+    // Tomar el primer `z.object({...})` cerca del handler.
+    // Por simplicidad, tomamos el primero del archivo (los handlers suelen
+    // declarar el schema al inicio).
+    const m = allZodMatches[0];
+    if (!m) return { endpointKey, fields: [] };
+    const body = text.slice(m.callStart + 1, m.callEnd);
+    const fields = parseFieldsObjectLiteral(body);
+    void lines;
+    return { endpointKey, fields };
   }
+}
+
+// Helpers reutilizados (mismas funciones que en express.scanner.ts).
+function findAllBalanced(
+  src: string,
+  startRe: RegExp,
+): Array<{ callStart: number; callEnd: number }> {
+  const out: Array<{ callStart: number; callEnd: number }> = [];
+  startRe.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = startRe.exec(src)) !== null) {
+    const openIdx = m.index + m[0].lastIndexOf("(");
+    let depth = 1;
+    let i = openIdx + 1;
+    while (i < src.length && depth > 0) {
+      const c = src[i];
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      i++;
+    }
+    if (depth === 0) {
+      out.push({ callStart: openIdx, callEnd: i - 1 });
+    }
+  }
+  return out;
+}
+
+const ZOD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
+  string: "string",
+  number: "number",
+  boolean: "boolean",
+  date: "date",
+  array: "array",
+  object: "object",
+  literal: "enum",
+  enum: "enum",
+  nativeEnum: "enum",
+};
+
+const ZOD_FORMAT_MAP: Record<string, string> = {
+  email: "email",
+  url: "url",
+  uuid: "uuid",
+  ip: "ip",
+};
+
+function parseFieldsObjectLiteral(src: string): IValidationSpec[] {
+  // Estrategia best-effort: parsea key-value pairs de la forma
+  //   key: z.string().min(1).max(100)
+  //   key: z.string().email()
+  const fields: IValidationSpec[] = [];
+  const fieldRe = /([a-zA-Z_$][\w$]*)\s*:\s*z\s*\.\s*([a-zA-Z_][\w]*)\s*\(\s*\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = fieldRe.exec(src)) !== null) {
+    const fieldName = m[1] ?? "";
+    const type = m[2] ?? "";
+    const spec: IValidationSpec = {
+      fieldName,
+      location: "body",
+      type: ZOD_TYPE_MAP[type] ?? "any",
+      required: true,
+    };
+    // Buscar `.email()`, `.url()`, `.uuid()` después del field.
+    const tail = src.slice(m.index, src.length);
+    const fmtMatch = /\.\s*([a-zA-Z_][\w]*)\s*\(\s*\)/.exec(tail);
+    if (fmtMatch) {
+      const fmt = fmtMatch[1] ?? "";
+      const format = ZOD_FORMAT_MAP[fmt];
+      if (format) spec.format = format;
+    }
+    fields.push(spec);
+  }
+  return fields;
 }

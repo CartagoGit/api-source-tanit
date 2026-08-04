@@ -268,15 +268,151 @@ function stripJavaComments(src: string): string {
 export class SpringBootBeanValidationProvider implements IValidationSpecProvider {
   readonly framework = "springboot" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
-    return false;
+  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+    if (match.framework !== "springboot") return false;
+    return route.sourceFile !== undefined;
   }
 
   async resolve(
     route: ParsedRoute,
-    _match: IProjectMatch,
+    match: IProjectMatch,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
-    return { endpointKey, fields: [] };
+    if (!route.sourceFile) return { endpointKey, fields: [] };
+    const abs = join(match.projectRoot, route.sourceFile);
+    let raw: string;
+    try {
+      raw = await readFile(abs, "utf8");
+    } catch {
+      return { endpointKey, fields: [] };
+    }
+    // Detectar `@RequestBody @Valid <DtoType> body` en el archivo.
+    const m = /@RequestBody\s+@?[A-Za-z]+\s+(\w+)\s+\w+/.exec(raw);
+    let dtoType = m?.[1];
+    if (!dtoType) return { endpointKey, fields: [] };
+    let fields = parseJavaDto(raw, dtoType);
+    if (fields.length === 0) {
+      // Fallback: buscar el DTO en otros archivos Java.
+      fields = await findDtoInProject(match.projectRoot, dtoType, route.uri);
+    }
+    if (fields.length === 0) return { endpointKey, fields: [] };
+    return { endpointKey, fields };
   }
+}
+
+/**
+ * Parsea una class Java del archivo y extrae fields con sus
+ * anotaciones de validación.
+ */
+function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
+  const out: IValidationSpec[] = [];
+  // Encontrar la class.
+  const classRe = new RegExp(`class\\s+${dtoType}\\s*\\{`, "g");
+  const classMatch = classRe.exec(raw);
+  if (!classMatch) return out;
+  // Capturar el body de la class.
+  const start = classMatch.index + classMatch[0].length;
+  let depth = 1;
+  let end = start;
+  for (let i = start; i < raw.length; i++) {
+    if (raw[i] === "{") depth++;
+    else if (raw[i] === "}") depth--;
+    if (depth === 0) { end = i; break; }
+  }
+  const body = raw.slice(start, end);
+  // Capturar field con anotaciones:
+  //   @NotBlank
+  //   @Size(min = 1, max = 100)
+  //   private String name;
+  // Regex multilinea con DOTALL.
+  const fieldRe = /(@\w+(?:\([^)]*\))?)\s+(?:@\w+(?:\([^)]*\))?\s+)*\s*(?:private|public|protected)?\s*([\w<>,\s]+?)\s+(\w+)\s*;/g;
+  let m: RegExpExecArray | null;
+  while ((m = fieldRe.exec(body)) !== null) {
+    const fieldType = (m[2] ?? "").trim();
+    const fieldName = m[3] ?? "";
+    const allAnnotations = m[0];
+    const required = /@NotBlank|@NotNull|@NotEmpty/.test(allAnnotations);
+    const isEmail = /@Email/.test(allAnnotations);
+    const sizeMatch = /@Size\s*\(\s*min\s*=\s*(\d+)\s*,\s*max\s*=\s*(\d+)\s*\)/.exec(allAnnotations);
+    const minMatch = /@Min\s*\(\s*(?:value\s*=\s*)?(\d+)\s*\)/.exec(allAnnotations);
+    const maxMatch = /@Max\s*\(\s*(?:value\s*=\s*)?(\d+)\s*\)/.exec(allAnnotations);
+    const patternMatch = /@Pattern\s*\(\s*regexp\s*=\s*"([^"]+)"\s*\)/.exec(allAnnotations);
+    const spec: IValidationSpec = {
+      fieldName,
+      location: "body",
+      type: inferJavaFieldType(fieldType, isEmail),
+      required,
+    };
+    if (isEmail) spec.format = "email";
+    if (sizeMatch) {
+      spec.minLength = Number(sizeMatch[1]);
+      spec.maxLength = Number(sizeMatch[2]);
+    }
+    if (minMatch) spec.minimum = Number(minMatch[1]);
+    if (maxMatch) spec.maximum = Number(maxMatch[1]);
+    if (patternMatch) {
+      const vals = patternMatch[1].split("|").map((s) => s.trim()).filter(Boolean);
+      if (vals.length > 1) {
+        spec.enumValues = vals;
+        spec.type = "enum";
+      }
+    }
+    out.push(spec);
+  }
+  return out;
+}
+
+/**
+ * Infiere el tipo IValidationSpec a partir del tipo Java.
+ */
+function inferJavaFieldType(javaType: string, isEmail: boolean): IValidationSpec["type"] {
+  if (isEmail) return "string";
+  if (/int|Integer|Long|Short|Byte/.test(javaType)) return "integer";
+  if (/double|float|Double|Float|BigDecimal/.test(javaType)) return "number";
+  if (/boolean|Boolean/.test(javaType)) return "boolean";
+  if (/Date|LocalDate|LocalDateTime|Instant/.test(javaType)) return "datetime";
+  if (/List<|Set<|Collection</.test(javaType)) return "array";
+  return "string";
+}
+
+/**
+ * Busca un DTO en otros archivos Java del proyecto.
+ */
+async function findDtoInProject(
+  projectRoot: string,
+  dtoType: string,
+  uri?: string,
+): Promise<IValidationSpec[]> {
+  const javaFiles: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = await readdir(dir);
+    } catch { return; }
+    for (const e of entries) {
+      const full = join(dir, e);
+      if (e.endsWith(".java")) javaFiles.push(full);
+      else if (!e.includes(".")) await walk(full);
+    }
+  }
+  const srcMain = join(projectRoot, "src", "main", "java");
+  if (existsSync(srcMain)) await walk(srcMain);
+  // Filtrar por nombre de archivo relacionado al URI.
+  const uriWords = (uri ?? "")
+    .split("/")
+    .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"))
+    .map((w) => w.toLowerCase().replace(/s$/, ""));
+  const ranked = javaFiles
+    .map((f) => ({
+      f,
+      score: uriWords.reduce((acc, w) => (w && f.toLowerCase().includes(w) ? acc + 1 : acc), 0),
+    }))
+    .sort((a, b) => b.score - a.score);
+  for (const { f } of ranked) {
+    let raw: string;
+    try { raw = await readFile(f, "utf8"); } catch { continue; }
+    const fields = parseJavaDto(raw, dtoType);
+    if (fields.length > 0) return fields;
+  }
+  return [];
 }

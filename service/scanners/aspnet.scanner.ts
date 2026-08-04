@@ -223,15 +223,139 @@ function stripCsComments(src: string): string {
 export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   readonly framework = "aspnet" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
-    return false;
+  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+    if (match.framework !== "aspnet") return false;
+    return route.sourceFile !== undefined;
   }
 
   async resolve(
     route: ParsedRoute,
-    _match: IProjectMatch,
+    match: IProjectMatch,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
-    return { endpointKey, fields: [] };
+    if (!route.sourceFile) return { endpointKey, fields: [] };
+    const abs = join(match.projectRoot, route.sourceFile);
+    let raw: string;
+    try {
+      raw = await readFile(abs, "utf8");
+    } catch {
+      return { endpointKey, fields: [] };
+    }
+    // Detectar `[FromBody] <DtoType> <name>` en el archivo.
+    const m = /\[FromBody\]\s+(\w+)\s+\w+/.exec(raw);
+    let dtoType = m?.[1];
+    if (!dtoType) return { endpointKey, fields: [] };
+    let fields = parseCsDto(raw, dtoType);
+    if (fields.length === 0) {
+      fields = await findDtoInProject(match.projectRoot, dtoType, route.uri);
+    }
+    if (fields.length === 0) return { endpointKey, fields: [] };
+    return { endpointKey, fields };
   }
+}
+
+/**
+ * Parsea una class C# del archivo y extrae properties con Data Annotations.
+ */
+function parseCsDto(raw: string, dtoType: string): IValidationSpec[] {
+  const out: IValidationSpec[] = [];
+  const classRe = new RegExp(`class\\s+${dtoType}\\b[^{]*\\{`, "g");
+  const classMatch = classRe.exec(raw);
+  if (!classMatch) return out;
+  const start = classMatch.index + classMatch[0].length;
+  let depth = 1;
+  let end = start;
+  for (let i = start; i < raw.length; i++) {
+    if (raw[i] === "{") depth++;
+    else if (raw[i] === "}") depth--;
+    if (depth === 0) { end = i; break; }
+  }
+  const body = raw.slice(start, end);
+  // Capturar property con annotations:
+  //   [Required]
+  //   [StringLength(100, MinimumLength = 1)]
+  //   public string Name { get; set; }
+  const propRe = /((?:\[[^\]]+\]\s*)*)\s*(?:public|private|protected|internal)?\s*([\w<>?,\s]+?)\s+(\w+)\s*\{\s*(?:get|set)/g;
+  let m: RegExpExecArray | null;
+  while ((m = propRe.exec(body)) !== null) {
+    const annotations = m[1] ?? "";
+    const propType = (m[2] ?? "").trim();
+    const fieldName = m[3] ?? "";
+    const required = /\[Required\]/i.test(annotations);
+    const isEmail = /\[EmailAddress\]/i.test(annotations);
+    const stringLen = /\[StringLength\s*\(\s*(\d+)(?:\s*,\s*MinimumLength\s*=\s*(\d+))?\s*\)\]/i.exec(annotations);
+    const range = /\[Range\s*\(\s*(\d+)\s*,\s*(\d+|int\.MaxValue)\s*\)\]/i.exec(annotations);
+    const regex = /\[RegularExpression\s*\(\s*"([^"]+)"\s*\)\]/i.exec(annotations);
+    const spec: IValidationSpec = {
+      fieldName,
+      location: "body",
+      type: inferCsFieldType(propType, isEmail),
+      required,
+    };
+    if (isEmail) spec.format = "email";
+    if (stringLen) {
+      spec.maxLength = Number(stringLen[1]);
+      if (stringLen[2]) spec.minLength = Number(stringLen[2]);
+    }
+    if (range) {
+      spec.minimum = Number(range[1]);
+      if (range[2] && range[2] !== "int.MaxValue") spec.maximum = Number(range[2]);
+    }
+    if (regex) {
+      const vals = regex[1].replace(/^\^?\(|\)\$?$/g, "").split("|").map((s) => s.trim()).filter(Boolean);
+      if (vals.length > 1) {
+        spec.enumValues = vals;
+        spec.type = "enum";
+      }
+    }
+    out.push(spec);
+  }
+  return out;
+}
+
+function inferCsFieldType(csType: string, isEmail: boolean): IValidationSpec["type"] {
+  if (isEmail) return "string";
+  if (/^(int|long|short|byte|Int16|Int32|Int64)$/.test(csType)) return "integer";
+  if (/^(double|float|decimal|Double|Single)$/.test(csType)) return "number";
+  if (/^(bool|boolean|Boolean)$/.test(csType)) return "boolean";
+  if (/DateTime/.test(csType)) return "datetime";
+  if (/^(List|Collection|IEnumerable|IList|HashSet|Set)</.test(csType)) return "array";
+  return "string";
+}
+
+async function findDtoInProject(
+  projectRoot: string,
+  dtoType: string,
+  uri?: string,
+): Promise<IValidationSpec[]> {
+  const csFiles: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    let entries: string[];
+    try {
+      entries = await readdir(dir);
+    } catch { return; }
+    for (const e of entries) {
+      const full = join(dir, e);
+      if (e.endsWith(".cs")) csFiles.push(full);
+      else if (!e.includes(".") && !e.endsWith(".csproj")) await walk(full);
+    }
+  }
+  await walk(projectRoot);
+  const uriWords = (uri ?? "")
+    .split("/")
+    .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"))
+    .map((w) => w.toLowerCase().replace(/s$/, ""));
+  const ranked = csFiles
+    .map((f) => ({
+      f,
+      score: uriWords.reduce((acc, w) => (w && f.toLowerCase().includes(w) ? acc + 1 : acc), 0),
+    }))
+    .sort((a, b) => b.score - a.score);
+  for (const { f } of ranked) {
+    let raw: string;
+    try { raw = await readFile(f, "utf8"); } catch { continue; }
+    const fields = parseCsDto(raw, dtoType);
+    if (fields.length > 0) return fields;
+  }
+  return [];
 }
