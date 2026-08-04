@@ -166,24 +166,23 @@ describe("Django — comprehensive fixture", () => {
     expect(body).not.toHaveProperty("currency");
   });
 
-  test("POST /api/auth/login (FBV) no tiene body específico (fallback agnóstico o vacío)", async () => {
+test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convención", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login");
     expect(ep).not.toBeNull();
-    // El FBV no define serializer → no debe tener customer_name ni
-    // ningún field de LoginSerializer.
+    // FBV sin `serializer_class` explícito; el provider busca
+    // `LoginSerializer` por convención (login → Login).
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    expect(body).not.toHaveProperty("email");
-    expect(body).not.toHaveProperty("password");
+    expect(body).toHaveProperty("email");
+    expect(body).toHaveProperty("password");
   });
 
-  test("POST /api/auth/logout (FBV) no tiene body", async () => {
+  test("POST /api/auth/logout (FBV) infiere body desde LogoutSerializer", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/logout");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    // body `{}` está OK — sin serializer y sin campos auto-inferidos.
-    expect(Object.keys(body).length).toBe(0);
+    expect(body).toHaveProperty("refresh_token");
   });
 
   test("path params Django <int:id> se convierten a {{id}} en todas las URIs", async () => {

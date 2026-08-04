@@ -8,3 +8,7 @@ class LoginSerializer(serializers.Serializer):
 
 class RefreshTokenSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField()

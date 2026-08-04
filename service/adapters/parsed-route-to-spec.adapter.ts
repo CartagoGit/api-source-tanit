@@ -62,9 +62,12 @@ export function toPostmanUri(laravelUri: string): string {
 
 /** Deriva un nombre legible a partir del método HTTP + URI. */
 function deriveName(route: ParsedRoute): string {
-  if (route.displayName) return route.displayName;
+  if (route.displayName) return toPostmanUri(route.displayName);
+  // Normalizar la URI para displayName (e.g. `<int:id>` → `{{id}}`,
+  // `:id` → `{{id}}`).
+  const uri = toPostmanUri(route.uri);
   // "{x}" sangrado en la URI → "Crear /items/{{id}}/reindex"
-  const segs = route.uri
+  const segs = uri
     .split("/")
     .filter((s) => s && !s.startsWith("{{"));
   const last = segs[segs.length - 1] ?? "";

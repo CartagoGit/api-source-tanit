@@ -90,39 +90,14 @@ export class DjangoProjectScanner implements IProjectScanner {
 /**
  * Regex para `path('users/', views.list_users, name='list_users')` y
  * `path('users/<int:id>/', views.show_user)`.
- *
- * El viewRef puede terminar en:
- * - `(`   → `SomeView.as_view()` o `include(...)`.
- * - `)`   → idem (regex acepta ambas).
- * - `,`   → `path('foo', cancel_order, name='x')` (FBV referenciada por nombre).
- *
- * Esto cubre las tres formas que usa DRF para referenciar una view desde
- * `urlpatterns`.
  */
-const PATH_RE =
-  /path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+?)\s*(?:\(|\)|,)/g;
+const PATH_RE = /path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+?)\s*(?=\(|,|\))/g;
 const INCLUDE_RE = /include\s*\(\s*(?:\[([^\]]+)\]|r?['"]([^'"]+)['"])/g;
 
 /**
  * Decorator `@api_view(['GET', 'POST'])` para FBV de DRF.
  */
 const API_VIEW_RE = /@api_view\s*\(\s*\[([^\]]+)\]\s*\)/;
-
-/**
- * Convierte los path params Django al formato canónico Postman
- * SOLO para uso en `displayName`:
- *   `<int:id>` / `<str:slug>` / `<uuid:token>` → `{{id}}` / `{{slug}}` / `{{token}}`
- *   `<id>` → `{{id}}`
- *
- * NO confundir con `toPostmanUri` (en el adapter): esa normaliza la URI
- * completa; aquí solo necesitamos el pathTemplate ya formateado para que
- * el nombre del endpoint no diga literalmente "PUT <int:id>/status/".
- */
-function normalizeDjangoPathParam(template: string): string {
-  return template
-    .replace(/<[a-zA-Z_][\w]*:([a-zA-Z_][\w]*)>/g, "{{$1}}")
-    .replace(/<([a-zA-Z_][\w]*)>/g, "{{$1}}");
-}
 
 export class DjangoRouteScanner implements IRouteScanner {
   readonly framework = "django" as const;
@@ -245,15 +220,8 @@ async function parseUrlsPy(
       const viewName = viewRef.replace(/\.as_view$/, "");
       const fullPath = (parentPrefix + pathTemplate).replace(/\/+/g, "/");
       // Para views de DRF (ViewSet), expandimos a `{list, retrieve, create, ...}`.
-      // Resolvemos contra `views.py` para extraer la clase padre real o
-      // el decorator `@api_view`, en lugar de heurística sobre el nombre.
-      const expanded = await resolveViewMethods(viewName, projectRoot);
-      // Normalizamos el pathTemplate (Django raw → Postman canonical) ANTES
-      // de usarlo como displayName — así el nombre del endpoint no contiene
-      // `<int:id>` literal sino `{{id}}` ya formateado. Si NO se hace aquí,
-      // `deriveName` consumiría el `displayName` raw y el nombre quedaría
-      // con sintaxis Django.
-      const normalizedPathTemplate = normalizeDjangoPathParam(pathTemplate);
+      // Detectamos la herencia de la class en el archivo views.py de su módulo.
+      const expanded = await expandViewSetMethods(viewName, projectRoot);
       for (const method of expanded) {
         out.push({
           method: method.toUpperCase(),
@@ -262,8 +230,7 @@ async function parseUrlsPy(
           sourceFile: relPath,
           lineNumber: 0,
           prefixChain: parentPrefix ? [parentPrefix] : [],
-          displayName: `${method.toUpperCase()} ${normalizedPathTemplate}`,
-          actionName: viewName,
+          displayName: `${method.toUpperCase()} ${pathTemplate}`,
         });
       }
     }
@@ -312,7 +279,7 @@ async function processInclude(
       // e.g. `app.users.urls` → `apps/users/urls.py` (convención DRF)
       join(projectRoot, "apps", ...parts.slice(1)) + ".py",
       // e.g. `users.urls` → `<project>/users/urls.py`
-      join(projectRoot, parts.join("/")) + ".py",
+      join(projectRoot, parts[0] ?? "") + ".py",
     ];
     for (const candidate of candidates) {
       if (existsSync(candidate)) {
@@ -341,141 +308,154 @@ async function processInclude(
  * - `CreateAPIView` → POST.
  * - `DestroyAPIView` → DELETE.
  *
+ * Si el viewName es un nombre de class (e.g. `UserListCreateView`), busca
+ * el archivo `views.py` que lo define y extrae la herencia.
+ *
  * Para Function Based Views, retorna ["get"] como heurístico (se
  * sobreescribe con `@api_view([...])` si se detecta).
  */
-function expandViewSetMethods(viewRef: string): string[] {
+async function expandViewSetMethods(
+  viewName: string,
+  projectRoot: string,
+): Promise<string[]> {
+  // Class simple (e.g. `UserListCreateView`): buscar herencia en views.py.
+  if (/^[A-Z][\w]*$/.test(viewName)) {
+    const baseClass = await findBaseClass(viewName, projectRoot);
+    return methodsFromBaseClass(baseClass);
+  }
+  // Cualquier nombre con `.` (e.g. `views.foo`) o minúscula (e.g. `foo`):
+  // tratar como FBV y buscar `@api_view([...])` cerca de `def foo`.
+  const fnName = viewName.includes(".") ? viewName.split(".").pop() ?? "" : viewName;
+  if (/^[a-z_][\w]*$/.test(fnName)) {
+    return methodsFromFunctionView(fnName, projectRoot);
+  }
+  // Default: heurístico.
+  return ["get"];
+}
+
+function methodsFromBaseClass(baseClass: string | null): string[] {
+  if (!baseClass) return ["get"];
   if (
-    viewRef.includes("ModelViewSet") ||
-    viewRef.includes("ReadOnlyModelViewSet") ||
-    viewRef.includes("ViewSet")
+    baseClass.includes("ModelViewSet") ||
+    baseClass.includes("ReadOnlyModelViewSet") ||
+    baseClass.includes("ViewSet")
   ) {
     return ["get", "post", "put", "patch", "delete"];
   }
-  if (viewRef.includes("ListCreateAPIView")) {
+  if (baseClass.includes("ListCreateAPIView")) {
     return ["get", "post"];
   }
-  if (viewRef.includes("RetrieveUpdateDestroyAPIView")) {
+  if (baseClass.includes("RetrieveUpdateDestroyAPIView")) {
     return ["get", "put", "patch", "delete"];
   }
-  if (viewRef.includes("UpdateAPIView")) {
+  if (baseClass.includes("UpdateAPIView")) {
     return ["put", "patch"];
   }
-  if (viewRef.includes("CreateAPIView")) {
+  if (baseClass.includes("CreateAPIView")) {
     return ["post"];
   }
-  if (viewRef.includes("DestroyAPIView")) {
+  if (baseClass.includes("DestroyAPIView")) {
     return ["delete"];
   }
-  if (viewRef.includes("RetrieveAPIView") || viewRef.includes("ListAPIView")) {
+  if (baseClass.includes("RetrieveAPIView") || baseClass.includes("ListAPIView")) {
     return ["get"];
   }
-  // FBV / API_view: heurístico "get".
   return ["get"];
 }
 
 /**
- * Cache de `views.py` leídos por módulo. Se rellena perezosamente y se
- * reutiliza entre invocaciones de `resolveViewMethods` para evitar
- * releer el mismo archivo N veces por cada endpoint.
+ * Busca un archivo `views.py` en `app/<x>/views.py` o `apps/<x>/views.py`
+ * y devuelve el nombre de la clase base de `className`.
  */
-const VIEWS_PY_CACHE = new Map<string, string>();
-
-async function readViewsPy(absPath: string): Promise<string | null> {
-  if (VIEWS_PY_CACHE.has(absPath)) return VIEWS_PY_CACHE.get(absPath) ?? null;
-  try {
-    const raw = await readFile(absPath, "utf8");
-    const text = stripPyComments(raw);
-    VIEWS_PY_CACHE.set(absPath, text);
-    return text;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Encuentra todos los `views.py` del proyecto. Usado como fallback
- * cuando el `viewName` no es resoluble desde el archivo actual.
- *
- * Convención: `app/<x>/views.py` para Django clásico, `apps/<x>/views.py`
- * para proyectos con `apps/`, `<x>/views.py` para flat layouts.
- */
-async function findAllViewsPy(projectRoot: string): Promise<string[]> {
-  const out: string[] = [];
-  const dirs = ["app", "apps", "src"];
-  for (const d of dirs) {
-    const base = join(projectRoot, d);
+async function findBaseClass(
+  className: string,
+  projectRoot: string,
+): Promise<string | null> {
+  const candidates = [
+    join(projectRoot, "app"),
+    join(projectRoot, "apps"),
+  ];
+  for (const base of candidates) {
     if (!existsSync(base)) continue;
-    await walkViewsPy(base, out);
-  }
-  // También buscar un views.py en la raíz (Django flat layout).
-  const rootViews = join(projectRoot, "views.py");
-  if (existsSync(rootViews)) out.push(rootViews);
-  return out;
-}
-
-async function walkViewsPy(dir: string, out: string[]): Promise<void> {
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    const full = join(dir, entry);
-    if (entry === "views.py") out.push(full);
-    else if (!entry.includes(".") && !entry.endsWith(".py")) {
-      await walkViewsPy(full, out);
+    let entries: string[];
+    try {
+      entries = await readdir(base);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const viewsPath = join(base, entry, "views.py");
+      if (!existsSync(viewsPath)) continue;
+      let raw: string;
+      try {
+        raw = await readFile(viewsPath, "utf8");
+      } catch {
+        continue;
+      }
+      const re = new RegExp(
+        `class\\s+${className}\\s*\\(\\s*([\\w.]+)\\s*\\)`,
+        "m",
+      );
+      const m = re.exec(raw);
+      if (m) return m[1] ?? null;
     }
   }
+  return null;
 }
 
 /**
- * Resuelve los métodos HTTP que una view expone. Estrategia:
- *
- * 1. Si el viewRef empieza con `views.` (formato `views.foo`), se
- *    interpreta como FBV local — buscar `def foo` y leer su `@api_view`.
- * 2. Si no, buscar en todos los `views.py` del proyecto:
- *    - `class X(generics.Y):` o `class X(Y):` → expandir Y via
- *      `expandViewSetMethods` (parent class name).
- *    - `@api_view([...])` antes de `def X(...)` → usar esos métodos.
- * 3. Fallback: `["get"]` (FBV sin decorator).
+ * Busca un archivo `views.py` con `def fnName` y devuelve los métodos
+ * del `@api_view([...])` adyacente.
  */
-async function resolveViewMethods(
-  viewRef: string,
+async function methodsFromFunctionView(
+  fnName: string,
   projectRoot: string,
 ): Promise<string[]> {
-  const name = viewRef.replace(/^views\./, "").replace(/\.as_view$/, "");
-  // Si el viewRef era `include(...)` o vacío (no debería llegar aquí
-  // por el flujo superior, pero por defensa), devolver [].
-  if (!name || name === "include") return [];
-
-  const candidates = await findAllViewsPy(projectRoot);
-  for (const abs of candidates) {
-    const text = await readViewsPy(abs);
-    if (!text) continue;
-    // 1) CBV: `class X(generics.Y):` o `class X(Y):`.
-    const clsRe = new RegExp(
-      `class\\s+${name}\\s*\\(\\s*(?:[\\w.]*\\.)?(\\w+)\\s*\\)\\s*:`,
-    );
-    const clsMatch = clsRe.exec(text);
-    if (clsMatch) {
-      return expandViewSetMethods(clsMatch[1] ?? "");
+  const candidates = [
+    join(projectRoot, "app"),
+    join(projectRoot, "apps"),
+    projectRoot,
+  ];
+  for (const base of candidates) {
+    if (!existsSync(base)) continue;
+    let entries: string[];
+    try {
+      entries = await readdir(base, { recursive: true, withFileTypes: true }) as unknown as Array<{ name: string; isFile(): boolean; parentPath?: string }>;
+    } catch {
+      continue;
     }
-    // 2) FBV: `@api_view([...])` antes de `def X(...)`.
-    const fbvRe = new RegExp(
-      `@api_view\\s*\\(\\s*\\[([^\\]]+)\\]\\s*\\)\\s*(?:[\\s\\S]*?)\\s*def\\s+${name}\\s*\\(`,
-    );
-    const fbvMatch = fbvRe.exec(text);
-    if (fbvMatch) {
-      const methods = (fbvMatch[1] ?? "")
-        .split(",")
-        .map((s) => s.trim().replace(/^['"]|['"]$/g, "").toLowerCase())
-        .filter((s) => HTTP_METHODS.includes(s));
-      if (methods.length > 0) return methods;
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      if (!entry.name.endsWith("views.py")) continue;
+      const parent = entry.parentPath ?? base;
+      const abs = join(parent, entry.name);
+      let raw: string;
+      try {
+        raw = await readFile(abs, "utf8");
+      } catch {
+        continue;
+      }
+      // Buscar `@api_view(['POST'])` seguido de `def fnName`.
+      const re = new RegExp(
+        `@api_view\\s*\\(\\s*\\[([^\\]]+)\\]\\s*\\)\\s*(?:\\n[\\s\\S]*?)?def\\s+${fnName}\\b`,
+        "m",
+      );
+      const m = re.exec(raw);
+      if (m) {
+        const list = m[1] ?? "";
+        const verbs = list
+          .split(",")
+          .map((s) =>
+            s
+              .trim()
+              .replace(/^['"]|['"]$/g, "")
+              .toLowerCase(),
+          )
+          .filter((s) => ["get", "post", "put", "patch", "delete"].includes(s));
+        return verbs.length > 0 ? verbs : ["get"];
+      }
     }
   }
-  // Fallback: FBV sin decorator → heurístico GET.
   return ["get"];
 }
 
@@ -532,57 +512,132 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
     const abs = join(match.projectRoot, route.sourceFile);
-    let raw: string;
+    const dir = abs.substring(0, abs.lastIndexOf("/"));
+    // 1) Encontrar el viewName para este URI leyendo el urls.py.
+    //    Pasamos también el prefixChain para desambiguar.
+    const viewName = await findViewNameForUri(
+      abs,
+      route.uri,
+      route.prefixChain ?? [],
+    );
+    if (!viewName) return { endpointKey, fields: [] };
+    // 2) Leer views.py y encontrar `class viewName(...)` para extraer
+    //    el `serializer_class = XSerializer`.
+    const viewsPath = join(dir, "views.py");
+    let serializerName: string | null = null;
     try {
-      raw = await readFile(abs, "utf8");
-    } catch {
-      return { endpointKey, fields: [] };
-    }
-    const text = stripPyComments(raw);
-    // Cuando `route.sourceFile` apunta a `urls.py`, la `serializer_class`
-    // vive en el `views.py` hermano (mismo directorio). Resolver ahí primero
-    // si el archivo actual es `urls.py`.
-    const isUrlsPy = abs.endsWith("/urls.py");
-    let searchText = text;
-    if (isUrlsPy) {
-      const dir = abs.substring(0, abs.lastIndexOf("/"));
-      const viewsAbs = join(dir, "views.py");
-      try {
-        searchText = stripPyComments(await readFile(viewsAbs, "utf8"));
-      } catch {
-        // views.py no existe → searchText se queda como urls.py (no-op).
+      const viewsRaw = await readFile(viewsPath, "utf8");
+      const viewsText = stripPyComments(viewsRaw);
+      // Encontrar el bloque de la class viewName. Estrategia: split en
+      // bloques de class (cada uno termina antes del próximo `^class`).
+      // Si es la última class, el bloque llega hasta el final del archivo.
+      const classBlocks: Array<{ name: string; body: string }> = [];
+      const classStartRe = /^class\s+(\w+)/gm;
+      let m: RegExpExecArray | null;
+      const starts: Array<{ name: string; index: number }> = [];
+      while ((m = classStartRe.exec(viewsText)) !== null) {
+        starts.push({ name: m[1] ?? "", index: m.index });
       }
-    }
-    // Si tenemos `actionName` (la view class o FBV específica de este
-    // endpoint), localizamos el bloque de esa view para extraer SU
-    // `serializer_class`. Si la view NO existe como `class X(...)` (FBV)
-    // o no define `serializer_class`, devolvemos 0 fields — NUNCA el
-    // "primer serializer del archivo", que sería el serializer de OTRA
-    // view vecina y contaminaría el body de este endpoint.
-    const viewName = route.actionName ?? "";
-    let serializerName = "";
-    if (viewName) {
-      const clsRe = new RegExp(
-        `class\\s+${viewName}\\b[\\s\\S]*?serializer_class\\s*=\\s*(\\w+Serializer)`,
-      );
-      const m = clsRe.exec(searchText);
-      if (m) serializerName = m[1] ?? "";
-    }
-    // Si NO hay actionName (legacy fixtures sin actionName), caemos al
-    // primer serializer del archivo (compatibilidad con fixtures previos).
-    if (!viewName) {
-      const serializerMatch =
-        /serializer_class\s*=\s*(\w+Serializer)/.exec(searchText);
-      if (serializerMatch) serializerName = serializerMatch[1] ?? "";
+      for (let i = 0; i < starts.length; i++) {
+        const start = starts[i];
+        const next = starts[i + 1];
+        const body = next
+          ? viewsText.slice(start.index, next.index)
+          : viewsText.slice(start.index);
+        classBlocks.push({ name: start.name, body });
+      }
+      const clsBlock = classBlocks.find((b) => b.name === viewName);
+      if (clsBlock) {
+        const sm = /serializer_class\s*=\s*(\w+Serializer)/.exec(clsBlock.body);
+        if (sm) serializerName = sm[1] ?? null;
+      }
+      // FBV fallback: si viewName es minúscula (FBV), buscar serializers
+      // cuyo nombre contenga el funcName capitalized.
+      if (!serializerName && /^[a-z][\w]*$/.test(viewName)) {
+        const capitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+        try {
+          const serRaw = await readFile(join(dir, "serializers.py"), "utf8");
+          // Buscar `class XYZSerializer` donde XYZ contiene `capitalized`.
+          const match = new RegExp(
+            `class\\s+(\\w*${capitalized}\\w*Serializer)\\b`,
+            "m",
+          );
+          const m = match.exec(serRaw);
+          if (m) serializerName = m[1] ?? null;
+        } catch {
+          // serializers.py no existe.
+        }
+      }
+    } catch {
+      // views.py no existe.
     }
     if (!serializerName) return { endpointKey, fields: [] };
-    // Buscar la clase serializer dentro de archivos del mismo dir.
-    // Si sourceFile es `urls.py`, los serializers están en el dir hermano.
-    const dir = abs.substring(0, abs.lastIndexOf("/"));
     const serializerDef = await findSerializerDef(dir, serializerName);
     if (!serializerDef) return { endpointKey, fields: [] };
     return { endpointKey, fields: serializerDef };
   }
+}
+
+/**
+ * Lee el archivo urls.py del dir y devuelve el nombre de la view
+ * (class o función) que matchea el URI dado.
+ */
+async function findViewNameForUri(
+  urlsAbs: string,
+  uri: string,
+  prefixChain: string[],
+): Promise<string | null> {
+  let raw: string;
+  try {
+    raw = await readFile(urlsAbs, "utf8");
+  } catch {
+    return null;
+  }
+  const text = stripPyComments(raw);
+  // URI viene con prefix ya incluido. Quitar el primer prefix para
+  // comparar contra el pathTemplate del sub-urls.py.
+  let relative = uri;
+  if (prefixChain.length > 0) {
+    const firstPrefix = prefixChain[0] ?? "";
+    if (relative.startsWith(firstPrefix)) {
+      relative = relative.slice(firstPrefix.length);
+    }
+  }
+  // `{{id}}` → `<id>` (sin `:` tipo) para comparar con Django.
+  relative = relative.replace(/\{\{(\w+)\}\}/g, "<$1>");
+  // También normalizar `<int:id>` → `<id>` (en caso de que uri aún tenga
+  // la forma Django porque viene directo del scanner).
+  relative = relative.replace(/<\w+:(\w+)>/g, "<$1>");
+  // Quitar trailing slash para comparar sin él.
+  relative = relative.replace(/\/+$/, "");
+  // Si relative es vacío (lista), buscar path("").
+  if (relative === "") {
+    for (const line of text.split("\n")) {
+      if (/path\s*\(\s*r?['"]['"]/.test(line)) {
+        const refMatch = /,\s*([\w.]+?)\s*(?=\(|,|\))/.exec(line);
+        if (refMatch) {
+          return (refMatch[1] ?? "").replace(/\.as_view$/, "");
+        }
+      }
+    }
+    return null;
+  }
+  for (const line of text.split("\n")) {
+    PATH_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = PATH_RE.exec(line)) !== null) {
+      const pathTemplate = (m[1] ?? "").replace(/^\/+|\/+$/g, "");
+      const viewRef = (m[2] ?? "").replace(/\.as_view$/, "");
+      // Normalizar el pathTemplate: `<int:id>` → `<id>` para matchear.
+      const pathNormalized = pathTemplate.replace(/<\w+:(\w+)>/g, "<$1>");
+      // Quitar trailing slash también en pathNormalized.
+      const pathNoSlash = pathNormalized.replace(/\/+$/, "");
+      if (pathNoSlash === relative || pathNormalized === relative) {
+        return viewRef || null;
+      }
+    }
+  }
+  return null;
 }
 
 async function findSerializerDef(
@@ -607,16 +662,11 @@ async function findSerializerDef(
     const text = stripPyComments(raw);
     const clsIdx = text.indexOf(`class ${className}`);
     if (clsIdx < 0) continue;
-    // Cortar el bloque al inicio de la PRÓXIMA `class X(` o `class X:` para
-    // no absorber los fields de clases vecinas (que es lo que produce
-    // duplicados como `street` mezclado con `name`).
-    // IMPORTANTE: el offset de `nextClsMatch` es relativo al texto DESPUÉS
-    // de `clsIdx` (porque hacemos `text.slice(clsIdx)`), no a `text` absoluto.
-    const fromCls = text.slice(clsIdx);
-    const nextClsMatch = /\nclass\s+\w+\s*[:(]/.exec(fromCls);
-    const block = nextClsMatch
-      ? fromCls.slice(0, nextClsMatch.index)
-      : fromCls;
+    // Recortar el bloque hasta la siguiente `class` (o fin de archivo).
+    const afterCls = text.slice(clsIdx);
+    const nextClass = afterCls.search(/\nclass\s+\w+/);
+    const block =
+      nextClass > 0 ? afterCls.slice(0, nextClass) : afterCls;
     const fields: IValidationSpec[] = [];
     // 1) `fields = [...]` en Meta.
     const metaFields = /Meta\s*:[^]*?fields\s*=\s*\[([^\]]+)\]/.exec(block);
