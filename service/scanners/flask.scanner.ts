@@ -218,8 +218,9 @@ async function parseFlaskFile(
       const methodsList = m[3] ?? "";
       const methods = parseMethods(methodsList);
       if (methods.length === 0) methods.push("get");
-      // Solo aceptar `app`, `bp`, `blueprint` como idents.
-      if (!/^(app|bp|blueprint|api)$/i.test(ident)) continue;
+      // Solo aceptar `app`, `bp`, `blueprint` o cualquier `<name>_bp` /
+      // `<name>_blueprint` como idents.
+      if (!/^(app|bp|blueprint|api)$/i.test(ident) && !/^[\w]+_(bp|blueprint)$/i.test(ident)) continue;
       const fullPath = (bpPrefix + path).replace(/\/+/g, "/");
       // Buscar signature del método abajo.
       let methodName = "";

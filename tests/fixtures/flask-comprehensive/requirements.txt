@@ -1,0 +1,2 @@
+flask>=3.0
+flask-pydantic>=0.13
