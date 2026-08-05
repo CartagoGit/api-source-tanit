@@ -1,0 +1,10 @@
+{
+  "framework": "flask",
+  "routes": [
+    { "method": "DELETE", "uri": "/api/users/<int:id>" },
+    { "method": "GET",    "uri": "/api/users" },
+    { "method": "GET",    "uri": "/api/users/<int:id>" },
+    { "method": "GET",    "uri": "/health" },
+    { "method": "POST",   "uri": "/api/users" }
+  ]
+}

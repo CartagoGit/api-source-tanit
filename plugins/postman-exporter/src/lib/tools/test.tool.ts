@@ -326,6 +326,7 @@ export function buildTestToolRegistration(
             const smokeAllStart = Date.now();
             const FRAMEWORKS_WITH_MINI = [
               "laravel", "symfony", "express", "fastapi", "django",
+              "nestjs", "flask", "nextjs", "gin", "springboot", "aspnet", "openapi",
             ];
             let passed = 0;
             let failed = 0;

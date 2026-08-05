@@ -1,0 +1,10 @@
+{
+  "framework": "nestjs",
+  "routes": [
+    { "method": "DELETE", "uri": "users/:id" },
+    { "method": "GET",    "uri": "users/" },
+    { "method": "GET",    "uri": "users/:id" },
+    { "method": "POST",   "uri": "users/" },
+    { "method": "PUT",    "uri": "users/:id" }
+  ]
+}
