@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import {
   GinProjectScanner,
   GinRouteScanner,
+  GinBindingProvider,
 } from "../../service/scanners/gin.scanner";
 
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/gin-mini");
@@ -52,5 +53,28 @@ describe("Gin scanner", () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
     const routes = await new GinRouteScanner().scan(match);
     expect(routes.length).toBeGreaterThanOrEqual(13);
+  });
+
+  test("GinBindingProvider extrae campos binding de POST /api/users", async () => {
+    const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
+    const routes = await new GinRouteScanner().scan(match);
+    const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users");
+    if (!post) return;
+
+    const provider = new GinBindingProvider();
+    const result = await provider.resolve(post, match);
+
+    expect(result.fields.length).toBeGreaterThan(0);
+    const names = result.fields.map((field) => field.fieldName);
+    expect(names).toContain("name");
+    expect(names).toContain("email");
+    expect(names).toContain("age");
+    expect(names).toContain("role");
+
+    const emailField = result.fields.find((field) => field.fieldName === "email");
+    expect(emailField?.format).toBe("email");
+    const roleField = result.fields.find((field) => field.fieldName === "role");
+    expect(roleField?.type).toBe("enum");
+    expect(roleField?.enumValues).toEqual(["admin", "user", "guest"]);
   });
 });

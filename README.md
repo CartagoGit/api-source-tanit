@@ -4,6 +4,37 @@ Generador **agnóstico** de colecciones Postman v2.1.0 a partir de las rutas de
 cualquier proyecto backend. **Cero configuración** en el 90% de los casos: detecta
 automáticamente el framework, las rutas y los schemas de validación.
 
+## Flujo universal
+
+1. Sitúate en la raíz del proyecto backend o pasa `--project-root /ruta/absoluta`.
+2. Genera la colección con `bun x --yes @postman-exporter/cli generate`.
+3. Si quieres comprobar qué va a salir sin escribir archivos, añade `--inspect`.
+4. Si quieres cambiar el nombre o la ruta del JSON, usa `--basename <nombre>` o `--output <ruta>`.
+5. Si el proyecto expone variables de entorno o varios entornos, añade `--envs local,dev,staging,prod`.
+
+Ejemplo universal desde cualquier carpeta:
+
+```bash
+bun x --yes @postman-exporter/cli generate \
+    --project-root /ruta/a/tu-proyecto \
+    --basename mi-api \
+    --envs local,dev,staging,prod
+```
+
+Salida esperada:
+
+- `build/mi-api.postman_collection.json`
+- `build/mi-api.local.postman_environment.json`
+- `build/mi-api.dev.postman_environment.json`
+- `build/mi-api.staging.postman_environment.json`
+- `build/mi-api.prod.postman_environment.json`
+
+Para validar sin escribir nada en disco:
+
+```bash
+bun x --yes @postman-exporter/cli generate --project-root /ruta/a/tu-proyecto --inspect
+```
+
 ---
 
 ## Inicio rápido por framework
@@ -137,13 +168,14 @@ bun x --yes @postman-exporter/cli generate --project-root . \
 
 ## Cómo importar en Postman
 
-1. Abre Postman → botón **Import** (esquina superior izquierda).
-2. Pestaña **Upload Files** → selecciona `build/<nombre>.postman_collection.json`.
-3. (Opcional) Repite con cada `build/<nombre>.<env>.postman_environment.json`.
-4. En el selector de **Environment** (esquina superior derecha) elige el environment
-   que corresponda (Local / Dev / etc.).
-5. La variable `{{token}}` se auto-rellena al ejecutar el endpoint de Login
-   (gracias al script de test inyectado automáticamente).
+1. Abre Postman.
+2. Haz clic en **Import** en la esquina superior izquierda.
+3. Elige **Upload Files**.
+4. Selecciona primero `build/<nombre>.postman_collection.json`.
+5. Si generaste environments, vuelve a pulsar **Import** y sube también cada archivo `build/<nombre>.<env>.postman_environment.json`.
+6. En el selector de **Environment** de la esquina superior derecha, elige el entorno que quieras usar.
+7. Ejecuta el request de login o auth correspondiente para que `{{token}}` quede relleno si el proyecto lo devuelve.
+8. Si prefieres no usar la interfaz web, ejecuta `bun x --yes @postman-exporter/cli open` y el sistema abrirá el JSON generado en la app instalada o en `https://app.postman.com/import`.
 
 ---
 
