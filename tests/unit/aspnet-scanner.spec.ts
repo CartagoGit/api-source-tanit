@@ -57,6 +57,9 @@ describe("ASP.NET scanner", () => {
     if (!post) return;
     const provider = new AspNetDataAnnotationsProvider();
     const result = await provider.resolve(post, match);
-    expect(result.fields.length).toBeGreaterThanOrEqual(0);
+    expect(result.fields.length).toBeGreaterThan(0);
+    const names = result.fields.map((f) => f.fieldName.toLowerCase());
+    expect(names).toContain("name");
+    expect(names).toContain("email");
   });
 });

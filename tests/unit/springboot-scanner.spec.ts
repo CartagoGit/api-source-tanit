@@ -57,6 +57,9 @@ describe("Spring Boot scanner", () => {
     if (!post) return;
     const provider = new SpringBootBeanValidationProvider();
     const result = await provider.resolve(post, match);
-    expect(result.fields.length).toBeGreaterThanOrEqual(0);
+    expect(result.fields.length).toBeGreaterThan(0);
+    const names = result.fields.map((f) => f.fieldName);
+    expect(names).toContain("name");
+    expect(names).toContain("email");
   });
 });
