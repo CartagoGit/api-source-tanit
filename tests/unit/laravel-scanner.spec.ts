@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { parseRoutesFile } from "../../service/scanners/laravel.scanner";
+import { LaravelFormRequestValidationProvider } from "../../service/scanners/laravel.scanner";
 
 /**
  * Helper: escribe un routes/api.php en un tmpdir y lo parsea.
@@ -181,4 +182,68 @@ Route::get('/health', fn() => ['ok' => true]);
       cleanup();
     }
   });
+
+  test("FormRequest de store() extrae campos reales y formatos", async () => {
+    const { mkdtemp, rm, copyFile, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const fixtureRoot = `${process.cwd()}/tests/fixtures/laravel-comprehensive`;
+    const dir = await mkdtemp(join(tmpdir(), "laravel-formrequest-"));
+    await mkdir(join(dir, "app/Http/Controllers"), { recursive: true });
+    await mkdir(join(dir, "app/Http/Requests"), { recursive: true });
+    await mkdir(join(dir, "routes"), { recursive: true });
+    await mkdir(join(dir, "artisan"), { recursive: true }).catch(() => undefined);
+    await copyFile(
+      join(fixtureRoot, "app/Http/Controllers/UserController.php"),
+      join(dir, "app/Http/Controllers/UserController.php"),
+    );
+    await copyFile(
+      join(fixtureRoot, "app/Http/Requests/CreateUserRequest.php"),
+      join(dir, "app/Http/Requests/CreateUserRequest.php"),
+    );
+    await writeFileIfNeeded(join(dir, "artisan"));
+    await writeFileIfNeeded(join(dir, "composer.json"), `{
+  "require": { "laravel/framework": "^11.0" }
+}`);
+    await writeFileIfNeeded(join(dir, "routes/api.php"), `<?php
+use Illuminate\\Support\\Facades\\Route;
+use App\\Http\\Controllers\\UserController;
+Route::resource('users', UserController::class);
+`);
+
+    try {
+      const routes = await parseRoutesFile("routes/api.php", ["api"], dir);
+      const post = routes.find((route) => route.method === "POST" && route.uri === "api/users");
+      expect(post).toBeDefined();
+      if (!post) return;
+
+      const provider = new LaravelFormRequestValidationProvider();
+      const result = await provider.resolve(post, {
+        framework: "laravel",
+        projectRoot: dir,
+        artifacts: [],
+      });
+
+      expect(result.fields.length).toBeGreaterThan(0);
+      const names = result.fields.map((field) => field.fieldName);
+      expect(names).toContain("name");
+      expect(names).toContain("email");
+      expect(names).toContain("age");
+      expect(names).toContain("role");
+
+      const emailField = result.fields.find((field) => field.fieldName === "email");
+      expect(emailField?.format).toBe("email");
+      const roleField = result.fields.find((field) => field.fieldName === "role");
+      expect(roleField?.type).toBe("enum");
+      expect(roleField?.enumValues).toEqual(["admin", "user", "guest"]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
+
+async function writeFileIfNeeded(path: string, content = ""): Promise<void> {
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(path, content, "utf8");
+}

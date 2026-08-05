@@ -47,6 +47,45 @@ describe("Flask scanner", () => {
     expect(routes.length).toBeGreaterThanOrEqual(13);
   });
 
+  test("BluePrints aplican url_prefix y métodos reales por módulo", async () => {
+    const match = await new FlaskProjectScanner().resolve(COMPREHENSIVE);
+    const routes = await new FlaskRouteScanner().scan(match);
+    const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+
+    expect(pairs).toContain("GET /api/users/");
+    expect(pairs).toContain("POST /api/users/");
+    expect(pairs).toContain("PATCH /api/orders/<int:id>/status");
+    expect(pairs).toContain("POST /api/auth/login");
+    expect(pairs).toContain("POST /api/auth/logout");
+  });
+
+  test("add_url_rule() también se parsea como ruta Flask", async () => {
+    const { mkdtemp, writeFile, rm, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const dir = await mkdtemp(join(tmpdir(), "flask-add-url-rule-"));
+    await mkdir(join(dir, "src"), { recursive: true });
+    await writeFile(
+      join(dir, "requirements.txt"),
+      "flask>=3.0\n",
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "app.py"),
+      `from flask import Flask\n\napp = Flask(__name__)\napp.add_url_rule('/health', view_func=lambda: {'ok': True}, methods=['GET'])\n`,
+      "utf8",
+    );
+
+    try {
+      const match = await new FlaskProjectScanner().resolve(dir);
+      const routes = await new FlaskRouteScanner().scan(match);
+      expect(routes.map((r) => `${r.method} ${r.uri}`)).toContain("GET /health");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test("multi-method @app.route con methods=[GET, POST] produce dos ParsedRoute", async () => {
     const match = await new FlaskProjectScanner().resolve(ROOT);
     const routes = await new FlaskRouteScanner().scan(match);

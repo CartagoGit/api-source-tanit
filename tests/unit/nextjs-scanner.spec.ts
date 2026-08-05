@@ -63,4 +63,40 @@ describe("Next.js scanner", () => {
     expect(names).toContain("name");
     expect(names).toContain("email");
   });
+
+  test("Pages Router /pages/api/*.ts también se detecta", async () => {
+    const { mkdtemp, writeFile, rm, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+
+    const dir = await mkdtemp(join(tmpdir(), "nextjs-pages-router-"));
+    await mkdir(join(dir, "pages/api/users"), { recursive: true });
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "tmp-next", dependencies: { next: "15.0.0" } }),
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "pages/api/users/index.ts"),
+      `export default function handler(req, res) { res.json([]); }`,
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "pages/api/users/[id].ts"),
+      `export default function handler(req, res) { res.json({ id: req.query.id }); }`,
+      "utf8",
+    );
+
+    try {
+      const match = await new NextJsProjectScanner().resolve(dir);
+      const routes = await new NextJsRouteScanner().scan(match);
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /api/users");
+      expect(pairs).toContain("POST /api/users");
+      expect(pairs).toContain("GET /api/users/:id");
+      expect(pairs).toContain("DELETE /api/users/:id");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });
