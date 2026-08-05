@@ -1,27 +1,207 @@
 # `@postman-exporter/cli`
 
-Generador **agnóstico** de colecciones Postman v2.1.0 a partir de las
-rutas y FormRequests de un proyecto Laravel. **Cero configuración** en
-el 90% de los casos: detecta nombre, baseUrl y prefijos automáticamente.
-
-Diseñado para funcionar como **paquete reusable** desde cualquier
-proyecto Laravel sin tocar nada del código fuente del paquete.
+Generador **agnóstico** de colecciones Postman v2.1.0 a partir de las rutas de
+cualquier proyecto backend. **Cero configuración** en el 90% de los casos: detecta
+automáticamente el framework, las rutas y los schemas de validación.
 
 ---
 
-## Quickstart
+## Inicio rápido por framework
+
+> **Pre-requisito**: [Bun](https://bun.sh) >= 1.0 instalado globalmente.
+> `curl -fsSL https://bun.sh/install | bash`
+
+### Laravel
 
 ```bash
-# 1. Desde la raíz de tu proyecto Laravel
-bun add @postman-exporter/cli
+# Desde la raíz del proyecto Laravel (donde está artisan)
+cd mi-proyecto-laravel
 
-# 2. Genera la colección (zero-config)
-bunx postman-from-routes generate
+bun x --yes @postman-exporter/cli generate
 
-# 3. Importar en Postman: build/<proyecto>.postman_collection.json
+# Salida: build/mi-proyecto.postman_collection.json
+# Importar en Postman → Import → Upload Files → selecciona el .json
 ```
 
-Output por defecto: `${projectRoot}/build/`. Contiene:
+Con environments (Local / Dev / Staging / Prod):
+
+```bash
+bun x --yes @postman-exporter/cli generate --envs local,dev,staging,prod
+# Salida extra: build/mi-proyecto.local.postman_environment.json, etc.
+```
+
+### Symfony
+
+```bash
+cd mi-proyecto-symfony   # donde está composer.json con symfony/framework-bundle
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-symfony.postman_collection.json
+```
+
+### FastAPI (Python)
+
+```bash
+cd mi-proyecto-fastapi   # donde está main.py con @app.get("/...")
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-fastapi.postman_collection.json
+```
+
+### Django / Django REST Framework
+
+```bash
+cd mi-proyecto-django    # donde está manage.py
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-django.postman_collection.json
+```
+
+### NestJS
+
+```bash
+cd mi-proyecto-nestjs    # donde está package.json con @nestjs/core
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-nestjs.postman_collection.json
+```
+
+### Express (con zod o Joi)
+
+```bash
+cd mi-proyecto-express   # donde está package.json con express
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-express.postman_collection.json
+```
+
+### Next.js (App Router)
+
+```bash
+cd mi-proyecto-nextjs    # donde está package.json con next
+
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# Salida: build/mi-proyecto-nextjs.postman_collection.json
+```
+
+### Flask (Python)
+
+```bash
+cd mi-proyecto-flask     # donde está requirements.txt con flask
+
+bun x --yes @postman-exporter/cli generate --project-root .
+```
+
+### Gin (Go)
+
+```bash
+cd mi-proyecto-gin       # donde está go.mod con github.com/gin-gonic/gin
+
+bun x --yes @postman-exporter/cli generate --project-root .
+```
+
+### Spring Boot (Java/Kotlin)
+
+```bash
+cd mi-proyecto-spring    # donde está pom.xml o build.gradle con spring-boot-starter-web
+
+bun x --yes @postman-exporter/cli generate --project-root .
+```
+
+### ASP.NET Core (C#)
+
+```bash
+cd mi-proyecto-aspnet    # donde está el .csproj con Microsoft.AspNetCore.App
+
+bun x --yes @postman-exporter/cli generate --project-root .
+```
+
+### OpenAPI / Swagger
+
+```bash
+# Si tienes un openapi.json, openapi.yaml o swagger.json en la raíz:
+bun x --yes @postman-exporter/cli generate --project-root .
+
+# O indicando el archivo explícitamente:
+bun x --yes @postman-exporter/cli generate --project-root . \
+    --basename mi-api
+```
+
+---
+
+## Cómo importar en Postman
+
+1. Abre Postman → botón **Import** (esquina superior izquierda).
+2. Pestaña **Upload Files** → selecciona `build/<nombre>.postman_collection.json`.
+3. (Opcional) Repite con cada `build/<nombre>.<env>.postman_environment.json`.
+4. En el selector de **Environment** (esquina superior derecha) elige el environment
+   que corresponda (Local / Dev / etc.).
+5. La variable `{{token}}` se auto-rellena al ejecutar el endpoint de Login
+   (gracias al script de test inyectado automáticamente).
+
+---
+
+## Alternativa: abrir directamente en Postman desde el terminal
+
+```bash
+bun x --yes @postman-exporter/cli open
+# Equivale a hacer doble-click en el .json desde el explorador de archivos
+```
+
+---
+
+## Usar la ruta del proyecto en vez del directorio de trabajo
+
+Si no estás en la raíz del proyecto:
+
+```bash
+bun x --yes @postman-exporter/cli generate \
+    --project-root /ruta/absoluta/a/mi-proyecto \
+    --output /tmp/mi-api.postman_collection.json
+```
+
+Con variable de entorno:
+
+```bash
+POSTMAN_PROJECT_ROOT=/ruta/a/mi-proyecto \
+    bun x --yes @postman-exporter/cli generate
+```
+
+---
+
+## Verificar qué detecta el scanner (sin generar archivos)
+
+```bash
+# Imprime framework, nº de rutas y schemas detectados; no escribe nada en disco.
+bun x --yes @postman-exporter/cli generate --project-root . --inspect
+
+# O usa el script de diagnóstico rápido:
+bun x --yes @postman-exporter/cli scan --project-root .
+```
+
+---
+
+## Uso como dependencia (no global)
+
+```bash
+# Instalar una vez en el proyecto
+bun add --dev @postman-exporter/cli
+
+# Añadir script en package.json
+# "scripts": { "postman": "postman-from-routes generate" }
+
+bun run postman
+```
+
+---
+
+
 
 - `<proyecto>.postman_collection.json` — colección Postman v2.1.0
 - `<proyecto>.<env>.postman_environment.json` — environments auto
