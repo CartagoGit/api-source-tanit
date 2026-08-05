@@ -79,7 +79,7 @@ describe("postman-exporter_test", () => {
     expect(result.content[0]?.text).toMatch(/Input inválido/i);
   });
 
-  test("corre la suite e2e y devuelve ok=true", { timeout: 30_000 }, async () => {
+  test("corre el smoke de todos los frameworks y devuelve ok=true", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = captureHandler(reg);
     const result = await handler({ withTypecheck: false });
@@ -92,21 +92,19 @@ describe("postman-exporter_test", () => {
     };
     expect(parsed.ok).toBe(true);
     expect(parsed.framework).toBeNull();
-    // Sin typecheck, NO debe aparecer el step typecheck.
     const names = parsed.steps.map((s) => s.name);
     expect(names).not.toContain("typecheck");
-    expect(names).toContain("test:e2e");
-    const e2eStep = parsed.steps.find((s) => s.name === "test:e2e");
-    expect(e2eStep?.ok).toBe(true);
-    // El summary debe mencionar el conteo de tests.
-    expect(e2eStep?.summary).toMatch(/\d+ pass/);
+    expect(names).toContain("test:smoke-all");
+    const smokeAllStep = parsed.steps.find((s) => s.name === "test:smoke-all");
+    expect(smokeAllStep?.ok).toBe(true);
+    expect(smokeAllStep?.summary).toMatch(/\d+ frameworks pass/);
     expect(parsed.durationMs).toBeGreaterThan(0);
   });
 
-  test("incluye typecheck por defecto", { timeout: 30_000 }, async () => {
+  test("incluye typecheck cuando se pide", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = captureHandler(reg);
-    const result = await handler({});
+    const result = await handler({ withTypecheck: true });
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
       steps: Array<{ name: string; ok: boolean }>;

@@ -1,0 +1,6 @@
+[test]
+# Límite de workers para que bun test no dispare N procesos paralelos
+# que revientan la RAM. Con 1 worker los ficheros de test se ejecutan
+# secuencialmente pero comparten la misma instancia de bun (0 spawn
+# overhead). Ajusta a 2 si tienes >16 GB libres.
+smol = true

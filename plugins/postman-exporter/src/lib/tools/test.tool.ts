@@ -190,7 +190,7 @@ export function buildTestToolRegistration(
     summary:
       "Corre los tests del proyecto postman-exporter y (opcionalmente) un smoke test por framework. " +
       "Devuelve un informe estructurado (ok + steps con duración y exit code) que un agente puede actuar sin re-correr.",
-    tags: ["postman", "test", "ci", "spawn"],
+    tags: ["postman", "test", "ci"],
     effects: ["spawn"],
     register: async (server) => {
       server.registerTool(
@@ -319,23 +319,45 @@ export function buildTestToolRegistration(
             }
           }
 
-          // Step 3: suite e2e completa (siempre).
-          const r = runBunCommand(["test", "tests/e2e/"], {
-            cwd: workspaceRoot,
-            timeoutMs: 120_000,
-          });
-          const summary = parseTestSummary(r.stderr || r.stdout);
-          const detail = r.ok
-            ? undefined
-            : extractFailureDetail(r.stderr, r.stdout);
-          pushStep(
-            "test:e2e",
-            r.ok,
-            r.exitCode,
-            r.durationMs,
-            summary,
-            detail,
-          );
+          // Step 3: smoke in-process de todos los mini-fixtures registrados.
+          // Sustituye el spawn de `bun test tests/e2e/` que creaba decenas de
+          // subprocesos bun paralelos y reventaba la RAM del host.
+          {
+            const smokeAllStart = Date.now();
+            const FRAMEWORKS_WITH_MINI = [
+              "laravel", "symfony", "express", "fastapi", "django",
+            ];
+            let passed = 0;
+            let failed = 0;
+            const failDetails: string[] = [];
+            const { existsSync } = await import("node:fs");
+            for (const fw of FRAMEWORKS_WITH_MINI) {
+              const fixtureName = FRAMEWORK_TO_SMOKE_FIXTURE[fw];
+              if (!fixtureName) continue;
+              const fixtureRoot = `${workspaceRoot}/tests/smoke-fixtures/${fixtureName}`;
+              if (!existsSync(fixtureRoot)) continue;
+              try {
+                const pair = await loadScannerPair(fw);
+                if (!pair) { failed++; failDetails.push(`${fw}: no scanner`); continue; }
+                const match = await pair.projectScanner.resolve(fixtureRoot);
+                const result = await runSmoke({ framework: fw, fixtureRoot, scanner: pair.routeScanner, match });
+                if (result.ok) { passed++; } else { failed++; failDetails.push(formatSmokeDetail(result)); }
+              } catch (err) {
+                failed++;
+                failDetails.push(`${fw}: ${err instanceof Error ? err.message : String(err)}`);
+              }
+            }
+            const allOk = failed === 0;
+            const summaryMsg = `${passed} frameworks pass${failed > 0 ? `, ${failed} fail` : ""}`;
+            pushStep(
+              "test:smoke-all",
+              allOk,
+              allOk ? 0 : 1,
+              Date.now() - smokeAllStart,
+              summaryMsg,
+              failDetails.length > 0 ? failDetails.join("\n") : undefined,
+            );
+          }
 
           const ok = steps.every((s) => s.ok);
           const out: ITestOutput = {
