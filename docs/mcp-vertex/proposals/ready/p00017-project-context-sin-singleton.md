@@ -2,7 +2,7 @@
 id: p00017
 title: "p00017 — IProjectContext explícito en vez del singleton de paths"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
@@ -11,12 +11,12 @@ related:
     - p00011 # no process.cwd() en tools — misma familia de problema
 ---
 
-> **Parcial, 2026-08-06.** El pipeline es reentrante vía
-> `withProjectRoot()`, que fija la raíz para la llamada y restaura al salir.
-> Eso arregla el bug de fondo (dos proyectos en el mismo proceso se pisaban)
-> y quita el manoseo de `process.env` de tests y gate. **S1 y S3 siguen
-> pendientes**: los servicios internos aún resuelven rutas por el singleton
-> en lugar de recibir un `IProjectContext` explícito en su firma.
+> **Cerrada 2026-08-06.** S1 y S2 hechos: `IProjectContext` +
+> `resolveProjectContext()` sin estado, con 21 tests. S3 parcial: el pipeline
+> resuelve el contexto una vez y lo pasa a route-parser, endpoint-discovery y
+> catalog-enricher; `loadProject()` y `summary.service` siguen leyendo el
+> singleton, cubiertos por `withProjectRoot()`. La reentrancia, que era el
+> efecto observable, está resuelta y verificada con 8 tests.
 
 # p00017 — `IProjectContext` explícito en vez del singleton de paths
 

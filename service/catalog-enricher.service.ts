@@ -15,6 +15,11 @@ import type {
   PostmanItem,
   PostmanRequest,
 } from "../contract/postman.interface.js";
+import type { IProjectContext } from "../contract/project-context.interface.js";
+import {
+  projectDirs,
+  toProjectRelative as toContextRelative,
+} from "./project-context.service.js";
 import { VARIANT_TAG } from "../contract/postman.constant.js";
 import {
   generateBodyVariants,
@@ -90,6 +95,7 @@ function guessNamesFromEndpoint(name: string): string[] {
 export async function enrichCatalogWithFormRequests(
   collection: PostmanCollection,
   formRequestByRoute: FormRequestIndex = new Map(),
+  context?: IProjectContext,
 ): Promise<EnrichmentStats> {
   const stats: EnrichmentStats = {
     bodyVariants: 0,
@@ -126,7 +132,7 @@ export async function enrichCatalogWithFormRequests(
 
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
-  const requestsRootValue = requestsDir();
+  const requestsRootValue = context ? projectDirs(context).requests : requestsDir();
   if (!requestsRootValue) {
     // Sin raíz determinable no se puede localizar ningún FormRequest,
     // pero eso no es motivo para abortar la generación: los endpoints ya
@@ -204,7 +210,7 @@ export async function enrichCatalogWithFormRequests(
     for (const guess of guessNamesFromEndpoint(item.name)) {
       const file = findFormRequestFile(guess);
       if (!file) continue;
-      const rel = toProjectRelative(file);
+      const rel = context ? toContextRelative(context, file) : toProjectRelative(file);
       const rules = await loadFormRequest(rel);
       if (rules) return rules;
     }

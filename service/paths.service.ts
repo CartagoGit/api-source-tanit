@@ -1,4 +1,12 @@
 /**
+ * Fachada con estado sobre `project-context.service.ts`.
+ *
+ * **Preferir `resolveProjectContext()` en código nuevo.** Este módulo
+ * cachea la raíz una vez por proceso, lo que sirve para el CLI —un
+ * proceso por proyecto— pero no para consumidores de vida larga. Existe
+ * porque ocho servicios y varios scripts aún lo usan; `withProjectRoot()`
+ * cubre el hueco mientras tanto (p00017).
+ *
  * Descubrimiento automático de rutas (agnóstico del proyecto).
  *
  * Resuelve siempre ABSOLUTAS, sin usar `__dirname` relativo. Dos raíces:

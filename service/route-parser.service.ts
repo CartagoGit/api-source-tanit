@@ -19,6 +19,8 @@
  * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
+import type { IProjectContext } from "../contract/project-context.interface.js";
+import { fromProjectRoot, projectDirs } from "./project-context.service.js";
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "./paths.service.js";
 import type { ParsedRoute as NeutralParsedRoute } from "../contract/scanner.interface.js";
@@ -47,11 +49,17 @@ export function stripComments(src: string): string {
 }
 
 /** Parsea un archivo de rutas Laravel y devuelve las rutas descubiertas. */
+/**
+ * `context` es opcional por compatibilidad: sin él se cae al singleton de
+ * `paths.service`, que resuelve la raíz una vez por proceso. Pásalo desde
+ * código nuevo (p00017).
+ */
 export async function parseRoutesFile(
   relPath: string,
   initialPrefix: string[] = [],
+  context?: IProjectContext,
 ): Promise<ParsedRoute[]> {
-  const abs = fromProjectRelative(relPath);
+  const abs = context ? fromProjectRoot(context, relPath) : fromProjectRelative(relPath);
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
@@ -128,13 +136,14 @@ export async function parseRoutesFile(
  */
 export async function parseAllRoutes(
   filePrefixes: Record<string, string[]> = {},
+  context?: IProjectContext,
 ): Promise<ParsedRoute[]> {
   // Recorremos `routes/` directamente: cualquier archivo PHP es un
   // archivo de rutas. Si está en `filePrefixes`, usamos esos prefijos;
   // si no, asumimos el prefijo `api/` que añade Laravel por defecto
   // en `RouteServiceProvider::mapApiRoutes()`.
   const fs = await import("node:fs/promises");
-  const ROUTES_DIR = routesDir();
+  const ROUTES_DIR = context ? projectDirs(context).routes : routesDir();
   if (!ROUTES_DIR) return [];
   let entries: string[];
   try {
@@ -147,7 +156,7 @@ export async function parseAllRoutes(
   for (const f of phpFiles) {
     const rel = `routes/${f}`;
     const prefixes = filePrefixes[rel] ?? ["api"];
-    const parsed = await parseRoutesFile(rel, prefixes);
+    const parsed = await parseRoutesFile(rel, prefixes, context);
     out.push(...parsed);
   }
   return out;

@@ -10,6 +10,7 @@
  * Si se pasa un catálogo manual, se usa como **override** (misma
  * method+uri gana el manual: body, name, folder, description).
  */
+import type { IProjectContext } from "../contract/project-context.interface.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { EndpointSpec } from "../contract/postman.interface.js";
@@ -340,13 +341,14 @@ export function mergeWithManual(
 export async function discoverEndpoints(
   config: ProjectConfig,
   manualOverrides: EndpointSpec[] = [],
+  context?: IProjectContext,
 ): Promise<{
   specs: EndpointSpec[];
   routes: ParsedRoute[];
   withFormRequest: number;
   withoutFormRequest: number;
 }> {
-  const routes = await parseAllRoutes(config.filePrefixes);
+  const routes = await parseAllRoutes(config.filePrefixes, context);
   const rulesCache = new Map<string, FormRequestRules | null>();
   const auto: EndpointSpec[] = [];
   let withFr = 0;

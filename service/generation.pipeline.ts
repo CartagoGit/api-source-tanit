@@ -22,6 +22,7 @@
  */
 import type { EndpointSpec, PostmanCollection } from "../contract/postman.interface.js";
 import type { ProjectConfig } from "../contract/project-config.interface.js";
+import type { IProjectContext } from "../contract/project-context.interface.js";
 import type { IProjectMatch, ParsedRoute } from "../contract/scanner.interface.js";
 import { buildSpecsFromScanner } from "./adapters/parsed-route-to-spec.adapter.js";
 import {
@@ -38,6 +39,7 @@ import {
 } from "./param-inferrer.service.js";
 import { loadProject } from "./project-loader.service.js";
 import { withProjectRoot } from "./paths.service.js";
+import { resolveProjectContext } from "./project-context.service.js";
 import { defaultOrchestrator } from "./scanner-registry.js";
 
 /** Métricas del descubrimiento, para informes y tests. */
@@ -61,6 +63,8 @@ export interface IGenerationResult {
   readonly origin: "scanner" | "legacy";
   /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */
   readonly authFlow: IAuthFlow | null;
+  /** Contexto resuelto del proyecto. */
+  readonly context: IProjectContext;
   readonly metrics: IGenerationMetrics;
 }
 
@@ -82,17 +86,20 @@ export async function generateCollection(
   projectRoot: string,
   options: IGenerationOptions = {},
 ): Promise<IGenerationResult> {
-  // `loadProject()` y varios servicios resuelven rutas a través del
-  // singleton de `paths.service`. Sin este scope, generar el proyecto A
-  // y luego el B en el mismo proceso le daba a B la config de A.
-  return withProjectRoot(projectRoot, () => buildFor(projectRoot, options));
+  // El contexto se resuelve UNA vez y se pasa hacia abajo. El
+  // `withProjectRoot` sigue envolviendo la llamada porque `loadProject()`
+  // y algún servicio todavía leen el singleton de `paths.service`
+  // (p00017 S3, en curso); en cuanto todos reciban contexto, sobra.
+  const context = resolveProjectContext({ projectRoot });
+  return withProjectRoot(projectRoot, () => buildFor(context, options));
 }
 
 async function buildFor(
-  projectRoot: string,
+  context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
-  const discovery = await discoverSpecs(projectRoot);
+  const projectRoot = context.projectRoot;
+  const discovery = await discoverSpecs(context);
 
   // Inferencia agnóstica de body/query para lo que no traiga reglas.
   const specs = [...discovery.specs];
@@ -132,6 +139,7 @@ async function buildFor(
     match: discovery.match,
     origin: discovery.origin,
     authFlow,
+    context,
     metrics: {
       routes: discovery.routes.length,
       specs: specs.length,
@@ -160,9 +168,9 @@ interface IDiscovery {
  * legacy solo entra cuando el orchestrator no reconoce el proyecto, y es
  * una heurística zero-config sobre `routes/`.
  */
-async function discoverSpecs(projectRoot: string): Promise<IDiscovery> {
+async function discoverSpecs(context: IProjectContext): Promise<IDiscovery> {
   const { match, scanner, validation } = await defaultOrchestrator().detectProject(
-    projectRoot,
+    context.projectRoot,
   );
   const { config, manualEndpoints } = await loadProject();
 
@@ -179,7 +187,7 @@ async function discoverSpecs(projectRoot: string): Promise<IDiscovery> {
     };
   }
 
-  const legacy = await discoverEndpoints(config, [...manualEndpoints]);
+  const legacy = await discoverEndpoints(config, [...manualEndpoints], context);
   return {
     specs: legacy.specs,
     routes: legacy.routes,
