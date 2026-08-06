@@ -64,37 +64,37 @@ describe("Django — comprehensive fixture", () => {
   test("encuentra los endpoints por method+uri (Django paths → {{id}})", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     // Health (FBV en views.py raíz, sin serializer).
-    expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/health/")).not.toBeNull();
     // Users — ListCreateAPIView → {GET, POST}.
-    expect(findEndpoint(collection, "GET", "/api/users")).not.toBeNull();
-    expect(findEndpoint(collection, "POST", "/api/users")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/users/")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/users/")).not.toBeNull();
     // Users — RetrieveUpdateDestroyAPIView → {GET, PUT, PATCH, DELETE}.
-    expect(findEndpoint(collection, "GET", "/api/users/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "PATCH", "/api/users/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "DELETE", "/api/users/{{id}}")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/users/{{id}}/")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}/")).not.toBeNull();
+    expect(findEndpoint(collection, "PATCH", "/api/users/{{id}}/")).not.toBeNull();
+    expect(findEndpoint(collection, "DELETE", "/api/users/{{id}}/")).not.toBeNull();
     // Users — UpdateAPIView (address) → {PUT, PATCH}.
-    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}/address")).not.toBeNull();
-    expect(findEndpoint(collection, "PATCH", "/api/users/{{id}}/address")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}/address/")).not.toBeNull();
+    expect(findEndpoint(collection, "PATCH", "/api/users/{{id}}/address/")).not.toBeNull();
     // Orders — ListCreateAPIView → {GET, POST}.
-    expect(findEndpoint(collection, "GET", "/api/orders")).not.toBeNull();
-    expect(findEndpoint(collection, "POST", "/api/orders")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/orders/")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/orders/")).not.toBeNull();
     // Orders — RetrieveAPIView → {GET}.
-    expect(findEndpoint(collection, "GET", "/api/orders/{{id}}")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/orders/{{id}}/")).not.toBeNull();
     // Orders — UpdateAPIView (status) → {PUT, PATCH}.
-    expect(findEndpoint(collection, "PUT", "/api/orders/{{id}}/status")).not.toBeNull();
-    expect(findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/orders/{{id}}/status/")).not.toBeNull();
+    expect(findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status/")).not.toBeNull();
     // Orders — FBV cancel_order con @api_view(["POST"]) → {POST}.
-    expect(findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel/")).not.toBeNull();
     // Auth — FBV @api_view(["POST"]) → {POST} cada una.
-    expect(findEndpoint(collection, "POST", "/api/auth/login")).not.toBeNull();
-    expect(findEndpoint(collection, "POST", "/api/auth/refresh")).not.toBeNull();
-    expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/auth/login/")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/auth/refresh/")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/auth/logout/")).not.toBeNull();
   });
 
   test("POST /api/users tiene body params desde UserSerializer (UserListCreateView)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "POST", "/api/users");
+    const ep = findEndpoint(collection, "POST", "/api/users/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("name");
@@ -105,7 +105,7 @@ describe("Django — comprehensive fixture", () => {
 
   test("PUT /api/users/{id} usa UpdateUserSerializer (UserDetailView), NO UserSerializer", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}");
+    const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("name");
@@ -117,14 +117,14 @@ describe("Django — comprehensive fixture", () => {
 
   test("DELETE /api/users/{id} no tiene body (RetrieveUpdateDestroyAPIView → DELETE sin serializer write)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "DELETE", "/api/users/{{id}}");
+    const ep = findEndpoint(collection, "DELETE", "/api/users/{{id}}/");
     expect(ep).not.toBeNull();
     expect(ep?.request?.body).toBeUndefined();
   });
 
   test("PUT /api/users/{id}/address usa AddressSerializer (street, city, country, postal_code)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address");
+    const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("street");
@@ -135,7 +135,7 @@ describe("Django — comprehensive fixture", () => {
 
   test("POST /api/orders usa OrderSerializer (customer_name, customer_email, amount, currency)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "POST", "/api/orders");
+    const ep = findEndpoint(collection, "POST", "/api/orders/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("customer_name");
@@ -146,7 +146,7 @@ describe("Django — comprehensive fixture", () => {
 
   test("PATCH /api/orders/{id}/status usa UpdateOrderStatusSerializer (solo status)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status");
+    const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     // Solo `status` (ChoiceField → enum) — NO customer_name ni amount.
@@ -157,7 +157,7 @@ describe("Django — comprehensive fixture", () => {
 
   test("POST /api/orders/{id}/cancel (FBV sin serializer) NO usa OrderSerializer de la view vecina", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel");
+    const ep = findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel/");
     expect(ep).not.toBeNull();
     // Si por error cogiese OrderSerializer tendría customer_name/amount.
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
@@ -168,7 +168,7 @@ describe("Django — comprehensive fixture", () => {
 
 test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convención", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "POST", "/api/auth/login");
+    const ep = findEndpoint(collection, "POST", "/api/auth/login/");
     expect(ep).not.toBeNull();
     // FBV sin `serializer_class` explícito; el provider busca
     // `LoginSerializer` por convención (login → Login).
@@ -179,7 +179,7 @@ test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convenci
 
   test("POST /api/auth/logout (FBV) infiere body desde LogoutSerializer", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const ep = findEndpoint(collection, "POST", "/api/auth/logout");
+    const ep = findEndpoint(collection, "POST", "/api/auth/logout/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("refresh_token");
@@ -187,7 +187,7 @@ test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convenci
 
   test("path params Django <int:id> se convierten a {{id}} en todas las URIs", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    const allEps = findAllEndpoints(collection, "GET", "/api/users/{{id}}");
+    const allEps = findAllEndpoints(collection, "GET", "/api/users/{{id}}/");
     expect(allEps.length).toBeGreaterThan(0);
     for (const ep of allEps) {
       const raw = ep?.request?.url?.raw ?? "";

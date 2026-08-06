@@ -6,6 +6,28 @@ import {
   SymfonyAttributesValidationProvider,
 } from "../../service/scanners/symfony.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "symfony",
+  fixtureRoot: comprehensiveFixture("symfony"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "composer.json": '{"require":{"symfony/framework-bundle":"^7.0"}}',
+    "config/routes.yaml": 'vivo:\n  path: /vivo\n  controller: App\\\\Controller\\\\HealthController::check\n  methods: [GET]\n',
+    "src/Controller/HealthController.php": "<?php\nnamespace App\\\\Controller;\nuse Symfony\\\\Component\\\\Routing\\\\Attribute\\\\Route;\nclass HealthController\n{\n    #[Route('/vivo', methods: ['GET'])]\n    public function check() {}\n}\n",
+  },
+  commentedEndpoint: {
+    file: 'src/Controller/HealthController.php',
+    source: "// #[Route('/endpoint-comentado', methods: ['GET'])]",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/symfony-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/symfony-comprehensive");
 

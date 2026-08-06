@@ -2,13 +2,17 @@
 id: p00016
 title: "p00016 — suites homogéneas por framework con mocks reutilizables"
 kind: test
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
 related:
     - p00009 # vitest suite core
 ---
+
+> **Cerrada 2026-08-06.** S1 y S2 hechos: `scanner-fixture.ts` y
+> `describeScannerContract` aplicado a los 12 scanners (+147 tests). S3 (contrato
+> equivalente sobre la colección en los e2e) queda pendiente.
 
 # p00016 — suites homogéneas por framework con mocks reutilizables
 

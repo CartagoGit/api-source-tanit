@@ -6,6 +6,31 @@ import {
   DjangoSerializerProvider,
 } from "../../service/scanners/django.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "django",
+  fixtureRoot: comprehensiveFixture("django"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+    // Django declara la barra final a propósito: con APPEND_SLASH (el
+    // defecto) llamar sin ella devuelve 301 y un POST pierde el body.
+    trailingSlash: true,
+  },
+  minimalProject: {
+    "manage.py": '#!/usr/bin/env python\n',
+    "requirements.txt": 'django\n',
+    "app/urls.py": "from django.urls import path\nfrom . import views\n\nurlpatterns = [\n    path('vivo/', views.vivo),\n]\n",
+  },
+  commentedEndpoint: {
+    file: 'app/urls.py',
+    source: "# path('endpoint-comentado/', views.x),",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/django-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/django-comprehensive");
 

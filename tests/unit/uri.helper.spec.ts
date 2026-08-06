@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   normalizeForComparison,
   stripApiPrefix,
+  joinRoutePath,
 } from "../../helper/uri.helper";
 
 describe("uri.helper", () => {
@@ -61,5 +62,46 @@ describe("uri.helper", () => {
       expect(stripApiPrefix("users")).toBe("users");
       expect(stripApiPrefix("/users")).toBe("/users");
     });
+  });
+});
+
+describe("joinRoutePath", () => {
+  test("une prefijo y path", () => {
+    expect(joinRoutePath("/api", "users")).toBe("/api/users");
+  });
+
+  test("colapsa las barras repetidas", () => {
+    expect(joinRoutePath("/api/", "/users")).toBe("/api/users");
+  });
+
+  // El bug: `@Controller("orders")` + `@Get()` producía "orders/", que en
+  // la colección salía como un endpoint distinto de "orders".
+  test("un path vacío no deja barra final", () => {
+    expect(joinRoutePath("orders", "")).toBe("orders");
+    expect(joinRoutePath("/api/users", "")).toBe("/api/users");
+  });
+
+  // Django la declara a propósito: con APPEND_SLASH, llamar sin ella
+  // devuelve 301 y un POST pierde el body.
+  test("conserva la barra final si el último segmento la declaraba", () => {
+    expect(joinRoutePath("api", "users/")).toBe("api/users/");
+    expect(joinRoutePath("/api", "users/<int:id>/")).toBe("/api/users/<int:id>/");
+  });
+
+  test("un `/` inicial marca la ruta como absoluta", () => {
+    expect(joinRoutePath("/", "api", "users")).toBe("/api/users");
+  });
+
+  test("sin `/` inicial la ruta queda relativa", () => {
+    expect(joinRoutePath("api", "users")).toBe("api/users");
+  });
+
+  test("ignora los segmentos vacíos intermedios", () => {
+    expect(joinRoutePath("/api", "", "users")).toBe("/api/users");
+  });
+
+  test("sin segmentos útiles devuelve la raíz", () => {
+    expect(joinRoutePath("", "")).toBe("/");
+    expect(joinRoutePath("/")).toBe("/");
   });
 });

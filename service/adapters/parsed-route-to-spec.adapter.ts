@@ -56,7 +56,10 @@ export function toPostmanUri(laravelUri: string): string {
   // El scanner debe emitir la URI TAL COMO debe aparecer en Postman.
   if (!u.startsWith("/")) u = "/" + u;
   u = u.replace(/\/+/g, "/");
-  if (u.length > 1 && u.endsWith("/")) u = u.slice(0, -1);
+  // La barra final se CONSERVA: en Django (`APPEND_SLASH = True`, que es
+  // el defecto) `/users` redirige 301 a `/users/`, y un POST pierde el
+  // body en la redirección. Es responsabilidad del scanner emitir la URI
+  // tal como debe llamarse.
   return u;
 }
 

@@ -20,6 +20,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -198,7 +199,7 @@ async function parseJavaFile(
       const args = m[2] ?? "";
       const paths = extractPaths(args);
       const subPath = paths[0] ?? "";
-      const fullPath = (classPrefix + "/" + subPath).replace(/\/+/g, "/");
+      const fullPath = joinRoutePath(classPrefix, subPath);
       let methods: string[] = [];
       switch (decorator) {
         case "GetMapping":

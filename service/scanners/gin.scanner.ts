@@ -19,6 +19,8 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { stripJsComments } from "../../helper/source-scan.helper.js";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -164,12 +166,16 @@ async function parseGoFile(
   _projectRoot: string,
 ): Promise<ParsedRoute[]> {
   const out: ParsedRoute[] = [];
-  let raw: string;
+  let source: string;
   try {
-    raw = await readFile(absPath, "utf8");
+    source = await readFile(absPath, "utf8");
   } catch {
     return [];
   }
+  // Sin esto, una ruta comentada acababa en la colección del usuario.
+  // Go comparte la sintaxis de comentarios de JS/TS.
+  const raw = stripJsComments(source);
+
   // 1) Detectar prefixes de Groups.
   const groupPrefix = new Map<string, string>();
   GROUP_RE.lastIndex = 0;
@@ -187,7 +193,7 @@ async function parseGoFile(
     const path = m[3] ?? "";
     if (!HTTP_METHODS.includes(method)) continue;
     const prefix = groupPrefix.get(ident) ?? "";
-    const fullPath = (prefix + path).replace(/\/+/g, "/");
+    const fullPath = joinRoutePath(prefix, path);
     out.push({
       method: method.toUpperCase(),
       uri: fullPath,

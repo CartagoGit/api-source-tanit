@@ -6,6 +6,27 @@ import {
   AspNetDataAnnotationsProvider,
 } from "../../service/scanners/aspnet.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "aspnet",
+  fixtureRoot: comprehensiveFixture("aspnet"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "demo.csproj": '<Project><ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup></Project>',
+    "Controllers/VivoController.cs": 'using Microsoft.AspNetCore.Mvc;\n\n[ApiController]\n[Route("vivo")]\npublic class VivoController : ControllerBase\n{\n    [HttpGet]\n    public IActionResult List() => Ok();\n}\n',
+  },
+  commentedEndpoint: {
+    file: 'Controllers/VivoController.cs',
+    source: '    // [HttpGet("endpoint-comentado")]',
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/aspnet-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/aspnet-comprehensive");
 

@@ -5,6 +5,27 @@ import {
   FlaskRouteScanner,
 } from "../../service/scanners/flask.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "flask",
+  fixtureRoot: comprehensiveFixture("flask"),
+  capabilities: {
+    validation: false,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "requirements.txt": 'flask\n',
+    "app.py": "from flask import Flask\napp = Flask(__name__)\n\n@app.route('/vivo')\ndef vivo():\n    return {}\n",
+  },
+  commentedEndpoint: {
+    file: 'app.py',
+    source: "# @app.route('/endpoint-comentado')",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/flask-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/flask-comprehensive");
 
@@ -52,8 +73,8 @@ describe("Flask scanner", () => {
     const routes = await new FlaskRouteScanner().scan(match);
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
 
-    expect(pairs).toContain("GET /api/users/");
-    expect(pairs).toContain("POST /api/users/");
+    expect(pairs).toContain("GET /api/users");
+    expect(pairs).toContain("POST /api/users");
     expect(pairs).toContain("PATCH /api/orders/<int:id>/status");
     expect(pairs).toContain("POST /api/auth/login");
     expect(pairs).toContain("POST /api/auth/logout");

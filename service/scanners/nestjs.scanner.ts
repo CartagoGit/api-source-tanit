@@ -18,6 +18,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -170,7 +171,7 @@ export class NestJsRouteScanner implements IRouteScanner {
         const method = (m[1] ?? "").toLowerCase();
         const subPath = m[2] ?? "";
         if (!HTTP_METHODS.includes(method)) continue;
-        const fullPath = (controllerPath + "/" + subPath).replace(/\/+/g, "/");
+        const fullPath = joinRoutePath(controllerPath, subPath);
         // Buscar la signature del método en líneas siguientes.
         let methodName = "";
         for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {

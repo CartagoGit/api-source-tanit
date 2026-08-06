@@ -6,6 +6,19 @@ import {
   OpenApiValidationProvider,
 } from "../../service/scanners/openapi.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "openapi",
+  fixtureRoot: comprehensiveFixture("openapi"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: false,
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/openapi-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/openapi-comprehensive");
 

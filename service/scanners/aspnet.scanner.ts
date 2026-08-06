@@ -18,6 +18,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -178,7 +179,7 @@ async function parseCsFile(
       const decorator = m[1] ?? "";
       const args = m[2] ?? "";
       const subPath = extractPath(args);
-      const fullPath = ("/" + classPrefix + "/" + subPath).replace(/\/+/g, "/");
+      const fullPath = joinRoutePath("/", classPrefix, subPath);
       const method = decorator.replace("Http", "").toLowerCase();
       if (!HTTP_METHODS.includes(method)) continue;
       // Buscar signature del método.

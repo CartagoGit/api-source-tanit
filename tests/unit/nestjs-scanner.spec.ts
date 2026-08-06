@@ -5,6 +5,27 @@ import {
   NestJsRouteScanner,
 } from "../../service/scanners/nestjs.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "nestjs",
+  fixtureRoot: comprehensiveFixture("nestjs"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "package.json": '{"dependencies":{"@nestjs/core":"^10.0.0"}}',
+    "src/app.controller.ts": 'import { Controller, Get } from "@nestjs/common";\n@Controller("vivo")\nexport class AppController {\n  @Get()\n  list() { return []; }\n}\n',
+  },
+  commentedEndpoint: {
+    file: 'src/app.controller.ts',
+    source: "// @Get('endpoint-comentado')",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/nestjs-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/nestjs-comprehensive");
 

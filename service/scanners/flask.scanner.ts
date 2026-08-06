@@ -18,6 +18,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -221,7 +222,7 @@ async function parseFlaskFile(
       // Solo aceptar `app`, `bp`, `blueprint` o cualquier `<name>_bp` /
       // `<name>_blueprint` como idents.
       if (!/^(app|bp|blueprint|api)$/i.test(ident) && !/^[\w]+_(bp|blueprint)$/i.test(ident)) continue;
-      const fullPath = (bpPrefix + path).replace(/\/+/g, "/");
+      const fullPath = joinRoutePath(bpPrefix, path);
       // Buscar signature del método abajo.
       let methodName = "";
       for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
@@ -250,7 +251,7 @@ async function parseFlaskFile(
       const methodsList = m[2] ?? "";
       const methods = parseMethods(methodsList);
       if (methods.length === 0) methods.push("get");
-      const fullPath = (bpPrefix + path).replace(/\/+/g, "/");
+      const fullPath = joinRoutePath(bpPrefix, path);
       for (const method of methods) {
         out.push({
           method: method.toUpperCase(),

@@ -6,6 +6,27 @@ import {
   SpringBootBeanValidationProvider,
 } from "../../service/scanners/springboot.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "springboot",
+  fixtureRoot: comprehensiveFixture("springboot"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "pom.xml": '<project><dependencies><dependency><artifactId>spring-boot-starter-web</artifactId></dependency></dependencies></project>',
+    "src/main/java/com/example/VivoController.java": 'package com.example;\n\nimport org.springframework.web.bind.annotation.*;\n\n@RestController\n@RequestMapping("/vivo")\npublic class VivoController {\n    @GetMapping\n    public String list() { return ""; }\n}\n',
+  },
+  commentedEndpoint: {
+    file: 'src/main/java/com/example/VivoController.java',
+    source: '    // @GetMapping("/endpoint-comentado")',
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/springboot-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/springboot-comprehensive");
 

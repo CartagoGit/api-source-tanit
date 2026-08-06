@@ -3,6 +3,28 @@ import { describe, expect, test } from "bun:test";
 import { parseRoutesFile } from "../../service/scanners/laravel.scanner";
 import { LaravelFormRequestValidationProvider } from "../../service/scanners/laravel.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "laravel",
+  fixtureRoot: comprehensiveFixture("laravel"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "artisan": '',
+    "composer.json": '{"require":{"laravel/framework":"^11.0"}}',
+    "routes/api.php": "<?php\nuse Illuminate\\\\Support\\\\Facades\\\\Route;\nRoute::get('/vivo', fn () => 1);\n",
+  },
+  commentedEndpoint: {
+    file: 'routes/api.php',
+    source: "// Route::get('/endpoint-comentado', fn () => 1);",
+  },
+});
+
 /**
  * Helper: escribe un routes/api.php en un tmpdir y lo parsea.
  * Devuelve las rutas + un cleanup function.

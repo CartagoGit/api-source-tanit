@@ -6,6 +6,27 @@ import {
   ExpressZodValidationProvider,
 } from "../../service/scanners/express.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "express",
+  fixtureRoot: comprehensiveFixture("express"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "package.json": '{"dependencies":{"express":"^4.0.0"}}',
+    "server.js": "const app = require('express')();\napp.get('/vivo', (req, res) => res.json({}));\n",
+  },
+  commentedEndpoint: {
+    file: 'server.js',
+    source: "// app.get('/endpoint-comentado', (req, res) => res.json({}));",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/express-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/express-comprehensive");
 

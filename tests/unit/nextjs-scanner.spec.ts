@@ -6,6 +6,27 @@ import {
   NextJsZodProvider,
 } from "../../service/scanners/nextjs.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "nextjs",
+  fixtureRoot: comprehensiveFixture("nextjs"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "package.json": '{"dependencies":{"next":"^14.0.0"}}',
+    "app/api/vivo/route.ts": "export async function GET() { return Response.json({}); }\n",
+  },
+  commentedEndpoint: {
+    file: "app/api/vivo/route.ts",
+    source: "// export async function POST() { return Response.json({ path: 'endpoint-comentado' }); }",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/nextjs-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/nextjs-comprehensive");
 

@@ -6,6 +6,27 @@ import {
   FastApiPydanticValidationProvider,
 } from "../../service/scanners/fastapi.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "fastapi",
+  fixtureRoot: comprehensiveFixture("fastapi"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "requirements.txt": 'fastapi\n',
+    "main.py": "from fastapi import FastAPI\napp = FastAPI()\n\n@app.get('/vivo')\ndef vivo():\n    return {}\n",
+  },
+  commentedEndpoint: {
+    file: 'main.py',
+    source: "# @app.get('/endpoint-comentado')",
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/fastapi-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/fastapi-comprehensive");
 

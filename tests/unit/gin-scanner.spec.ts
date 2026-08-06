@@ -6,6 +6,27 @@ import {
   GinBindingProvider,
 } from "../../service/scanners/gin.scanner";
 
+import { describeScannerContract } from "../helpers/scanner-contract";
+import { comprehensiveFixture } from "../helpers/scanner-fixture";
+
+describeScannerContract({
+  framework: "gin",
+  fixtureRoot: comprehensiveFixture("gin"),
+  capabilities: {
+    validation: true,
+    pathParams: true,
+    stripsComments: true,
+  },
+  minimalProject: {
+    "go.mod": 'module demo\n\nrequire github.com/gin-gonic/gin v1.9.1\n',
+    "cmd/server/main.go": 'package main\n\nimport "github.com/gin-gonic/gin"\n\nfunc main() {\n\tr := gin.Default()\n\tr.GET("/vivo", nil)\n\tr.Run()\n}\n',
+  },
+  commentedEndpoint: {
+    file: 'cmd/server/main.go',
+    source: '\t// r.GET("/endpoint-comentado", nil)',
+  },
+});
+
 const ROOT = resolve(import.meta.dir, "../../tests/smoke-fixtures/gin-mini");
 const COMPREHENSIVE = resolve(import.meta.dir, "../../tests/fixtures/gin-comprehensive");
 

@@ -1,9 +1,21 @@
 {
   "framework": "aspnet",
   "routes": [
-    { "method": "DELETE", "uri": "/api/users/{id}" },
-    { "method": "GET",    "uri": "/api/users/" },
-    { "method": "GET",    "uri": "/api/users/{id}" },
-    { "method": "POST",   "uri": "/api/users/" }
+    {
+      "method": "DELETE",
+      "uri": "/api/users/{id}"
+    },
+    {
+      "method": "GET",
+      "uri": "/api/users"
+    },
+    {
+      "method": "GET",
+      "uri": "/api/users/{id}"
+    },
+    {
+      "method": "POST",
+      "uri": "/api/users"
+    }
   ]
 }
