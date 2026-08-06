@@ -19,7 +19,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
-import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
+import { collectFilesFrom } from "../../helpers/fs-walk.helper.js";
 import {
   parsePydanticModels,
   pydanticFieldToSpec,
@@ -31,7 +31,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 const HTTP_METHODS = [
   "get",

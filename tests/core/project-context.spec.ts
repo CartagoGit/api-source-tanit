@@ -6,9 +6,9 @@ import {
   projectDirs,
   resolveProjectContext,
   toProjectRelative,
-} from "../../service/project-context.service";
+} from "../../services/project-context.service";
 import { createTempProject } from "../helpers/scanner-fixture";
-import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../contracts/postman.constant";
 
 const ctx = (projectRoot: string) => resolveProjectContext({ projectRoot });
 

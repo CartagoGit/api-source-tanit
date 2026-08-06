@@ -16,7 +16,7 @@ related:
 The contract was implemented with a different (and cleaner) shape than
 proposed here. Instead of a single `IRouterAdapter` with `detect()` and
 `discover()`, the codebase uses three smaller interfaces in
-[contract/scanner.interface.ts](../../contract/scanner.interface.ts):
+[contract/scanner.interface.ts](../../contracts/scanner.interface.ts):
 
 - `IProjectScanner` — declaratively scores a project root as a candidate
   (e.g. `composer.json` + `artisan` for Laravel, `requirements.txt` +
@@ -29,9 +29,9 @@ proposed here. Instead of a single `IRouterAdapter` with `detect()` and
   `FormRequest`, DRF serializers, class-validator DTOs, OpenAPI
   `requestBody`).
 
-Twelve scanners ship in `service/scanners/`: laravel, symfony, express,
+Twelve scanners ship in `services/scanners/`: laravel, symfony, express,
 fastapi, nestjs, django, flask, nextjs, gin, springboot, aspnet, openapi.
-The dispatcher in `service/discovery.orchestrator.ts` runs each
+The dispatcher in `services/discovery.orchestrator.ts` runs each
 `IProjectScanner.detect()` and picks the highest-scoring match.
 
 The per-framework e2e fixtures (`tests/e2e/<framework>-comprehensive.test.ts`)
@@ -95,7 +95,7 @@ adapter #2.
 
 ## design
 
-### Core types (new file `contract/router.interface.ts`)
+### Core types (new file `contracts/router.interface.ts`)
 
 ```ts
 export interface IRouterAdapter {
@@ -145,9 +145,9 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `contract/router.interface.ts` (new),
-  `service/router-dispatcher.service.ts` (new),
-  `service/endpoint-discovery.service.ts` (refactor to call dispatcher).
+- **Files**: `contracts/router.interface.ts` (new),
+  `services/router-dispatcher.service.ts` (new),
+  `services/endpoint-discovery.service.ts` (refactor to call dispatcher).
 - The dispatcher exposes a single public function
   `discoverEndpoints(config, manual)` that runs the same flow as today
   but delegates parsing to the selected adapter.
@@ -164,9 +164,9 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/router-adapters/laravel.parser.ts` (new,
-  extracted from the existing `service/route-parser.service.ts`).
-- `service/route-parser.service.ts` becomes a thin facade that
+- **Files**: `services/router-adapters/laravel.parser.ts` (new,
+  extracted from the existing `services/route-parser.service.ts`).
+- `services/route-parser.service.ts` becomes a thin facade that
   delegates to the new adapter (back-compat for any direct callers).
 - **Acceptance**:
   - `bun test tests/unit/router-adapters/laravel.parser.spec.ts` (new).
@@ -178,7 +178,7 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/router-adapters/symfony.parser.ts` (new).
+- **Files**: `services/router-adapters/symfony.parser.ts` (new).
 - Parses `config/routes.yaml` (Yaml) or `config/routes.xml` (Xml) into
   `DiscoveredRoute[]`. Only handles `path:` + `controller:` + `methods:`
   for now; the annotation-based routing (`#[Route('/api/users')]`)
@@ -193,7 +193,7 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/router-adapters/express.parser.ts` (new).
+- **Files**: `services/router-adapters/express.parser.ts` (new).
 - Reads `app.use(...)` / `app.get(...)` / `router.METHOD(path, ...)`
   calls; follows `app.use(prefix, router)` chaining.
 - **Acceptance**: 3 fixtures (flat routes, nested routers, prefix
@@ -205,7 +205,7 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/router-adapters/fastapi.parser.ts` (new).
+- **Files**: `services/router-adapters/fastapi.parser.ts` (new).
 - Reads `@app.get("/path")` / `@router.post("/x", ...)` decorators from
   every `.py` file in the host.
 - **Acceptance**: 2 fixtures (single router, multi-router) parse to
@@ -217,7 +217,7 @@ first).
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/router-adapters/django.parser.ts` (new).
+- **Files**: `services/router-adapters/django.parser.ts` (new).
 - Reads `urlpatterns` from `urls.py` files; follows `include('app.urls')`
   chaining.
 - **Acceptance**: 2 fixtures (flat urls, include chain) parse to the

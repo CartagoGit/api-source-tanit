@@ -53,33 +53,33 @@ sensatos, derivados directamente del código del proyecto.
 ## slices
 
 ### S1 — Motor de generación de valores de ejemplo por tipo
-- **Files**: `helper/example-value.helper.ts`.
+- **Files**: `helpers/example-value.helper.ts`.
 - **Gate**: `bun test tests/unit/example-value.spec.ts`.
 - Dado un tipo (`string`, `email`, `integer`, `uuid`, `boolean`, `date`,
   `array<T>`, `object`) genera un valor realista (no `"string"` genérico
   sino `"user@example.com"` para email, `"550e8400-..."` para uuid, etc.).
 
 ### S2 — Inferencia profunda de DTOs TypeScript (NestJS)
-- **Files**: `helper/dto-inference.helper.ts`, `service/scanners/nestjs.scanner.ts`.
+- **Files**: `helpers/dto-inference.helper.ts`, `services/scanners/nestjs.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/nestjs-dto.spec.ts`.
 - Analiza clases DTO con decoradores `@IsString()`, `@IsEmail()`,
   `@IsOptional()`, `@ValidateNested()` y genera el body de ejemplo
   completo incluyendo objetos anidados.
 
 ### S3 — Inferencia de Pydantic v2 Models (FastAPI)
-- **Files**: `helper/pydantic-schema.helper.ts`.
+- **Files**: `helpers/pydantic-schema.helper.ts`.
 - **Gate**: `bun test tests/frameworks/pydantic-v2.spec.ts`.
 - Parsea `model_fields`, `Optional[T]`, `List[T]`, `Field(default=...)`
   y genera el JSON de ejemplo correspondiente.
 
 ### S4 — Inferencia de Bean Validation DTOs (Spring Boot) y Data Annotations (ASP.NET)
-- **Files**: `helper/java-dto.helper.ts`, `helper/csharp-dto.helper.ts`.
+- **Files**: `helpers/java-dto.helper.ts`, `helpers/csharp-dto.helper.ts`.
 - **Gate**: `bun test tests/frameworks/spring-aspnet-dto.spec.ts`.
 - Extrae campos de clases Java/Kotlin y C# anotadas con `@NotNull`,
   `@Size`, `@Email`, `[Required]`, `[MaxLength]`, etc.
 
 ### S5 — Inferencia avanzada de FormRequests Laravel (reglas anidadas)
-- **Files**: `service/form-request-parser.service.ts`.
+- **Files**: `services/form-request-parser.service.ts`.
 - **Gate**: `bun test tests/frameworks/laravel-nested-rules.spec.ts`.
 - Soporta reglas como `'items.*.id' => 'required|uuid'`,
   `'address.street' => 'required|string'` y genera arrays de objetos

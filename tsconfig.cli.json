@@ -3,10 +3,10 @@
   // composición, así que ve las dos capas de debajo.
   "extends": "./tsconfig.base.json",
   "include": [
-    "contract/**/*.ts",
-    "contract/**/*.d.ts",
-    "helper/**/*.ts",
-    "service/**/*.ts",
+    "contracts/**/*.ts",
+    "contracts/**/*.d.ts",
+    "helpers/**/*.ts",
+    "services/**/*.ts",
     "frameworks/**/*.ts",
     "scripts/**/*.ts",
     "tests/cli/**/*.ts",

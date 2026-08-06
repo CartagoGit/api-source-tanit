@@ -18,8 +18,8 @@
  */
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
-import { collectFiles } from "../helper/fs-walk.helper.js";
-import { moduleDir } from "../helper/module-path.helper.js";
+import { collectFiles } from "../helpers/fs-walk.helper.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 const TOOLS_GLOB_ROOT = resolve(PACKAGE_ROOT, "plugins");

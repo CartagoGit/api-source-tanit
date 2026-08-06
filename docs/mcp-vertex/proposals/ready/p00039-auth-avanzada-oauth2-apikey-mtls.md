@@ -39,19 +39,19 @@ Muchas APIs enterprise usan:
 ## slices
 
 ### S1 — Detector de esquema de auth
-- **Files**: `service/auth-detector.service.ts`.
+- **Files**: `services/auth-detector.service.ts`.
 - **Gate**: `bun test tests/core/auth-detector.spec.ts`.
 - Analiza middleware, decoradores y configuraciones para clasificar el
   esquema de auth predominante.
 
 ### S2 — Generador de sección `auth` por tipo
-- **Files**: `service/auth-flow.service.ts`, `service/collection-builder.service.ts`.
+- **Files**: `services/auth-flow.service.ts`, `services/collection-builder.service.ts`.
 - **Gate**: `bun test tests/core/auth-flow.spec.ts`.
 - Genera la sección `auth` de la colección Postman con los campos correctos
   para cada tipo (Bearer, API Key, Basic, OAuth2).
 
 ### S3 — Auto-configuración de variables de auth
-- **Files**: `service/environment-builder.service.ts`.
+- **Files**: `services/environment-builder.service.ts`.
 - **Gate**: `bun test tests/core/environment-builder.spec.ts`.
 - Añade variables de entorno relevantes (`api_key`, `client_id`,
   `client_secret`, `username`, `password`) según el tipo detectado.

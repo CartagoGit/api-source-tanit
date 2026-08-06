@@ -47,9 +47,9 @@ describe("SECTIONS", () => {
 
 describe("bestSectionFor — gana el prefijo más específico", () => {
   test.each([
-    ["service/collection-builder.service.ts", "core"],
-    ["helper/uri.helper.ts", "core"],
-    ["contract/postman.interface.ts", "core"],
+    ["services/collection-builder.service.ts", "core"],
+    ["helpers/uri.helper.ts", "core"],
+    ["contracts/postman.interface.ts", "core"],
     // Los scanners y los parsers de cada framework viven fuera del
     // núcleo desde que se separaron las dos capas.
     ["frameworks/scanners/gin.scanner.ts", "frameworks"],
@@ -58,7 +58,7 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
     ["frameworks/registry.ts", "frameworks"],
     // El adapter sí es del núcleo: trabaja sobre el contrato genérico
     // `ParsedRoute`, no sobre ningún framework concreto.
-    ["service/adapters/parsed-route-to-spec.adapter.ts", "core"],
+    ["services/adapters/parsed-route-to-spec.adapter.ts", "core"],
     ["scripts/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
     ["plugins/postman-exporter/src/index.ts", "plugin"],

@@ -13,36 +13,36 @@
  */
 import { writeFile } from "node:fs/promises";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
-import type { IGenerationResult } from "../service/generation.pipeline.js";
+import type { IGenerationResult } from "../services/generation.pipeline.js";
 import { enrichCatalogWithFormRequests } from "../frameworks/laravel/catalog-enricher.service.js";
-import { loadProject } from "../service/project-loader.service.js";
+import { loadProject } from "../services/project-loader.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
-} from "../helper/uri.helper.js";
-import { countItems, walkCollection } from "../helper/postman.helper.js";
+} from "../helpers/uri.helper.js";
+import { countItems, walkCollection } from "../helpers/postman.helper.js";
 import {
   describeDiscoveredPaths,
   outputCollectionPath,
   outputEnvironmentPath,
   projectRoot,
-} from "../service/paths.service.js";
+} from "../services/paths.service.js";
 import {
   buildEnvironments,
   defaultEnvironments,
-} from "../service/environment-builder.service.js";
-import type { EndpointSpec } from "../contract/postman.interface.js";
-import type { DiscoveredRoute } from "../contract/postman.interface.js";
+} from "../services/environment-builder.service.js";
+import type { EndpointSpec } from "../contracts/postman.interface.js";
+import type { DiscoveredRoute } from "../contracts/postman.interface.js";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../contract/generate-report.interface.js";
-import { AUTH_TOKEN_VARIABLE } from "../service/auth-flow.service.js";
+} from "../contracts/generate-report.interface.js";
+import { AUTH_TOKEN_VARIABLE } from "../services/auth-flow.service.js";
 
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
- * compartido (`service/generation.pipeline.ts`).
+ * compartido (`services/generation.pipeline.ts`).
  *
  * Este script solo pone lo que es suyo: parseo de flags, trazas por
  * consola, enriquecido con variantes y escritura de artefactos. El orden

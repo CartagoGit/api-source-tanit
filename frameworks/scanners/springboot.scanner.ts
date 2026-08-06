@@ -20,7 +20,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
-import { joinRoutePath } from "../../helper/uri.helper.js";
+import { joinRoutePath } from "../../helpers/uri.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -29,7 +29,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 

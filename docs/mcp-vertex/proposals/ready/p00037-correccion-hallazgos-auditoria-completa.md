@@ -50,7 +50,7 @@ bugs funcionales, degradan la calidad percibida y la mantenibilidad:
 ## slices
 
 ### S1 — Limpieza de docstrings y comentarios con referencia a "Laravel" en servicios agnósticos
-- **Files**: `service/paths.service.ts`, `service/project-loader.service.ts`.
+- **Files**: `services/paths.service.ts`, `services/project-loader.service.ts`.
 - **Gate**: `grep -r "Laravel" service/ | wc -l` → 0 (solo en `laravel.scanner.ts`).
 
 ### S2 — Actualización de README.md con tabla de frameworks y badges

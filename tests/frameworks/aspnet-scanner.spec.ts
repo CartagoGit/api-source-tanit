@@ -9,7 +9,7 @@ import {
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
 import { scannerBundleFor } from "../../frameworks/registry";
-import { moduleDir } from "../../helper/module-path.helper";
+import { moduleDir } from "../../helpers/module-path.helper";
 
 describeScannerContract({
   framework: "aspnet",

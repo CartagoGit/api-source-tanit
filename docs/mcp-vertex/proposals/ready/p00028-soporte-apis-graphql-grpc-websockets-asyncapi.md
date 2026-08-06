@@ -34,22 +34,22 @@ Soportar estos protocolos elevará el proyecto a un nivel **11 de 10** de cobert
 ## slices
 
 ### S1 — Scanner de GraphQL (Schema & Resolvers)
-- **Files**: `service/scanners/graphql.scanner.ts`, `helper/graphql-schema.helper.ts`.
+- **Files**: `services/scanners/graphql.scanner.ts`, `helpers/graphql-schema.helper.ts`.
 - **Gate**: `bun test tests/frameworks/graphql-scanner.spec.ts`.
 - Escanea esquemas `.graphql` y extrae consultas (`queries`), mutaciones (`mutations`) y suscripciones (`subscriptions`), construyendo las peticiones POST a `/graphql` en Postman con la query GraphQL formateada.
 
 ### S2 — Scanner de gRPC (Proto Definitions)
-- **Files**: `service/scanners/grpc.scanner.ts`, `helper/proto-parser.helper.ts`.
+- **Files**: `services/scanners/grpc.scanner.ts`, `helpers/proto-parser.helper.ts`.
 - **Gate**: `bun test tests/frameworks/grpc-scanner.spec.ts`.
 - Escanea archivos `.proto` y genera la estructura de paquetes gRPC en la colección Postman v2.1.0.
 
 ### S3 — Scanner de WebSockets y Server-Sent Events (SSE)
-- **Files**: `service/scanners/websocket.scanner.ts`.
+- **Files**: `services/scanners/websocket.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/websocket-scanner.spec.ts`.
 - Escanea decoradores de WebSockets (`@WebSocketGateway`, `ws.on`, `io.on`) y rutas de Server-Sent Events (`res.setHeader('Content-Type', 'text/event-stream')`).
 
 ### S4 — Scanner de tRPC
-- **Files**: `service/scanners/trpc.scanner.ts`.
+- **Files**: `services/scanners/trpc.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/trpc-scanner.spec.ts`.
 - Analiza `appRouter` de tRPC para mapear consultas `t.procedure.query` a GET y `t.procedure.mutation` a POST.
 

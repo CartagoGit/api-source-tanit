@@ -10,12 +10,12 @@
  * Si se pasa un catálogo manual, se usa como **override** (misma
  * method+uri gana el manual: body, name, folder, description).
  */
-import type { IProjectContext } from "../../contract/project-context.interface.js";
+import type { IProjectContext } from "../../contracts/project-context.interface.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { EndpointSpec } from "../../contract/postman.interface.js";
-import type { ProjectConfig } from "../../contract/project-config.interface.js";
-import { stripApiPrefix } from "../../helper/uri.helper.js";
+import type { EndpointSpec } from "../../contracts/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/project-config.interface.js";
+import { stripApiPrefix } from "../../helpers/uri.helper.js";
 import {
   findFormRequestForController,
   generateCompleteBody,
@@ -23,10 +23,10 @@ import {
   parseFormRequest,
   type FormRequestRules,
 } from "../../frameworks/laravel/form-request-parser.service.js";
-import { fromProjectRelative, projectRoot, toProjectRelative } from "../../service/paths.service.js";
+import { fromProjectRelative, projectRoot, toProjectRelative } from "../../services/paths.service.js";
 import { parseAllRoutes, stripComments, type ParsedRoute } from "../../frameworks/laravel/route-parser.service.js";
-import { mergeWithManual } from "../../service/endpoint-merge.service.js";
-import { prettyGroupName, topGroupFor } from "../../helper/uri.helper.js";
+import { mergeWithManual } from "../../services/endpoint-merge.service.js";
+import { prettyGroupName, topGroupFor } from "../../helpers/uri.helper.js";
 
 // ---------------------------------------------------------------------------
 // Nombres legibles a partir del método del controlador

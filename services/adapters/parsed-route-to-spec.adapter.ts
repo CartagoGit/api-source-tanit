@@ -24,14 +24,14 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { EndpointSpec } from "../../contract/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/postman.interface.js";
 import type {
   IProjectMatch,
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 import { exampleForPathParam } from "../param-inferrer.service.js";
 
 /** Convierte `{x}` o `:x` (Express) a `{{x}}`. La URI ya viene con

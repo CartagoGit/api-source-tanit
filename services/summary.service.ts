@@ -20,14 +20,14 @@ import { existsSync } from "node:fs";
 
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import { buildSpecsFromScanner } from "./adapters/parsed-route-to-spec.adapter";
-import type { ILegacyDiscovery } from "../contract/legacy-discovery.interface.js";
+import type { ILegacyDiscovery } from "../contracts/legacy-discovery.interface.js";
 import { loadProject } from "./project-loader.service";
 import { resetPathCache } from "./paths.service";
 import {
   applyAgnosticInference,
   inferCollectionVariables,
 } from "./param-inferrer.service";
-import type { EndpointSpec } from "../contract/postman.interface";
+import type { EndpointSpec } from "../contracts/postman.interface";
 
 /** Resumen de un proyecto host para inspección rápida. */
 export interface IProjectSummary {

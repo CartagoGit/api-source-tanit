@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helper/module-path.helper";
+import { moduleDir } from "../../helpers/module-path.helper";
 
 describeScannerContract({
   framework: "openapi",

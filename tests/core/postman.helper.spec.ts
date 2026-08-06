@@ -5,11 +5,11 @@ import {
   pathToSegments,
   uriFromRaw,
   walkCollection,
-} from "../../helper/postman.helper";
+} from "../../helpers/postman.helper";
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../../contract/postman.interface";
+} from "../../contracts/postman.interface";
 
 /** Construye una mini-colección para tests. */
 function fixtureCollection(): PostmanCollection {

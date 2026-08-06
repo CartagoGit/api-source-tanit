@@ -17,8 +17,8 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { moduleDir } from "../helper/module-path.helper.js";
-import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
+import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */

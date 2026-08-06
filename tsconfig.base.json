@@ -5,7 +5,7 @@
   //
   // `types: []` es deliberado. El paquete no depende de `@types/node`
   // ni de `@types/bun`: las declaraciones ambient que necesita están
-  // escritas a mano en `contract/postman.d.ts`. Así el binario
+  // escritas a mano en `contracts/postman.d.ts`. Así el binario
   // compilado no arrastra tipos de un runtime que puede no estar.
   "compilerOptions": {
     "target": "ES2022",

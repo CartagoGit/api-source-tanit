@@ -26,8 +26,8 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, basename, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
-import type { EndpointSpec } from "../contract/postman.interface.js";
-import type { ProjectConfig } from "../contract/project-config.interface.js";
+import type { EndpointSpec } from "../contracts/postman.interface.js";
+import type { ProjectConfig } from "../contracts/project-config.interface.js";
 import { projectRoot } from "./paths.service.js";
 
 export interface LoadedProject {

@@ -25,9 +25,9 @@ agnóstico con CLI, binario, plugin MCP y 12 scanners", y la estructura se
 quedó en la de la primera versión. Los síntomas concretos:
 
 - **No hay un centro.** Lo que el proyecto *hace* está repartido entre
-  `service/`, `helper/` y `contract/` en la raíz, al mismo nivel que
+  `services/`, `helpers/` y `contracts/` en la raíz, al mismo nivel que
   `scripts/`, `examples/` y `docs/`. Nada dice cuál es el núcleo.
-- **`service/` mezcla tres cosas distintas**: servicios de dominio
+- **`services/` mezcla tres cosas distintas**: servicios de dominio
   (`collection-builder`, `auth-flow`), adaptadores (`adapters/`) y el
   registro de scanners (`scanner-registry.ts`), todos al mismo nivel.
 - **`scripts/` tiene 13 ficheros planos** que son tres familias
@@ -35,8 +35,8 @@ quedó en la de la primera versión. Los síntomas concretos:
   calidad (`validate`, `validate-package`, `lint-tool-no-process`) y
   utilidades de build (`build-binary`).
 - **Lo específico por lenguaje no está separado de lo común.** Los 12
-  scanners viven juntos en `service/scanners/`, pero comparten helpers
-  que están en `helper/`. No se ve qué es agnóstico y qué no.
+  scanners viven juntos en `services/scanners/`, pero comparten helpers
+  que están en `helpers/`. No se ve qué es agnóstico y qué no.
 - **No hay sitio para la UI.** El asistente interactivo acabó en
   `scripts/interactive.script.ts` por no haber un hueco mejor.
 
@@ -83,7 +83,7 @@ un scanner nuevo tiene un sitio evidente.
 ## slices
 
 ### S1 — `projects/core`
-- **Files**: mover `contract/`, `service/`, `helper/` bajo
+- **Files**: mover `contracts/`, `services/`, `helpers/` bajo
   `projects/core/` con la separación de arriba.
 - **Gate**: `bun run validate`.
 

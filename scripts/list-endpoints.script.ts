@@ -7,11 +7,11 @@
  *   bun run list
  */
 import { readFile } from "node:fs/promises";
-import type { PostmanCollection } from "../contract/postman.interface.js";
-import { zoneForUri } from "../helper/zone.helper.js";
-import { walkCollection } from "../helper/postman.helper.js";
-import { outputCollectionPath } from "../service/paths.service.js";
-import { loadProject } from "../service/project-loader.service.js";
+import type { PostmanCollection } from "../contracts/postman.interface.js";
+import { zoneForUri } from "../helpers/zone.helper.js";
+import { walkCollection } from "../helpers/postman.helper.js";
+import { outputCollectionPath } from "../services/paths.service.js";
+import { loadProject } from "../services/project-loader.service.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();

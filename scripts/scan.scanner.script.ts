@@ -12,7 +12,7 @@
  * del discovery sin tener que generar una colección completa.
  */
 import { defaultOrchestrator } from "../frameworks/registry.js";
-import { projectRoot } from "../service/paths.service.js";
+import { projectRoot } from "../services/paths.service.js";
 
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);

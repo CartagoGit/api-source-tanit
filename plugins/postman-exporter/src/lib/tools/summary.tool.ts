@@ -22,7 +22,7 @@ import {
   type IMcpPluginContext,
 } from "@mcp-vertex/core/public";
 
-import { SummaryInputSchema } from "../contract/postman-exporter.interface";
+import { SummaryInputSchema } from "../contracts/postman-exporter.interface";
 import { existsSync } from "node:fs";
 import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
 

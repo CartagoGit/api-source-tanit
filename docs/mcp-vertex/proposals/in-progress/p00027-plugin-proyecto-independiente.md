@@ -103,7 +103,7 @@ colarse en el código que se publica.
 
 ### S2 — informe máquina en vez de parsear texto
 - **Estado**: done (2026-08-06)
-- **Ficheros**: `contract/generate-report.interface.ts` (nuevo),
+- **Ficheros**: `contracts/generate-report.interface.ts` (nuevo),
   `scripts/generate.script.ts`, `src/lib/helpers/runner.helper.ts`,
   `src/lib/tools/generate.tool.ts`,
   `tests/cli/generate-json-report.test.ts` (nuevo),
@@ -149,9 +149,9 @@ colarse en el código que se publica.
 Tres ficheros de `src/` trepan hasta el código del CLI:
 
 ```
-src/lib/tools/test.tool.ts        → "../../../../../service/scanner-registry"
-src/lib/tools/summary.tool.ts     → "../../../../../service/summary.service"
-src/lib/helpers/smoke-runner.ts   → "../../../../../contract/scanner.interface"
+src/lib/tools/test.tool.ts        → "../../../../../services/scanner-registry"
+src/lib/tools/summary.tool.ts     → "../../../../../services/summary.service"
+src/lib/helpers/smoke-runner.ts   → "../../../../../contracts/scanner.interface"
 ```
 
 Consecuencia medible: esos ficheros entran en el programa de TypeScript
@@ -163,7 +163,7 @@ dejarlos apagados.
 El arreglo es declarar `@postman-exporter/cli` como dependencia de
 workspace e importar por especificador. Requiere que el `exports` de la
 raíz cubra `scanner-registry`, que hoy no encaja con el patrón
-`./service/*` → `*.service.ts`. Se hace junto a p00020, que es quien
+`./services/*` → `*.service.ts`. Se hace junto a p00020, que es quien
 decide dónde acaba viviendo el registro.
 
 - **Aceptación**: `noUncheckedIndexedAccess` y `noUnusedLocals` vuelven

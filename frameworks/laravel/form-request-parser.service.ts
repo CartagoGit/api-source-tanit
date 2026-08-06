@@ -19,7 +19,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stripComments } from "../../frameworks/laravel/route-parser.service.js";
-import { fromProjectRelative, requestsDir } from "../../service/paths.service.js";
+import { fromProjectRelative, requestsDir } from "../../services/paths.service.js";
 
 export interface FormRequestRules {
   /** Ruta al FormRequest parseado (relativa al repo). */
@@ -484,7 +484,7 @@ export async function findFormRequestForController(
 ): Promise<string | null> {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
-  const { toProjectRelative } = await import("../../service/paths.service.js");
+  const { toProjectRelative } = await import("../../services/paths.service.js");
 
   // `projectRootOverride` es el camino preferente: mantiene el provider
   // reentrante (dos proyectos escaneados en el mismo proceso no se pisan).

@@ -27,7 +27,7 @@ explícito (`IProjectContext`) en lugar de por un caché global de proceso.
 
 ## why
 
-`service/paths.service.ts` guarda un `let cache: Discovered | null` que se
+`services/paths.service.ts` guarda un `let cache: Discovered | null` que se
 resuelve **una vez por proceso** desde `POSTMAN_PROJECT_ROOT` o
 `--project-root`. Funciona para el CLI, que es un proceso por proyecto,
 pero se rompe en todo lo demás:
@@ -60,7 +60,7 @@ aplicado a la capa de servicios.
 ## slices
 
 ### S1 — contrato `IProjectContext`
-- **Files**: `contract/project-context.interface.ts` (nuevo).
+- **Files**: `contracts/project-context.interface.ts` (nuevo).
 - **Gate**: `bunx tsc --noEmit`.
 
 - `IProjectContext { projectRoot, packageRoot, outputDir, basename }`
@@ -69,8 +69,8 @@ aplicado a la capa de servicios.
 - **Acceptance**: el contrato no importa `process` ni `node:fs`.
 
 ### S2 — `resolveProjectContext()` como única puerta de entrada
-- **Files**: `service/project-context.service.ts` (nuevo),
-  `service/paths.service.ts`.
+- **Files**: `services/project-context.service.ts` (nuevo),
+  `services/paths.service.ts`.
 - **Gate**: `bun test tests/unit/project-context.spec.ts`.
 
 - `resolveProjectContext({ projectRoot?, outputDir?, argv?, env? })`
@@ -83,10 +83,10 @@ aplicado a la capa de servicios.
   en el mismo proceso sin pisarse.
 
 ### S3 — propagar el contexto por los servicios
-- **Files**: `service/form-request-parser.service.ts`,
-  `service/catalog-enricher.service.ts`,
-  `service/endpoint-discovery.service.ts`,
-  `service/project-loader.service.ts`.
+- **Files**: `services/form-request-parser.service.ts`,
+  `services/catalog-enricher.service.ts`,
+  `services/endpoint-discovery.service.ts`,
+  `services/project-loader.service.ts`.
 - **Gate**: `bun test`.
 
 - Cada función que hoy llama a `projectRoot()`, `requestsDir()`,

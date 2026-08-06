@@ -22,13 +22,13 @@ para quien usa la herramienta.
 
 ### 1. Las carpetas contenedoras están en singular
 
-`contract/`, `helper/`, `service/`, `plugins/`, `frameworks/`,
+`contracts/`, `helpers/`, `services/`, `plugins/`, `frameworks/`,
 `scripts/`, `tests/`, `examples/`. Ocho carpetas y dos convenciones: las
 cuatro primeras en singular, las cuatro últimas en plural. No hay
 criterio, es histórico.
 
-Una carpeta contiene **varias** cosas de ese tipo: `helper/` tiene 8
-helpers, `contract/` tiene 6 contratos, `service/` tiene 11 servicios.
+Una carpeta contiene **varias** cosas de ese tipo: `helpers/` tiene 8
+helpers, `contracts/` tiene 6 contratos, `services/` tiene 11 servicios.
 El plural es lo que dice la verdad.
 
 ### 2. Dos ficheros de `scripts/` no llevan sufijo
@@ -49,7 +49,7 @@ Los sufijos que sí están asentados y hay que respetar:
 `.interface.ts`, `.constant.ts`, `.helper.ts`, `.service.ts`,
 `.scanner.ts`, `.adapter.ts`, `.script.ts`, `.spec.ts`, `.test.ts`.
 Hay tres sueltos que hay que decidir: `.pipeline.ts` y `.orchestrator.ts`
-en `service/`, y `registry.ts` / `index.ts` en `frameworks/`.
+en `services/`, y `registry.ts` / `index.ts` en `frameworks/`.
 
 ### 3. La salida se escribe en `build/` DEL PROYECTO AJENO
 
@@ -88,7 +88,7 @@ tests.
 
 ### S1 — carpeta de salida propia, y multiplataforma
 - **Estado**: ready
-- **Ficheros**: `service/paths.service.ts`, `contract/*.constant.ts`,
+- **Ficheros**: `services/paths.service.ts`, `contracts/*.constant.ts`,
   `.gitignore`, `docs/INSTALL.md`, `docs/POSTMAN.md`, `README.md`,
   `examples/README.md`, tests nuevos.
 - **Gate**: `bun run validate` + un test por plataforma simulada.
@@ -107,13 +107,13 @@ tests.
 
 ### S2 — carpetas contenedoras en plural
 - **Estado**: ready
-- **Ficheros**: `contract/` → `contracts/`, `helper/` → `helpers/`,
-  `service/` → `services/`, y todos los imports.
+- **Ficheros**: `contracts/` → `contracts/`, `helpers/` → `helpers/`,
+  `services/` → `services/`, y todos los imports.
 - **Gate**: `bun run typecheck && bun run lint:boundaries`.
 
 - `git mv` de las tres carpetas y reescritura de imports.
 - `scripts/gates/sections.ts` y los tsconfig por sección van detrás.
-- El `exports` del `package.json` también (`./service/*` →
+- El `exports` del `package.json` también (`./services/*` →
   `./services/*`).
 - **Aceptación**: `grep -rn '"\.\./\(contract\|helper\|service\)/'` sin
   resultados.
@@ -121,8 +121,8 @@ tests.
 ### S3 — sufijos de fichero coherentes
 - **Estado**: ready
 - **Ficheros**: `scripts/lint-tool-no-process.ts`,
-  `scripts/gates/sections.ts`, `service/generation.pipeline.ts`,
-  `service/discovery.orchestrator.ts`, `frameworks/registry.ts`.
+  `scripts/gates/sections.ts`, `services/generation.pipeline.ts`,
+  `services/discovery.orchestrator.ts`, `frameworks/registry.ts`.
 - **Gate**: un lint nuevo, `lint:naming`.
 
 - `lint-tool-no-process.ts` → `lint-tool-no-process.script.ts`.

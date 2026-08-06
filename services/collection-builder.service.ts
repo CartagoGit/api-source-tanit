@@ -24,11 +24,11 @@ import type {
   PostmanHeader,
   PostmanItem,
   PostmanRequest,
-} from "../contract/postman.interface.js";
-import type { ProjectConfig } from "../contract/project-config.interface.js";
-import { collectionIdFor } from "../helper/collection-identity.helper.js";
-import { POSTMAN_SCHEMA_URL } from "../contract/postman.constant.js";
-import { prettyGroupName, topGroupFor } from "../helper/uri.helper.js";
+} from "../contracts/postman.interface.js";
+import type { ProjectConfig } from "../contracts/project-config.interface.js";
+import { collectionIdFor } from "../helpers/collection-identity.helper.js";
+import { POSTMAN_SCHEMA_URL } from "../contracts/postman.constant.js";
+import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 
 
 // ---------------------------------------------------------------------------

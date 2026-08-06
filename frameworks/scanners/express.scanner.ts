@@ -30,18 +30,18 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 import {
   collectFilesFrom,
   isSourceJsTsFile,
-} from "../../helper/fs-walk.helper.js";
+} from "../../helpers/fs-walk.helper.js";
 import {
   countLinesBefore,
   findAllBalanced,
   findNearestBalanced,
   stripJsComments,
   type IBalancedCall,
-} from "../../helper/source-scan.helper.js";
+} from "../../helpers/source-scan.helper.js";
 import {
   joiFieldToSpec,
   parseJoiObjectLiteral,

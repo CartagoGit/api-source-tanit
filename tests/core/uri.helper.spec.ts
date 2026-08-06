@@ -4,7 +4,7 @@ import {
   normalizeForComparison,
   stripApiPrefix,
   joinRoutePath,
-} from "../../helper/uri.helper";
+} from "../../helpers/uri.helper";
 
 describe("uri.helper", () => {
   describe("normalizeForComparison", () => {

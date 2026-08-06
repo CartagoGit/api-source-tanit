@@ -20,8 +20,8 @@
  * práctica los schemas de request declaran `.required()` en casi todo y
  * un body de ejemplo incompleto es peor que uno con campos de más.
  */
-import type { IValidationSpec } from "../../contract/scanner.interface.js";
-import { splitTopLevel, unwrapObjectLiteralItem } from "../../helper/source-scan.helper.js";
+import type { IValidationSpec } from "../../contracts/scanner.interface.js";
+import { splitTopLevel, unwrapObjectLiteralItem } from "../../helpers/source-scan.helper.js";
 
 /** Campo Joi ya parseado, antes de convertirse en `IValidationSpec`. */
 export interface IJoiField {

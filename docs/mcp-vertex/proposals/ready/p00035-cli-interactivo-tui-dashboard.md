@@ -52,13 +52,13 @@ en la terminal, sin requerir navegador ni GUI:
   `requirements.txt` / `go.mod` encontrados y permite seleccionar uno.
 
 ### S2 — Vista previa de rutas descubiertas con tabla ANSI
-- **Files**: `scripts/interactive.script.ts`, `helper/tui-table.helper.ts`.
+- **Files**: `scripts/interactive.script.ts`, `helpers/tui-table.helper.ts`.
 - **Gate**: revisión manual.
 - Tras la detección, muestra una tabla ordenada por zona/método con colores
   semánticos (verde = con validación, amarillo = sin validación, rojo = error).
 
 ### S3 — Dashboard de métricas post-generación
-- **Files**: `helper/tui-dashboard.helper.ts`.
+- **Files**: `helpers/tui-dashboard.helper.ts`.
 - **Gate**: revisión manual.
 - Muestra barras de progreso: `Rutas: 42/42 ✅`, `Bodies: 38/42 (90%)`,
   `Auth: configurado ✅`, `Validaciones: 35/42 (83%)`.

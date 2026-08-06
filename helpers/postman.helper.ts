@@ -8,7 +8,7 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../contract/postman.interface.js";
+} from "../contracts/postman.interface.js";
 
 /** Extrae los segmentos de path de una URL raw de Postman. */
 export function pathToSegments(rawUrl: string): string[] {

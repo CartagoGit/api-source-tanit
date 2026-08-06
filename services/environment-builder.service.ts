@@ -16,12 +16,12 @@
  *   - Los `baseUrl` se autodetectan de `.env`, `.env.example`, `APP_ENV`
  *     o de la convención `<dominio>.local/<dominio>/<subdominio>`.
  */
-import { environmentIdFor } from "../helper/collection-identity.helper.js";
+import { environmentIdFor } from "../helpers/collection-identity.helper.js";
 import type {
   EndpointSpec,
   PostmanEnvironment,
   PostmanVariable,
-} from "../contract/postman.interface.js";
+} from "../contracts/postman.interface.js";
 
 /** Definición de un entorno (agnóstica del proyecto). */
 export interface EnvironmentDef {

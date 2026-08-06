@@ -12,7 +12,7 @@ related:
     - p00007 # the plugin tests are tracked separately
 ---
 
-> **Cerrada 2026-08-06.** 38/38 módulos de `service/` y `helper/` con tests
+> **Cerrada 2026-08-06.** 38/38 módulos de `services/` y `helpers/` con tests
 > directos, 977 en total. La suite corre con `bun test` en lugar de vitest, que
 > es lo que el proyecto ya usaba; el objetivo de la propuesta (cobertura por
 > módulo con casos felices, límite y regresión) se cumple igual.
@@ -22,15 +22,15 @@ related:
 ## Goal
 
 Ship a hermetic vitest suite that covers every public surface of the
-package core. Each service in `service/*.service.ts` and each helper
-in `helper/*.helper.ts` gets at least 6 cases:
+package core. Each service in `services/*.service.ts` and each helper
+in `helpers/*.helper.ts` gets at least 6 cases:
 
 - 2 happy paths.
 - 2 edge cases (empty input, malformed input, mixed casing).
 - 2 regression cases (a real bug from the git history that the test
   would have caught).
 
-Helper functions in `helper/*.helper.ts` get at least 4 cases. The
+Helper functions in `helpers/*.helper.ts` get at least 4 cases. The
 collection builder's pure projection (no I/O) gets at least 6.
 
 Total target: ~80 cases across 9 spec files.
@@ -58,15 +58,15 @@ Hermetic unit tests let:
 
 | Spec file | Service / helper | Cases |
 | --- | --- | --- |
-| `tests/unit/route-parser.service.spec.ts` | `service/route-parser.service.ts` | 8 |
-| `tests/unit/uri.helper.spec.ts` | `helper/uri.helper.ts` | 4 |
-| `tests/unit/endpoint-discovery.service.spec.ts` | `service/endpoint-discovery.service.ts` | 10 |
-| `tests/unit/param-inferrer.service.spec.ts` | `service/param-inferrer.service.ts` | 6 |
-| `tests/unit/form-request-parser.service.spec.ts` | `service/form-request-parser.service.ts` | 10 |
-| `tests/unit/collection-builder.service.spec.ts` | `service/collection-builder.service.ts` | 8 |
-| `tests/unit/catalog-enricher.service.spec.ts` | `service/catalog-enricher.service.ts` | 8 |
-| `tests/unit/environment-builder.service.spec.ts` | `service/environment-builder.service.ts` | 6 |
-| `tests/unit/project-loader.service.spec.ts` | `service/project-loader.service.ts` | 6 |
+| `tests/unit/route-parser.service.spec.ts` | `services/route-parser.service.ts` | 8 |
+| `tests/unit/uri.helper.spec.ts` | `helpers/uri.helper.ts` | 4 |
+| `tests/unit/endpoint-discovery.service.spec.ts` | `services/endpoint-discovery.service.ts` | 10 |
+| `tests/unit/param-inferrer.service.spec.ts` | `services/param-inferrer.service.ts` | 6 |
+| `tests/unit/form-request-parser.service.spec.ts` | `services/form-request-parser.service.ts` | 10 |
+| `tests/unit/collection-builder.service.spec.ts` | `services/collection-builder.service.ts` | 8 |
+| `tests/unit/catalog-enricher.service.spec.ts` | `services/catalog-enricher.service.ts` | 8 |
+| `tests/unit/environment-builder.service.spec.ts` | `services/environment-builder.service.ts` | 6 |
+| `tests/unit/project-loader.service.spec.ts` | `services/project-loader.service.ts` | 6 |
 
 ## slices
 

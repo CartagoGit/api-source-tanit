@@ -3,7 +3,7 @@ import {
   collectionIdFor,
   environmentIdFor,
   stableUuid,
-} from "../../helper/collection-identity.helper";
+} from "../../helpers/collection-identity.helper";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

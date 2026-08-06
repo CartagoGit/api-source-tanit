@@ -48,7 +48,7 @@ igual en el siguiente `bun install`.
 
 - Cambiar el formato del lockfile ni pasarlo a `bun.lockb`.
 - Añadir `@types/node` al proyecto raíz. Las declaraciones a mano de
-  `contract/postman.d.ts` son una decisión tomada.
+  `contracts/postman.d.ts` son una decisión tomada.
 
 ## slices
 
@@ -72,7 +72,7 @@ igual en el siguiente `bun install`.
 - **Gate**: `bun run typecheck` cubriendo también `plugins/`.
 
 `bun run typecheck` usa el `tsconfig.json` de la raíz, cuyo `include`
-lista `contract/`, `service/`, `helper/`, `scripts/` y
+lista `contracts/`, `services/`, `helpers/`, `scripts/` y
 `examples/example-app/`. **`plugins/` no está**, así que el plugin nunca
 se ha typecheckeado en el gate. Comprobado el 2026-08-06: tenía 5
 errores, dos de ellos reales (una anotación `readonly[]` sobre un array
@@ -81,7 +81,7 @@ al que se hace `push`, y un `{ ok: true, ...out }` donde `out` ya trae
 
 Lo que queda es la parte fina: el plugin compila contra `@types/node`
 real mientras el resto del repo usa las declaraciones a mano de
-`contract/postman.d.ts`. Las dos fuentes chocan en `spawnSync` y en
+`contracts/postman.d.ts`. Las dos fuentes chocan en `spawnSync` y en
 `Bun`. Hay que decidir una de las dos vías antes de encadenarlo al gate:
 
 - **(a)** El plugin deja de depender de `@types/node` y usa las

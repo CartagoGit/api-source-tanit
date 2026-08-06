@@ -26,7 +26,7 @@
  */
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
-import { moduleDir } from "../helper/module-path.helper.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 const PROPOSALS_DIR = join(PACKAGE_ROOT, "docs", "mcp-vertex", "proposals");

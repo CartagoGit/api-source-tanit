@@ -16,7 +16,7 @@
  * Resolución del `packageRoot`:
  *   1. `moduleDir(import.meta.url)` (Bun/Node ESM).
  *   2. Búsqueda subiendo desde `process.cwd()` hasta dar con
- *      `package.json` + `contract/postman.constant.ts`.
+ *      `package.json` + `contracts/postman.constant.ts`.
  *
  * Resolución del `projectRoot`:
  *   1. CLI `--project-root <path>`.
@@ -34,7 +34,7 @@
  */
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
 
 // ---------------------------------------------------------------------------
 // Caché interna

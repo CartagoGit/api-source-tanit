@@ -23,7 +23,7 @@ import {
 import {
   ValidateInputSchema,
   type IValidateOutput,
-} from "../contract/postman-exporter.interface";
+} from "../contracts/postman-exporter.interface";
 import { runBunScript } from "../helpers/runner.helper";
 
 const TOOL_ID = "validate";

@@ -16,7 +16,7 @@ related:
 All three slices shipped:
 
 - **S1** — `where()` constraints + `Route::resource` / `Route::apiResource`
-  expansion in `service/scanners/laravel.scanner.ts`. Closed by
+  expansion in `services/scanners/laravel.scanner.ts`. Closed by
   PR `2c26624` (8 new unit tests in `tests/unit/laravel-scanner.spec.ts`).
 - **S2** — replaced the `generate --inspect` parse-stdout hack with
   a dedicated `summarizeProject()` helper. Closed by PR `d7f1de2`
@@ -35,7 +35,7 @@ All three slices shipped:
 - The `summary` tool no longer spawns a subprocess. Its `effects`
   array is `[]` (was `['spawn']`).
 - The scanner registry lived in three scripts and got extracted
-  into `service/scanner-registry.ts` so the proposal-shared
+  into `services/scanner-registry.ts` so the proposal-shared
   `summarizeProject()` can use the same `DiscoveryOrchestrator`
   instance as the CLI.
 - 188/188 tests green across 18 files.
@@ -87,7 +87,7 @@ The current code is functional but has three categories of debt:
 - **Gate**: test
   acceptance:
 
-- **Files**: `service/route-parser.service.ts`.
+- **Files**: `services/route-parser.service.ts`.
 - Add a third "normalisation tier" that captures `where('foo', '\d+')`
   constraints and appends them to the route's "shape" key (`{foo:\d+}`).
   The current `normalizeForComparison` collapses `{foo}` and `{foo:[A-Z]+}`

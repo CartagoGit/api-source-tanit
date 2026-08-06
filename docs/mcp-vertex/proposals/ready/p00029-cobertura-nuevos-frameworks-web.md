@@ -34,22 +34,22 @@ Ampliar la matriz a 19 frameworks garantizará una cobertura casi total en cualq
 ## slices
 
 ### S1 — Scanners Node.js/Edge: Fastify & Hono
-- **Files**: `service/scanners/fastify.scanner.ts`, `service/scanners/hono.scanner.ts`.
+- **Files**: `services/scanners/fastify.scanner.ts`, `services/scanners/hono.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/fastify-hono.spec.ts`.
 - Extrae esquemas `schema: { body: ..., querystring: ... }` de Fastify y rutas `.get()`, `.post()` de Hono.
 
 ### S2 — Scanners Go (Fiber) & Rust (Actix-web / Rocket)
-- **Files**: `service/scanners/fiber.scanner.ts`, `service/scanners/rust.scanner.ts`.
+- **Files**: `services/scanners/fiber.scanner.ts`, `services/scanners/rust.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/fiber-rust.spec.ts`.
 - Mapea `app.Get()`, `app.Post()` de Fiber y atributos `#[get(...)]`, `#[post(...)]` en Rust.
 
 ### S3 — Scanners Ruby on Rails, Phoenix (Elixir) & Ktor (Kotlin)
-- **Files**: `service/scanners/rails.scanner.ts`, `service/scanners/phoenix.scanner.ts`, `service/scanners/ktor.scanner.ts`.
+- **Files**: `services/scanners/rails.scanner.ts`, `services/scanners/phoenix.scanner.ts`, `services/scanners/ktor.scanner.ts`.
 - **Gate**: `bun test tests/frameworks/rails-phoenix-ktor.spec.ts`.
 - Mapea `resources :users` en Rails, `scope "/api"` en Phoenix Router y bloques `routing { get(...) }` en Ktor.
 
 ### S4 — Registro en `scanner-registry.ts` y Ejemplos de Validación
-- **Files**: `service/scanner-registry.ts`, `examples/example-*`.
+- **Files**: `services/scanner-registry.ts`, `examples/example-*`.
 - **Gate**: `bun run validate:examples`.
 - Registra los 7 nuevos escáneres en `DEFAULT_REGISTRY` y añade proyectos de ejemplo comprobables.
 

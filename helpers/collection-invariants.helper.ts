@@ -13,7 +13,7 @@
  *                 (una `{{variable}}` que nadie define, una carpeta
  *                 vacía, dos requests idénticas).
  */
-import type { PostmanCollection, PostmanItem } from "../contract/postman.interface.js";
+import type { PostmanCollection, PostmanItem } from "../contracts/postman.interface.js";
 
 /** Un incumplimiento concreto, con su ruta dentro de la colección. */
 export interface ICollectionIssue {

@@ -4,7 +4,7 @@
  * Las zonas se definen en `ProjectConfig.zones` y se usan en
  * `list` / `stats` para agrupar endpoints por área funcional.
  */
-import type { ProjectConfig } from "../contract/project-config.interface.js";
+import type { ProjectConfig } from "../contracts/project-config.interface.js";
 
 /**
  * Calcula la zona lógica a partir de la URI del endpoint y la

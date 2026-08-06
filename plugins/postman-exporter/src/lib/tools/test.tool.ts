@@ -34,7 +34,7 @@ import {
   TestInputSchema,
   type ITestOutput,
   type ITestStep,
-} from "../contract/postman-exporter.interface";
+} from "../contracts/postman-exporter.interface";
 import { normalizeCwd, runBunCommand } from "../helpers/runner.helper";
 import { runSmoke } from "../helpers/smoke-runner.helper";
 import {

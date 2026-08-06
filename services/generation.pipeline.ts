@@ -20,10 +20,10 @@
  * escritura a disco quedan fuera a propósito: son responsabilidad del
  * script, no del pipeline.
  */
-import type { EndpointSpec, PostmanCollection } from "../contract/postman.interface.js";
-import type { ProjectConfig } from "../contract/project-config.interface.js";
-import type { IProjectContext } from "../contract/project-context.interface.js";
-import type { IProjectMatch, ParsedRoute } from "../contract/scanner.interface.js";
+import type { EndpointSpec, PostmanCollection } from "../contracts/postman.interface.js";
+import type { ProjectConfig } from "../contracts/project-config.interface.js";
+import type { IProjectContext } from "../contracts/project-context.interface.js";
+import type { IProjectMatch, ParsedRoute } from "../contracts/scanner.interface.js";
 import { buildSpecsFromScanner } from "./adapters/parsed-route-to-spec.adapter.js";
 import {
   applyAuthFlow,
@@ -32,7 +32,7 @@ import {
   type IAuthFlow,
 } from "./auth-flow.service.js";
 import { buildCollection } from "./collection-builder.service.js";
-import type { ILegacyDiscovery } from "../contract/legacy-discovery.interface.js";
+import type { ILegacyDiscovery } from "../contracts/legacy-discovery.interface.js";
 import {
   applyAgnosticInference,
   inferCollectionVariables,
@@ -41,7 +41,7 @@ import { loadProject } from "./project-loader.service.js";
 import { withProjectRoot } from "./paths.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
-import { mergeWithManual } from "../service/endpoint-merge.service.js";
+import { mergeWithManual } from "../services/endpoint-merge.service.js";
 
 /** Métricas del descubrimiento, para informes y tests. */
 export interface IGenerationMetrics {

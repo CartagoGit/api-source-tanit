@@ -27,7 +27,7 @@ import {
 import {
   GenerateInputSchema,
   type IGenerateOutput,
-} from "../contract/postman-exporter.interface";
+} from "../contracts/postman-exporter.interface";
 import {
   readGenerateReport,
   runBunScript,
@@ -110,7 +110,7 @@ export function buildGenerateToolRegistration(
             return toolError(
               `generate terminó bien pero no se pudo leer su informe: ${parsedReport.detail}`,
               "El CLI y el plugin tienen que hablar el mismo contrato " +
-                "(`contract/generate-report.interface.ts`). Comprueba que ambos " +
+                "(`contracts/generate-report.interface.ts`). Comprueba que ambos " +
                 "estén a la misma versión.",
             );
           }

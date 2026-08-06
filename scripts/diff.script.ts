@@ -18,11 +18,11 @@ import { parseAllRoutes } from "../frameworks/laravel/route-parser.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
-} from "../helper/uri.helper.js";
-import { walkCollection } from "../helper/postman.helper.js";
-import { outputCollectionPath, projectRoot } from "../service/paths.service.js";
-import { loadProject } from "../service/project-loader.service.js";
-import type { PostmanCollection } from "../contract/postman.interface.js";
+} from "../helpers/uri.helper.js";
+import { walkCollection } from "../helpers/postman.helper.js";
+import { outputCollectionPath, projectRoot } from "../services/paths.service.js";
+import { loadProject } from "../services/project-loader.service.js";
+import type { PostmanCollection } from "../contracts/postman.interface.js";
 import { defaultOrchestrator } from "../frameworks/registry.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {

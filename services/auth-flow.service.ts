@@ -21,7 +21,7 @@
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../contract/postman.interface.js";
+} from "../contracts/postman.interface.js";
 
 /** Los tres endpoints del ciclo de sesión, si el proyecto los expone. */
 export interface IAuthFlow {

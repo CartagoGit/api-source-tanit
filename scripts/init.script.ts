@@ -20,7 +20,7 @@
  */
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { projectRoot } from "../service/paths.service.js";
+import { projectRoot } from "../services/paths.service.js";
 
 function flag(name: string, argv: string[]): string | null {
   const i = argv.indexOf(name);
@@ -127,7 +127,7 @@ async function main(): Promise<number> {
  *
  * Edita los valores marcados con \`// TODO\` para personalizarlos.
  */
-import type { ProjectConfig } from "../../contract/project-config.interface.js";
+import type { ProjectConfig } from "../../contracts/project-config.interface.js";
 
 export const config: ProjectConfig = {
   name: "${projectName}",
@@ -187,7 +187,7 @@ export const config: ProjectConfig = {
  *
  * Ejemplo:
  * \`\`\`ts
- * import type { EndpointSpec } from "../../contract/postman.interface.js";
+ * import type { EndpointSpec } from "../../contracts/postman.interface.js";
  *
  * export const ALL_ENDPOINTS: EndpointSpec[] = [
  *   {
@@ -199,7 +199,7 @@ export const config: ProjectConfig = {
  * ];
  * \`\`\`
  */
-import type { EndpointSpec } from "../../contract/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/postman.interface.js";
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [
   // TODO añade aquí tus overrides

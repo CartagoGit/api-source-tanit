@@ -19,16 +19,16 @@
  * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
-import type { IProjectContext } from "../../contract/project-context.interface.js";
-import { fromProjectRoot, projectDirs } from "../../service/project-context.service.js";
+import type { IProjectContext } from "../../contracts/project-context.interface.js";
+import { fromProjectRoot, projectDirs } from "../../services/project-context.service.js";
 import { readFile } from "node:fs/promises";
-import { fromProjectRelative, routesDir } from "../../service/paths.service.js";
-import type { ParsedRoute as NeutralParsedRoute } from "../../contract/scanner.interface.js";
+import { fromProjectRelative, routesDir } from "../../services/paths.service.js";
+import type { ParsedRoute as NeutralParsedRoute } from "../../contracts/scanner.interface.js";
 
 /**
  * Re-export del tipo neutro para no romper imports existentes.
  * `route-parser.service.ts` se mantiene como IMPLEMENTACIÓN Laravel
- * del contrato `IRouteScanner` (ver `service/scanners/laravel.scanner.ts`).
+ * del contrato `IRouteScanner` (ver `services/scanners/laravel.scanner.ts`).
  */
 export type ParsedRoute = NeutralParsedRoute;
 

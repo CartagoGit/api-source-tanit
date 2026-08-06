@@ -17,8 +17,8 @@ import { existsSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 
-import { moduleDir } from "../../helper/module-path.helper";
-import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
+import { moduleDir } from "../../helpers/module-path.helper";
+import { OUTPUT_DIR_NAME } from "../../contracts/postman.constant";
 import { runProcess } from "../helpers/run-process";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
 
-import { summarizeProject } from "../../service/summary.service";
+import { summarizeProject } from "../../services/summary.service";
 import { defaultOrchestrator } from "../../frameworks/registry";
 import { laravelLegacyDiscovery } from "../../frameworks/laravel/legacy-discovery";
 

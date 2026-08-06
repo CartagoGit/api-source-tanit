@@ -12,9 +12,9 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { moduleDir } from "../../helper/module-path.helper";
+import { moduleDir } from "../../helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
-import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../contracts/postman.constant";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
 const CLI = join(PACKAGE_ROOT, "scripts", "cli.script.ts");

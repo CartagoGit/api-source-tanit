@@ -21,7 +21,7 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-import { moduleDir } from "../../helper/module-path.helper.js";
+import { moduleDir } from "../../helpers/module-path.helper.js";
 import { SECTIONS, sectionByName, type ISection } from "./sections.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");

@@ -80,7 +80,7 @@ plugin) declares `const NAMESPACE = "postman"` locally and works.
 
 Fix:
 
-- Add `plugins/postman-exporter/src/lib/contract/namespace.ts`
+- Add `plugins/postman-exporter/src/lib/contracts/namespace.ts`
   exporting `NAMESPACE = "postman" as const` (single source of
   truth).
 - Import it in the 3 tools.

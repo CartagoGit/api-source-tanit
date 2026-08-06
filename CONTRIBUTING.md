@@ -87,10 +87,10 @@ summary:
 
 | Suffix | Folder | What it is |
 | --- | --- | --- |
-| `*.interface.ts` | `contract/` | Zod schemas + exported structural types. |
-| `*.constant.ts` | `contract/` / `examples/` | Durable, frozen, shared constants. |
-| `*.service.ts` | `service/` | Stateful business logic. |
-| `*.helper.ts` | `helper/` | Pure utilities, no I/O. |
+| `*.interface.ts` | `contracts/` | Zod schemas + exported structural types. |
+| `*.constant.ts` | `contracts/` / `examples/` | Durable, frozen, shared constants. |
+| `*.service.ts` | `services/` | Stateful business logic. |
+| `*.helper.ts` | `helpers/` | Pure utilities, no I/O. |
 | `*.tool.ts` | `plugins/<name>/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
@@ -100,7 +100,7 @@ summary:
 - **Dot, never hyphen.** `foo.service.ts`, not `foo-service.ts`.
 - **One tool per file.** No multi-tool `tools.ts`.
 - **One agent per file.** No multi-agent `agents.ts`.
-- **Plugins never import `service/`.** The plugin only invokes
+- **Plugins never import `services/`.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
 

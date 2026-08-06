@@ -6,7 +6,7 @@ import {
   collectFiles,
   collectFilesFrom,
   isSourceJsTsFile,
-} from "../../helper/fs-walk.helper";
+} from "../../helpers/fs-walk.helper";
 
 let root = "";
 

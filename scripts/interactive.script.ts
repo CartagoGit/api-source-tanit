@@ -14,9 +14,9 @@
 import { existsSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
-import { withProjectRoot } from "../service/paths.service.js";
+import { withProjectRoot } from "../services/paths.service.js";
 import { SUPPORTED_FRAMEWORKS } from "../frameworks/registry.js";
-import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
 
 /** Lee una línea de stdin mostrando un prompt. */
 async function ask(question: string, fallback = ""): Promise<string> {

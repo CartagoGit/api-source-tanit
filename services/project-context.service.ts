@@ -14,9 +14,9 @@ import { join, resolve, sep } from "node:path";
 import type {
   IProjectContext,
   IProjectDirs,
-} from "../contract/project-context.interface.js";
-import { moduleDir } from "../helper/module-path.helper.js";
-import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
+} from "../contracts/project-context.interface.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
+import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
 
 /** Entradas de las que se puede derivar el contexto. */
 export interface IResolveContextOptions {

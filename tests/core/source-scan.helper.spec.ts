@@ -7,7 +7,7 @@ import {
   splitTopLevel,
   stripJsComments,
   unwrapObjectLiteralItem,
-} from "../../helper/source-scan.helper";
+} from "../../helpers/source-scan.helper";
 
 describe("stripJsComments", () => {
   test("elimina comentarios de bloque", () => {

@@ -71,8 +71,8 @@ motivó esta propuesta.
 ## slices
 
 ### S1 — detección de login independiente del nombre generado
-- **Files**: `service/auth-flow.service.ts` (nuevo),
-  `service/collection-builder.service.ts`.
+- **Files**: `services/auth-flow.service.ts` (nuevo),
+  `services/collection-builder.service.ts`.
 - **Gate**: `bun test tests/unit/auth-flow.service.spec.ts`.
 
 - Detectar el endpoint de login por **URI y método**, no por el nombre
@@ -86,7 +86,7 @@ motivó esta propuesta.
   devuelven `null` sin romper nada.
 
 ### S2 — inferir `tokenResponsePath` en vez de exigirlo
-- **Files**: `service/auth-flow.service.ts`.
+- **Files**: `services/auth-flow.service.ts`.
 - **Gate**: tests unitarios con las formas de respuesta habituales.
 
 - El script de test se genera **siempre** que haya login, y prueba en
@@ -103,7 +103,7 @@ motivó esta propuesta.
   mensaje accionable.
 
 ### S3 — variables de credenciales en el environment
-- **Files**: `service/environment-builder.service.ts`.
+- **Files**: `services/environment-builder.service.ts`.
 - **Gate**: `bun test tests/unit/environment-builder.spec.ts`.
 
 - Cuando hay flujo de login, el environment incluye `authUsername`,
@@ -116,7 +116,7 @@ motivó esta propuesta.
   basta para autenticarse.
 
 ### S4 — orden y descripción en la colección
-- **Files**: `service/collection-builder.service.ts`.
+- **Files**: `services/collection-builder.service.ts`.
 - **Gate**: `bun test tests/e2e/*-comprehensive.test.ts`.
 
 - La carpeta de auth se emite **primera** en la colección.

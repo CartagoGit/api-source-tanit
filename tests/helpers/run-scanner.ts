@@ -16,8 +16,8 @@
  */
 import { resolve, join } from "node:path";
 import { generateWithAllFrameworks } from "../../frameworks/index";
-import type { PostmanCollection } from "../../contract/postman.interface";
-import { moduleDir } from "../../helper/module-path.helper";
+import type { PostmanCollection } from "../../contracts/postman.interface";
+import { moduleDir } from "../../helpers/module-path.helper";
 
 const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "../..");
 

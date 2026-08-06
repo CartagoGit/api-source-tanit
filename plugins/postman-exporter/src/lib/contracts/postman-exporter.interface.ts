@@ -3,7 +3,7 @@
  *
  * Mantienen el contrato limpio: el plugin NO depende de la
  * implementación interna del proyecto postman-exporter (que vive en
- * `../../contract/`, `../../service/`). Solo define las entradas y
+ * `../../contracts/`, `../../services/`). Solo define las entradas y
  * salidas que un agente ve al invocar los tools.
  */
 

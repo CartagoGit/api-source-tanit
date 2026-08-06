@@ -2,9 +2,9 @@ import { describe, expect, test } from "vitest";
 import {
   checkCollectionInvariants,
   collectionErrors,
-} from "../../helper/collection-invariants.helper";
-import { POSTMAN_SCHEMA_URL } from "../../contract/postman.constant";
-import type { PostmanCollection, PostmanItem } from "../../contract/postman.interface";
+} from "../../helpers/collection-invariants.helper";
+import { POSTMAN_SCHEMA_URL } from "../../contracts/postman.constant";
+import type { PostmanCollection, PostmanItem } from "../../contracts/postman.interface";
 
 function request(name: string, method: string, raw: string): PostmanItem {
   return {

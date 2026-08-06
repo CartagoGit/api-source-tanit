@@ -6,9 +6,9 @@ import {
   AUTH_PASSWORD_VARIABLE,
   AUTH_TOKEN_VARIABLE,
   AUTH_USERNAME_VARIABLE,
-} from "../../service/auth-flow.service";
-import { POSTMAN_SCHEMA_URL } from "../../contract/postman.constant";
-import type { PostmanCollection, PostmanItem } from "../../contract/postman.interface";
+} from "../../services/auth-flow.service";
+import { POSTMAN_SCHEMA_URL } from "../../contracts/postman.constant";
+import type { PostmanCollection, PostmanItem } from "../../contracts/postman.interface";
 
 function request(
   name: string,

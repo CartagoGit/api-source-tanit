@@ -38,7 +38,7 @@ durante el desarrollo, manteniendo la colección siempre sincronizada:
 ## slices
 
 ### S1 — Watcher de archivos con debounce
-- **Files**: `service/watcher.service.ts`.
+- **Files**: `services/watcher.service.ts`.
 - **Gate**: `bun test tests/unit/watcher.spec.ts`.
 - Usa `fs.watch` (recursivo) con debounce de 300ms para evitar rebuilds
   repetidos durante `Ctrl+S` rápidos.
@@ -50,7 +50,7 @@ durante el desarrollo, manteniendo la colección siempre sincronizada:
   primera generación.
 
 ### S3 — Notificaciones de terminal
-- **Files**: `helper/tui-notify.helper.ts`.
+- **Files**: `helpers/tui-notify.helper.ts`.
 - **Gate**: revisión manual.
 - Imprime `[18:05:42] ✔ Collection regenerated (9 endpoints, 230ms)` en cada
   rebuild con timestamp y métricas delta.

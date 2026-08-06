@@ -31,17 +31,17 @@ Para alcanzar la **excelencia 11 de 10**, `export-to-postman` debe entregar cole
 ## slices
 
 ### S1 — Generador de Pre-request & Auth Refresh Scripts
-- **Files**: `service/auth-flow.service.ts`, `service/collection-builder.service.ts`.
+- **Files**: `services/auth-flow.service.ts`, `services/collection-builder.service.ts`.
 - **Gate**: `bun test tests/unit/auth-flow.spec.ts`.
 - Inserta automáticamente scripts en la sección `event` de Postman para gestionar refrescos de token en peticiones protegidas.
 
 ### S2 — Generador de Test Scripts de Validación Automática
-- **Files**: `helper/postman-script.helper.ts`, `service/collection-builder.service.ts`.
+- **Files**: `helpers/postman-script.helper.ts`, `services/collection-builder.service.ts`.
 - **Gate**: `bun test tests/unit/collection-builder.spec.ts`.
 - Añade aserciones Postman Javascript (`pm.test(...)`) en cada request para verificar status codes e invariantes de respuesta.
 
 ### S3 — Generador de Respuestas Simuladas (Mock Responses)
-- **Files**: `helper/postman-response.helper.ts`.
+- **Files**: `helpers/postman-response.helper.ts`.
 - **Gate**: `bun test tests/unit/mock-responses.spec.ts`.
 - Mapea las reglas de validación inferidas para generar respuestas de ejemplo con payloads formateados para códigos 200 OK, 400 Bad Request y 422 Unprocessable Entity.
 

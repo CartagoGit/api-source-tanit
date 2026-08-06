@@ -17,8 +17,8 @@
  */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { loadProject } from "../service/project-loader.service.js";
-import { outputDir } from "../service/paths.service.js";
+import { loadProject } from "../services/project-loader.service.js";
+import { outputDir } from "../services/paths.service.js";
 
 const platform: string = process.platform ?? "linux";
 void platform; // suppress unused warning; kept for clarity

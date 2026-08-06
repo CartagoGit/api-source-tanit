@@ -39,7 +39,7 @@ impecablemente**:
 ## slices
 
 ### S1 — Cobertura TSDoc 100% en exports públicos
-- **Files**: `contract/*.ts`, `service/*.ts` (solo exports), `helper/*.ts`.
+- **Files**: `contracts/*.ts`, `services/*.ts` (solo exports), `helpers/*.ts`.
 - **Gate**: `bun run lint:docs` (linter de TSDoc coverage).
 - Cada función exportada debe tener `@param`, `@returns` y `@example`.
 

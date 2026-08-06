@@ -19,7 +19,7 @@
 import { mkdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { moduleDir } from "../helper/module-path.helper.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 const ENTRYPOINT = join(PACKAGE_ROOT, "scripts", "cli.script.ts");

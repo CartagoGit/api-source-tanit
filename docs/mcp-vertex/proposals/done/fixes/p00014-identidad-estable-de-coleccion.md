@@ -58,8 +58,8 @@ de `projectBasename()`, que depende del singleton de `paths.service`
 ## slices
 
 ### S1 — UUIDv5 determinista desde la identidad del proyecto
-- **Files**: `helper/collection-identity.helper.ts` (nuevo),
-  `service/collection-builder.service.ts`, `contract/project-config.interface.ts`.
+- **Files**: `helpers/collection-identity.helper.ts` (nuevo),
+  `services/collection-builder.service.ts`, `contracts/project-config.interface.ts`.
 - **Gate**: `bun test tests/unit/collection-identity.helper.spec.ts`.
 
 - Nueva función `collectionIdFor(seed: string): string` que produce un
@@ -77,8 +77,8 @@ de `projectBasename()`, que depende del singleton de `paths.service`
     (Postman rechaza IDs mal formados).
 
 ### S2 — `collectionId` explícito en `ProjectConfig`
-- **Files**: `contract/project-config.interface.ts`,
-  `service/project-loader.service.ts`, `scripts/init.script.ts`.
+- **Files**: `contracts/project-config.interface.ts`,
+  `services/project-loader.service.ts`, `scripts/init.script.ts`.
 - **Gate**: `bun test tests/unit/project-loader.spec.ts`.
 
 - Añadir `collectionId?: string` al `ProjectConfig`, documentado como

@@ -58,7 +58,7 @@ for development but blocks:
 - **Files**: `package.json`, `README.md`.
 - **Gate**: `bun pm pack --dry-run` shows only the entry in `files`.
 
-- Confirm `files` only carries `contract/`, `service/`, `helper/`,
+- Confirm `files` only carries `contracts/`, `services/`, `helpers/`,
   `scripts/`, `tsconfig.json`, `README.md` (it already does).
 - Confirm `publishConfig.access: "public"` (it already is).
 - `bin` is already `postman-from-routes` → `./scripts/cli.script.ts`.

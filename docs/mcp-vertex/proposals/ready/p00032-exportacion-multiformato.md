@@ -46,25 +46,25 @@ Targets propuestos:
 ## slices
 
 ### S1 — Interfaz `IExportTarget` y registro de exportadores
-- **Files**: `contract/export-target.interface.ts`, `service/export-registry.service.ts`.
+- **Files**: `contracts/export-target.interface.ts`, `services/export-registry.service.ts`.
 - **Gate**: `bun test tests/core/export-registry.spec.ts`.
 - Define la interfaz `IExportTarget { format: string; serialize(specs: EndpointSpec[], config): string | Record<string, string> }` y un registro extensible.
 
 ### S2 — Exportador OpenAPI 3.1.0
-- **Files**: `service/exporters/openapi.exporter.ts`.
+- **Files**: `services/exporters/openapi.exporter.ts`.
 - **Gate**: `bun test tests/unit/openapi-exporter.spec.ts`.
 - Genera un documento YAML/JSON con paths, methods, requestBody y responses inferidos de `EndpointSpec`.
 
 ### S3 — Exportador Insomnia v4
-- **Files**: `service/exporters/insomnia.exporter.ts`.
+- **Files**: `services/exporters/insomnia.exporter.ts`.
 - **Gate**: `bun test tests/unit/insomnia-exporter.spec.ts`.
 
 ### S4 — Exportador Bruno (directorio `.bru`)
-- **Files**: `service/exporters/bruno.exporter.ts`.
+- **Files**: `services/exporters/bruno.exporter.ts`.
 - **Gate**: `bun test tests/unit/bruno-exporter.spec.ts`.
 
 ### S5 — Exportador HAR 1.2 y cURL
-- **Files**: `service/exporters/har.exporter.ts`, `service/exporters/curl.exporter.ts`.
+- **Files**: `services/exporters/har.exporter.ts`, `services/exporters/curl.exporter.ts`.
 - **Gate**: `bun test tests/unit/har-curl-exporter.spec.ts`.
 
 ### S6 — Flag CLI `--format`

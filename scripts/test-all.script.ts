@@ -16,12 +16,12 @@
  */
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { resetPathCache } from "../service/paths.service.js";
+import { resetPathCache } from "../services/paths.service.js";
 import { defaultOrchestrator } from "../frameworks/registry.js";
-import { buildSpecsFromScanner } from "../service/adapters/parsed-route-to-spec.adapter.js";
-import { loadProject } from "../service/project-loader.service.js";
-import { applyAgnosticInference } from "../service/param-inferrer.service.js";
-import { moduleDir } from "../helper/module-path.helper.js";
+import { buildSpecsFromScanner } from "../services/adapters/parsed-route-to-spec.adapter.js";
+import { loadProject } from "../services/project-loader.service.js";
+import { applyAgnosticInference } from "../services/param-inferrer.service.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
 
 const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "..");
 const FIXTURES_DIR = join(PROJECT_ROOT, "tests", "fixtures");

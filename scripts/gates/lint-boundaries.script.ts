@@ -6,7 +6,7 @@
  * `frameworks/`**. Es lo único que separa "somos agnósticos" de
  * "decimos que somos agnósticos". Y se rompe sola: alguien necesita una
  * función que casualmente vive en el scanner de Laravel, la importa, y
- * a partir de ahí `service/` ya no compila sin arrastrar PHP.
+ * a partir de ahí `services/` ya no compila sin arrastrar PHP.
  *
  * Ya pasó. `generation.pipeline` importaba el registro de scanners,
  * `collection-builder` importaba el parser de rutas de Laravel, y
@@ -23,7 +23,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
-import { moduleDir } from "../../helper/module-path.helper.js";
+import { moduleDir } from "../../helpers/module-path.helper.js";
 import { SECTIONS, bestSectionFor, type ISection } from "./sections.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");

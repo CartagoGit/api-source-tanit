@@ -7,17 +7,17 @@
  *   bun scripts/enrich.script.ts --config ./examples/example-app/config.constant.ts
  */
 import { writeFile } from "node:fs/promises";
-import { buildCollection } from "../service/collection-builder.service.js";
-import { applyAuthFlow } from "../service/auth-flow.service.js";
+import { buildCollection } from "../services/collection-builder.service.js";
+import { applyAuthFlow } from "../services/auth-flow.service.js";
 import { enrichCatalogWithFormRequests } from "../frameworks/laravel/catalog-enricher.service.js";
 import { discoverEndpoints } from "../frameworks/laravel/endpoint-discovery.service.js";
-import { loadProject } from "../service/project-loader.service.js";
+import { loadProject } from "../services/project-loader.service.js";
 import {
   outputCollectionPath,
   outputEnrichedPath,
-} from "../service/paths.service.js";
-import { countItems } from "../helper/postman.helper.js";
-import { normalizeForComparison } from "../helper/uri.helper.js";
+} from "../services/paths.service.js";
+import { countItems } from "../helpers/postman.helper.js";
+import { normalizeForComparison } from "../helpers/uri.helper.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const inPlace = process.argv.includes("--in-place");

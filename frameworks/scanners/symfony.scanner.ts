@@ -33,7 +33,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 import { parseYamlLite } from "./openapi.scanner.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];

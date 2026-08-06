@@ -9,7 +9,7 @@
  *
  * Ejemplo mínimo:
  * ```ts
- * import type { ProjectConfig } from "./contract/project-config.interface.js";
+ * import type { ProjectConfig } from "./contracts/project-config.interface.js";
  *
  * export const config: ProjectConfig = {
  *   name: "mi-api",
@@ -131,7 +131,7 @@ export interface ProjectConfig {
    *
    * Para generar dev/staging/prod automáticamente, usa
    * `defaultEnvironments(baseUrl)` de
-   * `service/environment-builder.service.ts`.
+   * `services/environment-builder.service.ts`.
    */
   environments?: ReadonlyArray<{
     name: string;

@@ -9,7 +9,7 @@
  * Orden de los detectores = orden de prioridad. Si dos `detect()`
  * empatan en score, gana el que aparezca primero en esta lista.
  */
-import { DiscoveryOrchestrator } from "../service/discovery.orchestrator";
+import { DiscoveryOrchestrator } from "../services/discovery.orchestrator";
 import {
   LaravelProjectScanner,
   LaravelScanner,
@@ -71,13 +71,13 @@ import {
   AspNetDataAnnotationsProvider,
 } from "../frameworks/scanners/aspnet.scanner";
 
-import type { DiscoveryRegistry } from "../service/discovery.orchestrator";
+import type { DiscoveryRegistry } from "../services/discovery.orchestrator";
 import type {
   FrameworkId,
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../contract/scanner.interface";
+} from "../contracts/scanner.interface";
 
 /** Registry canónico con los 12 frameworks soportados. */
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {

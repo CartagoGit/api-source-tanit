@@ -7,7 +7,7 @@
  * deja ganar al manual campo a campo. Vale igual para lo que devuelva
  * cualquier scanner, y por eso es del núcleo.
  */
-import type { EndpointSpec } from "../contract/postman.interface.js";
+import type { EndpointSpec } from "../contracts/postman.interface.js";
 
 /**
  * Fusiona specs auto-descubiertos con un catálogo manual opcional.

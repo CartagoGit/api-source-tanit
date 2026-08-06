@@ -59,7 +59,7 @@ projectRoot
   └─ auth-flow              ── login/refresh/logout + captura del token
 ```
 
-Todo eso lo orquesta **`service/generation.pipeline.ts`**, que es el
+Todo eso lo orquesta **`services/generation.pipeline.ts`**, que es el
 único sitio donde se decide el orden de los pasos. El CLI, los tests y el
 gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
@@ -69,10 +69,10 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 | Quiero… | Toco |
 |---|---|
-| Añadir un framework | `service/scanners/<fw>.scanner.ts` + registrarlo en `service/scanner-registry.ts` |
-| Cambiar la forma de la colección | `service/collection-builder.service.ts` |
-| Cambiar el flujo de login | `service/auth-flow.service.ts` |
-| Parsear una librería de validación nueva | `helper/<lib>-schema.helper.ts` |
+| Añadir un framework | `services/scanners/<fw>.scanner.ts` + registrarlo en `services/scanner-registry.ts` |
+| Cambiar la forma de la colección | `services/collection-builder.service.ts` |
+| Cambiar el flujo de login | `services/auth-flow.service.ts` |
+| Parsear una librería de validación nueva | `helpers/<lib>-schema.helper.ts` |
 | Añadir un comando al CLI | `scripts/<nombre>.script.ts` + entrada en `scripts/cli.script.ts` |
 | Añadir un tool MCP | `plugins/postman-exporter/src/lib/tools/<nombre>.tool.ts` |
 

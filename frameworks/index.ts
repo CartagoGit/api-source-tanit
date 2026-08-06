@@ -3,7 +3,7 @@
  *
  * El reparto del repo es este:
  *
- *   `contract/`, `helper/`, `service/`  →  núcleo agnóstico. Vale igual
+ *   `contracts/`, `helpers/`, `services/`  →  núcleo agnóstico. Vale igual
  *       para una API de Laravel que para una de Gin. No conoce ni un
  *       solo framework por su nombre.
  *   `frameworks/`                       →  lo concreto. Los 12 scanners,
@@ -27,11 +27,11 @@ import {
   generateCollection,
   type IGenerationOptions,
   type IGenerationResult,
-} from "../service/generation.pipeline.js";
+} from "../services/generation.pipeline.js";
 import {
   summarizeProject,
   type IProjectSummary,
-} from "../service/summary.service.js";
+} from "../services/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 import { defaultOrchestrator } from "./registry.js";
 

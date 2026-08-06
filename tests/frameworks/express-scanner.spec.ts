@@ -12,7 +12,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helper/module-path.helper";
+import { moduleDir } from "../../helpers/module-path.helper";
 
 describeScannerContract({
   framework: "express",

@@ -13,7 +13,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
-import { joinRoutePath } from "../../helper/uri.helper.js";
+import { joinRoutePath } from "../../helpers/uri.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -21,7 +21,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const RESOURCE_RE =

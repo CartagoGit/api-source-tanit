@@ -65,7 +65,7 @@ Three commands, three different outputs, no roll-up. A single
 
 - **Files**:
   `plugins/postman-exporter/src/lib/tools/test.tool.ts` (new),
-  `plugins/postman-exporter/src/lib/contract/postman-exporter.interface.ts`
+  `plugins/postman-exporter/src/lib/contracts/postman-exporter.interface.ts`
   (add `TestInputSchema`, `ITestOutput`),
   `plugins/postman-exporter/src/index.ts` (register the tool).
 - The tool runs (sequentially, with timeout):

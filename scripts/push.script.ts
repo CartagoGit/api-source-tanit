@@ -10,18 +10,18 @@
  * La API key se saca de `--api-key` o de `POSTMAN_API_KEY`, y nunca se
  * imprime ni se escribe en disco.
  */
-import { projectRoot } from "../service/paths.service.js";
+import { projectRoot } from "../services/paths.service.js";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
 import {
   buildEnvironments,
   defaultEnvironments,
-} from "../service/environment-builder.service.js";
+} from "../services/environment-builder.service.js";
 import {
   PostmanApiError,
   pushCollection,
   pushEnvironment,
   verifyApiKey,
-} from "../service/postman-api.service.js";
+} from "../services/postman-api.service.js";
 
 function readFlag(argv: string[], name: string): string | null {
   const index = argv.indexOf(name);

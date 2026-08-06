@@ -36,7 +36,7 @@ to:
 2. Add a new tool to the MCP-vertex plugin (per `plugins/postman-exporter/`).
 3. Add a new agent to the orchestrator catalog (per p00005).
 4. Add a new env-var / config field to the `ProjectConfig` (per
-   `contract/project-config.interface.ts`).
+   `contracts/project-config.interface.ts`).
 
 The contract is the single source of truth for "what does it look
 like to extend postman-exporter without forking it?". Today this
@@ -78,7 +78,7 @@ The contract turns those 70 minutes into 10.
   3. **Adding an agent to the orchestrator catalog** (the
      `.github/agents/<name>.agent.md` shape, the `tools` permission
      list, the discriminated output contract).
-  4. **Adding a field to `ProjectConfig`** (`contract/project-config.interface.ts`
+  4. **Adding a field to `ProjectConfig`** (`contracts/project-config.interface.ts`
      shape, `defaultProjectRoot`/`cliScript` propagation, how the
      buffer reads it).
   5. **Conventions** (file naming: `*.service.ts`, `*.tool.ts`,

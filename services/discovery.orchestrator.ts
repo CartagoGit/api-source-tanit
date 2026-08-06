@@ -27,7 +27,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../contract/scanner.interface.js";
+} from "../contracts/scanner.interface.js";
 
 export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;

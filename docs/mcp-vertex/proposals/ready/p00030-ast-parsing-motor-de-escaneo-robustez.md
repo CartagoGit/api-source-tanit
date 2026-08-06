@@ -32,17 +32,17 @@ Un motor basado en AST garantizará una robustez del **100% (nivel 11/10)** en l
 ## slices
 
 ### S1 — Integración de parser AST para TypeScript/JavaScript (`ts-morph` / SWC lightweight)
-- **Files**: `helper/ast-ts.helper.ts`, `service/scanners/express.scanner.ts`, `service/scanners/nestjs.scanner.ts`.
+- **Files**: `helpers/ast-ts.helper.ts`, `services/scanners/express.scanner.ts`, `services/scanners/nestjs.scanner.ts`.
 - **Gate**: `bun test tests/unit/ast-ts.spec.ts`.
 - Reemplaza el parsing RegEx en Express, NestJS y Next.js por recorrido del AST para detectar llamadas a métodos de enrutamiento y tipos DTO.
 
 ### S2 — Parser de Tokens / AST para Python (FastAPI, Flask, Django)
-- **Files**: `helper/ast-python.helper.ts`, `service/scanners/fastapi.scanner.ts`, `service/scanners/django.scanner.ts`.
+- **Files**: `helpers/ast-python.helper.ts`, `services/scanners/fastapi.scanner.ts`, `services/scanners/django.scanner.ts`.
 - **Gate**: `bun test tests/unit/ast-python.spec.ts`.
 - Implementa tokenizer y extractor de AST para detectar decoradores `@app.get` y routers de Django REST Framework ignorando comentarios y docstrings.
 
 ### S3 — Parser de Tokens / AST para PHP y Java/C#
-- **Files**: `helper/ast-php.helper.ts`, `service/scanners/laravel.scanner.ts`, `service/scanners/symfony.scanner.ts`.
+- **Files**: `helpers/ast-php.helper.ts`, `services/scanners/laravel.scanner.ts`, `services/scanners/symfony.scanner.ts`.
 - **Gate**: `bun test tests/unit/ast-php.spec.ts`.
 - Analiza atributos PHP 8 (`#[Route]`) y llamadas fluent `Route::get()` descomponiendo la estructura léxica del archivo.
 

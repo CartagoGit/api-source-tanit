@@ -21,7 +21,7 @@
 
 import { definePlugin } from "@mcp-vertex/core/public";
 
-import { PostmanExporterOptionsSchema } from "./lib/contract/postman-exporter.interface";
+import { PostmanExporterOptionsSchema } from "./lib/contracts/postman-exporter.interface";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
 import { buildTestToolRegistration } from "./lib/tools/test.tool";

@@ -37,13 +37,13 @@ del kernel sin sobrecargar el file descriptor limit.
 ## slices
 
 ### S1 — `fs-walk.helper.ts` asíncrono
-- **Files**: `helper/fs-walk.helper.ts`.
+- **Files**: `helpers/fs-walk.helper.ts`.
 - **Gate**: `bun test tests/core/fs-walk.spec.ts`.
 - `walkDir` devuelve un `AsyncGenerator<string>` en lugar de un array
   síncrono. Los consumidores migran a `for await`.
 
 ### S2 — `source-scan.helper.ts` asíncrono con pool de concurrencia
-- **Files**: `helper/source-scan.helper.ts`.
+- **Files**: `helpers/source-scan.helper.ts`.
 - **Gate**: `bun test tests/core/source-scan.spec.ts`.
 - `scanSourceFiles` usa `readFile` con un pool de máximo 16 lecturas
   paralelas. Se implementa un semáforo interno (sin dependencia externa).

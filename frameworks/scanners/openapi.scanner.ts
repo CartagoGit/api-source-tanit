@@ -25,7 +25,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
 const OPENAPI_CANDIDATES = [

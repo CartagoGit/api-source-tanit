@@ -22,10 +22,10 @@ import { generateWithAllFrameworks } from "../frameworks/index.js";
 import {
   checkCollectionInvariants,
   type ICollectionIssue,
-} from "../helper/collection-invariants.helper.js";
-import { countItems } from "../helper/postman.helper.js";
-import type { PostmanCollection } from "../contract/postman.interface.js";
-import { moduleDir } from "../helper/module-path.helper.js";
+} from "../helpers/collection-invariants.helper.js";
+import { countItems } from "../helpers/postman.helper.js";
+import type { PostmanCollection } from "../contracts/postman.interface.js";
+import { moduleDir } from "../helpers/module-path.helper.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 const EXAMPLES_DIR = join(PACKAGE_ROOT, "examples");

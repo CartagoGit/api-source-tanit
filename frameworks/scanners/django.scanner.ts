@@ -25,8 +25,8 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { collectFiles } from "../../helper/fs-walk.helper.js";
-import { joinRoutePath } from "../../helper/uri.helper.js";
+import { collectFiles } from "../../helpers/fs-walk.helper.js";
+import { joinRoutePath } from "../../helpers/uri.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -34,7 +34,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 

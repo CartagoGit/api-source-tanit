@@ -90,7 +90,7 @@ qualified-name contract:
 | `test` (in `postman-exporter-testing`) | `${NAMESPACE}_exporter_test` |
 
 Where `NAMESPACE = "postman"` (constant exported from
-`plugins/postman-exporter/src/lib/contract/namespace.ts`).
+`plugins/postman-exporter/src/lib/contracts/namespace.ts`).
 
 Hardcoding these names in this file is **permitted** for these 4
 tools specifically because the qualified name is the **public MCP
@@ -116,9 +116,9 @@ Each `*.tool.ts` builder:
 
 - Declares `id: "<short-name>"` (bookkeeping only; the host uses
   this for sequence ordering).
-- Imports `NAMESPACE` from `../contract/namespace`, not from a
+- Imports `NAMESPACE` from `../contracts/namespace`, not from a
   local `const`. The single source of truth lives in
-  `plugins/postman-exporter/src/lib/contract/namespace.ts`.
+  `plugins/postman-exporter/src/lib/contracts/namespace.ts`.
 
 Bug history (do not regress): see proposal
 [`proposals/done/fixes/p00013-plugin-bug-fixes.md`](proposals/done/fixes/p00013-plugin-bug-fixes.md)
@@ -154,9 +154,9 @@ a pointer.
 
 | Folder | Suffix | Example |
 | --- | --- | --- |
-| `service/` | `*.service.ts` | `service/router-adapters/laravel.parser.ts` |
-| `helper/` | `*.helper.ts` | `helper/uri.helper.ts` |
-| `contract/` | `*.interface.ts` / `*.constant.ts` | `contract/postman-exporter.interface.ts` |
+| `services/` | `*.service.ts` | `services/router-adapters/laravel.parser.ts` |
+| `helpers/` | `*.helper.ts` | `helpers/uri.helper.ts` |
+| `contracts/` | `*.interface.ts` / `*.constant.ts` | `contracts/postman-exporter.interface.ts` |
 | `plugins/` | `*.tool.ts` | `plugins/postman-exporter/src/lib/tools/generate.tool.ts` |
 | `docs/mcp-vertex/proposals/ready/` | `p<NNNN>-<slug>.md` | `p00013-plugin-bug-fixes.md` |
 
@@ -168,7 +168,7 @@ functions only, no I/O. Tool → one tool per file.
 Plugin options live at
 `mcp-vertex.config.json#plugins.postman-exporter.options` and are
 parsed by `PostmanExporterOptionsSchema` in
-`plugins/postman-exporter/src/lib/contract/postman-exporter.interface.ts`.
+`plugins/postman-exporter/src/lib/contracts/postman-exporter.interface.ts`.
 
 A new field:
 
@@ -218,7 +218,7 @@ publish). Do not hard-require
 
 ### 3.8 Router adapters
 
-`service/router-adapters/<framework>.parser.ts` exports a class
+`services/router-adapters/<framework>.parser.ts` exports a class
 implementing `IRouterAdapter`:
 
 ```ts
@@ -231,7 +231,7 @@ export interface IRouterAdapter {
 ```
 
 Adapters register themselves in
-`service/router-dispatcher.service.ts` by being appended to the
+`services/router-dispatcher.service.ts` by being appended to the
 `adapters` array. A new adapter ships with at least 4 cases in
 `tests/unit/router-adapters/<framework>.parser.spec.ts`.
 

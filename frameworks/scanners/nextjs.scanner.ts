@@ -26,12 +26,12 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 import {
   countLinesBefore,
   findNearestBalanced,
   stripJsComments,
-} from "../../helper/source-scan.helper.js";
+} from "../../helpers/source-scan.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../../frameworks/parsers/zod-schema.helper.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];

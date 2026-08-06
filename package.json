@@ -40,19 +40,22 @@
   "module": "./scripts/cli.script.ts",
   "exports": {
     ".": "./scripts/cli.script.ts",
-    "./service/*": "./service/*.service.ts",
-    "./contract/*": "./contract/*.interface.ts",
-    "./helper/*": "./helper/*.helper.ts"
+    "./services/*": "./services/*.service.ts",
+    "./contracts/*": "./contracts/*.interface.ts",
+    "./helpers/*": "./helpers/*.helper.ts",
+    "./frameworks": "./frameworks/index.ts"
   },
   "files": [
-    "contract/",
-    "service/",
-    "helper/",
+    "contracts/",
+    "services/",
+    "helpers/",
+    "frameworks/",
     "scripts/",
     "docs/INSTALL.md",
     "docs/FRAMEWORKS.md",
     "docs/POSTMAN.md",
     "tsconfig.json",
+    "tsconfig.base.json",
     "README.md",
     "LICENSE"
   ],

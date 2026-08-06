@@ -17,8 +17,8 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
-import { joinRoutePath } from "../../helper/uri.helper.js";
-import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
+import { joinRoutePath } from "../../helpers/uri.helper.js";
+import { collectFilesFrom } from "../../helpers/fs-walk.helper.js";
 import {
   marshmallowSchemaToSpecs,
   parseMarshmallowSchemas,
@@ -35,7 +35,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contract/scanner.interface.js";
+} from "../../contracts/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 

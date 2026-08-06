@@ -13,11 +13,11 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../contract/postman.interface.js";
-import { POSTMAN_SCHEMA_URL } from "../contract/postman.constant.js";
-import { countItems } from "../helper/postman.helper.js";
-import { outputCollectionPath } from "../service/paths.service.js";
-import { loadProject } from "../service/project-loader.service.js";
+} from "../contracts/postman.interface.js";
+import { POSTMAN_SCHEMA_URL } from "../contracts/postman.constant.js";
+import { countItems } from "../helpers/postman.helper.js";
+import { outputCollectionPath } from "../services/paths.service.js";
+import { loadProject } from "../services/project-loader.service.js";
 
 interface Issue {
   severity: "error" | "warning";

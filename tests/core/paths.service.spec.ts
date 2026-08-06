@@ -5,7 +5,7 @@ import {
   outputDir,
   outputEnvironmentPath,
   resetPathCache,
-} from "../../service/paths.service";
+} from "../../services/paths.service";
 
 describe("paths.service", () => {
   afterEach(() => {

@@ -14,10 +14,10 @@
 import type {
   ILegacyDiscovery,
   ILegacyDiscoveryResult,
-} from "../../contract/legacy-discovery.interface.js";
-import type { EndpointSpec } from "../../contract/postman.interface.js";
-import type { ProjectConfig } from "../../contract/project-config.interface.js";
-import type { IProjectContext } from "../../contract/project-context.interface.js";
+} from "../../contracts/legacy-discovery.interface.js";
+import type { EndpointSpec } from "../../contracts/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/project-config.interface.js";
+import type { IProjectContext } from "../../contracts/project-context.interface.js";
 import { discoverEndpoints } from "./endpoint-discovery.service.js";
 
 /** Descubrimiento de último recurso sobre `routes/*.php`. */

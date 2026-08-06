@@ -56,7 +56,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
-    paths: ["contract/", "helper/", "service/"],
+    paths: ["contracts/", "helpers/", "services/"],
     tests: ["tests/core/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.core.json",
     dependsOn: [],
@@ -124,8 +124,8 @@ export function sectionByName(name: string): ISection | undefined {
  * barata de saber qué se rompe, así que se corre entero.
  *
  * El matcheo es por prefijo y **el más largo gana**, para que
- * `service/scanners/gin.scanner.ts` caiga en `frameworks` y no en
- * `core` (que declara el `service/` a secas).
+ * `services/scanners/gin.scanner.ts` caiga en `frameworks` y no en
+ * `core` (que declara el `services/` a secas).
  */
 export function sectionsForFiles(files: readonly string[]): ISection[] {
   const normalized = files.map((file) => file.replaceAll("\\", "/"));
