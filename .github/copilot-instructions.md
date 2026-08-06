@@ -1,4 +1,4 @@
-# Copilot / agent instructions — `@postman-exporter/core`
+# Copilot / agent instructions — `@export-to-postman/core`
 
 > **Project bootstrap:** [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place project

@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Root orchestrator for @postman-exporter/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
+description: Root orchestrator for @export-to-postman/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
 ---
 
 # Orchestrator (mcp-vertex)

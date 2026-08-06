@@ -1,4 +1,4 @@
-# agents.md — `postman-exporter`
+# agents.md — `export-to-postman`
 
 Una página para orientarse antes de tocar nada. Las reglas vinculantes
 viven en [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md);

@@ -1,6 +1,6 @@
 ---
 name: proposal-guardian
-description: Bounded subagent for @postman-exporter/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
+description: Bounded subagent for @export-to-postman/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
 ---
 
 # Proposal Guardian (mcp-vertex)
