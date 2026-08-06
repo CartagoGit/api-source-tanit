@@ -18,6 +18,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "springboot-comprehensive",
+  expectedRequests: 11,
+  hasAuth: true,
+});
+
 describe("Spring Boot — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("springboot-comprehensive");

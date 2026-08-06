@@ -19,6 +19,14 @@ import {
   normalizeCollection,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "openapi-comprehensive",
+  expectedRequests: 23,
+  hasAuth: true,
+});
+
 describe("OpenAPI — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("openapi-comprehensive");

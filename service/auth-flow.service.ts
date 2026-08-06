@@ -368,3 +368,44 @@ function detectByName(
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Heurística específica de Laravel
+// ---------------------------------------------------------------------------
+
+/**
+ * Detecta heurísticamente el dot-path del token en el AuthController de
+ * un proyecto Laravel.
+ * Mira los archivos `app/Http/Controllers/*Auth*Controller.php` y busca
+ * patrones de respuesta. Si no encuentra nada, devuelve undefined.
+ */
+export async function detectLaravelTokenPath(root: string): Promise<string | undefined> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const ctlDir = path.join(root, "app/Http/Controllers");
+  let entries: string[] = [];
+  try {
+    entries = await fs.readdir(ctlDir);
+  } catch {
+    return undefined;
+  }
+  const authFiles = entries.filter(
+    (f) => /Auth(entic|oriz)?/i.test(f) && f.endsWith("Controller.php"),
+  );
+  for (const f of authFiles) {
+    const text = await fs.readFile(path.join(ctlDir, f), "utf8").catch(() => "");
+    // Patrones comunes: 'access_token' => $t, 'data' => ['token' => ...]
+    if (/'access_token'\s*=>/.test(text) || /"access_token"\s*=>/.test(text))
+      return "access_token";
+    if (/'token'\s*=>\s*\$/.test(text) || /"token"\s*=>\s*\$/.test(text)) {
+      // JWT: token suele ir en raíz. Sanctum: suele ir en data.token.
+      // Si hay 'data' => 'token', preferimos data.token.
+      if (/'data'\s*=>\s*\[[\s\S]*?'token'\s*=>/.test(text)) return "data.token";
+      return "token";
+    }
+    if (/'data'\s*=>\s*\[[\s\S]*?'access_token'\s*=>/.test(text))
+      return "data.access_token";
+  }
+  return undefined;
+}
+

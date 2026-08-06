@@ -24,6 +24,12 @@ import type { EndpointSpec, PostmanCollection } from "../contract/postman.interf
 import type { ProjectConfig } from "../contract/project-config.interface.js";
 import type { IProjectMatch, ParsedRoute } from "../contract/scanner.interface.js";
 import { buildSpecsFromScanner } from "./adapters/parsed-route-to-spec.adapter.js";
+import {
+  applyAuthFlow,
+  authEnvironmentVariables,
+  detectLaravelTokenPath,
+  type IAuthFlow,
+} from "./auth-flow.service.js";
 import { buildCollection } from "./collection-builder.service.js";
 import { discoverEndpoints, mergeWithManual } from "./endpoint-discovery.service.js";
 import {
@@ -52,6 +58,8 @@ export interface IGenerationResult {
   readonly match: IProjectMatch | null;
   /** `"scanner"` si lo resolvió un scanner del registry; `"legacy"` si no. */
   readonly origin: "scanner" | "legacy";
+  /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */
+  readonly authFlow: IAuthFlow | null;
   readonly metrics: IGenerationMetrics;
 }
 
@@ -85,13 +93,34 @@ export async function generateCollection(
   config.variables = inferCollectionVariables(specs, config.variables ?? []);
   if (options.collectionName) config.collectionName = options.collectionName;
 
+  const collection = buildCollection(specs, config);
+
+  // El flujo de auth es parte del pipeline, no del script: si viviera
+  // solo en `generate.script.ts`, ni los tests ni el gate lo
+  // ejercitarían, que es justo lo que pasaba.
+  const tokenResponsePath =
+    config.tokenResponsePath ?? (await detectLaravelTokenPath(projectRoot));
+  const authFlow = applyAuthFlow(collection, {
+    tokenResponsePath,
+    loginEndpointName: config.loginEndpointName,
+  });
+  if (authFlow) {
+    const known = new Set(config.variables.map((v) => v.key));
+    config.variables = [
+      ...config.variables,
+      ...authEnvironmentVariables().filter((v) => !known.has(v.key)),
+    ];
+    collection.variable = config.variables;
+  }
+
   return {
-    collection: buildCollection(specs, config),
+    collection,
     specs,
     routes: discovery.routes,
     config,
     match: discovery.match,
     origin: discovery.origin,
+    authFlow,
     metrics: {
       routes: discovery.routes.length,
       specs: specs.length,

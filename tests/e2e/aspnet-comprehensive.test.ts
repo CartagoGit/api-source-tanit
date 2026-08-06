@@ -19,6 +19,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "aspnet-comprehensive",
+  expectedRequests: 11,
+  hasAuth: true,
+});
+
 describe("ASP.NET — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("aspnet-comprehensive");

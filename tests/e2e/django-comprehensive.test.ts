@@ -24,6 +24,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "django-comprehensive",
+  expectedRequests: 18,
+  hasAuth: true,
+});
+
 /**
  * Helper local: encuentra TODOS los endpoints que matchean method+uri.
  * (Django fixture no genera duplicados, pero dejamos el helper por si

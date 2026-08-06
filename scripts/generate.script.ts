@@ -13,10 +13,6 @@
  */
 import { writeFile } from "node:fs/promises";
 import {
-  applyAuthFlow,
-  authEnvironmentVariables,
-} from "../service/auth-flow.service.js";
-import {
   generateCollection,
   type IGenerationResult,
 } from "../service/generation.pipeline.js";
@@ -40,44 +36,6 @@ import {
 import type { EndpointSpec } from "../contract/postman.interface.js";
 import type { DiscoveredRoute } from "../contract/postman.interface.js";
 
-
-/**
- * Detecta heurísticamente el dot-path del token en el AuthController.
- * Mira los archivos `app/Http/Controllers/*Auth*Controller.php` y busca
- * patrones de respuesta. Si no encuentra nada, devuelve undefined.
- */
-async function detectTokenPath(): Promise<string | undefined> {
-  const fs = await import("node:fs/promises");
-  const path = await import("node:path");
-  const { projectRoot } = await import("../service/paths.service.js");
-  const root = projectRoot();
-  if (!root) return undefined;
-  const ctlDir = path.join(root, "app/Http/Controllers");
-  let entries: string[] = [];
-  try {
-    entries = await fs.readdir(ctlDir);
-  } catch {
-    return undefined;
-  }
-  const authFiles = entries.filter(
-    (f) => /Auth(entic|oriz)?/i.test(f) && f.endsWith("Controller.php"),
-  );
-  for (const f of authFiles) {
-    const text = await fs.readFile(path.join(ctlDir, f), "utf8").catch(() => "");
-    // Patrones comunes: 'access_token' => $t, 'data' => ['token' => ...]
-    if (/'access_token'\s*=>/.test(text) || /"access_token"\s*=>/.test(text))
-      return "access_token";
-    if (/'token'\s*=>\s*\$/.test(text) || /"token"\s*=>\s*\$/.test(text)) {
-      // JWT: token suele ir en raíz. Sanctum: suele ir en data.token.
-      // Si hay 'data' => 'token', preferimos data.token.
-      if (/'data'\s*=>\s*\[[\s\S]*?'token'\s*=>/.test(text)) return "data.token";
-      return "token";
-    }
-    if (/'data'\s*=>\s*\[[\s\S]*?'access_token'\s*=>/.test(text))
-      return "data.access_token";
-  }
-  return undefined;
-}
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
@@ -132,17 +90,6 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
  * colecciones homónimas y no sabe cuál es cuál. La salida es fijar
  * `collectionId` en el config de uno de los dos.
  */
-/**
- * Añade las variables de credenciales sin pisar las que el host ya
- * declare (puede tener un `token` con valor propio, por ejemplo).
- */
-function mergeAuthVariables(
-  existing: Array<{ key: string; value: string; type?: string }>,
-): Array<{ key: string; value: string; type?: string }> {
-  const known = new Set(existing.map((v) => v.key));
-  return [...existing, ...authEnvironmentVariables().filter((v) => !known.has(v.key))];
-}
-
 async function warnOnIdentityClash(
   outputPath: string,
   collection: { info: { name: string; _postman_id?: string } },
@@ -216,11 +163,7 @@ async function main(): Promise<number> {
   }
 
   const collection = pipeline.collection;
-  const detectedTokenPath = config.tokenResponsePath ?? (await detectTokenPath());
-  const authFlow = applyAuthFlow(collection, {
-    tokenResponsePath: detectedTokenPath,
-    loginEndpointName: config.loginEndpointName,
-  });
+  const authFlow = pipeline.authFlow;
   if (authFlow?.login) {
     console.log(
       `→ Auth: login en "${authFlow.login.name}" guarda el token automáticamente` +
@@ -228,8 +171,6 @@ async function main(): Promise<number> {
         (authFlow.logout ? ", logout limpia el token" : "") +
         ".",
     );
-    // Las credenciales viven en el environment, marcadas como secret.
-    config.variables = mergeAuthVariables(config.variables);
   } else {
     console.log("→ Auth: no se detectó endpoint de login (colección sin flujo de sesión).");
   }

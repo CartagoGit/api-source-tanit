@@ -16,6 +16,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "gin-comprehensive",
+  expectedRequests: 14,
+  hasAuth: true,
+});
+
 describe("Gin — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("gin-comprehensive");

@@ -16,6 +16,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "nextjs-comprehensive",
+  expectedRequests: 14,
+  hasAuth: true,
+});
+
 describe("Next.js — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("nextjs-comprehensive");

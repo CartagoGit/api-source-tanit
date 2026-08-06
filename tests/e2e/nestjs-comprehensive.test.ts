@@ -17,6 +17,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "nestjs-comprehensive",
+  expectedRequests: 13,
+  hasAuth: true,
+});
+
 describe("NestJS — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("nestjs-comprehensive");

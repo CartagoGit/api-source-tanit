@@ -19,6 +19,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "fastapi-comprehensive",
+  expectedRequests: 19,
+  hasAuth: true,
+});
+
 describe("FastAPI — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("fastapi-comprehensive");

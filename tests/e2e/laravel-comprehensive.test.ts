@@ -16,6 +16,14 @@ import {
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
+import { describeCollectionContract } from "../helpers/collection-contract";
+
+describeCollectionContract({
+  fixtureName: "laravel-comprehensive",
+  expectedRequests: 17,
+  hasAuth: true,
+});
+
 describe("Laravel — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("laravel-comprehensive");

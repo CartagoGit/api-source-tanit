@@ -10,9 +10,9 @@ related:
     - p00009 # vitest suite core
 ---
 
-> **Cerrada 2026-08-06.** S1 y S2 hechos: `scanner-fixture.ts` y
-> `describeScannerContract` aplicado a los 12 scanners (+147 tests). S3 (contrato
-> equivalente sobre la colección en los e2e) queda pendiente.
+> **Cerrada 2026-08-06.** Las tres slices hechas: `scanner-fixture.ts`,
+> `describeScannerContract` en los 12 scanners y `describeCollectionContract`
+> en los 12 e2e. De 468 a 792 tests.
 
 # p00016 — suites homogéneas por framework con mocks reutilizables
 
