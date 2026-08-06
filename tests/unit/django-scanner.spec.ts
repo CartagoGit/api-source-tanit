@@ -53,8 +53,8 @@ describe("Django scanner", () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
     const routes = await new DjangoRouteScanner().scan(match);
     const uris = routes.map((r) => r.uri);
-    expect(uris).toContain("health/");
-    expect(uris.some((u) => u.includes("api/users/"))).toBe(true);
+    expect(uris).toContain("/health/");
+    expect(uris.some((u) => u.includes("/api/users/"))).toBe(true);
     expect(uris.some((u) => u.includes("<int:id>") || u.includes("{id}"))).toBe(true);
   });
 

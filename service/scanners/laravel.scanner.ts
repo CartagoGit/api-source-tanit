@@ -13,6 +13,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -320,7 +321,7 @@ export async function parseRoutesFile(
         const segments = rawForThis
           ? [...prefixStack, rawForThis]
           : [...prefixStack];
-        const full = segments.join("/").replace(/\/+/g, "/");
+        const full = joinRoutePath("/", ...segments);
         out.push({
           method: r.method,
           uri: encodeWithConstraintsInUri(full, whereConstraints),
@@ -340,7 +341,7 @@ export async function parseRoutesFile(
       const method = rm[1].toUpperCase();
       const rawUri = rm[2] ?? "";
       const segments = rawUri ? [...prefixStack, rawUri] : [...prefixStack];
-      const full = segments.join("/").replace(/\/+/g, "/");
+      const full = joinRoutePath("/", ...segments);
 
       let controllerClass: string | undefined;
       let actionName: string | undefined;

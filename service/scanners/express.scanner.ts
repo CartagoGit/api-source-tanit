@@ -152,14 +152,23 @@ async function parseModule(file: string): Promise<ParsedModule> {
     // router = Router({ prefix: '/api/v1' })
     const rpM = new RegExp(ROUTER_PREFIX_RE.source, "gi").exec(line);
     if (rpM?.[1]) {
-      const varMatch = line.match(/([a-zA-Z_$][\w$]*)\s*=\s*(?:express\.)?Router/);
-      if (varMatch?.[1]) routerPrefixes.set(varMatch[1], rpM[1]);
+      // Igual que arriba: todas las declaraciones de la línea, no solo
+      // la primera.
+      const varReg = /([a-zA-Z_$][\w$]*)\s*=\s*(?:express\.)?Router/g;
+      let varMatch: RegExpExecArray | null;
+      while ((varMatch = varReg.exec(line)) !== null) {
+        if (varMatch[1]) routerPrefixes.set(varMatch[1], rpM[1]);
+      }
     }
 
-    // app.use('/prefix', router) → router conocido gana prefix.
-    const auM = new RegExp(APP_USE_PREFIX_RE.source, "gi").exec(line);
-    if (auM?.[2] && auM[3]) {
-      appUsePrefixes.set(auM[3], auM[2]);
+    // app.use('/prefix', router) → el router montado hereda el prefijo.
+    // Se recorren TODAS las coincidencias de la línea: con `.exec()` una
+    // sola vez, `app.use("/v1", a); app.use("/v2", b);` en la misma línea
+    // perdía el segundo montaje y sus rutas salían sin prefijo.
+    const auReg = new RegExp(APP_USE_PREFIX_RE.source, "gi");
+    let auM: RegExpExecArray | null;
+    while ((auM = auReg.exec(line)) !== null) {
+      if (auM[2] && auM[3]) appUsePrefixes.set(auM[3], auM[2]);
     }
 
     // app.METHOD(path, handler) o router.METHOD(path, handler)

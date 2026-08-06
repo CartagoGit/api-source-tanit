@@ -26,6 +26,7 @@ import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { collectFiles } from "../../helper/fs-walk.helper.js";
+import { joinRoutePath } from "../../helper/uri.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -219,7 +220,7 @@ async function parseUrlsPy(
       }
       // Limpiar `.as_view` para detectar la class base.
       const viewName = viewRef.replace(/\.as_view$/, "");
-      const fullPath = (parentPrefix + pathTemplate).replace(/\/+/g, "/");
+      const fullPath = joinRoutePath("/", parentPrefix, pathTemplate);
       // Para views de DRF (ViewSet), expandimos a `{list, retrieve, create, ...}`.
       // Detectamos la herencia de la class en el archivo views.py de su módulo.
       const expanded = await expandViewSetMethods(viewName, projectRoot);
@@ -587,10 +588,14 @@ async function findViewNameForUri(
   const text = stripPyComments(raw);
   // URI viene con prefix ya incluido. Quitar el primer prefix para
   // comparar contra el pathTemplate del sub-urls.py.
-  let relative = uri;
+  // Ambos lados se comparan sin barra inicial: la URI la trae desde que
+  // los scanners emiten rutas absolutas, pero el prefixChain guarda el
+  // prefijo tal cual lo declara `include(...)`, sin ella.
+  const stripLeadingSlash = (value: string): string => value.replace(/^\/+/, "");
+  let relative = stripLeadingSlash(uri);
   if (prefixChain.length > 0) {
-    const firstPrefix = prefixChain[0] ?? "";
-    if (relative.startsWith(firstPrefix)) {
+    const firstPrefix = stripLeadingSlash(prefixChain[0] ?? "");
+    if (firstPrefix && relative.startsWith(firstPrefix)) {
       relative = relative.slice(firstPrefix.length);
     }
   }

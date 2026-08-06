@@ -129,7 +129,7 @@ Route::get('/items/{id}', [ItemController::class, 'show'])->where('id', '\\d+');
     );
     try {
       expect(routes).toHaveLength(1);
-      expect(routes[0]?.uri).toBe("api/items/{id:\\d+}");
+      expect(routes[0]?.uri).toBe("/api/items/{id:\\d+}");
     } finally {
       cleanup();
     }
@@ -181,7 +181,7 @@ Route::resource('users', UserController::class);
     try {
       expect(routes).toHaveLength(7);
       for (const r of routes) {
-        expect(r.uri.startsWith("api/v1/")).toBe(true);
+        expect(r.uri.startsWith("/api/v1/")).toBe(true);
       }
     } finally {
       cleanup();
@@ -198,7 +198,7 @@ Route::get('/health', fn() => ['ok' => true]);
     try {
       // 7 (resource) + 1 (health)
       expect(routes).toHaveLength(8);
-      const health = routes.find((r) => r.uri === "api/health");
+      const health = routes.find((r) => r.uri === "/api/health");
       expect(health).toBeDefined();
     } finally {
       cleanup();
@@ -235,7 +235,7 @@ Route::resource('users', UserController::class);
 
     try {
       const routes = await parseRoutesFile("routes/api.php", ["api"], dir);
-      const post = routes.find((route) => route.method === "POST" && route.uri === "api/users");
+      const post = routes.find((route) => route.method === "POST" && route.uri === "/api/users");
       expect(post).toBeDefined();
       if (!post) return;
 

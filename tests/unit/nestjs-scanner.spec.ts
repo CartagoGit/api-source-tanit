@@ -6,7 +6,11 @@ import {
 } from "../../service/scanners/nestjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import {
+  comprehensiveFixture,
+  createTempProject,
+  scanProject,
+} from "../helpers/scanner-fixture";
 
 describeScannerContract({
   framework: "nestjs",
@@ -55,7 +59,7 @@ describe("NestJS scanner", () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
     const routes = await new NestJsRouteScanner().scan(match);
-    for (const r of routes) expect(r.uri).toMatch(/^users/);
+    for (const r of routes) expect(r.uri).toMatch(/^\/users/);
   });
 
   test("path param ':id' presente en rutas con @Get(':id'), @Put(':id'), @Delete(':id')", async () => {
@@ -72,8 +76,68 @@ describe("NestJS scanner", () => {
     const routes = await new NestJsRouteScanner().scan(match);
     expect(routes.length).toBeGreaterThanOrEqual(11);
     const uris = routes.map((r) => r.uri);
-    expect(uris.some((u) => u.startsWith("users"))).toBe(true);
-    expect(uris.some((u) => u.startsWith("orders"))).toBe(true);
-    expect(uris.some((u) => u.startsWith("auth"))).toBe(true);
+    expect(uris.some((u) => u.startsWith("/api/users"))).toBe(true);
+    expect(uris.some((u) => u.startsWith("/api/orders"))).toBe(true);
+    expect(uris.some((u) => u.startsWith("/api/auth"))).toBe(true);
+  });
+});
+
+describe("NestJS — setGlobalPrefix", () => {
+  const CONTROLLER = `import { Controller, Get, Post } from "@nestjs/common";
+@Controller("users")
+export class UsersController {
+  @Get() list() { return []; }
+  @Post() create() { return {}; }
+}
+`;
+  const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+
+  async function scanWithMain(mainSource: string): Promise<string[]> {
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/main.ts": mainSource,
+      "src/users/users.controller.ts": CONTROLLER,
+    });
+    try {
+      const { routes } = await scanProject("nestjs", project.root);
+      return routes.map((r) => `${r.method} ${r.uri}`).sort();
+    } finally {
+      await project.cleanup();
+    }
+  }
+
+  // `setGlobalPrefix` se aplica a TODOS los controladores. Sin leerlo, un
+  // proyecto que lo use —lo normal en NestJS— salía con URIs sin prefijo
+  // y ninguna request respondía.
+  test("aplica el prefijo global a todas las rutas", async () => {
+    expect(await scanWithMain('app.setGlobalPrefix("api/v1");')).toEqual([
+      "GET /api/v1/users",
+      "POST /api/v1/users",
+    ]);
+  });
+
+  test("sin prefijo global las rutas quedan como están", async () => {
+    expect(await scanWithMain("const app = 1;")).toEqual(["GET /users", "POST /users"]);
+  });
+
+  test("un setGlobalPrefix comentado no se aplica", async () => {
+    expect(await scanWithMain('// app.setGlobalPrefix("comentado");')).toEqual([
+      "GET /users",
+      "POST /users",
+    ]);
+  });
+
+  test("acepta comillas simples y backticks", async () => {
+    expect(await scanWithMain("app.setGlobalPrefix('api');")).toEqual([
+      "GET /api/users",
+      "POST /api/users",
+    ]);
+  });
+
+  test("normaliza el prefijo con barra inicial", async () => {
+    expect(await scanWithMain('app.setGlobalPrefix("/api");')).toEqual([
+      "GET /api/users",
+      "POST /api/users",
+    ]);
   });
 });

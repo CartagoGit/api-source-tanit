@@ -7,7 +7,11 @@ import {
 } from "../../service/scanners/express.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import {
+  comprehensiveFixture,
+  createTempProject,
+  scanProject,
+} from "../helpers/scanner-fixture";
 
 describeScannerContract({
   framework: "express",
@@ -78,5 +82,57 @@ describe("Express scanner", () => {
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
     expect(names).toContain("email");
+  });
+});
+
+describe("Express — varios montajes en la misma línea", () => {
+  // `app.use()` se leía con `.exec()` una sola vez por línea, así que
+  // `app.use("/v1", a); app.use("/v2", b);` perdía el segundo montaje y
+  // sus rutas salían sin prefijo.
+  test("aplica el prefijo de todos los app.use de una línea", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/server.js": [
+        'const express = require("express");',
+        "const app = express();",
+        "const v1 = express.Router(); const v2 = express.Router();",
+        'v1.get("/users", h); v1.post("/users", h);',
+        'v2.get("/users", h);',
+        'app.use("/api/v1", v1); app.use("/api/v2", v2);',
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      expect(routes.map((r) => `${r.method} ${r.uri}`).sort()).toEqual([
+        "GET /api/v1/users",
+        "GET /api/v2/users",
+        "POST /api/v1/users",
+      ]);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("varios Router() declarados en la misma línea reciben su prefijo", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/server.js": [
+        'const express = require("express");',
+        "const app = express();",
+        "const a = express.Router(); const b = express.Router();",
+        'a.get("/uno", h);',
+        'b.get("/dos", h);',
+        'app.use("/x", a);',
+        'app.use("/y", b);',
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      const uris = routes.map((r) => r.uri).sort();
+      expect(uris).toContain("/x/uno");
+      expect(uris).toContain("/y/dos");
+    } finally {
+      await project.cleanup();
+    }
   });
 });

@@ -138,6 +138,10 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       for (const route of routes) {
         expect(route.uri.length).toBeGreaterThan(0);
         expect(route.uri).not.toContain("//");
+        // Tres scanners (laravel, nestjs, django) emitían sin barra
+        // inicial. El adapter lo tapaba, pero cualquier consumidor
+        // directo de `ParsedRoute` veía formatos distintos.
+        expect(route.uri.startsWith("/")).toBe(true);
         if (!capabilities.trailingSlash) {
           expect(route.uri.endsWith("/")).toBe(route.uri === "/");
         }

@@ -106,7 +106,18 @@ export class NestJsRouteScanner implements IRouteScanner {
     const srcDir = join(match.projectRoot, "src");
     if (!existsSync(srcDir)) return out;
     await this.walkDir(srcDir, match.projectRoot, out);
-    return out;
+
+    // `app.setGlobalPrefix("api/v1")` en el bootstrap se aplica a TODOS
+    // los controladores. Sin esto, un proyecto que lo use —lo normal en
+    // NestJS— produce URIs sin el prefijo y ninguna request responde.
+    const globalPrefix = await readGlobalPrefix(match.projectRoot);
+    if (!globalPrefix) return out;
+
+    return out.map((route) => ({
+      ...route,
+      uri: joinRoutePath("/", globalPrefix, route.uri),
+      prefixChain: [globalPrefix, ...route.prefixChain],
+    }));
   }
 
   private async walkDir(
@@ -171,7 +182,7 @@ export class NestJsRouteScanner implements IRouteScanner {
         const method = (m[1] ?? "").toLowerCase();
         const subPath = m[2] ?? "";
         if (!HTTP_METHODS.includes(method)) continue;
-        const fullPath = joinRoutePath(controllerPath, subPath);
+        const fullPath = joinRoutePath("/", controllerPath, subPath);
         // Buscar la signature del método en líneas siguientes.
         let methodName = "";
         for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
@@ -195,6 +206,30 @@ export class NestJsRouteScanner implements IRouteScanner {
     }
     return out;
   }
+}
+
+/** `app.setGlobalPrefix("api/v1")` en el arranque de la aplicación. */
+const GLOBAL_PREFIX_RE = /setGlobalPrefix\s*\(\s*["'`]([^"'`]+)["'`]/;
+
+/**
+ * Prefijo global declarado en el bootstrap, o `null` si no hay.
+ *
+ * `setGlobalPrefix` se aplica a TODOS los controladores. Sin leerlo, un
+ * proyecto que lo use —lo normal en NestJS— producía URIs sin el prefijo
+ * y ninguna request respondía.
+ */
+async function readGlobalPrefix(projectRoot: string): Promise<string | null> {
+  for (const candidate of ["src/main.ts", "src/main.js", "main.ts"]) {
+    const abs = join(projectRoot, candidate);
+    if (!existsSync(abs)) continue;
+    try {
+      const match = GLOBAL_PREFIX_RE.exec(stripJsComments(await readFile(abs, "utf8")));
+      if (match?.[1]) return match[1];
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 function stripJsComments(src: string): string {
