@@ -1,4 +1,4 @@
-# postman-exporter
+# Export to Postman
 
 **Genera una colección de Postman desde el código de tu API.** Sin
 anotaciones, sin decoradores extra, sin levantar el servidor. Apuntas al
@@ -30,10 +30,10 @@ framework aunque no esté en la lista.
 
 ```bash
 # 1. Instalar (aún no publicado en npm — se instala desde el repo)
-bun add -g github:CartagoGit/postman-exporter
+bun add -g github:CartagoGit/export-to-postman
 
 # 2. Generar, desde la raíz de tu proyecto
-postman-from-routes generate
+expostman generate
 
 # 3. Importar en Postman el .json de build/
 ```
@@ -91,12 +91,12 @@ declara con `tokenResponsePath` en el config.
 ## Comandos
 
 ```bash
-postman-from-routes generate    # genera la colección + environments
-postman-from-routes list        # lista los endpoints detectados
-postman-from-routes stats       # cuántos endpoints por método y zona
-postman-from-routes check       # ¿la colección sigue sincronizada?
-postman-from-routes validate    # valida el JSON contra el schema v2.1.0
-postman-from-routes enrich      # re-enriquece desde el discovery
+expostman generate    # genera la colección + environments
+expostman list        # lista los endpoints detectados
+expostman stats       # cuántos endpoints por método y zona
+expostman check       # ¿la colección sigue sincronizada?
+expostman validate    # valida el JSON contra el schema v2.1.0
+expostman enrich      # re-enriquece desde el discovery
 ```
 
 Flags principales:

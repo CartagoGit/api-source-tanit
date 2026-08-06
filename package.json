@@ -1,5 +1,5 @@
 {
-  "name": "@postman-exporter/cli",
+  "name": "export-to-postman",
   "version": "0.1.0",
   "workspaces": [
     "plugins/*"
@@ -21,11 +21,11 @@
   "author": "Cartago",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CartagoGit/postman-exporter.git"
+    "url": "git+https://github.com/CartagoGit/export-to-postman.git"
   },
-  "homepage": "https://github.com/CartagoGit/postman-exporter#readme",
+  "homepage": "https://github.com/CartagoGit/export-to-postman#readme",
   "bugs": {
-    "url": "https://github.com/CartagoGit/postman-exporter/issues"
+    "url": "https://github.com/CartagoGit/export-to-postman/issues"
   },
   "type": "module",
   "engines": {
@@ -33,6 +33,7 @@
     "node": ">=20.0.0"
   },
   "bin": {
+    "expostman": "./scripts/cli.script.ts",
     "postman-from-routes": "./scripts/cli.script.ts"
   },
   "main": "./scripts/cli.script.ts",

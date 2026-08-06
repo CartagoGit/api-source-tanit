@@ -60,11 +60,11 @@ const COMMANDS: Record<string, ICommand> = {
   },
 };
 
-const HELP = `postman-from-routes — Postman collections from your API's source code
+const HELP = `expostman — Export to Postman (generate Postman collections from your API's source)
 
 USAGE
-  postman-from-routes                  Interactive wizard (no flags needed)
-  postman-from-routes <command> [flags]
+  expostman                  Interactive wizard (no flags needed)
+  expostman <command> [flags]
 
 COMMANDS
 ${Object.entries(COMMANDS)
@@ -93,17 +93,17 @@ ENVIRONMENT VARIABLES
   POSTMAN_API_KEY         Same as --api-key.
 
 EXAMPLES
-  postman-from-routes                                  Interactive mode
-  postman-from-routes generate                         Scan the current folder
-  postman-from-routes generate --project-root ../api   Scan another folder
-  postman-from-routes generate --inspect               Preview, write nothing
-  postman-from-routes push --api-key pmak-...          Upload to Postman
-  postman-from-routes list                             See what was detected
+  expostman                                  Interactive mode
+  expostman generate                         Scan the current folder
+  expostman generate --project-root ../api   Scan another folder
+  expostman generate --inspect               Preview, write nothing
+  expostman push --api-key pmak-...          Upload to Postman
+  expostman list                             See what was detected
 
 Detects 12 frameworks automatically: Laravel, Symfony, Express, NestJS,
 Next.js, FastAPI, Flask, Django, Gin, Spring Boot, ASP.NET Core and OpenAPI.
 
-Docs: https://github.com/CartagoGit/postman-exporter#readme
+Docs: https://github.com/CartagoGit/export-to-postman#readme
 `;
 
 /**

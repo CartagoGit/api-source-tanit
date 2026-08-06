@@ -27,16 +27,16 @@ Requisito común: **[Bun](https://bun.sh) 1.0 o superior**.
 
 ```bash
 # Global
-bun add -g github:CartagoGit/postman-exporter
+bun add -g github:CartagoGit/export-to-postman
 
 # O como dependencia de desarrollo de tu proyecto
-bun add -d github:CartagoGit/postman-exporter
+bun add -d github:CartagoGit/export-to-postman
 ```
 
 También sirve clonar y empaquetar:
 
 ```bash
-git clone https://github.com/CartagoGit/postman-exporter
+git clone https://github.com/CartagoGit/export-to-postman
 cd postman-exporter && bun install
 npm pack                       # produce postman-exporter-cli-0.1.0.tgz
 
@@ -44,7 +44,7 @@ cd ~/proyectos/mi-api
 bun add -d /ruta/a/postman-exporter-cli-0.1.0.tgz
 ```
 
-En ambos casos queda disponible el binario `postman-from-routes`.
+En ambos casos queda disponible el binario `expostman` (alias `postman-from-routes` sigue disponible).
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes
@@ -58,7 +58,7 @@ bun --version
 La opción cómoda si tocas varios proyectos.
 
 ```bash
-bun add -g @postman-exporter/cli
+bun add -g @export-to-postman/cli
 ```
 
 Desde la raíz de tu API:
