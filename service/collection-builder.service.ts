@@ -310,7 +310,30 @@ export function buildCollection(
       bearer: [{ key: "token", value: "{{token}}", type: "string" }],
     },
     variable: config.variables,
-    item: topFolders,
+    item: authFirst(topFolders),
   };
+}
+
+/** Nombres de carpeta que agrupan el ciclo de sesión. */
+const AUTH_FOLDER_NAMES = new Set(["auth", "authentication", "autenticacion", "login", "sesion", "session"]);
+
+/**
+ * Mueve la carpeta de autenticación al principio de la colección.
+ *
+ * Es el primer sitio al que el usuario tiene que ir tras importar: sin
+ * lanzar el login, ningún otro endpoint responde. Dejarla en orden
+ * alfabético la esconde en mitad de la lista.
+ */
+function authFirst(folders: PostmanItem[]): PostmanItem[] {
+  const isAuth = (f: PostmanItem): boolean =>
+    AUTH_FOLDER_NAMES.has(
+      f.name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""),
+    );
+  const auth = folders.filter(isAuth);
+  if (auth.length === 0) return folders;
+  return [...auth, ...folders.filter((f) => !isAuth(f))];
 }
 
