@@ -1,0 +1,41 @@
+name: release-binaries
+
+# Al publicar una release, adjunta un ejecutable autocontenido por
+# plataforma. No necesitan Bun ni Node instalados en la máquina destino.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # El gate completo antes de publicar nada.
+      - run: bun run validate
+
+      - name: Compilar los 4 binarios
+        run: bun run build:binary --all
+
+      - name: Adjuntar a la release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/postman-from-routes-*
+
+      - name: Subir como artefacto (ejecución manual)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: dist/postman-from-routes-*

@@ -13,7 +13,7 @@ import { walkCollection } from "../helper/postman.helper.js";
 import { outputCollectionPath } from "../service/paths.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 
-async function main(): Promise<number> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();
   const COLLECTION_PATH = await outputCollectionPath(config.name);
 
@@ -54,4 +54,6 @@ async function main(): Promise<number> {
   return 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

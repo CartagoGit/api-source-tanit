@@ -117,8 +117,8 @@ async function warnOnIdentityClash(
   }
 }
 
-async function main(): Promise<number> {
-  const args = process.argv.slice(2);
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const args = argv;
   const openAfter = args.includes("--open");
   const inspectMode = args.includes("--inspect");
   const outputIdx = args.indexOf("--output");
@@ -311,4 +311,6 @@ async function main(): Promise<number> {
   return 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

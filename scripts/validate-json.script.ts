@@ -82,7 +82,7 @@ function walk(items: PostmanItem[], issues: Issue[], path: string): void {
   }
 }
 
-async function main(): Promise<number> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   let projectName: string | undefined;
   try {
     const loaded = await loadProject();
@@ -184,4 +184,6 @@ async function main(): Promise<number> {
   return errors.length > 0 ? 1 : 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

@@ -27,9 +27,8 @@ import {
   DEFAULT_REGISTRY,
 } from "../service/scanner-registry.js";
 
-async function main(): Promise<number> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();
-  const argv = process.argv.slice(2);
   const outputIdx = argv.indexOf("--output");
   const outputFlag = outputIdx !== -1 ? argv[outputIdx + 1] ?? null : null;
   const COLLECTION_PATH = outputFlag
@@ -107,4 +106,6 @@ async function main(): Promise<number> {
   return 1;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

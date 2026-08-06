@@ -19,7 +19,7 @@ import {
 import { countItems } from "../helper/postman.helper.js";
 import { normalizeForComparison } from "../helper/uri.helper.js";
 
-async function main(): Promise<number> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const inPlace = process.argv.includes("--in-place");
   const { config, manualEndpoints, configPath } = await loadProject();
   console.log(`→ Config host: ${configPath}`);
@@ -76,4 +76,6 @@ async function main(): Promise<number> {
   return 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

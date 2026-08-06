@@ -2,7 +2,7 @@
 id: p00010
 title: "p00010 — single-binary distribution via `bun build --compile`"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -10,6 +10,11 @@ related:
     - p00008 # npm path
     - p00007 # the plugin's runtime dep
 ---
+
+> **Cerrada 2026-08-06.** Los 4 binarios compilan y el de linux-x64 está
+> verificado ejecutándose con un PATH sin bun ni node. Requirió reescribir el
+> CLI para importar sus comandos en vez de spawnear `bun run`: con spawn el
+> binario compilaba pero fallaba en ejecución con `Module not found`.
 
 # p00010 — single-binary distribution via `bun build --compile`
 

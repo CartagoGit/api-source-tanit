@@ -200,7 +200,7 @@ declare const Bun: {
     readonly exited: Promise<number>;
   };
   write(path: string, data: string): Promise<number>;
-  file(path: string): { text(): Promise<string> };
+  file(path: string): { text(): Promise<string>; readonly size: number };
 };
 
 /** `Response` del estándar fetch, usado para leer los streams de Bun.spawn. */

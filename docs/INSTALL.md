@@ -155,6 +155,36 @@ bunx @postman-exporter/cli generate --project-root .
 
 ---
 
+## 4. Binario, sin instalar ningún runtime
+
+Si en tu equipo hay gente sin Bun ni Node —lo normal en proyectos de PHP,
+Python, Go, Java o .NET—, hay un ejecutable autocontenido por plataforma.
+No necesita nada más.
+
+```bash
+# Linux x64
+curl -L https://github.com/CartagoGit/postman-exporter/releases/latest/download/postman-from-routes-linux-x64 \
+  -o /usr/local/bin/postman-from-routes
+chmod +x /usr/local/bin/postman-from-routes
+
+postman-from-routes generate --project-root .
+```
+
+Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
+`windows-x64.exe`.
+
+Para compilarlo tú mismo desde el repo:
+
+```bash
+bun run build:binary          # solo tu plataforma
+bun run build:binary --all    # las cuatro, en dist/
+```
+
+Pesa entre 60 y 95 MB porque incluye el runtime. A cambio, quien lo use
+no instala nada.
+
+---
+
 ## Dónde se escribe la salida
 
 Por orden de prioridad:
