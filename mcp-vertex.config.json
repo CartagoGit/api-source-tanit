@@ -1,5 +1,4 @@
 {
-  "$schema": "../mcp-vertex/packages/core/schema/mcp-vertex.config.schema.json",
   "coreVersion": "0.1.0",
   "cacheDir": ".cache/mcp-vertex",
   "docsDir": "docs/mcp-vertex",

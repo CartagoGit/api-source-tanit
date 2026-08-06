@@ -106,7 +106,7 @@ function resolveProjectRoot(packageRoot: string): string | null {
   if (cliArg) return resolve(cliArg);
   const env = process.env.POSTMAN_PROJECT_ROOT;
   if (env) return resolve(env);
-  return findLaravelProjectRoot(packageRoot);
+  return findLaravelProjectRoot(packageRoot) ?? process.cwd();
 }
 
 function basenameOrFallback(p: string, fallback: string): string {

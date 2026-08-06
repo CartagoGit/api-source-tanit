@@ -124,7 +124,10 @@ async function main(): Promise<number> {
     });
 
     // 5. Verificar que el tarball trae la documentación.
-    const installedDocs = join(consumer, "node_modules", "@postman-exporter", "cli", "docs");
+    const pkgFolder = existsSync(join(consumer, "node_modules", "export-to-postman"))
+      ? join(consumer, "node_modules", "export-to-postman")
+      : join(consumer, "node_modules", "@postman-exporter", "cli");
+    const installedDocs = join(pkgFolder, "docs");
     steps.push({
       name: "documentación incluida en el paquete",
       ok: existsSync(join(installedDocs, "POSTMAN.md")),

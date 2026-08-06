@@ -12,6 +12,7 @@
  *   bun scripts/diff.script.ts
  *   bun run check
  */
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseAllRoutes } from "../service/route-parser.service.js";
 import {
@@ -19,13 +20,10 @@ import {
   stripApiPrefix,
 } from "../helper/uri.helper.js";
 import { walkCollection } from "../helper/postman.helper.js";
-import { outputCollectionPath } from "../service/paths.service.js";
+import { outputCollectionPath, projectRoot } from "../service/paths.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import type { PostmanCollection } from "../contract/postman.interface.js";
-import {
-  defaultOrchestrator,
-  DEFAULT_REGISTRY,
-} from "../service/scanner-registry.js";
+import { defaultOrchestrator } from "../service/scanner-registry.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();
@@ -36,9 +34,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     : await outputCollectionPath(config.name);
 
   const orch = defaultOrchestrator();
-  const { match, scanner } = await orch.detectProject(
-    process.env.POSTMAN_PROJECT_ROOT ?? ".",
-  );
+  const root = projectRoot() ?? ".";
+  const { match, scanner } = await orch.detectProject(root);
 
   const sourceKeys = new Set<string>();
   const sourceMap = new Map<string, { method: string; uri: string }>();
@@ -61,6 +58,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       sourceKeys.add(key);
       sourceMap.set(key, { method: r.method, uri });
     }
+  }
+
+  if (!existsSync(COLLECTION_PATH)) {
+    console.error(`✘ No se encontró la colección en "${COLLECTION_PATH}". Ejecuta 'bun run build' primero para generarla.`);
+    return 1;
   }
 
   const raw = await readFile(COLLECTION_PATH, "utf8");

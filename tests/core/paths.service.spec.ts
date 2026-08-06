@@ -35,8 +35,7 @@ describe("paths.service", () => {
     });
 
     test("sin projectName, usa el projectBasename del paquete", () => {
-      // En el contexto de test, projectBasename es "postman-exporter".
-      expect(outputBasename()).toMatch(/postman-exporter\.postman_collection/);
+      expect(outputBasename()).toMatch(/(export-to-postman|postman-exporter)\.postman_collection/);
     });
   });
 
