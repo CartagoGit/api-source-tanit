@@ -19,6 +19,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -148,30 +149,10 @@ function stripComments(src: string): string {
 }
 
 async function collectPyFiles(projectRoot: string): Promise<string[]> {
-  const { readdirSync } = await import("node:fs");
-  const candidates = ["app", "src", "lib", ""];
-  const out: string[] = [];
-  for (const dir of candidates) {
-    const base = dir ? join(projectRoot, dir) : projectRoot;
-    if (!existsSync(base)) continue;
-    try {
-      const entries = readdirSync(base, { recursive: true, withFileTypes: true }) as unknown as Array<{
-        name: string;
-        isFile(): boolean;
-        parentPath?: string;
-      }>;
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        if (!entry.name.endsWith(".py")) continue;
-        if (entry.name.startsWith("test_") || entry.name.startsWith("_")) continue;
-        const parent = entry.parentPath ?? base;
-        out.push(join(parent, entry.name));
-      }
-    } catch {
-      continue;
-    }
-  }
-  return [...new Set(out)];
+  return collectFilesFrom(
+    ["app", "src", "lib", ""].map((dir) => (dir ? join(projectRoot, dir) : projectRoot)),
+    (name) => name.endsWith(".py") && !name.startsWith("test_") && !name.startsWith("_"),
+  );
 }
 
 // ---------------------------------------------------------------------------

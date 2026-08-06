@@ -25,6 +25,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { collectFiles } from "../../helper/fs-walk.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -418,17 +419,7 @@ async function methodsFromFunctionView(
   ];
   for (const base of candidates) {
     if (!existsSync(base)) continue;
-    let entries: string[];
-    try {
-      entries = await readdir(base, { recursive: true, withFileTypes: true }) as unknown as Array<{ name: string; isFile(): boolean; parentPath?: string }>;
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      if (!entry.name.endsWith("views.py")) continue;
-      const parent = entry.parentPath ?? base;
-      const abs = join(parent, entry.name);
+    for (const abs of await collectFiles(base, (name) => name.endsWith("views.py"))) {
       let raw: string;
       try {
         raw = await readFile(abs, "utf8");

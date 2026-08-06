@@ -334,20 +334,7 @@ function parseImports(text: string, controllerAbsPath: string): Map<string, stri
       join(dir, relPath, "index.ts"),
       join(dir, relPath) + "/index.ts",
     ];
-    let absPath: string | null = null;
-    // Sync check: usar existsSync via fs.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require("node:fs") as typeof import("node:fs");
-    for (const c of candidates) {
-      try {
-        if (fs.existsSync(c)) {
-          absPath = c;
-          break;
-        }
-      } catch {
-        continue;
-      }
-    }
+    const absPath = candidates.find((candidate) => existsSync(candidate)) ?? null;
     if (!absPath) continue;
     for (const name of names) {
       out.set(name, absPath);

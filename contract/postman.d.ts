@@ -138,6 +138,9 @@ declare const process: {
   env: Record<string, string | undefined>;
   execPath: string;
   platform: NodeJS.Platform;
+  /** Escritura sin salto de línea, para indicadores de progreso. */
+  stderr: { write(chunk: string): boolean };
+  stdout: { write(chunk: string): boolean };
 };
 declare const console: {
   log(...args: unknown[]): void;

@@ -32,6 +32,10 @@ import type {
   ParsedRoute,
 } from "../../contract/scanner.interface.js";
 import {
+  collectFilesFrom,
+  isSourceJsTsFile,
+} from "../../helper/fs-walk.helper.js";
+import {
   countLinesBefore,
   findAllBalanced,
   findNearestBalanced,
@@ -113,34 +117,14 @@ export class ExpressProjectScanner implements IProjectScanner {
 // ---------------------------------------------------------------------------
 
 async function collectJsFiles(projectRoot: string): Promise<string[]> {
-  const { readdirSync } = await import("node:fs");
-  const candidates = ["src", "lib", "app", "routes", ""];
-  const out: string[] = [];
-  for (const dir of candidates) {
-    const base = dir ? join(projectRoot, dir) : projectRoot;
-    if (!existsSync(base)) continue;
-    try {
-      const entries = readdirSync(base, { recursive: true, withFileTypes: true }) as unknown as Array<{
-        name: string;
-        isFile(): boolean;
-        parentPath?: string;
-      }>;
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        const name = entry.name;
-        if (!/\.(ts|js|mjs|cjs|tsx|jsx)$/.test(name)) continue;
-        if (name.endsWith(".d.ts")) continue;
-        if (name.includes(".test.") || name.includes(".spec.")) continue;
-        if (name === "vite.config.ts" || name === "vitest.config.ts") continue;
-        const parent = entry.parentPath ?? base;
-        out.push(join(parent, name));
-      }
-    } catch {
-      continue;
-    }
-  }
-  return [...new Set(out)];
+  return collectFilesFrom(
+    ["src", "lib", "app", "routes", ""].map((dir) =>
+      dir ? join(projectRoot, dir) : projectRoot,
+    ),
+    isSourceJsTsFile,
+  );
 }
+
 
 interface ParsedModule {
   file: string;
