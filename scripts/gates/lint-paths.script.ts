@@ -39,7 +39,7 @@ const DEPTH_SEGMENTS = /(?:__dirname|moduleDir\([^)]*\))(?:\s*,\s*["']\.\.["']){
 const ALLOWED = new Set([
   "scripts/helpers/root.helper.ts",
   "projects/core/helpers/module-path.helper.ts",
-  "projects/plugins/mcp-vertex/tests/helpers/plugin-context.ts",
+  "projects/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts",
   "scripts/gates/lint-paths.script.ts",
 ]);
 

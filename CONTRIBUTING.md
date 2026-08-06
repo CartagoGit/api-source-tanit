@@ -91,7 +91,7 @@ summary:
 | `*.constant.ts` | `contracts/` / `examples/` | Durable, frozen, shared constants. |
 | `*.service.ts` | `services/` | Stateful business logic. |
 | `*.helper.ts` | `helpers/` | Pure utilities, no I/O. |
-| `*.tool.ts` | `projects/plugins/mcp-vertex/src/lib/tools/` | One MCP tool per file. |
+| `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
 | `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
@@ -242,7 +242,7 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex_expostman/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |

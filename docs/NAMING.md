@@ -13,7 +13,7 @@ bueno.
 | Bin canónico | **`expostman`** | `package.json` → `bin` |
 | Bin alias | `export-to-postman` | `package.json` → `bin`, mismo destino |
 | Plugin de mcp-vertex | `expostman` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin | `@expostman/mcp-vertex-plugin` | `projects/plugins/mcp-vertex/package.json` |
+| Paquete del plugin | `@expostman/mcp-vertex-plugin` | `projects/plugins/mcp-vertex_expostman/package.json` |
 | Tools MCP | `mcp-vertex_expostman_<tool>` | los construye el host |
 | Carpeta de salida | `export-to-postman/` | `OUTPUT_DIR_NAME` |
 | Prefijo de env vars | `POSTMAN_` | `POSTMAN_PROJECT_ROOT`, `POSTMAN_OUTPUT_DIR`… |
@@ -45,7 +45,7 @@ mcp-vertex_expostman_generate
 El prefijo `mcp-vertex_` ya dice de qué host es; el nombre del plugin no
 necesita repetir la frase entera.
 
-## Por qué el plugin vive en `projects/plugins/mcp-vertex/`
+## Por qué el plugin vive en `projects/plugins/mcp-vertex_expostman/`
 
 La carpeta dice **para qué host** es el plugin, no qué hace — eso ya lo
 dice el proyecto entero. Si algún día hay un plugin para otro host, su

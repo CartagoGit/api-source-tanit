@@ -70,6 +70,11 @@ import {
   AspNetRouteScanner,
   AspNetDataAnnotationsProvider,
 } from "./scanners/aspnet.scanner";
+import {
+  FastifyProjectScanner,
+  FastifyRouteScanner,
+  FastifySchemaProvider,
+} from "./scanners/fastify.scanner";
 
 import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
@@ -80,8 +85,17 @@ import type {
 } from "../core/contracts/scanner.interface";
 
 /** Registry canónico con los 12 frameworks soportados. */
+/**
+ * El scanner de rutas de Fastify y su provider comparten instancia a
+ * propósito: el provider lee el mapa de esquemas que el scanner rellena
+ * al recorrer los ficheros. Dos instancias distintas dejarían al
+ * provider sin nada que resolver.
+ */
+const fastifyRouteScanner = new FastifyRouteScanner();
+
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new FastifyProjectScanner(),
     new LaravelProjectScanner(),
     new OpenApiProjectScanner(),
     new FastApiProjectScanner(),
@@ -96,6 +110,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    fastifyRouteScanner,
     new LaravelScanner(),
     new OpenApiScanner(),
     new FastApiScanner(),
@@ -110,6 +125,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressScanner(),
   ],
   validationProviders: [
+    new FastifySchemaProvider(fastifyRouteScanner),
     new LaravelFormRequestValidationProvider(),
     new OpenApiValidationProvider(),
     new FastApiPydanticValidationProvider(),

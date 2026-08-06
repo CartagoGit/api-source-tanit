@@ -54,7 +54,7 @@
         "roots": [
           "docs/mcp-vertex",
           "README.md",
-          "projects/plugins/mcp-vertex/README.md"
+          "projects/plugins/mcp-vertex_expostman/README.md"
         ],
         "extensions": [
           "md",
@@ -205,7 +205,7 @@
       "options": {}
     },
     "expostman": {
-      "path": "projects/plugins/mcp-vertex/src/index.ts",
+      "path": "projects/plugins/mcp-vertex_expostman/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
         "cliScript": "${workspaceFolder}/scripts/cli.script.ts"

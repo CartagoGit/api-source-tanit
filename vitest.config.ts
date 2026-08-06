@@ -13,7 +13,7 @@
  *
  * El plugin queda fuera de esta lista a propósito: es un proyecto
  * independiente con su propio `vitest.config.ts`, y entra por el glob
- * `projects/plugins/mcp-vertex` como haría cualquier otro paquete del workspace.
+ * `projects/plugins/mcp-vertex_expostman` como haría cualquier otro paquete del workspace.
  */
 import { defineConfig } from "vitest/config";
 
@@ -40,7 +40,7 @@ export default defineConfig({
           },
         }),
       ),
-      "projects/plugins/mcp-vertex",
+      "projects/plugins/mcp-vertex_expostman",
     ],
   },
 });

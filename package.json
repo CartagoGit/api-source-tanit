@@ -2,7 +2,7 @@
   "name": "export-to-postman",
   "version": "0.1.0",
   "workspaces": [
-    "projects/plugins/mcp-vertex"
+    "projects/plugins/mcp-vertex_expostman"
   ],
   "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
   "keywords": [
@@ -84,7 +84,7 @@
     "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",
     "typecheck:frameworks": "bun run scripts/gates/typecheck.script.ts frameworks",
     "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
-    "typecheck:plugin": "bun run --cwd projects/plugins/mcp-vertex typecheck",
+    "typecheck:plugin": "bun run --cwd projects/plugins/mcp-vertex_expostman typecheck",
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
     "lint": "bun run lint:naming && bun run lint:paths && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:docs && bun run lint:proposals",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts",

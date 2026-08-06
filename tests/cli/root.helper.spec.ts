@@ -57,7 +57,7 @@ describe("WELL_KNOWN_PATHS", () => {
 
 describe("REPO_ROOT", () => {
   // La búsqueda exige package.json Y mcp-vertex.config.json juntos: con
-  // solo el primero pararía en `projects/plugins/mcp-vertex`, que
+  // solo el primero pararía en `projects/plugins/mcp-vertex_expostman`, que
   // también tiene el suyo.
   test("es la raíz de verdad, no la de un paquete de dentro", () => {
     expect(existsSync(join(REPO_ROOT, "package.json"))).toBe(true);
@@ -107,7 +107,7 @@ describe("rutas parametrizadas", () => {
   });
 
   test("pluginDir compone bajo plugins/", () => {
-    expect(pluginDir("mcp-vertex")).toBe(MCP_VERTEX_PLUGIN_DIR);
+    expect(pluginDir("mcp-vertex_expostman")).toBe(MCP_VERTEX_PLUGIN_DIR);
   });
 
   test("las propuestas están donde dice el registro", () => {

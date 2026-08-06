@@ -51,7 +51,18 @@ import {
   zodFieldToSpec,
 } from "../parsers/zod-schema.helper.js";
 
-const FRAMEWORK_PACKAGES = ["express", "fastify", "@koa/router", "@hapi/hapi", "koa"];
+/**
+ * Frameworks de Node que este scanner cubre por parecido con Express.
+ *
+ * `fastify` estaba aquí y se ha ido: tiene su propio scanner, que lee el
+ * JSON Schema que Fastify declara DENTRO de cada ruta. Eso es
+ * información de tipos exacta; esto solo reconoce la forma de la
+ * llamada. Dejarlo aquí hacía que un proyecto Fastify casara con los
+ * dos y se mezclaran dos lecturas, una buena y otra a medias.
+ *
+ * Koa y Hapi siguen porque no tienen scanner propio todavía.
+ */
+const FRAMEWORK_PACKAGES = ["express", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
 // Regex para `<ident>.METHOD(path, handler)` o `app.METHOD(path, handler)`.

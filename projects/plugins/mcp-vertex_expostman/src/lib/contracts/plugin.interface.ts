@@ -9,6 +9,8 @@
 
 import { z } from "zod";
 
+import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
+
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
 export const ExportToPostmanOptionsSchema = z
@@ -79,25 +81,15 @@ export const TestInputSchema = z
   .object({
     /**
      * Si se da, corre un smoke test contra el fixture de ese framework.
-     * Valores aceptados: "laravel" | "symfony" | "express" | "fastapi" |
-     * "nestjs" | "django" | "openapi" | "flask" | "nextjs" | "gin" |
-     * "springboot" | "aspnet".
+     * Los valores válidos son los del registro de scanners, así que
+     * un framework nuevo se acepta sin tocar este fichero.
      */
     framework: z
-      .enum([
-        "laravel",
-        "symfony",
-        "express",
-        "fastapi",
-        "nestjs",
-        "django",
-        "openapi",
-        "flask",
-        "nextjs",
-        "gin",
-        "springboot",
-        "aspnet",
-      ])
+      // La lista NO se escribe a mano: sale del registro de scanners.
+      // Antes era un `enum` con doce nombres, y al añadir el trece el
+      // plugin lo rechazaba como input inválido — la misma clase de
+      // lista paralela que hizo que `summary` divergiera de `generate`.
+      .enum(SUPPORTED_FRAMEWORKS as [string, ...string[]])
       .optional(),
     /**
      * Si es `true`, corre `bun run typecheck` además de `bun test`.

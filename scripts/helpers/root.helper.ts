@@ -93,7 +93,14 @@ export const PLUGINS_DIR = join(PROJECTS_DIR, "plugins");
 export function pluginDir(host: string): string {
   return join(PLUGINS_DIR, host);
 }
-export const MCP_VERTEX_PLUGIN_DIR = pluginDir("mcp-vertex");
+/**
+ * El plugin de mcp-vertex.
+ *
+ * La carpeta se llama como el prefijo con el que el host registra sus
+ * tools (`mcp-vertex_expostman_generate`), así que leyendo el árbol se
+ * sabe de qué host es y qué producto expone.
+ */
+export const MCP_VERTEX_PLUGIN_DIR = pluginDir("mcp-vertex_expostman");
 
 // ---------------------------------------------------------------------------
 // Tooling del repo

@@ -88,10 +88,10 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "plugin",
     description: "Plugin de mcp-vertex — proyecto independiente, gates propios",
-    paths: ["projects/plugins/mcp-vertex/"],
-    tests: ["projects/plugins/mcp-vertex/tests/**/*.{spec,test}.ts"],
-    tsconfig: "projects/plugins/mcp-vertex/tsconfig.json",
-    ownTypecheck: { cwd: "projects/plugins/mcp-vertex", script: "typecheck" },
+    paths: ["projects/plugins/mcp-vertex_expostman/"],
+    tests: ["projects/plugins/mcp-vertex_expostman/tests/**/*.{spec,test}.ts"],
+    tsconfig: "projects/plugins/mcp-vertex_expostman/tsconfig.json",
+    ownTypecheck: { cwd: "projects/plugins/mcp-vertex_expostman", script: "typecheck" },
     // El plugin necesita el catálogo de frameworks (lo expone en su
     // tool `test` y en `summary`), así que la dependencia es real y se
     // declara. Declararla no es relajar la regla: la regla es que
