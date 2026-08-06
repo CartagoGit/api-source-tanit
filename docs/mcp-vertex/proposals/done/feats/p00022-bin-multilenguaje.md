@@ -2,7 +2,7 @@
 id: p00022
 title: "p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
@@ -11,6 +11,22 @@ related:
     - p00021 # sustituye a las reimplementaciones que se retiran
     - p00025 # bin canónico corto + alias; los wrappers no deben fijar el nombre largo
 ---
+
+> **Cerrada 2026-08-07.** S1, S2 y S3. `bin/expostman` (POSIX),
+> `bin/expostman.ps1` (Windows) y `bin/wrappers/` con Python y PHP;
+> Go, Gradle y Make se documentan como una línea en su fichero de
+> build, que es todo lo que necesitan.
+>
+> S4 (autoactualización del binario) queda fuera: el lanzador ya
+> descarga la release más reciente cuando no encuentra nada, así que
+> un `update` explícito solo añadiría un camino más que mantener.
+> Se retoma si alguien lo pide.
+>
+> Lo que defiende la decisión es un test: comprueba que ningún
+> lanzador pase de 100 líneas ni mencione rutas, frameworks o
+> colecciones. Es la garantía de que no vuelve a pasar lo de
+> `runtime/` — tres reimplementaciones divergidas y sin tests.
+
 
 # p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje
 

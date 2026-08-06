@@ -314,3 +314,55 @@ La instalación global de Bun no está en el `PATH`:
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"   # añádelo a tu .bashrc o .zshrc
 ```
+
+## Desde otro ecosistema (sin instalar bun ni node)
+
+`bin/` tiene lanzadores finos. No reimplementan nada: resuelven dónde
+está el motor —un binario cacheado, una instalación global, `bunx`,
+`npx`, o descargándolo de la release— y le pasan los argumentos.
+
+| Ecosistema | Comando |
+| --- | --- |
+| Shell (Linux, macOS) | `./bin/expostman generate --project-root .` |
+| Windows (PowerShell) | `.\bin\expostman.ps1 generate --project-root .` |
+| Python | `python bin/wrappers/expostman.py generate --project-root .` |
+| PHP / Composer | `php bin/wrappers/Expostman.php generate --project-root .` |
+
+El binario descargado se cachea en `~/.expostman/`. Se cambia con
+`EXPOSTMAN_HOME`.
+
+### En tu fichero de build
+
+```jsonc
+// package.json
+"scripts": { "postman": "expostman generate --project-root ." }
+```
+
+```jsonc
+// composer.json
+"scripts": { "postman": "php bin/wrappers/Expostman.php generate --project-root ." }
+```
+
+```makefile
+# Makefile
+postman:
+	./bin/expostman generate --project-root .
+```
+
+```go
+// Go
+//go:generate ../bin/expostman generate --project-root .
+```
+
+```groovy
+// build.gradle
+task postman(type: Exec) { commandLine './bin/expostman', 'generate', '--project-root', '.' }
+```
+
+**Por qué son tan finos.** La versión anterior de esto reimplementaba el
+generador en Node, Python y PHP. Las tres copias divergieron del
+original, ninguna tenía tests, y cuando el proyecto se hizo agnóstico
+las tres seguían siendo solo-Laravel sin que nadie se enterara. Se
+retiraron en p00021. Hay **un** motor, y un test comprueba que ningún
+lanzador mencione nada de dominio.
+

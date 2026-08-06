@@ -41,9 +41,13 @@ declare module "node:fs/promises" {
     isFile(): boolean;
     isDirectory(): boolean;
   }
-  export function stat(
-    path: string,
-  ): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }>;
+  export function stat(path: string): Promise<{
+    isDirectory(): boolean;
+    isFile(): boolean;
+    size: number;
+    /** Bits de permisos, para comprobar el de ejecución. */
+    mode: number;
+  }>;
   export function copyFile(src: string, dest: string): Promise<void>;
   export function cp(
     src: string,
