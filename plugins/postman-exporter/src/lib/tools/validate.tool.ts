@@ -75,7 +75,9 @@ export function buildValidateToolRegistration(
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
           });
-          const issues: IValidateOutput["issues"] = [];
+          // Mutable aquí y `readonly` en el contrato de salida: la anotación
+          // anterior decía `readonly[]` y aun así hacía push.
+          const issues: Array<IValidateOutput["issues"][number]> = [];
           if (!result.ok) {
             issues.push({
               severity: "error",
@@ -101,7 +103,7 @@ export function buildValidateToolRegistration(
               "Ejecuta `bun run generate` primero y revisa los issues reportados.",
             );
           }
-          return toolJson({ ok: true, ...out });
+          return toolJson(out);
         },
       );
     },

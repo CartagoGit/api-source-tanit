@@ -105,15 +105,26 @@ export function runBunCommand(
   const bunBin = resolveBunBin();
   const cmd = [bunBin, ...args];
   const cwd = normalizeCwd(options.cwd);
-  const result = useBunSpawn
-    ? runBunSpawnSyncArray(cmd, cwd, timeout, process.env)
-    : spawnSync(bunBin, args, {
+  const raw = useBunSpawn
+    ? runBunSpawnSyncArray([...cmd], cwd, timeout, process.env)
+    : spawnSync(bunBin, [...args], {
         cwd,
         encoding: "utf8",
         timeout,
         stdio: ["ignore", "pipe", "pipe"],
         env: process.env,
       });
+
+  // `Bun.spawnSync` y `child_process.spawnSync` devuelven formas
+  // distintas (una trae `error`, la otra puede dar Buffer en stdout).
+  // Se normalizan aquí para que el resto lea una sola forma.
+  const result = {
+    status: raw.status,
+    stdout: typeof raw.stdout === "string" ? raw.stdout : String(raw.stdout ?? ""),
+    stderr: typeof raw.stderr === "string" ? raw.stderr : String(raw.stderr ?? ""),
+    error: "error" in raw ? raw.error : undefined,
+  };
+
   if (result.error) {
     return {
       ok: false,
