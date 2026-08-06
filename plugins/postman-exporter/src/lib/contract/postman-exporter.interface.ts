@@ -114,6 +114,10 @@ export type ITestInput = z.infer<typeof TestInputSchema>;
 export interface IGenerateOutput {
   /** Framework detectado, o `null` si no se reconoció ninguno. */
   readonly framework: string | null;
+  /** Más de uno = proyecto híbrido; se han escaneado y fusionado todos. */
+  readonly frameworks: ReadonlyArray<string>;
+  /** Avisos accionables. No son errores: la colección existe igual. */
+  readonly warnings: ReadonlyArray<string>;
   /** `null` solo si no se llegó a escribir la colección. */
   readonly collectionPath: string | null;
   /** `_postman_id`: lo que hace que reimportar actualice en vez de duplicar. */

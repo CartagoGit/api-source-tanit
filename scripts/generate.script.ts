@@ -152,6 +152,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   const pipeline = await runPipeline(basenameFlag);
   const discoveredSpecs = pipeline.specs;
+
+  // Los avisos van ANTES de escribir nada: si alguien corta la
+  // ejecución al ver que le falta media API, mejor que se entere aquí.
+  for (const warning of pipeline.warnings) {
+    console.log(`\n⚠ ${warning}`);
+  }
+  if (pipeline.frameworks.length > 1) {
+    console.log(`  · Frameworks escaneados: ${pipeline.frameworks.join(", ")}`);
+  }
   const config = pipeline.config;
   const origin = pipeline.match?.framework ?? "legacy";
 
@@ -334,6 +343,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       version: GENERATE_REPORT_VERSION,
       ok: true,
       framework: pipeline.match?.framework ?? null,
+      frameworks: pipeline.frameworks,
+      warnings: pipeline.warnings,
       projectRoot: pipeline.context.projectRoot,
       projectName: config.name,
       collectionPath,

@@ -118,6 +118,8 @@ export function buildGenerateToolRegistration(
 
           const out: IGenerateOutput = {
             framework: report.framework,
+            frameworks: report.frameworks,
+            warnings: report.warnings,
             collectionPath: report.collectionPath,
             collectionId: report.collectionId,
             environmentPaths: report.environmentPaths,

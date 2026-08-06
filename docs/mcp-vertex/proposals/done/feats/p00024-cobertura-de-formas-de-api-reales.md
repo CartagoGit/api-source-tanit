@@ -2,13 +2,22 @@
 id: p00024
 title: "p00024 — cubrir las formas de API que aún pierden endpoints"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
 related:
     - p00016 # el contrato de scanner donde se declaran las capacidades
 ---
+
+> **Cerrada 2026-08-06.** El orchestrator gana `detectAll()` y el
+> pipeline escanea TODOS los frameworks que reconocen el proyecto en
+> vez de solo el de más score. Medido en el fixture híbrido
+> express+nextjs: de 3 endpoints de 6 a 6 de 6, y ahora con un aviso
+> que dice qué ha pasado y qué hacer. Los 12 ejemplos puros casan con
+> un único detector, así que para ellos no cambia nada — hay un test
+> que lo fija.
+
 
 # p00024 — cubrir las formas de API que aún pierden endpoints
 

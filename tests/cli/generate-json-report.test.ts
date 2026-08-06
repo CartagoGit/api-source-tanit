@@ -12,7 +12,7 @@
  * come un error de parseo.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { cp, mkdtemp, rm } from "node:fs/promises";
+import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -63,6 +63,19 @@ describe("generate --json", () => {
   test("declara la versión del contrato", () => {
     expect(report.version).toBe(GENERATE_REPORT_VERSION);
     expect(report.ok).toBe(true);
+  });
+
+  // El plugin de mcp-vertex rechaza un informe cuya versión no conoce.
+  // Si alguien sube `GENERATE_REPORT_VERSION` y se olvida del plugin,
+  // el tool `generate` deja de funcionar entero — y sin este test nadie
+  // se entera hasta que un agente lo invoca de verdad.
+  test("el plugin lee exactamente esta versión del contrato", async () => {
+    const pluginHelper = await readFile(
+      join(PACKAGE_ROOT, "plugins/postman-exporter/src/lib/helpers/runner.helper.ts"),
+      "utf8",
+    );
+    const declared = /SUPPORTED_REPORT_VERSION = (\d+)/.exec(pluginHelper)?.[1];
+    expect(Number(declared)).toBe(GENERATE_REPORT_VERSION);
   });
 
   test("trae el framework detectado y el nombre del proyecto", () => {

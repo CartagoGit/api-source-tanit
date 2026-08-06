@@ -3,8 +3,15 @@
  * framework-agnostic.
  *
  * Acepta una lista de `IProjectScanner` (cada uno cubre un framework),
- * los evalúa contra el `projectRoot` y se queda con el de mayor score.
+ * los evalúa contra el `projectRoot` y los ordena por score.
  * Si hay empate, el orden de la lista manda.
+ *
+ * `detectAll()` devuelve **todos** los que puntúan, no solo el primero.
+ * Importa para los proyectos híbridos: un repo con un Express heredado
+ * y rutas nuevas de Next.js casa con dos, y quedarse con uno devolvía 1
+ * de 3 endpoints sin decir nada. Los 12 ejemplos puros casan con
+ * exactamente un detector, así que mirar el resto no cambia nada para
+ * ellos.
  *
  * Una vez resuelto el `IProjectMatch`, busca un `IRouteScanner` cuyo
  * `framework === match.framework` y un `IValidationSpecProvider` igual.
@@ -28,32 +35,63 @@ export interface DiscoveryRegistry {
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
 }
 
+/** Un framework que ha reconocido el proyecto, con sus colaboradores. */
+export interface IDetectedFramework {
+  readonly match: IProjectMatch;
+  readonly scanner: IRouteScanner | null;
+  readonly validation: IValidationSpecProvider | null;
+  /** Confianza del detector, de 0 a 1. */
+  readonly score: number;
+}
+
 export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
   constructor(private readonly registry: DiscoveryRegistry) {}
 
+  /**
+   * Todos los frameworks que reconocen el proyecto, de más a menos
+   * seguro. Vacío si no lo reconoce ninguno.
+   */
+  async detectAll(projectRoot: string): Promise<IDetectedFramework[]> {
+    const scored: Array<{ detector: IProjectScanner; score: number }> = [];
+    for (const detector of this.registry.detectors) {
+      let score: number;
+      try {
+        score = await detector.detect(projectRoot);
+      } catch {
+        // Un detector que revienta no puede tumbar a los otros once.
+        score = 0;
+      }
+      if (score > 0) scored.push({ detector, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+
+    const detected: IDetectedFramework[] = [];
+    for (const { detector, score } of scored) {
+      const match = await detector.resolve(projectRoot);
+      detected.push({
+        match,
+        score,
+        scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
+        validation:
+          this.registry.validationProviders.find((v) => v.framework === match.framework) ??
+          null,
+      });
+    }
+    return detected;
+  }
+
+  /** El framework más probable. Atajo sobre `detectAll()`. */
   async detectProject(projectRoot: string): Promise<{
     match: IProjectMatch | null;
     scanner: IRouteScanner | null;
     validation: IValidationSpecProvider | null;
   }> {
-    const scored: Array<{ detector: IProjectScanner; score: number }> = [];
-    for (const d of this.registry.detectors) {
-      let s: number;
-      try {
-        s = await d.detect(projectRoot);
-      } catch {
-        s = 0;
-      }
-      if (s > 0) scored.push({ detector: d, score: s });
-    }
-    scored.sort((a, b) => b.score - a.score);
-    const winner = scored[0];
+    const winner = (await this.detectAll(projectRoot))[0];
     if (!winner) return { match: null, scanner: null, validation: null };
-    const match = await winner.detector.resolve(projectRoot);
-    const scanner =
-      this.registry.routeScanners.find((r) => r.matches(match)) ?? null;
-    const validation =
-      this.registry.validationProviders.find((v) => v.framework === match.framework) ?? null;
-    return { match, scanner, validation };
+    return {
+      match: winner.match,
+      scanner: winner.scanner,
+      validation: winner.validation,
+    };
   }
 }

@@ -66,6 +66,15 @@ export interface IGenerationResult {
   readonly authFlow: IAuthFlow | null;
   /** Contexto resuelto del proyecto. */
   readonly context: IProjectContext;
+  /**
+   * Avisos para la persona que ejecuta esto. No son errores: la
+   * colección se ha generado igual. Son las cosas que, de no decirse,
+   * dejan a alguien con una colección a la que le falta media API sin
+   * que lo sepa.
+   */
+  readonly warnings: ReadonlyArray<string>;
+  /** Todos los frameworks que reconocieron el proyecto, no solo el ganador. */
+  readonly frameworks: ReadonlyArray<string>;
   readonly metrics: IGenerationMetrics;
 }
 
@@ -165,6 +174,8 @@ async function buildFor(
     origin: discovery.origin,
     authFlow,
     context,
+    warnings: discovery.warnings,
+    frameworks: discovery.frameworks,
     metrics: {
       routes: discovery.routes.length,
       specs: specs.length,
@@ -184,6 +195,9 @@ interface IDiscovery {
   readonly origin: "scanner" | "legacy";
   readonly withValidation: number;
   readonly withoutValidation: number;
+  readonly warnings: ReadonlyArray<string>;
+  /** Todos los frameworks que reconocieron el proyecto. */
+  readonly frameworks: ReadonlyArray<string>;
 }
 
 /**
@@ -197,21 +211,62 @@ async function discoverSpecs(
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
-  const { match, scanner, validation } = await options.orchestrator.detectProject(
-    context.projectRoot,
-  );
+  const detected = await options.orchestrator.detectAll(context.projectRoot);
   const { config, manualEndpoints } = await loadProject();
+  const usable = detected.filter((candidate) => candidate.scanner !== null);
 
-  if (match && scanner) {
-    const result = await buildSpecsFromScanner(scanner, match, validation);
+  if (usable.length > 0) {
+    // Se escanean TODOS los que reconocen el proyecto, no solo el
+    // primero. Un repo con un Express heredado y rutas nuevas de
+    // Next.js casa con dos, y quedarse con el ganador devolvía 1 de 3
+    // endpoints en silencio. Los proyectos de un solo framework —los
+    // 12 ejemplos— casan con un único detector, así que para ellos
+    // esto no cambia nada.
+    const specs: EndpointSpec[] = [];
+    const routes: ParsedRoute[] = [];
+    const warnings: string[] = [];
+    let withValidation = 0;
+    let withoutValidation = 0;
+
+    for (const candidate of usable) {
+      const result = await buildSpecsFromScanner(
+        candidate.scanner!,
+        candidate.match,
+        candidate.validation,
+      );
+      specs.push(...result.specs);
+      routes.push(...result.routes);
+      withValidation += result.withFormRequest;
+      withoutValidation += result.withoutFormRequest;
+    }
+
+    if (usable.length > 1) {
+      const names = usable.map((c) => `${c.match.framework} (${c.score})`).join(", ");
+      warnings.push(
+        `El proyecto encaja con ${usable.length} frameworks: ${names}. ` +
+          "Se han escaneado todos y se han fusionado los endpoints. " +
+          "Si alguno sobra, acota el escaneo con `--project-root` a la carpeta que toque.",
+      );
+    }
+
+    const merged = dedupeSpecs(specs);
+    if (merged.length < specs.length) {
+      warnings.push(
+        `${specs.length - merged.length} endpoint(s) estaban declarados por más de un ` +
+          "framework y se han fusionado por método + URI.",
+      );
+    }
+
     return {
-      specs: mergeWithManual([...result.specs], [...manualEndpoints]),
-      routes: result.routes,
+      specs: mergeWithManual(merged, [...manualEndpoints]),
+      routes,
       config,
-      match,
+      match: usable[0]!.match,
       origin: "scanner",
-      withValidation: result.withFormRequest,
-      withoutValidation: result.withoutFormRequest,
+      withValidation,
+      withoutValidation,
+      warnings,
+      frameworks: usable.map((c) => c.match.framework),
     };
   }
 
@@ -226,6 +281,12 @@ async function discoverSpecs(
       origin: "legacy",
       withValidation: 0,
       withoutValidation: 0,
+      warnings: [
+        "Ningún scanner ha reconocido este proyecto y no se ha inyectado " +
+          "ninguna estrategia de último recurso: la colección sale vacía. " +
+          "Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.",
+      ],
+      frameworks: [],
     };
   }
 
@@ -242,5 +303,32 @@ async function discoverSpecs(
     origin: "legacy",
     withValidation: legacy.withValidation,
     withoutValidation: legacy.withoutValidation,
+    warnings:
+      legacy.routes.length === 0
+        ? [
+            "Ningún scanner ha reconocido el proyecto y la heurística de " +
+              "último recurso tampoco ha encontrado rutas.",
+          ]
+        : [],
+    frameworks: [],
   };
+}
+
+/**
+ * Quita endpoints repetidos por método + URI.
+ *
+ * En un proyecto híbrido dos frameworks pueden declarar la misma ruta
+ * (un proxy de Next.js delante de un Express, por ejemplo). Gana el
+ * primero, que viene del detector con más confianza.
+ */
+function dedupeSpecs(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
+  const seen = new Set<string>();
+  const out: EndpointSpec[] = [];
+  for (const spec of specs) {
+    const key = `${spec.method} ${spec.uri}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(spec);
+  }
+  return out;
 }

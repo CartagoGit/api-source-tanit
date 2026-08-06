@@ -27,6 +27,8 @@ function reportJson(overrides: Record<string, unknown> = {}): string {
     version: SUPPORTED_REPORT_VERSION,
     ok: true,
     framework: "express",
+    frameworks: ["express"],
+    warnings: [],
     projectRoot: "/tmp/mi-api",
     projectName: "mi-api",
     collectionPath: "/tmp/mi-api/build/mi-api.postman_collection.json",

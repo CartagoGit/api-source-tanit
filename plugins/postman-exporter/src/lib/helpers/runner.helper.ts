@@ -273,6 +273,8 @@ const GenerateReportSchema = z.object({
   version: z.number(),
   ok: z.boolean(),
   framework: z.string().nullable(),
+  frameworks: z.array(z.string()),
+  warnings: z.array(z.string()),
   projectRoot: z.string(),
   projectName: z.string(),
   collectionPath: z.string().nullable(),
@@ -289,8 +291,15 @@ const GenerateReportSchema = z.object({
 /** Informe de `generate --json`, ya validado. */
 export type IGenerateReport = z.infer<typeof GenerateReportSchema>;
 
-/** Versión del contrato que este plugin sabe leer. */
-export const SUPPORTED_REPORT_VERSION = 1;
+/**
+ * Versión del contrato que este plugin sabe leer.
+ *
+ * Tiene que ir a la par de `GENERATE_REPORT_VERSION` en
+ * `contract/generate-report.interface.ts`. Un test lo comprueba: si
+ * alguien sube una y no la otra, el plugin deja de leer al CLI y hay
+ * que enterarse en el gate, no en producción.
+ */
+export const SUPPORTED_REPORT_VERSION = 2;
 
 /**
  * Lee el informe de `generate --json` desde el stdout del CLI.

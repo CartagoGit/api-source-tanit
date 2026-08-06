@@ -1,0 +1,8 @@
+{
+  "name": "hibrido-api",
+  "type": "module",
+  "dependencies": {
+    "express": "^4.19.0",
+    "next": "^14.0.0"
+  }
+}

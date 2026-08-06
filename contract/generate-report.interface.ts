@@ -19,8 +19,12 @@
  * ```
  */
 
-/** Versión del contrato. Sube al cambiar la forma de manera incompatible. */
-export const GENERATE_REPORT_VERSION = 1;
+/**
+ * Versión del contrato. Sube al cambiar la forma de manera incompatible.
+ *
+ * v2: añade `frameworks` y `warnings` (proyectos híbridos).
+ */
+export const GENERATE_REPORT_VERSION = 2;
 
 /** Lo que el flujo de login detectado dejó montado en la colección. */
 export interface IGenerateReportAuth {
@@ -37,6 +41,19 @@ export interface IGenerateReport {
   readonly ok: boolean;
   /** Framework detectado, o `null` si no se reconoció ninguno. */
   readonly framework: string | null;
+  /**
+   * Todos los frameworks que reconocieron el proyecto.
+   *
+   * Más de uno significa proyecto híbrido: se han escaneado todos y se
+   * han fusionado sus endpoints.
+   */
+  readonly frameworks: ReadonlyArray<string>;
+  /**
+   * Avisos para quien lo ejecuta. No son errores — la colección existe
+   * igual —, son las cosas que de no decirse dejan a alguien con una
+   * colección incompleta sin saberlo.
+   */
+  readonly warnings: ReadonlyArray<string>;
   /** Raíz del proyecto escaneado, absoluta. */
   readonly projectRoot: string;
   /** Nombre del proyecto tal como aparece en la colección. */
