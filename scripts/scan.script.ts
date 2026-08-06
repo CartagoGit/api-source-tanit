@@ -3,15 +3,15 @@
  * Smoke test del discovery framework-agnostic.
  *
  * Uso:
- *   bun scripts/scan.scanner.script.ts
- *   bun scripts/scan.scanner.script.ts --project-root /path/to/project
- *   POSTMAN_PROJECT_ROOT=/path/to/project bun scripts/scan.scanner.script.ts
+ *   bun scripts/scan.script.ts
+ *   bun scripts/scan.script.ts --project-root /path/to/project
+ *   POSTMAN_PROJECT_ROOT=/path/to/project bun scripts/scan.script.ts
  *
  * Recorre los `IProjectScanner` registrados, elige el de mayor score,
  * e imprime las rutas encontradas. Pensado para CI y para debugging
  * del discovery sin tener que generar una colección completa.
  */
-import { defaultOrchestrator } from "../frameworks/registry.js";
+import { defaultOrchestrator } from "../frameworks/framework.registry.js";
 import { projectRoot } from "../services/paths.service.js";
 
 async function main(): Promise<number> {

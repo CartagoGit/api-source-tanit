@@ -2,7 +2,7 @@
 id: p00041
 title: "p00041 — convenciones de carpetas, sufijos de fichero y carpeta de salida"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
@@ -12,6 +12,21 @@ related:
     - p00023 # paridad entre frameworks
     - p00027 # el plugin como proyecto independiente
 ---
+
+> **Cerrada 2026-08-06.** Las cuatro slices.
+>
+> S1: la salida va a `<proyecto>/export-to-postman/`, con un test que
+> monta un proyecto con su propio `build/` lleno y comprueba que
+> sigue byte a byte igual. S2: `contract/`→`contracts/`,
+> `helper/`→`helpers/`, `service/`→`services/`, 152 ficheros
+> reescritos. S3: `lint:naming` nuevo, con prueba negativa. S4:
+> CONTRIBUTING con la tabla de sufijos, la regla del plural, la
+> dirección de las capas y la carpeta de salida.
+>
+> Bug que salió por el camino: `files` del `package.json` no incluía
+> `frameworks/`, así que el paquete publicado habría salido sin ni un
+> scanner.
+
 
 # p00041 — convenciones de carpetas, ficheros y salida
 
@@ -36,7 +51,7 @@ El plural es lo que dice la verdad.
 Medido:
 
 ```
-scripts/lint-tool-no-process.ts   ← debería ser .script.ts
+scripts/lint-tool-no-process.script.ts   ← debería ser .script.ts
 scripts/gates/sections.ts         ← no es un script, es un registro
 ```
 
@@ -87,7 +102,7 @@ tests.
 ## slices
 
 ### S1 — carpeta de salida propia, y multiplataforma
-- **Estado**: ready
+- **Estado**: done (2026-08-06)
 - **Ficheros**: `services/paths.service.ts`, `contracts/*.constant.ts`,
   `.gitignore`, `docs/INSTALL.md`, `docs/POSTMAN.md`, `README.md`,
   `examples/README.md`, tests nuevos.
@@ -106,7 +121,7 @@ tests.
   - Los 12 ejemplos generan en `examples/<x>/export-to-postman/`.
 
 ### S2 — carpetas contenedoras en plural
-- **Estado**: ready
+- **Estado**: done (2026-08-06)
 - **Ficheros**: `contracts/` → `contracts/`, `helpers/` → `helpers/`,
   `services/` → `services/`, y todos los imports.
 - **Gate**: `bun run typecheck && bun run lint:boundaries`.
@@ -119,10 +134,10 @@ tests.
   resultados.
 
 ### S3 — sufijos de fichero coherentes
-- **Estado**: ready
-- **Ficheros**: `scripts/lint-tool-no-process.ts`,
+- **Estado**: done (2026-08-06)
+- **Ficheros**: `scripts/lint-tool-no-process.script.ts`,
   `scripts/gates/sections.ts`, `services/generation.pipeline.ts`,
-  `services/discovery.orchestrator.ts`, `frameworks/registry.ts`.
+  `services/discovery.orchestrator.ts`, `frameworks/framework.registry.ts`.
 - **Gate**: un lint nuevo, `lint:naming`.
 
 - `lint-tool-no-process.ts` → `lint-tool-no-process.script.ts`.
@@ -130,13 +145,13 @@ tests.
   un script, es el registro que consumen los cuatro gates.
 - Decidir y aplicar: `.pipeline.ts` y `.orchestrator.ts` se quedan (son
   tipos de módulo con significado propio, como `.adapter.ts`), y
-  `frameworks/registry.ts` → `frameworks/framework.registry.ts`.
+  `frameworks/framework.registry.ts` → `frameworks/framework.registry.ts`.
 - `lint:naming` comprueba que todo `.ts` bajo las carpetas de código
   lleva uno de los sufijos permitidos, con la lista en un solo sitio.
 - **Aceptación**: `bun run lint:naming` en verde y en el gate.
 
 ### S4 — documentar la convención
-- **Estado**: ready
+- **Estado**: done (2026-08-06)
 - **Ficheros**: `CONTRIBUTING.md`, `.github/agents.md`,
   `docs/mcp-vertex/AGENT-BOOTSTRAP.md`.
 

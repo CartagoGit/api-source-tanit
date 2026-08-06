@@ -17,7 +17,7 @@
  */
 import { defineConfig } from "vitest/config";
 
-import { SECTIONS } from "./scripts/gates/sections.js";
+import { SECTIONS } from "./scripts/gates/sections.constant.js";
 
 const PLUGIN_SECTION = "plugin";
 

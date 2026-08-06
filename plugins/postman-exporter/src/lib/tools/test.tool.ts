@@ -40,7 +40,7 @@ import { runSmoke } from "../helpers/smoke-runner.helper";
 import {
   SUPPORTED_FRAMEWORKS,
   scannerBundleFor,
-} from "../../../../../frameworks/registry";
+} from "../../../../../frameworks/framework.registry";
 
 const TOOL_ID = "test";
 

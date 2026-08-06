@@ -24,7 +24,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import { moduleDir } from "../../helpers/module-path.helper.js";
-import { SECTIONS, bestSectionFor, type ISection } from "./sections.js";
+import { SECTIONS, bestSectionFor, type ISection } from "./sections.constant.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
 

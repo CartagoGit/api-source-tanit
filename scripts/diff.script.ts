@@ -23,7 +23,7 @@ import { walkCollection } from "../helpers/postman.helper.js";
 import { outputCollectionPath, projectRoot } from "../services/paths.service.js";
 import { loadProject } from "../services/project-loader.service.js";
 import type { PostmanCollection } from "../contracts/postman.interface.js";
-import { defaultOrchestrator } from "../frameworks/registry.js";
+import { defaultOrchestrator } from "../frameworks/framework.registry.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();

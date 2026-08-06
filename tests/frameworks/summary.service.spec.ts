@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 
 import { summarizeProject } from "../../services/summary.service";
-import { defaultOrchestrator } from "../../frameworks/registry";
+import { defaultOrchestrator } from "../../frameworks/framework.registry";
 import { laravelLegacyDiscovery } from "../../frameworks/laravel/legacy-discovery";
 
 const REPO_ROOT = `${process.cwd()}`;

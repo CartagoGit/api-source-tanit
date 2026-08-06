@@ -33,7 +33,7 @@ import {
   type IProjectSummary,
 } from "../services/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
-import { defaultOrchestrator } from "./registry.js";
+import { defaultOrchestrator } from "./framework.registry.js";
 
 export { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 
@@ -43,7 +43,7 @@ export {
   defaultOrchestrator,
   scannerBundleFor,
   type IScannerBundle,
-} from "./registry.js";
+} from "./framework.registry.js";
 
 /** Lo que se puede ajustar sin tocar el catálogo. */
 export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">;

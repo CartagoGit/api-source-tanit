@@ -22,7 +22,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
 import { moduleDir } from "../../helpers/module-path.helper.js";
-import { SECTIONS, sectionsForFiles, withDependents } from "./sections.js";
+import { SECTIONS, sectionsForFiles, withDependents } from "./sections.constant.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
 

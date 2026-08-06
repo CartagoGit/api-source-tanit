@@ -15,7 +15,7 @@ import {
   sectionByName,
   sectionsForFiles,
   withDependents,
-} from "../../scripts/gates/sections";
+} from "../../scripts/gates/sections.constant";
 
 describe("SECTIONS", () => {
   test("los nombres son únicos", () => {
@@ -55,7 +55,7 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
     ["frameworks/scanners/gin.scanner.ts", "frameworks"],
     ["frameworks/laravel/laravel.scanner.ts", "frameworks"],
     ["frameworks/parsers/zod-schema.helper.ts", "frameworks"],
-    ["frameworks/registry.ts", "frameworks"],
+    ["frameworks/framework.registry.ts", "frameworks"],
     // El adapter sí es del núcleo: trabaja sobre el contrato genérico
     // `ParsedRoute`, no sobre ningún framework concreto.
     ["services/adapters/parsed-route-to-spec.adapter.ts", "core"],

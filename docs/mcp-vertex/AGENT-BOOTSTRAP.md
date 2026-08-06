@@ -54,7 +54,7 @@ the single source of truth and re-stating them invites drift:
 - Agents and tools invoke shell through `bash`, never `zsh` or `sh`
   (universal §6 invariant).
 - No `process.cwd()` in engines (universal §6 invariant; mirrored
-  by `scripts/lint-tool-no-process.ts` per p00011).
+  by `scripts/lint-tool-no-process.script.ts` per p00011).
 - Conventional Commits; `bun run validate` is the DoD gate
   (universal §5).
 - One atomic slice per turn; minimal validation; trust the MCP
@@ -259,7 +259,7 @@ postman-exporter-specific:
   `process.cwd()`. Every tool receives it through the plugin's
   `register(ctx)` and passes it into the `build<V>ToolRegistration`
   builder. No tool reads the cwd.
-- **`scripts/lint-tool-no-process.ts`** enforces "no process.cwd /
+- **`scripts/lint-tool-no-process.script.ts`** enforces "no process.cwd /
   process.env in tools" (per p00011). It runs as part of
   `bun run validate` / lint.
 - **Proposal workflow** is under `docs/mcp-vertex/proposals/`. Open

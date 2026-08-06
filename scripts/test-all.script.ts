@@ -17,7 +17,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resetPathCache } from "../services/paths.service.js";
-import { defaultOrchestrator } from "../frameworks/registry.js";
+import { defaultOrchestrator } from "../frameworks/framework.registry.js";
 import { buildSpecsFromScanner } from "../services/adapters/parsed-route-to-spec.adapter.js";
 import { loadProject } from "../services/project-loader.service.js";
 import { applyAgnosticInference } from "../services/param-inferrer.service.js";

@@ -54,9 +54,9 @@ cover every legitimate need. The lint rule encodes the
 
 ## slices
 
-### S1 — `scripts/lint-tool-no-process.ts`
+### S1 — `scripts/lint-tool-no-process.script.ts`
 - **Status**: ready
-- **Files**: `scripts/lint-tool-no-process.ts` (new),
+- **Files**: `scripts/lint-tool-no-process.script.ts` (new),
   `package.json` (add `lint:tools` script).
 - **Gate**: `bun run lint:tools` exits 0 on the current
   `plugins/postman-exporter/src/lib/tools/`.

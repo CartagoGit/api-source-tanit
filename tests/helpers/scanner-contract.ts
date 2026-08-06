@@ -23,7 +23,7 @@ import { describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import type { FrameworkId, ParsedRoute } from "../../contracts/scanner.interface";
-import { scannerBundleFor } from "../../frameworks/registry";
+import { scannerBundleFor } from "../../frameworks/framework.registry";
 import { createTempProject, scanProject } from "./scanner-fixture";
 
 /** Verbos que el pipeline sabe convertir en requests de Postman. */

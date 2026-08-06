@@ -94,6 +94,46 @@ summary:
 | `*.tool.ts` | `plugins/<name>/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
+| `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
+| `*.registry.ts` | `frameworks/` | El catálogo de lo concreto. |
+| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `services/` | Tipos de módulo con significado propio; no son un servicio cualquiera. |
+| `*.spec.ts` / `*.test.ts` | `tests/<sección>/` | Unitario / de integración. |
+
+`bun run lint:naming` lo comprueba. Sin él la convención existía en este
+documento y en ningún sitio más: había un `lint-tool-no-process.ts` que
+era un script sin decirlo y un `sections.ts` que no lo era y vivía entre
+ellos.
+
+### Carpetas contenedoras, en plural
+
+`contracts/`, `helpers/`, `services/`, `frameworks/`, `scripts/`,
+`tests/`, `examples/`, `plugins/`.
+
+Una carpeta contiene **varias** cosas de ese tipo. `helper/` con 8
+helpers dentro no describe nada. Antes había ocho carpetas y dos
+convenciones, solo por historia.
+
+### Las capas y su dirección
+
+```
+contracts/ helpers/ services/   núcleo agnóstico — no nombra frameworks
+        ↑
+frameworks/                     los 12 scanners y sus parsers
+        ↑
+scripts/                        raíz de composición: une las dos
+```
+
+La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
+El núcleo importando de `frameworks/` es lo único que separa "somos
+agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
+antes de que hubiera un lint mirándolo.
+
+### Dónde escribe la herramienta
+
+En `<proyecto escaneado>/export-to-postman/`. **Nunca** en `build/`: es
+la carpeta de salida por defecto de Gradle, de muchos proyectos de Go y
+de medio mundo de Makefiles, y su `clean` la borra entera. La constante
+es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 
 ### Hard rules
 
@@ -103,6 +143,8 @@ summary:
 - **Plugins never import `services/`.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
+- **`services/` never imports `frameworks/`.** Lo exige
+  `lint:boundaries`.
 
 ---
 

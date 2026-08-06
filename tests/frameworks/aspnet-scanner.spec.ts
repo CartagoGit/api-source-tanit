@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
-import { scannerBundleFor } from "../../frameworks/registry";
+import { scannerBundleFor } from "../../frameworks/framework.registry";
 import { moduleDir } from "../../helpers/module-path.helper";
 
 describeScannerContract({
