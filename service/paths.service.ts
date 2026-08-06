@@ -14,7 +14,7 @@
  *   - `projectRoot()`  → raíz del proyecto Laravel (donde está `artisan`).
  *
  * Resolución del `packageRoot`:
- *   1. `import.meta.dir` (Bun/Node ESM).
+ *   1. `moduleDir(import.meta.url)` (Bun/Node ESM).
  *   2. Búsqueda subiendo desde `process.cwd()` hasta dar con
  *      `package.json` + `contract/postman.constant.ts`.
  *

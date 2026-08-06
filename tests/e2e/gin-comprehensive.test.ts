@@ -8,7 +8,7 @@
  * - Path params `:id`.
  * - Multi-file (internal/users.go, internal/orders.go, internal/auth.go).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

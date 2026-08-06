@@ -3,7 +3,9 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -18,6 +20,15 @@
     "service/**/*.ts",
     "helper/**/*.ts",
     "scripts/**/*.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts",
     "examples/example-app/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "tests/fixtures",
+    "tests/smoke-fixtures"
   ]
 }

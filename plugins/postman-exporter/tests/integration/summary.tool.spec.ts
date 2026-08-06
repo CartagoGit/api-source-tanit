@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
 import type { IMcpPluginContext } from "@mcp-vertex/core/public";

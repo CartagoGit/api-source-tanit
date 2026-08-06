@@ -27,7 +27,26 @@ type BunSpawnSync = (opts: {
   stderr: ReadableStream<Uint8Array> | undefined;
   success: boolean;
 };
-const bunSpawnSync = (Bun as { spawnSync?: BunSpawnSync }).spawnSync;
+/** Lo que este helper necesita del global `Bun`, si existe. */
+interface IBunGlobal {
+  readonly spawnSync?: BunSpawnSync;
+  readonly which?: (bin: string) => string | null;
+}
+
+/**
+ * `Bun` a pelo es un identificador libre: fuera de Bun no es
+ * `undefined`, es un **ReferenceError** en cuanto se evalúa el módulo.
+ * Como esto estaba en el top level, importar el helper desde cualquier
+ * runtime que no fuese Bun reventaba antes de llegar al fallback de
+ * `node:child_process` — o sea, la rama "ejecución vía Node puro" que
+ * el propio fichero documenta no se podía alcanzar nunca.
+ *
+ * Leerlo desde `globalThis` sí devuelve `undefined` y deja que el
+ * fallback funcione. Es lo que permite que los tests del plugin corran
+ * bajo vitest.
+ */
+const bunGlobal = (globalThis as { Bun?: IBunGlobal }).Bun;
+const bunSpawnSync = bunGlobal?.spawnSync;
 const useBunSpawn = typeof bunSpawnSync === "function";
 
 /** Resultado de ejecutar un script via bun. */
@@ -51,7 +70,7 @@ function resolveBunBin(): string {
   const fromEnv = process.env["MCP_VERTEX_BUN_BIN"];
   if (fromEnv && fromEnv.length > 0) return fromEnv;
   // 2) `Bun.which` (disponible en runtime Bun).
-  const w = (Bun as { which?: (bin: string) => string | null }).which?.("bun");
+  const w = bunGlobal?.which?.("bun");
   if (typeof w === "string" && w.length > 0) return w;
   // 3) `which` por stdlib (cubre ejecución vía Node puro).
   try {
@@ -115,32 +134,54 @@ export function runBunCommand(
         env: process.env,
       });
 
-  // `Bun.spawnSync` y `child_process.spawnSync` devuelven formas
-  // distintas (una trae `error`, la otra puede dar Buffer en stdout).
-  // Se normalizan aquí para que el resto lea una sola forma.
-  const result = {
-    status: raw.status,
-    stdout: typeof raw.stdout === "string" ? raw.stdout : String(raw.stdout ?? ""),
-    stderr: typeof raw.stderr === "string" ? raw.stderr : String(raw.stderr ?? ""),
-    error: "error" in raw ? raw.error : undefined,
-  };
+  return toRunResult(raw, start);
+}
 
-  if (result.error) {
+/** La forma cruda que devuelven los dos `spawnSync`. */
+interface IRawSpawnResult {
+  readonly error?: Error | undefined;
+  readonly status: number | null;
+  readonly stdout: string | Uint8Array | null;
+  readonly stderr: string | Uint8Array | null;
+}
+
+/**
+ * Normaliza la salida de cualquiera de los dos `spawnSync`.
+ *
+ * `Bun.spawnSync` y `child_process.spawnSync` devuelven formas
+ * distintas (una trae `error`, la otra puede dar Buffer o `null` en los
+ * streams), así que se unifican aquí y el resto del plugin lee una sola.
+ *
+ * El detalle que importa: cuando el proceso **no llega a arrancar**
+ * (cwd inexistente, binario no encontrado) `stderr` no es `null`, es la
+ * cadena vacía — y el `stderr ?? String(error)` que había aquí antes se
+ * quedaba con el `""`, tirando el único mensaje que explicaba el fallo.
+ * El consumidor recibía `ok: false` sin ningún `detail`, que es
+ * exactamente lo peor: sabes que falló y no por qué.
+ */
+function toRunResult(raw: IRawSpawnResult, startedAt: number): IRunScriptResult {
+  const stdout = decodeStream(raw.stdout);
+  const stderr = decodeStream(raw.stderr);
+  const durationMs = Date.now() - startedAt;
+
+  if (raw.error) {
     return {
       ok: false,
-      exitCode: result.status ?? 1,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? String(result.error),
-      durationMs: Date.now() - start,
+      exitCode: raw.status ?? 1,
+      stdout,
+      // `||`, no `??`: el caso a cubrir es el string vacío.
+      stderr: stderr || `${raw.error.name}: ${raw.error.message}`,
+      durationMs,
     };
   }
-  return {
-    ok: result.status === 0,
-    exitCode: result.status ?? 1,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-    durationMs: Date.now() - start,
-  };
+  return { ok: raw.status === 0, exitCode: raw.status ?? 1, stdout, stderr, durationMs };
+}
+
+/** Buffer, string o nada → siempre string. */
+function decodeStream(stream: string | Uint8Array | null | undefined): string {
+  if (typeof stream === "string") return stream;
+  if (stream instanceof Uint8Array) return new TextDecoder().decode(stream);
+  return "";
 }
 
 /**
@@ -169,22 +210,7 @@ export function runBunScript(
         stdio: ["ignore", "pipe", "pipe"],
         env: process.env,
       });
-  if (result.error) {
-    return {
-      ok: false,
-      exitCode: result.status ?? 1,
-      stdout: result.stdout ?? "",
-      stderr: result.stderr ?? String(result.error),
-      durationMs: Date.now() - start,
-    };
-  }
-  return {
-    ok: result.status === 0,
-    exitCode: result.status ?? 1,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-    durationMs: Date.now() - start,
-  };
+  return toRunResult(result, start);
 }
 
 function runBunSpawnSyncArray(

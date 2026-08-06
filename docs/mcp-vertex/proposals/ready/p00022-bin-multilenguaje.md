@@ -9,6 +9,7 @@ date: 2026-08-06
 related:
     - p00010 # el binario compilado es el motor que estos wrappers invocan
     - p00021 # sustituye a las reimplementaciones que se retiran
+    - p00025 # bin canónico corto + alias; los wrappers no deben fijar el nombre largo
 ---
 
 # p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje
@@ -41,18 +42,22 @@ wrappers finos que lo descarguen y lo invoquen.
 
 ## slices
 
-### S1 — `bin/postman-from-routes` (shell POSIX)
-- **Files**: `bin/postman-from-routes` (nuevo).
+### S1 — `bin/<canonical>` (shell POSIX)
+- **Files**: `bin/<canonical>` (nuevo; nombre canónico = p00025, hoy
+  provisionalmente el alias `postman-from-routes` hasta que S1 de p00025
+  cierre).
 - **Gate**: se ejecuta en linux y macOS sin bun instalado.
 
-- Resuelve, en orden: un binario ya descargado en `~/.postman-from-routes/`,
-  `bunx`, `npx`. Si no hay ninguno, descarga el binario de la release
-  correspondiente a la plataforma y lo cachea.
-- **Acceptance**: `./bin/postman-from-routes --help` funciona con un PATH
-  sin bun ni node.
+- Resuelve, en orden: un binario ya descargado en
+  `~/.<canonical>/` (o el prefijo que fije p00025), `bunx`, `npx`. Si no
+  hay ninguno, descarga el binario de la release correspondiente a la
+  plataforma y lo cachea.
+- **Acceptance**: `./bin/<canonical> --help` funciona con un PATH sin bun
+  ni node. Si p00025 ya eligió acrónimo, el path feliz usa ese bin; el
+  alias largo solo como symlink/compat.
 
-### S2 — `bin/postman-from-routes.ps1` (Windows)
-- **Files**: `bin/postman-from-routes.ps1` (nuevo).
+### S2 — `bin/<canonical>.ps1` (Windows)
+- **Files**: `bin/<canonical>.ps1` (nuevo).
 - **Gate**: revisión manual en Windows.
 
 ### S3 — envoltorios por ecosistema

@@ -10,11 +10,12 @@
  * Era además la causa de fondo del bug del provider de FormRequests de
  * Laravel, que ignoraba `match.projectRoot` y leía el singleton.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { join, resolve } from "node:path";
 import { generateCollection } from "../../service/generation.pipeline";
+import { moduleDir } from "../../helper/module-path.helper";
 
-const FIXTURES = resolve(import.meta.dir, "../fixtures");
+const FIXTURES = resolve(moduleDir(import.meta.url), "../fixtures");
 
 const EXPRESS = join(FIXTURES, "express-comprehensive");
 const DJANGO = join(FIXTURES, "django-comprehensive");

@@ -8,7 +8,7 @@
  * - Múltiples métodos HTTP exportados por archivo.
  * - Detección de framework por `package.json` con dep `next`.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

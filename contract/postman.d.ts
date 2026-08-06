@@ -15,10 +15,13 @@ declare module "node:fs/promises" {
     path: string,
     encoding: "utf8" | "utf-8",
   ): Promise<string>;
+  // El encoding es opcional en la API real (utf8 por defecto para
+  // strings); declararlo obligatorio hacía fallar el typecheck de
+  // cualquier `writeFile(path, data)`.
   export function writeFile(
     path: string,
     data: string,
-    encoding: "utf8" | "utf-8",
+    encoding?: "utf8" | "utf-8",
   ): Promise<void>;
   export function mkdir(
     path: string,
@@ -38,7 +41,9 @@ declare module "node:fs/promises" {
     isFile(): boolean;
     isDirectory(): boolean;
   }
-  export function stat(path: string): Promise<{ isDirectory(): boolean }>;
+  export function stat(
+    path: string,
+  ): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }>;
   export function cp(
     src: string,
     dest: string,
@@ -92,8 +97,17 @@ declare module "node:fs" {
 
 // --- node:child_process --------------------------------------------------
 declare module "node:child_process" {
+  /** Stream de salida de un hijo, en lo que este repo usa de él. */
+  export interface ChildStream {
+    on(event: "data", listener: (chunk: Uint8Array) => void): ChildStream;
+  }
   export interface ChildProcess {
+    readonly stdout: ChildStream | null;
+    readonly stderr: ChildStream | null;
+    kill(signal?: string): boolean;
     on(event: "exit", listener: (code: number | null) => void): ChildProcess;
+    on(event: "close", listener: (code: number | null) => void): ChildProcess;
+    on(event: "error", listener: (error: Error) => void): ChildProcess;
     on(event: string, listener: (...args: unknown[]) => void): ChildProcess;
   }
   export interface SpawnSyncResult {
@@ -108,7 +122,8 @@ declare module "node:child_process" {
     command: string,
     args: string[],
     options?: {
-      stdio?: "inherit" | "pipe" | "ignore";
+      /** Global, o por descriptor (`["ignore", "pipe", "pipe"]`). */
+      stdio?: "inherit" | "pipe" | "ignore" | Array<"inherit" | "pipe" | "ignore">;
       cwd?: string;
       env?: Record<string, string | undefined>;
       shell?: boolean | string;
@@ -229,7 +244,11 @@ declare function fetch(
 
 /** Decodificador de bytes a texto, para leer stdin. */
 declare class TextDecoder {
-  decode(input?: Uint8Array): string;
+  /**
+   * `stream: true` mantiene el estado entre trozos, para no partir un
+   * carácter multibyte que caiga a caballo de dos `data` del proceso.
+   */
+  decode(input?: Uint8Array, options?: { stream?: boolean }): string;
 }
 declare type Uint8Array = { readonly length: number };
 declare const URL: {

@@ -17,8 +17,9 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { moduleDir } from "../helper/module-path.helper.js";
 
-const PACKAGE_ROOT = resolve(import.meta.dir, "..");
+const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */
 const SAMPLE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
 const EXPECTED_REQUESTS = 9;

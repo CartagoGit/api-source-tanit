@@ -5,7 +5,7 @@
  * que un fallo aquí no se ve hasta que el host MCP intenta arrancar y se
  * cae entero. Estos tests lo instancian igual que lo haría el host.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import plugin from "../../src/index";

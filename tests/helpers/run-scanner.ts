@@ -17,8 +17,9 @@
 import { resolve, join } from "node:path";
 import { generateCollection } from "../../service/generation.pipeline";
 import type { PostmanCollection } from "../../contract/postman.interface";
+import { moduleDir } from "../../helper/module-path.helper";
 
-const PROJECT_ROOT = resolve(import.meta.dir, "../..");
+const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "../..");
 
 export interface GenerateMetrics {
   routes: number;

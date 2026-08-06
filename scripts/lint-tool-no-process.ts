@@ -19,8 +19,9 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { collectFiles } from "../helper/fs-walk.helper.js";
+import { moduleDir } from "../helper/module-path.helper.js";
 
-const PACKAGE_ROOT = resolve(import.meta.dir, "..");
+const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 const TOOLS_GLOB_ROOT = resolve(PACKAGE_ROOT, "plugins");
 
 /** Cada regla es un patrón + la explicación de por qué está prohibido. */

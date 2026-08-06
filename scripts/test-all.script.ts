@@ -21,8 +21,9 @@ import { defaultOrchestrator } from "../service/scanner-registry.js";
 import { buildSpecsFromScanner } from "../service/adapters/parsed-route-to-spec.adapter.js";
 import { loadProject } from "../service/project-loader.service.js";
 import { applyAgnosticInference } from "../service/param-inferrer.service.js";
+import { moduleDir } from "../helper/module-path.helper.js";
 
-const PROJECT_ROOT = resolve(import.meta.dir, "..");
+const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "..");
 const FIXTURES_DIR = join(PROJECT_ROOT, "tests", "fixtures");
 
 interface FixtureResult {

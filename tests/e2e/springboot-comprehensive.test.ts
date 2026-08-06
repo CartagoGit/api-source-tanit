@@ -10,7 +10,7 @@
  * - Enums via @Pattern(regexp = "a|b|c").
  * - Multi-package: users/, orders/, auth/.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

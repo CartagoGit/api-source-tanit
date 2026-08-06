@@ -1,8 +1,9 @@
 # Project-specific agent bootstrap — `@postman-exporter/core`
 
 > **This file is the project-specific extension of**
-> [`../../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md)
-> (the **universal bootstrap** for every project that uses mcp-vertex).
+> [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md)
+> (the **universal bootstrap**, vendored from upstream `@mcp-vertex/core`
+> so this repository is self-contained).
 >
 > **Read order**: read the universal bootstrap first, then this file.
 > The universal bootstrap defines the agent contract; this file adds
@@ -17,8 +18,14 @@
 > Every host file in this repo (`.github/copilot-instructions.md`,
 > `.github/agents/*.agent.md`, `AGENTS.md`, `CLAUDE.md`,
 > `.claude/agents/*.md`) points here, **not** to the universal
-> bootstrap directly, so a contributor only edits one place to
-> change a project rule.
+> bootstrap directly, and **never** to a path outside this repository.
+>
+> **Agnostic / portable rule:** do not require a sibling checkout of
+> `mcp-vertex`. Local absolute paths under a developer's machine are
+> forbidden in committed docs and configs. Pre-publish launch of the
+> MCP host may temporarily use a relative sibling path in
+> `.vscode/mcp.json`; that is documented as temporary and must switch
+> to the published `@mcp-vertex/cli` form when available.
 
 ---
 
@@ -45,7 +52,7 @@ the single source of truth and re-stating them invites drift:
 - Tool/skill/proposal IDs must come from the server, not from
   hardcoded lists (universal §6 invariant).
 - Agents and tools invoke shell through `bash`, never `zsh` or `sh`
-  (universal §6 invariant; p10k + dash/ash cross-platform rationale).
+  (universal §6 invariant).
 - No `process.cwd()` in engines (universal §6 invariant; mirrored
   by `scripts/lint-tool-no-process.ts` per p00011).
 - Conventional Commits; `bun run validate` is the DoD gate
@@ -57,7 +64,7 @@ the single source of truth and re-stating them invites drift:
   dependency injection) is the non-negotiable default
   (universal §6).
 - Every agent must hold an `agent_lock` for the files it edits
-  (universal §6; enforced by `lint:agent-claims` + lefthook).
+  when lock tooling is loaded (universal §6).
 
 If any of those rules ever feels wrong for this project, edit this
 file (§3 below) and explicitly mark the change as a **project
@@ -98,9 +105,7 @@ come from the server (universal §6).
   not the short `id`.
 - `opts.inputSchema` — the **raw shape** (`<Z>.shape`), not the
   wrapped `z.object({...})`. Passing the wrapped object triggers
-  TS `TS2322: ZodObject<...> is not assignable to AnySchema |
-  ZodRawShapeCompat | undefined` because the SDK needs the flat
-  record.
+  TS `TS2322` because the SDK needs the flat record.
 - `opts.outputSchema` — same rule; `.shape`.
 - `opts.description` — full description for the MCP client
   (markdown allowed; ≤ ~240 chars preferred).
@@ -116,7 +121,7 @@ Each `*.tool.ts` builder:
   `plugins/postman-exporter/src/lib/contract/namespace.ts`.
 
 Bug history (do not regress): see proposal
-[`proposals/ready/p00013-plugin-bug-fixes.md`](proposals/ready/p00013-plugin-bug-fixes.md)
+[`proposals/done/fixes/p00013-plugin-bug-fixes.md`](proposals/done/fixes/p00013-plugin-bug-fixes.md)
 — the original tools referenced `NAMESPACE` without importing it
 (ReferenceError on server boot), used the wrapped z.object as
 schema (TS2322), and pinned zod 3.23.8 while the host uses 4.x.
@@ -133,9 +138,7 @@ The `^3.x` standard API (`~standard`, `~validate`) is required by
 under `.github/agents/` or `.claude/agents/`. The 5 canonical agents
 (orchestrator + proposal_guardian + implementation_runner +
 delivery_verifier + technical_investigator) are the only ones this
-workspace registers. They were installed by the mcp-vertex
-scaffolder and re-aligned to the universal bootstrap in commit
-`88e892a`.
+workspace registers.
 
 Adding a bespoke 6th agent is **unreachable from `auto_work`**,
 because the host runtime only knows the 5 canonical slots. Bespoke
@@ -143,8 +146,9 @@ agents also duplicate the SoT (universal §6: "every agent is a
 pointer; the contract lives in the MCP server").
 
 If you think you need a 6th, open a proposal in
-`proposals/ready/` explaining the dispatch path. If accepted, the
-scaffolder regenerates the 5 + 1 set; the body remains a pointer.
+`docs/mcp-vertex/proposals/ready/` explaining the dispatch path. If
+accepted, the scaffolder regenerates the 5 + 1 set; the body remains
+a pointer.
 
 ### 3.5 File naming and folder layout
 
@@ -173,18 +177,44 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
-### 3.7 MCP server launch — local dev only
+### 3.7 MCP server launch — portable first
 
-`.vscode/mcp.json` points at the local host script
-(`${userHome}/_projects/mcp-vertex/tools/scripts/host/host-server.script.ts`)
-because `@mcp-vertex/cli` is not yet on npm. The
-canonical-publish form (`bunx --package @mcp-vertex/cli mcpv __serve ...`)
-is deferred until the CLI is published (see
-`mcp-vertex/docs/mcp-vertex/NPM_PUBLISH.md` and
-`mcp-vertex/docs/mcp-vertex/CROSS-PROJECT-SETUP.md`).
+**Canonical (published) form** — preferred as soon as `@mcp-vertex/cli`
+is on npm:
 
-When the CLI ships, replace `.vscode/mcp.json#servers.mcp-vertex.args`
-with the canonical form and delete this section.
+```json
+{
+  "servers": {
+    "mcp-vertex": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "--package",
+        "@mcp-vertex/cli",
+        "mcpv",
+        "__serve",
+        "--workspace=${workspaceFolder}",
+        "--config=${workspaceFolder}/mcp-vertex.config.json"
+      ]
+    }
+  }
+}
+```
+
+**Temporary pre-publish fallback** (local developers who also have a
+sibling `mcp-vertex` checkout): `.vscode/mcp.json` may point at a
+relative sibling host script
+(`../mcp-vertex/tools/scripts/host/host-server.script.ts`). That path
+is **not** required for cloning or using this repository elsewhere.
+Never commit absolute machine paths (e.g. `/home/<user>/_projects/...`).
+
+When the CLI ships, replace the fallback with the canonical form and
+delete any remaining sibling-path notes from this section.
+
+Schema reference for `mcp-vertex.config.json`: use the schema shipped
+with the installed `@mcp-vertex/core` package (or omit `$schema` until
+publish). Do not hard-require
+`../mcp-vertex/packages/core/schema/...` for third-party clones.
 
 ### 3.8 Router adapters
 
@@ -205,6 +235,20 @@ Adapters register themselves in
 `adapters` array. A new adapter ships with at least 4 cases in
 `tests/unit/router-adapters/<framework>.parser.spec.ts`.
 
+### 3.9 Bootstrap files must stay in-repo — **project-specific**
+
+| File | Role |
+| --- | --- |
+| `docs/mcp-vertex/UNIVERSAL-AGENT-BOOTSTRAP.md` | Vendored universal contract from `@mcp-vertex/core` |
+| `docs/mcp-vertex/AGENT-BOOTSTRAP.md` | This file — project overrides only |
+
+Host pointers (`AGENTS.md`, `CLAUDE.md`,
+`.github/copilot-instructions.md`, `.github/agents/*`,
+`.claude/agents/*`) must reference **only** this project bootstrap
+path. Live tool/skill/proposal catalogs come from the MCP server
+(`mcp-vertex_overview` / `mcp-vertex_agent_catalog`), never from a
+sibling-repo generated markdown file.
+
 ## 4. Project invariants — local additions
 
 These are not overrides; they are **local additions** that the
@@ -217,12 +261,10 @@ postman-exporter-specific:
   builder. No tool reads the cwd.
 - **`scripts/lint-tool-no-process.ts`** enforces "no process.cwd /
   process.env in tools" (per p00011). It runs as part of
-  `bun run check`.
-- **Proposal workflow is gated by `mcp-vertex_proposals_proposal_board`**.
-  The 12+1 proposals in `docs/mcp-vertex/proposals/ready/` are
-  the active backlog. Open new ones as `p<NNNN>-<slug>.md` with
-  `status: ready`. The orchestrator transitions `ready → in-progress
-  → done` via `mcp-vertex_proposals_proposals_close_slice`.
+  `bun run validate` / lint.
+- **Proposal workflow** is under `docs/mcp-vertex/proposals/`. Open
+  new ones as `p<NNNN>-<slug>.md` with `status: ready`. The
+  orchestrator transitions via the proposals plugin tools.
 
 ## 5. Definition of done — local deltas
 
@@ -233,22 +275,20 @@ The universal bootstrap §5 DoD applies. Project-specific additions:
   name). Otherwise `0.1.x` semantic patch.
 - Added a proposal? Linked it from the relevant section of this
   file (`§3.x`) so the rule index is current.
-- Plugin boot is green:
-  ```sh
-  bun /home/cartago/_projects/mcp-vertex/tools/scripts/host/host-server.script.ts \
-      --workspace . --config ./mcp-vertex.config.json
-  ```
+- Plugin boot is green via the portable launch form in §3.7 (published
+  CLI preferred; temporary sibling host only for local pre-publish).
   Process must stay up under SIGTERM, exit 143, no `ReferenceError`
   or `Cannot find module` in stdout/stderr.
+- No new committed references to paths outside this repository
+  (sibling `../mcp-vertex/...` absolute machine paths, external
+  host-hint markdown). Historical notes inside `proposals/done|blocked|retired`
+  may retain past paths as archaeology only.
 
 ## 6. Where to next
 
-- Universal bootstrap:
-  [`../../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../../mcp-vertex/docs/mcp-vertex/AGENT-BOOTSTRAP.md).
-- Plugin source: [`../plugins/postman-exporter/`](../plugins/postman-exporter/).
-- Plugin tests: WIP under p00009.
-- Proposals queue: [`proposals/ready/`](proposals/ready/).
-- Cross-project setup reference:
-  [`../../mcp-vertex/docs/mcp-vertex/CROSS-PROJECT-SETUP.md`](../../mcp-vertex/docs/mcp-vertex/CROSS-PROJECT-SETUP.md).
-- Cross-IDE reference:
-  [`../../mcp-vertex/docs/mcp-vertex/CROSS-IDE.md`](../../mcp-vertex/docs/mcp-vertex/CROSS-IDE.md).
+- Universal bootstrap (vendored):
+  [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md).
+- Plugin source: [`../../plugins/postman-exporter/`](../../plugins/postman-exporter/).
+- Proposals queue: [`proposals/`](proposals/).
+- Live catalog: call `mcp-vertex_overview` / `mcp-vertex_agent_catalog`
+  — do not link generated host-hint files from another repo.

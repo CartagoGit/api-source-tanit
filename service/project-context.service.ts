@@ -15,6 +15,7 @@ import type {
   IProjectContext,
   IProjectDirs,
 } from "../contract/project-context.interface.js";
+import { moduleDir } from "../helper/module-path.helper.js";
 
 /** Entradas de las que se puede derivar el contexto. */
 export interface IResolveContextOptions {
@@ -28,7 +29,7 @@ export interface IResolveContextOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
-const PACKAGE_ROOT = resolve(import.meta.dir, "..");
+const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 
 /**
  * Construye el contexto de un proyecto.

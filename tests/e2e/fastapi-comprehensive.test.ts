@@ -11,7 +11,7 @@
  * - Path params + Query params + Body params.
  * - multi-line decorators.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

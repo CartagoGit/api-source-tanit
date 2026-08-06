@@ -10,7 +10,7 @@
  * Cada `tests/e2e/<framework>-comprehensive.test.ts` lo invoca y añade
  * debajo solo sus comprobaciones específicas.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { checkCollectionInvariants } from "../../helper/collection-invariants.helper";
 import type { PostmanCollection, PostmanItem } from "../../contract/postman.interface";
 import { runGenerate } from "./run-scanner";

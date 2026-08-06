@@ -14,7 +14,7 @@
  *   correctos por endpoint (no del "primer serializer del archivo").
  * - Estabilidad: el hash de la collection debe ser determinista.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

@@ -13,7 +13,7 @@
  *   - Forzar fallo: con `withTypecheck=false` y un fixture inexistente,
  *     el step devuelve `ok=false` con un `detail` útil para actuar.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
