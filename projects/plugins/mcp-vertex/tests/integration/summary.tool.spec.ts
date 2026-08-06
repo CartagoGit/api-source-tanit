@@ -18,7 +18,7 @@ const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
-describe("export-to-postman_summary", () => {
+describe("expostman_summary", () => {
   test("registra el tool con id='summary' y effects=[]", () => {
     const reg = buildSummaryToolRegistration(makeCtx());
     expect(reg.id).toBe("summary");

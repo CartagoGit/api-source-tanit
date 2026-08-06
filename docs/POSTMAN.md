@@ -179,7 +179,7 @@ Edítalo antes de enviar.
 Cuando cambies endpoints en tu API:
 
 ```bash
-export-to-postman generate
+expostman generate
 ```
 
 Y vuelve a importar el `.postman_collection.json`. Postman detecta que ya

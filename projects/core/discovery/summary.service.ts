@@ -8,7 +8,7 @@
  *
  * Uso:
  *   - `scripts/summary.script.ts` (CLI para humanos).
- *   - `projects/plugin/src/lib/tools/summary.tool.ts`
+ *   - `projects/plugins/mcp-vertex/src/lib/tools/summary.tool.ts`
  *     (tool MCP, llamada directa vía `summarizeProject()`).
  *
  * SOLID: S = solo lectura; D = el `DiscoveryOrchestrator` se inyecta

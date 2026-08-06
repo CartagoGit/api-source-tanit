@@ -1,13 +1,13 @@
 /**
- * `@export-to-postman/mcp-vertex-plugin` — entry point.
+ * `@expostman/mcp-vertex-plugin` — entry point.
  *
  * Expone el proyecto export-to-postman como tools descubribles por
  * cualquier agente MCP-vertex compatible.
  *
  * Tools:
- *   - export-to-postman_generate
- *   - export-to-postman_validate
- *   - export-to-postman_summary
+ *   - expostman_generate
+ *   - expostman_validate
+ *   - expostman_summary
  *
  * Diseño:
  *   - Single source of truth en `IMcpPluginContext`.
@@ -28,7 +28,7 @@ import { buildTestToolRegistration } from "./lib/tools/test.tool";
 import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
 
 export default definePlugin({
-  name: "export-to-postman",
+  name: "expostman",
   version: "0.1.0",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +

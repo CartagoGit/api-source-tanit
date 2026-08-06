@@ -14,6 +14,10 @@
  * verdad del core (`createWorkspacePathProvider`) en vez de imitarla:
  * si mcp-vertex cambia la forma del proveedor, estos tests se enteran.
  */
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import {
   createWorkspacePathProvider,
   type IMcpPluginContext,
@@ -21,7 +25,7 @@ import {
 } from "@mcp-vertex/core/public";
 
 /** Prefijo con el que el host cualifica los tools de este plugin. */
-export const NAMESPACE_PREFIX = "export-to-postman";
+export const NAMESPACE_PREFIX = "expostman";
 
 /** Lo que se puede sobrescribir de un contexto de prueba. */
 export interface IMakeContextOptions {
@@ -89,3 +93,29 @@ export async function registeredTools(
   if (!registrations.tools) throw new Error("el plugin no registró ningún tool");
   return registrations.tools;
 }
+
+/**
+ * Raíz del workspace que el plugin inspecciona.
+ *
+ * Sube buscando `mcp-vertex.config.json`, que es el marcador del
+ * proyecto host — y no `package.json`, que lo tiene también el propio
+ * plugin y pararía demasiado pronto.
+ *
+ * Antes esto era `resolve(__dirname, "../../../..")`. Contar niveles
+ * acopla el fichero a su profundidad en el árbol, y ya ha fallado tres
+ * veces en esta reorganización: al mover los gates, al mover el plugin
+ * a `projects/`, y otra vez al meterlo en `projects/plugins/`. Cada vez
+ * el fallo fue silencioso, porque una ruta equivocada no lanza: solo no
+ * encuentra nada.
+ */
+export function workspaceRoot(importMetaUrl: string): string {
+  let dir = dirname(fileURLToPath(importMetaUrl));
+  for (let up = 0; up < 12; up++) {
+    if (existsSync(join(dir, "mcp-vertex.config.json"))) return dir;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error("No se encontró mcp-vertex.config.json subiendo desde el test");
+}
+

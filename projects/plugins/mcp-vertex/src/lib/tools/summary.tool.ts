@@ -1,5 +1,5 @@
 /**
- * Tool `export-to-postman_summary`.
+ * Tool `expostman_summary`.
  *
  * Inspecciona un proyecto host sin generar artefactos. Devuelve:
  * framework detectado, baseUrl, rutas en código, FormRequests
@@ -24,7 +24,7 @@ import {
 
 import { SummaryInputSchema } from "../contracts/plugin.interface";
 import { existsSync } from "node:fs";
-import { summarizeWithAllFrameworks } from "../../../../frameworks/index";
+import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
 
 const TOOL_ID = "summary";
 

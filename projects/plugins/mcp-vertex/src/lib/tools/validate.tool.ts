@@ -1,5 +1,5 @@
 /**
- * Tool `export-to-postman_validate`.
+ * Tool `expostman_validate`.
  *
  * Ejecuta `diff.script.ts` + `validate-json.script.ts` del proyecto
  * export-to-postman contra un JSON ya generado. Devuelve OK/KO con

@@ -44,7 +44,7 @@ cd ~/proyectos/mi-api
 bun add -d /ruta/a/export-to-postman-cli-0.1.0.tgz
 ```
 
-En ambos casos queda disponible el binario `expostman` (alias `export-to-postman` sigue disponible).
+En ambos casos queda disponible el binario `expostman` (y `export-to-postman` como alias).
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes
@@ -65,7 +65,7 @@ Desde la raíz de tu API:
 
 ```bash
 cd ~/proyectos/mi-api
-export-to-postman generate
+expostman generate
 ```
 
 Salida:
@@ -99,7 +99,7 @@ bun add -d @export-to-postman/cli
 // package.json
 {
   "scripts": {
-    "postman": "export-to-postman generate"
+    "postman": "expostman generate"
   }
 }
 ```
@@ -167,7 +167,7 @@ curl -L https://github.com/CartagoGit/export-to-postman/releases/latest/download
   -o /usr/local/bin/export-to-postman
 chmod +x /usr/local/bin/export-to-postman
 
-export-to-postman generate --project-root .
+expostman generate --project-root .
 ```
 
 Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
@@ -220,7 +220,7 @@ quieras versionar la colección para revisarla en los PRs.
 Antes de generar nada, para ver qué detectaría:
 
 ```bash
-export-to-postman generate --project-root . --inspect
+expostman generate --project-root . --inspect
 ```
 
 ---
@@ -289,7 +289,7 @@ El escaneo no encontró el proyecto. Comprueba en el bloque de rutas que
 imprime el comando que `projectRoot` apunta donde crees:
 
 ```bash
-export-to-postman generate --project-root /ruta/absoluta/a/tu/api
+expostman generate --project-root /ruta/absoluta/a/tu/api
 ```
 
 Si `projectRoot` está bien, mira en [FRAMEWORKS.md](FRAMEWORKS.md) qué

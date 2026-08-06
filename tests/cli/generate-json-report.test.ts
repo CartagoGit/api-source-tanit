@@ -71,7 +71,7 @@ describe("generate --json", () => {
   // se entera hasta que un agente lo invoca de verdad.
   test("el plugin lee exactamente esta versión del contrato", async () => {
     const pluginHelper = await readFile(
-      join(PACKAGE_ROOT, "projects/plugin/src/lib/helpers/runner.helper.ts"),
+      join(PACKAGE_ROOT, "projects/plugins/mcp-vertex/src/lib/helpers/runner.helper.ts"),
       "utf8",
     );
     const declared = /SUPPORTED_REPORT_VERSION = (\d+)/.exec(pluginHelper)?.[1];

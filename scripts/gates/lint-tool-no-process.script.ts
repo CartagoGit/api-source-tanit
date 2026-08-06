@@ -10,7 +10,7 @@
  *   - no es portable (el cwd de producción no es el de desarrollo),
  *   - y en el caso de `process.env` filtra secretos del host.
  *
- * Alcance: `projects/plugin/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
+ * Alcance: `projects/plugins/mcp-vertex/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
  * leer `process.env` — `POSTMAN_PROJECT_ROOT` es un fallback documentado.
  *
  * Uso:
@@ -22,7 +22,7 @@ import { collectFiles } from "../../projects/core/helpers/fs-walk.helper.js";
 import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 
 const PACKAGE_ROOT = repoRoot(import.meta.url);
-const TOOLS_GLOB_ROOT = resolve(PACKAGE_ROOT, "projects/plugin");
+const TOOLS_GLOB_ROOT = resolve(PACKAGE_ROOT, "projects/plugins/mcp-vertex");
 
 /** Cada regla es un patrón + la explicación de por qué está prohibido. */
 interface IRule {
@@ -84,7 +84,7 @@ async function main(): Promise<number> {
   ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}tools${"/"}`));
 
   if (files.length === 0) {
-    console.log("lint:tools — no se encontró ningún *.tool.ts bajo projects/plugin/");
+    console.log("lint:tools — no se encontró ningún *.tool.ts bajo projects/plugins/mcp-vertex/");
     return 0;
   }
 

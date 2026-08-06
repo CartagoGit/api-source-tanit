@@ -84,7 +84,7 @@ qualified-name contract:
 
 | Tool id (short, in `id:`) | Qualified name (in `registerTool`) |
 | --- | --- |
-| `generate` | `${NAMESPACE}_exporter_generate` → on the MCP surface: `mcp-vertex_export-to-postman_generate` |
+| `generate` | `${NAMESPACE}_exporter_generate` → on the MCP surface: `mcp-vertex_expostman_generate` |
 | `validate` | `${NAMESPACE}_exporter_validate` |
 | `summary` | `${NAMESPACE}_exporter_summary` |
 | `test` (in `export-to-postman-testing`) | `${NAMESPACE}_exporter_test` |

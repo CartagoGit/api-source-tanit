@@ -1,4 +1,4 @@
-# `@export-to-postman/mcp-vertex-plugin`
+# `@expostman/mcp-vertex-plugin`
 
 Plugin MCP-vertex que expone el proyecto `export-to-postman` como tools
 descubribles por cualquier agente compatible (Copilot Chat, Claude Code,
@@ -41,7 +41,7 @@ Y en `mcp-vertex.config.json`:
 ```jsonc
 {
   "plugins": {
-    "export-to-postman": {
+    "expostman": {
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/.."
       }

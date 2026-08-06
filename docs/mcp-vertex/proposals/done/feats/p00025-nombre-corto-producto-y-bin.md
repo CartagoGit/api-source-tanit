@@ -2,7 +2,7 @@
 id: p00025
 title: "p00025 — nombre de producto y bin cortos (acronym-first UX)"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
@@ -12,6 +12,20 @@ related:
     - p00019 # docs de uso e import
     - p00022 # wrappers multi-lenguaje — deben usar el bin corto
 ---
+
+> **Cerrada 2026-08-06.** Decidido por el dueño del repo:
+> **`expostman`** como bin canónico (9 caracteres frente a los 17 de
+> `export-to-postman`, que se mantiene como alias al mismo
+> entrypoint). El plugin de mcp-vertex toma el mismo nombre, así que
+> sus tools pasan de `mcp-vertex_export-to-postman_generate` a
+> `mcp-vertex_expostman_generate`.
+>
+> La tabla de candidatos de la propuesta queda como registro de lo
+> que se barajó; `expostman` no estaba en ella y lo aportó el dueño.
+>
+> `docs/NAMING.md` recoge la decisión, el porqué, y qué NO se
+> renombra (la prosa de las propuestas cerradas).
+
 
 # p00025 — nombre de producto y bin cortos (acronym-first UX)
 

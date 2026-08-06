@@ -17,16 +17,16 @@ import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
-import { captureHandler, makeContext } from "../helpers/plugin-context";
+import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
 // Workspace del proyecto export-to-postman (no del plugin). El tool corre
 // `bun test tests/e2e/` desde ese cwd.
-const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
+const POSTMAN_EXPORTER_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
-describe("export-to-postman_test", () => {
+describe("expostman_test", () => {
   test("registra el tool con id='test' y effects=['spawn']", () => {
     const reg = buildTestToolRegistration(makeCtx());
     expect(reg.id).toBe("test");

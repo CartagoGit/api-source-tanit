@@ -9,9 +9,9 @@ import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import plugin from "../../src/index";
-import { makeContext, registeredTools } from "../helpers/plugin-context";
+import { makeContext, registeredTools, workspaceRoot } from "../helpers/plugin-context";
 
-const PACKAGE_ROOT = resolve(__dirname, "../../../..");
+const PACKAGE_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
@@ -21,7 +21,7 @@ const EXPECTED_TOOLS = ["generate", "validate", "summary", "test"] as const;
 
 describe("arranque del plugin", () => {
   test("declara nombre y versión", () => {
-    expect(plugin.name).toBe("export-to-postman");
+    expect(plugin.name).toBe("expostman");
     expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
@@ -76,11 +76,11 @@ describe("declaración en mcp-vertex.config.json", () => {
       await readFile(resolve(PACKAGE_ROOT, "mcp-vertex.config.json"), "utf8"),
     ) as { plugins?: Record<string, { path?: string }> };
 
-    const declared = config.plugins?.["export-to-postman"]?.path;
+    const declared = config.plugins?.["expostman"]?.path;
     expect(declared).toBeDefined();
 
     const entry = await import(resolve(PACKAGE_ROOT, declared!));
-    expect(entry.default?.name).toBe("export-to-postman");
+    expect(entry.default?.name).toBe("expostman");
   });
 
   // El plugin `export-to-postman-testing` quedó superseded por el tool

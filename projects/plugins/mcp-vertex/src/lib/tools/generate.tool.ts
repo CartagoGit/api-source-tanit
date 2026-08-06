@@ -1,5 +1,5 @@
 /**
- * Tool `export-to-postman_generate`.
+ * Tool `expostman_generate`.
  *
  * Ejecuta el script `generate.script.ts` del proyecto export-to-postman
  * contra el proyecto host que se le indique, devolviendo las rutas de los
@@ -12,7 +12,7 @@
  *   - D: depende de `runBunScript` (abstracción), no de Bun directo.
  *
  * Forma canónica `IToolRegistration`: el `id` es estable dentro del
- * plugin (`export-to-postman_generate`); el core lo cualifica con el
+ * plugin (`expostman_generate`); el core lo cualifica con el
  * `namespacePrefix` del host. La MCP tool name registrada en el SDK
  * se construye en `register(server)` con el mismo prefijo.
  */

@@ -54,7 +54,7 @@
         "roots": [
           "docs/mcp-vertex",
           "README.md",
-          "projects/plugin/README.md"
+          "projects/plugins/mcp-vertex/README.md"
         ],
         "extensions": [
           "md",
@@ -204,8 +204,8 @@
     "prompt-eval": {
       "options": {}
     },
-    "export-to-postman": {
-      "path": "projects/plugin/src/index.ts",
+    "expostman": {
+      "path": "projects/plugins/mcp-vertex/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
         "cliScript": "${workspaceFolder}/scripts/cli.script.ts"

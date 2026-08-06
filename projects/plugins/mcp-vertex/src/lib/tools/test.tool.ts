@@ -1,5 +1,5 @@
 /**
- * Tool `export-to-postman_test`.
+ * Tool `expostman_test`.
  *
  * Corre la batería de tests del propio proyecto export-to-postman y
  * (opcionalmente) un smoke test contra un fixture de un framework
@@ -40,7 +40,7 @@ import { runSmoke } from "../helpers/smoke-runner.helper";
 import {
   SUPPORTED_FRAMEWORKS,
   scannerBundleFor,
-} from "../../../../frameworks/framework.registry";
+} from "../../../../../frameworks/framework.registry";
 
 const TOOL_ID = "test";
 
