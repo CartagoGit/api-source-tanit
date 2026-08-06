@@ -24,3 +24,9 @@ jobs:
       # Es el mismo comando que se corre en local: si pasa aquí, pasa allí.
       - name: Validate
         run: bun run validate
+
+      # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
+      # Caza lo que el repo no ve: un fichero que falta en `files`, un
+      # `bin` mal apuntado, un import que se sale del tarball.
+      - name: Validate package
+        run: bun run validate:package

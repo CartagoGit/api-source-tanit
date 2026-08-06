@@ -44,6 +44,16 @@ declare module "node:fs/promises" {
     dest: string,
     options?: { recursive?: boolean },
   ): Promise<void>;
+  export function mkdtemp(prefix: string): Promise<string>;
+  export function rm(
+    path: string,
+    options?: { recursive?: boolean; force?: boolean },
+  ): Promise<void>;
+}
+
+// --- node:os -------------------------------------------------------------
+declare module "node:os" {
+  export function tmpdir(): string;
 }
 
 // --- node:path -----------------------------------------------------------
@@ -169,6 +179,34 @@ declare const console: {
   info(...args: unknown[]): void;
 };
 declare const __dirname: string;
+
+/**
+ * Subconjunto de la API global de Bun que usan los scripts.
+ * Se declara a mano por el mismo motivo que el resto: el proyecto no
+ * depende de `@types/bun` ni de `@types/node`.
+ */
+declare const Bun: {
+  spawn(
+    command: string[],
+    options?: {
+      cwd?: string;
+      env?: Record<string, string | undefined>;
+      stdout?: "pipe" | "inherit" | "ignore";
+      stderr?: "pipe" | "inherit" | "ignore";
+    },
+  ): {
+    readonly stdout: unknown;
+    readonly stderr: unknown;
+    readonly exited: Promise<number>;
+  };
+  write(path: string, data: string): Promise<number>;
+  file(path: string): { text(): Promise<string> };
+};
+
+/** `Response` del estándar fetch, usado para leer los streams de Bun.spawn. */
+declare const Response: {
+  new (body?: unknown): { text(): Promise<string>; json(): Promise<unknown> };
+};
 declare const URL: {
   new (url: string, base?: string): {
     hostname: string;
