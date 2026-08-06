@@ -9,5 +9,5 @@
     "bun.lock": "jsonc"
   },
   // Dos proyectos de tipos: el que se publica y el de los tests.
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "js/ts.tsdk": "node_modules/typescript/lib"
 }
