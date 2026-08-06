@@ -1,5 +1,5 @@
 {
-  "$schema": "https://unpkg.com/@mcp-vertex/core/schema/mcp-vertex.config.schema.json",
+  "$schema": "../mcp-vertex/packages/core/schema/mcp-vertex.config.schema.json",
   "coreVersion": "0.1.0",
   "cacheDir": ".cache/mcp-vertex",
   "docsDir": "docs/mcp-vertex",
@@ -15,9 +15,31 @@
     },
     "search": {
       "options": {
-        "roots": ["contract", "service", "helper", "scripts", "plugins", "examples"],
-        "extensions": ["ts", "tsx", "js", "mjs", "cjs", "md", "mdx", "json"],
-        "ignoreDirs": ["node_modules", ".cache", "dist", "build", ".git"]
+        "roots": [
+          "contract",
+          "service",
+          "helper",
+          "scripts",
+          "plugins",
+          "examples"
+        ],
+        "extensions": [
+          "ts",
+          "tsx",
+          "js",
+          "mjs",
+          "cjs",
+          "md",
+          "mdx",
+          "json"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist",
+          "build",
+          ".git"
+        ]
       }
     },
     "memory": {
@@ -30,9 +52,20 @@
     },
     "docs": {
       "options": {
-        "roots": ["docs/mcp-vertex", "README.md", "plugins/postman-exporter/README.md"],
-        "extensions": ["md", "mdx"],
-        "ignoreDirs": ["node_modules", ".cache", "dist"]
+        "roots": [
+          "docs/mcp-vertex",
+          "README.md",
+          "plugins/postman-exporter/README.md"
+        ],
+        "extensions": [
+          "md",
+          "mdx"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist"
+        ]
       }
     },
     "rules": {
@@ -43,13 +76,26 @@
     },
     "conventions": {
       "options": {
-        "roots": ["contract", "service", "helper", "scripts", "plugins", "examples"]
+        "roots": [
+          "contract",
+          "service",
+          "helper",
+          "scripts",
+          "plugins",
+          "examples"
+        ]
       }
     },
     "proposals": {
       "options": {
         "validationCommand": "bun run check",
-        "namePool": ["falcon", "owl", "crow", "sparrow", "finch"],
+        "namePool": [
+          "falcon",
+          "owl",
+          "crow",
+          "sparrow",
+          "finch"
+        ],
         "orchestration": {
           "delegateAfterToolCalls": 3
         }

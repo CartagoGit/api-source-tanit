@@ -1,4 +1,4 @@
-# AGENTS.md — working in `@postman-exporter/core`
+# CLAUDE.md — working in `@postman-exporter/core`
 
 > **Project bootstrap:** [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](docs/mcp-vertex/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place project
@@ -7,7 +7,7 @@
 > Read the universal first, then the project one. Project rules
 > override universal rules only where explicitly marked.
 >
-> **Host appendix in effect:** §7 (repo-level rules).
+> **Host appendix in effect:** §8.2 (Claude Code — keep the main thread cheap).
 
 This file is a pointer. All content lives in the project bootstrap.
 

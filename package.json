@@ -1,6 +1,9 @@
 {
   "name": "@postman-exporter/cli",
   "version": "0.1.0",
+  "workspaces": [
+    "plugins/*"
+  ],
   "description": "Generador agnóstico de colecciones Postman v2.1.0 a partir de las rutas y FormRequests de un proyecto Laravel. Pensado para funcionar como paquete reusable: descubre la raíz del proyecto, parsea routes/*.php, deduplica endpoints con el código, enriquece con FormRequests y agrupa las carpetas automáticamente.",
   "keywords": [
     "postman",
