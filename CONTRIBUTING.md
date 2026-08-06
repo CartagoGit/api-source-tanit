@@ -139,16 +139,22 @@ forget the slash you'll see the same yellow squiggle.
 
 ## TypeScript + lint gates
 
-| Gate | Command | Catches |
-| --- | --- | --- |
-| Typecheck | `bun run typecheck` | Bad types, missing imports, wrong plugin contract. |
-| Build | `bun run build` | Broken CLI on a Laravel host. |
-| Check | `bun run check` | Bidir coverage drift + Postman v2.1.0 schema violations. |
-| Lint (post p00011) | `bun run lint:tools` | `process.cwd()` / `process.env.X` / absolute paths in `plugins/**/src/lib/tools/`. |
-| Tests (post p00009) | `bun run test` | Vitest suite of ~80 cases. |
+**El único comando que hay que pasar es `bun run validate`.** Encadena,
+en este orden:
 
-The pre-commit gate is `bun run typecheck && bun run check`. CI adds
-`bun run lint:tools` + `bun run test` once those land.
+| Paso | Comando | Qué caza |
+| --- | --- | --- |
+| Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `plugins/**/src/lib/tools/`. |
+| Tests | `bun test` | La suite completa. |
+| Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
+
+Se ejecuta en CI (`.github/workflows/validate.yml`) con el mismo comando,
+así que lo que pasa en local pasa en CI.
+
+`bun run check` es otra cosa: verifica una colección **ya generada**
+contra las rutas del código. Necesita un `bun run build` antes y un
+proyecto host. No forma parte del gate.
 
 ---
 
