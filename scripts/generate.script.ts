@@ -31,6 +31,7 @@ import {
   describeDiscoveredPaths,
   outputCollectionPath,
   outputEnvironmentPath,
+  projectRoot,
 } from "../service/paths.service.js";
 import {
   buildEnvironments,
@@ -91,8 +92,18 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
   console.log("→ Rutas detectadas:");
   console.log(describeDiscoveredPaths());
 
-  const projectRoot = process.env.POSTMAN_PROJECT_ROOT ?? ".";
-  const result = await generateCollection(projectRoot, {
+  // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
+  // con `cwd` = raíz del paquete, así que un path relativo apunta al
+  // propio postman-exporter y el escaneo sale vacío. `projectRoot()`
+  // resuelve el flag `--project-root` y `POSTMAN_PROJECT_ROOT`.
+  const root = projectRoot();
+  if (!root) {
+    throw new Error(
+      "No se pudo determinar la raíz del proyecto. Pasa `--project-root <ruta>` " +
+        "o define POSTMAN_PROJECT_ROOT.",
+    );
+  }
+  const result = await generateCollection(root, {
     ...(basename ? { collectionName: basename } : {}),
   });
 
