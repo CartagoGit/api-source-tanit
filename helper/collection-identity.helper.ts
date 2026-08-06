@@ -104,7 +104,14 @@ function normalizeSeed(seed: string): string {
     .trim();
 }
 
-/** Convierte un UUID canónico a sus 16 bytes. */
-function uuidToBytes(uuid: string): BufferLike {
-  return Buffer.from(uuid.replace(/-/g, ""), "hex");
+/**
+ * Convierte un UUID canónico a sus 16 bytes.
+ *
+ * El tipo de retorno se anota como `Uint8Array` y no como el
+ * `BufferLike` ambient de este paquete: el plugin de mcp-vertex importa
+ * este helper y se tipa con `@types/node`, donde ese nombre no existe.
+ * `Uint8Array` es estándar y ambos mundos lo entienden.
+ */
+function uuidToBytes(uuid: string): Uint8Array {
+  return Buffer.from(uuid.replace(/-/g, ""), "hex") as unknown as Uint8Array;
 }

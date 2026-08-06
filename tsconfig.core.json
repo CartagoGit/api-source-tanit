@@ -1,0 +1,17 @@
+{
+  // Sección `core` — el núcleo agnóstico.
+  //
+  // Que esto compile SOLO con estas carpetas es la prueba de que el
+  // núcleo no depende de ningún framework. Si alguien añade un import
+  // a `frameworks/` desde `service/`, TypeScript lo arrastra al
+  // programa y `lint:boundaries` lo caza.
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "contract/**/*.ts",
+    "contract/**/*.d.ts",
+    "helper/**/*.ts",
+    "service/**/*.ts",
+    "tests/core/**/*.ts",
+    "tests/helpers/**/*.ts"
+  ]
+}

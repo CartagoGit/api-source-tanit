@@ -1,4 +1,6 @@
 {
+  // Sección `cli` — comandos, asistente y gates. Es la raíz de
+  // composición, así que ve las dos capas de debajo.
   "extends": "./tsconfig.base.json",
   "include": [
     "contract/**/*.ts",
@@ -7,7 +9,9 @@
     "service/**/*.ts",
     "frameworks/**/*.ts",
     "scripts/**/*.ts",
-    "tests/**/*.ts",
+    "tests/cli/**/*.ts",
+    "tests/e2e/**/*.ts",
+    "tests/helpers/**/*.ts",
     "vitest.config.ts",
     "examples/example-app/**/*.ts"
   ]

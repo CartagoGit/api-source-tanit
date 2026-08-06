@@ -44,6 +44,7 @@ declare module "node:fs/promises" {
   export function stat(
     path: string,
   ): Promise<{ isDirectory(): boolean; isFile(): boolean; size: number }>;
+  export function copyFile(src: string, dest: string): Promise<void>;
   export function cp(
     src: string,
     dest: string,
@@ -76,6 +77,16 @@ declare module "node:path" {
 // --- node:fs (sync) ------------------------------------------------------
 declare module "node:fs" {
   export function existsSync(path: string): boolean;
+  export function statSync(path: string): {
+    isDirectory(): boolean;
+    isFile(): boolean;
+    size: number;
+  };
+  export function mkdtempSync(prefix: string): string;
+  export function rmSync(
+    path: string,
+    options?: { recursive?: boolean; force?: boolean },
+  ): void;
   export function mkdirSync(
     path: string,
     options?: { recursive?: boolean },
@@ -269,3 +280,22 @@ interface ImportMeta {
   /** Bun/Node: true si este módulo es el punto de entrada del proceso. */
   main: boolean;
 }
+
+// --- timers globales -----------------------------------------------------
+//
+// Estaban sin declarar y el proyecto raíz no se enteraba porque
+// `vitest.config.ts` arrastraba los tipos de vitest, que a su vez traen
+// los de node. En cuanto cada sección pasó a tipar por su cuenta,
+// `setTimeout` dejó de existir en `core` y en `frameworks`. Un tipado
+// que solo funciona por lo que otro fichero arrastra de refilón no es
+// un tipado.
+declare function setTimeout(
+  handler: () => void,
+  timeout?: number,
+): { readonly __timer: unique symbol };
+declare function clearTimeout(handle: ReturnType<typeof setTimeout>): void;
+declare function setInterval(
+  handler: () => void,
+  timeout?: number,
+): { readonly __timer: unique symbol };
+declare function clearInterval(handle: ReturnType<typeof setInterval>): void;

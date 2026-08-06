@@ -36,6 +36,16 @@ export interface ISection {
   /** Su tsconfig, relativo a la raíz. */
   readonly tsconfig: string;
   /**
+   * Secciones que se tipan con su propio script en vez de con un
+   * `tsc -p` desde la raíz.
+   *
+   * El plugin es un paquete aparte: usa `@types/node` y `@types/bun`
+   * mientras el CLI usa declaraciones ambient escritas a mano, y tiene
+   * DOS proyectos (el que se publica y el de sus tests). Lanzarlo desde
+   * la raíz mezcla los dos mundos y salen errores fantasma.
+   */
+  readonly ownTypecheck?: { readonly cwd: string; readonly script: string };
+  /**
    * Secciones de las que puede depender. `core` no puede importar de
    * `frameworks` — esa es la regla que mantiene el núcleo agnóstico.
    */
@@ -81,7 +91,12 @@ export const SECTIONS: readonly ISection[] = [
     paths: ["plugins/"],
     tests: ["plugins/*/tests/**/*.{spec,test}.ts"],
     tsconfig: "plugins/postman-exporter/tsconfig.json",
-    dependsOn: ["core", "cli"],
+    ownTypecheck: { cwd: "plugins/postman-exporter", script: "typecheck" },
+    // El plugin necesita el catálogo de frameworks (lo expone en su
+    // tool `test` y en `summary`), así que la dependencia es real y se
+    // declara. Declararla no es relajar la regla: la regla es que
+    // `core` no dependa de `frameworks`, y eso sigue en pie.
+    dependsOn: ["core", "frameworks", "cli"],
   },
 ] as const;
 

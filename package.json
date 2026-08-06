@@ -59,7 +59,7 @@
   "scripts": {
     "build": "bun run scripts/generate.script.ts --project-root ./examples/example-express",
     "check": "bun run scripts/diff.script.ts --project-root ./examples/example-express && bun run scripts/validate-json.script.ts --project-root ./examples/example-express",
-    "typecheck": "bunx tsc --noEmit",
+    "typecheck": "bun run scripts/gates/typecheck.script.ts",
     "enrich": "bun run scripts/enrich.script.ts",
     "list": "bun run scripts/list-endpoints.script.ts",
     "stats": "bun run scripts/stats.script.ts",
@@ -70,7 +70,7 @@
     "test": "bunx vitest run",
     "lint:tools": "bun run scripts/lint-tool-no-process.ts",
     "validate:examples": "bun run scripts/validate.script.ts",
-    "validate": "bun run typecheck && bun run lint:tools && bun run lint:proposals && bun run test && bun run validate:examples",
+    "validate": "bun run typecheck && bun run lint && bun run test && bun run validate:examples",
     "validate:package": "bun run scripts/validate-package.script.ts",
     "build:binary": "bun run scripts/build-binary.script.ts",
     "push": "bun run scripts/push.script.ts",
@@ -81,7 +81,13 @@
     "test:cli": "bunx vitest run --project cli",
     "test:e2e": "bunx vitest run --project e2e",
     "test:plugin": "bunx vitest run --project plugin",
-    "test:changed": "bun run scripts/gates/changed.script.ts"
+    "test:changed": "bun run scripts/gates/changed.script.ts",
+    "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",
+    "typecheck:frameworks": "bun run scripts/gates/typecheck.script.ts frameworks",
+    "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
+    "typecheck:plugin": "bun run --cwd plugins/postman-exporter typecheck",
+    "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
+    "lint": "bun run lint:tools && bun run lint:boundaries && bun run lint:proposals"
   },
   "publishConfig": {
     "access": "public",
