@@ -212,6 +212,21 @@ export async function buildSpecsFromScanner(
             if (!f.required) continue;
             body[f.fieldName] = exampleValueForField(f);
           }
+
+          // Si NINGÚN campo es obligatorio, el body salía vacío y el
+          // endpoint quedaba sin ejemplo. Y es justo el caso de los
+          // `update`: un `UpdateUserRequest` declara todo con
+          // `sometimes` porque se puede mandar solo lo que cambia. Un
+          // PUT sin body es un ejemplo que no sirve para nada, que es
+          // exactamente lo que esta herramienta viene a evitar.
+          //
+          // Cuando no hay obligatorios se emiten los opcionales: son lo
+          // que el endpoint acepta, y quien importe la colección los ve
+          // y borra lo que no quiera mandar.
+          if (Object.keys(body).length === 0) {
+            for (const f of bodyFields) body[f.fieldName] = exampleValueForField(f);
+          }
+
           if (Object.keys(body).length > 0) spec.body = body;
         }
         // query: required + params derivados
