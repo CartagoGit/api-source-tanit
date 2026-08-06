@@ -31,6 +31,21 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../contract/scanner.interface.js";
+import {
+  countLinesBefore,
+  findAllBalanced,
+  findNearestBalanced,
+  stripJsComments,
+  type IBalancedCall,
+} from "../../helper/source-scan.helper.js";
+import {
+  joiFieldToSpec,
+  parseJoiObjectLiteral,
+} from "../../helper/joi-schema.helper.js";
+import {
+  parseZodObjectLiteral,
+  zodFieldToSpec,
+} from "../../helper/zod-schema.helper.js";
 
 const FRAMEWORK_PACKAGES = ["express", "fastify", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
@@ -97,12 +112,6 @@ export class ExpressProjectScanner implements IProjectScanner {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function stripComments(src: string): string {
-  let out = src.replace(/\/\*[\s\S]*?\*\//g, "");
-  out = out.replace(/(^|[^:])\/\/.*$/gm, "$1");
-  return out;
-}
-
 async function collectJsFiles(projectRoot: string): Promise<string[]> {
   const { readdirSync } = await import("node:fs");
   const candidates = ["src", "lib", "app", "routes", ""];
@@ -147,7 +156,7 @@ async function parseModule(file: string): Promise<ParsedModule> {
   } catch {
     return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
   }
-  const text = stripComments(raw);
+  const text = stripJsComments(raw);
   const lines = text.split("\n");
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
   const routerPrefixes = new Map<string, string>();
@@ -268,40 +277,6 @@ export class ExpressScanner implements IRouteScanner {
 // Validation provider (zod schemas)
 // ---------------------------------------------------------------------------
 
-// Tablas de mapping zod → IValidationSpec.
-const ZOD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
-  string: "string",
-  number: "number",
-  bigint: "number",
-  boolean: "boolean",
-  date: "date",
-  array: "array",
-  object: "object",
-  null: "any",
-  undefined: "any",
-  any: "any",
-  unknown: "any",
-  never: "any",
-  void: "any",
-  literal: "enum",
-  enum: "enum",
-  nativeEnum: "enum",
-};
-
-const ZOD_FORMAT_MAP: Record<string, string> = {
-  email: "email",
-  url: "url",
-  uuid: "uuid",
-  cuid: "cuid",
-  cuid2: "cuid2",
-  ip: "ip",
-  ipv4: "ipv4",
-  ipv6: "ipv6",
-  datetime: "date-time",
-};
-
-const ZOD_FORMAT_RE = /\.\s*([a-zA-Z_][\w]*)\s*\(/g;
-
 /**
  * Validation provider para Express/Fastify/Koa/Hapi.
  *
@@ -333,17 +308,6 @@ export class ExpressZodValidationProvider implements IValidationSpecProvider {
   }
 }
 
-interface ZodField {
-  name: string;
-  type: IValidationSpec["type"];
-  required: boolean;
-  format?: string;
-  enumValues?: string[];
-  description?: string;
-  minLength?: number;
-  maxLength?: number;
-}
-
 /**
  * Parsea un `z.object({...})` o `Joi.object({...})` y devuelve los fields.
  * Estrategia best-effort: regexes balanceadas por paréntesis.
@@ -372,7 +336,7 @@ async function findInlineSchema(
   } catch {
     return [];
   }
-  const text = stripComments(raw);
+  const text = stripJsComments(raw);
   const lines = text.split("\n");
 
   // 1) Detectar qué framework usa el handler.
@@ -400,339 +364,108 @@ async function findInlineSchema(
     }
   }
 
-  // 2) Buscar zod (si hay zod en el archivo).
-  const allZodMatches = findAllBalanced(text, /\bz\s*\.\s*object\s*\(/);
-  if (allZodMatches.length > 0) {
-    let best: { callStart: number; callEnd: number } | null = null;
-    // 2a) Schema referenciado en el handler.
-    if (prefer === "zod" && referencedSchemaName) {
-      const match = allZodMatches.find((m) => {
-        const start = Math.max(0, m.callStart - 80);
-        const snippet = text.slice(start, m.callStart);
-        return new RegExp(`\\b${referencedSchemaName}\\s*=\\s*z\\s*\\.\\s*object`).test(snippet);
-      });
-      if (match) best = match;
-    }
-    // 2b) Anterior más cercano no-header.
-    if (!best) {
-      const before = allZodMatches
-        .map((m) => ({
-          m,
-          line: text.slice(0, m.callStart).split("\n").length - 1,
-        }))
-        .filter((x) => x.line < startLine)
-        .sort((a, b) => b.line - a.line);
-      for (const cand of before) {
-        const fields = parseFieldsObjectLiteral(
-          text.slice(cand.m.callStart + 1, cand.m.callEnd),
-        );
-        if (fields.length === 0) continue;
-        if (looksLikeHeaderSchema(fields)) continue;
-        best = cand.m;
-        break;
-      }
-    }
-    // 2c) Fallback al más cercano global.
-    if (!best) {
-      let bestGeneral = allZodMatches[0];
-      let bestDist = Number.MAX_SAFE_INTEGER;
-      for (const m of allZodMatches) {
-        const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
-        const dist = Math.abs(lineOfMatch - startLine);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestGeneral = m;
-        }
-      }
-      best = bestGeneral;
-    }
-    // Si el handler usa Joi explícitamente, NO usar zod.
-    if (prefer !== "joi") {
-      const fields = parseFieldsObjectLiteral(text.slice(best.callStart + 1, best.callEnd));
-      if (fields.length > 0) {
-        const bodySpecs = fields.map(zodFieldToSpec);
-        // Headers: buscar `headers: z.object({...})` cerca del handler.
-        const headerSpecs = findZodHeadersNear(text, best.callStart, startLine);
-        return [...bodySpecs, ...headerSpecs];
-      }
-    }
-  }
+  // 2) zod primero, Joi como segunda opción. La selección del schema
+  //    es idéntica en ambos casos, solo cambia la librería.
+  for (const library of ["zod", "joi"] as const) {
+    // Si el handler referencia explícitamente un schema de la OTRA
+    // librería, no adivinamos con esta.
+    if (prefer && prefer !== library) continue;
 
-  // 3) Joi (misma heurística).
-  const allJoiMatches = findAllBalanced(text, /\bJoi\s*\.\s*object\s*\(/);
-  if (allJoiMatches.length > 0) {
-    let best: { callStart: number; callEnd: number } | null = null;
-    if (prefer === "joi" && referencedSchemaName) {
-      const match = allJoiMatches.find((m) => {
-        const start = Math.max(0, m.callStart - 80);
-        const snippet = text.slice(start, m.callStart);
-        return new RegExp(`\\b${referencedSchemaName}\\s*=\\s*Joi\\s*\\.\\s*object`).test(snippet);
-      });
-      if (match) best = match;
-    }
-    if (!best) {
-      let bestBefore = allJoiMatches[0];
-      let bestBeforeDist = Number.MAX_SAFE_INTEGER;
-      for (const m of allJoiMatches) {
-        const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
-        if (lineOfMatch < startLine) {
-          const dist = startLine - lineOfMatch;
-          if (dist < bestBeforeDist) {
-            bestBeforeDist = dist;
-            bestBefore = m;
-          }
-        }
-      }
-      if (bestBeforeDist === Number.MAX_SAFE_INTEGER) {
-        let best2 = allJoiMatches[0];
-        let bestDist = Number.MAX_SAFE_INTEGER;
-        for (const m of allJoiMatches) {
-          const lineOfMatch = text.slice(0, m.callStart).split("\n").length - 1;
-          const dist = Math.abs(lineOfMatch - startLine);
-          if (dist < bestDist) {
-            bestDist = dist;
-            best2 = m;
-          }
-        }
-        bestBefore = best2;
-      }
-      best = bestBefore;
-    }
-    const inner = text.slice(best.callStart + 1, best.callEnd);
-    const items = splitTopLevel(inner);
-    const out: JoiField[] = [];
-    for (const item of items) {
-      const cleaned = item
-        .replace(/^\s*\{\s*/, "")
-        .replace(/\s*\}\s*$/, "")
-        .trim();
-      if (!cleaned) continue;
-      const m = /^([a-zA-Z_$][\w$]*)\s*:\s*Joi\s*\.\s*(\w+)\s*\(([^)]*)\)(.*)$/s.exec(cleaned);
-      if (!m) continue;
-      const name = m[1];
-      const method = m[2];
-      const chain = m[4];
-      if (!name || !method) continue;
-      const type = JOA_TYPE_MAP[method] ?? "string";
-      const required = !/\.optional\s*\(/.test(chain ?? "");
-      let format: string | undefined;
-      // Joi: `Joi.string().email()` → format=email
-      if (/\.email\s*\(/.test(chain ?? "")) format = "email";
-      if (/\.uri\s*\(/.test(chain ?? "") || /\.url\s*\(/.test(chain ?? "")) format = "url";
-      if (/\.guid\s*\(/.test(chain ?? "")) format = "uuid";
-      if (method === "email") format = "email";
-      if (method === "uri" || method === "url") format = "url";
-      if (method === "guid") format = "uuid";
-      let minLength: number | undefined;
-      let maxLength: number | undefined;
-      const minMatch = /\.min\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-      if (minMatch?.[1]) minLength = Number(minMatch[1]);
-      const maxMatch = /\.max\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-      if (maxMatch?.[1]) maxLength = Number(maxMatch[1]);
-      let enumValues: string[] | undefined;
-      const validMatch = /\.valid\s*\(\s*([^)]+)\s*\)/.exec(chain ?? "");
-      if (validMatch?.[1]) {
-        enumValues = validMatch[1]
-          .split(",")
-          .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
-          .filter(Boolean);
-      }
-      out.push({
-        name,
-        type,
-        required,
-        ...(format ? { format } : {}),
-        ...(enumValues ? { enumValues } : {}),
-        ...(minLength !== undefined ? { minLength } : {}),
-        ...(maxLength !== undefined ? { maxLength } : {}),
-      });
-    }
-    if (out.length > 0) {
-      const bodySpecs = out.map(joiFieldToSpec);
-      const headerSpecs = findJoiHeadersNear(text, best.callStart, startLine);
-      return [...bodySpecs, ...headerSpecs];
-    }
+    const call = pickSchemaCall(text, library, startLine, prefer === library ? referencedSchemaName : null);
+    if (!call) continue;
+
+    const inner = text.slice(call.callStart + 1, call.callEnd);
+    const bodySpecs =
+      library === "zod"
+        ? parseZodObjectLiteral(inner).map((f) => zodFieldToSpec(f))
+        : parseJoiObjectLiteral(inner).map((f) => joiFieldToSpec(f));
+    if (bodySpecs.length === 0) continue;
+
+    return [...bodySpecs, ...findHeaderSchemaNear(text, startLine, library)];
   }
 
   return [];
 }
 
-/**
- * Busca un `headers: z.object({...})` cerca del handler. Devuelve
- * fields con `location: "header"`. Si no encuentra, [].
- * Ventana: prefiere el bloque DEBAJO del handler (config options).
- */
-function findZodHeadersNear(
-  text: string,
-  bodyCallStart: number,
-  startLine: number,
-): IValidationSpec[] {
-  const re = /headers\s*:\s*z\s*\.\s*object\s*\(/g;
-  let m: RegExpExecArray | null;
-  let best: { callStart: number; callEnd: number } | null = null;
-  let bestDist = Number.MAX_SAFE_INTEGER;
-  while ((m = re.exec(text)) !== null) {
-    const callStart = text.indexOf("(", m.index);
-    if (callStart === -1) continue;
-    let depth = 0;
-    let end = -1;
-    for (let i = callStart; i < text.length; i++) {
-      const c = text[i];
-      if (c === "(") depth++;
-      else if (c === ")") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    if (end === -1) continue;
-    const lineOfMatch = text.slice(0, callStart).split("\n").length - 1;
-    const dist = Math.abs(lineOfMatch - startLine);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = { callStart, callEnd: end };
-    }
-  }
-  if (!best) return [];
-  const inner = text.slice(best.callStart + 1, best.callEnd);
-  const fields = parseFieldsObjectLiteral(inner);
-  return fields.map((f): IValidationSpec => {
-    const spec = zodFieldToSpec(f);
-    return { ...spec, location: "header" };
-  });
-}
-
-function findJoiHeadersNear(
-  text: string,
-  bodyCallStart: number,
-  startLine: number,
-): IValidationSpec[] {
-  const re = /headers\s*:\s*Joi\s*\.\s*object\s*\(/g;
-  let m: RegExpExecArray | null;
-  let best: { callStart: number; callEnd: number } | null = null;
-  let bestDist = Number.MAX_SAFE_INTEGER;
-  while ((m = re.exec(text)) !== null) {
-    const callStart = text.indexOf("(", m.index);
-    if (callStart === -1) continue;
-    let depth = 0;
-    let end = -1;
-    for (let i = callStart; i < text.length; i++) {
-      const c = text[i];
-      if (c === "(") depth++;
-      else if (c === ")") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    if (end === -1) continue;
-    const lineOfMatch = text.slice(0, callStart).split("\n").length - 1;
-    const dist = Math.abs(lineOfMatch - startLine);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = { callStart, callEnd: end };
-    }
-  }
-  if (!best) return [];
-  const inner = text.slice(best.callStart + 1, best.callEnd);
-  const items = splitTopLevel(inner);
-  const out: JoiField[] = [];
-  for (const item of items) {
-    const cleaned = item
-      .replace(/^\s*\{\s*/, "")
-      .replace(/\s*\}\s*$/, "")
-      .trim();
-    if (!cleaned) continue;
-    const m = /^([a-zA-Z_$][\w$]*)\s*:\s*Joi\s*\.\s*(\w+)\s*\(([^)]*)\)(.*)$/s.exec(cleaned);
-    if (!m) continue;
-    const name = m[1];
-    const method = m[2];
-    const chain = m[4];
-    if (!name || !method) continue;
-    const type = JOA_TYPE_MAP[method] ?? "string";
-    const required = !/\.optional\s*\(/.test(chain ?? "");
-    let format: string | undefined;
-    if (/\.email\s*\(/.test(chain ?? "")) format = "email";
-    if (/\.uri\s*\(/.test(chain ?? "") || /\.url\s*\(/.test(chain ?? "")) format = "url";
-    if (/\.guid\s*\(/.test(chain ?? "")) format = "uuid";
-    if (method === "email") format = "email";
-    if (method === "uri" || method === "url") format = "url";
-    if (method === "guid") format = "uuid";
-    let minLength: number | undefined;
-    let maxLength: number | undefined;
-    const minMatch = /\.min\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-    if (minMatch?.[1]) minLength = Number(minMatch[1]);
-    const maxMatch = /\.max\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-    if (maxMatch?.[1]) maxLength = Number(maxMatch[1]);
-    let enumValues: string[] | undefined;
-    const validMatch = /\.valid\s*\(\s*([^)]+)\s*\)/.exec(chain ?? "");
-    if (validMatch?.[1]) {
-      enumValues = validMatch[1]
-        .split(",")
-        .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
-        .filter(Boolean);
-    }
-    out.push({
-      name,
-      type,
-      required,
-      ...(format ? { format } : {}),
-      ...(enumValues ? { enumValues } : {}),
-      ...(minLength !== undefined ? { minLength } : {}),
-      ...(maxLength !== undefined ? { maxLength } : {}),
-    });
-  }
-  return out.map((f): IValidationSpec => {
-    const spec = joiFieldToSpec(f);
-    return { ...spec, location: "header" };
-  });
-}
+/** Ventana (chars) hacia atrás donde buscar `const X = z.object(`. */
+const SCHEMA_DECL_LOOKBEHIND = 80;
 
 /**
- * Encuentra TODAS las ocurrencias de `pattern` (regex) en el texto y
- * devuelve su posición balanceada (callStart: posición del `(`,
- * callEnd: posición del `)` que cierra).
+ * Elige qué `<lib>.object({...})` del archivo describe el body de este
+ * handler, en tres pasos de confianza decreciente:
  *
- * El `pattern` debe terminar con `\(` para que sepamos dónde empieza la
- * apertura.
+ *   1. El schema que el handler referencia por nombre
+ *      (`createUserSchema.parse(req.body)`).
+ *   2. El schema declarado ANTES del handler más cercano que tenga
+ *      campos y no parezca un schema de headers.
+ *   3. El más cercano en líneas, en cualquier dirección.
  */
-function findAllBalanced(
+function pickSchemaCall(
   text: string,
-  pattern: RegExp,
-): Array<{ callStart: number; callEnd: number }> {
-  const out: Array<{ callStart: number; callEnd: number }> = [];
-  const re = new RegExp(pattern.source, "g");
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    const callStart = text.indexOf("(", m.index);
-    if (callStart === -1) continue;
-    let depth = 0;
-    let end = -1;
-    for (let i = callStart; i < text.length; i++) {
-      const c = text[i];
-      if (c === "(") depth++;
-      else if (c === ")") {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
-    }
-    if (end === -1) continue;
-    out.push({ callStart, callEnd: end });
+  library: "zod" | "joi",
+  startLine: number,
+  referencedSchemaName: string | null,
+): IBalancedCall | null {
+  const objectRe =
+    library === "zod" ? /\bz\s*\.\s*object\s*\(/ : /\bJoi\s*\.\s*object\s*\(/;
+  const calls = findAllBalanced(text, objectRe);
+  if (calls.length === 0) return null;
+
+  // 1) Referenciado por nombre en el handler.
+  if (referencedSchemaName) {
+    const declRe = new RegExp(
+      `\\b${referencedSchemaName}\\s*=\\s*${library === "zod" ? "z" : "Joi"}\\s*\\.\\s*object`,
+    );
+    const named = calls.find((c) =>
+      declRe.test(text.slice(Math.max(0, c.callStart - SCHEMA_DECL_LOOKBEHIND), c.callStart)),
+    );
+    if (named) return named;
   }
-  return out;
+
+  // 2) El anterior más cercano que parezca un body.
+  const before = calls
+    .map((call) => ({ call, line: countLinesBefore(text, call.callStart) }))
+    .filter((x) => x.line < startLine)
+    .sort((a, b) => b.line - a.line);
+  for (const candidate of before) {
+    const inner = text.slice(candidate.call.callStart + 1, candidate.call.callEnd);
+    const fields = library === "zod" ? parseZodObjectLiteral(inner) : parseJoiObjectLiteral(inner);
+    if (fields.length === 0) continue;
+    if (looksLikeHeaderSchema(fields)) continue;
+    return candidate.call;
+  }
+
+  // 3) El más cercano en valor absoluto.
+  return findNearestBalanced(text, objectRe, startLine);
 }
 
 /**
- * Parsea `{ field1: z.string(), field2: z.number().int().min(0), ... }`
- * usando split top-level por `,`.
+ * Busca el `headers: <lib>.object({...})` más cercano al handler y
+ * devuelve sus campos con `location: "header"`.
+ *
+ * Los schemas de headers se declaran normalmente en el objeto de
+ * configuración de la ruta, justo encima o debajo del handler, así que
+ * la proximidad en líneas es el mejor desempate disponible.
  */
+function findHeaderSchemaNear(
+  text: string,
+  startLine: number,
+  library: "zod" | "joi",
+): IValidationSpec[] {
+  const pattern =
+    library === "zod"
+      ? /headers\s*:\s*z\s*\.\s*object\s*\(/
+      : /headers\s*:\s*Joi\s*\.\s*object\s*\(/;
+
+  const call = findNearestBalanced(text, pattern, startLine);
+  if (!call) return [];
+
+  const inner = text.slice(call.callStart + 1, call.callEnd);
+  return library === "zod"
+    ? parseZodObjectLiteral(inner).map((f) => zodFieldToSpec(f, "header"))
+    : parseJoiObjectLiteral(inner).map((f) => joiFieldToSpec(f, "header"));
+}
+
 /**
  * Recoge el cuerpo del handler (el callback `app.METHOD('/x', (req, res) => { ... })`)
  * desde `startLine` hasta el `}` de cierre del callback.
@@ -809,7 +542,7 @@ const HEADER_KEY_NAMES = new Set([
   "x-version",
 ]);
 
-function looksLikeHeaderSchema(fields: ZodField[]): boolean {
+function looksLikeHeaderSchema(fields: ReadonlyArray<{ readonly name: string }>): boolean {
   if (fields.length === 0) return false;
   for (const f of fields) {
     const low = f.name.toLowerCase();
@@ -820,242 +553,3 @@ function looksLikeHeaderSchema(fields: ZodField[]): boolean {
   return true;
 }
 
-function parseFieldsObjectLiteral(body: string): ZodField[] {
-  const out: ZodField[] = [];
-  // Tokenizar por coma top-level.
-  const items = splitTopLevel(body);
-  for (const item of items) {
-    // El split incluye el `{` inicial en el primer item y el `}` final en
-    // el último. Limpiarlos.
-    const cleaned = item
-      .replace(/^\s*\{\s*/, "")
-      .replace(/\s*\}\s*$/, "")
-      .trim();
-    if (!cleaned) continue;
-    // Acepta identificadores (`foo`) o quoted keys (`"X-API-Key"`, `'X-API-Key'`).
-    const m =
-      /^(?:["']([^"']+)["']|([a-zA-Z_$][\w$]*))\s*:\s*(.+)$/s.exec(cleaned);
-    if (!m) continue;
-    const name = m[1] ?? m[2];
-    const expr = m[3]?.trim();
-    if (!name || !expr) continue;
-    const field = parseZodFieldExpression(name, expr);
-    if (field) out.push(field);
-  }
-  return out;
-}
-
-function splitTopLevel(body: string): string[] {
-  const out: string[] = [];
-  let depth = 0;
-  let inStr: string | null = null;
-  let buf = "";
-  for (let i = 0; i < body.length; i++) {
-    const c = body[i];
-    if (inStr) {
-      buf += c;
-      if (c === "\\") {
-        buf += body[i + 1] ?? "";
-        i++;
-        continue;
-      }
-      if (c === inStr) inStr = null;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === "`") {
-      inStr = c;
-      buf += c;
-      continue;
-    }
-    if (c === "(" || c === "{" || c === "[") {
-      depth++;
-      buf += c;
-      continue;
-    }
-    if (c === ")" || c === "}" || c === "]") {
-      depth--;
-      buf += c;
-      continue;
-    }
-    // Coma top-level significa "estoy en el objeto raíz" (depth === 1
-    // porque entramos en el `{`).
-    if (c === "," && depth === 1) {
-      out.push(buf.trim());
-      buf = "";
-      continue;
-    }
-    buf += c;
-  }
-  if (buf.trim()) out.push(buf.trim());
-  return out;
-}
-
-function parseZodFieldExpression(name: string, expr: string): ZodField | null {
-  // Heurística: extraer el primer `z.METHOD(` (string, number, etc.)
-  // y aplicar chainings como .email(), .min(), .max(), .optional, etc.
-  const baseMatch = /z\s*\.\s*([a-zA-Z_][\w]*)\s*\(/.exec(expr);
-  if (!baseMatch?.[1]) return null;
-  const baseType = baseMatch[1];
-  const type = ZOD_TYPE_MAP[baseType] ?? "string";
-
-  // Detectar format (sub-chain `.email()`, `.url()`, etc.).
-  let format: string | undefined;
-  let minLength: number | undefined;
-  let maxLength: number | undefined;
-  let enumValues: string[] | undefined;
-  for (const m of expr.matchAll(ZOD_FORMAT_RE)) {
-    const method = m[1];
-    if (!method) continue;
-    if (ZOD_FORMAT_MAP[method]) format = ZOD_FORMAT_MAP[method];
-    // En `.min(N)` y `.max(N)`, no aplica al método en `ZOD_FORMAT_RE`.
-  }
-  // Buscar .min(N) y .max(N).
-  const minMatch = /\.min\s*\(\s*(\d+)\s*\)/.exec(expr);
-  if (minMatch?.[1]) minLength = Number(minMatch[1]);
-  const maxMatch = /\.max\s*\(\s*(\d+)\s*\)/.exec(expr);
-  if (maxMatch?.[1]) maxLength = Number(maxMatch[1]);
-  // Detectar .enum([...])
-  const enumMatch = /\.enum\s*\(\s*\[([^\]]+)\]\s*\)/.exec(expr);
-  if (enumMatch?.[1]) {
-    enumValues = enumMatch[1]
-      .split(",")
-      .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
-      .filter(Boolean);
-  }
-  // Detectar .optional() o ?. (no required) → required = false.
-  const isOptional = /\.optional\s*\(/.test(expr) || /\.nullable\s*\(/.test(expr);
-
-  const field: ZodField = {
-    name,
-    type: enumValues ? "enum" : type,
-    required: !isOptional,
-    ...(format ? { format } : {}),
-    ...(enumValues ? { enumValues } : {}),
-    ...(minLength !== undefined ? { minLength } : {}),
-    ...(maxLength !== undefined ? { maxLength } : {}),
-  };
-  return field;
-}
-
-function zodFieldToSpec(f: ZodField): IValidationSpec {
-  const spec: IValidationSpec = {
-    fieldName: f.name,
-    location: "body",
-    type: f.type,
-    required: f.required,
-    ...(f.format ? { format: f.format } : {}),
-    ...(f.enumValues ? { enumValues: f.enumValues } : {}),
-    ...(f.minLength !== undefined ? { minLength: f.minLength } : {}),
-    ...(f.maxLength !== undefined ? { maxLength: f.maxLength } : {}),
-  };
-  return spec;
-}
-
-// ---------------------------------------------------------------------------
-// Joi parser (similar, second best)
-// ---------------------------------------------------------------------------
-
-interface JoiField {
-  name: string;
-  type: IValidationSpec["type"];
-  required: boolean;
-  format?: string;
-  enumValues?: string[];
-  minLength?: number;
-  maxLength?: number;
-}
-
-const JOA_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
-  string: "string",
-  number: "number",
-  boolean: "boolean",
-  date: "date",
-  array: "array",
-  object: "object",
-  email: "string",
-  uri: "string",
-  url: "string",
-  guid: "string",
-  integer: "integer",
-  any: "any",
-};
-
-function joiFieldToSpec(f: JoiField): IValidationSpec {
-  return {
-    fieldName: f.name,
-    location: "body",
-    type: f.type,
-    required: f.required,
-    ...(f.format ? { format: f.format } : {}),
-    ...(f.enumValues ? { enumValues: f.enumValues } : {}),
-    ...(f.minLength !== undefined ? { minLength: f.minLength } : {}),
-    ...(f.maxLength !== undefined ? { maxLength: f.maxLength } : {}),
-  };
-}
-
-/**
- * Encuentra el primer `z.object({...})` balanceado en el texto y devuelve
- * sus fields. Heurística: encontrar el `z.object(`, contar paréntesis
- * hasta el cierre, parsear el contenido.
- */
-function parseJoiObject(text: string): JoiField[] {
-  const idx = text.search(/\bJoi\s*\.\s*object\s*\(/);
-  if (idx === -1) return [];
-  const callStart = text.indexOf("(", idx);
-  if (callStart === -1) return [];
-  let depth = 0;
-  let end = -1;
-  for (let i = callStart; i < text.length; i++) {
-    const c = text[i];
-    if (c === "(") depth++;
-    else if (c === ")") {
-      depth--;
-      if (depth === 0) {
-        end = i;
-        break;
-      }
-    }
-  }
-  if (end === -1) return [];
-  const inner = text.slice(callStart + 1, end);
-  const items = splitTopLevel(inner);
-  const out: JoiField[] = [];
-  for (const item of items) {
-    const m = /^([a-zA-Z_$][\w$]*)\s*:\s*Joi\s*\.\s*(\w+)\s*\(([^)]*)\)(.*)$/s.exec(item);
-    if (!m) continue;
-    const name = m[1];
-    const method = m[2];
-    const chain = m[4];
-    if (!name || !method) continue;
-    const type = JOA_TYPE_MAP[method] ?? "string";
-    const required = !/\.optional\s*\(/.test(chain ?? "");
-    let format: string | undefined;
-    if (method === "email") format = "email";
-    if (method === "uri" || method === "url") format = "url";
-    if (method === "guid") format = "uuid";
-    let minLength: number | undefined;
-    let maxLength: number | undefined;
-    const minMatch = /\.min\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-    if (minMatch?.[1]) minLength = Number(minMatch[1]);
-    const maxMatch = /\.max\s*\(\s*(\d+)\s*\)/.exec(chain ?? "");
-    if (maxMatch?.[1]) maxLength = Number(maxMatch[1]);
-    let enumValues: string[] | undefined;
-    const validMatch = /\.valid\s*\(\s*([^)]+)\s*\)/.exec(chain ?? "");
-    if (validMatch?.[1]) {
-      enumValues = validMatch[1]
-        .split(",")
-        .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
-        .filter(Boolean);
-    }
-    out.push({
-      name,
-      type,
-      required,
-      ...(format ? { format } : {}),
-      ...(enumValues ? { enumValues } : {}),
-      ...(minLength !== undefined ? { minLength } : {}),
-      ...(maxLength !== undefined ? { maxLength } : {}),
-    });
-  }
-  return out;
-}
