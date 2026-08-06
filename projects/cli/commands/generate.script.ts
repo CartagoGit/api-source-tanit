@@ -277,6 +277,21 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   await writeFile(OUTPUT_PATH, json + "\n", "utf8");
   collectionPath = OUTPUT_PATH;
   const { requests, folders } = countItems(collection);
+
+  // Cero endpoints con exit 0 es un exito que no lo es: un paso de CI
+  // que ejecute esto pasaria aunque no se hubiera encontrado nada, y
+  // alguien importaria una coleccion vacia sin enterarse. Se puede
+  // pedir lo contrario con --allow-empty (util para un proyecto que
+  // todavia no tiene rutas).
+  if (requests === 0 && !args.includes("--allow-empty")) {
+    console.error(
+      "\n✗ No se ha encontrado ningún endpoint, así que no se escribe nada.\n" +
+        "  · Comprueba que `--project-root` apunta a la raíz de tu API.\n" +
+        "  · Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.\n" +
+        "  · Si el proyecto de verdad no tiene rutas todavía, usa `--allow-empty`.",
+    );
+    return 1;
+  }
   const sizeKb = (json.length / 1024).toFixed(1);
   console.log(`\n✔ Collection written to ${OUTPUT_PATH}`);
   console.log(
@@ -367,6 +382,38 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   return 0;
 }
 
+/**
+ * Traduce un error del sistema de ficheros a algo accionable.
+ *
+ * Sin esto, un directorio sin permiso de escritura sacaba
+ * `EACCES: permission denied, mkdir ...` con su traza de Bun encima: la
+ * información estaba, pero enterrada y sin decir qué hacer.
+ */
+function explainWriteError(error: unknown): string {
+  const code = (error as { code?: string })?.code;
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (code === "EACCES" || code === "EPERM") {
+    return (
+      `No hay permiso para escribir la salida.\n  ${message}\n` +
+      "  Usa `--output-dir <ruta>` para escribir en otro sitio, o revisa los permisos."
+    );
+  }
+  if (code === "ENOSPC") return `No queda espacio en disco.\n  ${message}`;
+  if (code === "EROFS") {
+    return (
+      `El sistema de ficheros es de solo lectura.\n  ${message}\n` +
+      "  Usa `--output-dir <ruta>` para escribir en otro sitio."
+    );
+  }
+  return message;
+}
+
 if (import.meta.main) {
-  process.exit(await main());
+  try {
+    process.exit(await main());
+  } catch (error) {
+    console.error(`\n✗ ${explainWriteError(error)}`);
+    process.exit(1);
+  }
 }

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -101,5 +101,74 @@ describe("isSourceJsTsFile", () => {
   test("rechaza los configs de vite/vitest", () => {
     expect(isSourceJsTsFile("vite.config.ts")).toBe(false);
     expect(isSourceJsTsFile("vitest.config.ts")).toBe(false);
+  });
+});
+
+describe("árboles hostiles", () => {
+  // La regresión que motivó reescribir el recorrido. Con
+  // `readdir({ recursive: true })` —una sola llamada— un ciclo de
+  // enlaces hacía fallar el recorrido ENTERO y devolvía lista vacía,
+  // perdiendo también lo que ya había encontrado. Medido: un proyecto
+  // de Express con `src/self -> .` daba 0 endpoints teniendo el
+  // `server.js` al lado, y la colección salía vacía sin decir por qué.
+  //
+  // No es un caso de laboratorio: Capistrano despliega con `current ->
+  // .` y los monorepos enlazan paquetes entre sí.
+  test("un ciclo de enlaces no ciega el recorrido", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fs-walk-loop-"));
+    try {
+      await mkdir(join(dir, "src"), { recursive: true });
+      await writeFile(join(dir, "src", "server.js"), "export const a = 1;");
+      await symlink(dir, join(dir, "src", "self"));
+
+      const files = await collectFiles(dir, isSourceJsTsFile);
+      expect(files.some((f) => f.endsWith("server.js"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("una carpeta ilegible solo se pierde a sí misma", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fs-walk-perm-"));
+    try {
+      await mkdir(join(dir, "abierta"), { recursive: true });
+      await mkdir(join(dir, "cerrada"), { recursive: true });
+      await writeFile(join(dir, "abierta", "visible.ts"), "export const a = 1;");
+      await writeFile(join(dir, "cerrada", "oculto.ts"), "export const b = 2;");
+      await chmod(join(dir, "cerrada"), 0o000);
+
+      const files = await collectFiles(dir, isSourceJsTsFile);
+      expect(files.some((f) => f.endsWith("visible.ts"))).toBe(true);
+    } finally {
+      await chmod(join(dir, "cerrada"), 0o755).catch(() => undefined);
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("un enlace a un fichero de código sí cuenta", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fs-walk-link-"));
+    try {
+      await mkdir(join(dir, "real"), { recursive: true });
+      await writeFile(join(dir, "real", "rutas.ts"), "export const a = 1;");
+      await symlink(join(dir, "real", "rutas.ts"), join(dir, "enlazado.ts"));
+
+      const files = await collectFiles(dir, isSourceJsTsFile);
+      expect(files.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("un enlace roto no rompe el recorrido", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fs-walk-broken-"));
+    try {
+      await writeFile(join(dir, "bueno.ts"), "export const a = 1;");
+      await symlink(join(dir, "no-existe"), join(dir, "roto.ts"));
+
+      const files = await collectFiles(dir, isSourceJsTsFile);
+      expect(files.some((f) => f.endsWith("bueno.ts"))).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

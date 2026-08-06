@@ -1,29 +1,57 @@
 /**
  * Recorrido recursivo de directorios para los scanners.
  *
- * Cuatro scanners repetían la misma llamada a
- * `readdir(dir, { recursive: true, withFileTypes: true })` seguida de un
- * `as unknown as Array<{ name; isFile(); parentPath }>` para saltarse los
- * tipos de `Dirent`. Ese cast silencia errores reales (uno de ellos
- * llevaba tiempo rompiendo `tsc --noEmit`), así que el recorrido vive
- * aquí una sola vez y con tipos honestos.
+ * Cuatro scanners repetían la misma llamada a `readdir` con un cast para
+ * saltarse los tipos de `Dirent`. Ese cast silencia errores reales, así
+ * que el recorrido vive aquí una sola vez y con tipos honestos.
  *
- * `parentPath` sustituyó a `path` en Node 20.12 / 21.4. Se leen ambos
- * para funcionar en cualquiera de las versiones soportadas.
+ * El recorrido es **manual**, carpeta a carpeta, y no un
+ * `readdir(root, { recursive: true })`. La diferencia importa: la
+ * versión recursiva es una única llamada, así que en cuanto algo de
+ * dentro falla —un bucle de enlaces simbólicos, una subcarpeta sin
+ * permiso— se pierde el recorrido **entero**, incluido lo que ya había
+ * encontrado. Medido: un proyecto de Express con un `src/self -> .`
+ * devolvía 0 ficheros teniendo el `server.js` al lado, y la colección
+ * salía vacía sin decir por qué.
+ *
+ * Y los bucles no son raros: Capistrano despliega con un `current ->
+ * .`, los monorepos enlazan paquetes entre sí, y `node_modules/.bin`
+ * está lleno de enlaces.
+ *
+ * Recorriendo a mano, un directorio problemático solo se pierde a sí
+ * mismo. Y se lleva un registro de las rutas reales ya visitadas, que es
+ * lo que corta los ciclos.
  */
-import { readdir } from "node:fs/promises";
+import { readdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
-/** Entrada de directorio, normalizada entre versiones de Node. */
+/** Entrada de directorio. */
 interface IDirentLike {
   readonly name: string;
   isFile(): boolean;
-  readonly parentPath?: string;
-  readonly path?: string;
+  isDirectory(): boolean;
+  isSymbolicLink(): boolean;
 }
 
 /** Directorios que nunca contienen código del proyecto escaneado. */
-const ALWAYS_SKIPPED = ["node_modules", ".git", "vendor", "__pycache__", "dist", "build"];
+const ALWAYS_SKIPPED = new Set([
+  "node_modules",
+  ".git",
+  "vendor",
+  "__pycache__",
+  "dist",
+  "build",
+  ".venv",
+  "venv",
+  ".cache",
+]);
+
+/**
+ * Profundidad máxima. Un proyecto real no anida 40 niveles de código;
+ * si se llega aquí es que algo va mal, y es preferible parar a recorrer
+ * el disco entero.
+ */
+const MAX_DEPTH = 40;
 
 /** Ajustes opcionales del recorrido. */
 export interface ICollectFilesOptions {
@@ -39,39 +67,84 @@ export interface ICollectFilesOptions {
  * Rutas absolutas de todos los ficheros bajo `root` (recursivo) cuyo
  * nombre pasa el filtro.
  *
- * Nunca lanza: un directorio ilegible devuelve lista vacía, porque un
- * permiso denegado en una subcarpeta no debe abortar el escaneo entero.
+ * Nunca lanza. Un directorio ilegible o un ciclo de enlaces se saltan y
+ * el resto del árbol se recorre igual — que es lo que esta función
+ * prometía y no cumplía.
  */
 export async function collectFiles(
   root: string,
   matches: (fileName: string) => boolean,
   options: ICollectFilesOptions = {},
 ): Promise<string[]> {
-  let entries: IDirentLike[];
-  try {
-    entries = (await readdir(root, {
-      recursive: true,
-      withFileTypes: true,
-    })) as unknown as IDirentLike[];
-  } catch {
-    return [];
-  }
-
   const skipVendor = options.skipVendorDirs !== false;
   const out: string[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    if (!matches(entry.name)) continue;
-    const parent = entry.parentPath ?? entry.path ?? root;
-    if (skipVendor && isInsideVendorDir(parent)) continue;
-    out.push(join(parent, entry.name));
-  }
-  return out;
-}
+  /** Rutas reales ya visitadas: es lo que corta los ciclos. */
+  const visited = new Set<string>();
 
-function isInsideVendorDir(dir: string): boolean {
-  const segments = dir.split(/[\\/]/);
-  return segments.some((s) => ALWAYS_SKIPPED.includes(s));
+  async function walk(dir: string, depth: number): Promise<void> {
+    if (depth > MAX_DEPTH) return;
+
+    // `realpath` resuelve los enlaces: dos rutas distintas que apuntan
+    // al mismo sitio se visitan una sola vez.
+    let real: string;
+    try {
+      real = await realpath(dir);
+    } catch {
+      return;
+    }
+    if (visited.has(real)) return;
+    visited.add(real);
+
+    let entries: IDirentLike[];
+    try {
+      entries = (await readdir(dir, { withFileTypes: true })) as unknown as IDirentLike[];
+    } catch {
+      // Sin permiso, o desapareció mientras recorríamos. Se pierde esta
+      // carpeta y solo esta.
+      return;
+    }
+
+    for (const entry of entries) {
+      const full = join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (skipVendor && ALWAYS_SKIPPED.has(entry.name)) continue;
+        await walk(full, depth + 1);
+        continue;
+      }
+
+      if (entry.isFile()) {
+        if (matches(entry.name)) out.push(full);
+        continue;
+      }
+
+      // Un enlace simbólico no es ni fichero ni directorio para
+      // `Dirent`: hay que resolverlo. Los proyectos enlazan código con
+      // más frecuencia de la que parece, y saltárselos dejaba fuera
+      // ficheros que sí cuentan.
+      if (entry.isSymbolicLink()) {
+        try {
+          const target = await realpath(full);
+          const targetEntries = await readdir(target, { withFileTypes: true }).then(
+            () => true,
+            () => false,
+          );
+          if (targetEntries) {
+            if (skipVendor && ALWAYS_SKIPPED.has(entry.name)) continue;
+            await walk(full, depth + 1);
+          } else if (matches(entry.name) && !visited.has(target)) {
+            visited.add(target);
+            out.push(full);
+          }
+        } catch {
+          // Enlace roto: se ignora.
+        }
+      }
+    }
+  }
+
+  await walk(root, 0);
+  return out;
 }
 
 /**

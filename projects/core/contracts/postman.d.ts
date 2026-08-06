@@ -40,7 +40,9 @@ declare module "node:fs/promises" {
     name: string;
     isFile(): boolean;
     isDirectory(): boolean;
+    isSymbolicLink(): boolean;
   }
+  export function realpath(path: string): Promise<string>;
   export function stat(path: string): Promise<{
     isDirectory(): boolean;
     isFile(): boolean;
@@ -49,6 +51,8 @@ declare module "node:fs/promises" {
     mode: number;
   }>;
   export function copyFile(src: string, dest: string): Promise<void>;
+  export function symlink(target: string, path: string): Promise<void>;
+  export function chmod(path: string, mode: number): Promise<void>;
   export function cp(
     src: string,
     dest: string,
