@@ -272,7 +272,7 @@ export async function buildZeroConfig(): Promise<ProjectConfig> {
       { name: "Local", color: "#FF6B6B" },
       { name: "Dev", color: "#4ECDC4" },
       { name: "Staging", color: "#FFD93D" },
-      { name: "Producción", color: "#95E1D3" },
+      { name: "Production", color: "#95E1D3" },
     ],
   };
 }

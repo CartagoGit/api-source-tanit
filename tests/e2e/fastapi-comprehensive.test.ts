@@ -75,7 +75,7 @@ describe("FastAPI — comprehensive fixture", () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    expect(body.email).toBe("usuario@ejemplo.com");
+    expect(body.email).toBe("user@example.com");
   });
 
   test("PUT /users/{id}/address usa Address (single body)", async () => {

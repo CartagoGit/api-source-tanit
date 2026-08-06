@@ -139,7 +139,7 @@ describe("exampleValueForRule", () => {
   });
 
   test("un string usa el nombre del campo", () => {
-    expect(exampleValueForRule("string", "apellido")).toBe("string_ejemplo_apellido");
+    expect(exampleValueForRule("string", "apellido")).toBe("sample_apellido");
   });
 
   test("date sigue siendo una fecha", () => {

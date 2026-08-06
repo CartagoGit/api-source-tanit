@@ -156,13 +156,13 @@ export function authEnvironmentVariables(): Array<{
 // ---------------------------------------------------------------------------
 
 const LOGIN_DESCRIPTION = [
-  "Autenticación en tres pasos:",
+  "Authentication in three steps:",
   "",
-  `1. Rellena \`${AUTH_USERNAME_VARIABLE}\` y \`${AUTH_PASSWORD_VARIABLE}\` en el environment activo.`,
-  "2. Lanza esta request.",
-  `3. El token se guarda solo en \`${AUTH_TOKEN_VARIABLE}\` y el resto de endpoints ya lo usan.`,
+  `1. Fill in \`${AUTH_USERNAME_VARIABLE}\` and \`${AUTH_PASSWORD_VARIABLE}\` in the active environment.`,
+  "2. Send this request.",
+  `3. The token is stored in \`${AUTH_TOKEN_VARIABLE}\` automatically and every other endpoint uses it.`,
   "",
-  "El token se guarda en el environment, así que sobrevive a cerrar Postman.",
+  "The token is written to the environment, so it survives closing Postman.",
 ].join("\n");
 
 /**
@@ -191,14 +191,14 @@ function tokenCaptureEvent(tokenPaths: ReadonlyArray<string>): NonNullable<
         "  }, source);",
         "}",
         "",
-        `pm.test('Login devuelve un token', function () {`,
+        `pm.test('Login returns a token', function () {`,
         "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
         "",
         "  let body;",
         "  try {",
         "    body = pm.response.json();",
         "  } catch (err) {",
-        "    throw new Error('La respuesta no es JSON: ' + pm.response.text().slice(0, 200));",
+        "    throw new Error('Response is not JSON: ' + pm.response.text().slice(0, 200));",
         "  }",
         "",
         "  let token;",
@@ -212,9 +212,9 @@ function tokenCaptureEvent(tokenPaths: ReadonlyArray<string>): NonNullable<
         "",
         "  if (!token) {",
         "    throw new Error(",
-        "      'No se encontró el token en la respuesta. Caminos probados: ' +",
+        "      'Token not found in the response. Paths tried: ' +",
         "        CANDIDATE_PATHS.join(', ') +",
-        `        '. Declara el tuyo en config.tokenResponsePath.'`,
+        `        '. Declare yours in config.tokenResponsePath.'`,
         "    );",
         "  }",
         "",
@@ -238,7 +238,7 @@ function tokenClearEvent(): NonNullable<PostmanItem["event"]>[number] {
     script: {
       type: "text/javascript",
       exec: [
-        "pm.test('Logout limpia el token', function () {",
+        "pm.test('Logout clears the token', function () {",
         `  pm.environment.set('${AUTH_TOKEN_VARIABLE}', '');`,
         `  pm.collectionVariables.set('${AUTH_TOKEN_VARIABLE}', '');`,
         "});",

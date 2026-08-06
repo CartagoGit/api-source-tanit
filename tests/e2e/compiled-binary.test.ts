@@ -97,7 +97,7 @@ describe("binario compilado", () => {
   test("rechaza un comando desconocido con exit code 1", async () => {
     const { code, output } = await runWithoutRuntime(["comando-inventado"]);
     expect(code).toBe(1);
-    expect(output).toContain("Comando desconocido");
+    expect(output).toContain("Unknown command");
   });
 }, 120_000);
 

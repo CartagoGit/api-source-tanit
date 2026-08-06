@@ -118,7 +118,7 @@ describe("NestJS — comprehensive fixture", () => {
       "paid",
       "shipped",
       "cancelled",
-      "opcion1",
+      "option1",
     ]).toContain(body.status);
   });
 

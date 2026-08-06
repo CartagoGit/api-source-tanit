@@ -251,10 +251,10 @@ export function exampleValueForRule(rule: string, fieldName: string): unknown {
     // que `date`, así que un `email` salía como "2024-01-15" y el body de
     // ejemplo era inservible sin editarlo a mano.
     case "email":
-      return "usuario@ejemplo.com";
+      return "user@example.com";
     case "url":
     case "active_url":
-      return "https://ejemplo.com";
+      return "https://example.com";
     case "uuid":
       return "00000000-0000-0000-0000-000000000001";
     case "ip":
@@ -269,12 +269,12 @@ export function exampleValueForRule(rule: string, fieldName: string): unknown {
     case "date":
       return "2024-01-15";
     case "string":
-      return `string_ejemplo_${fieldName}`;
+      return `sample_${fieldName}`;
     case "date_format": {
       const fmt = args.join(":");
       if (fmt.includes("Y-m-d") && fmt.includes("H:i:s")) return "2024-01-15 10:00:00";
       if (fmt.includes("Y-m-d")) return "2024-01-15";
-      return `string_ejemplo_${fieldName}`;
+      return `sample_${fieldName}`;
     }
     case "integer":
     case "int":
@@ -289,9 +289,9 @@ export function exampleValueForRule(rule: string, fieldName: string): unknown {
     case "file":
     case "image":
     case "mimes":
-      return "(archivo)";
+      return "(file)";
     case "in":
-      return args[0]?.split(",")[0]?.replace(/['"]/g, "") ?? "opcion1";
+      return args[0]?.split(",")[0]?.replace(/['"]/g, "") ?? "option1";
     default:
       return null;
   }
@@ -322,7 +322,7 @@ export function generateMinimalBody(rules: FormRequestRules): Record<string, unk
     if (inRule) {
       out[field] = exampleValueForRule(inRule, field);
     } else {
-      out[field] = `string_ejemplo_${field}`;
+      out[field] = `sample_${field}`;
     }
   }
   return out;
@@ -342,7 +342,7 @@ export function generateCompleteBody(rules: FormRequestRules): Record<string, un
     const inRule = fieldRules.find((r) => r.startsWith("in:"));
     if (inRule) out[field] = exampleValueForRule(inRule, field);
     else if (isRequired(fieldRules) || fieldRules.includes("sometimes")) {
-      out[field] = `string_ejemplo_${field}`;
+      out[field] = `sample_${field}`;
     }
   }
   return out;
@@ -373,7 +373,7 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
     out.push({ name: "Mínimo (solo required)", body: min });
   } else {
     // PUT/PATCH sin required: body vacío como base válida.
-    out.push({ name: "Vacío (sin required)", body: {} });
+    out.push({ name: "Empty (no required fields)", body: {} });
   }
 
   if (Object.keys(full).length > 0) {
@@ -455,7 +455,7 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
     const typed = detectTypedRule(fieldRules);
     if (!typed) continue;
     const val = exampleValueForRule(typed, field);
-    if (val === null || val === "(archivo)") continue;
+    if (val === null || val === "(file)") continue;
     const isArray = typed.startsWith("array");
     all.push({
       key: field,
@@ -464,7 +464,7 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
     });
   }
   if (all.length > 0) {
-    variants.push({ name: "Todos los filtros", query: all });
+    variants.push({ name: "All filters", query: all });
   }
   return variants;
 }

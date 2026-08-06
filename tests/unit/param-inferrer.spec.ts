@@ -55,7 +55,7 @@ describe("param-inferrer.service", () => {
     });
 
     test("email → 'usuario@ejemplo.com'", () => {
-      expect(exampleForPathParam("email")).toBe("usuario@ejemplo.com");
+      expect(exampleForPathParam("email")).toBe("user@example.com");
     });
 
     test("uuid → UUID v4 fijo", () => {

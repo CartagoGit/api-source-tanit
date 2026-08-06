@@ -347,11 +347,11 @@ export function fromProjectRelative(relPath: string): string {
 export function describeDiscoveredPaths(): string {
   const d = discover();
   return [
-    `  · packageRoot:        ${d.packageRoot}`,
-    `  · projectRoot:        ${d.projectRoot ?? "(no encontrado)"}`,
-    `  · routesDir:          ${routesDir() ?? "(no encontrado)"}`,
-    `  · requestsDir:        ${requestsDir() ?? "(no encontrado)"}`,
-    `  · outputDir:          ${outputDir()}`,
-    `  · outputCollection:   ${join(outputDir(), `${outputBasename()}.json`)}`,
+    `  · Package root:   ${d.packageRoot}`,
+    `  · Project root:   ${d.projectRoot ?? "(not found)"}`,
+    `  · Routes dir:     ${routesDir() ?? "(not found)"}`,
+    `  · Requests dir:   ${requestsDir() ?? "(not found)"}`,
+    `  · Output dir:     ${outputDir()}`,
+    `  · Collection:     ${join(outputDir(), `${outputBasename()}.json`)}`,
   ].join("\n");
 }

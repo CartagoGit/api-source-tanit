@@ -140,7 +140,7 @@ describe("applyAuthFlow — captura del token", () => {
   test("el fallo es visible: usa pm.test, no un if silencioso", () => {
     const script = scriptOf(applyAuthFlow(collection([request("x", "POST", "/auth/login")]))?.login ?? null);
     expect(script).toContain("pm.test(");
-    expect(script).toContain("No se encontró el token");
+    expect(script).toContain("Token not found");
   });
 
   test("el refresh también captura el token", () => {
@@ -223,7 +223,7 @@ describe("applyAuthFlow — body de credenciales", () => {
     const description = applyAuthFlow(c)?.login?.description ?? "";
     expect(description).toContain(AUTH_USERNAME_VARIABLE);
     expect(description).toContain(AUTH_PASSWORD_VARIABLE);
-    expect(description).toContain("sobrevive a cerrar Postman");
+    expect(description).toContain("survives closing Postman");
   });
 });
 

@@ -31,58 +31,79 @@ interface ICommand {
  */
 const COMMANDS: Record<string, ICommand> = {
   generate: {
-    summary: "Genera la colección Postman v2.1.0 y los environments",
+    summary: "Generate the Postman v2.1.0 collection and its environments",
     load: () => import("./generate.script.js"),
   },
   check: {
-    summary: "Verifica que una colección ya generada sigue sincronizada",
+    summary: "Check that an already generated collection is still in sync",
     load: () => import("./diff.script.js"),
   },
   enrich: {
-    summary: "Re-enriquece desde discovery (--in-place reemplaza)",
+    summary: "Re-enrich an existing collection (--in-place overwrites it)",
     load: () => import("./enrich.script.js"),
   },
   list: {
-    summary: "Lista los endpoints detectados, agrupados por zona",
+    summary: "List the detected endpoints, grouped by folder",
     load: () => import("./list-endpoints.script.js"),
   },
   stats: {
-    summary: "Estadísticas por método y zona",
+    summary: "Endpoint counts per HTTP method and folder",
     load: () => import("./stats.script.js"),
   },
   validate: {
-    summary: "Valida el JSON generado contra el schema Postman v2.1.0",
+    summary: "Validate a generated collection against the Postman v2.1.0 schema",
     load: () => import("./validate-json.script.js"),
+  },
+  push: {
+    summary: "Upload the collection straight to your Postman workspace",
+    load: () => import("./push.script.js"),
   },
 };
 
-const HELP = `postman-from-routes — genera colecciones Postman desde el código de tu API
+const HELP = `postman-from-routes — Postman collections from your API's source code
 
-Uso:
-  postman-from-routes <comando> [flags]
+USAGE
+  postman-from-routes                  Interactive wizard (no flags needed)
+  postman-from-routes <command> [flags]
 
-Comandos:
+COMMANDS
 ${Object.entries(COMMANDS)
-  .map(([name, c]) => `  ${name.padEnd(10)} ${c.summary}`)
+  .map(([name, c]) => `  ${name.padEnd(9)} ${c.summary}`)
   .join("\n")}
 
-Flags comunes:
-  --project-root <ruta>  Raíz del proyecto a escanear (auto si no se pasa)
-  --config <ruta>        ProjectConfig del host (auto-detectado)
-  --basename <nombre>    Nombre base de los ficheros de salida
-  --output <ruta>        Ruta completa del JSON de salida
-  --output-dir <ruta>    Carpeta de salida
-  --envs <a,b,c>         Qué environments generar
-  --inspect              (generate) solo informa, no escribe nada
-  --open                 (generate) abre Postman al terminar
-  -h, --help             Esta ayuda
+COMMON FLAGS
+  --project-root <path>   Project to scan. Defaults to the current folder.
+  --output-dir <path>     Where to write. Defaults to <project>/build.
+  --output <file>         Exact path of the collection file.
+  --basename <name>       Base name for the generated files.
+  --config <path>         ProjectConfig file. Auto-detected when omitted.
+  --envs <a,b,c>          Which environments to generate.
+  --inspect               Report what was detected; write nothing.
+  --open                  Open Postman when done.
+  -h, --help              Show this help.
 
-Ejemplos:
-  postman-from-routes generate
-  postman-from-routes generate --project-root ./ --basename mi-api
-  POSTMAN_PROJECT_ROOT=$(pwd) postman-from-routes check
+PUSH FLAGS
+  --api-key <key>         Postman API key. Or set POSTMAN_API_KEY.
+  --workspace <id>        Target workspace. Defaults to your personal one.
+  --no-environments       Upload the collection only.
 
-Documentación: https://github.com/CartagoGit/postman-exporter#readme
+ENVIRONMENT VARIABLES
+  POSTMAN_PROJECT_ROOT    Same as --project-root.
+  POSTMAN_OUTPUT_DIR      Same as --output-dir.
+  POSTMAN_API_KEY         Same as --api-key.
+
+EXAMPLES
+  postman-from-routes                                  Interactive mode
+  postman-from-routes generate                         Scan the current folder
+  postman-from-routes generate --project-root ../api   Scan another folder
+  postman-from-routes generate --inspect               Preview, write nothing
+  postman-from-routes push --api-key pmak-...          Upload to Postman
+  postman-from-routes list                             See what was detected
+
+Detects 12 frameworks automatically: Laravel, Symfony, Express, NestJS,
+Next.js, FastAPI, Flask, Django, Gin, Spring Boot, ASP.NET Core and OpenAPI.
+
+Docs: https://github.com/CartagoGit/postman-exporter#readme
 `;
 
 /**
@@ -105,15 +126,22 @@ function absolutizePathFlags(argv: string[]): string[] {
 export async function run(argv: string[]): Promise<number> {
   const [commandName, ...rest] = argv;
 
-  if (!commandName || commandName === "-h" || commandName === "--help") {
+  if (commandName === "-h" || commandName === "--help") {
     console.log(HELP);
-    return commandName ? 0 : 1;
+    return 0;
+  }
+
+  // Sin argumentos arranca el asistente: es lo que espera quien ejecuta
+  // el binario por primera vez sin haber leído la ayuda.
+  if (!commandName) {
+    const { main: interactiveMain } = await import("./interactive.script.js");
+    return interactiveMain(rest);
   }
 
   const command = COMMANDS[commandName];
   if (!command) {
-    console.error(`Comando desconocido: ${commandName}`);
-    console.error(`Disponibles: ${Object.keys(COMMANDS).join(", ")}`);
+    console.error(`Unknown command: ${commandName}`);
+    console.error(`Available: ${Object.keys(COMMANDS).join(", ")}`);
     return 1;
   }
 

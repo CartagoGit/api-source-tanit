@@ -47,7 +47,7 @@ import type { DiscoveredRoute } from "../contract/postman.interface.js";
  * tests y el gate ejecuten exactamente lo mismo.
  */
 async function runPipeline(basename: string | null): Promise<IGenerationResult> {
-  console.log("→ Rutas detectadas:");
+  console.log("→ Resolved paths:");
   console.log(describeDiscoveredPaths());
 
   // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
@@ -68,15 +68,15 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
   console.log(
     result.match
       ? `→ Orchestrator: framework=${result.match.framework}`
-      : "→ Orchestrator: sin match → flujo zero-config legacy.",
+      : "→ Orchestrator: no match → legacy zero-config flow.",
   );
   console.log(
-    `  · ${result.metrics.routes} rutas en código, ${result.metrics.specs} specs ` +
-      `(con validación: ${result.metrics.withValidation}, sin: ${result.metrics.withoutValidation}).`,
+    `  · ${result.metrics.routes} routes in code, ${result.metrics.specs} specs ` +
+      `(with rules: ${result.metrics.withValidation}, without: ${result.metrics.withoutValidation}).`,
   );
   console.log(
-    `→ Inferencia agnóstica: ${result.metrics.bodiesInferred} bodies + ` +
-      `${result.metrics.queriesInferred} queries auto-rellenados.`,
+    `→ Framework-agnostic inference: ${result.metrics.bodiesInferred} bodies + ` +
+      `${result.metrics.queriesInferred} query params filled in.`,
   );
   return result;
 }
@@ -141,16 +141,16 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // Pensado para que `summary` (y herramientas similares) puedan
   // consultar el estado del proyecto sin generar artefactos.
   if (inspectMode) {
-    console.log("\n→ Modo --inspect (no se escriben artefactos)");
-    console.log(`  · Framework:    ${origin}`);
-    console.log(`  · ProjectName:  ${config.name}`);
-    console.log(`  · Rutas:        ${pipeline.metrics.routes}`);
-    console.log(`  · Specs:        ${pipeline.metrics.specs}`);
-    console.log(`  · Con FR:       ${pipeline.metrics.withValidation}`);
-    console.log(`  · Sin FR:       ${pipeline.metrics.withoutValidation}`);
-    console.log(`  · Bodies auto:  ${pipeline.metrics.bodiesInferred}`);
-    console.log(`  · Queries auto: ${pipeline.metrics.queriesInferred}`);
-    console.log(`  · BaseUrl:      ${config.baseUrl}`);
+    console.log("\n→ --inspect mode (no files written)");
+    console.log(`  · Framework:      ${origin}`);
+    console.log(`  · Project name:   ${config.name}`);
+    console.log(`  · Routes:         ${pipeline.metrics.routes}`);
+    console.log(`  · Specs:          ${pipeline.metrics.specs}`);
+    console.log(`  · With rules:     ${pipeline.metrics.withValidation}`);
+    console.log(`  · Without rules:  ${pipeline.metrics.withoutValidation}`);
+    console.log(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
+    console.log(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
+    console.log(`  · Base URL:       ${config.baseUrl}`);
     return 0;
   }
 
@@ -166,24 +166,24 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const authFlow = pipeline.authFlow;
   if (authFlow?.login) {
     console.log(
-      `→ Auth: login en "${authFlow.login.name}" guarda el token automáticamente` +
-        (authFlow.refresh ? ", refresh cableado" : "") +
-        (authFlow.logout ? ", logout limpia el token" : "") +
+      `→ Auth: login at "${authFlow.login.name}" stores the token automatically` +
+        (authFlow.refresh ? ", refresh wired" : "") +
+        (authFlow.logout ? ", logout clears the token" : "") +
         ".",
     );
   } else {
-    console.log("→ Auth: no se detectó endpoint de login (colección sin flujo de sesión).");
+    console.log("→ Auth: no login endpoint found (collection has no session flow).");
   }
 
-  console.log("→ Enriqueciendo con variantes FormRequest…");
+  console.log("→ Enriching with validation-rule variants…");
   const stats = await enrichCatalogWithFormRequests(collection, frIndex);
-  console.log(`  · Variantes body:  ${stats.bodyVariants}`);
-  console.log(`  · Variantes query: ${stats.queryVariants}`);
-  console.log(`  · Resueltos FR:    ${stats.resolved}`);
-  console.log(`  · Sin FR:          ${stats.unresolved}`);
+  console.log(`  · Body variants:   ${stats.bodyVariants}`);
+  console.log(`  · Query variants:  ${stats.queryVariants}`);
+  console.log(`  · Rules resolved:  ${stats.resolved}`);
+  console.log(`  · Rules missing:   ${stats.unresolved}`);
   if (stats.rulesWithUnknown.length > 0) {
     console.log(
-      `  · FR con reglas dinámicas: ${stats.rulesWithUnknown.length}`,
+      `  · Dynamic rules skipped: ${stats.rulesWithUnknown.length}`,
     );
   }
 
@@ -206,7 +206,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     collectionRoutes.set(key, r);
   }
   console.log(
-    `  · ${declared.length} requests finales (${collectionRoutes.size} únicos method+uri).`,
+    `  · ${declared.length} final requests (${collectionRoutes.size} unique method+uri).`,
   );
 
   const missingInSource: Array<{ method: string; uri: string; name: string }> =
@@ -252,9 +252,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   await writeFile(OUTPUT_PATH, json + "\n", "utf8");
   const { requests, folders } = countItems(collection);
   const sizeKb = (json.length / 1024).toFixed(1);
-  console.log(`\n✔ Colección escrita en ${OUTPUT_PATH}`);
+  console.log(`\n✔ Collection written to ${OUTPUT_PATH}`);
   console.log(
-    `  · ${requests} requests en ${folders} carpetas (${sizeKb} KB).`,
+    `  · ${requests} requests in ${folders} folders (${sizeKb} KB).`,
   );
 
   // --- Genera environments si --envs o config.environments ------------

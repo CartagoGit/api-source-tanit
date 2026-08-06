@@ -71,7 +71,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     `\n✔ Colección ${inPlace ? "principal" : "enriquecida"} escrita en ${outPath}`,
   );
   console.log(
-    `  · ${requests} requests en ${folders} carpetas (${sizeKb} KB).`,
+    `  · ${requests} requests in ${folders} folders (${sizeKb} KB).`,
   );
   return 0;
 }

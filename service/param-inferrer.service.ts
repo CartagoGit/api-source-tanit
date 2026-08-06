@@ -30,8 +30,8 @@ const PATH_PARAM_HINTS: Array<{ re: RegExp; value: string }> = [
   { re: /^n_/i, value: "10" },
   { re: /(^|_)cantidad($|_)/i, value: "10" },
   { re: /(^|_)precio($|_)/i, value: "19.99" },
-  { re: /email/i, value: "usuario@ejemplo.com" },
-  { re: /url/i, value: "https://ejemplo.com" },
+  { re: /email/i, value: "user@example.com" },
+  { re: /url/i, value: "https://example.com" },
   { re: /uuid/i, value: "00000000-0000-0000-0000-000000000001" },
 ];
 
@@ -84,7 +84,7 @@ const QUERY_FIELD_HINTS: Array<{ re: RegExp; value: string }> = [
   { re: /^q$|^query$|^search$|^busqueda$/i, value: "ejemplo" },
   { re: /^codigo$|^cif$|^nif$/i, value: "COD001" },
   { re: /^nombre$|^razon_social$/i, value: "Nombre de prueba" },
-  { re: /^email$/i, value: "usuario@ejemplo.com" },
+  { re: /^email$/i, value: "user@example.com" },
   { re: /^page$|^pagina$/i, value: "1" },
   { re: /^per_page$|^items_por_pagina$|^limit$/i, value: "10" },
   { re: /^offset$/i, value: "0" },
@@ -144,14 +144,14 @@ function exampleForBodyField(name: string, hint?: string): unknown {
   }
   if (lname.endsWith("_id") || lname.endsWith("Id")) return "1";
   if (lname.endsWith("_codigo") || lname.endsWith("Codigo")) return "COD001";
-  if (lname === "email") return "usuario@ejemplo.com";
+  if (lname === "email") return "user@example.com";
   if (lname === "password" || lname === "pass" || lname === "contrasena")
     return "********";
   if (lname === "name" || lname === "nombre") return "Nombre de prueba";
   if (lname === "description" || lname === "descripcion")
     return "Descripción de ejemplo";
   if (lname === "notes" || lname === "notas") return "Notas";
-  if (lname === "url" || lname.endsWith("_url")) return "https://ejemplo.com";
+  if (lname === "url" || lname.endsWith("_url")) return "https://example.com";
   if (lname === "date" || lname.endsWith("_at") || lname === "fecha")
     return "2024-01-15";
   if (
@@ -165,7 +165,7 @@ function exampleForBodyField(name: string, hint?: string): unknown {
   if (BOOLEAN_HINT_FIELDS.has(lname)) return true;
   if (lname.startsWith("is_") || lname.startsWith("has_")) return true;
   if (ARRAY_HINT_FIELDS.has(lname)) return [1];
-  return `string_ejemplo_${lname}`;
+  return `sample_${lname}`;
 }
 
 /**
@@ -210,7 +210,7 @@ export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null {
   // Body mínimo agnóstico con dos campos genéricos del recurso.
   if (resource) {
     body["force"] = false;
-    body["notes"] = `Operación ${method} sobre ${resource}`;
+    body["notes"] = `${method} operation on ${resource}`;
   }
   return body ? { reason: `Genérico para ${method}`, body } : null;
 }

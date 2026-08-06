@@ -71,7 +71,8 @@
     "validate:examples": "bun run scripts/validate.script.ts",
     "validate": "bun run typecheck && bun run lint:tools && bun test && bun run validate:examples",
     "validate:package": "bun run scripts/validate-package.script.ts",
-    "build:binary": "bun run scripts/build-binary.script.ts"
+    "build:binary": "bun run scripts/build-binary.script.ts",
+    "push": "bun run scripts/push.script.ts"
   },
   "publishConfig": {
     "access": "public",

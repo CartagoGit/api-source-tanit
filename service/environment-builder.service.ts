@@ -64,11 +64,11 @@ function inferPathVariables(specs: EndpointSpec[]): PostmanVariable[] {
   const out: PostmanVariable[] = [];
   for (const key of seen) {
     let value = "1";
-    if (/email/i.test(key)) value = "usuario@ejemplo.com";
+    if (/email/i.test(key)) value = "user@example.com";
     else if (/uuid/i.test(key)) value = "00000000-0000-0000-0000-000000000001";
     else if (/codigo/i.test(key)) value = "COD001";
     else if (/matricula/i.test(key)) value = "1234ABC";
-    else if (/url/i.test(key)) value = "https://ejemplo.com";
+    else if (/url/i.test(key)) value = "https://example.com";
     else if (/fecha|date/i.test(key)) value = "2024-01-15";
     out.push({ key, value, type: "string" });
   }
@@ -190,7 +190,7 @@ export function defaultEnvironments(
       },
     },
     {
-      name: "Producción",
+      name: "Production",
       color: "#95E1D3",
       overrides: { baseUrl },
     },

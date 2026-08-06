@@ -143,13 +143,13 @@ describe("defaultEnvironments", () => {
       "Local",
       "Dev",
       "Staging",
-      "Producción",
+      "Production",
     ]);
   });
 
   test("Producción conserva la baseUrl tal cual", () => {
     const envs = defaultEnvironments("https://api.example.com");
-    expect(envs.find((e) => e.name === "Producción")?.overrides["baseUrl"]).toBe(
+    expect(envs.find((e) => e.name === "Production")?.overrides["baseUrl"]).toBe(
       "https://api.example.com",
     );
   });

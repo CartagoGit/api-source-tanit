@@ -124,7 +124,7 @@ export function describeCollectionContract(options: ICollectionContractOptions):
 
         const login = [...eachRequest(collection.item)].find((item) =>
           (item.event ?? []).some((e) =>
-            e.script.exec.join("\n").includes("Login devuelve un token"),
+            e.script.exec.join("\n").includes("Login returns a token"),
           ),
         );
         expect(login).toBeDefined();

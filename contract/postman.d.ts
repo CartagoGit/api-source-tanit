@@ -186,6 +186,8 @@ declare const __dirname: string;
  * depende de `@types/bun` ni de `@types/node`.
  */
 declare const Bun: {
+  /** Stream de entrada estándar, usado por el asistente interactivo. */
+  readonly stdin: { stream(): AsyncIterable<Uint8Array> };
   spawn(
     command: string[],
     options?: {
@@ -204,9 +206,32 @@ declare const Bun: {
 };
 
 /** `Response` del estándar fetch, usado para leer los streams de Bun.spawn. */
+interface IFetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+}
 declare const Response: {
-  new (body?: unknown): { text(): Promise<string>; json(): Promise<unknown> };
+  new (body?: unknown): IFetchResponse;
 };
+declare type FetchResponse = IFetchResponse;
+
+/** `fetch` del estándar web, disponible en Bun y en Node >= 18. */
+declare function fetch(
+  url: string,
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  },
+): Promise<IFetchResponse>;
+
+/** Decodificador de bytes a texto, para leer stdin. */
+declare class TextDecoder {
+  decode(input?: Uint8Array): string;
+}
+declare type Uint8Array = { readonly length: number };
 declare const URL: {
   new (url: string, base?: string): {
     hostname: string;

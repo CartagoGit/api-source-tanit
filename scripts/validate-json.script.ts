@@ -165,7 +165,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const warnings = issues.filter((i) => i.severity === "warning");
 
   console.log(`→ ${COLLECTION_PATH}`);
-  console.log(`  · ${requests} requests en ${folders} carpetas`);
+  console.log(`  · ${requests} requests in ${folders} carpetas`);
   console.log(`  · ${collection.variable?.length ?? 0} variables`);
   console.log();
 

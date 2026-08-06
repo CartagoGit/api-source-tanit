@@ -69,7 +69,8 @@ function deriveName(route: ParsedRoute): string {
   // Normalizar la URI para displayName (e.g. `<int:id>` → `{{id}}`,
   // `:id` → `{{id}}`).
   const uri = toPostmanUri(route.uri);
-  // "{x}" sangrado en la URI → "Crear /items/{{id}}/reindex"
+  // El nombre acaba en la UI de Postman, así que va en inglés: lo usa
+  // gente de cualquier país.
   const segs = uri
     .split("/")
     .filter((s) => s && !s.startsWith("{{"));
@@ -81,11 +82,11 @@ function deriveName(route: ParsedRoute): string {
       .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
   const verbMap: Record<string, string> = {
-    GET: "Obtener",
-    POST: "Crear",
-    PUT: "Actualizar",
-    PATCH: "Modificar",
-    DELETE: "Eliminar",
+    GET: "Get",
+    POST: "Create",
+    PUT: "Update",
+    PATCH: "Patch",
+    DELETE: "Delete",
   };
   const verb = verbMap[route.method.toUpperCase()] ?? route.method.toUpperCase();
   if (last) return `${verb} ${capitalize(last)}`;
@@ -108,10 +109,10 @@ function exampleValueForField(spec: IValidationSpec): unknown {
   }
   switch (type) {
     case "string":
-      if (format === "email") return "usuario@ejemplo.com";
-      if (format === "url") return "https://ejemplo.com";
+      if (format === "email") return "user@example.com";
+      if (format === "url") return "https://example.com";
       if (format === "uuid") return "00000000-0000-0000-0000-000000000001";
-      return `string_ejemplo_${fieldName}`;
+      return `sample_${fieldName}`;
     case "integer":
       return spec.minimum ?? 1;
     case "number":
@@ -125,9 +126,9 @@ function exampleValueForField(spec: IValidationSpec): unknown {
     case "datetime":
       return "2024-01-15T10:00:00Z";
     case "file":
-      return "(archivo)";
+      return "(file)";
     case "enum":
-      return enumValues?.[0] ?? "opcion1";
+      return enumValues?.[0] ?? "option1";
     case "object":
       return {};
     default:
