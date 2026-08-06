@@ -2,13 +2,18 @@
 id: p00014
 title: "p00014 — identidad estable de colección por proyecto"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
 related:
     - p00017 # paths.service singleton — misma raíz del problema
 ---
+
+> **Cerrada 2026-08-06.** UUID v5 determinista para colecciones y environments,
+> `collectionId` opcional en `ProjectConfig` y aviso de colisión de nombres.
+> Verificado: dos ejecuciones del mismo proyecto dan el mismo id; proyectos
+> distintos, ids distintos.
 
 # p00014 — identidad estable de colección por proyecto
 

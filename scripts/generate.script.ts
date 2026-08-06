@@ -109,6 +109,42 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
   return result;
 }
 
+/**
+ * Avisa si en la ruta de salida ya hay una colección con el MISMO nombre
+ * pero DISTINTO `_postman_id`.
+ *
+ * Significa que dos proyectos diferentes van a competir por el mismo
+ * hueco en Postman: al importar el segundo, el usuario acaba con dos
+ * colecciones homónimas y no sabe cuál es cuál. La salida es fijar
+ * `collectionId` en el config de uno de los dos.
+ */
+async function warnOnIdentityClash(
+  outputPath: string,
+  collection: { info: { name: string; _postman_id?: string } },
+): Promise<void> {
+  const { existsSync } = await import("node:fs");
+  const { readFile } = await import("node:fs/promises");
+  if (!existsSync(outputPath)) return;
+  try {
+    const previous = JSON.parse(await readFile(outputPath, "utf8")) as {
+      info?: { name?: string; _postman_id?: string };
+    };
+    const sameName = previous.info?.name === collection.info.name;
+    const differentId =
+      Boolean(previous.info?._postman_id) &&
+      previous.info?._postman_id !== collection.info._postman_id;
+    if (sameName && differentId) {
+      console.warn(
+        `\n⚠ Ya existe una colección llamada "${collection.info.name}" con otro id.\n` +
+          "  Al importar ambas en Postman tendrás dos colecciones homónimas.\n" +
+          "  Fija `collectionId` en el config de uno de los proyectos para distinguirlas.",
+      );
+    }
+  } catch {
+    // Un JSON previo ilegible no es motivo para abortar la generación.
+  }
+}
+
 async function main(): Promise<number> {
   const args = process.argv.slice(2);
   const openAfter = args.includes("--open");
@@ -234,6 +270,7 @@ async function main(): Promise<number> {
   const OUTPUT_PATH = outputFlag
     ? outputFlag
     : await outputCollectionPath(config.name);
+  await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
   await writeFile(OUTPUT_PATH, json + "\n", "utf8");
   const { requests, folders } = countItems(collection);
@@ -263,7 +300,12 @@ async function main(): Promise<number> {
   }
   const envsToWrite = config.environments ?? [];
   for (const e of envsToWrite) {
-    const envs = buildEnvironments([...discoveredSpecs], config.variables, [e]);
+    const envs = buildEnvironments(
+      [...discoveredSpecs],
+      config.variables,
+      [e],
+      collection.info._postman_id ?? "",
+    );
     const env = envs[0];
     if (!env) continue;
     const envPath = await outputEnvironmentPath(env.name, config.name);

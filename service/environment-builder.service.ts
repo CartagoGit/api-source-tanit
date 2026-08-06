@@ -16,6 +16,7 @@
  *   - Los `baseUrl` se autodetectan de `.env`, `.env.example`, `APP_ENV`
  *     o de la convención `<dominio>.local/<dominio>/<subdominio>`.
  */
+import { environmentIdFor } from "../helper/collection-identity.helper.js";
 import type {
   EndpointSpec,
   PostmanEnvironment,
@@ -101,15 +102,20 @@ function mergeVariables(
 /**
  * Construye UN environment.
  *
- * @param name        Nombre del environment (ej. "Dev" o "Mi App · dev").
- * @param variables   Variables fusionadas (config + base + path).
- * @param overrides   Mapa que SOBREESCRIBE valores finales (ej. baseUrl).
+ * @param name         Nombre del environment (ej. "Dev" o "Mi App · dev").
+ * @param variables    Variables fusionadas (config + base + path).
+ * @param overrides    Mapa que SOBREESCRIBE valores finales (ej. baseUrl).
+ * @param color        Color de la etiqueta en Postman.
+ * @param collectionId Id de la colección a la que pertenece; entra en la
+ *                     semilla del id del environment para que dos
+ *                     proyectos con un entorno "Local" no colisionen.
  */
 export function buildEnvironment(
   name: string,
   variables: PostmanVariable[],
   overrides: Record<string, string> = {},
   color?: string,
+  collectionId = "",
 ): PostmanEnvironment {
   const finalValues = variables.map((v) => ({
     key: v.key,
@@ -121,11 +127,15 @@ export function buildEnvironment(
         : ("default" as const),
   }));
 
+  // Mismo motivo que en la colección: un id aleatorio hace que cada
+  // import cree un environment nuevo en lugar de actualizar el que ya
+  // está (p00014). Se deriva del nombre del entorno + el de la colección.
+  const environmentId = environmentIdFor(collectionId, name);
   const env: PostmanEnvironment = {
-    id: crypto.randomUUID(),
+    id: environmentId,
     name,
     values: finalValues,
-    _postman_id: crypto.randomUUID(),
+    _postman_id: environmentId,
     scope: "environment",
   };
   if (color) env.color = color;
@@ -140,11 +150,14 @@ export function buildEnvironments(
   specs: EndpointSpec[],
   configVariables: PostmanVariable[],
   envs: EnvironmentDef[],
+  collectionId = "",
 ): PostmanEnvironment[] {
   if (envs.length === 0) return [];
   const inferred = inferPathVariables(specs);
   const merged = mergeVariables(configVariables, inferred);
-  return envs.map((e) => buildEnvironment(e.name, merged, e.overrides, e.color));
+  return envs.map((e) =>
+    buildEnvironment(e.name, merged, e.overrides, e.color, collectionId),
+  );
 }
 
 /** Detecta automáticamente entornos dev/staging/prod desde el config. */

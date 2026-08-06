@@ -41,6 +41,18 @@ export interface ProjectConfig {
   /** Nombre visible de la colección en Postman (`info.name`). */
   collectionName: string;
 
+  /**
+   * ID fijo de la colección en Postman (UUID). Opcional.
+   *
+   * Si no se declara, se deriva de forma determinista del nombre del
+   * proyecto, de modo que regenerar y re-importar ACTUALIZA la colección
+   * existente en lugar de crear una copia.
+   *
+   * Fíjalo a mano si renombras el proyecto o lo mueves de carpeta y
+   * quieres conservar la colección que ya tienes en Postman.
+   */
+  collectionId?: string;
+
   /** Descripción de la colección (`info.description`). */
   collectionDescription: string;
 

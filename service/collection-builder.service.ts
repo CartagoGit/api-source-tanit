@@ -26,6 +26,7 @@ import type {
   PostmanRequest,
 } from "../contract/postman.interface.js";
 import type { ProjectConfig } from "../contract/project-config.interface.js";
+import { collectionIdFor } from "../helper/collection-identity.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../contract/postman.constant.js";
 import { prettyGroupName, topGroupFor } from "./route-parser.service.js";
 
@@ -295,7 +296,14 @@ export function buildCollection(
       name: config.collectionName,
       description: config.collectionDescription,
       schema: POSTMAN_SCHEMA_URL,
-      _postman_id: crypto.randomUUID(),
+      // Determinista por proyecto: Postman usa este id para decidir si
+      // un import actualiza la colección o crea otra. Con un UUID
+      // aleatorio cada regeneración dejaba una copia más (p00014).
+      _postman_id: collectionIdFor({
+        explicitId: config.collectionId,
+        collectionName: config.collectionName,
+        projectName: config.name,
+      }),
     },
     auth: {
       type: "bearer",

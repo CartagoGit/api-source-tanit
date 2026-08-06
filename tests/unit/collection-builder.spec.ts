@@ -81,10 +81,28 @@ describe("collection-builder.service", () => {
       expect(col.item[0]?.name).toBe("Tol/Tecdoc");
     });
 
-    test("emite ids únicos para info._postman_id", () => {
+    // Este test exigía lo contrario ("ids únicos"), que es justo el bug:
+    // Postman usa `_postman_id` para decidir si un import actualiza la
+    // colección o crea otra, así que un id nuevo por ejecución dejaba una
+    // copia más en el workspace cada vez que se regeneraba.
+    test("el mismo proyecto produce siempre el mismo info._postman_id", () => {
       const a = buildCollection([], baseConfig);
       const b = buildCollection([], baseConfig);
+      expect(a.info._postman_id).toBe(b.info._postman_id);
+      expect(a.info._postman_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
+    });
+
+    test("proyectos distintos producen ids distintos", () => {
+      const a = buildCollection([], { ...baseConfig, collectionName: "API A" });
+      const b = buildCollection([], { ...baseConfig, collectionName: "API B" });
       expect(a.info._postman_id).not.toBe(b.info._postman_id);
+    });
+
+    test("collectionId del host manda sobre el derivado", () => {
+      const col = buildCollection([], { ...baseConfig, collectionId: "id-fijado-a-mano" });
+      expect(col.info._postman_id).toBe("id-fijado-a-mano");
     });
 
     test("preserva la config.variables en la colección resultante", () => {

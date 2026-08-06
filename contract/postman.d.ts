@@ -125,6 +125,26 @@ declare module "node:url" {
 // --- node:crypto --------------------------------------------------------
 declare module "node:crypto" {
   export function randomUUID(): string;
+  export function createHash(algorithm: string): IHash;
+}
+
+/** Subconjunto de `Buffer` que usa el paquete (UUID v5, lectura de bytes). */
+declare const Buffer: {
+  from(value: string, encoding?: string): BufferLike;
+  from(value: IBufferLike): BufferLike;
+};
+declare type BufferLike = IBufferLike;
+/** Hash incremental de `node:crypto`. `update` encadena. */
+interface IHash {
+  update(data: string | IBufferLike): IHash;
+  digest(): IBufferLike;
+  digest(encoding: string): string;
+}
+interface IBufferLike {
+  readonly length: number;
+  [index: number]: number | undefined;
+  subarray(start?: number, end?: number): IBufferLike;
+  toString(encoding?: string): string;
 }
 declare const crypto: {
   randomUUID(): string;
