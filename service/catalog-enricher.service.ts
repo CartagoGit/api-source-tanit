@@ -100,6 +100,12 @@ export async function enrichCatalogWithFormRequests(
     rulesWithUnknown: [],
   };
 
+  // Sin FormRequests que resolver no hay nada que enriquecer. Salir aquí
+  // evita tocar el disco y, sobre todo, evita lanzar en proyectos que no
+  // son Laravel: `requestsDir()` es `<raíz>/app/Http/Requests`, que en un
+  // proyecto Express o Go no existe.
+  if (formRequestByRoute.size === 0) return stats;
+
   const cache = new Map<string, Promise<FormRequestRules | null>>();
   async function loadFormRequest(
     relOrAbs: string,
@@ -122,10 +128,11 @@ export async function enrichCatalogWithFormRequests(
   const path = await import("node:path");
   const requestsRootValue = requestsDir();
   if (!requestsRootValue) {
-    throw new Error(
-      "No se pudo determinar la raíz del proyecto Laravel. " +
-        "Define POSTMAN_PROJECT_ROOT o ejecuta con --project-root <path>.",
-    );
+    // Sin raíz determinable no se puede localizar ningún FormRequest,
+    // pero eso no es motivo para abortar la generación: los endpoints ya
+    // tienen su body del scanner.
+    stats.unresolved = formRequestByRoute.size;
+    return stats;
   }
   const REQUESTS_ROOT: string = requestsRootValue;
   const byClassName = new Map<string, string>();

@@ -92,24 +92,6 @@ function deriveName(route: ParsedRoute): string {
   return `${verb} ${route.uri}`;
 }
 
-function derivePathParams(route: ParsedRoute): Array<{
-  key: string;
-  value: string;
-  description: string;
-}> {
-  const out: Array<{ key: string; value: string; description: string }> = [];
-  for (const m of route.uri.matchAll(/\{\{([^}]+)\}\}/g)) {
-    const key = m[1];
-    if (!key) continue;
-    out.push({
-      key,
-      value: exampleForPathParam(key),
-      description: `Path param ${key}`,
-    });
-  }
-  return out;
-}
-
 function exampleValueForField(spec: IValidationSpec): unknown {
   const { fieldName, type, enumValues, format, location } = spec;
   if (enumValues && enumValues.length > 0) return enumValues[0];
@@ -202,9 +184,10 @@ export async function buildSpecsFromScanner(
       spec.folder = route.tags[0];
     }
 
-    // Path params (siempre)
-    const pathParams = derivePathParams(route);
-    if (pathParams.length > 0) spec.query = pathParams;
+    // Los parámetros de path NO van en `spec.query`: eso se convierte en
+    // query string, y `/users/{{id}}?id=1` no es lo que declara la ruta.
+    // Se resuelven como variables de colección (`inferCollectionVariables`),
+    // que es lo que hace que `{{id}}` tenga valor en Postman.
 
     // Validation rules
     if (validation) {

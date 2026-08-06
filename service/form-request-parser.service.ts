@@ -247,15 +247,29 @@ export function detectTypedRule(rules: string[]): string | null {
 export function exampleValueForRule(rule: string, fieldName: string): unknown {
   const [name, ...args] = rule.split(":");
   switch (name) {
-    case "string":
+    // Cada formato tiene su ejemplo. Antes todos caían en la misma rama
+    // que `date`, así que un `email` salía como "2024-01-15" y el body de
+    // ejemplo era inservible sin editarlo a mano.
     case "email":
+      return "usuario@ejemplo.com";
     case "url":
+    case "active_url":
+      return "https://ejemplo.com";
     case "uuid":
+      return "00000000-0000-0000-0000-000000000001";
     case "ip":
+    case "ipv4":
+      return "192.0.2.1";
+    case "ipv6":
+      return "2001:db8::1";
     case "mac_address":
+      return "00:1a:2b:3c:4d:5e";
     case "json":
+      return "{}";
     case "date":
       return "2024-01-15";
+    case "string":
+      return `string_ejemplo_${fieldName}`;
     case "date_format": {
       const fmt = args.join(":");
       if (fmt.includes("Y-m-d") && fmt.includes("H:i:s")) return "2024-01-15 10:00:00";
