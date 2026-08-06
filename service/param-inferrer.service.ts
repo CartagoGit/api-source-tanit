@@ -275,26 +275,29 @@ export function inferQueryForSpec(spec: EndpointSpec): Array<{
  */
 export function inferCollectionVariables(
   specs: EndpointSpec[],
-  configVariables: Array<{ key: string }> = [],
+  configVariables: Array<{ key: string; value?: string; type?: string }> = [],
 ): Array<{ key: string; value: string; type: string }> {
-  const known = new Set(configVariables.map((v) => v.key));
-  const out = new Map<string, string>();
-  for (const k of known) out.set(k, "");
+  const out = new Map<string, { value: string; type: string }>();
 
-  if (!out.has("baseUrl")) out.set("baseUrl", "http://localhost/api");
-  if (!out.has("token")) out.set("token", "");
+  // Lo que el host declara manda, incluidos sus valores: sobrescribirlos
+  // con "" tiraba a la basura el `baseUrl` de producción que el proyecto
+  // hubiera configurado.
+  for (const v of configVariables) {
+    out.set(v.key, { value: v.value ?? "", type: v.type ?? "string" });
+  }
+
+  if (!out.has("baseUrl")) {
+    out.set("baseUrl", { value: "http://localhost/api", type: "string" });
+  }
+  if (!out.has("token")) out.set("token", { value: "", type: "string" });
 
   for (const s of specs) {
     for (const p of extractPathParams(s.uri)) {
-      if (!out.has(p)) out.set(p, exampleForPathParam(p));
+      if (!out.has(p)) out.set(p, { value: exampleForPathParam(p), type: "string" });
     }
   }
 
-  return [...out.entries()].map(([key, value]) => ({
-    key,
-    value,
-    type: "string",
-  }));
+  return [...out.entries()].map(([key, { value, type }]) => ({ key, value, type }));
 }
 
 // ---------------------------------------------------------------------------

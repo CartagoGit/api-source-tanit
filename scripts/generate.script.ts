@@ -12,14 +12,11 @@
  *   bun run build
  */
 import { writeFile } from "node:fs/promises";
+import { attachLoginAutoToken } from "../service/collection-builder.service.js";
 import {
-  attachLoginAutoToken,
-  buildCollection,
-} from "../service/collection-builder.service.js";
-import {
-  discoverEndpoints,
-  mergeWithManual,
-} from "../service/endpoint-discovery.service.js";
+  generateCollection,
+  type IGenerationResult,
+} from "../service/generation.pipeline.js";
 import { enrichCatalogWithFormRequests } from "../service/catalog-enricher.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import {
@@ -33,36 +30,12 @@ import {
   outputEnvironmentPath,
 } from "../service/paths.service.js";
 import {
-  applyAgnosticInference,
-  inferCollectionVariables,
-} from "../service/param-inferrer.service.js";
-import {
   buildEnvironments,
   defaultEnvironments,
 } from "../service/environment-builder.service.js";
-import {
-  defaultOrchestrator,
-} from "../service/scanner-registry.js";
-import { buildSpecsFromScanner } from "../service/adapters/parsed-route-to-spec.adapter.js";
 import type { EndpointSpec } from "../contract/postman.interface.js";
 import type { DiscoveredRoute } from "../contract/postman.interface.js";
 
-/** Tipos de los resultados del flujo legacy (Laravel-flavoured). */
-interface LegacyDiscovery {
-  readonly config: ReturnType<typeof loadProject> extends Promise<infer R>
-    ? R extends { config: infer C }
-      ? C
-      : never
-    : never;
-  readonly manualEndpoints: ReadonlyArray<EndpointSpec>;
-  readonly configPath: string;
-  readonly endpointsPath: string | null;
-  readonly specs: ReadonlyArray<EndpointSpec>;
-  readonly routes: ReadonlyArray<DiscoveredRoute>;
-  readonly withFormRequest: number;
-  readonly withoutFormRequest: number;
-  readonly origin: "orchestrator" | "legacy";
-}
 
 /**
  * Detecta heurísticamente el dot-path del token en el AuthController.
@@ -103,116 +76,37 @@ async function detectTokenPath(): Promise<string | undefined> {
 }
 
 /**
- * Punto de entrada del discovery framework-agnostic.
+ * Descubre endpoints y construye la colección usando el pipeline
+ * compartido (`service/generation.pipeline.ts`).
  *
- * Probar primero el orchestrator. Reglas:
- *   - Si el orchestrator encuentra un match con `framework !== "laravel"`,
- *     construir los specs con el adapter (zero-config) y saltarse el
- *     flujo legacy. Esto cubre OpenAPI, Express, FastAPI, etc.
- *   - Si el match es Laravel, el flujo legacy hace más cosas (zero-config
- *     del .env, builders de zona, etc.), así que seguimos usando ese.
- *   - Si no hay match, fallback al flujo legacy zero-config de Laravel.
+ * Este script solo pone lo que es suyo: parseo de flags, trazas por
+ * consola, enriquecido con variantes y escritura de artefactos. El orden
+ * de los pasos del pipeline vive en el servicio, para que el CLI, los
+ * tests y el gate ejecuten exactamente lo mismo.
  */
-async function discoverEndpointsUniversal(): Promise<{
-  specs: ReadonlyArray<EndpointSpec>;
-  routes: ReadonlyArray<DiscoveredRoute>;
-  withFormRequest: number;
-  withoutFormRequest: number;
-  config: LegacyDiscovery["config"];
-  configPath: string;
-  endpointsPath: string | null;
-  manualEndpoints: ReadonlyArray<EndpointSpec>;
-  origin: "orchestrator" | "legacy";
-}> {
+async function runPipeline(basename: string | null): Promise<IGenerationResult> {
   console.log("→ Rutas detectadas:");
   console.log(describeDiscoveredPaths());
 
-  const orch = defaultOrchestrator();
-  const { match, scanner, validation } = await orch.detectProject(
-    process.env.POSTMAN_PROJECT_ROOT ?? ".",
-  );
+  const projectRoot = process.env.POSTMAN_PROJECT_ROOT ?? ".";
+  const result = await generateCollection(projectRoot, {
+    ...(basename ? { collectionName: basename } : {}),
+  });
 
-  // Camino A: el scanner del framework detectado. Vale para TODOS los
-  // frameworks, Laravel incluido: su scanner expande `Route::resource` /
-  // `Route::apiResource`, cosa que la heurística legacy no hace.
-  if (match && scanner) {
-    console.log(`→ Orchestrator: framework=${match.framework}`);
-    const result = await buildSpecsFromScanner(scanner, match, validation);
-    // Construir un ProjectConfig mínimo en memoria.
-    const syntheticConfig = await loadProject();
-    // Para OpenAPI, intenta usar `info.title` como collectionName.
-    if (match.framework === "openapi") {
-      try {
-        const { readFile } = await import("node:fs/promises");
-        const { resolve } = await import("node:path");
-        const rel = match.artifacts[0];
-        if (rel) {
-          const abs = resolve(match.projectRoot, rel);
-          const text = await readFile(abs, "utf8");
-          const json = rel.endsWith(".json") ? JSON.parse(text) : null;
-          const title = json?.info?.title;
-          if (typeof title === "string" && title.trim().length > 0) {
-            syntheticConfig.config.collectionName = `${title} (Postman)`;
-            syntheticConfig.config.collectionDescription =
-              typeof json?.info?.description === "string"
-                ? json.info.description
-                : `Colección generada desde ${rel}.`;
-          }
-        }
-      } catch {
-        /* usa defaults */
-      }
-    }
-    // Los overrides manuales aplican a cualquier framework, no solo a
-    // Laravel: `endpoints.constant.ts` corrige o amplía lo deducido.
-    const merged = mergeWithManual(
-      [...result.specs],
-      [...syntheticConfig.manualEndpoints],
-    );
-
-    return {
-      specs: merged,
-      routes: result.routes.map((r) => ({ method: r.method, uri: r.uri })),
-      withFormRequest: result.withFormRequest,
-      withoutFormRequest: result.withoutFormRequest,
-      config: syntheticConfig.config,
-      configPath: syntheticConfig.configPath,
-      endpointsPath: syntheticConfig.endpointsPath,
-      manualEndpoints: syntheticConfig.manualEndpoints,
-      origin: "orchestrator",
-    };
-  }
-
-  // Camino B: sin match del orchestrator → heurística zero-config legacy.
-  console.log("→ Orchestrator: sin match → flujo zero-config legacy.");
-  const { config, manualEndpoints, configPath, endpointsPath } =
-    await loadProject();
-  console.log(`→ Config host: ${configPath}`);
-  if (endpointsPath) {
-    console.log(
-      `→ Overrides manuales: ${endpointsPath} (${manualEndpoints.length})`,
-    );
-  } else {
-    console.log("→ Overrides manuales: (ninguno)");
-  }
-
-  console.log("→ Descubriendo endpoints automáticamente…");
-  const discovered = await discoverEndpoints(config, manualEndpoints);
   console.log(
-    `  · ${discovered.routes.length} rutas en código, ${discovered.specs.length} specs ` +
-      `(FormRequest: ${discovered.withFormRequest}, sin FR: ${discovered.withoutFormRequest}).`,
+    result.match
+      ? `→ Orchestrator: framework=${result.match.framework}`
+      : "→ Orchestrator: sin match → flujo zero-config legacy.",
   );
-  return {
-    specs: discovered.specs,
-    routes: discovered.routes,
-    withFormRequest: discovered.withFormRequest,
-    withoutFormRequest: discovered.withoutFormRequest,
-    config,
-    configPath,
-    endpointsPath,
-    manualEndpoints,
-    origin: "legacy",
-  };
+  console.log(
+    `  · ${result.metrics.routes} rutas en código, ${result.metrics.specs} specs ` +
+      `(con validación: ${result.metrics.withValidation}, sin: ${result.metrics.withoutValidation}).`,
+  );
+  console.log(
+    `→ Inferencia agnóstica: ${result.metrics.bodiesInferred} bodies + ` +
+      `${result.metrics.queriesInferred} queries auto-rellenados.`,
+  );
+  return result;
 }
 
 async function main(): Promise<number> {
@@ -230,15 +124,10 @@ async function main(): Promise<number> {
       ? (args[envsIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
       : null;
 
-  const {
-    specs: discoveredSpecs,
-    routes: discoveredRoutes,
-    withFormRequest,
-    withoutFormRequest,
-    config,
-    manualEndpoints,
-    origin,
-  } = await discoverEndpointsUniversal();
+  const pipeline = await runPipeline(basenameFlag);
+  const discoveredSpecs = pipeline.specs;
+  const config = pipeline.config;
+  const origin = pipeline.match?.framework ?? "legacy";
 
   // Modo --inspect: solo imprimir discovery, sin escribir archivos.
   // Pensado para que `summary` (y herramientas similares) puedan
@@ -247,50 +136,25 @@ async function main(): Promise<number> {
     console.log("\n→ Modo --inspect (no se escriben artefactos)");
     console.log(`  · Framework:    ${origin}`);
     console.log(`  · ProjectName:  ${config.name}`);
-    console.log(`  · Rutas:        ${discoveredRoutes.length}`);
-    console.log(`  · Specs:        ${discoveredSpecs.length}`);
-    console.log(`  · Con FR:       ${withFormRequest}`);
-    console.log(`  · Sin FR:       ${withoutFormRequest}`);
-    const inferStats = applyAgnosticInference([...discoveredSpecs]);
-    console.log(`  · Bodies auto:  ${inferStats.bodiesAdded}`);
-    console.log(`  · Queries auto: ${inferStats.queriesAdded}`);
+    console.log(`  · Rutas:        ${pipeline.metrics.routes}`);
+    console.log(`  · Specs:        ${pipeline.metrics.specs}`);
+    console.log(`  · Con FR:       ${pipeline.metrics.withValidation}`);
+    console.log(`  · Sin FR:       ${pipeline.metrics.withoutValidation}`);
+    console.log(`  · Bodies auto:  ${pipeline.metrics.bodiesInferred}`);
+    console.log(`  · Queries auto: ${pipeline.metrics.queriesInferred}`);
     console.log(`  · BaseUrl:      ${config.baseUrl}`);
     return 0;
   }
 
-  // Índice method+uri → FormRequest para el enricher
+  // Índice method+uri → FormRequest para el enricher.
   const frIndex = new Map<string, string>();
-  for (const s of discoveredSpecs) {
-    if (!s.formRequest) continue;
-    const key = `${s.method} ${normalizeForComparison(s.uri.replace(/^\//, ""))}`;
-    frIndex.set(key, s.formRequest);
+  for (const spec of discoveredSpecs) {
+    if (!spec.formRequest) continue;
+    const key = `${spec.method} ${normalizeForComparison(spec.uri.replace(/^\//, ""))}`;
+    frIndex.set(key, spec.formRequest);
   }
 
-  // Inferencia agnóstica de body/query para endpoints sin FormRequest.
-  const inferStats = applyAgnosticInference([...discoveredSpecs]);
-  console.log(
-    `→ Inferencia agnóstica: ${inferStats.bodiesAdded} bodies + ${inferStats.queriesAdded} queries ` +
-      `auto-rellenados.`,
-  );
-
-  // Variables de colección: si el host no las define, las derivamos.
-  if (!config.variables || config.variables.length === 0) {
-    config.variables = inferCollectionVariables([...discoveredSpecs], []);
-  } else {
-    // Añade cualquier {{pathParam}} que falte en las variables del host.
-    const inferred = inferCollectionVariables(
-      [...discoveredSpecs],
-      config.variables,
-    );
-    config.variables = inferred;
-  }
-
-  console.log("→ Construyendo colección Postman…");
-  // Override del collectionName ANTES de construir la colección.
-  if (basenameFlag) {
-    config.collectionName = basenameFlag;
-  }
-  const collection = buildCollection([...discoveredSpecs], config);
+  const collection = pipeline.collection;
   const detectedTokenPath = config.tokenResponsePath ?? (await detectTokenPath());
   attachLoginAutoToken(collection, {
     loginEndpointName: config.loginEndpointName,
@@ -312,10 +176,10 @@ async function main(): Promise<number> {
 
   // Cobertura bidireccional
   const sourceRoutes = new Map<string, DiscoveredRoute>();
-  for (const r of discoveredRoutes) {
+  for (const r of pipeline.routes) {
     // Solo Laravel (legacy) quita el prefijo `api/`. Otros frameworks
     // tienen prefix real (api/v1, etc.) y deben conservarse.
-    const uri = origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
+    const uri = pipeline.origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
     const key = `${r.method} ${normalizeForComparison(uri)}`;
     sourceRoutes.set(key, { method: r.method, uri });
   }

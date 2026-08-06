@@ -88,7 +88,7 @@
     },
     "proposals": {
       "options": {
-        "validationCommand": "bun run check",
+        "validationCommand": "bun run validate",
         "namePool": [
           "falcon",
           "owl",

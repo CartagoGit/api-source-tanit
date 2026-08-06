@@ -2,7 +2,7 @@
 id: p00018
 title: "p00018 — gate de calidad autocontenido (`bun run validate`)"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
@@ -10,6 +10,8 @@ related:
     - p00011 # lint:tools forma parte del gate
     - p00016 # las suites homogéneas son parte del gate
 ---
+
+> **Cerrada 2026-08-06.** Implementado: `bun run validate` = typecheck + lint:tools + test + validate:examples, más el workflow de CI.
 
 # p00018 — gate de calidad autocontenido
 

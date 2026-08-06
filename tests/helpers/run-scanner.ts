@@ -16,15 +16,8 @@
  */
 import { resolve, join } from "node:path";
 import { resetPathCache } from "../../service/paths.service";
-import { defaultOrchestrator } from "../../service/scanner-registry";
-import { buildSpecsFromScanner } from "../../service/adapters/parsed-route-to-spec.adapter";
-import { loadProject } from "../../service/project-loader.service";
-import {
-  applyAgnosticInference,
-  inferCollectionVariables,
-} from "../../service/param-inferrer.service";
-import { buildCollection } from "../../service/collection-builder.service";
-import type { EndpointSpec, PostmanCollection } from "../../contract/postman.interface";
+import { generateCollection } from "../../service/generation.pipeline";
+import type { PostmanCollection } from "../../contract/postman.interface";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "../..");
 
@@ -77,60 +70,26 @@ export async function runGenerate(
 }
 
 async function _runPipeline(
-  fixtureName: string,
+  _fixtureName: string,
   fixturePath: string,
   basename?: string,
 ): Promise<GenerateResult> {
-  const orch = defaultOrchestrator();
-  const { match, scanner, validation } = await orch.detectProject(fixturePath);
-
-  let specs: EndpointSpec[];
-  let routeCount: number;
-  let withFR: number;
-  let withoutFR: number;
-
-  if (match && scanner) {
-    // Camino A: el scanner del framework detectado (incluido Laravel).
-    const result = await buildSpecsFromScanner(scanner, match, validation);
-    const { manualEndpoints } = await loadProject();
-    const { mergeWithManual } = await import("../../service/endpoint-discovery.service");
-    specs = mergeWithManual([...result.specs], [...manualEndpoints]);
-    routeCount = result.routes.length;
-    withFR = result.withFormRequest;
-    withoutFR = result.withoutFormRequest;
-  } else {
-    // Camino B: sin match → heurística zero-config legacy sobre routes/.
-    const { config, manualEndpoints } = await loadProject();
-    const { discoverEndpoints } = await import("../../service/endpoint-discovery.service");
-    const discovered = await discoverEndpoints(config, manualEndpoints);
-    specs = discovered.specs;
-    routeCount = discovered.routes.length;
-    withFR = discovered.withFormRequest;
-    withoutFR = discovered.withoutFormRequest;
-  }
-
-  // Inferencia agnóstica (igual que generate.script.ts).
-  const inferStats = applyAgnosticInference([...specs]);
-
-  // Config para buildCollection.
-  const { config: cfg } = await loadProject();
-  if (!cfg.variables || cfg.variables.length === 0) {
-    cfg.variables = inferCollectionVariables([...specs], []);
-  }
-  if (basename) cfg.collectionName = basename;
-
-  const collection = buildCollection([...specs], cfg);
+  // Mismo pipeline que usa el CLI: los tests validan el camino real, no
+  // una reimplementación paralela que puede divergir.
+  const result = await generateCollection(fixturePath, {
+    ...(basename ? { collectionName: basename } : {}),
+  });
 
   return {
-    collection,
+    collection: result.collection,
     outputPath: "",
     metrics: {
-      routes: routeCount,
-      specs: specs.length,
-      conFR: withFR,
-      sinFR: withoutFR,
-      bodiesAuto: inferStats.bodiesAdded,
-      queriesAuto: inferStats.queriesAdded,
+      routes: result.metrics.routes,
+      specs: result.metrics.specs,
+      conFR: result.metrics.withValidation,
+      sinFR: result.metrics.withoutValidation,
+      bodiesAuto: result.metrics.bodiesInferred,
+      queriesAuto: result.metrics.queriesInferred,
     },
   };
 }

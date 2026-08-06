@@ -164,4 +164,6 @@ declare const URL: {
 interface ImportMeta {
   url: string;
   dir: string;
+  /** Bun/Node: true si este módulo es el punto de entrada del proceso. */
+  main: boolean;
 }

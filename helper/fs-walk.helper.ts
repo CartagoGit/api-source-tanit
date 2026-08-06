@@ -22,6 +22,19 @@ interface IDirentLike {
   readonly path?: string;
 }
 
+/** Directorios que nunca contienen código del proyecto escaneado. */
+const ALWAYS_SKIPPED = ["node_modules", ".git", "vendor", "__pycache__", "dist", "build"];
+
+/** Ajustes opcionales del recorrido. */
+export interface ICollectFilesOptions {
+  /**
+   * Si `false`, no se saltan `node_modules`, `.git`, `vendor`… Por
+   * defecto se saltan: escanear dependencias de terceros produce ruido
+   * (y en el caso del lint de tools, infracciones ajenas).
+   */
+  readonly skipVendorDirs?: boolean;
+}
+
 /**
  * Rutas absolutas de todos los ficheros bajo `root` (recursivo) cuyo
  * nombre pasa el filtro.
@@ -32,6 +45,7 @@ interface IDirentLike {
 export async function collectFiles(
   root: string,
   matches: (fileName: string) => boolean,
+  options: ICollectFilesOptions = {},
 ): Promise<string[]> {
   let entries: IDirentLike[];
   try {
@@ -43,13 +57,21 @@ export async function collectFiles(
     return [];
   }
 
+  const skipVendor = options.skipVendorDirs !== false;
   const out: string[] = [];
   for (const entry of entries) {
     if (!entry.isFile()) continue;
     if (!matches(entry.name)) continue;
-    out.push(join(entry.parentPath ?? entry.path ?? root, entry.name));
+    const parent = entry.parentPath ?? entry.path ?? root;
+    if (skipVendor && isInsideVendorDir(parent)) continue;
+    out.push(join(parent, entry.name));
   }
   return out;
+}
+
+function isInsideVendorDir(dir: string): boolean {
+  const segments = dir.split(/[\\/]/);
+  return segments.some((s) => ALWAYS_SKIPPED.includes(s));
 }
 
 /**
@@ -59,10 +81,11 @@ export async function collectFiles(
 export async function collectFilesFrom(
   roots: ReadonlyArray<string>,
   matches: (fileName: string) => boolean,
+  options: ICollectFilesOptions = {},
 ): Promise<string[]> {
   const seen = new Set<string>();
   for (const root of roots) {
-    for (const file of await collectFiles(root, matches)) seen.add(file);
+    for (const file of await collectFiles(root, matches, options)) seen.add(file);
   }
   return [...seen];
 }
