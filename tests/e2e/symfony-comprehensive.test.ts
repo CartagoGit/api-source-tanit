@@ -12,7 +12,6 @@
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
-  countItems,
   findEndpoint,
   validatePostmanInvariants,
 } from "../helpers/compare-json";

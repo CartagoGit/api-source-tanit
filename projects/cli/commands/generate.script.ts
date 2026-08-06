@@ -15,7 +15,6 @@ import { writeFile } from "node:fs/promises";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import type { IGenerationResult } from "../../core/discovery/generation.pipeline.js";
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
-import { loadProject } from "../../core/discovery/project-loader.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
@@ -31,7 +30,6 @@ import {
   buildEnvironments,
   defaultEnvironments,
 } from "../../core/domain/environment-builder.service.js";
-import type { EndpointSpec } from "../../core/contracts/postman.interface.js";
 import type { DiscoveredRoute } from "../../core/contracts/postman.interface.js";
 import {
   GENERATE_REPORT_VERSION,

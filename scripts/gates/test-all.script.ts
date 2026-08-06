@@ -15,7 +15,7 @@
  *   - Exit code 0 si todos pasan, 1 si alguno falla.
  */
 import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, } from "node:path";
 import { resetPathCache } from "../../projects/core/discovery/paths.service.js";
 import { defaultOrchestrator } from "../../projects/frameworks/framework.registry.js";
 import { buildSpecsFromScanner } from "../../projects/core/adapters/parsed-route-to-spec.adapter.js";

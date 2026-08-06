@@ -64,7 +64,6 @@ const ROUTER_PREFIX_RE = /Router\s*\(\s*\{[^}]*prefix\s*:\s*['"]([^'"]+)['"]/gi;
 // Regex para `app.use('/prefix', router)`.
 const APP_USE_PREFIX_RE = /\bapp\s*\.\s*use\s*\(\s*(['"])([^'"]+)\1\s*,\s*([a-zA-Z_$][\w$]*)/gi;
 // Regex para `app.use('/prefix')` (sin router, modo middleware).
-const APP_USE_BARE_RE = /\bapp\s*\.\s*use\s*\(\s*(['"])([^'"]+)\1\s*\)/gi;
 // Hapi: `server.route({ method: 'GET', path: '/users', handler: ... })`.
 const HAPI_ROUTE_RE =
   /method\s*:\s*['"](get|post|put|delete|patch|head|options)['"]\s*,\s*path\s*:\s*(['"])([^'"]+)\2/gi;
@@ -465,15 +464,15 @@ function findHeaderSchemaNear(
  */
 function collectHandlerBody(lines: string[], startLine: number): string {
   const out: string[] = [];
-  let parenDepth = 0;
+  let _parenDepth = 0;
   let braceDepth = 0;
   let started = false;
   for (let i = startLine; i < lines.length; i++) {
     const line = lines[i] ?? "";
     out.push(line);
     for (const c of line) {
-      if (c === "(") parenDepth++;
-      else if (c === ")") parenDepth--;
+      if (c === "(") _parenDepth++;
+      else if (c === ")") _parenDepth--;
       else if (c === "{") {
         braceDepth++;
         if (braceDepth >= 1) started = true;

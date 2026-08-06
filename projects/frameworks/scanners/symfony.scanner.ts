@@ -319,7 +319,6 @@ async function parseControllerAttributes(
  */
 const ATTR_ROUTE_RE =
   /#\[Route\s*\(([^)]*)\)\s*\]/gi;
-const ATTR_PATH_RE = /['"]([^'"]+)['"]/;
 const ATTR_METHODS_RE = /methods\s*:\s*\[([^\]]*)\]/i;
 const ATTR_METHOD_RE = /methods\s*:\s*['"]([^'"]+)['"]/i;
 const ATTR_NAME_RE = /name\s*:\s*['"]([^'"]+)['"]/i;

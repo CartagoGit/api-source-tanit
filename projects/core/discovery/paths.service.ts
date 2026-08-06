@@ -11,7 +11,7 @@
  *
  * Resuelve siempre ABSOLUTAS, sin usar `__dirname` relativo. Dos raíces:
  *   - `packageRoot()`  → carpeta donde vive este paquete.
- *   - `projectRoot()`  → raíz del proyecto Laravel (donde está `artisan`).
+ *   - `projectRoot()`  → raíz del proyecto que se está escaneando.
  *
  * Resolución del `packageRoot`:
  *   1. `moduleDir(import.meta.url)` (Bun/Node ESM).
@@ -21,7 +21,11 @@
  * Resolución del `projectRoot`:
  *   1. CLI `--project-root <path>`.
  *   2. Env `POSTMAN_PROJECT_ROOT`.
- *   3. Subiendo desde `packageRoot()` hasta dar con `artisan` + `routes/` + `app/`.
+ *   3. Último recurso: subir desde `packageRoot()` buscando la
+ *      disposición de un Laravel (`artisan` + `routes/` + `app/`).
+ *      Es una heurística heredada de cuando esto solo servía para
+ *      Laravel; para el resto de frameworks nunca acierta, y por eso
+ *      el CLI exige `--project-root` explícito.
  *
  * Directorio de output (`outputDir()`):
  *   1. CLI `--output-dir <path>` o `--output <file>` (parent).
@@ -86,7 +90,15 @@ function findPackageRoot(start: string): string | null {
   });
 }
 
-function findLaravelProjectRoot(start: string): string | null {
+/**
+ * Heurística heredada: busca la disposición de un proyecto Laravel.
+ *
+ * Solo se usa como último recurso, cuando no hay `--project-root` ni
+ * `POSTMAN_PROJECT_ROOT`. Para cualquier otro framework no encuentra
+ * nada y se cae a `process.cwd()`, que es el comportamiento correcto:
+ * adivinar la raíz de un proyecto ajeno es peor que preguntar.
+ */
+function findLaravelLayoutRoot(start: string): string | null {
   return walkUp(start, (dir) => {
     return (
       existsSync(join(dir, "artisan")) &&
@@ -107,7 +119,7 @@ function resolveProjectRoot(packageRoot: string): string | null {
   if (cliArg) return resolve(cliArg);
   const env = process.env.POSTMAN_PROJECT_ROOT;
   if (env) return resolve(env);
-  return findLaravelProjectRoot(packageRoot) ?? process.cwd();
+  return findLaravelLayoutRoot(packageRoot) ?? process.cwd();
 }
 
 function basenameOrFallback(p: string, fallback: string): string {
@@ -208,7 +220,7 @@ export function packageRoot(): string {
   return discover().packageRoot;
 }
 
-/** Raíz del proyecto Laravel. `null` si no se encuentra. */
+/** Raíz del proyecto que se escanea. `null` si no se pudo resolver. */
 export function projectRoot(): string | null {
   return discover().projectRoot;
 }
@@ -231,7 +243,7 @@ export function requestsDir(): string | null {
   return a ? join(a, "Http", "Requests") : null;
 }
 
-/** Nombre del proyecto Laravel. */
+/** Nombre del proyecto que se escanea. */
 export function projectBasename(): string {
   return discover().projectBasename;
 }
@@ -277,7 +289,6 @@ export function outputDir(): string {
     const rel = relative(d.projectRoot, d.packageRoot);
     // Si `rel` no empieza por ".." ni es absoluto, packageRoot está DENTRO
     // del proyecto. En ese caso el output va en la carpeta del paquete.
-    const inside = rel && !rel.startsWith("..") && !relative(d.packageRoot, d.projectRoot).startsWith("..");
     // `inside=true` solo si projectRoot ⊂ packageRoot o packageRoot ⊂ projectRoot.
     // Caso típico: packageRoot = ${projectRoot}/resources/postman, projectRoot = ${projectRoot}.
     // rel = ".." + "resources/postman" → startsWith(".."), así que outside.
@@ -294,7 +305,7 @@ export function outputDir(): string {
 
 /**
  * Nombre base del JSON de salida.
- * Prioridad: env `POSTMAN_OUTPUT_BASENAME` → basename del proyecto Laravel.
+ * Prioridad: env `POSTMAN_OUTPUT_BASENAME` → nombre del proyecto.
  */
 export function outputBasename(projectName?: string): string {
   const env = process.env.POSTMAN_OUTPUT_BASENAME;
@@ -355,7 +366,7 @@ export function toProjectRelative(absPath: string): string {
   const r = projectRoot();
   if (!r) {
     throw new Error(
-      "No se pudo determinar la raíz del proyecto Laravel. " +
+      "No se pudo determinar la raíz del proyecto. " +
         "Define POSTMAN_PROJECT_ROOT o ejecuta con --project-root <path>.",
     );
   }
@@ -366,7 +377,7 @@ export function fromProjectRelative(relPath: string): string {
   const r = projectRoot();
   if (!r) {
     throw new Error(
-      "No se pudo determinar la raíz del proyecto Laravel. " +
+      "No se pudo determinar la raíz del proyecto. " +
         "Define POSTMAN_PROJECT_ROOT o ejecuta con --project-root <path>.",
     );
   }

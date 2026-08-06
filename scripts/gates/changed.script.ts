@@ -19,7 +19,6 @@
  *   bun run test:changed --dry-run      # dice qué correría y sale
  */
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
 
 import { SECTIONS, sectionsForFiles, withDependents } from "./sections.constant.js";
 import { REPO_ROOT } from "../helpers/root.helper.js";

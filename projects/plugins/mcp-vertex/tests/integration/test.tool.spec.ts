@@ -14,7 +14,6 @@
  *     el step devuelve `ok=false` con un `detail` útil para actuar.
  */
 import { describe, expect, test } from "vitest";
-import { resolve } from "node:path";
 
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
@@ -98,7 +97,7 @@ describe("expostman_test", () => {
 
   test("devuelve detalle cuando un step falla (framework inexistente vía archivo)", async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = await captureHandler(reg);
+    const _handler = await captureHandler(reg);
     // Forzamos un framework con un archivo de test que no existe.
     // `nestjs` SÍ existe; usamos uno inventado vía `framework` inválido
     // que pase el zod pero no encuentre fixture: trampa no posible vía

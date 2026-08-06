@@ -39,19 +39,6 @@ const BASE_VARIABLES: PostmanVariable[] = [
   { key: "token", value: "", type: "string" },
 ];
 
-/** Convierte una PostmanVariable del config a `values` de environment. */
-function toEnvValue(
-  v: PostmanVariable,
-  opts: { enabled: boolean; secret?: boolean; description?: string },
-): PostmanEnvironment["values"][number] {
-  return {
-    key: v.key,
-    value: v.value,
-    enabled: opts.enabled,
-    type: opts.secret ? "secret" : "default",
-    ...(opts.description ? { description: opts.description } : {}),
-  };
-}
 
 /** Extrae los path params (`{{x}}`) de todas las URIs del catálogo. */
 function inferPathVariables(specs: EndpointSpec[]): PostmanVariable[] {

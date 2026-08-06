@@ -39,7 +39,9 @@ async function confirm(question: string, fallback = true): Promise<boolean> {
 /** Elige entre varias opciones numeradas. */
 async function choose(question: string, choices: ReadonlyArray<string>): Promise<number> {
   console.log(`\n${question}`);
-  choices.forEach((choice, i) => console.log(`  ${i + 1}) ${choice}`));
+  for (const [index, choice] of choices.entries()) {
+    console.log(`  ${index + 1}) ${choice}`);
+  }
   const answer = await ask("Choice", "1");
   const index = Number.parseInt(answer, 10) - 1;
   return Number.isInteger(index) && index >= 0 && index < choices.length ? index : 0;

@@ -19,7 +19,7 @@ import {
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { normalizeForComparison } from "../../core/helpers/uri.helper.js";
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
   const inPlace = process.argv.includes("--in-place");
   const { config, manualEndpoints, configPath } = await loadProject();
   console.log(`→ Config host: ${configPath}`);

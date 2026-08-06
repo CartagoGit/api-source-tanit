@@ -11,7 +11,7 @@
  * Laravel, que ignoraba `match.projectRoot` y leía el singleton.
  */
 import { describe, expect, test } from "vitest";
-import { join, resolve } from "node:path";
+import { join, } from "node:path";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 

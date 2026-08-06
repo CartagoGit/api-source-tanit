@@ -242,16 +242,6 @@ function stripJsComments(src: string): string {
 // Validation spec provider — class-validator
 // ---------------------------------------------------------------------------
 
-interface ValidatorField {
-  name: string;
-  type: IValidationSpec["type"];
-  required: boolean;
-  format?: string;
-  enumValues?: string[];
-  min?: number;
-  max?: number;
-}
-
 const VALIDATOR_MAP: Record<string, { type: IValidationSpec["type"]; format?: string }> = {
   IsString: { type: "string" },
   IsInt: { type: "integer" },
@@ -276,7 +266,6 @@ const VALIDATOR_MAP: Record<string, { type: IValidationSpec["type"]; format?: st
   IsNegative: { type: "integer" },
 };
 
-const DECORATOR_RE = /@(Is\w+|MinLength|MaxLength|Length|Min|Max|IsOptional|IsPositive|IsNegative|IsDefined|IsNotEmpty)\s*\(([^)]*)\)/g;
 
 export class NestJsClassValidatorProvider implements IValidationSpecProvider {
   readonly framework = "nestjs" as const;
@@ -329,9 +318,7 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
       let m: RegExpExecArray | null;
       while ((m = fieldRe.exec(tail)) !== null) {
         const decorator = m[1] ?? "";
-        const args = m[2] ?? "";
         const fieldName = m[3] ?? "";
-        const fieldType = (m[4] ?? "").trim();
         if (decorator === "Type") continue;
         const map = VALIDATOR_MAP[decorator];
         if (!map) continue;

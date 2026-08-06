@@ -17,7 +17,7 @@
  * estático (sin servidor corriendo).
  */
 import { existsSync } from "node:fs";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
 import {

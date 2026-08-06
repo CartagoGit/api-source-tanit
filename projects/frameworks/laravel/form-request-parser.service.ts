@@ -45,7 +45,6 @@ function extractRulesBlock(src: string): string | null {
   const retMatch = tail.match(/return\s*[\[({]/);
   if (!retMatch) return null;
   const openChar = retMatch[0].slice(-1);
-  const closeChar = openChar === "[" ? "]" : openChar === "(" ? ")" : "}";
   if (openChar !== "[") return null;
 
   // Posición justo después de `return ` (o justo donde está el `[`).

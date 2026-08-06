@@ -63,11 +63,7 @@ const HTTP_METHODS = [
   "options",
   "trace",
 ] as const;
-type HttpMethod = (typeof HTTP_METHODS)[number];
 
-function isHttpMethod(m: string): m is HttpMethod {
-  return (HTTP_METHODS as readonly string[]).includes(m.toLowerCase());
-}
 
 // ---------------------------------------------------------------------------
 // YAML parser (NO usamos dependencias externas — subset suficiente)

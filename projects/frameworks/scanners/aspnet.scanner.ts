@@ -1,22 +1,4 @@
-/**
- * `AspNetScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para ASP.NET Core (C# / .NET).
- *
- * Detección:
- *   - `*.csproj` con `Microsoft.AspNetCore.App` o `FrameworkReference Include="Microsoft.AspNetCore.App"`.
- *
- * Parsing:
- *   - `[Route("api/v1")]` en la classe (controller).
- *   - `[HttpGet("users")]`, `[HttpPost]`, `[HttpPut]`, etc. en métodos.
- *   - `[ApiController]` (heurístico) para marcar la clase como controller.
- *
- * Validation:
- *   - `AspNetDataAnnotationsProvider` (best-effort): extrae
- *     `System.ComponentModel.DataAnnotations.*` (`[Required]`, `[EmailAddress]`,
- *     `[StringLength]`, `[Range]`, `[RegularExpression]`).
- *   - Limitado: solo DTOs en el package local.
- */
-import { existsSync } from "node:fs";
+
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";

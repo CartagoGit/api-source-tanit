@@ -110,29 +110,6 @@ export class GinRouteScanner implements IRouteScanner {
   }
 }
 
-async function walkGo(
-  dir: string,
-  projectRoot: string,
-  out: ParsedRoute[],
-): Promise<void> {
-  let entries: string[];
-  try {
-    entries = await readdir(dir);
-  } catch {
-    return;
-  }
-  for (const entry of entries) {
-    const full = join(dir, entry);
-    if (entry.endsWith(".go")) {
-      const rel = full.startsWith(projectRoot)
-        ? full.slice(projectRoot.length + 1).split("/").join("/")
-        : full;
-      out.push(...(await parseGoFile(full, rel, projectRoot)));
-    } else if (!entry.includes(".")) {
-      await walkGo(full, projectRoot, out);
-    }
-  }
-}
 
 /**
  * Busca recursivamente todos los `.go` del proyecto (retorna solo paths).

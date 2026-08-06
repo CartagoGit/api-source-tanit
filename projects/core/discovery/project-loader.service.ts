@@ -23,7 +23,7 @@
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, resolve, basename, sep } from "node:path";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
 import type { EndpointSpec } from "../contracts/postman.interface.js";

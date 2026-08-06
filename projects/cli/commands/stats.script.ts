@@ -17,7 +17,7 @@ interface ZoneStats {
   byFolder: Map<string, number>;
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();
   const COLLECTION_PATH = await outputCollectionPath(config.name);
 

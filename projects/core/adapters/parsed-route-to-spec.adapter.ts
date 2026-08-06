@@ -32,7 +32,6 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../contracts/scanner.interface.js";
-import { exampleForPathParam } from "../domain/param-inferrer.service.js";
 
 /** Convierte `{x}` o `:x` (Express) a `{{x}}`. La URI ya viene con
  * prefix aplicado desde el scanner; aquí solo normalizamos el formato

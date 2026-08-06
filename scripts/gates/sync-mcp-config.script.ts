@@ -18,7 +18,6 @@
  *   bun run mcp:sync --check    falla si han derivado (es `lint:mcp`)
  */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
 import { MCP_JSON, VSCODE_DIR, VSCODE_MCP_JSON } from "../helpers/root.helper.js";
 
 /** Un servidor MCP, en lo que ambos formatos comparten. */

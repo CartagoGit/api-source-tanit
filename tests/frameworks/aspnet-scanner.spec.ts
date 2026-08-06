@@ -1,5 +1,4 @@
 import { describe, expect, test } from "vitest";
-import { resolve } from "node:path";
 import {
   AspNetProjectScanner,
   AspNetRouteScanner,

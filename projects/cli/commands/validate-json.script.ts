@@ -82,7 +82,7 @@ function walk(items: PostmanItem[], issues: Issue[], path: string): void {
   }
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
   let projectName: string | undefined;
   try {
     const loaded = await loadProject();

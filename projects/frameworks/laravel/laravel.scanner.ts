@@ -353,7 +353,7 @@ export async function parseRoutesFile(
       }
 
       const whereConstraints = captureWhereConstraints(lines, i);
-      const uriWithConstraints = full.replace(/\{([^}]+)\}/g, (whole, name) =>
+      const uriWithConstraints = full.replace(/\{([^}]+)\}/g, (_whole, name) =>
         encodeWithConstraints(name, whereConstraints),
       );
 

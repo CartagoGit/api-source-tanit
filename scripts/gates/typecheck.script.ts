@@ -19,7 +19,6 @@
  *   bun run typecheck core frameworks
  */
 import { spawnSync } from "node:child_process";
-import { resolve } from "node:path";
 
 import { SECTIONS, sectionByName, type ISection } from "./sections.constant.js";
 import { REPO_ROOT } from "../helpers/root.helper.js";

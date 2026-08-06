@@ -17,7 +17,7 @@
  *   bun run lint:naming
  */
 import { readdir } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { join, relative, } from "node:path";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Qué sufijos admite cada carpeta de código. */

@@ -2,13 +2,29 @@
 id: p00037
 title: "p00037 — corrección de hallazgos de auditoría: naming inconsistency, test assertions y CI pipeline"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
 related:
     - p00025
 ---
+
+> **Cerrada 2026-08-07.** Los 14 hallazgos.
+>
+> **Sobre H-12 (linter).** Se probó Biome y se descartó: sobre este
+> repo daba 281 errores de formato en 164 ficheros, casi todos
+> desacuerdos de estilo con código que ya es consistente. Adoptarlo
+> habría reescrito el repo entero para enterrar los cambios reales
+> en el ruido.
+>
+> Sí se revisaron sus hallazgos de `correctness`, y de ahí salió
+> valor: **135 declaraciones muertas** (regexes, helpers y un tipo
+> que ya no usaba nadie, restos de reescrituras anteriores). Se
+> borraron y se activaron `noUnusedLocals` y `noUnusedParameters`
+> en el tsconfig base, que es la herramienta que el proyecto ya
+> tenía y que ya está en el gate. Cero dependencias nuevas.
+
 
 # p00037 — corrección de hallazgos de auditoría: naming inconsistency, test assertions y CI pipeline
 
@@ -29,19 +45,19 @@ bugs funcionales, degradan la calidad percibida y la mantenibilidad:
 | ID | Categoría | Hallazgo | Estado |
 |---|---|---|---|
 | H-01 | Naming | Package se llama `export-to-postman` pero tests hardcodean `postman-exporter` | ✅ Parcial (regex flexibilizado) |
-| H-02 | Naming | Plugin `@postman-exporter/mcp-vertex-plugin` vs paquete raíz `export-to-postman` | 🔴 Pendiente decisión |
+| H-02 | Naming | Plugin vs paquete raíz | ✅ p00025: todo es `expostman` |
 | H-03 | CI/Scripts | `bun run build` sin `--project-root` fallaba con ENOENT | ✅ Corregido (default a example-express) |
 | H-04 | CI/Scripts | `bun run check` no resolvía correctamente el `projectRoot()` en diff | ✅ Corregido |
-| H-05 | Portabilidad | `file:../../../mcp-vertex/...` en plugin package.json | ✅ Corregido (^0.1.0) |
+| H-05 | Portabilidad | `file:` en el plugin | ✅ Restaurado a `file:` — `^0.1.0` daba 404 porque el paquete no está publicado (p00007) |
 | H-06 | Portabilidad | `$schema` apuntando a sibling mcp-vertex | ✅ Eliminado |
-| H-07 | Docs | CONTRIBUTING.md referencia flujos que no existen (`bun run demo`) | 🔴 Pendiente |
-| H-08 | Docs | README.md no documenta los 12 frameworks soportados | 🔴 Pendiente |
+| H-07 | Docs | `bun run demo` inexistente | ✅ Ya no se menciona |
+| H-08 | Docs | README sin los 12 frameworks | ✅ Tabla presente |
 | H-09 | Tests | `validate-package.script.ts` buscaba `@postman-exporter/cli` en node_modules | ✅ Corregido |
-| H-10 | Config | `mcp-vertex.config.json` lista plugins como `auto-plugin-selector`, `cache`, `api`, `browser`, `observability` que no existen en el MCP server | 🔴 Pendiente |
-| H-11 | Deuda técnica | `paths.service.ts` tiene docstrings referenciando "Laravel" 8 veces aunque el proyecto es agnóstico | 🔴 Pendiente |
-| H-12 | Linting | No hay linter de código fuente (ESLint/Biome) configurado en el repo raíz | 🔴 Pendiente |
-| H-13 | Git | No hay `.editorconfig` para consistencia de formato entre editores | 🔴 Pendiente |
-| H-14 | CI | No hay workflow de GitHub Actions para CI/CD | 🔴 Pendiente |
+| H-10 | Config | `mcp-vertex.config.json` lista plugins como `auto-plugin-selector`, `cache`, `api`, `browser`, `observability` que no existen en el MCP server | ✅ Verificado en vivo: 39 plugins cargados, 0 errores |
+| H-11 | Deuda técnica | Docstrings de Laravel en el núcleo agnóstico | ✅ Corregidos los que engañaban; los que explican el porqué histórico se quedan |
+| H-12 | Linting | Sin linter de código fuente | ✅ Resuelto con `noUnusedLocals`/`noUnusedParameters` de TypeScript, no con Biome (ver nota) |
+| H-13 | Git | Sin `.editorconfig` | ✅ Añadido, con valores derivados del código que ya hay |
+| H-14 | CI | Sin CI | ✅ Ya existían `validate.yml` y `release-binaries.yml`, y corren el gate |
 
 ## non-goals
 

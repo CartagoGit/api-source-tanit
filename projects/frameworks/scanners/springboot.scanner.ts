@@ -31,7 +31,6 @@ import type {
   ParsedRoute,
 } from "../../core/contracts/scanner.interface.js";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
 async function isSpringBootProject(projectRoot: string): Promise<boolean> {
   for (const file of ["pom.xml", "build.gradle", "build.gradle.kts"]) {

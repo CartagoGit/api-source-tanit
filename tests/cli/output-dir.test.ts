@@ -14,7 +14,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { join, sep } from "node:path";
 import { tmpdir } from "node:os";
 
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";

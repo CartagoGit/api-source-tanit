@@ -15,7 +15,7 @@
  *   bun run validate:examples
  */
 import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, } from "node:path";
 import { existsSync } from "node:fs";
 
 import { generateWithAllFrameworks } from "../../projects/frameworks/index.js";

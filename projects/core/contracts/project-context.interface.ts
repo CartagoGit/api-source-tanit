@@ -32,10 +32,14 @@ export interface IProjectContext {
 
 /** Subdirectorios convencionales, derivados de la raíz. */
 export interface IProjectDirs {
-  /** `<raíz>/routes` — ficheros de rutas de Laravel. */
+  /**
+   * `<raíz>/routes` — solo lo usa el descubrimiento heredado de
+   * Laravel. Un scanner moderno recibe el `projectRoot` y busca lo
+   * suyo; estos tres campos desaparecen cuando se retire ese camino.
+   */
   readonly routes: string;
-  /** `<raíz>/app` — código de aplicación de Laravel. */
+  /** `<raíz>/app` — ídem, solo para el camino heredado. */
   readonly app: string;
-  /** `<raíz>/app/Http/Requests` — FormRequests de Laravel. */
+  /** `<raíz>/app/Http/Requests` — ídem, solo para el camino heredado. */
   readonly requests: string;
 }

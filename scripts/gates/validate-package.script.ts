@@ -15,7 +15,7 @@
  */
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, } from "node:path";
 import { tmpdir } from "node:os";
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant.js";
 import { PACKAGE_JSON, REPO_ROOT, exampleDir } from "../helpers/root.helper.js";

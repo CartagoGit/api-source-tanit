@@ -36,7 +36,6 @@ import type {
   ParsedRoute,
 } from "../../core/contracts/scanner.interface.js";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
 /**
  * Lee `pyproject.toml` y `requirements.txt` y devuelve true si
@@ -99,7 +98,6 @@ const INCLUDE_RE = /include\s*\(\s*(?:\[([^\]]+)\]|r?['"]([^'"]+)['"])/g;
 /**
  * Decorator `@api_view(['GET', 'POST'])` para FBV de DRF.
  */
-const API_VIEW_RE = /@api_view\s*\(\s*\[([^\]]+)\]\s*\)/;
 
 export class DjangoRouteScanner implements IRouteScanner {
   readonly framework = "django" as const;
@@ -665,7 +663,7 @@ async function findSerializerDef(
       nextClass > 0 ? afterCls.slice(0, nextClass) : afterCls;
     const fields: IValidationSpec[] = [];
     // 1) `fields = [...]` en Meta.
-    const metaFields = /Meta\s*:[^]*?fields\s*=\s*\[([^\]]+)\]/.exec(block);
+    const metaFields = /Meta\s*:[\s\S]*?fields\s*=\s*\[([^\]]+)\]/.exec(block);
     let fieldNamesFromMeta: string[] = [];
     if (metaFields?.[1]) {
       fieldNamesFromMeta = metaFields[1]

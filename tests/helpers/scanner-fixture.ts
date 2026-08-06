@@ -11,7 +11,7 @@
  * los directorios intermedios se crean solos.
  */
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, } from "node:path";
 import { tmpdir } from "node:os";
 import type { FrameworkId, IProjectMatch } from "../../projects/core/contracts/scanner.interface";
 import { scannerBundleFor } from "../../projects/frameworks/framework.registry";

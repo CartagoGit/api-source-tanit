@@ -25,7 +25,7 @@
  *   bun run lint:proposals
  */
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, join, relative, } from "node:path";
 import { PROPOSALS_DIR, REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Estados válidos y su carpeta. Coinciden 1:1 por diseño. */

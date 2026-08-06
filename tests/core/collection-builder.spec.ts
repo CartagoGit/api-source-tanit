@@ -5,8 +5,6 @@ import {
 } from "../../projects/core/domain/collection-builder.service";
 import type {
   EndpointSpec,
-  PostmanCollection,
-  PostmanItem,
 } from "../../projects/core/contracts/postman.interface";
 import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface";
 
