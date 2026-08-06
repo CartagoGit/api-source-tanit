@@ -72,6 +72,12 @@ import {
 } from "./scanners/aspnet.scanner";
 
 import type { DiscoveryRegistry } from "./discovery.orchestrator";
+import type {
+  FrameworkId,
+  IProjectScanner,
+  IRouteScanner,
+  IValidationSpecProvider,
+} from "../contract/scanner.interface";
 
 /** Registry canónico con los 12 frameworks soportados. */
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
@@ -122,4 +128,42 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
 /** Helper que devuelve un `DiscoveryOrchestrator` con el registry canónico. */
 export function defaultOrchestrator(): DiscoveryOrchestrator {
   return new DiscoveryOrchestrator(DEFAULT_REGISTRY);
+}
+
+/**
+ * IDs de los frameworks soportados, derivados del propio registry.
+ *
+ * Cualquier consumidor que necesite iterar frameworks (el tool `test`,
+ * los smoke runners, la documentación generada) debe leer esta lista en
+ * lugar de mantener su propia copia: una lista paralela se desincroniza
+ * en cuanto se añade un scanner.
+ */
+export const SUPPORTED_FRAMEWORKS: ReadonlyArray<FrameworkId> =
+  DEFAULT_REGISTRY.detectors.map((d) => d.framework);
+
+/** Trío de colaboradores de un framework, o `null` si no está soportado. */
+export interface IScannerBundle {
+  readonly projectScanner: IProjectScanner;
+  readonly routeScanner: IRouteScanner;
+  readonly validationProvider: IValidationSpecProvider | null;
+}
+
+/**
+ * Devuelve los colaboradores registrados para un framework.
+ *
+ * Sustituye a la carga por reflexión sobre nombres de clase: adivinar
+ * `FastapiProjectScanner` a partir del id `fastapi` fallaba en la mitad
+ * de los frameworks (`FastApi`, `NestJs`, `NextJs`, `SpringBoot`,
+ * `AspNet`, `OpenApi`) sin que nada lo detectase en compilación.
+ */
+export function scannerBundleFor(framework: FrameworkId): IScannerBundle | null {
+  const projectScanner = DEFAULT_REGISTRY.detectors.find((d) => d.framework === framework);
+  const routeScanner = DEFAULT_REGISTRY.routeScanners.find((r) => r.framework === framework);
+  if (!projectScanner || !routeScanner) return null;
+  return {
+    projectScanner,
+    routeScanner,
+    validationProvider:
+      DEFAULT_REGISTRY.validationProviders.find((v) => v.framework === framework) ?? null,
+  };
 }

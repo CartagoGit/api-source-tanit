@@ -37,90 +37,80 @@ import {
 } from "../contract/postman-exporter.interface";
 import { normalizeCwd, runBunCommand } from "../helpers/runner.helper";
 import { runSmoke } from "../helpers/smoke-runner.helper";
+import {
+  SUPPORTED_FRAMEWORKS,
+  scannerBundleFor,
+} from "../../../../../service/scanner-registry";
 
 const TOOL_ID = "test";
 
-/** Map framework → nombre base del fixture en `tests/smoke-fixtures/`. */
-const FRAMEWORK_TO_SMOKE_FIXTURE: Record<string, string> = {
-  laravel: "laravel-mini",
-  symfony: "symfony-mini",
-  express: "express-mini",
-  fastapi: "fastapi-mini",
-  nestjs: "nestjs-mini",
-  django: "django-mini",
-  openapi: "openapi-mini",
-  flask: "flask-mini",
-  nextjs: "nextjs-mini",
-  gin: "gin-mini",
-  springboot: "springboot-mini",
-  aspnet: "aspnet-mini",
-};
+/**
+ * Raíz del mini-fixture de un framework. La convención es estable:
+ * `tests/smoke-fixtures/<framework>-mini/`.
+ */
+function smokeFixtureRoot(workspaceRoot: string, framework: string): string {
+  return `${workspaceRoot}/tests/smoke-fixtures/${framework}-mini`;
+}
+
+/** Resultado compacto de un smoke: cuántas rutas casaron, o por qué no. */
+type SmokeOutcome =
+  | { ok: true; routeCount: number }
+  | { ok: false; detail: string };
 
 /**
- * Carga dinámicamente el par (projectScanner, routeScanner) para un
- * framework. Cada scanner exporta sus propias clases siguiendo la
- * convención `<Framework>ProjectScanner` y `<Framework>Scanner` (o
- * `<Framework>RouteScanner` para los frameworks donde el scanner de
- * rutas tiene un nombre más específico, e.g. Django).
+ * Corre el smoke de un framework contra su mini-fixture.
  *
- * Devuelve `null` si el framework no tiene scanners exportados o si
- * la convención no se cumple (e.g. fixture no implementado todavía).
+ * Los colaboradores salen del registry (`scannerBundleFor`), que es la
+ * única fuente de verdad sobre qué frameworks existen.
  */
-async function loadScannerPair(
+async function smokeFramework(
   framework: string,
-): Promise<null | {
-  projectScanner: {
-    resolve(projectRoot: string): Promise<{ projectRoot: string; framework: string }>;
-  };
-  routeScanner: {
-    scan(match: { projectRoot: string }): Promise<ReadonlyArray<unknown>>;
-  };
-}> {
-  const cap = framework[0]?.toUpperCase() + framework.slice(1);
-  const projectName = `${cap}ProjectScanner`;
-  const routeCandidates = [`${cap}Scanner`, `${cap}RouteScanner`];
-  try {
-    const mod = (await import(
-      `../../../../../service/scanners/${framework}.scanner`
-    )) as Record<string, unknown>;
-    const ProjectScannerClass = mod[projectName] as
-      | (new () => {
-          resolve(
-            projectRoot: string,
-          ): Promise<{ projectRoot: string; framework: string }>;
-        })
-      | undefined;
-    let RouteScannerClass: (new () => {
-      scan(match: {
-        projectRoot: string;
-      }): Promise<ReadonlyArray<unknown>>;
-    }) | null = null;
-    for (const candidate of routeCandidates) {
-      const cls = mod[candidate] as
-        | (new () => {
-            scan(match: { projectRoot: string }): Promise<ReadonlyArray<unknown>>;
-          })
-        | undefined;
-      if (cls) {
-        RouteScannerClass = cls;
-        break;
-      }
-    }
-    if (!ProjectScannerClass || !RouteScannerClass) return null;
-    return {
-      projectScanner: new ProjectScannerClass(),
-      routeScanner: new RouteScannerClass(),
-    };
-  } catch (err) {
-    // Re-throw con contexto para que el lado resol-reportable del step
-    // muestre la causa real. Antes lo tragábamos y devolvíamos `null`,
-    // dejando al usuario sin pistas.
-    throw new Error(
-      `no se pudo cargar service/scanners/${framework}.scanner: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
-    );
+  fixtureRoot: string,
+): Promise<SmokeOutcome> {
+  const bundle = scannerBundleFor(framework);
+  if (!bundle) {
+    return { ok: false, detail: `${framework}: no registrado en el scanner registry` };
   }
+  try {
+    const match = await bundle.projectScanner.resolve(fixtureRoot);
+    const result = await runSmoke({
+      framework,
+      fixtureRoot,
+      scanner: bundle.routeScanner,
+      match,
+    });
+    return result.ok
+      ? { ok: true, routeCount: result.expectedCount }
+      : { ok: false, detail: formatSmokeDetail(result) };
+  } catch (err) {
+    return {
+      ok: false,
+      detail: `${framework}: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/**
+ * Igual que `smokeFramework` pero devuelve los argumentos de `pushStep`,
+ * para el caso de un único framework pedido explícitamente.
+ */
+async function runFrameworkSmoke(
+  framework: string,
+  workspaceRoot: string,
+): Promise<[string, boolean, number, number, string, string | undefined]> {
+  const start = Date.now();
+  const fixtureRoot = smokeFixtureRoot(workspaceRoot, framework);
+  const outcome = await smokeFramework(framework, fixtureRoot);
+  return outcome.ok
+    ? [
+        `smoke:${framework}`,
+        true,
+        0,
+        Date.now() - start,
+        `${outcome.routeCount} routes pass`,
+        undefined,
+      ]
+    : [`smoke:${framework}`, false, 1, Date.now() - start, "smoke falló", outcome.detail];
 }
 
 /**
@@ -257,106 +247,34 @@ export function buildTestToolRegistration(
 
           // Step 2: smoke in-process por framework (si se pide).
           if (args.framework) {
-            const smokeStart = Date.now();
-            const fixtureName = FRAMEWORK_TO_SMOKE_FIXTURE[args.framework];
-            if (!fixtureName) {
-              pushStep(
-                `smoke:${args.framework}`,
-                false,
-                1,
-                Date.now() - smokeStart,
-                "framework no soportado",
-                `framework "${args.framework}" no está en FRAMEWORK_TO_SMOKE_FIXTURE`,
-              );
-            } else {
-              const fixtureRoot = `${workspaceRoot}/tests/smoke-fixtures/${fixtureName}`;
-              const scannerPair = await loadScannerPair(args.framework);
-              if (!scannerPair) {
-                pushStep(
-                  `smoke:${args.framework}`,
-                  false,
-                  1,
-                  Date.now() - smokeStart,
-                  "scanner no disponible",
-                  `no se encontró el módulo service/scanners/${args.framework}.scanner o sus clases ProjectScanner/Scanner`,
-                );
-              } else {
-                try {
-                  const match = await scannerPair.projectScanner.resolve(
-                    fixtureRoot,
-                  );
-                  const result = await runSmoke({
-                    framework: args.framework,
-                    fixtureRoot,
-                    scanner: scannerPair.routeScanner,
-                    match,
-                  });
-                  const summary = result.ok
-                    ? `${result.expectedCount} routes pass`
-                    : `missing=${result.missing.length} unexpected=${result.unexpected.length}`;
-                  const detail = result.ok
-                    ? undefined
-                    : formatSmokeDetail(result);
-                  pushStep(
-                    `smoke:${args.framework}`,
-                    result.ok,
-                    result.ok ? 0 : 1,
-                    result.durationMs,
-                    summary,
-                    detail,
-                  );
-                } catch (err) {
-                  pushStep(
-                    `smoke:${args.framework}`,
-                    false,
-                    1,
-                    Date.now() - smokeStart,
-                    "smoke crashed",
-                    err instanceof Error ? err.message : String(err),
-                  );
-                }
-              }
-            }
+            pushStep(...(await runFrameworkSmoke(args.framework, workspaceRoot)));
           }
 
-          // Step 3: smoke in-process de todos los mini-fixtures registrados.
-          // Sustituye el spawn de `bun test tests/e2e/` que creaba decenas de
-          // subprocesos bun paralelos y reventaba la RAM del host.
+          // Step 3: smoke in-process de TODOS los mini-fixtures registrados.
+          // Sustituye el spawn de `bun test tests/e2e/`, que creaba decenas
+          // de subprocesos bun en paralelo y reventaba la RAM del host.
           {
             const smokeAllStart = Date.now();
-            const FRAMEWORKS_WITH_MINI = [
-              "laravel", "symfony", "express", "fastapi", "django",
-              "nestjs", "flask", "nextjs", "gin", "springboot", "aspnet", "openapi",
-            ];
-            let passed = 0;
-            let failed = 0;
-            const failDetails: string[] = [];
             const { existsSync } = await import("node:fs");
-            for (const fw of FRAMEWORKS_WITH_MINI) {
-              const fixtureName = FRAMEWORK_TO_SMOKE_FIXTURE[fw];
-              if (!fixtureName) continue;
-              const fixtureRoot = `${workspaceRoot}/tests/smoke-fixtures/${fixtureName}`;
+            const failDetails: string[] = [];
+            let passed = 0;
+
+            for (const framework of SUPPORTED_FRAMEWORKS) {
+              const fixtureRoot = smokeFixtureRoot(workspaceRoot, framework);
               if (!existsSync(fixtureRoot)) continue;
-              try {
-                const pair = await loadScannerPair(fw);
-                if (!pair) { failed++; failDetails.push(`${fw}: no scanner`); continue; }
-                const match = await pair.projectScanner.resolve(fixtureRoot);
-                const result = await runSmoke({ framework: fw, fixtureRoot, scanner: pair.routeScanner, match });
-                if (result.ok) { passed++; } else { failed++; failDetails.push(formatSmokeDetail(result)); }
-              } catch (err) {
-                failed++;
-                failDetails.push(`${fw}: ${err instanceof Error ? err.message : String(err)}`);
-              }
+              const outcome = await smokeFramework(framework, fixtureRoot);
+              if (outcome.ok) passed += 1;
+              else failDetails.push(outcome.detail);
             }
-            const allOk = failed === 0;
-            const summaryMsg = `${passed} frameworks pass${failed > 0 ? `, ${failed} fail` : ""}`;
+
+            const allOk = failDetails.length === 0;
             pushStep(
               "test:smoke-all",
               allOk,
               allOk ? 0 : 1,
               Date.now() - smokeAllStart,
-              summaryMsg,
-              failDetails.length > 0 ? failDetails.join("\n") : undefined,
+              `${passed} frameworks pass${allOk ? "" : `, ${failDetails.length} fail`}`,
+              allOk ? undefined : failDetails.join("\n"),
             );
           }
 

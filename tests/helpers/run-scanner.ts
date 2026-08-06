@@ -89,15 +89,17 @@ async function _runPipeline(
   let withFR: number;
   let withoutFR: number;
 
-  if (match && scanner && match.framework !== "laravel") {
-    // Camino A: framework detectado por el orchestrator (OpenAPI, Express, FastAPI…)
+  if (match && scanner) {
+    // Camino A: el scanner del framework detectado (incluido Laravel).
     const result = await buildSpecsFromScanner(scanner, match, validation);
-    specs = result.specs;
+    const { manualEndpoints } = await loadProject();
+    const { mergeWithManual } = await import("../../service/endpoint-discovery.service");
+    specs = mergeWithManual([...result.specs], [...manualEndpoints]);
     routeCount = result.routes.length;
     withFR = result.withFormRequest;
     withoutFR = result.withoutFormRequest;
   } else {
-    // Camino B: Laravel legacy (o zero-config)
+    // Camino B: sin match → heurística zero-config legacy sobre routes/.
     const { config, manualEndpoints } = await loadProject();
     const { discoverEndpoints } = await import("../../service/endpoint-discovery.service");
     const discovered = await discoverEndpoints(config, manualEndpoints);

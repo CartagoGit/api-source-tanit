@@ -193,7 +193,6 @@ Route::get('/health', fn() => ['ok' => true]);
     await mkdir(join(dir, "app/Http/Controllers"), { recursive: true });
     await mkdir(join(dir, "app/Http/Requests"), { recursive: true });
     await mkdir(join(dir, "routes"), { recursive: true });
-    await mkdir(join(dir, "artisan"), { recursive: true }).catch(() => undefined);
     await copyFile(
       join(fixtureRoot, "app/Http/Controllers/UserController.php"),
       join(dir, "app/Http/Controllers/UserController.php"),

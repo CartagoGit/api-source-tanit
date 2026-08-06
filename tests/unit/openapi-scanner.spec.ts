@@ -54,14 +54,19 @@ describe("OpenAPI scanner", () => {
     expect(names).toContain("email");
   });
 
-  test("campo email tiene type 'email' desde format: email", async () => {
+  // `IValidationSpec` separa el tipo lógico del formato semántico:
+  // `format: email` en el spec OpenAPI es un string con formato email,
+  // no un tipo "email" (que no existe en el contrato).
+  test("campo email es string con format 'email'", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
     const routes = await new OpenApiScanner().scan(match);
     const post = routes.find((r) => r.method === "POST");
-    if (!post) return;
-    const result = await new OpenApiValidationProvider().resolve(post, match);
+    expect(post).toBeDefined();
+    const result = await new OpenApiValidationProvider().resolve(post!, match);
     const email = result.fields.find((f) => f.fieldName === "email");
-    expect(email?.type).toBe("email");
+    expect(email).toBeDefined();
+    expect(email?.type).toBe("string");
+    expect(email?.format).toBe("email");
   });
 
   test("comprehensive: detecta >20 rutas con $ref schemas y parámetros", async () => {

@@ -25,7 +25,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -120,7 +120,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
     // 1) YAML routes (config/routes.yaml + config/routes/*.yaml).
     const topRoute = join(projectRoot, "config", "routes.yaml");
     if (existsSync(topRoute)) {
-      out.push(...(await parseRoutesYamlFile(topRoute, "config/routes.yaml")));
+      out.push(...(await parseRoutesYamlFile(topRoute, "config/routes.yaml", projectRoot)));
     }
     const routesDir = join(projectRoot, "config", "routes");
     if (existsSync(routesDir)) {
@@ -134,7 +134,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
         if (!entry.endsWith(".yaml") && !entry.endsWith(".yml")) continue;
         const rel = `config/routes/${entry}`;
         const abs = join(routesDir, entry);
-        out.push(...(await parseRoutesYamlFile(abs, rel)));
+        out.push(...(await parseRoutesYamlFile(abs, rel, projectRoot)));
       }
     }
     // 2) PHP attributes en src/Controller/**.
@@ -142,8 +142,42 @@ export class SymfonyRouteScanner implements IRouteScanner {
     if (existsSync(controllerDir)) {
       out.push(...(await parseControllerAttributes(controllerDir, projectRoot)));
     }
-    return out;
+    // Un mismo endpoint puede llegar por dos vías: declarado en YAML y
+    // además como `#[Route]` en el controller (o vía `resource:` que ya
+    // apunta al mismo fichero). Symfony lo registra una sola vez.
+    return dedupeRoutes(out);
   }
+}
+
+/**
+ * Colapsa rutas equivalentes (mismo método y misma URI salvo barra final)
+ * quedándose con la más informativa: la que viene de un `#[Route]` en el
+ * controller trae `lineNumber` y el nombre del método, que es lo que el
+ * validation provider necesita para leer los `#[Assert\...]`.
+ */
+function dedupeRoutes(routes: ParsedRoute[]): ParsedRoute[] {
+  const byKey = new Map<string, ParsedRoute>();
+  for (const route of routes) {
+    const uri = normalizeSymfonyUri(route.uri);
+    const key = `${route.method} ${uri}`;
+    const current = byKey.get(key);
+    const candidate: ParsedRoute = { ...route, uri, rawUri: normalizeSymfonyUri(route.rawUri) };
+    if (!current || scoreRoute(candidate) > scoreRoute(current)) {
+      byKey.set(key, candidate);
+    }
+  }
+  return [...byKey.values()];
+}
+
+/** Quita la barra final (`/users/` y `/users` son la misma ruta). */
+function normalizeSymfonyUri(uri: string): string {
+  const collapsed = uri.replace(/\/+/g, "/");
+  return collapsed.length > 1 ? collapsed.replace(/\/$/, "") : collapsed;
+}
+
+/** Más alto = más información utilizable aguas abajo. */
+function scoreRoute(route: ParsedRoute): number {
+  return (route.lineNumber > 0 ? 2 : 0) + (route.description ? 1 : 0);
 }
 
 /**
@@ -162,6 +196,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
 async function parseRoutesYamlFile(
   absPath: string,
   relPath: string,
+  projectRoot: string,
 ): Promise<ParsedRoute[]> {
   let raw: string;
   try {
@@ -202,9 +237,11 @@ async function parseRoutesYamlFile(
     } else if (resource && /\.\/.*Controller.*\.php/.test(resource)) {
       // Apunta a un controller: parseamos sus attributes.
       // Resolución: ../../src/Controller/... (asumimos config/ relativo)
-      const ctrlRel = resource.replace(/^(\.\.\/)+/, "src/").replace(/^\.\//, "src/");
       const ctrlAbs = join(absPath, "..", "..", resource);
-      out.push(...(await parseControllerAttributes(ctrlAbs, relPath, prefix)));
+      // OJO: el tercer argumento es el projectRoot, no el YAML de origen.
+      // Pasar `relPath` aquí dejaba `sourceFile` como ruta absoluta y el
+      // validation provider no encontraba nunca el controller.
+      out.push(...(await parseControllerAttributes(ctrlAbs, projectRoot, prefix)));
     }
   }
   return out;
@@ -224,6 +261,18 @@ function parseMethods(v: unknown): string[] {
 }
 
 /**
+ * Ruta relativa al proyecto en formato POSIX.
+ *
+ * Se resuelven ambos lados a absoluto antes de comparar: el projectRoot
+ * puede llegar como `./algo` y una comparación textual con `startsWith`
+ * dejaba `sourceFile` en absoluto, con lo que el validation provider
+ * construía `join(projectRoot, sourceFile)` y no encontraba el fichero.
+ */
+function toProjectRelative(absPath: string, projectRoot: string): string {
+  return relative(resolve(projectRoot), resolve(absPath)).split(sep).join("/");
+}
+
+/**
  * Recorre src/Controller recursivamente y extrae `#[Route(...)]`
  * de cada método público.
  */
@@ -235,10 +284,13 @@ async function parseControllerAttributes(
   const out: ParsedRoute[] = [];
   const isFile = controllerPath.endsWith(".php");
   if (isFile) {
-    const rel = controllerPath.startsWith(projectRoot)
-      ? controllerPath.slice(projectRoot.length + 1).split(sep).join("/")
-      : controllerPath;
-    out.push(...(await parseSingleController(controllerPath, rel, prefix)));
+    out.push(
+      ...(await parseSingleController(
+        controllerPath,
+        toProjectRelative(controllerPath, projectRoot),
+        prefix,
+      )),
+    );
     return out;
   }
   // Directorio: recorrido recursivo.
@@ -251,10 +303,9 @@ async function parseControllerAttributes(
   for (const entry of entries) {
     const child = join(controllerPath, entry);
     if (entry.endsWith(".php")) {
-      const rel = child.startsWith(projectRoot)
-        ? child.slice(projectRoot.length + 1).split(sep).join("/")
-        : child;
-      out.push(...(await parseSingleController(child, rel, prefix)));
+      out.push(
+        ...(await parseSingleController(child, toProjectRelative(child, projectRoot), prefix)),
+      );
     } else if (!entry.includes(".")) {
       out.push(...(await parseControllerAttributes(child, projectRoot, prefix)));
     }

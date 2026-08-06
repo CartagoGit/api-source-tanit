@@ -37,8 +37,9 @@ describe("Laravel — comprehensive fixture", () => {
 
   test("encuentra todos los endpoints por method+uri", async () => {
     const { collection } = await runGenerate("laravel-comprehensive");
-    // Health
-    expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
+    // Health — el prefijo /api lo aplica el RouteServiceProvider al
+    // registrar routes/api.php, aunque el código no lo escriba.
+    expect(findEndpoint(collection, "GET", "/api/health")).not.toBeNull();
     // Users — apiResource
     expect(findEndpoint(collection, "GET", "/api/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/users")).not.toBeNull();

@@ -16,7 +16,10 @@ import {
   attachLoginAutoToken,
   buildCollection,
 } from "../service/collection-builder.service.js";
-import { discoverEndpoints } from "../service/endpoint-discovery.service.js";
+import {
+  discoverEndpoints,
+  mergeWithManual,
+} from "../service/endpoint-discovery.service.js";
 import { enrichCatalogWithFormRequests } from "../service/catalog-enricher.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import {
@@ -129,9 +132,11 @@ async function discoverEndpointsUniversal(): Promise<{
     process.env.POSTMAN_PROJECT_ROOT ?? ".",
   );
 
-  // Camino A: framework NO-Laravel → adapter directo (OpenAPI, etc.)
-  if (match && scanner && match.framework !== "laravel") {
-    console.log(`→ Orchestrator: framework=${match.framework} (no Laravel)`);
+  // Camino A: el scanner del framework detectado. Vale para TODOS los
+  // frameworks, Laravel incluido: su scanner expande `Route::resource` /
+  // `Route::apiResource`, cosa que la heurística legacy no hace.
+  if (match && scanner) {
+    console.log(`→ Orchestrator: framework=${match.framework}`);
     const result = await buildSpecsFromScanner(scanner, match, validation);
     // Construir un ProjectConfig mínimo en memoria.
     const syntheticConfig = await loadProject();
@@ -158,25 +163,28 @@ async function discoverEndpointsUniversal(): Promise<{
         /* usa defaults */
       }
     }
+    // Los overrides manuales aplican a cualquier framework, no solo a
+    // Laravel: `endpoints.constant.ts` corrige o amplía lo deducido.
+    const merged = mergeWithManual(
+      [...result.specs],
+      [...syntheticConfig.manualEndpoints],
+    );
+
     return {
-      specs: result.specs,
+      specs: merged,
       routes: result.routes.map((r) => ({ method: r.method, uri: r.uri })),
       withFormRequest: result.withFormRequest,
       withoutFormRequest: result.withoutFormRequest,
       config: syntheticConfig.config,
       configPath: syntheticConfig.configPath,
       endpointsPath: syntheticConfig.endpointsPath,
-      manualEndpoints: [],
+      manualEndpoints: syntheticConfig.manualEndpoints,
       origin: "orchestrator",
     };
   }
 
-  // Camino B: legacy Laravel (incluye zero-config si no hay config constant).
-  console.log(
-    match
-      ? `→ Orchestrator: framework=${match.framework} → legacy Laravel flow`
-      : "→ Orchestrator: no match → legacy Laravel flow (zero-config)",
-  );
+  // Camino B: sin match del orchestrator → heurística zero-config legacy.
+  console.log("→ Orchestrator: sin match → flujo zero-config legacy.");
   const { config, manualEndpoints, configPath, endpointsPath } =
     await loadProject();
   console.log(`→ Config host: ${configPath}`);

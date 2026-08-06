@@ -17,6 +17,7 @@
  * catálogo para casos especiales.
  */
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { stripComments } from "./route-parser.service.js";
 import { fromProjectRelative, requestsDir } from "./paths.service.js";
 
@@ -201,8 +202,13 @@ function parseRulesArray(block: string): { rules: Record<string, string[]>; unkn
   return { rules, unknown };
 }
 
-export async function parseFormRequest(relPath: string): Promise<FormRequestRules> {
-  const abs = fromProjectRelative(relPath);
+export async function parseFormRequest(
+  relPath: string,
+  projectRootOverride?: string,
+): Promise<FormRequestRules> {
+  const abs = projectRootOverride
+    ? join(projectRootOverride, relPath)
+    : fromProjectRelative(relPath);
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
@@ -460,13 +466,25 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
 export async function findFormRequestForController(
   controllerClass: string,
   methodName: string,
+  projectRootOverride?: string,
 ): Promise<string | null> {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
   const { toProjectRelative } = await import("./paths.service.js");
 
-  const base = requestsDir();
+  // `projectRootOverride` es el camino preferente: mantiene el provider
+  // reentrante (dos proyectos escaneados en el mismo proceso no se pisan).
+  // Sin él caemos al singleton de `paths.service`, que resuelve la raíz
+  // una única vez por proceso desde POSTMAN_PROJECT_ROOT / --project-root.
+  const base = projectRootOverride
+    ? path.join(projectRootOverride, "app", "Http", "Requests")
+    : requestsDir();
   if (!base) return null;
+
+  const toRelative = (abs: string): string =>
+    projectRootOverride
+      ? path.relative(projectRootOverride, abs).split(path.sep).join("/")
+      : toProjectRelative(abs);
 
   const ctrlSegs = controllerClass.split("\\").filter(Boolean);
   // App Http Controllers [Sub?] NameController
@@ -535,7 +553,7 @@ export async function findFormRequestForController(
     const byClass = await scanDir(root);
     for (const name of candidateClassNames) {
       const abs = byClass.get(name);
-      if (abs) return toProjectRelative(abs);
+      if (abs) return toRelative(abs);
     }
   }
   return null;

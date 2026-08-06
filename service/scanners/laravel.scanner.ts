@@ -411,15 +411,19 @@ export class LaravelFormRequestValidationProvider
       "../form-request-parser.service.js"
     );
 
+    // El projectRoot viene del match, no del singleton de paths.service:
+    // así el provider funciona sobre cualquier proyecto sin depender de
+    // POSTMAN_PROJECT_ROOT y dos escaneos en el mismo proceso no se pisan.
     const rel = await findFormRequestForController(
       _route.controllerClass,
       _route.actionName,
+      _match.projectRoot,
     );
     if (!rel) return { endpointKey, fields: [] };
 
     let rules;
     try {
-      rules = await parseFormRequest(rel);
+      rules = await parseFormRequest(rel, _match.projectRoot);
     } catch {
       return { endpointKey, fields: [] };
     }

@@ -288,8 +288,12 @@ async function routeToSpec(
 /**
  * Fusiona specs auto-descubiertos con un catálogo manual opcional.
  * El manual gana en method+uri normalizado (name, body, folder, description).
+ *
+ * Exportado porque los overrides manuales no son una cosa de Laravel:
+ * cualquier proyecto puede declarar un `endpoints.constant.ts` para
+ * corregir o ampliar lo que el scanner deduce.
  */
-function mergeWithManual(
+export function mergeWithManual(
   auto: EndpointSpec[],
   manual: EndpointSpec[],
 ): EndpointSpec[] {

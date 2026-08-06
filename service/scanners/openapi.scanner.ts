@@ -254,15 +254,57 @@ export function parseYamlLite(src: string): unknown {
     if (sq) return sq[1] ?? "";
     const dq = s.match(/^"(.*)"$/);
     if (dq) return dq[1] ?? "";
-    // Inline array [a, b, c]
+    // Inline array (flow sequence): [a, b, c]
     if (s.startsWith("[") && s.endsWith("]")) {
       const inner = s.slice(1, -1).trim();
       if (inner === "") return [];
       const items = splitTopLevelCsv(inner);
       return items.map((it) => parseScalar(it.trim()));
     }
+    // Inline map (flow mapping): { type: string, format: email }.
+    // Muy habitual en specs OpenAPI escritos a mano para properties y
+    // parameters. Sin esto, todo el schema se quedaba como literal y los
+    // campos salían con `type: "any"`.
+    if (s.startsWith("{") && s.endsWith("}")) {
+      const inner = s.slice(1, -1).trim();
+      const obj: Record<string, unknown> = {};
+      if (inner === "") return obj;
+      for (const entry of splitTopLevelCsv(inner)) {
+        const sep = findFlowKeySeparator(entry);
+        if (sep === -1) continue;
+        const key = unquoteYamlKey(entry.slice(0, sep).trim());
+        if (!key) continue;
+        obj[key] = parseScalar(entry.slice(sep + 1).trim());
+      }
+      return obj;
+    }
     // Anchors / aliases no se soportan; devolver literal.
     return s;
+  }
+
+  /**
+   * Índice del `:` que separa key y valor en una entrada de flow mapping.
+   * Ignora los `:` dentro de quotes o de `[]`/`{}` anidados, para no
+   * partir por el `:` de `{ default: { a: 1 } }` ni por el de una URL.
+   */
+  function findFlowKeySeparator(entry: string): number {
+    let depth = 0;
+    let inString: string | null = null;
+    for (let i = 0; i < entry.length; i++) {
+      const c = entry[i];
+      if (inString) {
+        if (c === inString) inString = null;
+        continue;
+      }
+      if (c === "'" || c === '"') {
+        inString = c;
+        continue;
+      }
+      if (c === "[" || c === "{") depth++;
+      else if (c === "]" || c === "}") depth--;
+      else if (c === ":" && depth === 0) return i;
+    }
+    return -1;
   }
 
   /**

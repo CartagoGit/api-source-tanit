@@ -10,8 +10,13 @@ use App\Http\Controllers\AuthController;
 | API Routes (comprehensive fixture)
 |--------------------------------------------------------------------------
 |
+| Este archivo modela un `routes/api.php` REAL: el prefijo `/api` lo
+| aplica el RouteServiceProvider al registrar el archivo, NO se declara
+| aquí. Por eso las URIs finales llevan `/api` aunque el código no lo
+| escriba.
+|
 | Health
-|   GET    /health
+|   GET    /api/health
 |
 | Users — apiResource (5 rutas RESTful JSON)
 |   GET    /api/users
@@ -34,7 +39,7 @@ use App\Http\Controllers\AuthController;
 | Orders — action
 |   POST   /api/orders/{id}/cancel
 |
-| Auth — explicit
+| Auth — explicit, bajo un grupo con prefijo propio
 |   POST   /api/auth/login
 |   POST   /api/auth/refresh
 |   POST   /api/auth/logout
@@ -43,20 +48,18 @@ use App\Http\Controllers\AuthController;
 
 Route::get('/health', fn () => response()->json(['ok' => true]));
 
-Route::prefix('api')->group(function () {
-    // Users
-    Route::apiResource('users', UserController::class);
-    Route::put('/users/{id}/address', [UserController::class, 'updateAddress']);
-    Route::get('/users/{id}/orders', [UserController::class, 'userOrders']);
+// Users
+Route::apiResource('users', UserController::class);
+Route::put('/users/{id}/address', [UserController::class, 'updateAddress']);
+Route::get('/users/{id}/orders', [UserController::class, 'userOrders']);
 
-    // Orders
-    Route::apiResource('orders', OrderController::class);
-    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
+// Orders
+Route::apiResource('orders', OrderController::class);
+Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
 
-    // Auth
-    Route::prefix('auth')->group(function () {
-        Route::post('/login', [AuthController::class, 'login']);
-        Route::post('/refresh', [AuthController::class, 'refresh']);
-        Route::post('/logout', [AuthController::class, 'logout']);
-    });
+// Auth
+Route::prefix('auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });

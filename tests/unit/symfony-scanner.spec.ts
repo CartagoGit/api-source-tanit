@@ -39,22 +39,48 @@ describe("Symfony scanner", () => {
     expect(show).toBeDefined();
   });
 
-  test("comprehensive: detecta >15 rutas con prefijos de controller class", async () => {
+  test("comprehensive: detecta las 14 rutas con prefijos de controller class", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = await new SymfonyRouteScanner().scan(match);
-    expect(routes.length).toBeGreaterThanOrEqual(15);
+    expect(routes.length).toBe(14);
   });
 
-  test("validation provider resuelve #[Assert\\NotBlank] para POST", async () => {
+  test("no duplica endpoints declarados a la vez en YAML y en #[Route]", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = await new SymfonyRouteScanner().scan(match);
-    const post = routes.find((r) => r.method === "POST");
-    if (!post) return;
+    const keys = routes.map((r) => `${r.method} ${r.uri}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  test("sourceFile es siempre relativo al proyecto", async () => {
+    const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
+    const routes = await new SymfonyRouteScanner().scan(match);
+    for (const route of routes) {
+      expect(route.sourceFile.startsWith("/")).toBe(false);
+      expect(route.sourceFile).not.toContain("symfony-comprehensive");
+    }
+  });
+
+  test("validation provider resuelve #[Assert\\NotBlank] para POST /users", async () => {
+    const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
+    const routes = await new SymfonyRouteScanner().scan(match);
+    const post = routes.find((r) => r.method === "POST" && r.uri === "/users");
+    expect(post).toBeDefined();
     const provider = new SymfonyAttributesValidationProvider();
-    const result = await provider.resolve(post, match);
-    expect(result.fields.length).toBeGreaterThan(0);
+    const result = await provider.resolve(post!, match);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
     expect(names).toContain("email");
+    expect(names).toContain("age");
+    expect(names).toContain("role");
+  });
+
+  test("validation provider resuelve los Assert del login (otro controller)", async () => {
+    const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
+    const routes = await new SymfonyRouteScanner().scan(match);
+    const login = routes.find((r) => r.method === "POST" && r.uri === "/api/auth/login");
+    expect(login).toBeDefined();
+    const result = await new SymfonyAttributesValidationProvider().resolve(login!, match);
+    expect(result.fields.map((f) => f.fieldName)).toEqual(["email", "password"]);
   });
 });

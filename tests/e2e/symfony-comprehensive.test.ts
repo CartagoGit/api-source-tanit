@@ -20,7 +20,15 @@ import {
 describe("Symfony — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {
     const { metrics } = await runGenerate("symfony-comprehensive");
-    expect(metrics.routes).toBeGreaterThan(15);
+    // 14 endpoints únicos: los declarados en YAML y los declarados con
+    // #[Route] son los MISMOS, y Symfony los registra una sola vez.
+    expect(metrics.routes).toBe(14);
+  });
+
+  test("no exporta endpoints duplicados", async () => {
+    const { collection } = await runGenerate("symfony-comprehensive");
+    const keys = collectRequestKeys(collection);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 
   test("la collection es Postman v2.1.0 válida", async () => {
@@ -56,13 +64,10 @@ describe("Symfony — comprehensive fixture", () => {
   test("POST /users tiene body params (Assert constraints)", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "POST", "/users");
-    expect(eps.length).toBeGreaterThanOrEqual(2); // YAML + PHP attribute
-    // Al menos uno debe tener body con name+email.
-    const withBody = eps.find((e) => {
-      const body = JSON.parse(e?.request?.body?.raw ?? "{}");
-      return body.name && body.email;
-    });
-    expect(withBody).toBeDefined();
+    expect(eps).toHaveLength(1);
+    const body = JSON.parse(eps[0]?.request?.body?.raw ?? "{}");
+    expect(body).toHaveProperty("name");
+    expect(body).toHaveProperty("email");
   });
 
   test("X-Tenant-ID custom headers no son parte de los headers por defecto", async () => {
@@ -79,13 +84,9 @@ describe("Symfony — comprehensive fixture", () => {
   test("PATCH /orders/{id}/status tiene status enum", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "PATCH", "/orders/{{id}}/status");
-    expect(eps.length).toBeGreaterThanOrEqual(2); // YAML + PHP attribute
-    // Al menos uno (PHP attribute) debe tener body con status enum.
-    const withStatus = eps.find((e) => {
-      const body = JSON.parse(e?.request?.body?.raw ?? "{}");
-      return body?.status !== undefined;
-    });
-    expect(withStatus).toBeDefined();
+    expect(eps).toHaveLength(1);
+    const body = JSON.parse(eps[0]?.request?.body?.raw ?? "{}");
+    expect(body?.status).toBeDefined();
   });
 
   test("PUT /users/{id}/address tiene street, city, country, postalCode", async () => {
@@ -102,20 +103,27 @@ describe("Symfony — comprehensive fixture", () => {
   test("Auth login tiene email y password (al menos un endpoint)", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "POST", "/api/auth/login");
-    expect(eps.length).toBeGreaterThan(0);
-    // Al menos uno de los endpoints debe tener un body con email/password.
-    const withBody = eps.find((e) => {
-      const body = JSON.parse(e?.request?.body?.raw ?? "{}");
-      return body.email && body.password;
-    });
-    expect(withBody).toBeDefined();
+    expect(eps).toHaveLength(1);
+    const body = JSON.parse(eps[0]?.request?.body?.raw ?? "{}");
+    expect(body).toHaveProperty("email");
+    expect(body).toHaveProperty("password");
   });
 });
 
-/**
- * Helper: encuentra TODOS los endpoints que matchean method+uri (puede haber
- * duplicados por YAML + Attributes).
- */
+/** Todas las claves `METHOD uri` de la colección, para detectar duplicados. */
+function collectRequestKeys(collection: any): string[] {
+  const out: string[] = [];
+  const walk = (items: any[]) => {
+    for (const it of items) {
+      if (it.item) walk(it.item);
+      else if (it.request) out.push(`${it.request.method} ${it.request.url?.raw ?? ""}`);
+    }
+  };
+  walk(collection.item ?? []);
+  return out;
+}
+
+/** Helper: encuentra TODOS los endpoints que matchean method+uri. */
 function findAllEndpoints(collection: any, method: string, uri: string): any[] {
   const out: any[] = [];
   const walk = (items: any[]) => {
