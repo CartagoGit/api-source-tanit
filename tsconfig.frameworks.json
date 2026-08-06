@@ -1,4 +1,8 @@
 {
+  // Sección `frameworks` — los 12 scanners y sus parsers.
+  //
+  // Incluye el núcleo porque depende de él: la flecha va de aquí hacia
+  // `core`, nunca al revés.
   "extends": "./tsconfig.base.json",
   "include": [
     "projects/core/**/*.ts",

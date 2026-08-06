@@ -58,17 +58,15 @@ function buildVsCodeConfig(source: { mcpServers: Record<string, IServer> }): str
       ...(server.args ? { args: server.args.map(toVsCodeArg) } : {}),
     };
   }
-  // El aviso va dentro del JSON, no como comentario: `.vscode/mcp.json`
-  // admite JSONC, pero un campo es más difícil de ignorar que una línea
-  // gris al principio.
-  return `${JSON.stringify(
-    {
-      $generado: "Derivado de .mcp.json por `bun run mcp:sync`. No lo edites: edita .mcp.json.",
-      servers,
-    },
-    null,
-    2,
-  )}\n`;
+  // El aviso va como comentario JSONC, no como campo del JSON: VS Code
+  // valida este fichero contra su esquema y una clave que no conoce
+  // sale marcada en el panel de problemas. `.vscode/mcp.json` sí admite
+  // comentarios.
+  return (
+    "// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.\n" +
+    "// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.\n" +
+    `${JSON.stringify({ servers }, null, 2)}\n`
+  );
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {

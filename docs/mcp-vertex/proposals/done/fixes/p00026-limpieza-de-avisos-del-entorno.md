@@ -2,11 +2,28 @@
 id: p00026
 title: "p00026 — limpiar los avisos del editor (tsconfig del plugin, bun.lock)"
 kind: fix
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
 ---
+
+> **Cerrada 2026-08-06.** Las cuatro slices.
+>
+> S3 se resolvió por otro camino del previsto: en vez de meter
+> `plugins/` en el `include` de la raíz, el plugin es una **sección
+> propia** del gate con sus DOS tsconfig (el que se publica y el de
+> sus tests), y `typecheck` delega en su script. Eso evita el choque
+> entre `@types/node` y las declaraciones a mano de
+> `contracts/postman.d.ts` que la propuesta daba por pendiente: cada
+> proyecto tipa con lo suyo.
+>
+> S4: el `$generado` que el generador de `.vscode/mcp.json` metía
+> como clave JSON no está en el esquema de VS Code y salía en el
+> panel de problemas — ahora va como comentario JSONC. Y se han
+> devuelto los comentarios de los cinco tsconfig, que se perdieron
+> al reescribirlos programáticamente durante p00020.
+
 
 > **En curso.** S1 (rootDir del plugin + errores de tipos que el gate
 > nunca vio) y S2 (bun.lock como JSONC) hechas el 2026-08-06. S3 y S4
@@ -68,6 +85,7 @@ igual en el siguiente `bun install`.
   igual.
 
 ### S3 — meter el plugin en el gate de tipos
+- **Estado**: done (2026-08-06)
 - **Files**: `plugins/postman-exporter/tsconfig.json`, `package.json`.
 - **Gate**: `bun run typecheck` cubriendo también `plugins/`.
 
@@ -93,6 +111,7 @@ real mientras el resto del repo usa las declaraciones a mano de
   compilar.
 
 ### S4 — barrido de avisos
+- **Estado**: done (2026-08-06)
 - **Files**: los que salgan.
 - **Gate**: abrir el repo en limpio.
 

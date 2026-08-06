@@ -1,4 +1,10 @@
 {
+  // Proyecto por defecto: lo que ve el editor al abrir el repo.
+  //
+  // El gate NO usa este: `bun run typecheck` corre un tsconfig por
+  // sección, que es lo que obliga a que `core` compile sin
+  // `frameworks/` delante. Este existe para que el editor resuelva
+  // cualquier fichero del repo sin tener que elegir proyecto.
   "extends": "./tsconfig.base.json",
   "include": [
     "projects/**/*.ts",

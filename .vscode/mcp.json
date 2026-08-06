@@ -1,5 +1,6 @@
+// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.
+// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.
 {
-  "$generado": "Derivado de .mcp.json por `bun run mcp:sync`. No lo edites: edita .mcp.json.",
   "servers": {
     "mcp-vertex": {
       "type": "stdio",
