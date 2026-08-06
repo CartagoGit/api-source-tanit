@@ -4,7 +4,7 @@ title: "p00036 — modo watch: regeneración automática de colecciones al detec
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 ---
 

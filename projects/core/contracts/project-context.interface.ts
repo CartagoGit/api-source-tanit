@@ -22,7 +22,7 @@
 export interface IProjectContext {
   /** Raíz absoluta del proyecto escaneado. */
   readonly projectRoot: string;
-  /** Raíz absoluta del paquete postman-exporter. */
+  /** Raíz absoluta del paquete export-to-postman. */
   readonly packageRoot: string;
   /** Nombre corto del proyecto, para nombrar los artefactos. */
   readonly projectBasename: string;

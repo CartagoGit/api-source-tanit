@@ -4,7 +4,7 @@ title: "p00018 — gate de calidad autocontenido (`bun run validate`)"
 kind: chore
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00011 # lint:tools forma parte del gate

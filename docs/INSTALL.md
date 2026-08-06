@@ -1,7 +1,7 @@
 # Instalación y uso
 
 > **Estado de publicación.** El paquete **todavía no está en npm**, así
-> que `bun add -g @postman-exporter/cli` aún no funciona. Hasta que se
+> que `bun add -g @export-to-postman/cli` aún no funciona. Hasta que se
 > publique, se instala **desde el repositorio** — ver
 > [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
 > documento describe los comandos definitivos; el único cambio tras
@@ -37,11 +37,11 @@ También sirve clonar y empaquetar:
 
 ```bash
 git clone https://github.com/CartagoGit/export-to-postman
-cd postman-exporter && bun install
-npm pack                       # produce postman-exporter-cli-0.1.0.tgz
+cd export-to-postman && bun install
+npm pack                       # produce export-to-postman-cli-0.1.0.tgz
 
 cd ~/proyectos/mi-api
-bun add -d /ruta/a/postman-exporter-cli-0.1.0.tgz
+bun add -d /ruta/a/export-to-postman-cli-0.1.0.tgz
 ```
 
 En ambos casos queda disponible el binario `expostman` (alias `export-to-postman` sigue disponible).
@@ -92,7 +92,7 @@ mano.
 ### Proyectos con `package.json` (Node, NestJS, Next.js, Express…)
 
 ```bash
-bun add -d @postman-exporter/cli
+bun add -d @export-to-postman/cli
 ```
 
 ```jsonc
@@ -114,7 +114,7 @@ No hace falta meter un `package.json` en tu repo. Se invoca con `bunx` y
 `--project-root`:
 
 ```bash
-bunx @postman-exporter/cli generate --project-root .
+bunx @export-to-postman/cli generate --project-root .
 ```
 
 Y se deja escrito donde ya tengas tus tareas:
@@ -123,20 +123,20 @@ Y se deja escrito donde ya tengas tus tareas:
 # Makefile
 .PHONY: postman
 postman:
-	bunx @postman-exporter/cli generate --project-root .
+	bunx @export-to-postman/cli generate --project-root .
 ```
 
 ```yaml
 # composer.json (Laravel/Symfony) — sección scripts
 "scripts": {
-    "postman": "bunx @postman-exporter/cli generate --project-root ."
+    "postman": "bunx @export-to-postman/cli generate --project-root ."
 }
 ```
 
 ```toml
 # pyproject.toml con taskipy
 [tool.taskipy.tasks]
-postman = "bunx @postman-exporter/cli generate --project-root ."
+postman = "bunx @export-to-postman/cli generate --project-root ."
 ```
 
 > **`--project-root` no es opcional aquí.** Sin él, el CLI escanea el
@@ -150,7 +150,7 @@ postman = "bunx @postman-exporter/cli generate --project-root ."
 Para probarlo antes de decidir:
 
 ```bash
-bunx @postman-exporter/cli generate --project-root .
+bunx @export-to-postman/cli generate --project-root .
 ```
 
 ---
@@ -163,7 +163,7 @@ No necesita nada más.
 
 ```bash
 # Linux x64
-curl -L https://github.com/CartagoGit/postman-exporter/releases/latest/download/export-to-postman-linux-x64 \
+curl -L https://github.com/CartagoGit/export-to-postman/releases/latest/download/export-to-postman-linux-x64 \
   -o /usr/local/bin/export-to-postman
 chmod +x /usr/local/bin/export-to-postman
 

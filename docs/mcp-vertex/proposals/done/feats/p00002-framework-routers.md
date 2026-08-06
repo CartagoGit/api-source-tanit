@@ -4,7 +4,7 @@ title: "p00002 — multi-framework router layer: Laravel / Symfony / Express / F
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00001 # finish v0.1 first (this proposal builds on it)

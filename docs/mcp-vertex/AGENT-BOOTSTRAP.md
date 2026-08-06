@@ -1,4 +1,4 @@
-# Project-specific agent bootstrap — `@postman-exporter/core`
+# Project-specific agent bootstrap — `@export-to-postman/core`
 
 > **This file is the project-specific extension of**
 > [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md)
@@ -7,7 +7,7 @@
 >
 > **Read order**: read the universal bootstrap first, then this file.
 > The universal bootstrap defines the agent contract; this file adds
-> the postman-exporter-specific shapes, naming, and rules.
+> the export-to-postman-specific shapes, naming, and rules.
 >
 > **Conflict policy**: where this file and the universal bootstrap
 > disagree, **the universal bootstrap wins**, except for the rules
@@ -70,7 +70,7 @@ If any of those rules ever feels wrong for this project, edit this
 file (§3 below) and explicitly mark the change as a **project
 override**. Do not edit them silently.
 
-## 3. Project overrides and additions — postman-exporter
+## 3. Project overrides and additions — export-to-postman
 
 These rules apply **only** in this workspace. They extend or replace
 the corresponding universal rule on purpose. Each override cites the
@@ -78,19 +78,19 @@ universal rule it replaces, so the divergence is auditable.
 
 ### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
 
-The 4 plugin tools in `plugins/postman-exporter/src/lib/tools/` and
-`plugins/postman-exporter-testing/src/lib/tools/` follow a **fixed**
+The 4 plugin tools in `plugins/export-to-postman/src/lib/tools/` and
+`plugins/export-to-postman-testing/src/lib/tools/` follow a **fixed**
 qualified-name contract:
 
 | Tool id (short, in `id:`) | Qualified name (in `registerTool`) |
 | --- | --- |
-| `generate` | `${NAMESPACE}_exporter_generate` → on the MCP surface: `mcp-vertex_postman-exporter_generate` |
+| `generate` | `${NAMESPACE}_exporter_generate` → on the MCP surface: `mcp-vertex_export-to-postman_generate` |
 | `validate` | `${NAMESPACE}_exporter_validate` |
 | `summary` | `${NAMESPACE}_exporter_summary` |
-| `test` (in `postman-exporter-testing`) | `${NAMESPACE}_exporter_test` |
+| `test` (in `export-to-postman-testing`) | `${NAMESPACE}_exporter_test` |
 
 Where `NAMESPACE = "postman"` (constant exported from
-`plugins/postman-exporter/src/lib/contracts/namespace.ts`).
+`plugins/export-to-postman/src/lib/contracts/namespace.ts`).
 
 Hardcoding these names in this file is **permitted** for these 4
 tools specifically because the qualified name is the **public MCP
@@ -118,7 +118,7 @@ Each `*.tool.ts` builder:
   this for sequence ordering).
 - Imports `NAMESPACE` from `../contracts/namespace`, not from a
   local `const`. The single source of truth lives in
-  `plugins/postman-exporter/src/lib/contracts/namespace.ts`.
+  `plugins/export-to-postman/src/lib/contracts/namespace.ts`.
 
 Bug history (do not regress): see proposal
 [`proposals/done/fixes/p00013-plugin-bug-fixes.md`](proposals/done/fixes/p00013-plugin-bug-fixes.md)
@@ -134,7 +134,7 @@ The `^3.x` standard API (`~standard`, `~validate`) is required by
 
 ### 3.4 Agents — no bespoke agents, **project override** of universal §6
 
-**Do not add bespoke agents** (e.g. `postman-exporter-builder`)
+**Do not add bespoke agents** (e.g. `export-to-postman-builder`)
 under `.github/agents/` or `.claude/agents/`. The 5 canonical agents
 (orchestrator + proposal_guardian + implementation_runner +
 delivery_verifier + technical_investigator) are the only ones this
@@ -156,8 +156,8 @@ a pointer.
 | --- | --- | --- |
 | `services/` | `*.service.ts` | `services/router-adapters/laravel.parser.ts` |
 | `helpers/` | `*.helper.ts` | `helpers/uri.helper.ts` |
-| `contracts/` | `*.interface.ts` / `*.constant.ts` | `contracts/postman-exporter.interface.ts` |
-| `plugins/` | `*.tool.ts` | `plugins/postman-exporter/src/lib/tools/generate.tool.ts` |
+| `contracts/` | `*.interface.ts` / `*.constant.ts` | `contracts/plugin.interface.ts` |
+| `plugins/` | `*.tool.ts` | `plugins/export-to-postman/src/lib/tools/generate.tool.ts` |
 | `docs/mcp-vertex/proposals/ready/` | `p<NNNN>-<slug>.md` | `p00013-plugin-bug-fixes.md` |
 
 Service → runtime-safe (no `plugin/` imports). Helper → pure
@@ -166,9 +166,9 @@ functions only, no I/O. Tool → one tool per file.
 ### 3.6 Plugin options
 
 Plugin options live at
-`mcp-vertex.config.json#plugins.postman-exporter.options` and are
-parsed by `PostmanExporterOptionsSchema` in
-`plugins/postman-exporter/src/lib/contracts/postman-exporter.interface.ts`.
+`mcp-vertex.config.json#plugins.export-to-postman.options` and are
+parsed by `ExportToPostmanOptionsSchema` in
+`plugins/export-to-postman/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
 
@@ -253,7 +253,7 @@ sibling-repo generated markdown file.
 
 These are not overrides; they are **local additions** that the
 universal bootstrap does not mention because they are
-postman-exporter-specific:
+export-to-postman-specific:
 
 - **Workspace root comes from `ctx.workspace.toString()`**, not
   `process.cwd()`. Every tool receives it through the plugin's
@@ -288,7 +288,7 @@ The universal bootstrap §5 DoD applies. Project-specific additions:
 
 - Universal bootstrap (vendored):
   [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md).
-- Plugin source: [`../../plugins/postman-exporter/`](../../plugins/postman-exporter/).
+- Plugin source: [`../../plugins/export-to-postman/`](../../plugins/export-to-postman/).
 - Proposals queue: [`proposals/`](proposals/).
 - Live catalog: call `mcp-vertex_overview` / `mcp-vertex_agent_catalog`
   — do not link generated host-hint files from another repo.

@@ -28,7 +28,7 @@
     // mantiene.
     //
     // El arreglo de verdad no es relajar reglas: es que el plugin
-    // dependa del CLI como paquete (`@postman-exporter/cli/...`) en vez
+    // dependa del CLI como paquete (`@export-to-postman/cli/...`) en vez
     // de por ruta relativa. Está anotado en p00027.
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

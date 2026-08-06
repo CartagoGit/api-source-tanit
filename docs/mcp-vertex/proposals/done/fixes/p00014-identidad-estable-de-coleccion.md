@@ -4,7 +4,7 @@ title: "p00014 — identidad estable de colección por proyecto"
 kind: fix
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00017 # paths.service singleton — misma raíz del problema

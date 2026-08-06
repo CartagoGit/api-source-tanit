@@ -4,7 +4,7 @@ title: "p00037 — corrección de hallazgos de auditoría: naming inconsistency,
 kind: fix
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00025

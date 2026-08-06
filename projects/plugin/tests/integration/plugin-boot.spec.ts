@@ -21,7 +21,7 @@ const EXPECTED_TOOLS = ["generate", "validate", "summary", "test"] as const;
 
 describe("arranque del plugin", () => {
   test("declara nombre y versión", () => {
-    expect(plugin.name).toBe("postman-exporter");
+    expect(plugin.name).toBe("export-to-postman");
     expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
@@ -76,14 +76,14 @@ describe("declaración en mcp-vertex.config.json", () => {
       await readFile(resolve(PACKAGE_ROOT, "mcp-vertex.config.json"), "utf8"),
     ) as { plugins?: Record<string, { path?: string }> };
 
-    const declared = config.plugins?.["postman-exporter"]?.path;
+    const declared = config.plugins?.["export-to-postman"]?.path;
     expect(declared).toBeDefined();
 
     const entry = await import(resolve(PACKAGE_ROOT, declared!));
-    expect(entry.default?.name).toBe("postman-exporter");
+    expect(entry.default?.name).toBe("export-to-postman");
   });
 
-  // El plugin `postman-exporter-testing` quedó superseded por el tool
+  // El plugin `export-to-postman-testing` quedó superseded por el tool
   // `test`; su entrada en la config apuntaría a un directorio borrado y
   // tumbaría el arranque del host.
   test("no quedan plugins declarados que ya no existen", async () => {
@@ -91,6 +91,6 @@ describe("declaración en mcp-vertex.config.json", () => {
       await readFile(resolve(PACKAGE_ROOT, "mcp-vertex.config.json"), "utf8"),
     ) as { plugins?: Record<string, unknown> };
 
-    expect(Object.keys(config.plugins ?? {})).not.toContain("postman-exporter-testing");
+    expect(Object.keys(config.plugins ?? {})).not.toContain("export-to-postman-testing");
   });
 });

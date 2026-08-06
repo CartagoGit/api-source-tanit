@@ -4,7 +4,7 @@ title: "p00026 — limpiar los avisos del editor (tsconfig del plugin, bun.lock)
 kind: fix
 status: in-progress
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 ---
 

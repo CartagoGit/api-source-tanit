@@ -21,7 +21,7 @@ import {
 } from "@mcp-vertex/core/public";
 
 /** Prefijo con el que el host cualifica los tools de este plugin. */
-export const NAMESPACE_PREFIX = "postman-exporter";
+export const NAMESPACE_PREFIX = "export-to-postman";
 
 /** Lo que se puede sobrescribir de un contexto de prueba. */
 export interface IMakeContextOptions {

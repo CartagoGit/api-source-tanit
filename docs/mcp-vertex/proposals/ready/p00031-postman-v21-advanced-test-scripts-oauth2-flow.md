@@ -4,7 +4,7 @@ title: "p00031 — enriquecimiento de colecciones Postman: Pre-request scripts, 
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00015

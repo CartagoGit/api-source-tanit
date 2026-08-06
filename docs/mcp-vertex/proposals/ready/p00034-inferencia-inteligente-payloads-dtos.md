@@ -4,7 +4,7 @@ title: "p00034 — inferencia inteligente de payloads: TypeScript DTOs, Pydantic
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00024

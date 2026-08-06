@@ -4,7 +4,7 @@ title: "p00015 — login configurable y token persistente en Postman"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00014 # identidad de colección

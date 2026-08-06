@@ -35,7 +35,7 @@ describe("paths.service", () => {
     });
 
     test("sin projectName, usa el projectBasename del paquete", () => {
-      expect(outputBasename()).toMatch(/(export-to-postman|postman-exporter)\.postman_collection/);
+      expect(outputBasename()).toMatch(/(export-to-postman|export-to-postman)\.postman_collection/);
     });
   });
 

@@ -4,7 +4,7 @@ title: "p00010 — single-binary distribution via `bun build --compile`"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00008 # npm path

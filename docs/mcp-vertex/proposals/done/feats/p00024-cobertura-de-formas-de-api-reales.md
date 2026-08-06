@@ -4,7 +4,7 @@ title: "p00024 — cubrir las formas de API que aún pierden endpoints"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00016 # el contrato de scanner donde se declaran las capacidades

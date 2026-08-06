@@ -4,7 +4,7 @@ title: "p00025 — nombre de producto y bin cortos (acronym-first UX)"
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00008 # publish npm — el bin/name del package es la superficie pública

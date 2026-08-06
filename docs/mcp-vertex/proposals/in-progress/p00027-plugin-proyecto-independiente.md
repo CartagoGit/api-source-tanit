@@ -4,7 +4,7 @@ title: "p00027 — el plugin de mcp-vertex como proyecto independiente"
 kind: fix
 status: in-progress
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00003 # el plugin de testing original

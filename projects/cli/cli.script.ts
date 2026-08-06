@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * CLI de `@postman-exporter/cli`.
+ * CLI de `@export-to-postman/cli`.
  *
  * Los comandos se **importan y ejecutan en proceso**. Antes se
  * spawneaba `bun run <script>` resolviendo la ruta del script desde la

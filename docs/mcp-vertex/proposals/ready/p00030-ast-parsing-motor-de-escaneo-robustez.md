@@ -4,7 +4,7 @@ title: "p00030 — motor de escaneo robusto basado en AST (Abstract Syntax Tree)
 kind: refactor
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00024

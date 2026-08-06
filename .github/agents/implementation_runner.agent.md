@@ -4,7 +4,7 @@ display-name: ImplementationRunner (mcp-vertex)
 icon: $(tools)
 model: MiniMax M3 (minimax)
 description: |
-    Bounded subagent for @postman-exporter/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server.
+    Bounded subagent for @export-to-postman/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server.
 user-invocable: false
 ---
 

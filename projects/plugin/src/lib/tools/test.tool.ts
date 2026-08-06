@@ -1,7 +1,7 @@
 /**
- * Tool `postman-exporter_test`.
+ * Tool `export-to-postman_test`.
  *
- * Corre la batería de tests del propio proyecto postman-exporter y
+ * Corre la batería de tests del propio proyecto export-to-postman y
  * (opcionalmente) un smoke test contra un fixture de un framework
  * concreto. Devuelve un informe estructurado con duración y exit
  * code de cada step, pensado para que un agente MCP pueda actuar
@@ -34,7 +34,7 @@ import {
   TestInputSchema,
   type ITestOutput,
   type ITestStep,
-} from "../contracts/postman-exporter.interface";
+} from "../contracts/plugin.interface";
 import { normalizeCwd, runBunCommand } from "../helpers/runner.helper";
 import { runSmoke } from "../helpers/smoke-runner.helper";
 import {
@@ -161,7 +161,7 @@ export function buildTestToolRegistration(
   return {
     id: TOOL_ID,
     summary:
-      "Corre los tests del proyecto postman-exporter y (opcionalmente) un smoke test por framework. " +
+      "Corre los tests del proyecto export-to-postman y (opcionalmente) un smoke test por framework. " +
       "Devuelve un informe estructurado (ok + steps con duración y exit code) que un agente puede actuar sin re-correr.",
     tags: ["postman", "test", "ci"],
     effects: ["spawn"],
@@ -170,7 +170,7 @@ export function buildTestToolRegistration(
         `${ctx.namespacePrefix}_${TOOL_ID}`,
         {
           description:
-            "Corre `bun run typecheck` (opcional) y `bun test tests/e2e/` del propio proyecto postman-exporter. " +
+            "Corre `bun run typecheck` (opcional) y `bun test tests/e2e/` del propio proyecto export-to-postman. " +
             "Si pasas `framework`, añade un smoke test in-process contra el fixture correspondiente en " +
             "`tests/smoke-fixtures/<framework>-mini/` (más rápido que los e2e comprehensives). " +
             "Devuelve `{ ok, steps, durationMs, framework }` con un detalle por step listo para actuar.",

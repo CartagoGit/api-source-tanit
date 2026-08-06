@@ -1,5 +1,5 @@
 /**
- * Helpers puros para ejecutar scripts del proyecto postman-exporter.
+ * Helpers puros para ejecutar scripts del proyecto export-to-postman.
  *
  * Single Responsibility: abstraer `Bun.spawn` con timeout, captura
  * de stdout/stderr y parseo seguro de output. Sin estado global, sin

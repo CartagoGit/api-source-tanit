@@ -4,7 +4,7 @@ title: "p00003 — internal testing plugin: `postman_exporter_test` tool"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00001 # slice S3 vitest baseline

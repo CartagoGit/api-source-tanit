@@ -1,7 +1,7 @@
 /**
- * Tool `postman-exporter_generate`.
+ * Tool `export-to-postman_generate`.
  *
- * Ejecuta el script `generate.script.ts` del proyecto postman-exporter
+ * Ejecuta el script `generate.script.ts` del proyecto export-to-postman
  * contra el proyecto host que se le indique, devolviendo las rutas de los
  * artefactos generados y métricas básicas.
  *
@@ -12,7 +12,7 @@
  *   - D: depende de `runBunScript` (abstracción), no de Bun directo.
  *
  * Forma canónica `IToolRegistration`: el `id` es estable dentro del
- * plugin (`postman-exporter_generate`); el core lo cualifica con el
+ * plugin (`export-to-postman_generate`); el core lo cualifica con el
  * `namespacePrefix` del host. La MCP tool name registrada en el SDK
  * se construye en `register(server)` con el mismo prefijo.
  */
@@ -27,7 +27,7 @@ import {
 import {
   GenerateInputSchema,
   type IGenerateOutput,
-} from "../contracts/postman-exporter.interface";
+} from "../contracts/plugin.interface";
 import {
   readGenerateReport,
   runBunScript,
@@ -61,7 +61,7 @@ export function buildGenerateToolRegistration(
             return toolError(
               `Input inválido: ${parsed.error.message}`,
               "Pasa projectRoot (ruta absoluta) o configura defaultProjectRoot " +
-                "en mcp-vertex.config.json bajo plugins.postman-exporter.options.",
+                "en mcp-vertex.config.json bajo plugins.export-to-postman.options.",
             );
           }
           const args = parsed.data;

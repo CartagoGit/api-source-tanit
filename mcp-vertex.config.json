@@ -204,7 +204,7 @@
     "prompt-eval": {
       "options": {}
     },
-    "postman-exporter": {
+    "export-to-postman": {
       "path": "projects/plugin/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",

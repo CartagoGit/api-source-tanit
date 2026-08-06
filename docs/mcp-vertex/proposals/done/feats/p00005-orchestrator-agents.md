@@ -4,7 +4,7 @@ title: "p00005 — orchestrator agents for the postman-exporter workflow"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - d692f50 # plugins commit

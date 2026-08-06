@@ -5,7 +5,7 @@ kind: chore
 status: blocked
 blocked-reason: "@mcp-vertex/core no está en npm todavía (404). El bloqueo es del repositorio mcp-vertex y es operacional (credenciales), no técnico."
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 revised: 2026-08-06
 related:

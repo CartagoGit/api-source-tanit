@@ -96,7 +96,7 @@ describe("resolveProjectContext — derivados", () => {
 
   test("el packageRoot apunta a este paquete", () => {
     const pkgRoot = ctx("/tmp/x").packageRoot;
-    expect(pkgRoot.includes("export-to-postman") || pkgRoot.includes("postman-exporter")).toBe(true);
+    expect(pkgRoot.includes("export-to-postman") || pkgRoot.includes("export-to-postman")).toBe(true);
   });
 });
 

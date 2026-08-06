@@ -4,7 +4,7 @@ title: "p00028 — soporte de protocolos avanzados: GraphQL, gRPC, WebSockets y 
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00024

@@ -1,13 +1,13 @@
 /**
- * `@postman-exporter/mcp-vertex-plugin` — entry point.
+ * `@export-to-postman/mcp-vertex-plugin` — entry point.
  *
- * Expone el proyecto postman-exporter como tools descubribles por
+ * Expone el proyecto export-to-postman como tools descubribles por
  * cualquier agente MCP-vertex compatible.
  *
  * Tools:
- *   - postman-exporter_generate
- *   - postman-exporter_validate
- *   - postman-exporter_summary
+ *   - export-to-postman_generate
+ *   - export-to-postman_validate
+ *   - export-to-postman_summary
  *
  * Diseño:
  *   - Single source of truth en `IMcpPluginContext`.
@@ -21,20 +21,20 @@
 
 import { definePlugin } from "@mcp-vertex/core/public";
 
-import { PostmanExporterOptionsSchema } from "./lib/contracts/postman-exporter.interface";
+import { ExportToPostmanOptionsSchema } from "./lib/contracts/plugin.interface";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
 import { buildTestToolRegistration } from "./lib/tools/test.tool";
 import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
 
 export default definePlugin({
-  name: "postman-exporter",
+  name: "export-to-postman",
   version: "0.1.0",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +
     "de cualquier proyecto de API. Pensado para ser invocado por agentes " +
     "MCP-vertex en proyectos host sin configuración manual.",
-  optionsSchema: PostmanExporterOptionsSchema,
+  optionsSchema: ExportToPostmanOptionsSchema,
   register(ctx) {
     return {
       tools: [

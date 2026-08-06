@@ -55,7 +55,7 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
 
   // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
   // con `cwd` = raíz del paquete, así que un path relativo apunta al
-  // propio postman-exporter y el escaneo sale vacío. `projectRoot()`
+  // propio export-to-postman y el escaneo sale vacío. `projectRoot()`
   // resuelve el flag `--project-root` y `POSTMAN_PROJECT_ROOT`.
   const root = projectRoot();
   if (!root) {

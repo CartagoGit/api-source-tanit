@@ -1,5 +1,5 @@
 /**
- * Tool `postman-exporter_summary`.
+ * Tool `export-to-postman_summary`.
  *
  * Inspecciona un proyecto host sin generar artefactos. Devuelve:
  * framework detectado, baseUrl, rutas en código, FormRequests
@@ -22,7 +22,7 @@ import {
   type IMcpPluginContext,
 } from "@mcp-vertex/core/public";
 
-import { SummaryInputSchema } from "../contracts/postman-exporter.interface";
+import { SummaryInputSchema } from "../contracts/plugin.interface";
 import { existsSync } from "node:fs";
 import { summarizeWithAllFrameworks } from "../../../../frameworks/index";
 

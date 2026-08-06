@@ -1,4 +1,4 @@
-# Contributing to `postman-exporter`
+# Contributing to `export-to-postman`
 
 > **Source of truth**: this file + `docs/extension-contract.md` +
 > `AGENTS.md`. Humans and LLMs committing to this repo are expected to
@@ -49,7 +49,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 feat: orchestrator agent routes requests to 4 bounded subagents
 
 Implements p00005 S0 + p00012. The new agent at
-.github/agents/postman-exporter-orchestrator.agent.md never
+.github/agents/export-to-postman-orchestrator.agent.md never
 invokes postman_exporter_* tools directly — that lane belongs
 to the bounded subagents. It owns the state machine and the
 memory_save + proposals_close_slice close-out.
@@ -71,7 +71,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin MCP-vertex postman-exporter + config local   ← wrong prefix style
+[FEAT] Plugin MCP-vertex export-to-postman + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -241,11 +241,11 @@ agent does **not** pick up additional permissions at runtime.
 
 | Agent | File | Tools |
 | --- | --- | --- |
-| `postman-exporter-orchestrator` | `.github/agents/postman-exporter-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
-| `postman-exporter.onboarding` | `.github/agents/postman-exporter.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_postman-exporter_summary` |
-| `postman-exporter.builder` | `.github/agents/postman-exporter.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_generate, mcp-vertex/mcp-vertex_postman-exporter_summary` |
-| `postman-exporter.validator` | `.github/agents/postman-exporter.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_validate` |
-| `postman-exporter.tester` | `.github/agents/postman-exporter.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_test` |
+| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
+| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_export-to-postman_summary` |
+| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_export-to-postman_generate, mcp-vertex/mcp-vertex_export-to-postman_summary` |
+| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_export-to-postman_validate` |
+| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_export-to-postman_test` |
 
 When adding a new tool a lane needs, **add it to that agent's `tools:`
 list** — do **not** widen to `mcp-vertex/*`.
@@ -282,7 +282,7 @@ title: "<short title>"
 kind: feat | fix | refactor | perf | test | docs | chore
 status: ready | in-progress | review | done | paused | blocked | retired | legacy
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: <YYYY-MM-DD>
 related:
     - <sha or proposal id>
@@ -291,7 +291,7 @@ related:
 
 The 12 proposals already in `ready/` are the implementation roadmap.
 Each proposal owns its slices; each slice has its own gate. The
-orchestrator agent (`postman-exporter-orchestrator`) drives the
+orchestrator agent (`export-to-postman-orchestrator`) drives the
 state machine.
 
 ---

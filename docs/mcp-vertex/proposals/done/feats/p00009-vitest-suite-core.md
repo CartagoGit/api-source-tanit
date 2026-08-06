@@ -4,7 +4,7 @@ title: "p00009 — exhaustive vitest suite for the package core (per service)"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00001 # slice S3 is the minimum baseline; this is the full suite

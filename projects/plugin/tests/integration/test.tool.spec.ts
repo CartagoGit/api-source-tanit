@@ -2,7 +2,7 @@
  * Integration tests para `buildTestToolRegistration`.
  *
  * Estrategia: mockeamos `IMcpPluginContext` con el workspace del
- * postman-exporter y registramos el tool en un server MCP simulado.
+ * export-to-postman y registramos el tool en un server MCP simulado.
  * Después invocamos el handler directamente para verificar el output
  * sin necesidad del host MCP-vertex completo.
  *
@@ -19,14 +19,14 @@ import { resolve } from "node:path";
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
 import { captureHandler, makeContext } from "../helpers/plugin-context";
 
-// Workspace del proyecto postman-exporter (no del plugin). El tool corre
+// Workspace del proyecto export-to-postman (no del plugin). El tool corre
 // `bun test tests/e2e/` desde ese cwd.
 const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
-describe("postman-exporter_test", () => {
+describe("export-to-postman_test", () => {
   test("registra el tool con id='test' y effects=['spawn']", () => {
     const reg = buildTestToolRegistration(makeCtx());
     expect(reg.id).toBe("test");

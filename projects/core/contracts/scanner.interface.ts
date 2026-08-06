@@ -1,7 +1,7 @@
 /**
  * Contratos framework-agnostic para discovery y validación.
  *
- * El paquete `postman-exporter` produce colecciones Postman v2.1.0
+ * El paquete `export-to-postman` produce colecciones Postman v2.1.0
  * independientemente del framework del proyecto host. Para admitir
  * Laravel, Symfony, Slim, Express, FastAPI, OpenAPI-3, etc. sin
  * reescribir el orquestador, todo el "input parsing" se hace a

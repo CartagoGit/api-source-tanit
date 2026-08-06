@@ -74,7 +74,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 | Cambiar el flujo de login | `services/auth-flow.service.ts` |
 | Parsear una librería de validación nueva | `helpers/<lib>-schema.helper.ts` |
 | Añadir un comando al CLI | `scripts/<nombre>.script.ts` + entrada en `scripts/cli.script.ts` |
-| Añadir un tool MCP | `plugins/postman-exporter/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un tool MCP | `plugins/export-to-postman/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -99,8 +99,8 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 ## Tools del plugin MCP
 
-Namespace `postman-exporter`, declarados en
-[`plugins/postman-exporter/src/index.ts`](../plugins/postman-exporter/src/index.ts):
+Namespace `export-to-postman`, declarados en
+[`plugins/export-to-postman/src/index.ts`](../plugins/export-to-postman/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|

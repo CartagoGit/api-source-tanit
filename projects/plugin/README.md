@@ -1,6 +1,6 @@
-# `@postman-exporter/mcp-vertex-plugin`
+# `@export-to-postman/mcp-vertex-plugin`
 
-Plugin MCP-vertex que expone el proyecto `postman-exporter` como tools
+Plugin MCP-vertex que expone el proyecto `export-to-postman` como tools
 descubribles por cualquier agente compatible (Copilot Chat, Claude Code,
 Cursor, etc.).
 
@@ -41,7 +41,7 @@ Y en `mcp-vertex.config.json`:
 ```jsonc
 {
   "plugins": {
-    "postman-exporter": {
+    "export-to-postman": {
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/.."
       }
@@ -56,6 +56,6 @@ Y en `mcp-vertex.config.json`:
   para lógica de dominio, `<concept>.helper.ts` para utilidades puras.
 - **SOLID**: cada tool recibe sus dependencias vía `IMcpPluginContext`,
   nunca toca `process.cwd()` ni `process.env` directamente.
-- **Agnóstico**: este plugin NO conoce el código del paquete `postman-exporter`
+- **Agnóstico**: este plugin NO conoce el código del paquete `export-to-postman`
   en runtime. Solo define herramientas que invocan a los scripts en
   `${workspaceFolder}` del proyecto host.

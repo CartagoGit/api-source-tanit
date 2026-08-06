@@ -4,7 +4,7 @@ title: "p00035 — CLI interactivo TUI con vista previa, selección de framework
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00025

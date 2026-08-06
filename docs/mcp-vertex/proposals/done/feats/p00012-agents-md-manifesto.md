@@ -4,7 +4,7 @@ title: "p00012 — `.github/agents.md` root manifest for the orchestrator"
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00005 # the agents themselves

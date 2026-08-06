@@ -4,7 +4,7 @@ title: "p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje"
 kind: feat
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00010 # el binario compilado es el motor que estos wrappers invocan

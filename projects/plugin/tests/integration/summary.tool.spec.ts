@@ -12,13 +12,13 @@ import { resolve } from "node:path";
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
 import { captureHandler, makeContext } from "../helpers/plugin-context";
 
-/** Raíz del proyecto postman-exporter (no la del plugin). */
+/** Raíz del proyecto export-to-postman (no la del plugin). */
 const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
-describe("postman-exporter_summary", () => {
+describe("export-to-postman_summary", () => {
   test("registra el tool con id='summary' y effects=[]", () => {
     const reg = buildSummaryToolRegistration(makeCtx());
     expect(reg.id).toBe("summary");

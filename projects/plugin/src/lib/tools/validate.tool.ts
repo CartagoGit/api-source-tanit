@@ -1,8 +1,8 @@
 /**
- * Tool `postman-exporter_validate`.
+ * Tool `export-to-postman_validate`.
  *
  * Ejecuta `diff.script.ts` + `validate-json.script.ts` del proyecto
- * postman-exporter contra un JSON ya generado. Devuelve OK/KO con
+ * export-to-postman contra un JSON ya generado. Devuelve OK/KO con
  * lista de issues estructurados.
  *
  * SOLID:
@@ -23,7 +23,7 @@ import {
 import {
   ValidateInputSchema,
   type IValidateOutput,
-} from "../contracts/postman-exporter.interface";
+} from "../contracts/plugin.interface";
 import { runBunScript } from "../helpers/runner.helper";
 
 const TOOL_ID = "validate";

@@ -4,7 +4,7 @@ title: "p00020 — reorganizar la arquitectura de carpetas por responsabilidad"
 kind: refactor
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00021 # runtime/ se retira como parte de esta reorganización

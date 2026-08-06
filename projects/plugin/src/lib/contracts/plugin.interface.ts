@@ -1,8 +1,8 @@
 /**
- * Tipos del dominio del plugin `postman-exporter`.
+ * Tipos del dominio del plugin `export-to-postman`.
  *
  * Mantienen el contrato limpio: el plugin NO depende de la
- * implementación interna del proyecto postman-exporter (que vive en
+ * implementación interna del proyecto export-to-postman (que vive en
  * `../../contracts/`, `../../services/`). Solo define las entradas y
  * salidas que un agente ve al invocar los tools.
  */
@@ -11,7 +11,7 @@ import { z } from "zod";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
-export const PostmanExporterOptionsSchema = z
+export const ExportToPostmanOptionsSchema = z
   .object({
     /**
      * Ruta por defecto al proyecto host cuando el agente no
@@ -21,15 +21,15 @@ export const PostmanExporterOptionsSchema = z
      */
     defaultProjectRoot: z.string().min(1).optional(),
     /**
-     * Ruta al script CLI del paquete postman-exporter. Por defecto
+     * Ruta al script CLI del paquete export-to-postman. Por defecto
      * `${workspaceFolder}/scripts/cli.script.ts`.
      */
     cliScript: z.string().min(1).optional(),
   })
   .strict();
 
-export type IPostmanExporterOptions = z.infer<
-  typeof PostmanExporterOptionsSchema
+export type IExportToPostmanOptions = z.infer<
+  typeof ExportToPostmanOptionsSchema
 >;
 
 // --- Inputs de los tools ----------------------------------------------------
@@ -71,7 +71,7 @@ export type ISummaryInput = z.infer<typeof SummaryInputSchema>;
 
 /**
  * Inputs del tool `test`. Por defecto corre la suite e2e completa del
- * propio paquete postman-exporter (ya en workspace). Si se pasa
+ * propio paquete export-to-postman (ya en workspace). Si se pasa
  * `framework`, corre un smoke test contra el fixture correspondiente
  * (`tests/fixtures/<framework>-comprehensive/`).
  */

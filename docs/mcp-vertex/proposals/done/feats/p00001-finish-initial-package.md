@@ -4,7 +4,7 @@ title: "p00001 — finish postman-exporter v0.1: polish + harden the agnostic ba
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - 170672e # init commit (Limpiar residuos del host inicial)

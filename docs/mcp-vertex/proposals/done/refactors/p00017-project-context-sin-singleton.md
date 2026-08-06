@@ -4,7 +4,7 @@ title: "p00017 — IProjectContext explícito en vez del singleton de paths"
 kind: refactor
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00014 # la identidad de colección depende de esto

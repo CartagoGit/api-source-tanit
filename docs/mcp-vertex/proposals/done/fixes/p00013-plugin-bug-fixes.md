@@ -4,7 +4,7 @@ title: "p00013 — fix plugin boot, type errors, and orchestrator wiring"
 kind: fix
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-01
 related:
     - 88e892a # host contract alignment

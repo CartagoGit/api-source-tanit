@@ -4,7 +4,7 @@ title: "p00033 — I/O asíncrono con concurrencia acotada en el pipeline de esc
 kind: refactor
 status: ready
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00024

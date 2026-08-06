@@ -4,7 +4,7 @@ title: "p00019 — documentación de instalación, uso e import en Postman"
 kind: docs
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00010 # binario único

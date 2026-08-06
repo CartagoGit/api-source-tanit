@@ -4,7 +4,7 @@ title: "p00006 — document the extension contract (third-party adapters + plugi
 kind: feat
 status: retired
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 superseded_by: docs/mcp-vertex/AGENT-BOOTSTRAP.md
 superseded_at: 2026-08-01

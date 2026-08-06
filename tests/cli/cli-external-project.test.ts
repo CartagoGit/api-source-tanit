@@ -6,7 +6,7 @@
  * spawnea el script de generación con `cwd` = raíz del paquete, y el
  * pipeline resolvía la raíz del proyecto como `process.env.
  * POSTMAN_PROJECT_ROOT ?? "."`, así que `--project-root` se ignoraba y
- * el escaneo apuntaba al propio postman-exporter: colección vacía.
+ * el escaneo apuntaba al propio export-to-postman: colección vacía.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";

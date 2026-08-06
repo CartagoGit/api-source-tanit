@@ -1,4 +1,4 @@
-# Propuestas de `postman-exporter`
+# Propuestas de `export-to-postman`
 
 Misma disposición que el repositorio `mcp-vertex`, que es de donde sale
 la convención. **La carpeta tiene que coincidir con el `status` del

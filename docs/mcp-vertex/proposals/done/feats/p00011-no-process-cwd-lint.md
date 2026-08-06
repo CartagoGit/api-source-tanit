@@ -4,7 +4,7 @@ title: "p00011 — lint rule: no `process.cwd()` / `process.env` in plugin tools
 kind: feat
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-07-31
 related:
     - p00006 # the extension contract documents this rule

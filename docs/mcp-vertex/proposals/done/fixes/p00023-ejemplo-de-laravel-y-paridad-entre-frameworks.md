@@ -4,7 +4,7 @@ title: "p00023 — ejemplo de Laravel y paridad real entre los 12 frameworks"
 kind: fix
 status: done
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: 2026-08-06
 related:
     - p00016 # el contrato de test que hace visible la paridad
