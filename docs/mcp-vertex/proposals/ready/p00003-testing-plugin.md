@@ -2,7 +2,7 @@
 id: p00003
 title: "p00003 — internal testing plugin: `postman_exporter_test` tool"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -11,6 +11,8 @@ related:
     - p00002 # slice S1 IRouterAdapter contract
     - plugins/postman-exporter/
 ---
+
+> **Cerrada 2026-08-06.** El tool `test` está en `plugins/postman-exporter/src/lib/tools/test.tool.ts` con 11 tests de integración. Cubre typecheck, smoke por framework contra los mini-fixtures y la suite completa.
 
 # p00003 — internal testing plugin: `postman_exporter_test` tool
 

@@ -2,7 +2,7 @@
 id: p00005
 title: "p00005 — orchestrator agents for the postman-exporter workflow"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -11,6 +11,8 @@ related:
     - p00001 # parser/builder maturity
     - p00003 # test plugin already wired
 ---
+
+> **Cerrada 2026-08-06.** Los 5 agentes existen en `.github/agents/` y `.claude/agents/`, apuntando al bootstrap de proyecto.
 
 # p00005 — orchestrator agents for the postman-exporter workflow
 

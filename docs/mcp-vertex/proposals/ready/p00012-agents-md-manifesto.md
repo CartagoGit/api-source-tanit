@@ -2,7 +2,7 @@
 id: p00012
 title: "p00012 — `.github/agents.md` root manifest for the orchestrator"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -11,6 +11,8 @@ related:
     - p00006 # the contract doc
     - p00011 # the lint rule
 ---
+
+> **Cerrada 2026-08-06.** `.github/agents.md` escrito: arquitectura, gate, dónde tocar cada cosa, las 6 reglas que rompen el build y los 4 tools.
 
 # p00012 — `.github/agents.md` root manifest for the orchestrator
 

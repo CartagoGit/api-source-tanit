@@ -2,7 +2,7 @@
 id: p00007
 title: "p00007 — publish @mcp-vertex/core to npm and switch plugins to it"
 kind: feat
-status: ready
+status: blocked
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -10,6 +10,11 @@ related:
     - d692f50 # plugins commit
     - p00004 # resolves dependabot noise once we stop using file: protocol
 ---
+
+> **Bloqueada 2026-08-06.** Publicar `@mcp-vertex/core` es del repositorio
+> mcp-vertex, no de este. Aquí no hay nada que hacer hasta que exista en npm;
+> entonces basta cambiar el `file:` del `package.json` del plugin por la versión
+> publicada.
 
 # p00007 — publish @mcp-vertex/core to npm
 

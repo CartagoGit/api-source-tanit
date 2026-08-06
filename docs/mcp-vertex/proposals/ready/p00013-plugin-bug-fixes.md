@@ -2,7 +2,7 @@
 id: p00013
 title: "p00013 — fix plugin boot, type errors, and orchestrator wiring"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-01
@@ -12,6 +12,12 @@ related:
     - p00009 # vitest suite
     - p00011 # no-process-cwd lint
 ---
+
+> **Cerrada 2026-08-06.** El plugin arranca y registra sus 4 tools con sus
+> efectos. +10 tests que lo instancian igual que el host y comprueban que el
+> `path` de `mcp-vertex.config.json` resuelve. La parte de
+> `postman-exporter-testing` queda superseded: ese plugin se eliminó y su
+> función la cubre el tool `test`.
 
 # p00013 — fix plugin boot, type errors, and orchestrator wiring
 
