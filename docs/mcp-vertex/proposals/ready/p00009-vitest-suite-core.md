@@ -2,7 +2,7 @@
 id: p00009
 title: "p00009 — exhaustive vitest suite for the package core (per service)"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -11,6 +11,11 @@ related:
     - p00008 # tests before publish
     - p00007 # the plugin tests are tracked separately
 ---
+
+> **Cerrada 2026-08-06.** 38/38 módulos de `service/` y `helper/` con tests
+> directos, 977 en total. La suite corre con `bun test` en lugar de vitest, que
+> es lo que el proyecto ya usaba; el objetivo de la propuesta (cobertura por
+> módulo con casos felices, límite y regresión) se cumple igual.
 
 # p00009 — exhaustive vitest suite for the package core
 

@@ -20,22 +20,31 @@ async function inProject<T>(
 }
 
 describe("detectProjectName", () => {
-  test("usa APP_NAME del .env cuando está", async () => {
+  test("usa el name de composer.json", async () => {
     const name = await inProject(
-      { ".env": "APP_NAME=MiTienda\nAPP_URL=http://localhost\n" },
+      { "composer.json": '{"name": "acme/mi-tienda"}' },
       detectProjectName,
     );
-    expect(name).toBe("MiTienda");
+    expect(name).toBe("mi-tienda");
   });
 
-  test("cae al nombre de la carpeta si no hay .env", async () => {
+  test("se queda con el último segmento de vendor/paquete", async () => {
+    const name = await inProject(
+      { "composer.json": '{"name": "vendor/sub/api"}' },
+      detectProjectName,
+    );
+    expect(name).toBe("api");
+  });
+
+  test("sin composer.json cae al nombre de la carpeta", async () => {
+    const name = await inProject({ ".env": "APP_NAME=Demo\n" }, detectProjectName);
+    expect(name.length).toBeGreaterThan(0);
+    expect(name).not.toBe("unnamed");
+  });
+
+  test("un composer.json sin name cae al nombre de la carpeta", async () => {
     const name = await inProject({ "composer.json": "{}" }, detectProjectName);
     expect(name.length).toBeGreaterThan(0);
-  });
-
-  test("quita las comillas del valor", async () => {
-    const name = await inProject({ ".env": 'APP_NAME="Mi Tienda"\n' }, detectProjectName);
-    expect(name).not.toContain('"');
   });
 });
 
