@@ -2,7 +2,7 @@
 id: p00021
 title: "p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
@@ -11,6 +11,13 @@ related:
     - p00020 # la reorganización de carpetas
     - p00022 # lo que SÍ hace falta por lenguaje
 ---
+
+> **Cerrada 2026-08-06.** Borradas las 1231 líneas de `runtime/`
+> (node 290, python 348, php 593). Verificado antes de tocar nada:
+> 0 referencias en todo el repo — ni en `package.json`, ni en los
+> docs, ni en CI, ni en el propio código. El gate sigue en verde sin
+> tocar nada más, que es la prueba de que estaba muerto.
+
 
 # p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel
 
