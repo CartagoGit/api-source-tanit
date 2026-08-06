@@ -2,11 +2,15 @@
 id: p00025
 title: "p00025 — limpiar los avisos del editor (tsconfig del plugin, bun.lock)"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: postman-exporter
 date: 2026-08-06
 ---
+
+> **En curso.** S1 (rootDir del plugin + errores de tipos que el gate
+> nunca vio) y S2 (bun.lock como JSONC) hechas el 2026-08-06. S3 y S4
+> pendientes.
 
 # p00025 — limpiar los avisos del editor
 

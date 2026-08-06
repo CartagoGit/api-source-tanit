@@ -69,10 +69,11 @@
     "test": "bun test",
     "lint:tools": "bun run scripts/lint-tool-no-process.ts",
     "validate:examples": "bun run scripts/validate.script.ts",
-    "validate": "bun run typecheck && bun run lint:tools && bun test && bun run validate:examples",
+    "validate": "bun run typecheck && bun run lint:tools && bun run lint:proposals && bun test && bun run validate:examples",
     "validate:package": "bun run scripts/validate-package.script.ts",
     "build:binary": "bun run scripts/build-binary.script.ts",
-    "push": "bun run scripts/push.script.ts"
+    "push": "bun run scripts/push.script.ts",
+    "lint:proposals": "bun run scripts/lint-proposals.script.ts"
   },
   "publishConfig": {
     "access": "public",

@@ -2,7 +2,7 @@
 id: p00006
 title: "p00006 — document the extension contract (third-party adapters + plugins)"
 kind: feat
-status: superseded
+status: retired
 type: proposal
 track: postman-exporter
 date: 2026-07-31

@@ -146,6 +146,7 @@ en este orden:
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
 | Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `plugins/**/src/lib/tools/`. |
+| Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
 
@@ -179,15 +180,33 @@ list** — do **not** widen to `mcp-vertex/*`.
 
 ## Proposal workflow
 
-Every non-trivial change starts as a proposal in
-`docs/mcp-vertex/proposals/ready/`:
+Every non-trivial change starts as a proposal under
+`docs/mcp-vertex/proposals/`. **The folder IS the state** — same layout
+as the `mcp-vertex` repo:
+
+| Folder | `status:` |
+|---|---|
+| `ready/` | `ready` |
+| `in-progress/` | `in-progress` |
+| `review/` | `review` |
+| `done/<kind>s/` | `done` |
+| `paused/` | `paused` |
+| `blocked/` | `blocked` |
+| `retired/` | `retired` |
+| `legacy/` | `legacy` |
+
+Moving the file and changing `status:` is a **single** operation;
+`bun run lint:proposals` fails if you only do one of the two. Always
+reference a proposal by its `id`, never by its filename — filenames move,
+ids do not. Full rules in
+[`docs/mcp-vertex/proposals/README.md`](docs/mcp-vertex/proposals/README.md).
 
 ```yaml
 ---
 id: p<NNNN>
 title: "<short title>"
 kind: feat | fix | refactor | perf | test | docs | chore
-status: ready | in-progress | blocked | done | retired
+status: ready | in-progress | review | done | paused | blocked | retired | legacy
 type: proposal
 track: postman-exporter
 date: <YYYY-MM-DD>

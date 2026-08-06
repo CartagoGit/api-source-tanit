@@ -115,9 +115,13 @@ Namespace `postman-exporter`, declarados en
 
 - **Auditoría vigente**: [`docs/mcp-vertex/AUDIT-2026-08-06.md`](../docs/mcp-vertex/AUDIT-2026-08-06.md)
   — bugs encontrados, causas raíz y lo que queda abierto.
-- **Propuestas**: [`docs/mcp-vertex/proposals/ready/`](../docs/mcp-vertex/proposals/ready/).
-  El servidor mcp-vertex es la fuente de verdad sobre cuál va después; no
-  enumeres ids de memoria.
+- **Propuestas**: [`docs/mcp-vertex/proposals/`](../docs/mcp-vertex/proposals/),
+  con la misma disposición que mcp-vertex: la carpeta **es** el estado
+  (`ready/`, `in-progress/`, `review/`, `done/`, `paused/`, `blocked/`,
+  `retired/`, `legacy/`), y `done/` archiva por kind. Moverla de carpeta
+  y cambiar su `status` es la misma operación; `bun run lint:proposals`
+  falla si solo se hace una de las dos. Referencia por `id`, nunca por
+  nombre de fichero.
 
 ---
 

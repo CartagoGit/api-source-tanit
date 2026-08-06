@@ -146,7 +146,7 @@ bun run validate:package   # empaqueta, instala en un proyecto limpio y ejecuta 
 
 Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
 Estado y decisiones: [auditoría](docs/mcp-vertex/AUDIT-2026-08-06.md) y
-[propuestas](docs/mcp-vertex/proposals/ready/).
+[propuestas](docs/mcp-vertex/proposals/).
 
 ---
 
