@@ -34,7 +34,20 @@ Para que la vista de cerradas escale, `done/` refleja los kinds:
 | `plans/` | `plan` |
 | `resumes/` | `resume` |
 
-Una subcarpeta se crea cuando cae el primer fichero de ese kind.
+Las subcarpetas están todas creadas de antemano, aunque estén vacías.
+
+## Por qué hay un `.gitkeep` en cada carpeta
+
+Git no versiona directorios, solo ficheros. Sin el `.gitkeep`, en cuanto
+la última propuesta de un estado se mueve a otro sitio la carpeta
+desaparece del repo — y el siguiente que quiera dejar algo en `review/`
+se encuentra sin sitio donde dejarlo, o lo deja en la raíz.
+
+El esqueleto entero (18 carpetas: 8 estados + 10 kinds dentro de `done/`)
+está anclado con `.gitkeep` y `lint:proposals` lo comprueba en cada
+`bun run validate`. La lista no se escribe a mano en el lint: se deriva
+de los mismos mapas de estados y kinds, así que añadir un estado nuevo
+crea su carpeta obligatoria sola.
 
 ## Reglas
 
@@ -47,6 +60,8 @@ Una subcarpeta se crea cuando cae el primer fichero de ese kind.
 4. **Cerrar una propuesta se anota en la propia propuesta**, con una cita
    arriba que diga qué se entregó y qué quedó fuera. Un `status: done`
    sin esa nota no dice si se hizo entera.
+5. **Las carpetas no se borran nunca**, ni cuando se quedan vacías. El
+   `.gitkeep` las mantiene y el lint lo exige.
 
 ## Estado actual
 

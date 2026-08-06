@@ -8,16 +8,23 @@
  * revés — y entonces `ready/` deja de ser una lista fiable de qué queda
  * por hacer.
  *
- * Comprueba cuatro cosas:
+ * Comprueba cinco cosas:
  *   1. El `status` es uno de los estados válidos.
  *   2. La carpeta corresponde a ese estado.
  *   3. Dentro de `done/`, la subcarpeta corresponde al `kind`.
  *   4. Los `id` no se repiten y coinciden con el prefijo del fichero.
+ *   5. El esqueleto de carpetas existe entero y cada una tiene `.gitkeep`.
+ *
+ * La quinta es la que mantiene el árbol estable: git no versiona
+ * directorios, así que en cuanto la última propuesta de un estado se
+ * mueve a otro, la carpeta desaparece del repo y el siguiente que
+ * quiera usar ese estado se encuentra sin sitio donde dejarla. El
+ * `.gitkeep` la ancla.
  *
  * Uso:
  *   bun run lint:proposals
  */
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
 
 const PACKAGE_ROOT = resolve(import.meta.dir, "..");
@@ -48,6 +55,17 @@ const KIND_DIRS: Record<string, string> = {
   plan: "plans",
   resume: "resumes",
 };
+
+/**
+ * Esqueleto completo de carpetas, derivado de los dos mapas de arriba
+ * para que no pueda desincronizarse: si mañana se añade un estado o un
+ * `kind`, la carpeta entra sola en el lint.
+ */
+function canonicalFolders(): string[] {
+  const folders = STATES.map((state) => state as string);
+  for (const dir of new Set(Object.values(KIND_DIRS))) folders.push(join("done", dir));
+  return folders.sort();
+}
 
 interface IProposal {
   readonly path: string;
@@ -96,6 +114,43 @@ function expectedFolder(proposal: IProposal): string {
   return join("done", KIND_DIRS[proposal.kind] ?? "chores");
 }
 
+/** ¿Existe la ruta y es del tipo esperado? */
+async function exists(path: string, kind: "dir" | "file"): Promise<boolean> {
+  try {
+    const info = await stat(path);
+    return kind === "dir" ? info.isDirectory() : info.isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verifica que están las carpetas de todos los estados (y las de `kind`
+ * dentro de `done/`), cada una con su `.gitkeep`.
+ */
+async function checkSkeleton(): Promise<string[]> {
+  const problems: string[] = [];
+  const root = relative(PACKAGE_ROOT, PROPOSALS_DIR);
+
+  if (!(await exists(join(PROPOSALS_DIR, ".gitkeep"), "file"))) {
+    problems.push(`${root}/: falta el .gitkeep de la raíz`);
+  }
+
+  for (const folder of canonicalFolders()) {
+    const dir = join(PROPOSALS_DIR, folder);
+    if (!(await exists(dir, "dir"))) {
+      problems.push(`${root}/${folder}/: la carpeta no existe`);
+      continue;
+    }
+    if (!(await exists(join(dir, ".gitkeep"), "file"))) {
+      problems.push(
+        `${root}/${folder}/: falta el .gitkeep — git borraría la carpeta al quedarse vacía`,
+      );
+    }
+  }
+  return problems;
+}
+
 async function main(): Promise<number> {
   const proposals = await collectProposals(PROPOSALS_DIR);
   if (proposals.length === 0) {
@@ -103,7 +158,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const problems: string[] = [];
+  const problems: string[] = await checkSkeleton();
   const seenIds = new Map<string, string>();
 
   for (const proposal of proposals) {
@@ -151,7 +206,10 @@ async function main(): Promise<number> {
     .sort()
     .map(([state, count]) => `${state} ${count}`)
     .join(", ");
-  console.log(`lint:proposals — ${proposals.length} propuestas, sin drift (${summary})`);
+  console.log(
+    `lint:proposals — ${proposals.length} propuestas, sin drift (${summary})` +
+      ` · esqueleto de ${canonicalFolders().length} carpetas anclado con .gitkeep`,
+  );
   return 0;
 }
 
