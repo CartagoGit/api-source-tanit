@@ -1,0 +1,4 @@
+#!/usr/bin/env php
+<?php
+// Marcador de proyecto Laravel. El scanner lo usa para reconocer la
+// raiz, igual que hace `php artisan` de verdad.

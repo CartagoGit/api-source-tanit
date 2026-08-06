@@ -1,0 +1,9 @@
+{
+  "name": "sample/laravel-api",
+  "description": "Ejemplo de API Laravel con FormRequests, apiResource y flujo de login.",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "laravel/framework": "^11.0"
+  }
+}

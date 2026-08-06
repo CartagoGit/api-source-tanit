@@ -24,6 +24,7 @@
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, basename, sep } from "node:path";
+import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
 import type { EndpointSpec } from "../contract/postman.interface.js";
 import type { ProjectConfig } from "../contract/project-config.interface.js";
@@ -92,23 +93,17 @@ async function listDirs(p: string): Promise<string[]> {
 }
 
 /**
- * Devuelve el nombre del proyecto host derivando de composer.json o
- * basename del projectRoot.
+ * Devuelve el nombre del proyecto host.
+ *
+ * La lectura de manifiestos vive en `project-name.service`: aquí solo
+ * se resuelve la raíz. Antes esta función miraba únicamente
+ * `composer.json`, con lo que Laravel se llamaba como su paquete y los
+ * otros once frameworks como su carpeta.
  */
 export async function detectProjectName(): Promise<string> {
   const root = projectRoot();
   if (!root) return "unnamed";
-  try {
-    const text = await readFile(join(root, "composer.json"), "utf8");
-    const m = text.match(/"name"\s*:\s*"([^"]+)"/);
-    if (m) {
-      const parts = m[1].split("/").filter(Boolean);
-      return parts[parts.length - 1] ?? basename(root) ?? "unnamed";
-    }
-  } catch {
-    /* ignore */
-  }
-  return basename(root) || "unnamed";
+  return detectProjectNameIn(root);
 }
 
 /**

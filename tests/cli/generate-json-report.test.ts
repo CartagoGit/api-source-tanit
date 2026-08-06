@@ -67,8 +67,17 @@ describe("generate --json", () => {
 
   test("trae el framework detectado y el nombre del proyecto", () => {
     expect(report.framework).toBe("express");
-    expect(report.projectName).toBe("mi-api");
     expect(report.projectRoot).toBe(project);
+  });
+
+  // El fixture se copia a una carpeta temporal con OTRO nombre
+  // (`mi-api`), y aun así el proyecto se identifica por lo que declara
+  // su `package.json`. Es lo que queremos: mover o clonar el repo no
+  // cambia la identidad de la colección, así que reimportar sigue
+  // actualizando la que ya está en Postman en vez de duplicarla.
+  test("el nombre sale del manifiesto, no de la carpeta", () => {
+    expect(project.endsWith("mi-api")).toBe(true);
+    expect(report.projectName).toBe("sample-express");
   });
 
   test("la colección que anuncia existe de verdad en disco", () => {

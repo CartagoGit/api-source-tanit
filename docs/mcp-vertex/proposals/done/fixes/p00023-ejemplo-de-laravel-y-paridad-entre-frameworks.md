@@ -2,13 +2,22 @@
 id: p00023
 title: "p00023 — ejemplo de Laravel y paridad real entre los 12 frameworks"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
 related:
     - p00016 # el contrato de test que hace visible la paridad
 ---
+
+> **Cerrada 2026-08-06.** `examples/example-laravel` creado (18 endpoints,
+> 6 carpetas, login detectado) y `examples/README.md` con las dos tablas.
+> El gate pasa de 11/11 a 12/12. La paridad se arregló en el sitio que
+> importaba: `detectProjectName()` solo leía `composer.json`, así que
+> Laravel se identificaba por su paquete y los otros once por su
+> carpeta; ahora hay `project-name.service` con un manifiesto por
+> ecosistema.
+
 
 # p00023 — ejemplo de Laravel y paridad real entre los 12 frameworks
 
