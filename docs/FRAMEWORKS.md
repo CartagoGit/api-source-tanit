@@ -19,7 +19,7 @@ heurísticamente.
 | [Express](#express--fastify--koa--hapi) | 14 | 13 |
 | [Next.js](#nextjs) | 14 | 11 |
 | [Gin](#gin) | 14 | 8 |
-| [Flask](#flask) | 14 | 0 |
+| [Flask](#flask) | 14 | 7 |
 | [NestJS](#nestjs) | 13 | 7 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
 | [ASP.NET Core](#aspnet-core) | 11 | 11 |
@@ -225,14 +225,19 @@ Ejemplo: [`examples/example-fastapi/`](../examples/example-fastapi/)
 - Blueprints: `@bp.route(...)` con su `url_prefix`
 - `app.add_url_rule(...)`
 
-**Bodies**: es el punto flojo — **0 de 14** endpoints del fixture
-resuelven reglas reales. El provider solo reconoce `flask_pydantic`, y no
-inspecciona los modelos inline. Todos los bodies salen de la inferencia
-heurística.
+**Bodies**: de **Marshmallow** (`fields.Str(required=True)`,
+`validate.OneOf([...])`, `validate.Length(min, max)`, `fields.Email`) y de
+**Pydantic** vía `flask-pydantic`. Un proyecto puede tener las dos
+librerías conviviendo.
 
-Si usas Flask y quieres bodies fieles, la vía práctica hoy es publicar un
-`openapi.yaml` (con `flask-smorest` o `apispec`) y dejar que lo use el
-scanner de OpenAPI.
+El schema se asocia al endpoint en dos pasos: primero el que el handler
+nombra explícitamente (`UserSchema().load(request.json)`), y si no, el
+que casa por convención con el recurso de la ruta (`/api/users` →
+`UserSchema`).
+
+**Limitaciones**: no se resuelven schemas importados desde otro paquete
+instalado. `fields.Nested(OtraSchema)` se mapea a `object` sin expandir
+sus campos.
 
 Ejemplo: [`examples/example-flask/`](../examples/example-flask/)
 

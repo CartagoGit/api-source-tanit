@@ -20,6 +20,10 @@ import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
+import {
+  parsePydanticModels,
+  pydanticFieldToSpec,
+} from "../../helper/pydantic-schema.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -48,63 +52,6 @@ const DECORATOR_RE =
 const ROUTER_PREFIX_RE =
   /APIRouter\s*\(\s*[^)]*prefix\s*=\s*(['"])([^'"]+)\1/gi;
 const ROUTER_VAR_RE = /([a-zA-Z_$][\w$]*)\s*=\s*APIRouter/gi;
-
-// Pydantic BaseModel: `class X(BaseModel):` seguido de `field: type`.
-const BASEMODEL_RE = /class\s+(\w+)\s*\(\s*BaseModel\s*\)\s*:/g;
-const FIELD_RE = /^\s*([a-zA-Z_][\w]*)\s*:\s*([^\n=]+?)\s*(?:=\s*(.+?))?\s*$/gm;
-
-// Tipos Pydantic → IValidationSpec.type
-const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
-  str: "string",
-  int: "integer",
-  float: "number",
-  bool: "boolean",
-  List: "array",
-  dict: "object",
-  datetime: "datetime",
-  date: "date",
-  bytes: "string",
-  any: "any",
-  Optional: "any",
-  Literal: "enum",
-};
-
-// Format detection para tipos Pydantic especiales.
-const FORMAT_MAP: Record<string, string> = {
-  EmailStr: "email",
-  HttpUrl: "url",
-  AnyUrl: "url",
-  UUID4: "uuid",
-  UUID: "uuid",
-  IPvAnyAddress: "ip",
-};
-
-function mapType(t: string): IValidationSpec["type"] {
-  // Detectar formatos primero (EmailStr, UUID4, etc → string).
-  for (const name of Object.keys(FORMAT_MAP)) {
-    if (t.includes(name)) return "string";
-  }
-  const base = t
-    .replace(/Optional\[(.*)\]/, "$1")
-    .replace(/List\[(.*)\]/, "List")
-    .replace(/Dict\[.*\]/, "dict")
-    .replace(/Set\[(.*)\]/, "List")
-    .replace(/Tuple\[(.*)\]/, "List")
-    .replace(/\s+/g, "");
-  return TYPE_MAP[base] ?? "any";
-}
-
-function mapFormat(t: string): string | undefined {
-  for (const [name, fmt] of Object.entries(FORMAT_MAP)) {
-    if (t.includes(name)) return fmt;
-  }
-  return undefined;
-}
-
-function isRequired(t: string): boolean {
-  // Si no tiene Optional ni tiene default `= ...`, es required.
-  return !t.includes("Optional") && !t.includes("=None");
-}
 
 // ---------------------------------------------------------------------------
 // Project detection
@@ -245,7 +192,7 @@ export class FastApiScanner implements IRouteScanner {
 
 interface ModelInfo {
   /** className → fields. */
-  readonly fields: Map<string, string>;
+  readonly fields: ReadonlyMap<string, string>;
   /** Fichero donde está definida. */
   readonly file: string;
   /** Línea donde está `class ModelName(BaseModel):`. */
@@ -267,7 +214,7 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
     const files = await collectPyFiles(match.projectRoot);
     const models: Map<string, ModelInfo> = new Map();
 
-    // 1) Recoger todos los BaseModel.
+    // 1) Recoger todos los BaseModel del proyecto.
     for (const file of files) {
       let raw: string;
       try {
@@ -275,31 +222,11 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
       } catch {
         continue;
       }
-      const text = stripComments(raw);
-      const modelRe = new RegExp(BASEMODEL_RE.source, "g");
-      let modelMatch: RegExpExecArray | null;
-      while ((modelMatch = modelRe.exec(text)) !== null) {
-        const className = modelMatch[1];
-        if (!className) continue;
-        const modelStart = modelMatch.index + modelMatch[0].length;
-        // Encontrar el final del bloque (heurística: cuenta de indentación).
-        const lines = text.slice(modelStart).split("\n");
-        const fields = new Map<string, string>();
-        for (const line of lines) {
-          if (line && !line.startsWith(" ") && !line.startsWith("\t") && line.trim() !== "") {
-            break;
-          }
-          const fm = new RegExp(FIELD_RE.source, "g").exec(line);
-          if (fm) {
-            const fName = fm[1];
-            const fType = fm[2]?.trim() ?? "";
-            if (fName) fields.set(fName, fType);
-          }
-        }
-        models.set(className, {
-          fields,
+      for (const model of parsePydanticModels(stripComments(raw))) {
+        models.set(model.className, {
+          fields: model.fields,
           file,
-          line: text.slice(0, modelStart).split("\n").length - 1,
+          line: model.line,
         });
       }
     }
@@ -311,17 +238,9 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
     const candidate = await pickModelForRoute(route, models, files);
     if (!candidate) return { endpointKey, fields: [] };
 
-    const fields: IValidationSpec[] = [];
-    for (const [fieldName, fieldType] of candidate.fields) {
-      const fmt = mapFormat(fieldType);
-      fields.push({
-        fieldName,
-        location: "body",
-        type: mapType(fieldType),
-        required: isRequired(fieldType),
-        ...(fmt ? { format: fmt } : {}),
-      });
-    }
+    const fields = [...candidate.fields].map(([fieldName, annotation]) =>
+      pydanticFieldToSpec(fieldName, annotation),
+    );
     return { endpointKey, fields };
   }
 }

@@ -12,7 +12,7 @@ describeScannerContract({
   framework: "flask",
   fixtureRoot: comprehensiveFixture("flask"),
   capabilities: {
-    validation: false,
+    validation: true,
     pathParams: true,
     stripsComments: true,
   },

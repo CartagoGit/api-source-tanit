@@ -48,7 +48,7 @@ import {
 import {
   FlaskProjectScanner,
   FlaskRouteScanner,
-  FlaskPydanticProvider,
+  FlaskValidationProvider,
 } from "./scanners/flask.scanner";
 import {
   NextJsProjectScanner,
@@ -118,7 +118,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new DjangoSerializerProvider(),
     new SpringBootBeanValidationProvider(),
     new AspNetDataAnnotationsProvider(),
-    new FlaskPydanticProvider(),
+    new FlaskValidationProvider(),
     new NextJsZodProvider(),
     new GinBindingProvider(),
     new ExpressZodValidationProvider(),

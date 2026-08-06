@@ -33,8 +33,8 @@ const SUPPORTED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEA
 export interface IScannerCapabilities {
   /**
    * Tiene `IValidationSpecProvider` que resuelve campos reales.
-   * `false` para los que dependen por completo de la inferencia
-   * heurística (hoy, Flask).
+   * `false` para los que dependan por completo de la inferencia
+   * heurística. Hoy los 12 lo cumplen.
    */
   readonly validation?: boolean;
   /** Sus rutas incluyen parámetros de path. */

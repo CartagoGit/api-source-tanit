@@ -11,14 +11,22 @@
  *   - Soporta `app.add_url_rule(...)` (regex).
  *
  * Validation:
- *   - `FlaskPydanticProvider` (best-effort): detecta `flask_pydantic` o
- *     `BodyParams`/`Query` decorators. Limitado: el parser no inspecciona
- *     modelos Pydantic inline; depende de `applyAgnosticInference` para
- *     generar bodies heurísticos.
+ *   - `FlaskValidationProvider`: extrae los campos de los schemas
+ *     Marshmallow (`fields.Str(required=True)`) y de los modelos
+ *     Pydantic de `flask-pydantic`.
  */
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../helper/uri.helper.js";
+import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
+import {
+  marshmallowSchemaToSpecs,
+  parseMarshmallowSchemas,
+} from "../../helper/marshmallow-schema.helper.js";
+import {
+  parsePydanticModels,
+  pydanticModelToSpecs,
+} from "../../helper/pydantic-schema.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -287,18 +295,172 @@ function stripPyComments(src: string): string {
 // Validation spec provider (no-op por ahora; bodies se generan con applyAgnosticInference)
 // ---------------------------------------------------------------------------
 
-export class FlaskPydanticProvider implements IValidationSpecProvider {
+/**
+ * Provider de validación de Flask.
+ *
+ * Cubre las dos formas habituales de validar en Flask:
+ *
+ *   - **Marshmallow** (la más extendida):
+ *       `class UserSchema(Schema): name = fields.Str(required=True)`
+ *   - **Pydantic** vía `flask-pydantic`:
+ *       `class UserCreate(BaseModel): name: str`
+ *
+ * El schema se asocia al endpoint en tres pasos de confianza
+ * decreciente, igual que en los demás scanners:
+ *
+ *   1. El schema referenciado en el cuerpo del handler
+ *      (`UserSchema().load(request.json)`, `body: UserCreate`).
+ *   2. El que coincide por convención de nombre con el recurso de la
+ *      ruta (`/api/users` → `UserSchema`, `UserCreateSchema`…).
+ *   3. Ninguno: se deja que la inferencia agnóstica rellene el body.
+ *
+ * Antes esto era un stub que devolvía `[]` con `supports: false`, así
+ * que Flask era el único framework con 0 endpoints con reglas reales.
+ */
+export class FlaskValidationProvider implements IValidationSpecProvider {
   readonly framework = "flask" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
-    return false; // Disabled: bodies via agnostic inference.
+  async supports(_route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
+    return true;
   }
 
   async resolve(
     route: ParsedRoute,
-    _match: IProjectMatch,
+    match: IProjectMatch,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
-    return { endpointKey, fields: [] };
+
+    // Los GET y DELETE no llevan body; sus params ya salen de la URI.
+    if (route.method === "GET" || route.method === "DELETE") {
+      return { endpointKey, fields: [] };
+    }
+
+    const schemas = await collectFlaskSchemas(match.projectRoot);
+    if (schemas.size === 0) return { endpointKey, fields: [] };
+
+    const handlerBody = await readHandlerBody(route, match.projectRoot);
+    const chosen =
+      pickSchemaByReference(handlerBody, schemas) ?? pickSchemaByConvention(route, schemas);
+
+    return { endpointKey, fields: chosen ? [...chosen.specs] : [] };
   }
+}
+
+/** Un schema de validación localizado, ya convertido a specs. */
+interface IFlaskSchema {
+  readonly name: string;
+  readonly specs: ReadonlyArray<IValidationSpec>;
+}
+
+/** Recorre el proyecto y recoge todos los schemas Marshmallow y Pydantic. */
+async function collectFlaskSchemas(
+  projectRoot: string,
+): Promise<Map<string, IFlaskSchema>> {
+  const out = new Map<string, IFlaskSchema>();
+
+  for (const file of await collectPythonFiles(projectRoot)) {
+    let raw: string;
+    try {
+      raw = await readFile(file, "utf8");
+    } catch {
+      continue;
+    }
+    const text = stripPyComments(raw);
+
+    for (const schema of parseMarshmallowSchemas(text)) {
+      if (schema.fields.size === 0) continue;
+      out.set(schema.className, {
+        name: schema.className,
+        specs: marshmallowSchemaToSpecs(schema),
+      });
+    }
+    for (const model of parsePydanticModels(text)) {
+      if (model.fields.size === 0) continue;
+      out.set(model.className, {
+        name: model.className,
+        specs: pydanticModelToSpecs(model),
+      });
+    }
+  }
+  return out;
+}
+
+/** Ficheros Python del proyecto, saltando tests y `__init__` vacíos. */
+async function collectPythonFiles(projectRoot: string): Promise<string[]> {
+  return collectFilesFrom(
+    ["app", "src", "api", ""].map((dir) => (dir ? join(projectRoot, dir) : projectRoot)),
+    (name) => name.endsWith(".py") && !name.startsWith("test_"),
+  );
+}
+
+/**
+ * Cuerpo del handler de una ruta: desde la línea del decorador hasta la
+ * siguiente definición en columna 0.
+ */
+async function readHandlerBody(route: ParsedRoute, projectRoot: string): Promise<string> {
+  if (!route.sourceFile) return "";
+  let raw: string;
+  try {
+    raw = await readFile(join(projectRoot, route.sourceFile), "utf8");
+  } catch {
+    return "";
+  }
+  const lines = stripPyComments(raw).split("\n");
+  const start = Math.max(0, route.lineNumber - 1);
+  const out: string[] = [];
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    if (i > start + 1 && line.trim() !== "" && !/^\s/.test(line) && !line.startsWith("@")) {
+      break;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+/** Paso 1: el schema que el handler nombra explícitamente. */
+function pickSchemaByReference(
+  handlerBody: string,
+  schemas: ReadonlyMap<string, IFlaskSchema>,
+): IFlaskSchema | null {
+  if (!handlerBody) return null;
+  for (const [name, schema] of schemas) {
+    if (new RegExp(`\\b${name}\\b`).test(handlerBody)) return schema;
+  }
+  return null;
+}
+
+/** Paso 2: el schema cuyo nombre casa con el recurso de la ruta. */
+function pickSchemaByConvention(
+  route: ParsedRoute,
+  schemas: ReadonlyMap<string, IFlaskSchema>,
+): IFlaskSchema | null {
+  const segments = route.uri
+    .split("/")
+    .filter((s) => s && !s.includes("<") && !s.includes("{") && s !== "api");
+  if (segments.length === 0) return null;
+
+  const resource = segments[segments.length - 1]!;
+  const singular = resource.replace(/s$/, "");
+  const candidates = [
+    `${capitalize(singular)}Schema`,
+    `${capitalize(resource)}Schema`,
+    `${capitalize(singular)}Create`,
+    `Create${capitalize(singular)}`,
+    capitalize(singular),
+  ];
+
+  for (const candidate of candidates) {
+    const found = schemas.get(candidate);
+    if (found) return found;
+  }
+  return null;
+}
+
+function capitalize(value: string): string {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
 }
