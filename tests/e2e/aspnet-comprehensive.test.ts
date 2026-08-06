@@ -23,7 +23,7 @@ import { describeCollectionContract } from "../helpers/collection-contract";
 
 describeCollectionContract({
   fixtureName: "aspnet-comprehensive",
-  expectedRequests: 11,
+  expectedRequests: 17,
   hasAuth: true,
 });
 

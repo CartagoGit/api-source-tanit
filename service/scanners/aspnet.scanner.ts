@@ -150,6 +150,11 @@ async function parseCsFile(
   const text = stripCsComments(raw);
   const lines = text.split("\n");
 
+  // 0) Minimal APIs. Es la forma por defecto desde .NET 6 y no usa
+  //    controladores, así que se detecta aparte y puede convivir con
+  //    ellos en el mismo proyecto.
+  out.push(...parseMinimalApis(lines, relPath));
+
   // 1) Detectar prefijo del controller.
   let classPrefix = "";
   let classStart = -1;
@@ -169,6 +174,7 @@ async function parseCsFile(
     if (classStart >= 0) break;
   }
   if (classStart < 0) return out;
+
 
   // 2) Buscar method attributes.
   for (let i = classStart + 1; i < lines.length; i++) {
@@ -200,6 +206,68 @@ async function parseCsFile(
         prefixChain: classPrefix ? [classPrefix] : [],
         displayName: methodName || `${method.toUpperCase()} ${fullPath}`,
         ...(methodName ? { description: methodName } : {}),
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * `app.MapGet("/users", handler)` — minimal APIs de .NET 6+.
+ *
+ * Captura: 1 = variable (`app`, `users`…), 2 = verbo, 3 = ruta.
+ */
+const MINIMAL_API_RE =
+  /\b([a-zA-Z_][\w]*)\s*\.\s*Map(Get|Post|Put|Delete|Patch)\s*\(\s*(["'][^"']*["'])/g;
+
+/**
+ * `var grupo = app.MapGroup("/api/users");` — prefijo de un grupo.
+ * Captura: 1 = variable del grupo, 2 = prefijo.
+ */
+const MAP_GROUP_RE =
+  /\b(?:var|[A-Za-z_][\w<>,\s]*?)\s+([a-zA-Z_][\w]*)\s*=\s*[a-zA-Z_][\w]*\s*\.\s*MapGroup\s*\(\s*["']([^"']*)["']/g;
+
+/**
+ * Extrae las rutas declaradas con minimal APIs.
+ *
+ * Es lo idiomático en .NET 6+ y no lo cubría nada: un proyecto que las
+ * usara (todo `Program.cs` generado por `dotnet new webapi` desde .NET 6)
+ * producía una colección vacía.
+ */
+function parseMinimalApis(lines: string[], relPath: string): ParsedRoute[] {
+  const out: ParsedRoute[] = [];
+  const text = lines.join("\n");
+
+  // Prefijos de los grupos declarados en el fichero.
+  const groupPrefix = new Map<string, string>();
+  const groupRe = new RegExp(MAP_GROUP_RE.source, "g");
+  let groupMatch: RegExpExecArray | null;
+  while ((groupMatch = groupRe.exec(text)) !== null) {
+    const variable = groupMatch[1];
+    const prefix = groupMatch[2];
+    if (variable && prefix) groupPrefix.set(variable, prefix);
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const re = new RegExp(MINIMAL_API_RE.source, "g");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(line)) !== null) {
+      const variable = m[1] ?? "";
+      const method = (m[2] ?? "").toLowerCase();
+      const path = (m[3] ?? "").replace(/^["']|["']$/g, "");
+      if (!HTTP_METHODS.includes(method)) continue;
+
+      const prefix = groupPrefix.get(variable) ?? "";
+      const fullPath = joinRoutePath("/", prefix, path);
+      out.push({
+        method: method.toUpperCase(),
+        uri: fullPath,
+        rawUri: fullPath,
+        sourceFile: relPath,
+        lineNumber: i + 1,
+        prefixChain: prefix ? [prefix] : [],
+        displayName: `${method.toUpperCase()} ${fullPath}`,
       });
     }
   }

@@ -22,7 +22,7 @@ heurísticamente.
 | [Flask](#flask) | 14 | 7 |
 | [NestJS](#nestjs) | 13 | 7 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
-| [ASP.NET Core](#aspnet-core) | 11 | 11 |
+| [ASP.NET Core](#aspnet-core) | 17 | 11 |
 
 Cuando dos scanners reconocen el proyecto gana el de mayor confianza. Un
 proyecto con `openapi.yaml` **y** código Express usará el spec, que es
@@ -308,15 +308,23 @@ Ejemplo: [`examples/example-springboot/`](../examples/example-springboot/)
 
 **Detecta por**: `*.csproj` con `Microsoft.AspNetCore.App`.
 
-**Entiende**: `[Route("api/v1")]` en la clase, `[HttpGet("users")]`,
-`[HttpPost]`, `[HttpPut]`, `[HttpPatch]`, `[HttpDelete]` en los métodos,
-y `[ApiController]` como heurística.
+**Entiende** las dos formas de declarar rutas en .NET, y pueden convivir
+en el mismo proyecto:
+
+- **Controladores**: `[Route("api/v1")]` en la clase, `[HttpGet("users")]`,
+  `[HttpPost]`, `[HttpPut]`, `[HttpPatch]`, `[HttpDelete]` en los
+  métodos, y `[ApiController]` como heurística.
+- **Minimal APIs** (.NET 6+, lo que genera `dotnet new webapi`):
+  `app.MapGet("/users", …)`, `MapPost`, `MapPut`, `MapPatch`,
+  `MapDelete`, incluido el prefijo de `app.MapGroup("/api/products")`.
 
 **Bodies**: de las Data Annotations — `[Required]`, `[EmailAddress]`,
 `[StringLength]`, `[Range]`, `[RegularExpression]`.
 
-**Limitaciones**: solo DTO del proyecto local. Los **minimal APIs**
-(`app.MapGet("/users", …)` en `Program.cs`) **no** se detectan todavía.
+**Limitaciones**: solo DTO del proyecto local. En minimal APIs los
+bodies no se resuelven todavía desde el parámetro tipado del lambda
+(`(CreateProductRequest body) => …`); esos endpoints reciben body
+inferido.
 
 Ejemplo: [`examples/example-aspnet/`](../examples/example-aspnet/)
 

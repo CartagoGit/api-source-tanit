@@ -7,7 +7,7 @@ import {
 } from "../../service/scanners/aspnet.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
 
 describeScannerContract({
   framework: "aspnet",
@@ -82,5 +82,53 @@ describe("ASP.NET scanner", () => {
     const names = result.fields.map((f) => f.fieldName.toLowerCase());
     expect(names).toContain("name");
     expect(names).toContain("email");
+  });
+});
+
+describe("ASP.NET — minimal APIs (.NET 6+)", () => {
+  const ROOT_MINIMAL = resolve(import.meta.dir, "../../tests/fixtures/aspnet-comprehensive");
+
+  // Es la forma por defecto desde .NET 6 (`dotnet new webapi`) y no la
+  // cubría nada: un proyecto que solo las usara producía una colección
+  // vacía.
+  test("detecta app.MapGet en Program.cs", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    const health = routes.find((r) => r.uri === "/health");
+    expect(health).toBeDefined();
+    expect(health?.method).toBe("GET");
+    expect(health?.sourceFile).toBe("Program.cs");
+  });
+
+  test("aplica el prefijo de MapGroup", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    const uris = routes.filter((r) => r.sourceFile === "Program.cs").map((r) => r.uri);
+    expect(uris).toContain("/api/products");
+    expect(uris).toContain("/api/products/{id}");
+  });
+
+  test("cubre los cinco verbos del grupo", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    const products = routes
+      .filter((r) => r.uri.startsWith("/api/products"))
+      .map((r) => r.method)
+      .sort();
+    expect(products).toEqual(["DELETE", "GET", "GET", "POST", "PUT"]);
+  });
+
+  test("un endpoint comentado no aparece", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    expect(routes.map((r) => r.uri).join(" ")).not.toContain("endpoint-comentado");
+  });
+
+  test("conviven minimal APIs y controladores en el mismo proyecto", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    expect(routes.some((r) => r.sourceFile === "Program.cs")).toBe(true);
+    expect(routes.some((r) => r.sourceFile?.startsWith("Controllers/"))).toBe(true);
+  });
+
+  test("no duplica endpoints entre las dos formas", async () => {
+    const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
+    const keys = routes.map((r) => `${r.method} ${r.uri}`);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
