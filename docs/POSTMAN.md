@@ -9,10 +9,10 @@ Si aún no has generado nada: [INSTALL.md](INSTALL.md).
 
 ## Lo que vas a importar
 
-`generate` deja esto en `build/`:
+`generate` deja esto en `export-to-postman/`:
 
 ```
-build/
+export-to-postman/
 ├── mi-api.postman_collection.json          ← LA COLECCIÓN (los endpoints)
 ├── mi-api.local.postman_environment.json   ← ENVIRONMENT (baseUrl, credenciales, token)
 ├── mi-api.dev.postman_environment.json

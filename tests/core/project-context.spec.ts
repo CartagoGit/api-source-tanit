@@ -8,6 +8,7 @@ import {
   toProjectRelative,
 } from "../../service/project-context.service";
 import { createTempProject } from "../helpers/scanner-fixture";
+import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
 
 const ctx = (projectRoot: string) => resolveProjectContext({ projectRoot });
 
@@ -62,7 +63,7 @@ describe("resolveProjectContext — de dónde sale la raíz", () => {
 
 describe("resolveProjectContext — derivados", () => {
   test("el outputDir por defecto es <raíz>/build", () => {
-    expect(ctx("/tmp/mi-api").outputDir).toBe(join("/tmp/mi-api", "build"));
+    expect(ctx("/tmp/mi-api").outputDir).toBe(join("/tmp/mi-api", OUTPUT_DIR_NAME));
   });
 
   test("respeta un outputDir explícito", () => {

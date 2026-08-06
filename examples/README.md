@@ -70,7 +70,7 @@ hace de forma distinta.
 bun run scripts/generate.script.ts --project-root examples/example-laravel
 ```
 
-Escribe la colección y sus environments en `examples/example-laravel/build/`.
+Escribe la colección y sus environments en `examples/example-laravel/export-to-postman/`.
 Para la salida legible por máquina —la que consume el plugin— añade
 `--json`.
 

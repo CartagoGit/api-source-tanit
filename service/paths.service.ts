@@ -27,13 +27,14 @@
  *   1. CLI `--output-dir <path>` o `--output <file>` (parent).
  *   2. Env `POSTMAN_OUTPUT_DIR`.
  *   3. Si `packageRoot` está **dentro** de `projectRoot` (modo repo):
- *        → `${packageRoot}/build/`
+ *        → `${packageRoot}/export-to-postman/`
  *      Si NO (modo paquete externo en otro proyecto):
- *        → `${projectRoot}/build/`
- *   4. `process.cwd()/build/` como último fallback.
+ *        → `${projectRoot}/export-to-postman/`
+ *   4. `process.cwd()/export-to-postman/` como último fallback.
  */
 import { existsSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
 
 // ---------------------------------------------------------------------------
 // Caché interna
@@ -221,9 +222,9 @@ export function packageBasename(): string {
  * Regla:
  *   1. CLI `--output-dir <path>` o `--output <file>` (parent).
  *   2. Env `POSTMAN_OUTPUT_DIR`.
- *   3. Si el paquete está **dentro** del proyecto Laravel → `${packageRoot}/build/`.
- *      Si NO → `${projectRoot}/build/`.
- *   4. `process.cwd()/build/` fallback.
+ *   3. Si el paquete está **dentro** del proyecto → `${packageRoot}/export-to-postman/`.
+ *      Si NO → `${projectRoot}/export-to-postman/`.
+ *   4. `process.cwd()/export-to-postman/` fallback.
  */
 export function outputDir(): string {
   const d = discover();
@@ -247,7 +248,7 @@ export function outputDir(): string {
   if (d.projectRoot) {
     const rel = relative(d.projectRoot, d.packageRoot);
     // Si `rel` no empieza por ".." ni es absoluto, packageRoot está DENTRO
-    // del proyecto. En ese caso el output va en build/ del paquete.
+    // del proyecto. En ese caso el output va en la carpeta del paquete.
     const inside = rel && !rel.startsWith("..") && !relative(d.packageRoot, d.projectRoot).startsWith("..");
     // `inside=true` solo si projectRoot ⊂ packageRoot o packageRoot ⊂ projectRoot.
     // Caso típico: packageRoot = ${projectRoot}/resources/postman, projectRoot = ${projectRoot}.
@@ -255,12 +256,12 @@ export function outputDir(): string {
     // Si está dentro: rel = "resources/postman" → inside.
     const pkgInsideProj = rel === ".." || (!rel.startsWith("..") && rel !== "");
     return pkgInsideProj
-      ? join(d.packageRoot, "build")
-      : join(d.projectRoot, "build");
+      ? join(d.packageRoot, OUTPUT_DIR_NAME)
+      : join(d.projectRoot, OUTPUT_DIR_NAME);
   }
 
   // 4. Fallback
-  return join(process.cwd(), "build");
+  return join(process.cwd(), OUTPUT_DIR_NAME);
 }
 
 /**

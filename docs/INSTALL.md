@@ -75,7 +75,7 @@ Salida:
   · 9 rutas en código, 9 specs (con validación: 9, sin: 0).
 → Auth: login en "Crear Login" guarda el token automáticamente, refresh cableado.
 
-✔ Colección escrita en ~/proyectos/mi-api/build/mi-api.postman_collection.json
+✔ Collection written to ~/proyectos/mi-api/export-to-postman/mi-api.postman_collection.json
   · 9 requests en 3 carpetas (14.3 KB).
   · Environment "Local" → …/mi-api.local.postman_environment.json (5 vars)
 ```
@@ -192,7 +192,7 @@ Por orden de prioridad:
 1. `--output <ruta.json>` — ruta exacta del fichero.
 2. `--output-dir <carpeta>` — carpeta de destino.
 3. `POSTMAN_OUTPUT_DIR` — misma idea, por variable de entorno.
-4. Por defecto: **`<raíz del proyecto>/build/`**.
+4. Por defecto: **`<raíz del proyecto>/export-to-postman/`**.
 
 Los nombres salen del nombre del proyecto, o de `--basename`:
 
@@ -201,7 +201,7 @@ Los nombres salen del nombre del proyecto, o de `--basename`:
 <basename>.<entorno>.postman_environment.json
 ```
 
-Conviene añadir `build/` al `.gitignore` de tu proyecto, salvo que
+Conviene añadir `export-to-postman/` al `.gitignore` de tu proyecto, salvo que
 quieras versionar la colección para revisarla en los PRs.
 
 ---
@@ -230,7 +230,7 @@ postman-from-routes generate --project-root . --inspect
 | Flag | Variable | Por defecto | Qué controla |
 |---|---|---|---|
 | `--project-root <ruta>` | `POSTMAN_PROJECT_ROOT` | se busca subiendo desde el cwd | Qué proyecto se escanea |
-| `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/build/` | Carpeta de salida |
+| `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/export-to-postman/` | Carpeta de salida |
 | `--output <fichero>` | — | — | Ruta exacta del `.json` |
 | `--basename <nombre>` | `POSTMAN_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
 | `--config <ruta>` | `POSTMAN_CONFIG` | autodetectado | `config.constant.ts` a usar |

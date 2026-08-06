@@ -18,6 +18,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { moduleDir } from "../helper/module-path.helper.js";
+import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */
@@ -84,7 +85,7 @@ async function main(): Promise<number> {
     });
 
     // 4. Comprobar la colección resultante.
-    const buildDir = join(project, "build");
+    const buildDir = join(project, OUTPUT_DIR_NAME);
     const files = existsSync(buildDir) ? await readdir(buildDir) : [];
     const collectionFile = files.find((f) => f.endsWith(".postman_collection.json"));
     if (!collectionFile) {

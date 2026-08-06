@@ -14,6 +14,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { moduleDir } from "../../helper/module-path.helper";
 import { runProcess } from "../helpers/run-process";
+import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
 const CLI = join(PACKAGE_ROOT, "scripts", "cli.script.ts");
@@ -38,7 +39,7 @@ async function runCli(args: string[]): Promise<{ code: number; output: string }>
 }
 
 async function readCollection(): Promise<Record<string, unknown>> {
-  const buildDir = join(externalProject, "build");
+  const buildDir = join(externalProject, OUTPUT_DIR_NAME);
   const files = await readdir(buildDir);
   const name = files.find((f) => f.endsWith(".postman_collection.json"));
   expect(name).toBeDefined();
@@ -70,13 +71,13 @@ describe("CLI sobre un proyecto externo", () => {
 
   test("escribe la colección dentro del proyecto, no del paquete", async () => {
     await runCli(["generate", "--project-root", externalProject]);
-    const files = await readdir(join(externalProject, "build"));
+    const files = await readdir(join(externalProject, OUTPUT_DIR_NAME));
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 
   test("genera también los environments", async () => {
     await runCli(["generate", "--project-root", externalProject]);
-    const files = await readdir(join(externalProject, "build"));
+    const files = await readdir(join(externalProject, OUTPUT_DIR_NAME));
     expect(files.filter((f) => f.endsWith(".postman_environment.json")).length).toBeGreaterThan(
       0,
     );

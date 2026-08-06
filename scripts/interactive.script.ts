@@ -16,6 +16,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
 import { withProjectRoot } from "../service/paths.service.js";
 import { SUPPORTED_FRAMEWORKS } from "../frameworks/registry.js";
+import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
 
 /** Lee una línea de stdin mostrando un prompt. */
 async function ask(question: string, fallback = ""): Promise<string> {
@@ -99,7 +100,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   // 3. Destino.
   const target = await choose("Where should it go?", [
-    `Write files to ${join(projectRoot, "build")}`,
+    `Write files to ${join(projectRoot, OUTPUT_DIR_NAME)}`,
     "Write files to another folder",
     "Upload straight to Postman (needs an API key)",
   ]);
@@ -108,8 +109,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   const outputDir =
     target === 1
-      ? resolve(await ask("Output folder", join(projectRoot, "build")))
-      : join(projectRoot, "build");
+      ? resolve(await ask("Output folder", join(projectRoot, OUTPUT_DIR_NAME)))
+      : join(projectRoot, OUTPUT_DIR_NAME);
 
   // 4. Delegar en `generate`, que ya sabe escribir y trazar.
   const { main: generateMain } = await import("./generate.script.js");

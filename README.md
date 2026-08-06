@@ -35,7 +35,7 @@ bun add -g github:CartagoGit/export-to-postman
 # 2. Generar, desde la raíz de tu proyecto
 expostman generate
 
-# 3. Importar en Postman el .json de build/
+# 3. Importar en Postman el .json de export-to-postman/
 ```
 
 Guías completas: **[instalación](docs/INSTALL.md)** ·
@@ -49,7 +49,7 @@ Guías completas: **[instalación](docs/INSTALL.md)** ·
 Contra `examples/example-express`:
 
 ```
-build/
+export-to-postman/
 ├── example-express.postman_collection.json     ← la colección
 ├── example-express.local.postman_environment.json
 ├── example-express.dev.postman_environment.json

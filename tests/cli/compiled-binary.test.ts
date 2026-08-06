@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { moduleDir } from "../../helper/module-path.helper";
 import { runProcess } from "../helpers/run-process";
+import { OUTPUT_DIR_NAME } from "../../contract/postman.constant";
 
 const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
 const ENTRYPOINT = join(PACKAGE_ROOT, "scripts", "cli.script.ts");
@@ -79,12 +80,12 @@ describe("binario compilado", () => {
     const { code } = await runWithoutRuntime(["generate", "--project-root", project]);
     expect(code).toBe(0);
 
-    const files = await readdir(join(project, "build"));
+    const files = await readdir(join(project, OUTPUT_DIR_NAME));
     const collectionFile = files.find((f) => f.endsWith(".postman_collection.json"));
     expect(collectionFile).toBeDefined();
 
     const collection = JSON.parse(
-      await readFile(join(project, "build", collectionFile!), "utf8"),
+      await readFile(join(project, OUTPUT_DIR_NAME, collectionFile!), "utf8"),
     ) as { info: { schema: string }; item: Array<Record<string, unknown>> };
 
     expect(collection.info.schema).toContain("2.1.0");

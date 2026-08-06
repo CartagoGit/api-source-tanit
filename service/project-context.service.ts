@@ -16,6 +16,7 @@ import type {
   IProjectDirs,
 } from "../contract/project-context.interface.js";
 import { moduleDir } from "../helper/module-path.helper.js";
+import { OUTPUT_DIR_NAME } from "../contract/postman.constant.js";
 
 /** Entradas de las que se puede derivar el contexto. */
 export interface IResolveContextOptions {
@@ -62,7 +63,7 @@ export function resolveProjectContext(
     options.outputDir ??
       readFlag(argv, "--output-dir") ??
       env["POSTMAN_OUTPUT_DIR"] ??
-      join(projectRoot, "build"),
+      join(projectRoot, OUTPUT_DIR_NAME),
   );
 
   return {
