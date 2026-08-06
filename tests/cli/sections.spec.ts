@@ -50,11 +50,15 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
     ["service/collection-builder.service.ts", "core"],
     ["helper/uri.helper.ts", "core"],
     ["contract/postman.interface.ts", "core"],
-    // `service/` lo declara core y `service/scanners/` lo declara
-    // frameworks: sin la regla del prefijo más largo, un scanner caería
-    // en el núcleo y `test:changed` correría la sección equivocada.
-    ["service/scanners/gin.scanner.ts", "frameworks"],
-    ["service/adapters/parsed-route-to-spec.adapter.ts", "frameworks"],
+    // Los scanners y los parsers de cada framework viven fuera del
+    // núcleo desde que se separaron las dos capas.
+    ["frameworks/scanners/gin.scanner.ts", "frameworks"],
+    ["frameworks/laravel/laravel.scanner.ts", "frameworks"],
+    ["frameworks/parsers/zod-schema.helper.ts", "frameworks"],
+    ["frameworks/registry.ts", "frameworks"],
+    // El adapter sí es del núcleo: trabaja sobre el contrato genérico
+    // `ParsedRoute`, no sobre ningún framework concreto.
+    ["service/adapters/parsed-route-to-spec.adapter.ts", "core"],
     ["scripts/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
     ["plugins/postman-exporter/src/index.ts", "plugin"],
@@ -70,15 +74,15 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
 
 describe("sectionsForFiles", () => {
   test("un scanner solo activa frameworks", () => {
-    expect(sectionsForFiles(["service/scanners/flask.scanner.ts"]).map((s) => s.name)).toEqual([
-      "frameworks",
-    ]);
+    expect(
+      sectionsForFiles(["frameworks/scanners/flask.scanner.ts"]).map((s) => s.name),
+    ).toEqual(["frameworks"]);
   });
 
   test("varios ficheros activan varias secciones, sin repetir", () => {
     const names = sectionsForFiles([
-      "service/scanners/flask.scanner.ts",
-      "service/scanners/gin.scanner.ts",
+      "frameworks/scanners/flask.scanner.ts",
+      "frameworks/scanners/gin.scanner.ts",
       "scripts/push.script.ts",
     ]).map((s) => s.name);
     expect(names).toEqual(["frameworks", "cli"]);

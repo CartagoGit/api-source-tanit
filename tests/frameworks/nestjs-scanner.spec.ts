@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import {
   NestJsProjectScanner,
   NestJsRouteScanner,
-} from "../../service/scanners/nestjs.scanner";
+} from "../../frameworks/scanners/nestjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {

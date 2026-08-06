@@ -10,27 +10,23 @@
  * Si se pasa un catálogo manual, se usa como **override** (misma
  * method+uri gana el manual: body, name, folder, description).
  */
-import type { IProjectContext } from "../contract/project-context.interface.js";
+import type { IProjectContext } from "../../contract/project-context.interface.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { EndpointSpec } from "../contract/postman.interface.js";
-import type { ProjectConfig } from "../contract/project-config.interface.js";
-import { stripApiPrefix } from "../helper/uri.helper.js";
+import type { EndpointSpec } from "../../contract/postman.interface.js";
+import type { ProjectConfig } from "../../contract/project-config.interface.js";
+import { stripApiPrefix } from "../../helper/uri.helper.js";
 import {
   findFormRequestForController,
   generateCompleteBody,
   generateMinimalBody,
   parseFormRequest,
   type FormRequestRules,
-} from "./form-request-parser.service.js";
-import { fromProjectRelative, projectRoot, toProjectRelative } from "./paths.service.js";
-import {
-  parseAllRoutes,
-  prettyGroupName,
-  stripComments,
-  topGroupFor,
-  type ParsedRoute,
-} from "./route-parser.service.js";
+} from "../../frameworks/laravel/form-request-parser.service.js";
+import { fromProjectRelative, projectRoot, toProjectRelative } from "../../service/paths.service.js";
+import { parseAllRoutes, stripComments, type ParsedRoute } from "../../frameworks/laravel/route-parser.service.js";
+import { mergeWithManual } from "../../service/endpoint-merge.service.js";
+import { prettyGroupName, topGroupFor } from "../../helper/uri.helper.js";
 
 // ---------------------------------------------------------------------------
 // Nombres legibles a partir del método del controlador
@@ -286,51 +282,6 @@ async function routeToSpec(
   return spec;
 }
 
-/**
- * Fusiona specs auto-descubiertos con un catálogo manual opcional.
- * El manual gana en method+uri normalizado (name, body, folder, description).
- *
- * Exportado porque los overrides manuales no son una cosa de Laravel:
- * cualquier proyecto puede declarar un `endpoints.constant.ts` para
- * corregir o ampliar lo que el scanner deduce.
- */
-export function mergeWithManual(
-  auto: EndpointSpec[],
-  manual: EndpointSpec[],
-): EndpointSpec[] {
-  if (manual.length === 0) return auto;
-  const keyOf = (s: EndpointSpec) =>
-    `${s.method} ${s.uri.replace(/\{\{[^}]+\}\}/g, ":p").replace(/\{[^}]+\}/g, ":p")}`;
-  const manualMap = new Map(manual.map((s) => [keyOf(s), s]));
-  const used = new Set<string>();
-  const out: EndpointSpec[] = [];
-  for (const a of auto) {
-    const k = keyOf(a);
-    const m = manualMap.get(k);
-    if (m) {
-      // El manual gana en name/body/folder/description, pero NO borra
-      // formRequest auto-detectado si el override no lo trae.
-      out.push({
-        ...a,
-        ...m,
-        uri: m.uri || a.uri,
-        formRequest: m.formRequest ?? a.formRequest,
-        body: m.body ?? a.body,
-        folder: m.folder ?? a.folder,
-        description: m.description ?? a.description,
-      });
-      used.add(k);
-    } else {
-      out.push(a);
-    }
-  }
-  // Manual-only (p. ej. endpoints de testing no parseados igual)
-  for (const m of manual) {
-    const k = keyOf(m);
-    if (!used.has(k)) out.push(m);
-  }
-  return out;
-}
 
 /**
  * Descubre todos los endpoints del proyecto.

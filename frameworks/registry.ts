@@ -9,69 +9,69 @@
  * Orden de los detectores = orden de prioridad. Si dos `detect()`
  * empatan en score, gana el que aparezca primero en esta lista.
  */
-import { DiscoveryOrchestrator } from "./discovery.orchestrator";
+import { DiscoveryOrchestrator } from "../service/discovery.orchestrator";
 import {
   LaravelProjectScanner,
   LaravelScanner,
   LaravelFormRequestValidationProvider,
-} from "./scanners/laravel.scanner";
+} from "../frameworks/laravel/laravel.scanner";
 import {
   OpenApiProjectScanner,
   OpenApiScanner,
   OpenApiValidationProvider,
-} from "./scanners/openapi.scanner";
+} from "../frameworks/scanners/openapi.scanner";
 import {
   ExpressProjectScanner,
   ExpressScanner,
   ExpressZodValidationProvider,
-} from "./scanners/express.scanner";
+} from "../frameworks/scanners/express.scanner";
 import {
   FastApiProjectScanner,
   FastApiScanner,
   FastApiPydanticValidationProvider,
-} from "./scanners/fastapi.scanner";
+} from "../frameworks/scanners/fastapi.scanner";
 import {
   SymfonyProjectScanner,
   SymfonyRouteScanner,
   SymfonyAttributesValidationProvider,
-} from "./scanners/symfony.scanner";
+} from "../frameworks/scanners/symfony.scanner";
 import {
   NestJsProjectScanner,
   NestJsRouteScanner,
   NestJsClassValidatorProvider,
-} from "./scanners/nestjs.scanner";
+} from "../frameworks/scanners/nestjs.scanner";
 import {
   DjangoProjectScanner,
   DjangoRouteScanner,
   DjangoSerializerProvider,
-} from "./scanners/django.scanner";
+} from "../frameworks/scanners/django.scanner";
 import {
   FlaskProjectScanner,
   FlaskRouteScanner,
   FlaskValidationProvider,
-} from "./scanners/flask.scanner";
+} from "../frameworks/scanners/flask.scanner";
 import {
   NextJsProjectScanner,
   NextJsRouteScanner,
   NextJsZodProvider,
-} from "./scanners/nextjs.scanner";
+} from "../frameworks/scanners/nextjs.scanner";
 import {
   GinProjectScanner,
   GinRouteScanner,
   GinBindingProvider,
-} from "./scanners/gin.scanner";
+} from "../frameworks/scanners/gin.scanner";
 import {
   SpringBootProjectScanner,
   SpringBootRouteScanner,
   SpringBootBeanValidationProvider,
-} from "./scanners/springboot.scanner";
+} from "../frameworks/scanners/springboot.scanner";
 import {
   AspNetProjectScanner,
   AspNetRouteScanner,
   AspNetDataAnnotationsProvider,
-} from "./scanners/aspnet.scanner";
+} from "../frameworks/scanners/aspnet.scanner";
 
-import type { DiscoveryRegistry } from "./discovery.orchestrator";
+import type { DiscoveryRegistry } from "../service/discovery.orchestrator";
 import type {
   FrameworkId,
   IProjectScanner,

@@ -24,7 +24,7 @@ import {
 
 import { SummaryInputSchema } from "../contract/postman-exporter.interface";
 import { existsSync } from "node:fs";
-import { summarizeProject } from "../../../../../service/summary.service";
+import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
 
 const TOOL_ID = "summary";
 
@@ -71,7 +71,7 @@ export function buildSummaryToolRegistration(
           }
 
           try {
-            const summary = await summarizeProject(projectRoot);
+            const summary = await summarizeWithAllFrameworks(projectRoot);
             return toolJson({ ok: true, ...summary });
           } catch (err) {
             return toolError(

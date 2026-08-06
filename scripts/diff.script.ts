@@ -14,7 +14,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { parseAllRoutes } from "../service/route-parser.service.js";
+import { parseAllRoutes } from "../frameworks/laravel/route-parser.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
@@ -23,7 +23,7 @@ import { walkCollection } from "../helper/postman.helper.js";
 import { outputCollectionPath, projectRoot } from "../service/paths.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import type { PostmanCollection } from "../contract/postman.interface.js";
-import { defaultOrchestrator } from "../service/scanner-registry.js";
+import { defaultOrchestrator } from "../frameworks/registry.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const { config } = await loadProject();

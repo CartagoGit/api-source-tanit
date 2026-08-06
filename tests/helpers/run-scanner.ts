@@ -15,7 +15,7 @@
  *   - `runGenerateMetrics(fixtureName)` → alias de conveniencia (mismo resultado).
  */
 import { resolve, join } from "node:path";
-import { generateCollection } from "../../service/generation.pipeline";
+import { generateWithAllFrameworks } from "../../frameworks/index";
 import type { PostmanCollection } from "../../contract/postman.interface";
 import { moduleDir } from "../../helper/module-path.helper";
 
@@ -60,7 +60,7 @@ async function _runPipeline(
 ): Promise<GenerateResult> {
   // Mismo pipeline que usa el CLI: los tests validan el camino real, no
   // una reimplementación paralela que puede divergir.
-  const result = await generateCollection(fixturePath, {
+  const result = await generateWithAllFrameworks(fixturePath, {
     ...(basename ? { collectionName: basename } : {}),
   });
 

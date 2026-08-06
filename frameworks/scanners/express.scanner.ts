@@ -45,11 +45,11 @@ import {
 import {
   joiFieldToSpec,
   parseJoiObjectLiteral,
-} from "../../helper/joi-schema.helper.js";
+} from "../../frameworks/parsers/joi-schema.helper.js";
 import {
   parseZodObjectLiteral,
   zodFieldToSpec,
-} from "../../helper/zod-schema.helper.js";
+} from "../../frameworks/parsers/zod-schema.helper.js";
 
 const FRAMEWORK_PACKAGES = ["express", "fastify", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];

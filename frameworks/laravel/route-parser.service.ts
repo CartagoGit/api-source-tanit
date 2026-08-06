@@ -19,11 +19,11 @@
  * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
-import type { IProjectContext } from "../contract/project-context.interface.js";
-import { fromProjectRoot, projectDirs } from "./project-context.service.js";
+import type { IProjectContext } from "../../contract/project-context.interface.js";
+import { fromProjectRoot, projectDirs } from "../../service/project-context.service.js";
 import { readFile } from "node:fs/promises";
-import { fromProjectRelative, routesDir } from "./paths.service.js";
-import type { ParsedRoute as NeutralParsedRoute } from "../contract/scanner.interface.js";
+import { fromProjectRelative, routesDir } from "../../service/paths.service.js";
+import type { ParsedRoute as NeutralParsedRoute } from "../../contract/scanner.interface.js";
 
 /**
  * Re-export del tipo neutro para no romper imports existentes.
@@ -162,78 +162,4 @@ export async function parseAllRoutes(
   return out;
 }
 
-/**
- * Devuelve el grupo top-level lógico de una URI (primer segmento
- * significativo). Por ejemplo:
- *
- *   "api/clientes"             → "clientes"
- *   "api/clientes/{cliente}"   → "clientes"
- *   "api/erp/productos"        → "erp"
- *   "api/pedidos/historial"    → "pedidos"
- *   "alive" / "login"          → "login" / "alive"
- *
- * Si la URI empieza por `api/`, lo salta. Los casos especiales se
- * configuran vía `uriGroupOverrides` (p. ej. `{ "tol/tecdoc": "tol/tecdoc" }`).
- *
- * @param uri URI a analizar.
- * @param uriGroupOverrides Mapa prefijo → clave de grupo (del `ProjectConfig`).
- */
-export function topGroupFor(
-  uri: string,
-  uriGroupOverrides: Record<string, string> = {},
-): string {
-  let u = uri;
-  // Quito `/api/` o `api/` del inicio (Laravel añade `api/` por defecto
-  // en `RouteServiceProvider::mapApiRoutes()`, pero la URI puede llegar
-  // con o sin slash inicial).
-  if (u.startsWith("/api/")) u = u.slice(5);
-  else if (u.startsWith("api/")) u = u.slice(4);
-  u = u.replace(/^\/+/, "");
-  if (!u) return "(raíz)";
 
-  // Aplicar overrides configurables (orden: más largos primero).
-  const sorted = Object.keys(uriGroupOverrides).sort(
-    (a, b) => b.length - a.length,
-  );
-  for (const prefix of sorted) {
-    if (u === prefix || u.startsWith(`${prefix}/`)) {
-      return uriGroupOverrides[prefix] ?? prefix;
-    }
-  }
-
-  const segs = u.split("/").filter(Boolean);
-  return segs[0] ?? "(raíz)";
-}
-
-/**
- * Nombre legible a partir del topGroup: capitalizado, separadores con
- * espacio. El separador `/` se conserva como separador visual (más
- * claro para casos como `tol/tecdoc`); `-` y `_` se sustituyen por
- * espacio.
- *
- * Ejemplos:
- *   "pedidos"           → "Pedidos"
- *   "usuarios-activos"  → "Usuarios Activos"
- *   "tol/tecdoc"        → "Tol/Tecdoc"
- */
-export function prettyGroupName(topGroup: string): string {
-  if (!topGroup || topGroup === "(raíz)") return "Raíz";
-  // Si tiene '/', lo procesamos segmento a segmento para preservar la
-  // barra como separador.
-  if (topGroup.includes("/")) {
-    return topGroup
-      .split("/")
-      .filter(Boolean)
-      .map(prettySegment)
-      .join("/");
-  }
-  return prettySegment(topGroup);
-}
-
-function prettySegment(seg: string): string {
-  return seg
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}

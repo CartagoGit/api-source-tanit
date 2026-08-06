@@ -23,7 +23,7 @@ import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
 import {
   parsePydanticModels,
   pydanticFieldToSpec,
-} from "../../helper/pydantic-schema.helper.js";
+} from "../../frameworks/parsers/pydantic-schema.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,

@@ -3,7 +3,7 @@
  *
  * Es el único sitio donde se decide el orden de los pasos:
  *
- *   1. Detectar el framework (orchestrator sobre el registry).
+ *   1. Detectar el framework (con el catálogo que le inyecten).
  *   2. Escanear rutas y resolver reglas de validación.
  *   3. Fusionar los overrides manuales del host.
  *   4. Inferir bodies y query params para lo que no tenga reglas.
@@ -32,7 +32,7 @@ import {
   type IAuthFlow,
 } from "./auth-flow.service.js";
 import { buildCollection } from "./collection-builder.service.js";
-import { discoverEndpoints, mergeWithManual } from "./endpoint-discovery.service.js";
+import type { ILegacyDiscovery } from "../contract/legacy-discovery.interface.js";
 import {
   applyAgnosticInference,
   inferCollectionVariables,
@@ -40,7 +40,8 @@ import {
 import { loadProject } from "./project-loader.service.js";
 import { withProjectRoot } from "./paths.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
-import { defaultOrchestrator } from "./scanner-registry.js";
+import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
+import { mergeWithManual } from "../service/endpoint-merge.service.js";
 
 /** Métricas del descubrimiento, para informes y tests. */
 export interface IGenerationMetrics {
@@ -72,6 +73,30 @@ export interface IGenerationResult {
 export interface IGenerationOptions {
   /** Sobrescribe `config.collectionName` (flag `--basename`). */
   readonly collectionName?: string;
+  /**
+   * Catálogo de frameworks que se va a usar para detectar y escanear.
+   *
+   * Es obligatorio a propósito. Antes el pipeline importaba
+   * `defaultOrchestrator()` del registro concreto, y eso metía los 12
+   * scanners dentro del núcleo: `core` no podía compilarse, ni
+   * testearse, ni razonarse sin arrastrar Laravel, Gin y Spring Boot.
+   * Un núcleo que dice ser agnóstico no puede tener una arista hacia lo
+   * concreto.
+   *
+   * Quien compone la aplicación (los comandos del CLI, el plugin, los
+   * tests) decide qué catálogo inyecta. Para el catálogo completo hay
+   * `generateWithAllFrameworks()` en `frameworks/`.
+   */
+  readonly orchestrator: DiscoveryOrchestrator;
+  /**
+   * Qué hacer cuando ningún scanner reconoce el proyecto.
+   *
+   * Opcional: sin fallback, un proyecto no reconocido devuelve cero
+   * endpoints, que es una respuesta honesta. El CLI inyecta la
+   * heurística de Laravel por compatibilidad con los proyectos que
+   * usaban esto antes de que existieran los scanners.
+   */
+  readonly legacyFallback?: ILegacyDiscovery | undefined;
 }
 
 /**
@@ -84,7 +109,7 @@ export interface IGenerationOptions {
  */
 export async function generateCollection(
   projectRoot: string,
-  options: IGenerationOptions = {},
+  options: IGenerationOptions,
 ): Promise<IGenerationResult> {
   // El contexto se resuelve UNA vez y se pasa hacia abajo. El
   // `withProjectRoot` sigue envolviendo la llamada porque `loadProject()`
@@ -99,7 +124,7 @@ async function buildFor(
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
   const projectRoot = context.projectRoot;
-  const discovery = await discoverSpecs(context);
+  const discovery = await discoverSpecs(context, options);
 
   // Inferencia agnóstica de body/query para lo que no traiga reglas.
   const specs = [...discovery.specs];
@@ -168,8 +193,11 @@ interface IDiscovery {
  * legacy solo entra cuando el orchestrator no reconoce el proyecto, y es
  * una heurística zero-config sobre `routes/`.
  */
-async function discoverSpecs(context: IProjectContext): Promise<IDiscovery> {
-  const { match, scanner, validation } = await defaultOrchestrator().detectProject(
+async function discoverSpecs(
+  context: IProjectContext,
+  options: IGenerationOptions,
+): Promise<IDiscovery> {
+  const { match, scanner, validation } = await options.orchestrator.detectProject(
     context.projectRoot,
   );
   const { config, manualEndpoints } = await loadProject();
@@ -187,14 +215,32 @@ async function discoverSpecs(context: IProjectContext): Promise<IDiscovery> {
     };
   }
 
-  const legacy = await discoverEndpoints(config, [...manualEndpoints], context);
+  if (!options.legacyFallback) {
+    // Sin fallback y sin scanner que lo reconozca: cero endpoints. Es
+    // preferible a inventarse una heurística que devuelva ruido.
+    return {
+      specs: [...manualEndpoints],
+      routes: [],
+      config,
+      match: null,
+      origin: "legacy",
+      withValidation: 0,
+      withoutValidation: 0,
+    };
+  }
+
+  const legacy = await options.legacyFallback.discover(
+    config,
+    manualEndpoints,
+    context,
+  );
   return {
     specs: legacy.specs,
     routes: legacy.routes,
     config,
     match: null,
     origin: "legacy",
-    withValidation: legacy.withFormRequest,
-    withoutValidation: legacy.withoutFormRequest,
+    withValidation: legacy.withValidation,
+    withoutValidation: legacy.withoutValidation,
   };
 }

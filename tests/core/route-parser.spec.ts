@@ -1,10 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  prettyGroupName,
-  stripComments,
-  topGroupFor,
-} from "../../service/route-parser.service";
+import { stripComments } from "../../frameworks/laravel/route-parser.service";
+import { prettyGroupName, topGroupFor } from "../../helper/uri.helper";
 
 describe("route-parser.service (pure helpers)", () => {
   describe("stripComments", () => {

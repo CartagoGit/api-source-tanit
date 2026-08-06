@@ -3,7 +3,7 @@ import {
   parseZodFieldExpression,
   parseZodObjectLiteral,
   zodFieldToSpec,
-} from "../../helper/zod-schema.helper";
+} from "../../frameworks/parsers/zod-schema.helper";
 
 describe("parseZodFieldExpression", () => {
   test("mapea z.string() a type string y required", () => {

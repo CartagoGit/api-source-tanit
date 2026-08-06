@@ -32,7 +32,7 @@ import {
   findNearestBalanced,
   stripJsComments,
 } from "../../helper/source-scan.helper.js";
-import { parseZodObjectLiteral, zodFieldToSpec } from "../../helper/zod-schema.helper.js";
+import { parseZodObjectLiteral, zodFieldToSpec } from "../../frameworks/parsers/zod-schema.helper.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 

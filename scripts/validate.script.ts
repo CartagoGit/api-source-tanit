@@ -18,7 +18,7 @@ import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
 
-import { generateCollection } from "../service/generation.pipeline.js";
+import { generateWithAllFrameworks } from "../frameworks/index.js";
 import {
   checkCollectionInvariants,
   type ICollectionIssue,
@@ -55,7 +55,7 @@ async function generateFor(projectRoot: string): Promise<{
   collection: PostmanCollection;
   framework: string;
 }> {
-  const result = await generateCollection(projectRoot);
+  const result = await generateWithAllFrameworks(projectRoot);
   if (!result.match) throw new Error("el orchestrator no detectó ningún framework");
   return { collection: result.collection, framework: result.match.framework };
 }

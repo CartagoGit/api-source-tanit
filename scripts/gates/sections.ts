@@ -54,7 +54,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "frameworks",
     description: "Lo concreto de cada framework: los 12 scanners y sus parsers",
-    paths: ["service/scanners/", "service/adapters/"],
+    paths: ["frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",
     dependsOn: ["core"],

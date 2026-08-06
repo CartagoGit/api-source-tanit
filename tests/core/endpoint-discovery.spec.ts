@@ -1,9 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { mergeWithManual } from "../../service/endpoint-discovery.service";
-import { enrichCatalogWithFormRequests } from "../../service/catalog-enricher.service";
+
+import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service";
 import { buildCollection } from "../../service/collection-builder.service";
 import type { EndpointSpec } from "../../contract/postman.interface";
 import type { ProjectConfig } from "../../contract/project-config.interface";
+import { mergeWithManual } from "../../service/endpoint-merge.service";
 
 const spec = (partial: Partial<EndpointSpec>): EndpointSpec =>
   ({

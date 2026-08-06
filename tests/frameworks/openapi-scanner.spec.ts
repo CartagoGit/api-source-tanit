@@ -4,7 +4,7 @@ import {
   OpenApiProjectScanner,
   OpenApiScanner,
   OpenApiValidationProvider,
-} from "../../service/scanners/openapi.scanner";
+} from "../../frameworks/scanners/openapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

@@ -28,7 +28,8 @@ import type {
 import type { ProjectConfig } from "../contract/project-config.interface.js";
 import { collectionIdFor } from "../helper/collection-identity.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../contract/postman.constant.js";
-import { prettyGroupName, topGroupFor } from "./route-parser.service.js";
+import { prettyGroupName, topGroupFor } from "../helper/uri.helper.js";
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -336,4 +337,3 @@ function authFirst(folders: PostmanItem[]): PostmanItem[] {
   if (auth.length === 0) return folders;
   return [...auth, ...folders.filter((f) => !isAuth(f))];
 }
-

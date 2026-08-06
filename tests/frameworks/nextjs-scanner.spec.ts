@@ -4,7 +4,7 @@ import {
   NextJsProjectScanner,
   NextJsRouteScanner,
   NextJsZodProvider,
-} from "../../service/scanners/nextjs.scanner";
+} from "../../frameworks/scanners/nextjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

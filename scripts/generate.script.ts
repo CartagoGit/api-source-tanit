@@ -12,11 +12,9 @@
  *   bun run build
  */
 import { writeFile } from "node:fs/promises";
-import {
-  generateCollection,
-  type IGenerationResult,
-} from "../service/generation.pipeline.js";
-import { enrichCatalogWithFormRequests } from "../service/catalog-enricher.service.js";
+import { generateWithAllFrameworks } from "../frameworks/index.js";
+import type { IGenerationResult } from "../service/generation.pipeline.js";
+import { enrichCatalogWithFormRequests } from "../frameworks/laravel/catalog-enricher.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import {
   normalizeForComparison,
@@ -66,7 +64,7 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
         "o define POSTMAN_PROJECT_ROOT.",
     );
   }
-  const result = await generateCollection(root, {
+  const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
   });
 

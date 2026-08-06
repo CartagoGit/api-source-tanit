@@ -11,7 +11,7 @@
  * e imprime las rutas encontradas. Pensado para CI y para debugging
  * del discovery sin tener que generar una colección completa.
  */
-import { defaultOrchestrator } from "../service/scanner-registry.js";
+import { defaultOrchestrator } from "../frameworks/registry.js";
 import { projectRoot } from "../service/paths.service.js";
 
 async function main(): Promise<number> {

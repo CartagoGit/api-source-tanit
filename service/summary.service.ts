@@ -18,9 +18,9 @@
 import { resolve } from "node:path";
 import { existsSync } from "node:fs";
 
-import { defaultOrchestrator } from "./scanner-registry";
+import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import { buildSpecsFromScanner } from "./adapters/parsed-route-to-spec.adapter";
-import { parseAllRoutes } from "./route-parser.service";
+import type { ILegacyDiscovery } from "../contract/legacy-discovery.interface.js";
 import { loadProject } from "./project-loader.service";
 import { resetPathCache } from "./paths.service";
 import {
@@ -72,10 +72,17 @@ const NON_LARAVEL_FRAMEWORKS = new Set([
 /**
  * Inspecciona `projectRoot` y devuelve un resumen sin escribir
  * archivos. Lanza si el directorio no existe; devuelve un resumen
- * zero-config si el proyecto no es Laravel o no tiene config.
+ * zero-config si no reconoce el proyecto o no tiene config.
+ *
+ * El catálogo de frameworks se inyecta, igual que en el pipeline: este
+ * servicio es del núcleo y no puede conocer los scanners concretos.
+ * Para el catálogo completo, `summarizeWithAllFrameworks()` en
+ * `frameworks/`.
  */
 export async function summarizeProject(
   projectRoot: string,
+  orchestrator: DiscoveryOrchestrator,
+  legacyFallback?: ILegacyDiscovery,
 ): Promise<IProjectSummary> {
   const abs = resolve(projectRoot);
   if (!existsSync(abs)) {
@@ -90,7 +97,7 @@ export async function summarizeProject(
   // directorio equivocado.
   resetPathCache();
   try {
-    return await doSummarize(abs);
+    return await doSummarize(abs, orchestrator, legacyFallback);
   } finally {
     if (envPrev === undefined) {
       delete process.env["POSTMAN_PROJECT_ROOT"];
@@ -101,9 +108,12 @@ export async function summarizeProject(
   }
 }
 
-async function doSummarize(absRoot: string): Promise<IProjectSummary> {
-  const orch = defaultOrchestrator();
-  const { match, scanner, validation } = await orch.detectProject(absRoot);
+async function doSummarize(
+  absRoot: string,
+  orchestrator: DiscoveryOrchestrator,
+  legacyFallback?: ILegacyDiscovery,
+): Promise<IProjectSummary> {
+  const { match, scanner, validation } = await orchestrator.detectProject(absRoot);
 
   // Camino A: framework NO-Laravel → adapter directo.
   if (match && scanner && NON_LARAVEL_FRAMEWORKS.has(match.framework)) {
@@ -124,9 +134,16 @@ async function doSummarize(absRoot: string): Promise<IProjectSummary> {
     };
   }
 
-  // Camino B: legacy Laravel (incluye zero-config si no hay config).
+  // Camino B: el fallback que le hayan inyectado (incluye zero-config
+  // si no hay config). Sin fallback no hay nada más que intentar.
   const { config, manualEndpoints, configPath } = await loadProject();
-  const routes = await parseAllRoutes(config.filePrefixes);
+  const routes = legacyFallback
+    ? (
+        await legacyFallback.discover(config, manualEndpoints, {
+          projectRoot: absRoot,
+        } as never)
+      ).routes
+    : [];
   const specsForInference: EndpointSpec[] = routes.map((r) => ({
     name: r.uri,
     method: r.method as EndpointSpec["method"],
@@ -159,7 +176,6 @@ async function doSummarize(absRoot: string): Promise<IProjectSummary> {
     zeroConfig: false,
     configPath,
     manualEndpoints: manualEndpoints.length,
-    // surface the inferred variables count even if not used downstream
-    ...(inferredVars.length > 0 ? { manualEndpoints: manualEndpoints.length } : {}),
+    inferredVariables: inferredVars.length,
   } as IProjectSummary;
 }

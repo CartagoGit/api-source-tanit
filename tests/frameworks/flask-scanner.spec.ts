@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import {
   FlaskProjectScanner,
   FlaskRouteScanner,
-} from "../../service/scanners/flask.scanner";
+} from "../../frameworks/scanners/flask.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

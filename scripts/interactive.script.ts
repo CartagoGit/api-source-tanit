@@ -13,9 +13,9 @@
  */
 import { existsSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import { generateCollection } from "../service/generation.pipeline.js";
+import { generateWithAllFrameworks } from "../frameworks/index.js";
 import { withProjectRoot } from "../service/paths.service.js";
-import { SUPPORTED_FRAMEWORKS } from "../service/scanner-registry.js";
+import { SUPPORTED_FRAMEWORKS } from "../frameworks/registry.js";
 
 /** Lee una línea de stdin mostrando un prompt. */
 async function ask(question: string, fallback = ""): Promise<string> {
@@ -68,9 +68,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   // 2. Escaneo, antes de escribir nada.
   console.log(`\n→ Scanning ${projectRoot}…`);
-  let result: Awaited<ReturnType<typeof generateCollection>>;
+  let result: Awaited<ReturnType<typeof generateWithAllFrameworks>>;
   try {
-    result = await generateCollection(projectRoot);
+    result = await generateWithAllFrameworks(projectRoot);
   } catch (err) {
     console.error(`\n✗ ${err instanceof Error ? err.message : String(err)}`);
     return 1;

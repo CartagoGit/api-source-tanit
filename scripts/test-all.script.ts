@@ -17,7 +17,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resetPathCache } from "../service/paths.service.js";
-import { defaultOrchestrator } from "../service/scanner-registry.js";
+import { defaultOrchestrator } from "../frameworks/registry.js";
 import { buildSpecsFromScanner } from "../service/adapters/parsed-route-to-spec.adapter.js";
 import { loadProject } from "../service/project-loader.service.js";
 import { applyAgnosticInference } from "../service/param-inferrer.service.js";
@@ -72,7 +72,7 @@ async function runFixture(fixture: string): Promise<FixtureResult> {
       bodiesAuto = inferStats.bodiesAdded;
     } else {
       const { config, manualEndpoints } = await loadProject();
-      const { discoverEndpoints } = await import("../service/endpoint-discovery.service.js");
+      const { discoverEndpoints } = await import("../frameworks/laravel/endpoint-discovery.service.js");
       const discovered = await discoverEndpoints(config, manualEndpoints);
       routeCount = discovered.routes.length;
       withFR = discovered.withFormRequest;

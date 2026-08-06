@@ -9,8 +9,8 @@
 import { writeFile } from "node:fs/promises";
 import { buildCollection } from "../service/collection-builder.service.js";
 import { applyAuthFlow } from "../service/auth-flow.service.js";
-import { enrichCatalogWithFormRequests } from "../service/catalog-enricher.service.js";
-import { discoverEndpoints } from "../service/endpoint-discovery.service.js";
+import { enrichCatalogWithFormRequests } from "../frameworks/laravel/catalog-enricher.service.js";
+import { discoverEndpoints } from "../frameworks/laravel/endpoint-discovery.service.js";
 import { loadProject } from "../service/project-loader.service.js";
 import {
   outputCollectionPath,

@@ -4,7 +4,7 @@
  *
  * Inspecciona un proyecto host sin generar artefactos. Sustituye al
  * `generate --inspect` (parseaba stdout con regex) por una llamada
- * in-process a `summarizeProject()`.
+ * in-process a `summarizeWithAllFrameworks()`.
  *
  * Uso:
  *   bun scripts/summary.script.ts [--project-root <path>] [--format text|json]
@@ -14,7 +14,7 @@
  */
 import { resolve } from "node:path";
 
-import { summarizeProject } from "../service/summary.service.js";
+import { summarizeWithAllFrameworks } from "../frameworks/index.js";
 
 interface ParsedArgs {
   projectRoot: string;
@@ -35,7 +35,7 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { projectRoot, format };
 }
 
-function asText(s: Awaited<ReturnType<typeof summarizeProject>>): string {
+function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): string {
   const lines = [
     `→ Framework:        ${s.framework}`,
     `→ ProjectName:      ${s.projectName}`,
@@ -55,7 +55,7 @@ function asText(s: Awaited<ReturnType<typeof summarizeProject>>): string {
 async function main(): Promise<number> {
   const { projectRoot, format } = parseArgs(process.argv.slice(2));
   try {
-    const summary = await summarizeProject(projectRoot);
+    const summary = await summarizeWithAllFrameworks(projectRoot);
     if (format === "json") {
       console.log(JSON.stringify(summary, null, 2));
     } else {

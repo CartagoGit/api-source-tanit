@@ -4,7 +4,7 @@ import {
   ExpressProjectScanner,
   ExpressScanner,
   ExpressZodValidationProvider,
-} from "../../service/scanners/express.scanner";
+} from "../../frameworks/scanners/express.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {

@@ -4,7 +4,7 @@ import {
   SymfonyProjectScanner,
   SymfonyRouteScanner,
   SymfonyAttributesValidationProvider,
-} from "../../service/scanners/symfony.scanner";
+} from "../../frameworks/scanners/symfony.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

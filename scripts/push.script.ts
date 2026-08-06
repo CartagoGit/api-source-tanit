@@ -11,7 +11,7 @@
  * imprime ni se escribe en disco.
  */
 import { projectRoot } from "../service/paths.service.js";
-import { generateCollection } from "../service/generation.pipeline.js";
+import { generateWithAllFrameworks } from "../frameworks/index.js";
 import {
   buildEnvironments,
   defaultEnvironments,
@@ -58,7 +58,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   console.log("→ Scanning the project…");
   const basename = readFlag(argv, "--basename");
-  const result = await generateCollection(root, {
+  const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
   });
 

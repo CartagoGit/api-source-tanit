@@ -4,7 +4,7 @@ import {
   DjangoProjectScanner,
   DjangoRouteScanner,
   DjangoSerializerProvider,
-} from "../../service/scanners/django.scanner";
+} from "../../frameworks/scanners/django.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

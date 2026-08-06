@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { parseRoutesFile } from "../../service/scanners/laravel.scanner";
-import { LaravelFormRequestValidationProvider } from "../../service/scanners/laravel.scanner";
+import { parseRoutesFile } from "../../frameworks/laravel/laravel.scanner";
+import { LaravelFormRequestValidationProvider } from "../../frameworks/laravel/laravel.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

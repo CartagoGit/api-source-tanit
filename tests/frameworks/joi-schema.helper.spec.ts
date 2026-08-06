@@ -3,7 +3,7 @@ import {
   joiFieldToSpec,
   parseJoiFieldExpression,
   parseJoiObjectLiteral,
-} from "../../helper/joi-schema.helper";
+} from "../../frameworks/parsers/joi-schema.helper";
 
 describe("parseJoiFieldExpression", () => {
   test("mapea Joi.string() a type string", () => {

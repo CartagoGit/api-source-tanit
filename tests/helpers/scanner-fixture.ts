@@ -14,7 +14,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { FrameworkId, IProjectMatch } from "../../contract/scanner.interface";
-import { scannerBundleFor } from "../../service/scanner-registry";
+import { scannerBundleFor } from "../../frameworks/registry";
 import { moduleDir } from "../../helper/module-path.helper";
 
 export const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");

@@ -22,11 +22,11 @@ import { collectFilesFrom } from "../../helper/fs-walk.helper.js";
 import {
   marshmallowSchemaToSpecs,
   parseMarshmallowSchemas,
-} from "../../helper/marshmallow-schema.helper.js";
+} from "../../frameworks/parsers/marshmallow-schema.helper.js";
 import {
   parsePydanticModels,
   pydanticModelToSpecs,
-} from "../../helper/pydantic-schema.helper.js";
+} from "../../frameworks/parsers/pydantic-schema.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,

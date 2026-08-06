@@ -409,7 +409,7 @@ export class LaravelFormRequestValidationProvider
 
     // Importación tardía para evitar ciclos y mantener arranque liviano.
     const { findFormRequestForController, parseFormRequest } = await import(
-      "../form-request-parser.service.js"
+      "./form-request-parser.service.js"
     );
 
     // El projectRoot viene del match, no del singleton de paths.service:

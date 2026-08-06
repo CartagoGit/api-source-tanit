@@ -14,20 +14,20 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../contract/postman.interface.js";
-import type { IProjectContext } from "../contract/project-context.interface.js";
+} from "../../contract/postman.interface.js";
+import type { IProjectContext } from "../../contract/project-context.interface.js";
 import {
   projectDirs,
   toProjectRelative as toContextRelative,
-} from "./project-context.service.js";
-import { VARIANT_TAG } from "../contract/postman.constant.js";
+} from "../../service/project-context.service.js";
+import { VARIANT_TAG } from "../../contract/postman.constant.js";
 import {
   generateBodyVariants,
   generateQueryVariants,
   parseFormRequest,
   type FormRequestRules,
-} from "./form-request-parser.service.js";
-import { requestsDir, toProjectRelative } from "./paths.service.js";
+} from "../../frameworks/laravel/form-request-parser.service.js";
+import { requestsDir, toProjectRelative } from "../../service/paths.service.js";
 
 export interface EnrichmentStats {
   bodyVariants: number;
