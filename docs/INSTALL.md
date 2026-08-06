@@ -1,13 +1,50 @@
 # Instalación y uso
 
-Tres formas de usarlo, según cómo trabajes. Todos los comandos de este
-documento están ejecutados y verificados.
+> **Estado de publicación.** El paquete **todavía no está en npm**, así
+> que `bun add -g @postman-exporter/cli` aún no funciona. Hasta que se
+> publique, se instala **desde el repositorio** — ver
+> [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
+> documento describe los comandos definitivos; el único cambio tras
+> publicar será poder usar el nombre del paquete en lugar de la URL de
+> git.
+>
+> Que el paquete funciona instalado está verificado de forma automática:
+> `bun run validate:package` lo empaqueta con `npm pack`, lo instala en
+> un proyecto limpio y ejecuta el binario contra una API real.
 
+Tres formas de usarlo, según cómo trabajes.
+
+- [Instalar hoy](#instalar-hoy-desde-el-repositorio) — mientras no esté publicado.
 - [Global](#1-global) — lo instalas una vez y lo usas en cualquier proyecto.
 - [Por proyecto](#2-por-proyecto) — queda fijado en el repo y lo usa todo el equipo.
 - [Sin instalar](#3-sin-instalar-bunx) — una ejecución suelta.
 
 Requisito común: **[Bun](https://bun.sh) 1.0 o superior**.
+
+---
+
+## Instalar hoy (desde el repositorio)
+
+```bash
+# Global
+bun add -g github:CartagoGit/postman-exporter
+
+# O como dependencia de desarrollo de tu proyecto
+bun add -d github:CartagoGit/postman-exporter
+```
+
+También sirve clonar y empaquetar:
+
+```bash
+git clone https://github.com/CartagoGit/postman-exporter
+cd postman-exporter && bun install
+npm pack                       # produce postman-exporter-cli-0.1.0.tgz
+
+cd ~/proyectos/mi-api
+bun add -d /ruta/a/postman-exporter-cli-0.1.0.tgz
+```
+
+En ambos casos queda disponible el binario `postman-from-routes`.
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes

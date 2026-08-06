@@ -18,6 +18,15 @@
     "bun"
   ],
   "license": "MIT",
+  "author": "Cartago",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CartagoGit/postman-exporter.git"
+  },
+  "homepage": "https://github.com/CartagoGit/postman-exporter#readme",
+  "bugs": {
+    "url": "https://github.com/CartagoGit/postman-exporter/issues"
+  },
   "type": "module",
   "engines": {
     "bun": ">=1.0.0",
@@ -39,8 +48,12 @@
     "service/",
     "helper/",
     "scripts/",
+    "docs/INSTALL.md",
+    "docs/FRAMEWORKS.md",
+    "docs/POSTMAN.md",
     "tsconfig.json",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "bun run scripts/generate.script.ts",
@@ -56,7 +69,8 @@
     "test": "bun test",
     "lint:tools": "bun run scripts/lint-tool-no-process.ts",
     "validate:examples": "bun run scripts/validate.script.ts",
-    "validate": "bun run typecheck && bun run lint:tools && bun test && bun run validate:examples"
+    "validate": "bun run typecheck && bun run lint:tools && bun test && bun run validate:examples",
+    "validate:package": "bun run scripts/validate-package.script.ts"
   },
   "publishConfig": {
     "access": "public",

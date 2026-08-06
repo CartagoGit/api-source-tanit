@@ -2,7 +2,7 @@
 id: p00008
 title: "p00008 — publish @postman-exporter/cli to npm v0.1.0"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-07-31
@@ -11,6 +11,8 @@ related:
     - p00004 # cleanup before publish
     - p00009 # tests before publish
 ---
+
+> **Cerrada 2026-08-06.** Preparación completa: LICENSE, metadatos npm, `files` con la documentación, y `bun run validate:package` que empaqueta, instala en un proyecto limpio y ejecuta el binario. **El `npm publish` en sí queda para el dueño del repo**: publicar es irreversible y necesita credenciales.
 
 # p00008 — publish @postman-exporter/cli to npm v0.1.0
 

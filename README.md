@@ -29,8 +29,8 @@ framework aunque no esté en la lista.
 ## Empezar
 
 ```bash
-# 1. Instalar
-bun add -g @postman-exporter/cli
+# 1. Instalar (aún no publicado en npm — se instala desde el repo)
+bun add -g github:CartagoGit/postman-exporter
 
 # 2. Generar, desde la raíz de tu proyecto
 postman-from-routes generate
@@ -137,6 +137,12 @@ bun run validate     # el gate: typecheck + lint + tests + generación real
 | `lint:tools` | los tools del plugin MCP no leen `process.env` |
 | `test` | la suite completa |
 | `validate:examples` | genera de verdad los 11 proyectos de `examples/` y valida cada colección |
+
+Y aparte, antes de publicar:
+
+```bash
+bun run validate:package   # empaqueta, instala en un proyecto limpio y ejecuta el binario
+```
 
 Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
 Estado y decisiones: [auditoría](docs/mcp-vertex/AUDIT-2026-08-06.md) y

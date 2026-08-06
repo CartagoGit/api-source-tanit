@@ -2,7 +2,7 @@
 id: p00019
 title: "p00019 — documentación de instalación, uso e import en Postman"
 kind: docs
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
@@ -11,6 +11,8 @@ related:
     - p00014 # identidad de colección
     - p00015 # flujo de login
 ---
+
+> **Cerrada 2026-08-06.** Cuatro documentos escritos (README, INSTALL, FRAMEWORKS, POSTMAN) con todos los comandos ejecutados. Las capturas de Postman son diagramas ASCII: no se pueden hacer capturas reales en este entorno.
 
 # p00019 — documentación de instalación, uso e import en Postman
 
