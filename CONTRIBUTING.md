@@ -149,6 +149,17 @@ El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
 
+### Servidores MCP: se declaran una vez
+
+`.mcp.json` en la raíz es la **fuente de verdad**. `.vscode/mcp.json` se
+deriva de él con `bun run mcp:sync` y `lint:mcp` falla si han derivado.
+
+No es un capricho: Claude Code lee `{ "mcpServers": … }` con rutas
+relativas y VS Code lee `{ "servers": … }` con `${workspaceFolder}`. El
+contenido difiere, no solo el nombre del fichero, así que un enlace
+simbólico no vale. Manteniéndolos a mano, cambias uno y el otro se queda
+viejo hasta que un servidor no arranca y nadie sabe por qué.
+
 ### Dónde escribe la herramienta
 
 En `<proyecto escaneado>/export-to-postman/`. **Nunca** en `build/`: es

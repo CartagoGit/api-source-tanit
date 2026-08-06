@@ -1,21 +1,23 @@
 {
-	"servers": {
-		"mcp-vertex": {
-			"type": "stdio",
-			"command": "bun",
-			"args": [
-				"../mcp-vertex/tools/scripts/host/host-server.script.ts",
-				"--workspace=${workspaceFolder}",
-				"--config=${workspaceFolder}/mcp-vertex.config.json"
-			]
-		},
-		"filesystem": {
-			"command": "bunx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-filesystem",
-				"${workspaceFolder}"
-			]
-		}
-	}
+  "$generado": "Derivado de .mcp.json por `bun run mcp:sync`. No lo edites: edita .mcp.json.",
+  "servers": {
+    "mcp-vertex": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "../mcp-vertex/tools/scripts/host/host-server.script.ts",
+        "--workspace=${workspaceFolder}",
+        "--config=${workspaceFolder}/mcp-vertex.config.json"
+      ]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
+    }
+  }
 }
