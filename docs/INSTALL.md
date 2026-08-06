@@ -1,7 +1,7 @@
 # Instalación y uso
 
 > **Estado de publicación.** El paquete **todavía no está en npm**, así
-> que `bun add -g @export-to-postman/cli` aún no funciona. Hasta que se
+> que `bun add -g export-to-postman` aún no funciona. Hasta que se
 > publique, se instala **desde el repositorio** — ver
 > [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
 > documento describe los comandos definitivos; el único cambio tras
@@ -58,7 +58,7 @@ bun --version
 La opción cómoda si tocas varios proyectos.
 
 ```bash
-bun add -g @export-to-postman/cli
+bun add -g export-to-postman
 ```
 
 Desde la raíz de tu API:
@@ -92,7 +92,7 @@ mano.
 ### Proyectos con `package.json` (Node, NestJS, Next.js, Express…)
 
 ```bash
-bun add -d @export-to-postman/cli
+bun add -d export-to-postman
 ```
 
 ```jsonc
@@ -104,6 +104,9 @@ bun add -d @export-to-postman/cli
 }
 ```
 
+<!-- lint:docs ignore — `postman` es un script del proyecto de quien
+     usa la herramienta, no de este repo. -->
+
 ```bash
 bun run postman
 ```
@@ -114,7 +117,7 @@ No hace falta meter un `package.json` en tu repo. Se invoca con `bunx` y
 `--project-root`:
 
 ```bash
-bunx @export-to-postman/cli generate --project-root .
+bunx export-to-postman generate --project-root .
 ```
 
 Y se deja escrito donde ya tengas tus tareas:
@@ -123,20 +126,20 @@ Y se deja escrito donde ya tengas tus tareas:
 # Makefile
 .PHONY: postman
 postman:
-	bunx @export-to-postman/cli generate --project-root .
+	bunx export-to-postman generate --project-root .
 ```
 
 ```yaml
 # composer.json (Laravel/Symfony) — sección scripts
 "scripts": {
-    "postman": "bunx @export-to-postman/cli generate --project-root ."
+    "postman": "bunx export-to-postman generate --project-root ."
 }
 ```
 
 ```toml
 # pyproject.toml con taskipy
 [tool.taskipy.tasks]
-postman = "bunx @export-to-postman/cli generate --project-root ."
+postman = "bunx export-to-postman generate --project-root ."
 ```
 
 > **`--project-root` no es opcional aquí.** Sin él, el CLI escanea el
@@ -150,7 +153,7 @@ postman = "bunx @export-to-postman/cli generate --project-root ."
 Para probarlo antes de decidir:
 
 ```bash
-bunx @export-to-postman/cli generate --project-root .
+bunx export-to-postman generate --project-root .
 ```
 
 ---

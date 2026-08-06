@@ -67,7 +67,7 @@ hace de forma distinta.
 ## Probar uno
 
 ```sh
-bun run scripts/generate.script.ts --project-root examples/example-laravel
+./bin/expostman generate --project-root examples/example-laravel
 ```
 
 Escribe la colección y sus environments en `examples/example-laravel/export-to-postman/`.

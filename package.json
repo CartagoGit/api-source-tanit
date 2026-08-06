@@ -86,11 +86,12 @@
     "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
     "typecheck:plugin": "bun run --cwd projects/plugins/mcp-vertex typecheck",
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
-    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:proposals",
+    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:docs && bun run lint:proposals",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts",
     "mcp:sync": "bun run scripts/gates/sync-mcp-config.script.ts",
     "lint:mcp": "bun run scripts/gates/sync-mcp-config.script.ts --check",
-    "lint:paths": "bun run scripts/gates/lint-paths.script.ts"
+    "lint:paths": "bun run scripts/gates/lint-paths.script.ts",
+    "lint:docs": "bun run scripts/gates/lint-docs.script.ts"
   },
   "publishConfig": {
     "access": "public",
