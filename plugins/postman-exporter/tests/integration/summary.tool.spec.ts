@@ -1,41 +1,22 @@
+/**
+ * Integration tests de `buildSummaryToolRegistration`.
+ *
+ * El contexto y el capturador de handlers salen de
+ * `tests/helpers/plugin-context.ts`: son los mismos que usan los otros
+ * specs, y el workspace se construye con la fábrica real del core para
+ * que el doble no pueda separarse del contrato.
+ */
 import { describe, expect, test } from "vitest";
+import { resolve } from "node:path";
 
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
-import type { IMcpPluginContext } from "@mcp-vertex/core/public";
+import { captureHandler, makeContext } from "../helpers/plugin-context";
 
-function makeCtx(opts: Partial<IMcpPluginContext> = {}): IMcpPluginContext {
-  return {
-    workspace: "file://" + process.cwd() + "/",
-    namespacePrefix: "postman-exporter",
-    options: {},
-    ...opts,
-  };
-}
+/** Raíz del proyecto postman-exporter (no la del plugin). */
+const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
 
-interface ToolCallResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
-
-function captureHandler(
-  registration: ReturnType<typeof buildSummaryToolRegistration>,
-): (
-  input: unknown,
-) => Promise<ToolCallResult> {
-  let captured: ((input: unknown) => Promise<ToolCallResult>) | null = null;
-  const server = {
-    registerTool: (
-      _name: string,
-      _config: { description: string; inputSchema: unknown },
-      handler: (input: unknown) => Promise<ToolCallResult>,
-    ) => {
-      captured = handler;
-    },
-  };
-  void registration.register(server as never);
-  if (!captured) throw new Error("tool handler not registered");
-  return captured;
-}
+const makeCtx = (options: Record<string, unknown> = {}) =>
+  makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
 describe("postman-exporter_summary", () => {
   test("registra el tool con id='summary' y effects=[]", () => {
@@ -47,7 +28,7 @@ describe("postman-exporter_summary", () => {
 
   test("rechaza input inválido", async () => {
     const reg = buildSummaryToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({ projectRoot: 123 });
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toMatch(/Input inválido/i);
@@ -55,7 +36,7 @@ describe("postman-exporter_summary", () => {
 
   test("devuelve error si projectRoot no existe", async () => {
     const reg = buildSummaryToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({
       projectRoot: "/tmp/__no_existe_zzzz__",
     });
@@ -65,7 +46,7 @@ describe("postman-exporter_summary", () => {
 
   test("devuelve campos estructurados para un fixture Django", async () => {
     const reg = buildSummaryToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({
       projectRoot: process.cwd() + "/tests/smoke-fixtures/django-mini",
     });
@@ -84,7 +65,7 @@ describe("postman-exporter_summary", () => {
 
   test("devuelve el mismo resultado en llamadas consecutivas (cache reset)", async () => {
     const reg = buildSummaryToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const r1 = await handler({
       projectRoot: process.cwd() + "/tests/smoke-fixtures/django-mini",
     });

@@ -17,51 +17,14 @@ import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
-import type { IMcpPluginContext } from "@mcp-vertex/core/public";
+import { captureHandler, makeContext } from "../helpers/plugin-context";
 
 // Workspace del proyecto postman-exporter (no del plugin). El tool corre
 // `bun test tests/e2e/` desde ese cwd.
 const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
 
-function makeCtx(overrides: Partial<IMcpPluginContext> = {}): IMcpPluginContext {
-  return {
-    workspace: new URL(`file://${POSTMAN_EXPORTER_ROOT}/`),
-    namespacePrefix: "postman-exporter",
-    options: {},
-    ...overrides,
-  } as IMcpPluginContext;
-}
-
-interface ToolCallResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
-
-/**
- * Mock del server MCP: solo necesitamos `registerTool(name, schema, handler)`.
- * Devuelve el handler para invocarlo en tests.
- */
-function captureHandler(
-  registration: ReturnType<typeof buildTestToolRegistration>,
-): (
-  input: unknown,
-) => Promise<ToolCallResult> {
-  let captured: ((input: unknown) => Promise<ToolCallResult>) | null = null;
-  const server = {
-    registerTool: (
-      _name: string,
-      _config: { description: string; inputSchema: unknown },
-      handler: (input: unknown) => Promise<ToolCallResult>,
-    ) => {
-      captured = handler;
-    },
-  };
-  // El `register` retorna { tools: [...] } pero aquí solo necesitamos
-  // el side-effect del `server.registerTool`.
-  void registration.register(server as never);
-  if (!captured) throw new Error("tool handler not registered");
-  return captured;
-}
+const makeCtx = (options: Record<string, unknown> = {}) =>
+  makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });
 
 describe("postman-exporter_test", () => {
   test("registra el tool con id='test' y effects=['spawn']", () => {
@@ -73,7 +36,7 @@ describe("postman-exporter_test", () => {
 
   test("rechaza input inválido (framework no soportado)", async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({ framework: "ruby-on-rails" });
     expect(result.isError).toBe(true);
     expect(result.content[0]?.text).toMatch(/Input inválido/i);
@@ -81,7 +44,7 @@ describe("postman-exporter_test", () => {
 
   test("corre el smoke de todos los frameworks y devuelve ok=true", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({ withTypecheck: false });
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
@@ -103,7 +66,7 @@ describe("postman-exporter_test", () => {
 
   test("incluye typecheck cuando se pide", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({ withTypecheck: true });
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
@@ -115,7 +78,7 @@ describe("postman-exporter_test", () => {
 
   test("agrega un step smoke:<framework> cuando se pide", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     const result = await handler({
       framework: "django",
       withTypecheck: false,
@@ -135,17 +98,15 @@ describe("postman-exporter_test", () => {
 
   test("devuelve detalle cuando un step falla (framework inexistente vía archivo)", async () => {
     const reg = buildTestToolRegistration(makeCtx());
-    const handler = captureHandler(reg);
+    const handler = await captureHandler(reg);
     // Forzamos un framework con un archivo de test que no existe.
     // `nestjs` SÍ existe; usamos uno inventado vía `framework` inválido
     // que pase el zod pero no encuentre fixture: trampa no posible vía
     // schema. Probamos un escenario de fallo con `withTypecheck` y un
     // workspace vacío apuntando a una ruta inválida → typecheck fallará.
-    const badCtx = makeCtx({
-      workspace: new URL("file:///tmp/no-such-workspace-12345/"),
-    });
+    const badCtx = makeContext({ workspaceRoot: "/tmp/no-such-workspace-12345" });
     const reg2 = buildTestToolRegistration(badCtx);
-    const handler2 = captureHandler(reg2);
+    const handler2 = await captureHandler(reg2);
     const result = await handler2({ withTypecheck: true });
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {

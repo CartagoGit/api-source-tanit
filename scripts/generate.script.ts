@@ -35,6 +35,11 @@ import {
 } from "../service/environment-builder.service.js";
 import type { EndpointSpec } from "../contract/postman.interface.js";
 import type { DiscoveredRoute } from "../contract/postman.interface.js";
+import {
+  GENERATE_REPORT_VERSION,
+  type IGenerateReport,
+} from "../contract/generate-report.interface.js";
+import { AUTH_TOKEN_VARIABLE } from "../service/auth-flow.service.js";
 
 
 /**
@@ -119,6 +124,21 @@ async function warnOnIdentityClash(
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const args = argv;
+  const startedAt = Date.now();
+  const jsonMode = args.includes("--json");
+
+  // En modo `--json` el stdout es del informe y de nadie más. La traza
+  // legible no se pierde: se va a stderr, que es donde va lo que
+  // acompaña a un resultado sin formar parte de él.
+  const humanLog = console.log;
+  if (jsonMode) {
+    console.log = (...parts: unknown[]) => {
+      process.stderr.write(`${parts.map(String).join(" ")}\n`);
+    };
+  }
+  const environmentPaths: string[] = [];
+  let collectionPath: string | null = null;
+
   const openAfter = args.includes("--open");
   const inspectMode = args.includes("--inspect");
   const outputIdx = args.indexOf("--output");
@@ -250,6 +270,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
   await writeFile(OUTPUT_PATH, json + "\n", "utf8");
+  collectionPath = OUTPUT_PATH;
   const { requests, folders } = countItems(collection);
   const sizeKb = (json.length / 1024).toFixed(1);
   console.log(`\n✔ Collection written to ${OUTPUT_PATH}`);
@@ -287,6 +308,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     if (!env) continue;
     const envPath = await outputEnvironmentPath(env.name, config.name);
     await writeFile(envPath, JSON.stringify(env, null, 2) + "\n", "utf8");
+    environmentPaths.push(envPath);
     console.log(
       `  · Environment "${env.name}" → ${envPath} (${env.values.length} vars)`,
     );
@@ -307,6 +329,33 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       console.error("✘ open-postman.script.ts falló.");
       return r.status ?? 1;
     }
+  }
+
+  if (jsonMode) {
+    const report: IGenerateReport = {
+      version: GENERATE_REPORT_VERSION,
+      ok: true,
+      framework: pipeline.match?.framework ?? null,
+      projectRoot: pipeline.context.projectRoot,
+      projectName: config.name,
+      collectionPath,
+      collectionId: collection.info._postman_id ?? null,
+      environmentPaths,
+      requests,
+      folders,
+      auth: pipeline.authFlow?.login
+        ? {
+            // El login es un `PostmanItem`: método y URL viven en su
+            // `request`, no en el item.
+            loginEndpoint: `${pipeline.authFlow.login.request?.method ?? "POST"} ${
+              pipeline.authFlow.login.request?.url?.raw ?? pipeline.authFlow.login.name
+            }`,
+            tokenVariable: AUTH_TOKEN_VARIABLE,
+          }
+        : null,
+      durationMs: Date.now() - startedAt,
+    };
+    humanLog(JSON.stringify(report, null, 2));
   }
   return 0;
 }

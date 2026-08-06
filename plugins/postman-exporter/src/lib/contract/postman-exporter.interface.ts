@@ -14,7 +14,7 @@ import { z } from "zod";
 export const PostmanExporterOptionsSchema = z
   .object({
     /**
-     * Ruta por defecto al proyecto Laravel host cuando el agente no
+     * Ruta por defecto al proyecto host cuando el agente no
      * la pasa explícitamente. La cadena de fallback completa es:
      *   `args.projectRoot ?? defaultProjectRoot ?? workspaceRoot`.
      * Si ninguno resuelve, el tool devuelve un error claro.
@@ -112,11 +112,20 @@ export type ITestInput = z.infer<typeof TestInputSchema>;
 // --- Outputs de los tools (estructura resumida) ------------------------------
 
 export interface IGenerateOutput {
-  readonly collectionPath: string;
+  /** Framework detectado, o `null` si no se reconoció ninguno. */
+  readonly framework: string | null;
+  /** `null` solo si no se llegó a escribir la colección. */
+  readonly collectionPath: string | null;
+  /** `_postman_id`: lo que hace que reimportar actualice en vez de duplicar. */
+  readonly collectionId: string | null;
   readonly environmentPaths: ReadonlyArray<string>;
   readonly requests: number;
   readonly folders: number;
-  readonly variables: number;
+  /** `null` si el proyecto no tiene endpoint de login. */
+  readonly auth: {
+    readonly loginEndpoint: string;
+    readonly tokenVariable: string;
+  } | null;
   readonly durationMs: number;
 }
 

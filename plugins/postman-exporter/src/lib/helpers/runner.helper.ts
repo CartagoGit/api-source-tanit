@@ -7,6 +7,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { z } from "zod";
 
 // `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
 // reproduce cuando el host MCP arranca el plugin bajo Bun y el
@@ -262,36 +263,80 @@ function runBunSpawnSyncArray(
 }
 
 /**
- * Parsea la salida de `bun run scripts/generate.script.ts` para
- * extraer rutas de artefactos generados. Tolerante a cambios de formato.
+ * Forma del informe que emite `generate --json`.
+ *
+ * Se valida en vez de confiar: el CLI es otro paquete que se
+ * actualiza por su cuenta, y un campo que desaparece tiene que dar un
+ * error claro aquí y no un `undefined` que viaje hasta el agente.
  */
-export function parseGenerateOutput(stdout: string): {
-  readonly collectionPath: string | null;
-  readonly environmentPaths: ReadonlyArray<string>;
-} {
-  const collectionMatch = stdout.match(
-    /Colecci[oó]n escrita en (.+\.postman_collection\.json)/,
-  );
-  const collectionPath = collectionMatch?.[1] ?? null;
+const GenerateReportSchema = z.object({
+  version: z.number(),
+  ok: z.boolean(),
+  framework: z.string().nullable(),
+  projectRoot: z.string(),
+  projectName: z.string(),
+  collectionPath: z.string().nullable(),
+  collectionId: z.string().nullable(),
+  environmentPaths: z.array(z.string()),
+  requests: z.number(),
+  folders: z.number(),
+  auth: z
+    .object({ loginEndpoint: z.string(), tokenVariable: z.string() })
+    .nullable(),
+  durationMs: z.number(),
+});
 
-  const envPaths: string[] = [];
-  const envRe = /Environment "[^"]+"\s*→\s*(.+\.postman_environment\.json)/g;
-  let m: RegExpExecArray | null;
-  while ((m = envRe.exec(stdout)) !== null) {
-    if (m[1]) envPaths.push(m[1]);
+/** Informe de `generate --json`, ya validado. */
+export type IGenerateReport = z.infer<typeof GenerateReportSchema>;
+
+/** Versión del contrato que este plugin sabe leer. */
+export const SUPPORTED_REPORT_VERSION = 1;
+
+/**
+ * Lee el informe de `generate --json` desde el stdout del CLI.
+ *
+ * Antes de esto el plugin sacaba las rutas con expresiones regulares
+ * sobre el texto para personas (`/Colecci[oó]n escrita en (.+)/`). Se
+ * rompió sin hacer ruido en cuanto el CLI se tradujo al inglés: el tool
+ * seguía devolviendo `ok: true` con `collectionPath: "<no detectado>"` y
+ * `requests: 0`, o sea un éxito que no lo era. Ahora el CLI emite un
+ * documento JSON versionado por stdout (la traza legible se va a
+ * stderr) y aquí solo queda parsearlo y validarlo.
+ */
+export function readGenerateReport(
+  stdout: string,
+): { ok: true; report: IGenerateReport } | { ok: false; detail: string } {
+  const trimmed = stdout.trim();
+  if (!trimmed) {
+    return { ok: false, detail: "el CLI no ha escrito nada en stdout" };
   }
 
-  return {
-    collectionPath,
-    environmentPaths: envPaths,
-  };
-}
+  let raw: unknown;
+  try {
+    raw = JSON.parse(trimmed);
+  } catch {
+    return {
+      ok: false,
+      detail:
+        "stdout no es JSON — ¿se ha lanzado `generate` sin `--json`? " +
+        `Primeros 200 caracteres: ${trimmed.slice(0, 200)}`,
+    };
+  }
 
-/** Parsea el conteo final "X requests en Y carpetas (Z KB)". */
-export function parseRequestCount(
-  stdout: string,
-): { readonly requests: number; readonly folders: number } | null {
-  const m = stdout.match(/(\d+)\s+requests en\s+(\d+)\s+carpetas/);
-  if (!m) return null;
-  return { requests: Number(m[1]), folders: Number(m[2]) };
+  const parsed = GenerateReportSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      detail: `el informe del CLI no encaja con el contrato: ${parsed.error.message}`,
+    };
+  }
+  if (parsed.data.version !== SUPPORTED_REPORT_VERSION) {
+    return {
+      ok: false,
+      detail:
+        `el CLI emite la versión ${parsed.data.version} del informe y este ` +
+        `plugin lee la ${SUPPORTED_REPORT_VERSION}. Actualiza el plugin.`,
+    };
+  }
+  return { ok: true, report: parsed.data };
 }

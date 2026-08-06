@@ -36,7 +36,7 @@ export function buildSummaryToolRegistration(
     summary:
       "Inspecciona un proyecto host (Laravel, OpenAPI, Express, FastAPI, NestJS, Django, etc.) sin generar artefactos. " +
       "Devuelve framework, baseUrl, rutas en código, FormRequests, bodies/queries auto-inferidos, modo.",
-    tags: ["postman", "laravel", "summary", "discovery"],
+    tags: ["postman", "api", "summary", "discovery"],
     effects: [],
     register: async (server) => {
       server.registerTool(
@@ -57,7 +57,7 @@ export function buildSummaryToolRegistration(
             );
           }
           const args = parsed.data;
-          const workspaceRoot = ctx.workspace.toString();
+          const workspaceRoot = ctx.workspace.root;
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
             | undefined;

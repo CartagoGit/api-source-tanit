@@ -114,23 +114,6 @@ async function runFrameworkSmoke(
 }
 
 /**
- * Parsea la salida de `bun test` para extraer el conteo de tests
- * pasados/fallidos y el resumen final. Tolerante a cambios menores
- * de formato.
- */
-function parseTestSummary(stdout: string): string | undefined {
-  const ranMatch = stdout.match(/Ran\s+(\d+)\s+tests?\s+across\s+(\d+)\s+files?/i);
-  const passMatch = stdout.match(/(\d+)\s+pass/i);
-  const failMatch = stdout.match(/(\d+)\s+fail/i);
-  if (!ranMatch && !passMatch && !failMatch) return undefined;
-  const parts: string[] = [];
-  if (passMatch) parts.push(`${passMatch[1]} pass`);
-  if (failMatch && Number(failMatch[1]) > 0) parts.push(`${failMatch[1]} fail`);
-  if (ranMatch) parts.push(`of ${ranMatch[1]} tests in ${ranMatch[2]} files`);
-  return parts.join(", ");
-}
-
-/**
  * Devuelve un fragmento útil del stderr o stdout de un test que falló:
  * las últimas N líneas que contienen palabras clave (`fail`, `error`,
  * `error:`) para que un agente tenga contexto sin tener que re-correr.
@@ -202,7 +185,7 @@ export function buildTestToolRegistration(
             );
           }
           const args = parsed.data;
-          const workspaceRoot = normalizeCwd(ctx.workspace.toString());
+          const workspaceRoot = normalizeCwd(ctx.workspace.root);
           const start = Date.now();
           const steps: ITestStep[] = [];
 

@@ -35,8 +35,8 @@ export function buildValidateToolRegistration(
     id: TOOL_ID,
     summary:
       "Valida un JSON Postman v2.1.0 existente (schema v2.1.0 + cobertura bidireccional " +
-      "con las rutas del proyecto Laravel). Devuelve OK/KO con issues estructurados.",
-    tags: ["postman", "laravel", "validate", "spawn"],
+      "con las rutas del proyecto host). Devuelve OK/KO con issues estructurados.",
+    tags: ["postman", "api", "validate", "spawn"],
     effects: ["spawn"],
     register: async (server) => {
       server.registerTool(
@@ -44,7 +44,7 @@ export function buildValidateToolRegistration(
         {
           description:
             "Valida un JSON Postman v2.1.0 existente (schema v2.1.0 + cobertura bidireccional " +
-            "con las rutas del proyecto Laravel). Devuelve OK/KO con issues estructurados.",
+            "con las rutas del proyecto host). Devuelve OK/KO con issues estructurados.",
           inputSchema: ValidateInputSchema,
         },
         async (input) => {
@@ -56,7 +56,7 @@ export function buildValidateToolRegistration(
             );
           }
           const args = parsed.data;
-          const workspaceRoot = ctx.workspace.toString();
+          const workspaceRoot = ctx.workspace.root;
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
             | undefined;

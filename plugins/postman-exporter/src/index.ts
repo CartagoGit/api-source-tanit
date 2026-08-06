@@ -32,7 +32,7 @@ export default definePlugin({
   version: "0.1.0",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +
-    "de cualquier proyecto Laravel. Pensado para ser invocado por agentes " +
+    "de cualquier proyecto de API. Pensado para ser invocado por agentes " +
     "MCP-vertex en proyectos host sin configuración manual.",
   optionsSchema: PostmanExporterOptionsSchema,
   register(ctx) {

@@ -1,0 +1,13 @@
+{
+  // El plugin es un proyecto independiente y se abre a menudo por su
+  // cuenta, así que necesita su propia asociación: los settings de la
+  // raíz no aplican cuando esta carpeta es la abierta.
+  //
+  // `bun.lock` es JSONC (lleva comas finales), no JSON estricto. Sin
+  // esto el editor lo valida como JSON y marca cada coma como error.
+  "files.associations": {
+    "bun.lock": "jsonc"
+  },
+  // Dos proyectos de tipos: el que se publica y el de los tests.
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

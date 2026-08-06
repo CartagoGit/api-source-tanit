@@ -1,17 +1,48 @@
 {
-  "extends": "../../tsconfig.json",
+  // Tipado de lo que se PUBLICA: solo `src/`.
+  //
+  // Es lo que acaba en `dist/` y lo que consume mcp-vertex, así que
+  // aquí no entran los tests: sus tipos (`vitest`, helpers, dobles) no
+  // deben poder colarse en el paquete publicado. Para los tests está
+  // `tsconfig.test.json`, y `bun run typecheck` corre los dos.
+  //
+  // El plugin es un proyecto independiente y NO extiende del tsconfig
+  // del CLI: aquel declara `types: []` y sus propias declaraciones
+  // ambient de node, mientras que aquí sí usamos `@types/node` y
+  // `@types/bun` porque es lo que hace el resto de plugins de
+  // mcp-vertex. Mezclarlos hacía chocar `spawnSync` y `Bun`.
   "compilerOptions": {
-    "composite": false,
-    "outDir": "./dist",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    // `noUncheckedIndexedAccess` y `noUnusedLocals` quedan fuera a
+    // propósito. Tres ficheros de `src/` importan código del CLI
+    // trepando con `../../../../../`, así que ese código entra en este
+    // programa y hereda estas reglas — que no son las suyas. El
+    // resultado eran 30 errores en ficheros que este proyecto no
+    // mantiene.
+    //
+    // El arreglo de verdad no es relajar reglas: es que el plugin
+    // dependa del CLI como paquete (`@postman-exporter/cli/...`) en vez
+    // de por ruta relativa. Está anotado en p00027.
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "customConditions": ["@mcp-vertex/source"],
+    // `noEmit` con `declaration` era contradictorio: pedía generar los
+    // .d.ts y a la vez no escribir nada. El build de verdad lo hace
+    // `bun run build`; este proyecto solo comprueba tipos.
     "noEmit": true,
-    "declaration": true,
-    "declarationMap": true,
-    "types": [
-      "node"
-    ]
+    "types": ["node", "bun"]
   },
-  "include": [
-    "src/**/*",
-    "tests/**/*"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
