@@ -17,15 +17,15 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
-import { moduleDir } from "../../helpers/module-path.helper";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../contracts/generate-report.interface";
+} from "../../projects/core/contracts/generate-report.interface";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
-const GENERATE = join(PACKAGE_ROOT, "scripts", "generate.script.ts");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
+const GENERATE = join(PACKAGE_ROOT, "projects", "cli", "commands", "generate.script.ts");
 const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
 
 let project = "";
@@ -71,7 +71,7 @@ describe("generate --json", () => {
   // se entera hasta que un agente lo invoca de verdad.
   test("el plugin lee exactamente esta versión del contrato", async () => {
     const pluginHelper = await readFile(
-      join(PACKAGE_ROOT, "plugins/postman-exporter/src/lib/helpers/runner.helper.ts"),
+      join(PACKAGE_ROOT, "projects/plugin/src/lib/helpers/runner.helper.ts"),
       "utf8",
     );
     const declared = /SUPPORTED_REPORT_VERSION = (\d+)/.exec(pluginHelper)?.[1];

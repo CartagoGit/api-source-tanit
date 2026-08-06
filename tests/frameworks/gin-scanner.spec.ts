@@ -4,11 +4,11 @@ import {
   GinProjectScanner,
   GinRouteScanner,
   GinBindingProvider,
-} from "../../frameworks/scanners/gin.scanner";
+} from "../../projects/frameworks/scanners/gin.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "gin",

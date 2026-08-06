@@ -13,9 +13,9 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import type { FrameworkId, IProjectMatch } from "../../contracts/scanner.interface";
-import { scannerBundleFor } from "../../frameworks/framework.registry";
-import { moduleDir } from "../../helpers/module-path.helper";
+import type { FrameworkId, IProjectMatch } from "../../projects/core/contracts/scanner.interface";
+import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 export const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
 
@@ -89,7 +89,7 @@ export async function matchFor(
 export async function scanProject(
   framework: FrameworkId,
   projectRoot: string,
-): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../contracts/scanner.interface").ParsedRoute> }> {
+): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../projects/core/contracts/scanner.interface").ParsedRoute> }> {
   const bundle = scannerBundleFor(framework);
   if (!bundle) throw new Error(`framework "${framework}" no está en el scanner registry`);
   const match = await bundle.projectScanner.resolve(projectRoot);

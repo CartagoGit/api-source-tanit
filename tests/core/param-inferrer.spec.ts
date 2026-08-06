@@ -6,8 +6,8 @@ import {
   extractPathParams,
   inferBodyForSpec,
   inferQueryForSpec,
-} from "../../services/param-inferrer.service";
-import type { EndpointSpec } from "../../contracts/postman.interface";
+} from "../../projects/core/domain/param-inferrer.service";
+import type { EndpointSpec } from "../../projects/core/contracts/postman.interface";
 
 /** Helper para construir un EndpointSpec mínimo en tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {

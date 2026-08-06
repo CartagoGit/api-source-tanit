@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import {
   NestJsProjectScanner,
   NestJsRouteScanner,
-} from "../../frameworks/scanners/nestjs.scanner";
+} from "../../projects/frameworks/scanners/nestjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {
@@ -11,7 +11,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "nestjs",

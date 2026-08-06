@@ -3,11 +3,11 @@ import { resolve } from "node:path";
 import {
   FlaskProjectScanner,
   FlaskRouteScanner,
-} from "../../frameworks/scanners/flask.scanner";
+} from "../../projects/frameworks/scanners/flask.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "flask",

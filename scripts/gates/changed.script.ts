@@ -21,10 +21,10 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-import { moduleDir } from "../../helpers/module-path.helper.js";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, sectionsForFiles, withDependents } from "./sections.constant.js";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
 
 /** Ficheros cambiados según el modo pedido. */
 function changedFiles(argv: readonly string[]): { files: string[]; against: string } {

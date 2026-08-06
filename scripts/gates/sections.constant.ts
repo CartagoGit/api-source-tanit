@@ -56,7 +56,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
-    paths: ["contracts/", "helpers/", "services/"],
+    paths: ["projects/core/"],
     tests: ["tests/core/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.core.json",
     dependsOn: [],
@@ -64,7 +64,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "frameworks",
     description: "Lo concreto de cada framework: los 12 scanners y sus parsers",
-    paths: ["frameworks/"],
+    paths: ["projects/frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",
     dependsOn: ["core"],
@@ -72,7 +72,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "cli",
     description: "Comandos, asistente interactivo y binario compilado",
-    paths: ["scripts/"],
+    paths: ["projects/cli/", "projects/ui/", "scripts/"],
     tests: ["tests/cli/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["core", "frameworks"],
@@ -88,10 +88,10 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "plugin",
     description: "Plugin de mcp-vertex — proyecto independiente, gates propios",
-    paths: ["plugins/"],
-    tests: ["plugins/*/tests/**/*.{spec,test}.ts"],
-    tsconfig: "plugins/postman-exporter/tsconfig.json",
-    ownTypecheck: { cwd: "plugins/postman-exporter", script: "typecheck" },
+    paths: ["projects/plugin/"],
+    tests: ["projects/plugin/tests/**/*.{spec,test}.ts"],
+    tsconfig: "projects/plugin/tsconfig.json",
+    ownTypecheck: { cwd: "projects/plugin", script: "typecheck" },
     // El plugin necesita el catálogo de frameworks (lo expone en su
     // tool `test` y en `summary`), así que la dependencia es real y se
     // declara. Declararla no es relajar la regla: la regla es que

@@ -5,12 +5,12 @@ import {
   mapPydanticType,
   parsePydanticModels,
   pydanticModelToSpecs,
-} from "../../frameworks/parsers/pydantic-schema.helper";
+} from "../../projects/frameworks/parsers/pydantic-schema.helper";
 import {
   marshmallowFieldToSpec,
   marshmallowSchemaToSpecs,
   parseMarshmallowSchemas,
-} from "../../frameworks/parsers/marshmallow-schema.helper";
+} from "../../projects/frameworks/parsers/marshmallow-schema.helper";
 
 describe("parsePydanticModels", () => {
   const source = `

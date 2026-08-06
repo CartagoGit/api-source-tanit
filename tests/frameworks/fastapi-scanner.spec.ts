@@ -4,11 +4,11 @@ import {
   FastApiProjectScanner,
   FastApiScanner,
   FastApiPydanticValidationProvider,
-} from "../../frameworks/scanners/fastapi.scanner";
+} from "../../projects/frameworks/scanners/fastapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "fastapi",

@@ -91,7 +91,7 @@ summary:
 | `*.constant.ts` | `contracts/` / `examples/` | Durable, frozen, shared constants. |
 | `*.service.ts` | `services/` | Stateful business logic. |
 | `*.helper.ts` | `helpers/` | Pure utilities, no I/O. |
-| `*.tool.ts` | `plugins/<name>/src/lib/tools/` | One MCP tool per file. |
+| `*.tool.ts` | `projects/plugin/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
 | `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
@@ -113,14 +113,35 @@ Una carpeta contiene **varias** cosas de ese tipo. `helper/` con 8
 helpers dentro no describe nada. Antes había ocho carpetas y dos
 convenciones, solo por historia.
 
+### El árbol
+
+```
+projects/
+  core/            lo agnóstico — no nombra ni un framework
+    contracts/     interfaces y constantes compartidas
+    domain/        collection-builder, auth-flow, param-inferrer…
+    discovery/     pipeline, orchestrator, resolución de proyecto
+    adapters/      del contrato de scanner a EndpointSpec
+    helpers/       funciones puras
+  frameworks/      lo concreto — 12 scanners, parsers y el registro
+  cli/             dispatcher + un fichero por comando en commands/
+  ui/              asistente interactivo
+  plugin/          plugin de mcp-vertex, paquete independiente
+scripts/
+  gates/           typecheck, los 4 lints, validate, changed
+  build/           binario compilado
+tests/             espejo de projects/
+examples/          un proyecto por framework
+```
+
 ### Las capas y su dirección
 
 ```
-contracts/ helpers/ services/   núcleo agnóstico — no nombra frameworks
+projects/core/          núcleo agnóstico
         ↑
-frameworks/                     los 12 scanners y sus parsers
+projects/frameworks/    los 12 scanners y sus parsers
         ↑
-scripts/                        raíz de composición: une las dos
+projects/cli/ + ui/     raíz de composición: une las dos
 ```
 
 La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
@@ -140,7 +161,7 @@ es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 - **Dot, never hyphen.** `foo.service.ts`, not `foo-service.ts`.
 - **One tool per file.** No multi-tool `tools.ts`.
 - **One agent per file.** No multi-agent `agents.ts`.
-- **Plugins never import `services/`.** The plugin only invokes
+- **El plugin nunca importa `projects/core/` a pelo.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
 - **`services/` never imports `frameworks/`.** Lo exige
@@ -187,7 +208,7 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `plugins/**/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugin/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { DiscoveryOrchestrator } from "../../services/discovery.orchestrator";
+import { DiscoveryOrchestrator } from "../../projects/core/discovery/discovery.orchestrator";
 import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../../contracts/scanner.interface";
+} from "../../projects/core/contracts/scanner.interface";
 
 function detector(framework: string, score: number, options: { throws?: boolean } = {}): IProjectScanner {
   return {

@@ -11,8 +11,8 @@
  * debajo solo sus comprobaciones específicas.
  */
 import { describe, expect, test } from "vitest";
-import { checkCollectionInvariants } from "../../helpers/collection-invariants.helper";
-import type { PostmanCollection, PostmanItem } from "../../contracts/postman.interface";
+import { checkCollectionInvariants } from "../../projects/core/helpers/collection-invariants.helper";
+import type { PostmanCollection, PostmanItem } from "../../projects/core/contracts/postman.interface";
 import { runGenerate } from "./run-scanner";
 
 /** Ajustes del contrato de colección. */

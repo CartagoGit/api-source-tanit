@@ -14,8 +14,8 @@
 import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
-import { moduleDir } from "../../helpers/module-path.helper";
-import { generateWithAllFrameworks } from "../../frameworks/index";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 
 const FIXTURES = resolve(moduleDir(import.meta.url), "../fixtures");
 const HYBRID = resolve(FIXTURES, "hybrid-express-nextjs");

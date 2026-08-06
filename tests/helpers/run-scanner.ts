@@ -15,9 +15,9 @@
  *   - `runGenerateMetrics(fixtureName)` → alias de conveniencia (mismo resultado).
  */
 import { resolve, join } from "node:path";
-import { generateWithAllFrameworks } from "../../frameworks/index";
-import type { PostmanCollection } from "../../contracts/postman.interface";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "../..");
 

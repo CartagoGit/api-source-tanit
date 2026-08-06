@@ -3,8 +3,8 @@ import {
   buildEnvironment,
   buildEnvironments,
   defaultEnvironments,
-} from "../../services/environment-builder.service";
-import type { EndpointSpec, PostmanVariable } from "../../contracts/postman.interface";
+} from "../../projects/core/domain/environment-builder.service";
+import type { EndpointSpec, PostmanVariable } from "../../projects/core/contracts/postman.interface";
 
 const VARIABLES: PostmanVariable[] = [
   { key: "baseUrl", value: "http://localhost/api", type: "string" },

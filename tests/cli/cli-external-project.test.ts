@@ -12,12 +12,12 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
-import { OUTPUT_DIR_NAME } from "../../contracts/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
-const CLI = join(PACKAGE_ROOT, "scripts", "cli.script.ts");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
+const CLI = join(PACKAGE_ROOT, "projects", "cli", "cli.script.ts");
 const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
 
 let externalProject = "";

@@ -8,7 +8,7 @@ import {
   generateQueryVariants,
   parseFormRequest,
   type FormRequestRules,
-} from "../../frameworks/laravel/form-request-parser.service";
+} from "../../projects/frameworks/laravel/form-request-parser.service";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 let project: ITempProject;

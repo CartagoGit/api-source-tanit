@@ -44,7 +44,7 @@ cd ~/proyectos/mi-api
 bun add -d /ruta/a/postman-exporter-cli-0.1.0.tgz
 ```
 
-En ambos casos queda disponible el binario `expostman` (alias `postman-from-routes` sigue disponible).
+En ambos casos queda disponible el binario `expostman` (alias `export-to-postman` sigue disponible).
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes
@@ -65,7 +65,7 @@ Desde la raíz de tu API:
 
 ```bash
 cd ~/proyectos/mi-api
-postman-from-routes generate
+export-to-postman generate
 ```
 
 Salida:
@@ -99,7 +99,7 @@ bun add -d @postman-exporter/cli
 // package.json
 {
   "scripts": {
-    "postman": "postman-from-routes generate"
+    "postman": "export-to-postman generate"
   }
 }
 ```
@@ -163,11 +163,11 @@ No necesita nada más.
 
 ```bash
 # Linux x64
-curl -L https://github.com/CartagoGit/postman-exporter/releases/latest/download/postman-from-routes-linux-x64 \
-  -o /usr/local/bin/postman-from-routes
-chmod +x /usr/local/bin/postman-from-routes
+curl -L https://github.com/CartagoGit/postman-exporter/releases/latest/download/export-to-postman-linux-x64 \
+  -o /usr/local/bin/export-to-postman
+chmod +x /usr/local/bin/export-to-postman
 
-postman-from-routes generate --project-root .
+export-to-postman generate --project-root .
 ```
 
 Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
@@ -220,7 +220,7 @@ quieras versionar la colección para revisarla en los PRs.
 Antes de generar nada, para ver qué detectaría:
 
 ```bash
-postman-from-routes generate --project-root . --inspect
+export-to-postman generate --project-root . --inspect
 ```
 
 ---
@@ -248,7 +248,7 @@ Sin configuración funciona. Cuando quieras control fino, crea un
 `config.constant.ts`:
 
 ```bash
-postman-from-routes init
+export-to-postman init
 ```
 
 Lo más útil que puedes poner:
@@ -289,7 +289,7 @@ El escaneo no encontró el proyecto. Comprueba en el bloque de rutas que
 imprime el comando que `projectRoot` apunta donde crees:
 
 ```bash
-postman-from-routes generate --project-root /ruta/absoluta/a/tu/api
+export-to-postman generate --project-root /ruta/absoluta/a/tu/api
 ```
 
 Si `projectRoot` está bien, mira en [FRAMEWORKS.md](FRAMEWORKS.md) qué
@@ -307,7 +307,7 @@ un bucle, o con el path en una variable) no se detectan: el análisis es
 estático. Para esos casos se declaran a mano en un
 `endpoints.constant.ts`, que se fusiona con lo autodetectado.
 
-### `command not found: postman-from-routes`
+### `command not found: export-to-postman`
 
 La instalación global de Bun no está en el `PATH`:
 

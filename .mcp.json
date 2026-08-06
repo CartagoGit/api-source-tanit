@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "mcp-vertex": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "../mcp-vertex/tools/scripts/host/host-server.script.ts",
+        "--workspace=.",
+        "--config=./mcp-vertex.config.json"
+      ]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
+    }
+  }
+}

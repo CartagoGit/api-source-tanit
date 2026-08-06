@@ -17,12 +17,12 @@ import { existsSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 
-import { moduleDir } from "../../helpers/module-path.helper";
-import { OUTPUT_DIR_NAME } from "../../contracts/postman.constant";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper";
+import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
 import { runProcess } from "../helpers/run-process";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
-const GENERATE = join(PACKAGE_ROOT, "scripts", "generate.script.ts");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
+const GENERATE = join(PACKAGE_ROOT, "projects", "cli", "commands", "generate.script.ts");
 const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
 
 /** Contenido que dejamos en el `build/` del proyecto para vigilarlo. */

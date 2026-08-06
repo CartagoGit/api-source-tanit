@@ -1,11 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "include": [
-    "contracts/**/*.ts",
-    "contracts/**/*.d.ts",
-    "helpers/**/*.ts",
-    "services/**/*.ts",
-    "frameworks/**/*.ts",
+    "projects/**/*.ts",
+    "projects/**/*.d.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts",

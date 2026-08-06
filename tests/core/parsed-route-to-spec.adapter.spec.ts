@@ -2,14 +2,14 @@ import { describe, expect, test } from "vitest";
 import {
   buildSpecsFromScanner,
   toPostmanUri,
-} from "../../services/adapters/parsed-route-to-spec.adapter";
+} from "../../projects/core/adapters/parsed-route-to-spec.adapter";
 import type {
   IProjectMatch,
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../contracts/scanner.interface";
+} from "../../projects/core/contracts/scanner.interface";
 
 const MATCH: IProjectMatch = {
   framework: "demo",

@@ -2,7 +2,7 @@
   "name": "export-to-postman",
   "version": "0.1.0",
   "workspaces": [
-    "plugins/*"
+    "projects/plugin"
   ],
   "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
   "keywords": [
@@ -33,23 +33,17 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "expostman": "./scripts/cli.script.ts",
-    "postman-from-routes": "./scripts/cli.script.ts"
+    "export-to-postman": "./projects/cli/cli.script.ts"
   },
-  "main": "./scripts/cli.script.ts",
-  "module": "./scripts/cli.script.ts",
+  "main": "./projects/cli/cli.script.ts",
+  "module": "./projects/cli/cli.script.ts",
   "exports": {
-    ".": "./scripts/cli.script.ts",
-    "./services/*": "./services/*.service.ts",
-    "./contracts/*": "./contracts/*.interface.ts",
-    "./helpers/*": "./helpers/*.helper.ts",
-    "./frameworks": "./frameworks/index.ts"
+    ".": "./projects/cli/cli.script.ts",
+    "./core/*": "./projects/core/*",
+    "./frameworks": "./projects/frameworks/index.ts"
   },
   "files": [
-    "contracts/",
-    "services/",
-    "helpers/",
-    "frameworks/",
+    "projects/",
     "scripts/",
     "docs/INSTALL.md",
     "docs/FRAMEWORKS.md",
@@ -60,24 +54,24 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun run scripts/generate.script.ts --project-root ./examples/example-express",
-    "check": "bun run scripts/diff.script.ts --project-root ./examples/example-express && bun run scripts/validate-json.script.ts --project-root ./examples/example-express",
+    "build": "bun run projects/cli/commands/generate.script.ts --project-root ./examples/example-express",
+    "check": "bun run projects/cli/commands/diff.script.ts --project-root ./examples/example-express && bun run projects/cli/commands/validate-json.script.ts --project-root ./examples/example-express",
     "typecheck": "bun run scripts/gates/typecheck.script.ts",
-    "enrich": "bun run scripts/enrich.script.ts",
-    "list": "bun run scripts/list-endpoints.script.ts",
-    "stats": "bun run scripts/stats.script.ts",
-    "scan": "bun run scripts/scan.script.ts",
-    "open": "bun run scripts/open-postman.script.ts",
-    "init": "bun run scripts/init.script.ts",
+    "enrich": "bun run projects/cli/commands/enrich.script.ts",
+    "list": "bun run projects/cli/commands/list-endpoints.script.ts",
+    "stats": "bun run projects/cli/commands/stats.script.ts",
+    "scan": "bun run projects/cli/commands/scan.script.ts",
+    "open": "bun run projects/cli/commands/open-postman.script.ts",
+    "init": "bun run projects/cli/commands/init.script.ts",
     "clean": "rm -f build/*.json",
     "test": "bunx vitest run",
-    "lint:tools": "bun run scripts/lint-tool-no-process.script.ts",
-    "validate:examples": "bun run scripts/validate.script.ts",
+    "lint:tools": "bun run scripts/gates/lint-tool-no-process.script.ts",
+    "validate:examples": "bun run scripts/gates/validate.script.ts",
     "validate": "bun run typecheck && bun run lint && bun run test && bun run validate:examples",
-    "validate:package": "bun run scripts/validate-package.script.ts",
-    "build:binary": "bun run scripts/build-binary.script.ts",
-    "push": "bun run scripts/push.script.ts",
-    "lint:proposals": "bun run scripts/lint-proposals.script.ts",
+    "validate:package": "bun run scripts/gates/validate-package.script.ts",
+    "build:binary": "bun run scripts/build/build-binary.script.ts",
+    "push": "bun run projects/cli/commands/push.script.ts",
+    "lint:proposals": "bun run scripts/gates/lint-proposals.script.ts",
     "test:watch": "bunx vitest",
     "test:core": "bunx vitest run --project core",
     "test:frameworks": "bunx vitest run --project frameworks",
@@ -88,7 +82,7 @@
     "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",
     "typecheck:frameworks": "bun run scripts/gates/typecheck.script.ts frameworks",
     "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
-    "typecheck:plugin": "bun run --cwd plugins/postman-exporter typecheck",
+    "typecheck:plugin": "bun run --cwd projects/plugin typecheck",
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
     "lint": "bun run lint:naming && bun run lint:tools && bun run lint:boundaries && bun run lint:proposals",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts"

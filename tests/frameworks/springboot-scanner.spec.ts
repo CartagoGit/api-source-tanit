@@ -4,11 +4,11 @@ import {
   SpringBootProjectScanner,
   SpringBootRouteScanner,
   SpringBootBeanValidationProvider,
-} from "../../frameworks/scanners/springboot.scanner";
+} from "../../projects/frameworks/scanners/springboot.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "springboot",

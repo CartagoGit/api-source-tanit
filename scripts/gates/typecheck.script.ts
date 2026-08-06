@@ -21,10 +21,10 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-import { moduleDir } from "../../helpers/module-path.helper.js";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, sectionByName, type ISection } from "./sections.constant.js";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
 
 /** Corre `tsc --noEmit` sobre el proyecto de una sección. */
 function typecheck(section: ISection): boolean {

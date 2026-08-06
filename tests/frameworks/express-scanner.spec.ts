@@ -4,7 +4,7 @@ import {
   ExpressProjectScanner,
   ExpressScanner,
   ExpressZodValidationProvider,
-} from "../../frameworks/scanners/express.scanner";
+} from "../../projects/frameworks/scanners/express.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {
@@ -12,7 +12,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "express",

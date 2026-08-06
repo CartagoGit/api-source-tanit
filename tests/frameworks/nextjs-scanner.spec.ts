@@ -4,11 +4,11 @@ import {
   NextJsProjectScanner,
   NextJsRouteScanner,
   NextJsZodProvider,
-} from "../../frameworks/scanners/nextjs.scanner";
+} from "../../projects/frameworks/scanners/nextjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 describeScannerContract({
   framework: "nextjs",

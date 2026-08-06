@@ -12,8 +12,8 @@
  */
 import { describe, expect, test } from "vitest";
 import { join, resolve } from "node:path";
-import { generateWithAllFrameworks } from "../../frameworks/index";
-import { moduleDir } from "../../helpers/module-path.helper";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 
 const FIXTURES = resolve(moduleDir(import.meta.url), "../fixtures");
 

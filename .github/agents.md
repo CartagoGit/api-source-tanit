@@ -13,7 +13,7 @@ anotaciones ni servidor levantado. Detecta el framework solo entre 12:
 Laravel, Symfony, Express/Fastify/Koa/Hapi, NestJS, Next.js, FastAPI,
 Flask, Django/DRF, Gin, Spring Boot, ASP.NET Core y OpenAPI.
 
-Se distribuye de tres formas: paquete npm (`postman-from-routes`),
+Se distribuye de tres formas: paquete npm (`export-to-postman`),
 binario autocontenido por plataforma, y plugin de mcp-vertex.
 
 ---

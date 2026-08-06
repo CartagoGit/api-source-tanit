@@ -8,7 +8,7 @@
  *
  * Ejemplo:
  * ```ts
- * import type { EndpointSpec } from "../../contracts/postman.interface.js";
+ * import type { EndpointSpec } from "../../projects/core/contracts/postman.interface.js";
  *
  * export const ALL_ENDPOINTS: EndpointSpec[] = [
  *   {
@@ -20,7 +20,7 @@
  * ];
  * ```
  */
-import type { EndpointSpec } from "../../contracts/postman.interface.js";
+import type { EndpointSpec } from "../../projects/core/contracts/postman.interface.js";
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [
   // Añade aquí tus overrides personalizados.

@@ -19,9 +19,9 @@
 import { readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
-import { moduleDir } from "../../helpers/module-path.helper.js";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
 
 /** Qué sufijos admite cada carpeta de código. */
 interface INamingRule {
@@ -37,32 +37,42 @@ interface INamingRule {
 
 const RULES: readonly INamingRule[] = [
   {
-    path: "contracts/",
+    path: "projects/core/contracts/",
     what: "tipos y constantes compartidas",
     suffixes: [".interface.ts", ".constant.ts", ".d.ts"],
   },
   {
-    path: "helpers/",
+    path: "projects/core/helpers/",
     what: "funciones puras sin estado",
     suffixes: [".helper.ts"],
   },
   {
-    path: "services/",
-    what: "servicios del núcleo",
+    path: "projects/core/",
+    what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con
     // significado propio, igual que `.service`: no son un servicio
     // cualquiera y llamarlos así lo escondería.
     suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts"],
   },
   {
-    path: "frameworks/",
+    path: "projects/frameworks/",
     what: "lo concreto de cada framework",
     suffixes: [".scanner.ts", ".service.ts", ".helper.ts", ".registry.ts"],
     exact: ["index.ts", "legacy-discovery.ts"],
   },
   {
+    path: "projects/cli/",
+    what: "el dispatcher y un fichero por comando",
+    suffixes: [".script.ts", ".constant.ts"],
+  },
+  {
+    path: "projects/ui/",
+    what: "el asistente interactivo",
+    suffixes: [".script.ts", ".constant.ts"],
+  },
+  {
     path: "scripts/",
-    what: "ejecutables y su configuración",
+    what: "tooling del repo (gates y build), no del producto",
     suffixes: [".script.ts", ".constant.ts"],
   },
   {

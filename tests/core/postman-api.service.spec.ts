@@ -4,9 +4,9 @@ import {
   pushCollection,
   pushEnvironment,
   verifyApiKey,
-} from "../../services/postman-api.service";
-import { POSTMAN_SCHEMA_URL } from "../../contracts/postman.constant";
-import type { PostmanCollection } from "../../contracts/postman.interface";
+} from "../../projects/core/domain/postman-api.service";
+import { POSTMAN_SCHEMA_URL } from "../../projects/core/contracts/postman.constant";
+import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
 
 const COLLECTION_ID = "11111111-2222-3333-4444-555555555555";
 

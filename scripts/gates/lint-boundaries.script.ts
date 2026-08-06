@@ -23,10 +23,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
-import { moduleDir } from "../../helpers/module-path.helper.js";
+import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, bestSectionFor, type ISection } from "./sections.constant.js";
 
-const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..", "..");
+const PACKAGE_ROOT = repoRoot(import.meta.url);
 
 /** Carpetas que no se recorren. */
 const SKIP = new Set(["node_modules", ".git", "dist", "build", ".cache", "docs"]);
