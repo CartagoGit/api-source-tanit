@@ -7,13 +7,12 @@
  * que el doble no pueda separarse del contrato.
  */
 import { describe, expect, test } from "vitest";
-import { resolve } from "node:path";
 
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
-import { captureHandler, makeContext } from "../helpers/plugin-context";
+import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
 /** Raíz del proyecto export-to-postman (no la del plugin). */
-const POSTMAN_EXPORTER_ROOT = resolve(__dirname, "../../../..");
+const POSTMAN_EXPORTER_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: POSTMAN_EXPORTER_ROOT, options });

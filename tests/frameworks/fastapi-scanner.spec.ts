@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "fastapi",
@@ -28,8 +28,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/fastapi-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/fastapi-comprehensive");
+const ROOT = smokeFixtureDir("fastapi");
+const COMPREHENSIVE = comprehensiveFixtureDir("fastapi");
 
 describe("FastAPI scanner", () => {
   test("detect() > 0 cuando requirements.txt tiene 'fastapi'", async () => {

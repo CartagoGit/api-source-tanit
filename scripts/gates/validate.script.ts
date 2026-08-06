@@ -25,10 +25,7 @@ import {
 } from "../../projects/core/helpers/collection-invariants.helper.js";
 import { countItems } from "../../projects/core/helpers/postman.helper.js";
 import type { PostmanCollection } from "../../projects/core/contracts/postman.interface.js";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const EXAMPLES_DIR = join(PACKAGE_ROOT, "examples");
+import { EXAMPLES_DIR } from "../helpers/root.helper.js";
 
 /** `example-app` no es un proyecto host: es el config de muestra. */
 const NOT_A_PROJECT = new Set(["example-app"]);

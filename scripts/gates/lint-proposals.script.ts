@@ -26,10 +26,7 @@
  */
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, join, relative, resolve } from "node:path";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const PROPOSALS_DIR = join(PACKAGE_ROOT, "docs", "mcp-vertex", "proposals");
+import { PROPOSALS_DIR, REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Estados válidos y su carpeta. Coinciden 1:1 por diseño. */
 const STATES = [
@@ -131,7 +128,7 @@ async function exists(path: string, kind: "dir" | "file"): Promise<boolean> {
  */
 async function checkSkeleton(): Promise<string[]> {
   const problems: string[] = [];
-  const root = relative(PACKAGE_ROOT, PROPOSALS_DIR);
+  const root = relative(REPO_ROOT, PROPOSALS_DIR);
 
   if (!(await exists(join(PROPOSALS_DIR, ".gitkeep"), "file"))) {
     problems.push(`${root}/: falta el .gitkeep de la raíz`);
@@ -163,7 +160,7 @@ async function main(): Promise<number> {
   const seenIds = new Map<string, string>();
 
   for (const proposal of proposals) {
-    const rel = relative(PACKAGE_ROOT, proposal.path);
+    const rel = relative(REPO_ROOT, proposal.path);
 
     if (!proposal.id) {
       problems.push(`${rel}: falta \`id\` en el frontmatter`);

@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "springboot",
@@ -28,8 +28,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/springboot-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/springboot-comprehensive");
+const ROOT = smokeFixtureDir("springboot");
+const COMPREHENSIVE = comprehensiveFixtureDir("springboot");
 
 describe("Spring Boot scanner", () => {
   test("detect() > 0 cuando pom.xml tiene spring-boot-starter-web", async () => {

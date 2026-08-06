@@ -14,10 +14,10 @@
 import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 
-const FIXTURES = resolve(moduleDir(import.meta.url), "../fixtures");
+const FIXTURES = FIXTURES_DIR;
 const HYBRID = resolve(FIXTURES, "hybrid-express-nextjs");
 
 /** Todas las URIs de la colección, como `MÉTODO /ruta`. */

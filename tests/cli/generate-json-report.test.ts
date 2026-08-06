@@ -17,16 +17,15 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
 } from "../../projects/core/contracts/generate-report.interface";
+import { CLI_COMMANDS_DIR, MCP_VERTEX_PLUGIN_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const GENERATE = join(PACKAGE_ROOT, "projects", "cli", "commands", "generate.script.ts");
-const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
+const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
+const SOURCE_PROJECT = exampleDir("express");
 
 let project = "";
 let stdout = "";
@@ -39,7 +38,7 @@ beforeAll(async () => {
   await cp(SOURCE_PROJECT, project, { recursive: true });
 
   const result = await runProcess("bun", [GENERATE, "--project-root", project, "--json"], {
-    cwd: PACKAGE_ROOT,
+    cwd: REPO_ROOT,
   });
   stdout = result.stdout;
   stderr = result.stderr;
@@ -71,7 +70,7 @@ describe("generate --json", () => {
   // se entera hasta que un agente lo invoca de verdad.
   test("el plugin lee exactamente esta versión del contrato", async () => {
     const pluginHelper = await readFile(
-      join(PACKAGE_ROOT, "projects/plugins/mcp-vertex/src/lib/helpers/runner.helper.ts"),
+      join(MCP_VERTEX_PLUGIN_DIR, "src/lib/helpers/runner.helper.ts"),
       "utf8",
     );
     const declared = /SUPPORTED_REPORT_VERSION = (\d+)/.exec(pluginHelper)?.[1];
@@ -115,7 +114,7 @@ describe("generate --json", () => {
     const again = await runProcess(
       "bun",
       [GENERATE, "--project-root", project, "--json"],
-      { cwd: PACKAGE_ROOT },
+      { cwd: REPO_ROOT },
     );
     const second = JSON.parse(again.stdout) as IGenerateReport;
     expect(second.collectionId).toBe(report.collectionId);
@@ -130,7 +129,7 @@ describe("generate --json", () => {
 
   test("sin --json, stdout sigue siendo el texto para personas", async () => {
     const human = await runProcess("bun", [GENERATE, "--project-root", project], {
-      cwd: PACKAGE_ROOT,
+      cwd: REPO_ROOT,
     });
     expect(human.stdout).toContain("Collection written to");
     expect(() => JSON.parse(human.stdout)).toThrow();

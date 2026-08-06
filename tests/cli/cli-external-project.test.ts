@@ -12,13 +12,12 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const CLI = join(PACKAGE_ROOT, "projects", "cli", "cli.script.ts");
-const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
+const CLI = CLI_ENTRYPOINT;
+const SOURCE_PROJECT = exampleDir("express");
 
 let externalProject = "";
 
@@ -35,7 +34,7 @@ afterAll(async () => {
 });
 
 async function runCli(args: string[]): Promise<{ code: number; output: string }> {
-  return runProcess("bun", [CLI, ...args], { cwd: PACKAGE_ROOT });
+  return runProcess("bun", [CLI, ...args], { cwd: REPO_ROOT });
 }
 
 async function readCollection(): Promise<Record<string, unknown>> {

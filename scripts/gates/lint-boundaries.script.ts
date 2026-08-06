@@ -23,10 +23,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, bestSectionFor, type ISection } from "./sections.constant.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Carpetas que no se recorren. */
 const SKIP = new Set(["node_modules", ".git", "dist", "build", ".cache", "docs"]);
@@ -84,25 +82,28 @@ function isAllowed(from: ISection, toName: string): boolean {
 }
 
 async function main(): Promise<number> {
-  const files = await collectTsFiles(PACKAGE_ROOT);
+  const files = await collectTsFiles(REPO_ROOT);
   const crossings: ICrossing[] = [];
   let checked = 0;
 
   for (const file of files) {
-    const rel = relative(PACKAGE_ROOT, file).replaceAll("\\", "/");
+    const rel = relative(REPO_ROOT, file).replaceAll("\\", "/");
     const fromSection = bestSectionFor(rel);
-    // Los tests declaran su sección por su carpeta, no por lo que
-    // prueban; los de `tests/helpers` son transversales y se saltan.
+    // Dos carpetas son transversales y no pertenecen a ninguna sección:
+    // `tests/helpers` son dobles compartidos, y `scripts/helpers` es el
+    // registro de rutas del repo, que usan los gates y los tests por
+    // igual. Atarlas a una sección obligaría a inventar excepciones.
     if (!fromSection || rel.startsWith("tests/helpers/")) continue;
     checked++;
 
     const source = await readFile(file, "utf8");
     for (const { specifier, line } of relativeImports(source)) {
-      const target = relative(PACKAGE_ROOT, resolve(file, "..", specifier))
+      const target = relative(REPO_ROOT, resolve(file, "..", specifier))
         .replaceAll("\\", "/")
         .replace(/\.js$/, ".ts");
       const toSection = bestSectionFor(target);
       if (!toSection || toSection.name === fromSection.name) continue;
+      if (target.startsWith("scripts/helpers/")) continue;
       if (isAllowed(fromSection, toSection.name)) continue;
       crossings.push({
         from: rel,

@@ -16,13 +16,12 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { runProcess } from "../helpers/run-process";
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const ENTRYPOINT = join(PACKAGE_ROOT, "projects", "cli", "cli.script.ts");
-const SAMPLE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
+const ENTRYPOINT = CLI_ENTRYPOINT;
+const SAMPLE_PROJECT = exampleDir("express");
 
 let workDir = "";
 let binary = "";
@@ -35,7 +34,7 @@ beforeAll(async () => {
   await cp(SAMPLE_PROJECT, project, { recursive: true });
 
   await runProcess("bun", ["build", "--compile", ENTRYPOINT, "--outfile", binary], {
-    cwd: PACKAGE_ROOT,
+    cwd: REPO_ROOT,
   });
 }, 120_000);
 

@@ -19,12 +19,7 @@
  */
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const SOURCE = join(PACKAGE_ROOT, ".mcp.json");
-const TARGET = join(PACKAGE_ROOT, ".vscode", "mcp.json");
+import { MCP_JSON, VSCODE_DIR, VSCODE_MCP_JSON } from "../helpers/root.helper.js";
 
 /** Un servidor MCP, en lo que ambos formatos comparten. */
 interface IServer {
@@ -74,7 +69,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   let source: { mcpServers?: Record<string, IServer> };
   try {
-    source = JSON.parse(await readFile(SOURCE, "utf8"));
+    source = JSON.parse(await readFile(MCP_JSON, "utf8"));
   } catch (error) {
     console.error(`mcp:sync — no se pudo leer .mcp.json: ${String(error)}`);
     return 1;
@@ -85,7 +80,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   const expected = buildVsCodeConfig({ mcpServers: source.mcpServers });
-  const current = await readFile(TARGET, "utf8").catch(() => null);
+  const current = await readFile(VSCODE_MCP_JSON, "utf8").catch(() => null);
 
   if (check) {
     if (current === expected) {
@@ -101,8 +96,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
-  await mkdir(join(PACKAGE_ROOT, ".vscode"), { recursive: true });
-  await writeFile(TARGET, expected);
+  await mkdir(VSCODE_DIR, { recursive: true });
+  await writeFile(VSCODE_MCP_JSON, expected);
   console.log(
     current === expected
       ? "mcp:sync — .vscode/mcp.json ya estaba al día"

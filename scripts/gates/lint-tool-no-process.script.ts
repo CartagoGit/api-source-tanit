@@ -19,10 +19,9 @@
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { collectFiles } from "../../projects/core/helpers/fs-walk.helper.js";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const TOOLS_GLOB_ROOT = resolve(PACKAGE_ROOT, "projects/plugins/mcp-vertex");
+const TOOLS_GLOB_ROOT = resolve(REPO_ROOT, "projects/plugins/mcp-vertex");
 
 /** Cada regla es un patrón + la explicación de por qué está prohibido. */
 interface IRule {
@@ -100,7 +99,7 @@ async function main(): Promise<number> {
 
   console.error(`lint:tools — ${violations.length} infracción(es):\n`);
   for (const v of violations) {
-    console.error(`  ${relative(PACKAGE_ROOT, v.file)}:${v.line}  [${v.rule.id}]`);
+    console.error(`  ${relative(REPO_ROOT, v.file)}:${v.line}  [${v.rule.id}]`);
     console.error(`    ${v.source}`);
     console.error(`    → ${v.rule.reason}\n`);
   }

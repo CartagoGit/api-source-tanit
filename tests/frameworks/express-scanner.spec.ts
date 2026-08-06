@@ -12,7 +12,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "express",
@@ -32,8 +32,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/express-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/express-comprehensive");
+const ROOT = smokeFixtureDir("express");
+const COMPREHENSIVE = comprehensiveFixtureDir("express");
 
 describe("Express scanner", () => {
   test("detect() > 0 cuando package.json tiene 'express'", async () => {

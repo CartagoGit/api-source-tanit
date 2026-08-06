@@ -21,10 +21,8 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, sectionsForFiles, withDependents } from "./sections.constant.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Ficheros cambiados según el modo pedido. */
 function changedFiles(argv: readonly string[]): { files: string[]; against: string } {
@@ -58,7 +56,7 @@ function defaultBase(): string | undefined {
 }
 
 function git(args: readonly string[]): string[] {
-  const result = spawnSync("git", [...args], { cwd: PACKAGE_ROOT, encoding: "utf8" });
+  const result = spawnSync("git", [...args], { cwd: REPO_ROOT, encoding: "utf8" });
   if (result.status !== 0) return [];
   // `stdout` está declarado como `Buffer | string`: con `encoding` es
   // siempre string, pero el tipo no lo sabe.
@@ -70,7 +68,7 @@ function git(args: readonly string[]): string[] {
 
 function run(command: string, args: readonly string[]): number {
   const result = spawnSync(command, [...args], {
-    cwd: PACKAGE_ROOT,
+    cwd: REPO_ROOT,
     stdio: "inherit",
   });
   return result.status ?? 1;

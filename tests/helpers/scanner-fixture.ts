@@ -15,9 +15,9 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { FrameworkId, IProjectMatch } from "../../projects/core/contracts/scanner.interface";
 import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
-export const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "../..");
+export const PACKAGE_ROOT = REPO_ROOT;
 
 /** Proyecto temporal en disco, con su limpieza. */
 export interface ITempProject {

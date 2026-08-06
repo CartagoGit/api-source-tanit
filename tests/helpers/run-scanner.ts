@@ -17,9 +17,9 @@
 import { resolve, join } from "node:path";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
-const PROJECT_ROOT = resolve(moduleDir(import.meta.url), "../..");
+const PROJECT_ROOT = REPO_ROOT;
 
 export interface GenerateMetrics {
   routes: number;
@@ -145,5 +145,4 @@ function _countItems(items: PostmanCollection["item"]): { requests: number; fold
 export async function cleanTestRuns(): Promise<void> {
   // No-op: ya no escribimos archivos en disco.
 }
-
 

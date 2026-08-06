@@ -9,7 +9,7 @@ import {
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
 import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "aspnet",
@@ -29,8 +29,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/aspnet-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/aspnet-comprehensive");
+const ROOT = smokeFixtureDir("aspnet");
+const COMPREHENSIVE = comprehensiveFixtureDir("aspnet");
 
 describe("ASP.NET scanner", () => {
   test("detect() > 0 cuando hay un .csproj con Microsoft.AspNetCore", async () => {
@@ -88,7 +88,7 @@ describe("ASP.NET scanner", () => {
 });
 
 describe("ASP.NET — minimal APIs (.NET 6+)", () => {
-  const ROOT_MINIMAL = resolve(moduleDir(import.meta.url), "../../tests/fixtures/aspnet-comprehensive");
+  const ROOT_MINIMAL = comprehensiveFixtureDir("aspnet");
 
   // Es la forma por defecto desde .NET 6 (`dotnet new webapi`) y no la
   // cubría nada: un proyecto que solo las usara producía una colección
@@ -136,7 +136,7 @@ describe("ASP.NET — minimal APIs (.NET 6+)", () => {
 });
 
 describe("ASP.NET — resolución del DTO por ruta", () => {
-  const ROOT = resolve(moduleDir(import.meta.url), "../../tests/fixtures/aspnet-comprehensive");
+  const ROOT = comprehensiveFixtureDir("aspnet");
 
   async function fieldsFor(method: string, uri: string): Promise<string[]> {
     const bundle = scannerBundleFor("aspnet")!;

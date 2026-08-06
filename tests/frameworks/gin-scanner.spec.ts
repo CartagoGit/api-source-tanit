@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "gin",
@@ -28,8 +28,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/gin-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/gin-comprehensive");
+const ROOT = smokeFixtureDir("gin");
+const COMPREHENSIVE = comprehensiveFixtureDir("gin");
 
 describe("Gin scanner", () => {
   test("detect() > 0 cuando go.mod tiene github.com/gin-gonic/gin", async () => {

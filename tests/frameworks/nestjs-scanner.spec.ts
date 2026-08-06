@@ -11,7 +11,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "nestjs",
@@ -31,8 +31,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/nestjs-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/nestjs-comprehensive");
+const ROOT = smokeFixtureDir("nestjs");
+const COMPREHENSIVE = comprehensiveFixtureDir("nestjs");
 
 describe("NestJS scanner", () => {
   test("detect() > 0 cuando package.json tiene @nestjs/core", async () => {

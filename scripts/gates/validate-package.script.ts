@@ -17,12 +17,10 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant.js";
+import { PACKAGE_JSON, REPO_ROOT, exampleDir } from "../helpers/root.helper.js";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */
-const SAMPLE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
 const EXPECTED_REQUESTS = 9;
 
 interface IStep {
@@ -51,7 +49,7 @@ async function main(): Promise<number> {
     // 1. Empaquetar tal cual lo haría `npm publish`.
     const pack = await run(
       ["npm", "pack", "--pack-destination", workDir],
-      PACKAGE_ROOT,
+      REPO_ROOT,
     );
     const tarballs = pack.ok ? (await readdir(workDir)).filter((f) => f.endsWith(".tgz")) : [];
     const tarball = tarballs[0];
@@ -70,7 +68,7 @@ async function main(): Promise<number> {
     // aquí hizo que este gate empezara a fallar en cuanto el proyecto se
     // renombró, y el mensaje no decía por qué.
     const binName = Object.keys(
-      (JSON.parse(await Bun.file(join(PACKAGE_ROOT, "package.json")).text()) as {
+      (JSON.parse(await Bun.file(PACKAGE_JSON).text()) as {
         bin?: Record<string, string>;
       }).bin ?? {},
     )[0];
@@ -88,7 +86,7 @@ async function main(): Promise<number> {
 
     // 3. Ejecutar el binario contra un proyecto real.
     const project = join(consumer, "mi-api");
-    await cp(SAMPLE_PROJECT, project, { recursive: true });
+    await cp(exampleDir("express"), project, { recursive: true });
     const generate = await run([binPath, "generate", "--project-root", project], consumer);
     steps.push({
       name: "el binario instalado genera",

@@ -21,10 +21,7 @@ import { defaultOrchestrator } from "../../projects/frameworks/framework.registr
 import { buildSpecsFromScanner } from "../../projects/core/adapters/parsed-route-to-spec.adapter.js";
 import { loadProject } from "../../projects/core/discovery/project-loader.service.js";
 import { applyAgnosticInference } from "../../projects/core/domain/param-inferrer.service.js";
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PROJECT_ROOT = repoRoot(import.meta.url);
-const FIXTURES_DIR = join(PROJECT_ROOT, "tests", "fixtures");
+import { FIXTURES_DIR } from "../helpers/root.helper.js";
 
 interface FixtureResult {
   readonly fixture: string;

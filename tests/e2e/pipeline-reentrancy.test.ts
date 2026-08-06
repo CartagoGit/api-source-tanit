@@ -13,9 +13,9 @@
 import { describe, expect, test } from "vitest";
 import { join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 
-const FIXTURES = resolve(moduleDir(import.meta.url), "../fixtures");
+const FIXTURES = FIXTURES_DIR;
 
 const EXPRESS = join(FIXTURES, "express-comprehensive");
 const DJANGO = join(FIXTURES, "django-comprehensive");

@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "django",
@@ -32,8 +32,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/django-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/django-comprehensive");
+const ROOT = smokeFixtureDir("django");
+const COMPREHENSIVE = comprehensiveFixtureDir("django");
 
 describe("Django scanner", () => {
   test("detect() > 0 cuando hay manage.py", async () => {

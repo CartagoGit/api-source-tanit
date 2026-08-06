@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "nextjs",
@@ -28,8 +28,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/nextjs-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/nextjs-comprehensive");
+const ROOT = smokeFixtureDir("nextjs");
+const COMPREHENSIVE = comprehensiveFixtureDir("nextjs");
 
 describe("Next.js scanner", () => {
   test("detect() > 0 cuando package.json tiene 'next' como dependencia", async () => {

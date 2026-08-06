@@ -7,7 +7,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "flask",
@@ -27,8 +27,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/flask-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/flask-comprehensive");
+const ROOT = smokeFixtureDir("flask");
+const COMPREHENSIVE = comprehensiveFixtureDir("flask");
 
 describe("Flask scanner", () => {
   test("detect() > 0 cuando requirements.txt tiene 'flask'", async () => {

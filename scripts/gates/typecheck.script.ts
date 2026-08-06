@@ -21,21 +21,19 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
 import { SECTIONS, sectionByName, type ISection } from "./sections.constant.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Corre `tsc --noEmit` sobre el proyecto de una sección. */
 function typecheck(section: ISection): boolean {
   const started = Date.now();
   const result = section.ownTypecheck
     ? spawnSync("bun", ["run", "--cwd", section.ownTypecheck.cwd, section.ownTypecheck.script], {
-        cwd: PACKAGE_ROOT,
+        cwd: REPO_ROOT,
         encoding: "utf8",
       })
     : spawnSync("bunx", ["tsc", "--noEmit", "-p", section.tsconfig], {
-        cwd: PACKAGE_ROOT,
+        cwd: REPO_ROOT,
         encoding: "utf8",
       });
   const ms = Date.now() - started;

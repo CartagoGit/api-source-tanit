@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "openapi",
@@ -20,8 +20,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/openapi-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/openapi-comprehensive");
+const ROOT = smokeFixtureDir("openapi");
+const COMPREHENSIVE = comprehensiveFixtureDir("openapi");
 
 describe("OpenAPI scanner", () => {
   test("detect() > 0 cuando hay openapi.yaml en la raíz", async () => {

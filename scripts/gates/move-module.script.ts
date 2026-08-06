@@ -22,10 +22,8 @@
  */
 import { readdir, readFile, rename, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
 const SKIP_DIRS = new Set(["node_modules", ".git", "dist", "build", ".cache"]);
 
 /** Movimiento pedido, con las dos rutas ya absolutas. */
@@ -82,12 +80,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const moves: IMove[] = [];
   for (let i = 0; i < positional.length; i += 2) {
     moves.push({
-      from: resolve(PACKAGE_ROOT, positional[i]!),
-      to: resolve(PACKAGE_ROOT, positional[i + 1]!),
+      from: resolve(REPO_ROOT, positional[i]!),
+      to: resolve(REPO_ROOT, positional[i + 1]!),
     });
   }
 
-  const files = await collect(PACKAGE_ROOT);
+  const files = await collect(REPO_ROOT);
   let touched = 0;
 
   for (const file of files) {

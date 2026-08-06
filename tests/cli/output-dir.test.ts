@@ -17,13 +17,12 @@ import { existsSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { tmpdir } from "node:os";
 
-import { repoRoot } from "../../projects/core/helpers/module-path.helper";
 import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
 import { runProcess } from "../helpers/run-process";
+import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
-const PACKAGE_ROOT = repoRoot(import.meta.url);
-const GENERATE = join(PACKAGE_ROOT, "projects", "cli", "commands", "generate.script.ts");
-const SOURCE_PROJECT = join(PACKAGE_ROOT, "examples", "example-express");
+const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
+const SOURCE_PROJECT = exampleDir("express");
 
 /** Contenido que dejamos en el `build/` del proyecto para vigilarlo. */
 const SENTINEL = "no me toques\n";
@@ -41,7 +40,7 @@ beforeAll(async () => {
   await mkdir(join(project, "build"), { recursive: true });
   await writeFile(join(project, "build", "artefacto-del-usuario.jar"), SENTINEL);
 
-  await runProcess("bun", [GENERATE, "--project-root", project], { cwd: PACKAGE_ROOT });
+  await runProcess("bun", [GENERATE, "--project-root", project], { cwd: REPO_ROOT });
 }, 60_000);
 
 afterAll(async () => {
@@ -80,7 +79,7 @@ describe("carpeta de salida", () => {
   test("--output-dir sigue mandando por encima", async () => {
     const custom = join(workDir, "otra-carpeta");
     await runProcess("bun", [GENERATE, "--project-root", project, "--output-dir", custom], {
-      cwd: PACKAGE_ROOT,
+      cwd: REPO_ROOT,
     });
     const files = await readdir(custom);
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
@@ -89,7 +88,7 @@ describe("carpeta de salida", () => {
   test("POSTMAN_OUTPUT_DIR también", async () => {
     const custom = join(workDir, "por-entorno");
     await runProcess("bun", [GENERATE, "--project-root", project], {
-      cwd: PACKAGE_ROOT,
+      cwd: REPO_ROOT,
       env: { POSTMAN_OUTPUT_DIR: custom },
     });
     const files = await readdir(custom);

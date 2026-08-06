@@ -8,7 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
-import { moduleDir } from "../../projects/core/helpers/module-path.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
   framework: "symfony",
@@ -29,8 +29,8 @@ describeScannerContract({
   },
 });
 
-const ROOT = resolve(moduleDir(import.meta.url), "../../tests/smoke-fixtures/symfony-mini");
-const COMPREHENSIVE = resolve(moduleDir(import.meta.url), "../../tests/fixtures/symfony-comprehensive");
+const ROOT = smokeFixtureDir("symfony");
+const COMPREHENSIVE = comprehensiveFixtureDir("symfony");
 
 describe("Symfony scanner", () => {
   test("detect() > 0 cuando composer.json tiene symfony/framework-bundle", async () => {

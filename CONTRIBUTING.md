@@ -149,6 +149,29 @@ El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
 
+### Rutas: nunca se cuentan `..`
+
+`scripts/helpers/root.helper.ts` tiene un nombre para cada carpeta y
+cada fichero conocido del repo. `lint:paths` prohíbe
+`resolve(__dirname, "../../..")` fuera de los tres ficheros que
+implementan la alternativa.
+
+El motivo es que contar niveles **falla en silencio**: al mover el
+fichero la constante apunta a otro sitio y no lanza nada, simplemente no
+encuentra. Mordió cuatro veces durante la reorganización, y una de ellas
+dejó al lint de propuestas diciendo "no se encontró ninguna propuesta"
+como si el repo estuviera vacío.
+
+| Quién | Qué usa |
+| --- | --- |
+| Gates y tests del repo | `scripts/helpers/root.helper.ts` |
+| Código de producción | `findRepoRoot()` de `projects/core/helpers/` |
+| Tests del plugin | `workspaceRoot()` de su `tests/helpers/` |
+
+`root.helper.spec.ts` comprueba que **todo** lo declarado existe en
+disco, así que mover una carpeta sin actualizar el registro rompe el
+gate nombrando la constante exacta.
+
 ### Servidores MCP: se declaran una vez
 
 `.mcp.json` en la raíz es la **fuente de verdad**. `.vscode/mcp.json` se

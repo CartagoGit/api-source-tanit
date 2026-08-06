@@ -18,10 +18,7 @@
  */
 import { readdir } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
-
-import { repoRoot } from "../../projects/core/helpers/module-path.helper.js";
-
-const PACKAGE_ROOT = repoRoot(import.meta.url);
+import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Qué sufijos admite cada carpeta de código. */
 interface INamingRule {
@@ -76,6 +73,11 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".script.ts", ".constant.ts"],
   },
   {
+    path: "scripts/helpers/",
+    what: "utilidades compartidas por el tooling",
+    suffixes: [".helper.ts"],
+  },
+  {
     path: "tests/core/",
     what: "tests del núcleo",
     suffixes: [".spec.ts", ".test.ts"],
@@ -127,12 +129,12 @@ function ruleFor(relPath: string): INamingRule | undefined {
 }
 
 async function main(): Promise<number> {
-  const files = await collect(PACKAGE_ROOT);
+  const files = await collect(REPO_ROOT);
   const problems: string[] = [];
   let checked = 0;
 
   for (const file of files) {
-    const rel = relative(PACKAGE_ROOT, file).replaceAll("\\", "/");
+    const rel = relative(REPO_ROOT, file).replaceAll("\\", "/");
     if (SKIP_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
 
     const rule = ruleFor(rel);
