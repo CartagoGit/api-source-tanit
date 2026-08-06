@@ -8,6 +8,7 @@ import {
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
+import { scannerBundleFor } from "../../service/scanner-registry";
 
 describeScannerContract({
   framework: "aspnet",
@@ -130,5 +131,51 @@ describe("ASP.NET — minimal APIs (.NET 6+)", () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     const keys = routes.map((r) => `${r.method} ${r.uri}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("ASP.NET — resolución del DTO por ruta", () => {
+  const ROOT = resolve(import.meta.dir, "../../tests/fixtures/aspnet-comprehensive");
+
+  async function fieldsFor(method: string, uri: string): Promise<string[]> {
+    const bundle = scannerBundleFor("aspnet")!;
+    const { match, routes } = await scanProject("aspnet", ROOT);
+    const route = routes.find((r) => r.method === method && r.uri === uri);
+    expect(route).toBeDefined();
+    const result = await bundle.validationProvider!.resolve(route!, match);
+    return result.fields.map((f) => f.fieldName);
+  }
+
+  // Antes se buscaba el primer `[FromBody]` de TODO el fichero, así que
+  // en un controlador con varios POST todos recibían el mismo DTO.
+  test("dos endpoints del mismo controller usan cada uno su DTO", async () => {
+    expect(await fieldsFor("POST", "/api/orders")).toEqual([
+      "CustomerName",
+      "CustomerEmail",
+      "Amount",
+      "Currency",
+    ]);
+    expect(await fieldsFor("PATCH", "/api/orders/{id}/status")).toEqual(["Status", "Note"]);
+  });
+
+  test("resuelve el DTO del parámetro tipado de un minimal API", async () => {
+    expect(await fieldsFor("POST", "/api/products")).toEqual([
+      "Name",
+      "Price",
+      "ContactEmail",
+    ]);
+  });
+
+  test("los GET no reciben body", async () => {
+    expect(await fieldsFor("GET", "/api/users")).toEqual([]);
+    expect(await fieldsFor("GET", "/api/products")).toEqual([]);
+  });
+
+  test("los DELETE no reciben body", async () => {
+    expect(await fieldsFor("DELETE", "/api/users/{id}")).toEqual([]);
+  });
+
+  test("un endpoint sin body declarado no inventa campos", async () => {
+    expect(await fieldsFor("POST", "/api/auth/logout")).toEqual([]);
   });
 });

@@ -303,6 +303,10 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
+    // GET y DELETE no llevan body; sus parámetros ya salen de la URI.
+    if (route.method === "GET" || route.method === "DELETE") {
+      return { endpointKey, fields: [] };
+    }
     const abs = join(match.projectRoot, route.sourceFile);
     let raw: string;
     try {
@@ -310,17 +314,78 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
     } catch {
       return { endpointKey, fields: [] };
     }
-    // Detectar `[FromBody] <DtoType> <name>` en el archivo.
-    const m = /\[FromBody\]\s+(\w+)\s+\w+/.exec(raw);
-    let dtoType = m?.[1];
+    const dtoType = findDtoTypeForRoute(raw, route);
     if (!dtoType) return { endpointKey, fields: [] };
+
     let fields = parseCsDto(raw, dtoType);
     if (fields.length === 0) {
       fields = await findDtoInProject(match.projectRoot, dtoType, route.uri);
     }
-    if (fields.length === 0) return { endpointKey, fields: [] };
     return { endpointKey, fields };
   }
+}
+
+/** Firmas de las que se puede sacar el tipo del body. */
+const BODY_TYPE_PATTERNS: ReadonlyArray<RegExp> = [
+  // Controlador: `public IActionResult Create([FromBody] CreateUserRequest body)`
+  /\[FromBody\]\s+([A-Z]\w*)\s+\w+/,
+  // Minimal API: `MapPost("/", (CreateProductRequest body) => …)`
+  /Map(?:Post|Put|Patch)\s*\([^)]*?\(\s*(?:\[FromBody\]\s*)?([A-Z]\w*)\s+\w+/,
+  // Minimal API con param de ruta primero: `(int id, CreateProductRequest body)`
+  /Map(?:Post|Put|Patch)\s*\([^)]*?,\s*([A-Z]\w*)\s+\w+\s*\)\s*=>/,
+  // Controlador sin atributo: `public IActionResult Create(CreateUserRequest body)`
+  /\b(?:public|internal)\s+(?:async\s+)?[\w<>\[\]]+\s+\w+\s*\(\s*([A-Z]\w*)\s+\w+/,
+];
+
+/** Tipos que nunca son un DTO de body. */
+const NOT_A_DTO = new Set([
+  "Task", "IActionResult", "ActionResult", "String", "Int32", "Guid",
+  "Results", "IResult", "HttpContext", "CancellationToken",
+]);
+
+/**
+ * Tipo del DTO del body para ESTA ruta.
+ *
+ * Se busca en la ventana de líneas que arranca en la declaración de la
+ * ruta, no en todo el fichero: la versión anterior cogía el primer
+ * `[FromBody]` del archivo, así que en un controlador con varios POST
+ * todos recibían el body del primero.
+ *
+ * Cubre las cuatro formas: `[FromBody]` en controlador, parámetro tipado
+ * de un lambda de minimal API (con y sin param de ruta delante), y firma
+ * de acción sin atributo.
+ */
+function findDtoTypeForRoute(raw: string, route: ParsedRoute): string | null {
+  const lines = stripCsComments(raw).split("\n");
+  const start = Math.max(0, route.lineNumber - 1);
+  const window = lines.slice(start, start + windowLength(lines, start)).join("\n");
+
+  for (const pattern of BODY_TYPE_PATTERNS) {
+    const type = pattern.exec(window)?.[1];
+    if (type && !NOT_A_DTO.has(type)) return type;
+  }
+  return null;
+}
+
+/** Otra declaración de ruta: el final de la ventana de la actual. */
+const NEXT_ROUTE_RE = /\[Http(?:Get|Post|Put|Delete|Patch)|\.\s*Map(?:Get|Post|Put|Delete|Patch)\s*\(/;
+
+/**
+ * Cuántas líneas mirar desde la declaración de la ruta.
+ *
+ * Se corta en cuanto aparece la SIGUIENTE declaración: sin ese corte, un
+ * endpoint sin body se llevaba el DTO del endpoint de debajo (en el
+ * fixture, `PATCH /orders/{id}/status` acababa con los campos del DTO de
+ * creación de pedidos).
+ */
+function windowLength(lines: ReadonlyArray<string>, start: number): number {
+  const MAX = 6;
+  for (let offset = 1; offset < MAX; offset++) {
+    const line = lines[start + offset];
+    if (line === undefined) return offset;
+    if (NEXT_ROUTE_RE.test(line)) return offset;
+  }
+  return MAX;
 }
 
 /**

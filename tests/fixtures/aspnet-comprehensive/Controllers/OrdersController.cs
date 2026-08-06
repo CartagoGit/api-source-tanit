@@ -17,5 +17,5 @@ public class OrdersController : ControllerBase
     public IActionResult Show(string id) => Ok(new Order());
 
     [HttpPatch("{id}/status")]
-    public IActionResult UpdateStatus(string id, [FromBody] Order body) => Ok(body);
+    public IActionResult UpdateStatus(string id, [FromBody] UpdateOrderStatusRequest body) => Ok(body);
 }

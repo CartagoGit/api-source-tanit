@@ -93,12 +93,25 @@ describe("ASP.NET — comprehensive fixture", () => {
     expect(body).toHaveProperty("Currency");
   });
 
-  test("PATCH /api/orders/{id}/status tiene body desde DTO Order", async () => {
+  // Cada endpoint resuelve SU DTO. Antes se cogía el primer `[FromBody]`
+  // del fichero, así que este acababa con los campos de creación de
+  // pedido en lugar de con los suyos.
+  test("PATCH /api/orders/{id}/status usa UpdateOrderStatusRequest, no Order", async () => {
     const { collection } = await runGenerate("aspnet-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    expect(body).toHaveProperty("CustomerName");
+    expect(body).toHaveProperty("Status");
+    expect(body).not.toHaveProperty("CustomerName");
+  });
+
+  test("POST /api/products (minimal API) tiene body desde CreateProductRequest", async () => {
+    const { collection } = await runGenerate("aspnet-comprehensive");
+    const ep = findEndpoint(collection, "POST", "/api/products");
+    expect(ep).not.toBeNull();
+    const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
+    expect(body).toHaveProperty("Name");
+    expect(body).toHaveProperty("Price");
   });
 
   test("POST /api/auth/login tiene email + password (DTO LoginRequest)", async () => {

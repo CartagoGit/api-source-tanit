@@ -22,7 +22,7 @@ heurísticamente.
 | [Flask](#flask) | 14 | 7 |
 | [NestJS](#nestjs) | 13 | 7 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
-| [ASP.NET Core](#aspnet-core) | 17 | 11 |
+| [ASP.NET Core](#aspnet-core) | 17 | 13 |
 
 Cuando dos scanners reconocen el proyecto gana el de mayor confianza. Un
 proyecto con `openapi.yaml` **y** código Express usará el spec, que es
@@ -319,12 +319,12 @@ en el mismo proyecto:
   `MapDelete`, incluido el prefijo de `app.MapGroup("/api/products")`.
 
 **Bodies**: de las Data Annotations — `[Required]`, `[EmailAddress]`,
-`[StringLength]`, `[Range]`, `[RegularExpression]`.
+`[StringLength]`, `[Range]`, `[RegularExpression]`. El DTO se resuelve
+**por endpoint**, no por fichero: `[FromBody] X body` en controladores, y
+el parámetro tipado del lambda en minimal APIs.
 
-**Limitaciones**: solo DTO del proyecto local. En minimal APIs los
-bodies no se resuelven todavía desde el parámetro tipado del lambda
-(`(CreateProductRequest body) => …`); esos endpoints reciben body
-inferido.
+**Limitaciones**: solo DTO del proyecto local; los importados de un
+paquete NuGet no se resuelven.
 
 Ejemplo: [`examples/example-aspnet/`](../examples/example-aspnet/)
 
