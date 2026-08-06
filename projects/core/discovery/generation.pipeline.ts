@@ -42,6 +42,7 @@ import { withProjectRoot } from "./paths.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
+import { existsSync } from "node:fs";
 
 /** Métricas del descubrimiento, para informes y tests. */
 export interface IGenerationMetrics {
@@ -75,6 +76,19 @@ export interface IGenerationResult {
   readonly warnings: ReadonlyArray<string>;
   /** Todos los frameworks que reconocieron el proyecto, no solo el ganador. */
   readonly frameworks: ReadonlyArray<string>;
+  /**
+   * De dónde salió la configuración.
+   *
+   * Lo necesita `summary` para decir si el proyecto trae config propia
+   * o va en zero-config. El pipeline ya lo sabe porque llama a
+   * `loadProject()`; exponerlo evita que el consumidor lo vuelva a
+   * cargar y se arriesgue a leer otra cosa.
+   */
+  readonly project: {
+    readonly zeroConfig: boolean;
+    readonly configPath: string;
+    readonly manualEndpoints: number;
+  };
   readonly metrics: IGenerationMetrics;
 }
 
@@ -120,6 +134,17 @@ export async function generateCollection(
   projectRoot: string,
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
+  // Una raíz que no existe es un error de quien llama, no un proyecto
+  // vacío. Sin esto, un `--project-root` con una errata devolvía una
+  // colección de cero endpoints sin decir por qué — y `summary` sí
+  // lanzaba, así que además los dos caminos no se parecían.
+  if (!existsSync(projectRoot)) {
+    throw new Error(
+      `El projectRoot no existe: ${projectRoot}\n` +
+        "Comprueba la ruta que le pasas a `--project-root`.",
+    );
+  }
+
   // El contexto se resuelve UNA vez y se pasa hacia abajo. El
   // `withProjectRoot` sigue envolviendo la llamada porque `loadProject()`
   // y algún servicio todavía leen el singleton de `paths.service`
@@ -176,6 +201,7 @@ async function buildFor(
     context,
     warnings: discovery.warnings,
     frameworks: discovery.frameworks,
+    project: discovery.project,
     metrics: {
       routes: discovery.routes.length,
       specs: specs.length,
@@ -198,6 +224,7 @@ interface IDiscovery {
   readonly warnings: ReadonlyArray<string>;
   /** Todos los frameworks que reconocieron el proyecto. */
   readonly frameworks: ReadonlyArray<string>;
+  readonly project: IGenerationResult["project"];
 }
 
 /**
@@ -212,7 +239,8 @@ async function discoverSpecs(
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
   const detected = await options.orchestrator.detectAll(context.projectRoot);
-  const { config, manualEndpoints } = await loadProject();
+  const { config, manualEndpoints, configPath, zeroConfig } = await loadProject();
+  const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
 
   if (usable.length > 0) {
@@ -267,6 +295,7 @@ async function discoverSpecs(
       withoutValidation,
       warnings,
       frameworks: usable.map((c) => c.match.framework),
+      project,
     };
   }
 
@@ -281,6 +310,7 @@ async function discoverSpecs(
       origin: "legacy",
       withValidation: 0,
       withoutValidation: 0,
+      project,
       warnings: [
         "Ningún scanner ha reconocido este proyecto y no se ha inyectado " +
           "ninguna estrategia de último recurso: la colección sale vacía. " +
@@ -303,6 +333,7 @@ async function discoverSpecs(
     origin: "legacy",
     withValidation: legacy.withValidation,
     withoutValidation: legacy.withoutValidation,
+    project,
     warnings:
       legacy.routes.length === 0
         ? [

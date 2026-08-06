@@ -37,18 +37,27 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): string {
   const lines = [
-    `→ Framework:        ${s.framework}`,
-    `→ ProjectName:      ${s.projectName}`,
-    `→ BaseUrl:          ${s.baseUrl}`,
-    `→ Rutas en código:  ${s.routesInCode}`,
-    `→ Con FR/schema:    ${s.withFormRequest}`,
-    `→ Sin FR:           ${s.withoutFormRequest}`,
-    `→ Bodies auto:      ${s.bodiesAdded}`,
-    `→ Queries auto:     ${s.queriesAdded}`,
-    `→ Manual endpoints: ${s.manualEndpoints}`,
+    `→ Framework:        ${s.framework}` +
+      (s.frameworks.length > 1 ? ` (híbrido: ${s.frameworks.join(", ")})` : ""),
+    `→ Project name:     ${s.projectName}`,
+    `→ Base URL:         ${s.baseUrl}`,
+    // "Endpoints" y no "rutas en código": un `apiResource` de Laravel es
+    // UNA línea de código y SIETE endpoints, y lo que importa es lo
+    // segundo. La colección puede traer aún más *requests* que esto,
+    // porque el enriquecido añade variantes de body para el MISMO
+    // endpoint — variantes, no endpoints nuevos.
+    `→ Endpoints:        ${s.routesInCode}`,
+    `→ Con reglas:       ${s.withFormRequest}`,
+    `→ Sin reglas:       ${s.withoutFormRequest}`,
+    `→ Bodies inferidos: ${s.bodiesAdded}`,
+    `→ Queries inferidas:${s.queriesAdded}`,
+    `→ Variables:        ${s.inferredVariables}`,
+    `→ Overrides:        ${s.manualEndpoints}`,
+    `→ Login:            ${s.auth ? s.auth.loginEndpoint : "no detectado"}`,
     `→ Zero-config:      ${s.zeroConfig ? "sí" : "no"}`,
-    `→ Config path:      ${s.configPath}`,
+    `→ Config:           ${s.configPath}`,
   ];
+  for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);
   return lines.join("\n");
 }
 

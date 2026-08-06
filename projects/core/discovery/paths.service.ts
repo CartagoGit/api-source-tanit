@@ -156,23 +156,51 @@ export function resetPathCache(): void {
  * siguiente —`IProjectContext` explícito en cada firma— sigue pendiente
  * (p00017 S3).
  */
+/**
+ * Cola de acceso al singleton.
+ *
+ * `withProjectRoot` guarda el estado global, lo pisa, ejecuta y lo
+ * restaura. Dos llamadas **concurrentes** se destrozan: la segunda pisa
+ * el valor mientras la primera sigue viva, y al terminar la primera
+ * restaura el estado de antes dejando a la segunda mirando la raíz
+ * equivocada.
+ *
+ * Se detectó comparando `summary` con `generate` sobre el mismo
+ * proyecto lanzados con `Promise.all`: daban 16 y 17 endpoints donde
+ * secuencialmente dan 18 los dos. No es teórico — un servidor MCP puede
+ * atender dos peticiones a la vez.
+ *
+ * Serializar es la cura correcta mientras el singleton exista: dos
+ * análisis concurrentes tardan lo que la suma, pero ninguno miente. La
+ * cura de fondo es que nadie lea estado global (p00017), y entonces
+ * esta cola sobra.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
 export async function withProjectRoot<T>(
   root: string,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const previousEnv = process.env["POSTMAN_PROJECT_ROOT"];
-  const previousCache = cache;
+  const run = queue.then(async () => {
+    const previousEnv = process.env["POSTMAN_PROJECT_ROOT"];
+    const previousCache = cache;
 
-  process.env["POSTMAN_PROJECT_ROOT"] = resolve(root);
-  cache = null;
+    process.env["POSTMAN_PROJECT_ROOT"] = resolve(root);
+    cache = null;
 
-  try {
-    return await fn();
-  } finally {
-    if (previousEnv === undefined) delete process.env["POSTMAN_PROJECT_ROOT"];
-    else process.env["POSTMAN_PROJECT_ROOT"] = previousEnv;
-    cache = previousCache;
-  }
+    try {
+      return await fn();
+    } finally {
+      if (previousEnv === undefined) delete process.env["POSTMAN_PROJECT_ROOT"];
+      else process.env["POSTMAN_PROJECT_ROOT"] = previousEnv;
+      cache = previousCache;
+    }
+  });
+
+  // La cola no debe romperse porque una llamada falle: se encadena el
+  // resultado ya neutralizado, y el error se propaga solo a quien llamó.
+  queue = run.catch(() => undefined);
+  return run as Promise<T>;
 }
 
 /** Raíz de este paquete. */
