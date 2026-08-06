@@ -15,7 +15,6 @@
  *   - `runGenerateMetrics(fixtureName)` → alias de conveniencia (mismo resultado).
  */
 import { resolve, join } from "node:path";
-import { resetPathCache } from "../../service/paths.service";
 import { generateCollection } from "../../service/generation.pipeline";
 import type { PostmanCollection } from "../../contract/postman.interface";
 
@@ -48,25 +47,9 @@ export async function runGenerate(
     projectRoot?: string;
   } = {},
 ): Promise<GenerateResult> {
-  const fixturePath = options.projectRoot
-    ?? join(PROJECT_ROOT, "tests", "fixtures", fixtureName);
-
-  // `paths.service` cachea `projectRoot()` en el proceso. Reseteamos
-  // antes de cada llamada para que rutas distintas no mezclen su estado.
-  const prevRoot = process.env["POSTMAN_PROJECT_ROOT"];
-  process.env["POSTMAN_PROJECT_ROOT"] = fixturePath;
-  resetPathCache();
-
-  try {
-    return await _runPipeline(fixtureName, fixturePath, options.basename);
-  } finally {
-    if (prevRoot === undefined) {
-      delete process.env["POSTMAN_PROJECT_ROOT"];
-    } else {
-      process.env["POSTMAN_PROJECT_ROOT"] = prevRoot;
-    }
-    resetPathCache();
-  }
+  const fixturePath =
+    options.projectRoot ?? join(PROJECT_ROOT, "tests", "fixtures", fixtureName);
+  return _runPipeline(fixtureName, fixturePath, options.basename);
 }
 
 async function _runPipeline(

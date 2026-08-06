@@ -19,7 +19,6 @@ import { join, resolve } from "node:path";
 import { existsSync } from "node:fs";
 
 import { generateCollection } from "../service/generation.pipeline.js";
-import { resetPathCache } from "../service/paths.service.js";
 import {
   checkCollectionInvariants,
   type ICollectionIssue,
@@ -55,18 +54,9 @@ async function generateFor(projectRoot: string): Promise<{
   collection: PostmanCollection;
   framework: string;
 }> {
-  const previousRoot = process.env["POSTMAN_PROJECT_ROOT"];
-  process.env["POSTMAN_PROJECT_ROOT"] = projectRoot;
-  resetPathCache();
-  try {
-    const result = await generateCollection(projectRoot);
-    if (!result.match) throw new Error("el orchestrator no detectó ningún framework");
-    return { collection: result.collection, framework: result.match.framework };
-  } finally {
-    if (previousRoot === undefined) delete process.env["POSTMAN_PROJECT_ROOT"];
-    else process.env["POSTMAN_PROJECT_ROOT"] = previousRoot;
-    resetPathCache();
-  }
+  const result = await generateCollection(projectRoot);
+  if (!result.match) throw new Error("el orchestrator no detectó ningún framework");
+  return { collection: result.collection, framework: result.match.framework };
 }
 
 function formatRow(r: IExampleResult): string {

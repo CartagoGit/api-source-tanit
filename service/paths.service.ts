@@ -132,6 +132,40 @@ export function resetPathCache(): void {
   cache = null;
 }
 
+/**
+ * Ejecuta `fn` con la raíz del proyecto fijada a `root`, y restaura el
+ * estado anterior al terminar (también si `fn` lanza).
+ *
+ * El descubrimiento de rutas se resuelve **una vez por proceso** y se
+ * cachea. Eso vale para el CLI —un proceso por proyecto— pero rompe a
+ * cualquier consumidor de vida larga: un servidor MCP que analice el
+ * proyecto A y luego el B obtenía las rutas de A. Y obligaba a los tests
+ * a manosear `process.env` a mano antes y después de cada llamada.
+ *
+ * Este envoltorio hace reentrante todo lo que dependa del singleton sin
+ * tener que enhebrar un contexto por las ocho capas de servicio. El paso
+ * siguiente —`IProjectContext` explícito en cada firma— sigue pendiente
+ * (p00017 S3).
+ */
+export async function withProjectRoot<T>(
+  root: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const previousEnv = process.env["POSTMAN_PROJECT_ROOT"];
+  const previousCache = cache;
+
+  process.env["POSTMAN_PROJECT_ROOT"] = resolve(root);
+  cache = null;
+
+  try {
+    return await fn();
+  } finally {
+    if (previousEnv === undefined) delete process.env["POSTMAN_PROJECT_ROOT"];
+    else process.env["POSTMAN_PROJECT_ROOT"] = previousEnv;
+    cache = previousCache;
+  }
+}
+
 /** Raíz de este paquete. */
 export function packageRoot(): string {
   return discover().packageRoot;

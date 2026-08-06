@@ -37,6 +37,7 @@ import {
   inferCollectionVariables,
 } from "./param-inferrer.service.js";
 import { loadProject } from "./project-loader.service.js";
+import { withProjectRoot } from "./paths.service.js";
 import { defaultOrchestrator } from "./scanner-registry.js";
 
 /** Métricas del descubrimiento, para informes y tests. */
@@ -72,14 +73,24 @@ export interface IGenerationOptions {
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
  *
- * `projectRoot` debe ser la raíz del proyecto host. La configuración del
- * host (`config.constant.ts`, overrides manuales) se carga con
- * `loadProject()`, que hoy sigue dependiendo del singleton de
- * `paths.service` — ver p00017.
+ * `projectRoot` manda: la llamada se envuelve en `withProjectRoot()`, así
+ * que dos proyectos generados en el mismo proceso no se pisan aunque los
+ * servicios de dentro sigan resolviendo rutas por el singleton de
+ * `paths.service` (p00017 S3).
  */
 export async function generateCollection(
   projectRoot: string,
   options: IGenerationOptions = {},
+): Promise<IGenerationResult> {
+  // `loadProject()` y varios servicios resuelven rutas a través del
+  // singleton de `paths.service`. Sin este scope, generar el proyecto A
+  // y luego el B en el mismo proceso le daba a B la config de A.
+  return withProjectRoot(projectRoot, () => buildFor(projectRoot, options));
+}
+
+async function buildFor(
+  projectRoot: string,
+  options: IGenerationOptions,
 ): Promise<IGenerationResult> {
   const discovery = await discoverSpecs(projectRoot);
 
