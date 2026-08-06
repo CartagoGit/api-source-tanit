@@ -85,12 +85,11 @@ export const config: ProjectConfig = {
    *   - "data.token"          → otros Sanctum
    * Si está vacío o undefined, no se inyecta auto-token.
    */
-  tokenResponsePath: "",
-
   /**
-   * Heurística de nombres para detectar el endpoint de Login cuando no
-   * se llama exactamente "Login". Por defecto el paquete ya busca
-   * "login", "authenticate", "obtain token" en el nombre del item.
+   * Opcional. Déjalo vacío salvo que tu API devuelva el token en un
+   * camino poco habitual: el script generado prueba en ejecución
+   * `access_token`, `token`, `accessToken`, `data.access_token`,
+   * `data.token`, `data.accessToken`, `jwt` e `id_token`.
    */
-  loginEndpointHints: ["login", "authenticate", "obtain token"],
+  tokenResponsePath: "",
 };

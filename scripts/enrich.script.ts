@@ -7,10 +7,8 @@
  *   bun scripts/enrich.script.ts --config ./examples/example-app/config.constant.ts
  */
 import { writeFile } from "node:fs/promises";
-import {
-  buildCollection,
-  attachLoginAutoToken,
-} from "../service/collection-builder.service.js";
+import { buildCollection } from "../service/collection-builder.service.js";
+import { applyAuthFlow } from "../service/auth-flow.service.js";
 import { enrichCatalogWithFormRequests } from "../service/catalog-enricher.service.js";
 import { discoverEndpoints } from "../service/endpoint-discovery.service.js";
 import { loadProject } from "../service/project-loader.service.js";
@@ -37,10 +35,9 @@ async function main(): Promise<number> {
 
   console.log("→ Construyendo colección base…");
   const collection = buildCollection(discovered.specs, config);
-  attachLoginAutoToken(collection, {
-    loginEndpointName: config.loginEndpointName,
-    loginEndpointHints: config.loginEndpointHints,
+  applyAuthFlow(collection, {
     tokenResponsePath: config.tokenResponsePath,
+    loginEndpointName: config.loginEndpointName,
   });
 
   console.log("→ Enriqueciendo con FormRequests…");

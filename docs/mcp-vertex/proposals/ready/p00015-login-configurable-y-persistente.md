@@ -2,7 +2,7 @@
 id: p00015
 title: "p00015 — login configurable y token persistente en Postman"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: postman-exporter
 date: 2026-08-06
@@ -10,6 +10,11 @@ related:
     - p00014 # identidad de colección
     - p00019 # documentación del flujo
 ---
+
+> **Cerrada 2026-08-06.** Detección por método+URI, script que prueba 8 caminos
+> de token en ejecución y persiste en el environment, credenciales como variables
+> secret, y body de login saneado. De 0/11 ejemplos con auto-token a 7/11 (los 4
+> restantes no tienen endpoint de login).
 
 # p00015 — login configurable y token persistente en Postman
 

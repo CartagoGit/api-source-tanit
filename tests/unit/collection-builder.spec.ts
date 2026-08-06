@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  attachLoginAutoToken,
   buildCollection,
 } from "../../service/collection-builder.service";
 import type {
@@ -118,107 +117,4 @@ describe("collection-builder.service", () => {
     });
   });
 
-  describe("attachLoginAutoToken", () => {
-    function itemWithRequest(name: string): PostmanItem {
-      return {
-        name,
-        request: {
-          method: "POST",
-          url: { raw: "{{baseUrl}}/auth" },
-        },
-      };
-    }
-
-    function findItem(
-      items: PostmanItem[],
-      name: string,
-    ): PostmanItem | undefined {
-      for (const item of items) {
-        if (item.name === name) return item;
-        if (item.item) {
-          const found = findItem(item.item, name);
-          if (found) return found;
-        }
-      }
-      return undefined;
-    }
-
-    test("inyecta test script en el endpoint que matchea por hints", () => {
-      const col: PostmanCollection = {
-        info: {
-          name: "x",
-          schema:
-            "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        },
-        item: [itemWithRequest("Login")],
-      };
-      attachLoginAutoToken(col, { tokenResponsePath: "access_token" });
-      const login = findItem(col.item, "Login");
-      expect(login?.event).toBeDefined();
-      expect(login?.event?.[0]?.listen).toBe("test");
-      const exec = login?.event?.[0]?.script?.exec?.join("\n") ?? "";
-      expect(exec).toContain("pm.collectionVariables.set('token'");
-    });
-
-    test("no inyecta nada cuando no hay match", () => {
-      const col: PostmanCollection = {
-        info: {
-          name: "x",
-          schema:
-            "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        },
-        item: [itemWithRequest("List users")],
-      };
-      attachLoginAutoToken(col, { tokenResponsePath: "access_token" });
-      const list = findItem(col.item, "List users");
-      expect(list?.event).toBeUndefined();
-    });
-
-    test("no inyecta nada cuando tokenResponsePath está vacío", () => {
-      const col: PostmanCollection = {
-        info: {
-          name: "x",
-          schema:
-            "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        },
-        item: [itemWithRequest("Login")],
-      };
-      attachLoginAutoToken(col, { tokenResponsePath: "" });
-      const login = findItem(col.item, "Login");
-      expect(login?.event).toBeUndefined();
-    });
-
-    test("loginEndpointName explícito matchea case-sensitive", () => {
-      const col: PostmanCollection = {
-        info: {
-          name: "x",
-          schema:
-            "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        },
-        item: [itemWithRequest("obtain-token")],
-      };
-      attachLoginAutoToken(col, {
-        tokenResponsePath: "data.access_token",
-        loginEndpointName: "obtain-token",
-      });
-      const target = findItem(col.item, "obtain-token");
-      expect(target?.event).toBeDefined();
-    });
-
-    test("navega por dot-path en el script generado", () => {
-      const col: PostmanCollection = {
-        info: {
-          name: "x",
-          schema:
-            "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-        },
-        item: [itemWithRequest("Login")],
-      };
-      attachLoginAutoToken(col, { tokenResponsePath: "data.token" });
-      const login = findItem(col.item, "Login");
-      const exec = login?.event?.[0]?.script?.exec?.join("\n") ?? "";
-      expect(exec).toContain("json.data");
-      expect(exec).toContain("token");
-    });
-  });
 });

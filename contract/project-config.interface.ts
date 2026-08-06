@@ -140,18 +140,13 @@ export interface ProjectConfig {
   }>;
 
   /**
-   * Patrón Postman para extraer el token de la respuesta de Login.
-   * Dot-path: `data.access_token` (Sanctum/Laravel Passport),
-   * `access_token` (tymon/jwt-auth), `token`, etc.
+   * Dot-path donde viene el token en la respuesta del login:
+   * `data.access_token` (Sanctum/Laravel Passport), `access_token`
+   * (tymon/jwt-auth), `token`…
    *
-   * Si está vacío o undefined, no se inyecta auto-token.
+   * Opcional. Si no se declara, el script generado prueba en ejecución
+   * los caminos habituales y usa el primero que traiga un string no
+   * vacío. Decláralo solo si tu API devuelve el token en un sitio raro.
    */
   tokenResponsePath?: string;
-
-  /**
-   * Heurística de nombres para detectar el endpoint de Login cuando
-   * no se llama exactamente "Login". Por defecto: cualquier nombre que
-   * contenga "login" o "authenticate" (case-insensitive).
-   */
-  loginEndpointHints?: ReadonlyArray<string>;
 }

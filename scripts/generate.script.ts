@@ -12,7 +12,10 @@
  *   bun run build
  */
 import { writeFile } from "node:fs/promises";
-import { attachLoginAutoToken } from "../service/collection-builder.service.js";
+import {
+  applyAuthFlow,
+  authEnvironmentVariables,
+} from "../service/auth-flow.service.js";
 import {
   generateCollection,
   type IGenerationResult,
@@ -118,6 +121,17 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
  * colecciones homónimas y no sabe cuál es cuál. La salida es fijar
  * `collectionId` en el config de uno de los dos.
  */
+/**
+ * Añade las variables de credenciales sin pisar las que el host ya
+ * declare (puede tener un `token` con valor propio, por ejemplo).
+ */
+function mergeAuthVariables(
+  existing: Array<{ key: string; value: string; type?: string }>,
+): Array<{ key: string; value: string; type?: string }> {
+  const known = new Set(existing.map((v) => v.key));
+  return [...existing, ...authEnvironmentVariables().filter((v) => !known.has(v.key))];
+}
+
 async function warnOnIdentityClash(
   outputPath: string,
   collection: { info: { name: string; _postman_id?: string } },
@@ -192,11 +206,22 @@ async function main(): Promise<number> {
 
   const collection = pipeline.collection;
   const detectedTokenPath = config.tokenResponsePath ?? (await detectTokenPath());
-  attachLoginAutoToken(collection, {
-    loginEndpointName: config.loginEndpointName,
-    loginEndpointHints: config.loginEndpointHints,
+  const authFlow = applyAuthFlow(collection, {
     tokenResponsePath: detectedTokenPath,
+    loginEndpointName: config.loginEndpointName,
   });
+  if (authFlow?.login) {
+    console.log(
+      `→ Auth: login en "${authFlow.login.name}" guarda el token automáticamente` +
+        (authFlow.refresh ? ", refresh cableado" : "") +
+        (authFlow.logout ? ", logout limpia el token" : "") +
+        ".",
+    );
+    // Las credenciales viven en el environment, marcadas como secret.
+    config.variables = mergeAuthVariables(config.variables);
+  } else {
+    console.log("→ Auth: no se detectó endpoint de login (colección sin flujo de sesión).");
+  }
 
   console.log("→ Enriqueciendo con variantes FormRequest…");
   const stats = await enrichCatalogWithFormRequests(collection, frIndex);
