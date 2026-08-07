@@ -90,6 +90,15 @@ import {
   RustRouteScanner,
   RustValidatorProvider,
 } from "./scanners/rust.scanner";
+import {
+  RailsProjectScanner,
+  RailsRouteScanner,
+} from "./scanners/rails.scanner";
+import {
+  PhoenixProjectScanner,
+  PhoenixRouteScanner,
+} from "./scanners/phoenix.scanner";
+import { KtorProjectScanner, KtorRouteScanner } from "./scanners/ktor.scanner";
 
 import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
@@ -114,6 +123,9 @@ const rustRouteScanner = new RustRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new PhoenixProjectScanner(),
+    new KtorProjectScanner(),
+    new RailsProjectScanner(),
     new RustProjectScanner(),
     new FiberProjectScanner(),
     new HonoProjectScanner(),
@@ -132,6 +144,9 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    new PhoenixRouteScanner(),
+    new KtorRouteScanner(),
+    new RailsRouteScanner(),
     rustRouteScanner,
     fiberRouteScanner,
     honoRouteScanner,

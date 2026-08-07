@@ -22,6 +22,9 @@ Medido con `bun run scripts/generate.script.ts --project-root examples/<x> --jso
 | `example-gin` | gin | 10 | 2 | sí |
 | `example-fiber` | fiber | 7 | 2 | sí |
 | `example-rust` | rust | 7 | 2 | sí |
+| `example-rails` | rails | 13 | — | sí |
+| `example-phoenix` | phoenix | 12 | — | sí |
+| `example-ktor` | ktor | 7 | — | — |
 | `example-express` | express | 9 | 3 | sí |
 | `example-fastapi` | fastapi | 9 | 3 | sí |
 | `example-aspnet` | aspnet | 8 | 1 | — |
@@ -66,6 +69,9 @@ hace de forma distinta.
 | `example-flask` | Blueprints, Marshmallow |
 | `example-django` | DRF, `urlpatterns` anidados y la barra final obligatoria (`APPEND_SLASH`) |
 | `example-gin` | Grupos de rutas y `binding:"required"` en los structs |
+| `example-rails` | `resources` expandido a sus cinco acciones de API (sin los formularios `new`/`edit`), `only:`/`except:`, recurso singular, y `namespace` anidados |
+| `example-phoenix` | `scope` anidados, `resources`, y `pipe_through` que NO es una ruta |
+| `example-ktor` | DSL anidado por llaves, y los `get { }` sin path que heredan el del `route()` que los envuelve |
 | `example-rust` | Macros `#[get("/x")]` de Actix y Rocket, `web::scope()`, `Option<T>` como opcional, `#[serde(rename)]` y `#[validate(...)]` |
 | `example-fiber` | `app.Group()` encadenable, `BodyParser` sobre un struct, y tags `validate:"…"` de go-playground/validator |
 | `example-springboot` | `@RestController`, `@RequestMapping` de clase, `jakarta.validation` |

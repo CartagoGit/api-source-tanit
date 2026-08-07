@@ -2,13 +2,29 @@
 id: p00029
 title: "p00029 — ampliación de cobertura de frameworks: Fastify, Hono, Fiber, Ktor, Rails, Phoenix, Actix/Rocket"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
 related:
     - p00024
 ---
+
+> **Cerrada 2026-08-07.** De 12 a 19 frameworks, los siete de la
+> propuesta: Fastify, Hono, Fiber, Rust (Actix + Rocket), Rails,
+> Phoenix y Ktor. 19/19 ejemplos y un fixture completo + uno mínimo
+> por cada uno.
+>
+> Actix y Rocket comparten scanner: declaran las rutas igual, con un
+> macro de atributo. Separarlos era duplicar el mismo parser para
+> cambiar dos líneas de detección.
+>
+> Cuatro bugs salieron por el camino y están en sus commits: el
+> `lastIndex` compartido que colgaba el proceso, `splitTopLevel`
+> exigiendo llaves sin decirlo, Express reclamando Fastify como
+> suyo, y `EndpointSpec` sin HEAD ni OPTIONS pese a que cinco
+> scanners los detectan.
+
 
 # p00029 — ampliación de cobertura de frameworks: Fastify, Hono, Fiber, Ktor, Rails, Phoenix, Actix/Rocket
 
