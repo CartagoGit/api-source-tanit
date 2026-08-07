@@ -70,6 +70,18 @@ export interface ParsedRoute {
   displayName?: string;
   /** Tags / grupos semánticos (ej. OpenAPI tags). */
   tags?: ReadonlyArray<string>;
+  /**
+   * Cuerpo exacto de la petición, cuando el scanner lo conoce.
+   *
+   * Lo normal es que no: de un `POST /users` se sacan las **reglas** de
+   * validación y el ejemplo se construye a partir de ellas. Pero hay
+   * protocolos donde el cuerpo no es un conjunto de campos sino un
+   * documento concreto — la consulta de GraphQL es el caso — y
+   * descomponerla en campos para volver a montarla la estropearía.
+   *
+   * Si viene, gana sobre lo que infiera el adapter.
+   */
+  body?: unknown;
   /** Descripción libre del endpoint (summary de OpenAPI, docstring, etc.). */
   description?: string;
 }

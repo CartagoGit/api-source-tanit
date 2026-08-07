@@ -413,17 +413,26 @@ async function discoverSpecs(
 }
 
 /**
- * Quita endpoints repetidos por método + URI.
+ * Quita endpoints repetidos.
  *
  * En un proyecto híbrido dos frameworks pueden declarar la misma ruta
  * (un proxy de Next.js delante de un Express, por ejemplo). Gana el
  * primero, que viene del detector con más confianza.
+ *
+ * La clave incluye el **nombre**, no solo método y URI. Con REST bastan
+ * los dos primeros porque la URL identifica la operación; con GraphQL no
+ * hay más que **un** endpoint —`POST /graphql`— y lo que distingue una
+ * consulta de otra es el cuerpo. Deduplicando solo por método y URI, un
+ * esquema de veinte operaciones producía **una** request.
+ *
+ * Lo mismo vale para cualquier RPC sobre POST, que es una forma de API
+ * bastante más común que el caso híbrido para el que se escribió esto.
  */
 function dedupeSpecs(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
   const seen = new Set<string>();
   const out: EndpointSpec[] = [];
   for (const spec of specs) {
-    const key = `${spec.method} ${spec.uri}`;
+    const key = `${spec.method} ${spec.uri} ${spec.name}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(spec);

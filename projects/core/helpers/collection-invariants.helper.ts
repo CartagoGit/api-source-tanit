@@ -122,9 +122,25 @@ function checkItems(collection: PostmanCollection, issues: ICollectionIssue[]): 
   walk(collection.item ?? [], "$");
 }
 
+/**
+ * Dos requests con el mismo método y la misma URL.
+ *
+ * En REST eso es un descuido: la URL identifica la operación, así que
+ * dos iguales son la misma pedida dos veces.
+ *
+ * En **RPC sobre POST** no. GraphQL tiene un solo endpoint —`/graphql`—
+ * y lo que distingue una operación de otra es el cuerpo: un esquema de
+ * veinte consultas produce veinte requests a la misma URL, y las veinte
+ * son correctas. Avisar de eso sería marcar como sospechoso justo lo que
+ * el protocolo obliga a hacer.
+ *
+ * Se comparan también los cuerpos: si método, URL **y** cuerpo coinciden,
+ * entonces sí es la misma petición repetida.
+ */
 function checkDuplicates(collection: PostmanCollection, issues: ICollectionIssue[]): void {
   const seen = new Map<string, string>();
-  for (const { key, path } of eachRequest(collection)) {
+  for (const { key: baseKey, path, body } of eachRequest(collection)) {
+    const key = body ? `${baseKey} ${body}` : baseKey;
     const previous = seen.get(key);
     if (previous) {
       issues.push({
@@ -169,6 +185,12 @@ interface IFlatRequest {
   readonly path: string;
   readonly key: string;
   readonly raw: string;
+  /**
+   * El cuerpo, para distinguir dos peticiones a la misma URL.
+   *
+   * `undefined` cuando no lleva: en REST la URL basta.
+   */
+  readonly body?: string | undefined;
 }
 
 /** Aplana la colección a la lista de sus requests. */
@@ -185,7 +207,12 @@ function* eachRequest(collection: PostmanCollection): Generator<IFlatRequest> {
       }
       if (!item.request?.method) continue;
       const raw = item.request.url?.raw ?? "";
-      yield { path: here, key: `${item.request.method} ${raw}`, raw };
+      yield {
+        path: here,
+        key: `${item.request.method} ${raw}`,
+        raw,
+        ...(item.request.body?.raw ? { body: item.request.body.raw } : {}),
+      };
     }
   }
   yield* walk(collection.item ?? [], "$");

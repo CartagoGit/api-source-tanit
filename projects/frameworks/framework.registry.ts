@@ -11,6 +11,14 @@
  */
 import { DiscoveryOrchestrator } from "../core/discovery/discovery.orchestrator";
 import {
+  GraphQlProjectScanner,
+  GraphQlRouteScanner,
+} from "./scanners/graphql.scanner";
+import {
+  TrpcProjectScanner,
+  TrpcRouteScanner,
+} from "./scanners/trpc.scanner";
+import {
   LaravelProjectScanner,
   LaravelScanner,
   LaravelFormRequestValidationProvider,
@@ -123,6 +131,8 @@ const rustRouteScanner = new RustRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new GraphQlProjectScanner(),
+    new TrpcProjectScanner(),
     new PhoenixProjectScanner(),
     new KtorProjectScanner(),
     new RailsProjectScanner(),
@@ -144,6 +154,8 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    new GraphQlRouteScanner(),
+    new TrpcRouteScanner(),
     new PhoenixRouteScanner(),
     new KtorRouteScanner(),
     new RailsRouteScanner(),

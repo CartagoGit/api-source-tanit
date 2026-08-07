@@ -214,6 +214,10 @@ export async function buildSpecsFromScanner(
       uri: postmanUri,
     };
     if (route.description) spec.description = route.description;
+    // Un cuerpo que el scanner ya conoce gana sobre cualquier inferencia:
+    // la consulta de GraphQL es un documento, no unos campos sueltos, y
+    // descomponerla para volver a montarla solo puede estropearla.
+    if (route.body !== undefined) spec.body = route.body;
     if (route.tags && route.tags.length > 0) {
       spec.folder = route.tags[0];
     }

@@ -34,6 +34,8 @@ Medido con `./bin/expostman generate --project-root examples/<x> --json`:
 | `example-symfony` | symfony | 6 | 4 | sí |
 | `example-django` | django | 4 | 2 | sí |
 | `example-openapi-headers` | openapi | 2 | 2 | — |
+| `example-graphql` | graphql | 5 | 3 | — |
+| `example-trpc` | trpc | 6 | 3 | — |
 
 `example-laravel` sale con 18/6 por el CLI y con 17/4 en
 `validate:examples`: el CLI añade además las variantes de body que se
@@ -81,6 +83,8 @@ hace de forma distinta.
 | `example-fiber` | `app.Group()` encadenable, `BodyParser` sobre un struct, y tags `validate:"…"` de go-playground/validator |
 | `example-springboot` | `@RestController`, `@RequestMapping` de clase, `jakarta.validation` |
 | `example-aspnet` | Controllers y minimal APIs (.NET 6+), Data Annotations |
+| `example-graphql` | El único protocolo sin rutas: **un** endpoint (`POST /graphql`) y una request por operación del esquema, con la consulta ya escrita y los argumentos como variables. Las `subscription` se quedan fuera: van por WebSocket |
+| `example-trpc` | Routers anidados por referencia (`users: usersRouter`), y la traducción a HTTP que nadie se sabe de memoria: `query` → `GET /trpc/users.list`, `mutation` → `POST` |
 | `example-openapi-headers` | Un spec OpenAPI como única fuente, con headers y parámetros, y una `X-API-Key` en varios endpoints — que es lo que hace que la colección salga con `auth: apikey` en vez de bearer |
 
 ## Probar uno
