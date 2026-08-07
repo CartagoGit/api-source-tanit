@@ -17,6 +17,7 @@ Medido con `bun run scripts/generate.script.ts --project-root examples/<x> --jso
 | --- | --- | --: | --: | :-: |
 | `example-laravel` | laravel | 18 | 6 | sí |
 | `example-fastify` | fastify | 11 | 3 | sí |
+| `example-hono` | hono | 9 | 3 | sí |
 | `example-flask` | flask | 10 | 4 | sí |
 | `example-gin` | gin | 10 | 2 | sí |
 | `example-express` | express | 9 | 3 | sí |
@@ -54,6 +55,7 @@ hace de forma distinta.
 | --- | --- |
 | `example-laravel` | `apiResource` (expande a 5 rutas), `Route::prefix()->group()`, FormRequests tipados en la firma del controlador, y el prefijo `/api` que aplica el RouteServiceProvider sin escribirse en el fichero |
 | `example-symfony` | Rutas en YAML y atributos `#[Route]` a la vez, restricciones `#[Assert\...]` |
+| `example-hono` | Rutas encadenadas (`app.get(…).get(…)`), montaje con `route()`, y `@hono/zod-validator` con sus targets (`json`, `query`, `param`) |
 | `example-fastify` | Las tres formas de declarar ruta (`get`, `route({method,url})`, `method: ["GET","HEAD"]`), prefijos de `register`, y el JSON Schema que Fastify lleva dentro de la propia ruta |
 | `example-express` | zod y Joi en el mismo proyecto, headers declarados en el schema, varios `app.use()` en una línea |
 | `example-nestjs` | Decoradores, `setGlobalPrefix`, `class-validator` |

@@ -117,6 +117,19 @@ export function countLinesBefore(text: string, index: number): number {
  */
 export function splitTopLevel(body: string): string[] {
   const out: string[] = [];
+  // La profundidad a la que una coma separa dos items del MISMO nivel.
+  //
+  // Depende de si quien llama incluye las llaves exteriores o no. Antes
+  // estaba fijada a 1, o sea que solo funcionaba pasándolas — y sin
+  // decirlo en ningún sitio. Pasar el cuerpo desnudo devolvía **un solo
+  // item** con todo dentro, en silencio: el scanner de Hono se pasó así
+  // un rato, extrayendo un campo de cuatro.
+  const trimmed = body.trim();
+  const wrapped =
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    (trimmed.startsWith("[") && trimmed.endsWith("]"));
+  const separatorDepth = wrapped ? 1 : 0;
+
   let depth = 0;
   let inString: string | null = null;
   let buffer = "";
@@ -153,7 +166,7 @@ export function splitTopLevel(body: string): string[] {
       continue;
     }
 
-    if (c === "," && depth === 1) {
+    if (c === "," && depth === separatorDepth) {
       out.push(buffer.trim());
       buffer = "";
       continue;

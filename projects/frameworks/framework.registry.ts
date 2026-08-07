@@ -75,6 +75,11 @@ import {
   FastifyRouteScanner,
   FastifySchemaProvider,
 } from "./scanners/fastify.scanner";
+import {
+  HonoProjectScanner,
+  HonoRouteScanner,
+  HonoZodValidatorProvider,
+} from "./scanners/hono.scanner";
 
 import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
@@ -92,9 +97,12 @@ import type {
  * provider sin nada que resolver.
  */
 const fastifyRouteScanner = new FastifyRouteScanner();
+/** Igual que Fastify: el provider lee lo que el scanner recogió. */
+const honoRouteScanner = new HonoRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new HonoProjectScanner(),
     new FastifyProjectScanner(),
     new LaravelProjectScanner(),
     new OpenApiProjectScanner(),
@@ -110,6 +118,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    honoRouteScanner,
     fastifyRouteScanner,
     new LaravelScanner(),
     new OpenApiScanner(),
@@ -125,6 +134,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressScanner(),
   ],
   validationProviders: [
+    new HonoZodValidatorProvider(honoRouteScanner),
     new FastifySchemaProvider(fastifyRouteScanner),
     new LaravelFormRequestValidationProvider(),
     new OpenApiValidationProvider(),

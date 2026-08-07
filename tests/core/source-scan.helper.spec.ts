@@ -157,3 +157,34 @@ describe("unwrapObjectLiteralItem", () => {
     expect(unwrapObjectLiteralItem("  b: 2  ")).toBe("b: 2");
   });
 });
+
+describe("splitTopLevel — con y sin llaves exteriores", () => {
+  // El contrato estaba fijado a "profundidad 1", o sea que solo
+  // funcionaba pasando las llaves exteriores — y sin decirlo en ningún
+  // sitio. Pasar el cuerpo desnudo devolvía UN SOLO item con todo
+  // dentro, en silencio. El scanner de Hono se pasó así un rato,
+  // extrayendo un campo de cuatro.
+  test("con llaves exteriores separa los campos", () => {
+    expect(splitTopLevel("{ a: 1, b: 2 }")).toHaveLength(2);
+  });
+
+  test("sin llaves exteriores también", () => {
+    expect(splitTopLevel("a: 1, b: 2")).toHaveLength(2);
+  });
+
+  test("con corchetes exteriores también", () => {
+    expect(splitTopLevel("[1, 2, 3]")).toHaveLength(3);
+  });
+
+  test("no parte por una coma anidada", () => {
+    expect(splitTopLevel("a: f(1, 2), b: 3")).toEqual(["a: f(1, 2)", "b: 3"]);
+  });
+
+  test("no parte por una coma dentro de una cadena", () => {
+    expect(splitTopLevel(`a: "x, y", b: 2`)).toEqual([`a: "x, y"`, "b: 2"]);
+  });
+
+  test("un solo campo sigue siendo un item", () => {
+    expect(splitTopLevel("a: 1")).toEqual(["a: 1"]);
+  });
+});
