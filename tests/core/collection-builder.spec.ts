@@ -44,8 +44,20 @@ describe("collection-builder.service", () => {
       expect(col.item).toEqual([]);
     });
 
-    test("autorellena auth bearer con {{token}}", () => {
+    // El bloque `auth` sale de lo que hace la API, no de una constante.
+    // Antes este test comprobaba que una colección VACÍA salía con
+    // bearer — o sea, exigía la mentira: sin endpoints no hay forma de
+    // saber que la API use bearer, ni de que use nada.
+    test("sin ninguna señal de auth, no se inventa un bloque", () => {
       const col = buildCollection([], baseConfig);
+      expect(col.auth).toBeUndefined();
+    });
+
+    test("con un endpoint de login, bearer con {{token}}", () => {
+      const col = buildCollection([spec({ method: "POST", uri: "/auth/login" })], baseConfig, {
+        type: "bearer",
+        evidence: "test",
+      });
       expect(col.auth).toEqual({
         type: "bearer",
         bearer: [{ key: "token", value: "{{token}}", type: "string" }],

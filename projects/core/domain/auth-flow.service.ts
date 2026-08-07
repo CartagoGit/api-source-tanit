@@ -45,6 +45,28 @@ const LOGIN_URI_PATTERNS = [
   /\/oauth\/token\/?$/i,
   /\/sessions?\/?$/i,
 ];
+
+/**
+ * Si el proyecto expone un endpoint de sesión, mirando los specs.
+ *
+ * `detectAuthFlow` responde a lo mismo pero sobre la **colección ya
+ * construida**, y hay quien necesita saberlo antes de construirla: el
+ * esquema de autenticación decide qué cabeceras lleva cada petición, así
+ * que no se puede resolver después.
+ *
+ * Comparte los patrones con `detectAuthFlow` a propósito. Dos listas de
+ * rutas de login se desincronizan, y entonces la colección diría que hay
+ * bearer mientras el flujo no cablea ningún token, o al revés.
+ */
+export function hasLoginEndpoint(
+  specs: ReadonlyArray<{ method: string; uri: string }>,
+): boolean {
+  return specs.some(
+    (s) =>
+      s.method.toUpperCase() === "POST" &&
+      LOGIN_URI_PATTERNS.some((re) => re.test(s.uri)),
+  );
+}
 const REFRESH_URI_PATTERNS = [/\/refresh\/?$/i, /\/auth\/refresh\/?$/i, /\/token\/refresh\/?$/i];
 const LOGOUT_URI_PATTERNS = [/\/logout\/?$/i, /\/signout\/?$/i, /\/sign-out\/?$/i];
 

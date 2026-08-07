@@ -38,11 +38,12 @@ paths:
       summary: Create order
       operationId: createOrder
       parameters:
-        - name: Authorization
+        - name: X-API-Key
           in: header
           required: true
           schema:
             type: string
+            minLength: 32
       requestBody:
         required: true
         content:

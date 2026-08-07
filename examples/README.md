@@ -42,7 +42,12 @@ sin ese paso. Es el único framework donde hoy hay enriquecido, así que
 es el único donde los dos números no coinciden.
 
 **Login** es si el proyecto expone un endpoint de sesión que el flujo de
-auth reconoce. Cuando lo hay, la colección sale con un script que guarda
+auth reconoce. De ahí sale también el bloque `auth` de la colección: con
+login, `bearer`; con una clave de API repetida en varios endpoints,
+`apikey`; con un `/oauth/token`, `oauth2`; y sin ninguna señal, **ningún
+bloque** — que es distinto de uno vacío, porque un bloque vacío hace que
+Postman mande una cabecera `Authorization` sin resolver en cada
+petición. Cuando lo hay, la colección sale con un script que guarda
 el token en el environment al ejecutarlo, y el resto de requests lo usan
 sin que haya que copiarlo a mano.
 
@@ -76,7 +81,7 @@ hace de forma distinta.
 | `example-fiber` | `app.Group()` encadenable, `BodyParser` sobre un struct, y tags `validate:"…"` de go-playground/validator |
 | `example-springboot` | `@RestController`, `@RequestMapping` de clase, `jakarta.validation` |
 | `example-aspnet` | Controllers y minimal APIs (.NET 6+), Data Annotations |
-| `example-openapi-headers` | Un spec OpenAPI como única fuente, con headers y parámetros |
+| `example-openapi-headers` | Un spec OpenAPI como única fuente, con headers y parámetros, y una `X-API-Key` en varios endpoints — que es lo que hace que la colección salga con `auth: apikey` en vez de bearer |
 
 ## Probar uno
 

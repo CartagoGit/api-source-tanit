@@ -28,6 +28,12 @@ import type {
 import type { ProjectConfig } from "../contracts/project-config.interface.js";
 import { collectionIdFor } from "../helpers/collection-identity.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../contracts/postman.constant.js";
+import {
+  detectAuthScheme,
+  toPostmanAuth,
+  type AuthSchemeType,
+  type IDetectedAuthScheme,
+} from "./auth-scheme.service.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 
 
@@ -35,17 +41,30 @@ import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function defaultHeaders(): PostmanHeader[] {
-  return [
+/**
+ * Las cabeceras que lleva toda petición.
+ *
+ * `Authorization: Bearer {{token}}` solo cuando la API **usa** bearer.
+ * Iba en todas siempre, así que una API sin autenticación ninguna
+ * mandaba `Bearer ` con la variable sin resolver en cada petición, y la
+ * respuesta era un 401 que no tenía nada que ver con lo que se estaba
+ * probando. Con API key sobra igual: el bloque `auth` de la colección ya
+ * mete la clave donde toca.
+ */
+function defaultHeaders(scheme: AuthSchemeType): PostmanHeader[] {
+  const headers: PostmanHeader[] = [
     { key: "Accept", value: "application/json", type: "text" },
-    { key: "Authorization", value: "Bearer {{token}}", type: "text" },
   ];
+  if (scheme === "bearer") {
+    headers.push({ key: "Authorization", value: "Bearer {{token}}", type: "text" });
+  }
+  return headers;
 }
 
-function buildRequest(ep: EndpointSpec): PostmanRequest {
+function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest {
   const req: PostmanRequest = {
     method: ep.method,
-    header: defaultHeaders(),
+    header: defaultHeaders(scheme),
     url: {
       raw: "{{baseUrl}}" + ep.uri,
       host: ["{{baseUrl}}"],
@@ -82,8 +101,8 @@ function buildRequest(ep: EndpointSpec): PostmanRequest {
   return req;
 }
 
-function ep(spec: EndpointSpec): PostmanItem {
-  return { name: spec.name, request: buildRequest(spec) };
+function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
+  return { name: spec.name, request: buildRequest(spec, scheme) };
 }
 
 function folder(
@@ -139,6 +158,7 @@ interface FolderGroup {
 function groupByFolder(
   specs: EndpointSpec[],
   uriGroupOverrides: Record<string, string>,
+  scheme: AuthSchemeType,
 ): FolderGroup[] {
   const order: string[] = [];
   const groups = new Map<string, FolderGroup>();
@@ -160,7 +180,7 @@ function groupByFolder(
       order.push(compositeKey);
     }
     if (hasExplicit) g.explicit = true;
-    g.items.push(ep(spec));
+    g.items.push(ep(spec, scheme));
   }
 
   return order.map((k) => groups.get(k)!);
@@ -281,9 +301,21 @@ function toHierarchical(
 export function buildCollection(
   specs: EndpointSpec[],
   config: ProjectConfig,
+  /**
+   * Esquema de autenticación de la API.
+   *
+   * Si no se pasa, se deduce de los propios endpoints. El parámetro
+   * existe para que el pipeline —que es quien sabe si hay flujo de
+   * login— pueda afinarlo.
+   */
+  authScheme?: IDetectedAuthScheme,
 ): PostmanCollection {
   const overrides = config.uriGroupOverrides ?? {};
-  const groups = groupByFolder(specs, overrides);
+  // Sin esquema explícito se deduce de los endpoints. `hasLoginFlow` en
+  // false porque desde aquí no se ve: quien lo sepa lo pasa hecho.
+  const scheme = authScheme ?? detectAuthScheme(specs, false);
+  const auth = toPostmanAuth(scheme);
+  const groups = groupByFolder(specs, overrides, scheme.type);
   const hierarchical = toHierarchical(groups, overrides);
 
   const topFolders: PostmanItem[] = hierarchical.map((h) => {
@@ -306,10 +338,15 @@ export function buildCollection(
         projectName: config.name,
       }),
     },
-    auth: {
-      type: "bearer",
-      bearer: [{ key: "token", value: "{{token}}", type: "string" }],
-    },
+    // El bloque `auth` sale de lo que la API hace, no de una constante.
+    //
+    // Estaba fijo a `bearer`, así que una API con `X-API-Key` recibía un
+    // bearer con un `{{token}}` que nadie rellena, y una API SIN
+    // autenticación también. Con `none` no se emite nada: si se emitiera
+    // un bloque vacío, Postman mandaría una cabecera `Authorization` sin
+    // resolver en cada petición y la API contestaría 401 por un motivo
+    // que no tiene que ver con lo que se estaba probando.
+    ...(auth ? { auth } : {}),
     variable: config.variables,
     item: authFirst(topFolders),
   };

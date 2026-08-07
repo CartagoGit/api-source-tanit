@@ -26,6 +26,11 @@ import type { IProjectContext } from "../contracts/project-context.interface.js"
 import type { IProjectMatch, ParsedRoute } from "../contracts/scanner.interface.js";
 import { buildSpecsFromScanner } from "../adapters/parsed-route-to-spec.adapter.js";
 import {
+  authVariablesFor,
+  detectAuthScheme,
+} from "../domain/auth-scheme.service.js";
+import {
+  hasLoginEndpoint,
   applyAuthFlow,
   authEnvironmentVariables,
   detectLaravelTokenPath,
@@ -180,7 +185,10 @@ async function buildFor(
   config.variables = inferCollectionVariables(specs, config.variables ?? []);
   if (options.collectionName) config.collectionName = options.collectionName;
 
-  const collection = buildCollection(specs, config);
+  // El esquema de auth se resuelve ANTES de construir: decide qué
+  // cabeceras lleva cada petición, así que no se puede parchear después.
+  const authScheme = detectAuthScheme(specs, hasLoginEndpoint(specs));
+  const collection = buildCollection(specs, config, authScheme);
 
   // El flujo de auth es parte del pipeline, no del script: si viviera
   // solo en `generate.script.ts`, ni los tests ni el gate lo
@@ -191,11 +199,22 @@ async function buildFor(
     tokenResponsePath,
     loginEndpointName: config.loginEndpointName,
   });
-  if (authFlow) {
+  // Las variables que hay que rellenar dependen del esquema: una API
+  // key necesita `apiKey`, OAuth2 necesita `clientId` y `clientSecret`,
+  // y el bearer las credenciales del login.
+  const needed = [
+    ...(authFlow ? authEnvironmentVariables() : []),
+    ...authVariablesFor(authScheme),
+  ];
+  if (needed.length > 0) {
     const known = new Set(config.variables.map((v) => v.key));
     config.variables = [
       ...config.variables,
-      ...authEnvironmentVariables().filter((v) => !known.has(v.key)),
+      ...needed.filter((v) => {
+        if (known.has(v.key)) return false;
+        known.add(v.key);
+        return true;
+      }),
     ];
     collection.variable = config.variables;
   }
