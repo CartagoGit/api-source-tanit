@@ -24,6 +24,7 @@ import {
   ValidateInputSchema,
   type IValidateOutput,
 } from "../contracts/plugin.interface";
+import { resolveCliScript } from "../contracts/cli-path.constant";
 import { runBunScript } from "../helpers/runner.helper";
 
 const TOOL_ID = "validate";
@@ -60,9 +61,10 @@ export function buildValidateToolRegistration(
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
             | undefined;
-          const cliScriptPath =
-            (ctx.options["cliScript"] as string | undefined) ??
-            `${workspaceRoot}/scripts/cli.script.ts`;
+          const cliScriptPath = resolveCliScript(
+            workspaceRoot,
+            ctx.options["cliScript"] as string | undefined,
+          );
 
           const cliArgs = ["check"];
           if (args.projectRoot) {

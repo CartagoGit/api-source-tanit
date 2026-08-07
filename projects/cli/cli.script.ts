@@ -60,7 +60,44 @@ const COMMANDS: Record<string, ICommand> = {
   },
 };
 
-const HELP = `expostman — Export to Postman (generate Postman collections from your API's source)
+/**
+ * La ayuda se construye al pedirla, no al cargar el módulo.
+ *
+ * La lista de frameworks sale del registro de scanners, y ese import
+ * instancia los diecinueve. Da igual para `--help` —que es lo único que
+ * la usa— pero cargarlo en el top level se lo cobraría a todos los demás
+ * comandos.
+ *
+ * Antes la lista estaba escrita a mano en el texto, y decía "Detects 12
+ * frameworks" con diecinueve en el registro. Una lista paralela se queda
+ * vieja exactamente igual que una constante paralela.
+ */
+async function buildHelp(): Promise<string> {
+  const { SUPPORTED_FRAMEWORKS } = await import("../frameworks/index.js");
+  return HELP_TEMPLATE.replace(
+    "%FRAMEWORKS%",
+    `Detects ${SUPPORTED_FRAMEWORKS.length} frameworks automatically:\n` +
+      `${wrap([...SUPPORTED_FRAMEWORKS].sort().join(", "), 72, "  ")}\n` +
+      "Use --framework <id> when autodetection can't reach the manifest.",
+  );
+}
+
+/** Parte un texto en líneas de como mucho `width`, con sangría. */
+function wrap(text: string, width: number, indent: string): string {
+  const lines: string[] = [];
+  let current = indent;
+  for (const word of text.split(" ")) {
+    if (current.length + word.length > width && current !== indent) {
+      lines.push(current);
+      current = indent;
+    }
+    current += current === indent ? word : ` ${word}`;
+  }
+  lines.push(current);
+  return lines.join("\n");
+}
+
+const HELP_TEMPLATE = `expostman — Export to Postman (generate Postman collections from your API's source)
 
 USAGE
   expostman                  Interactive wizard (no flags needed)
@@ -73,12 +110,14 @@ ${Object.entries(COMMANDS)
 
 COMMON FLAGS
   --project-root <path>   Project to scan. Defaults to the current folder.
-  --output-dir <path>     Where to write. Defaults to <project>/build.
+  --output-dir <path>     Where to write. Defaults to <project>/export-to-postman.
   --output <file>         Exact path of the collection file.
   --basename <name>       Base name for the generated files.
   --config <path>         ProjectConfig file. Auto-detected when omitted.
   --envs <a,b,c>          Which environments to generate.
+  --framework <id>        Skip autodetection and scan as this framework.
   --inspect               Report what was detected; write nothing.
+  --allow-empty           Exit 0 even when no endpoint was found.
   --open                  Open Postman when done.
   -h, --help              Show this help.
 
@@ -99,9 +138,9 @@ EXAMPLES
   expostman generate --inspect               Preview, write nothing
   expostman push --api-key pmak-...          Upload to Postman
   expostman list                             See what was detected
+  expostman generate --framework fastify     Scan as Fastify, no detection
 
-Detects 12 frameworks automatically: Laravel, Symfony, Express, NestJS,
-Next.js, FastAPI, Flask, Django, Gin, Spring Boot, ASP.NET Core and OpenAPI.
+%FRAMEWORKS%
 
 Docs: https://github.com/CartagoGit/export-to-postman#readme
 `;
@@ -127,7 +166,7 @@ export async function run(argv: string[]): Promise<number> {
   const [commandName, ...rest] = argv;
 
   if (commandName === "-h" || commandName === "--help") {
-    console.log(HELP);
+    console.log(await buildHelp());
     return 0;
   }
 

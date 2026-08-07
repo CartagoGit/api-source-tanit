@@ -28,6 +28,8 @@ import {
   GenerateInputSchema,
   type IGenerateOutput,
 } from "../contracts/plugin.interface";
+import { resolveCliScript } from "../contracts/cli-path.constant";
+import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
 import {
   readGenerateReport,
   runBunScript,
@@ -43,7 +45,9 @@ export function buildGenerateToolRegistration(
     id: TOOL_ID,
     summary:
       "Genera la colección Postman v2.1.0 desde las rutas del proyecto host. " +
-      "Devuelve rutas de los archivos generados (colección + environments) y métricas.",
+      "Devuelve rutas de los archivos generados (colección + environments) y métricas. " +
+      "Si la autodetección no reconoce el proyecto, se puede reintentar pasando " +
+      "`framework` con el id que indique la persona.",
     tags: ["postman", "api", "generate", "spawn"],
     effects: ["spawn", "write"],
     register: async (server) => {
@@ -79,8 +83,11 @@ export function buildGenerateToolRegistration(
           if (!existsSync(projectRoot)) {
             return toolError(
               `projectRoot no existe: ${projectRoot}`,
+              // Interpolación de verdad: esto era una cadena entre comillas
+              // dobles con `${workspaceRoot}` dentro, así que el agente leía
+              // el placeholder literal en vez de la ruta.
               "Pasa projectRoot absoluto, o configura defaultProjectRoot en " +
-                "mcp-vertex.config.json. Workspace actual: ${workspaceRoot}.",
+                `mcp-vertex.config.json. Workspace actual: ${workspaceRoot}.`,
             );
           }
 
@@ -89,11 +96,15 @@ export function buildGenerateToolRegistration(
           if (args.envs && args.envs.length > 0) {
             cliArgs.push("--envs", args.envs.join(","));
           }
+          // Reintento con el framework que diga la persona, cuando la
+          // detección no ha podido acertar.
+          if (args.framework) cliArgs.push("--framework", args.framework);
           if (args.openAfter) cliArgs.push("--open");
 
-          const cliScriptPath =
-            (ctx.options["cliScript"] as string | undefined) ??
-            `${workspaceRoot}/scripts/cli.script.ts`;
+          const cliScriptPath = resolveCliScript(
+            workspaceRoot,
+            ctx.options["cliScript"] as string | undefined,
+          );
 
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
@@ -101,8 +112,18 @@ export function buildGenerateToolRegistration(
           if (!result.ok) {
             return toolError(
               `generate falló (exit=${result.exitCode}): ${result.stderr || result.stdout || "sin detalle"}`,
+              // Sin esta segunda línea, "no se ha reconocido nada" era un
+              // callejón sin salida: el agente no tenía forma de saber que
+              // la persona a la que asiste puede resolverlo diciendo de qué
+              // framework es su API.
               "Revisa que projectRoot apunte a un proyecto de API de alguno de los\n" +
-                "frameworks soportados (ver docs/FRAMEWORKS.md).",
+                "frameworks soportados (ver docs/FRAMEWORKS.md).\n" +
+                (args.framework
+                  ? `Ya se ha forzado \`${args.framework}\`, así que el problema no es la detección: ` +
+                    "comprueba que projectRoot sea la carpeta donde viven las rutas."
+                  : "Si no ha reconocido el proyecto y sabes de qué framework es " +
+                    "(monorepo, dependencia con alias, manifiesto generado en el build), " +
+                    `reintenta pasando \`framework\`. Válidos: ${SUPPORTED_FRAMEWORKS.join(", ")}.`),
             );
           }
           const parsedReport = readGenerateReport(result.stdout);

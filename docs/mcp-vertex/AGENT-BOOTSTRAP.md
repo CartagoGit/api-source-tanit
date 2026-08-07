@@ -288,7 +288,7 @@ The universal bootstrap §5 DoD applies. Project-specific additions:
 
 - Universal bootstrap (vendored):
   [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md).
-- Plugin source: [`../../plugins/export-to-postman/`](../../plugins/export-to-postman/).
+- Plugin source: [`../../projects/plugins/mcp-vertex_expostman/`](../../projects/plugins/mcp-vertex_expostman/).
 - Proposals queue: [`proposals/`](proposals/).
 - Live catalog: call `mcp-vertex_overview` / `mcp-vertex_agent_catalog`
   — do not link generated host-hint files from another repo.

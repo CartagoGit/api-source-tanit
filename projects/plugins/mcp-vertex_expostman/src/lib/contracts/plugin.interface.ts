@@ -23,8 +23,12 @@ export const ExportToPostmanOptionsSchema = z
      */
     defaultProjectRoot: z.string().min(1).optional(),
     /**
-     * Ruta al script CLI del paquete export-to-postman. Por defecto
-     * `${workspaceFolder}/scripts/cli.script.ts`.
+     * Ruta al script CLI del paquete export-to-postman.
+     *
+     * El valor por defecto vive en `cli-path.constant.ts`, no aquí: esta
+     * frase decía `scripts/cli.script.ts` mucho después de que el CLI se
+     * moviera a `projects/`, que es justo el motivo de que ahora haya un
+     * único sitio donde está escrito y un test que lo comprueba.
      */
     cliScript: z.string().min(1).optional(),
   })
@@ -49,6 +53,21 @@ export const GenerateInputSchema = z
     outputDir: z.string().min(1).optional(),
     envs: z.array(z.string().min(1)).optional(),
     openAfter: z.boolean().optional(),
+    /**
+     * Framework a la fuerza, saltándose la autodetección.
+     *
+     * Es la salida para los proyectos donde la detección por manifiesto
+     * NO PUEDE acertar: un monorepo cuyo `package.json` está en la raíz,
+     * una dependencia con alias, un manifiesto que se genera en el
+     * build. Sin esto, un agente que recibe "no se ha detectado nada" no
+     * tiene forma de aprovechar que la persona a la que asiste sí sabe
+     * de qué es su API.
+     *
+     * La lista sale del registro de scanners, igual que en `test`: una
+     * lista escrita a mano rechazaría el framework número veinte el día
+     * que se añada.
+     */
+    framework: z.enum(SUPPORTED_FRAMEWORKS as [string, ...string[]]).optional(),
   })
   .strict();
 

@@ -189,30 +189,83 @@ export function resetPathCache(): void {
  */
 let queue: Promise<unknown> = Promise.resolve();
 
-export async function withProjectRoot<T>(
-  root: string,
+/**
+ * Cuántas secciones anidadas hay abiertas.
+ *
+ * Sin esto, anidar dos scopes se cuelga para siempre: el de dentro se
+ * encola detrás del de fuera, que no puede terminar hasta que el de
+ * dentro lo haga. Ya estando dentro de una sección el acceso al
+ * singleton está serializado, así que la de dentro se ejecuta directa.
+ */
+let depth = 0;
+
+/** Las variables de entorno que fijan las rutas del proyecto. */
+const SCOPE_VARS = {
+  projectRoot: "POSTMAN_PROJECT_ROOT",
+  outputDir: "POSTMAN_OUTPUT_DIR",
+} as const;
+
+/** Qué rutas fijar durante la sección. Lo que se omite no se toca. */
+export interface IPathScope {
+  readonly projectRoot?: string;
+  readonly outputDir?: string;
+}
+
+/**
+ * Ejecuta `fn` con las rutas del scope fijadas, y restaura el estado
+ * anterior al terminar (también si `fn` lanza).
+ *
+ * Existe porque `outputDir()` y `projectRoot()` leen `process.argv` y
+ * `process.env`, no argumentos. Quien invoca un comando **en el mismo
+ * proceso** —el asistente interactivo llamando a `generate`— le pasa un
+ * array de flags que esas funciones no miran: leen el argv del proceso,
+ * que es el del asistente. El resultado era que la opción "escribir en
+ * otra carpeta" del asistente aceptaba la carpeta, la mostraba, y
+ * escribía en la de por defecto.
+ */
+export async function withScopedPaths<T>(
+  scope: IPathScope,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const run = queue.then(async () => {
-    const previousEnv = process.env["POSTMAN_PROJECT_ROOT"];
+  const apply = async (): Promise<T> => {
+    const previousEnv: Partial<Record<string, string | undefined>> = {};
     const previousCache = cache;
+    depth++;
 
-    process.env["POSTMAN_PROJECT_ROOT"] = resolve(root);
+    for (const [key, variable] of Object.entries(SCOPE_VARS)) {
+      const value = scope[key as keyof IPathScope];
+      if (value === undefined) continue;
+      previousEnv[variable] = process.env[variable];
+      process.env[variable] = resolve(value);
+    }
     cache = null;
 
     try {
       return await fn();
     } finally {
-      if (previousEnv === undefined) delete process.env["POSTMAN_PROJECT_ROOT"];
-      else process.env["POSTMAN_PROJECT_ROOT"] = previousEnv;
+      for (const [variable, value] of Object.entries(previousEnv)) {
+        if (value === undefined) delete process.env[variable];
+        else process.env[variable] = value;
+      }
       cache = previousCache;
+      depth--;
     }
-  });
+  };
 
+  if (depth > 0) return apply();
+
+  const run = queue.then(apply);
   // La cola no debe romperse porque una llamada falle: se encadena el
   // resultado ya neutralizado, y el error se propaga solo a quien llamó.
   queue = run.catch(() => undefined);
   return run as Promise<T>;
+}
+
+export async function withProjectRoot<T>(
+  root: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return withScopedPaths({ projectRoot: root }, fn);
 }
 
 /** Raíz de este paquete. */

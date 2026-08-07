@@ -11,7 +11,7 @@ recortado a lo justo para ejercitar el scanner.
 
 ## Qué detecta cada uno
 
-Medido con `bun run scripts/generate.script.ts --project-root examples/<x> --json`:
+Medido con `./bin/expostman generate --project-root examples/<x> --json`:
 
 | Carpeta | Framework | Requests | Carpetas | Login |
 | --- | --- | --: | --: | :-: |

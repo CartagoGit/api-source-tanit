@@ -208,7 +208,7 @@
       "path": "projects/plugins/mcp-vertex_expostman/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
-        "cliScript": "${workspaceFolder}/scripts/cli.script.ts"
+        "cliScript": "${workspaceFolder}/projects/cli/cli.script.ts"
       }
     }
   }

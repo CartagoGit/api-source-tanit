@@ -2,12 +2,13 @@
 /**
  * `bun run lint:docs` — que la documentación no mienta.
  *
- * Comprueba tres cosas sobre los bloques de código de los `.md`:
+ * Comprueba cuatro cosas sobre lo que aparece en los `.md`:
  *
  *   1. Todo `bun run <script>` cita un script que existe en el
  *      `package.json`.
  *   2. Toda ruta de fichero que se menciona existe en el repo.
  *   3. Todo `expostman <comando>` es un comando que el CLI conoce.
+ *   4. Todo enlace relativo apunta a algo que existe.
  *
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
@@ -16,18 +17,43 @@
  * `bun run scripts/generate.script.ts`, que llevaba tres commits sin
  * existir.
  *
+ * Se miran los bloques cercados **y el código en línea**. Al principio
+ * solo los bloques, y por ahí se coló `examples/README.md` diciendo
+ * durante varios commits que los números de su tabla se medían con
+ * `bun run scripts/generate.script.ts` — un comando muerto, en la línea
+ * que explica de dónde salen los datos. Un comando entre acentos graves
+ * es una instrucción para quien lee, esté dentro de un bloque o no.
+ *
  * Uso:
  *   bun run lint:docs
  */
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 import { PACKAGE_JSON, REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Carpetas de documentación que se revisan. */
 const DOC_ROOTS = ["docs", "examples", "."] as const;
-/** Las propuestas cerradas describen el pasado: no se revisan. */
-const SKIP = ["node_modules", ".git", "dist", "build", ".cache", "done", "retired", "legacy"];
+/**
+ * Las propuestas quedan fuera enteras.
+ *
+ * Una propuesta describe lo que **todavía no existe**: `p00040` pide un
+ * `bun run docs:build` y `p00035` un `expostman ui`, y que no estén en
+ * el `package.json` es precisamente su motivo de ser. Exigirles que
+ * citen solo cosas existentes obligaría a llenarlas de exenciones y
+ * convertiría el lint en ruido. Las cerradas, además, describen el
+ * pasado.
+ */
+const SKIP = [
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  ".cache",
+  "proposals",
+  "retired",
+  "legacy",
+];
 
 interface IProblem {
   readonly file: string;
@@ -57,6 +83,83 @@ async function exists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Código en línea: `` `así` ``. Un span no cruza líneas. */
+const INLINE_CODE = /`([^`\n]+)`/g;
+
+/** Enlaces markdown a rutas del repo: `[texto](../ruta/al/fichero.ts)`. */
+const RELATIVE_LINK = /\[[^\]]*\]\(([^)\s#]+)(?:#[^)\s]*)?\)/g;
+
+/**
+ * Comprueba que un enlace relativo apunta a algo que existe.
+ *
+ * Los externos (`http`, `mailto`) no se tocan: comprobarlos exigiría
+ * red, y un gate que depende de la red falla los días que no toca.
+ *
+ * Esto también se quedaba viejo en silencio: `docs/FRAMEWORKS.md`
+ * enlazaba `services/scanner-registry.ts` mucho después de que el
+ * registro pasara a `projects/frameworks/framework.registry.ts`, y era
+ * justo el enlace que le decías a alguien que quiere añadir un scanner.
+ */
+async function checkLinks(
+  line: string,
+  file: string,
+  where: { readonly file: string; readonly line: number },
+  problems: IProblem[],
+): Promise<void> {
+  for (const match of line.matchAll(RELATIVE_LINK)) {
+    const target = match[1]!;
+    if (/^(https?:|mailto:|#)/.test(target)) continue;
+    // Absoluta desde la raíz del repo, o relativa al fichero que enlaza.
+    const resolved = target.startsWith("/")
+      ? join(REPO_ROOT, target.slice(1))
+      : join(dirname(file), target);
+    if (!(await exists(resolved))) {
+      problems.push({ ...where, detail: `enlace roto: ${target}` });
+    }
+  }
+}
+
+/**
+ * Comprueba un fragmento de código, venga de un bloque o de un span.
+ *
+ * Es el mismo par de reglas en los dos sitios: separarlo evita que
+ * cubrir uno y olvidar el otro vuelva a pasar.
+ */
+async function checkSnippet(
+  snippet: string,
+  where: { readonly file: string; readonly line: number },
+  known: { readonly scripts: ReadonlySet<string>; readonly commands: ReadonlySet<string> },
+  problems: IProblem[],
+): Promise<void> {
+  for (const match of snippet.matchAll(/\bbun run ([\w:./-]+)/g)) {
+    const script = match[1]!;
+    // `bun run --cwd <dir> …`: lo que sigue es una bandera de bun, no
+    // el nombre de un script.
+    if (script.startsWith("-")) continue;
+    // `bun run <fichero.ts>` es válido: se comprueba como ruta.
+    if (script.endsWith(".ts")) {
+      if (!(await exists(join(REPO_ROOT, script)))) {
+        problems.push({ ...where, detail: `no existe: ${script}` });
+      }
+    } else if (!known.scripts.has(script)) {
+      problems.push({
+        ...where,
+        detail: `\`bun run ${script}\` no está en package.json`,
+      });
+    }
+  }
+
+  for (const match of snippet.matchAll(/\bexpostman ([a-z][\w-]*)/g)) {
+    const command = match[1]!;
+    if (!known.commands.has(command)) {
+      problems.push({
+        ...where,
+        detail: `\`expostman ${command}\` no es un comando del CLI`,
+      });
+    }
   }
 }
 
@@ -108,34 +211,20 @@ async function main(): Promise<number> {
         inFence = !inFence;
         continue;
       }
-      if (!inFence || ignoringFence) continue;
+      if (ignoringFence) continue;
 
-      for (const match of line.matchAll(/\bbun run ([\w:.-]+)/g)) {
-        const script = match[1]!;
-        // `bun run <fichero.ts>` es válido: se comprueba como ruta.
-        if (script.endsWith(".ts")) {
-          if (!(await exists(join(REPO_ROOT, script)))) {
-            problems.push({ file: rel, line: i + 1, detail: `no existe: ${script}` });
-          }
-        } else if (!scripts.has(script)) {
-          problems.push({
-            file: rel,
-            line: i + 1,
-            detail: `\`bun run ${script}\` no está en package.json`,
-          });
-        }
+      const where = { file: rel, line: i + 1 };
+      if (inFence) {
+        await checkSnippet(line, where, { scripts, commands }, problems);
+        continue;
       }
-
-      for (const match of line.matchAll(/\bexpostman ([a-z][\w-]*)/g)) {
-        const command = match[1]!;
-        if (!commands.has(command)) {
-          problems.push({
-            file: rel,
-            line: i + 1,
-            detail: `\`expostman ${command}\` no es un comando del CLI`,
-          });
-        }
+      // Fuera de un bloque solo cuenta lo que va entre acentos graves.
+      // La prosa habla de comandos en pasado o en condicional, y no es
+      // una instrucción que nadie vaya a copiar.
+      for (const span of line.matchAll(INLINE_CODE)) {
+        await checkSnippet(span[1]!, where, { scripts, commands }, problems);
       }
+      await checkLinks(line, file, where, problems);
     }
   }
 

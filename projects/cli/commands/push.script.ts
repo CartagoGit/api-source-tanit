@@ -58,8 +58,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   console.log("→ Scanning the project…");
   const basename = readFlag(argv, "--basename");
+  // `--framework <id>` se salta la detección, igual que en `generate`.
+  // Sin esto, quien necesita forzarlo podía generar los ficheros pero no
+  // subirlos: el mismo proyecto funcionaba con un comando y no con el
+  // otro, sin ninguna razón que se pudiera explicar.
+  const forceFramework = readFlag(argv, "--framework");
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
+    ...(forceFramework ? { forceFramework } : {}),
   });
 
   const requestCount = countRequests(result.collection.item as IItem[]);

@@ -330,6 +330,31 @@ Ejemplo: [`examples/example-aspnet/`](../examples/example-aspnet/)
 
 ---
 
+## Si está soportado pero no lo detecta
+
+La detección va por manifiestos: `composer.json` con `laravel`, `go.mod`
+con `gofiber`, `Cargo.toml` con `actix-web`. Hay formas de proyecto donde
+eso **no puede** funcionar por bien escrito que esté el scanner:
+
+- Un **monorepo** con el manifiesto en la raíz y la API en
+  `services/api/`: apuntando a la API no hay manifiesto que leer.
+- Una **dependencia con alias**, o un fork publicado con otro nombre.
+- Un manifiesto que se **genera en el build** y no está en el repo.
+
+Para todos ellos, dilo tú:
+
+```sh
+expostman generate --project-root ./services/api --framework fastify
+```
+
+Un id que no existe falla al instante y lista los válidos, en vez de
+escanear en vano y devolver cero endpoints. El asistente interactivo
+ofrece la lista cuando no reconoce nada, y el tool `generate` del plugin
+acepta el mismo `framework`.
+
+Forzar el framework **no inventa rutas**: si el scanner tampoco encuentra
+nada, salen cero endpoints y un aviso, no ruido.
+
 ## Si tu framework no está
 
 Dos salidas:
@@ -342,5 +367,5 @@ Dos salidas:
 
 Añadir un scanner nuevo son tres clases (`IProjectScanner`,
 `IRouteScanner`, `IValidationSpecProvider`) registradas en
-[`services/scanner-registry.ts`](../services/scanner-registry.ts). Ver
-[CONTRIBUTING.md](../CONTRIBUTING.md).
+[`projects/frameworks/framework.registry.ts`](../projects/frameworks/framework.registry.ts).
+Ver [CONTRIBUTING.md](../CONTRIBUTING.md).

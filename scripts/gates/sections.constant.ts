@@ -63,7 +63,9 @@ export const SECTIONS: readonly ISection[] = [
   },
   {
     name: "frameworks",
-    description: "Lo concreto de cada framework: los 12 scanners y sus parsers",
+    // Sin número: una cuenta escrita a mano se queda vieja cada vez que
+    // se añade un scanner, y ya lo hizo (decía 12 con 19 en el registro).
+    description: "Lo concreto de cada framework: sus scanners y sus parsers",
     paths: ["projects/frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",

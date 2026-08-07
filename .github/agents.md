@@ -99,8 +99,9 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 ## Tools del plugin MCP
 
-Namespace `export-to-postman`, declarados en
-[`plugins/export-to-postman/src/index.ts`](../plugins/export-to-postman/src/index.ts):
+Namespace `expostman` (el host los registra como
+`mcp-vertex_expostman_<tool>`), declarados en
+[`projects/plugins/mcp-vertex_expostman/src/index.ts`](../projects/plugins/mcp-vertex_expostman/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|
