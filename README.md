@@ -4,22 +4,38 @@
 anotaciones, sin decoradores extra, sin levantar el servidor. Apuntas al
 directorio del proyecto y sale un `.json` listo para importar.
 
-Detecta el framework solo. Funciona con **12**:
+Detecta el framework solo. Funciona con **21**:
 
 | Framework | Detecta por | De dónde saca los bodies |
 |---|---|---|
 | Laravel | `artisan` + `composer.json` | FormRequests (`rules()`) |
 | Symfony | `composer.json` con `symfony/framework-bundle` | `#[Assert\…]` |
-| Express / Fastify / Koa / Hapi | `package.json` con `express`, `fastify`, `@koa/router`, `@hapi/hapi` | zod y Joi |
+| Express / Koa / Hapi | `package.json` con `express`, `@koa/router`, `@hapi/hapi` | zod y Joi |
+| Fastify | `package.json` con `fastify` | el JSON Schema que va **dentro** de la ruta |
+| Hono | `package.json` con `hono` | `@hono/zod-validator` |
 | NestJS | `package.json` con `@nestjs/core` | `class-validator` en los DTO |
 | Next.js | `package.json` con `next` | zod en el route handler |
+| tRPC | `package.json` con `@trpc/server` | la forma de la ruta: `query` → GET, `mutation` → POST |
+| GraphQL | un `.graphql` con `type Query` | el esquema: una request por operación |
 | FastAPI | `requirements.txt` / `pyproject.toml` con `fastapi` | modelos Pydantic |
-| Flask | `requirements.txt` / `pyproject.toml` con `flask` | `flask_pydantic` |
+| Flask | `requirements.txt` / `pyproject.toml` con `flask` | esquemas de Marshmallow |
 | Django / DRF | `manage.py` | serializers de DRF |
 | Gin | `go.mod` con `gin-gonic/gin` | tags `binding:"required"` |
+| Fiber | `go.mod` con `gofiber/fiber` | tags `validate:"…"` de go-playground |
+| Rust (Actix / Rocket) | `Cargo.toml` con `actix-web` o `rocket` | `#[validate(…)]`, `Option<T>` como opcional |
 | Spring Boot | `pom.xml` / `build.gradle` con Spring Boot | `jakarta.validation` |
+| Ktor | `build.gradle` con `io.ktor` | — |
 | ASP.NET Core | `*.csproj` con `Microsoft.AspNetCore.App` | Data Annotations |
+| Rails | `Gemfile` con `rails` | `resources` expandido a sus acciones de API |
+| Phoenix | `mix.exs` con `phoenix` | `scope` y `resources` del router |
 | OpenAPI / Swagger | `openapi.yaml`, `openapi.json`, `swagger.*` | el propio spec |
+
+La lista de verdad la imprime `expostman --help`, que la lee del registro
+de scanners. Esta tabla añade de dónde sale cada cosa.
+
+Cuando la detección no puede acertar —un monorepo con el manifiesto en la
+raíz, una dependencia con alias, un manifiesto que se genera en el
+build— se lo puedes decir: `--framework <id>`.
 
 Si tu proyecto ya publica un `openapi.yaml`, ese scanner cubre cualquier
 framework aunque no esté en la lista.

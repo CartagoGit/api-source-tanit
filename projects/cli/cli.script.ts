@@ -138,6 +138,7 @@ COMMON FLAGS
 WATCH FLAGS
   --debounce <ms>         Wait after the last change. Defaults to 300.
   --once                  Generate once and exit (for CI).
+  (--format and --framework work here too.)
 
 PUSH FLAGS
   --api-key <key>         Postman API key. Or set POSTMAN_API_KEY.

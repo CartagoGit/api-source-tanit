@@ -13,11 +13,23 @@
  * Uso:
  *   expostman watch --project-root ./mi-api
  *   expostman watch --project-root ./mi-api --once   # una pasada y sale
+ *   expostman watch --format postman,openapi         # regenera los dos
  */
-import { relative } from "node:path";
+import { dirname, join, relative } from "node:path";
+import { mkdir } from "node:fs/promises";
+
+import {
+  DEFAULT_FORMAT,
+  exportTo,
+  parseFormats,
+} from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.service.js";
+import {
+  outputCollectionPath,
+  outputDir,
+  projectRoot,
+} from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import { writeFile } from "node:fs/promises";
@@ -37,14 +49,24 @@ function delta(current: number, previous: number | null): string {
 interface IRunResult {
   readonly requests: number;
   readonly folders: number;
+  /** Ficheros escritos en formatos distintos de Postman. */
+  readonly extra: number;
   readonly ms: number;
   readonly framework: string;
 }
 
-/** Una generación completa: escanear, construir y escribir. */
+/**
+ * Una generación completa: escanear, construir y escribir.
+ *
+ * Escribe **todos** los formatos pedidos, no solo Postman. Regenerar la
+ * colección y dejar el `.openapi.yaml` de hace media hora al lado es
+ * peor que no regenerar nada: los dos ficheros dicen cosas distintas del
+ * mismo proyecto y no hay forma de saber cuál está al día.
+ */
 async function regenerate(
   root: string,
   forceFramework: string | null,
+  formats: ReadonlyArray<string>,
 ): Promise<IRunResult> {
   const started = Date.now();
   const result = await generateWithAllFrameworks(root, {
@@ -52,10 +74,33 @@ async function regenerate(
   });
   const path = await outputCollectionPath(result.config.name);
   await writeFile(path, JSON.stringify(result.collection, null, 2) + "\n", "utf8");
+
+  let extra = 0;
+  const others = formats.filter((f) => f !== DEFAULT_FORMAT);
+  if (others.length > 0) {
+    const dir = outputDir();
+    const artifacts = exportTo(others, {
+      specs: result.specs,
+      config: result.config,
+      auth: {
+        type: result.authScheme.type,
+        keyName: result.authScheme.keyName,
+        keyIn: result.authScheme.keyIn,
+      },
+    });
+    for (const artifact of artifacts) {
+      const target = join(dir, artifact.path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, artifact.content, "utf8");
+    }
+    extra = artifacts.length;
+  }
+
   const { requests, folders } = countItems(result.collection);
   return {
     requests,
     folders,
+    extra,
     ms: Date.now() - started,
     framework: result.match?.framework ?? "unknown",
   };
@@ -79,18 +124,33 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
+  // `--format` vale aquí igual que en `generate`: se valida antes de la
+  // primera pasada, no en el primer cambio de fichero.
+  const formatIdx = argv.indexOf("--format");
+  const parsedFormats = parseFormats(formatIdx !== -1 ? (argv[formatIdx + 1] ?? null) : null);
+  if (!parsedFormats.ok) {
+    console.error(
+      `✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
+        `  Válidos: ${parsedFormats.valid.join(", ")}`,
+    );
+    return 1;
+  }
+  const formats = parsedFormats.formats;
+
   // Una primera pasada antes de vigilar: si el proyecto no genera, más
   // vale enterarse ahora que quedarse esperando cambios en algo roto.
   let previous: IRunResult;
   try {
-    previous = await regenerate(root, forceFramework);
+    previous = await regenerate(root, forceFramework, formats);
   } catch (error) {
     console.error(`✗ ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
   console.log(
     `[${stamp()}] ✔ ${previous.requests} requests en ${previous.folders} carpetas ` +
-      `· ${previous.framework} · ${previous.ms} ms`,
+      `· ${previous.framework}` +
+      (previous.extra > 0 ? ` · +${previous.extra} en otros formatos` : "") +
+      ` · ${previous.ms} ms`,
   );
 
   // `--once` genera y sale. Es lo que hace falta en un pipeline: la
@@ -109,10 +169,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       const more = changed.length > 1 ? ` y ${changed.length - 1} más` : "";
       console.log(`[${stamp()}] · cambió ${relative(root, first) || first}${more}`);
       try {
-        const now = await regenerate(root, forceFramework);
+        const now = await regenerate(root, forceFramework, formats);
         console.log(
           `[${stamp()}] ✔ ${now.requests}${delta(now.requests, last.requests)} requests ` +
-            `en ${now.folders} carpetas · ${now.ms} ms`,
+            `en ${now.folders} carpetas` +
+            (now.extra > 0 ? ` · +${now.extra} en otros formatos` : "") +
+            ` · ${now.ms} ms`,
         );
         last = now;
       } catch (error) {

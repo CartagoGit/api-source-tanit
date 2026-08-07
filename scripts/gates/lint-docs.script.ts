@@ -142,7 +142,9 @@ const COUNTED_CLAIMS: ReadonlyArray<ICountedClaim> = [
     },
   },
   {
-    re: /\b(\d+)\s+frameworks?\s+(?:soportados?|autom|detect)/gi,
+    // Dos formas de afirmarlo: "N frameworks soportados" y el
+    // "Funciona con **N**" de la portada, que es el que se coló.
+    re: /\b(?:(\d+)\s+frameworks?\s+(?:soportados?|autom|detect)|[Ff]unciona con \*\*(\d+)\*\*)/g,
     what: "frameworks soportados",
     count: async () => {
       const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
@@ -170,7 +172,8 @@ async function checkCounts(
     const own = new RegExp(claim.re.source, claim.re.flags);
     let match: RegExpExecArray | null;
     while ((match = own.exec(line)) !== null) {
-      const claimed = Number(match[1]);
+      // Cualquiera de los grupos: cada forma de afirmarlo usa el suyo.
+      const claimed = Number(match.slice(1).find((g) => g !== undefined));
       const real = await claim.count();
       if (real < 0 || claimed === real) continue;
       problems.push({
