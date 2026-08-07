@@ -24,7 +24,7 @@
  *
  * v2: añade `frameworks` y `warnings` (proyectos híbridos).
  */
-export const GENERATE_REPORT_VERSION = 2;
+export const GENERATE_REPORT_VERSION = 3;
 
 /** Lo que el flujo de login detectado dejó montado en la colección. */
 export interface IGenerateReportAuth {
@@ -63,6 +63,14 @@ export interface IGenerateReport {
   /** `_postman_id` de la colección: es lo que la identifica al reimportar. */
   readonly collectionId: string | null;
   readonly environmentPaths: readonly string[];
+  /**
+   * Ficheros escritos en formatos distintos de Postman.
+   *
+   * Vacío cuando no se pidió ninguno. Van aparte de `environmentPaths`
+   * porque no son environments: son la misma API en otro idioma
+   * (OpenAPI, Insomnia, Bruno, HAR, cURL).
+   */
+  readonly extraPaths: readonly string[];
   readonly requests: number;
   readonly folders: number;
   /** `null` si el proyecto no tiene endpoint de login. */

@@ -111,7 +111,7 @@ Informe legible por máquina de una generación (`generate --json`).
 #### `GENERATE_REPORT_VERSION`
 
 ```ts
-export const GENERATE_REPORT_VERSION = 2
+export const GENERATE_REPORT_VERSION = 3
 ```
 
 Versión del contrato. Sube al cambiar la forma de manera incompatible.

@@ -10,6 +10,7 @@
 import { z } from "zod";
 
 import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
+import { supportedFormats } from "../../../../../core/exporters/export-registry.service";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -68,6 +69,20 @@ export const GenerateInputSchema = z
      * que se añada.
      */
     framework: z.enum(SUPPORTED_FRAMEWORKS as [string, ...string[]]).optional(),
+    /**
+     * Formatos de salida. Por defecto solo Postman.
+     *
+     * Existen seis y el plugin solo llegaba al primero, así que un agente
+     * al que le piden "sácame el OpenAPI de esta API" no tenía forma de
+     * hacerlo aunque el CLI supiera.
+     *
+     * La lista sale del registro de exportadores, igual que `framework`
+     * sale del de scanners: una escrita a mano rechazaría el séptimo el
+     * día que se añada.
+     */
+    formats: z
+      .array(z.enum(supportedFormats() as [string, ...string[]]))
+      .optional(),
   })
   .strict();
 
@@ -134,6 +149,13 @@ export interface IGenerateOutput {
   /** `_postman_id`: lo que hace que reimportar actualice en vez de duplicar. */
   readonly collectionId: string | null;
   readonly environmentPaths: ReadonlyArray<string>;
+  /**
+   * Ficheros de formatos distintos de Postman.
+   *
+   * Vacío cuando no se pidió ninguno. Van aparte de `environmentPaths`
+   * porque no son environments: son la misma API en otro idioma.
+   */
+  readonly extraPaths: ReadonlyArray<string>;
   readonly requests: number;
   readonly folders: number;
   /** `null` si el proyecto no tiene endpoint de login. */

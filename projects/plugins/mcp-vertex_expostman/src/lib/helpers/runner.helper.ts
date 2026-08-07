@@ -280,6 +280,7 @@ const GenerateReportSchema = z.object({
   collectionPath: z.string().nullable(),
   collectionId: z.string().nullable(),
   environmentPaths: z.array(z.string()),
+  extraPaths: z.array(z.string()),
   requests: z.number(),
   folders: z.number(),
   auth: z
@@ -299,7 +300,7 @@ export type IGenerateReport = z.infer<typeof GenerateReportSchema>;
  * alguien sube una y no la otra, el plugin deja de leer al CLI y hay
  * que enterarse en el gate, no en producción.
  */
-export const SUPPORTED_REPORT_VERSION = 2;
+export const SUPPORTED_REPORT_VERSION = 3;
 
 /**
  * Lee el informe de `generate --json` desde el stdout del CLI.

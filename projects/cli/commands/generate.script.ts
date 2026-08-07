@@ -428,6 +428,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       collectionPath,
       collectionId: collection.info._postman_id ?? null,
       environmentPaths,
+      extraPaths,
       requests,
       folders,
       auth: pipeline.authFlow?.login

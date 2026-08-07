@@ -47,7 +47,8 @@ export function buildGenerateToolRegistration(
       "Genera la colección Postman v2.1.0 desde las rutas del proyecto host. " +
       "Devuelve rutas de los archivos generados (colección + environments) y métricas. " +
       "Si la autodetección no reconoce el proyecto, se puede reintentar pasando " +
-      "`framework` con el id que indique la persona.",
+      "`framework` con el id que indique la persona. Con `formats` se piden " +
+      "además OpenAPI, Insomnia, Bruno, HAR o cURL.",
     tags: ["postman", "api", "generate", "spawn"],
     effects: ["spawn", "write"],
     register: async (server) => {
@@ -99,6 +100,9 @@ export function buildGenerateToolRegistration(
           // Reintento con el framework que diga la persona, cuando la
           // detección no ha podido acertar.
           if (args.framework) cliArgs.push("--framework", args.framework);
+          if (args.formats && args.formats.length > 0) {
+            cliArgs.push("--format", args.formats.join(","));
+          }
           if (args.openAfter) cliArgs.push("--open");
 
           const cliScriptPath = resolveCliScript(
@@ -144,6 +148,7 @@ export function buildGenerateToolRegistration(
             collectionPath: report.collectionPath,
             collectionId: report.collectionId,
             environmentPaths: report.environmentPaths,
+            extraPaths: report.extraPaths,
             requests: report.requests,
             folders: report.folders,
             auth: report.auth,

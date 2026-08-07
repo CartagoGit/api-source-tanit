@@ -34,6 +34,7 @@ function reportJson(overrides: Record<string, unknown> = {}): string {
     collectionPath: "/tmp/mi-api/build/mi-api.postman_collection.json",
     collectionId: "71294326-8271-5a03-9d2a-1463127272b4",
     environmentPaths: ["/tmp/mi-api/build/mi-api.local.postman_environment.json"],
+    extraPaths: [],
     requests: 9,
     folders: 3,
     auth: { loginEndpoint: "POST /api/auth/login", tokenVariable: "token" },
