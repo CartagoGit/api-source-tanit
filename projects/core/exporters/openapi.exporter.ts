@@ -5,12 +5,15 @@
  * configuración de gateway y documentación, y lo importan Swagger Editor,
  * Insomnia, Postman y casi cualquier cosa.
  *
- * **Se emite JSON, no YAML.** OpenAPI acepta los dos y las herramientas
- * también, así que la diferencia es de gusto — y emitir YAML exigiría
- * escribir un serializador a mano, con sus reglas de comillas y de
- * escapado. Un `descripción: sí` sin comillas es booleano en YAML 1.1, y
- * un fallo así corrompe el documento en silencio. No merece la pena
- * arriesgar la corrección del artefacto por la extensión del fichero.
+ * **Se emite YAML**, que es como se publica un OpenAPI casi siempre.
+ *
+ * Esto se hizo primero en JSON, por miedo a las reglas de escalares de
+ * YAML: un `descripción: sí` sin comillas es un booleano, y un fallo así
+ * corrompe el documento en silencio. La forma segura resultó ser
+ * trivial —citar **toda** cadena— y vive en `yaml.helper.ts` con sus
+ * tests, incluidos los valores que rompen un documento sin avisar. Con
+ * eso el riesgo desaparece y no hay motivo para dar el formato que no se
+ * pedía.
  *
  * Lo que **no** lleva es la parte de respuestas. Este proyecto escana lo
  * que la API **recibe**; lo que devuelve no está en ninguna señal que se
@@ -24,6 +27,7 @@ import type {
   IExportTarget,
 } from "../contracts/export-target.interface.js";
 import type { EndpointSpec, IEndpointField } from "../contracts/postman.interface.js";
+import { toYaml, type YamlValue } from "../helpers/yaml.helper.js";
 
 /** `{{id}}` de Postman → `{id}` de OpenAPI. */
 function toOpenApiPath(uri: string): string {
@@ -193,12 +197,15 @@ function buildSecurity(auth: IExportInput["auth"]): {
   }
 }
 
-export class OpenApiExporter implements IExportTarget {
-  readonly format = "openapi";
-  readonly summary = "OpenAPI 3.1.0 (JSON) — SDKs, gateways, Swagger Editor";
-
-  serialize(input: IExportInput): IExportArtifact[] {
-    const { specs, config, auth } = input;
+/**
+ * El documento OpenAPI como objeto, antes de serializarlo.
+ *
+ * Se exporta para poder comprobar su **estructura** con aserciones
+ * precisas en vez de buscando subcadenas en un YAML. Que el YAML sea
+ * correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
+ */
+export function buildOpenApiDocument(input: IExportInput): Record<string, unknown> {
+  const { specs, config, auth } = input;
 
     // Un `path` de OpenAPI agrupa sus métodos: `/users` con `get` y
     // `post` es UNA entrada con dos operaciones, no dos entradas.
@@ -225,10 +232,18 @@ export class OpenApiExporter implements IExportTarget {
       document["security"] = security.requirement;
     }
 
+  return document;
+}
+
+export class OpenApiExporter implements IExportTarget {
+  readonly format = "openapi";
+  readonly summary = "OpenAPI 3.1.0 (YAML) — SDKs, gateways, Swagger Editor";
+
+  serialize(input: IExportInput): IExportArtifact[] {
     return [
       {
-        path: `${config.name}.openapi.json`,
-        content: JSON.stringify(document, null, 2) + "\n",
+        path: `${input.config.name}.openapi.yaml`,
+        content: toYaml(buildOpenApiDocument(input) as YamlValue),
       },
     ];
   }

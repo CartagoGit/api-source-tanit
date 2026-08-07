@@ -102,3 +102,38 @@ describe("una URI sí se normaliza como URI", () => {
     expect(toPostmanUri("/users/:id")).toBe("/users/{{id}}");
   });
 });
+
+/**
+ * Un `GET` no lleva cuerpo, así que unas reglas de body en un `GET` no
+ * pueden ser suyas: son las del vecino.
+ *
+ * Los providers que buscan "el esquema más cercano" cuando el handler no
+ * referencia ninguno se lo cuelgan a cualquiera — el `GET /users` del
+ * ejemplo de Express acababa con los campos del `POST /orders`. Mientras
+ * esas reglas solo alimentaban el body de ejemplo no se veía, porque el
+ * body ya se saltaba estos métodos; en cuanto empezaron a documentarse
+ * y a salir en el OpenAPI, el documento describía un GET con cuerpo.
+ */
+describe("las reglas de body solo van a los métodos que lo aceptan", () => {
+  test.each(["GET", "DELETE", "HEAD", "OPTIONS"] as const)(
+    "un %s no conserva reglas de body",
+    async (method) => {
+      const { generateWithAllFrameworks } = await import("../../projects/frameworks/index");
+      const { exampleDir } = await import("../../scripts/helpers/root.helper");
+      const result = await generateWithAllFrameworks(exampleDir("express"));
+      for (const spec of result.specs) {
+        if (spec.method !== method) continue;
+        const body = (spec.fields ?? []).filter((f) => f.location === "body");
+        expect(body, `${spec.method} ${spec.uri}`).toEqual([]);
+      }
+    },
+  );
+
+  test("un POST sí las conserva", async () => {
+    const { generateWithAllFrameworks } = await import("../../projects/frameworks/index");
+    const { exampleDir } = await import("../../scripts/helpers/root.helper");
+    const result = await generateWithAllFrameworks(exampleDir("express"));
+    const post = result.specs.find((s) => s.method === "POST" && s.uri === "/api/users");
+    expect((post?.fields ?? []).some((f) => f.location === "body")).toBe(true);
+  });
+});

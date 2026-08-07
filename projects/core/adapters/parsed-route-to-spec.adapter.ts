@@ -233,13 +233,29 @@ export async function buildSpecsFromScanner(
         // de ejemplo ya construido no hay forma de recuperar qué era
         // obligatorio ni qué formato tenía cada campo, y eso es
         // exactamente lo que hay que documentar en la request.
-        spec.fields = rules.fields;
         withFormRequest += 1;
         const bodyFields = rules.fields.filter((f) => f.location === "body");
         const queryFields = rules.fields.filter((f) => f.location === "query");
         const headerFields = rules.fields.filter((f) => f.location === "header");
         const pathFields = rules.fields.filter((f) => f.location === "path");
-        if (bodyFields.length > 0 && (m === "POST" || m === "PUT" || m === "PATCH")) {
+        // Un `GET`, `DELETE`, `HEAD` u `OPTIONS` no lleva cuerpo, así que
+        // sus reglas de body no pueden ser suyas: son las del vecino.
+        //
+        // Los providers que buscan "el esquema más cercano" cuando el
+        // handler no referencia ninguno se lo cuelgan a cualquiera — el
+        // `GET /users` del ejemplo de Express acababa con los campos del
+        // `POST /orders`. Mientras esas reglas solo alimentaban el body
+        // de ejemplo no se veía, porque el body ya se saltaba estos
+        // métodos; en cuanto empezaron a documentarse (p00031) y a salir
+        // en el OpenAPI (p00032), el documento describía un GET con
+        // cuerpo, que no existe.
+        const takesBody = m === "POST" || m === "PUT" || m === "PATCH";
+        const applicable = takesBody
+          ? rules.fields
+          : rules.fields.filter((f) => f.location !== "body");
+        if (applicable.length > 0) spec.fields = applicable;
+
+        if (bodyFields.length > 0 && takesBody) {
           const body: Record<string, unknown> = {};
           for (const f of bodyFields) {
             if (!f.required) continue;

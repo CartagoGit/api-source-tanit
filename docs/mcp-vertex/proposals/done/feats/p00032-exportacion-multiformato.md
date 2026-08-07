@@ -50,12 +50,26 @@ Targets propuestos:
 
 ## decisiones que se apartan de lo pedido
 
-**OpenAPI en JSON, no en YAML.** OpenAPI acepta los dos y las
-herramientas también, así que la diferencia es de gusto. Emitir YAML
-exigiría escribir un serializador a mano con sus reglas de comillas: un
-`descripcion: sí` sin comillas es un booleano en YAML 1.1, y un fallo así
-corrompe el documento en silencio. No compensa arriesgar la corrección
-del artefacto por la extensión del fichero.
+**~~OpenAPI en JSON, no en YAML.~~ Rectificado: se emite YAML.**
+
+La primera versión salió en JSON por miedo a las reglas de escalares de
+YAML — un `descripcion: sí` sin comillas es un booleano, y un fallo así
+corrompe el documento en silencio. Al volver sobre ello, la forma segura
+resultó ser trivial: **citar toda cadena**. Una cadena entre comillas
+dobles es una cadena y ninguna regla de YAML se le aplica; los números y
+booleanos van sin comillas porque eso es lo que son en el dato de origen.
+El escapado se delega en `JSON.stringify`, que es idéntico al de las
+comillas dobles de YAML y es la parte donde un fallo propio sería más
+difícil de ver.
+
+`yaml.helper.spec.ts` prueba justo la tabla del infierno: `sí`, `yes`,
+`no`, `on`, `off`, `null`, `~`, `1.0`, `08`, `#comentario`,
+`hola: mundo`. Y el documento generado se ha parseado con PyYAML para
+comprobarlo contra un parser de verdad, no contra la propia idea de lo
+que es YAML.
+
+Con el riesgo controlado no había motivo para dar el formato que no se
+pedía.
 
 **El `responses` de OpenAPI va sin esquema.** Este proyecto escanea lo
 que la API **recibe**; lo que devuelve no está en ninguna señal que se
@@ -70,7 +84,7 @@ se ha ejecutado nada, así que se emite el que el propio formato define
 para "no capturada", con los tamaños a -1. Poner un 200 con un cuerpo
 inventado habría sido más bonito y más falso.
 
-## el bug que salió al mirar el OpenAPI generado
+## dos bugs que salieron al mirar el OpenAPI generado
 
 Un campo `age` salía como `{"type": "number", "minLength": 0, "maxLength": 120}`.
 
@@ -84,6 +98,21 @@ Schema ignoran. La restricción se perdía sin más.
 Afectaba a todo lo que consume esas reglas: el body de ejemplo, la tabla
 de documentación de p00031 y ahora los cinco formatos nuevos. Solo se vio
 porque OpenAPI pone el tipo y la cota juntos donde se leen de un vistazo.
+
+**Y el segundo: un `GET` con `requestBody`.** El `GET /api/users` del
+ejemplo de Express salía documentado con los campos del `POST /orders`.
+
+Los providers que buscan "el esquema más cercano" cuando el handler no
+referencia ninguno se lo cuelgan a cualquiera. Es la misma forma del
+sangrado de ventana que ya mordió en Fastify y Hono. Mientras esas reglas
+solo alimentaban el body de ejemplo no se veía —el body ya se saltaba los
+métodos sin cuerpo—, pero en cuanto empezaron a documentarse (p00031) y a
+salir en el OpenAPI, el documento describía un `GET` con cuerpo, que no
+existe.
+
+Arreglado en el adapter, que es donde se sabe el método: las reglas de
+body solo se conservan para `POST`, `PUT` y `PATCH`. Así queda bien en
+los seis formatos a la vez y no en cada exportador por su cuenta.
 
 ## slices
 
@@ -122,8 +151,8 @@ porque OpenAPI pone el tipo y la cota juntos donde se leen de un vistazo.
 
 ## acceptance
 
-- ~~`--format openapi` genera un `.openapi.yaml`~~ → genera un
-  `.openapi.json` 3.1.0 válido, por el motivo de arriba. ✔
+- `--format openapi` genera un `.openapi.yaml` 3.1.0 válido. ✔
+  Comprobado además con PyYAML: parsea y conserva tipos y cotas.
 - `--format insomnia` genera un JSON con `__export_format: 4` y la
   jerarquía por `parentId`, con **ids estables** entre generaciones —
   con ids aleatorios, reimportar duplicaría la colección cada vez. ✔
@@ -133,4 +162,4 @@ porque OpenAPI pone el tipo y la cota juntos donde se leen de un vistazo.
   produce 20 ficheros del ejemplo de Express.
 - Un formato inventado falla **antes** de escanear y lista los válidos,
   igual que `--framework`. ✔
-- `bun run validate` verde. ✔ 1698 tests, 19/19 ejemplos.
+- `bun run validate` verde. ✔ 1742 tests, 19/19 ejemplos.

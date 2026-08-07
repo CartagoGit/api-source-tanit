@@ -16,6 +16,7 @@ import {
   parseFormats,
   supportedFormats,
 } from "../../projects/core/exporters/export-registry.service";
+import { buildOpenApiDocument } from "../../projects/core/exporters/openapi.exporter";
 import type {
   IExportInput,
 } from "../../projects/core/contracts/export-target.interface";
@@ -116,7 +117,9 @@ describe("parseFormats", () => {
 });
 
 describe("OpenAPI", () => {
-  const doc = JSON.parse(exportTo(["openapi"], input)[0]!.content) as Record<string, any>;
+  // La estructura se comprueba sobre el objeto; que el YAML salga bien es
+  // otro problema, y lo cubre `yaml.helper.spec.ts`.
+  const doc = buildOpenApiDocument(input) as Record<string, any>;
 
   test("es 3.1.0 con servidor y título", () => {
     expect(doc["openapi"]).toBe("3.1.0");
@@ -162,6 +165,21 @@ describe("OpenAPI", () => {
   test("no se inventa la forma de la respuesta", () => {
     const responses = doc["paths"]["/api/users"].get.responses;
     expect(responses["200"]).toEqual({ description: "OK" });
+  });
+
+  test("se emite como YAML, que es como se publica un OpenAPI", () => {
+    const artifact = exportTo(["openapi"], input)[0]!;
+    expect(artifact.path.endsWith(".openapi.yaml")).toBe(true);
+    expect(artifact.content.startsWith('openapi: "3.1.0"')).toBe(true);
+  });
+
+  // Las claves de OpenAPI son rutas, códigos de estado y mime types: las
+  // tres necesitan comillas o YAML las lee como otra cosa.
+  test("las claves problemáticas salen citadas en el YAML", () => {
+    const yaml = exportTo(["openapi"], input)[0]!.content;
+    expect(yaml).toContain('"/api/users":');
+    expect(yaml).toContain('"200":');
+    expect(yaml).toContain('"application/json":');
   });
 });
 
@@ -296,7 +314,7 @@ describe("todos los formatos a la vez", () => {
     const artifacts = exportTo(["openapi", "insomnia", "bruno", "har", "curl"], input);
     const paths = artifacts.map((a) => a.path);
     expect(new Set(paths).size).toBe(paths.length);
-    expect(paths.some((p) => p.endsWith(".openapi.json"))).toBe(true);
+    expect(paths.some((p) => p.endsWith(".openapi.yaml"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".insomnia.json"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".har"))).toBe(true);
     expect(paths.some((p) => p.endsWith(".curl.sh"))).toBe(true);
