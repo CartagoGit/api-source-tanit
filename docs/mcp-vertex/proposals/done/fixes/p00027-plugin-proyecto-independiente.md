@@ -2,7 +2,7 @@
 id: p00027
 title: "p00027 — el plugin de mcp-vertex como proyecto independiente"
 kind: fix
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
@@ -14,9 +14,11 @@ related:
     - p00028 # gates por sección: el plugin es una de ellas
 ---
 
-> **En curso.** S1, S2 y S3 cerradas el 2026-08-06. S4 (dependencia por
-> paquete en vez de `../../../../../`) queda para la reorganización de
-> carpetas, porque el destino de `scanner-registry` lo decide p00020.
+> **Cerrada el 2026-08-07.** S1, S2 y S3 el 2026-08-06. S4 se retira con
+> evidencia: el arreglo que proponía (dependencia de paquete en vez de
+> `../../../../../`) resultó peor que el problema, y el problema que
+> decía resolver lo resolvió p00043 por otra vía. Los detalles y las
+> medidas, en su sección.
 
 # p00027 — el plugin como proyecto independiente
 
@@ -141,33 +143,57 @@ colarse en el código que se publica.
 - **Aceptación**: los dos proyectos typechequean a 0 errores.
 
 ### S4 — dependencia por paquete, no por ruta relativa
-- **Estado**: ready
-- **Ficheros**: `plugins/postman-exporter/package.json`, `package.json`
-  de la raíz (`exports`), 3 ficheros de `src/`.
-- **Gate**: `grep -r '\.\./\.\./\.\./\.\./\.\.' plugins/` sin resultados.
+- **Estado**: retirada con evidencia (2026-08-07). El diagnóstico era
+  correcto; el arreglo propuesto es peor que el problema.
+- **Gate original**: `grep -r '\.\./\.\./\.\./\.\./\.\.' plugins/` sin
+  resultados.
 
-Tres ficheros de `src/` trepan hasta el código del CLI:
+Cinco ficheros de `src/` trepan hasta el código del CLI (eran tres; las
+rutas cambiaron con p00020):
 
 ```
-src/lib/tools/test.tool.ts        → "../../../../../services/scanner-registry"
-src/lib/tools/summary.tool.ts     → "../../../../../services/summary.service"
-src/lib/helpers/smoke-runner.ts   → "../../../../../contracts/scanner.interface"
+src/lib/tools/test.tool.ts           → "../../../../../frameworks/framework.registry"
+src/lib/tools/summary.tool.ts        → "../../../../../frameworks/index"
+src/lib/tools/generate.tool.ts       → "../../../../../frameworks/index"
+src/lib/contracts/plugin.interface.ts→ "../../../../../frameworks/index"
+src/lib/helpers/smoke-runner.helper.ts → "../../../../../core/contracts/scanner.interface"
 ```
 
-Consecuencia medible: esos ficheros entran en el programa de TypeScript
-del plugin y heredan **sus** reglas, no las suyas. Activar
-`noUncheckedIndexedAccess` y `noUnusedLocals` en el plugin producía 30
-errores en ficheros que este proyecto no mantiene, así que hubo que
-dejarlos apagados.
+**Lo que se midió al intentarlo.** Se declaró `export-to-postman` como
+dependencia `file:../../..`, se ajustó el `exports` de la raíz y se
+cambiaron los cinco imports por especificador. Typechequea, pero:
 
-El arreglo es declarar `@postman-exporter/cli` como dependencia de
-workspace e importar por especificador. Requiere que el `exports` de la
-raíz cubra `scanner-registry`, que hoy no encaja con el patrón
-`./services/*` → `*.service.ts`. Se hace junto a p00020, que es quien
-decide dónde acaba viviendo el registro.
+> Bun **copia** un `file:` en vez de enlazarlo. Se comprobó con inodos
+> distintos y con la prueba directa: se añade un `export` a
+> `projects/frameworks/index.ts` y la copia de
+> `node_modules/.bun/export-to-postman@root/` no lo ve. El plugin
+> tiparía y testearía contra una **foto congelada** del repo hasta el
+> siguiente `bun install`.
 
-- **Aceptación**: `noUncheckedIndexedAccess` y `noUnusedLocals` vuelven
-  a estar activos en el tsconfig del plugin, con 0 errores.
+Eso es peor que la ruta fea: una copia que diverge en silencio es
+exactamente la clase de fallo contra la que va medio repositorio
+(`lint:paths`, `lint:docs`, `root.helper.ts`). `link:` no vale — exige
+un `bun link` previo, no acepta una ruta.
+
+**Y el diagnóstico ya no aplica.** La premisa era que las rutas
+relativas impedían activar las reglas estrictas. Comprobado al reabrir:
+
+| Regla | Errores | Dónde |
+| --- | --: | --- |
+| `noUncheckedIndexedAccess` | 0 | — (p00043 los arregló en todo el repo) |
+| `noUnusedLocals` | 3 | `@mcp-vertex/core`, **otro repositorio** |
+
+Los tres son de `assemble-plugins.ts` y `wire-plugin.ts` de
+`@mcp-vertex/core`, que entra por `customConditions:
+["@mcp-vertex/source"]` — a propósito, para que el plugin se entere si el
+core cambia de forma. `skipLibCheck` no los tapa porque son `.ts`, no
+`.d.ts`. No son nuestros para arreglar, y renunciar a la condición para
+callarlos sería cambiar corrección por silencio.
+
+- **Resultado**: `noUncheckedIndexedAccess` **activada** en el tsconfig
+  del plugin, 0 errores. `noUnusedLocals` sigue fuera, y ahora el
+  comentario del tsconfig dice el motivo de verdad en vez de acusar a
+  las rutas relativas.
 
 ## aceptación global
 
