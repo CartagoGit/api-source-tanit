@@ -26,9 +26,28 @@ export interface IZodField {
   readonly required: boolean;
   readonly format?: string;
   readonly enumValues?: ReadonlyArray<string>;
-  readonly minLength?: number;
-  readonly maxLength?: number;
+  /**
+   * El argumento de `.min()`, **sin interpretar**.
+   *
+   * En zod, `.min()` es el mismo método con dos significados según el
+   * tipo base: `z.string().min(2)` son dos caracteres y
+   * `z.number().min(2)` es el valor dos. Se guarda crudo aquí y lo
+   * clasifica `zodFieldToSpec`, que es quien conoce el tipo.
+   *
+   * Antes iba directo a `minLength`, así que un `z.number().min(0).max(120)`
+   * producía un campo numérico con `minLength: 0` y `maxLength: 120` —
+   * restricciones que no significan nada sobre un número, y que las
+   * herramientas que leen el JSON Schema ignoran. La cota se perdía.
+   */
+  readonly min?: number;
+  readonly max?: number;
 }
+
+/** Tipos donde `.min()/.max()` hablan del VALOR, no de la longitud. */
+const NUMERIC_TYPES: ReadonlySet<IValidationSpec["type"]> = new Set([
+  "number",
+  "integer",
+]);
 
 /** `z.<method>()` → tipo lógico del contrato. */
 const ZOD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
@@ -103,8 +122,8 @@ export function parseZodFieldExpression(name: string, expr: string): IZodField |
     if (mapped) format = mapped;
   }
 
-  const minLength = readNumericChain(expr, "min");
-  const maxLength = readNumericChain(expr, "max");
+  const min = readNumericChain(expr, "min");
+  const max = readNumericChain(expr, "max");
   const enumValues = readEnumValues(expr);
   const isOptional = /\.\s*(?:optional|nullable|nullish)\s*\(/.test(expr);
 
@@ -114,8 +133,8 @@ export function parseZodFieldExpression(name: string, expr: string): IZodField |
     required: !isOptional,
     ...(format ? { format } : {}),
     ...(enumValues ? { enumValues } : {}),
-    ...(minLength !== undefined ? { minLength } : {}),
-    ...(maxLength !== undefined ? { maxLength } : {}),
+    ...(min !== undefined ? { min } : {}),
+    ...(max !== undefined ? { max } : {}),
   };
 }
 
@@ -131,8 +150,26 @@ export function zodFieldToSpec(
     required: field.required,
     ...(field.format ? { format: field.format } : {}),
     ...(field.enumValues ? { enumValues: field.enumValues } : {}),
-    ...(field.minLength !== undefined ? { minLength: field.minLength } : {}),
-    ...(field.maxLength !== undefined ? { maxLength: field.maxLength } : {}),
+    // Aquí es donde `.min()` deja de ser ambiguo: sobre un número es una
+    // cota de valor, sobre lo demás es de longitud.
+    ...(numericBounds(field)),
+  };
+}
+
+/** Traduce `min`/`max` crudos a la pareja que corresponde al tipo. */
+function numericBounds(field: IZodField): Partial<IValidationSpec> {
+  const isNumeric = NUMERIC_TYPES.has(field.type);
+  return {
+    ...(field.min !== undefined
+      ? isNumeric
+        ? { minimum: field.min }
+        : { minLength: field.min }
+      : {}),
+    ...(field.max !== undefined
+      ? isNumeric
+        ? { maximum: field.max }
+        : { maxLength: field.max }
+      : {}),
   };
 }
 

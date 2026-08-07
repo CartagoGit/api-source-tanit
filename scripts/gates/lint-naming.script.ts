@@ -44,6 +44,14 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".helper.ts"],
   },
   {
+    path: "projects/core/exporters/",
+    what: "un formato de salida por fichero",
+    // `.exporter` es un tipo de módulo con significado propio: implementa
+    // `IExportTarget` y traduce el catálogo de endpoints a UN formato.
+    // Llamarlo `.service` lo escondería entre los quince que ya hay.
+    suffixes: [".exporter.ts", ".service.ts"],
+  },
+  {
     path: "projects/core/",
     what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con

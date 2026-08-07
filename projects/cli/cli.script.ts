@@ -78,7 +78,15 @@ const COMMANDS: Record<string, ICommand> = {
  */
 async function buildHelp(): Promise<string> {
   const { SUPPORTED_FRAMEWORKS } = await import("../frameworks/index.js");
+  const { describeFormats } = await import(
+    "../core/exporters/export-registry.service.js"
+  );
   return HELP_TEMPLATE.replace(
+    "%FORMATS%",
+    ["FORMATS", ...describeFormats().map((f) => `  ${f.format.padEnd(9)} ${f.summary}`)].join(
+      "\n",
+    ),
+  ).replace(
     "%FRAMEWORKS%",
     `Detects ${SUPPORTED_FRAMEWORKS.length} frameworks automatically:\n` +
       `${wrap([...SUPPORTED_FRAMEWORKS].sort().join(", "), 72, "  ")}\n` +
@@ -120,6 +128,7 @@ COMMON FLAGS
   --config <path>         ProjectConfig file. Auto-detected when omitted.
   --envs <a,b,c>          Which environments to generate.
   --framework <id>        Skip autodetection and scan as this framework.
+  --format <a,b,c>        Output formats. Defaults to postman.
   --inspect               Report what was detected; write nothing.
   --allow-empty           Exit 0 even when no endpoint was found.
   --open                  Open Postman when done.
@@ -148,6 +157,9 @@ EXAMPLES
   expostman list                             See what was detected
   expostman generate --framework fastify     Scan as Fastify, no detection
   expostman watch                            Regenerate on every save
+  expostman generate --format postman,openapi  Postman + an OpenAPI spec
+
+%FORMATS%
 
 %FRAMEWORKS%
 

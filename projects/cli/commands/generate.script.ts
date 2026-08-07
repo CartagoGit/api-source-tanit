@@ -11,7 +11,13 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import {
+  DEFAULT_FORMAT,
+  exportTo,
+  parseFormats,
+} from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import type { IGenerationResult } from "../../core/discovery/generation.pipeline.js";
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -23,6 +29,7 @@ import { countItems, walkCollection } from "../../core/helpers/postman.helper.js
 import {
   describeDiscoveredPaths,
   outputCollectionPath,
+  outputDir as outputDirFor,
   outputEnvironmentPath,
   projectRoot,
 } from "../../core/discovery/paths.service.js";
@@ -137,6 +144,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     };
   }
   const environmentPaths: string[] = [];
+  /** Ficheros de formatos distintos de Postman. */
+  const extraPaths: string[] = [];
   let collectionPath: string | null = null;
 
   const openAfter = args.includes("--open");
@@ -152,6 +161,20 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // se generan en el build. Quien ejecuta esto sabe de qué es su API.
   const frameworkIdx = args.indexOf("--framework");
   const frameworkFlag = frameworkIdx !== -1 ? (args[frameworkIdx + 1] ?? null) : null;
+
+  // `--format a,b,c`. Se valida ANTES de escanear: un nombre mal escrito
+  // descubierto al final, tras recorrer el proyecto y sin haber escrito
+  // el fichero que se pedía, no dice nada de lo que ha pasado.
+  const formatIdx = args.indexOf("--format");
+  const parsedFormats = parseFormats(formatIdx !== -1 ? (args[formatIdx + 1] ?? null) : null);
+  if (!parsedFormats.ok) {
+    console.error(
+      `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
+        `  Válidos: ${parsedFormats.valid.join(", ")}`,
+    );
+    return 1;
+  }
+  const formats = parsedFormats.formats;
 
   const envsIdx = args.indexOf("--envs");
   const envsFlag =
@@ -303,6 +326,30 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     );
     return 1;
   }
+  // Los formatos extra se serializan del MISMO catálogo de endpoints que
+  // la colección de Postman: dos formatos del mismo proyecto no pueden
+  // discrepar porque cada uno haya escaneado por su cuenta.
+  const extraFormats = formats.filter((f) => f !== DEFAULT_FORMAT);
+  if (extraFormats.length > 0) {
+    const dir = outputDirFor();
+    const artifacts = exportTo(extraFormats, {
+      specs: discoveredSpecs,
+      config,
+      auth: {
+        type: pipeline.authScheme.type,
+        keyName: pipeline.authScheme.keyName,
+        keyIn: pipeline.authScheme.keyIn,
+      },
+    });
+    for (const artifact of artifacts) {
+      const target = join(dir, artifact.path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, artifact.content, "utf8");
+      extraPaths.push(target);
+    }
+    console.log(`  · ${artifacts.length} fichero(s) en ${extraFormats.join(", ")}`);
+  }
+
   const sizeKb = (json.length / 1024).toFixed(1);
   console.log(`\n✔ Collection written to ${OUTPUT_PATH}`);
   console.log(

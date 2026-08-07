@@ -35,10 +35,13 @@ describe("parseZodFieldExpression", () => {
     expect(parseZodFieldExpression("a", "z.string()")?.required).toBe(true);
   });
 
-  test("extrae min y max como longitudes", () => {
+  // `.min()` se guarda crudo: en zod es el mismo método con dos
+  // significados según el tipo base, y quien lo interpreta es
+  // `zodFieldToSpec`, que es quien conoce el tipo.
+  test("extrae min y max sin interpretarlos", () => {
     const f = parseZodFieldExpression("name", "z.string().min(2).max(64)");
-    expect(f?.minLength).toBe(2);
-    expect(f?.maxLength).toBe(64);
+    expect(f?.min).toBe(2);
+    expect(f?.max).toBe(64);
   });
 
   test("z.enum([...]) produce type enum con sus valores", () => {
@@ -108,8 +111,8 @@ describe("zodFieldToSpec", () => {
       required: false,
       format: "email",
       enumValues: ["a", "b"],
-      minLength: 1,
-      maxLength: 9,
+      min: 1,
+      max: 9,
     });
     expect(spec).toMatchObject({
       format: "email",
@@ -118,6 +121,37 @@ describe("zodFieldToSpec", () => {
       maxLength: 9,
       required: false,
     });
+  });
+
+  /**
+   * `z.string().min(2)` son dos caracteres; `z.number().min(2)` es el
+   * valor dos. Es el mismo método y significa cosas distintas.
+   *
+   * Iba todo a `minLength`, así que un `z.number().min(0).max(120)`
+   * producía un campo numérico con `minLength: 0` — una restricción que
+   * no dice nada sobre un número y que las herramientas que leen el JSON
+   * Schema ignoran. La cota se perdía sin más.
+   */
+  test("sobre un número, min/max son cotas de VALOR", () => {
+    const spec = zodFieldToSpec({ name: "age", type: "number", required: true, min: 0, max: 120 });
+    expect(spec.minimum).toBe(0);
+    expect(spec.maximum).toBe(120);
+    expect(spec.minLength).toBeUndefined();
+    expect(spec.maxLength).toBeUndefined();
+  });
+
+  test("sobre una cadena, min/max son cotas de LONGITUD", () => {
+    const spec = zodFieldToSpec({ name: "n", type: "string", required: true, min: 2, max: 64 });
+    expect(spec.minLength).toBe(2);
+    expect(spec.maxLength).toBe(64);
+    expect(spec.minimum).toBeUndefined();
+    expect(spec.maximum).toBeUndefined();
+  });
+
+  test("un entero también recibe cotas de valor", () => {
+    const spec = zodFieldToSpec({ name: "n", type: "integer", required: true, min: 1 });
+    expect(spec.minimum).toBe(1);
+    expect(spec.minLength).toBeUndefined();
   });
 
   test("omite las claves opcionales ausentes", () => {

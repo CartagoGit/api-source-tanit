@@ -28,6 +28,7 @@ import { buildSpecsFromScanner } from "../adapters/parsed-route-to-spec.adapter.
 import {
   authVariablesFor,
   detectAuthScheme,
+  type IDetectedAuthScheme,
 } from "../domain/auth-scheme.service.js";
 import {
   hasLoginEndpoint,
@@ -70,6 +71,15 @@ export interface IGenerationResult {
   readonly origin: "scanner" | "legacy";
   /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */
   readonly authFlow: IAuthFlow | null;
+  /**
+   * Esquema de autenticación detectado, con su evidencia.
+   *
+   * Se expone para que los exportadores a otros formatos no lo deduzcan
+   * cada uno por su cuenta: cinco detecciones paralelas acabarían
+   * discrepando, y el mismo proyecto diría bearer en Postman y nada en
+   * Insomnia.
+   */
+  readonly authScheme: IDetectedAuthScheme;
   /** Contexto resuelto del proyecto. */
   readonly context: IProjectContext;
   /**
@@ -227,6 +237,7 @@ async function buildFor(
     match: discovery.match,
     origin: discovery.origin,
     authFlow,
+    authScheme,
     context,
     warnings: discovery.warnings,
     frameworks: discovery.frameworks,
