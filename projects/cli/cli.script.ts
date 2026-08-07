@@ -58,6 +58,10 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Upload the collection straight to your Postman workspace",
     load: () => import("./commands/push.script.js"),
   },
+  watch: {
+    summary: "Regenerate the collection whenever a route file changes",
+    load: () => import("./commands/watch.script.js"),
+  },
 };
 
 /**
@@ -121,6 +125,10 @@ COMMON FLAGS
   --open                  Open Postman when done.
   -h, --help              Show this help.
 
+WATCH FLAGS
+  --debounce <ms>         Wait after the last change. Defaults to 300.
+  --once                  Generate once and exit (for CI).
+
 PUSH FLAGS
   --api-key <key>         Postman API key. Or set POSTMAN_API_KEY.
   --workspace <id>        Target workspace. Defaults to your personal one.
@@ -139,6 +147,7 @@ EXAMPLES
   expostman push --api-key pmak-...          Upload to Postman
   expostman list                             See what was detected
   expostman generate --framework fastify     Scan as Fastify, no detection
+  expostman watch                            Regenerate on every save
 
 %FRAMEWORKS%
 

@@ -84,6 +84,27 @@ declare module "node:path" {
 
 // --- node:fs (sync) ------------------------------------------------------
 declare module "node:fs" {
+  /**
+   * Lo que este repo usa de un vigilante de ficheros: cerrarlo.
+   *
+   * No cerrarlo deja el proceso vivo para siempre, porque el event loop
+   * sigue teniendo trabajo pendiente.
+   */
+  export interface FSWatcher {
+    close(): void;
+  }
+  /**
+   * `recursive` es obligatorio aquí a propósito.
+   *
+   * Sin él, `fs.watch` mira **solo el primer nivel** de carpetas y no
+   * avisa de nada que pase dentro — que en un proyecto de API es
+   * absolutamente todo. Fallaría en silencio pareciendo que funciona.
+   */
+  export function watch(
+    path: string,
+    options: { recursive: boolean },
+    listener: (event: string, fileName: string | null) => void,
+  ): FSWatcher;
   export function existsSync(path: string): boolean;
   export function statSync(path: string): {
     isDirectory(): boolean;
@@ -205,6 +226,13 @@ declare const process: {
   /** Escritura sin salto de línea, para indicadores de progreso. */
   stderr: { write(chunk: string): boolean };
   stdout: { write(chunk: string): boolean };
+  /**
+   * Señales del sistema, una sola vez.
+   *
+   * Lo usa `watch` para cerrar el vigilante en el Ctrl+C: sin cerrarlo,
+   * el handle de `fs.watch` queda abierto y el proceso no termina.
+   */
+  once(event: "SIGINT" | "SIGTERM", listener: () => void): void;
 };
 declare const console: {
   log(...args: unknown[]): void;
