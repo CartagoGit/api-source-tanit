@@ -1,5 +1,5 @@
 {
   "name": "fastify-api",
   "type": "module",
-  "dependencies": { "fastify": "^4.26.0", "@fastify/cors": "^9.0.0" }
+  "dependencies": { "fastify": "^5.8.3", "@fastify/cors": "^11.1.0" }
 }

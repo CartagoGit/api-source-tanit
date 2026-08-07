@@ -67,7 +67,7 @@ interface IProblem {
 async function collectMarkdown(dir: string, out: string[] = []): Promise<string[]> {
   let entries: Array<{ name: string; isDirectory(): boolean }>;
   try {
-    entries = (await readdir(dir, { withFileTypes: true })) as never;
+    entries = await readdir(dir, { withFileTypes: true });
   } catch {
     return out;
   }
@@ -118,9 +118,9 @@ interface ICountedClaim {
  */
 async function countExampleProjects(): Promise<number> {
   try {
-    const entries = (await readdir(join(REPO_ROOT, "examples"), {
+    const entries = await readdir(join(REPO_ROOT, "examples"), {
       withFileTypes: true,
-    })) as unknown as Array<{ name: string; isDirectory(): boolean }>;
+    });
     return entries.filter(
       (e) => e.isDirectory() && e.name.startsWith("example-") && e.name !== "example-app",
     ).length;

@@ -97,7 +97,7 @@ export async function collectFiles(
 
     let entries: IDirentLike[];
     try {
-      entries = (await readdir(dir, { withFileTypes: true })) as unknown as IDirentLike[];
+      entries = await readdir(dir, { withFileTypes: true });
     } catch {
       // Sin permiso, o desapareció mientras recorríamos. Se pierde esta
       // carpeta y solo esta.

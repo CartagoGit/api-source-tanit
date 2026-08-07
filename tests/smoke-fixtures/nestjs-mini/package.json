@@ -1,4 +1,4 @@
 {
   "name": "nestjs-mini",
-  "dependencies": { "@nestjs/core": "^10.0.0", "@nestjs/common": "^10.0.0" }
+  "dependencies": { "@nestjs/core": "^11.1.18", "@nestjs/common": "^11.1.18" }
 }
