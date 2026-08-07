@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 190 símbolos en 42 módulos.
+> 192 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1785,6 +1785,55 @@ export function unwrapObjectLiteralItem(item: string): string
 
 Quita las llaves exteriores y el espacio sobrante de un item devuelto
 por `splitTopLevel` (el primero arrastra el `{`, el último el `}`).
+
+#### `maskStringLiterals`
+
+```ts
+export function maskStringLiterals(src: string): string
+```
+
+Sustituye el **contenido** de las cadenas por espacios, conservando
+las comillas y la longitud total.
+
+Sirve para responder a una pregunta que los scanners hacen todo el
+rato sin saberlo: *¿esta llamada está de verdad en el código, o está
+dentro de una cadena?* Un fichero con
+
+    const ayuda = 'usa router.get("/x") para registrar';
+
+producía un endpoint `GET /x` que no existe. El texto de una cadena no
+es código, pero para un regex se lee igual.
+
+La longitud se conserva a propósito: así los desplazamientos de la
+máscara valen sobre el fuente original, y se puede buscar en la
+máscara y leer en el original. Sin eso habría que mantener un mapa de
+posiciones, que es la clase de cosa que se desincroniza.
+
+Cubre comillas simples, dobles y plantillas. Dentro de una plantilla,
+lo que va en `${…}` **sí** es código y se conserva: es donde viven las
+interpolaciones que otros lints tienen que ver.
+
+#### `findOutsideStrings`
+
+```ts
+export function findOutsideStrings( src: string, pattern: RegExp, ): Array<
+```
+
+Las apariciones de `pattern` que están **fuera** de cualquier cadena.
+
+El truco tiene dos mitades y las dos hacen falta:
+
+  1. Se **busca** sobre la máscara, donde el contenido de las cadenas
+     son espacios. Así una llamada escrita dentro de un texto —
+     `'usa router.get("/x")'`— no aparece.
+  2. Se **lee** del fuente original, en la misma posición. La máscara
+     conserva la longitud justo para esto: el path de una ruta de
+     verdad ES una cadena, así que en la máscara viene en blanco y
+     leerlo de ahí daría rutas vacías.
+
+Saltarse la segunda mitad es fácil y el fallo es silencioso: los
+grupos capturados salen llenos de espacios y las rutas se descartan
+una a una sin que nada avise.
 
 ### `projects/core/helpers/uri.helper.ts`
 

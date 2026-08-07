@@ -39,6 +39,7 @@ import {
 import {
   countLinesBefore,
   findAllBalanced,
+  findOutsideStrings,
   findNearestBalanced,
   stripJsComments,
   type IBalancedCall,
@@ -69,8 +70,10 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
 // Regex para `<ident>.METHOD(path, handler)` o `app.METHOD(path, handler)`.
 // Captura: 1=ident (router name), 2=method, 3=path (entre comilla simple o doble).
 // Usa lookbehind negativo para evitar que matchee `myRouter` SIN `Router` antes.
+// `\s*` cruza saltos de línea, que es lo que permite reconocer la forma
+// multilínea: `router.post(\n  "/x",\n  handler,\n)`.
 const APP_METHOD_RE =
-  /([a-zA-Z_$][\w$]*)\s*\.\s*(get|post|put|delete|patch|head|options)\s*\(\s*(['"])([^'"]+)\3/gi;
+  /([a-zA-Z_$][\w$]*)\s*\.\s*(get|post|put|delete|patch|head|options)\s*\(\s*(['"])([^'"\n]+)\3/gi;
 // Regex para `Router({ prefix: 'api/v1' })`.
 const ROUTER_PREFIX_RE = /Router\s*\(\s*\{[^}]*prefix\s*:\s*['"]([^'"]+)['"]/gi;
 // Regex para `app.use('/prefix', router)`.
@@ -183,32 +186,44 @@ function parseModule(file: string, raw: string): ParsedModule {
       if (auM[2] && auM[3]) appUsePrefixes.set(auM[3], auM[2]);
     }
 
-    // app.METHOD(path, handler) o router.METHOD(path, handler)
-    const aReg = new RegExp(APP_METHOD_RE.source, "gi");
-    let m: RegExpExecArray | null;
-    while ((m = aReg.exec(line)) !== null) {
-      const ident = (m[1] ?? "").trim();
-      const method = (m[2] ?? "").toLowerCase();
-      const path = (m[4] ?? "").trim();
-      if (!HTTP_METHODS.includes(method)) continue;
-      if (!path.startsWith("/")) continue;
-      // Heurística: el ident es un router (NO 'app', 'server', 'fastify', 'koa')
-      if (ident !== "app" && ident !== "server" && ident !== "fastify" && ident !== "koa") {
-        routes.push({ method, path, line: i + 1, routerName: ident });
-      } else {
-        routes.push({ method, path, line: i + 1 });
-      }
-    }
+  }
 
-    // Hapi: server.route({ method, path, ... })
-    const hReg = new RegExp(HAPI_ROUTE_RE.source, "gi");
-    while ((m = hReg.exec(line)) !== null) {
-      const method = (m[1] ?? "").toLowerCase();
-      const path = (m[3] ?? "").trim();
-      if (!HTTP_METHODS.includes(method)) continue;
-      if (!path.startsWith("/")) continue;
-      routes.push({ method, path, line: i + 1 });
+  // Las rutas se buscan sobre el fichero ENTERO, no línea a línea.
+  //
+  // Dos motivos, los dos medidos:
+  //
+  //   1. **Multilínea.** `router.post(\n  "/x",\n  handler,\n)` es la forma
+  //      normal de escribirlo en cuanto hay middlewares, y un bucle por
+  //      líneas no ve el path porque está en otra que la llamada.
+  //   2. **Cadenas.** `const ayuda = 'usa router.get("/x")'` producía un
+  //      endpoint que no existe. `findOutsideStrings` enmascara el
+  //      contenido de las cadenas antes de buscar, así que una llamada
+  //      que vive dentro de una desaparece.
+  //
+  // Es lo que la propuesta del motor de AST venía a resolver, sin el
+  // parser: el problema no era el regex, era mirar una línea cada vez.
+  for (const { match } of findOutsideStrings(text, APP_METHOD_RE)) {
+    const ident = (match[1] ?? "").trim();
+    const method = (match[2] ?? "").toLowerCase();
+    const path = (match[4] ?? "").trim();
+    if (!HTTP_METHODS.includes(method)) continue;
+    if (!path.startsWith("/")) continue;
+    const line = countLinesBefore(text, match.index) + 1;
+    // Heurística: el ident es un router (NO 'app', 'server', 'fastify', 'koa')
+    if (ident !== "app" && ident !== "server" && ident !== "fastify" && ident !== "koa") {
+      routes.push({ method, path, line, routerName: ident });
+    } else {
+      routes.push({ method, path, line });
     }
+  }
+
+  // Hapi: server.route({ method, path, ... })
+  for (const { match } of findOutsideStrings(text, HAPI_ROUTE_RE)) {
+    const method = (match[1] ?? "").toLowerCase();
+    const path = (match[3] ?? "").trim();
+    if (!HTTP_METHODS.includes(method)) continue;
+    if (!path.startsWith("/")) continue;
+    routes.push({ method, path, line: countLinesBefore(text, match.index) + 1 });
   }
 
   return { file, routes, routerPrefixes, appUsePrefixes };

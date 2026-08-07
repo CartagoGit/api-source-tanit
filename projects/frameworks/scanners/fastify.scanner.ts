@@ -35,6 +35,7 @@ import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helpe
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import {
   findAllBalanced,
+  findOutsideStrings,
   findClosingParen,
   stripJsComments,
 } from "../../core/helpers/source-scan.helper.js";
@@ -186,12 +187,14 @@ function parseShortRoutes(
   sourceFile: string,
 ): IShortRoute[] {
   const out: IShortRoute[] = [];
-  for (const match of source.matchAll(SHORT_ROUTE_RE)) {
+  // Ver el comentario de Hono: una llamada dentro de una cadena no es
+  // una ruta.
+  for (const { match, index } of findOutsideStrings(source, SHORT_ROUTE_RE)) {
     const method = (match[1] ?? "").toUpperCase();
     const rawUri = match[3] ?? "";
     if (!rawUri.startsWith("/")) continue;
 
-    const parenAt = source.indexOf("(", match.index ?? 0);
+    const parenAt = source.indexOf("(", index);
     const callEnd = findClosingParen(source, parenAt);
     out.push({
       route: {

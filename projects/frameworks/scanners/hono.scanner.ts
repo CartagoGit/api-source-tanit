@@ -22,6 +22,7 @@ import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helpe
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import {
   findAllBalanced,
+  findOutsideStrings,
   stripJsComments,
 } from "../../core/helpers/source-scan.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -135,7 +136,10 @@ export class HonoRouteScanner implements IRouteScanner {
       const sourceFile = relative(match.projectRoot, file);
       const prefix = mountPrefixOf(source);
 
-      for (const routeMatch of source.matchAll(ROUTE_RE)) {
+      // `findOutsideStrings` en vez de `matchAll`: una llamada escrita
+      // dentro de un texto —`'usa app.get("/x")'`— no es una ruta, y
+      // producía un endpoint que no existe en ninguna parte.
+      for (const { match: routeMatch, index } of findOutsideStrings(source, ROUTE_RE)) {
         const rawMethod = (routeMatch[1] ?? "").toLowerCase();
         const rawUri = routeMatch[3] ?? "";
         if (!rawUri.startsWith("/")) continue;
@@ -146,7 +150,7 @@ export class HonoRouteScanner implements IRouteScanner {
         const uri = joinRoutePath(prefix, rawUri);
 
         routes.push({
-          lineNumber: lineOf(source, routeMatch.index ?? 0),
+          lineNumber: lineOf(source, index),
           method,
           uri,
           rawUri,

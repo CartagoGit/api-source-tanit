@@ -63,12 +63,25 @@ export function findClosingParen(text: string, openIndex: number): number {
 export function findAllBalanced(text: string, pattern: RegExp): IBalancedCall[] {
   const out: IBalancedCall[] = [];
   const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+  // El **inicio** de la llamada se busca sobre la máscara: así una
+  // escrita dentro de un texto —`'usa app.get("/x")'`— no cuenta como
+  // una llamada. Los índices valen sobre el original porque la máscara
+  // conserva la longitud, y el contenido se sigue leyendo de `text`,
+  // donde los argumentos son los de verdad.
+  //
+  // Afectaba a Hono, Fastify y a los parsers de zod y Joi: cualquier
+  // ejemplo en un comentario de cadena o en un texto de ayuda producía
+  // un endpoint que no existe en ninguna parte.
+  const masked = maskStringLiterals(text);
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = re.exec(masked)) !== null) {
     // Una regex que puede casar vacío colgaría el bucle: forzamos avance.
     if (m[0].length === 0) re.lastIndex++;
-    const callStart = text.indexOf("(", m.index);
+    const callStart = masked.indexOf("(", m.index);
     if (callStart === -1) continue;
+    // El paréntesis de cierre se busca en el ORIGINAL: un `)` dentro de
+    // una cadena no cierra nada, y en la máscara ese carácter ya no
+    // está.
     const callEnd = findClosingParen(text, callStart);
     if (callEnd === -1) continue;
     out.push({ callStart, callEnd });
@@ -188,4 +201,118 @@ export function unwrapObjectLiteralItem(item: string): string {
     .replace(/^\s*\{\s*/, "")
     .replace(/\s*\}\s*$/, "")
     .trim();
+}
+
+/**
+ * Sustituye el **contenido** de las cadenas por espacios, conservando
+ * las comillas y la longitud total.
+ *
+ * Sirve para responder a una pregunta que los scanners hacen todo el
+ * rato sin saberlo: *¿esta llamada está de verdad en el código, o está
+ * dentro de una cadena?* Un fichero con
+ *
+ *     const ayuda = 'usa router.get("/x") para registrar';
+ *
+ * producía un endpoint `GET /x` que no existe. El texto de una cadena no
+ * es código, pero para un regex se lee igual.
+ *
+ * La longitud se conserva a propósito: así los desplazamientos de la
+ * máscara valen sobre el fuente original, y se puede buscar en la
+ * máscara y leer en el original. Sin eso habría que mantener un mapa de
+ * posiciones, que es la clase de cosa que se desincroniza.
+ *
+ * Cubre comillas simples, dobles y plantillas. Dentro de una plantilla,
+ * lo que va en `${…}` **sí** es código y se conserva: es donde viven las
+ * interpolaciones que otros lints tienen que ver.
+ */
+export function maskStringLiterals(src: string): string {
+  const out = src.split("");
+  let i = 0;
+
+  while (i < src.length) {
+    const char = src[i];
+    if (char !== '"' && char !== "'" && char !== "`") {
+      i++;
+      continue;
+    }
+    const quote = char;
+    let j = i + 1;
+    let depth = 0;
+    while (j < src.length) {
+      const c = src[j];
+      if (c === "\\") {
+        // Un escape se lleva por delante el siguiente carácter, sea cual
+        // sea: sin esto, un `"\\""` cierra donde no debe.
+        out[j] = " ";
+        if (j + 1 < src.length) out[j + 1] = " ";
+        j += 2;
+        continue;
+      }
+      // `${` dentro de una plantilla abre código de verdad.
+      if (quote === "`" && c === "$" && src[j + 1] === "{") {
+        depth++;
+        j += 2;
+        continue;
+      }
+      if (depth > 0) {
+        if (c === "}") depth--;
+        j++;
+        continue;
+      }
+      if (c === quote) break;
+      // Un salto de línea cierra una cadena de comillas simples o
+      // dobles: si sigue abierta es que no era una cadena, y enmascarar
+      // hasta el final del fichero se cargaría el resto del código.
+      if (c === "\n" && quote !== "`") break;
+      out[j] = " ";
+      j++;
+    }
+    i = j + 1;
+  }
+  return out.join("");
+}
+
+/**
+ * Las apariciones de `pattern` que están **fuera** de cualquier cadena.
+ *
+ * El truco tiene dos mitades y las dos hacen falta:
+ *
+ *   1. Se **busca** sobre la máscara, donde el contenido de las cadenas
+ *      son espacios. Así una llamada escrita dentro de un texto —
+ *      `'usa router.get("/x")'`— no aparece.
+ *   2. Se **lee** del fuente original, en la misma posición. La máscara
+ *      conserva la longitud justo para esto: el path de una ruta de
+ *      verdad ES una cadena, así que en la máscara viene en blanco y
+ *      leerlo de ahí daría rutas vacías.
+ *
+ * Saltarse la segunda mitad es fácil y el fallo es silencioso: los
+ * grupos capturados salen llenos de espacios y las rutas se descartan
+ * una a una sin que nada avise.
+ */
+export function findOutsideStrings(
+  src: string,
+  pattern: RegExp,
+): Array<{ index: number; match: RegExpExecArray }> {
+  const clean = stripJsComments(src);
+  const masked = maskStringLiterals(clean);
+  // Copias propias: mover el `lastIndex` del regex que nos pasan
+  // rompería el bucle de quien llama (ver `lint:regex-state`).
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const finder = new RegExp(pattern.source, flags);
+  // `y` (sticky) ancla la lectura exactamente donde la máscara encontró
+  // la llamada, sin volver a buscar.
+  const reader = new RegExp(pattern.source, `${pattern.flags.replace(/[gy]/g, "")}y`);
+
+  const out: Array<{ index: number; match: RegExpExecArray }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = finder.exec(masked)) !== null) {
+    if (m[0].length === 0) {
+      finder.lastIndex++;
+      continue;
+    }
+    reader.lastIndex = m.index;
+    const real = reader.exec(clean);
+    if (real) out.push({ index: m.index, match: real });
+  }
+  return out;
 }
