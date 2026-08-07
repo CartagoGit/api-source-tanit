@@ -32,8 +32,15 @@ export type AuthSchemeType = "bearer" | "apikey" | "oauth2" | "none";
 export const AUTH_API_KEY_VARIABLE = "apiKey";
 /** Variables del flujo OAuth2. Postman las pide por nombre. */
 export const AUTH_CLIENT_ID_VARIABLE = "clientId";
+/** Secreto de cliente para el flujo OAuth2. Va vacío y como secreto. */
 export const AUTH_CLIENT_SECRET_VARIABLE = "clientSecret";
 
+/**
+ * El esquema de autenticación deducido, con la señal que lo delató.
+ *
+ * La `evidence` no es adorno: una detección automática que no se puede
+ * contrastar hay que creérsela a ciegas.
+ */
 export interface IDetectedAuthScheme {
   readonly type: AuthSchemeType;
   /** Nombre de la cabecera o del query param, solo para `apikey`. */

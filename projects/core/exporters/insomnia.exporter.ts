@@ -90,6 +90,7 @@ function toRequest(
   };
 }
 
+/** Serializa el catálogo al formato de exportación v4 de Insomnia. */
 export class InsomniaExporter implements IExportTarget {
   readonly format = "insomnia";
   readonly summary = "Insomnia v4 (JSON) — the open-source alternative";

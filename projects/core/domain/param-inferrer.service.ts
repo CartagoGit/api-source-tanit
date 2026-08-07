@@ -100,6 +100,12 @@ const QUERY_FIELD_HINTS: Array<{ re: RegExp; value: string }> = [
   { re: /^fecha_fin$|^to$|^until$/i, value: "2024-12-31" },
 ];
 
+/**
+ * Un valor de ejemplo plausible para un parámetro de query, por su nombre.
+ *
+ * `page` da un número y `search` da texto. Es heurística pura: sirve para
+ * que la request se pueda lanzar sin editarla, no para acertar.
+ */
 export function exampleForQueryField(name: string): string {
   for (const h of QUERY_FIELD_HINTS) if (h.re.test(name)) return h.value;
   return "ejemplo";
@@ -109,6 +115,7 @@ export function exampleForQueryField(name: string): string {
 // Sugerencias de body (POST/PUT/PATCH sin FormRequest).
 // ---------------------------------------------------------------------------
 
+/** El body inferido para un endpoint y con qué confianza se dedujo. */
 export interface BodyInference {
   /** Filename o heurística que produjo el body. */
   reason: string;
@@ -306,6 +313,12 @@ export function inferCollectionVariables(
 // Application al catálogo
 // ---------------------------------------------------------------------------
 
+/**
+ * Cuánto ha rellenado la inferencia agnóstica.
+ *
+ * Lo imprime el CLI: es la forma de ver de un vistazo cuánto viene del
+ * código y cuánto de una heurística.
+ */
 export interface InferApplyStats {
   bodiesAdded: number;
   queriesAdded: number;
@@ -361,6 +374,11 @@ export function applyAgnosticInference(
 }
 
 // Re-export para que el package.json (CLI) pueda usar el helper.
+/**
+ * Piezas internas expuestas **solo** para sus tests.
+ *
+ * El guion bajo es la señal: no forman parte del contrato del módulo.
+ */
 export const _internals = {
   PATH_PARAM_HINTS,
   COMMON_QUERY_FIELDS,

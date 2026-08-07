@@ -135,6 +135,12 @@ function prettySegment(seg: string): string {
     .join(" ");
 }
 
+/**
+ * El nombre legible de una carpeta a partir de su clave.
+ *
+ * `erp-productos` pasa a `Erp Productos`. Solo afecta a lo que se lee en
+ * Postman: la clave sigue siendo la que agrupa.
+ */
 export function prettyGroupName(topGroup: string): string {
   if (!topGroup || topGroup === "(raíz)") return "Raíz";
   // Si tiene '/', lo procesamos segmento a segmento para preservar la

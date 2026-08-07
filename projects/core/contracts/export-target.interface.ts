@@ -43,6 +43,14 @@ export interface IExportAuth {
   readonly keyIn?: "header" | "query" | undefined;
 }
 
+/**
+ * Un formato de salida.
+ *
+ * Implementarlo y registrarlo en `export-registry.service.ts` es todo lo
+ * que hace falta para añadir un formato: el motor de escaneo no se toca,
+ * porque lo que se serializa es la representación intermedia que ya
+ * produce.
+ */
 export interface IExportTarget {
   /** Identificador para `--format`. En minúsculas, sin espacios. */
   readonly format: string;

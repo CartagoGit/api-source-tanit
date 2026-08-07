@@ -235,6 +235,7 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
   return document;
 }
 
+/** Serializa el catálogo a un documento OpenAPI 3.1.0 en YAML. */
 export class OpenApiExporter implements IExportTarget {
   readonly format = "openapi";
   readonly summary = "OpenAPI 3.1.0 (YAML) — SDKs, gateways, Swagger Editor";

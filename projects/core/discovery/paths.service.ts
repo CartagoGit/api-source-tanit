@@ -261,6 +261,12 @@ export async function withScopedPaths<T>(
   return run as Promise<T>;
 }
 
+/**
+ * Ejecuta `fn` con la raíz del proyecto fijada a `root`.
+ *
+ * Atajo de `withScopedPaths` para el caso más común. Restaura el estado
+ * anterior al terminar, también si `fn` lanza.
+ */
 export async function withProjectRoot<T>(
   root: string,
   fn: () => Promise<T>,
@@ -301,7 +307,13 @@ export function projectBasename(): string {
   return discover().projectBasename;
 }
 
-/** Nombre del paquete. */
+/**
+ * Nombre de **este** paquete, no del proyecto que se escanea.
+ *
+ * La distinción importa: cuando la herramienta está instalada dentro del
+ * proyecto, los dos nombres conviven y confundirlos hace que la colección
+ * salga llamándose `export-to-postman` en vez de como la API.
+ */
 export function packageBasename(): string {
   return discover().packageBasename;
 }
@@ -422,6 +434,13 @@ export function toProjectRelative(absPath: string): string {
   return relative(r, absPath).split(sep).join("/");
 }
 
+/**
+ * Convierte una ruta relativa al proyecto escaneado en absoluta.
+ *
+ * Ojo: relativa al **proyecto que se escanea**, no a este paquete. Es la
+ * distinción que hace que un scanner pueda emitir `src/routes/x.ts` sin
+ * saber dónde está instalado.
+ */
 export function fromProjectRelative(relPath: string): string {
   const r = projectRoot();
   if (!r) {
@@ -433,6 +452,13 @@ export function fromProjectRelative(relPath: string): string {
   return join(r, relPath);
 }
 
+/**
+ * Las rutas resueltas, en texto, para la traza del CLI.
+ *
+ * Se imprime antes de escanear a propósito: cuando la salida no es la
+ * esperada, lo primero que hay que descartar es que se esté mirando otra
+ * carpeta.
+ */
 export function describeDiscoveredPaths(): string {
   const d = discover();
   return [

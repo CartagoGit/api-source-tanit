@@ -113,6 +113,7 @@ function toBru(spec: EndpointSpec, seq: number, input: IExportInput): string {
   return parts.filter(Boolean).join("\n");
 }
 
+/** Serializa el catálogo al árbol de ficheros `.bru` de Bruno. */
 export class BrunoExporter implements IExportTarget {
   readonly format = "bruno";
   readonly summary = "Bruno (.bru) — Git-friendly folders, no cloud";

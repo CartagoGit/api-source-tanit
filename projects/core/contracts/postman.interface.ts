@@ -15,18 +15,32 @@ export interface PostmanUrl {
   }>;
 }
 
+/** Una cabecera HTTP tal como la guarda Postman. */
 export interface PostmanHeader {
   key: string;
   value: string;
   type?: string;
 }
 
+/**
+ * El cuerpo de una petición.
+ *
+ * Este proyecto solo emite `raw` con JSON: es lo que se puede derivar de
+ * unas reglas de validación. Los otros modos existen en el formato y se
+ * declaran para poder leer una colección ajena sin perderlos.
+ */
 export interface PostmanBody {
   mode: "raw" | "formdata" | "urlencoded" | "file";
   raw?: string;
   options?: { raw?: { language: string } };
 }
 
+/**
+ * La petición de un item: qué se manda y a dónde.
+ *
+ * `method` es `string` y no la unión de verbos porque aquí también se
+ * leen colecciones que no ha escrito esta herramienta.
+ */
 export interface PostmanRequest {
   method: string;
   header: PostmanHeader[];
@@ -35,11 +49,25 @@ export interface PostmanRequest {
   body?: PostmanBody;
 }
 
+/**
+ * Un script que Postman ejecuta alrededor de la petición.
+ *
+ * `prerequest` corre antes de mandarla; `test`, después de recibir la
+ * respuesta. `exec` es el script partido en líneas, que es como lo
+ * guarda el formato.
+ */
 export interface PostmanEvent {
   listen: "test" | "prerequest";
   script: { type: string; exec: string[] };
 }
 
+/**
+ * Un nodo del árbol de la colección.
+ *
+ * Es carpeta **o** petición según qué campo traiga: con `item` es
+ * carpeta y con `request` es petición. El formato no los separa en dos
+ * tipos, así que aquí tampoco.
+ */
 export interface PostmanItem {
   name: string;
   item?: PostmanItem[];
@@ -48,12 +76,25 @@ export interface PostmanItem {
   event?: PostmanEvent[];
 }
 
+/**
+ * Una variable de colección o de entorno.
+ *
+ * `type: "secret"` hace que Postman la oculte en la interfaz: es lo que
+ * llevan el token y las credenciales.
+ */
 export interface PostmanVariable {
   key: string;
   value: string;
   type?: string;
 }
 
+/**
+ * Una colección Postman v2.1.0 completa.
+ *
+ * El `_postman_id` de `info` es lo que decide si reimportar **actualiza**
+ * la colección o crea otra al lado, así que se deriva del proyecto y no
+ * se sortea (p00014).
+ */
 export interface PostmanCollection {
   info: {
     name: string;

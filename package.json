@@ -86,7 +86,7 @@
     "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
     "typecheck:plugin": "bun run --cwd projects/plugins/mcp-vertex_expostman typecheck",
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
-    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:regex-state && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:docs && bun run lint:proposals && bun run lint:secrets && bun run lint:sast",
+    "lint": "bun run lint:naming && bun run lint:paths && bun run lint:regex-state && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:docs && bun run lint:proposals && bun run lint:secrets && bun run lint:sast && bun run lint:tsdoc && bun run lint:api",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts",
     "mcp:sync": "bun run scripts/gates/sync-mcp-config.script.ts",
     "lint:mcp": "bun run scripts/gates/sync-mcp-config.script.ts --check",
@@ -96,7 +96,11 @@
     "bench:scan": "bun run scripts/gates/bench-scan.script.ts",
     "lint:secrets": "bun run scripts/gates/lint-secrets.script.ts",
     "lint:sast": "bun run scripts/gates/lint-sast.script.ts",
-    "security:audit": "bun audit --audit-level=high"
+    "security:audit": "bun audit --audit-level=high",
+    "lint:tsdoc": "bun run scripts/gates/lint-tsdoc.script.ts",
+    "changelog": "bun run scripts/build/changelog.script.ts",
+    "docs:api": "bun run scripts/build/api-reference.script.ts",
+    "lint:api": "bun run scripts/build/api-reference.script.ts --check"
   },
   "publishConfig": {
     "access": "public",

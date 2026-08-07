@@ -44,6 +44,7 @@ import { readFile } from "node:fs/promises";
 export const READ_CONCURRENCY = 16;
 
 /** Un fichero leído. */
+/** Un fichero ya leído, con la ruta tal cual venía en la entrada. */
 export interface IReadFile {
   /** Ruta absoluta, tal cual venía en la entrada. */
   readonly path: string;

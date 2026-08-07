@@ -32,7 +32,16 @@ export interface IAuthFlow {
 
 /** Nombres de variable del environment donde viven las credenciales. */
 export const AUTH_USERNAME_VARIABLE = "authUsername";
+/** Contraseña del login. Va vacía y marcada como secreto. */
 export const AUTH_PASSWORD_VARIABLE = "authPassword";
+/**
+ * Donde el script del login guarda el token.
+ *
+ * El nombre está aquí y no escrito en cada sitio porque lo comparten el
+ * script que lo guarda, el bloque `auth` de la colección y la cabecera de
+ * cada petición: si bailara entre ellos, la colección dejaría de
+ * autenticar sin que nada fallara.
+ */
 export const AUTH_TOKEN_VARIABLE = "token";
 
 /** Sufijos de URI que identifican cada paso del ciclo. */
@@ -107,7 +116,15 @@ export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null 
   return { login, refresh, logout };
 }
 
-/** Opciones de `applyAuthFlow`. */
+/**
+ * Lo que el host puede declarar para ayudar a cablear la sesión.
+ *
+ * Las dos son **último recurso**, no configuración esperada: el flujo
+ * detecta el login por método y URI, y el token probando los caminos
+ * habituales de la respuesta en ejecución. Antes se exigía declarar el
+ * camino del token, y el resultado fue que no se activaba en ninguno de
+ * los once proyectos de ejemplo.
+ */
 export interface IApplyAuthFlowOptions {
   /**
    * Camino declarado por el host (`config.tokenResponsePath`). Si viene,

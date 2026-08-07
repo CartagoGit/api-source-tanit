@@ -30,6 +30,13 @@ import type { EndpointSpec } from "../contracts/postman.interface.js";
 import type { ProjectConfig } from "../contracts/project-config.interface.js";
 import { projectRoot } from "./paths.service.js";
 
+/**
+ * La configuración del proyecto, ya resuelta, y de dónde ha salido.
+ *
+ * `configPath` importa tanto como el config: es la diferencia entre "no
+ * encontré tu fichero" y "lo encontré y dice esto", que es lo primero
+ * que hay que saber cuando la salida no es la esperada.
+ */
 export interface LoadedProject {
   config: ProjectConfig;
   manualEndpoints: EndpointSpec[];
@@ -360,6 +367,12 @@ export async function loadProject(
 }
 
 // Internal helpers re-exported for tests.
+/**
+ * Piezas internas expuestas **solo** para sus tests.
+ *
+ * El guion bajo es la señal: no forman parte del contrato del módulo y
+ * pueden cambiar sin aviso.
+ */
 export const _internal = {
   extractConfig,
   extractEndpoints,

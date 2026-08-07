@@ -120,6 +120,7 @@ export function createDebouncer(
   };
 }
 
+/** Qué vigilar, con cuánto rebote, y qué hacer cuando algo cambia. */
 export interface IWatchOptions {
   /** Raíz del proyecto a vigilar. */
   readonly root: string;

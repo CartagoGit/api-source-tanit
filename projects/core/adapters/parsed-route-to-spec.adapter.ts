@@ -172,6 +172,12 @@ function specToEndpointArgs(
   };
 }
 
+/**
+ * Lo que sale de adaptar las rutas de un scanner al catálogo del núcleo.
+ *
+ * Los contadores de con y sin reglas van aquí porque son la medida de
+ * cuánto se ha podido deducir del código frente a cuánto se ha inferido.
+ */
 export interface AdapterResult {
   readonly specs: EndpointSpec[];
   readonly routes: ReadonlyArray<ParsedRoute>;

@@ -29,6 +29,13 @@ import type {
   IValidationSpecProvider,
 } from "../contracts/scanner.interface.js";
 
+/**
+ * El catálogo de scanners con el que trabaja un orquestador.
+ *
+ * Se inyecta en vez de importarse para que el núcleo no conozca ni un
+ * framework: es lo que hace que `lint:boundaries` pueda prohibir que
+ * `core/` importe de `frameworks/`.
+ */
 export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;
   readonly routeScanners: ReadonlyArray<IRouteScanner>;
@@ -44,6 +51,14 @@ export interface IDetectedFramework {
   readonly score: number;
 }
 
+/**
+ * Decide qué framework es el proyecto y con qué colaboradores se escanea.
+ *
+ * Puntúa todos los detectores del registro y ordena por confianza. No se
+ * queda con el primero: un repo con un Express heredado y rutas nuevas de
+ * Next.js casa con dos, y quedarse con uno devolvía un tercio de los
+ * endpoints sin decir nada.
+ */
 export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
   constructor(private readonly registry: DiscoveryRegistry) {}
 

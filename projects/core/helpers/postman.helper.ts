@@ -24,6 +24,7 @@ export function uriFromRaw(rawUrl: string): string {
   return pathToSegments(rawUrl).join("/");
 }
 
+/** Una petición sacada de una colección ya construida, aplanada. */
 export interface CollectionRequest {
   method: string;
   uri: string;

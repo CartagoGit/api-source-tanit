@@ -46,6 +46,7 @@ function headersFor(
   return headers;
 }
 
+/** Serializa el catálogo a un registro HAR 1.2 sin respuestas. */
 export class HarExporter implements IExportTarget {
   readonly format = "har";
   readonly summary = "HAR 1.2 (JSON) — DevTools and replay tools";
@@ -123,6 +124,7 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
+/** Serializa el catálogo a un script de shell con un cURL por endpoint. */
 export class CurlExporter implements IExportTarget {
   readonly format = "curl";
   readonly summary = "Shell script with one cURL per endpoint";

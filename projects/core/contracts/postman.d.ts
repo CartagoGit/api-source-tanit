@@ -169,15 +169,45 @@ declare module "node:child_process" {
       shell?: boolean | string;
     },
   ): ChildProcess;
+  /**
+   * Lo que devuelve `spawnSync` cuando se le pasa un `encoding`.
+   *
+   * Va aparte porque sin `encoding` los streams son `Buffer`, y una
+   * declaración única obligaría a comprobar `typeof stdout === "string"`
+   * en cada uso aunque el `encoding` esté puesto tres líneas antes.
+   */
+  export interface SpawnSyncStringResult {
+    status: number | null;
+    stdout: string;
+    stderr: string;
+    pid: number;
+    signal: string | null;
+    error?: Error;
+  }
+  /** Opciones comunes a las dos formas de `spawnSync`. */
+  interface SpawnSyncOptions {
+    stdio?: "inherit" | "pipe" | "ignore" | Array<"inherit" | "pipe" | "ignore">;
+    cwd?: string;
+    env?: Record<string, string | undefined>;
+    timeout?: number;
+    /**
+     * Tope de bytes capturados. El de por defecto es 1 MiB, y un
+     * `git log` de un repo con historia lo pasa de largo — a partir de
+     * ahí la salida se **trunca**, que es peor que fallar porque el
+     * resultado parece correcto.
+     */
+    maxBuffer?: number;
+  }
+  // El overload con `encoding` va primero: es el más específico.
   export function spawnSync(
     command: string,
     args: string[],
-    options?: {
-      stdio?: "inherit" | "pipe" | "ignore";
-      cwd?: string;
-      env?: Record<string, string | undefined>;
-      encoding?: BufferEncoding;
-    },
+    options: SpawnSyncOptions & { encoding: BufferEncoding },
+  ): SpawnSyncStringResult;
+  export function spawnSync(
+    command: string,
+    args: string[],
+    options?: SpawnSyncOptions,
   ): SpawnSyncResult;
 }
 

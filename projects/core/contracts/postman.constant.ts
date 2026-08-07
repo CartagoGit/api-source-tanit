@@ -7,6 +7,12 @@
  */
 
 /** URL del schema Postman v2.1.0. */
+/**
+ * La URL del esquema que declara la versión del formato.
+ *
+ * Postman la usa para decidir cómo leer el fichero al importarlo; una
+ * colección sin ella o con otra versión se interpreta distinto.
+ */
 export const POSTMAN_SCHEMA_URL =
   "https://schema.getpostman.com/json/collection/v2.1.0/collection.json";
 
