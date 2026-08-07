@@ -11,6 +11,7 @@
  *   4. Todo enlace relativo apunta a algo que existe.
  *   5. Los números que la prosa afirma coinciden con la realidad.
  *   6. Cada framework del registro tiene su sección en `FRAMEWORKS.md`.
+ *   7. Cada comando del CLI se menciona en la documentación de usuario.
  *
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
@@ -355,6 +356,45 @@ async function checkFrameworkSections(problems: IProblem[]): Promise<void> {
   }
 }
 
+/**
+ * Que ningún comando del CLI se quede sin documentar.
+ *
+ * `push` y `watch` estuvieron en el dispatcher sin aparecer en **ningún**
+ * fichero de `docs/` ni en el README. `push` sube la colección
+ * directamente a Postman —de lo más útil que hace la herramienta— y no
+ * había forma de enterarse salvo leyendo `--help` entero.
+ *
+ * Un comando que solo existe en el código es un comando que nadie usa.
+ */
+async function checkCommandsDocumented(
+  commands: ReadonlySet<string>,
+  problems: IProblem[],
+): Promise<void> {
+  // Solo la documentación de usuario: `docs/` y el README. Las notas
+  // para agentes de `.github/` no cuentan — no las lee quien instala
+  // la herramienta.
+  const sources = ["README.md", "docs/INSTALL.md", "docs/FRAMEWORKS.md", "docs/POSTMAN.md"];
+  const texts: string[] = [];
+  for (const rel of sources) {
+    try {
+      texts.push(await readFile(join(REPO_ROOT, rel), "utf8"));
+    } catch {
+      // Un fichero que no existe ya lo dice otra comprobación.
+    }
+  }
+  const all = texts.join("\n");
+  for (const command of commands) {
+    if (all.includes(`expostman ${command}`)) continue;
+    problems.push({
+      file: "docs/INSTALL.md",
+      line: 0,
+      detail:
+        `\`expostman ${command}\` existe en el CLI y no se menciona en la ` +
+        "documentación de usuario. Un comando que solo está en el código no lo usa nadie.",
+    });
+  }
+}
+
 async function main(): Promise<number> {
   const packageJson = JSON.parse(await readFile(PACKAGE_JSON, "utf8")) as {
     scripts?: Record<string, string>;
@@ -424,6 +464,7 @@ async function main(): Promise<number> {
   }
 
   await checkFrameworkSections(problems);
+  await checkCommandsDocumented(commands, problems);
 
   if (problems.length > 0) {
     console.error(`lint:docs — ${problems.length} referencia(s) rota(s):\n`);

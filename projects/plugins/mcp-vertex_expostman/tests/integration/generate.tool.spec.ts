@@ -107,3 +107,59 @@ describe("expostman_generate", () => {
     },
   );
 });
+
+/**
+ * Los formatos, desde el plugin.
+ *
+ * Existen seis y el plugin solo llegaba al primero: un agente al que le
+ * piden "sácame el OpenAPI de esta API" no tenía forma de hacerlo aunque
+ * el CLI supiera. La lista sale del registro de exportadores, igual que
+ * `framework` sale del de scanners.
+ */
+describe("expostman_generate — formatos", () => {
+  test("rechaza un formato que no está en el registro", async () => {
+    const handler = await captureHandler(buildGenerateToolRegistration(makeCtx()));
+    const result = await handler({ projectRoot: sinManifiesto, formats: ["inventado"] });
+    expect(result.isError).toBe(true);
+    expect(result.content[0]?.text).toMatch(/Input inválido/i);
+  });
+
+  test(
+    "pide OpenAPI y cURL además de la colección",
+    { timeout: 120_000 },
+    async () => {
+      const handler = await captureHandler(buildGenerateToolRegistration(makeCtx()));
+      const result = await handler({
+        projectRoot: sinManifiesto,
+        outputDir: salida,
+        framework: "fastify",
+        formats: ["postman", "openapi", "curl"],
+      });
+      expect(result.isError).toBeFalsy();
+      const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
+        collectionPath: string | null;
+        extraPaths: string[];
+      };
+      // La colección sigue saliendo: los formatos extra se suman, no
+      // sustituyen.
+      expect(parsed.collectionPath).toContain(salida);
+      expect(parsed.extraPaths.some((p) => p.endsWith(".openapi.yaml"))).toBe(true);
+      expect(parsed.extraPaths.some((p) => p.endsWith(".curl.sh"))).toBe(true);
+    },
+  );
+
+  test(
+    "sin `formats`, solo la colección",
+    { timeout: 120_000 },
+    async () => {
+      const handler = await captureHandler(buildGenerateToolRegistration(makeCtx()));
+      const result = await handler({
+        projectRoot: sinManifiesto,
+        outputDir: salida,
+        framework: "fastify",
+      });
+      const parsed = JSON.parse(result.content[0]?.text ?? "{}") as { extraPaths: string[] };
+      expect(parsed.extraPaths).toEqual([]);
+    },
+  );
+});

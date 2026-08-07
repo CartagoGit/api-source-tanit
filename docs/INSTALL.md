@@ -219,6 +219,47 @@ quieras versionar la colección para revisarla en los PRs.
 | `check` | Compara la colección ya generada con las rutas del código y avisa de desincronizaciones. Requiere haber ejecutado `generate` antes. |
 | `validate` | Valida el JSON generado contra el schema Postman v2.1.0. |
 | `enrich` | Re-enriquece la colección desde el discovery. Con `--in-place` reemplaza la principal. |
+| `watch` | Regenera al guardar. Se queda vigilando el proyecto hasta que lo pares con Ctrl+C. |
+| `push` | Sube la colección **directamente** a tu workspace de Postman, sin pasar por el fichero. |
+
+### `watch` — mientras desarrollas
+
+```sh
+expostman watch --project-root .
+```
+
+Genera una vez y se queda mirando. Cada vez que guardas un fichero de
+rutas, vuelve a generar y dice qué ha cambiado:
+
+```
+[19:50:58] ✔ 9 requests en 3 carpetas · express · 54 ms
+[19:51:12] · cambió src/routes/orders.ts
+[19:51:12] ✔ 11 (+2) requests en 3 carpetas · 61 ms
+```
+
+El `+2` es lo que convierte la traza en información: sin él hay que
+acordarse de cuántos había antes.
+
+Acepta `--format` y `--framework` igual que `generate`. Y `--once`
+genera una vez y sale, que es lo que hace falta en un pipeline —
+comprobar que la colección sigue saliendo, sin un proceso que no termina.
+
+### `push` — sin pasar por el fichero
+
+```sh
+export POSTMAN_API_KEY=pmak-...      # se crea en postman.co/settings/me/api-keys
+expostman push --project-root .
+```
+
+Escanea, construye la colección y la sube. Si ya existe una con el mismo
+`_postman_id`, la **actualiza** en vez de crear otra al lado.
+
+| Flag | Qué controla |
+|---|---|
+| `--api-key <clave>` | La clave. Mejor por `POSTMAN_API_KEY`: un flag queda en el historial del shell. |
+| `--workspace <id>` | A qué workspace. Por defecto, el personal. |
+| `--no-environments` | Sube solo la colección. |
+| `--framework <id>` | Igual que en `generate`. |
 
 Antes de generar nada, para ver qué detectaría:
 
@@ -240,10 +281,40 @@ expostman generate --project-root . --inspect
 | `--basename <nombre>` | `POSTMAN_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
 | `--config <ruta>` | `POSTMAN_CONFIG` | autodetectado | `config.constant.ts` a usar |
 | `--envs <a,b,c>` | — | Local, Dev, Staging, Producción | Qué environments generar |
+| `--format <a,b,c>` | — | `postman` | Formatos de salida (ver abajo) |
 | `--inspect` | — | — | Solo informa; no escribe |
 | `--open` | — | — | Abre Postman al terminar |
 
 Los flags ganan a las variables de entorno.
+
+---
+
+## Otros formatos
+
+Postman es el formato por defecto, pero no el único. `--format` acepta
+varios separados por coma:
+
+```sh
+expostman generate --format postman,openapi
+```
+
+| Formato | Sale | Para qué |
+|---|---|---|
+| `postman` | `.postman_collection.json` | Lo de siempre. Va solo si no pides otra cosa. |
+| `openapi` | `.openapi.yaml` | OpenAPI 3.1.0. De aquí salen SDKs, configuración de gateway y documentación. |
+| `insomnia` | `.insomnia.json` | Insomnia v4. Los ids son estables, así que reimportar **actualiza** en vez de duplicar. |
+| `bruno` | una **carpeta** `.bruno/` | Un `.bru` por request. Es texto plano pensado para que un diff de Git se lea. |
+| `har` | `.har` | HAR 1.2, para las DevTools del navegador y las herramientas de replay. |
+| `curl` | `.curl.sh` | Un `curl` por endpoint, con las variables sacadas del entorno. |
+
+Un formato que no exista falla **antes** de escanear y te lista los
+válidos. Y si el formato no puede representar algo, lo dice: un proyecto
+GraphQL exportado a OpenAPI avisa de qué operaciones se pierden, porque
+OpenAPI identifica una operación por ruta y método y GraphQL tiene un
+solo endpoint.
+
+`expostman --help` lista los formatos leyéndolos del registro, así que
+esa lista nunca se queda vieja.
 
 ---
 
