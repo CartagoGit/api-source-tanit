@@ -1,0 +1,9 @@
+[package]
+name = "sample-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.5"
+serde = { version = "1.0", features = ["derive"] }
+validator = { version = "0.18", features = ["derive"] }

@@ -21,6 +21,7 @@ Medido con `bun run scripts/generate.script.ts --project-root examples/<x> --jso
 | `example-flask` | flask | 10 | 4 | sí |
 | `example-gin` | gin | 10 | 2 | sí |
 | `example-fiber` | fiber | 7 | 2 | sí |
+| `example-rust` | rust | 7 | 2 | sí |
 | `example-express` | express | 9 | 3 | sí |
 | `example-fastapi` | fastapi | 9 | 3 | sí |
 | `example-aspnet` | aspnet | 8 | 1 | — |
@@ -65,6 +66,7 @@ hace de forma distinta.
 | `example-flask` | Blueprints, Marshmallow |
 | `example-django` | DRF, `urlpatterns` anidados y la barra final obligatoria (`APPEND_SLASH`) |
 | `example-gin` | Grupos de rutas y `binding:"required"` en los structs |
+| `example-rust` | Macros `#[get("/x")]` de Actix y Rocket, `web::scope()`, `Option<T>` como opcional, `#[serde(rename)]` y `#[validate(...)]` |
 | `example-fiber` | `app.Group()` encadenable, `BodyParser` sobre un struct, y tags `validate:"…"` de go-playground/validator |
 | `example-springboot` | `@RestController`, `@RequestMapping` de clase, `jakarta.validation` |
 | `example-aspnet` | Controllers y minimal APIs (.NET 6+), Data Annotations |

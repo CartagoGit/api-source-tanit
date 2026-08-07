@@ -47,7 +47,10 @@ import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
  * de los pasos del pipeline vive en el servicio, para que el CLI, los
  * tests y el gate ejecuten exactamente lo mismo.
  */
-async function runPipeline(basename: string | null): Promise<IGenerationResult> {
+async function runPipeline(
+  basename: string | null,
+  forceFramework: string | null,
+): Promise<IGenerationResult> {
   console.log("→ Resolved paths:");
   console.log(describeDiscoveredPaths());
 
@@ -64,6 +67,7 @@ async function runPipeline(basename: string | null): Promise<IGenerationResult> 
   }
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
+    ...(forceFramework ? { forceFramework } : {}),
   });
 
   console.log(
@@ -142,13 +146,20 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const basenameIdx = args.indexOf("--basename");
   const basenameFlag =
     basenameIdx !== -1 ? args[basenameIdx + 1] ?? null : null;
+  // `--framework <id>` se salta la detección. Es la salida para los
+  // proyectos donde la autodetección NO PUEDE acertar: monorepos cuyo
+  // manifiesto está en la raíz, dependencias con alias, manifiestos que
+  // se generan en el build. Quien ejecuta esto sabe de qué es su API.
+  const frameworkIdx = args.indexOf("--framework");
+  const frameworkFlag = frameworkIdx !== -1 ? (args[frameworkIdx + 1] ?? null) : null;
+
   const envsIdx = args.indexOf("--envs");
   const envsFlag =
     envsIdx !== -1
       ? (args[envsIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
       : null;
 
-  const pipeline = await runPipeline(basenameFlag);
+  const pipeline = await runPipeline(basenameFlag, frameworkFlag);
   const discoveredSpecs = pipeline.specs;
 
   // Los avisos van ANTES de escribir nada: si alguien corta la

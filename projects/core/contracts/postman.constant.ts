@@ -30,3 +30,22 @@ export const VARIANT_TAG = " (auto · FormRequest)";
  */
 export const OUTPUT_DIR_NAME = "export-to-postman";
 
+/**
+ * Métodos HTTP que se emiten a la colección.
+ *
+ * Es la MISMA lista que el tipo `EndpointSpec["method"]`, y existe para
+ * poder recorrerla en tiempo de ejecución. El adapter la usa para
+ * filtrar: tenerla escrita a mano allí hacía que añadir un método al
+ * tipo no sirviera de nada, y los `HEAD` que los scanners sí detectaban
+ * desaparecían en silencio.
+ */
+export const SUPPORTED_METHODS = [
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+] as const;
+

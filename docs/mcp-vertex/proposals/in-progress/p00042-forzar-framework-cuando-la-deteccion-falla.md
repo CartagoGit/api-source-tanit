@@ -2,7 +2,7 @@
 id: p00042
 title: "p00042 — poder decirle de qué tipo es la API cuando no se autodetecta"
 kind: feat
-status: ready
+status: in-progress
 type: proposal
 track: export-to-postman
 date: 2026-08-07
@@ -47,6 +47,7 @@ proyecto"— suena a que la herramienta no lo soporta cuando sí lo hace.
 ## slices
 
 ### S1 — `--framework <id>` en el CLI y en el pipeline
+- **Estado**: done (2026-08-07)
 - **Ficheros**: `projects/core/discovery/generation.pipeline.ts`,
   `projects/core/discovery/discovery.orchestrator.ts`,
   `projects/cli/commands/generate.script.ts`.

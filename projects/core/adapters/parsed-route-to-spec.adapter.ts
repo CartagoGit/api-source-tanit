@@ -24,6 +24,7 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { SUPPORTED_METHODS } from "../contracts/postman.constant.js";
 import type { EndpointSpec } from "../contracts/postman.interface.js";
 import type {
   IProjectMatch,
@@ -169,9 +170,11 @@ export async function buildSpecsFromScanner(
   let withoutFormRequest = 0;
 
   for (const route of routes) {
-    // Filtra métodos no estándar
+    // Se descartan los métodos que Postman no sabe representar. La
+    // lista sale del propio contrato para que añadir uno allí no exija
+    // acordarse de esta línea: era lo que hacía desaparecer los HEAD.
     const m = route.method.toUpperCase();
-    if (!["GET", "POST", "PUT", "DELETE", "PATCH"].includes(m)) continue;
+    if (!(SUPPORTED_METHODS as readonly string[]).includes(m)) continue;
 
     const postmanUri = toPostmanUri(route.uri);
     const spec: EndpointSpec = {

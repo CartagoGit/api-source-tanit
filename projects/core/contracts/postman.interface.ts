@@ -72,7 +72,15 @@ export interface PostmanCollection {
 /** Endpoint declarado en build-collection.service.ts (catálogo). */
 export interface EndpointSpec {
   name: string;
-  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
+  /**
+   * Método HTTP.
+   *
+   * `HEAD` y `OPTIONS` entran aquí porque los scanners los detectan y
+   * Postman los soporta. Sin ellos, un `method: ["GET", "HEAD"]` de
+   * Fastify —o un `app.Options()` de Fiber— se escaneaba bien y
+   * desaparecía en el adapter sin decir nada.
+   */
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
   /** URI relativa sin el prefijo `/api`. Empieza con `/`. */
   uri: string;
   description?: string;

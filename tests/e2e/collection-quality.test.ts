@@ -16,6 +16,7 @@ import {
   generateWithAllFrameworks,
 } from "../../projects/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
+import { SUPPORTED_METHODS } from "../../projects/core/contracts/postman.constant";
 import type { PostmanItem } from "../../projects/core/contracts/postman.interface";
 
 /** Todas las requests de la colección, sin las carpetas. */
@@ -96,5 +97,32 @@ describe.each([...SUPPORTED_FRAMEWORKS])("colección de %s", (framework) => {
         expect(header.key, request.name).toBeTruthy();
       }
     }
+  });
+});
+
+describe("métodos HTTP que Postman soporta", () => {
+  // `EndpointSpec["method"]` no contemplaba HEAD ni OPTIONS, pero cinco
+  // scanners los detectan (`method: ["GET","HEAD"]` de Fastify,
+  // `app.Options()` de Fiber…). El adapter los filtraba en silencio: se
+  // escaneaban bien y desaparecían sin que nada lo dijera.
+  test("un HEAD declarado llega a la colección", async () => {
+    const { specs } = await generateWithAllFrameworks(
+      comprehensiveFixtureDir("fastify"),
+    );
+    expect(specs.some((spec) => spec.method === "HEAD")).toBe(true);
+  });
+
+  // La lista del adapter y la del tipo eran dos: añadir un método al
+  // tipo no servía de nada hasta acordarse de la otra.
+  test("la lista del adapter y la del contrato son la misma", () => {
+    expect([...SUPPORTED_METHODS]).toEqual([
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS",
+    ]);
   });
 });

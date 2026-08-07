@@ -234,6 +234,8 @@ expostman generate --project-root . --inspect
 |---|---|---|---|
 | `--project-root <ruta>` | `POSTMAN_PROJECT_ROOT` | se busca subiendo desde el cwd | Qué proyecto se escanea |
 | `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/export-to-postman/` | Carpeta de salida |
+| `--framework <id>` | — | (autodetección) | Fuerza el framework cuando la detección no puede acertar |
+| `--allow-empty` | — | — | No falla si no se encuentra ningún endpoint |
 | `--output <fichero>` | — | — | Ruta exacta del `.json` |
 | `--basename <nombre>` | `POSTMAN_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
 | `--config <ruta>` | `POSTMAN_CONFIG` | autodetectado | `config.constant.ts` a usar |
@@ -368,4 +370,23 @@ original, ninguna tenía tests, y cuando el proyecto se hizo agnóstico
 las tres seguían siendo solo-Laravel sin que nadie se enterara. Se
 retiraron en p00021. Hay **un** motor, y un test comprueba que ningún
 lanzador mencione nada de dominio.
+
+## Cuando la detección no acierta
+
+La autodetección va por manifiestos (`composer.json`, `go.mod`,
+`Cargo.toml`, `package.json`…). Hay formas de proyecto donde **no
+puede** funcionar:
+
+- Un monorepo cuyo manifiesto está en la raíz y la API en un subdirectorio.
+- Una dependencia con alias, o un fork con otro nombre de paquete.
+- Un manifiesto que se genera en el build y no está en el repositorio.
+
+En esos casos, díselo:
+
+```sh
+expostman generate --project-root ./services/api --framework fastify
+```
+
+Un id que no exista falla al instante y lista los válidos. Los ids son
+los de la tabla de `docs/FRAMEWORKS.md`.
 
