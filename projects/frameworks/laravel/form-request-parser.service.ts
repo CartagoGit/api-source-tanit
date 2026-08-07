@@ -80,8 +80,11 @@ function extractRulesBlock(src: string): string | null {
 function parseRulePair(text: string): { field: string; rules: string[]; unknown: string[] } | null {
   const m = text.match(/^\s*['"]([^'"]+)['"]\s*=>\s*(.+?)(?=,\s*(?:['"][^'"]+['"]\s*=>)|$)/s);
   if (!m) return null;
-  const field = m[1];
-  const rhs = m[2].trim().replace(/,?\s*$/, "");
+  // Los dos grupos son obligatorios en el patrón, pero eso el compilador
+  // no lo sabe: comprobarlos cuesta una línea y quita dos `!`.
+  const [, field, rawRhs] = m;
+  if (field === undefined || rawRhs === undefined) return null;
+  const rhs = rawRhs.trim().replace(/,?\s*$/, "");
   const rules: string[] = [];
   const unknown: string[] = [];
 
@@ -136,9 +139,9 @@ function parseRulePair(text: string): { field: string; rules: string[]; unknown:
   if (buf.trim()) items.push(buf.trim());
 
   for (const item of items) {
-    const strLit = item.match(/^['"]([^'"]+)['"]$/);
-    if (strLit) {
-      rules.push(strLit[1]);
+    const strLit = item.match(/^['"]([^'"]+)['"]$/)?.[1];
+    if (strLit !== undefined) {
+      rules.push(strLit);
       continue;
     }
     if (/^Rule::/.test(item) || /^new\s/.test(item)) {
@@ -148,8 +151,8 @@ function parseRulePair(text: string): { field: string; rules: string[]; unknown:
     if (item.startsWith("[") && item.endsWith("]")) {
       const inner = item.slice(1, -1);
       for (const r of inner.split(",")) {
-        const s = r.trim().match(/^['"]([^'"]+)['"]$/);
-        if (s) rules.push(s[1]);
+        const s = r.trim().match(/^['"]([^'"]+)['"]$/)?.[1];
+        if (s !== undefined) rules.push(s);
         else unknown.push(r.trim());
       }
       continue;
@@ -168,28 +171,27 @@ function parseRulesArray(block: string): { rules: Record<string, string[]>; unkn
   }
   // Encontrar TODAS las apariciones de `'campo' =>` y sus posiciones.
   const fieldRe = /['"]([^'"]+)['"]\s*=>\s*/g;
-  const matches: Array<{ field: string; rhsStart: number; rhsEnd: number }> = [];
+  const found: Array<{ field: string; rhsStart: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = fieldRe.exec(body)) !== null) {
+    const field = m[1];
+    if (field === undefined) continue;
     // Inicio del valor: justo después de `=> `
-    const rhsStart = m.index + m[0].length;
-    matches.push({ field: m[1], rhsStart, rhsEnd: -1 });
+    found.push({ field, rhsStart: m.index + m[0].length });
   }
-  // Para cada match, el final del RHS es el inicio del próximo `'campo' =>`
-  // (porque el `,` entre reglas también se "come" el regex siguiente).
-  // Estrategia: re-buscar el campo siguiente manualmente con offset.
-  for (let i = 0; i < matches.length; i++) {
-    const nextField = i + 1 < matches.length ? matches[i + 1].field : null;
-    let end: number;
-    if (nextField) {
-      // Buscar `, 'nextField'` desde rhsStart.
-      const sep = body.indexOf(`, '${nextField}'`, matches[i].rhsStart);
-      end = sep === -1 ? body.length : sep;
-    } else {
-      end = body.length;
-    }
-    matches[i].rhsEnd = end;
-  }
+  // El RHS de un campo acaba donde empieza el siguiente `'campo' =>`
+  // (el `,` que los separa se lo come el regex del siguiente).
+  //
+  // Antes esto era un bucle por índice que **mutaba** los elementos ya
+  // metidos en el array (`matches[i].rhsEnd = end`), leyendo `matches[i]`
+  // y `matches[i + 1]` sin que nada garantizara que existieran. Mapear
+  // deja el mismo cálculo sin índices sueltos ni mutación.
+  const matches = found.map((current, i) => {
+    const next = found[i + 1];
+    if (!next) return { ...current, rhsEnd: body.length };
+    const sep = body.indexOf(`, '${next.field}'`, current.rhsStart);
+    return { ...current, rhsEnd: sep === -1 ? body.length : sep };
+  });
   for (const { field, rhsStart, rhsEnd } of matches) {
     const rhs = body.slice(rhsStart, rhsEnd).trim().replace(/,\s*$/, "");
     const pair = parseRulePair(`'${field}' => ${rhs}`);
@@ -237,7 +239,9 @@ const TYPED_RULES = new Set([
 
 export function detectTypedRule(rules: string[]): string | null {
   for (const r of rules) {
-    const name = r.split(":")[0];
+    // `split` siempre devuelve al menos un elemento, pero el tipo no lo
+    // dice. `?? r` es el mismo valor que daría en ese caso.
+    const name = r.split(":")[0] ?? r;
     if (TYPED_RULES.has(name)) return r;
   }
   return null;

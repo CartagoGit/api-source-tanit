@@ -45,7 +45,7 @@ function inferPathVariables(specs: EndpointSpec[]): PostmanVariable[] {
   const seen = new Set<string>();
   for (const spec of specs) {
     for (const m of spec.uri.matchAll(/\{\{([^}]+)\}\}/g)) {
-      seen.add(m[1]);
+      if (m[1] !== undefined) seen.add(m[1]);
     }
   }
   const out: PostmanVariable[] = [];

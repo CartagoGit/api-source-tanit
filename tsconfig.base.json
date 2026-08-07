@@ -13,6 +13,18 @@
     "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "strict": true,
+    // `strict` NO incluye esto, y es la regla que más importa aquí.
+    //
+    // Sin ella `array[i]` tipa como `T` aunque el índice se salga, y
+    // `match[1]` tipa como `string` aunque el grupo no haya casado. Este
+    // repo es, casi entero, código que indexa: diecinueve scanners que
+    // recorren `matchAll`, parten por `split` y leen `partes[2]` sobre
+    // el código fuente de otra gente. Es exactamente la forma de código
+    // donde el `undefined` que el compilador estaba ocultando llega en
+    // ejecución, y no revienta: devuelve algo raro.
+    //
+    // Activarla destapó 24 sitios en 8 ficheros (p00043).
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "esModuleInterop": true,

@@ -528,8 +528,8 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
       while ((m = classStartRe.exec(viewsText)) !== null) {
         starts.push({ name: m[1] ?? "", index: m.index });
       }
-      for (let i = 0; i < starts.length; i++) {
-        const start = starts[i];
+      // El cuerpo de una clase llega hasta donde empieza la siguiente.
+      for (const [i, start] of starts.entries()) {
         const next = starts[i + 1];
         const body = next
           ? viewsText.slice(start.index, next.index)

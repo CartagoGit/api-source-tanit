@@ -417,7 +417,7 @@ function parseCsDto(raw: string, dtoType: string): IValidationSpec[] {
       spec.minimum = Number(range[1]);
       if (range[2] && range[2] !== "int.MaxValue") spec.maximum = Number(range[2]);
     }
-    if (regex) {
+    if (regex?.[1] !== undefined) {
       const vals = regex[1].replace(/^\^?\(|\)\$?$/g, "").split("|").map((s) => s.trim()).filter(Boolean);
       if (vals.length > 1) {
         spec.enumValues = vals;

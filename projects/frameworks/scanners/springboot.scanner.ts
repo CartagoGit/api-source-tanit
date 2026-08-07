@@ -350,7 +350,7 @@ function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
     }
     if (minMatch) spec.minimum = Number(minMatch[1]);
     if (maxMatch) spec.maximum = Number(maxMatch[1]);
-    if (patternMatch) {
+    if (patternMatch?.[1] !== undefined) {
       const vals = patternMatch[1].split("|").map((s) => s.trim()).filter(Boolean);
       if (vals.length > 1) {
         spec.enumValues = vals;

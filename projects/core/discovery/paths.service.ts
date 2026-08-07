@@ -324,14 +324,10 @@ export function outputDir(): string {
   const argv = process.argv;
 
   // 1. CLI
-  const odIdx = argv.indexOf("--output-dir");
-  if (odIdx !== -1 && argv[odIdx + 1]) {
-    return resolve(argv[odIdx + 1]);
-  }
-  const oIdx = argv.indexOf("--output");
-  if (oIdx !== -1 && argv[oIdx + 1]) {
-    return resolve(dirname(argv[oIdx + 1]));
-  }
+  const fromDirFlag = argv[argv.indexOf("--output-dir") + 1];
+  if (argv.includes("--output-dir") && fromDirFlag) return resolve(fromDirFlag);
+  const fromFileFlag = argv[argv.indexOf("--output") + 1];
+  if (argv.includes("--output") && fromFileFlag) return resolve(dirname(fromFileFlag));
 
   // 2. Env
   const envDir = process.env.POSTMAN_OUTPUT_DIR;

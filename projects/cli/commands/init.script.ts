@@ -67,7 +67,7 @@ async function main(): Promise<number> {
       const m =
         text.match(/^APP_URL\s*=\s*(.+)$/m) ??
         text.match(/^APP_BASE_URL\s*=\s*(.+)$/m);
-      if (m) {
+      if (m?.[1] !== undefined) {
         baseUrl = m[1].trim().replace(/^["']|["']$/g, "");
         if (!/\/api\/?$/.test(baseUrl)) baseUrl += "/api";
         break;

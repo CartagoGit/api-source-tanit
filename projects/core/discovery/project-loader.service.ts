@@ -187,7 +187,7 @@ export async function detectFilePrefixes(): Promise<Record<string, string[]>> {
       reGroup.lastIndex = 0;
       const pm = rePrefix.exec(block);
       const gm = reGroup.exec(block);
-      if (pm && gm) {
+      if (pm?.[1] !== undefined && gm?.[1] !== undefined) {
         const prefixParts = pm[1].split("/").filter(Boolean);
         const filePath = gm[1].replace(/^\.\//, "").replace(/\\/g, "/");
         out[filePath] = prefixParts;
@@ -213,7 +213,7 @@ export async function buildZeroConfig(): Promise<ProjectConfig> {
       try {
         const text = await readFile(join(root, envFile), "utf8");
         const m = text.match(/^APP_URL\s*=\s*(.+)$/m);
-        if (m) {
+        if (m?.[1] !== undefined) {
           baseUrl = m[1].trim().replace(/^["']|["']$/g, "");
           if (!/\/api\/?$/.test(baseUrl)) baseUrl += "/api";
           break;

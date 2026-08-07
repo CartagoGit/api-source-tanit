@@ -14,7 +14,9 @@ import type { EndpointSpec } from "../contracts/postman.interface.js";
 
 /** Path params detectados en una URI ya normalizada a Postman (`{{x}}`). */
 export function extractPathParams(uri: string): string[] {
-  return [...uri.matchAll(/\{\{([^}]+)\}\}/g)].map((m) => m[1]);
+  return [...uri.matchAll(/\{\{([^}]+)\}\}/g)]
+    .map((m) => m[1])
+    .filter((name): name is string => name !== undefined);
 }
 
 // ---------------------------------------------------------------------------
