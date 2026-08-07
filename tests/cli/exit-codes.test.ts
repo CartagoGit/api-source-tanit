@@ -15,11 +15,12 @@
  *     hacer.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { chmod, cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
+import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
@@ -36,10 +37,10 @@ beforeAll(async () => {
   await mkdir(emptyProject, { recursive: true });
 
   realProject = join(workDir, "api");
-  await cp(exampleDir("express"), realProject, { recursive: true });
+  await copyExampleClean(exampleDir("express"), realProject);
 
   readOnlyProject = join(workDir, "solo-lectura");
-  await cp(exampleDir("express"), readOnlyProject, { recursive: true });
+  await copyExampleClean(exampleDir("express"), readOnlyProject);
   await chmod(readOnlyProject, 0o555);
 }, 60_000);
 

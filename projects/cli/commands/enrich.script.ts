@@ -63,6 +63,30 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
   const MAIN_PATH = await outputCollectionPath(config.name);
   const ENRICHED_PATH = await outputEnrichedPath(config.name);
   const outPath = inPlace ? MAIN_PATH : ENRICHED_PATH;
+
+  // Sin esto, `enrich --in-place` **destruía** la colección.
+  //
+  // Este comando descubre por el camino legacy de Laravel, no por el
+  // registro de scanners, así que en los otros veinte frameworks
+  // `discovered.specs` sale vacío. Y aquí abajo se escribía igual: una
+  // colección de 27 KB con nueve requests quedaba en 502 bytes con
+  // ninguna, sobre el fichero bueno, imprimiendo un ✔ y saliendo con 0.
+  //
+  // Escribir cero endpoints no es un resultado, es haber fallado al
+  // descubrirlos. La decisión de qué hacer con este comando —hacerlo
+  // agnóstico o retirarlo, porque `generate` ya enriquece igual— está
+  // en la auditoría; esto solo impide que mientras tanto se pierda
+  // trabajo.
+  if (discovered.specs.length === 0) {
+    console.error("\n✗ El descubrimiento no encontró ningún endpoint: no se escribe nada.");
+    console.error(`  · '${outPath}' se queda como estaba.`);
+    console.error(
+      "  · `enrich` hoy solo descubre proyectos Laravel. Para el resto, `generate`\n" +
+        "    aplica el mismo enriquecimiento de reglas y sí usa todos los scanners.",
+    );
+    return 1;
+  }
+
   const json = JSON.stringify(collection, null, 2);
   await writeFile(outPath, json + "\n", "utf8");
   const { requests, folders } = countItems(collection);
