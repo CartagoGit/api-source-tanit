@@ -90,9 +90,38 @@ describe("otros controladores del mismo proyecto", () => {
     expect(fields.length).toBeGreaterThan(2);
   });
 
-  test("un DTO de update saca solo sus campos, todos opcionales", async () => {
-    const fields = await fieldsFor("/users/:id", "PUT");
-    expect(fields.map((f) => f.fieldName)).toEqual(["name", "age"]);
-    expect(fields.every((f) => !f.required)).toBe(true);
+  test("un DTO de update saca sus campos, todos opcionales", async () => {
+    const body = (await fieldsFor("/users/:id", "PUT")).filter((f) => f.location === "body");
+    expect(body.map((f) => f.fieldName)).toEqual(["name", "age"]);
+    expect(body.every((f) => !f.required)).toBe(true);
+  });
+});
+
+/**
+ * `@Query("page") page: number` es un parámetro de query, no un campo de
+ * body. La diferencia importa: un GET no tiene body, así que
+ * documentarlo ahí describe una petición que no se puede hacer.
+ *
+ * Salía mal porque el fallback emparejaba un decorador con **cualquier**
+ * campo dentro de las 9 líneas anteriores y lo marcaba todo como `body`:
+ * el `page` de un GET aparecía como campo de body, con el tipo del
+ * primer `@IsString()` que pillara por encima.
+ */
+describe("parámetros de la firma", () => {
+  test("`@Query()` se documenta como query, no como body", async () => {
+    const fields = await fieldsFor("/users", "GET");
+    const page = fields.find((f) => f.fieldName === "page");
+    expect(page?.location).toBe("query");
+    expect(page?.type).toBe("number");
+  });
+
+  test("`@Param()` se documenta como path", async () => {
+    const fields = await fieldsFor("/users/:id", "GET");
+    expect(fields.find((f) => f.fieldName === "id")?.location).toBe("path");
+  });
+
+  test("un GET no acaba con campos de body", async () => {
+    const fields = await fieldsFor("/users", "GET");
+    expect(fields.filter((f) => f.location === "body")).toEqual([]);
   });
 });

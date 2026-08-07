@@ -318,30 +318,72 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
       if (fields.length === 0) fields = parseDtoSource(text, dtoTypeName);
     }
 
-    // 4) Fallback: buscar `@IsXxx() field: type` inline en el handler.
-    if (fields.length === 0) {
-      const tail = lines.slice(Math.max(0, sigIdx - 8), sigIdx + 1).join("\n");
-      const fieldRe = /@([A-Z]\w*)\s*(?:\(([^)]*)\))?\s*(?:[\s\S]*?)\s*([a-zA-Z_][\w]*)\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/g;
-      let m: RegExpExecArray | null;
-      while ((m = fieldRe.exec(tail)) !== null) {
-        const decorator = m[1] ?? "";
-        const fieldName = m[3] ?? "";
-        if (decorator === "Type") continue;
-        const map = VALIDATOR_MAP[decorator];
-        if (!map) continue;
-        const optional = new RegExp(`@IsOptional\b`).test(tail);
-        fields.push({
-          fieldName,
-          location: "body",
-          type: map.type,
-          required: !optional,
-          ...(map.format ? { format: map.format } : {}),
-        });
-      }
-    }
+    // 4) Los parámetros sueltos de la firma: `@Query("page") page: number`,
+    //    `@Param("id") id: string`, `@Headers("x-tenant") tenant: string`.
+    //
+    // Esto era un fallback con un regex que emparejaba un decorador con
+    // **cualquier** campo dentro de las 9 líneas anteriores (`[\s\S]*?`
+    // entre medias) y lo marcaba todo como `body`. El resultado era que
+    // un `@Query("page")` de un GET aparecía documentado como campo de
+    // body, con el tipo del primer `@IsString()` que pillara por encima.
+    // Un GET no tiene body, así que la colección afirmaba algo imposible.
+    fields.push(...parseSignatureParams(sigLine));
 
     return { endpointKey, fields };
   }
+}
+
+/**
+ * Los parámetros que NestJS inyecta por decorador en la firma.
+ *
+ * `@Query("page") page: number` es un parámetro de query, no un campo de
+ * body, y la diferencia importa: un GET no tiene body, así que
+ * documentarlo ahí describe una petición que no se puede hacer.
+ *
+ * `@Body()` no entra: ese lo resuelve el DTO, que trae mucha más
+ * información (obligatoriedad, formatos, cotas) que el tipo de
+ * TypeScript.
+ */
+const PARAM_DECORATORS: Readonly<Record<string, IValidationSpec["location"]>> = {
+  Query: "query",
+  Param: "path",
+  Headers: "header",
+};
+
+/** Tipo de TypeScript → tipo del contrato. Lo que no se reconoce, string. */
+function tsTypeToSpecType(tsType: string): IValidationSpec["type"] {
+  const t = tsType.trim().toLowerCase();
+  if (t === "number") return "number";
+  if (t === "boolean") return "boolean";
+  if (t === "date") return "date";
+  if (t.endsWith("[]") || t.startsWith("array")) return "array";
+  return "string";
+}
+
+function parseSignatureParams(sigLine: string): IValidationSpec[] {
+  const out: IValidationSpec[] = [];
+  // El decorador y su parámetro van pegados: `@Query("page") page: number`.
+  // Sin espacio arbitrario entre medias no se puede emparejar un
+  // decorador con un campo que no es suyo.
+  const re = /@(Query|Param|Headers)\s*\(\s*(?:["']([^"']+)["'])?\s*\)\s*([a-zA-Z_][\w]*)\s*\??\s*:\s*([a-zA-Z_][\w\[\]<>|]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(sigLine)) !== null) {
+    const location = PARAM_DECORATORS[m[1] ?? ""];
+    if (!location) continue;
+    // El nombre lo manda el argumento del decorador (`@Query("page")`);
+    // si no lo lleva, el de la variable.
+    const fieldName = m[2] || m[3] || "";
+    if (!fieldName) continue;
+    out.push({
+      fieldName,
+      location,
+      type: tsTypeToSpecType(m[4] ?? ""),
+      // Un `?` en la firma es opcional; el resto se asume obligatorio,
+      // que es lo que NestJS hace por defecto.
+      required: !new RegExp(`\\b${m[3]}\\s*\\?\\s*:`).test(sigLine),
+    });
+  }
+  return out;
 }
 
 /**

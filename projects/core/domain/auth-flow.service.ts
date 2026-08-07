@@ -142,16 +142,20 @@ export function applyAuthFlow(
     ? [options.tokenResponsePath.trim()]
     : TOKEN_RESPONSE_PATHS;
 
+  // Se **añade** al array, no se sustituye. El builder ya le ha puesto a
+  // cada request sus aserciones, y asignar el array entero se las
+  // llevaría por delante justo en los tres endpoints donde más falta
+  // hacen: los del ciclo de sesión.
   if (flow.login) {
-    flow.login.event = [tokenCaptureEvent(paths)];
+    flow.login.event = [...(flow.login.event ?? []), tokenCaptureEvent(paths)];
     flow.login.description = LOGIN_DESCRIPTION;
     useCredentialVariables(flow.login);
   }
   if (flow.refresh) {
-    flow.refresh.event = [tokenCaptureEvent(paths)];
+    flow.refresh.event = [...(flow.refresh.event ?? []), tokenCaptureEvent(paths)];
   }
   if (flow.logout) {
-    flow.logout.event = [tokenClearEvent()];
+    flow.logout.event = [...(flow.logout.event ?? []), tokenClearEvent()];
   }
 
   return flow;

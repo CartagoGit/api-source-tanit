@@ -111,6 +111,33 @@ export interface EndpointSpec {
    * Si está, el enricher lo usa directamente en lugar de heurísticas.
    */
   formRequest?: string;
+  /**
+   * Reglas de validación resueltas para este endpoint.
+   *
+   * De aquí sale el `body` de ejemplo, pero también la tabla de campos
+   * que va en la descripción de la request: el ejemplo enseña **un**
+   * valor válido, y esto dice cuáles son válidos. Un `age: 30` no
+   * cuenta que el máximo son 120.
+   *
+   * Se guarda aparte del `body` porque un ejemplo no se puede
+   * des-ejemplificar: del JSON ya construido no hay forma de recuperar
+   * qué era obligatorio ni qué formato tenía cada campo.
+   */
+  fields?: ReadonlyArray<IEndpointField>;
+}
+
+/** Una regla de validación, tal como se documenta en la colección. */
+export interface IEndpointField {
+  readonly fieldName: string;
+  readonly location: "body" | "query" | "path" | "header" | "cookie";
+  readonly type: string;
+  readonly required: boolean;
+  readonly format?: string | undefined;
+  readonly enumValues?: ReadonlyArray<string> | undefined;
+  readonly minimum?: number | undefined;
+  readonly maximum?: number | undefined;
+  readonly minLength?: number | undefined;
+  readonly maxLength?: number | undefined;
 }
 
 /** Ruta descubierta en routes/*.php. */

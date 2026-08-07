@@ -34,6 +34,8 @@ import {
   type AuthSchemeType,
   type IDetectedAuthScheme,
 } from "./auth-scheme.service.js";
+import { buildRequestDescription } from "./request-doc.service.js";
+import { buildTestScript } from "./test-script.service.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 
 
@@ -73,7 +75,9 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
         ? { query: ep.query.map((q) => ({ ...q, disabled: false })) }
         : {}),
     },
-    description: ep.description ?? "",
+    // La descripción documenta lo que el endpoint acepta, con las
+    // reglas que ya se extrajeron para construir el ejemplo.
+    description: buildRequestDescription(ep.description, ep.fields),
   };
   // Headers personalizados opcionales (X-API-Key, headers de OpenAPI, etc.)
   if (ep.headers && ep.headers.length > 0) {
@@ -102,7 +106,13 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
 }
 
 function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
-  return { name: spec.name, request: buildRequest(spec, scheme) };
+  return {
+    name: spec.name,
+    request: buildRequest(spec, scheme),
+    // Las aserciones van en todas: una colección que solo trae URLs deja
+    // el trabajo de comprobar a quien le da al Send.
+    event: [buildTestScript(spec)],
+  };
 }
 
 function folder(

@@ -229,6 +229,11 @@ export async function buildSpecsFromScanner(
         // Guarda el ID del provider para que el enricher pueda
         // recuperar más tarde.
         spec.formRequest = `${match.framework}:${rules.endpointKey}`;
+        // Las reglas viajan con el spec, no solo su resultado. Del `body`
+        // de ejemplo ya construido no hay forma de recuperar qué era
+        // obligatorio ni qué formato tenía cada campo, y eso es
+        // exactamente lo que hay que documentar en la request.
+        spec.fields = rules.fields;
         withFormRequest += 1;
         const bodyFields = rules.fields.filter((f) => f.location === "body");
         const queryFields = rules.fields.filter((f) => f.location === "query");
