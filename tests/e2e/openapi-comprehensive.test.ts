@@ -10,13 +10,13 @@
  * - headers custom (X-Tenant-ID, X-Request-ID).
  * - validación de invariantes Postman v2.1.0.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,
   findEndpoint,
+  hashNormalized,
   validatePostmanInvariants,
-  normalizeCollection,
 } from "../helpers/compare-json";
 
 import { describeCollectionContract } from "../helpers/collection-contract";
@@ -105,10 +105,13 @@ describe("OpenAPI — comprehensive fixture", () => {
     expect(keys).toContain("search");
   });
 
-  test("el hash de la collection es estable (snapshot)", async () => {
-    const { collection } = await runGenerate("openapi-comprehensive");
-    // Hash sobre el JSON normalizado (sin _postman_id ni timestamps).
-    const hash = Bun.hash(JSON.stringify(normalizeCollection(collection)));
-    expect(hash).toBeGreaterThan(0);
+  test("el hash de la collection es estable entre ejecuciones", async () => {
+    // Antes esto hasheaba una vez y comprobaba `> 0`, que es cierto para
+    // cualquier salida y no detectaba nada. Lo que importa es que dos
+    // generaciones del mismo fixture den el MISMO hash: es lo que hace
+    // que reimportar en Postman actualice en vez de duplicar.
+    const first = await runGenerate("openapi-comprehensive");
+    const second = await runGenerate("openapi-comprehensive");
+    expect(hashNormalized(first.collection)).toBe(hashNormalized(second.collection));
   });
 });

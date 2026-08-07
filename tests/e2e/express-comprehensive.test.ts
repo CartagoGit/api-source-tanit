@@ -10,7 +10,7 @@
  * - Enums (role, status, currency).
  * - Path params (`:id`).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

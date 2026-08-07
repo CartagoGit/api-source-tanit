@@ -1,6 +1,22 @@
 from flask import Flask, jsonify, request
+from marshmallow import Schema, fields
 
 app = Flask(__name__)
+
+
+# Marshmallow: de aquí salen los campos, tipos y obligatoriedad del
+# body que aparece en la colección. Sin un esquema declarado, un
+# `request.get_json()` no dice nada sobre lo que espera el endpoint.
+class UserSchema(Schema):
+    name = fields.Str(required=True)
+    email = fields.Email(required=True)
+    age = fields.Int(required=False)
+
+
+class OrderSchema(Schema):
+    customer_id = fields.Int(required=True)
+    total = fields.Decimal(required=True)
+    note = fields.Str(required=False)
 
 
 @app.route("/users", methods=["GET"])
@@ -10,7 +26,7 @@ def list_users():
 
 @app.route("/users", methods=["POST"])
 def create_user():
-    data = request.get_json()
+    data = UserSchema().load(request.json)
     return jsonify({"id": 1, **data}), 201
 
 
@@ -21,7 +37,7 @@ def get_user(id):
 
 @app.route("/users/<int:id>", methods=["PUT"])
 def update_user(id):
-    data = request.get_json()
+    data = UserSchema(partial=True).load(request.json)
     return jsonify({"id": id, **data})
 
 
@@ -37,7 +53,7 @@ def list_orders():
 
 @app.route("/orders", methods=["POST"])
 def create_order():
-    data = request.get_json()
+    data = OrderSchema().load(request.json)
     return jsonify({"id": 1, **data}), 201
 
 

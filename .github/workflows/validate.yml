@@ -20,10 +20,19 @@ jobs:
         run: bun install --frozen-lockfile
 
       # `bun run validate` encadena typecheck, lint de tools, la suite de
-      # tests y la generación real de los 11 proyectos de examples/.
+      # tests y la generación real de todos los proyectos de examples/.
       # Es el mismo comando que se corre en local: si pasa aquí, pasa allí.
       - name: Validate
         run: bun run validate
+
+      # Dependencias vulnerables. Va DESPUÉS de validate para que un
+      # aviso de seguridad no tape un fallo de tipos o de tests, y como
+      # paso propio para que se vea en cuál de los dos falló.
+      #
+      # `--audit-level=high` a propósito: un MEDIUM en una dependencia de
+      # desarrollo no debe bloquear un PR, pero sí tiene que verse.
+      - name: Audit dependencies
+        run: bun run security:audit
 
       # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
       # Caza lo que el repo no ve: un fichero que falta en `files`, un

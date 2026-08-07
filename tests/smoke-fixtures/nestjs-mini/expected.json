@@ -3,23 +3,23 @@
   "routes": [
     {
       "method": "DELETE",
-      "uri": "users/:id"
+      "uri": "/users/:id"
     },
     {
       "method": "GET",
-      "uri": "users"
+      "uri": "/users"
     },
     {
       "method": "GET",
-      "uri": "users/:id"
+      "uri": "/users/:id"
     },
     {
       "method": "POST",
-      "uri": "users"
+      "uri": "/users"
     },
     {
       "method": "PUT",
-      "uri": "users/:id"
+      "uri": "/users/:id"
     }
   ]
 }

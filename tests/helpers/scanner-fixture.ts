@@ -11,12 +11,13 @@
  * los directorios intermedios se crean solos.
  */
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, } from "node:path";
 import { tmpdir } from "node:os";
-import type { FrameworkId, IProjectMatch } from "../../contract/scanner.interface";
-import { scannerBundleFor } from "../../service/scanner-registry";
+import type { FrameworkId, IProjectMatch } from "../../projects/core/contracts/scanner.interface";
+import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
+import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
-export const PACKAGE_ROOT = resolve(import.meta.dir, "../..");
+export const PACKAGE_ROOT = REPO_ROOT;
 
 /** Proyecto temporal en disco, con su limpieza. */
 export interface ITempProject {
@@ -88,7 +89,7 @@ export async function matchFor(
 export async function scanProject(
   framework: FrameworkId,
   projectRoot: string,
-): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../contract/scanner.interface").ParsedRoute> }> {
+): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../projects/core/contracts/scanner.interface").ParsedRoute> }> {
   const bundle = scannerBundleFor(framework);
   if (!bundle) throw new Error(`framework "${framework}" no está en el scanner registry`);
   const match = await bundle.projectScanner.resolve(projectRoot);

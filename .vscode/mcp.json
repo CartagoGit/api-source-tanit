@@ -1,21 +1,24 @@
+// Generado por `bun run mcp:sync` desde .mcp.json — NO lo edites a mano.
+// Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.
 {
-	"servers": {
-		"mcp-vertex": {
-			"type": "stdio",
-			"command": "bun",
-			"args": [
-				"../mcp-vertex/tools/scripts/host/host-server.script.ts",
-				"--workspace=${workspaceFolder}",
-				"--config=${workspaceFolder}/mcp-vertex.config.json"
-			]
-		},
-		"filesystem": {
-			"command": "bunx",
-			"args": [
-				"-y",
-				"@modelcontextprotocol/server-filesystem",
-				"${workspaceFolder}"
-			]
-		}
-	}
+  "servers": {
+    "mcp-vertex": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "../mcp-vertex/tools/scripts/host/host-server.script.ts",
+        "--workspace=${workspaceFolder}",
+        "--config=${workspaceFolder}/mcp-vertex.config.json"
+      ]
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "bunx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "${workspaceFolder}"
+      ]
+    }
+  }
 }

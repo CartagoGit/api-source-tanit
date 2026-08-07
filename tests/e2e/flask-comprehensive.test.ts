@@ -8,7 +8,7 @@
  * - Path params `<int:id>` → `{{id}}`.
  * - Carpetas agrupadas por blueprint.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

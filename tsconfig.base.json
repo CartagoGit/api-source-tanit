@@ -1,0 +1,48 @@
+{
+  // Opciones comunes a todas las secciones. Ninguna sección las
+  // relaja: si algo no compila con esto, es que hay que arreglarlo,
+  // no que hay que bajar el listón para esa carpeta.
+  //
+  // `types: []` es deliberado. El paquete no depende de `@types/node`
+  // ni de `@types/bun`: las declaraciones ambient que necesita están
+  // escritas a mano en `contracts/postman.d.ts`. Así el binario
+  // compilado no arrastra tipos de un runtime que puede no estar.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    // `strict` NO incluye esto, y es la regla que más importa aquí.
+    //
+    // Sin ella `array[i]` tipa como `T` aunque el índice se salga, y
+    // `match[1]` tipa como `string` aunque el grupo no haya casado. Este
+    // repo es, casi entero, código que indexa: diecinueve scanners que
+    // recorren `matchAll`, parten por `split` y leen `partes[2]` sobre
+    // el código fuente de otra gente. Es exactamente la forma de código
+    // donde el `undefined` que el compilador estaba ocultando llega en
+    // ejecución, y no revienta: devuelve algo raro.
+    //
+    // Activarla destapó 24 sitios en 8 ficheros (p00043).
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": false,
+    "noEmit": true,
+    "types": []
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    // Los fixtures son código de ejemplo de OTROS proyectos: NestJS con
+    // decoradores, Express con handlers sin tipar. Son la entrada de
+    // los scanners, no código de este repo, y no tienen sus frameworks
+    // instalados. Tiparlos daría 89 errores que no significan nada.
+    "tests/fixtures",
+    "tests/smoke-fixtures"
+  ]
+}

@@ -8,7 +8,7 @@
  * - FormRequests con `rules(): array` → body params tipados.
  * - Auth con login/refresh/logout (FormRequest en login y refresh).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

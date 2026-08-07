@@ -9,7 +9,7 @@
  * - Enums (UserRole, OrderStatus, Currency).
  * - Path params (`:id`).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,
@@ -118,7 +118,7 @@ describe("NestJS — comprehensive fixture", () => {
       "paid",
       "shipped",
       "cancelled",
-      "opcion1",
+      "option1",
     ]).toContain(body.status);
   });
 

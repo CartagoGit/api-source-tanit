@@ -19,11 +19,11 @@
  * Lo que un framework no soporta se declara en `capabilities`. Declararlo
  * es una decisión visible en el código; omitir el test, no.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import type { FrameworkId, ParsedRoute } from "../../contract/scanner.interface";
-import { scannerBundleFor } from "../../service/scanner-registry";
+import type { FrameworkId, ParsedRoute } from "../../projects/core/contracts/scanner.interface";
+import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
 import { createTempProject, scanProject } from "./scanner-fixture";
 
 /** Verbos que el pipeline sabe convertir en requests de Postman. */
@@ -138,6 +138,10 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       for (const route of routes) {
         expect(route.uri.length).toBeGreaterThan(0);
         expect(route.uri).not.toContain("//");
+        // Tres scanners (laravel, nestjs, django) emitían sin barra
+        // inicial. El adapter lo tapaba, pero cualquier consumidor
+        // directo de `ParsedRoute` veía formatos distintos.
+        expect(route.uri.startsWith("/")).toBe(true);
         if (!capabilities.trailingSlash) {
           expect(route.uri.endsWith("/")).toBe(route.uri === "/");
         }
@@ -201,10 +205,16 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       });
     }
 
-    if (capabilities.stripsComments && options.minimalProject && options.commentedEndpoint) {
+    // Se sacan del `options` ANTES del `test(...)`: el estrechamiento
+    // del `if` no sobrevive dentro del callback, porque TypeScript no
+    // puede saber que nadie ha reasignado `options` mientras tanto.
+    const commentedEndpoint = options.commentedEndpoint;
+    const minimalProject = options.minimalProject;
+
+    if (capabilities.stripsComments && minimalProject && commentedEndpoint) {
       test("un endpoint comentado no acaba en la colección", async () => {
-        const { file, source } = options.commentedEndpoint;
-        const files = { ...options.minimalProject };
+        const { file, source } = commentedEndpoint;
+        const files = { ...minimalProject };
         files[file] = (files[file] ?? "") + "\n" + source + "\n";
 
         const project = await createTempProject(files);

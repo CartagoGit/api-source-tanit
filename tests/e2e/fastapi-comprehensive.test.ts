@@ -11,7 +11,7 @@
  * - Path params + Query params + Body params.
  * - multi-line decorators.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,
@@ -75,7 +75,7 @@ describe("FastAPI — comprehensive fixture", () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    expect(body.email).toBe("usuario@ejemplo.com");
+    expect(body.email).toBe("user@example.com");
   });
 
   test("PUT /users/{id}/address usa Address (single body)", async () => {

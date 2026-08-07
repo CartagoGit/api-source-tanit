@@ -23,7 +23,7 @@ export type FixtureTree = Record<string, string>;
  *   });
  */
 export function mkFixtureSync(tree: FixtureTree): string {
-  const base = mkdtempSync(join(tmpdir(), "postman-exporter-test-"));
+  const base = mkdtempSync(join(tmpdir(), "export-to-postman-test-"));
   for (const [rel, content] of Object.entries(tree)) {
     const abs = join(base, rel);
     const dir = dirname(abs);

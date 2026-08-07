@@ -1,0 +1,104 @@
+---
+id: p00022
+title: "p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje"
+kind: feat
+status: done
+type: proposal
+track: export-to-postman
+date: 2026-08-06
+related:
+    - p00010 # el binario compilado es el motor que estos wrappers invocan
+    - p00021 # sustituye a las reimplementaciones que se retiran
+    - p00025 # bin canónico corto + alias; los wrappers no deben fijar el nombre largo
+---
+
+> **Cerrada 2026-08-07.** S1, S2 y S3. `bin/expostman` (POSIX),
+> `bin/expostman.ps1` (Windows) y `bin/wrappers/` con Python y PHP;
+> Go, Gradle y Make se documentan como una línea en su fichero de
+> build, que es todo lo que necesitan.
+>
+> S4 (autoactualización del binario) queda fuera: el lanzador ya
+> descarga la release más reciente cuando no encuentra nada, así que
+> un `update` explícito solo añadiría un camino más que mantener.
+> Se retoma si alguien lo pide.
+>
+> Lo que defiende la decisión es un test: comprueba que ningún
+> lanzador pase de 100 líneas ni mencione rutas, frameworks o
+> colecciones. Es la garantía de que no vuelve a pasar lo de
+> `runtime/` — tres reimplementaciones divergidas y sin tests.
+
+
+# p00022 — `bin/` para lanzar el proyecto desde cualquier lenguaje
+
+## Goal
+
+Que un equipo de PHP, Python, Go, Rust o Java pueda invocar el generador
+**desde sus propias herramientas** sin instalar Bun y sin salirse de su
+ecosistema.
+
+## why
+
+El público del paquete son APIs de doce lenguajes, pero la única forma de
+lanzarlo hoy es `bun`/`bunx` o el binario a pelo. Un equipo de Django no
+tiene un `package.json` donde poner el script; un equipo de Go no quiere
+un `node_modules` en su repo.
+
+La versión anterior de esto era `runtime/`: **reimplementar el generador
+en cada lenguaje**. Eso divergió y se retira en p00021. El enfoque
+correcto es el contrario: **un solo motor** (el binario de p00010) y
+wrappers finos que lo descarguen y lo invoquen.
+
+## non-goals
+
+- Reimplementar nada. Los wrappers no tienen lógica de dominio: resuelven
+  el binario, lo descargan si falta, y le pasan los argumentos.
+- Publicar en PyPI, Packagist, crates.io o Maven. Eso es una propuesta
+  aparte, cuando la de npm (p00008) esté resuelta.
+- Un servidor HTTP. Fuera de alcance.
+
+## slices
+
+### S1 — `bin/<canonical>` (shell POSIX)
+- **Files**: `bin/<canonical>` (nuevo; nombre canónico = p00025, hoy
+  provisionalmente el alias `postman-from-routes` hasta que S1 de p00025
+  cierre).
+- **Gate**: se ejecuta en linux y macOS sin bun instalado.
+
+- Resuelve, en orden: un binario ya descargado en
+  `~/.<canonical>/` (o el prefijo que fije p00025), `bunx`, `npx`. Si no
+  hay ninguno, descarga el binario de la release correspondiente a la
+  plataforma y lo cachea.
+- **Acceptance**: `./bin/<canonical> --help` funciona con un PATH sin bun
+  ni node. Si p00025 ya eligió acrónimo, el path feliz usa ese bin; el
+  alias largo solo como symlink/compat.
+
+### S2 — `bin/<canonical>.ps1` (Windows)
+- **Files**: `bin/<canonical>.ps1` (nuevo).
+- **Gate**: revisión manual en Windows.
+
+### S3 — envoltorios por ecosistema
+- **Files**: `bin/wrappers/` con un ejemplo mínimo por lenguaje.
+- **Gate**: cada uno documentado en `docs/INSTALL.md` con su comando.
+
+- Python: un `postman_from_routes.py` de ~30 líneas que hace `subprocess`
+  contra el binario, para poder ponerlo en un `Makefile` o en taskipy.
+- PHP: script para `composer.json > scripts`.
+- Go: un `//go:generate` de ejemplo.
+- Java/Gradle y .NET: la línea equivalente en su fichero de build.
+- **Acceptance**: cada envoltorio son <40 líneas y **cero** lógica de
+  dominio; si alguno empieza a parsear rutas, está mal.
+
+### S4 — el binario sabe autoactualizarse
+- **Files**: `projects/cli/` (comando `upgrade`).
+- **Gate**: `bun test`.
+
+- `postman-from-routes upgrade` comprueba la última release y sustituye
+  el binario cacheado.
+- **Acceptance**: funciona sin permisos de root (cachea en `$HOME`).
+
+## acceptance
+
+- Un proyecto de cada uno de los 12 frameworks puede lanzar el generador
+  con una sola línea en su fichero de build habitual.
+- Ningún wrapper contiene lógica de escaneo.
+- Documentado en `docs/INSTALL.md` con un bloque por ecosistema.

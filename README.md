@@ -1,25 +1,41 @@
-# postman-exporter
+# Export to Postman
 
 **Genera una colección de Postman desde el código de tu API.** Sin
 anotaciones, sin decoradores extra, sin levantar el servidor. Apuntas al
 directorio del proyecto y sale un `.json` listo para importar.
 
-Detecta el framework solo. Funciona con **12**:
+Detecta el framework solo. Funciona con **21**:
 
 | Framework | Detecta por | De dónde saca los bodies |
 |---|---|---|
 | Laravel | `artisan` + `composer.json` | FormRequests (`rules()`) |
 | Symfony | `composer.json` con `symfony/framework-bundle` | `#[Assert\…]` |
-| Express / Fastify / Koa / Hapi | `package.json` con `express`, `fastify`, `@koa/router`, `@hapi/hapi` | zod y Joi |
+| Express / Koa / Hapi | `package.json` con `express`, `@koa/router`, `@hapi/hapi` | zod y Joi |
+| Fastify | `package.json` con `fastify` | el JSON Schema que va **dentro** de la ruta |
+| Hono | `package.json` con `hono` | `@hono/zod-validator` |
 | NestJS | `package.json` con `@nestjs/core` | `class-validator` en los DTO |
 | Next.js | `package.json` con `next` | zod en el route handler |
+| tRPC | `package.json` con `@trpc/server` | la forma de la ruta: `query` → GET, `mutation` → POST |
+| GraphQL | un `.graphql` con `type Query` | el esquema: una request por operación |
 | FastAPI | `requirements.txt` / `pyproject.toml` con `fastapi` | modelos Pydantic |
-| Flask | `requirements.txt` / `pyproject.toml` con `flask` | `flask_pydantic` |
+| Flask | `requirements.txt` / `pyproject.toml` con `flask` | esquemas de Marshmallow |
 | Django / DRF | `manage.py` | serializers de DRF |
 | Gin | `go.mod` con `gin-gonic/gin` | tags `binding:"required"` |
+| Fiber | `go.mod` con `gofiber/fiber` | tags `validate:"…"` de go-playground |
+| Rust (Actix / Rocket) | `Cargo.toml` con `actix-web` o `rocket` | `#[validate(…)]`, `Option<T>` como opcional |
 | Spring Boot | `pom.xml` / `build.gradle` con Spring Boot | `jakarta.validation` |
+| Ktor | `build.gradle` con `io.ktor` | — |
 | ASP.NET Core | `*.csproj` con `Microsoft.AspNetCore.App` | Data Annotations |
+| Rails | `Gemfile` con `rails` | `resources` expandido a sus acciones de API |
+| Phoenix | `mix.exs` con `phoenix` | `scope` y `resources` del router |
 | OpenAPI / Swagger | `openapi.yaml`, `openapi.json`, `swagger.*` | el propio spec |
+
+La lista de verdad la imprime `expostman --help`, que la lee del registro
+de scanners. Esta tabla añade de dónde sale cada cosa.
+
+Cuando la detección no puede acertar —un monorepo con el manifiesto en la
+raíz, una dependencia con alias, un manifiesto que se genera en el
+build— se lo puedes decir: `--framework <id>`.
 
 Si tu proyecto ya publica un `openapi.yaml`, ese scanner cubre cualquier
 framework aunque no esté en la lista.
@@ -30,12 +46,12 @@ framework aunque no esté en la lista.
 
 ```bash
 # 1. Instalar (aún no publicado en npm — se instala desde el repo)
-bun add -g github:CartagoGit/postman-exporter
+bun add -g github:CartagoGit/export-to-postman
 
 # 2. Generar, desde la raíz de tu proyecto
-postman-from-routes generate
+expostman generate
 
-# 3. Importar en Postman el .json de build/
+# 3. Importar en Postman el .json de export-to-postman/
 ```
 
 Guías completas: **[instalación](docs/INSTALL.md)** ·
@@ -49,7 +65,7 @@ Guías completas: **[instalación](docs/INSTALL.md)** ·
 Contra `examples/example-express`:
 
 ```
-build/
+export-to-postman/
 ├── example-express.postman_collection.json     ← la colección
 ├── example-express.local.postman_environment.json
 ├── example-express.dev.postman_environment.json
@@ -91,12 +107,12 @@ declara con `tokenResponsePath` en el config.
 ## Comandos
 
 ```bash
-postman-from-routes generate    # genera la colección + environments
-postman-from-routes list        # lista los endpoints detectados
-postman-from-routes stats       # cuántos endpoints por método y zona
-postman-from-routes check       # ¿la colección sigue sincronizada?
-postman-from-routes validate    # valida el JSON contra el schema v2.1.0
-postman-from-routes enrich      # re-enriquece desde el discovery
+expostman generate    # genera la colección + environments
+expostman list        # lista los endpoints detectados
+expostman stats       # cuántos endpoints por método y zona
+expostman check       # ¿la colección sigue sincronizada?
+expostman validate    # valida el JSON contra el schema v2.1.0
+expostman enrich      # re-enriquece desde el discovery
 ```
 
 Flags principales:
@@ -136,7 +152,7 @@ bun run validate     # el gate: typecheck + lint + tests + generación real
 | `typecheck` | `tsc --noEmit` |
 | `lint:tools` | los tools del plugin MCP no leen `process.env` |
 | `test` | la suite completa |
-| `validate:examples` | genera de verdad los 11 proyectos de `examples/` y valida cada colección |
+| `validate:examples` | genera de verdad los 21 proyectos de `examples/` y valida cada colección |
 
 Y aparte, antes de publicar:
 
@@ -146,7 +162,7 @@ bun run validate:package   # empaqueta, instala en un proyecto limpio y ejecuta 
 
 Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
 Estado y decisiones: [auditoría](docs/mcp-vertex/AUDIT-2026-08-06.md) y
-[propuestas](docs/mcp-vertex/proposals/ready/).
+[propuestas](docs/mcp-vertex/proposals/).
 
 ---
 

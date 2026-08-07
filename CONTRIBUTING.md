@@ -1,4 +1,4 @@
-# Contributing to `postman-exporter`
+# Contributing to `export-to-postman`
 
 > **Source of truth**: this file + `docs/extension-contract.md` +
 > `AGENTS.md`. Humans and LLMs committing to this repo are expected to
@@ -49,7 +49,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 feat: orchestrator agent routes requests to 4 bounded subagents
 
 Implements p00005 S0 + p00012. The new agent at
-.github/agents/postman-exporter-orchestrator.agent.md never
+.github/agents/export-to-postman-orchestrator.agent.md never
 invokes postman_exporter_* tools directly — that lane belongs
 to the bounded subagents. It owns the state machine and the
 memory_save + proposals_close_slice close-out.
@@ -71,7 +71,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin MCP-vertex postman-exporter + config local   ← wrong prefix style
+[FEAT] Plugin MCP-vertex export-to-postman + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -87,22 +87,136 @@ summary:
 
 | Suffix | Folder | What it is |
 | --- | --- | --- |
-| `*.interface.ts` | `contract/` | Zod schemas + exported structural types. |
-| `*.constant.ts` | `contract/` / `examples/` | Durable, frozen, shared constants. |
-| `*.service.ts` | `service/` | Stateful business logic. |
-| `*.helper.ts` | `helper/` | Pure utilities, no I/O. |
-| `*.tool.ts` | `plugins/<name>/src/lib/tools/` | One MCP tool per file. |
+| `*.interface.ts` | `contracts/` | Zod schemas + exported structural types. |
+| `*.constant.ts` | `contracts/` / `examples/` | Durable, frozen, shared constants. |
+| `*.service.ts` | `services/` | Stateful business logic. |
+| `*.helper.ts` | `helpers/` | Pure utilities, no I/O. |
+| `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
+| `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
+| `*.registry.ts` | `frameworks/` | El catálogo de lo concreto. |
+| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `services/` | Tipos de módulo con significado propio; no son un servicio cualquiera. |
+| `*.spec.ts` / `*.test.ts` | `tests/<sección>/` | Unitario / de integración. |
+
+`bun run lint:naming` lo comprueba. Sin él la convención existía en este
+documento y en ningún sitio más: había un `lint-tool-no-process.ts` que
+era un script sin decirlo y un `sections.ts` que no lo era y vivía entre
+ellos.
+
+### Carpetas contenedoras, en plural
+
+`contracts/`, `helpers/`, `services/`, `frameworks/`, `scripts/`,
+`tests/`, `examples/`, `plugins/`.
+
+Una carpeta contiene **varias** cosas de ese tipo. `helper/` con 8
+helpers dentro no describe nada. Antes había ocho carpetas y dos
+convenciones, solo por historia.
+
+### El árbol
+
+```
+projects/
+  core/            lo agnóstico — no nombra ni un framework
+    contracts/     interfaces y constantes compartidas
+    domain/        collection-builder, auth-flow, param-inferrer…
+    discovery/     pipeline, orchestrator, resolución de proyecto
+    adapters/      del contrato de scanner a EndpointSpec
+    helpers/       funciones puras
+  frameworks/      lo concreto — 12 scanners, parsers y el registro
+  cli/             dispatcher + un fichero por comando en commands/
+  ui/              asistente interactivo
+  plugin/          plugin de mcp-vertex, paquete independiente
+scripts/
+  gates/           typecheck, los 4 lints, validate, changed
+  build/           binario compilado
+tests/             espejo de projects/
+examples/          un proyecto por framework
+```
+
+### Las capas y su dirección
+
+```
+projects/core/          núcleo agnóstico
+        ↑
+projects/frameworks/    los 21 scanners y sus parsers
+        ↑
+projects/cli/ + ui/     raíz de composición: une las dos
+```
+
+La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
+El núcleo importando de `frameworks/` es lo único que separa "somos
+agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
+antes de que hubiera un lint mirándolo.
+
+### Regex `g`: nunca se mueve el `lastIndex` de uno compartido
+
+Un regex con `g` guarda su posición en `lastIndex`. Si vive a nivel de
+módulo, esa posición **la comparte todo el fichero**, y moverla desde
+una función altera el bucle de quien llamó.
+
+`lint:regex-state` lo prohíbe (salvo `= 0`, que es saneamiento seguro).
+La alternativa es una línea:
+
+```ts
+const propio = new RegExp(COMPARTIDO.source, COMPARTIDO.flags);
+```
+
+Costó una sesión de WSL: en el scanner de Fiber, un helper devolvía el
+`lastIndex` al inicio del match actual y el bucle exterior encontraba la
+misma ruta para siempre.
+
+### Rutas: nunca se cuentan `..`
+
+`scripts/helpers/root.helper.ts` tiene un nombre para cada carpeta y
+cada fichero conocido del repo. `lint:paths` prohíbe
+`resolve(__dirname, "../../..")` fuera de los tres ficheros que
+implementan la alternativa.
+
+El motivo es que contar niveles **falla en silencio**: al mover el
+fichero la constante apunta a otro sitio y no lanza nada, simplemente no
+encuentra. Mordió cuatro veces durante la reorganización, y una de ellas
+dejó al lint de propuestas diciendo "no se encontró ninguna propuesta"
+como si el repo estuviera vacío.
+
+| Quién | Qué usa |
+| --- | --- |
+| Gates y tests del repo | `scripts/helpers/root.helper.ts` |
+| Código de producción | `findRepoRoot()` de `projects/core/helpers/` |
+| Tests del plugin | `workspaceRoot()` de su `tests/helpers/` |
+
+`root.helper.spec.ts` comprueba que **todo** lo declarado existe en
+disco, así que mover una carpeta sin actualizar el registro rompe el
+gate nombrando la constante exacta.
+
+### Servidores MCP: se declaran una vez
+
+`.mcp.json` en la raíz es la **fuente de verdad**. `.vscode/mcp.json` se
+deriva de él con `bun run mcp:sync` y `lint:mcp` falla si han derivado.
+
+No es un capricho: Claude Code lee `{ "mcpServers": … }` con rutas
+relativas y VS Code lee `{ "servers": … }` con `${workspaceFolder}`. El
+contenido difiere, no solo el nombre del fichero, así que un enlace
+simbólico no vale. Manteniéndolos a mano, cambias uno y el otro se queda
+viejo hasta que un servidor no arranca y nadie sabe por qué.
+
+### Dónde escribe la herramienta
+
+En `<proyecto escaneado>/export-to-postman/`. **Nunca** en `build/`: es
+la carpeta de salida por defecto de Gradle, de muchos proyectos de Go y
+de medio mundo de Makefiles, y su `clean` la borra entera. La constante
+es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 
 ### Hard rules
 
 - **Dot, never hyphen.** `foo.service.ts`, not `foo-service.ts`.
 - **One tool per file.** No multi-tool `tools.ts`.
 - **One agent per file.** No multi-agent `agents.ts`.
-- **Plugins never import `service/`.** The plugin only invokes
+- **El plugin nunca importa `projects/core/` a pelo.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
+- **`services/` never imports `frameworks/`.** Lo exige
+  `lint:boundaries`.
 
 ---
 
@@ -145,9 +259,10 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `plugins/**/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex_expostman/src/lib/tools/`. |
+| Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
-| Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
+| Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
 
 Se ejecuta en CI (`.github/workflows/validate.yml`) con el mismo comando,
 así que lo que pasa en local pasa en CI.
@@ -166,11 +281,11 @@ agent does **not** pick up additional permissions at runtime.
 
 | Agent | File | Tools |
 | --- | --- | --- |
-| `postman-exporter-orchestrator` | `.github/agents/postman-exporter-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
-| `postman-exporter.onboarding` | `.github/agents/postman-exporter.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_postman-exporter_summary` |
-| `postman-exporter.builder` | `.github/agents/postman-exporter.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_generate, mcp-vertex/mcp-vertex_postman-exporter_summary` |
-| `postman-exporter.validator` | `.github/agents/postman-exporter.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_validate` |
-| `postman-exporter.tester` | `.github/agents/postman-exporter.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_postman-exporter_test` |
+| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
+| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_expostman_summary` |
+| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_generate, mcp-vertex/mcp-vertex_expostman_summary` |
+| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_validate` |
+| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_test` |
 
 When adding a new tool a lane needs, **add it to that agent's `tools:`
 list** — do **not** widen to `mcp-vertex/*`.
@@ -179,17 +294,35 @@ list** — do **not** widen to `mcp-vertex/*`.
 
 ## Proposal workflow
 
-Every non-trivial change starts as a proposal in
-`docs/mcp-vertex/proposals/ready/`:
+Every non-trivial change starts as a proposal under
+`docs/mcp-vertex/proposals/`. **The folder IS the state** — same layout
+as the `mcp-vertex` repo:
+
+| Folder | `status:` |
+|---|---|
+| `ready/` | `ready` |
+| `in-progress/` | `in-progress` |
+| `review/` | `review` |
+| `done/<kind>s/` | `done` |
+| `paused/` | `paused` |
+| `blocked/` | `blocked` |
+| `retired/` | `retired` |
+| `legacy/` | `legacy` |
+
+Moving the file and changing `status:` is a **single** operation;
+`bun run lint:proposals` fails if you only do one of the two. Always
+reference a proposal by its `id`, never by its filename — filenames move,
+ids do not. Full rules in
+[`docs/mcp-vertex/proposals/README.md`](docs/mcp-vertex/proposals/README.md).
 
 ```yaml
 ---
 id: p<NNNN>
 title: "<short title>"
 kind: feat | fix | refactor | perf | test | docs | chore
-status: ready | in-progress | blocked | done | retired
+status: ready | in-progress | review | done | paused | blocked | retired | legacy
 type: proposal
-track: postman-exporter
+track: export-to-postman
 date: <YYYY-MM-DD>
 related:
     - <sha or proposal id>
@@ -198,7 +331,7 @@ related:
 
 The 12 proposals already in `ready/` are the implementation roadmap.
 Each proposal owns its slices; each slice has its own gate. The
-orchestrator agent (`postman-exporter-orchestrator`) drives the
+orchestrator agent (`export-to-postman-orchestrator`) drives the
 state machine.
 
 ---

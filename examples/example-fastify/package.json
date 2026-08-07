@@ -1,0 +1,9 @@
+{
+  "name": "sample-fastify",
+  "type": "module",
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "@fastify/cors": "^9.0.0"
+  },
+  "description": "Ejemplo de API Fastify con esquemas JSON Schema en la propia ruta."
+}

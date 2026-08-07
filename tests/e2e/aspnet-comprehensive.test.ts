@@ -11,7 +11,7 @@
  * - Enums via [RegularExpression("^(a|b|c)$")].
  * - Multi-controller: UsersController, OrdersController, AuthController.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,

@@ -14,11 +14,12 @@
  *      el JSON + metrics sin escribir archivos.
  *   - `runGenerateMetrics(fixtureName)` → alias de conveniencia (mismo resultado).
  */
-import { resolve, join } from "node:path";
-import { generateCollection } from "../../service/generation.pipeline";
-import type { PostmanCollection } from "../../contract/postman.interface";
+import { join } from "node:path";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
+import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
-const PROJECT_ROOT = resolve(import.meta.dir, "../..");
+const PROJECT_ROOT = REPO_ROOT;
 
 export interface GenerateMetrics {
   routes: number;
@@ -59,7 +60,7 @@ async function _runPipeline(
 ): Promise<GenerateResult> {
   // Mismo pipeline que usa el CLI: los tests validan el camino real, no
   // una reimplementación paralela que puede divergir.
-  const result = await generateCollection(fixturePath, {
+  const result = await generateWithAllFrameworks(fixturePath, {
     ...(basename ? { collectionName: basename } : {}),
   });
 
@@ -144,5 +145,4 @@ function _countItems(items: PostmanCollection["item"]): { requests: number; fold
 export async function cleanTestRuns(): Promise<void> {
   // No-op: ya no escribimos archivos en disco.
 }
-
 

@@ -9,10 +9,9 @@
  * - Multi-constraint `#[Assert\*]` en parámetros de método.
  * - Validation inline en el method signature.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
-  countItems,
   findEndpoint,
   validatePostmanInvariants,
 } from "../helpers/compare-json";

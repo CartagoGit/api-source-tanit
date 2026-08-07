@@ -1,7 +1,7 @@
 # Instalación y uso
 
 > **Estado de publicación.** El paquete **todavía no está en npm**, así
-> que `bun add -g @postman-exporter/cli` aún no funciona. Hasta que se
+> que `bun add -g export-to-postman` aún no funciona. Hasta que se
 > publique, se instala **desde el repositorio** — ver
 > [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
 > documento describe los comandos definitivos; el único cambio tras
@@ -27,24 +27,24 @@ Requisito común: **[Bun](https://bun.sh) 1.0 o superior**.
 
 ```bash
 # Global
-bun add -g github:CartagoGit/postman-exporter
+bun add -g github:CartagoGit/export-to-postman
 
 # O como dependencia de desarrollo de tu proyecto
-bun add -d github:CartagoGit/postman-exporter
+bun add -d github:CartagoGit/export-to-postman
 ```
 
 También sirve clonar y empaquetar:
 
 ```bash
-git clone https://github.com/CartagoGit/postman-exporter
-cd postman-exporter && bun install
-npm pack                       # produce postman-exporter-cli-0.1.0.tgz
+git clone https://github.com/CartagoGit/export-to-postman
+cd export-to-postman && bun install
+npm pack                       # produce export-to-postman-cli-0.1.0.tgz
 
 cd ~/proyectos/mi-api
-bun add -d /ruta/a/postman-exporter-cli-0.1.0.tgz
+bun add -d /ruta/a/export-to-postman-cli-0.1.0.tgz
 ```
 
-En ambos casos queda disponible el binario `postman-from-routes`.
+En ambos casos queda disponible el binario `expostman` (y `export-to-postman` como alias).
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes
@@ -58,14 +58,14 @@ bun --version
 La opción cómoda si tocas varios proyectos.
 
 ```bash
-bun add -g @postman-exporter/cli
+bun add -g export-to-postman
 ```
 
 Desde la raíz de tu API:
 
 ```bash
 cd ~/proyectos/mi-api
-postman-from-routes generate
+expostman generate
 ```
 
 Salida:
@@ -75,7 +75,7 @@ Salida:
   · 9 rutas en código, 9 specs (con validación: 9, sin: 0).
 → Auth: login en "Crear Login" guarda el token automáticamente, refresh cableado.
 
-✔ Colección escrita en ~/proyectos/mi-api/build/mi-api.postman_collection.json
+✔ Collection written to ~/proyectos/mi-api/export-to-postman/mi-api.postman_collection.json
   · 9 requests en 3 carpetas (14.3 KB).
   · Environment "Local" → …/mi-api.local.postman_environment.json (5 vars)
 ```
@@ -92,17 +92,20 @@ mano.
 ### Proyectos con `package.json` (Node, NestJS, Next.js, Express…)
 
 ```bash
-bun add -d @postman-exporter/cli
+bun add -d export-to-postman
 ```
 
 ```jsonc
 // package.json
 {
   "scripts": {
-    "postman": "postman-from-routes generate"
+    "postman": "expostman generate"
   }
 }
 ```
+
+<!-- lint:docs ignore — `postman` es un script del proyecto de quien
+     usa la herramienta, no de este repo. -->
 
 ```bash
 bun run postman
@@ -114,7 +117,7 @@ No hace falta meter un `package.json` en tu repo. Se invoca con `bunx` y
 `--project-root`:
 
 ```bash
-bunx @postman-exporter/cli generate --project-root .
+bunx export-to-postman generate --project-root .
 ```
 
 Y se deja escrito donde ya tengas tus tareas:
@@ -123,20 +126,20 @@ Y se deja escrito donde ya tengas tus tareas:
 # Makefile
 .PHONY: postman
 postman:
-	bunx @postman-exporter/cli generate --project-root .
+	bunx export-to-postman generate --project-root .
 ```
 
 ```yaml
 # composer.json (Laravel/Symfony) — sección scripts
 "scripts": {
-    "postman": "bunx @postman-exporter/cli generate --project-root ."
+    "postman": "bunx export-to-postman generate --project-root ."
 }
 ```
 
 ```toml
 # pyproject.toml con taskipy
 [tool.taskipy.tasks]
-postman = "bunx @postman-exporter/cli generate --project-root ."
+postman = "bunx export-to-postman generate --project-root ."
 ```
 
 > **`--project-root` no es opcional aquí.** Sin él, el CLI escanea el
@@ -150,7 +153,7 @@ postman = "bunx @postman-exporter/cli generate --project-root ."
 Para probarlo antes de decidir:
 
 ```bash
-bunx @postman-exporter/cli generate --project-root .
+bunx export-to-postman generate --project-root .
 ```
 
 ---
@@ -163,11 +166,11 @@ No necesita nada más.
 
 ```bash
 # Linux x64
-curl -L https://github.com/CartagoGit/postman-exporter/releases/latest/download/postman-from-routes-linux-x64 \
-  -o /usr/local/bin/postman-from-routes
-chmod +x /usr/local/bin/postman-from-routes
+curl -L https://github.com/CartagoGit/export-to-postman/releases/latest/download/export-to-postman-linux-x64 \
+  -o /usr/local/bin/export-to-postman
+chmod +x /usr/local/bin/export-to-postman
 
-postman-from-routes generate --project-root .
+expostman generate --project-root .
 ```
 
 Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
@@ -192,7 +195,7 @@ Por orden de prioridad:
 1. `--output <ruta.json>` — ruta exacta del fichero.
 2. `--output-dir <carpeta>` — carpeta de destino.
 3. `POSTMAN_OUTPUT_DIR` — misma idea, por variable de entorno.
-4. Por defecto: **`<raíz del proyecto>/build/`**.
+4. Por defecto: **`<raíz del proyecto>/export-to-postman/`**.
 
 Los nombres salen del nombre del proyecto, o de `--basename`:
 
@@ -201,7 +204,7 @@ Los nombres salen del nombre del proyecto, o de `--basename`:
 <basename>.<entorno>.postman_environment.json
 ```
 
-Conviene añadir `build/` al `.gitignore` de tu proyecto, salvo que
+Conviene añadir `export-to-postman/` al `.gitignore` de tu proyecto, salvo que
 quieras versionar la colección para revisarla en los PRs.
 
 ---
@@ -220,7 +223,7 @@ quieras versionar la colección para revisarla en los PRs.
 Antes de generar nada, para ver qué detectaría:
 
 ```bash
-postman-from-routes generate --project-root . --inspect
+expostman generate --project-root . --inspect
 ```
 
 ---
@@ -230,7 +233,9 @@ postman-from-routes generate --project-root . --inspect
 | Flag | Variable | Por defecto | Qué controla |
 |---|---|---|---|
 | `--project-root <ruta>` | `POSTMAN_PROJECT_ROOT` | se busca subiendo desde el cwd | Qué proyecto se escanea |
-| `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/build/` | Carpeta de salida |
+| `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/export-to-postman/` | Carpeta de salida |
+| `--framework <id>` | — | (autodetección) | Fuerza el framework cuando la detección no puede acertar |
+| `--allow-empty` | — | — | No falla si no se encuentra ningún endpoint |
 | `--output <fichero>` | — | — | Ruta exacta del `.json` |
 | `--basename <nombre>` | `POSTMAN_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
 | `--config <ruta>` | `POSTMAN_CONFIG` | autodetectado | `config.constant.ts` a usar |
@@ -248,7 +253,7 @@ Sin configuración funciona. Cuando quieras control fino, crea un
 `config.constant.ts`:
 
 ```bash
-postman-from-routes init
+export-to-postman init
 ```
 
 Lo más útil que puedes poner:
@@ -289,7 +294,7 @@ El escaneo no encontró el proyecto. Comprueba en el bloque de rutas que
 imprime el comando que `projectRoot` apunta donde crees:
 
 ```bash
-postman-from-routes generate --project-root /ruta/absoluta/a/tu/api
+expostman generate --project-root /ruta/absoluta/a/tu/api
 ```
 
 Si `projectRoot` está bien, mira en [FRAMEWORKS.md](FRAMEWORKS.md) qué
@@ -307,10 +312,81 @@ un bucle, o con el path en una variable) no se detectan: el análisis es
 estático. Para esos casos se declaran a mano en un
 `endpoints.constant.ts`, que se fusiona con lo autodetectado.
 
-### `command not found: postman-from-routes`
+### `command not found: export-to-postman`
 
 La instalación global de Bun no está en el `PATH`:
 
 ```bash
 export PATH="$HOME/.bun/bin:$PATH"   # añádelo a tu .bashrc o .zshrc
 ```
+
+## Desde otro ecosistema (sin instalar bun ni node)
+
+`bin/` tiene lanzadores finos. No reimplementan nada: resuelven dónde
+está el motor —un binario cacheado, una instalación global, `bunx`,
+`npx`, o descargándolo de la release— y le pasan los argumentos.
+
+| Ecosistema | Comando |
+| --- | --- |
+| Shell (Linux, macOS) | `./bin/expostman generate --project-root .` |
+| Windows (PowerShell) | `.\bin\expostman.ps1 generate --project-root .` |
+| Python | `python bin/wrappers/expostman.py generate --project-root .` |
+| PHP / Composer | `php bin/wrappers/Expostman.php generate --project-root .` |
+
+El binario descargado se cachea en `~/.expostman/`. Se cambia con
+`EXPOSTMAN_HOME`.
+
+### En tu fichero de build
+
+```jsonc
+// package.json
+"scripts": { "postman": "expostman generate --project-root ." }
+```
+
+```jsonc
+// composer.json
+"scripts": { "postman": "php bin/wrappers/Expostman.php generate --project-root ." }
+```
+
+```makefile
+# Makefile
+postman:
+	./bin/expostman generate --project-root .
+```
+
+```go
+// Go
+//go:generate ../bin/expostman generate --project-root .
+```
+
+```groovy
+// build.gradle
+task postman(type: Exec) { commandLine './bin/expostman', 'generate', '--project-root', '.' }
+```
+
+**Por qué son tan finos.** La versión anterior de esto reimplementaba el
+generador en Node, Python y PHP. Las tres copias divergieron del
+original, ninguna tenía tests, y cuando el proyecto se hizo agnóstico
+las tres seguían siendo solo-Laravel sin que nadie se enterara. Se
+retiraron en p00021. Hay **un** motor, y un test comprueba que ningún
+lanzador mencione nada de dominio.
+
+## Cuando la detección no acierta
+
+La autodetección va por manifiestos (`composer.json`, `go.mod`,
+`Cargo.toml`, `package.json`…). Hay formas de proyecto donde **no
+puede** funcionar:
+
+- Un monorepo cuyo manifiesto está en la raíz y la API en un subdirectorio.
+- Una dependencia con alias, o un fork con otro nombre de paquete.
+- Un manifiesto que se genera en el build y no está en el repositorio.
+
+En esos casos, díselo:
+
+```sh
+expostman generate --project-root ./services/api --framework fastify
+```
+
+Un id que no exista falla al instante y lista los válidos. Los ids son
+los de la tabla de `docs/FRAMEWORKS.md`.
+

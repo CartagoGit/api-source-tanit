@@ -8,9 +8,9 @@
  *   - baseUrl (.env → APP_URL + "/api")
  *   - prefijos de rutas (RouteServiceProvider::mapXxxRoutes())
  *
- * @see ../../contract/project-config.interface.ts para todos los campos disponibles.
+ * @see ../../contracts/project-config.interface.ts para todos los campos disponibles.
  */
-import type { ProjectConfig } from "../../contract/project-config.interface.js";
+import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface.js";
 
 export const config: ProjectConfig = {
   name: "example-app",

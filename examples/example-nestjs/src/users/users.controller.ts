@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Param, Query } from "@nestjs/common";
+import { Body, Controller, Get, Post, Put, Param, Query } from "@nestjs/common";
 import { IsString, IsEmail, IsInt, IsOptional, IsEnum, MinLength, MaxLength, Min, Max } from "class-validator";
 
 class CreateUserDto {
@@ -49,7 +49,7 @@ export class UsersController {
     return { id };
   }
 
-  @Post(":id")
+  @Put(":id")
   update(@Param("id") id: string, @Body() body: UpdateUserDto) {
     return { id, ...body };
   }

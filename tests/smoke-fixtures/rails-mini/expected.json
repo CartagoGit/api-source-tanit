@@ -1,0 +1,7 @@
+{
+  "framework": "rails",
+  "routes": [
+    { "method": "GET",  "uri": "/users" },
+    { "method": "POST", "uri": "/users" }
+  ]
+}

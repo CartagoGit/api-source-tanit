@@ -1,5 +1,4 @@
 {
-  "$schema": "../mcp-vertex/packages/core/schema/mcp-vertex.config.schema.json",
   "coreVersion": "0.1.0",
   "cacheDir": ".cache/mcp-vertex",
   "docsDir": "docs/mcp-vertex",
@@ -55,7 +54,7 @@
         "roots": [
           "docs/mcp-vertex",
           "README.md",
-          "plugins/postman-exporter/README.md"
+          "projects/plugins/mcp-vertex_expostman/README.md"
         ],
         "extensions": [
           "md",
@@ -205,11 +204,11 @@
     "prompt-eval": {
       "options": {}
     },
-    "postman-exporter": {
-      "path": "plugins/postman-exporter/src/index.ts",
+    "expostman": {
+      "path": "projects/plugins/mcp-vertex_expostman/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}/..",
-        "cliScript": "${workspaceFolder}/scripts/cli.script.ts"
+        "cliScript": "${workspaceFolder}/projects/cli/cli.script.ts"
       }
     }
   }

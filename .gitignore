@@ -1,13 +1,18 @@
 # Dependencias instaladas localmente por bun/npm (si se llegasen a usar).
 node_modules/
 .bun/
-# Artefactos generados por `bun run build`. El directorio se trackea (con
-# .gitkeep) pero su contenido se regenera.
+# Artefactos generados: colecciones y environments. La carpeta se llama
+# como el proyecto a proposito — `build/` es de Gradle, de Go y de medio
+# mundo, y escribir ahi mezclaba nuestra salida con la de quien usa la
+# herramienta.
+export-to-postman/
 build/
 
-# Lockfiles locales (si los hay).
 *.log
-bun.lock
+
+# El lockfile SI se versiona: es lo que hace que un `bun install` en CI
+# o en otra maquina resuelva exactamente las mismas versiones. Solo el
+# binario legacy se queda fuera.
 bun.lockb
 
 # Cache local de mcp-vertex

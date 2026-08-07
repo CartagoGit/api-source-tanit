@@ -1,0 +1,83 @@
+#!/usr/bin/env sh
+# expostman — lanzador POSIX.
+#
+# NO tiene lógica de dominio: resuelve dónde está el motor y le pasa los
+# argumentos tal cual. Si algún día este fichero empieza a parsear rutas
+# o a entender de frameworks, está mal.
+#
+# El error que evita: la versión anterior de esto (`runtime/`, retirada
+# en p00021) reimplementaba el generador en Node, Python y PHP. Las tres
+# copias divergieron del original y ninguna tenía tests.
+#
+# Orden de resolución, de más cercano a más lejano:
+#   0. La fuente del repo, si este lanzador está dentro de un checkout
+#   1. Un binario ya cacheado en ~/.expostman/
+#   2. `expostman` en el PATH (instalación global de npm/bun)
+#   3. `bunx` / `npx` contra el paquete publicado
+#   4. Descargar el binario de la release que toque
+set -eu
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# 0. Dentro del propio repositorio: usar la fuente, no la red.
+#    Sin esto, alguien que clona el repo y ejecuta `./bin/expostman`
+#    acaba en un 404 de npm — el paquete aún no está publicado — cuando
+#    tenía el CLI a dos carpetas de distancia.
+LOCAL_CLI="$HERE/../projects/cli/cli.script.ts"
+if [ -f "$LOCAL_CLI" ] && command -v bun >/dev/null 2>&1; then
+  exec bun "$LOCAL_CLI" "$@"
+fi
+
+CACHE_DIR="${EXPOSTMAN_HOME:-$HOME/.expostman}"
+CACHED="$CACHE_DIR/expostman"
+REPO="CartagoGit/export-to-postman"
+
+# 1. Binario cacheado.
+if [ -x "$CACHED" ]; then
+  exec "$CACHED" "$@"
+fi
+
+# 2. Instalado en el PATH. Se comprueba que no seamos nosotros mismos,
+#    o entraríamos en un bucle infinito.
+INSTALLED="$(command -v expostman 2>/dev/null || true)"
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+if [ -n "$INSTALLED" ] && [ "$INSTALLED" != "$SELF" ]; then
+  exec "$INSTALLED" "$@"
+fi
+
+# 3. Gestores de paquetes de JS, si los hay.
+if command -v bunx >/dev/null 2>&1; then
+  exec bunx --bun export-to-postman "$@"
+fi
+if command -v npx >/dev/null 2>&1; then
+  exec npx --yes export-to-postman "$@"
+fi
+
+# 4. Último recurso: descargar el binario de la release.
+case "$(uname -s)" in
+  Linux)  OS="linux" ;;
+  Darwin) OS="darwin" ;;
+  *) echo "expostman: sistema no soportado: $(uname -s)" >&2; exit 1 ;;
+esac
+case "$(uname -m)" in
+  x86_64|amd64) ARCH="x64" ;;
+  arm64|aarch64) ARCH="arm64" ;;
+  *) echo "expostman: arquitectura no soportada: $(uname -m)" >&2; exit 1 ;;
+esac
+
+ASSET="expostman-$OS-$ARCH"
+URL="https://github.com/$REPO/releases/latest/download/$ASSET"
+
+echo "expostman: no encontrado; descargando $ASSET…" >&2
+mkdir -p "$CACHE_DIR"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$URL" -o "$CACHED"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "$CACHED" "$URL"
+else
+  echo "expostman: hace falta curl o wget para descargar el binario." >&2
+  echo "  O instálalo con: npm i -g export-to-postman" >&2
+  exit 1
+fi
+chmod +x "$CACHED"
+exec "$CACHED" "$@"
