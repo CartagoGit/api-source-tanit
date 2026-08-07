@@ -25,6 +25,7 @@ import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
+import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import type {
   IEndpointValidation,
@@ -117,13 +118,9 @@ export class RustRouteScanner implements IRouteScanner {
     const files = await collectFiles(match.projectRoot, isRustSourceFile);
     const routes: ParsedRoute[] = [];
 
-    for (const file of files) {
-      let source: string;
-      try {
-        source = await readFile(file, "utf8");
-      } catch {
-        continue;
-      }
+    // Lectura en paralelo con tope, entregada en el orden de
+    // entrada: la colección tiene que salir igual cada vez.
+    for await (const { path: file, text: source } of readFilesInOrder(files)) {
 
       const sourceFile = relative(match.projectRoot, file);
       const prefix = scopePrefixOf(source);

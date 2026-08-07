@@ -23,6 +23,7 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -143,13 +144,14 @@ interface ParsedModule {
   appUsePrefixes: Map<string, string>; // varName → prefix
 }
 
-async function parseModule(file: string): Promise<ParsedModule> {
-  let raw: string;
-  try {
-    raw = await readFile(file, "utf8");
-  } catch {
-    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
-  }
+/**
+ * `raw` llega ya leído, no lo lee esta función.
+ *
+ * Es lo que permite que quien llama pida los ficheros en paralelo con
+ * tope en vez de uno detrás de otro. La alternativa —dejar la lectura
+ * aquí dentro— obliga a que el bucle de fuera espere a cada disco.
+ */
+function parseModule(file: string, raw: string): ParsedModule {
   const text = stripJsComments(raw);
   const lines = text.split("\n");
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
@@ -226,8 +228,10 @@ export class ExpressScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
     const files = await collectJsFiles(match.projectRoot);
     const modules: ParsedModule[] = [];
-    for (const f of files) {
-      modules.push(await parseModule(f));
+    // En paralelo con tope, entregados en el orden de entrada: la
+    // colección tiene que salir igual en cada ejecución.
+    for await (const { path, text } of readFilesInOrder(files)) {
+      modules.push(parseModule(path, text));
     }
 
     // Mapa routerName → prefix (incluye app.use prefixes).

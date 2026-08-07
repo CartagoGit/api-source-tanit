@@ -4,7 +4,7 @@
   "workspaces": [
     "projects/plugins/mcp-vertex_expostman"
   ],
-  "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
+  "description": "Generador agn\u00f3stico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework autom\u00e1ticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y par\u00e1metros sin configuraci\u00f3n manual.",
   "keywords": [
     "postman",
     "laravel",
@@ -92,7 +92,8 @@
     "lint:mcp": "bun run scripts/gates/sync-mcp-config.script.ts --check",
     "lint:paths": "bun run scripts/gates/lint-paths.script.ts",
     "lint:docs": "bun run scripts/gates/lint-docs.script.ts",
-    "lint:regex-state": "bun run scripts/gates/lint-regex-state.script.ts"
+    "lint:regex-state": "bun run scripts/gates/lint-regex-state.script.ts",
+    "bench:scan": "bun run scripts/gates/bench-scan.script.ts"
   },
   "publishConfig": {
     "access": "public",

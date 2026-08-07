@@ -19,6 +19,7 @@ import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import {
   findAllBalanced,
   stripJsComments,
@@ -125,13 +126,9 @@ export class HonoRouteScanner implements IRouteScanner {
     const files = await collectFiles(match.projectRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
 
-    for (const file of files) {
-      let raw: string;
-      try {
-        raw = await readFile(file, "utf8");
-      } catch {
-        continue;
-      }
+    // Lectura en paralelo con tope, entregada en el orden de
+    // entrada: la colección tiene que salir igual cada vez.
+    for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       if (!/\bhono\b|new Hono\(/i.test(raw)) continue;
 
       const source = stripJsComments(raw);

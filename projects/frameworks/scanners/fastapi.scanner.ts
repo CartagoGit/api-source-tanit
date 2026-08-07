@@ -19,6 +19,7 @@
 import { existsSync } from "node:fs";
 import { readFile, } from "node:fs/promises";
 import { join, sep } from "node:path";
+import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
 import {
   parsePydanticModels,
@@ -118,13 +119,9 @@ export class FastApiScanner implements IRouteScanner {
     const routerPrefixes = new Map<string, string>();
     const out: ParsedRoute[] = [];
 
-    for (const file of files) {
-      let raw: string;
-      try {
-        raw = await readFile(file, "utf8");
-      } catch {
-        continue;
-      }
+    // En paralelo con tope, en el orden de entrada: la colección
+    // tiene que salir igual en cada ejecución.
+    for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       const text = stripComments(raw);
       const lines = text.split("\n");
 
@@ -215,13 +212,9 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
     const models: Map<string, ModelInfo> = new Map();
 
     // 1) Recoger todos los BaseModel del proyecto.
-    for (const file of files) {
-      let raw: string;
-      try {
-        raw = await readFile(file, "utf8");
-      } catch {
-        continue;
-      }
+    // En paralelo con tope, en el orden de entrada: la colección
+    // tiene que salir igual en cada ejecución.
+    for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       for (const model of parsePydanticModels(stripComments(raw))) {
         models.set(model.className, {
           fields: model.fields,
