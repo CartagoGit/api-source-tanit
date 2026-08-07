@@ -51,6 +51,38 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
    * Todos los frameworks que reconocen el proyecto, de más a menos
    * seguro. Vacío si no lo reconoce ninguno.
    */
+  /**
+   * El framework indicado, saltándose la puntuación.
+   *
+   * Lo usa quien SABE de qué es su API y no puede esperar a que la
+   * detección acierte: un monorepo cuyo manifiesto está en la raíz, una
+   * dependencia con alias, un manifiesto que se genera en el build.
+   *
+   * Devuelve `null` si ese id no está registrado, para que quien llama
+   * pueda fallar con un mensaje útil en vez de escanear en vano.
+   */
+  async forceFramework(
+    projectRoot: string,
+    framework: string,
+  ): Promise<IDetectedFramework | null> {
+    const detector = this.registry.detectors.find((d) => d.framework === framework);
+    if (!detector) return null;
+
+    const match = await detector.resolve(projectRoot);
+    return {
+      match,
+      score: 1,
+      scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
+      validation:
+        this.registry.validationProviders.find((v) => v.framework === framework) ?? null,
+    };
+  }
+
+  /** Los ids que este registro sabe escanear. */
+  supportedFrameworks(): string[] {
+    return this.registry.detectors.map((detector) => detector.framework);
+  }
+
   async detectAll(projectRoot: string): Promise<IDetectedFramework[]> {
     const scored: Array<{ detector: IProjectScanner; score: number }> = [];
     for (const detector of this.registry.detectors) {

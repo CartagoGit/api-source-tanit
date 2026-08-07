@@ -85,6 +85,11 @@ import {
   FiberRouteScanner,
   FiberValidateTagProvider,
 } from "./scanners/fiber.scanner";
+import {
+  RustProjectScanner,
+  RustRouteScanner,
+  RustValidatorProvider,
+} from "./scanners/rust.scanner";
 
 import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
@@ -105,9 +110,11 @@ const fastifyRouteScanner = new FastifyRouteScanner();
 /** Igual que Fastify: el provider lee lo que el scanner recogió. */
 const honoRouteScanner = new HonoRouteScanner();
 const fiberRouteScanner = new FiberRouteScanner();
+const rustRouteScanner = new RustRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new RustProjectScanner(),
     new FiberProjectScanner(),
     new HonoProjectScanner(),
     new FastifyProjectScanner(),
@@ -125,6 +132,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    rustRouteScanner,
     fiberRouteScanner,
     honoRouteScanner,
     fastifyRouteScanner,
@@ -142,6 +150,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressScanner(),
   ],
   validationProviders: [
+    new RustValidatorProvider(rustRouteScanner),
     new FiberValidateTagProvider(fiberRouteScanner),
     new HonoZodValidatorProvider(honoRouteScanner),
     new FastifySchemaProvider(fastifyRouteScanner),

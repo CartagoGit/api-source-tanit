@@ -120,6 +120,16 @@ export interface IGenerationOptions {
    * usaban esto antes de que existieran los scanners.
    */
   readonly legacyFallback?: ILegacyDiscovery | undefined;
+  /**
+   * Framework a usar, saltándose la detección.
+   *
+   * Para cuando la autodetección no puede acertar: un monorepo cuyo
+   * manifiesto está en la raíz, una dependencia con alias, un
+   * manifiesto que se genera en el build. Quien ejecuta esto sabe de
+   * qué es su API; no poder decírselo convierte un caso resoluble en un
+   * callejón sin salida.
+   */
+  readonly forceFramework?: string | undefined;
 }
 
 /**
@@ -213,6 +223,31 @@ async function buildFor(
   };
 }
 
+/**
+ * Resuelve el framework forzado, o falla diciendo cuáles hay.
+ *
+ * Falla **antes** de escanear: un id mal escrito que se descubre al
+ * final, después de recorrer el proyecto y con cero endpoints, no dice
+ * nada de lo que ha pasado.
+ */
+async function forcedDetection(
+  options: IGenerationOptions,
+  projectRoot: string,
+): Promise<Awaited<ReturnType<DiscoveryOrchestrator["detectAll"]>>> {
+  const forced = await options.orchestrator.forceFramework(
+    projectRoot,
+    options.forceFramework!,
+  );
+  if (!forced) {
+    const supported = options.orchestrator.supportedFrameworks().sort().join(", ");
+    throw new Error(
+      `No hay ningún scanner para "${options.forceFramework}".\n` +
+        `  Frameworks disponibles: ${supported}`,
+    );
+  }
+  return [forced];
+}
+
 interface IDiscovery {
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
@@ -238,7 +273,9 @@ async function discoverSpecs(
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
-  const detected = await options.orchestrator.detectAll(context.projectRoot);
+  const detected = options.forceFramework
+    ? await forcedDetection(options, context.projectRoot)
+    : await options.orchestrator.detectAll(context.projectRoot);
   const { config, manualEndpoints, configPath, zeroConfig } = await loadProject();
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
