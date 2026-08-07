@@ -149,6 +149,23 @@ El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
 
+### Regex `g`: nunca se mueve el `lastIndex` de uno compartido
+
+Un regex con `g` guarda su posición en `lastIndex`. Si vive a nivel de
+módulo, esa posición **la comparte todo el fichero**, y moverla desde
+una función altera el bucle de quien llamó.
+
+`lint:regex-state` lo prohíbe (salvo `= 0`, que es saneamiento seguro).
+La alternativa es una línea:
+
+```ts
+const propio = new RegExp(COMPARTIDO.source, COMPARTIDO.flags);
+```
+
+Costó una sesión de WSL: en el scanner de Fiber, un helper devolvía el
+`lastIndex` al inicio del match actual y el bucle exterior encontraba la
+misma ruta para siempre.
+
 ### Rutas: nunca se cuentan `..`
 
 `scripts/helpers/root.helper.ts` tiene un nombre para cada carpeta y

@@ -80,6 +80,11 @@ import {
   HonoRouteScanner,
   HonoZodValidatorProvider,
 } from "./scanners/hono.scanner";
+import {
+  FiberProjectScanner,
+  FiberRouteScanner,
+  FiberValidateTagProvider,
+} from "./scanners/fiber.scanner";
 
 import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
@@ -99,9 +104,11 @@ import type {
 const fastifyRouteScanner = new FastifyRouteScanner();
 /** Igual que Fastify: el provider lee lo que el scanner recogió. */
 const honoRouteScanner = new HonoRouteScanner();
+const fiberRouteScanner = new FiberRouteScanner();
 
 export const DEFAULT_REGISTRY: DiscoveryRegistry = {
   detectors: [
+    new FiberProjectScanner(),
     new HonoProjectScanner(),
     new FastifyProjectScanner(),
     new LaravelProjectScanner(),
@@ -118,6 +125,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressProjectScanner(),
   ],
   routeScanners: [
+    fiberRouteScanner,
     honoRouteScanner,
     fastifyRouteScanner,
     new LaravelScanner(),
@@ -134,6 +142,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressScanner(),
   ],
   validationProviders: [
+    new FiberValidateTagProvider(fiberRouteScanner),
     new HonoZodValidatorProvider(honoRouteScanner),
     new FastifySchemaProvider(fastifyRouteScanner),
     new LaravelFormRequestValidationProvider(),
