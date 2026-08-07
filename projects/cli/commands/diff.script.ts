@@ -37,16 +37,49 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const root = projectRoot() ?? ".";
   const { match, scanner } = await orch.detectProject(root);
 
+  /**
+   * Una sola barra al principio.
+   *
+   * Las URIs llegan de dos sitios —el scanner y la colección— y solo uno
+   * de los dos las trae ya con barra. Prefijar a ciegas daba `//graphql`
+   * justo en la lista que alguien lee para arreglar la deriva.
+   */
+  const withLeadingSlash = (uri: string): string =>
+    uri.startsWith("/") ? uri : `/${uri}`;
+
   const sourceKeys = new Set<string>();
-  const sourceMap = new Map<string, { method: string; uri: string }>();
+  const sourceMap = new Map<string, { method: string; uri: string; name?: string }>();
+
+  /**
+   * La clave con la que se compara una ruta.
+   *
+   * Método y URI **no bastan**. En REST la URL identifica la operación,
+   * pero en RPC sobre POST no: GraphQL tiene un solo endpoint y lo que
+   * distingue una consulta de otra es el nombre. Sin él, un proyecto
+   * GraphQL de cinco operaciones se contaba como **una** — y entonces
+   * `check` no podía detectar deriva ninguna: si cuatro desaparecían del
+   * código, seguía diciendo 1 contra 1 y dando el visto bueno.
+   *
+   * Es la tercera vez que la misma suposición muerde: ya pasó en el
+   * `dedupeSpecs` del pipeline y en el chequeo de duplicados de los
+   * invariantes.
+   */
+  const comparisonKey = (method: string, uri: string, name?: string): string => {
+    const base = `${method} ${normalizeForComparison(uri)}`;
+    return name ? `${base} ${name}` : base;
+  };
 
   if (match && scanner && match.framework !== "laravel") {
     // Fuente: scanner del orchestrator (OpenAPI, etc.)
     const routes = await scanner.scan(match);
     for (const r of routes) {
-      const key = `${r.method} ${normalizeForComparison(r.uri)}`;
+      const key = comparisonKey(r.method, r.uri, r.displayName);
       sourceKeys.add(key);
-      sourceMap.set(key, { method: r.method, uri: r.uri });
+      sourceMap.set(key, {
+        method: r.method,
+        uri: r.uri,
+        ...(r.displayName ? { name: r.displayName } : {}),
+      });
     }
     console.log(`(source: ${match.framework} via orchestrator)`);
   } else {
@@ -68,12 +101,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const raw = await readFile(COLLECTION_PATH, "utf8");
   const collection = JSON.parse(raw) as PostmanCollection;
   const collKeys = new Set<string>();
-  const collMap = new Map<string, { method: string; uri: string }>();
+  const collMap = new Map<string, { method: string; uri: string; name?: string }>();
 
   for (const r of walkCollection(collection)) {
-    const key = `${r.method} ${normalizeForComparison(r.uri)}`;
+    // El nombre de la request en la colección es el `displayName` que
+    // emitió el scanner, así que las dos claves se construyen igual.
+    const key = comparisonKey(r.method, r.uri, r.name);
     collKeys.add(key);
-    collMap.set(key, { method: r.method, uri: r.uri });
+    collMap.set(key, { method: r.method, uri: r.uri, ...(r.name ? { name: r.name } : {}) });
   }
 
   const onlyInSource = [...sourceKeys]
@@ -94,7 +129,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.log(`✘ Faltan en la colección (${onlyInSource.length}):`);
     for (const k of onlyInSource) {
       const ep = sourceMap.get(k)!;
-      console.log(`    ${ep.method.padEnd(6)} /${ep.uri}`);
+      console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
     }
     console.log();
   }
@@ -102,7 +137,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.log(`✘ Sobran en la colección (${onlyInColl.length}):`);
     for (const k of onlyInColl) {
       const ep = collMap.get(k)!;
-      console.log(`    ${ep.method.padEnd(6)} /${ep.uri}`);
+      console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
     }
   }
   return 1;
