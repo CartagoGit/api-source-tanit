@@ -64,4 +64,16 @@ export interface IExportTarget {
    * cadenas en vez de montando un sistema de ficheros.
    */
   serialize(input: IExportInput): IExportArtifact[];
+  /**
+   * Lo que este formato **no puede** representar de este proyecto.
+   *
+   * No todo cabe en todos los formatos, y callarlo es lo peor que se
+   * puede hacer: OpenAPI identifica una operación por ruta + método, así
+   * que un proyecto GraphQL —cinco `POST /graphql` distintos— se queda
+   * en uno. Sin este aviso, el fichero sale con una operación de cinco y
+   * parece correcto.
+   *
+   * Opcional: un exportador que lo represente todo no lo implementa.
+   */
+  warnings?(input: IExportInput): string[];
 }

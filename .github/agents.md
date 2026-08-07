@@ -9,9 +9,13 @@ esto es el mapa.
 ## Qué hace el paquete
 
 Genera colecciones de Postman v2.1.0 desde el **código** de una API, sin
-anotaciones ni servidor levantado. Detecta el framework solo entre 12:
-Laravel, Symfony, Express/Fastify/Koa/Hapi, NestJS, Next.js, FastAPI,
-Flask, Django/DRF, Gin, Spring Boot, ASP.NET Core y OpenAPI.
+anotaciones ni servidor levantado. La lista de frameworks sale del
+registro (`SUPPORTED_FRAMEWORKS`) y la imprime `expostman --help`: no se
+escribe aquí porque una copia se queda vieja en cuanto se añade uno.
+
+Además de REST cubre dos protocolos sin rutas visibles: **GraphQL** (una
+request por operación del esquema, con la consulta escrita) y **tRPC**
+(la traducción a HTTP que nadie se sabe de memoria).
 
 Se distribuye de tres formas: paquete npm (`export-to-postman`),
 binario autocontenido por plataforma, y plugin de mcp-vertex.
@@ -27,7 +31,7 @@ bun run validate
 ```
 
 Encadena `typecheck` → `lint:tools` → `bun test` → `validate:examples`
-(genera de verdad los 11 proyectos de `examples/` y valida cada
+(genera de verdad los 21 proyectos de `examples/` y valida cada
 colección). Corre igual en CI.
 
 Aparte, antes de publicar:
@@ -47,7 +51,7 @@ necesita un `build` previo.
 ```
 projectRoot
   │
-  ├─ DiscoveryOrchestrator  ── elige el framework por score (scanner-registry.ts)
+  ├─ DiscoveryOrchestrator  ── elige el framework por score (framework.registry.ts)
   │
   ├─ IProjectScanner        ── ¿qué framework es? qué artefactos hay
   ├─ IRouteScanner          ── rutas en formato neutro (ParsedRoute)
@@ -59,7 +63,7 @@ projectRoot
   └─ auth-flow              ── login/refresh/logout + captura del token
 ```
 
-Todo eso lo orquesta **`services/generation.pipeline.ts`**, que es el
+Todo eso lo orquesta **`projects/core/discovery/generation.pipeline.ts`**, que es el
 único sitio donde se decide el orden de los pasos. El CLI, los tests y el
 gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
@@ -69,12 +73,13 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 | Quiero… | Toco |
 |---|---|
-| Añadir un framework | `services/scanners/<fw>.scanner.ts` + registrarlo en `services/scanner-registry.ts` |
-| Cambiar la forma de la colección | `services/collection-builder.service.ts` |
-| Cambiar el flujo de login | `services/auth-flow.service.ts` |
-| Parsear una librería de validación nueva | `helpers/<lib>-schema.helper.ts` |
-| Añadir un comando al CLI | `scripts/<nombre>.script.ts` + entrada en `scripts/cli.script.ts` |
-| Añadir un tool MCP | `plugins/export-to-postman/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un framework | `projects/frameworks/scanners/<fw>.scanner.ts` + registrarlo en `projects/frameworks/framework.registry.ts` |
+| Cambiar la forma de la colección | `projects/core/domain/collection-builder.service.ts` |
+| Cambiar el flujo de login | `projects/core/domain/auth-flow.service.ts` |
+| Parsear una librería de validación nueva | `projects/frameworks/parsers/<lib>-schema.helper.ts` |
+| Añadir un comando al CLI | `projects/cli/commands/<nombre>.script.ts` + entrada en `projects/cli/cli.script.ts` |
+| Añadir un formato de salida | `projects/core/exporters/<fmt>.exporter.ts` + registrarlo |
+| Añadir un tool MCP | `projects/plugins/mcp-vertex_expostman/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 

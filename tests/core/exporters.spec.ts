@@ -12,6 +12,7 @@ import {
   DEFAULT_FORMAT,
   describeFormats,
   exportTo,
+  exportWarnings,
   exporterFor,
   parseFormats,
   supportedFormats,
@@ -323,5 +324,56 @@ describe("todos los formatos a la vez", () => {
 
   test("`postman` se salta: lo escribe el pipeline", () => {
     expect(exportTo(["postman"], input)).toEqual([]);
+  });
+});
+
+/**
+ * Lo que un formato no puede representar.
+ *
+ * OpenAPI identifica una operación por **ruta + método**, así que un
+ * proyecto GraphQL —cinco `POST /graphql` distintos— se queda en uno.
+ * Eso no es un fallo del exportador, es la forma del formato; el fallo
+ * sería **callarlo**: el fichero sale con una operación de cinco y
+ * parece correcto.
+ */
+describe("avisos de lo que se pierde", () => {
+  const rpcInput: IExportInput = {
+    ...input,
+    specs: [
+      { name: "query users", method: "POST", uri: "/graphql", body: { query: "a" } },
+      { name: "query user", method: "POST", uri: "/graphql", body: { query: "b" } },
+      { name: "mutation createUser", method: "POST", uri: "/graphql", body: { query: "c" } },
+    ] as EndpointSpec[],
+  };
+
+  test("OpenAPI avisa de las operaciones que agrupa", () => {
+    const warnings = exportWarnings(["openapi"], rpcInput);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("POST /graphql");
+    expect(warnings[0]).toContain("3 operaciones");
+  });
+
+  // Sin decir cuál se conserva, el aviso no deja saber qué revisar.
+  test("dice cuál se conserva y cuáles se pierden", () => {
+    const warning = exportWarnings(["openapi"], rpcInput)[0] ?? "";
+    expect(warning).toContain("query users");
+    expect(warning).toContain("query user, mutation createUser");
+  });
+
+  // El aviso dice que se conserva la primera: el documento tiene que
+  // coincidir, o el aviso miente.
+  test("el documento conserva justo la que dice el aviso", () => {
+    const doc = buildOpenApiDocument(rpcInput) as Record<string, any>;
+    expect(doc["paths"]["/graphql"].post.summary).toBe("query users");
+  });
+
+  test("una API REST normal no genera ningún aviso", () => {
+    expect(exportWarnings(["openapi"], input)).toEqual([]);
+  });
+
+  test("los formatos que lo representan todo no avisan", () => {
+    // Postman, Insomnia, Bruno, HAR y cURL guardan una entrada por
+    // request, así que ninguno pierde nada.
+    expect(exportWarnings(["insomnia", "bruno", "har", "curl"], rpcInput)).toEqual([]);
   });
 });

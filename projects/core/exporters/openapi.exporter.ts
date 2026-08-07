@@ -213,7 +213,11 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
     for (const spec of specs) {
       const path = toOpenApiPath(spec.uri);
       const bucket = paths[path] ?? (paths[path] = {});
-      bucket[spec.method.toLowerCase()] = buildOperation(spec);
+      // La **primera** gana, para que coincida con lo que dice el aviso.
+      // Con `=` a secas ganaba la última, y el aviso mentía sobre cuál
+      // se había conservado.
+      const verb = spec.method.toLowerCase();
+      if (!(verb in bucket)) bucket[verb] = buildOperation(spec);
     }
 
     const security = buildSecurity(auth);
@@ -239,6 +243,33 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
 export class OpenApiExporter implements IExportTarget {
   readonly format = "openapi";
   readonly summary = "OpenAPI 3.1.0 (YAML) — SDKs, gateways, Swagger Editor";
+
+  /**
+   * Operaciones que se pierden por la forma del formato.
+   *
+   * OpenAPI indexa por ruta + método, así que dos endpoints que
+   * comparten los dos son **el mismo** para el documento. En REST no
+   * pasa; en RPC sobre POST —GraphQL, tRPC con un solo endpoint— es la
+   * norma.
+   */
+  warnings(input: IExportInput): string[] {
+    const byKey = new Map<string, string[]>();
+    for (const spec of input.specs) {
+      const key = `${spec.method} ${toOpenApiPath(spec.uri)}`;
+      byKey.set(key, [...(byKey.get(key) ?? []), spec.name]);
+    }
+    const out: string[] = [];
+    for (const [key, names] of byKey) {
+      if (names.length < 2) continue;
+      out.push(
+        `openapi: \`${key}\` agrupa ${names.length} operaciones y el formato solo ` +
+          `admite una. Se conserva \`${names[0]}\` y se pierden: ` +
+          `${names.slice(1).join(", ")}. OpenAPI identifica una operación por ruta ` +
+          "y método, así que una API de RPC sobre POST no se puede representar entera.",
+      );
+    }
+    return out;
+  }
 
   serialize(input: IExportInput): IExportArtifact[] {
     return [

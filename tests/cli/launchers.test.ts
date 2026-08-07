@@ -16,7 +16,7 @@ import { describe, expect, test } from "vitest";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-import { fromRoot } from "../../scripts/helpers/root.helper";
+import { REPO_ROOT, fromRoot } from "../../scripts/helpers/root.helper";
 import { runProcess } from "../helpers/run-process";
 
 const BIN_DIR = fromRoot("bin");
@@ -113,5 +113,45 @@ describe("los lanzadores son finos", () => {
       // El nombre viejo no puede quedar en un lanzador nuevo.
       expect(source, file).not.toMatch(/postman-from-routes/);
     }
+  });
+});
+
+/**
+ * El nombre del ejecutable, en un solo sitio.
+ *
+ * Estaba escrito a mano en el script de compilación y se quedó en
+ * `postman-from-routes` —el nombre viejo— cuando el producto se
+ * renombró. Los binarios de las releases salían con un nombre que no
+ * existe en ninguna otra parte del proyecto, y el workflow que los
+ * publica buscaba ese patrón: los dos coincidían **en estar mal**, así
+ * que nada fallaba.
+ */
+describe("el nombre del binario", () => {
+  test("es el mismo que el `bin` del package.json", async () => {
+    const { BIN_NAME } = await import("../../projects/core/contracts/postman.constant");
+    const pkg = JSON.parse(
+      await readFile(join(REPO_ROOT, "package.json"), "utf8"),
+    ) as { bin?: Record<string, string> };
+    expect(Object.keys(pkg.bin ?? {})).toContain(BIN_NAME);
+  });
+
+  test("el workflow de releases publica ese patrón, no otro", async () => {
+    const { BIN_NAME } = await import("../../projects/core/contracts/postman.constant");
+    const workflow = await readFile(
+      join(REPO_ROOT, ".github", "workflows", "release-binaries.yml"),
+      "utf8",
+    );
+    expect(workflow).toContain(`dist/${BIN_NAME}-`);
+    // Publicar un patrón que ya no se genera dejaría la release vacía.
+    expect(workflow).not.toMatch(/postman-from-routes/);
+  });
+
+  test("el script de compilación no lo escribe a mano", async () => {
+    const source = await readFile(
+      join(REPO_ROOT, "scripts", "build", "build-binary.script.ts"),
+      "utf8",
+    );
+    expect(source).toContain("BIN_NAME");
+    expect(source).not.toMatch(/["'`]postman-from-routes/);
   });
 });

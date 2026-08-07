@@ -136,7 +136,7 @@ bun run validate     # el gate: typecheck + lint + tests + generación real
 | `typecheck` | `tsc --noEmit` |
 | `lint:tools` | los tools del plugin MCP no leen `process.env` |
 | `test` | la suite completa |
-| `validate:examples` | genera de verdad los 11 proyectos de `examples/` y valida cada colección |
+| `validate:examples` | genera de verdad los 21 proyectos de `examples/` y valida cada colección |
 
 Y aparte, antes de publicar:
 

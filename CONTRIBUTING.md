@@ -139,7 +139,7 @@ examples/          un proyecto por framework
 ```
 projects/core/          núcleo agnóstico
         ↑
-projects/frameworks/    los 12 scanners y sus parsers
+projects/frameworks/    los 21 scanners y sus parsers
         ↑
 projects/cli/ + ui/     raíz de composición: une las dos
 ```
@@ -262,7 +262,7 @@ en este orden:
 | Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex_expostman/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
-| Generación real | `bun run validate:examples` | Genera los 11 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
+| Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
 
 Se ejecuta en CI (`.github/workflows/validate.yml`) con el mismo comando,
 así que lo que pasa en local pasa en CI.

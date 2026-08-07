@@ -99,3 +99,22 @@ export function exportTo(
   }
   return out;
 }
+
+/**
+ * Lo que los formatos pedidos **no pueden** representar.
+ *
+ * Se devuelve aparte de los artefactos porque no impide generarlos: el
+ * fichero sale igual, solo que incompleto, y quien lo pidió tiene que
+ * saberlo.
+ */
+export function exportWarnings(
+  formats: ReadonlyArray<string>,
+  input: IExportInput,
+): string[] {
+  const out: string[] = [];
+  for (const format of formats) {
+    const target = exporterFor(format);
+    out.push(...(target?.warnings?.(input) ?? []));
+  }
+  return out;
+}

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 192 símbolos en 42 módulos.
+> 194 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -200,6 +200,20 @@ poder recorrerla en tiempo de ejecución. El adapter la usa para
 filtrar: tenerla escrita a mano allí hacía que añadir un método al
 tipo no sirviera de nada, y los `HEAD` que los scanners sí detectaban
 desaparecían en silencio.
+
+#### `BIN_NAME`
+
+```ts
+export const BIN_NAME = "expostman" as const
+```
+
+Nombre del ejecutable que se distribuye.
+
+Es el mismo que el `bin` del `package.json` y el que se escribe en la
+terminal. Estaba escrito a mano en el script de compilación, y se
+quedó en `postman-from-routes` —el nombre viejo— cuando el producto
+pasó a llamarse así: los binarios de las releases salían con un nombre
+que no existe en ninguna otra parte del proyecto.
 
 ### `projects/core/contracts/postman.interface.ts`
 
@@ -1435,6 +1449,18 @@ export function exportTo( formats: ReadonlyArray<string>, input: IExportInput, )
 Serializa el proyecto a todos los formatos pedidos.
 
 `postman` se salta: lo escribe el pipeline por su cuenta.
+
+#### `exportWarnings`
+
+```ts
+export function exportWarnings( formats: ReadonlyArray<string>, input: IExportInput, ): string[]
+```
+
+Lo que los formatos pedidos **no pueden** representar.
+
+Se devuelve aparte de los artefactos porque no impide generarlos: el
+fichero sale igual, solo que incompleto, y quien lo pidió tiene que
+saberlo.
 
 ### `projects/core/exporters/har.exporter.ts`
 

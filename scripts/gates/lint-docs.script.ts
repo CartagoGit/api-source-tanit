@@ -9,6 +9,7 @@
  *   2. Toda ruta de fichero que se menciona existe en el repo.
  *   3. Todo `expostman <comando>` es un comando que el CLI conoce.
  *   4. Todo enlace relativo apunta a algo que existe.
+ *   5. Los números que la prosa afirma coinciden con la realidad.
  *
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
@@ -83,6 +84,100 @@ async function exists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Números que la documentación afirma y que se pueden contar.
+ *
+ * "los 11 proyectos de `examples/`" era cierto cuando se escribió y
+ * llevaba diez ejemplos sin serlo. Un número en prosa no lo comprueba
+ * nadie: envejece igual que una ruta, pero encima parece inofensivo.
+ *
+ * Solo se vigilan los que se pueden contar sin ambigüedad. Un "cientos
+ * de tests" no entra aquí, y no debería.
+ */
+interface ICountedClaim {
+  /** Captura el número en el grupo 1. */
+  readonly re: RegExp;
+  /** Cómo se cuenta de verdad. */
+  count(): Promise<number>;
+  /** Qué se está contando, para el mensaje. */
+  readonly what: string;
+}
+
+/**
+ * Cuenta los proyectos de ejemplo **que el gate valida**.
+ *
+ * `example-app` no entra: no es un proyecto de API, es el ejemplo de
+ * configuración manual. `validate.script.ts` lo excluye igual, y las dos
+ * cuentas tienen que dar lo mismo o el lint acusaría a una frase que es
+ * correcta.
+ */
+async function countExampleProjects(): Promise<number> {
+  try {
+    const entries = (await readdir(join(REPO_ROOT, "examples"), {
+      withFileTypes: true,
+    })) as unknown as Array<{ name: string; isDirectory(): boolean }>;
+    return entries.filter(
+      (e) => e.isDirectory() && e.name.startsWith("example-") && e.name !== "example-app",
+    ).length;
+  } catch {
+    return -1;
+  }
+}
+
+const COUNTED_CLAIMS: ReadonlyArray<ICountedClaim> = [
+  {
+    re: /\b(?:los|las)\s+(\d+)\s+proyectos?\s+de\s+`?examples\/`?/gi,
+    what: "proyectos en examples/",
+    count: countExampleProjects,
+  },
+  {
+    re: /\b(?:los|las)\s+(\d+)\s+scanners?\b/gi,
+    what: "scanners registrados",
+    count: async () => {
+      const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
+      return SUPPORTED_FRAMEWORKS.length;
+    },
+  },
+  {
+    re: /\b(\d+)\s+frameworks?\s+(?:soportados?|autom|detect)/gi,
+    what: "frameworks soportados",
+    count: async () => {
+      const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
+      return SUPPORTED_FRAMEWORKS.length;
+    },
+  },
+];
+
+/**
+ * Ficheros que hablan del **pasado** y no se comparan con el presente.
+ *
+ * El CHANGELOG se genera de los mensajes de commit: "12 scanners" era
+ * cierto el día que se escribió, y sigue siéndolo como afirmación
+ * histórica. Corregirlo sería falsear el registro.
+ */
+const HISTORICAL = new Set(["CHANGELOG.md"]);
+
+async function checkCounts(
+  line: string,
+  where: { readonly file: string; readonly line: number },
+  problems: IProblem[],
+): Promise<void> {
+  if (HISTORICAL.has(where.file)) return;
+  for (const claim of COUNTED_CLAIMS) {
+    const own = new RegExp(claim.re.source, claim.re.flags);
+    let match: RegExpExecArray | null;
+    while ((match = own.exec(line)) !== null) {
+      const claimed = Number(match[1]);
+      const real = await claim.count();
+      if (real < 0 || claimed === real) continue;
+      problems.push({
+        ...where,
+        detail: `dice ${claimed} ${claim.what}, y hay ${real}`,
+      });
+    }
   }
 }
 
@@ -225,6 +320,7 @@ async function main(): Promise<number> {
         await checkSnippet(span[1]!, where, { scripts, commands }, problems);
       }
       await checkLinks(line, file, where, problems);
+      await checkCounts(line, where, problems);
     }
   }
 

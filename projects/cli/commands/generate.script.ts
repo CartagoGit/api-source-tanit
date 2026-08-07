@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import {
   DEFAULT_FORMAT,
   exportTo,
+  exportWarnings,
   parseFormats,
 } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
@@ -332,7 +333,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const extraFormats = formats.filter((f) => f !== DEFAULT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = outputDirFor();
-    const artifacts = exportTo(extraFormats, {
+    const exportInput = {
       specs: discoveredSpecs,
       config,
       auth: {
@@ -340,7 +341,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         keyName: pipeline.authScheme.keyName,
         keyIn: pipeline.authScheme.keyIn,
       },
-    });
+    };
+    const artifacts = exportTo(extraFormats, exportInput);
     for (const artifact of artifacts) {
       const target = join(dir, artifact.path);
       await mkdir(dirname(target), { recursive: true });
@@ -348,6 +350,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       extraPaths.push(target);
     }
     console.log(`  · ${artifacts.length} fichero(s) en ${extraFormats.join(", ")}`);
+    // Un formato que no lo representa todo lo dice: el fichero sale
+    // igual, pero incompleto.
+    for (const warning of exportWarnings(extraFormats, exportInput)) {
+      console.warn(`\n⚠ ${warning}`);
+    }
   }
 
   const sizeKb = (json.length / 1024).toFixed(1);

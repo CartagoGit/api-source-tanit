@@ -55,3 +55,14 @@ export const SUPPORTED_METHODS = [
   "OPTIONS",
 ] as const;
 
+
+/**
+ * Nombre del ejecutable que se distribuye.
+ *
+ * Es el mismo que el `bin` del `package.json` y el que se escribe en la
+ * terminal. Estaba escrito a mano en el script de compilación, y se
+ * quedó en `postman-from-routes` —el nombre viejo— cuando el producto
+ * pasó a llamarse así: los binarios de las releases salían con un nombre
+ * que no existe en ninguna otra parte del proyecto.
+ */
+export const BIN_NAME = "expostman" as const;
