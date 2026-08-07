@@ -120,16 +120,20 @@ Ejemplo: [`examples/example-symfony/`](../examples/example-symfony/)
 
 ---
 
-## Express / Fastify / Koa / Hapi
+## Express / Koa / Hapi
 
-**Detecta por**: `package.json` con `express`, `fastify`, `@koa/router`,
+**Detecta por**: `package.json` con `express`, `@koa/router`,
 `@hapi/hapi` o `koa`.
+
+**Fastify ya no está aquí**: tiene su propio scanner, que lee el JSON
+Schema que Fastify declara dentro de cada ruta. Mientras compartían
+scanner, un proyecto Fastify casaba con los dos y se mezclaban dos
+lecturas — una buena y otra a medias.
 
 **Entiende**:
 - `app.get('/users', handler)` y `router.post(...)`
 - `express.Router()` y `Router({ prefix: '/api' })`
 - `app.use('/api', usersRouter)` como prefijo de montaje
-- Fastify: `fastify.get(...)`, `app.route({...})`
 - Hapi: `server.route({ method, path, handler })`
 
 **Busca en**: `src/`, `lib/`, `app/`, `routes/` y la raíz. Se saltan
@@ -327,6 +331,185 @@ el parámetro tipado del lambda en minimal APIs.
 paquete NuGet no se resuelven.
 
 Ejemplo: [`examples/example-aspnet/`](../examples/example-aspnet/)
+
+---
+
+## Fastify
+
+**Detecta por**: `package.json` con `fastify`.
+
+**Entiende**: las tres formas de declarar una ruta —`fastify.get(…)`,
+`fastify.route({ method, url })` y `method: ["GET", "HEAD"]`— y los
+prefijos de `fastify.register(plugin, { prefix: "/api" })`.
+
+**Bodies**: del **JSON Schema que Fastify lleva dentro de la propia
+ruta** (`schema: { body: { … } }`). Es información de tipos exacta, no
+inferida: tipos, `required`, `enum`, `minimum`/`maximum` y formatos salen
+tal cual del contrato.
+
+**Cuidado que costó un bug**: el schema se busca **dentro de los
+paréntesis de su propia llamada**. Sin acotarlo, una ruta sin schema
+heredaba el de la siguiente y salía con campos que no son suyos.
+
+Ejemplo: [`examples/example-fastify/`](../examples/example-fastify/)
+
+---
+
+## Fiber
+
+**Detecta por**: `go.mod` con `github.com/gofiber/fiber`.
+
+**Entiende**: `app.Get("/users", handler)`, los `app.Group("/api")`
+encadenables, y los grupos anidados.
+
+**Bodies**: de los structs que pasan por `BodyParser`, leyendo los tags
+`validate:"…"` de go-playground/validator y los `json:"…"` para la clave.
+
+**Cuidado que costó un bug**: el helper que buscaba el struct reutilizaba
+el regex del bucle exterior y le movía el `lastIndex` hacia atrás. El
+bucle volvía a encontrar la misma ruta, para siempre — bucle infinito y
+el sistema operativo matando el proceso. De ahí salió `lint:regex-state`.
+
+Ejemplo: [`examples/example-fiber/`](../examples/example-fiber/)
+
+---
+
+## Hono
+
+**Detecta por**: `package.json` con `hono`.
+
+**Entiende**: rutas encadenadas (`app.get(…).post(…)`), montaje de
+sub-aplicaciones con `app.route("/prefijo", sub)`, y `app.on(["GET",
+"POST"], …)`.
+
+**Bodies**: de `@hono/zod-validator`, respetando su *target* — `json` va
+al body, `query` a los parámetros y `param` a la ruta.
+
+**Limitaciones**: un schema declarado en otro fichero no se resuelve.
+
+Ejemplo: [`examples/example-hono/`](../examples/example-hono/)
+
+---
+
+## Rust (Actix-web / Rocket)
+
+**Detecta por**: `Cargo.toml` con `actix-web` o `rocket`.
+
+**Entiende**: los macros de atributo de los dos —`#[get("/users")]`,
+`#[post("/users")]`— y `web::scope("/api")` de Actix. Los dos comparten
+scanner porque declaran las rutas igual; separarlos sería duplicar el
+mismo parser para cambiar dos líneas de detección.
+
+**Bodies**: de los structs con `#[derive(Deserialize)]`. Un `Option<T>`
+es un campo opcional, `#[serde(rename = "…")]` cambia la clave, y
+`#[validate(…)]` del crate `validator` aporta las restricciones.
+
+**Limitaciones**: los parámetros de Rocket usan `<id>` y se traducen;
+los tipos genéricos anidados no se resuelven.
+
+Ejemplo: [`examples/example-rust/`](../examples/example-rust/)
+
+---
+
+## Rails
+
+**Detecta por**: `Gemfile` con `rails`, o `config/routes.rb`.
+
+**Entiende**: `resources :users` expandido a sus **cinco acciones de
+API** —`index`, `create`, `show`, `update`, `destroy`—, `only:` y
+`except:`, `resource` singular (sin `index`), y `namespace` anidados.
+
+Los `new` y `edit` que genera `resources` **no** se emiten: devuelven
+formularios HTML y en una API JSON contestarían un 404 o un HTML que
+nadie espera.
+
+**Bodies**: no se infieren. Rails valida en el modelo, no en la ruta.
+
+Ejemplo: [`examples/example-rails/`](../examples/example-rails/)
+
+---
+
+## Phoenix
+
+**Detecta por**: `mix.exs` con `:phoenix`.
+
+**Entiende**: `scope "/api" do … end` anidados, `resources`, y los verbos
+sueltos (`get "/users", UserController, :index`).
+
+**Ojo**: `pipe_through :api` **no** es una ruta, aunque esté en el mismo
+bloque y se parezca. Confundirlo metía una request por cada pipeline.
+
+**Bodies**: no se infieren. Phoenix valida en los changesets del
+contexto, no en el router.
+
+Ejemplo: [`examples/example-phoenix/`](../examples/example-phoenix/)
+
+---
+
+## Ktor
+
+**Detecta por**: `build.gradle` / `build.gradle.kts` con `io.ktor`.
+
+**Entiende**: el DSL anidado por llaves — `routing { route("/api") {
+get("/users") { … } } }` — llevando la cuenta de las llaves para saber
+en qué prefijo está cada verbo. Un `get { … }` **sin ruta** hereda la
+del `route()` que lo envuelve.
+
+Las llaves dentro de una cadena no cuentan: si contaran, un
+`"{ }"` en un literal descuadraría el árbol entero.
+
+**Bodies**: no se infieren.
+
+Ejemplo: [`examples/example-ktor/`](../examples/example-ktor/)
+
+---
+
+## GraphQL
+
+**Detecta por**: un `.graphql` o `.gql` con `type Query` o
+`type Mutation`. También por `package.json` con `graphql`,
+`@apollo/server`, `graphql-yoga`, `@nestjs/graphql` o `mercurius` — pero
+el esquema pesa más, porque reconoce igual un servidor de Go o de Python.
+
+**Entiende**: cada campo de `type Query` y `type Mutation` sale como una
+request. GraphQL no tiene rutas: tiene **un** endpoint —`POST /graphql`—
+y lo que cambia es el cuerpo, así que un "endpoint" aquí es una
+operación.
+
+**Bodies**: la consulta ya escrita, con los argumentos como **variables**
+de GraphQL y no incrustados en el texto. Así se cambian desde el panel de
+Postman sin editar la consulta.
+
+**Limitaciones**: las `subscription` **no** se emiten — van por WebSocket
+y una petición HTTP con una dentro contesta un error. El endpoint se
+asume en `/graphql`; si el tuyo está en otro sitio, edítalo en la
+colección o declara la ruta en `endpoints.constant.ts`.
+
+Ejemplo: [`examples/example-graphql/`](../examples/example-graphql/)
+
+---
+
+## tRPC
+
+**Detecta por**: `package.json` con `@trpc/server`.
+
+**Entiende**: el árbol de routers, incluidos los que se declaran aparte
+y se referencian (`const usersRouter = t.router({…})` y luego
+`t.router({ users: usersRouter })`). El nombre del procedimiento sale de
+anidarlos: `users.list`.
+
+**La traducción a HTTP**, que es lo que casi nadie sabe de memoria porque
+desde el cliente se llama como si fueran funciones:
+
+| En el router | En HTTP |
+| --- | --- |
+| `t.procedure.query()` | `GET /trpc/users.list` con `?input=<json>` |
+| `t.procedure.mutation()` | `POST /trpc/users.create` con el body |
+
+**Limitaciones**: las `subscription` no se emiten, por lo mismo que en
+GraphQL. El prefijo se asume `/trpc`.
+
+Ejemplo: [`examples/example-trpc/`](../examples/example-trpc/)
 
 ---
 

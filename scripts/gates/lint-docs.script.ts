@@ -10,6 +10,7 @@
  *   3. Todo `expostman <comando>` es un comando que el CLI conoce.
  *   4. Todo enlace relativo apunta a algo que existe.
  *   5. Los números que la prosa afirma coinciden con la realidad.
+ *   6. Cada framework del registro tiene su sección en `FRAMEWORKS.md`.
  *
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
@@ -261,6 +262,51 @@ async function checkSnippet(
   }
 }
 
+/**
+ * Que ningún framework del registro se quede sin documentar.
+ *
+ * `docs/FRAMEWORKS.md` no es documentación de cortesía: es a donde el
+ * propio CLI manda a la gente cuando no encuentra endpoints —"Mira
+ * docs/FRAMEWORKS.md para ver qué busca cada scanner"—. Un framework
+ * soportado pero ausente de ahí manda a leer una página que no habla de
+ * su caso, que es peor que no mandar a ninguna.
+ *
+ * Pasó con siete a la vez: hono, rust, rails, phoenix, ktor, graphql y
+ * trpc. Cada uno se añadió con su fixture, su ejemplo y sus tests, y a
+ * ninguno se le escribió la sección — porque nada la pedía.
+ */
+async function checkFrameworkSections(problems: IProblem[]): Promise<void> {
+  const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
+  const path = join(REPO_ROOT, "docs", "FRAMEWORKS.md");
+  let doc: string;
+  try {
+    doc = await readFile(path, "utf8");
+  } catch {
+    problems.push({ file: "docs/FRAMEWORKS.md", line: 0, detail: "no existe" });
+    return;
+  }
+  // Se busca por el enlace al ejemplo o al fixture, que es lo que hace
+  // una sección de verdad: una mención suelta del nombre en otra sección
+  // no cuenta como documentarlo.
+  for (const framework of SUPPORTED_FRAMEWORKS) {
+    // `openapi` es el único cuyo ejemplo no sigue el patrón del nombre:
+    // se llama `example-openapi-headers` porque lo que ejercita son las
+    // cabeceras del spec.
+    const documented =
+      doc.includes(`examples/example-${framework}/`) ||
+      doc.includes(`examples/example-${framework}-`) ||
+      doc.includes(`tests/fixtures/${framework}-comprehensive/`);
+    if (documented) continue;
+    problems.push({
+      file: "docs/FRAMEWORKS.md",
+      line: 0,
+      detail:
+        `\`${framework}\` está en el registro y no tiene sección. ` +
+        "El CLI manda a este fichero cuando no encuentra endpoints.",
+    });
+  }
+}
+
 async function main(): Promise<number> {
   const packageJson = JSON.parse(await readFile(PACKAGE_JSON, "utf8")) as {
     scripts?: Record<string, string>;
@@ -326,6 +372,8 @@ async function main(): Promise<number> {
       await checkCounts(line, where, problems);
     }
   }
+
+  await checkFrameworkSections(problems);
 
   if (problems.length > 0) {
     console.error(`lint:docs — ${problems.length} referencia(s) rota(s):\n`);
