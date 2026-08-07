@@ -72,8 +72,11 @@ const RULES: readonly INamingRule[] = [
   },
   {
     path: "projects/ui/",
-    what: "el asistente interactivo",
-    suffixes: [".script.ts", ".constant.ts"],
+    what: "el asistente interactivo y lo que dibuja en la terminal",
+    // `.helper` entra porque el asistente ya no es un solo fichero: la
+    // tabla, las barras y el color son funciones puras con sus tests, y
+    // llamarlas `.script` diría que se pueden ejecutar, que no es el caso.
+    suffixes: [".script.ts", ".helper.ts", ".constant.ts"],
   },
   {
     path: "scripts/",

@@ -132,6 +132,7 @@ COMMON FLAGS
   --inspect               Report what was detected; write nothing.
   --allow-empty           Exit 0 even when no endpoint was found.
   --open                  Open Postman when done.
+  -i, --interactive       Guided flow: preview, quality summary, formats.
   -h, --help              Show this help.
 
 WATCH FLAGS
@@ -192,8 +193,9 @@ export async function run(argv: string[]): Promise<number> {
   }
 
   // Sin argumentos arranca el asistente: es lo que espera quien ejecuta
-  // el binario por primera vez sin haber leído la ayuda.
-  if (!commandName) {
+  // el binario por primera vez sin haber leído la ayuda. `-i` hace lo
+  // mismo de forma explícita, para quien sí quiere pedirlo.
+  if (!commandName || commandName === "-i" || commandName === "--interactive") {
     const { main: interactiveMain } = await import("../ui/interactive.script.js");
     return interactiveMain(rest);
   }

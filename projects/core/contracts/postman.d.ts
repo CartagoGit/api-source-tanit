@@ -255,7 +255,16 @@ declare const process: {
   platform: NodeJS.Platform;
   /** Escritura sin salto de línea, para indicadores de progreso. */
   stderr: { write(chunk: string): boolean };
-  stdout: { write(chunk: string): boolean };
+  /**
+   * `isTTY` y `columns` son `undefined` cuando la salida está
+   * redirigida — y esa es justo la señal que hace falta: si nadie mira,
+   * no se pinta con color ni se ajusta a un ancho que no existe.
+   */
+  stdout: {
+    write(chunk: string): boolean;
+    readonly isTTY?: boolean;
+    readonly columns?: number;
+  };
   /**
    * Señales del sistema, una sola vez.
    *
