@@ -89,10 +89,7 @@ function extractEndpoints(mod: Record<string, unknown>): EndpointSpec[] {
 
 async function listDirs(p: string): Promise<string[]> {
   try {
-    const entries = (await readdir(p, { withFileTypes: true })) as unknown as Array<{
-      name: string;
-      isDirectory(): boolean;
-    }>;
+    const entries = await readdir(p, { withFileTypes: true });
     return entries.filter((e) => e.isDirectory()).map((e) => e.name);
   } catch {
     return [];

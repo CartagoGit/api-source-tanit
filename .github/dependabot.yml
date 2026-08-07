@@ -1,31 +1,49 @@
-# Dependabot solo mira las dependencias que este proyecto instala de verdad.
+# Dependabot tiene dos mitades y esta configuración solo gobierna una.
 #
-# El repo contiene **50 manifiestos que no son suyos**: cada proyecto de
-# `examples/` y cada fixture de `tests/` trae su `package.json`,
-# `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml` o `Cargo.toml`,
-# porque es de ahí de donde los scanners deducen el framework. Son
-# proyectos de mentira, recortados a lo justo para ejercitar un scanner,
-# y **nadie los instala nunca**.
+#   · **Actualizaciones** (los PR "bump X from A to B") — se piden aquí,
+#     directorio a directorio. Lo que no se nombre, no se actualiza.
+#   · **Alertas de seguridad** — salen del *grafo de dependencias*, que
+#     GitHub construye escaneando **todos** los manifiestos del repo.
+#     Esta configuración **no** las filtra. No hay forma de filtrarlas:
+#     el grafo no admite exclusiones por ruta.
 #
-# Dependabot no puede saberlo, así que los escaneaba como si fueran
-# dependencias reales. El efecto se midió al fusionar `develop` en
-# `main`: las alertas pasaron de 43 a 67 —seis de ellas críticas—
-# mientras `bun audit` sobre lo que sí se instala seguía en cero. Los
-# ejemplos de GraphQL y tRPC, que son dos ficheros con cuatro
-# dependencias declaradas, aportaron 24 alertas ellos solos.
+# La distinción no es teórica, se pagó: al declarar aquí solo los dos
+# paquetes reales, las 67 alertas abiertas siguieron exactamente igual
+# de abiertas. Las actualizaciones dejaron de llegar; las alertas no.
+#
+# Y eso importa porque el repo contiene **50 manifiestos que no son
+# suyos**: cada proyecto de `examples/` y cada fixture de `tests/` trae
+# su `package.json`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml` o
+# `Cargo.toml`, porque es de ahí de donde los scanners deducen el
+# framework. Son proyectos de mentira, recortados a lo justo para
+# ejercitar un scanner, y **nadie los instala nunca**. Las 67 alertas
+# salían de ellos: las trece rutas señaladas estaban todas bajo
+# `examples/` o `tests/`, y ni una sola bajo un paquete real. Mientras
+# tanto `bun audit`, que mira lo que sí se instala, seguía en cero.
 #
 # Eso no es un aviso de seguridad: es ruido que **esconde** los avisos de
 # verdad. Sesenta y siete alertas de dependencias que no existen hacen
-# que nadie mire la lista, y el día que aparezca una real se pierda entre
+# que nadie mire la lista, y el día que aparezca una real se pierde entre
 # ellas.
 #
-# Aquí se declara qué directorios contienen dependencias de verdad:
+# Como el grafo no se puede filtrar, la única palanca que queda es lo que
+# los manifiestos falsos **declaran**. De ahí la política:
+#
+#   > Un manifiesto de ejemplo o de fixture declara la versión que
+#   > declararía hoy un proyecto real: la vigente y sin avisos abiertos.
+#
+# Cumplirla no cuesta nada —el código de ejemplo no se ejecuta y las
+# versiones no cambian su sintaxis— y a cambio el grafo no tiene nada que
+# señalar. `tests/cli/dependabot.spec.ts` la vigila: lleva el suelo de
+# versión de cada paquete que llegó a alertar y falla si alguno vuelve a
+# bajar de ahí.
+#
+# Aquí abajo, entonces, solo los directorios que contienen dependencias
+# de verdad:
 #
 #   /                                      el paquete
 #   /projects/plugins/mcp-vertex_expostman el plugin, que se publica aparte
 #
-# Todo lo demás queda fuera por omisión — Dependabot solo mira los
-# `directory` que se le nombran.
 version: 2
 
 updates:

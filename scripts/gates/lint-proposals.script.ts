@@ -81,7 +81,7 @@ async function collectProposals(dir: string): Promise<IProposal[]> {
   const out: IProposal[] = [];
   let entries: Array<{ name: string; isDirectory(): boolean }>;
   try {
-    entries = (await readdir(dir, { withFileTypes: true })) as never;
+    entries = await readdir(dir, { withFileTypes: true });
   } catch {
     return out;
   }

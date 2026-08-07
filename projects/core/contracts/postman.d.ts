@@ -27,14 +27,21 @@ declare module "node:fs/promises" {
     path: string,
     options?: { recursive?: boolean },
   ): Promise<string | undefined>;
-  export function readdir(
-    path: string,
-    options?: { recursive?: boolean; withFileTypes?: boolean },
-  ): Promise<string[]>;
+  // El orden importa y estuvo al revés. TypeScript se queda con la
+  // **primera** sobrecarga que encaje, y `{ withFileTypes: true }` encaja
+  // con `withFileTypes?: boolean`, así que la llamada tipaba `string[]`
+  // aunque devolviera `Dirent[]`. El repo entero lo esquivaba a base de
+  // `as never` —doce sitios—, que apaga la comprobación de `entry.name`
+  // y `entry.isDirectory()` justo donde hace falta. La sobrecarga
+  // específica va primero.
   export function readdir(
     path: string,
     options: { recursive?: boolean; withFileTypes: true },
   ): Promise<Dirent[]>;
+  export function readdir(
+    path: string,
+    options?: { recursive?: boolean; withFileTypes?: false },
+  ): Promise<string[]>;
 
   export interface Dirent {
     name: string;
@@ -129,10 +136,22 @@ declare module "node:fs" {
     path: string,
     encoding: BufferEncoding,
   ): string;
+  // Mismo orden que en la versión asíncrona, y por el mismo motivo.
   export function readdirSync(
     path: string,
-    options?: { recursive?: boolean; withFileTypes?: boolean },
+    options: { recursive?: boolean; withFileTypes: true },
+  ): Dirent[];
+  export function readdirSync(
+    path: string,
+    options?: { recursive?: boolean; withFileTypes?: false },
   ): string[];
+
+  export interface Dirent {
+    name: string;
+    isFile(): boolean;
+    isDirectory(): boolean;
+    isSymbolicLink(): boolean;
+  }
 }
 
 // --- node:child_process --------------------------------------------------

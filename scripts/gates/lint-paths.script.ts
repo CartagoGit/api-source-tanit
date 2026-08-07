@@ -56,7 +56,7 @@ const SKIP_DIRS = new Set([
 async function collect(dir: string, out: string[] = []): Promise<string[]> {
   let entries: Array<{ name: string; isDirectory(): boolean }>;
   try {
-    entries = (await readdir(dir, { withFileTypes: true })) as never;
+    entries = await readdir(dir, { withFileTypes: true });
   } catch {
     return out;
   }
