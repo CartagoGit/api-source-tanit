@@ -63,10 +63,10 @@ hace de forma distinta.
 | `example-hono` | Rutas encadenadas (`app.get(…).get(…)`), montaje con `route()`, y `@hono/zod-validator` con sus targets (`json`, `query`, `param`) |
 | `example-fastify` | Las tres formas de declarar ruta (`get`, `route({method,url})`, `method: ["GET","HEAD"]`), prefijos de `register`, y el JSON Schema que Fastify lleva dentro de la propia ruta |
 | `example-express` | zod y Joi en el mismo proyecto, headers declarados en el schema, varios `app.use()` en una línea |
-| `example-nestjs` | Decoradores, `setGlobalPrefix`, `class-validator` |
-| `example-nextjs` | App Router, segmentos dinámicos `[id]`, `route.ts` por carpeta |
+| `example-nestjs` | Decoradores, `setGlobalPrefix`, y DTOs de `class-validator` declarados **en el mismo fichero** que el controlador |
+| `example-nextjs` | App Router, segmentos dinámicos `[id]`, `route.ts` por carpeta, y zod declarado en el propio route handler |
 | `example-fastapi` | Modelos Pydantic, `APIRouter` con prefijo, parámetros de query tipados |
-| `example-flask` | Blueprints, Marshmallow |
+| `example-flask` | Blueprints y esquemas Marshmallow (`Schema().load(request.json)`), de donde salen los campos del body |
 | `example-django` | DRF, `urlpatterns` anidados y la barra final obligatoria (`APPEND_SLASH`) |
 | `example-gin` | Grupos de rutas y `binding:"required"` en los structs |
 | `example-rails` | `resources` expandido a sus cinco acciones de API (sin los formularios `new`/`edit`), `only:`/`except:`, recurso singular, y `namespace` anidados |

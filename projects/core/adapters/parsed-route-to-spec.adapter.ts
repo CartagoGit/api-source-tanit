@@ -34,11 +34,15 @@ import type {
   ParsedRoute,
 } from "../contracts/scanner.interface.js";
 
-/** Convierte `{x}` o `:x` (Express) a `{{x}}`. La URI ya viene con
- * prefix aplicado desde el scanner; aquí solo normalizamos el formato
- * canónico Postman (`{{param}}` y `/` inicial). */
-export function toPostmanUri(laravelUri: string): string {
-  let u = laravelUri.trim();
+/**
+ * Traduce los parámetros de ruta al formato de Postman: `{{x}}`.
+ *
+ * Solo eso. Va aparte de `toPostmanUri` porque también se aplica a los
+ * **nombres** de las requests, y un nombre no es una ruta: no lleva
+ * barra inicial ni se le colapsan las barras.
+ */
+function toPostmanParams(text: string): string {
+  let u = text;
   // Paso 1: `<int:id>`, `<str:slug>`, `<id>` (Django) → `{{id}}`.
   //         DEBE ir antes que `:param` para evitar que `<int:id>` se
   //         rompa en `<int{{id}}>` (porque `:id` matchearía `:param`).
@@ -48,7 +52,14 @@ export function toPostmanUri(laravelUri: string): string {
   u = u.replace(/:([a-zA-Z_][\w]*)/g, "{{$1}}");
   // Paso 3: `{param}` (Laravel) → `{{param}}`. Lookbehind negativo para
   // NO matchear si el `{` va precedido de otro `{` (eso es `{{param}}`).
-  u = u.replace(/(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g, "{{$1}}");
+  return u.replace(/(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g, "{{$1}}");
+}
+
+/** Convierte `{x}` o `:x` (Express) a `{{x}}`. La URI ya viene con
+ * prefix aplicado desde el scanner; aquí solo normalizamos el formato
+ * canónico Postman (`{{param}}` y `/` inicial). */
+export function toPostmanUri(laravelUri: string): string {
+  let u = toPostmanParams(laravelUri.trim());
   // Nota: NO quitamos prefijos `api/vN/` automáticamente. El prefix real
   // del backend depende del framework:
   //   - Laravel: RouteServiceProvider quita `api/` → collection va sin él.
@@ -63,9 +74,23 @@ export function toPostmanUri(laravelUri: string): string {
   return u;
 }
 
-/** Deriva un nombre legible a partir del método HTTP + URI. */
-function deriveName(route: ParsedRoute): string {
-  if (route.displayName) return toPostmanUri(route.displayName);
+/**
+ * Deriva un nombre legible a partir del método HTTP + URI.
+ *
+ * Se exporta para poder probarla sola: es una función pura de la ruta, y
+ * lo contrario obligaría a montar un scanner entero para comprobar cómo
+ * queda un nombre.
+ */
+export function deriveName(route: ParsedRoute): string {
+  // Un nombre NO es una ruta. Esto pasaba por `toPostmanUri`, que le
+  // pegaba una barra delante a todo lo que no la llevara: el scanner de
+  // Next.js emitía `POST /orders` y en Postman salía `/POST /orders`, y
+  // el de FastAPI emitía `create_user` y salía `/create_user`. Afectaba
+  // a los seis scanners que ponen `displayName`.
+  //
+  // Lo que sí hay que traducir son los parámetros, porque un nombre como
+  // `GET /users/:id` tiene que leerse igual que su URI.
+  if (route.displayName) return toPostmanParams(route.displayName.trim());
   // Normalizar la URI para displayName (e.g. `<int:id>` → `{{id}}`,
   // `:id` → `{{id}}`).
   const uri = toPostmanUri(route.uri);

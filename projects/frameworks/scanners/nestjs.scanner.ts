@@ -306,9 +306,16 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
     if (bodyMatch?.[2]) {
       const dtoTypeName = bodyMatch[2];
       const dtoPath = imports.get(dtoTypeName);
-      if (dtoPath) {
-        fields = await parseDtoFile(dtoPath, dtoTypeName);
-      }
+      fields = dtoPath
+        ? await parseDtoFile(dtoPath, dtoTypeName)
+        : // Sin import, la clase está en este mismo fichero. Es lo que
+          // hace media documentación de Nest y cualquier proyecto
+          // pequeño, y hasta ahora se quedaba sin body.
+          parseDtoSource(text, dtoTypeName);
+      // Un import que apunta a un barrel (`./dto`) puede no llevar a la
+      // clase. Si no salió nada, se mira aquí igualmente antes de
+      // rendirse.
+      if (fields.length === 0) fields = parseDtoSource(text, dtoTypeName);
     }
 
     // 4) Fallback: buscar `@IsXxx() field: type` inline en el handler.
@@ -379,7 +386,23 @@ async function parseDtoFile(
   } catch {
     return [];
   }
-  const text = stripJsComments(raw);
+  return parseDtoSource(stripJsComments(raw), dtoTypeName);
+}
+
+/**
+ * Los campos de una clase DTO, buscándola dentro de un fuente ya leído.
+ *
+ * Va aparte de `parseDtoFile` porque el DTO **no siempre está en otro
+ * fichero**. Un controlador de NestJS con su `class CreateUserDto`
+ * declarada encima —que es lo que enseña media documentación de Nest y
+ * lo que hace cualquiera en un proyecto pequeño— no importa nada, así
+ * que la resolución por imports no encontraba la clase y el endpoint
+ * salía sin body. El fallback que había miraba solo las 8 líneas justo
+ * encima de la firma, donde no está la clase.
+ *
+ * `source` tiene que venir ya sin comentarios.
+ */
+function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
   const lines = text.split("\n");
 
   // 1) Encontrar la línea `export class <dtoTypeName>`.
@@ -425,9 +448,15 @@ async function parseDtoFile(
       continue;
     }
 
-    // 4) Si la línea tiene `field: type` o `field!: type`, consumir el buffer
-    //    y emitir los fields.
-    const fm = /^[\s\S]*?([a-zA-Z_][\w]*)\s*(?:!|:)\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/.exec(line);
+    // 4) Si la línea tiene `field: type`, `field!: type` o `field?: type`,
+    //    consumir el buffer y emitir los fields.
+    //
+    // El patrón era `(?:!|:)\s*:`, o sea que exigía DOS puntos: `field!:`
+    // o `field::`. Un `name: string` normal —la forma en que se declara
+    // el 99% de los DTO— no casaba nunca, así que el parser de DTOs de
+    // NestJS no sacaba un solo campo, ni de un fichero aparte ni de la
+    // misma clase. El `?` de los opcionales tampoco estaba contemplado.
+    const fm = /^[\s\S]*?([a-zA-Z_][\w]*)\s*[!?]?\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/.exec(line);
     if (!fm || pendingDecorators.length === 0) {
       // Línea no-field; limpiar buffer.
       if (line.trim().length > 0 && !line.match(/^[\s,;]+$/)) {
@@ -438,17 +467,35 @@ async function parseDtoFile(
     const fieldName = fm[1] ?? "";
     const fieldType = (fm[2] ?? "").trim();
 
+    // Un campo, una spec.
+    //
+    // Esto emitía **una spec por decorador**, así que
+    // `@IsString() @MinLength(1) @MaxLength(100) name: string` producía
+    // tres campos llamados `name` —cada uno con un trozo de la
+    // información y ninguno con toda— y el body de ejemplo salía con la
+    // misma clave repetida. Ahora los decoradores de un campo se funden
+    // en la misma spec, que es lo que son: distintas restricciones sobre
+    // una sola cosa.
+    const field: IValidationSpec = {
+      fieldName,
+      location: "body",
+      type: "string",
+      // `@IsOptional()` puede venir antes o después del resto, así que se
+      // decide mirando todos los decoradores del campo, no el de turno.
+      required: !pendingDecorators.some((d) => d.decorator === "IsOptional"),
+    };
+    let recognised = false;
+
     for (const { decorator, args } of pendingDecorators) {
       const map = VALIDATOR_MAP[decorator];
       if (!map) continue;
-      const optional = decorator === "IsOptional";
-      const field: IValidationSpec = {
-        fieldName,
-        location: "body",
-        type: map.type,
-        required: !optional,
-        ...(map.format ? { format: map.format } : {}),
-      };
+      recognised = true;
+      // `IsOptional` solo habla de obligatoriedad, ya resuelta arriba: no
+      // debe pisar el tipo que declara `@IsInt()` o `@IsEmail()`.
+      if (decorator !== "IsOptional") {
+        field.type = map.type;
+        if (map.format) field.format = map.format;
+      }
       // Enum.
       if (decorator === "IsEnum") {
         const values = args.match(/\[([^\]]+)\]/);
@@ -459,15 +506,25 @@ async function parseDtoFile(
             .filter(Boolean);
         }
       }
-      // Length.
+      // Length. Los argumentos de class-validator son POSICIONALES:
+      // `@MinLength(1)`, `@MaxLength(100)`, `@Length(1, 100)`.
+      //
+      // Esto buscaba `min: 1` / `max: 100`, una forma con nombre que
+      // class-validator no tiene y que ni siquiera es TypeScript válido
+      // como argumento suelto. O sea que ninguna de las tres sacaba
+      // nunca su valor: el campo salía sin cotas y nadie se enteraba.
       if (decorator === "Length" || decorator === "MinLength" || decorator === "MaxLength") {
-        const min = /min\s*:\s*(\d+)/i.exec(args);
-        const max = /max\s*:\s*(\d+)/i.exec(args);
-        if (decorator === "MinLength" || decorator === "Length") {
-          if (min?.[1]) field.minLength = Number(min[1]);
+        const numbers = [...args.matchAll(/\d+/g)].map((m) => Number(m[0]));
+        if (decorator === "MinLength" && numbers[0] !== undefined) {
+          field.minLength = numbers[0];
         }
-        if (decorator === "MaxLength" || decorator === "Length") {
-          if (max?.[1]) field.maxLength = Number(max[1]);
+        if (decorator === "MaxLength" && numbers[0] !== undefined) {
+          field.maxLength = numbers[0];
+        }
+        if (decorator === "Length") {
+          // `@Length(min)` y `@Length(min, max)`.
+          if (numbers[0] !== undefined) field.minLength = numbers[0];
+          if (numbers[1] !== undefined) field.maxLength = numbers[1];
         }
       }
       // Min/Max.
@@ -478,8 +535,10 @@ async function parseDtoFile(
           else field.maximum = Number(v[1]);
         }
       }
-      fields.push(field);
     }
+    // Sin ningún decorador de class-validator no es un campo validado:
+    // es una propiedad cualquiera de la clase.
+    if (recognised) fields.push(field);
     pendingDecorators = [];
     void fieldType; // unused pero útil para type-aware rules
   }
