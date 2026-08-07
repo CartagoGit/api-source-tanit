@@ -191,6 +191,54 @@ const INLINE_CODE = /`([^`\n]+)`/g;
 /** Enlaces markdown a rutas del repo: `[texto](../ruta/al/fichero.ts)`. */
 const RELATIVE_LINK = /\[[^\]]*\]\(([^)\s#]+)(?:#[^)\s]*)?\)/g;
 
+/** Enlaces a una sección del mismo fichero: `[texto](#seccion)`. */
+const ANCHOR_LINK = /\[[^\]]*\]\(#([^)\s]+)\)/g;
+
+/**
+ * El ancla que GitHub genera para un título.
+ *
+ * Minúsculas, los espacios a guiones, y fuera todo lo que no sea letra,
+ * número o guion. `## Rust (Actix-web / Rocket)` acaba en
+ * `rust-actix-web--rocket` — con el guion doble donde estaba la barra,
+ * que es el detalle que nadie acierta a la primera.
+ */
+function anchorOf(heading: string): string {
+  return heading
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s/g, "-");
+}
+
+/**
+ * Los enlaces a secciones del propio documento.
+ *
+ * Un ancla rota no rompe nada: lleva al principio de la página y parece
+ * que el enlace "no ha ido". Es de los fallos más difíciles de ver
+ * leyendo, y la tabla de `FRAMEWORKS.md` es toda enlaces así.
+ */
+function checkAnchors(
+  source: string,
+  where: { readonly file: string },
+  problems: IProblem[],
+): void {
+  const headings = new Set(
+    [...source.matchAll(/^#{1,6}\s+(.+)$/gm)].map((m) => anchorOf(m[1] ?? "")),
+  );
+  const lines = source.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    for (const match of (lines[i] ?? "").matchAll(ANCHOR_LINK)) {
+      const anchor = (match[1] ?? "").toLowerCase();
+      if (headings.has(anchor)) continue;
+      problems.push({
+        file: where.file,
+        line: i + 1,
+        detail: `ancla rota: #${anchor} no es ninguna sección de este fichero`,
+      });
+    }
+  }
+}
+
 /**
  * Comprueba que un enlace relativo apunta a algo que existe.
  *
@@ -332,7 +380,9 @@ async function main(): Promise<number> {
 
   for (const file of [...files].sort()) {
     const rel = relative(REPO_ROOT, file).replaceAll("\\", "/");
-    const lines = (await readFile(file, "utf8")).split("\n");
+    const source = await readFile(file, "utf8");
+    checkAnchors(source, { file: rel }, problems);
+    const lines = source.split("\n");
     let inFence = false;
     // Los docs enseñan a veces comandos de OTROS proyectos (el
     // `package.json` de quien usa la herramienta, por ejemplo). Un

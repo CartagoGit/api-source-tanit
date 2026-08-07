@@ -9,20 +9,36 @@ juguete pero realista. "Con validación" son los endpoints para los que se
 resolvieron reglas de campos reales; el resto recibe un body inferido
 heurísticamente.
 
+<!-- generado:tabla-frameworks -->
+
 | Framework | Rutas del fixture | Con validación |
 |---|---:|---:|
 | [OpenAPI](#openapi--swagger) | 23 | 22 |
 | [FastAPI](#fastapi) | 19 | 14 |
 | [Django](#django--drf) | 18 | 16 |
+| [ASP.NET Core](#aspnet-core) | 17 | 7 |
 | [Laravel](#laravel) | 17 | 6 |
-| [Symfony](#symfony) | 14 | 7 |
-| [Express](#express--fastify--koa--hapi) | 14 | 13 |
-| [Next.js](#nextjs) | 14 | 11 |
-| [Gin](#gin) | 14 | 8 |
+| [Express](#express--koa--hapi) | 14 | 13 |
 | [Flask](#flask) | 14 | 7 |
-| [NestJS](#nestjs) | 13 | 7 |
+| [Gin](#gin) | 14 | 8 |
+| [Next.js](#nextjs) | 14 | 11 |
+| [Symfony](#symfony) | 14 | 7 |
+| [NestJS](#nestjs) | 13 | 10 |
+| [Rails](#rails) | 13 | 0 |
+| [Phoenix](#phoenix) | 12 | 0 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
-| [ASP.NET Core](#aspnet-core) | 17 | 13 |
+| [Fastify](#fastify) | 9 | 3 |
+| [Hono](#hono) | 9 | 3 |
+| [Fiber](#fiber) | 7 | 2 |
+| [Ktor](#ktor) | 7 | 0 |
+| [Rust](#rust-actix-web--rocket) | 7 | 2 |
+| [tRPC](#trpc) | 6 | 0 |
+| [GraphQL](#graphql) | 5 | 0 |
+
+_Generado por `bun run docs:frameworks` ejecutando cada scanner contra_
+_su fixture. 21 frameworks._
+
+<!-- /generado:tabla-frameworks -->
 
 Cuando dos scanners reconocen el proyecto gana el de mayor confianza. Un
 proyecto con `openapi.yaml` **y** código Express usará el spec, que es
