@@ -17,7 +17,7 @@ const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
 
 /** Los 4 tools que el plugin promete, por id. */
-const EXPECTED_TOOLS = ["check", "generate", "validate", "summary", "test"] as const;
+const EXPECTED_TOOLS = ["check", "generate", "list", "validate", "summary", "test"] as const;
 
 describe("arranque del plugin", () => {
   test("declara nombre y versión", () => {
@@ -25,7 +25,7 @@ describe("arranque del plugin", () => {
     expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  test("registra exactamente los 5 tools", async () => {
+  test("registra exactamente los 6 tools", async () => {
     const tools = await registeredTools(plugin, makeCtx());
     expect(tools.map((tool) => tool.id).sort()).toEqual([...EXPECTED_TOOLS].sort());
   });
@@ -62,7 +62,7 @@ describe("arranque del plugin", () => {
       defaultProjectRoot: "/tmp/proyecto",
       cliScript: "/tmp/cli.ts",
     });
-    expect(await registeredTools(plugin, ctx)).toHaveLength(5);
+    expect(await registeredTools(plugin, ctx)).toHaveLength(6);
   });
 
   test("declara un optionsSchema", () => {

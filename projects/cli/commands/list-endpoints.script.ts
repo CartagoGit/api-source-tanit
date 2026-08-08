@@ -15,12 +15,37 @@ import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 
-export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
+/** Un endpoint de la colección, en datos. */
+export interface IListedEndpoint {
+  readonly method: string;
+  readonly uri: string;
+  readonly name: string;
+  readonly folder: string;
+  readonly zone: string;
+}
+
+/** Lo que devuelve listar: código de salida y los endpoints. */
+export interface IListOutcome {
+  readonly code: number;
+  readonly endpoints: ReadonlyArray<IListedEndpoint>;
+}
+
+/**
+ * Lista los endpoints y los devuelve.
+ *
+ * `main` es la envoltura que los pinta. Se separa por el mismo motivo
+ * que en `generate` y `check`: el tool del plugin necesita **los
+ * datos**, y parsear la tabla con regex se rompe el día que cambie una
+ * columna.
+ */
+export async function runList(
+  _argv: string[] = process.argv.slice(2),
+): Promise<IListOutcome> {
   const { config } = await loadProject();
   const COLLECTION_PATH = await outputCollectionPath(config.name);
 
   const read = await readCollection(COLLECTION_PATH);
-  if (!read.ok) return explainReadFailure(read);
+  if (!read.ok) return { code: explainReadFailure(read), endpoints: [] };
   const collection = read.collection;
 
   const rows = walkCollection(collection).map((r) => ({
@@ -57,7 +82,12 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
     }
     console.log();
   }
-  return 0;
+  return { code: 0, endpoints: rows };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runList(argv)).code;
 }
 
 if (import.meta.main) {
