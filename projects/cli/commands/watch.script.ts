@@ -29,6 +29,7 @@ import {
   outputCollectionPath,
   outputDir,
   projectRoot,
+  projectRootWasExplicit,
 } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
@@ -115,6 +116,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.error("No se pudo determinar la raíz del proyecto.");
     console.error("Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.");
     return 1;
+  }
+  // `watch` se queda mirando un árbol entero, así que importa más que en
+  // ningún otro comando saber **cuál**. Sin `--project-root` cae al
+  // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
+  // que hubiera debajo sin decir una palabra.
+  if (!projectRootWasExplicit()) {
+    console.log(`→ Sin --project-root: se vigila el directorio actual (${root}).`);
   }
 
   const frameworkIdx = argv.indexOf("--framework");

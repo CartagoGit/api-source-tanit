@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 209 símbolos en 47 módulos.
+> 210 símbolos en 47 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -490,6 +490,29 @@ servicios de dentro sigan resolviendo rutas por el singleton de
 ### `projects/core/discovery/paths.service.ts`
 
 Fachada con estado sobre `project-context.service.ts`.
+
+#### `projectRootWasExplicit`
+
+```ts
+export function projectRootWasExplicit(): boolean
+```
+
+¿La raíz del proyecto la eligió alguien, o se cayó al directorio
+actual?
+
+`projectRoot()` **nunca** devuelve `null`: si no hay `--project-root`
+ni `POSTMAN_PROJECT_ROOT`, acaba en `process.cwd()`. Eso deja muerta
+la rama «no se pudo determinar la raíz» que varios comandos tienen
+escrita, y —peor— hace que lanzar la herramienta desde el sitio
+equivocado escanee ese árbol entero sin decir nada.
+
+Se midió: `watch --once` lanzado desde `/tmp` recorrió el directorio,
+encontró un proyecto suelto y generó su colección. Desde `$HOME`
+recorrería la casa.
+
+No se cambia el fallback —es cómodo y hay quien lo usa—, pero quien
+llama puede preguntar y avisar. Un comportamiento implícito deja de
+ser una trampa en cuanto se dice en voz alta.
 
 #### `resetPathCache`
 

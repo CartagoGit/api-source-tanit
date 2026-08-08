@@ -148,6 +148,31 @@ function discover(): Discovered {
   return cache;
 }
 
+/**
+ * ¿La raíz del proyecto la eligió alguien, o se cayó al directorio
+ * actual?
+ *
+ * `projectRoot()` **nunca** devuelve `null`: si no hay `--project-root`
+ * ni `POSTMAN_PROJECT_ROOT`, acaba en `process.cwd()`. Eso deja muerta
+ * la rama «no se pudo determinar la raíz» que varios comandos tienen
+ * escrita, y —peor— hace que lanzar la herramienta desde el sitio
+ * equivocado escanee ese árbol entero sin decir nada.
+ *
+ * Se midió: `watch --once` lanzado desde `/tmp` recorrió el directorio,
+ * encontró un proyecto suelto y generó su colección. Desde `$HOME`
+ * recorrería la casa.
+ *
+ * No se cambia el fallback —es cómodo y hay quien lo usa—, pero quien
+ * llama puede preguntar y avisar. Un comportamiento implícito deja de
+ * ser una trampa en cuanto se dice en voz alta.
+ */
+export function projectRootWasExplicit(): boolean {
+  return (
+    readProjectRootFromArgv(process.argv) !== null ||
+    (process.env.POSTMAN_PROJECT_ROOT ?? "") !== ""
+  );
+}
+
 /** Limpia la caché (útil para tests). */
 export function resetPathCache(): void {
   cache = null;

@@ -70,12 +70,60 @@ const HTTP_METHODS = [
 // ---------------------------------------------------------------------------
 
 /**
+ * Construcciones de YAML que este parser **no** entiende.
+ *
+ * No es una lista de deseos: es lo que se midió golpeando el parser con
+ * entradas raras. Lo importante es que ninguna revienta — devuelven algo
+ * **distinto en silencio**, que es peor:
+ *
+ * | Entrada | Lo que devuelve |
+ * |---|---|
+ * | `a: &x 1` | la cadena `"&x 1"`, no el número |
+ * | `b: *x` | la cadena `"*x"`, no lo que `x` valía |
+ * | `<<: *base` | una clave literal llamada `<<` |
+ * | `---` | solo el primer documento, sin decirlo |
+ *
+ * Las anclas no son exóticas en OpenAPI: es como se comparte una
+ * respuesta de error entre veinte endpoints sin repetirla. Un spec así
+ * se parseaba «bien» y producía una colección con valores basura.
+ *
+ * Detectarlas y decirlo es lo que separa «no lo soporto» de «te he
+ * mentido».
+ */
+const YAML_NO_SOPORTADO: ReadonlyArray<{
+  readonly pattern: RegExp;
+  readonly what: string;
+}> = [
+  { pattern: /^\s*[\w"'/.-]+\s*:\s*&\S+/m, what: "anclas (`&nombre`)" },
+  { pattern: /^\s*[\w"'/.-]+\s*:\s*\*\S+/m, what: "alias (`*nombre`)" },
+  { pattern: /^\s*<<\s*:/m, what: "claves de fusión (`<<:`)" },
+  { pattern: /^---\s*$[\s\S]*^---\s*$/m, what: "varios documentos (`---`)" },
+];
+
+/**
+ * Qué hay en este YAML que el parser no sabe leer. Vacío = todo bien.
+ *
+ * Se expone para poder avisar **antes** de producir una colección con
+ * valores que no son los del spec.
+ */
+export function unsupportedYamlFeatures(src: string): string[] {
+  return YAML_NO_SOPORTADO.filter(({ pattern }) => pattern.test(src)).map(
+    ({ what }) => what,
+  );
+}
+
+/**
  * Parser YAML mínimo (sin dependencias). Soporta lo que OpenAPI usa:
  * mappings, sequences, scalars (string/number/bool/null), comentarios
  * `#`, y multi-line scalars `|` y `>`. Lo demás cae al string literal.
  *
- * Si el YAML es complejo, lo aborta con un error claro y el caller
- * puede convertir el spec a JSON por su cuenta.
+ * **Nunca lanza y nunca se cuelga**: sobre entrada rara devuelve lo que
+ * pueda. Eso lo hace robusto y a la vez peligroso, porque un spec que no
+ * sabe leer no se distingue de uno vacío — de ahí
+ * `unsupportedYamlFeatures`, que sí lo distingue.
+ *
+ * Existe sin dependencias a propósito: el binario compilado no puede
+ * cargar paquetes en tiempo de ejecución.
  */
 export function parseYamlLite(src: string): unknown {
   // Sanitizar: tabuladores no son válidos en YAML.
@@ -411,6 +459,17 @@ export class OpenApiScanner implements IRouteScanner {
       if (specRel.endsWith(".json")) {
         spec = JSON.parse(raw);
       } else {
+        // Avisar **antes** de parsear: el parser no lanza ante estas
+        // construcciones, devuelve valores que no son los del spec. Un
+        // fallo que no se ve es el que acaba en la colección.
+        const noSoportado = unsupportedYamlFeatures(raw);
+        if (noSoportado.length > 0) {
+          console.warn(
+            `⚠ ${specRel} usa YAML que este parser no entiende: ${noSoportado.join(", ")}.\n` +
+              "  · Los valores afectados saldrán mal en la colección, sin más aviso que este.\n" +
+              "  · Conviértelo a JSON (`openapi.json`) y se leerá entero.",
+          );
+        }
         spec = parseYamlLite(raw);
       }
     } catch (e) {
