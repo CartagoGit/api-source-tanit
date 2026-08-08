@@ -20,8 +20,9 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { projectRoot } from "../../core/discovery/paths.service.js";
+import { detectProjectNameIn } from "../../core/discovery/project-name.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 
 async function main(): Promise<number> {
@@ -38,21 +39,18 @@ async function main(): Promise<number> {
   const outFlag = readFlag(argv, "--output");
 
   // --- Detección del nombre -----------------------------------------
-  let projectName = nameFlag ?? "";
-  try {
-    const composer = JSON.parse(
-      readFileSync(join(root, "composer.json"), "utf8"),
-    ) as { name?: string };
-    if (!projectName && composer.name) {
-      const parts = composer.name.split("/");
-      projectName = parts[parts.length - 1] ?? "";
-    }
-  } catch {
-    // composer.json ausente o malformado
-  }
-  if (!projectName) {
-    projectName = basename(root);
-  }
+  //
+  // Por `detectProjectNameIn`, que es lo que ya usa el modo zero-config
+  // y sabe leer los once ecosistemas: `package.json`, `go.mod`,
+  // `pom.xml`, `Cargo.toml`, `composer.json`…
+  //
+  // Antes esto miraba **solo `composer.json`** —herencia de cuando la
+  // herramienta era de Laravel— y si no lo encontraba se quedaba con el
+  // nombre de la carpeta. El resultado es que el asistente **empeoraba**
+  // el proyecto: sobre `example-express`, `summary` decía
+  // `sample-express` antes de ejecutarlo y el nombre del directorio
+  // después, porque la config generada pisa la detección buena.
+  const projectName = nameFlag ?? (await detectProjectNameIn(root));
 
   // --- Detección de baseUrl -----------------------------------------
   let baseUrl = "http://localhost/api";
@@ -213,13 +211,12 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
   console.log(`  · ${endpointsPath}`);
   console.log("");
   console.log("Siguiente paso:");
-  console.log("  bun run build  # genera la colección Postman");
+  // `bun run build` es un script **de este repositorio**, no del
+  // proyecto de quien usa la herramienta: en su terminal no existe. El
+  // asistente está para quien no se sabe los flags, así que terminar
+  // con un comando que no puede ejecutar es dejarlo peor que antes.
+  console.log("  export-to-postman generate   # genera la colección Postman");
   return 0;
-}
-
-function basename(p: string): string {
-  const m = p.split(/[/\\]/).filter(Boolean);
-  return m[m.length - 1] ?? "";
 }
 
 function listDir(p: string): string[] {
@@ -229,7 +226,4 @@ function listDir(p: string): string[] {
     return [];
   }
 }
-
-void dirname; // reserved for future use
-void join;
 process.exit(await main());
