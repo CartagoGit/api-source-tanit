@@ -317,3 +317,91 @@ export const TestOutputSchema = z.object({
 });
 
 export type ITestOutput = z.infer<typeof TestOutputSchema>;
+
+
+// --- `check`: la pregunta que un agente mas quiere hacer ---------------------
+
+/**
+ * Entrada de `check`.
+ *
+ * Es el tool que faltaba, y el mas llamativo de los que faltaban:
+ * responde «¿se ha desincronizado mi coleccion del codigo?», que es
+ * justo lo que un agente quiere saber antes de tocar nada. Estaba en el
+ * CLI desde el principio y no se exponia.
+ */
+export const CheckInputSchema = z
+  .object({
+    projectRoot: z.string().min(1).optional(),
+    /** La coleccion a comparar. Si falta, la que corresponda al proyecto. */
+    collectionPath: z.string().min(1).optional(),
+  })
+  .strict();
+
+export type ICheckInput = z.infer<typeof CheckInputSchema>;
+
+/** Un endpoint que esta en un lado y no en el otro. */
+export const DriftedEndpointSchema = z.object({
+  method: z.string(),
+  uri: z.string(),
+  name: z
+    .string()
+    .optional()
+    .describe(
+      "El nombre de la operacion, cuando el protocolo lo necesita. En " +
+        "GraphQL o tRPC todas comparten metodo y URL, asi que sin esto " +
+        "la lista serian varias lineas identicas.",
+    ),
+});
+
+/** Lo que devuelve `check`. */
+export const CheckOutputSchema = z.object({
+  ok: z.literal(true),
+  inSync: z
+    .boolean()
+    .describe(
+      "Distinto de `ok`: `ok` dice que la comprobacion se pudo hacer, " +
+        "`inSync` dice el resultado. Una coleccion desincronizada " +
+        "detectada es una comprobacion que ha funcionado.",
+    ),
+  routesInSource: z.number().int().nonnegative(),
+  requestsInCollection: z.number().int().nonnegative(),
+  missingInCollection: z
+    .array(DriftedEndpointSchema)
+    .describe("Estan en el codigo y no en la coleccion: falta regenerar."),
+  missingInSource: z
+    .array(DriftedEndpointSchema)
+    .describe("Estan en la coleccion y no en el codigo: se borraron o renombraron."),
+  durationMs: z.number().nonnegative(),
+});
+
+export type ICheckOutput = z.infer<typeof CheckOutputSchema>;
+
+// --- `list`: los endpoints, en datos ----------------------------------------
+
+export const ListInputSchema = z
+  .object({ projectRoot: z.string().min(1).optional() })
+  .strict();
+
+export type IListInput = z.infer<typeof ListInputSchema>;
+
+/**
+ * Lo que devuelve `list`.
+ *
+ * En datos y no en prosa: el CLI imprime una tabla para leer, y un
+ * agente que la parsee con regex se rompe el dia que cambie una
+ * columna.
+ */
+export const ListOutputSchema = z.object({
+  ok: z.literal(true),
+  total: z.number().int().nonnegative(),
+  endpoints: z.array(
+    z.object({
+      method: z.string(),
+      uri: z.string(),
+      name: z.string(),
+      folder: z.string().describe("La carpeta de la coleccion donde vive."),
+    }),
+  ),
+});
+
+export type IListOutput = z.infer<typeof ListOutputSchema>;

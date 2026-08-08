@@ -23,7 +23,40 @@ import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { PostmanCollection } from "../../core/contracts/postman.interface.js";
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+/** Un endpoint que está en un lado y no en el otro. */
+export interface IDriftedEndpoint {
+  readonly method: string;
+  readonly uri: string;
+  readonly name?: string | undefined;
+}
+
+/**
+ * La deriva entre el código y la colección, en datos.
+ *
+ * Se devuelve además de imprimirse porque el CLI no es el único
+ * consumidor: el tool `check` del plugin necesita **los endpoints**, no
+ * la tabla. Parsear la salida por pantalla con regex es lo que se hacía
+ * antes en otro tool del plugin, y se rompe el día que cambia una
+ * columna.
+ */
+export interface ICheckReport {
+  readonly inSync: boolean;
+  readonly routesInSource: number;
+  readonly requestsInCollection: number;
+  readonly missingInCollection: ReadonlyArray<IDriftedEndpoint>;
+  readonly missingInSource: ReadonlyArray<IDriftedEndpoint>;
+}
+
+/** Lo que devuelve comprobar: código de salida e informe. */
+export interface ICheckOutcome {
+  readonly code: number;
+  readonly report: ICheckReport | null;
+}
+
+/** Comprueba la deriva y devuelve el informe. `main` es quien lo pinta. */
+export async function runCheck(
+  argv: string[] = process.argv.slice(2),
+): Promise<ICheckOutcome> {
   const { config } = await loadProject();
   const outputIdx = argv.indexOf("--output");
   const outputFlag = outputIdx !== -1 ? argv[outputIdx + 1] ?? null : null;
@@ -94,7 +127,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   if (!existsSync(COLLECTION_PATH)) {
     console.error(`✘ No se encontró la colección en "${COLLECTION_PATH}". Ejecuta 'bun run build' primero para generarla.`);
-    return 1;
+    return { code: 1, report: null };
   }
 
   const raw = await readFile(COLLECTION_PATH, "utf8");
@@ -119,9 +152,17 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   console.log(`Requests en colección:   ${collKeys.size}`);
   console.log();
 
-  if (onlyInSource.length === 0 && onlyInColl.length === 0) {
+  const informe: ICheckReport = {
+    inSync: onlyInSource.length === 0 && onlyInColl.length === 0,
+    routesInSource: sourceKeys.size,
+    requestsInCollection: collKeys.size,
+    missingInCollection: onlyInSource.map((k) => sourceMap.get(k)!),
+    missingInSource: onlyInColl.map((k) => collMap.get(k)!),
+  };
+
+  if (informe.inSync) {
     console.log("✔ Colección sincronizada con el código fuente.");
-    return 0;
+    return { code: 0, report: informe };
   }
 
   if (onlyInSource.length > 0) {
@@ -139,7 +180,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
     }
   }
-  return 1;
+  return { code: 1, report: informe };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runCheck(argv)).code;
 }
 
 if (import.meta.main) {

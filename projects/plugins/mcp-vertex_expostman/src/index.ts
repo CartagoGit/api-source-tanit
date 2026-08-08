@@ -22,6 +22,7 @@
 import { definePlugin } from "@mcp-vertex/core/public";
 
 import { ExportToPostmanOptionsSchema } from "./lib/contracts/plugin.interface";
+import { buildCheckToolRegistration } from "./lib/tools/check.tool";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
 import { buildTestToolRegistration } from "./lib/tools/test.tool";
@@ -40,6 +41,7 @@ export default definePlugin({
       tools: [
         buildGenerateToolRegistration(ctx),
         buildValidateToolRegistration(ctx),
+        buildCheckToolRegistration(ctx),
         buildSummaryToolRegistration(ctx),
         buildTestToolRegistration(ctx),
       ],
