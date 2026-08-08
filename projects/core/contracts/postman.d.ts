@@ -349,6 +349,44 @@ declare const Bun: {
   };
   write(path: string, data: string): Promise<number>;
   file(path: string): { text(): Promise<string>; readonly size: number };
+  /**
+   * Servidor HTTP del runtime, para `expostman ui`.
+   *
+   * Está en Bun desde siempre, así que la interfaz de escritorio no
+   * añade **ni una dependencia**: el binario compilado ya lo lleva
+   * dentro. Es lo que hizo descartar Electron, que son 150 MB por
+   * plataforma para envolver lo mismo.
+   *
+   * `hostname` se declara porque importa: esto lee el código fuente de
+   * quien lo usa y no tiene por qué ser alcanzable desde la red.
+   */
+  serve(options: {
+    port: number;
+    hostname?: string;
+    fetch: (request: IServerRequest) => Response | Promise<Response>;
+  }): { readonly port: number; stop(closeActiveConnections?: boolean): void };
+};
+
+/** Lo que este repo usa de una petición entrante. */
+interface IServerRequest {
+  readonly url: string;
+  readonly method: string;
+  text(): Promise<string>;
+}
+
+/** La respuesta del estándar web, en lo que se usa de ella. */
+declare const Response: {
+  /**
+   * `body` acepta `unknown` porque también se usa para leer los streams
+   * de `Bun.spawn` (`new Response(proc.stdout).text()`), que no son
+   * cadenas. Estrechar el tipo a `string` rompía los dos scripts que ya
+   * lo hacían así.
+   */
+  new (
+    body?: unknown,
+    init?: { status?: number; headers?: Record<string, string> },
+  ): IFetchResponse;
+  json(data: unknown, init?: { status?: number }): IFetchResponse;
 };
 
 /** `Response` del estándar fetch, usado para leer los streams de Bun.spawn. */
@@ -358,9 +396,6 @@ interface IFetchResponse {
   text(): Promise<string>;
   json(): Promise<unknown>;
 }
-declare const Response: {
-  new (body?: unknown): IFetchResponse;
-};
 declare type FetchResponse = IFetchResponse;
 
 /** `fetch` del estándar web, disponible en Bun y en Node >= 18. */

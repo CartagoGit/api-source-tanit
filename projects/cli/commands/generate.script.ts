@@ -134,7 +134,30 @@ async function warnOnIdentityClash(
   }
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+/**
+ * Lo que devuelve una generación: el código de salida y el informe.
+ *
+ * El informe se construye **siempre**, no solo con `--json`. Antes solo
+ * existía dentro de ese `if`, así que cualquier otro consumidor
+ * —`expostman ui`, un test, el plugin— tenía que volver a llamar al
+ * pipeline o parsear la salida por pantalla. Las dos cosas son una
+ * segunda implementación, y una segunda implementación se
+ * desincroniza.
+ */
+export interface IGenerateOutcome {
+  readonly code: number;
+  readonly report: IGenerateReport | null;
+}
+
+/**
+ * Genera, escribe y devuelve el informe. Sin imprimir el JSON.
+ *
+ * `main` es la envoltura que lo imprime cuando se pide `--json`; quien
+ * quiera los datos llama aquí y se ahorra el intermediario.
+ */
+export async function runGenerate(
+  argv: string[] = process.argv.slice(2),
+): Promise<IGenerateOutcome> {
   const args = argv;
   const startedAt = Date.now();
   const jsonMode = args.includes("--json");
@@ -177,7 +200,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
         `  Válidos: ${parsedFormats.valid.join(", ")}`,
     );
-    return 1;
+    return { code: 1, report: null };
   }
   const formats = parsedFormats.formats;
 
@@ -215,7 +238,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.log(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
     console.log(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
     console.log(`  · Base URL:       ${config.baseUrl}`);
-    return 0;
+    return { code: 0, report: null };
   }
 
   // Índice method+uri → FormRequest para el enricher.
@@ -301,7 +324,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
   if (missingInSource.length || missingInCollection.length) {
     console.error("\n→ Generación abortada.");
-    return 1;
+    return { code: 1, report: null };
   }
 
   // --output / --basename respetan variables de entorno + flags.
@@ -329,7 +352,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         "  · Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.\n" +
         "  · Si el proyecto de verdad no tiene rutas todavía, usa `--allow-empty`.",
     );
-    return 1;
+    return { code: 1, report: null };
   }
   // Los formatos extra se serializan del MISMO catálogo de endpoints que
   // la colección de Postman: dos formatos del mismo proyecto no pueden
@@ -416,12 +439,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     );
     if (r.status !== 0) {
       console.error("✘ open-postman.script.ts falló.");
-      return r.status ?? 1;
+      return { code: r.status ?? 1, report: null };
     }
   }
 
-  if (jsonMode) {
-    const report: IGenerateReport = {
+  const report: IGenerateReport = {
       version: GENERATE_REPORT_VERSION,
       ok: true,
       framework: pipeline.match?.framework ?? null,
@@ -445,11 +467,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
             tokenVariable: AUTH_TOKEN_VARIABLE,
           }
         : null,
-      durationMs: Date.now() - startedAt,
-    };
-    humanLog(JSON.stringify(report, null, 2));
-  }
-  return 0;
+    durationMs: Date.now() - startedAt,
+  };
+  if (jsonMode) humanLog(JSON.stringify(report, null, 2));
+  return { code: 0, report };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runGenerate(argv)).code;
 }
 
 /**

@@ -71,6 +71,16 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".script.ts", ".constant.ts"],
   },
   {
+    path: "projects/ui/server/",
+    what: "el servidor de `expostman ui`: rutas y transporte, separados",
+    suffixes: [".service.ts"],
+  },
+  {
+    path: "projects/ui/web/",
+    what: "la interfaz, embebida como texto para que el binario la lleve dentro",
+    suffixes: [".constant.ts"],
+  },
+  {
     path: "projects/ui/",
     what: "el asistente interactivo y lo que dibuja en la terminal",
     // `.helper` entra porque el asistente ya no es un solo fichero: la

@@ -218,9 +218,37 @@ quieras versionar la colección para revisarla en los PRs.
 | `stats` | Cuenta endpoints por método y por zona. |
 | `check` | Compara la colección ya generada con las rutas del código y avisa de desincronizaciones. Requiere haber ejecutado `generate` antes. |
 | `validate` | Valida el JSON generado contra el schema Postman v2.1.0. |
-| `enrich` | Re-enriquece la colección desde el discovery. Con `--in-place` reemplaza la principal. |
 | `watch` | Regenera al guardar. Se queda vigilando el proyecto hasta que lo pares con Ctrl+C. |
 | `push` | Sube la colección **directamente** a tu workspace de Postman, sin pasar por el fichero. |
+| `ui` | Abre la interfaz gráfica en el navegador. Para quien no quiere aprenderse los flags. |
+
+### `ui` — sin terminal
+
+```sh
+expostman ui
+```
+
+Levanta la interfaz en `localhost`, abre el navegador y ya está. Pides
+la carpeta de tu API, **ves lo detectado antes de que se escriba nada**
+y eliges qué formatos quieres.
+
+```
+✔ Interfaz en http://127.0.0.1:4771
+  · Escucha solo en este equipo: no es alcanzable desde la red.
+  · Ctrl-C para cerrar.
+```
+
+Dos cosas que conviene saber:
+
+- **Solo escucha en tu equipo.** Esto lee el código fuente de tu disco;
+  que fuera alcanzable desde la red de la oficina no sería una comodidad.
+- **Si el puerto está ocupado, busca otro.** No hace falta que sepas qué
+  es un puerto para usarla. Con `--port <n>` lo eliges tú, y con
+  `--no-open` no abre el navegador y solo imprime la URL.
+
+No añade ninguna dependencia: el servidor es el que Bun ya lleva dentro,
+y la interfaz viaja embebida en el propio ejecutable.
+
 
 ### `watch` — mientras desarrollas
 

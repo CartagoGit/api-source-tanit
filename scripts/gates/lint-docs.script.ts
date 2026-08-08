@@ -343,6 +343,41 @@ async function checkSnippet(
 }
 
 /**
+ * Las filas de tabla que documentan un comando: `| \`check\` | … |`.
+ *
+ * Se mira aparte de `expostman <cmd>` porque una tabla no repite el
+ * nombre del binario en cada fila, y ese hueco dejó pasar una entrada
+ * muerta: `enrich` siguió documentado en `docs/INSTALL.md` después de
+ * retirarse del CLI. Documentar un comando que no existe manda a
+ * alguien a escribir algo que va a fallar.
+ */
+function checkCommandTableRows(
+  source: string,
+  commands: ReadonlySet<string>,
+  where: { readonly file: string },
+  problems: IProblem[],
+): void {
+  const lines = source.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\|\s*`([a-z][\w-]*)`\s*\|/.exec(lines[i] ?? "");
+    if (!m) continue;
+    const command = m[1] ?? "";
+    // Solo cuenta como fila de comando si la tabla habla de comandos:
+    // hay tablas de flags, de formatos y de frameworks con la misma
+    // forma, y acusarlas a todas seria un gate que nadie puede pasar.
+    const contexto = lines.slice(Math.max(0, i - 12), i).join("\n");
+    if (!/[Cc]omando/.test(contexto)) continue;
+    if (!commands.has(command)) {
+      problems.push({
+        file: where.file,
+        line: i + 1,
+        detail: `\`${command}\` se documenta como comando y el CLI no lo conoce`,
+      });
+    }
+  }
+}
+
+/**
  * Que ningún framework del registro se quede sin documentar.
  *
  * `docs/FRAMEWORKS.md` no es documentación de cortesía: es a donde el
@@ -453,6 +488,7 @@ async function main(): Promise<number> {
     const rel = relative(REPO_ROOT, file).replaceAll("\\", "/");
     const source = await readFile(file, "utf8");
     checkAnchors(source, { file: rel }, problems);
+    checkCommandTableRows(source, commands, { file: rel }, problems);
     const lines = source.split("\n");
     let inFence = false;
     // Los docs enseñan a veces comandos de OTROS proyectos (el

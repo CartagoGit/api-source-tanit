@@ -34,6 +34,10 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Generate the Postman v2.1.0 collection and its environments",
     load: () => import("./commands/generate.script.js"),
   },
+  ui: {
+    summary: "Open the graphical interface in your browser (no flags needed)",
+    load: () => import("./commands/ui.script.js"),
+  },
   check: {
     summary: "Check that an already generated collection is still in sync",
     load: () => import("./commands/diff.script.js"),

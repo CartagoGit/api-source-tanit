@@ -62,6 +62,7 @@
     "list": "bun run projects/cli/commands/list-endpoints.script.ts",
     "stats": "bun run projects/cli/commands/stats.script.ts",
     "scan": "bun run projects/cli/commands/scan.script.ts",
+    "ui": "bun run projects/cli/commands/ui.script.ts",
     "open": "bun run projects/cli/commands/open-postman.script.ts",
     "init": "bun run projects/cli/commands/init.script.ts",
     "clean": "rm -f build/*.json",
