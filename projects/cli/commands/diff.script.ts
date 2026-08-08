@@ -15,10 +15,8 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseAllRoutes } from "../../frameworks/laravel/route-parser.service.js";
-import {
-  normalizeForComparison,
-  stripApiPrefix,
-} from "../../core/helpers/uri.helper.js";
+import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
+import { endpointKey } from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
@@ -64,10 +62,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
    * `dedupeSpecs` del pipeline y en el chequeo de duplicados de los
    * invariantes.
    */
-  const comparisonKey = (method: string, uri: string, name?: string): string => {
-    const base = `${method} ${normalizeForComparison(uri)}`;
-    return name ? `${base} ${name}` : base;
-  };
+  // La clave la construye `route-identity.helper`, que es la misma que
+  // usa `dedupeSpecs`. Tenerla en dos sitios fue lo que dejó que las dos
+  // divergieran: aquí ya llevaba el nombre y allí no.
+  const comparisonKey = (method: string, uri: string, name?: string): string =>
+    endpointKey({ method, uri, name });
 
   if (match && scanner && match.framework !== "laravel") {
     // Fuente: scanner del orchestrator (OpenAPI, etc.)
@@ -87,7 +86,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     const routes = await parseAllRoutes(config.filePrefixes);
     for (const r of routes) {
       const uri = stripApiPrefix(r.uri);
-      const key = `${r.method} ${normalizeForComparison(uri)}`;
+      const key = endpointKey({ method: r.method, uri });
       sourceKeys.add(key);
       sourceMap.set(key, { method: r.method, uri });
     }

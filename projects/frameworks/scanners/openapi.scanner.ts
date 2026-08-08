@@ -424,8 +424,10 @@ export class OpenApiScanner implements IRouteScanner {
     for (const [pathTemplate, pathItem] of Object.entries(paths)) {
       if (!pathItem || typeof pathItem !== "object") continue;
       const item = pathItem as Record<string, unknown>;
-      // Parámetros a nivel de path (compartidos por todos los métodos).
-      const pathLevelParams = Array.isArray(item.parameters) ? item.parameters : [];
+      // Los `parameters` a nivel de path se leían aquí solo para
+      // guardarlos en `__params`, y nadie los consumía: `resolve()`
+      // vuelve a leer el spec del disco. Al retirar la propiedad
+      // escondida se quedaron sin lector, así que se van con ella.
       for (const method of HTTP_METHODS) {
         const op = item[method];
         if (!op || typeof op !== "object") continue;
@@ -447,12 +449,6 @@ export class OpenApiScanner implements IRouteScanner {
           ...(description ? { description } : {}),
           ...(summary && !description ? { description: summary } : {}),
         });
-        // detectar parameters a nivel de operación
-        const opParams = Array.isArray(opObj.parameters) ? opObj.parameters : [];
-        const params = [...pathLevelParams, ...opParams];
-        if (params.length > 0) {
-          (out[out.length - 1] as any).__params = params;
-        }
       }
     }
     return out;
@@ -531,8 +527,19 @@ function schemaToField(
 export class OpenApiValidationProvider implements IValidationSpecProvider {
   readonly framework = "openapi" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
-    return Boolean((_r as any).__params) || _m.framework === "openapi";
+  /**
+   * Una ruta es suya si viene de este scanner.
+   *
+   * Antes se preguntaba por una propiedad escondida (`__params`) que el
+   * propio scanner colaba con `as any` en el objeto del contrato,
+   * porque una ruta no tenía forma de decir de dónde venía. Hacía falta
+   * en los proyectos híbridos —Express con un spec OpenAPI al lado—,
+   * donde `match.framework` es el del framework dominante y no el de
+   * cada ruta. Con `route.framework` la pregunta se responde sola, y el
+   * contrato vuelve a describir todo lo que circula por el pipeline.
+   */
+  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+    return route.framework === "openapi" || match.framework === "openapi";
   }
 
   async resolve(

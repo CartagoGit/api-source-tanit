@@ -25,6 +25,7 @@ import type { ProjectConfig } from "../contracts/project-config.interface.js";
 import type { IProjectContext } from "../contracts/project-context.interface.js";
 import type { IProjectMatch, ParsedRoute } from "../contracts/scanner.interface.js";
 import { buildSpecsFromScanner } from "../adapters/parsed-route-to-spec.adapter.js";
+import { endpointKey } from "../helpers/route-identity.helper.js";
 import {
   authVariablesFor,
   detectAuthScheme,
@@ -432,7 +433,7 @@ function dedupeSpecs(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
   const seen = new Set<string>();
   const out: EndpointSpec[] = [];
   for (const spec of specs) {
-    const key = `${spec.method} ${spec.uri} ${spec.name}`;
+    const key = endpointKey({ method: spec.method, uri: spec.uri, name: spec.name });
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(spec);

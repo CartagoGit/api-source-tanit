@@ -195,7 +195,15 @@ export async function buildSpecsFromScanner(
   match: IProjectMatch,
   validation: IValidationSpecProvider | null,
 ): Promise<AdapterResult> {
-  const routes = await scanner.scan(match);
+  // El `framework` lo pone aquí quien recoge, no cada scanner: el
+  // registro ya sabe cuál es, y pedirle a los veintiún scanners que
+  // repitan su propio id en cada ruta sería pedirles que se acuerden de
+  // algo que ya está escrito. Antes no estaba, y el de OpenAPI se
+  // inventó `__params` con `as any` para reconocer las suyas.
+  const routes = (await scanner.scan(match)).map((route) => ({
+    framework: scanner.framework,
+    ...route,
+  }));
   const specs: EndpointSpec[] = [];
   let withFormRequest = 0;
   let withoutFormRequest = 0;

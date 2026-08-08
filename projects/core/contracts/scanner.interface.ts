@@ -50,6 +50,21 @@ export interface IProjectScanner {
 
 /** Ruta en formato neutro. Se transforma a EndpointSpec al final. */
 export interface ParsedRoute {
+  /**
+   * De qué scanner viene esta ruta.
+   *
+   * Sin este campo, una ruta no podía decir quién la había producido, y
+   * el scanner de OpenAPI se inventó una propiedad escondida
+   * (`__params`) colada con `as any` para reconocer las suyas en un
+   * proyecto híbrido — donde `match.framework` es el del framework
+   * dominante, no el de cada ruta.
+   *
+   * Es opcional porque lo rellena el pipeline al recoger lo que devuelve
+   * cada scanner: obligar a los veintiún scanners a repetir su propio id
+   * en cada ruta sería pedirles que se acuerden de algo que el registro
+   * ya sabe.
+   */
+  framework?: FrameworkId;
   /** Método HTTP en MAYÚSCULAS. */
   method: string;
   /** URI completa resuelta con prefijos. SIN `api/` si el scanner ya lo aplicó. */

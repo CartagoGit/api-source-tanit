@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 196 símbolos en 43 módulos.
+> 200 símbolos en 44 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1759,6 +1759,55 @@ Lo mismo, pero en un array.
 Para quien necesite la lista entera de todas formas (un `Map` de
 módulo → contenido, por ejemplo). Si solo se va a recorrer una vez,
 usa el generador: gasta memoria acotada en vez de toda.
+
+### `projects/core/helpers/route-identity.helper.ts`
+
+Qué hace que dos endpoints sean el mismo endpoint.
+
+#### `IEndpointIdentity`
+
+```ts
+export interface IEndpointIdentity
+```
+
+#### `endpointKey`
+
+```ts
+export function endpointKey(identity: IEndpointIdentity): string
+```
+
+La clave de una operación. Misma operación, misma clave.
+
+La URI se normaliza siempre, para que `/api/users` y `api/users` no
+se cuenten como dos. El nombre y el cuerpo solo entran cuando están:
+añadirlos vacíos haría que una ruta con nombre y la misma sin él
+dejaran de coincidir, que es lo contrario de lo que se busca.
+
+#### `describeEndpoint`
+
+```ts
+export function describeEndpoint(identity: IEndpointIdentity): string
+```
+
+Cómo se llama una operación cuando hay que enseñársela a alguien.
+
+`POST /graphql` repetido tres veces no dice nada: hace falta el
+nombre para saber cuál falta. Esto es lo que convierte una lista de
+tres líneas idénticas en una lista útil.
+
+#### `needsNameToDisambiguate`
+
+```ts
+export function needsNameToDisambiguate( routes: ReadonlyArray<IEndpointIdentity>, ): boolean
+```
+
+¿Este protocolo distingue operaciones por el nombre?
+
+No es una lista de frameworks: es una propiedad de las rutas que
+llegan. Si varias comparten método y URI, el nombre es lo único que
+queda — y da igual que sea GraphQL, tRPC o un JSON-RPC escrito a
+mano. Preguntarlo así evita una lista que haya que mantener cada vez
+que se soporte un framework nuevo.
 
 ### `projects/core/helpers/source-scan.helper.ts`
 
