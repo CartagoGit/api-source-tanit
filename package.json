@@ -59,7 +59,6 @@
     "build": "bun run projects/cli/commands/generate.script.ts --project-root ./examples/example-express",
     "check": "bun run projects/cli/commands/diff.script.ts --project-root ./examples/example-express && bun run projects/cli/commands/validate-json.script.ts --project-root ./examples/example-express",
     "typecheck": "bun run scripts/gates/typecheck.script.ts",
-    "enrich": "bun run projects/cli/commands/enrich.script.ts",
     "list": "bun run projects/cli/commands/list-endpoints.script.ts",
     "stats": "bun run projects/cli/commands/stats.script.ts",
     "scan": "bun run projects/cli/commands/scan.script.ts",

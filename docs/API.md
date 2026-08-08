@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 210 símbolos en 47 módulos.
+> 209 símbolos en 47 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -606,12 +606,6 @@ Prioridad: env `POSTMAN_OUTPUT_BASENAME` → nombre del proyecto.
 
 ```ts
 export async function outputCollectionPath( projectName?: string, ): Promise<string>
-```
-
-#### `outputEnrichedPath`
-
-```ts
-export async function outputEnrichedPath( projectName?: string, ): Promise<string>
 ```
 
 #### `outputEnvironmentPath`

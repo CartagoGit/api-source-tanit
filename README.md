@@ -112,7 +112,6 @@ expostman list        # lista los endpoints detectados
 expostman stats       # cuántos endpoints por método y zona
 expostman check       # ¿la colección sigue sincronizada?
 expostman validate    # valida el JSON contra el schema v2.1.0
-expostman enrich      # re-enriquece desde el discovery
 ```
 
 Flags principales:

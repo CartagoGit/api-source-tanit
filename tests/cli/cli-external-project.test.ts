@@ -94,7 +94,7 @@ describe("CLI sobre un proyecto externo", () => {
 
   test("`--help` documenta los comandos disponibles", async () => {
     const { output } = await runCli(["--help"]);
-    for (const command of ["generate", "check", "enrich", "list", "stats", "validate"]) {
+    for (const command of ["generate", "check", "list", "stats", "validate"]) {
       expect(output).toContain(command);
     }
   });

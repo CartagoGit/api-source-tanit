@@ -38,10 +38,6 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Check that an already generated collection is still in sync",
     load: () => import("./commands/diff.script.js"),
   },
-  enrich: {
-    summary: "Re-enrich an existing collection (--in-place overwrites it)",
-    load: () => import("./commands/enrich.script.js"),
-  },
   list: {
     summary: "List the detected endpoints, grouped by folder",
     load: () => import("./commands/list-endpoints.script.js"),

@@ -388,12 +388,6 @@ export async function outputCollectionPath(
 }
 
 /** Ruta absoluta al JSON enriquecido. */
-export async function outputEnrichedPath(
-  projectName?: string,
-): Promise<string> {
-  await ensureOutputDir();
-  return join(outputDir(), `${outputBasename(projectName)}.enriched.json`);
-}
 
 /** Ruta absoluta al environment Postman para un entorno dado. */
 export async function outputEnvironmentPath(
