@@ -22,7 +22,11 @@ import {
   type IMcpPluginContext,
 } from "@mcp-vertex/core/public";
 
-import { SummaryInputSchema } from "../contracts/plugin.interface";
+import {
+  SummaryInputSchema,
+  SummaryOutputSchema,
+  type ISummaryOutput,
+} from "../contracts/plugin.interface";
 import { existsSync } from "node:fs";
 import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
 
@@ -47,6 +51,7 @@ export function buildSummaryToolRegistration(
             "Devuelve { framework, projectName, baseUrl, routesInCode, withFormRequest, " +
             "withoutFormRequest, bodiesAdded, queriesAdded, zeroConfig, configPath, manualEndpoints }.",
           inputSchema: SummaryInputSchema,
+          outputSchema: SummaryOutputSchema,
         },
         async (input) => {
           const parsed = SummaryInputSchema.safeParse(input);
@@ -72,7 +77,30 @@ export function buildSummaryToolRegistration(
 
           try {
             const summary = await summarizeWithAllFrameworks(projectRoot);
-            return toolJson({ ok: true, ...summary });
+            // Anotado a propósito: el spread de un objeto ajeno pasa
+            // cualquier cosa, y entonces el `outputSchema` describiría
+            // una salida que nadie comprueba. Con el tipo delante, el
+            // compilador exige que lo que se devuelve sea lo que se
+            // prometió.
+            const out: ISummaryOutput = {
+              ok: true,
+              framework: summary.framework,
+              frameworks: [...summary.frameworks],
+              projectName: summary.projectName,
+              baseUrl: summary.baseUrl,
+              routesInCode: summary.routesInCode,
+              withFormRequest: summary.withFormRequest,
+              withoutFormRequest: summary.withoutFormRequest,
+              bodiesAdded: summary.bodiesAdded,
+              queriesAdded: summary.queriesAdded,
+              zeroConfig: summary.zeroConfig,
+              configPath: summary.configPath,
+              manualEndpoints: summary.manualEndpoints,
+              inferredVariables: summary.inferredVariables,
+              auth: summary.auth ? { loginEndpoint: summary.auth.loginEndpoint } : null,
+              warnings: [...summary.warnings],
+            };
+            return toolJson(out);
           } catch (err) {
             return toolError(
               `summary falló: ${err instanceof Error ? err.message : String(err)}`,

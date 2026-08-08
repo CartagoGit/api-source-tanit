@@ -26,6 +26,7 @@ import {
 
 import {
   GenerateInputSchema,
+  GenerateOutputSchema,
   type IGenerateOutput,
 } from "../contracts/plugin.interface";
 import { resolveCliScript } from "../contracts/cli-path.constant";
@@ -59,6 +60,7 @@ export function buildGenerateToolRegistration(
             "Genera la colección Postman v2.1.0 desde las rutas del proyecto host. " +
             "Devuelve rutas de los archivos generados (colección + environments) y métricas.",
           inputSchema: GenerateInputSchema,
+          outputSchema: GenerateOutputSchema,
         },
         async (input) => {
           const parsed = GenerateInputSchema.safeParse(input);
@@ -142,6 +144,7 @@ export function buildGenerateToolRegistration(
           const report = parsedReport.report;
 
           const out: IGenerateOutput = {
+            ok: true,
             framework: report.framework,
             frameworks: report.frameworks,
             warnings: report.warnings,
@@ -154,7 +157,7 @@ export function buildGenerateToolRegistration(
             auth: report.auth,
             durationMs: result.durationMs,
           };
-          return toolJson({ ok: true, ...out });
+          return toolJson(out);
         },
       );
     },

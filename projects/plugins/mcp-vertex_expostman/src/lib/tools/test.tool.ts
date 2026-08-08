@@ -32,6 +32,7 @@ import {
 
 import {
   TestInputSchema,
+  TestOutputSchema,
   type ITestOutput,
   type ITestStep,
 } from "../contracts/plugin.interface";
@@ -175,6 +176,7 @@ export function buildTestToolRegistration(
             "`tests/smoke-fixtures/<framework>-mini/` (más rápido que los e2e comprehensives). " +
             "Devuelve `{ ok, steps, durationMs, framework }` con un detalle por step listo para actuar.",
           inputSchema: TestInputSchema,
+          outputSchema: TestOutputSchema,
         },
         async (input) => {
           const parsed = TestInputSchema.safeParse(input);
@@ -261,9 +263,14 @@ export function buildTestToolRegistration(
             );
           }
 
-          const ok = steps.every((s) => s.ok);
+          // Mismo reparto que en `validate`: `ok` es "los pasos se
+          // pudieron ejecutar", `passed` es "todos salieron en verde".
+          // Un test en rojo es un resultado legítimo del tool, no un
+          // fallo suyo, y el agente necesita distinguirlos para saber si
+          // reintentar o leer `steps`.
           const out: ITestOutput = {
-            ok,
+            ok: true,
+            passed: steps.every((s) => s.ok),
             steps,
             durationMs: Date.now() - start,
             framework: args.framework ?? null,

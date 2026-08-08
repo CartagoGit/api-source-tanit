@@ -135,79 +135,185 @@ export const TestInputSchema = z
 
 export type ITestInput = z.infer<typeof TestInputSchema>;
 
-// --- Outputs de los tools (estructura resumida) ------------------------------
-
-export interface IGenerateOutput {
-  /** Framework detectado, o `null` si no se reconoció ninguno. */
-  readonly framework: string | null;
-  /** Más de uno = proyecto híbrido; se han escaneado y fusionado todos. */
-  readonly frameworks: ReadonlyArray<string>;
-  /** Avisos accionables. No son errores: la colección existe igual. */
-  readonly warnings: ReadonlyArray<string>;
-  /** `null` solo si no se llegó a escribir la colección. */
-  readonly collectionPath: string | null;
-  /** `_postman_id`: lo que hace que reimportar actualice en vez de duplicar. */
-  readonly collectionId: string | null;
-  readonly environmentPaths: ReadonlyArray<string>;
-  /**
-   * Ficheros de formatos distintos de Postman.
-   *
-   * Vacío cuando no se pidió ninguno. Van aparte de `environmentPaths`
-   * porque no son environments: son la misma API en otro idioma.
-   */
-  readonly extraPaths: ReadonlyArray<string>;
-  readonly requests: number;
-  readonly folders: number;
-  /** `null` si el proyecto no tiene endpoint de login. */
-  readonly auth: {
-    readonly loginEndpoint: string;
-    readonly tokenVariable: string;
-  } | null;
-  readonly durationMs: number;
-}
-
-export interface IValidateOutput {
-  readonly ok: boolean;
-  readonly routesInSource: number;
-  readonly requestsInCollection: number;
-  readonly issues: ReadonlyArray<{
-    readonly severity: "error" | "warning";
-    readonly message: string;
-  }>;
-  readonly durationMs: number;
-}
-
-export interface ISummaryOutput {
-  readonly projectName: string;
-  readonly baseUrl: string;
-  readonly routesInCode: number;
-  readonly formRequestsResolved: number;
-  readonly zeroConfig: boolean;
-  readonly configPath: string;
-}
+// --- Outputs de los tools ----------------------------------------------------
 
 /**
- * Resultado de un step del tool `test`. Cada step es la ejecución de
- * un sub-comando (`typecheck`, `test e2e`, `smoke:<framework>`).
+ * Los cuatro tools declaran `outputSchema`, y no es un adorno.
+ *
+ * El invariante universal §6 —que `AGENT-BOOTSTRAP.md` copia por
+ * referencia y §3.2 repite— dice que todo tool público lo declara.
+ * Ninguno lo hacía. Un agente que llamaba a `expostman_generate` recibía
+ * una salida sin contrato: no podía validar la respuesta ni saber qué
+ * campos existen sin ejecutarla y mirar lo que salía. Y esta es la
+ * superficie **pública** del proyecto hacia otros agentes, que es
+ * justamente donde un contrato importa más.
+ *
+ * Los esquemas describen el **éxito**, con `ok: z.literal(true)`. El
+ * error no va aquí: `toolError` tiene su propio sobre universal
+ * (`{ ok: false, error: { reason, nextAction? } }`) y marca la respuesta
+ * con `isError`, así que un cliente lo distingue sin que cada tool
+ * repita esa forma. Es el mismo reparto que usan los tools del host.
+ *
+ * Los tipos se derivan de los esquemas con `z.infer`, no se escriben dos
+ * veces: una interfaz a mano al lado de un esquema es dos fuentes de
+ * verdad que se separan a la primera.
  */
-export interface ITestStep {
-  readonly name: string;
-  readonly ok: boolean;
-  readonly exitCode: number;
-  readonly durationMs: number;
-  /** Resumen corto (count de tests, typecheck pass, etc.). */
-  readonly summary?: string;
-  /** Si falló, el primer fragmento del stderr/stdout relevante. */
-  readonly detail?: string;
-}
 
-export interface ITestOutput {
-  readonly ok: boolean;
-  readonly steps: ReadonlyArray<ITestStep>;
-  readonly durationMs: number;
-  /**
-   * Si el input pidió `framework`, nombre del framework para el que se
-   * corrió el smoke. `null` cuando solo se corrió la suite genérica.
-   */
-  readonly framework: string | null;
-}
+/** Lo que devuelve `generate` cuando la colección se ha escrito. */
+export const GenerateOutputSchema = z.object({
+  ok: z.literal(true),
+  framework: z
+    .string()
+    .nullable()
+    .describe("Framework detectado, o null si no se reconoció ninguno."),
+  frameworks: z
+    .array(z.string())
+    .describe("Más de uno = proyecto híbrido: se han escaneado y fusionado todos."),
+  warnings: z
+    .array(z.string())
+    .describe("Avisos accionables. No son errores: la colección existe igual."),
+  collectionPath: z
+    .string()
+    .nullable()
+    .describe("null solo si no se llegó a escribir la colección."),
+  collectionId: z
+    .string()
+    .nullable()
+    .describe("`_postman_id`: lo que hace que reimportar actualice en vez de duplicar."),
+  environmentPaths: z
+    .array(z.string())
+    .describe("Un fichero de environment por entorno pedido."),
+  extraPaths: z
+    .array(z.string())
+    .describe(
+      "Ficheros de formatos distintos de Postman (OpenAPI, Insomnia, Bruno, HAR, cURL). " +
+        "Van aparte de environmentPaths porque no son environments: son la misma API en otro idioma.",
+    ),
+  requests: z.number().int().nonnegative().describe("Requests en la colección."),
+  folders: z.number().int().nonnegative().describe("Carpetas en la colección."),
+  auth: z
+    .object({
+      loginEndpoint: z.string(),
+      tokenVariable: z.string(),
+    })
+    .nullable()
+    .describe("null si el proyecto no tiene endpoint de login."),
+  durationMs: z.number().nonnegative().describe("Lo que tardó el CLI, en ms."),
+});
+
+export type IGenerateOutput = z.infer<typeof GenerateOutputSchema>;
+
+/** Lo que devuelve `validate` sobre una colección ya escrita. */
+export const ValidateOutputSchema = z.object({
+  ok: z.literal(true),
+  valid: z
+    .boolean()
+    .describe(
+      "Si la colección pasa la validación. Distinto de `ok`, que solo dice " +
+        "que la comprobación se pudo hacer: una colección inválida se " +
+        "reporta bien, no es un fallo del tool.",
+    ),
+  routesInSource: z.number().int().nonnegative().describe("Rutas encontradas en el código."),
+  requestsInCollection: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Requests que hay en la colección."),
+  issues: z
+    .array(
+      z.object({
+        severity: z.enum(["error", "warning"]),
+        message: z.string(),
+      }),
+    )
+    .describe("Lista vacía cuando no hay nada que decir."),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IValidateOutput = z.infer<typeof ValidateOutputSchema>;
+
+/**
+ * Lo que devuelve `summary`: el proyecto visto desde el código, sin
+ * generar nada.
+ *
+ * Describe el resumen **entero**, que es lo que el tool devuelve de
+ * verdad. La interfaz anterior declaraba seis campos mientras el handler
+ * hacía `toolJson({ ok: true, ...summary })` y soltaba los dieciocho:
+ * el contrato escrito y el comportamiento llevaban tiempo sin coincidir,
+ * y nadie podía notarlo porque no había esquema que los confrontara.
+ */
+export const SummaryOutputSchema = z.object({
+  ok: z.literal(true),
+  framework: z.string().describe('Framework detectado, o "unknown".'),
+  frameworks: z
+    .array(z.string())
+    .describe("Más de uno = proyecto híbrido; `framework` es el de más confianza."),
+  projectName: z.string().describe("Nombre deducido del manifiesto del proyecto."),
+  baseUrl: z.string().describe("URL base que se usará en los environments."),
+  routesInCode: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe(
+      "Endpoints que acabarían en la colección, no líneas de código: un " +
+        "`apiResource` de Laravel es una línea y siete endpoints.",
+    ),
+  withFormRequest: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Endpoints cuyas reglas de validación se resolvieron."),
+  withoutFormRequest: z
+    .number()
+    .int()
+    .nonnegative()
+    .describe("Endpoints sin reglas: su body sale de la inferencia agnóstica."),
+  bodiesAdded: z.number().int().nonnegative(),
+  queriesAdded: z.number().int().nonnegative(),
+  zeroConfig: z
+    .boolean()
+    .describe("true cuando no hace falta fichero de configuración ninguno."),
+  configPath: z.string().describe("`<zero-config>` cuando no hay fichero."),
+  manualEndpoints: z.number().int().nonnegative(),
+  inferredVariables: z.number().int().nonnegative(),
+  auth: z
+    .object({ loginEndpoint: z.string() })
+    .nullable()
+    .describe("null si el proyecto no expone endpoint de login."),
+  warnings: z
+    .array(z.string())
+    .describe("Avisos accionables: proyecto híbrido, nada reconocido…"),
+});
+
+export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
+
+/** Un paso de `test`: la ejecución de un sub-comando. */
+export const TestStepSchema = z.object({
+  name: z.string().describe("`typecheck`, `test e2e`, `smoke:<framework>`…"),
+  ok: z.boolean(),
+  exitCode: z.number().int(),
+  durationMs: z.number().nonnegative(),
+  summary: z.string().optional().describe("Resumen corto: cuántos tests, typecheck limpio…"),
+  detail: z.string().optional().describe("Si falló, el primer fragmento relevante."),
+});
+
+export type ITestStep = z.infer<typeof TestStepSchema>;
+
+/** Lo que devuelve `test`. */
+export const TestOutputSchema = z.object({
+  ok: z.literal(true),
+  passed: z
+    .boolean()
+    .describe(
+      "Si todos los pasos pasaron. Distinto de `ok`: un test en rojo es " +
+        "un resultado legítimo del tool, no un fallo suyo.",
+    ),
+  steps: z.array(TestStepSchema),
+  durationMs: z.number().nonnegative(),
+  framework: z
+    .string()
+    .nullable()
+    .describe("El framework del smoke, o null si solo se corrió la suite genérica."),
+});
+
+export type ITestOutput = z.infer<typeof TestOutputSchema>;

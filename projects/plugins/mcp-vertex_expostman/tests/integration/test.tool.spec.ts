@@ -110,9 +110,15 @@ describe("expostman_test", () => {
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
       ok: boolean;
+      passed: boolean;
       steps: Array<{ name: string; ok: boolean; detail?: string }>;
     };
-    expect(parsed.ok).toBe(false);
+    // Los dos campos dicen cosas distintas, y antes eran uno solo:
+    // `ok` es "los pasos se pudieron ejecutar" y `passed` es "salieron
+    // en verde". Un test en rojo es un resultado legítimo del tool, no
+    // un fallo suyo — por eso `ok` sigue siendo `true` aquí.
+    expect(parsed.ok).toBe(true);
+    expect(parsed.passed).toBe(false);
     // El step typecheck debe haber fallado y tener detalle.
     const typecheckStep = parsed.steps.find((s) => s.name === "typecheck");
     expect(typecheckStep).toBeDefined();

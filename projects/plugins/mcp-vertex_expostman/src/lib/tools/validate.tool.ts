@@ -22,6 +22,7 @@ import {
 
 import {
   ValidateInputSchema,
+  ValidateOutputSchema,
   type IValidateOutput,
 } from "../contracts/plugin.interface";
 import { resolveCliScript } from "../contracts/cli-path.constant";
@@ -47,6 +48,7 @@ export function buildValidateToolRegistration(
             "Valida un JSON Postman v2.1.0 existente (schema v2.1.0 + cobertura bidireccional " +
             "con las rutas del proyecto host). Devuelve OK/KO con issues estructurados.",
           inputSchema: ValidateInputSchema,
+          outputSchema: ValidateOutputSchema,
         },
         async (input) => {
           const parsed = ValidateInputSchema.safeParse(input);
@@ -92,19 +94,25 @@ export function buildValidateToolRegistration(
           const routesMatch = result.stdout.match(/Routes en source:\s+(\d+)/);
           const collMatch = result.stdout.match(/Requests en colección:\s+(\d+)/);
 
+          // `ok` y `valid` dicen cosas distintas, y antes eran el mismo
+          // campo. `ok` es "la comprobación se pudo hacer"; `valid` es
+          // "la colección está al día". Una colección desincronizada
+          // detectada **es** una validación que ha funcionado.
+          //
+          // Devolvía `toolError` en ese caso, y eso marca la respuesta
+          // con `isError`: el agente que pregunta "¿está al día mi
+          // colección?" recibía un fallo de herramienta en vez de la
+          // respuesta "no, y estos son los motivos". La diferencia
+          // importa porque ante un error se reintenta o se abandona,
+          // mientras que ante `valid: false` se lee `issues` y se actúa.
           const out: IValidateOutput = {
-            ok: result.ok && issues.length === 0,
+            ok: true,
+            valid: result.ok && issues.length === 0,
             routesInSource: routesMatch ? Number(routesMatch[1]) : 0,
             requestsInCollection: collMatch ? Number(collMatch[1]) : 0,
             issues,
             durationMs: result.durationMs,
           };
-          if (!out.ok) {
-            return toolError(
-              `Validación KO: ${issues.map((i) => i.message).join("; ")}`,
-              "Ejecuta `bun run generate` primero y revisa los issues reportados.",
-            );
-          }
           return toolJson(out);
         },
       );
