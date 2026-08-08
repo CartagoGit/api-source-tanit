@@ -25,7 +25,7 @@ import { projectRoot } from "../../core/discovery/paths.service.js";
 import { detectProjectNameIn } from "../../core/discovery/project-name.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 
-async function main(): Promise<number> {
+export async function main(): Promise<number> {
   const argv = process.argv.slice(2);
   const root = projectRoot();
   if (!root) {
@@ -226,4 +226,6 @@ function listDir(p: string): string[] {
     return [];
   }
 }
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

@@ -23,7 +23,7 @@ import { outputDir } from "../../core/discovery/paths.service.js";
 const platform: string = process.platform ?? "linux";
 void platform; // suppress unused warning; kept for clarity
 
-async function main(): Promise<number> {
+export async function main(): Promise<number> {
   const args = process.argv.slice(2);
   const forceWeb = args.includes("--web");
   const fileFlag = args.indexOf("--file");
@@ -120,4 +120,6 @@ function openWeb(filePath: string): number {
   return 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

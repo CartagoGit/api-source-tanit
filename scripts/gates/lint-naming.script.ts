@@ -33,6 +33,20 @@ interface INamingRule {
 }
 
 const RULES: readonly INamingRule[] = [
+  // El proyecto de contratos: `interfaces/` y `constants/` separadas, y
+  // el sufijo tiene que coincidir con la carpeta. Una `.constant.ts`
+  // dentro de `interfaces/` es justo el desorden que la separación viene
+  // a evitar, así que cada una declara solo el suyo.
+  {
+    path: "projects/contracts/interfaces/",
+    what: "interfaces y tipos compartidos",
+    suffixes: [".interface.ts", ".d.ts"],
+  },
+  {
+    path: "projects/contracts/constants/",
+    what: "constantes compartidas",
+    suffixes: [".constant.ts"],
+  },
   {
     path: "projects/core/contracts/",
     what: "tipos y constantes compartidas",

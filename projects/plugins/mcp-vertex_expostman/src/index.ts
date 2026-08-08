@@ -4,10 +4,18 @@
  * Expone el proyecto export-to-postman como tools descubribles por
  * cualquier agente MCP-vertex compatible.
  *
- * Tools:
- *   - expostman_generate
- *   - expostman_validate
- *   - expostman_summary
+ * Tools, por lo que hacen:
+ *   - Escriben:   expostman_generate
+ *   - Diagnostican: expostman_scan (qué ve el discovery),
+ *                   expostman_summary (el proyecto ya interpretado)
+ *   - Inspeccionan lo generado: expostman_list, expostman_stats,
+ *                   expostman_check (¿se ha desincronizado?),
+ *                   expostman_validate
+ *   - Ejecutan:   expostman_test
+ *
+ * La lista vivía desactualizada —decía tres cuando ya había seis—, así
+ * que ahora se agrupa por efecto: un tool nuevo no cabe sin decidir en
+ * qué grupo entra, y esa decisión es la que `lint:mcp-surface` verifica.
  *
  * Diseño:
  *   - Single source of truth en `IMcpPluginContext`.
@@ -25,6 +33,8 @@ import { ExportToPostmanOptionsSchema } from "./lib/contracts/plugin.interface";
 import { buildCheckToolRegistration } from "./lib/tools/check.tool";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildListToolRegistration } from "./lib/tools/list.tool";
+import { buildScanToolRegistration } from "./lib/tools/scan.tool";
+import { buildStatsToolRegistration } from "./lib/tools/stats.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
 import { buildTestToolRegistration } from "./lib/tools/test.tool";
 import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
@@ -44,6 +54,8 @@ export default definePlugin({
         buildValidateToolRegistration(ctx),
         buildCheckToolRegistration(ctx),
         buildListToolRegistration(ctx),
+        buildStatsToolRegistration(ctx),
+        buildScanToolRegistration(ctx),
         buildSummaryToolRegistration(ctx),
         buildTestToolRegistration(ctx),
       ],

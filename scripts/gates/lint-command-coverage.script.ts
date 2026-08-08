@@ -22,6 +22,18 @@
  * sobre él —eso es cosa del test— sino que exista quien lo arranque, que
  * es el listón que los tres bugs no pasaban.
  *
+ * ## Y que se pueda cargar sin que se ejecute
+ *
+ * La segunda comprobación salió de exponer `scan` como tool MCP. Cuatro
+ * de los doce comandos —`init`, `open`, `summary` y `scan`— llamaban a
+ * `process.exit(await main())` **en el cuerpo del módulo**, sin guard.
+ * Importar cualquiera de ellos lanzaba el comando y mataba el proceso;
+ * en un servidor MCP de vida larga, el servidor entero al cargar el tool.
+ *
+ * Y encaja con la tesis de este gate: un módulo que se ejecuta al
+ * importarse **no se puede probar** salvo por subproceso. La primera
+ * comprobación pedía que alguien lo lanzara; esta pide que se pueda.
+ *
  * Uso:
  *   bun run lint:command-coverage
  */
@@ -80,6 +92,34 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  // Un `process.exit(...)` a nivel de módulo, sin `import.meta.main`
+  // delante. Se busca al principio de línea porque dentro del guard va
+  // indentado, que es justo la diferencia entre correcto e incorrecto.
+  const sinGuard: IProblem[] = [];
+  for (const comando of comandos) {
+    const fuente = await readFile(fromRoot(comando.file), "utf8");
+    if (/^process\.exit\(/m.test(fuente)) {
+      sinGuard.push({ command: comando.verb, file: comando.file });
+    }
+  }
+
+  if (sinGuard.length > 0) {
+    console.error(
+      `lint:command-coverage — ${sinGuard.length} comando(s) que se ejecutan al importarse:\n`,
+    );
+    for (const p of sinGuard) console.error(`  ✗ ${p.command}  (${p.file})`);
+    console.error(
+      "\n  `process.exit(await main())` suelto en el módulo hace que cualquier\n" +
+        "  import lance el comando y mate el proceso. En el servidor MCP eso es\n" +
+        "  el servidor entero cayéndose al cargar el tool.\n" +
+        "\n  Envuélvelo:\n" +
+        "\n    if (import.meta.main) {\n" +
+        "      process.exit(await main());\n" +
+        "    }\n",
+    );
+    return 1;
+  }
+
   const tests = await collectFiles(TESTS_DIR, [".spec.ts", ".test.ts"]);
   const cuerpo = (await Promise.all(tests.map((f) => readFile(f, "utf8")))).join("\n");
 
@@ -112,7 +152,7 @@ async function main(): Promise<number> {
   }
 
   console.log(
-    `lint:command-coverage — ${comandos.length} comandos, todos ejercitados por algún test`,
+    `lint:command-coverage — ${comandos.length} comandos, todos importables y ejercitados por algún test`,
   );
   return 0;
 }

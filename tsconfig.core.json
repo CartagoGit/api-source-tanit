@@ -7,6 +7,7 @@
   // arrastra al programa y `lint:boundaries` lo caza.
   "extends": "./tsconfig.base.json",
   "include": [
+    "projects/contracts/**/*.d.ts",
     "projects/core/**/*.ts",
     "projects/core/**/*.d.ts",
     "tests/core/**/*.ts",

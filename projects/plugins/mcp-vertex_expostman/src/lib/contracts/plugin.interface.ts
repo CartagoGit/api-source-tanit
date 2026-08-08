@@ -405,3 +405,102 @@ export const ListOutputSchema = z.object({
 });
 
 export type IListOutput = z.infer<typeof ListOutputSchema>;
+
+// --- `stats`: la forma de la coleccion, en numeros --------------------------
+
+export const StatsInputSchema = z
+  .object({ projectRoot: z.string().min(1).optional() })
+  .strict();
+
+export type IStatsInput = z.infer<typeof StatsInputSchema>;
+
+/**
+ * Lo que devuelve `stats`.
+ *
+ * El CLI imprime una tabla alineada con `padEnd`, que es lo peor que se
+ * le puede dar a un agente para parsear: el ancho de columna depende del
+ * nombre de carpeta mas largo, asi que cambia entre proyectos.
+ */
+export const StatsOutputSchema = z.object({
+  ok: z.literal(true),
+  total: z.number().int().nonnegative().describe("Requests en la coleccion."),
+  byMethod: z
+    .array(
+      z.object({
+        method: z.string(),
+        count: z.number().int().nonnegative(),
+      }),
+    )
+    .describe("De mayor a menor, igual que se imprime."),
+  zones: z
+    .array(
+      z.object({
+        zone: z.string(),
+        total: z.number().int().nonnegative(),
+        byFolder: z.array(
+          z.object({
+            folder: z.string().describe("La carpeta de primer nivel."),
+            count: z.number().int().nonnegative(),
+          }),
+        ),
+      }),
+    )
+    .describe(
+      "Solo las zonas con contenido. Un proyecto sin configuracion de " +
+        "zonas tiene una sola, la de por defecto.",
+    ),
+});
+
+export type IStatsOutput = z.infer<typeof StatsOutputSchema>;
+
+// --- `scan`: que ve el discovery antes de generar nada ----------------------
+
+export const ScanInputSchema = z
+  .object({ projectRoot: z.string().min(1).optional() })
+  .strict();
+
+export type IScanInput = z.infer<typeof ScanInputSchema>;
+
+/**
+ * Lo que devuelve `scan`.
+ *
+ * Es la respuesta a «¿por que no encuentra mis rutas?». `summary` da el
+ * proyecto ya interpretado; esto da el paso anterior — que scanner gano,
+ * por que artefactos, y las rutas **crudas**, antes de que el pipeline
+ * las convierta en requests. Cuando los dos numeros no cuadran, la
+ * diferencia esta entre estos dos tools.
+ */
+export const ScanOutputSchema = z.object({
+  ok: z.literal(true),
+  detected: z
+    .boolean()
+    .describe(
+      "Distinto de `ok`: `ok` dice que el escaneo se pudo hacer, " +
+        "`detected` dice si reconocio algun framework. No reconocer nada " +
+        "es un resultado, no un fallo de la herramienta.",
+    ),
+  root: z.string().describe("La raiz que se escaneo, ya resuelta."),
+  framework: z.string().nullable(),
+  artifacts: z
+    .array(z.string())
+    .describe("Los ficheros que delataron al framework: `package.json`, `server.js`…"),
+  scanner: z
+    .string()
+    .nullable()
+    .describe("La clase que recorre las rutas. Util cuando el framework acierta y las rutas no."),
+  validation: z
+    .string()
+    .nullable()
+    .describe("El proveedor de reglas de validacion, o null si el framework no tiene."),
+  routes: z.array(
+    z.object({
+      method: z.string(),
+      uri: z.string(),
+      tags: z.array(z.string()),
+      description: z.string().nullable(),
+    }),
+  ),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IScanOutput = z.infer<typeof ScanOutputSchema>;

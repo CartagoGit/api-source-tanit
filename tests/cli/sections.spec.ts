@@ -31,8 +31,34 @@ describe("SECTIONS", () => {
     }
   });
 
-  test("el núcleo no depende de nadie: es lo que lo mantiene agnóstico", () => {
-    expect(sectionByName("core")?.dependsOn).toEqual([]);
+  /**
+   * La regla decía «el núcleo no depende de nadie», y eso dejó de ser
+   * cierto al aparecer `contracts`. Pero nunca fue lo que se quería
+   * decir: lo que mantiene agnóstico al núcleo es que no dependa de
+   * **frameworks**, no que no dependa de nada. Depender de un proyecto
+   * que solo tiene interfaces no le añade ningún framework encima.
+   *
+   * Se escribe como lo que significa para que la próxima sección
+   * nuclear no obligue a tocar el test otra vez.
+   */
+  test("el núcleo no depende de frameworks: es lo que lo mantiene agnóstico", () => {
+    expect(sectionByName("core")?.dependsOn).not.toContain("frameworks");
+  });
+
+  /** Y por debajo de los contratos no hay nada: son la base del grafo. */
+  test("los contratos no dependen de nadie", () => {
+    expect(sectionByName("contracts")?.dependsOn).toEqual([]);
+  });
+
+  /**
+   * Todas dependen de los contratos. Es lo que permite que un tipo
+   * compartido se use sin arrastrar la implementación que lo estrenó.
+   */
+  test("todas las demás secciones dependen de los contratos", () => {
+    for (const section of SECTIONS) {
+      if (section.name === "contracts") continue;
+      expect(section.dependsOn, section.name).toContain("contracts");
+    }
   });
 
   test("no hay ciclos en el grafo de dependencias", () => {

@@ -58,7 +58,7 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
   return lines.join("\n");
 }
 
-async function main(): Promise<number> {
+export async function main(): Promise<number> {
   const { projectRoot, format } = parseArgs(process.argv.slice(2));
   try {
     const summary = await summarizeWithAllFrameworks(projectRoot);
@@ -76,4 +76,6 @@ async function main(): Promise<number> {
   }
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

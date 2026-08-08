@@ -1,0 +1,18 @@
+{
+  // Sección `contracts` — interfaces, tipos y constantes compartidos.
+  //
+  // Compila SOLO con su propia carpeta, y eso es la prueba que importa:
+  // si un contrato necesita importar de `core/`, `frameworks/` o `cli/`
+  // para tiparse, es que no era un contrato — era la firma de una
+  // implementación con otro nombre. TypeScript lo caza aquí antes de que
+  // `lint:boundaries` tenga que opinar.
+  //
+  // Los tests van incluidos porque un contrato sin nada que lo ejercite
+  // es una declaración que nadie ha comprobado que sirva.
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "projects/contracts/**/*.ts",
+    "projects/contracts/**/*.d.ts",
+    "tests/contracts/**/*.ts"
+  ]
+}

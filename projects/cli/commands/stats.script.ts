@@ -4,6 +4,11 @@
  * Uso:
  *   bun scripts/stats.script.ts
  *   bun run stats
+ *
+ * `runStats` devuelve los recuentos y `main` los pinta, por el mismo
+ * motivo que en `list` y `check`: el tool del plugin necesita los datos,
+ * y una tabla alineada con `padEnd` es lo peor que se le puede dar a un
+ * agente para que la parsee.
  */
 import {
   explainReadFailure,
@@ -13,18 +18,27 @@ import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
+import type {
+  IStatsOutcome,
+  IZoneStats,
+} from "../../contracts/interfaces/cli/stats-outcome.interface.js";
 
 interface ZoneStats {
   byMethod: Map<string, number>;
   byFolder: Map<string, number>;
 }
 
-export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
+/** Calcula las estadísticas y las devuelve, imprimiéndolas por el camino. */
+export async function runStats(
+  _argv: string[] = process.argv.slice(2),
+): Promise<IStatsOutcome> {
   const { config } = await loadProject();
   const COLLECTION_PATH = await outputCollectionPath(config.name);
 
   const read = await readCollection(COLLECTION_PATH);
-  if (!read.ok) return explainReadFailure(read);
+  if (!read.ok) {
+    return { code: explainReadFailure(read), total: 0, byMethod: [], zones: [] };
+  }
   const collection = read.collection;
 
   const zones = new Map<string, ZoneStats>();
@@ -65,6 +79,8 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
   }
   console.log();
 
+  const porZona: IZoneStats[] = [];
+
   console.log("Por zona:");
   for (const zone of zonesToDisplay(zones.keys(), config)) {
     const s = zones.get(zone);
@@ -77,9 +93,25 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
     for (const [f, n] of sorted) {
       console.log(`  ${f.padEnd(maxFolder + 2)}${String(n).padStart(4)}`);
     }
+    porZona.push({
+      zone,
+      total: zoneTotal,
+      byFolder: sorted.map(([folder, count]) => ({ folder, count })),
+    });
   }
   console.log();
-  return 0;
+
+  return {
+    code: 0,
+    total: totalRequests,
+    byMethod: methodsSorted.map(([method, count]) => ({ method, count })),
+    zones: porZona,
+  };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runStats(argv)).code;
 }
 
 if (import.meta.main) {

@@ -14,9 +14,19 @@ date: 2026-08-08
 > devolvía 18, y `validate` reportaba una colección desincronizada como
 > *fallo de herramienta*.
 >
-> De S3 va el tool que más falta hacía, **`check`**. Quedan `list`,
-> `stats` y `scan`, que son mecánicos ahora que el patrón está: extraer
-> el `run*()` del comando y envolverlo.
+> **S2 cerrada a 2026-08-08.** Los cuatro tools de solo lectura están:
+> `check`, `list`, `stats` y `scan`. Ocho tools para doce comandos.
+>
+> `stats` y `scan` no eran mecánicos. Al ir a envolver `scan` salió que
+> **cuatro de los doce comandos** —`init`, `open`, `summary` y `scan`—
+> llamaban a `process.exit(await main())` en el cuerpo del módulo, sin
+> guard: importarlos lanzaba el comando y mataba el proceso. Para un
+> servidor MCP de vida larga eso es el servidor entero cayéndose al
+> registrar el tool. `lint:command-coverage` ahora lo exige, y se
+> verificó reintroduciendo el fallo a propósito.
+>
+> Los dos comandos se ejecutaron antes de envolverlos, que es lo que
+> destapó que `list` no listaba nada. Esta vez los dos funcionaban.
 
 # x00001 — Contratos de la superficie MCP: del esquema correcto a la superficie útil
 
@@ -47,7 +57,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
   - "La propuesta deja de perseguir una deuda ya cerrada en texto y persigue la garantía ejecutable que aún falta"
 
 ### S2 — Los tools de solo lectura que hoy faltan
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/check.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/list.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/stats.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/scan.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/index.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
 - **Gate**: plugin

@@ -54,12 +54,29 @@ export interface ISection {
 
 export const SECTIONS: readonly ISection[] = [
   {
+    name: "contracts",
+    // La sección más nuclear: no depende de nadie y todas dependen de
+    // ella. Es lo que permite que un tipo compartido se use sin
+    // arrastrar la implementación que lo estrenó — hoy la UI alcanza
+    // `core/discovery/summary.service` solo para tipar su resumen, y el
+    // plugin importa `frameworks/index`, que trae los 21 scanners
+    // detrás, solo para leer el catálogo de nombres.
+    //
+    // Va la primera en la lista porque el orden es el de ejecución de
+    // los gates: lo más nuclear primero, para fallar pronto.
+    description: "Interfaces, tipos y constantes compartidos. Sin implementación",
+    paths: ["projects/contracts/"],
+    tests: ["tests/contracts/**/*.{spec,test}.ts"],
+    tsconfig: "tsconfig.contracts.json",
+    dependsOn: [],
+  },
+  {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
     paths: ["projects/core/"],
     tests: ["tests/core/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.core.json",
-    dependsOn: [],
+    dependsOn: ["contracts"],
   },
   {
     name: "frameworks",
@@ -69,7 +86,7 @@ export const SECTIONS: readonly ISection[] = [
     paths: ["projects/frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",
-    dependsOn: ["core"],
+    dependsOn: ["contracts", "core"],
   },
   {
     name: "cli",
@@ -77,7 +94,7 @@ export const SECTIONS: readonly ISection[] = [
     paths: ["projects/cli/", "projects/ui/", "scripts/"],
     tests: ["tests/cli/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.cli.json",
-    dependsOn: ["core", "frameworks"],
+    dependsOn: ["contracts", "core", "frameworks"],
   },
   {
     name: "e2e",
@@ -85,7 +102,7 @@ export const SECTIONS: readonly ISection[] = [
     paths: ["tests/e2e/", "tests/fixtures/", "examples/"],
     tests: ["tests/e2e/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.cli.json",
-    dependsOn: ["core", "frameworks", "cli"],
+    dependsOn: ["contracts", "core", "frameworks", "cli"],
   },
   {
     name: "plugin",
@@ -98,7 +115,7 @@ export const SECTIONS: readonly ISection[] = [
     // tool `test` y en `summary`), así que la dependencia es real y se
     // declara. Declararla no es relajar la regla: la regla es que
     // `core` no dependa de `frameworks`, y eso sigue en pie.
-    dependsOn: ["core", "frameworks", "cli"],
+    dependsOn: ["contracts", "core", "frameworks", "cli"],
   },
 ] as const;
 

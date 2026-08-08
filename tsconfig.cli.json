@@ -5,6 +5,7 @@
   // de debajo a la vez.
   "extends": "./tsconfig.base.json",
   "include": [
+    "projects/contracts/**/*.d.ts",
     "projects/core/**/*.ts",
     "projects/core/**/*.d.ts",
     "projects/frameworks/**/*.ts",
