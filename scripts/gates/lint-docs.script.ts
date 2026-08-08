@@ -212,6 +212,37 @@ function anchorOf(heading: string): string {
 }
 
 /**
+ * El documento sin lo que hay dentro de los bloques cercados, pero con
+ * los mismos números de línea.
+ *
+ * Un documento que **enseña** markdown contiene enlaces que no son
+ * enlaces suyos: son el ejemplo. Sin esto, la auditoría de 2026-08-08
+ * —que cita `[OpenAPI](#openapi--swagger)` dentro de un bloque para
+ * explicar por qué esa ancla sí es correcta— hacía fallar al gate
+ * diciendo que el ancla no existía en la auditoría. Y tenía razón: no
+ * existe, porque no es un enlace de ese fichero.
+ *
+ * Un gate que acusa en falso es peor que no tenerlo, porque el
+ * siguiente que lo vea fallar sin motivo lo desactiva.
+ *
+ * Se sustituyen las líneas por vacías en vez de borrarlas para que el
+ * número de línea que se reporta siga siendo el del fichero.
+ */
+function blankFencedCode(source: string): string {
+  let inFence = false;
+  return source
+    .split("\n")
+    .map((line) => {
+      if (/^\s*(```|~~~)/.test(line)) {
+        inFence = !inFence;
+        return "";
+      }
+      return inFence ? "" : line;
+    })
+    .join("\n");
+}
+
+/**
  * Los enlaces a secciones del propio documento.
  *
  * Un ancla rota no rompe nada: lleva al principio de la página y parece
@@ -226,7 +257,7 @@ function checkAnchors(
   const headings = new Set(
     [...source.matchAll(/^#{1,6}\s+(.+)$/gm)].map((m) => anchorOf(m[1] ?? "")),
   );
-  const lines = source.split("\n");
+  const lines = blankFencedCode(source).split("\n");
   for (let i = 0; i < lines.length; i++) {
     for (const match of (lines[i] ?? "").matchAll(ANCHOR_LINK)) {
       const anchor = (match[1] ?? "").toLowerCase();
