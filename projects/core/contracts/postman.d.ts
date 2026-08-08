@@ -297,6 +297,16 @@ declare const process: {
    * compartir temporal, o el `rename` de uno se lleva lo del otro.
    */
   pid: number;
+  /**
+   * Id del usuario efectivo, en POSIX. No existe en Windows, de ahí el
+   * opcional.
+   *
+   * Lo usa el test de permisos: como **root**, `chmod 0555` no impide
+   * escribir, así que el escenario que prueba no existe y el test
+   * pasaría siempre sin comprobar nada. Se vio corriendo el gate dentro
+   * de un contenedor.
+   */
+  getuid?: () => number;
   platform: NodeJS.Platform;
   /** Escritura sin salto de línea, para indicadores de progreso. */
   stderr: { write(chunk: string): boolean };

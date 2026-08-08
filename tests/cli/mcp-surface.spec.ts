@@ -24,24 +24,56 @@
  */
 import { describe, expect, test } from "vitest";
 
-import {
-  GenerateOutputSchema,
-  SummaryOutputSchema,
-  TestOutputSchema,
-  ValidateOutputSchema,
-} from "../../projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface";
+/**
+ * Este spec necesita las dependencias del **plugin**, no las del
+ * paquete: los esquemas se construyen con `zod`, que es suya.
+ *
+ * Y esas no siempre están. El plugin declara
+ * `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`, un
+ * `file:` que apunta fuera del repositorio, así que en cualquier sitio
+ * sin el checkout hermano —un contenedor limpio, un CI, un clon
+ * recién hecho— el install del workspace se queda a medias y `zod` no
+ * llega. El síntoma es un `z.object` indefinido que no tiene nada que
+ * ver con lo que este fichero prueba.
+ *
+ * Se declara la precondición aquí, y no se excluye desde fuera, porque
+ * la condición es de este spec. Cuando `p00007` cierre y el paquete
+ * venga de npm, esto sobra.
+ */
+/**
+ * Se intenta cargar y se mira si carga. Nada de comprobar rutas ni
+ * dependencias sueltas: la condición es exactamente «¿se puede usar este
+ * módulo?», y preguntarla de otra forma es adivinar.
+ *
+ * Antes se probó mirando si existía `node_modules/zod` — y existía, pero
+ * a medias, así que el spec seguía reventando. El disco decía que sí y
+ * la realidad que no.
+ */
+const contratos = await import(
+  "../../projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface"
+).catch(() => null);
 
+const PLUGIN_DEPS = contratos !== null;
+
+/**
+ * El import es **dinámico** y va detrás de la comprobación, no arriba.
+ *
+ * `describe.skipIf` llega tarde: el módulo se evalúa al importarlo, y
+ * si `zod` no está, revienta con `z.object` indefinido antes de que
+ * ningún `skip` pueda actuar. Un import estático haría que este fichero
+ * tumbara la suite entera en vez de saltarse solo.
+ */
 const SCHEMAS = {
-  generate: GenerateOutputSchema,
-  validate: ValidateOutputSchema,
-  summary: SummaryOutputSchema,
-  test: TestOutputSchema,
+  generate: contratos?.GenerateOutputSchema,
+  validate: contratos?.ValidateOutputSchema,
+  summary: contratos?.SummaryOutputSchema,
+  test: contratos?.TestOutputSchema,
 } as const;
 
-describe("los cuatro tools declaran su salida", () => {
+describe.skipIf(!PLUGIN_DEPS)("los cuatro tools declaran su salida", () => {
   test.for(Object.entries(SCHEMAS))("%s tiene esquema de salida", ([, schema]) => {
     expect(schema).toBeDefined();
-    expect(typeof schema.safeParse).toBe("function");
+    expect(typeof schema?.safeParse).toBe("function");
   });
 
   /**
@@ -51,14 +83,14 @@ describe("los cuatro tools declaran su salida", () => {
    * describiendo dos contratos a la vez.
    */
   test.for(Object.entries(SCHEMAS))("%s fija `ok` en true", ([name, schema]) => {
-    const conFalse = schema.safeParse({ ok: false });
-    expect(conFalse.success, `${name} acepta ok:false`).toBe(false);
+    const conFalse = schema?.safeParse({ ok: false });
+    expect(conFalse?.success, `${name} acepta ok:false`).toBe(false);
   });
 });
 
-describe("`ok` y el resultado son dos preguntas distintas", () => {
+describe.skipIf(!PLUGIN_DEPS)("`ok` y el resultado son dos preguntas distintas", () => {
   test("una colección desincronizada es una validación que funcionó", () => {
-    const parsed = ValidateOutputSchema.safeParse({
+    const parsed = contratos!.ValidateOutputSchema.safeParse({
       ok: true,
       valid: false,
       routesInSource: 9,
@@ -70,7 +102,7 @@ describe("`ok` y el resultado son dos preguntas distintas", () => {
   });
 
   test("un test en rojo es un resultado, no un fallo del tool", () => {
-    const parsed = TestOutputSchema.safeParse({
+    const parsed = contratos!.TestOutputSchema.safeParse({
       ok: true,
       passed: false,
       steps: [{ name: "typecheck", ok: false, exitCode: 1, durationMs: 30 }],
@@ -82,7 +114,7 @@ describe("`ok` y el resultado son dos preguntas distintas", () => {
 
   test("`valid` y `passed` son obligatorios: sin ellos no se sabe el resultado", () => {
     expect(
-      ValidateOutputSchema.safeParse({
+      contratos!.ValidateOutputSchema.safeParse({
         ok: true,
         routesInSource: 0,
         requestsInCollection: 0,
@@ -91,13 +123,13 @@ describe("`ok` y el resultado son dos preguntas distintas", () => {
       }).success,
     ).toBe(false);
     expect(
-      TestOutputSchema.safeParse({ ok: true, steps: [], durationMs: 1, framework: null })
+      contratos!.TestOutputSchema.safeParse({ ok: true, steps: [], durationMs: 1, framework: null })
         .success,
     ).toBe(false);
   });
 });
 
-describe("el esquema describe lo que el tool devuelve de verdad", () => {
+describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de verdad", () => {
   /**
    * EL test de `summary`: los campos que el handler pasa y la interfaz
    * anterior no declaraba. Sin esto, el esquema podría volver a
@@ -122,7 +154,7 @@ describe("el esquema describe lo que el tool devuelve de verdad", () => {
       auth: { loginEndpoint: "POST /login" },
       warnings: [],
     };
-    expect(SummaryOutputSchema.safeParse(completo).success).toBe(true);
+    expect(contratos!.SummaryOutputSchema.safeParse(completo).success).toBe(true);
   });
 
   test("generate acepta el proyecto híbrido y el que no reconoce nada", () => {
@@ -139,7 +171,7 @@ describe("el esquema describe lo que el tool devuelve de verdad", () => {
       durationMs: 100,
     };
     expect(
-      GenerateOutputSchema.safeParse({
+      contratos!.GenerateOutputSchema.safeParse({
         ...base,
         framework: "express",
         frameworks: ["express", "nextjs"],
@@ -147,13 +179,13 @@ describe("el esquema describe lo que el tool devuelve de verdad", () => {
     ).toBe(true);
     // Nada reconocido: `framework` es null y no es un error de forma.
     expect(
-      GenerateOutputSchema.safeParse({ ...base, framework: null, frameworks: [] }).success,
+      contratos!.GenerateOutputSchema.safeParse({ ...base, framework: null, frameworks: [] }).success,
     ).toBe(true);
   });
 
   test("los contadores no admiten negativos", () => {
     expect(
-      SummaryOutputSchema.safeParse({
+      contratos!.SummaryOutputSchema.safeParse({
         ok: true,
         framework: "express",
         frameworks: [],

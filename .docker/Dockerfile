@@ -84,7 +84,25 @@ WORKDIR /work
 # un uso legítimo.
 CMD ["bash"]
 
-# --- Etapa 2: solo el binario ------------------------------------------------
+# --- Etapa 2: compilar el binario dentro ------------------------------------
+#
+# Existe porque la etapa `runtime` no puede copiar de un volumen: los
+# binarios que produce `docker compose run binaries` viven en el disco
+# del host, no dentro de ninguna imagen. Intentar copiarlos de
+# `toolchain` falla con un `not found` que despista.
+#
+# Compilar aquí hace además que la imagen de smoke sea **autosuficiente**:
+# no depende de que alguien haya lanzado antes otro comando.
+FROM toolchain AS builder
+
+COPY . /work
+# `|| true` por el `file:` del plugin que apunta fuera del repo (p00007).
+# El CLI no importa el plugin, así que su compilación no lo necesita.
+RUN bun install || true \
+    && bun build --compile --target=bun-linux-x64 projects/cli/cli.script.ts \
+         --outfile /out/expostman
+
+# --- Etapa 3: solo el binario ------------------------------------------------
 # Para probar el ejecutable en una máquina **sin** Bun ni Node, que es
 # la promesa que hace el README y lo que `validate:package` comprueba.
 # Si el binario no fuera autocontenido, aquí no arrancaría.
@@ -93,7 +111,7 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=toolchain /work/dist/expostman-linux-x64 /usr/local/bin/expostman
+COPY --from=builder /out/expostman /usr/local/bin/expostman
 
 # Nada de Bun ni de Node aquí a propósito: si el binario los necesitara,
 # este contenedor lo diría en el primer intento.

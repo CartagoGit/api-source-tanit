@@ -217,9 +217,19 @@ is on npm:
 
 **Temporary pre-publish fallback** (local developers who also have a
 sibling `mcp-vertex` checkout): `.vscode/mcp.json` may point at a
-relative sibling host script
-(`../mcp-vertex/tools/scripts/host/host-server.script.ts`). That path
-is **not** required for cloning or using this repository elsewhere.
+relative sibling host script.
+
+> The path is `../mcp-vertex/tools/scripts/host/host-server.script.ts`.
+> It lives in a quote because it is **outside this repository** — the
+> only place `lint:bootstrap-drift` allows naming something that does
+> not exist here. That is exactly the point: the path is not required
+> for cloning or using this repository elsewhere.
+>
+> A container build caught this. On a machine that happens to have the
+> sibling checked out, the gate passed; in a clean one it did not. Same
+> shape as the `exit-codes` test that only passed where nobody had run
+> the CLI before.
+
 Never commit absolute machine paths (e.g. `/home/<user>/_projects/...`).
 
 When the CLI ships, replace the fallback with the canonical form and

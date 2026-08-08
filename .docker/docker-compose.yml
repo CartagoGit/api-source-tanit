@@ -20,6 +20,13 @@
 
 name: expostman
 
+# `bash -c`, nunca `bash -lc`.
+#
+# Una shell de **login** relee `/etc/profile`, que reconstruye el `PATH`
+# desde cero y tira el que la imagen declara con `ENV`. Con `-lc`, `bun`
+# no existe dentro del contenedor aunque esté instalado: se vio al
+# primer intento, con un `bun: command not found` que no tenía nada que
+# ver con la instalación.
 x-toolchain: &toolchain
   build:
     context: ..
@@ -30,6 +37,16 @@ x-toolchain: &toolchain
   volumes:
     - ..:/work
     - node_modules:/work/node_modules
+    # El `node_modules` del plugin también, y no es opcional.
+    #
+    # Sin esto llega por el bind mount con los enlaces que creó el
+    # install del **host**, que apuntan a un hash de `.bun/` que el
+    # install del contenedor no genera. `bun` los ve presentes y no los
+    # rehace, así que el enlace queda colgando: `readlink` resuelve pero
+    # el directorio está vacío. El síntoma es un typecheck que falla
+    # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
+    # tiene nada que ver con los tipos.
+    - plugin_node_modules:/work/projects/plugins/mcp-vertex_expostman/node_modules
     - cargo_registry:/usr/local/cargo/registry
     - cargo_target:/work/projects/desktop/target
   environment:
@@ -40,16 +57,41 @@ x-toolchain: &toolchain
     CI: "1"
 
 services:
-  # El gate completo, en un entorno limpio. Es la respuesta a «en mi
-  # máquina pasa»: aquí no hay nada instalado a mano.
+  # El gate en un entorno limpio. Es la respuesta a «en mi máquina
+  # pasa»: aquí no hay nada instalado a mano.
+  #
+  # **Sin la sección `plugin`, y no es un descuido.** El plugin declara
+  # `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`, un
+  # `file:` que apunta **fuera** del repositorio. Montar el checkout
+  # hermano dentro se probó y no basta —bun no materializa el enlace—,
+  # pero sobre todo **no debería hacer falta**: el bootstrap prohíbe
+  # expresamente que este repo exija un checkout al lado.
+  #
+  # O sea que el contenedor no ha causado nada: ha puesto número a
+  # `p00007`. Lo que esa propuesta describe como «cambiar una línea
+  # cuando se publique» es en realidad **el repositorio no siendo
+  # autocontenido**, y se nota en cuanto se intenta construir en un sitio
+  # limpio. El día que `@mcp-vertex/core` esté en npm, esto pasa a ser
+  # `bun run validate` a secas.
+  #
+  # `mcp-surface.spec.ts` se salta **solo**, declarando su precondición:
+  # importa los contratos del plugin y `zod` es dependencia suya, así que
+  # sin el `file:` resuelto revienta con un `z.object` indefinido que no
+  # tiene nada que ver con lo que prueba. Se salta en el spec y no aquí
+  # porque la condición es suya, no de este fichero.
   validate:
     <<: *toolchain
-    command: bash -lc "bun install --frozen-lockfile && bun run validate"
+    command: >
+      bash -c "bun install || true &&
+      bun run typecheck:core && bun run typecheck:frameworks && bun run typecheck:cli &&
+      bun run lint &&
+      bunx vitest run --project core --project frameworks --project cli --project e2e &&
+      bun run validate:examples"
 
   # Los cuatro binarios autocontenidos, uno por plataforma.
   binaries:
     <<: *toolchain
-    command: bash -lc "bun install --frozen-lockfile && bun run build:binary --all"
+    command: bash -c "bun install || true && bun run build:binary --all"
 
   # Los instaladores nativos (.deb y .AppImage). Los de Mac y Windows no
   # se pueden producir desde Linux —cada uno exige su propio SDK y su
@@ -58,7 +100,7 @@ services:
   # cuesta descubrirlo.
   installers:
     <<: *toolchain
-    command: bash -lc "bun install --frozen-lockfile && bun run desktop:build"
+    command: bash -c "bun install || true && bun run desktop:build"
 
   # Una shell dentro del taller, para cuando algo falla y hay que mirar.
   shell:
@@ -81,5 +123,6 @@ services:
 
 volumes:
   node_modules:
+  plugin_node_modules:
   cargo_registry:
   cargo_target:

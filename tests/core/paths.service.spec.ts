@@ -34,8 +34,19 @@ describe("paths.service", () => {
       expect(outputBasename("my-app")).toBe("custom.postman_collection");
     });
 
-    test("sin projectName, usa el projectBasename del paquete", () => {
-      expect(outputBasename()).toMatch(/(export-to-postman|export-to-postman)\.postman_collection/);
+    /**
+     * Se comprueba la **forma**, no el nombre de la carpeta.
+     *
+     * Antes exigía que el basename fuera `export-to-postman`, que es el
+     * nombre del directorio donde está clonado el repo — y encima
+     * duplicado en el OR, resto de un renombrado. Clonar en otra carpeta
+     * hacía fallar el test; dentro de un contenedor, que monta en
+     * `/work`, fallaba siempre.
+     */
+    test("sin projectName, deriva del basename del paquete", () => {
+      const basename = outputBasename();
+      expect(basename).toMatch(/^[\w.-]+\.postman_collection$/);
+      expect(basename.startsWith(".")).toBe(false);
     });
   });
 

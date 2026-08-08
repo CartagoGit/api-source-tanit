@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import {
   fromProjectRoot,
   hasProjectDir,
@@ -94,9 +95,16 @@ describe("resolveProjectContext — derivados", () => {
     expect(ctx("/tmp/proyectos/mi-api").projectBasename).toBe("mi-api");
   });
 
+  /**
+   * Que apunte a **este** paquete se comprueba mirando lo que tiene
+   * dentro, no cómo se llama la carpeta. El nombre del directorio es del
+   * entorno: quien clone en otro sitio, o quien construya en un
+   * contenedor que monta en `/work`, tiene otro.
+   */
   test("el packageRoot apunta a este paquete", () => {
     const pkgRoot = ctx("/tmp/x").packageRoot;
-    expect(pkgRoot.includes("export-to-postman") || pkgRoot.includes("export-to-postman")).toBe(true);
+    expect(isAbsolute(pkgRoot)).toBe(true);
+    expect(existsSync(join(pkgRoot, "package.json"))).toBe(true);
   });
 });
 
