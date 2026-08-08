@@ -93,8 +93,26 @@ async function timeReads(root: string): Promise<{ parallel: number; sequential: 
   return { parallel, sequential };
 }
 
+/**
+ * Cuánto puede crecer el coste por fichero entre el proyecto más
+ * pequeño y el más grande antes de considerarlo una regresión.
+ *
+ * **No se vigila el tiempo absoluto**, y es deliberado: depende de la
+ * máquina, y un gate que falla porque el CI iba cargado se acaba
+ * desactivando. Lo que importa es la **forma**: si el coste por fichero
+ * sube con el tamaño, hay algo cuadrático, y eso sí es un fallo del
+ * código y no del hardware.
+ *
+ * Medido hoy: 574, 523, 543 y 526 µs/fichero de 250 a 2.000 ficheros —
+ * plano, con un ±10% de ruido entre pasadas. 1,6× deja sitio de sobra
+ * para ese ruido y salta mucho antes de que algo cuadrático se note.
+ */
+const MAX_CRECIMIENTO = 1.6;
+
 async function main(): Promise<number> {
-  const arg = process.argv[2];
+  const args = process.argv.slice(2);
+  const check = args.includes("--check");
+  const arg = args.find((a) => !a.startsWith("--"));
   const sizes = arg ? [Number(arg)] : [...DEFAULT_SIZES];
   if (sizes.some((n) => !Number.isFinite(n) || n <= 0)) {
     console.error("bench:scan — el tamaño tiene que ser un número positivo");
@@ -107,12 +125,14 @@ async function main(): Promise<number> {
     console.log("  ficheros   specs      total    lectura(par)  lectura(seq)   µs/fichero");
     console.log("  ────────  ──────  ─────────  ────────────  ────────────  ───────────");
 
+    const porFichero: number[] = [];
     for (const routes of sizes) {
       const root = join(workDir, `n${routes}`);
       await buildProject(root, routes);
       const { ms, specs } = await timeScan(root);
       const reads = await timeReads(root);
       const files = routes * 2;
+      porFichero.push((ms * 1000) / files);
       console.log(
         `  ${String(files).padStart(8)}  ${String(specs).padStart(6)}  ` +
           `${ms.toFixed(0).padStart(7)} ms  ` +
@@ -127,6 +147,33 @@ async function main(): Promise<number> {
         "    leyendo de una en una. La diferencia es la ganancia REAL del cambio,\n" +
         "    y el resto del `total` es parseo, donde el disco no pinta nada.\n" +
         "  · Si `µs/fichero` sube con el tamaño, hay algo cuadrático. Hoy es plano.",
+    );
+
+    if (!check) return 0;
+
+    // La comprobación: el coste por fichero del proyecto grande no puede
+    // dispararse respecto al del pequeño.
+    const primero = porFichero[0];
+    const ultimo = porFichero[porFichero.length - 1];
+    if (primero === undefined || ultimo === undefined || porFichero.length < 2) {
+      console.error("\nbench:scan --check necesita al menos dos tamaños");
+      return 1;
+    }
+    const crecimiento = ultimo / primero;
+    if (crecimiento > MAX_CRECIMIENTO) {
+      console.error(
+        `\n✗ El coste por fichero crece ${crecimiento.toFixed(2)}× de ` +
+          `${sizes[0]} a ${sizes[sizes.length - 1]} rutas (máximo ${MAX_CRECIMIENTO}×).\n` +
+          "  · Con el escaneo lineal esta cifra se queda cerca de 1. Que suba\n" +
+          "    significa que algo mira todo por cada fichero, y el coste se\n" +
+          "    dispara justo en los proyectos grandes, que son los que menos\n" +
+          "    se prueban a mano.",
+      );
+      return 1;
+    }
+    console.log(
+      `\n✔ Coste por fichero plano: ×${crecimiento.toFixed(2)} de ` +
+        `${sizes[0]} a ${sizes[sizes.length - 1]} rutas (máximo ${MAX_CRECIMIENTO}×).`,
     );
     return 0;
   } finally {

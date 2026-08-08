@@ -4,7 +4,7 @@
   "workspaces": [
     "projects/plugins/mcp-vertex_expostman"
   ],
-  "description": "Generador agn\u00f3stico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework autom\u00e1ticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y par\u00e1metros sin configuraci\u00f3n manual.",
+  "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
   "keywords": [
     "postman",
     "laravel",
@@ -79,6 +79,7 @@
     "test:cli": "bunx vitest run --project cli",
     "test:e2e": "bunx vitest run --project e2e",
     "test:plugin": "bunx vitest run --project plugin",
+    "test:coverage": "bunx vitest run --coverage",
     "test:changed": "bun run scripts/gates/changed.script.ts",
     "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",
     "typecheck:frameworks": "bun run scripts/gates/typecheck.script.ts frameworks",
@@ -98,6 +99,7 @@
     "lint:docs": "bun run scripts/gates/lint-docs.script.ts",
     "lint:regex-state": "bun run scripts/gates/lint-regex-state.script.ts",
     "bench:scan": "bun run scripts/gates/bench-scan.script.ts",
+    "bench:check": "bun run scripts/gates/bench-scan.script.ts --check",
     "lint:secrets": "bun run scripts/gates/lint-secrets.script.ts",
     "lint:sast": "bun run scripts/gates/lint-sast.script.ts",
     "security:audit": "bun audit --audit-level=high",
@@ -113,6 +115,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"
   },
   "overrides": {
