@@ -19,6 +19,7 @@ import { runGenerate } from "../helpers/run-scanner";
 import {
   countItems,
   findEndpoint,
+  findAllEndpoints,
   hashNormalized,
   normalizeCollection,
   validatePostmanInvariants,
@@ -37,20 +38,6 @@ describeCollectionContract({
  * (Django fixture no genera duplicados, pero dejamos el helper por si
  * en el futuro hay routes con includes superpuestos).
  */
-function findAllEndpoints(collection: any, method: string, uri: string): any[] {
-  const out: any[] = [];
-  const walk = (items: any[]) => {
-    for (const it of items) {
-      if (it.item) walk(it.item);
-      else if (it.request) {
-        const raw = it.request.url?.raw ?? "";
-        if (it.request.method === method && raw.endsWith(uri)) out.push(it);
-      }
-    }
-  };
-  walk(collection.item ?? []);
-  return out;
-}
 
 describe("Django — comprehensive fixture", () => {
   test("detecta el framework correcto", async () => {

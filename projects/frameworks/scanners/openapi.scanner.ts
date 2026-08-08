@@ -26,6 +26,12 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../core/contracts/scanner.interface.js";
+import {
+  isRecord,
+  readArray,
+  readObject,
+  readString,
+} from "../../core/helpers/parse-json.helper.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
 const OPENAPI_CANDIDATES = [
@@ -454,7 +460,7 @@ export class OpenApiScanner implements IRouteScanner {
     } catch {
       return [];
     }
-    let spec: any;
+    let spec: unknown;
     try {
       if (specRel.endsWith(".json")) {
         spec = JSON.parse(raw);
@@ -477,8 +483,8 @@ export class OpenApiScanner implements IRouteScanner {
       throw new Error(`OpenApiScanner: cannot parse ${specRel}: ${(e as Error).message}`);
     }
     const basePath: string =
-      this.opts.basePath ?? (typeof spec.basePath === "string" ? spec.basePath : "");
-    const paths = spec.paths ?? {};
+      this.opts.basePath ?? readString(spec, "basePath") ?? "";
+    const paths = readObject(spec, "paths") ?? {};
     const out: ParsedRoute[] = [];
     for (const [pathTemplate, pathItem] of Object.entries(paths)) {
       if (!pathItem || typeof pathItem !== "object") continue;
@@ -614,38 +620,40 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     } catch {
       return { endpointKey: keyOf(route), fields: [] };
     }
-    let spec: any;
+    let spec: unknown;
     try {
       spec = specRel.endsWith(".json") ? JSON.parse(raw) : parseYamlLite(raw);
     } catch {
       return { endpointKey: keyOf(route), fields: [] };
     }
-    const pathItem = (spec.paths ?? {})[route.rawUri];
+    const pathItem = readObject(readObject(spec, "paths"), route.rawUri);
     if (!pathItem) return { endpointKey: keyOf(route), fields: [] };
-    const op = pathItem[route.method.toLowerCase()];
+    const op = readObject(pathItem, route.method.toLowerCase());
     if (!op) return { endpointKey: keyOf(route), fields: [] };
     const fields: IValidationSpec[] = [];
     const params = [
-      ...(Array.isArray(pathItem.parameters) ? pathItem.parameters : []),
-      ...(Array.isArray(op.parameters) ? op.parameters : []),
+      ...(readArray(pathItem, "parameters") ?? []),
+      ...(readArray(op, "parameters") ?? []),
     ];
     for (const p of params) {
-      if (!p || typeof p !== "object") continue;
-      const pObj = p as Record<string, unknown>;
+      if (!isRecord(p)) continue;
       // Resolver $ref en parameters (ej. `{$ref: '#/components/parameters/X'}`).
-      const resolvedP = resolveRef(pObj, spec) ?? pObj;
+      const resolvedRaw = resolveRef(p, spec);
+      const resolvedP = isRecord(resolvedRaw) ? resolvedRaw : p;
       // name, in, required pueden estar en el $ref resuelto o en el original.
-      const name = String(resolvedP.name ?? pObj.name ?? "");
-      const inLoc = String(resolvedP.in ?? pObj.in ?? "query") as IValidationSpec["location"];
-      const required = Boolean(resolvedP.required ?? pObj.required);
-      const schema = (resolvedP.schema ?? {}) as OpenApiSchema;
+      const name = readString(resolvedP, "name") ?? readString(p, "name") ?? "";
+      const inLoc = (readString(resolvedP, "in") ??
+        readString(p, "in") ??
+        "query") as IValidationSpec["location"];
+      const required = Boolean(resolvedP["required"] ?? p["required"]);
+      const schema = (readObject(resolvedP, "schema") ?? {}) as OpenApiSchema;
       fields.push(schemaToField(name, inLoc, required, schema));
     }
     // Request body (JSON)
-    const content = (op.requestBody as Record<string, unknown> | undefined)?.content;
-    const json = (content as Record<string, unknown> | undefined)?.["application/json"];
-    if (json && typeof json === "object") {
-      const raw = ((json as Record<string, unknown>).schema ?? {}) as Record<string, unknown>;
+    const content = readObject(op, "requestBody");
+    const json = readObject(readObject(content, "content"), "application/json");
+    if (json) {
+      const raw = readObject(json, "schema") ?? {};
       // Resolver $ref top-level (ej. `{$ref: '#/components/schemas/X'}`).
       const resolved = resolveRef(raw, spec);
       const schema = (resolved ?? raw) as OpenApiSchema;
@@ -672,19 +680,14 @@ function keyOf(route: ParsedRoute): string {
  * Resuelve un $ref local (`#/components/schemas/X`) en el spec.
  * Soporta un solo nivel de indirección. Devuelve `null` si no resuelve.
  */
-function resolveRef(obj: any, spec: any): any | null {
-  if (!obj || typeof obj !== "object") return null;
-  const ref = obj.$ref;
-  if (typeof ref !== "string") return null;
-  if (!ref.startsWith("#/")) return null;
-  const path = ref.slice(2).split("/");
-  let current: any = spec;
-  for (const part of path) {
-    if (current && typeof current === "object" && part in current) {
-      current = current[part];
-    } else {
-      return null;
-    }
+function resolveRef(obj: unknown, spec: unknown): unknown {
+  if (!isRecord(obj)) return null;
+  const ref = obj["$ref"];
+  if (typeof ref !== "string" || !ref.startsWith("#/")) return null;
+  let current: unknown = spec;
+  for (const part of ref.slice(2).split("/")) {
+    if (!isRecord(current) || !(part in current)) return null;
+    current = current[part];
   }
   return current;
 }
@@ -698,28 +701,56 @@ function resolveRef(obj: any, spec: any): any | null {
  * - `oneOf`/`anyOf`: NO se mergea (mejor omitir que adivinar).
  */
 function mergeAllOf(
-  schema: any,
-  spec?: any,
+  schema: unknown,
+  spec?: unknown,
+  /**
+   * Los `$ref` ya visitados en esta rama.
+   *
+   * La recursión es **ilimitada por construcción**: un `allOf` con un
+   * `$ref` lleva a `resolveRef`, y lo que devuelve vuelve a entrar aquí.
+   * `A → allOf: [$ref B]` con `B → allOf: [$ref A]` se llama sin fin, y
+   * esto lee specs de otra gente. No se ha conseguido reproducir un
+   * cuelgue —el camino hasta aquí exige que el spec parsee y que la ruta
+   * traiga cuerpo—, pero una recursión sin cota sobre entrada ajena no
+   * necesita una reproducción para merecer una cota.
+   *
+   * Se corta la rama, no todo: un `$ref` repetido en dos ramas distintas
+   * es legítimo y frecuente —una respuesta de error compartida— y
+   * marcarlo global haría que la segunda se perdiera.
+   */
+  visitados: ReadonlySet<string> = new Set(),
 ): { properties: Record<string, OpenApiSchema>; required: string[] } {
   const properties: Record<string, OpenApiSchema> = {};
   const required: string[] = [];
-  if (!schema || typeof schema !== "object") return { properties, required };
+  if (!isRecord(schema)) return { properties, required };
+
   // Resolver $ref en el schema raíz.
-  if (typeof schema.$ref === "string" && spec) {
+  const ref = schema["$ref"];
+  if (typeof ref === "string" && spec) {
+    if (visitados.has(ref)) return { properties, required };
     const resolved = resolveRef(schema, spec);
-    if (resolved) return mergeAllOf(resolved, spec);
+    if (resolved) return mergeAllOf(resolved, spec, new Set([...visitados, ref]));
   }
+
   // Propiedades del schema raíz.
-  for (const [k, v] of Object.entries(schema.properties ?? {})) {
-    properties[k] = v as OpenApiSchema;
+  const props = schema["properties"];
+  if (isRecord(props)) {
+    for (const [k, v] of Object.entries(props)) {
+      properties[k] = v as OpenApiSchema;
+    }
   }
-  for (const r of schema.required ?? []) {
-    if (typeof r === "string" && !required.includes(r)) required.push(r);
+  const req = schema["required"];
+  if (Array.isArray(req)) {
+    for (const r of req) {
+      if (typeof r === "string" && !required.includes(r)) required.push(r);
+    }
   }
+
   // allOf: mergear cada subschema.
-  if (Array.isArray(schema.allOf)) {
-    for (const sub of schema.allOf) {
-      const merged = mergeAllOf(sub, spec);
+  const allOf = schema["allOf"];
+  if (Array.isArray(allOf)) {
+    for (const sub of allOf) {
+      const merged = mergeAllOf(sub, spec, visitados);
       for (const [k, v] of Object.entries(merged.properties)) {
         properties[k] = v;
       }

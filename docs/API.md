@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 215 símbolos en 48 módulos.
+> 222 símbolos en 49 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1780,6 +1780,67 @@ lo cazó.
 Regla: los gates y los tests usan `repoRoot()`, que lanza porque un
 fallo ahí es un fallo del repo. El código que acaba dentro del
 binario usa esta y tiene un plan B.
+
+### `projects/core/helpers/parse-json.helper.ts`
+
+Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
+
+#### `JsonRead`
+
+```ts
+export type JsonRead = |
+```
+
+#### `parseJson`
+
+```ts
+export function parseJson(raw: string): JsonRead
+```
+
+Parsea, distinguiendo "no se pudo" de "parseó a `null`".
+
+Los dos casos se confundían: `JSON.parse("null")` devuelve `null`, y
+un `catch` que también deja `null` hace que un fichero corrupto y uno
+que legítimamente contiene `null` acaben iguales. Solo uno de los dos
+merece un aviso.
+
+#### `isRecord`
+
+```ts
+export function isRecord(value: unknown): value is Record<string, unknown>
+```
+
+#### `readObject`
+
+```ts
+export function readObject( value: unknown, key: string, ): Record<string, unknown> | undefined
+```
+
+#### `readString`
+
+```ts
+export function readString(value: unknown, key: string): string | undefined
+```
+
+#### `readArray`
+
+```ts
+export function readArray(value: unknown, key: string): unknown[] | undefined
+```
+
+#### `declaredDependencies`
+
+```ts
+export function declaredDependencies(pkg: unknown): Record<string, string>
+```
+
+Las dependencias declaradas en un `package.json`, fundidas.
+
+`dependencies` y `devDependencies` juntas, porque la pregunta que los
+scanners hacen es «¿este proyecto usa X?» y un framework en
+`devDependencies` sigue siendo el framework del proyecto. Unos
+scanners las miraban y otros no, así que el mismo proyecto se
+detectaba o no según cuál preguntara.
 
 ### `projects/core/helpers/path-containment.helper.ts`
 

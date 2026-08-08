@@ -3,6 +3,13 @@
  * campos volátiles (paths absolutos, IDs generados, timestamps).
  */
 import { createHash } from "node:crypto";
+import {
+  isRecord,
+  readArray,
+  readObject,
+  readString,
+} from "../../projects/core/helpers/parse-json.helper";
+import type { PostmanItem } from "../../projects/core/contracts/postman.interface";
 
 const VOLATILE_KEYS = new Set([
   "_postman_id",
@@ -15,11 +22,11 @@ const VOLATILE_KEYS = new Set([
  * Recorre un objeto y reemplaza campos volátiles con un placeholder.
  * Devuelve una copia profunda sin mutar el original.
  */
-export function normalizeCollection(obj: any): any {
+export function normalizeCollection(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
   if (Array.isArray(obj)) return obj.map(normalizeCollection);
   if (typeof obj === "object") {
-    const out: Record<string, any> = {};
+    const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(obj)) {
       if (VOLATILE_KEYS.has(k)) {
         out[k] = "<NORMALIZED>";
@@ -36,7 +43,7 @@ export function normalizeCollection(obj: any): any {
  * Compara dos collections de manera estructural ignorando volatile.
  * Devuelve una lista de diferencias (paths), vacía si son equivalentes.
  */
-export function diffCollections(a: any, b: any, path = "$"): string[] {
+export function diffCollections(a: unknown, b: unknown, path = "$"): string[] {
   const diffs: string[] = [];
   if (a === b) return diffs;
   if (typeof a !== typeof b) {
@@ -57,7 +64,7 @@ export function diffCollections(a: any, b: any, path = "$"): string[] {
     }
     return diffs;
   }
-  if (typeof a === "object" && typeof b === "object") {
+  if (isRecord(a) && isRecord(b)) {
     const keysA = new Set(Object.keys(a));
     const keysB = new Set(Object.keys(b));
     for (const k of keysA) {
@@ -84,7 +91,7 @@ export function diffCollections(a: any, b: any, path = "$"): string[] {
  * Hash SHA-256 de un objeto (post-normalize).
  * Útil para snapshots "did the output change?".
  */
-export function hashNormalized(obj: any): string {
+export function hashNormalized(obj: unknown): string {
   const normalized = normalizeCollection(obj);
   return createHash("sha256")
     .update(JSON.stringify(normalized, null, 2))
@@ -94,13 +101,14 @@ export function hashNormalized(obj: any): string {
 /**
  * Cuenta items (requests + folders) en una collection.
  */
-export function countItems(items: any[]): { requests: number; folders: number } {
+export function countItems(items: readonly unknown[]): { requests: number; folders: number } {
   let requests = 0;
   let folders = 0;
   for (const it of items) {
-    if (it.item) {
+    const hijos = readArray(it, "item");
+    if (hijos) {
       folders++;
-      const sub = countItems(it.item);
+      const sub = countItems(hijos);
       requests += sub.requests;
       folders += sub.folders;
     } else {
@@ -114,49 +122,157 @@ export function countItems(items: any[]): { requests: number; folders: number } 
  * Encuentra un endpoint por (method, uri) en la collection.
  */
 export function findEndpoint(
-  collection: any,
+  collection: unknown,
   method: string,
   uri: string,
-): any | null {
-  const walk = (items: any[]): any | null => {
+): PostmanItem | null {
+  const walk = (items: readonly unknown[]): unknown => {
     for (const it of items) {
-      if (it.item) {
-        const found = walk(it.item);
+      const hijos = readArray(it, "item");
+      if (hijos) {
+        const found = walk(hijos);
         if (found) return found;
-      } else if (it.request) {
-        const rawUri = it.request.url?.raw ?? "";
-        if (it.request.method === method && rawUri.endsWith(uri)) {
-          return it;
-        }
+        continue;
       }
+      const request = readObject(it, "request");
+      if (!request) continue;
+      const rawUri = readString(readObject(request, "url"), "raw") ?? "";
+      if (readString(request, "method") === method && rawUri.endsWith(uri)) return it;
     }
     return null;
   };
-  return walk(collection.item ?? []);
+  const encontrado = walk(readArray(collection, "item") ?? []);
+  // El predicado comprueba de verdad la forma antes de afirmarla, así
+  // que esto no es un casting: es una comprobación con nombre. Devolver
+  // `unknown` obligaría a cada uno de los treinta tests que lo usan a
+  // volver a estrechar lo mismo.
+  return isPostmanItem(encontrado) ? encontrado : null;
+}
+
+/**
+ * ¿Esto tiene la forma de un item de Postman?
+ *
+ * Se comprueba, no se afirma: un `as PostmanItem` sobre lo que salga de
+ * recorrer un JSON ajeno es exactamente lo que este repo prohíbe.
+ */
+function isPostmanItem(value: unknown): value is PostmanItem {
+  if (!isRecord(value)) return false;
+  if (typeof value["name"] !== "string") return false;
+  return readObject(value, "request") !== undefined || readArray(value, "item") !== undefined;
 }
 
 /**
  * Comprueba invariantes de Postman v2.1.0.
  */
-export function validatePostmanInvariants(collection: any): string[] {
+export function validatePostmanInvariants(collection: unknown): string[] {
   const issues: string[] = [];
-  if (!collection.info) issues.push("missing .info");
-  if (!collection.info?.schema?.includes("2.1.0")) {
-    issues.push(`.info.schema should be Postman v2.1.0 (got: ${collection.info?.schema})`);
+  const info = readObject(collection, "info");
+  if (!info) issues.push("missing .info");
+  const schema = readString(info, "schema");
+  if (!schema?.includes("2.1.0")) {
+    issues.push(`.info.schema should be Postman v2.1.0 (got: ${schema ?? "nada"})`);
   }
-  if (!Array.isArray(collection.item)) issues.push("missing .item array");
-  const walk = (items: any[], path: string) => {
+  const raiz = readArray(collection, "item");
+  if (!raiz) issues.push("missing .item array");
+
+  const walk = (items: readonly unknown[], path: string): void => {
     for (const it of items) {
-      if (it.item) {
-        if (!it.name) issues.push(`${path}: folder missing name`);
-        walk(it.item, `${path}/${it.name}`);
-      } else {
-        if (!it.name) issues.push(`${path}: request missing name`);
-        if (!it.request?.method) issues.push(`${path}/${it.name}: missing method`);
-        if (!it.request?.url?.raw) issues.push(`${path}/${it.name}: missing url.raw`);
+      const nombre = readString(it, "name");
+      const hijos = readArray(it, "item");
+      if (hijos) {
+        if (!nombre) issues.push(`${path}: folder missing name`);
+        walk(hijos, `${path}/${nombre ?? "(sin nombre)"}`);
+        continue;
+      }
+      if (!nombre) issues.push(`${path}: request missing name`);
+      const request = readObject(it, "request");
+      if (!readString(request, "method")) {
+        issues.push(`${path}/${nombre ?? "(sin nombre)"}: missing method`);
+      }
+      if (!readString(readObject(request, "url"), "raw")) {
+        issues.push(`${path}/${nombre ?? "(sin nombre)"}: missing url.raw`);
       }
     }
   };
-  walk(collection.item ?? [], "$");
+  walk(raiz ?? [], "$");
   return issues;
+}
+
+/**
+ * Todos los endpoints que casan con `method + uri`.
+ *
+ * A diferencia de `findEndpoint`, que devuelve el primero, este los
+ * devuelve todos — que es lo que hace falta para **detectar
+ * duplicados**: en Symfony el mismo endpoint declarado en YAML y con
+ * `#[Route]` salía dos veces, y con el primero no se veía.
+ *
+ * Estaba copiado en tres ficheros de test, cada uno con sus `any`.
+ */
+export function findAllEndpoints(
+  collection: unknown,
+  method: string,
+  uri: string,
+): PostmanItem[] {
+  const out: PostmanItem[] = [];
+  const walk = (items: readonly unknown[]): void => {
+    for (const it of items) {
+      const hijos = readArray(it, "item");
+      if (hijos) {
+        walk(hijos);
+        continue;
+      }
+      const request = readObject(it, "request");
+      if (!request) continue;
+      const rawUri = readString(readObject(request, "url"), "raw") ?? "";
+      if (readString(request, "method") === method && rawUri.endsWith(uri)) {
+        if (isPostmanItem(it)) out.push(it);
+      }
+    }
+  };
+  walk(readArray(collection, "item") ?? []);
+  return out;
+}
+
+/** Las claves `MÉTODO url` de todas las requests, para detectar duplicados. */
+export function collectRequestKeys(collection: unknown): string[] {
+  const out: string[] = [];
+  const walk = (items: readonly unknown[]): void => {
+    for (const it of items) {
+      const hijos = readArray(it, "item");
+      if (hijos) {
+        walk(hijos);
+        continue;
+      }
+      const request = readObject(it, "request");
+      if (!request) continue;
+      const raw = readString(readObject(request, "url"), "raw") ?? "";
+      out.push(`${readString(request, "method") ?? ""} ${raw}`);
+    }
+  };
+  walk(readArray(collection, "item") ?? []);
+  return out;
+}
+
+/** Los nombres de las carpetas de primer nivel. */
+export function topFolderNames(collection: unknown): string[] {
+  return (readArray(collection, "item") ?? [])
+    .map((it) => readString(it, "name"))
+    .filter((n): n is string => typeof n === "string");
+}
+
+/** Todas las requests de la colección, aplanadas. */
+export function allRequests(collection: unknown): PostmanItem[] {
+  const out: PostmanItem[] = [];
+  const walk = (items: readonly unknown[]): void => {
+    for (const it of items) {
+      const hijos = readArray(it, "item");
+      if (hijos) {
+        walk(hijos);
+        continue;
+      }
+      if (readObject(it, "request") && isPostmanItem(it)) out.push(it);
+    }
+  };
+  walk(readArray(collection, "item") ?? []);
+  return out;
 }

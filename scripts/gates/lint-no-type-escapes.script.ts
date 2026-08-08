@@ -62,21 +62,23 @@ const ESCAPES: ReadonlyArray<{ readonly pattern: RegExp; readonly what: string }
   { pattern: /\bas\s+never\b/, what: "as never" },
   { pattern: /@ts-ignore/, what: "@ts-ignore" },
   { pattern: /@ts-expect-error/, what: "@ts-expect-error" },
+  { pattern: /:\s*any\b/, what: ": any" },
+  { pattern: /\bany\[\]/, what: "any[]" },
 ];
 
 /**
- * Lo que este gate **todavía no** vigila: la anotación `: any` suelta.
+ * La anotación `: any` entró aquí en r00006, después de eliminarla.
  *
- * Se midió: 35 sitios, 9 de ellos en scanners de producción, casi todos
- * `let parsed: any` sobre un `JSON.parse`. Es deuda real y de la misma
- * familia —así entró `__params`—, pero convertirlos a `unknown` obliga a
- * estrechar cada uso aguas abajo, y eso es un refactor con su propio
- * riesgo, no un remate. Va en r00006 con la cifra delante.
+ * Eran 35 sitios, 9 en scanners de producción, casi todos
+ * `let parsed: any` sobre un `JSON.parse` de un fichero **ajeno**. Se
+ * dejó fuera del gate al principio con la cifra medida, porque pasarlos
+ * a `unknown` obliga a estrechar cada uso aguas abajo y eso es un
+ * refactor con su propio riesgo. Hecho el refactor, la regla entra.
  *
- * Lo que sí vigila son las **aserciones**, que es lo que la auditoría
- * encontró: `as any` miente sobre un valor concreto en un punto
- * concreto, mientras que `: any` es una declaración honesta de que ahí
- * todavía no se sabe el tipo.
+ * `parse-json.helper` es lo que lo hizo barato: los predicados que cada
+ * scanner repetía a mano —¿es objeto?, ¿tiene esta clave string?— en un
+ * sitio, así que estrechar dejó de ser escribir el mismo `typeof` doce
+ * veces.
  */
 
 interface IProblem {

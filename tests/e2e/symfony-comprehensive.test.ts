@@ -12,6 +12,8 @@
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
+  collectRequestKeys,
+  findAllEndpoints,
   findEndpoint,
   validatePostmanInvariants,
 } from "../helpers/compare-json";
@@ -117,33 +119,4 @@ describe("Symfony — comprehensive fixture", () => {
   });
 });
 
-/** Todas las claves `METHOD uri` de la colección, para detectar duplicados. */
-function collectRequestKeys(collection: any): string[] {
-  const out: string[] = [];
-  const walk = (items: any[]) => {
-    for (const it of items) {
-      if (it.item) walk(it.item);
-      else if (it.request) out.push(`${it.request.method} ${it.request.url?.raw ?? ""}`);
-    }
-  };
-  walk(collection.item ?? []);
-  return out;
-}
 
-/** Helper: encuentra TODOS los endpoints que matchean method+uri. */
-function findAllEndpoints(collection: any, method: string, uri: string): any[] {
-  const out: any[] = [];
-  const walk = (items: any[]) => {
-    for (const it of items) {
-      if (it.item) walk(it.item);
-      else if (it.request) {
-        const raw = it.request.url?.raw ?? "";
-        if (it.request.method === method && raw.endsWith(uri)) {
-          out.push(it);
-        }
-      }
-    }
-  };
-  walk(collection.item ?? []);
-  return out;
-}

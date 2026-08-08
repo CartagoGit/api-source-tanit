@@ -206,7 +206,9 @@ describe("Insomnia", () => {
    */
   test("los ids son estables entre generaciones", () => {
     const otra = JSON.parse(exportTo(["insomnia"], input)[0]!.content) as Record<string, any>;
-    expect(otra["resources"].map((r: any) => r._id)).toEqual(resources.map((r) => r["_id"]));
+    expect(
+      (otra["resources"] as ReadonlyArray<Record<string, unknown>>).map((r) => r["_id"]),
+    ).toEqual(resources.map((r) => r["_id"]));
   });
 
   test("los ids son distintos entre recursos distintos", () => {

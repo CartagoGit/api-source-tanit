@@ -26,6 +26,7 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
+import { isRecord } from "../../core/helpers/parse-json.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -204,15 +205,15 @@ async function parseRoutesYamlFile(
   } catch {
     return [];
   }
-  let parsed: any;
+  let parsed: unknown;
   try {
     parsed = parseYamlLite(raw);
   } catch {
     return [];
   }
-  if (!parsed || typeof parsed !== "object") return [];
+  if (!isRecord(parsed)) return [];
   const out: ParsedRoute[] = [];
-  for (const [name, body] of Object.entries(parsed as Record<string, unknown>)) {
+  for (const [name, body] of Object.entries(parsed)) {
     if (!body || typeof body !== "object") continue;
     const bodyObj = body as Record<string, unknown>;
     const path = typeof bodyObj.path === "string" ? bodyObj.path : null;

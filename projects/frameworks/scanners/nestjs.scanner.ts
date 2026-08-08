@@ -19,6 +19,10 @@
 import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import {
+  declaredDependencies,
+  parseJson,
+} from "../../core/helpers/parse-json.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -44,13 +48,13 @@ async function isNestJsProject(projectRoot: string): Promise<boolean> {
   } catch {
     return false;
   }
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  const deps = { ...(parsed.dependencies ?? {}), ...(parsed.devDependencies ?? {}) };
+  const parsed = parseJson(raw);
+  if (!parsed.ok) return false;
+  // `declaredDependencies` funde `dependencies` y `devDependencies`, que
+  // es la pregunta que se hace de verdad: un framework declarado en las
+  // de desarrollo sigue siendo el framework del proyecto. Unos scanners
+  // las miraban y otros no.
+  const deps = declaredDependencies(parsed.value);
   return typeof deps["@nestjs/core"] === "string";
 }
 

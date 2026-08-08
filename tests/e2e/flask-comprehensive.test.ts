@@ -11,8 +11,10 @@
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
 import {
+  allRequests,
   countItems,
   findEndpoint,
+  topFolderNames,
   validatePostmanInvariants,
 } from "../helpers/compare-json";
 
@@ -67,13 +69,7 @@ describe("Flask — comprehensive fixture", () => {
     const { collection } = await runGenerate("flask-comprehensive");
     // Si el scanner no aplica url_prefix, los endpoints serían `/users` en
     // lugar de `/api/users`.
-    const allEps: any[] = [];
-    for (const folder of collection.item) {
-      const items = folder.item ?? [];
-      for (const it of items) {
-        if (it.request) allEps.push(it);
-      }
-    }
+    const allEps = allRequests(collection);
     for (const ep of allEps) {
       const raw = ep.request?.url?.raw ?? "";
       if (raw.includes("/api/users") || raw.includes("/api/orders") || raw.includes("/api/auth")) {
@@ -92,9 +88,7 @@ describe("Flask — comprehensive fixture", () => {
 
   test("las rutas están agrupadas por blueprint (carpetas)", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
-    const folderNames = collection.item
-      .map((it: any) => it.name)
-      .filter(Boolean);
+    const folderNames = topFolderNames(collection);
     // Debe haber al menos una carpeta de cada blueprint.
     expect(folderNames.length).toBeGreaterThanOrEqual(3);
   });
