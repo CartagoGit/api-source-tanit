@@ -76,6 +76,21 @@ y solo se nota cuando intentas construirlo en un sitio limpio.
 El día que `@mcp-vertex/core` esté en npm, `docker:validate` pasa a ser
 `bun run validate` a secas y esta sección se borra.
 
+## El aviso de `glib`, y por qué sigue ahí
+
+El `.deb` arrastra `glib 0.18.5`, sobre el que hay un aviso de
+*unsoundness* en `VariantStrIter`. **No se puede subir**: lo fija toda la
+pila `gtk 0.18` de Tauri —`atk`, `muda`, `tao`—, y `cargo update -p glib`
+no mueve nada. La ruta de subida depende de que `gtk-rs` pase a 0.20.
+
+Está anotado como riesgo tolerado, no descartado: CVSS 0, es un problema
+de corrección de un iterador y no un fallo explotable. Se revisa al subir
+Tauri.
+
+La diferencia con las 67 alertas de la ronda anterior importa: aquellas
+salían de manifiestos de mentira que nadie instala. Esta viaja dentro
+del paquete que se distribuye.
+
 ## Las versiones van fijadas
 
 Bun, Rust y el CLI de Tauri llevan versión concreta en el `Dockerfile`.
