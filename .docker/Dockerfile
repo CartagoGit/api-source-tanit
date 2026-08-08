@@ -63,7 +63,20 @@ RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" \
     && bun --version
 
 # --- Rust --------------------------------------------------------------------
-ARG RUST_VERSION=1.83.0
+# La versión sale de lo que **pide el árbol de dependencias de Tauri**,
+# no de un gusto. Se subió dos veces siguiendo los errores:
+#
+#   1.83 → `toml_datetime` exige `edition2024`, estable desde 1.85.
+#   1.85 → `serde_with`, `time` y `time-macros` exigen 1.88.
+#
+# Ninguno de los dos errores menciona a Tauri: aparecen como fallos de
+# dependencias transitivas, y por eso conviene dejar escrito de dónde
+# sale el número.
+#
+# Fijarla sigue siendo lo correcto — con `stable` la imagen dejaría de
+# reproducir nada —; lo que hay que hacer es subirla cuando el ecosistema
+# lo pida.
+ARG RUST_VERSION=1.88.0
 ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
 ENV PATH=$CARGO_HOME/bin:$PATH
 RUN curl -fsSL https://sh.rustup.rs | sh -s -- \

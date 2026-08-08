@@ -1,0 +1,33 @@
+# La ventana nativa. Nada más.
+#
+# No hay lógica de producto aquí y no debe haberla: la interfaz es la
+# misma que sirve `expostman ui`, y el pipeline es el mismo binario. Esta
+# capa solo abre una ventana y la apunta a `localhost`.
+#
+# Si algún día esto crece, algo se ha duplicado.
+[package]
+name = "expostman-desktop"
+version = "0.1.0"
+edition = "2021"
+description = "Ventana nativa para Export to Postman"
+license = "MIT"
+# El binario de la app no puede llamarse igual que el sidecar
+# `expostman`, o Tauri se lía al empaquetar.
+[[bin]]
+name = "expostman-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+
+[profile.release]
+# El binario de la ventana es un envoltorio: lo que pesa es el sidecar.
+# Optimizar por tamaño aquí ahorra megas sin costar nada de velocidad,
+# porque esta capa no hace trabajo.
+opt-level = "s"
+lto = true
+strip = true

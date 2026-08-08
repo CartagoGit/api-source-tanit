@@ -99,6 +99,7 @@
     "lint:paths": "bun run scripts/gates/lint-paths.script.ts",
     "lint:docs": "bun run scripts/gates/lint-docs.script.ts",
     "lint:regex-state": "bun run scripts/gates/lint-regex-state.script.ts",
+    "desktop:build": "bun run scripts/build/desktop-build.script.ts",
     "docker:validate": "docker compose -f .docker/docker-compose.yml run --rm validate",
     "docker:binaries": "docker compose -f .docker/docker-compose.yml run --rm binaries",
     "docker:installers": "docker compose -f .docker/docker-compose.yml run --rm installers",

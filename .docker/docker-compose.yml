@@ -48,13 +48,25 @@ x-toolchain: &toolchain
     # tiene nada que ver con los tipos.
     - plugin_node_modules:/work/projects/plugins/mcp-vertex_expostman/node_modules
     - cargo_registry:/usr/local/cargo/registry
-    - cargo_target:/work/projects/desktop/target
+    # Fuera del árbol del repo, a propósito.
+    #
+    # Montarlo en `projects/desktop/target` hacía que Docker creara ese
+    # directorio **como root** dentro del working tree, y a partir de ahí
+    # `mkdir` desde la máquina fallaba con «Permission denied» en un
+    # sitio que git ni siquiera rastrea. `CARGO_TARGET_DIR` lo lleva
+    # fuera y el repo se queda limpio.
+    - cargo_target:/cargo-target
   environment:
     # Sin colores en la salida: dentro de un contenedor casi siempre se
     # lee por tubería o en un log de CI, y los códigos ANSI ahí son
     # basura que además rompe las comparaciones de texto.
     NO_COLOR: "1"
-    CI: "1"
+    # `true`, no `1`: el CLI de Tauri parsea `--ci` como booleano y
+    # rechaza `1` con un `invalid value '1' for '--ci'`. Los dos valores
+    # son "verdadero" para casi todo lo demás, así que el fallo aparece
+    # en un sitio y no en los otros diez.
+    CI: "true"
+    CARGO_TARGET_DIR: /cargo-target
 
 services:
   # El gate en un entorno limpio. Es la respuesta a «en mi máquina
@@ -100,6 +112,18 @@ services:
   # cuesta descubrirlo.
   installers:
     <<: *toolchain
+    # Solo `.deb`. El `.AppImage` lo monta `linuxdeploy` con FUSE y aquí
+    # no arranca ni dándole `/dev/fuse`, `SYS_ADMIN` y AppArmor abierto —
+    # se probó, y el error (`failed to run linuxdeploy`) ni menciona
+    # FUSE. Darle privilegios al contenedor para nada era el peor de los
+    # dos mundos, así que se quedó fuera.
+    #
+    # En un corredor de CI el AppImage sí sale, y ahí se produce.
+    environment:
+      EXPOSTMAN_BUNDLES: deb
+      CARGO_TARGET_DIR: /cargo-target
+      NO_COLOR: "1"
+      CI: "true"
     command: bash -c "bun install || true && bun run desktop:build"
 
   # Una shell dentro del taller, para cuando algo falla y hay que mirar.

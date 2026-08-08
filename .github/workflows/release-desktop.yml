@@ -1,0 +1,88 @@
+name: release-desktop
+
+# Los instaladores nativos de la interfaz gráfica.
+#
+# Va aparte de `release-binaries.yml` a propósito: aquel produce
+# ejecutables de línea de comandos desde un solo corredor, y esto
+# necesita **uno por sistema**. Cada instalador exige el SDK de su
+# plataforma —y su firma—, así que no hay forma de sacar los tres desde
+# Linux por mucho contenedor que se le ponga.
+#
+# El `.deb` sí se puede construir en local con
+# `bun run docker:installers`, y así se verificó antes de escribir esto.
+# El `.AppImage` no: `linuxdeploy` lo monta con FUSE y dentro de un
+# contenedor no arranca ni dándole `/dev/fuse`. Aquí, en un corredor de
+# verdad, sale.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      # `fail-fast: false` para que un fallo de macOS no deje sin
+      # instalador a Windows y a Linux. Son tres productos, no uno.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            bundles: deb,appimage
+          - os: macos-latest
+            bundles: dmg
+          - os: windows-latest
+            bundles: msi,nsis
+
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Lo que pide Tauri en Linux. En macOS y Windows viene con el SDK.
+      - name: Dependencias de Linux
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      # `|| true` por el `file:` del plugin, que apunta fuera del
+      # repositorio (p00007). El empaquetado no lo necesita: compila el
+      # CLI, que no importa el plugin.
+      - run: bun install || true
+
+      - name: Empaquetar
+        run: bun run desktop:build
+        env:
+          EXPOSTMAN_BUNDLES: ${{ matrix.bundles }}
+
+      - name: Adjuntar a la release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            projects/desktop/target/release/bundle/**/*.deb
+            projects/desktop/target/release/bundle/**/*.AppImage
+            projects/desktop/target/release/bundle/**/*.dmg
+            projects/desktop/target/release/bundle/**/*.msi
+            projects/desktop/target/release/bundle/**/*-setup.exe
+
+      - name: Subir como artefacto (ejecución manual)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: instaladores-${{ matrix.os }}
+          path: projects/desktop/target/release/bundle/**/*
+          if-no-files-found: error

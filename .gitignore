@@ -19,3 +19,7 @@ bun.lockb
 .cache/
 # Binarios compilados por `bun run build:binary`.
 dist/
+
+# El sidecar que Tauri empaqueta: se compila en cada build y pesa 90 MB.
+projects/desktop/binaries/
+projects/desktop/target/
