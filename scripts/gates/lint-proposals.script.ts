@@ -52,6 +52,18 @@ const KIND_DIRS: Record<string, string> = {
   perf: "perfs",
   plan: "plans",
   resume: "resumes",
+  // Los cuatro de abajo faltaban, y no eran teóricos: el servidor MCP
+  // los acepta en `create_proposal`, así que una propuesta creada con la
+  // herramienta oficial no tenía dónde archivarse. Se vio al cerrar
+  // `i00001`, que es `kind: infra`.
+  //
+  // Una lista que no coincide con la del servidor es la misma clase de
+  // drift que el bootstrap describiendo una arquitectura sustituida:
+  // dos fuentes de verdad para lo mismo.
+  breaking: "breakings",
+  infra: "infras",
+  spike: "spikes",
+  legacy: "legacies",
 };
 
 /**

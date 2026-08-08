@@ -84,6 +84,29 @@ feat: add a new feature that does something useful          ← too vague
 
 ---
 
+## Containers — for what your machine cannot do
+
+The everyday loop is still `bun run` in your terminal; it takes seconds.
+[`.docker/`](.docker/README.md) is for the rest:
+
+| Shortcut | What it does |
+| --- | --- |
+| `bun run docker:validate` | The gate in a clean environment |
+| `bun run docker:binaries` | The four self-contained executables |
+| `bun run docker:installers` | The `.deb`, built and checked |
+| `bun run docker:smoke` | The binary in an image with **no Bun and no Node** |
+| `bun run docker:shell` | A shell inside, for when something breaks |
+
+They exist because `f00001` needed Rust to package the desktop UI and
+the dev machine had none. The alternative was committing a Tauri
+scaffold without compiling it once — and this repo already learned what
+that costs: `list`, `init` and `enrich` were all broken because nobody
+had ever run them.
+
+The first container run paid for itself: it found four failures that
+were invisible on a machine that happened to have the right things
+lying around. They are listed in [`.docker/README.md`](.docker/README.md).
+
 ## File conventions
 
 This repo follows the same TypeScript profile as `@mcp-vertex/core`.

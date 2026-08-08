@@ -2,11 +2,36 @@
 id: i00001
 title: "Contenedores con las herramientas: desbloquear Tauri y hacer el gate reproducible"
 kind: infra
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** La imagen construye, el gate pasa dentro
+> (1982 tests, 21/21 ejemplos), los cuatro binarios compilan, el de Linux
+> genera 9 requests desde una imagen **sin bun ni node**, y el `.deb` sale
+> con la ventana y el sidecar dentro. Nada de esto se escribió sin
+> ejecutarlo.
+>
+> **Se pagó solo la primera vez que corrió**: cuatro fallos que en la
+> máquina de desarrollo no se podían ver — `bash -lc` tirando el PATH,
+> dos tests atados al nombre de la carpeta del checkout, el test de
+> permisos pasando siempre como root, y `lint:bootstrap-drift` verde solo
+> porque el checkout hermano existe aquí.
+>
+> **Y le puso número a `p00007`**: lo que esa propuesta describe como
+> «cambiar una línea cuando se publique» es el repositorio no siendo
+> autocontenido, y solo se nota al construirlo en limpio.
+>
+> Lo que **no** sale del contenedor: el `.AppImage`. `linuxdeploy` lo
+> monta con FUSE y falla incluso con `/dev/fuse`, `SYS_ADMIN` y AppArmor
+> abierto. Se probó; darle privilegios para nada era el peor de los dos
+> mundos. Lo produce el workflow.
+>
+> De paso destapó que `lint:proposals` no conocía `infra`, `breaking`,
+> `spike` ni `legacy` —kinds que el servidor MCP sí acepta—, así que una
+> propuesta creada con la herramienta oficial no tenía dónde archivarse.
 
 # i00001 — Contenedores con las herramientas: desbloquear Tauri y hacer el gate reproducible
 

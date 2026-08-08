@@ -2,28 +2,34 @@
 id: f00001
 title: "UI de escritorio: expostman usable sin terminal en Linux, Mac y Windows"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
 
-> **Parcial a 2026-08-08.** S1, S2 y S3 entregados: `expostman ui`
-> levanta la interfaz, sirve la página desde memoria y no añade ninguna
-> dependencia — `Bun.serve` ya está en el runtime del binario.
+> **Cerrada 2026-08-08.** Los cuatro slices entregados.
 >
-> Dos bugs encontrados **ejercitándola por HTTP**, no leyéndola: fallaba
-> en su primera petición (un POST sin cuerpo se trataba como JSON
-> inválido) y generaba en el proyecto equivocado.
+> `expostman ui` levanta la interfaz sin añadir **ni una dependencia**:
+> `Bun.serve` ya está en el runtime del binario, y la interfaz viaja
+> embebida como texto porque el ejecutable compilado no puede leer
+> ficheros que no lleve dentro.
 >
-> **S4 (Tauri) queda pendiente por un motivo concreto**: no hay toolchain
-> de Rust en esta máquina, así que un scaffold de Tauri sería código
-> commiteado sin compilar ni verificar una sola vez. Es exactamente lo
-> que esta ronda ha demostrado que sale caro. La interfaz que cargará esa
-> ventana ya está hecha y probada, así que S4 es empaquetado, no
-> reescritura.
+> Dos bugs salieron **ejercitándola por HTTP**, no leyéndola: fallaba en
+> su primera petición —un POST sin cuerpo se trataba como JSON inválido—
+> y generaba en el proyecto equivocado, que es el singleton de `r00005`.
+>
+> **S4 dejó de estar bloqueado gracias a `i00001`.** El `.deb` se
+> construye y se verifica dentro de un contenedor: 37,7 MB con la ventana
+> y el sidecar de 95 MB dentro. La ventana arranca `expostman ui
+> --no-open` y lee de su salida por dónde escucha, así que **carga la
+> misma interfaz** — que era justo la razón de haber elegido `Bun.serve`
+> frente a Electron.
+>
+> `.dmg`, `.msi` y `.AppImage` los produce `release-desktop.yml` en sus
+> propios corredores: cada uno exige el SDK de su sistema, y el AppImage
+> además necesita FUSE.
 
-# f00001 — UI de escritorio: expostman usable sin terminal en Linux, Mac y Windows
 
 ## Goal
 
