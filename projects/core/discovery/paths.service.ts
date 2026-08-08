@@ -14,9 +14,10 @@
  *   - `projectRoot()`  → raíz del proyecto que se está escaneando.
  *
  * Resolución del `packageRoot`:
- *   1. `moduleDir(import.meta.url)` (Bun/Node ESM).
- *   2. Búsqueda subiendo desde `process.cwd()` hasta dar con
- *      `package.json` + `contracts/postman.constant.ts`.
+ *   1. Búsqueda subiendo desde la carpeta de **este módulo** hasta dar
+ *      con `package.json` + `projects/core/contracts/postman.constant.ts`.
+ *   2. Si no aparece, el padre de esa carpeta. Es un último recurso que
+ *      ya mintió una vez (ver `findPackageRoot`).
  *
  * Resolución del `projectRoot`:
  *   1. CLI `--project-root <path>`.
@@ -81,11 +82,36 @@ function walkUp(
   return null;
 }
 
+/**
+ * La raíz de **este** paquete, subiendo desde donde vive este módulo.
+ *
+ * El marcador es un fichero que solo existe aquí. Un `package.json` a
+ * secas no basta: instalado dentro de otro proyecto, el primero que se
+ * encuentra subiendo podría ser el del host.
+ *
+ * ## Por qué estaba roto
+ *
+ * El predicado buscaba `contract`, en singular, y la carpeta se llama
+ * `contracts`. Nunca casaba, así que `findPackageRoot` devolvía siempre
+ * `null` y `discover()` se caía a `dirnameUp(start, 1)` — el padre de
+ * `projects/core/discovery/`, o sea **`projects/core`**. El fallback fue
+ * correcto en su día, cuando este fichero vivía un nivel bajo la raíz;
+ * al mover el código a `projects/` dejó de serlo y nadie se enteró,
+ * porque el predicado tampoco funcionaba y los dos fallos se tapaban.
+ *
+ * Se pagó en dos sitios, los dos medidos:
+ *
+ *   · En modo repo —escanear este propio repositorio— la salida iba a
+ *     `projects/core/export-to-postman/`. Hay una colección de
+ *     `example-app` ahí dentro que lo demuestra.
+ *   · `POSTMAN_EXAMPLE` buscaba en `projects/core/examples/`, que no
+ *     existe, así que la variable no hacía nada en silencio.
+ */
 function findPackageRoot(start: string): string | null {
   return walkUp(start, (dir) => {
     return (
       existsSync(join(dir, "package.json")) &&
-      existsSync(join(dir, "contract"))
+      existsSync(join(dir, "projects", "core", "contracts", "postman.constant.ts"))
     );
   });
 }
