@@ -49,6 +49,22 @@ está anclado con `.gitkeep` y `lint:proposals` lo comprueba en cada
 de los mismos mapas de estados y kinds, así que añadir un estado nuevo
 crea su carpeta obligatoria sola.
 
+## Los ids llevan prefijo de kind
+
+Un id nuevo es **una letra de familia + cinco dígitos**: `a00001`,
+`x00003`, `r00002`, `d00001`, `f00001`, `t00001`. La letra sale del
+`kind`, y quien la asigna es el servidor:
+
+```
+mcp-vertex_proposals_create_proposal { kind: "fix", title: "…" }
+```
+
+No se inventa a mano. Pedir un id concreto que no siga la convención
+falla, y pedir uno con el prefijo `p` también: **`p` es el alias
+retirado**, de solo lectura. Las 43 propuestas históricas (`p00001` a
+`p00043`) lo conservan porque son registro de lo que pasó y renombrarlas
+rompería las referencias cruzadas entre ellas.
+
 ## Reglas
 
 1. **Referencia por `id:`, nunca por nombre de fichero.** Los ficheros se

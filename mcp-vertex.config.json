@@ -15,11 +15,10 @@
     "search": {
       "options": {
         "roots": [
-          "contract",
-          "service",
-          "helper",
+          "projects",
           "scripts",
-          "plugins",
+          "tests",
+          "docs",
           "examples"
         ],
         "extensions": [
@@ -76,11 +75,10 @@
     "conventions": {
       "options": {
         "roots": [
-          "contract",
-          "service",
-          "helper",
+          "projects",
           "scripts",
-          "plugins",
+          "tests",
+          "docs",
           "examples"
         ]
       }

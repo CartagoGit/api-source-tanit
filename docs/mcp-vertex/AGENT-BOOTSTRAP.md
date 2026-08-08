@@ -54,7 +54,7 @@ the single source of truth and re-stating them invites drift:
 - Agents and tools invoke shell through `bash`, never `zsh` or `sh`
   (universal §6 invariant).
 - No `process.cwd()` in engines (universal §6 invariant; mirrored
-  by `scripts/lint-tool-no-process.script.ts` per p00011).
+  by `scripts/gates/lint-tool-no-process.script.ts` per p00011).
 - Conventional Commits; `bun run validate` is the DoD gate
   (universal §5).
 - One atomic slice per turn; minimal validation; trust the MCP
@@ -78,53 +78,59 @@ universal rule it replaces, so the divergence is auditable.
 
 ### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
 
-The 4 plugin tools in `plugins/export-to-postman/src/lib/tools/` and
-`plugins/export-to-postman-testing/src/lib/tools/` follow a **fixed**
-qualified-name contract:
+The 4 plugin tools in `projects/plugins/mcp-vertex_expostman/src/lib/tools/`
+register themselves as `` `${ctx.namespacePrefix}_${TOOL_ID}` ``, where
+`namespacePrefix` comes from the host and `TOOL_ID` is the short,
+stable id declared at the top of each `*.tool.ts`:
 
-| Tool id (short, in `id:`) | Qualified name (in `registerTool`) |
+| Tool id (short, in `id:`) | Qualified name on the MCP surface |
 | --- | --- |
-| `generate` | `${NAMESPACE}_exporter_generate` → on the MCP surface: `mcp-vertex_expostman_generate` |
-| `validate` | `${NAMESPACE}_exporter_validate` |
-| `summary` | `${NAMESPACE}_exporter_summary` |
-| `test` (in `export-to-postman-testing`) | `${NAMESPACE}_exporter_test` |
+| `generate` | `mcp-vertex_expostman_generate` |
+| `validate` | `mcp-vertex_expostman_validate` |
+| `summary` | `mcp-vertex_expostman_summary` |
+| `test` | `mcp-vertex_expostman_test` |
 
-Where `NAMESPACE = "postman"` (constant exported from
-`plugins/export-to-postman/src/lib/contracts/namespace.ts`).
+Hardcoding these four qualified names here is **permitted** because they
+are the **public MCP surface** the host dispatches on. Other tool ids
+must still come from the server (universal §6).
 
-Hardcoding these names in this file is **permitted** for these 4
-tools specifically because the qualified name is the **public MCP
-surface** that the host dispatches on. Other tool IDs must still
-come from the server (universal §6).
+> **This section used to be wrong.** It described a `${NAMESPACE}_exporter_<verb>`
+> shape built from a `NAMESPACE = "postman"` constant it called the
+> single source of truth. No tool ever registered that way, the constant
+> was imported by nobody, and following this section produced a name the
+> host does not dispatch. Corrected in the 2026-08-08 audit (`a00001`,
+> finding 4); the dead constant is gone.
 
 ### 3.2 Tool `registerTool` shape — **project-specific**
 
 `server.registerTool(name, opts, handler)` requires:
 
-- `name` — the **fully qualified** id (`${NAMESPACE}_exporter_<verb>`),
-  not the short `id`.
-- `opts.inputSchema` — the **raw shape** (`<Z>.shape`), not the
-  wrapped `z.object({...})`. Passing the wrapped object triggers
-  TS `TS2322` because the SDK needs the flat record.
-- `opts.outputSchema` — same rule; `.shape`.
-- `opts.description` — full description for the MCP client
-  (markdown allowed; ≤ ~240 chars preferred).
-- `opts.inputSchema` and `opts.outputSchema` must be Zod schemas.
-  No `any`, no `z.any()`.
+- `name` — the **fully qualified** id (see §3.1), not the short `id`.
+- `opts.inputSchema` — the zod object schema (`z.object({...})`), the
+  same shape the host's own plugins pass.
+- `opts.outputSchema` — **mandatory**, same shape. This is the universal
+  §6 invariant; `bun run lint:mcp-surface` enforces it.
+- `opts.description` — full description for the MCP client (markdown
+  allowed; ≤ ~240 chars preferred).
+- Neither schema may use `z.any()` or `z.unknown()` at the root. A
+  schema that accepts anything is the absence of a contract with extra
+  steps, and the gate rejects it.
 
-Each `*.tool.ts` builder:
+The output schema describes the **success** payload and pins
+`ok: z.literal(true)`. Failure has its own universal envelope —
+`toolError` returns `{ ok: false, error: { reason, nextAction? } }` and
+sets `isError` — so no tool repeats that shape. Keep `ok` for "the tool
+ran" and add a separate field (`valid`, `passed`, …) for "the result was
+good": conflating them made `validate` report a stale collection as a
+tool failure.
 
-- Declares `id: "<short-name>"` (bookkeeping only; the host uses
-  this for sequence ordering).
-- Imports `NAMESPACE` from `../contracts/namespace`, not from a
-  local `const`. The single source of truth lives in
-  `plugins/export-to-postman/src/lib/contracts/namespace.ts`.
+Types are derived from the schemas with `z.infer`. A hand-written
+interface next to a schema is two sources of truth, and they separate:
+`summary` declared six fields while returning eighteen.
 
-Bug history (do not regress): see proposal
-[`proposals/done/fixes/p00013-plugin-bug-fixes.md`](proposals/done/fixes/p00013-plugin-bug-fixes.md)
-— the original tools referenced `NAMESPACE` without importing it
-(ReferenceError on server boot), used the wrapped z.object as
-schema (TS2322), and pinned zod 3.23.8 while the host uses 4.x.
+> **This section used to require `.shape`** ("the raw shape, not the
+> wrapped `z.object({...})`"). The host's own plugins pass the wrapped
+> object and so does this one. Corrected in the 2026-08-08 audit.
 
 ### 3.3 Zod version
 
@@ -154,11 +160,19 @@ a pointer.
 
 | Folder | Suffix | Example |
 | --- | --- | --- |
-| `services/` | `*.service.ts` | `services/router-adapters/laravel.parser.ts` |
-| `helpers/` | `*.helper.ts` | `helpers/uri.helper.ts` |
-| `contracts/` | `*.interface.ts` / `*.constant.ts` | `contracts/plugin.interface.ts` |
-| `plugins/` | `*.tool.ts` | `plugins/export-to-postman/src/lib/tools/generate.tool.ts` |
-| `docs/mcp-vertex/proposals/ready/` | `p<NNNN>-<slug>.md` | `p00013-plugin-bug-fixes.md` |
+| `projects/core/contracts/` | `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/scanner.interface.ts` |
+| `projects/core/helpers/` | `*.helper.ts` | `projects/core/helpers/uri.helper.ts` |
+| `projects/core/` | `*.service.ts` / `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/discovery/generation.pipeline.ts` |
+| `projects/core/exporters/` | `*.exporter.ts` | `projects/core/exporters/openapi.exporter.ts` |
+| `projects/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `projects/frameworks/scanners/express.scanner.ts` |
+| `projects/cli/commands/` | `*.script.ts` | `projects/cli/commands/generate.script.ts` |
+| `projects/plugins/*/src/lib/tools/` | `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts` |
+| `docs/mcp-vertex/proposals/ready/` | `<kind><NNNNN>-<slug>.md` | `x00001-contratos-de-la-superficie-mcp.md` |
+
+The full table, derived from what `lint:naming` enforces, lives in
+[`docs/NAMING.md`](../NAMING.md#sufijos-por-carpeta). New proposal ids
+take a **kind prefix** (`a`, `x`, `r`, `d`, `f`, `t`…); the old `p`
+prefix is a read-only alias the server no longer allocates.
 
 Service → runtime-safe (no `plugin/` imports). Helper → pure
 functions only, no I/O. Tool → one tool per file.
@@ -168,7 +182,7 @@ functions only, no I/O. Tool → one tool per file.
 Plugin options live at
 `mcp-vertex.config.json#plugins.export-to-postman.options` and are
 parsed by `ExportToPostmanOptionsSchema` in
-`plugins/export-to-postman/src/lib/contracts/plugin.interface.ts`.
+`projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
 
@@ -216,24 +230,37 @@ with the installed `@mcp-vertex/core` package (or omit `$schema` until
 publish). Do not hard-require
 `../mcp-vertex/packages/core/schema/...` for third-party clones.
 
-### 3.8 Router adapters
+### 3.8 Framework scanners — the discovery contract
 
-`services/router-adapters/<framework>.parser.ts` exports a class
-implementing `IRouterAdapter`:
+Discovery goes through **three** interfaces declared in
+[`projects/core/contracts/scanner.interface.ts`](../../projects/core/contracts/scanner.interface.ts):
 
 ```ts
-export interface IRouterAdapter {
-  readonly framework:
-    | "laravel" | "symfony" | "express" | "fastapi" | "django";
-  readonly detect: (ctx: IProjectContext) => boolean;
-  readonly discover: (ctx: IProjectContext) => Promise<IRouteParseResult>;
-}
+IProjectScanner        // ¿es este proyecto mío?  detect() → 0..1, resolve()
+IRouteScanner          // las rutas, en formato neutro: scan() → ParsedRoute[]
+IValidationSpecProvider // las reglas de cada ruta, si el framework las declara
 ```
 
-Adapters register themselves in
-`services/router-dispatcher.service.ts` by being appended to the
-`adapters` array. A new adapter ships with at least 4 cases in
-`tests/unit/router-adapters/<framework>.parser.spec.ts`.
+A framework ships them as a bundle registered in
+[`projects/frameworks/framework.registry.ts`](../../projects/frameworks/framework.registry.ts).
+`discoverProject()` runs every registered `IProjectScanner`, scores them,
+and keeps the winner — several can match at once, and that is what makes
+a hybrid project work.
+
+A new scanner ships with at least 4 cases in
+`tests/frameworks/<framework>-scanner.spec.ts`, a mini fixture in
+`tests/smoke-fixtures/<framework>-mini/`, and a full example project in
+`examples/example-<framework>/` that `bun run validate:examples` checks.
+
+**The core must never import from `frameworks/`.** That is the one line
+separating "we are framework-agnostic" from "we say we are", and
+`bun run lint:boundaries` enforces it.
+
+> **This section used to describe an `IRouterAdapter`** with a
+> `services/router-dispatcher.service.ts` and a
+> `services/router-adapters/<framework>.parser.ts` layout. None of it
+> exists: that architecture was replaced by the trio above. Corrected in
+> the 2026-08-08 audit (`a00001`, finding 4).
 
 ### 3.9 Bootstrap files must stay in-repo — **project-specific**
 
@@ -259,7 +286,7 @@ export-to-postman-specific:
   `process.cwd()`. Every tool receives it through the plugin's
   `register(ctx)` and passes it into the `build<V>ToolRegistration`
   builder. No tool reads the cwd.
-- **`scripts/lint-tool-no-process.script.ts`** enforces "no process.cwd /
+- **`scripts/gates/lint-tool-no-process.script.ts`** enforces "no process.cwd /
   process.env in tools" (per p00011). It runs as part of
   `bun run validate` / lint.
 - **Proposal workflow** is under `docs/mcp-vertex/proposals/`. Open

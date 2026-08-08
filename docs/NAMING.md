@@ -54,6 +54,43 @@ sitio es evidente: `projects/plugins/<host>/`.
 El plural sigue la regla del repo: una carpeta contenedora contiene
 varias cosas de ese tipo, aunque hoy haya una.
 
+## Sufijos por carpeta
+
+La lista la impone `lint:naming`, y **esta tabla se deriva de ella**: si
+las dos dejan de coincidir, manda el gate y esto está mal.
+
+| Carpeta | Sufijos | Qué vive ahí |
+| --- | --- | --- |
+| `projects/core/contracts/` | `.interface.ts`, `.constant.ts`, `.d.ts` | Tipos y constantes compartidas |
+| `projects/core/helpers/` | `.helper.ts` | Funciones puras, sin estado ni I/O |
+| `projects/core/exporters/` | `.exporter.ts`, `.service.ts` | Un formato de salida por fichero |
+| `projects/core/` (resto) | `.service.ts`, `.pipeline.ts`, `.orchestrator.ts`, `.adapter.ts` | El núcleo agnóstico |
+| `projects/frameworks/` | `.scanner.ts`, `.service.ts`, `.helper.ts`, `.registry.ts` | Lo concreto de cada framework |
+| `projects/cli/` | `.script.ts`, `.constant.ts` | El dispatcher y un fichero por comando |
+| `projects/ui/` | `.script.ts`, `.helper.ts`, `.constant.ts` | El asistente y lo que dibuja en la terminal |
+| `projects/plugins/*/src/lib/tools/` | `.tool.ts` | Un tool MCP por fichero |
+| `scripts/` | `.script.ts`, `.constant.ts` | Tooling del repo: gates y build |
+| `scripts/helpers/` | `.helper.ts` | Utilidades compartidas por el tooling |
+| `tests/**` | `.spec.ts`, `.test.ts` | `.spec` para unidad, `.test` para lo que arranca procesos |
+
+### Por qué `.pipeline`, `.orchestrator`, `.adapter` y `.exporter`
+
+Podrían ser todos `.service.ts` y el gate pasaría igual. No lo son
+porque **el sufijo es lo primero que se lee de un fichero**, y en
+`projects/core/` hay quince servicios: llamar `.service` a la tubería de
+generación la escondería entre ellos.
+
+Cada uno nombra un tipo de módulo con significado propio:
+
+- `.pipeline` — orquesta una secuencia de fases de principio a fin.
+- `.orchestrator` — elige entre colaboradores y se queda con uno.
+- `.adapter` — traduce entre dos contratos, sin lógica de negocio.
+- `.exporter` — implementa `IExportTarget`: el catálogo a **un** formato.
+
+Estos cuatro no estaban documentados en ninguna parte hasta la auditoría
+de 2026-08-08: `lint:naming` los conocía y la documentación no, así que
+quien añadiera un exportador nuevo no tenía dónde mirar.
+
 ## Lo que NO se renombra
 
 La prosa de las propuestas cerradas (`done/`, `retired/`, `blocked/`) y

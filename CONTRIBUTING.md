@@ -1,8 +1,13 @@
 # Contributing to `export-to-postman`
 
-> **Source of truth**: this file + `docs/extension-contract.md` +
-> `AGENTS.md`. Humans and LLMs committing to this repo are expected to
-> follow this contract without exception.
+> **Source of truth**: this file + [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](docs/mcp-vertex/AGENT-BOOTSTRAP.md)
+> + [`docs/NAMING.md`](docs/NAMING.md). Humans and LLMs committing to
+> this repo are expected to follow this contract without exception.
+>
+> It used to point at `docs/extension-contract.md`, which stopped
+> existing when the extension contract was retired (`p00006`). A source
+> of truth that does not exist is worse than none: it sends people
+> looking instead of telling them the rule.
 
 ---
 
@@ -20,7 +25,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 | `refactor:` | Internal change with no user-facing behaviour delta. |
 | `perf:` | Internal change that improves performance. |
 | `test:` | Test-only change (new specs, vitest harness, fixture data). |
-| `docs:` | Documentation-only change (README, extension-contract, agents, proposals). |
+| `docs:` | Documentation-only change (README, bootstrap, agents, proposals). |
 | `chore:` | Build / CI / deps / repo plumbing with no user-facing impact. |
 | `style:` | Whitespace / formatting-only (no logic change). |
 | `build:` | Build system / dep tree / packaging. |
@@ -82,17 +87,25 @@ feat: add a new feature that does something useful          ← too vague
 ## File conventions
 
 This repo follows the same TypeScript profile as `@mcp-vertex/core`.
-Full table in `docs/extension-contract.md#conventions`; the executive
-summary:
+Full table in [`docs/NAMING.md`](docs/NAMING.md#sufijos-por-carpeta),
+which is derived from what `lint:naming` actually enforces. The
+executive summary:
 
 | Suffix | Folder | What it is |
 | --- | --- | --- |
-| `*.interface.ts` | `contracts/` | Zod schemas + exported structural types. |
-| `*.constant.ts` | `contracts/` / `examples/` | Durable, frozen, shared constants. |
-| `*.service.ts` | `services/` | Stateful business logic. |
-| `*.helper.ts` | `helpers/` | Pure utilities, no I/O. |
+| `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/` | Shared types and frozen constants. |
+| `*.helper.ts` | `projects/core/helpers/` | Pure utilities, no I/O. |
+| `*.service.ts` | `projects/core/` | Stateful business logic. |
+| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/` | Module kinds with their own meaning — see NAMING.md. |
+| `*.exporter.ts` | `projects/core/exporters/` | One `IExportTarget` per output format. |
+| `*.scanner.ts` | `projects/frameworks/` | One framework's route discovery. |
+| `*.script.ts` | `projects/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
 | `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
+
+The old table named `contracts/`, `services/` and `helpers/` as
+top-level folders. They have lived under `projects/` for three
+reorganisations.
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
 | `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
 | `*.registry.ts` | `frameworks/` | El catálogo de lo concreto. |
