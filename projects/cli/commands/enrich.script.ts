@@ -6,7 +6,7 @@
  *   bun scripts/enrich.script.ts --in-place
  *   bun scripts/enrich.script.ts --config ./examples/example-app/config.constant.ts
  */
-import { writeFile } from "node:fs/promises";
+import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { buildCollection } from "../../core/domain/collection-builder.service.js";
 import { applyAuthFlow } from "../../core/domain/auth-flow.service.js";
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -88,7 +88,7 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
   }
 
   const json = JSON.stringify(collection, null, 2);
-  await writeFile(outPath, json + "\n", "utf8");
+  await writeFileAtomic(outPath, json + "\n");
   const { requests, folders } = countItems(collection);
   const sizeKb = (json.length / 1024).toFixed(1);
   console.log(

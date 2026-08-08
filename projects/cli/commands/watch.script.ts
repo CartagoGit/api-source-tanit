@@ -32,7 +32,10 @@ import {
 } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
-import { writeFile } from "node:fs/promises";
+import {
+  writeFileAtomic,
+  writeJsonAtomic,
+} from "../../core/helpers/atomic-write.helper.js";
 
 /** `18:05:42`, que es lo que hace legible una traza que va creciendo. */
 function stamp(): string {
@@ -73,7 +76,7 @@ async function regenerate(
     ...(forceFramework ? { forceFramework } : {}),
   });
   const path = await outputCollectionPath(result.config.name);
-  await writeFile(path, JSON.stringify(result.collection, null, 2) + "\n", "utf8");
+  await writeJsonAtomic(path, result.collection);
 
   let extra = 0;
   const others = formats.filter((f) => f !== DEFAULT_FORMAT);
@@ -91,7 +94,7 @@ async function regenerate(
     for (const artifact of artifacts) {
       const target = join(dir, artifact.path);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, artifact.content, "utf8");
+      await writeFileAtomic(target, artifact.content);
     }
     extra = artifacts.length;
   }

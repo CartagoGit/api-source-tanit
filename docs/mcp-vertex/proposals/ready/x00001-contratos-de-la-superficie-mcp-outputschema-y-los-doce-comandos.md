@@ -1,6 +1,6 @@
 ---
 id: x00001
-title: "Contratos de la superficie MCP: outputSchema y los doce comandos"
+title: "Contratos de la superficie MCP: del esquema correcto a la superficie util"
 kind: fix
 status: ready
 type: proposal
@@ -8,15 +8,15 @@ track: export-to-postman
 date: 2026-08-08
 ---
 
-# x00001 — Contratos de la superficie MCP: outputSchema y los doce comandos
+# x00001 — Contratos de la superficie MCP: del esquema correcto a la superficie útil
 
 ## Goal
 
-Que la superficie que este proyecto expone a otros agentes tenga contrato de entrada y de salida, que un gate lo exija, y que llegue a los comandos que hoy solo existen para quien usa la terminal.
+Que la superficie que este proyecto expone a otros agentes tenga contrato de entrada y de salida, pruebas integradas del contrato que hoy ya existe, y una amplitud de tools suficiente para que el MCP sirva de verdad como puerta de entrada al producto.
 
 ## why
 
-Hallazgos 1 (FATAL) y 18 (MINOR) de a00001. Los cuatro tools del plugin no declaran `outputSchema`, que es el invariante universal §6 que `AGENT-BOOTSTRAP.md#L62` copia por referencia y §3.2 repite con su regla de forma (`.shape`). Medido: `outputSchema:0` en los cuatro. Ningún gate lo comprueba — `lint:tsdoc` mira los exports del área pública, no la superficie MCP. Un agente que llama a `mcp-vertex_expostman_generate` recibe una salida sin contrato: no puede validar la respuesta ni saber qué campos existen sin ejecutarla y mirar. Y con solo 4 tools para 12 comandos, no puede listar endpoints, ver estadísticas, comprobar deriva (`check`) ni subir a Postman — `check` es el más llamativo, porque responde justo la pregunta que un agente querría hacer.
+Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-08. El árbol actual ya no está donde nació esta propuesta: los cuatro tools del plugin sí declaran `outputSchema`, `lint:mcp-surface` existe y hoy pasa, y `tests/cli/mcp-surface.spec.ts` ya verifica una parte del contrato. Eso es una buena noticia, pero deja al descubierto la deuda que ahora sí es la principal: la superficie MCP sigue siendo estrecha para lo que el producto sabe hacer. Un agente puede generar, resumir, validar y testear; no puede pedir `check`, `list`, `stats`, `scan`, `push` o `init` en datos estructurados. Y lo ya resuelto aún no tiene la prueba integrada que demuestre que lo registrado en el plugin valida de verdad contra los esquemas en ejecución, no solo como texto en un fichero.
 
 ## non-goals
 
@@ -27,47 +27,51 @@ Hallazgos 1 (FATAL) y 18 (MINOR) de a00001. Los cuatro tools del plugin no decla
 
 - global_gate: type
 
-### S1 — outputSchema en los cuatro tools que ya existen
+### S1 — Prueba integrada del contrato que el árbol actual ya declara
 - **Status**: pending
-- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/validate.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/summary.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/test.tool.ts`
-- **Gate**: type
+- **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/generate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/summary.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/validate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/test.tool.spec.ts`
+- **Gate**: plugin
 - acceptance:
-  - "Los 4 declaran outputSchema como `.shape` de un esquema zod, sin `z.any()`"
-  - "Cada campo lleva `.describe()`, que es lo que lee el agente"
   - "El plugin arranca y los 4 tools responden con una salida que valida contra su propio esquema"
+  - "La prueba falla si el handler devuelve más o menos campos que el esquema"
+  - "La propuesta deja de perseguir una deuda ya cerrada en texto y persigue la garantía ejecutable que aún falta"
 
-### S2 — Gate que impida que vuelva a faltar
+### S2 — Los tools de solo lectura que hoy faltan
 - **Status**: pending
 - **DependsOn**: [S1]
-- **Files**: `scripts/gates/lint-mcp-surface.script.ts`, `tests/cli/mcp-surface.spec.ts`, `package.json`
-- **Gate**: lint
-- acceptance:
-  - "`bun run lint:mcp-surface` falla si un `*.tool.ts` no declara outputSchema"
-  - "Falla también si alguno usa `z.any()`"
-  - "Se comprueba quitando el outputSchema de un tool y viendo romper el gate"
-  - "Entra en la cadena de `bun run lint`"
-
-### S3 — Los ocho comandos que el plugin no expone
-- **Status**: pending
-- **DependsOn**: [S2]
 - **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/check.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/list.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/stats.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/scan.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/index.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
-- **Gate**: e2e
+- **Gate**: plugin
 - acceptance:
   - "`check` responde si la colección se ha desincronizado del código, con la lista de lo que falta"
   - "`list`, `stats` y `scan` exponen lo que ya imprime el CLI, en datos y no en prosa"
-  - "Cada tool nuevo nace con su outputSchema: el gate de s2 no lo deja pasar de otra forma"
-  - "`push` y `open` quedan fuera a propósito y la propuesta dice por qué"
+  - "Cada tool nuevo nace con `outputSchema` y con prueba integrada"
+
+### S3 — Las operaciones útiles pero no triviales: `push` e `init`
+- **Status**: pending
+- **DependsOn**: [S2]
+- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/push.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/push.tool.spec.ts`
+- **Gate**: e2e
+- acceptance:
+  - "`init` permite a un agente scaffoldar una configuración válida sin parsear stdout humano"
+  - "`push` devuelve resultado estructurado y no filtra secretos en errores ni trazas"
+  - "Si alguno se descarta, la propuesta deja escrita la razón"
+
+### S4 — Decisión explícita sobre lo que NO debe ser una tool MCP
+- **Status**: pending
+- **DependsOn**: [S3]
+- **Files**: `docs/mcp-vertex/proposals/ready/DECISION-mcp-surface.md`
+- **Gate**: none
+- acceptance:
+  - "`watch`, `open` y cualquier comando side-effect-heavy quedan incluidos o excluidos con criterio escrito"
+  - "La superficie MCP deja de crecer por intuición y pasa a crecer por contrato"
 
 ## acceptance
 
-- Los 4 declaran outputSchema como `.shape` de un esquema zod, sin `z.any()`
-- Cada campo lleva `.describe()`, que es lo que lee el agente
 - El plugin arranca y los 4 tools responden con una salida que valida contra su propio esquema
-- `bun run lint:mcp-surface` falla si un `*.tool.ts` no declara outputSchema
-- Falla también si alguno usa `z.any()`
-- Se comprueba quitando el outputSchema de un tool y viendo romper el gate
-- Entra en la cadena de `bun run lint`
+- La prueba falla si el handler devuelve más o menos campos que el esquema
 - `check` responde si la colección se ha desincronizado del código, con la lista de lo que falta
 - `list`, `stats` y `scan` exponen lo que ya imprime el CLI, en datos y no en prosa
-- Cada tool nuevo nace con su outputSchema: el gate de s2 no lo deja pasar de otra forma
-- `push` y `open` quedan fuera a propósito y la propuesta dice por qué
+- Cada tool nuevo nace con su outputSchema y con prueba integrada
+- `init` permite a un agente scaffoldar una configuración válida sin parsear stdout humano
+- `push` devuelve resultado estructurado y no filtra secretos en errores ni trazas
+- `watch`, `open` y cualquier otro comando side-effect-heavy quedan incluidos o excluidos con criterio escrito

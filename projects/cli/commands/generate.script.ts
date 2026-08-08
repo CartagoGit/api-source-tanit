@@ -11,7 +11,11 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
+import {
+  writeFileAtomic,
+  writeJsonAtomic,
+} from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join } from "node:path";
 import {
   DEFAULT_FORMAT,
@@ -309,7 +313,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     : await outputCollectionPath(config.name);
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
-  await writeFile(OUTPUT_PATH, json + "\n", "utf8");
+  await writeFileAtomic(OUTPUT_PATH, json + "\n");
   collectionPath = OUTPUT_PATH;
   const { requests, folders } = countItems(collection);
 
@@ -346,7 +350,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     for (const artifact of artifacts) {
       const target = join(dir, artifact.path);
       await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, artifact.content, "utf8");
+      await writeFileAtomic(target, artifact.content);
       extraPaths.push(target);
     }
     console.log(`  · ${artifacts.length} fichero(s) en ${extraFormats.join(", ")}`);
@@ -392,7 +396,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     const env = envs[0];
     if (!env) continue;
     const envPath = await outputEnvironmentPath(env.name, config.name);
-    await writeFile(envPath, JSON.stringify(env, null, 2) + "\n", "utf8");
+    await writeJsonAtomic(envPath, env);
     environmentPaths.push(envPath);
     console.log(
       `  · Environment "${env.name}" → ${envPath} (${env.values.length} vars)`,

@@ -16,7 +16,7 @@ Que el fichero que gobierna el trabajo de los agentes describa el código que ha
 
 ## why
 
-Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, y la causa de fondo de los tres FATAL. `AGENT-BOOTSTRAP.md` es el contrato de trabajo: `CLAUDE.md`, `AGENTS.md` y `.github/copilot-instructions.md` apuntan ahí y a ningún otro sitio. Y describe una arquitectura que ya no existe — §3.8 documenta un `IRouterAdapter` y un `router-dispatcher.service.ts` que no están en el repositorio, §3.1 declara un nombre de tool que no es el que se registra, y cuatro de las rutas que cita no existen. La tabla de §3.5 no menciona `domain/`, `discovery/`, `exporters/` ni `adapters/`, así que los sufijos `.adapter.ts`, `.exporter.ts`, `.orchestrator.ts` y `.pipeline.ts` no están documentados en ninguna parte. Cualquier agente que lo lea trabaja contra un mapa de hace tres reorganizaciones — esta misma auditoría lo pagó. Y el servidor denuncia en `overview.configIssues` que cuatro de las seis raíces de `search` y `conventions` no existen, así que esos dos plugins escanean una fracción del repo sin que nadie se entere.
+Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado en la auditoría 2026-08-08. `AGENT-BOOTSTRAP.md` es el contrato de trabajo: `CLAUDE.md`, `AGENTS.md` y `.github/copilot-instructions.md` apuntan ahí y a ningún otro sitio. Y describe una arquitectura que ya no existe — §3.8 documenta un `IRouterAdapter` y un `router-dispatcher.service.ts` que no están en el repositorio, §3.1 declara un nombre de tool que no es el que se registra, y cuatro de las rutas que cita no existen. La tabla de §3.5 no menciona `domain/`, `discovery/`, `exporters/` ni `adapters/`, así que los sufijos `.adapter.ts`, `.exporter.ts`, `.orchestrator.ts` y `.pipeline.ts` no están documentados en ninguna parte. Cualquier agente que lo lea trabaja contra un mapa de hace tres reorganizaciones — esta misma auditoría lo pagó. Y el servidor denuncia en `overview.configIssues` que cuatro de las seis raíces de `search` y `conventions` no existen, así que esos dos plugins escanean una fracción del repo sin que nadie se entere. A eso se suma otro drift más pequeño pero más traicionero: `CONTRIBUTING.md` sigue declarando `docs/extension-contract.md` como fuente de verdad aunque ese fichero ya no existe, y el README sigue enlazando la auditoría 2026-08-06 como si fuera la foto vigente.
 
 ## non-goals
 
@@ -72,6 +72,15 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, y la causa de fondo de los tres FA
   - "`projects/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen"
   - "El README de propuestas dice que los ids nuevos llevan prefijo de kind (`a`, `x`, `r`, `f`…) y que `p` es el alias retirado de solo lectura, que es lo que el servidor exige hoy"
 
+### S6 — CONTRIBUTING y README apuntan al contrato y a la auditoría vigentes
+- **Status**: pending
+- **Files**: `CONTRIBUTING.md`, `README.md`, `docs/mcp-vertex/AUDIT-2026-08-08.md`
+- **Gate**: lint
+- acceptance:
+  - "`CONTRIBUTING.md` deja de citar `docs/extension-contract.md` o cualquier otra fuente muerta"
+  - "README enlaza la auditoría vigente y no una foto histórica como si fuera el estado actual"
+  - "Las fuentes de verdad del repo quedan escritas donde existen de verdad"
+
 ## acceptance
 
 - §3.8 describe el trío `IProjectScanner` / `IRouteScanner` / `IValidationSpecProvider`, no `IRouterAdapter`
@@ -88,3 +97,5 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, y la causa de fondo de los tres FA
 - Se comprueba metiendo una ruta muerta y viendo romper el gate
 - `projects/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen
 - El README de propuestas dice que los ids nuevos llevan prefijo de kind (`a`, `x`, `r`, `f`…) y que `p` es el alias retirado de solo lectura, que es lo que el servidor exige hoy
+- `CONTRIBUTING.md` deja de citar `docs/extension-contract.md` o cualquier otra fuente muerta
+- README enlaza la auditoría vigente y no una foto histórica como si fuera el estado actual

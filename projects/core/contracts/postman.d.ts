@@ -49,6 +49,12 @@ declare module "node:fs/promises" {
     isDirectory(): boolean;
     isSymbolicLink(): boolean;
   }
+  /**
+   * Dentro del mismo sistema de ficheros es **atómico**: quien lea el
+   * destino ve el contenido de antes o el de después, nunca la mitad.
+   * Es lo que sostiene `atomic-write.helper`.
+   */
+  export function rename(from: string, to: string): Promise<void>;
   export function realpath(path: string): Promise<string>;
   export function stat(path: string): Promise<{
     isDirectory(): boolean;
@@ -271,6 +277,12 @@ declare const process: {
   cwd(): string;
   env: Record<string, string | undefined>;
   execPath: string;
+  /**
+   * Id del proceso. Lo usa `atomic-write.helper` para nombrar su fichero
+   * temporal: dos procesos escribiendo la misma ruta a la vez no pueden
+   * compartir temporal, o el `rename` de uno se lleva lo del otro.
+   */
+  pid: number;
   platform: NodeJS.Platform;
   /** Escritura sin salto de línea, para indicadores de progreso. */
   stderr: { write(chunk: string): boolean };

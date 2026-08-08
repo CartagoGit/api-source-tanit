@@ -18,7 +18,8 @@
  *   bun run scripts/init.script.ts --name mi-api
  *   bun run scripts/init.script.ts --output ./examples/mi-api
  */
-import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join, resolve } from "node:path";
 import { projectRoot } from "../../core/discovery/paths.service.js";
 
@@ -174,7 +175,7 @@ export const config: ProjectConfig = {
   ],
 };
 `;
-  writeFileSync(configPath, configBody, "utf8");
+  await writeFileAtomic(configPath, configBody);
 
   const endpointsPath = join(dest, "endpoints.constant.ts");
   const endpointsBody = `/**
@@ -205,7 +206,7 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
   // TODO añade aquí tus overrides
 ];
 `;
-  writeFileSync(endpointsPath, endpointsBody, "utf8");
+  await writeFileAtomic(endpointsPath, endpointsBody);
 
   console.log(`✔ Proyecto detectado: ${projectName}`);
   console.log(`  · baseUrl:       ${baseUrl}`);
