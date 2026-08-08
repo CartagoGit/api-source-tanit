@@ -46,7 +46,16 @@ related:
 > frameworks: no hace falta saber cuál es el número bueno, solo que sea
 > el mismo las dos veces.
 >
-> Queda S3, el candado contra la recaída del singleton.
+> **S3 entregada.** `lint:project-context` declara los 24 ficheros que
+> hoy leen el estado global, cada uno con su motivo, en tres categorías:
+> `entrypoint` (el borde del sistema, legítimo y permanente), `facade`
+> (quien implementa la resolución) y `debt` (tres sitios, cada uno
+> diciendo qué hace falta para quitarlo).
+>
+> El gate falla de dos maneras, las dos verificadas: si aparece una
+> lectura nueva sin declarar, y **si una excepción deja de hacer falta**.
+> Lo segundo importa tanto como lo primero: una lista de permisos que se
+> queda vieja acaba autorizando lo que nadie ha vuelto a revisar.
 
 # r00005 — Cerrar la migracion fuera del singleton de paths y process.env
 
@@ -94,7 +103,7 @@ La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
   - "Dos ejecuciones concurrentes sobre proyectos distintos no se pisan"
 
 ### S3 — Candado contra la recaida
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `scripts/gates/lint-project-context.script.ts`, `tests/cli/project-context-boundary.spec.ts`, `package.json`
 - **Gate**: lint
