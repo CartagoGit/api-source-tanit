@@ -5,9 +5,11 @@
  *   bun scripts/stats.script.ts
  *   bun run stats
  */
-import { readFile } from "node:fs/promises";
-import type { PostmanCollection } from "../../core/contracts/postman.interface.js";
-import { zoneForUri } from "../../core/helpers/zone.helper.js";
+import {
+  explainReadFailure,
+  readCollection,
+} from "../../core/helpers/collection-file.helper.js";
+import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
@@ -21,8 +23,9 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
   const { config } = await loadProject();
   const COLLECTION_PATH = await outputCollectionPath(config.name);
 
-  const raw = await readFile(COLLECTION_PATH, "utf8");
-  const collection = JSON.parse(raw) as PostmanCollection;
+  const read = await readCollection(COLLECTION_PATH);
+  if (!read.ok) return explainReadFailure(read);
+  const collection = read.collection;
 
   const zones = new Map<string, ZoneStats>();
   for (const z of config.zoneOrder) {
@@ -63,8 +66,9 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
   console.log();
 
   console.log("Por zona:");
-  for (const zone of config.zoneOrder) {
-    const s = zones.get(zone)!;
+  for (const zone of zonesToDisplay(zones.keys(), config)) {
+    const s = zones.get(zone);
+    if (!s) continue;
     const zoneTotal = [...s.byMethod.values()].reduce((a, b) => a + b, 0);
     if (zoneTotal === 0) continue;
     console.log(`\n─── ${zone} (${zoneTotal}) ───`);

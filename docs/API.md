@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 206 símbolos en 46 módulos.
+> 210 símbolos en 47 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1580,6 +1580,39 @@ un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
 Serializar mientras se escribe es como se acaba con un fichero a
 medias sin que el proceso llegue a morirse.
 
+### `projects/core/helpers/collection-file.helper.ts`
+
+Leer la colección del disco, o explicar por qué no se puede.
+
+#### `CollectionRead`
+
+```ts
+export type CollectionRead = |
+```
+
+#### `readCollection`
+
+```ts
+export async function readCollection(path: string): Promise<CollectionRead>
+```
+
+Lee y parsea la colección.
+
+Distingue los tres fallos que importan, porque cada uno tiene una
+salida distinta: que no exista (falta generar), que no se pueda leer
+(permisos) y que no sea JSON válido (se escribió a medias, que es lo
+que `atomic-write.helper` existe para evitar).
+
+#### `explainReadFailure`
+
+```ts
+export function explainReadFailure( failure: Extract<CollectionRead,
+```
+
+Imprime el fallo en el formato del resto del CLI y devuelve 1, para
+que un comando pueda hacer `return explain(result)` sin repetir el
+bloque de `console.error` en cada uno.
+
 ### `projects/core/helpers/collection-identity.helper.ts`
 
 Identidad estable de los artefactos Postman.
@@ -2133,6 +2166,30 @@ export function zoneForUri(uri: string, config: ProjectConfig): string
 
 Calcula la zona lógica a partir de la URI del endpoint y la
 configuración del proyecto.
+
+#### `zonesToDisplay`
+
+```ts
+export function zonesToDisplay( present: Iterable<string>, config: Pick<ProjectConfig, "zoneOrder" | "defaultZone">, ): string[]
+```
+
+El orden en que se enseñan las zonas que **tienen contenido**.
+
+`zoneOrder` es la preferencia de quien configura el proyecto, no la
+lista de zonas que existen. Y en zero-config —que es el caso normal,
+el de los 21 ejemplos— viene **vacía**, con todos los endpoints
+cayendo en `defaultZone`.
+
+`list` y `stats` recorrían `zoneOrder` directamente para imprimir, así
+que en zero-config no imprimían **nada**: `list` decía "9 endpoints en
+la colección, agrupados por zona:" y a continuación dejaba la pantalla
+en blanco. No era un fallo de GraphQL ni de un framework concreto —
+pasaba en los veintiuno, y el comando entero no servía para nada.
+
+Aquí se devuelven las zonas presentes de verdad: primero las que
+`zoneOrder` nombra, en su orden, y después el resto ordenadas
+alfabéticamente para que dos ejecuciones den lo mismo. Se omiten las
+vacías, que es lo que hacía bien el código anterior.
 
 ### `projects/frameworks/index.ts`
 

@@ -1,0 +1,90 @@
+/**
+ * Leer la colección del disco, o explicar por qué no se puede.
+ *
+ * Cuatro comandos —`list`, `stats`, `check` y `validate`— empiezan
+ * leyendo el mismo fichero, y cada uno lo hacía a su manera. `list` y
+ * `stats` no lo hacían de ninguna: llamaban a `readFile` directamente, y
+ * sin colección en disco la persona veía esto:
+ *
+ * ```
+ * 20 |   const raw = await readFile(COLLECTION_PATH, "utf8");
+ *                          ^
+ * ENOENT: no such file or directory, open '/…/sample-express.postman_collection.json'
+ *     path: "/…"
+ *  syscall: "open"
+ * ```
+ *
+ * Cinco líneas de volcado, el código fuente del comando por encima, y
+ * ni una palabra sobre qué hacer — cuando la respuesta es siempre la
+ * misma: ejecutar `generate` primero.
+ *
+ * Un error que no dice la salida deja a quien lo lee igual de atascado
+ * que si no dijera nada, y encima parece que la herramienta se ha roto.
+ */
+import { readFile } from "node:fs/promises";
+
+import type { PostmanCollection } from "../contracts/postman.interface.js";
+
+/** Lo que devuelve intentar leer la colección. */
+export type CollectionRead =
+  | { readonly ok: true; readonly collection: PostmanCollection }
+  | { readonly ok: false; readonly reason: string; readonly nextAction: string };
+
+/**
+ * Lee y parsea la colección.
+ *
+ * Distingue los tres fallos que importan, porque cada uno tiene una
+ * salida distinta: que no exista (falta generar), que no se pueda leer
+ * (permisos) y que no sea JSON válido (se escribió a medias, que es lo
+ * que `atomic-write.helper` existe para evitar).
+ */
+export async function readCollection(path: string): Promise<CollectionRead> {
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "ENOENT") {
+      return {
+        ok: false,
+        reason: `No hay ninguna colección en '${path}'.`,
+        nextAction:
+          "Genérala primero:\n" +
+          "  export-to-postman generate --project-root <tu-proyecto>\n" +
+          "Si la tienes en otro sitio, dilo con `--output-dir`.",
+      };
+    }
+    return {
+      ok: false,
+      reason: `No se pudo leer '${path}': ${(error as Error).message}`,
+      nextAction: "Comprueba los permisos del fichero y de su carpeta.",
+    };
+  }
+
+  try {
+    return { ok: true, collection: JSON.parse(raw) as PostmanCollection };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `'${path}' existe pero no es JSON válido: ${(error as Error).message}`,
+      nextAction:
+        "Suele significar que se escribió a medias. Vuelve a generarla:\n" +
+        "  export-to-postman generate --project-root <tu-proyecto>",
+    };
+  }
+}
+
+/**
+ * Imprime el fallo en el formato del resto del CLI y devuelve 1, para
+ * que un comando pueda hacer `return explain(result)` sin repetir el
+ * bloque de `console.error` en cada uno.
+ */
+export function explainReadFailure(
+  failure: Extract<CollectionRead, { ok: false }>,
+): number {
+  console.error(`\n✗ ${failure.reason}`);
+  for (const line of failure.nextAction.split("\n")) {
+    console.error(`  · ${line}`);
+  }
+  return 1;
+}
