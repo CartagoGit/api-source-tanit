@@ -103,7 +103,7 @@ describe("Flask — comprehensive fixture", () => {
     const { collection } = await runGenerate("flask-comprehensive");
     const allEps = findEndpoint(collection, "GET", "/api/users/{{id}}");
     expect(allEps).not.toBeNull();
-    const raw = (allEps as any)?.request?.url?.raw ?? "";
+    const raw = allEps?.request?.url?.raw ?? "";
     expect(raw).not.toMatch(/<[a-zA-Z_]/);
   });
 });

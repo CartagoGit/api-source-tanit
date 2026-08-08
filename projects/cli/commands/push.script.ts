@@ -22,11 +22,7 @@ import {
   pushEnvironment,
   verifyApiKey,
 } from "../../core/domain/postman-api.service.js";
-
-function readFlag(argv: string[], name: string): string | null {
-  const index = argv.indexOf(name);
-  return index === -1 ? null : (argv[index + 1] ?? null);
-}
+import { readFlag } from "../../core/helpers/argv.helper.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const apiKey = readFlag(argv, "--api-key") ?? process.env["POSTMAN_API_KEY"] ?? "";

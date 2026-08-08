@@ -17,6 +17,7 @@ import type {
 } from "../contracts/project-context.interface.js";
 import { findRepoRoot, moduleDir } from "../helpers/module-path.helper.js";
 import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
+import { readFlag } from "../helpers/argv.helper.js";
 
 /** Entradas de las que se puede derivar el contexto. */
 export interface IResolveContextOptions {
@@ -102,12 +103,6 @@ export function toProjectRelative(context: IProjectContext, absPath: string): st
 /** ¿Existe este subdirectorio del proyecto? */
 export function hasProjectDir(context: IProjectContext, relPath: string): boolean {
   return existsSync(join(context.projectRoot, relPath));
-}
-
-function readFlag(argv: ReadonlyArray<string>, name: string): string | undefined {
-  const index = argv.indexOf(name);
-  if (index === -1) return undefined;
-  return argv[index + 1];
 }
 
 function basenameOf(path: string): string {

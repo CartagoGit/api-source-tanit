@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 204 símbolos en 45 módulos.
+> 206 símbolos en 46 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1527,6 +1527,29 @@ correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
 
 ```ts
 export class OpenApiExporter implements IExportTarget
+```
+
+### `projects/core/helpers/argv.helper.ts`
+
+Leer un flag de la línea de comandos, una sola vez.
+
+#### `readFlag`
+
+```ts
+export function readFlag( argv: ReadonlyArray<string>, name: string, ): string | undefined
+```
+
+El valor de `--flag valor`, o `undefined` si no está.
+
+Acepta también `--flag=valor`, que es como lo escribe la mitad de la
+gente y como lo generan casi todos los scripts. Antes solo funcionaba
+la forma con espacio y la otra se ignoraba en silencio: el flag
+parecía no estar.
+
+#### `hasFlag`
+
+```ts
+export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean
 ```
 
 ### `projects/core/helpers/atomic-write.helper.ts`

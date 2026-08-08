@@ -22,11 +22,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join, resolve } from "node:path";
 import { projectRoot } from "../../core/discovery/paths.service.js";
-
-function flag(name: string, argv: string[]): string | null {
-  const i = argv.indexOf(name);
-  return i === -1 ? null : argv[i + 1] ?? null;
-}
+import { readFlag } from "../../core/helpers/argv.helper.js";
 
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
@@ -38,8 +34,8 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  const nameFlag = flag("--name", argv);
-  const outFlag = flag("--output", argv);
+  const nameFlag = readFlag(argv, "--name");
+  const outFlag = readFlag(argv, "--output");
 
   // --- Detección del nombre -----------------------------------------
   let projectName = nameFlag ?? "";

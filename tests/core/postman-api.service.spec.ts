@@ -38,7 +38,7 @@ function fakeFetch(routes: Record<string, unknown>, status = 200) {
       text: async () => "detalle del error",
       json: async () => (key ? routes[key] : {}),
     };
-  }) as unknown as typeof fetch;
+  });
   return { impl, calls };
 }
 
@@ -55,7 +55,7 @@ describe("verifyApiKey", () => {
     const impl = (async (_url: string, init?: { headers?: Record<string, string> }) => {
       calls.push(init?.headers?.["X-Api-Key"] ?? "");
       return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
-    }) as unknown as typeof fetch;
+    });
     await verifyApiKey(options(impl));
     expect(calls[0]).toBe("pmak-test");
   });
@@ -156,7 +156,7 @@ describe("errores", () => {
   test("un fallo de red no se confunde con un error de la API", async () => {
     const impl = (async () => {
       throw new Error("ECONNREFUSED");
-    }) as unknown as typeof fetch;
+    });
     await expect(verifyApiKey(options(impl))).rejects.toThrow(/Could not reach/);
   });
 

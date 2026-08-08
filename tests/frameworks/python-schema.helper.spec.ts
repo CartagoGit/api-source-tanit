@@ -70,7 +70,7 @@ describe("mapPydanticType", () => {
     ["List[str]", "array"],
     ["Dict[str, int]", "object"],
   ])("mapea %s a %s", (annotation, expected) => {
-    expect(mapPydanticType(annotation)).toBe(expected as never);
+    expect(mapPydanticType(annotation)).toBe(expected);
   });
 
   test("los tipos con formato siguen siendo string", () => {
@@ -181,7 +181,7 @@ describe("marshmallowFieldToSpec", () => {
     ["fields.List(fields.Str())", "array"],
     ["fields.Nested(X)", "object"],
   ])("%s → type %s", (expression, expected) => {
-    expect(marshmallowFieldToSpec("f", expression).type).toBe(expected as never);
+    expect(marshmallowFieldToSpec("f", expression).type).toBe(expected);
   });
 
   test("fields.Email produce format email", () => {

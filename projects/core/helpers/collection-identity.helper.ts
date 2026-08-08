@@ -113,5 +113,5 @@ function normalizeSeed(seed: string): string {
  * `Uint8Array` es estándar y ambos mundos lo entienden.
  */
 function uuidToBytes(uuid: string): Uint8Array {
-  return Buffer.from(uuid.replace(/-/g, ""), "hex") as unknown as Uint8Array;
+  return Buffer.from(uuid.replace(/-/g, ""), "hex");
 }

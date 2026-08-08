@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+
+import { folder } from "../helpers/postman-builders";
 import {
   applyAuthFlow,
   authEnvironmentVariables,
@@ -84,10 +86,7 @@ describe("detectAuthFlow — detección por método + URI", () => {
   });
 
   test("busca dentro de carpetas anidadas", () => {
-    const nested = {
-      name: "Auth",
-      item: [{ name: "v1", item: [request("x", "POST", "/auth/login")] }],
-    } as unknown as PostmanItem;
+    const nested = folder("Auth", [folder("v1", [request("x", "POST", "/auth/login")])]);
     expect(detectAuthFlow(collection([nested]))?.login).not.toBeNull();
   });
 

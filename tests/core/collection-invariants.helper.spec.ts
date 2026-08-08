@@ -4,14 +4,10 @@ import {
   collectionErrors,
 } from "../../projects/core/helpers/collection-invariants.helper";
 import { POSTMAN_SCHEMA_URL } from "../../projects/core/contracts/postman.constant";
-import type { PostmanCollection, PostmanItem } from "../../projects/core/contracts/postman.interface";
+import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
+import { brokenRequest, folder, validRequest } from "../helpers/postman-builders";
 
-function request(name: string, method: string, raw: string): PostmanItem {
-  return {
-    name,
-    request: { method, header: [], url: { raw, host: ["{{baseUrl}}"], path: [] } },
-  } as unknown as PostmanItem;
-}
+const request = validRequest;
 
 function collection(overrides: Partial<PostmanCollection> = {}): PostmanCollection {
   return {
@@ -67,22 +63,22 @@ describe("errores de .info", () => {
 
 describe("errores de items", () => {
   test("request sin método", () => {
-    const bad = { name: "roto", request: { header: [], url: { raw: "x" } } } as unknown as PostmanItem;
+    const bad = brokenRequest("roto", "method");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request sin method");
   });
 
   test("request sin url.raw", () => {
-    const bad = { name: "roto", request: { method: "GET", header: [] } } as unknown as PostmanItem;
+    const bad = brokenRequest("roto", "url");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request sin url.raw");
   });
 
   test("request sin array de headers", () => {
-    const bad = { name: "roto", request: { method: "GET", url: { raw: "x" } } } as unknown as PostmanItem;
+    const bad = brokenRequest("roto", "header");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request sin array de headers");
   });
 
   test("item que no es ni carpeta ni request", () => {
-    const bad = { name: "raro" } as unknown as PostmanItem;
+    const bad = brokenRequest("raro", "request");
     expect(messagesOf(collection({ item: [bad] }))).toContain("no es carpeta ni request");
   });
 
@@ -92,18 +88,15 @@ describe("errores de items", () => {
   });
 
   test("carpeta vacía es aviso", () => {
-    const folder = { name: "Users", item: [] } as unknown as PostmanItem;
-    const issues = checkCollectionInvariants(collection({ item: [folder] }));
+    const vacia = folder("Users");
+    const issues = checkCollectionInvariants(collection({ item: [vacia] }));
     expect(issues.some((i) => i.severity === "warning" && i.message === "carpeta vacía")).toBe(
       true,
     );
   });
 
   test("recorre carpetas anidadas", () => {
-    const nested = {
-      name: "Users",
-      item: [{ name: "v1", item: [request("", "GET", "{{baseUrl}}/x")] }],
-    } as unknown as PostmanItem;
+    const nested = folder("Users", [folder("v1", [request("", "GET", "{{baseUrl}}/x")])]);
     expect(messagesOf(collection({ item: [nested] }))).toContain("item sin nombre");
   });
 });
@@ -122,9 +115,9 @@ describe("duplicados", () => {
 
   test("detecta duplicados repartidos entre carpetas distintas", () => {
     const items = [
-      { name: "A", item: [request("uno", "GET", "{{baseUrl}}/users")] },
-      { name: "B", item: [request("dos", "GET", "{{baseUrl}}/users")] },
-    ] as unknown as PostmanItem[];
+      folder("A", [request("uno", "GET", "{{baseUrl}}/users")]),
+      folder("B", [request("dos", "GET", "{{baseUrl}}/users")]),
+    ];
     expect(
       checkCollectionInvariants(collection({ item: items })).some((i) =>
         i.message.includes("duplica"),

@@ -26,8 +26,15 @@ type BunSpawnSync = (opts: {
   timeout?: number;
 }) => {
   exitCode: number;
-  stdout: ReadableStream<Uint8Array> | undefined;
-  stderr: ReadableStream<Uint8Array> | undefined;
+  /**
+   * En **síncrono** con `stdout: "pipe"`, Bun devuelve los bytes ya
+   * leídos, no un stream: `spawnSync` no puede devolver algo que haya
+   * que consumir después. La declaración decía `ReadableStream` y los
+   * dos usos lo esquivaban con `as unknown as Uint8Array`, que es el
+   * casting tapando una declaración equivocada en vez de arreglarla.
+   */
+  stdout: Uint8Array | undefined;
+  stderr: Uint8Array | undefined;
   success: boolean;
 };
 /** Lo que este helper necesita del global `Bun`, si existe. */
@@ -271,12 +278,8 @@ function runBunSpawnSyncArray(
     });
     return {
       status: r.exitCode,
-      stdout: r.stdout
-        ? new TextDecoder().decode(r.stdout as unknown as Uint8Array)
-        : "",
-      stderr: r.stderr
-        ? new TextDecoder().decode(r.stderr as unknown as Uint8Array)
-        : "",
+      stdout: r.stdout ? new TextDecoder().decode(r.stdout) : "",
+      stderr: r.stderr ? new TextDecoder().decode(r.stderr) : "",
     };
   } catch (err) {
     // Cwd inválido, binario no encontrado, o spawn bloqueado.

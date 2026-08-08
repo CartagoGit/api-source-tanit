@@ -29,6 +29,7 @@ import { pathToFileURL } from "node:url";
 import type { EndpointSpec } from "../contracts/postman.interface.js";
 import type { ProjectConfig } from "../contracts/project-config.interface.js";
 import { projectRoot } from "./paths.service.js";
+import { readFlag } from "../helpers/argv.helper.js";
 
 /**
  * La configuración del proyecto, ya resuelta, y de dónde ha salido.
@@ -44,12 +45,6 @@ export interface LoadedProject {
   endpointsPath: string | null;
   /** True si se generó un ProjectConfig zero-config (sin archivo host). */
   zeroConfig: boolean;
-}
-
-function readFlag(argv: string[], name: string): string | null {
-  const idx = argv.indexOf(name);
-  if (idx === -1) return null;
-  return argv[idx + 1] ?? null;
 }
 
 function resolveMaybeRelative(p: string, base: string): string {

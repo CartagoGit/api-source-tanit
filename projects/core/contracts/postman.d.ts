@@ -265,9 +265,18 @@ interface IHash {
   digest(): IBufferLike;
   digest(encoding: string): string;
 }
-interface IBufferLike {
-  readonly length: number;
-  [index: number]: number | undefined;
+/**
+ * Lo que este paquete usa de un `Buffer`.
+ *
+ * **Extiende `Uint8Array` porque un `Buffer` lo es.** La declaración
+ * anterior describía la forma a mano —`length`, índice, `subarray`— sin
+ * decir que fuera un `Uint8Array`, así que devolver uno donde se
+ * esperaba el otro exigía un `as unknown as Uint8Array` en
+ * `collection-identity.helper`. No era el código el que estaba mal: era
+ * esta declaración la que se quedaba corta, y el casting tapaba la
+ * diferencia en vez de arreglarla.
+ */
+interface IBufferLike extends Uint8Array {
   subarray(start?: number, end?: number): IBufferLike;
   toString(encoding?: string): string;
 }

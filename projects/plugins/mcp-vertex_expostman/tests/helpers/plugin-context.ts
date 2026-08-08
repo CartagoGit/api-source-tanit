@@ -69,8 +69,18 @@ export async function captureHandler(
       handler = fn;
     },
   };
-  // El `register` real espera el `McpServer` del SDK; aquí solo hace
-  // falta el `registerTool`, así que se pasa el doble por `never`.
+  // La única aserción de tipo que queda en el repo, y está aquí a
+  // propósito.
+  //
+  // `register` espera el `McpServer` del SDK, un tipo de terceros con
+  // decenas de miembros que este doble no va a implementar: de todos
+  // ellos solo se llama a `registerTool`. Implementarlos todos para
+  // satisfacer al compilador sería escribir un SDK falso entero, y ese
+  // falso mentiría más que esta línea.
+  //
+  // Lo que la hace aceptable es que está **en un sitio**, en un helper
+  // de tests, sobre un tipo que no controlamos. `lint:no-type-escapes`
+  // la tiene declarada con este motivo; cualquier otra falla.
   await registration.register(server as never);
   if (!handler) throw new Error("el tool no registró ningún handler");
   return handler;
