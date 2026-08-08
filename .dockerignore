@@ -1,0 +1,29 @@
+# Lo que no tiene que entrar en el contexto de build.
+#
+# Importa más de lo que parece: el contexto se envía entero al daemon
+# antes de ejecutar la primera instrucción, así que un `node_modules` de
+# 400 MB son 400 MB por cada `docker build`, aunque el Dockerfile no lo
+# copie nunca.
+#
+# Y hay una razón de corrección además de la de velocidad: los
+# `node_modules` del host traen binarios compilados **para el host**.
+# Colarlos en una imagen de Linux produce fallos que parecen del código.
+
+node_modules
+**/node_modules
+
+# Salida: se regenera dentro.
+dist
+build
+**/dist
+**/build
+projects/desktop/target
+
+# Lo que generan los ejemplos al ejercitarlos. Ver `.gitignore`.
+export-to-postman
+**/export-to-postman
+
+.git
+.github
+.cache
+*.log

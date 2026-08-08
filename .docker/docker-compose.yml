@@ -1,0 +1,85 @@
+# Los trabajos que necesitan herramientas que la máquina puede no tener.
+#
+# Cada servicio es **una tarea**, no un entorno donde meterse a vivir.
+# Se lanzan con `docker compose -f .docker/docker-compose.yml run --rm <servicio>`
+# y salen. Los atajos están en `package.json` (`docker:*`).
+#
+# ## Las dos cachés, y por qué
+#
+# Compilar Tauri desde cero son varios minutos de `cargo`, y reinstalar
+# `node_modules` en cada ejecución convierte un gate de veinte segundos
+# en uno de dos minutos. Con volúmenes con nombre eso se paga **una
+# vez**. No se montan como `bind` del host a propósito: los artefactos de
+# Linux dentro del `node_modules` del host pisarían los de quien
+# desarrolla en Mac.
+#
+# ## Por qué el código va montado y no copiado
+#
+# Porque el ciclo es editar-y-probar. Un `COPY` obligaría a reconstruir
+# la imagen por cada carácter que se toca.
+
+name: expostman
+
+x-toolchain: &toolchain
+  build:
+    context: ..
+    dockerfile: .docker/Dockerfile
+    target: toolchain
+  image: expostman/toolchain:local
+  working_dir: /work
+  volumes:
+    - ..:/work
+    - node_modules:/work/node_modules
+    - cargo_registry:/usr/local/cargo/registry
+    - cargo_target:/work/projects/desktop/target
+  environment:
+    # Sin colores en la salida: dentro de un contenedor casi siempre se
+    # lee por tubería o en un log de CI, y los códigos ANSI ahí son
+    # basura que además rompe las comparaciones de texto.
+    NO_COLOR: "1"
+    CI: "1"
+
+services:
+  # El gate completo, en un entorno limpio. Es la respuesta a «en mi
+  # máquina pasa»: aquí no hay nada instalado a mano.
+  validate:
+    <<: *toolchain
+    command: bash -lc "bun install --frozen-lockfile && bun run validate"
+
+  # Los cuatro binarios autocontenidos, uno por plataforma.
+  binaries:
+    <<: *toolchain
+    command: bash -lc "bun install --frozen-lockfile && bun run build:binary --all"
+
+  # Los instaladores nativos (.deb y .AppImage). Los de Mac y Windows no
+  # se pueden producir desde Linux —cada uno exige su propio SDK y su
+  # firma—, y por eso los hace el workflow en sus propios corredores.
+  # Fingir aquí que salen los tres sería mentir en el sitio donde más
+  # cuesta descubrirlo.
+  installers:
+    <<: *toolchain
+    command: bash -lc "bun install --frozen-lockfile && bun run desktop:build"
+
+  # Una shell dentro del taller, para cuando algo falla y hay que mirar.
+  shell:
+    <<: *toolchain
+    command: bash
+
+  # El binario ya compilado, en una imagen **sin Bun ni Node**.
+  #
+  # Es la prueba de la promesa del README: «no necesitan Bun ni Node
+  # instalados en la máquina destino». Si el ejecutable no fuera
+  # autocontenido, este servicio no arrancaría — y eso es justo lo que se
+  # quiere que pase, aquí y no en la máquina de quien lo descargue.
+  smoke:
+    build:
+      context: ..
+      dockerfile: .docker/Dockerfile
+      target: runtime
+    image: expostman/runtime:local
+    command: ["--help"]
+
+volumes:
+  node_modules:
+  cargo_registry:
+  cargo_target:
