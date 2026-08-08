@@ -7,6 +7,8 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
+import { delimiter as pathDelimiter } from "node:path";
 import { z } from "zod";
 
 // `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
@@ -116,9 +118,16 @@ export function normalizeCwd(cwd: string | undefined): string {
  */
 export function runBunCommand(
   args: ReadonlyArray<string>,
-  options: { readonly cwd: string; readonly timeoutMs?: number } = {
-    cwd: process.cwd(),
-  },
+  options: {
+    readonly cwd: string;
+    readonly timeoutMs?: number;
+    /**
+     * Raíces donde el CLI puede escribir. El plugin las declara porque
+     * aquí la ruta de salida la elige un agente, no la persona que está
+     * delante.
+     */
+    readonly containRoots?: ReadonlyArray<string>;
+  } = { cwd: process.cwd() },
 ): IRunScriptResult {
   const start = Date.now();
   const timeout = options.timeoutMs ?? 60_000;
@@ -193,23 +202,44 @@ function decodeStream(stream: string | Uint8Array | null | undefined): string {
 export function runBunScript(
   scriptPath: string,
   args: ReadonlyArray<string>,
-  options: { readonly cwd: string; readonly timeoutMs?: number } = {
-    cwd: process.cwd(),
-  },
+  options: {
+    readonly cwd: string;
+    readonly timeoutMs?: number;
+    /**
+     * Raíces donde el CLI puede escribir. El plugin las declara porque
+     * aquí la ruta de salida la elige un agente, no la persona que está
+     * delante.
+     */
+    readonly containRoots?: ReadonlyArray<string>;
+  } = { cwd: process.cwd() },
 ): IRunScriptResult {
   const start = Date.now();
   const timeout = options.timeoutMs ?? 60_000;
   const bunBin = resolveBunBin();
   const cmd = [bunBin, "run", scriptPath, ...args];
   const cwd = normalizeCwd(options.cwd);
+
+  // El CLI lanzado a mano acepta `--output-dir` donde sea, y así debe
+  // ser. A través del plugin no: un `../` en un argumento no puede
+  // acabar escribiendo en el `$HOME` de nadie.
+  //
+  // Las raíces son varias porque una sola no describe el uso legítimo —
+  // la salida puede ir con el proyecto que se escanea, dentro del
+  // workspace, o en un temporal, y las tres son razonables. El temporal
+  // entra a propósito: es donde va lo desechable, y dejarlo fuera
+  // convertiría el guardián en un estorbo que alguien acabaría
+  // quitando.
+  const roots = [...(options.containRoots ?? []), cwd, tmpdir()];
+  const env = { ...process.env, POSTMAN_CONTAIN_ROOT: roots.join(pathDelimiter) };
+
   const result = useBunSpawn
-    ? runBunSpawnSyncArray(cmd, cwd, timeout, process.env)
+    ? runBunSpawnSyncArray(cmd, cwd, timeout, env)
     : spawnSync(cmd[0] ?? "bun", cmd.slice(1), {
         cwd,
         encoding: "utf8",
         timeout,
         stdio: ["ignore", "pipe", "pipe"],
-        env: process.env,
+        env,
       });
   return toRunResult(result, start);
 }

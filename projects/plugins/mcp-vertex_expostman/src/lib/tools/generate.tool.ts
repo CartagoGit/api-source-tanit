@@ -114,6 +114,7 @@ export function buildGenerateToolRegistration(
 
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
+            containRoots: [projectRoot],
           });
           if (!result.ok) {
             return toolError(

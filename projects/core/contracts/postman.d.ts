@@ -93,6 +93,11 @@ declare module "node:path" {
   export function relative(from: string, to: string): string;
   export function isAbsolute(p: string): boolean;
   export const sep: string;
+  /**
+   * El separador de listas de rutas: `:` en POSIX, `;` en Windows. Lo
+   * usa `POSTMAN_CONTAIN_ROOT`, que lleva varias raíces en una variable.
+   */
+  export const delimiter: string;
 }
 
 // --- node:fs (sync) ------------------------------------------------------

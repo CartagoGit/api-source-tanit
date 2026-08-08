@@ -37,7 +37,7 @@
  *   4. `process.cwd()/export-to-postman/` como último fallback.
  */
 import { existsSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
 
 // ---------------------------------------------------------------------------
@@ -411,9 +411,45 @@ export async function outputEnvironmentPath(
   return join(outputDir(), `${base}.${slug}.postman_environment.json`);
 }
 
+/**
+ * Raíces dentro de las cuales tiene que quedarse la salida, si las hay.
+ *
+ * Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
+ * uso legítimo y no hay motivo para estorbarlo. La pone **el plugin
+ * MCP** al spawnear el CLI, porque ahí quien elige la ruta es un agente
+ * y una ruta con `../` escribiría fuera del proyecto.
+ *
+ * Son varias, separadas por el separador de rutas del sistema, porque
+ * una sola no describe el uso legítimo: la salida puede ir con el
+ * proyecto que se escanea, dentro del workspace, o en un temporal, y las
+ * tres son razonables. Un guardián que bloquea el uso normal se acaba
+ * quitando.
+ */
+export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT" as const;
+
 async function ensureOutputDir(): Promise<void> {
   const fs = await import("node:fs/promises");
   const dir = outputDir();
+
+  const contain = process.env[CONTAINMENT_ROOT_VAR];
+  if (contain) {
+    const { ensureInsideAny } = await import("../helpers/path-containment.helper.js");
+    const roots = contain.split(delimiter).filter((r) => r.length > 0);
+    const check = await ensureInsideAny(roots, dir);
+    if (!check.ok) {
+      // Se comprueba justo antes de crear, no al leer el flag: entre una
+      // cosa y la otra `outputDir()` aplica tres reglas de precedencia, y
+      // validar la de entrada dejaría fuera las otras dos.
+      throw new Error(
+        `La carpeta de salida se sale de las raíces permitidas.\n` +
+          `  · ${check.reason}\n` +
+          `  · Lo impone ${CONTAINMENT_ROOT_VAR}, que pone el plugin MCP al\n` +
+          `    lanzar el CLI: ahí la ruta la elige un agente, no una persona.\n` +
+          `  · Lanzado a mano, sin esa variable, cualquier ruta vale.`,
+      );
+    }
+  }
+
   if (!existsSync(dir)) {
     await fs.mkdir(dir, { recursive: true });
   }

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 200 símbolos en 44 módulos.
+> 204 símbolos en 45 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -619,6 +619,25 @@ export async function outputEnrichedPath( projectName?: string, ): Promise<strin
 ```ts
 export async function outputEnvironmentPath( envName: string, projectName?: string, ): Promise<string>
 ```
+
+#### `CONTAINMENT_ROOT_VAR`
+
+```ts
+export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT" as const
+```
+
+Raíces dentro de las cuales tiene que quedarse la salida, si las hay.
+
+Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
+uso legítimo y no hay motivo para estorbarlo. La pone **el plugin
+MCP** al spawnear el CLI, porque ahí quien elige la ruta es un agente
+y una ruta con `../` escribiría fuera del proyecto.
+
+Son varias, separadas por el separador de rutas del sistema, porque
+una sola no describe el uso legítimo: la salida puede ir con el
+proyecto que se escanea, dentro del workspace, o en un temporal, y las
+tres son razonables. Un guardián que bloquea el uso normal se acaba
+quitando.
 
 #### `toProjectRelative`
 
@@ -1688,6 +1707,46 @@ lo cazó.
 Regla: los gates y los tests usan `repoRoot()`, que lanza porque un
 fallo ahí es un fallo del repo. El código que acaba dentro del
 binario usa esta y tiene un plan B.
+
+### `projects/core/helpers/path-containment.helper.ts`
+
+¿Esta ruta se sale de donde debería escribir?
+
+#### `ContainmentResult`
+
+```ts
+export type ContainmentResult = |
+```
+
+#### `ensureInside`
+
+```ts
+export async function ensureInside( root: string, target: string, ): Promise<ContainmentResult>
+```
+
+¿`target` está dentro de `root`?
+
+La propia raíz cuenta como dentro. Devuelve la ruta ya resuelta para
+que quien llame use esa y no la original: comprobar una y escribir en
+otra es como se saltan estas comprobaciones.
+
+#### `ensureInsideAny`
+
+```ts
+export async function ensureInsideAny( roots: ReadonlyArray<string>, target: string, ): Promise<ContainmentResult>
+```
+
+¿`target` está dentro de **alguna** de las raíces?
+
+Varias, y no una, porque una sola no describe el uso legítimo. Un
+agente puede pedir "genera para el proyecto X y deja la salida en mi
+carpeta de trabajo", y esas son dos ubicaciones distintas y las dos
+razonables. Con una sola raíz eso se rechazaba, y un guardián que
+bloquea el uso normal se acaba quitando.
+
+Lo que sí queda fuera es el resto del disco: la salida va con el
+proyecto, dentro del workspace, o en un temporal — no al `$HOME` de
+nadie porque un `../` se coló en un argumento.
 
 ### `projects/core/helpers/postman.helper.ts`
 
