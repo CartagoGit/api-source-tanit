@@ -8,6 +8,18 @@ track: export-to-postman
 date: 2026-08-08
 ---
 
+> **Aplazada a 2026-08-08, con motivo.** Se midió antes de empezar: son
+> **173 llamadas a `console`** repartidas por los once comandos.
+>
+> Un módulo de strings para 173 mensajes dinámicos es justo el sistema de
+> i18n que los no-objetivos de esta propuesta descartan, y la
+> alternativa —traducir a mano— es mucha rotación sobre los comandos
+> recién estabilizados, para un hallazgo que la auditoría clasificó como
+> MINOR.
+>
+> Lo que sí cambió el orden: ahora los once comandos tienen test, así que
+> cuando se haga, se hará con red debajo.
+
 # r00003 — Un solo idioma en la salida del CLI
 
 ## Goal

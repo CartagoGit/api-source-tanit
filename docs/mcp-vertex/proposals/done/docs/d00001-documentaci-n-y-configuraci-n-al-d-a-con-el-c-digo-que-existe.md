@@ -2,11 +2,25 @@
 id: d00001
 title: "Documentación y configuración al día con el código que existe"
 kind: docs
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** El bootstrap describía una arquitectura
+> sustituida hacía tres reorganizaciones: §3.8 documentaba un
+> `IRouterAdapter` que no existe, §3.1 un nombre de tool que ningún tool
+> registra, §3.2 una regla (`.shape`) que ni el host cumple, y cuatro
+> rutas muertas. `CONTRIBUTING.md` citaba como fuente de verdad un
+> fichero retirado.
+>
+> `lint:bootstrap-drift` exige que toda ruta y todo símbolo citados
+> existan, mirando **dentro** de los bloques de código — que es donde
+> `IRouterAdapter` estuvo escondido. Las citas (`>`) quedan fuera: ahí
+> vive la arqueología a propósito.
+>
+> El gate corrigió de paso un ejemplo que el propio autor puso mal.
 
 # d00001 — Documentación y configuración al día con el código que existe
 

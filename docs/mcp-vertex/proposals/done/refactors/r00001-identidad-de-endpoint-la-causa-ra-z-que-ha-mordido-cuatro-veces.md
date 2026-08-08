@@ -2,11 +2,21 @@
 id: r00001
 title: "Identidad de endpoint: la causa raíz que ha mordido cuatro veces"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** `route-identity.helper` responde una vez la
+> pregunta que se respondía de tres formas, y `ParsedRoute.framework`
+> retira `__params` con sus dos `as any`.
+>
+> **Lo que NO se unificó, a propósito**: el chequeo de duplicados de los
+> invariantes. Pregunta otra cosa —compara la colección consigo misma— y
+> normalizar ahí colapsaría el nombre del parámetro, convirtiendo el caso
+> documentado de Laravel (`{{historico}}` contra `{{matricula}}`) en un
+> aviso falso. Queda escrito en el helper.
 
 # r00001 — Identidad de endpoint: la causa raíz que ha mordido cuatro veces
 

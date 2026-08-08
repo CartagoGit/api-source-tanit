@@ -2,11 +2,22 @@
 id: r00006
 title: "Las 35 anotaciones `: any`, casi todas sobre JSON.parse"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** Cero `any` en el repo —producción y tests— y
+> `lint:no-type-escapes` amplía su regla para que no vuelvan.
+> `parse-json.helper` es lo que lo hizo barato: los predicados que cada
+> scanner repetía a mano, en un sitio.
+>
+> **Lo que no se pudo demostrar**: el ciclo de `$ref` en `mergeAllOf`. La
+> recursión es ilimitada por construcción, pero no se consiguió
+> reproducir un cuelgue ni por YAML ni por JSON. Se le puso cota igual —
+> una recursión sin cota sobre ficheros ajenos no necesita una
+> reproducción para merecerla.
 
 # r00006 — Las 35 anotaciones `: any`, casi todas sobre JSON.parse
 

@@ -8,6 +8,21 @@ track: export-to-postman
 date: 2026-08-08
 ---
 
+> **Parcial a 2026-08-08.** S1, S2 y S3 entregados: `expostman ui`
+> levanta la interfaz, sirve la página desde memoria y no añade ninguna
+> dependencia — `Bun.serve` ya está en el runtime del binario.
+>
+> Dos bugs encontrados **ejercitándola por HTTP**, no leyéndola: fallaba
+> en su primera petición (un POST sin cuerpo se trataba como JSON
+> inválido) y generaba en el proyecto equivocado.
+>
+> **S4 (Tauri) queda pendiente por un motivo concreto**: no hay toolchain
+> de Rust en esta máquina, así que un scaffold de Tauri sería código
+> commiteado sin compilar ni verificar una sola vez. Es exactamente lo
+> que esta ronda ha demostrado que sale caro. La interfaz que cargará esa
+> ventana ya está hecha y probada, así que S4 es empaquetado, no
+> reescritura.
+
 # f00001 — UI de escritorio: expostman usable sin terminal en Linux, Mac y Windows
 
 ## Goal

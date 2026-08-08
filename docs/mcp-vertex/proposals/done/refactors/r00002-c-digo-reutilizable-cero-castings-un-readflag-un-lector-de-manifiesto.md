@@ -2,11 +2,20 @@
 id: r00002
 title: "Código reutilizable: cero castings, un readFlag, un lector de manifiesto"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** Cero aserciones de tipo salvo una declarada
+> con motivo (el doble del `McpServer`, tipo de terceros). Un solo
+> `readFlag`, que además acepta `--flag=valor`. `walk.helper` para el
+> tooling.
+>
+> **El hallazgo de fondo**: ninguno de los cuatro castings de producción
+> hacía falta — los cuatro tapaban una **declaración equivocada**, no un
+> problema del código. Tres de los de tests sobraban directamente.
 
 # r00002 — Código reutilizable: cero castings, un readFlag, un lector de manifiesto
 

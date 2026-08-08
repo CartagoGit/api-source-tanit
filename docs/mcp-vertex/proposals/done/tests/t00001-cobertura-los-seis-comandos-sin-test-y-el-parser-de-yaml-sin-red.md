@@ -2,11 +2,22 @@
 id: t00001
 title: "Cobertura: los seis comandos sin test y el parser de YAML sin red"
 kind: test
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08. Tres de los seis comandos sin test estaban
+> rotos**, que era exactamente lo que la propuesta predecía:
+>
+> · `list` no listaba **nada**, en los 21 frameworks.
+> · `init` **empeoraba** el proyecto que venía a configurar.
+> · `enrich` destruía 8 de 18 requests (cerrado en r00004).
+>
+> El parser de YAML no lanza ni se cuelga, y esa robustez es el problema:
+> `a: &x 1` devolvía la cadena `"&x 1"` sin avisar. Ahora lo detecta y lo
+> dice. `lint:command-coverage` impide el siguiente comando sin test.
 
 # t00001 — Cobertura: los seis comandos sin test y el parser de YAML sin red
 

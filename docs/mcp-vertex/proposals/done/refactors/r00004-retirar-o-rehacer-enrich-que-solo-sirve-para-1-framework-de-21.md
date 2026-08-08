@@ -2,11 +2,24 @@
 id: r00004
 title: "Retirar o rehacer `enrich`, que solo sirve para 1 framework de 21"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08. `enrich` se retira**, medido en vez de opinado:
+> sobre `example-laravel`, el único framework que soportaba, `generate`
+> solo daba 18 requests y `generate + enrich` **10**. Se llevaba por
+> delante 8 de 18 en el framework para el que se escribió, y no aportaba
+> las variantes que se creía —`generate` ya las trae, porque llama al
+> mismo enricher—.
+>
+> **S1 no procedía.** La propuesta daba por hecho que `catalog-enricher`
+> era genérico porque `generate` lo usa para los 21. Al moverlo,
+> `lint:boundaries` falló: importa el parser de FormRequests, que es de
+> Laravel. Funciona en los 21 porque en veinte el índice llega vacío y no
+> hace nada. Devuelto a su sitio; partirlo de verdad es otro rediseño.
 
 # r00004 — Retirar o rehacer `enrich`, que solo sirve para 1 framework de 21
 

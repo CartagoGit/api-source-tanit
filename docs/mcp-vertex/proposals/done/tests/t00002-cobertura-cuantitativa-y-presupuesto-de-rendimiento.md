@@ -2,7 +2,7 @@
 id: t00002
 title: "Cobertura cuantitativa por scopes y presupuesto basico de rendimiento"
 kind: test
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
@@ -10,6 +10,18 @@ related:
   - t00001
   - a00002
 ---
+
+> **Cerrada 2026-08-08.** Cobertura medida por primera vez: statements
+> 73,88 · branches 62,38 · functions 82,89 · lines 75,65. Los umbrales
+> van justo debajo de cada cifra — un suelo medido, no una aspiración.
+>
+> El banco **no vigila el tiempo absoluto** a propósito: depende de la
+> máquina y un gate que falla porque el CI iba cargado se acaba
+> desactivando. Vigila la forma, que el coste por fichero no crezca con
+> el tamaño.
+>
+> `branches` queda como la deuda de test pendiente, con su motivo escrito
+> en el config.
 
 # t00002 — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento
 

@@ -8,6 +8,16 @@ track: export-to-postman
 date: 2026-08-08
 ---
 
+> **Parcial a 2026-08-08.** S1 y S2 entregados: los cuatro tools
+> declaran `outputSchema` y `lint:mcp-surface` lo exige. Al obligar al
+> contrato salieron dos bugs más — `summary` declaraba 6 campos y
+> devolvía 18, y `validate` reportaba una colección desincronizada como
+> *fallo de herramienta*.
+>
+> De S3 va el tool que más falta hacía, **`check`**. Quedan `list`,
+> `stats` y `scan`, que son mecánicos ahora que el patrón está: extraer
+> el `run*()` del comando y envolverlo.
+
 # x00001 — Contratos de la superficie MCP: del esquema correcto a la superficie útil
 
 ## Goal

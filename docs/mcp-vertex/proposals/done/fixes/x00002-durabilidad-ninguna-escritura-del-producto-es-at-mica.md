@@ -2,11 +2,17 @@
 id: x00002
 title: "Durabilidad: ninguna escritura del producto es atómica"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** Las ocho escrituras durables pasan por
+> `atomic-write.helper` (temporal + `rename`), y `lint:durable-writes`
+> impide la novena. `init` deja además de escribir de forma síncrona.
+> Comprobado devolviendo un `writeFile` crudo a `generate` y viendo
+> romper el gate.
 
 # x00002 — Durabilidad: ninguna escritura del producto es atómica
 

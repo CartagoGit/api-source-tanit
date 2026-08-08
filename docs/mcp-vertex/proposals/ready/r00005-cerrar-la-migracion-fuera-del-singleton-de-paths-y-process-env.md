@@ -11,6 +11,21 @@ related:
   - a00002
 ---
 
+> **Parcial a 2026-08-08.** S1 entregado: `resolveRoot()` responde por
+> los tres comandos que divergían, y de paso arregla que **`push` no
+> leía `--project-root`** — pasárselo no hacía nada.
+>
+> Devuelve además **de dónde** salió la raíz, que es lo que permite
+> avisar cuando se ha adivinado. Hacía falta: `watch` lanzado desde
+> `/tmp` recorrió el árbol y generó la colección de un proyecto suelto
+> entre los temporales.
+>
+> Queda el singleton en sí. **Mordió otra vez** mientras se construía la
+> UI: `generate` ignoraba el proyecto pedido y escribía dentro de este
+> repositorio, porque `paths.service` lee `process.argv` y en un servidor
+> de vida larga ese argv es el del servidor. Tapado con
+> `withScopedPaths`; la cura es esta propuesta.
+
 # r00005 — Cerrar la migracion fuera del singleton de paths y process.env
 
 ## Goal

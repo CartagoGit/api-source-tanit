@@ -2,11 +2,21 @@
 id: x00003
 title: "Seguridad: contener las rutas de salida dentro de una raíz"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
+
+> **Cerrada 2026-08-08.** La contención se aplica cuando quien elige la
+> ruta es un agente (`POSTMAN_CONTAIN_ROOT`, que pone el plugin); quien
+> usa la terminal no la ve.
+>
+> **Se corrigió el diseño sobre la marcha**: la primera versión contenía
+> a una sola raíz y rompió tres tests del plugin que usan temporales
+> hermanos — un patrón legítimo. Son varias raíces (proyecto, workspace,
+> temporal) porque una sola no describe el uso real, y un guardián que
+> bloquea el uso normal se acaba quitando.
 
 # x00003 — Seguridad: contener las rutas de salida dentro de una raíz
 
