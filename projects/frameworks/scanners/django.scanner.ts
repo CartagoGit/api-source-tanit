@@ -27,6 +27,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -191,9 +192,7 @@ async function parseUrlsPy(
   for (const line of text.split("\n")) {
     // Detectar `path("prefix/", include(...))` en la misma línea:
     // extraer el prefix y procesarlo como include.
-    PATH_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = PATH_RE.exec(line)) !== null) {
+    for (const m of line.matchAll(PATH_RE)) {
       const pathTemplate = m[1] ?? "";
       const viewRef = m[2] ?? "";
       // Si el viewRef es un `include(...)` (no una view), no es una ruta
@@ -201,8 +200,7 @@ async function parseUrlsPy(
       if (viewRef.startsWith("include") || viewRef.startsWith("views.")) {
         // `views.foo` es una FBV, no un include — seguir al bloque normal.
         if (viewRef.startsWith("include")) {
-          const includeMatch = INCLUDE_RE.exec(line);
-          INCLUDE_RE.lastIndex = 0;
+          const includeMatch = ownRegex(INCLUDE_RE).exec(line);
           if (includeMatch) {
             await processInclude(
               includeMatch,
@@ -235,8 +233,7 @@ async function parseUrlsPy(
       }
     }
     // Includes top-level (sin path-prefix).
-    INCLUDE_RE.lastIndex = 0;
-    while ((m = INCLUDE_RE.exec(line)) !== null) {
+    for (const m of line.matchAll(INCLUDE_RE)) {
       // Solo procesar si no fue ya consumido por PATH_RE.
       if (line.includes("path(") && line.indexOf("include(") > line.indexOf("path(")) {
         continue;
@@ -617,9 +614,7 @@ async function findViewNameForUri(
     return null;
   }
   for (const line of text.split("\n")) {
-    PATH_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = PATH_RE.exec(line)) !== null) {
+    for (const m of line.matchAll(PATH_RE)) {
       const pathTemplate = (m[1] ?? "").replace(/^\/+|\/+$/g, "");
       const viewRef = (m[2] ?? "").replace(/\.as_view$/, "");
       // Normalizar el pathTemplate: `<int:id>` → `<id>` para matchear.

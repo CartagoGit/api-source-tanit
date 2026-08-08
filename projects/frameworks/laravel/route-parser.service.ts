@@ -20,6 +20,7 @@
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
 import type { IProjectContext } from "../../core/contracts/project-context.interface.js";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { fromProjectRoot, projectDirs } from "../../core/discovery/project-context.service.js";
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "../../core/discovery/paths.service.js";
@@ -66,8 +67,8 @@ export async function parseRoutesFile(
   // Mapa alias → FQCN a partir de los `use` del archivo.
   const imports = new Map<string, string>();
   let um: RegExpExecArray | null;
-  USE_RE.lastIndex = 0;
-  while ((um = USE_RE.exec(text)) !== null) {
+  const useRe = ownRegex(USE_RE);
+  while ((um = useRe.exec(text)) !== null) {
     const fqcn = um[1];
     if (!fqcn) continue;
     const short = fqcn.split("\\").pop() ?? fqcn;

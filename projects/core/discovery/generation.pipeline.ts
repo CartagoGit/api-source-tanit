@@ -45,7 +45,7 @@ import {
   inferCollectionVariables,
 } from "../domain/param-inferrer.service.js";
 import { loadProject } from "./project-loader.service.js";
-import { withProjectRoot } from "./paths.service.js";
+
 import { resolveProjectContext } from "./project-context.service.js";
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
@@ -151,10 +151,19 @@ export interface IGenerationOptions {
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
  *
- * `projectRoot` manda: la llamada se envuelve en `withProjectRoot()`, así
- * que dos proyectos generados en el mismo proceso no se pisan aunque los
- * servicios de dentro sigan resolviendo rutas por el singleton de
- * `paths.service` (p00017 S3).
+ * `projectRoot` manda, y llega **como argumento** hasta abajo: el
+ * contexto se resuelve una vez aquí y viaja explícito por el pipeline,
+ * el loader y los scanners.
+ *
+ * Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
+ * de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
+ * precio de una cola: dos llamadas concurrentes se pisaban el estado,
+ * así que había que serializarlas. Dos análisis a la vez tardaban lo que
+ * la suma.
+ *
+ * Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
+ * frameworks distintos con `Promise.all` y comprueba que ninguno se
+ * cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
  */
 export async function generateCollection(
   projectRoot: string,
@@ -171,12 +180,8 @@ export async function generateCollection(
     );
   }
 
-  // El contexto se resuelve UNA vez y se pasa hacia abajo. El
-  // `withProjectRoot` sigue envolviendo la llamada porque `loadProject()`
-  // y algún servicio todavía leen el singleton de `paths.service`
-  // (p00017 S3, en curso); en cuanto todos reciban contexto, sobra.
   const context = resolveProjectContext({ projectRoot });
-  return withProjectRoot(projectRoot, () => buildFor(context, options));
+  return buildFor(context, options);
 }
 
 async function buildFor(
@@ -307,7 +312,13 @@ async function discoverSpecs(
   const detected = options.forceFramework
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
-  const { config, manualEndpoints, configPath, zeroConfig } = await loadProject();
+  // Con `context`: el loader deja de preguntarle al singleton qué
+  // proyecto es este. Era el único sitio del pipeline que aún lo hacía,
+  // y el motivo de que la llamada entera tuviera que ir envuelta.
+  const { config, manualEndpoints, configPath, zeroConfig } = await loadProject(
+    process.argv,
+    context,
+  );
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
 

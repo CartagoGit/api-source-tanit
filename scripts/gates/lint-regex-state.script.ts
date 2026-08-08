@@ -98,13 +98,46 @@ async function main(): Promise<number> {
     if (ALLOWED.has(rel)) continue;
 
     const source = await readFile(file, "utf8");
-    if (!source.includes("lastIndex")) continue;
-    checked++;
-
     const shared = moduleLevelGlobalRegexes(source);
     if (shared.size === 0) continue;
+    checked++;
 
     const lines = source.split("\n");
+
+    // Segunda regla: usar uno de estos con `exec` o `test` **directamente**.
+    //
+    // Antes solo se miraba `lastIndex`, y `= 0` estaba permitido por
+    // inofensivo: deja el estado en un punto conocido. Lo es mientras
+    // haya una sola ejecución. Con dos a la vez, no:
+    //
+    //     RE.lastIndex = 0;
+    //     while ((m = RE.exec(line)) !== null) { await algo(); }
+    //
+    // cede el control en cada `await`, y si otra ejecución entra y hace
+    // su propio reset, el bucle de la primera vuelve al principio y
+    // repite. Se midió sobre el fixture de Django: dos generaciones
+    // concurrentes del mismo proyecto daban 19 y 18 rutas.
+    //
+    // Estaba en 12 ficheros y 28 sitios, tapado por la cola global que
+    // serializaba el pipeline. Al quitarla (r00005 S2) salió a la luz.
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? "";
+      if (/^\s*(\*|\/\/)/.test(line)) continue;
+
+      for (const name of shared) {
+        if (!new RegExp(`\\b${name}\\.(exec|test)\\(`).test(line)) continue;
+        problems.push(
+          `${rel}:${i + 1}\n      ${line.trim()}\n` +
+            `      \`${name}\` es de nivel de módulo y lleva \`g\`: su lastIndex lo\n` +
+            `      comparte todo el proceso. Dos análisis a la vez se pisan la\n` +
+            `      posición y uno de los dos repite o se salta coincidencias.\n` +
+            `      Recórrelo con \`texto.matchAll(${name})\`, que no lo toca, o saca\n` +
+            `      una copia con \`ownRegex(${name})\`.`,
+        );
+      }
+    }
+
+    if (!source.includes("lastIndex")) continue;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
       if (/^\s*(\*|\/\/)/.test(line)) continue;

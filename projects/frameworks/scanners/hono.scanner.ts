@@ -15,6 +15,7 @@
  * escribir otro — es la misma librería, solo cambia quién la invoca.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -210,8 +211,7 @@ function validatorInCall(
   if (callEnd === -1) return null;
 
   const call = source.slice(parenAt, callEnd);
-  ZOD_VALIDATOR_RE.lastIndex = 0;
-  const match = ZOD_VALIDATOR_RE.exec(call);
+  const match = ownRegex(ZOD_VALIDATOR_RE).exec(call);
   if (!match) return null;
   return { target: match[2] ?? "json", schema: match[3] ?? "" };
 }
@@ -299,9 +299,9 @@ function zodObjectLiteralOf(source: string, schemaName: string): string | null {
 
 /** Dónde van los campos de un esquema, según el target del validador. */
 function locationOfValidator(source: string, schemaName: string): IValidationSpec["location"] {
-  ZOD_VALIDATOR_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = ZOD_VALIDATOR_RE.exec(source)) !== null) {
+  const zodValidatorRe = ownRegex(ZOD_VALIDATOR_RE);
+  while ((match = zodValidatorRe.exec(source)) !== null) {
     if (match[3] === schemaName) return TARGET_TO_LOCATION[match[2] ?? "json"] ?? "body";
   }
   return "body";

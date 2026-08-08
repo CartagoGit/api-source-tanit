@@ -20,11 +20,33 @@ related:
 > `/tmp` recorrió el árbol y generó la colección de un proyecto suelto
 > entre los temporales.
 >
-> Queda el singleton en sí. **Mordió otra vez** mientras se construía la
-> UI: `generate` ignoraba el proyecto pedido y escribía dentro de este
-> repositorio, porque `paths.service` lee `process.argv` y en un servidor
-> de vida larga ese argv es el del servidor. Tapado con
-> `withScopedPaths`; la cura es esta propuesta.
+> **S2 entregada a 2026-08-08.** El pipeline ya no se envuelve en
+> `withProjectRoot()`: el contexto llega como argumento hasta el loader,
+> que era el último sitio del camino feliz que preguntaba al singleton.
+>
+> Quitar la cola destapó lo que la cola tapaba, y no era poco. Dos
+> `generateCollection` **del mismo proyecto** a la vez devolvían 19 y 18
+> rutas en Django. La causa: los scanners recorren su fuente con regex
+> `/g` declarados a nivel de módulo, y el `lastIndex` de esos regex lo
+> comparte el proceso entero. El bucle hace `await` dentro, así que la
+> otra ejecución le reseteaba la posición a mitad y releía rutas.
+>
+> Estaba en **12 ficheros y 29 sitios**. La ruta duplicada se fusionaba
+> después por método + URI, así que la colección salía correcta: lo único
+> que mentía era el contador, y un aviso que decía «declarado por más de
+> un framework» habiendo solo uno. Por eso llevaba ahí sin que nadie lo
+> viera.
+>
+> `lint:regex-state` ya prohibía mover el `lastIndex` a una posición
+> arbitraria —eso colgaba el bucle— pero permitía `= 0` por inofensivo.
+> Lo es con una sola ejecución. Ahora prohíbe también usar el regex
+> compartido directamente, y se verificó reintroduciendo el fallo.
+>
+> El test que lo cubre compara **una ejecución consigo misma** en los 21
+> frameworks: no hace falta saber cuál es el número bueno, solo que sea
+> el mismo las dos veces.
+>
+> Queda S3, el candado contra la recaída del singleton.
 
 # r00005 — Cerrar la migracion fuera del singleton de paths y process.env
 
@@ -53,7 +75,7 @@ La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
 - global_gate: e2e
 
 ### S1 — Un solo lector de contexto para los entrypoints que aun divergen
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/discovery/project-context.service.ts`, `projects/core/discovery/project-loader.service.ts`, `projects/cli/commands/summary.script.ts`, `projects/cli/commands/scan.script.ts`, `projects/cli/commands/push.script.ts`, `tests/core/project-context.service.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -62,7 +84,7 @@ La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
   - "La politica de precedencia de flags y env queda escrita una vez"
 
 ### S2 — Sacar al pipeline y a los comandos del singleton caliente
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/core/discovery/paths.service.ts`, `projects/core/discovery/generation.pipeline.ts`, `projects/core/discovery/project-context.service.ts`, `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `tests/core/scoped-paths.service.spec.ts`
 - **Gate**: e2e

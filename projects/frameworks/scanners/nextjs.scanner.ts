@@ -17,6 +17,7 @@
  *     route handlers (`const schema = z.object({...})`).
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -203,9 +204,9 @@ async function parseAppRouteFile(
   } catch {
     return [];
   }
-  APP_ROUTE_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = APP_ROUTE_RE.exec(raw)) !== null) {
+  const appRouteRe = ownRegex(APP_ROUTE_RE);
+  while ((m = appRouteRe.exec(raw)) !== null) {
     const method = (m[1] ?? "").toLowerCase();
     if (!HTTP_METHODS.includes(method)) continue;
     out.push({

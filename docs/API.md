@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 222 símbolos en 49 módulos.
+> 223 símbolos en 50 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -482,10 +482,19 @@ export async function generateCollection( projectRoot: string, options: IGenerat
 
 Descubre los endpoints de un proyecto y construye su colección.
 
-`projectRoot` manda: la llamada se envuelve en `withProjectRoot()`, así
-que dos proyectos generados en el mismo proceso no se pisan aunque los
-servicios de dentro sigan resolviendo rutas por el singleton de
-`paths.service` (p00017 S3).
+`projectRoot` manda, y llega **como argumento** hasta abajo: el
+contexto se resuelve una vez aquí y viaja explícito por el pipeline,
+el loader y los scanners.
+
+Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
+de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
+precio de una cola: dos llamadas concurrentes se pisaban el estado,
+así que había que serializarlas. Dos análisis a la vez tardaban lo que
+la suma.
+
+Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
+frameworks distintos con `Promise.all` y comprueba que ninguno se
+cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
 
 ### `projects/core/discovery/paths.service.ts`
 
@@ -755,7 +764,7 @@ que hay que saber cuando la salida no es la esperada.
 #### `detectProjectName`
 
 ```ts
-export async function detectProjectName(): Promise<string>
+export async function detectProjectName( context?: IProjectContext, ): Promise<string>
 ```
 
 Devuelve el nombre del proyecto host.
@@ -768,7 +777,7 @@ otros once frameworks como su carpeta.
 #### `detectFilePrefixes`
 
 ```ts
-export async function detectFilePrefixes(): Promise<Record<string, string[]>>
+export async function detectFilePrefixes( context?: IProjectContext, ): Promise<Record<string, string[]>>
 ```
 
 Lee `RouteServiceProvider.php` para extraer el mapa
@@ -785,7 +794,7 @@ Ejemplo Laravel:
 #### `buildZeroConfig`
 
 ```ts
-export async function buildZeroConfig(): Promise<ProjectConfig>
+export async function buildZeroConfig( context?: IProjectContext, ): Promise<ProjectConfig>
 ```
 
 Genera un ProjectConfig mínimo viable sin archivo del host.
@@ -794,7 +803,7 @@ Genera un ProjectConfig mínimo viable sin archivo del host.
 #### `resolveConfigPath`
 
 ```ts
-export async function resolveConfigPath( argv: string[] = process.argv, ): Promise<string>
+export async function resolveConfigPath( argv: string[] = process.argv, context?: IProjectContext, ): Promise<string>
 ```
 
 Resuelve la ruta del módulo de configuración del host.
@@ -809,13 +818,19 @@ Orden:
 #### `loadProject`
 
 ```ts
-export async function loadProject( argv: string[] = process.argv, ): Promise<LoadedProject>
+export async function loadProject( argv: string[] = process.argv, context?: IProjectContext, ): Promise<LoadedProject>
 ```
 
-Carga config + overrides manuales del proyecto host.
+`context` es opcional y no es un descuido.
 
-Si no encuentra ningún archivo de config, genera un zero-config en
-memoria con autodetección de prefijo + baseUrl + nombre.
+Quien lo pasa —el pipeline— deja de depender del singleton de
+`paths.service` para saber qué proyecto está cargando. Quien no lo
+pasa —los comandos del CLI, un proceso por proyecto— sigue funcionando
+igual, porque ahí el estado global no puede confundirse con nada.
+
+La diferencia importa en consumidores de vida larga: el servidor MCP
+cargaba la config del proyecto A al pedirle el B, porque `projectRoot()`
+se resuelve una vez por proceso.
 
 #### `_internal`
 
@@ -1952,6 +1967,21 @@ Lo mismo, pero en un array.
 Para quien necesite la lista entera de todas formas (un `Map` de
 módulo → contenido, por ejemplo). Si solo se va a recorrer una vez,
 usa el generador: gasta memoria acotada en vez de toda.
+
+### `projects/core/helpers/regex.helper.ts`
+
+Regex compartidos usados sin pisarse.
+
+#### `ownRegex`
+
+```ts
+export function ownRegex(shared: RegExp): RegExp
+```
+
+Una copia propia de un regex compartido.
+
+Nace con `lastIndex` a cero y nadie más la toca, así que se puede usar
+con `exec` sin coordinarse con el resto del proceso.
 
 ### `projects/core/helpers/resolve-root.helper.ts`
 
