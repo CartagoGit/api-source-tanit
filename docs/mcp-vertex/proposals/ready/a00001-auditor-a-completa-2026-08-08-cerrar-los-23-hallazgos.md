@@ -763,85 +763,33 @@ formato del brief, `audit_consolidate` devolvía `findings: []`.
 
 - global_gate: e2e
 
-### S1 — outputSchema en los cuatro tools, con gate que lo exija
+### S1 — Seguimiento: que los 23 hallazgos acaben cerrados
 - **Status**: pending
-- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/validate.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/summary.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/test.tool.ts`, `scripts/gates/lint-mcp-surface.script.ts`
-- **Gate**: type
+- **Files**: `docs/mcp-vertex/proposals/ready/a00001-auditor-a-completa-2026-08-08-cerrar-los-23-hallazgos.md`
+- **Gate**: none
 - acceptance:
-  - "Los 4 tools declaran outputSchema como .shape de un esquema zod, sin z.any()"
-  - "`bun run lint:mcp-surface` falla si un tool nuevo no lo declara"
-  - "El plugin arranca y responde a los 4 tools"
+  - "Cada hallazgo de esta auditoría está o corregido o repartido en una propuesta con id"
+  - "Las alertas de Dependabot llegan a 0: bajaron de 67 a 15 al subir las 21 declaraciones, y las 15 que quedan son de Go, pendientes de que reindexe el grafo"
+  - "Al cerrar, esta propuesta se archiva en `done/audits/`"
 
-### S2 — Escritura atómica de todo lo durable
-- **Status**: pending
-- **Files**: `projects/core/helpers/atomic-write.helper.ts`, `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/enrich.script.ts`, `tests/core/atomic-write.helper.spec.ts`
-- **Gate**: e2e
-- acceptance:
-  - "Toda escritura durable pasa por fichero temporal + rename en el mismo sistema de ficheros"
-  - "Un test interrumpe la escritura y comprueba que el fichero anterior sigue siendo JSON válido"
-  - "`watch` reescribe en bucle sin dejar nunca un JSON truncado"
+## Reparto en propuestas
 
-### S3 — Identidad de ParsedRoute: campo framework y clave de operación
-- **Status**: pending
-- **Files**: `projects/core/contracts/scanner.interface.ts`, `projects/frameworks/scanners/openapi.scanner.ts`, `projects/core/discovery/generation.pipeline.ts`, `projects/cli/commands/diff.script.ts`, `tests/core/route-identity.spec.ts`
-- **Gate**: e2e
-- acceptance:
-  - "`ParsedRoute` lleva `framework` y una clave de operación explícita"
-  - "`__params` y sus dos `as any` desaparecen"
-  - "Un test cubre el cuarto sitio que aún improvisa su clave, no solo los tres ya parcheados"
-  - "Los 21 ejemplos siguen generando colección válida"
+El trabajo no vive aquí: vive en ocho propuestas, una por sección. Esta
+queda como el registro de qué se midió y por qué.
 
-### S4 — Contener --output-dir dentro de una raíz
-- **Status**: pending
-- **Files**: `projects/core/discovery/paths.service.ts`, `tests/core/path-containment.spec.ts`
-- **Gate**: type
-- acceptance:
-  - "Una ruta con `../` que se salga de la raíz se rechaza con mensaje y código 1"
-  - "El plugin no puede inducir una escritura fuera del workspace"
-  - "Las rutas absolutas legítimas siguen funcionando"
+| Propuesta | Hallazgos | Prioridad |
+|---|---|---|
+| `x00001` — contratos de la superficie MCP | 1 (FATAL), 18 | **P0** |
+| `x00002` — durabilidad de la escritura | 2 (FATAL) | **P0** |
+| `r00001` — identidad de endpoint | 3 (FATAL), 6 | **P0** |
+| `d00001` — documentación y configuración al día | 4, 11, 12, 17, 19 | P1 |
+| `r00002` — código reutilizable, cero castings | 8, 9, 10, 15 | P1 |
+| `x00003` — contención de rutas de salida | 7 | P1 |
+| `t00001` — cobertura de comandos y parser | 14, 16 | P2 |
+| `r00003` — un solo idioma en el CLI | 13 | P2 |
+| `r00004` — retirar o rehacer `enrich` | 5 | P2 |
+| `f00001` — UI de escritorio | encargo aparte | a decidir |
 
-### S5 — Bootstrap, NAMING y configuración al día
-- **Status**: pending
-- **Files**: `docs/mcp-vertex/AGENT-BOOTSTRAP.md`, `docs/NAMING.md`, `mcp-vertex.config.json`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts`
-- **Gate**: lint
-- acceptance:
-  - "§3.1, §3.5 y §3.8 describen el código que existe hoy: el trío de scanners, no IRouterAdapter"
-  - "Las cuatro rutas muertas que cita el bootstrap se corrigen"
-  - "Los sufijos .adapter/.exporter/.orchestrator/.pipeline quedan documentados"
-  - "`plugins.search.options.roots` y `conventions` apuntan a carpetas que existen: `overview.configIssues` queda vacío"
-  - "La constante NAMESPACE, que no usa nadie, desaparece"
-
-### S6 — Eliminar los 21 castings y unificar lo duplicado
-- **Status**: pending
-- **Files**: `projects/core/contracts/postman.d.ts`, `projects/core/helpers/collection-identity.helper.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `projects/core/helpers/argv.helper.ts`, `projects/core/discovery/project-loader.service.ts`, `projects/core/discovery/project-context.service.ts`, `projects/cli/commands/push.script.ts`, `projects/cli/commands/init.script.ts`, `projects/frameworks/parsers/manifest.helper.ts`, `projects/frameworks/scanners/hono.scanner.ts`, `projects/frameworks/scanners/fastify.scanner.ts`, `tests/core/collection-invariants.helper.spec.ts`, `tests/core/postman-api.service.spec.ts`
-- **Gate**: type
-- acceptance:
-  - "Cero `as any`, `as unknown as` y `as never` en produccion y en tests"
-  - "Un lint los prohibe para que no vuelvan"
-  - "Un solo `readFlag`, con un solo tipo de retorno"
-  - "Un solo lector de manifiesto por ecosistema, con la misma regla sobre devDependencies"
-
-## acceptance
-
-- Los 4 tools declaran outputSchema como .shape de un esquema zod, sin z.any()
-- `bun run lint:mcp-surface` falla si un tool nuevo no lo declara
-- El plugin arranca y responde a los 4 tools
-- Toda escritura durable pasa por fichero temporal + rename en el mismo sistema de ficheros
-- Un test interrumpe la escritura y comprueba que el fichero anterior sigue siendo JSON válido
-- `watch` reescribe en bucle sin dejar nunca un JSON truncado
-- `ParsedRoute` lleva `framework` y una clave de operación explícita
-- `__params` y sus dos `as any` desaparecen
-- Un test cubre el cuarto sitio que aún improvisa su clave, no solo los tres ya parcheados
-- Los 21 ejemplos siguen generando colección válida
-- Una ruta con `../` que se salga de la raíz se rechaza con mensaje y código 1
-- El plugin no puede inducir una escritura fuera del workspace
-- Las rutas absolutas legítimas siguen funcionando
-- §3.1, §3.5 y §3.8 describen el código que existe hoy: el trío de scanners, no IRouterAdapter
-- Las cuatro rutas muertas que cita el bootstrap se corrigen
-- Los sufijos .adapter/.exporter/.orchestrator/.pipeline quedan documentados
-- `plugins.search.options.roots` y `conventions` apuntan a carpetas que existen: `overview.configIssues` queda vacío
-- La constante NAMESPACE, que no usa nadie, desaparece
-- Cero `as any`, `as unknown as` y `as never` en produccion y en tests
-- Un lint los prohibe para que no vuelvan
-- Un solo `readFlag`, con un solo tipo de retorno
-- Un solo lector de manifiesto por ecosistema, con la misma regla sobre devDependencies
+Los hallazgos 20 a 23 no generan propuesta: el 20 es seguimiento (S1),
+y del 21 al 23 son las tres cosas que están bien y se dejan anotadas
+para no romperlas sin darse cuenta.
