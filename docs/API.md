@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 194 símbolos en 42 módulos.
+> 196 símbolos en 43 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1509,6 +1509,34 @@ correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
 ```ts
 export class OpenApiExporter implements IExportTarget
 ```
+
+### `projects/core/helpers/atomic-write.helper.ts`
+
+Escribir un fichero entero, o no escribirlo.
+
+#### `writeFileAtomic`
+
+```ts
+export async function writeFileAtomic( destino: string, contenido: string, ): Promise<void>
+```
+
+Escribe `contenido` en `destino` de forma atómica.
+
+Crea el directorio si hace falta. Si algo falla, `destino` se queda
+exactamente como estaba y no queda ningún temporal por el medio.
+
+#### `writeJsonAtomic`
+
+```ts
+export async function writeJsonAtomic( destino: string, valor: unknown, espacios = 2, ): Promise<void>
+```
+
+Lo mismo, para JSON.
+
+Serializa **antes** de tocar el disco: si el objeto tiene un ciclo o
+un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
+Serializar mientras se escribe es como se acaba con un fichero a
+medias sin que el proceso llegue a morirse.
 
 ### `projects/core/helpers/collection-identity.helper.ts`
 
