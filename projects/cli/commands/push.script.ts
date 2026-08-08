@@ -10,7 +10,7 @@
  * La API key se saca de `--api-key` o de `POSTMAN_API_KEY`, y nunca se
  * imprime ni se escribe en disco.
  */
-import { projectRoot } from "../../core/discovery/paths.service.js";
+import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import {
   buildEnvironments,
@@ -38,7 +38,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   const withEnvironments = !argv.includes("--no-environments");
   const options = { apiKey, workspaceId };
 
-  const root = projectRoot();
+  // `push` **no leía `--project-root`**: usaba solo el singleton, así
+  // que pasarle el flag no hacía nada. Ahora resuelve como los demás.
+  const { root } = resolveRoot({ argv });
   if (!root) {
     console.error("Could not determine the project root.");
     console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");

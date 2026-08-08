@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 210 símbolos en 47 módulos.
+> 215 símbolos en 48 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1891,6 +1891,61 @@ Lo mismo, pero en un array.
 Para quien necesite la lista entera de todas formas (un `Map` de
 módulo → contenido, por ejemplo). Si solo se va a recorrer una vez,
 usa el generador: gasta memoria acotada en vez de toda.
+
+### `projects/core/helpers/resolve-root.helper.ts`
+
+De dónde sale la raíz del proyecto, una sola vez.
+
+#### `RootOrigin`
+
+```ts
+export type RootOrigin = "flag" | "env" | "cwd"
+```
+
+#### `IResolvedRoot`
+
+```ts
+export interface IResolvedRoot
+```
+
+La raíz, y de dónde salió.
+
+`origin` no es información de depuración: es lo que permite avisar
+cuando la raíz se ha **adivinado**. Sin él, un comando no puede
+distinguir «me han dicho que use este directorio» de «no me han dicho
+nada y he cogido el actual», que es la diferencia entre escanear el
+proyecto correcto y escanear lo que hubiera debajo del `cd` anterior.
+
+#### `IResolveRootOptions`
+
+```ts
+export interface IResolveRootOptions
+```
+
+#### `resolveRoot`
+
+```ts
+export function resolveRoot(options: IResolveRootOptions =
+```
+
+La raíz del proyecto: `--project-root`, luego `POSTMAN_PROJECT_ROOT`,
+y como último recurso el directorio actual.
+
+El orden es el que ya tenían dos de los tres comandos, así que no
+cambia el comportamiento de nadie — solo lo hace igual en todos y
+añade de dónde vino.
+
+#### `guessedRootNotice`
+
+```ts
+export function guessedRootNotice(resolved: IResolvedRoot): string
+```
+
+El aviso de que la raíz se ha adivinado, o cadena vacía.
+
+Se devuelve en vez de imprimirse para que quien llama decida dónde va
+—`console.log`, un informe JSON, la interfaz gráfica— y para que se
+pueda probar sin capturar la salida.
 
 ### `projects/core/helpers/route-identity.helper.ts`
 

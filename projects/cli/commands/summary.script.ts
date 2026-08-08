@@ -12,9 +12,10 @@
  * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` o cwd.
  * Default format: `text` (salida humana). `json` vuelca IProjectSummary.
  */
-import { resolve } from "node:path";
+
 
 import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
+import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 
 interface ParsedArgs {
   projectRoot: string;
@@ -22,13 +23,9 @@ interface ParsedArgs {
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const rootIdx = argv.indexOf("--project-root");
-  const projectRoot =
-    rootIdx !== -1 && argv[rootIdx + 1]
-      ? resolve(argv[rootIdx + 1] ?? ".")
-      : process.env["POSTMAN_PROJECT_ROOT"]
-        ? resolve(process.env["POSTMAN_PROJECT_ROOT"])
-        : process.cwd();
+  // Por `resolveRoot`, que es la misma resolución que usan los demás
+  // comandos. Antes cada uno tenía la suya y no coincidían.
+  const { root: projectRoot } = resolveRoot({ argv });
   const formatIdx = argv.indexOf("--format");
   const formatRaw = formatIdx !== -1 ? argv[formatIdx + 1] : "text";
   const format: "text" | "json" = formatRaw === "json" ? "json" : "text";

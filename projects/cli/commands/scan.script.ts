@@ -12,19 +12,21 @@
  * del discovery sin tener que generar una colección completa.
  */
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
-import { projectRoot } from "../../core/discovery/paths.service.js";
+import {
+  guessedRootNotice,
+  resolveRoot,
+} from "../../core/helpers/resolve-root.helper.js";
 
 async function main(): Promise<number> {
   const argv = process.argv.slice(2);
-  const rootIdx = argv.indexOf("--project-root");
-  const projectRootFlag =
-    rootIdx !== -1 ? argv[rootIdx + 1] ?? null : null;
-  const root = projectRootFlag ?? process.env.POSTMAN_PROJECT_ROOT ?? projectRoot();
+  const resolved = resolveRoot({ argv });
+  const root = resolved.root;
 
-  if (!root) {
-    console.error("✘ No project root. Pasa --project-root o POSTMAN_PROJECT_ROOT.");
-    return 1;
-  }
+  // Decir cuando se ha adivinado: el último recurso es el directorio
+  // actual, y escanear el sitio equivocado en silencio es cómo `watch`
+  // acabó recorriendo `/tmp` entero.
+  const aviso = guessedRootNotice(resolved);
+  if (aviso) console.log(`${aviso}\n`);
 
   console.log(`→ Escaneando ${root}\n`);
 
