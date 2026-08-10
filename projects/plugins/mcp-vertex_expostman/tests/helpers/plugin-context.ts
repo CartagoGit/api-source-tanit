@@ -86,6 +86,48 @@ export async function captureHandler(
   return handler;
 }
 
+/** Un tool capturado con **su** declaración, no con una copia. */
+export interface ICapturedTool {
+  /** Nombre cualificado con el que lo despacha el host. */
+  readonly name: string;
+  readonly handler: ToolHandler;
+  /** El `outputSchema` tal y como el tool lo registró. */
+  readonly outputSchema: unknown;
+  readonly inputSchema: unknown;
+}
+
+/**
+ * Registra un tool y devuelve el handler **y su esquema declarado**.
+ *
+ * `captureHandler` se queda solo con la función, que basta para probar
+ * el comportamiento. Esto hace falta para lo otro: confrontar lo que el
+ * handler devuelve con lo que el tool **dice** que devuelve. Comparar
+ * contra una copia del esquema escrita en el test no comprobaría nada —
+ * las dos copias se separarían juntas.
+ */
+export async function captureTool(
+  registration: IToolRegistration,
+): Promise<ICapturedTool> {
+  let capturado: ICapturedTool | undefined;
+  const server = {
+    registerTool: (
+      name: string,
+      schema: { outputSchema?: unknown; inputSchema?: unknown },
+      fn: ToolHandler,
+    ) => {
+      capturado = {
+        name,
+        handler: fn,
+        outputSchema: schema.outputSchema,
+        inputSchema: schema.inputSchema,
+      };
+    },
+  };
+  await registration.register(server as never);
+  if (!capturado) throw new Error("el tool no registró ningún handler");
+  return capturado;
+}
+
 /**
  * Los tools de un plugin ya registrado.
  *

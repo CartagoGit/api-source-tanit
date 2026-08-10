@@ -27,6 +27,23 @@ date: 2026-08-08
 >
 > Los dos comandos se ejecutaron antes de envolverlos, que es lo que
 > destapó que `list` no listaba nada. Esta vez los dos funcionaban.
+>
+> **S1 cerrada.** `output-contract.spec.ts` confronta lo que cada tool
+> devuelve con lo que cada tool **declara**, y saca el esquema del
+> registro del propio tool (`captureTool`), no de un import: comparar
+> contra una copia escrita en el test no comprobaría nada, porque las
+> dos copias se separarían juntas.
+>
+> Comprueba las **dos** direcciones, que son fallos distintos. Faltan
+> campos → un agente lee `undefined` donde el contrato prometía un
+> valor; lo caza el `safeParse`. Sobran campos → el tool devuelve datos
+> que su contrato no describe, y zod los descarta en silencio, así que
+> hay que comparar las claves a mano. Las dos verificadas metiendo el
+> fallo.
+>
+> `test` queda fuera con su motivo escrito: ejecuta la suite del
+> proyecto, e invocarlo desde dentro de la suite es una bomba de
+> bifurcación.
 
 # x00001 — Contratos de la superficie MCP: del esquema correcto a la superficie útil
 
@@ -48,7 +65,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
 - global_gate: type
 
 ### S1 — Prueba integrada del contrato que el árbol actual ya declara
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/generate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/summary.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/validate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/test.tool.spec.ts`
 - **Gate**: plugin
 - acceptance:
