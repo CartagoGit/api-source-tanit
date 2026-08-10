@@ -25,13 +25,7 @@
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IDetectedAuthScheme, IPostmanAuth } from "../../contracts/interfaces/core/discovery.interface.js";
-
-/** Variable de entorno donde vive la clave de API. */
-export const AUTH_API_KEY_VARIABLE = "apiKey";
-/** Variables del flujo OAuth2. Postman las pide por nombre. */
-export const AUTH_CLIENT_ID_VARIABLE = "clientId";
-/** Secreto de cliente para el flujo OAuth2. Va vacío y como secreto. */
-export const AUTH_CLIENT_SECRET_VARIABLE = "clientSecret";
+import { AUTH_API_KEY_VARIABLE, AUTH_CLIENT_ID_VARIABLE, AUTH_CLIENT_SECRET_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /**
  * Cabeceras que son una clave de API.

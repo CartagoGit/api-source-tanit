@@ -24,20 +24,7 @@ import type {
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IAuthFlow } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IApplyAuthFlowOptions } from "../../contracts/interfaces/core/domain.interface.js";
-
-/** Nombres de variable del environment donde viven las credenciales. */
-export const AUTH_USERNAME_VARIABLE = "authUsername";
-/** Contraseña del login. Va vacía y marcada como secreto. */
-export const AUTH_PASSWORD_VARIABLE = "authPassword";
-/**
- * Donde el script del login guarda el token.
- *
- * El nombre está aquí y no escrito en cada sitio porque lo comparten el
- * script que lo guarda, el bloque `auth` de la colección y la cabecera de
- * cada petición: si bailara entre ellos, la colección dejaría de
- * autenticar sin que nada fallara.
- */
-export const AUTH_TOKEN_VARIABLE = "token";
+import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /** Sufijos de URI que identifican cada paso del ciclo. */
 const LOGIN_URI_PATTERNS = [

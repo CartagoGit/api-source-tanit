@@ -10,7 +10,8 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { READ_CONCURRENCY, readAllFiles, readFilesInOrder } from "../../projects/core/helpers/read-files.helper";
+import { readAllFiles, readFilesInOrder } from "../../projects/core/helpers/read-files.helper";
+import { READ_CONCURRENCY } from "../../projects/contracts/constants/core/runtime-limits.constant";
 
 let dir = "";
 let paths: string[] = [];

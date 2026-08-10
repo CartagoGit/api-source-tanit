@@ -19,12 +19,10 @@
  */
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
+import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
 
 /** Solo el bucle local. Ver §1 de arriba. */
 const HOST = "127.0.0.1";
-
-/** Desde dónde se empieza a buscar puerto. */
-export const DEFAULT_UI_PORT = 4771;
 
 /** Cuántos puertos se prueban antes de rendirse. */
 const INTENTOS = 20;

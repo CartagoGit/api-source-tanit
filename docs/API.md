@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 145 símbolos en 42 módulos.
+> 135 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -245,25 +245,6 @@ export async function outputCollectionPath( projectName?: string, ): Promise<str
 export async function outputEnvironmentPath( envName: string, projectName?: string, ): Promise<string>
 ```
 
-#### `CONTAINMENT_ROOT_VAR`
-
-```ts
-export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT" as const
-```
-
-Raíces dentro de las cuales tiene que quedarse la salida, si las hay.
-
-Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
-uso legítimo y no hay motivo para estorbarlo. La pone **el plugin
-MCP** al spawnear el CLI, porque ahí quien elige la ruta es un agente
-y una ruta con `../` escribiría fuera del proyecto.
-
-Son varias, separadas por el separador de rutas del sistema, porque
-una sola no describe el uso legítimo: la salida puede ir con el
-proyecto que se escanea, dentro del workspace, o en un temporal, y las
-tres son razonables. Un guardián que bloquea el uso normal se acaba
-quitando.
-
 #### `toProjectRelative`
 
 ```ts
@@ -464,31 +445,6 @@ en `projects/frameworks/`.
 
 Flujo de autenticación de la colección.
 
-#### `AUTH_USERNAME_VARIABLE`
-
-```ts
-export const AUTH_USERNAME_VARIABLE = "authUsername"
-```
-
-#### `AUTH_PASSWORD_VARIABLE`
-
-```ts
-export const AUTH_PASSWORD_VARIABLE = "authPassword"
-```
-
-#### `AUTH_TOKEN_VARIABLE`
-
-```ts
-export const AUTH_TOKEN_VARIABLE = "token"
-```
-
-Donde el script del login guarda el token.
-
-El nombre está aquí y no escrito en cada sitio porque lo comparten el
-script que lo guarda, el bloque `auth` de la colección y la cabecera de
-cada petición: si bailara entre ellos, la colección dejaría de
-autenticar sin que nada fallara.
-
 #### `hasLoginEndpoint`
 
 ```ts
@@ -553,24 +509,6 @@ patrones de respuesta. Si no encuentra nada, devuelve undefined.
 ### `projects/core/domain/auth-scheme.service.ts`
 
 Qué esquema de autenticación usa la API, deducido de sus endpoints.
-
-#### `AUTH_API_KEY_VARIABLE`
-
-```ts
-export const AUTH_API_KEY_VARIABLE = "apiKey"
-```
-
-#### `AUTH_CLIENT_ID_VARIABLE`
-
-```ts
-export const AUTH_CLIENT_ID_VARIABLE = "clientId"
-```
-
-#### `AUTH_CLIENT_SECRET_VARIABLE`
-
-```ts
-export const AUTH_CLIENT_SECRET_VARIABLE = "clientSecret"
-```
 
 #### `detectAuthScheme`
 
@@ -846,23 +784,6 @@ ser del flujo de auth.
 ### `projects/core/domain/watcher.service.ts`
 
 Vigilar el proyecto y avisar cuando algo cambia.
-
-#### `DEFAULT_DEBOUNCE_MS`
-
-```ts
-export const DEFAULT_DEBOUNCE_MS = 300
-```
-
-#### `IGNORED_DIRS`
-
-```ts
-export const IGNORED_DIRS: ReadonlySet<string> = new Set([ OUTPUT_DIR_NAME, "node_modules", "vendor", ".git", ".svn", ".hg", "dist",
-```
-
-Carpetas que nunca aportan rutas y sí mucho ruido.
-
-`node_modules` es el caso extremo: un `bun install` a medias dispara
-miles de eventos y ninguno es un endpoint.
 
 #### `shouldIgnore`
 
@@ -1360,18 +1281,6 @@ export function countItems(collection: PostmanCollection):
 ### `projects/core/helpers/read-files.helper.ts`
 
 Leer muchos ficheros sin leerlos de uno en uno.
-
-#### `READ_CONCURRENCY`
-
-```ts
-export const READ_CONCURRENCY = 16
-```
-
-Cuántas lecturas se permiten a la vez.
-
-16 es suficiente para saturar un SSD y queda muy lejos del límite de
-descriptores de fichero del proceso (1024 por defecto en Linux), que
-es el motivo por el que esto lleva tope y no es un `Promise.all`.
 
 #### `readAllFiles`
 

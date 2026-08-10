@@ -33,10 +33,11 @@ import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
 } from "../../contracts/interfaces/core/generate-report.interface.js";
-import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
+
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
+import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline

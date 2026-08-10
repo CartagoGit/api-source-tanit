@@ -34,15 +34,7 @@
  */
 import { readFile } from "node:fs/promises";
 import type { IReadFile } from "../../contracts/interfaces/core/helpers.interface.js";
-
-/**
- * Cuántas lecturas se permiten a la vez.
- *
- * 16 es suficiente para saturar un SSD y queda muy lejos del límite de
- * descriptores de fichero del proceso (1024 por defecto en Linux), que
- * es el motivo por el que esto lleva tope y no es un `Promise.all`.
- */
-export const READ_CONCURRENCY = 16;
+import { READ_CONCURRENCY } from "../../contracts/constants/core/runtime-limits.constant.js";
 
 /** Un fichero leído. */
 

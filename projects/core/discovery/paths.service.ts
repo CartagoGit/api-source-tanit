@@ -41,6 +41,7 @@ import { existsSync } from "node:fs";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 import type { IPathScope } from "../../contracts/interfaces/core/discovery.interface.js";
+import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-limits.constant.js";
 
 // ---------------------------------------------------------------------------
 // Caché interna
@@ -457,22 +458,6 @@ export async function outputEnvironmentPath(
     .replace(/^-+|-+$/g, "");
   return join(outputDir(), `${base}.${slug}.postman_environment.json`);
 }
-
-/**
- * Raíces dentro de las cuales tiene que quedarse la salida, si las hay.
- *
- * Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
- * uso legítimo y no hay motivo para estorbarlo. La pone **el plugin
- * MCP** al spawnear el CLI, porque ahí quien elige la ruta es un agente
- * y una ruta con `../` escribiría fuera del proyecto.
- *
- * Son varias, separadas por el separador de rutas del sistema, porque
- * una sola no describe el uso legítimo: la salida puede ir con el
- * proyecto que se escanea, dentro del workspace, o en un temporal, y las
- * tres son razonables. Un guardián que bloquea el uso normal se acaba
- * quitando.
- */
-export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT" as const;
 
 async function ensureOutputDir(): Promise<void> {
   const fs = await import("node:fs/promises");

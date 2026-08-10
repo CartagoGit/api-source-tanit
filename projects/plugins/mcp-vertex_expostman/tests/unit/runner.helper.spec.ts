@@ -15,11 +15,11 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  SUPPORTED_REPORT_VERSION,
   normalizeCwd,
   readGenerateReport,
   runBunCommand,
 } from "../../src/lib/helpers/runner.helper";
+import { SUPPORTED_REPORT_VERSION } from "../../src/lib/contracts/constants/runner.constant";
 
 /** Un informe válido, con los campos que emite `generate --json`. */
 function reportJson(overrides: Record<string, unknown> = {}): string {

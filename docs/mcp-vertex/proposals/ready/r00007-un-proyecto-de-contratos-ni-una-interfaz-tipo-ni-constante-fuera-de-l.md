@@ -97,7 +97,30 @@ date: 2026-08-08
 > `summarizeWithAllFrameworks`, `scannerBundleFor`) y el `withScopedPaths`
 > que `lint:project-context` tiene declarado como deuda. Ni uno de tipo.
 >
-> Queda S6.
+> **S6 entregada, y con ella la propuesta entera.** `lint:contracts`
+> entra bloqueando: 158 tipos y constantes, todos en una carpeta de
+> contratos, y **dos** excepciones declaradas con su motivo.
+>
+> Las dos excepciones son el matiz que la propuesta no había pensado:
+> hay cosas que usan `const` y no son constantes. `UI_HTML` es la página
+> entera de la interfaz web —un asset que el programa sirve tal cual— y
+> `DEFAULT_REGISTRY` es un grafo de scanners ya instanciados, o sea una
+> raíz de composición. Meter cualquiera de las dos en una sección que
+> promete no tener implementación sería cumplir la letra rompiendo el
+> motivo.
+>
+> El criterio queda escrito: algo es contrato cuando **más de un módulo
+> depende de su valor o su forma concreta**.
+>
+> El gate falla de dos maneras, las dos verificadas metiendo el fallo: una
+> declaración fuera de sitio, y una excepción que ya no hace falta.
+>
+> De paso destapó un test frágil: `generate-json-report.test.ts` sacaba
+> `SUPPORTED_REPORT_VERSION` con una regex sobre el fichero del plugin.
+> Al mudar la constante, el `exec` devolvió `undefined`, `Number()` lo
+> convirtió en `NaN` y falló el test — no el contrato. Ahora importa el
+> valor: un test que lee código como texto comprueba dónde está escrito
+> algo, no cuánto vale.
 
 # r00007 — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él
 
@@ -177,7 +200,7 @@ El gate va en el ultimo slice a proposito. Escribirlo primero obliga a un modo a
   - "El plugin importa de `projects/contracts/`, no de `frameworks/index` ni de `core/exporters`"
 
 ### S6 — El gate que lo sostiene, y la regla escrita donde se lee
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2, S3, S4, S5]
 - **Files**: `scripts/gates/lint-contracts.script.ts`, `docs/mcp-vertex/AGENT-BOOTSTRAP.md`, `CONTRIBUTING.md`, `projects/contracts/README.md`
 - **Gate**: lint
