@@ -2,7 +2,14 @@ import { afterEach, describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { outputBasename, outputDir, outputEnvironmentPath, packageRoot, resetPathCache } from "../../projects/core/discovery/paths.service";
+import {
+  describeDiscoveredPaths,
+  outputBasename,
+  outputDir,
+  outputEnvironmentPath,
+  packageRoot,
+  resetPathCache,
+} from "../../projects/core/discovery/paths.service";
 
 describe("paths.service", () => {
   afterEach(() => {
@@ -115,6 +122,36 @@ describe("paths.service", () => {
    * `projects/core/examples/`, que no existe, así que no hacía nada sin
    * decirlo.
    */
+  /**
+   * La traza que el CLI imprime antes de escanear existe para descartar
+   * que se esté mirando la carpeta equivocada. Anunciaba una colección
+   * que no era la que se escribía tres líneas más abajo: sin nombre de
+   * proyecto, `outputBasename()` se cae al nombre del **directorio**, y
+   * el fichero real se llama como diga el manifiesto.
+   *
+   * Sobre una copia de `example-express` en una carpeta `api/`, decía
+   * `api.postman_collection.json` y escribía
+   * `sample-express.postman_collection.json`.
+   */
+  describe("describeDiscoveredPaths — la traza no puede mentir", () => {
+    test("sin nombre de proyecto, dice que aún no lo sabe", () => {
+      process.env["POSTMAN_PROJECT_ROOT"] = "/tmp/una-carpeta-cualquiera";
+      resetPathCache();
+      const traza = describeDiscoveredPaths();
+      expect(traza).toContain("<nombre-del-proyecto>");
+      // Y no se inventa el nombre del directorio.
+      expect(traza).not.toContain("una-carpeta-cualquiera.postman_collection");
+    });
+
+    test("con nombre, anuncia exactamente el fichero que se va a escribir", () => {
+      process.env["POSTMAN_PROJECT_ROOT"] = "/tmp/una-carpeta-cualquiera";
+      resetPathCache();
+      expect(describeDiscoveredPaths("mi-api")).toContain(
+        "mi-api.postman_collection.json",
+      );
+    });
+  });
+
   describe("packageRoot — la raíz de este paquete, no la de una subcarpeta", () => {
     test("apunta a la raíz del repo, donde está el package.json", () => {
       const raiz = packageRoot();

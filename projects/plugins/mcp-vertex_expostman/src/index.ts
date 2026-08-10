@@ -5,7 +5,7 @@
  * cualquier agente MCP-vertex compatible.
  *
  * Tools, por lo que hacen:
- *   - Escriben:   expostman_generate
+ *   - Escriben:   expostman_generate, expostman_init (la configuracion)
  *   - Publican:   expostman_push (el unico que sale de la maquina)
  *   - Diagnostican: expostman_scan (qué ve el discovery),
  *                   expostman_summary (el proyecto ya interpretado)
@@ -33,6 +33,7 @@ import { definePlugin } from "@mcp-vertex/core/public";
 import { ExportToPostmanOptionsSchema } from "./lib/contracts/plugin.interface";
 import { buildCheckToolRegistration } from "./lib/tools/check.tool";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
+import { buildInitToolRegistration } from "./lib/tools/init.tool";
 import { buildListToolRegistration } from "./lib/tools/list.tool";
 import { buildPushToolRegistration } from "./lib/tools/push.tool";
 import { buildScanToolRegistration } from "./lib/tools/scan.tool";
@@ -61,6 +62,7 @@ export default definePlugin({
         buildSummaryToolRegistration(ctx),
         buildTestToolRegistration(ctx),
         buildPushToolRegistration(ctx),
+        buildInitToolRegistration(ctx),
       ],
     };
   },

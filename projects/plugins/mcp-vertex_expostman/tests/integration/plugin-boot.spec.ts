@@ -20,6 +20,7 @@ const makeCtx = (options: Record<string, unknown> = {}) =>
 const EXPECTED_TOOLS = [
   "check",
   "generate",
+  "init",
   "list",
   "push",
   "scan",

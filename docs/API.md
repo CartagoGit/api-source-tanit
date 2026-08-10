@@ -269,7 +269,7 @@ saber dónde está instalado.
 #### `describeDiscoveredPaths`
 
 ```ts
-export function describeDiscoveredPaths(): string
+export function describeDiscoveredPaths(projectName?: string): string
 ```
 
 Las rutas resueltas, en texto, para la traza del CLI.
@@ -277,6 +277,20 @@ Las rutas resueltas, en texto, para la traza del CLI.
 Se imprime antes de escanear a propósito: cuando la salida no es la
 esperada, lo primero que hay que descartar es que se esté mirando otra
 carpeta.
+
+## Por qué recibe el nombre del proyecto
+
+Porque sin él **mentía**, y justo en la línea que existe para no
+mentir. `outputBasename()` sin argumento se cae a `projectBasename()`,
+que es el nombre del **directorio**; el fichero real se llama como el
+proyecto dice llamarse en su manifiesto. Sobre una copia de
+`example-express` en una carpeta `api/`, la traza anunciaba
+`api.postman_collection.json` y el CLI escribía
+`sample-express.postman_collection.json` tres líneas más abajo.
+
+Quien la imprime todavía no ha cargado la configuración —esa es la
+gracia de imprimirla antes—, así que el nombre es opcional: sin él se
+dice que aún no se sabe, en vez de inventarse uno.
 
 ### `projects/core/discovery/project-context.service.ts`
 

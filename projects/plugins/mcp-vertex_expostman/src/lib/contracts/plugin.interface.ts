@@ -16,6 +16,7 @@ import type { ICheckReport } from "../../../../../contracts/interfaces/cli/comma
 import type { IStatsOutcome } from "../../../../../contracts/interfaces/cli/stats-outcome.interface";
 import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-outcome.interface";
 import type { IPushOutcome } from "../../../../../contracts/interfaces/cli/push-outcome.interface";
+import type { IInitOutcome } from "../../../../../contracts/interfaces/cli/init-outcome.interface";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -643,3 +644,60 @@ const _pushCubreElComando: z.ZodType<
   >
 > = PushOutputSchema;
 void _pushCubreElComando;
+
+// --- `init`: preparar la configuracion sin parsear stdout -------------------
+
+/**
+ * Entrada de `init`.
+ *
+ * `outputDir` existe porque el destino por defecto —
+ * `<raiz>/resources/postman/examples/<nombre>/` — viene de cuando esto
+ * era una herramienta de Laravel, y en otros ecosistemas no es donde
+ * nadie lo buscaria.
+ */
+export const InitInputSchema = z
+  .object({
+    projectRoot: z.string().min(1).optional(),
+    /** Nombre del proyecto, si la deteccion por manifiesto no acierta. */
+    name: z.string().min(1).optional(),
+    /** Donde escribir la configuracion. Por defecto, la ruta convencional. */
+    outputDir: z.string().min(1).optional(),
+  })
+  .strict();
+
+export type IInitInput = z.infer<typeof InitInputSchema>;
+
+/**
+ * Lo que devuelve `init`.
+ *
+ * Las dos rutas son lo importante: los ficheros que escribe estan llenos
+ * de `// TODO` a proposito, asi que el siguiente paso siempre es que
+ * alguien los edite. Un agente que no pueda decir **donde** estan no ha
+ * terminado el trabajo, solo lo ha empezado.
+ */
+export const InitOutputSchema = z.object({
+  ok: z.literal(true),
+  projectName: z.string().describe("Deducido del manifiesto del ecosistema."),
+  baseUrl: z.string().describe("Del `.env` del proyecto, o el valor por defecto."),
+  authGuards: z
+    .array(z.string())
+    .describe(
+      "`['token']` cuando no se reconoce ninguno: no es que no haya auth, " +
+        "es que no se ha podido deducir cual.",
+    ),
+  routeFiles: z.array(z.string()).describe("Ficheros de rutas encontrados."),
+  configPath: z.string().nullable().describe("El `config.constant.ts` escrito."),
+  endpointsPath: z
+    .string()
+    .nullable()
+    .describe("El `endpoints.constant.ts`, vacio, para overrides manuales."),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IInitOutput = z.infer<typeof InitOutputSchema>;
+
+/** El esquema cubre el resultado del comando, menos `code` y `error`. */
+const _initCubreElComando: z.ZodType<
+  { ok: true; durationMs: number } & Omit<IInitOutcome, "code" | "error">
+> = InitOutputSchema;
+void _initCubreElComando;
