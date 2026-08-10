@@ -168,7 +168,12 @@ async function request<T = unknown>(path: string, config: IRequestOptions): Prom
         .join("&")}`
     : "";
 
-  let response: FetchResponse;
+  // El tipo se deriva de `doFetch` en vez de nombrar el global
+  // `FetchResponse`. Ese global lo declara `runtime.d.ts`, el sustituto
+  // a mano de `@types/node` que usa este repo; el plugin compila con los
+  // tipos reales y no lo tiene, así que nombrarlo rompía su typecheck en
+  // cuanto el plugin importó este módulo.
+  let response: Awaited<ReturnType<typeof doFetch>>;
   try {
     response = await doFetch(`${API_BASE}${path}${query}`, {
       method: config.method,

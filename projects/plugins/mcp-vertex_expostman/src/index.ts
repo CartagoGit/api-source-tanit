@@ -6,6 +6,7 @@
  *
  * Tools, por lo que hacen:
  *   - Escriben:   expostman_generate
+ *   - Publican:   expostman_push (el unico que sale de la maquina)
  *   - Diagnostican: expostman_scan (qué ve el discovery),
  *                   expostman_summary (el proyecto ya interpretado)
  *   - Inspeccionan lo generado: expostman_list, expostman_stats,
@@ -33,6 +34,7 @@ import { ExportToPostmanOptionsSchema } from "./lib/contracts/plugin.interface";
 import { buildCheckToolRegistration } from "./lib/tools/check.tool";
 import { buildGenerateToolRegistration } from "./lib/tools/generate.tool";
 import { buildListToolRegistration } from "./lib/tools/list.tool";
+import { buildPushToolRegistration } from "./lib/tools/push.tool";
 import { buildScanToolRegistration } from "./lib/tools/scan.tool";
 import { buildStatsToolRegistration } from "./lib/tools/stats.tool";
 import { buildSummaryToolRegistration } from "./lib/tools/summary.tool";
@@ -58,6 +60,7 @@ export default definePlugin({
         buildScanToolRegistration(ctx),
         buildSummaryToolRegistration(ctx),
         buildTestToolRegistration(ctx),
+        buildPushToolRegistration(ctx),
       ],
     };
   },

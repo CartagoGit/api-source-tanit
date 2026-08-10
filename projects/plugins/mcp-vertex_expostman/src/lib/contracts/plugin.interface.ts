@@ -15,6 +15,7 @@ import type { IProjectSummary } from "../../../../../contracts/interfaces/core/d
 import type { ICheckReport } from "../../../../../contracts/interfaces/cli/command-outcomes.interface";
 import type { IStatsOutcome } from "../../../../../contracts/interfaces/cli/stats-outcome.interface";
 import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-outcome.interface";
+import type { IPushOutcome } from "../../../../../contracts/interfaces/cli/push-outcome.interface";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -563,3 +564,82 @@ const _scanCubreElComando: z.ZodType<
   { ok: true; detected: boolean; durationMs: number } & Omit<IScanOutcome, "code">
 > = ScanOutputSchema;
 void _scanCubreElComando;
+
+// --- `push`: la unica operacion que escribe fuera del disco -----------------
+
+/**
+ * Entrada de `push`.
+ *
+ * **No lleva `apiKey`.** El secreto no entra por el input del tool: lo
+ * lee el CLI de `POSTMAN_API_KEY`, que es donde el host puede guardarlo
+ * sin que viaje por la conversacion. Un `apiKey` en el esquema seria una
+ * invitacion a que el agente lo pida y lo repita.
+ */
+export const PushInputSchema = z
+  .object({
+    projectRoot: z.string().min(1).optional(),
+    /** Workspace destino. Si falta, el personal por defecto. */
+    workspaceId: z.string().min(1).optional(),
+    /** Framework a la fuerza, igual que en `generate`. */
+    framework: z.enum([...FRAMEWORK_IDS]).optional(),
+    /** Si es `false`, sube solo la coleccion. Por defecto sube tambien los entornos. */
+    withEnvironments: z.boolean().optional(),
+  })
+  .strict();
+
+export type IPushInput = z.infer<typeof PushInputSchema>;
+
+/** Un artefacto que ha llegado a Postman. */
+export const PushedArtifactSchema = z.object({
+  action: z.enum(["created", "updated"]).describe("`created` si no existia."),
+  uid: z.string().describe("UID que asigna Postman: `<userId>-<uuid>`."),
+  name: z.string(),
+});
+
+/**
+ * Lo que devuelve `push`.
+ *
+ * Ni un campo con el secreto, ni enmascarado. El fallo llega como
+ * `{ reason, nextAction }` **redactados**, no como el cuerpo crudo de la
+ * respuesta de Postman: ese cuerpo puede traer la peticion que lo causo,
+ * y con ella la cabecera de la clave.
+ */
+export const PushOutputSchema = z.object({
+  ok: z.literal(true),
+  pushed: z
+    .boolean()
+    .describe(
+      "Distinto de `ok`: `ok` dice que la operacion se pudo intentar, " +
+        "`pushed` dice si algo llego a Postman. Una clave caducada " +
+        "detectada es una comprobacion que ha funcionado.",
+    ),
+  user: z
+    .string()
+    .nullable()
+    .describe(
+      "Usuario con el que se autentico. Es lo que permite darse cuenta de " +
+        "que se ha subido al workspace equivocado, que es el error caro.",
+    ),
+  framework: z.string().nullable(),
+  requests: z.number().int().nonnegative(),
+  collection: PushedArtifactSchema.nullable(),
+  environments: z.array(PushedArtifactSchema),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IPushOutput = z.infer<typeof PushOutputSchema>;
+
+/**
+ * El esquema cubre el resultado del comando, menos `code` y `error`.
+ *
+ * `code` no viaja —el sobre de `toolError` ya distingue el fallo— y
+ * `error` tampoco: cuando lo hay, el tool responde con `toolError` en
+ * vez de con este esquema.
+ */
+const _pushCubreElComando: z.ZodType<
+  { ok: true; pushed: boolean; durationMs: number } & Omit<
+    IPushOutcome,
+    "code" | "error"
+  >
+> = PushOutputSchema;
+void _pushCubreElComando;

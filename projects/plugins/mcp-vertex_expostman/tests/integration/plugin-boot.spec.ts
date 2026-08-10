@@ -21,6 +21,7 @@ const EXPECTED_TOOLS = [
   "check",
   "generate",
   "list",
+  "push",
   "scan",
   "stats",
   "summary",

@@ -15,15 +15,50 @@ import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
 import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../core/domain/postman-api.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
+import type {
+  IPushFailure,
+  IPushOutcome,
+  IPushedArtifact,
+} from "../../contracts/interfaces/cli/push-outcome.interface.js";
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+/** Lo que se devuelve cuando no se ha llegado a subir nada. */
+function sinSubir(code: number, error: IPushFailure | null): IPushOutcome {
+  return {
+    code,
+    user: null,
+    framework: null,
+    requests: 0,
+    collection: null,
+    environments: [],
+    error,
+  };
+}
+
+/**
+ * Sube la colección y devuelve **lo que ha pasado**, imprimiéndolo por
+ * el camino.
+ *
+ * `main` es la envoltura que solo devuelve el código de salida, igual
+ * que en `generate`, `check` y `list`. Se separa porque el tool del
+ * plugin necesita los datos: parsear estas líneas con expresiones
+ * regulares se rompe a la primera traducción — ya pasó, y el tool
+ * `generate` devolvía `ok: true` con `collectionPath: "<no detectado>"`.
+ */
+export async function runPush(
+  argv: string[] = process.argv.slice(2),
+): Promise<IPushOutcome> {
   const apiKey = readFlag(argv, "--api-key") ?? process.env["POSTMAN_API_KEY"] ?? "";
   if (!apiKey) {
     console.error("Missing Postman API key.\n");
     console.error("  export-to-postman push --api-key <key>");
     console.error("  POSTMAN_API_KEY=<key> export-to-postman push\n");
     console.error("Create one at https://postman.co/settings/me/api-keys");
-    return 1;
+    return sinSubir(1, {
+      reason: "No se ha dado ninguna clave de API de Postman.",
+      nextAction:
+        "Pasa `--api-key <clave>` o define POSTMAN_API_KEY. Se crea en " +
+        "https://postman.co/settings/me/api-keys",
+    });
   }
 
   const workspaceId = readFlag(argv, "--workspace") ?? undefined;
@@ -36,14 +71,19 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   if (!root) {
     console.error("Could not determine the project root.");
     console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
-    return 1;
+    return sinSubir(1, {
+      reason: "No se pudo determinar la raíz del proyecto.",
+      nextAction: "Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.",
+    });
   }
 
+  let usuario: string;
   try {
     const user = await verifyApiKey(options);
-    console.log(`→ Signed in to Postman as ${user.username}`);
+    usuario = user.username;
+    console.log(`→ Signed in to Postman as ${usuario}`);
   } catch (err) {
-    return reportApiError(err);
+    return sinSubir(reportApiError(err), falloDeApi(err));
   }
 
   console.log("→ Scanning the project…");
@@ -62,14 +102,26 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   if (requestCount === 0) {
     console.error("No endpoints were found, nothing to push.");
     console.error("Run `export-to-postman generate --inspect` to see what was detected.");
-    return 1;
+    return {
+      ...sinSubir(1, {
+        reason: "No se ha encontrado ningún endpoint, no hay nada que subir.",
+        nextAction:
+          "Ejecuta `scan` sobre el mismo proyecto para ver qué detecta el " +
+          "discovery, o fuerza el framework con `--framework <id>`.",
+      }),
+      user: usuario,
+      framework: result.match?.framework ?? null,
+    };
   }
   console.log(
     `  · ${result.match?.framework ?? "unknown"} · ${requestCount} requests`,
   );
 
+  const subidos: IPushedArtifact[] = [];
+  let coleccionSubida: IPushedArtifact | null = null;
   try {
     const pushed = await pushCollection(result.collection, options);
+    coleccionSubida = { action: pushed.action, uid: pushed.uid, name: pushed.name };
     console.log(
       `✔ Collection ${pushed.action}: "${pushed.name}"` +
         (pushed.uid ? ` (${pushed.uid})` : ""),
@@ -84,15 +136,40 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       );
       for (const environment of environments) {
         const pushedEnv = await pushEnvironment(environment, options);
+        subidos.push({
+          action: pushedEnv.action,
+          uid: pushedEnv.uid,
+          name: pushedEnv.name,
+        });
         console.log(`  · Environment ${pushedEnv.action}: "${pushedEnv.name}"`);
       }
     }
   } catch (err) {
-    return reportApiError(err);
+    return {
+      ...sinSubir(reportApiError(err), falloDeApi(err)),
+      user: usuario,
+      framework: result.match?.framework ?? null,
+      requests: requestCount,
+      collection: coleccionSubida,
+      environments: subidos,
+    };
   }
 
   console.log("\nOpen Postman — the collection is already there.");
-  return 0;
+  return {
+    code: 0,
+    user: usuario,
+    framework: result.match?.framework ?? null,
+    requests: requestCount,
+    collection: coleccionSubida,
+    environments: subidos,
+    error: null,
+  };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runPush(argv)).code;
 }
 
 interface IItem {
@@ -101,6 +178,37 @@ interface IItem {
 
 function countRequests(items: ReadonlyArray<IItem>): number {
   return items.reduce((total, i) => total + (i.item ? countRequests(i.item) : 1), 0);
+}
+
+/**
+ * Traduce un fallo de la API a algo que se puede devolver a un agente.
+ *
+ * **Aquí es donde se decide qué NO sale.** `PostmanApiError.detail` es
+ * el cuerpo que devuelve Postman, y eso es texto de un tercero: puede
+ * traer la petición que lo causó, y con ella la cabecera `X-Api-Key`.
+ * `push` es el único comando que maneja un secreto y el que un agente
+ * va a invocar por su cuenta, así que lo que devuelva acaba en un
+ * historial de conversación o en un log del host.
+ *
+ * Por eso el `detail` **no viaja**: se queda en la traza que ve la
+ * persona, y al agente le va un motivo redactado con su salida. Un
+ * secreto que se filtra por un mensaje de error no se puede retirar.
+ */
+function falloDeApi(err: unknown): IPushFailure {
+  if (err instanceof PostmanApiError) {
+    return {
+      reason: err.message,
+      nextAction:
+        "Comprueba que la clave siga siendo válida y que tenga permiso " +
+        "sobre el workspace. El detalle completo sale en la traza del CLI; " +
+        "no se devuelve aquí porque puede incluir la petición, y con ella " +
+        "la clave.",
+    };
+  }
+  return {
+    reason: err instanceof Error ? err.message : String(err),
+    nextAction: "Reintenta; si persiste, ejecuta `push` a mano para ver la traza.",
+  };
 }
 
 function reportApiError(err: unknown): number {
