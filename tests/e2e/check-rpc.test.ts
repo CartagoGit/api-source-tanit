@@ -62,7 +62,7 @@ describe("check sobre GraphQL", () => {
   test("cuenta las 5 operaciones, no 1", { timeout: 120_000 }, async () => {
     const { out } = await check();
     expect(out).toMatch(/Routes en source:\s+5/);
-    expect(out).toMatch(/Requests en colección:\s+5/);
+    expect(out).toMatch(/Requests in collection:\s+5/);
   });
 
   test("una colección al día pasa", { timeout: 120_000 }, async () => {
@@ -82,7 +82,7 @@ describe("check sobre GraphQL", () => {
 
       const { code, out } = await check();
       expect(code).toBe(1);
-      expect(out).toContain("Faltan en la colección");
+      expect(out).toContain("Missing from the collection");
     } finally {
       await writeFile(collection, original);
     }

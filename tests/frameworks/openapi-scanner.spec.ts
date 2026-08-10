@@ -1,9 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  OpenApiProjectScanner,
-  OpenApiScanner,
-  OpenApiValidationProvider,
-} from "../../projects/frameworks/scanners/openapi.scanner";
+import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

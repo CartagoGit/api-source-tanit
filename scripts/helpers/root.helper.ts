@@ -65,9 +65,20 @@ export function fromRoot(...segments: readonly string[]): string {
 /** Todo el código del producto. */
 export const PROJECTS_DIR = fromRoot("projects");
 
+/**
+ * Interfaces, tipos y constantes compartidos. Sin implementación.
+ *
+ * La sección más nuclear: no depende de nadie y todas dependen de ella.
+ * Antes esto era `projects/core/contracts/`, dentro del núcleo, y por eso
+ * usarlo desde la UI o desde el plugin arrastraba el núcleo entero
+ * (r00007).
+ */
+export const CONTRACTS_DIR = join(PROJECTS_DIR, "contracts");
+export const CONTRACTS_INTERFACES_DIR = join(CONTRACTS_DIR, "interfaces");
+export const CONTRACTS_CONSTANTS_DIR = join(CONTRACTS_DIR, "constants");
+
 /** Núcleo agnóstico: no nombra ni un framework. */
 export const CORE_DIR = join(PROJECTS_DIR, "core");
-export const CORE_CONTRACTS_DIR = join(CORE_DIR, "contracts");
 export const CORE_DOMAIN_DIR = join(CORE_DIR, "domain");
 export const CORE_DISCOVERY_DIR = join(CORE_DIR, "discovery");
 export const CORE_ADAPTERS_DIR = join(CORE_DIR, "adapters");
@@ -176,7 +187,9 @@ export const WELL_KNOWN_PATHS: Readonly<Record<string, string>> = {
   REPO_ROOT,
   PROJECTS_DIR,
   CORE_DIR,
-  CORE_CONTRACTS_DIR,
+  CONTRACTS_DIR,
+  CONTRACTS_INTERFACES_DIR,
+  CONTRACTS_CONSTANTS_DIR,
   CORE_DOMAIN_DIR,
   CORE_DISCOVERY_DIR,
   CORE_ADAPTERS_DIR,

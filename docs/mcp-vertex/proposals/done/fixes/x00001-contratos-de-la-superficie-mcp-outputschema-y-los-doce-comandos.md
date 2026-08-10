@@ -2,7 +2,7 @@
 id: x00001
 title: "Contratos de la superficie MCP: del esquema correcto a la superficie util"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
@@ -14,9 +14,62 @@ date: 2026-08-08
 > devolvía 18, y `validate` reportaba una colección desincronizada como
 > *fallo de herramienta*.
 >
-> De S3 va el tool que más falta hacía, **`check`**. Quedan `list`,
-> `stats` y `scan`, que son mecánicos ahora que el patrón está: extraer
-> el `run*()` del comando y envolverlo.
+> **S2 cerrada a 2026-08-08.** Los cuatro tools de solo lectura están:
+> `check`, `list`, `stats` y `scan`. Ocho tools para doce comandos.
+>
+> `stats` y `scan` no eran mecánicos. Al ir a envolver `scan` salió que
+> **cuatro de los doce comandos** —`init`, `open`, `summary` y `scan`—
+> llamaban a `process.exit(await main())` en el cuerpo del módulo, sin
+> guard: importarlos lanzaba el comando y mataba el proceso. Para un
+> servidor MCP de vida larga eso es el servidor entero cayéndose al
+> registrar el tool. `lint:command-coverage` ahora lo exige, y se
+> verificó reintroduciendo el fallo a propósito.
+>
+> Los dos comandos se ejecutaron antes de envolverlos, que es lo que
+> destapó que `list` no listaba nada. Esta vez los dos funcionaban.
+>
+> **S1 cerrada.** `output-contract.spec.ts` confronta lo que cada tool
+> devuelve con lo que cada tool **declara**, y saca el esquema del
+> registro del propio tool (`captureTool`), no de un import: comparar
+> contra una copia escrita en el test no comprobaría nada, porque las
+> dos copias se separarían juntas.
+>
+> Comprueba las **dos** direcciones, que son fallos distintos. Faltan
+> campos → un agente lee `undefined` donde el contrato prometía un
+> valor; lo caza el `safeParse`. Sobran campos → el tool devuelve datos
+> que su contrato no describe, y zod los descarta en silencio, así que
+> hay que comparar las claves a mano. Las dos verificadas metiendo el
+> fallo.
+>
+> `test` queda fuera con su motivo escrito: ejecuta la suite del
+> proyecto, e invocarlo desde dentro de la suite es una bomba de
+> bifurcación.
+>
+> **S3 y S4 cerradas, y con ellas la propuesta.** Diez tools.
+>
+> De `push`, lo que importa no es el tool sino las tres puertas por las
+> que la clave podría salir: el input no la acepta (`.strict()`, así que
+> pasarla es inválido, no ignorada), la salida feliz no la lleva, y el
+> **error** tampoco — que es la que se olvida, porque
+> `PostmanApiError.detail` es el cuerpo de Postman y puede traer la
+> petición con su cabecera dentro. Verificado metiendo la clave en el
+> `reason` a propósito.
+>
+> De `init`, lo que importa es que se midió antes de envolverlo: generar
+> con su config y sin ella da **exactamente lo mismo**. O sea que `init`
+> no hace falta para que la herramienta funcione, y el tool se justifica
+> por lo otro —personalizar sin inventarse la forma de `ProjectConfig`—.
+> Eso está escrito en el propio tool, no vendido como si fuera esencial.
+>
+> Y escribir su test destapó un bug: la traza que el CLI imprime antes de
+> escanear anunciaba `<carpeta>.postman_collection.json` mientras
+> escribía `<proyecto>.postman_collection.json` tres líneas más abajo.
+> Esa línea existe justamente para descartar que estés mirando la carpeta
+> equivocada, y mentía.
+>
+> S4 vive en `docs/MCP-SURFACE.md` y no en `proposals/`: no es una
+> propuesta, es el criterio con el que se decide. `lint:proposals` lo
+> dijo antes que yo.
 
 # x00001 — Contratos de la superficie MCP: del esquema correcto a la superficie útil
 
@@ -38,7 +91,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
 - global_gate: type
 
 ### S1 — Prueba integrada del contrato que el árbol actual ya declara
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/generate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/summary.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/validate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/test.tool.spec.ts`
 - **Gate**: plugin
 - acceptance:
@@ -47,7 +100,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
   - "La propuesta deja de perseguir una deuda ya cerrada en texto y persigue la garantía ejecutable que aún falta"
 
 ### S2 — Los tools de solo lectura que hoy faltan
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/check.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/list.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/stats.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/scan.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/index.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
 - **Gate**: plugin
@@ -57,7 +110,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
   - "Cada tool nuevo nace con `outputSchema` y con prueba integrada"
 
 ### S3 — Las operaciones útiles pero no triviales: `push` e `init`
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/push.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/push.tool.spec.ts`
 - **Gate**: e2e
@@ -67,7 +120,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
   - "Si alguno se descarta, la propuesta deja escrita la razón"
 
 ### S4 — Decisión explícita sobre lo que NO debe ser una tool MCP
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S3]
 - **Files**: `docs/mcp-vertex/proposals/ready/DECISION-mcp-surface.md`
 - **Gate**: none

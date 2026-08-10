@@ -1,5 +1,6 @@
 
 import { readFile, readdir } from "node:fs/promises";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
 import type {
@@ -9,7 +10,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -142,9 +143,9 @@ async function parseCsFile(
   let classStart = -1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    CLASS_ATTR_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = CLASS_ATTR_RE.exec(line)) !== null) {
+    const classAttrRe = ownRegex(CLASS_ATTR_RE);
+    while ((m = classAttrRe.exec(line)) !== null) {
       const decorator = m[1] ?? "";
       if (decorator === "Route") {
         const args = m[2] ?? "";
@@ -161,9 +162,9 @@ async function parseCsFile(
   // 2) Buscar method attributes.
   for (let i = classStart + 1; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    METHOD_ATTR_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = METHOD_ATTR_RE.exec(line)) !== null) {
+    const methodAttrRe = ownRegex(METHOD_ATTR_RE);
+    while ((m = methodAttrRe.exec(line)) !== null) {
       const decorator = m[1] ?? "";
       const args = m[2] ?? "";
       const subPath = extractPath(args);

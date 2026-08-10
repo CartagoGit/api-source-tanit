@@ -28,7 +28,7 @@ import {
   pluginDir,
   smokeFixtureDir,
 } from "../../scripts/helpers/root.helper";
-import { SUPPORTED_FRAMEWORKS } from "../../projects/frameworks/index";
+import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
 
 describe("WELL_KNOWN_PATHS", () => {
   // El test que importa: si alguien mueve una carpeta y no toca el
@@ -90,7 +90,7 @@ describe("rutas parametrizadas", () => {
     expect(statSync(CLI_ENTRYPOINT).isFile()).toBe(true);
   });
 
-  test.each([...SUPPORTED_FRAMEWORKS])(
+  test.each([...FRAMEWORK_IDS])(
     "%s tiene su fixture completo y su fixture mínimo",
     (framework) => {
       expect(existsSync(comprehensiveFixtureDir(framework)), "comprehensive").toBe(true);
@@ -98,7 +98,7 @@ describe("rutas parametrizadas", () => {
     },
   );
 
-  test.each([...SUPPORTED_FRAMEWORKS])("%s tiene su proyecto de ejemplo", (framework) => {
+  test.each([...FRAMEWORK_IDS])("%s tiene su proyecto de ejemplo", (framework) => {
     // `openapi` es el único cuyo ejemplo no sigue el patrón del nombre:
     // se llama `example-openapi-headers` porque lo que ejercita son las
     // cabeceras del spec.

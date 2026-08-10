@@ -16,32 +16,9 @@
  * instaladas, o directamente no ser ejecutable. Lo que no se reconoce se
  * degrada a `type: "string"` en lugar de romper el escaneo.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { splitTopLevel, unwrapObjectLiteralItem } from "../../core/helpers/source-scan.helper.js";
-
-/** Campo zod ya parseado, antes de convertirse en `IValidationSpec`. */
-export interface IZodField {
-  readonly name: string;
-  readonly type: IValidationSpec["type"];
-  readonly required: boolean;
-  readonly format?: string;
-  readonly enumValues?: ReadonlyArray<string>;
-  /**
-   * El argumento de `.min()`, **sin interpretar**.
-   *
-   * En zod, `.min()` es el mismo método con dos significados según el
-   * tipo base: `z.string().min(2)` son dos caracteres y
-   * `z.number().min(2)` es el valor dos. Se guarda crudo aquí y lo
-   * clasifica `zodFieldToSpec`, que es quien conoce el tipo.
-   *
-   * Antes iba directo a `minLength`, así que un `z.number().min(0).max(120)`
-   * producía un campo numérico con `minLength: 0` y `maxLength: 120` —
-   * restricciones que no significan nada sobre un número, y que las
-   * herramientas que leen el JSON Schema ignoran. La cota se perdía.
-   */
-  readonly min?: number;
-  readonly max?: number;
-}
+import type { IZodField } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** Tipos donde `.min()/.max()` hablan del VALOR, no de la longitud. */
 const NUMERIC_TYPES: ReadonlySet<IValidationSpec["type"]> = new Set([

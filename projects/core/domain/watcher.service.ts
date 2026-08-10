@@ -24,39 +24,9 @@
 import { watch, type FSWatcher } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 
-import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
-
-/** Cuánto se espera a que pare el teclado antes de regenerar. */
-export const DEFAULT_DEBOUNCE_MS = 300;
-
-/**
- * Carpetas que nunca aportan rutas y sí mucho ruido.
- *
- * `node_modules` es el caso extremo: un `bun install` a medias dispara
- * miles de eventos y ninguno es un endpoint.
- */
-export const IGNORED_DIRS: ReadonlySet<string> = new Set([
-  OUTPUT_DIR_NAME,
-  "node_modules",
-  "vendor",
-  ".git",
-  ".svn",
-  ".hg",
-  "dist",
-  "build",
-  "target",
-  "out",
-  ".next",
-  ".nuxt",
-  ".cache",
-  "__pycache__",
-  ".venv",
-  "venv",
-  ".idea",
-  ".vscode",
-  "coverage",
-  "tmp",
-]);
+import type { IWatchHandle, IWatchOptions } from "../../contracts/interfaces/core/domain.interface.js";
+import { DEFAULT_DEBOUNCE_MS } from "../../contracts/constants/core/runtime-limits.constant.js";
+import { IGNORED_DIRS } from "../../contracts/constants/core/watch.constant.js";
 
 /** Ficheros que cambian solos y no son código: temporales de editor. */
 const IGNORED_FILE_RE = /(^\.|~$|\.swp$|\.swx$|\.tmp$|^\d+$)/;
@@ -118,23 +88,6 @@ export function createDebouncer(
       return batch.length;
     },
   };
-}
-
-/** Qué vigilar, con cuánto rebote, y qué hacer cuando algo cambia. */
-export interface IWatchOptions {
-  /** Raíz del proyecto a vigilar. */
-  readonly root: string;
-  /** Milisegundos de espera tras el último cambio. */
-  readonly debounceMs?: number;
-  /** Carpetas extra a ignorar, además de las de siempre. */
-  readonly ignoreDirs?: ReadonlySet<string>;
-  /** Qué hacer cuando un lote de cambios se asienta. */
-  readonly onChange: (changed: readonly string[]) => void | Promise<void>;
-}
-
-/** Lo que devuelve `watchProject` para poder parar. */
-export interface IWatchHandle {
-  close(): void;
 }
 
 /**

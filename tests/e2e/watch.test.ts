@@ -12,8 +12,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { watchProject, type IWatchHandle } from "../../projects/core/domain/watcher.service";
-import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { watchProject } from "../../projects/core/domain/watcher.service";
+import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
+import type { IWatchHandle } from "../../projects/contracts/interfaces/core/domain.interface.js";
 
 let root = "";
 let handle: IWatchHandle | null = null;

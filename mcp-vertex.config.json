@@ -152,7 +152,7 @@
     },
     "issues": {
       "options": {
-        "scaffoldDir": "docs/mcp-vertex/proposals/retired/issues"
+        "scaffoldDir": "docs/mcp-vertex/issues"
       }
     },
     "refactor": {

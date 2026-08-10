@@ -14,16 +14,8 @@
  * El análisis es textual: no se importa el módulo del proyecto
  * escaneado, que puede estar en otra versión de Python o sin instalar.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
-
-/** Un modelo Pydantic localizado en el fuente. */
-export interface IPydanticModel {
-  readonly className: string;
-  /** Nombre del campo → anotación de tipo tal cual aparece. */
-  readonly fields: ReadonlyMap<string, string>;
-  /** Línea (0-based) donde arranca la clase. */
-  readonly line: number;
-}
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
+import type { IPydanticModel } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** Clases base que identifican un modelo parseable. */
 const MODEL_BASE_RE = /class\s+(\w+)\s*\(\s*(?:BaseModel|pydantic\.BaseModel)\s*\)\s*:/g;

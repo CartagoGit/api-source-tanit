@@ -10,7 +10,8 @@
  * segura, simplemente no añade nada. Postman seguirá siendo útil, solo
  * perderemos ejemplos automáticos para esos casos.
  */
-import type { EndpointSpec } from "../contracts/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { BodyInference, InferApplyStats } from "../../contracts/interfaces/core/domain.interface.js";
 
 /** Path params detectados en una URI ya normalizada a Postman (`{{x}}`). */
 export function extractPathParams(uri: string): string[] {
@@ -114,13 +115,6 @@ export function exampleForQueryField(name: string): string {
 // ---------------------------------------------------------------------------
 // Sugerencias de body (POST/PUT/PATCH sin FormRequest).
 // ---------------------------------------------------------------------------
-
-/** El body inferido para un endpoint y con qué confianza se dedujo. */
-export interface BodyInference {
-  /** Filename o heurística que produjo el body. */
-  reason: string;
-  body: Record<string, unknown>;
-}
 
 const ARRAY_HINT_FIELDS = new Set([
   "tags",
@@ -312,19 +306,6 @@ export function inferCollectionVariables(
 // ---------------------------------------------------------------------------
 // Application al catálogo
 // ---------------------------------------------------------------------------
-
-/**
- * Cuánto ha rellenado la inferencia agnóstica.
- *
- * Lo imprime el CLI: es la forma de ver de un vistazo cuánto viene del
- * código y cuánto de una heurística.
- */
-export interface InferApplyStats {
-  bodiesAdded: number;
-  queriesAdded: number;
-  variableInferred: number;
-  skippedManual: number;
-}
 
 /**
  * Enriquece los specs que NO tienen FormRequest con body y query

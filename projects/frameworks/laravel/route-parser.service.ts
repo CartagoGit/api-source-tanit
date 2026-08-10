@@ -19,18 +19,12 @@
  * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
-import type { IProjectContext } from "../../core/contracts/project-context.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { fromProjectRoot, projectDirs } from "../../core/discovery/project-context.service.js";
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "../../core/discovery/paths.service.js";
-import type { ParsedRoute as NeutralParsedRoute } from "../../core/contracts/scanner.interface.js";
-
-/**
- * Re-export del tipo neutro para no romper imports existentes.
- * `route-parser.service.ts` se mantiene como IMPLEMENTACIÓN Laravel
- * del contrato `IRouteScanner` (ver `services/scanners/laravel.scanner.ts`).
- */
-export type ParsedRoute = NeutralParsedRoute;
+import type { ParsedRoute } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
@@ -66,8 +60,8 @@ export async function parseRoutesFile(
   // Mapa alias → FQCN a partir de los `use` del archivo.
   const imports = new Map<string, string>();
   let um: RegExpExecArray | null;
-  USE_RE.lastIndex = 0;
-  while ((um = USE_RE.exec(text)) !== null) {
+  const useRe = ownRegex(USE_RE);
+  while ((um = useRe.exec(text)) !== null) {
     const fqcn = um[1];
     if (!fqcn) continue;
     const short = fqcn.split("\\").pop() ?? fqcn;

@@ -12,7 +12,7 @@
  * come un error de parseo.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { cp, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdtemp, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -21,8 +21,9 @@ import { runProcess } from "../helpers/run-process";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../projects/core/contracts/generate-report.interface";
-import { CLI_COMMANDS_DIR, MCP_VERTEX_PLUGIN_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
+} from "../../projects/contracts/interfaces/core/generate-report.interface";
+import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
+import { SUPPORTED_REPORT_VERSION } from "../../projects/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner.constant";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 const SOURCE_PROJECT = exampleDir("express");
@@ -64,17 +65,23 @@ describe("generate --json", () => {
     expect(report.ok).toBe(true);
   });
 
-  // El plugin de mcp-vertex rechaza un informe cuya versión no conoce.
-  // Si alguien sube `GENERATE_REPORT_VERSION` y se olvida del plugin,
-  // el tool `generate` deja de funcionar entero — y sin este test nadie
-  // se entera hasta que un agente lo invoca de verdad.
-  test("el plugin lee exactamente esta versión del contrato", async () => {
-    const pluginHelper = await readFile(
-      join(MCP_VERTEX_PLUGIN_DIR, "src/lib/helpers/runner.helper.ts"),
-      "utf8",
-    );
-    const declared = /SUPPORTED_REPORT_VERSION = (\d+)/.exec(pluginHelper)?.[1];
-    expect(Number(declared)).toBe(GENERATE_REPORT_VERSION);
+  /**
+   * El plugin de mcp-vertex rechaza un informe cuya versión no conoce.
+   * Si alguien sube `GENERATE_REPORT_VERSION` y se olvida del plugin, el
+   * tool `generate` deja de funcionar entero, y sin este test nadie se
+   * entera hasta que un agente lo invoca de verdad.
+   *
+   * Se **importa** la constante en vez de buscarla con una regex dentro
+   * de un fichero. La versión anterior leía
+   * `src/lib/helpers/runner.helper.ts` y sacaba el número con
+   * `/SUPPORTED_REPORT_VERSION = (\d+)/`; al mudar la constante a la
+   * carpeta de contratos del plugin, el `exec` devolvió `undefined`, el
+   * `Number()` lo convirtió en `NaN`, y lo que falló fue este test — no
+   * el contrato. Un test que lee código como texto comprueba dónde está
+   * escrito algo, no cuánto vale.
+   */
+  test("el plugin lee exactamente esta versión del contrato", () => {
+    expect(SUPPORTED_REPORT_VERSION).toBe(GENERATE_REPORT_VERSION);
   });
 
   test("trae el framework detectado y el nombre del proyecto", () => {

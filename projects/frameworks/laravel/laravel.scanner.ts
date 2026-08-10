@@ -11,6 +11,7 @@
  * `ParsedRoute` en su forma neutra.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -21,7 +22,8 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
+import type { LaravelScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const RESOURCE_RE =
@@ -79,8 +81,8 @@ function captureWhereConstraints(
   for (let i = startIndex; i < end; i++) {
     const line = lines[i] ?? "";
     let m: RegExpExecArray | null;
-    WHERE_RE.lastIndex = 0;
-    while ((m = WHERE_RE.exec(line)) !== null) {
+    const whereRe = ownRegex(WHERE_RE);
+    while ((m = whereRe.exec(line)) !== null) {
       const name = m[1];
       const pattern = m[2];
       if (name && pattern) {
@@ -183,8 +185,8 @@ async function detectFilePrefixes(projectRoot: string): Promise<Record<string, s
     const text = await readFile(provider, "utf8");
     const out: Record<string, string[]> = {};
     let m: RegExpExecArray | null;
-    PROVIDER_RE.lastIndex = 0;
-    while ((m = PROVIDER_RE.exec(text)) !== null) {
+    const providerRe = ownRegex(PROVIDER_RE);
+    while ((m = providerRe.exec(text)) !== null) {
       const blockStart = m.index + m[0].length;
       let depth = 1;
       let i = blockStart;
@@ -195,10 +197,8 @@ async function detectFilePrefixes(projectRoot: string): Promise<Record<string, s
         i++;
       }
       const block = text.slice(blockStart, i);
-      PROVIDER_PREFIX_RE.lastIndex = 0;
-      PROVIDER_GROUP_RE.lastIndex = 0;
-      const pm = PROVIDER_PREFIX_RE.exec(block);
-      const gm = PROVIDER_GROUP_RE.exec(block);
+      const pm = ownRegex(PROVIDER_PREFIX_RE).exec(block);
+      const gm = ownRegex(PROVIDER_GROUP_RE).exec(block);
       if (pm?.[1] && gm?.[1]) {
         const prefixParts = pm[1].split("/").filter(Boolean);
         const filePath = gm[1].replace(/^\.\//, "").replace(/\\/g, "/");
@@ -220,11 +220,6 @@ function stripComments(src: string): string {
 // ---------------------------------------------------------------------------
 // Route scanner
 // ---------------------------------------------------------------------------
-
-export interface LaravelScannerOptions {
-  /** Mapa archivo → prefijos. Si null, autodetecta del RouteServiceProvider. */
-  readonly filePrefixes?: Record<string, string[]>;
-}
 
 export class LaravelScanner implements IRouteScanner {
   readonly framework = "laravel" as const;
@@ -279,8 +274,8 @@ export async function parseRoutesFile(
 
   const imports = new Map<string, string>();
   let um: RegExpExecArray | null;
-  USE_RE.lastIndex = 0;
-  while ((um = USE_RE.exec(text)) !== null) {
+  const useRe = ownRegex(USE_RE);
+  while ((um = useRe.exec(text)) !== null) {
     const fqcn = um[1];
     if (!fqcn) continue;
     const short = fqcn.split("\\").pop() ?? fqcn;

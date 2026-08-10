@@ -18,25 +18,17 @@
 import { dirname, join, relative } from "node:path";
 import { mkdir } from "node:fs/promises";
 
-import {
-  DEFAULT_FORMAT,
-  exportTo,
-  parseFormats,
-} from "../../core/exporters/export-registry.service.js";
+import { exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import {
-  outputCollectionPath,
-  outputDir,
-  projectRoot,
-  projectRootWasExplicit,
-} from "../../core/discovery/paths.service.js";
+import { outputCollectionPath, outputDir, projectRoot, projectRootWasExplicit } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import {
   writeFileAtomic,
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** `18:05:42`, que es lo que hace legible una traza que va creciendo. */
 function stamp(): string {
@@ -80,7 +72,7 @@ async function regenerate(
   await writeJsonAtomic(path, result.collection);
 
   let extra = 0;
-  const others = formats.filter((f) => f !== DEFAULT_FORMAT);
+  const others = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (others.length > 0) {
     const dir = outputDir();
     const artifacts = exportTo(others, {
@@ -113,8 +105,8 @@ async function regenerate(
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const root = projectRoot();
   if (!root) {
-    console.error("No se pudo determinar la raíz del proyecto.");
-    console.error("Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.");
+    console.error("Could not determine the project root.");
+    console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
     return 1;
   }
   // `watch` se queda mirando un árbol entero, así que importa más que en
@@ -122,7 +114,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
   // que hubiera debajo sin decir una palabra.
   if (!projectRootWasExplicit()) {
-    console.log(`→ Sin --project-root: se vigila el directorio actual (${root}).`);
+    console.log(`→ No --project-root: watching the current directory (${root}).`);
   }
 
   const frameworkIdx = argv.indexOf("--framework");
@@ -169,7 +161,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // no termina nunca.
   if (argv.includes("--once")) return 0;
 
-  console.log(`[${stamp()}] → vigilando ${root} (Ctrl+C para salir)`);
+  console.log(`[${stamp()}] → watching ${root} (Ctrl+C to stop)`);
 
   let last = previous;
   const handle = watchProject({

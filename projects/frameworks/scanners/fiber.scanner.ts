@@ -13,6 +13,7 @@
  * `binding:"required"` de Gin.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -27,7 +28,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Métodos de Fiber, capitalizados como los escribe Go. */
 const METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options", "All"] as const;
@@ -98,10 +99,9 @@ export class FiberRouteScanner implements IRouteScanner {
 
       const sourceFile = relative(match.projectRoot, file);
       const groups = groupPrefixes(source);
-
-      ROUTE_RE.lastIndex = 0;
       let routeMatch: RegExpExecArray | null;
-      while ((routeMatch = ROUTE_RE.exec(source)) !== null) {
+      const routeRe = ownRegex(ROUTE_RE);
+      while ((routeMatch = routeRe.exec(source)) !== null) {
         const receiver = routeMatch[1] ?? "";
         const rawMethod = routeMatch[2] ?? "";
         const rawUri = routeMatch[3] ?? "";
@@ -134,9 +134,9 @@ export class FiberRouteScanner implements IRouteScanner {
 /** Variable → prefijo, para los `Group("/api")`. */
 function groupPrefixes(source: string): Map<string, string> {
   const groups = new Map<string, string>();
-  GROUP_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
-  while ((match = GROUP_RE.exec(source)) !== null) {
+  const groupRe = ownRegex(GROUP_RE);
+  while ((match = groupRe.exec(source)) !== null) {
     groups.set(match[1] ?? "", match[2] ?? "");
   }
   return groups;
@@ -247,9 +247,9 @@ export function parseGoStruct(source: string, structName: string): IValidationSp
   if (!body) return [];
 
   const fields: IValidationSpec[] = [];
-  STRUCT_FIELD_RE.lastIndex = 0;
   let field: RegExpExecArray | null;
-  while ((field = STRUCT_FIELD_RE.exec(body)) !== null) {
+  const structFieldRe = ownRegex(STRUCT_FIELD_RE);
+  while ((field = structFieldRe.exec(body)) !== null) {
     const goType = field[2] ?? "";
     const tags = field[3] ?? "";
 

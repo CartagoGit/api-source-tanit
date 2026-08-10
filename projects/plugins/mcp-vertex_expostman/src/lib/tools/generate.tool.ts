@@ -30,11 +30,12 @@ import {
   type IGenerateOutput,
 } from "../contracts/plugin.interface";
 import { resolveCliScript } from "../contracts/cli-path.constant";
-import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
+
 import {
   readGenerateReport,
   runBunScript,
 } from "../helpers/runner.helper";
+import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
 
 /** Id estable del tool dentro del namespace del plugin. */
 const TOOL_ID = "generate";
@@ -130,7 +131,7 @@ export function buildGenerateToolRegistration(
                     "comprueba que projectRoot sea la carpeta donde viven las rutas."
                   : "Si no ha reconocido el proyecto y sabes de qué framework es " +
                     "(monorepo, dependencia con alias, manifiesto generado en el build), " +
-                    `reintenta pasando \`framework\`. Válidos: ${SUPPORTED_FRAMEWORKS.join(", ")}.`),
+                    `reintenta pasando \`framework\`. Válidos: ${FRAMEWORK_IDS.join(", ")}.`),
             );
           }
           const parsedReport = readGenerateReport(result.stdout);

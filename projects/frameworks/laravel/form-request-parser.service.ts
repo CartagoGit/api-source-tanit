@@ -20,19 +20,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { stripComments } from "./route-parser.service.js";
 import { fromProjectRelative, requestsDir } from "../../core/discovery/paths.service.js";
-
-export interface FormRequestRules {
-  /** Ruta al FormRequest parseado (relativa al repo). */
-  sourceFile: string;
-  /** Nombre de la clase FormRequest. */
-  className: string;
-  /** Reglas extraídas como `campo → [reglas...]`. */
-  rules: Record<string, string[]>;
-  /** Reglas que no se pudieron procesar (se mantienen literales). */
-  unknown: Array<{ field: string; rule: string }>;
-  /** Si el método rules() devolvía `[]` o era dinámico. */
-  isEmpty: boolean;
-}
+import type { BodyVariant, FormRequestRules, QueryVariant } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const METHOD_RULES_RE = /public\s+function\s+rules\s*\([^)]*\)\s*:\s*array\s*\{/;
 
@@ -351,12 +339,6 @@ export function generateCompleteBody(rules: FormRequestRules): Record<string, un
   return out;
 }
 
-export interface BodyVariant {
-  /** Nombre visible en Postman (p. ej. "Mínimo", "Completo"). */
-  name: string;
-  body: Record<string, unknown>;
-}
-
 /**
  * Variantes de body a partir de un FormRequest.
  *
@@ -418,11 +400,6 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
 }
 
 // --- Variantes de query params -------------------------------------------
-
-export interface QueryVariant {
-  name: string;
-  query: Array<{ key: string; value: string; description: string }>;
-}
 
 const QUERY_LIKE_FIELDS = new Set([
   "nombre", "razon_social", "cif", "codigo", "busqueda", "search", "q",

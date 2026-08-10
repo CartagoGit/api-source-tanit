@@ -173,6 +173,8 @@ examples/          un proyecto por framework
 ### Las capas y su dirección
 
 ```
+projects/contracts/     interfaces, tipos y constantes. Sin implementación
+        ↑
 projects/core/          núcleo agnóstico
         ↑
 projects/frameworks/    los 21 scanners y sus parsers
@@ -184,6 +186,31 @@ La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
 El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
+
+### Los tipos y las constantes viven en `projects/contracts/`
+
+Ni una `export interface`, `export type` o constante exportada fuera de
+ahí. `bun run lint:contracts` lo exige.
+
+No es preferencia de estilo. Con el tipo pegado a la función que lo
+estrenó, **usar el tipo arrastra la implementación**: la interfaz web
+importaba `IProjectSummary` de `core/discovery/summary.service`, así que
+para tipar un resumen se llevaba el pipeline entero; el plugin MCP
+importaba el catálogo de nombres de `frameworks/index` —con los 21
+scanners detrás— para declarar un `z.enum` de 21 strings.
+
+Y lo peor no es el peso: nada impide que se dupliquen.
+`SummaryOutputSchema` reescribía `IProjectSummary` con zod, las dos se
+separaron, y el esquema declaraba 6 campos mientras el handler devolvía
+18.
+
+Dos cosas **no** son contrato aunque usen `const`: un asset que el
+programa sirve tal cual (`UI_HTML`) y una raíz de composición de objetos
+ya instanciados (`DEFAULT_REGISTRY`). Están declaradas en las
+`EXCEPTIONS` del gate con su motivo escrito, y el gate también falla
+cuando una excepción deja de hacer falta.
+
+Los detalles, en [`projects/contracts/README.md`](projects/contracts/README.md).
 
 ### Regex `g`: nunca se mueve el `lastIndex` de uno compartido
 

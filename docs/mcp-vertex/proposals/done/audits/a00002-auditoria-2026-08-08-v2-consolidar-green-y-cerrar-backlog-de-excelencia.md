@@ -2,7 +2,7 @@
 id: a00002
 title: "Auditoria 2026-08-08 v2 - consolidar green continuo y cerrar el backlog de excelencia"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08

@@ -24,7 +24,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Acciones REST de `resources` que tienen sentido en una API JSON. */
 const RESOURCE_ACTIONS = [

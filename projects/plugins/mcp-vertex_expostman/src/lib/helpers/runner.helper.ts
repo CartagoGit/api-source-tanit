@@ -10,6 +10,12 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { delimiter as pathDelimiter } from "node:path";
 import { z } from "zod";
+import {
+  GenerateReportSchema,
+  type IGenerateReport,
+  type IRunScriptResult,
+} from "../contracts/interfaces/runner.interface";
+import { SUPPORTED_REPORT_VERSION } from "../contracts/constants/runner.constant";
 
 // `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
 // reproduce cuando el host MCP arranca el plugin bajo Bun y el
@@ -58,15 +64,6 @@ interface IBunGlobal {
 const bunGlobal = (globalThis as { Bun?: IBunGlobal }).Bun;
 const bunSpawnSync = bunGlobal?.spawnSync;
 const useBunSpawn = typeof bunSpawnSync === "function";
-
-/** Resultado de ejecutar un script via bun. */
-export interface IRunScriptResult {
-  readonly ok: boolean;
-  readonly exitCode: number;
-  readonly stdout: string;
-  readonly stderr: string;
-  readonly durationMs: number;
-}
 
 /**
  * Resuelve la path absoluta del binario `bun`. En el host el plugin
@@ -295,45 +292,6 @@ function runBunSpawnSyncArray(
   }
 }
 
-/**
- * Forma del informe que emite `generate --json`.
- *
- * Se valida en vez de confiar: el CLI es otro paquete que se
- * actualiza por su cuenta, y un campo que desaparece tiene que dar un
- * error claro aquí y no un `undefined` que viaje hasta el agente.
- */
-const GenerateReportSchema = z.object({
-  version: z.number(),
-  ok: z.boolean(),
-  framework: z.string().nullable(),
-  frameworks: z.array(z.string()),
-  warnings: z.array(z.string()),
-  projectRoot: z.string(),
-  projectName: z.string(),
-  collectionPath: z.string().nullable(),
-  collectionId: z.string().nullable(),
-  environmentPaths: z.array(z.string()),
-  extraPaths: z.array(z.string()),
-  requests: z.number(),
-  folders: z.number(),
-  auth: z
-    .object({ loginEndpoint: z.string(), tokenVariable: z.string() })
-    .nullable(),
-  durationMs: z.number(),
-});
-
-/** Informe de `generate --json`, ya validado. */
-export type IGenerateReport = z.infer<typeof GenerateReportSchema>;
-
-/**
- * Versión del contrato que este plugin sabe leer.
- *
- * Tiene que ir a la par de `GENERATE_REPORT_VERSION` en
- * `contracts/generate-report.interface.ts`. Un test lo comprueba: si
- * alguien sube una y no la otra, el plugin deja de leer al CLI y hay
- * que enterarse en el gate, no en producción.
- */
-export const SUPPORTED_REPORT_VERSION = 3;
 
 /**
  * Lee el informe de `generate --json` desde el stdout del CLI.

@@ -8,7 +8,8 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../contracts/postman.interface.js";
+} from "../../contracts/interfaces/core/postman.interface.js";
+import type { CollectionRequest } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /** Extrae los segmentos de path de una URL raw de Postman. */
 export function pathToSegments(rawUrl: string): string[] {
@@ -22,14 +23,6 @@ export function pathToSegments(rawUrl: string): string[] {
 /** URI relativa (sin baseUrl) a partir de una URL raw. */
 export function uriFromRaw(rawUrl: string): string {
   return pathToSegments(rawUrl).join("/");
-}
-
-/** Una petición sacada de una colección ya construida, aplanada. */
-export interface CollectionRequest {
-  method: string;
-  uri: string;
-  name: string;
-  folder: string;
 }
 
 /**

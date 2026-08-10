@@ -33,23 +33,10 @@
  *      que hacía cada scanner con su `try/catch`.
  */
 import { readFile } from "node:fs/promises";
-
-/**
- * Cuántas lecturas se permiten a la vez.
- *
- * 16 es suficiente para saturar un SSD y queda muy lejos del límite de
- * descriptores de fichero del proceso (1024 por defecto en Linux), que
- * es el motivo por el que esto lleva tope y no es un `Promise.all`.
- */
-export const READ_CONCURRENCY = 16;
+import type { IReadFile } from "../../contracts/interfaces/core/helpers.interface.js";
+import { READ_CONCURRENCY } from "../../contracts/constants/core/runtime-limits.constant.js";
 
 /** Un fichero leído. */
-/** Un fichero ya leído, con la ruta tal cual venía en la entrada. */
-export interface IReadFile {
-  /** Ruta absoluta, tal cual venía en la entrada. */
-  readonly path: string;
-  readonly text: string;
-}
 
 async function readOne(path: string): Promise<IReadFile | null> {
   try {

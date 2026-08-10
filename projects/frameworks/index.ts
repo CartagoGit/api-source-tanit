@@ -23,15 +23,8 @@
  * Este fichero es la puerta: quien quiera "el producto entero" importa
  * de aquí y se lleva el catálogo completo cableado.
  */
-import {
-  generateCollection,
-  type IGenerationOptions,
-  type IGenerationResult,
-} from "../core/discovery/generation.pipeline.js";
-import {
-  summarizeProject,
-  type IProjectSummary,
-} from "../core/discovery/summary.service.js";
+import { generateCollection } from "../core/discovery/generation.pipeline.js";
+import { summarizeProject } from "../core/discovery/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 import { defaultOrchestrator } from "./framework.registry.js";
 
@@ -39,14 +32,13 @@ export { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 
 export {
   DEFAULT_REGISTRY,
-  SUPPORTED_FRAMEWORKS,
   defaultOrchestrator,
+  registeredFrameworkIds,
   scannerBundleFor,
-  type IScannerBundle,
 } from "./framework.registry.js";
-
-/** Lo que se puede ajustar sin tocar el catálogo. */
-export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">;
+import type { IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
+import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
+import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanners.interface.js";
 
 /**
  * Genera la colección con **todos** los frameworks soportados.

@@ -15,11 +15,7 @@
  * son las preguntas que los scanners repetían a mano, cada uno a su
  * manera.
  */
-
-/** Lo que devuelve intentar parsear. */
-export type JsonRead =
-  | { readonly ok: true; readonly value: unknown }
-  | { readonly ok: false; readonly reason: string };
+import type { JsonRead } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Parsea, distinguiendo "no se pudo" de "parseó a `null`".

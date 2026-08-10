@@ -2,7 +2,7 @@
 id: a00001
 title: "Auditoría completa 2026-08-08 — cerrar los 23 hallazgos"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
@@ -764,7 +764,7 @@ formato del brief, `audit_consolidate` devolvía `findings: []`.
 - global_gate: e2e
 
 ### S1 — Seguimiento: que los 23 hallazgos acaben cerrados
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/proposals/ready/a00001-auditor-a-completa-2026-08-08-cerrar-los-23-hallazgos.md`
 - **Gate**: none
 - acceptance:

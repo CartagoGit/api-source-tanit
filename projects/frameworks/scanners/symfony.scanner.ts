@@ -24,6 +24,7 @@
  *   - Constraints deben estar en el método (no en una Entity separada).
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 import { isRecord } from "../../core/helpers/parse-json.helper.js";
@@ -34,7 +35,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 import { parseYamlLite } from "./openapi.scanner.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
@@ -349,9 +350,8 @@ async function parseSingleController(
     if (/class\s+\w+/.test(line)) {
       // Buscar `#[Route(...)]` en las 3 líneas ANTERIORES.
       for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
-        const m = ATTR_ROUTE_RE.exec(lines[j] ?? "");
+        const m = ownRegex(ATTR_ROUTE_RE).exec(lines[j] ?? "");
         if (m) {
-          ATTR_ROUTE_RE.lastIndex = 0;
           const args = m[1] ?? "";
           const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(args);
           const classPath = pathMatch?.[1] ?? "";
@@ -374,9 +374,8 @@ async function parseSingleController(
   const startIter = classRouteIdx >= 0 ? classRouteIdx + 1 : 0;
   for (let i = startIter; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    const m = ATTR_ROUTE_RE.exec(line);
+    const m = ownRegex(ATTR_ROUTE_RE).exec(line);
     if (!m) continue;
-    ATTR_ROUTE_RE.lastIndex = 0;
     const attrArgs = m[1] ?? "";
     const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(attrArgs);
     const path = pathMatch?.[1] ?? "";
@@ -581,9 +580,9 @@ function collectAssertsInBlock(block: string[]): IValidationSpec[] {
   const out: IValidationSpec[] = [];
   for (let i = 0; i < block.length; i++) {
     const line = block[i] ?? "";
-    ATTR_ASSERT_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = ATTR_ASSERT_RE.exec(line)) !== null) {
+    const attrAssertRe = ownRegex(ATTR_ASSERT_RE);
+    while ((m = attrAssertRe.exec(line)) !== null) {
       const annotation = m[1];
       const args = m[2] ?? "";
       const map = annotation ? ASSERT_MAP[annotation] : undefined;

@@ -21,53 +21,9 @@
 import { resolve } from "node:path";
 
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
-import type { ILegacyDiscovery } from "../contracts/legacy-discovery.interface.js";
+import type { ILegacyDiscovery } from "../../contracts/interfaces/core/legacy-discovery.interface.js";
 import { generateCollection } from "./generation.pipeline.js";
-
-/** Resumen de un proyecto host para inspección rápida. */
-export interface IProjectSummary {
-  /** Framework detectado. `"unknown"` si no lo reconoció ninguno. */
-  framework: string;
-  /**
-   * Todos los frameworks que reconocieron el proyecto.
-   *
-   * Más de uno significa proyecto híbrido, y entonces `framework` es
-   * solo el de más confianza.
-   */
-  frameworks: ReadonlyArray<string>;
-  /** Nombre del proyecto, del manifiesto de su ecosistema. */
-  projectName: string;
-  /** BaseUrl efectiva. */
-  baseUrl: string;
-  /**
-   * Endpoints que acabarían en la colección.
-   *
-   * No es "rutas declaradas en el código": un `apiResource` de Laravel
-   * es una línea y siete endpoints, y lo que importa es el segundo
-   * número.
-   */
-  routesInCode: number;
-  /** Endpoints cuyas reglas de validación se resolvieron. */
-  withFormRequest: number;
-  /** Endpoints sin reglas: su body sale de la inferencia agnóstica. */
-  withoutFormRequest: number;
-  /** Bodies auto-rellenados por la heurística agnóstica. */
-  bodiesAdded: number;
-  /** Queries auto-rellenadas por la heurística agnóstica. */
-  queriesAdded: number;
-  /** Modo "zero-config" (no se encontró `config.constant.ts`). */
-  zeroConfig: boolean;
-  /** Ruta al `config.constant.ts` cargado, o `"<zero-config>"`. */
-  configPath: string;
-  /** Endpoints definidos manualmente como override. */
-  manualEndpoints: number;
-  /** Variables de colección derivadas de las rutas. */
-  inferredVariables: number;
-  /** `null` si el proyecto no expone un endpoint de login. */
-  auth: { readonly loginEndpoint: string } | null;
-  /** Avisos accionables: proyecto híbrido, nada reconocido… */
-  warnings: ReadonlyArray<string>;
-}
+import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
  * Inspecciona `projectRoot` y devuelve un resumen sin escribir archivos.

@@ -17,38 +17,27 @@ import {
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join } from "node:path";
-import {
-  DEFAULT_FORMAT,
-  exportTo,
-  exportWarnings,
-  parseFormats,
-} from "../../core/exporters/export-registry.service.js";
+import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import type { IGenerationResult } from "../../core/discovery/generation.pipeline.js";
+
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
-import {
-  describeDiscoveredPaths,
-  outputCollectionPath,
-  outputDir as outputDirFor,
-  outputEnvironmentPath,
-  projectRoot,
-} from "../../core/discovery/paths.service.js";
-import {
-  buildEnvironments,
-  defaultEnvironments,
-} from "../../core/domain/environment-builder.service.js";
-import type { DiscoveredRoute } from "../../core/contracts/postman.interface.js";
+import { describeDiscoveredPaths, outputCollectionPath, outputDir as outputDirFor, outputEnvironmentPath, projectRoot } from "../../core/discovery/paths.service.js";
+import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
+import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../core/contracts/generate-report.interface.js";
-import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
+} from "../../contracts/interfaces/core/generate-report.interface.js";
 
+import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
+import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
@@ -73,7 +62,7 @@ async function runPipeline(
   const root = projectRoot();
   if (!root) {
     throw new Error(
-      "No se pudo determinar la raíz del proyecto. Pasa `--project-root <ruta>` " +
+      "Could not determine the project root. Pass `--project-root <path>` " +
         "o define POSTMAN_PROJECT_ROOT.",
     );
   }
@@ -124,29 +113,14 @@ async function warnOnIdentityClash(
       previous.info?._postman_id !== collection.info._postman_id;
     if (sameName && differentId) {
       console.warn(
-        `\n⚠ Ya existe una colección llamada "${collection.info.name}" con otro id.\n` +
-          "  Al importar ambas en Postman tendrás dos colecciones homónimas.\n" +
-          "  Fija `collectionId` en el config de uno de los proyectos para distinguirlas.",
+        `\n⚠ A collection named "${collection.info.name}" already exists with a different id.\n` +
+          "  Importing both into Postman leaves two collections with the same name.\n" +
+          "  Set `collectionId` in one project's config to tell them apart.",
       );
     }
   } catch {
     // Un JSON previo ilegible no es motivo para abortar la generación.
   }
-}
-
-/**
- * Lo que devuelve una generación: el código de salida y el informe.
- *
- * El informe se construye **siempre**, no solo con `--json`. Antes solo
- * existía dentro de ese `if`, así que cualquier otro consumidor
- * —`expostman ui`, un test, el plugin— tenía que volver a llamar al
- * pipeline o parsear la salida por pantalla. Las dos cosas son una
- * segunda implementación, y una segunda implementación se
- * desincroniza.
- */
-export interface IGenerateOutcome {
-  readonly code: number;
-  readonly report: IGenerateReport | null;
 }
 
 /**
@@ -308,7 +282,7 @@ export async function runGenerate(
   }
   if (missingInSource.length) {
     console.error(
-      `\n✘ ${missingInSource.length} en colección pero NO en routes:`,
+      `\n✘ ${missingInSource.length} in the collection but NOT in the routes:`,
     );
     for (const m of missingInSource.slice(0, 20)) {
       console.error(`    ${m.method.padEnd(6)} /${m.uri} (${m.name})`);
@@ -316,7 +290,7 @@ export async function runGenerate(
   }
   if (missingInCollection.length) {
     console.error(
-      `\n✘ ${missingInCollection.length} en routes pero NO en colección:`,
+      `\n✘ ${missingInCollection.length} in the routes but NOT in the collection:`,
     );
     for (const m of missingInCollection.slice(0, 20)) {
       console.error(`    ${m.method.padEnd(6)} /${m.uri}`);
@@ -347,17 +321,17 @@ export async function runGenerate(
   // todavia no tiene rutas).
   if (requests === 0 && !args.includes("--allow-empty")) {
     console.error(
-      "\n✗ No se ha encontrado ningún endpoint, así que no se escribe nada.\n" +
-        "  · Comprueba que `--project-root` apunta a la raíz de tu API.\n" +
-        "  · Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.\n" +
-        "  · Si el proyecto de verdad no tiene rutas todavía, usa `--allow-empty`.",
+      "\n✗ No endpoints were found, so nothing was written.\n" +
+        "  · Check that `--project-root` points at your API's root.\n" +
+        "  · See docs/FRAMEWORKS.md for what each scanner looks for.\n" +
+        "  · If the project genuinely has no routes yet, use `--allow-empty`.",
     );
     return { code: 1, report: null };
   }
   // Los formatos extra se serializan del MISMO catálogo de endpoints que
   // la colección de Postman: dos formatos del mismo proyecto no pueden
   // discrepar porque cada uno haya escaneado por su cuenta.
-  const extraFormats = formats.filter((f) => f !== DEFAULT_FORMAT);
+  const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = outputDirFor();
     const exportInput = {
@@ -376,7 +350,7 @@ export async function runGenerate(
       await writeFileAtomic(target, artifact.content);
       extraPaths.push(target);
     }
-    console.log(`  · ${artifacts.length} fichero(s) en ${extraFormats.join(", ")}`);
+    console.log(`  · ${artifacts.length} file(s) in ${extraFormats.join(", ")}`);
     // Un formato que no lo representa todo lo dice: el fichero sale
     // igual, pero incompleto.
     for (const warning of exportWarnings(extraFormats, exportInput)) {
@@ -491,15 +465,15 @@ function explainWriteError(error: unknown): string {
 
   if (code === "EACCES" || code === "EPERM") {
     return (
-      `No hay permiso para escribir la salida.\n  ${message}\n` +
-      "  Usa `--output-dir <ruta>` para escribir en otro sitio, o revisa los permisos."
+      `No permission to write the output.\n  ${message}\n` +
+      "  Use `--output-dir <path>` to write elsewhere, or check the permissions."
     );
   }
   if (code === "ENOSPC") return `No queda espacio en disco.\n  ${message}`;
   if (code === "EROFS") {
     return (
       `El sistema de ficheros es de solo lectura.\n  ${message}\n` +
-      "  Usa `--output-dir <ruta>` para escribir en otro sitio."
+      "  Use `--output-dir <path>` to write elsewhere."
     );
   }
   return message;

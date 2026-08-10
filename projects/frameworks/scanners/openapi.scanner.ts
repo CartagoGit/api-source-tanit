@@ -25,13 +25,9 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
-import {
-  isRecord,
-  readArray,
-  readObject,
-  readString,
-} from "../../core/helpers/parse-json.helper.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
+import { isRecord, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
+import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
 const OPENAPI_CANDIDATES = [
@@ -69,7 +65,6 @@ const HTTP_METHODS = [
   "options",
   "trace",
 ] as const;
-
 
 // ---------------------------------------------------------------------------
 // YAML parser (NO usamos dependencias externas — subset suficiente)
@@ -433,13 +428,6 @@ export class OpenApiProjectScanner implements IProjectScanner {
 // ---------------------------------------------------------------------------
 // Route scanner
 // ---------------------------------------------------------------------------
-
-export interface OpenApiScannerOptions {
-  /** Path explícito al spec. Si se da, ignora OPENAPI_CANDIDATES. */
-  readonly specPath?: string;
-  /** Base path a prepender a todas las URIs (ej. "/api/v2"). */
-  readonly basePath?: string;
-}
 
 export class OpenApiScanner implements IRouteScanner {
   readonly framework = "openapi" as const;

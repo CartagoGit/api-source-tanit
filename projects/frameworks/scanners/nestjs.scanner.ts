@@ -17,12 +17,10 @@
  *   - Si hay `class-transformer` o `class-validator`, son las dependencias.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
-import {
-  declaredDependencies,
-  parseJson,
-} from "../../core/helpers/parse-json.helper.js";
+import { declaredDependencies, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -31,7 +29,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
@@ -177,12 +175,11 @@ export class NestJsRouteScanner implements IRouteScanner {
     if (controllerMatchIndex === -1) return out; // No es un controller.
 
     // 2) Buscar method decorators `@METHOD('path')` DESPUÉS del controller.
-    METHOD_DECORATOR_RE.lastIndex = 0;
     for (let i = controllerMatchIndex + 1; i < lines.length; i++) {
       const line = lines[i] ?? "";
-      METHOD_DECORATOR_RE.lastIndex = 0;
       let m: RegExpExecArray | null;
-      while ((m = METHOD_DECORATOR_RE.exec(line)) !== null) {
+      const methodDecoratorRe = ownRegex(METHOD_DECORATOR_RE);
+      while ((m = methodDecoratorRe.exec(line)) !== null) {
         const method = (m[1] ?? "").toLowerCase();
         const subPath = m[2] ?? "";
         if (!HTTP_METHODS.includes(method)) continue;
@@ -269,7 +266,6 @@ const VALIDATOR_MAP: Record<string, { type: IValidationSpec["type"]; format?: st
   IsPositive: { type: "integer" },
   IsNegative: { type: "integer" },
 };
-
 
 export class NestJsClassValidatorProvider implements IValidationSpecProvider {
   readonly framework = "nestjs" as const;

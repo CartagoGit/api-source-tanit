@@ -17,6 +17,7 @@
  *     parcial y no soporta referencias a otros paquetes.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { stripJsComments } from "../../core/helpers/source-scan.helper.js";
@@ -28,7 +29,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -155,16 +156,16 @@ async function parseGoFile(
 
   // 1) Detectar prefixes de Groups.
   const groupPrefix = new Map<string, string>();
-  GROUP_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = GROUP_RE.exec(raw)) !== null) {
+  const groupRe = ownRegex(GROUP_RE);
+  while ((m = groupRe.exec(raw)) !== null) {
     const ident = m[1] ?? "";
     const prefix = m[2] ?? "";
     groupPrefix.set(ident, prefix);
   }
   // 2) Buscar routes.
-  ROUTE_RE.lastIndex = 0;
-  while ((m = ROUTE_RE.exec(raw)) !== null) {
+  const routeRe = ownRegex(ROUTE_RE);
+  while ((m = routeRe.exec(raw)) !== null) {
     const ident = m[1] ?? "";
     const method = (m[2] ?? "").toLowerCase();
     const path = m[3] ?? "";

@@ -10,27 +10,13 @@
  * De ahí que las barras midan **cobertura** y no progreso: el progreso
  * ya terminó cuando esto se imprime.
  */
-import type { IPainter } from "./ansi.helper.js";
+
 import { padEnd } from "./ansi.helper.js";
+import type { IQualityMetrics } from "../contracts/interfaces/cli/ui.interface.js";
+import type { IPainter } from "../contracts/interfaces/cli/ui.interface.js";
 
 /** Ancho de la barra. Suficiente para leer la proporción de un vistazo. */
 const BAR_WIDTH = 24;
-
-/** Las métricas que se enseñan al terminar. */
-export interface IQualityMetrics {
-  readonly framework: string;
-  readonly requests: number;
-  readonly folders: number;
-  /** Endpoints cuyas reglas se leyeron del código. */
-  readonly withRules: number;
-  /** Endpoints de escritura, que son los que pueden llevar body. */
-  readonly writeEndpoints: number;
-  /** De esos, cuántos acabaron con body. */
-  readonly withBody: number;
-  /** Esquema de autenticación detectado, y por qué. */
-  readonly auth: { readonly type: string; readonly evidence: string };
-  readonly warnings: ReadonlyArray<string>;
-}
 
 /**
  * Una barra de cobertura.
@@ -98,7 +84,7 @@ export function renderDashboard(
   if (guessed > 0) {
     lines.push(
       "",
-      `  ${painter.paint("·", "gray")} ${guessed} endpoint(s) sin reglas en el código: ` +
+      `  ${painter.paint("·", "gray")} ${guessed} endpoint(s) with no rules in the code: ` +
         "su body sale de la inferencia y conviene revisarlo.",
     );
   }

@@ -2,23 +2,33 @@
 id: r00003
 title: "Un solo idioma en la salida del CLI"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
 ---
 
-> **Aplazada a 2026-08-08, con motivo.** Se midió antes de empezar: son
-> **173 llamadas a `console`** repartidas por los once comandos.
+> **Entregada, y no como decía S1.** El aplazamiento anterior partía de
+> una cifra mal enfocada: 181 llamadas a `console`, sí, pero solo **41
+> estaban en español**. El resto ya hablaba inglés.
 >
-> Un módulo de strings para 173 mensajes dinámicos es justo el sistema de
-> i18n que los no-objetivos de esta propuesta descartan, y la
-> alternativa —traducir a mano— es mucha rotación sobre los comandos
-> recién estabilizados, para un hallazgo que la auditoría clasificó como
-> MINOR.
+> Eso cambia la solución. S1 pedía «recoger los mensajes en un solo
+> sitio», y un módulo de strings para 181 mensajes dinámicos es
+> exactamente el sistema de i18n que los no-objetivos descartan. Lo que
+> hacía falta era traducir 41 cadenas y **poner un gate**, que cuesta
+> menos y sostiene igual.
 >
-> Lo que sí cambió el orden: ahora los once comandos tienen test, así que
-> cuando se haga, se hará con red debajo.
+> El idioma es el inglés, y no por gusto: el README, el `--help` y el
+> paquete publicado ya lo hablan. La prosa interna sigue en español.
+>
+> `lint:output-language` mira los literales de `console.*` y los campos
+> `reason`/`nextAction` —que son la forma canónica de un error accionable
+> aquí, y viajan al agente por el sobre de `toolError`—. Ese segundo
+> caso no era decoración: fue el hueco por el que se escapó
+> `collection-file.helper`, que vive en `core/` y habla por pantalla.
+>
+> Verificado metiendo una frase en español: cae. Los tests que buscaban
+> texto en español se actualizaron a la vez, no después.
 
 # r00003 — Un solo idioma en la salida del CLI
 
@@ -40,7 +50,7 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
 - global_gate: e2e
 
 ### S1 — Recoger los mensajes en un solo sitio
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/messages.constant.ts`, `tests/cli/messages.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -49,7 +59,7 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
   - "Un test comprueba que no queda ningún literal suelto en los comandos"
 
 ### S2 — Los doce comandos usan esos mensajes
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/cli/commands/generate.script.ts`, `projects/cli/commands/diff.script.ts`, `projects/cli/commands/enrich.script.ts`, `projects/cli/commands/init.script.ts`, `projects/cli/commands/stats.script.ts`, `projects/cli/commands/validate-json.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/push.script.ts`, `projects/cli/commands/scan.script.ts`, `projects/cli/commands/list-endpoints.script.ts`, `projects/cli/commands/summary.script.ts`, `projects/cli/commands/open-postman.script.ts`
 - **Gate**: e2e
@@ -59,9 +69,9 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
   - "Los 21 ejemplos siguen generando colección válida"
 
 ### S3 — Gate que no deje volver a mezclarlos
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `scripts/gates/lint-cli-language.script.ts`, `package.json`
+- **Files**: `scripts/gates/lint-output-language.script.ts`, `package.json`
 - **Gate**: lint
 - acceptance:
   - "El lint falla ante un literal de usuario escrito directamente en un comando"

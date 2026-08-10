@@ -6,29 +6,12 @@
  *   bun scripts/list-endpoints.script.ts
  *   bun run list
  */
-import {
-  explainReadFailure,
-  readCollection,
-} from "../../core/helpers/collection-file.helper.js";
+import { explainReadFailure, readCollection } from "../../core/helpers/collection-file.helper.js";
 import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
-
-/** Un endpoint de la colección, en datos. */
-export interface IListedEndpoint {
-  readonly method: string;
-  readonly uri: string;
-  readonly name: string;
-  readonly folder: string;
-  readonly zone: string;
-}
-
-/** Lo que devuelve listar: código de salida y los endpoints. */
-export interface IListOutcome {
-  readonly code: number;
-  readonly endpoints: ReadonlyArray<IListedEndpoint>;
-}
+import type { IListOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /**
  * Lista los endpoints y los devuelve.
@@ -65,7 +48,7 @@ export async function runList(
   }
 
   console.log(
-    `${rows.length} endpoints en la colección, agrupados por zona:\n`,
+    `${rows.length} endpoints in the collection, grouped by zone:\n`,
   );
 
   const conContenido = [...byZone.entries()]

@@ -37,7 +37,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
 - global_gate: type
 
 ### S1 — Arreglar las declaraciones que obligan a mentir
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/contracts/postman.d.ts`, `projects/core/helpers/collection-identity.helper.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`
 - **Gate**: type
 - acceptance:
@@ -46,7 +46,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
   - "Cero castings en producción fuera de los dos de `openapi.scanner`, que se van en r00001"
 
 ### S2 — Factorías tipadas en vez de aserciones en los tests
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/helpers/postman-builders.ts`, `tests/core/collection-invariants.helper.spec.ts`, `tests/core/postman-api.service.spec.ts`, `tests/core/auth-flow.service.spec.ts`, `tests/frameworks/python-schema.helper.spec.ts`, `tests/e2e/flask-comprehensive.test.ts`
 - **Gate**: type
 - acceptance:
@@ -55,7 +55,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
   - "Cero castings en `tests/`"
 
 ### S3 — Lint que prohíba que vuelvan
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2]
 - **Files**: `scripts/gates/lint-no-type-escapes.script.ts`, `tests/cli/no-type-escapes.spec.ts`, `package.json`
 - **Gate**: lint
@@ -65,7 +65,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
   - "Entra en la cadena de `bun run lint`"
 
 ### S4 — Un solo `readFlag`
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/helpers/argv.helper.ts`, `projects/core/discovery/project-loader.service.ts`, `projects/core/discovery/project-context.service.ts`, `projects/cli/commands/push.script.ts`, `tests/core/argv.helper.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -74,7 +74,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
   - "El test cubre `--flag valor`, `--flag=valor`, flag ausente y flag sin valor"
 
 ### S5 — Un lector de manifiesto por ecosistema
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/frameworks/parsers/manifest.helper.ts`, `projects/frameworks/scanners/hono.scanner.ts`, `projects/frameworks/scanners/fastify.scanner.ts`, `projects/frameworks/scanners/express.scanner.ts`, `projects/frameworks/scanners/nextjs.scanner.ts`, `projects/frameworks/scanners/nestjs.scanner.ts`, `projects/frameworks/scanners/graphql.scanner.ts`, `projects/frameworks/scanners/trpc.scanner.ts`, `tests/frameworks/manifest.helper.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -84,7 +84,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
   - "Los 21 ejemplos siguen detectándose"
 
 ### S6 — Partir el `main()` de 325 líneas de `generate`
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S4]
 - **Files**: `projects/cli/commands/generate.script.ts`, `tests/cli/generate-phases.spec.ts`
 - **Gate**: e2e

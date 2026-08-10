@@ -17,7 +17,7 @@ import { existsSync } from "node:fs";
 import { join, sep } from "node:path";
 import { tmpdir } from "node:os";
 
-import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
 import { runProcess } from "../helpers/run-process";
 import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 

@@ -17,7 +17,18 @@ const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
 
 /** Los 4 tools que el plugin promete, por id. */
-const EXPECTED_TOOLS = ["check", "generate", "list", "validate", "summary", "test"] as const;
+const EXPECTED_TOOLS = [
+  "check",
+  "generate",
+  "init",
+  "list",
+  "push",
+  "scan",
+  "stats",
+  "summary",
+  "test",
+  "validate",
+] as const;
 
 describe("arranque del plugin", () => {
   test("declara nombre y versión", () => {
@@ -25,7 +36,7 @@ describe("arranque del plugin", () => {
     expect(plugin.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  test("registra exactamente los 6 tools", async () => {
+  test(`registra exactamente los ${EXPECTED_TOOLS.length} tools`, async () => {
     const tools = await registeredTools(plugin, makeCtx());
     expect(tools.map((tool) => tool.id).sort()).toEqual([...EXPECTED_TOOLS].sort());
   });
@@ -62,7 +73,11 @@ describe("arranque del plugin", () => {
       defaultProjectRoot: "/tmp/proyecto",
       cliScript: "/tmp/cli.ts",
     });
-    expect(await registeredTools(plugin, ctx)).toHaveLength(6);
+    // La cifra sale de `EXPECTED_TOOLS`, no escrita a mano: el `6`
+    // literal que había aquí se quedó viejo al añadir `stats` y `scan`,
+    // igual que la lista de tools del docblock del plugin decía tres
+    // cuando ya había seis.
+    expect(await registeredTools(plugin, ctx)).toHaveLength(EXPECTED_TOOLS.length);
   });
 
   test("declara un optionsSchema", () => {

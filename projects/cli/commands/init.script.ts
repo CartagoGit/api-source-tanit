@@ -24,15 +24,37 @@ import { join, resolve } from "node:path";
 import { projectRoot } from "../../core/discovery/paths.service.js";
 import { detectProjectNameIn } from "../../core/discovery/project-name.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
+import type { IInitOutcome } from "../../contracts/interfaces/cli/init-outcome.interface.js";
 
-async function main(): Promise<number> {
-  const argv = process.argv.slice(2);
+/**
+ * Prepara la configuración y devuelve **qué ha escrito**.
+ *
+ * `main` es la envoltura que solo devuelve el código de salida, igual
+ * que en el resto de comandos. Se separa porque el tool del plugin
+ * necesita las rutas: son lo que un agente tiene que enseñar para que
+ * alguien vaya a editar los `// TODO`.
+ */
+export async function runInit(
+  argv: string[] = process.argv.slice(2),
+): Promise<IInitOutcome> {
   const root = projectRoot();
   if (!root) {
     console.error(
-      "✘ No se detecta proyecto Laravel. Define POSTMAN_PROJECT_ROOT.",
+      "✘ Could not determine the project root. Set POSTMAN_PROJECT_ROOT.",
     );
-    return 1;
+    return {
+      code: 1,
+      projectName: "",
+      baseUrl: "",
+      authGuards: [],
+      routeFiles: [],
+      configPath: null,
+      endpointsPath: null,
+      error: {
+        reason: "Could not determine the project root.",
+        nextAction: "Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.",
+      },
+    };
   }
 
   const nameFlag = readFlag(argv, "--name");
@@ -122,7 +144,7 @@ async function main(): Promise<number> {
  *
  * Edita los valores marcados con \`// TODO\` para personalizarlos.
  */
-import type { ProjectConfig } from "../../../../contracts/project-config.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 
 export const config: ProjectConfig = {
   name: "${projectName}",
@@ -182,7 +204,7 @@ export const config: ProjectConfig = {
  *
  * Ejemplo:
  * \`\`\`ts
- * import type { EndpointSpec } from "../../../../contracts/postman.interface.js";
+ * import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
  *
  * export const ALL_ENDPOINTS: EndpointSpec[] = [
  *   {
@@ -194,7 +216,7 @@ export const config: ProjectConfig = {
  * ];
  * \`\`\`
  */
-import type { EndpointSpec } from "../../../../contracts/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [
   // TODO añade aquí tus overrides
@@ -202,21 +224,35 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
 `;
   await writeFileAtomic(endpointsPath, endpointsBody);
 
-  console.log(`✔ Proyecto detectado: ${projectName}`);
+  console.log(`✔ Project detected: ${projectName}`);
   console.log(`  · baseUrl:       ${baseUrl}`);
   console.log(`  · auth guards:   ${authGuards.join(", ")}`);
   console.log(`  · routes:        ${Object.keys(filePrefixes).join(", ")}`);
-  console.log(`✔ Generado:`);
+  console.log(`✔ Written:`);
   console.log(`  · ${configPath}`);
   console.log(`  · ${endpointsPath}`);
   console.log("");
-  console.log("Siguiente paso:");
+  console.log("Next step:");
   // `bun run build` es un script **de este repositorio**, no del
   // proyecto de quien usa la herramienta: en su terminal no existe. El
   // asistente está para quien no se sabe los flags, así que terminar
   // con un comando que no puede ejecutar es dejarlo peor que antes.
-  console.log("  export-to-postman generate   # genera la colección Postman");
-  return 0;
+  console.log("  export-to-postman generate   # build the Postman collection");
+  return {
+    code: 0,
+    projectName,
+    baseUrl,
+    authGuards,
+    routeFiles: Object.keys(filePrefixes),
+    configPath,
+    endpointsPath,
+    error: null,
+  };
+}
+
+/** La envoltura que usa el CLI: solo el código de salida. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runInit(argv)).code;
 }
 
 function listDir(p: string): string[] {
@@ -226,4 +262,6 @@ function listDir(p: string): string[] {
     return [];
   }
 }
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

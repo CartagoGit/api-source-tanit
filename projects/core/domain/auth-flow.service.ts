@@ -21,28 +21,10 @@
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../contracts/postman.interface.js";
-
-/** Los tres endpoints del ciclo de sesión, si el proyecto los expone. */
-export interface IAuthFlow {
-  readonly login: PostmanItem | null;
-  readonly refresh: PostmanItem | null;
-  readonly logout: PostmanItem | null;
-}
-
-/** Nombres de variable del environment donde viven las credenciales. */
-export const AUTH_USERNAME_VARIABLE = "authUsername";
-/** Contraseña del login. Va vacía y marcada como secreto. */
-export const AUTH_PASSWORD_VARIABLE = "authPassword";
-/**
- * Donde el script del login guarda el token.
- *
- * El nombre está aquí y no escrito en cada sitio porque lo comparten el
- * script que lo guarda, el bloque `auth` de la colección y la cabecera de
- * cada petición: si bailara entre ellos, la colección dejaría de
- * autenticar sin que nada fallara.
- */
-export const AUTH_TOKEN_VARIABLE = "token";
+} from "../../contracts/interfaces/core/postman.interface.js";
+import type { IAuthFlow } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IApplyAuthFlowOptions } from "../../contracts/interfaces/core/domain.interface.js";
+import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /** Sufijos de URI que identifican cada paso del ciclo. */
 const LOGIN_URI_PATTERNS = [
@@ -114,28 +96,6 @@ export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null 
 
   if (!login && !refresh && !logout) return null;
   return { login, refresh, logout };
-}
-
-/**
- * Lo que el host puede declarar para ayudar a cablear la sesión.
- *
- * Las dos son **último recurso**, no configuración esperada: el flujo
- * detecta el login por método y URI, y el token probando los caminos
- * habituales de la respuesta en ejecución. Antes se exigía declarar el
- * camino del token, y el resultado fue que no se activaba en ninguno de
- * los once proyectos de ejemplo.
- */
-export interface IApplyAuthFlowOptions {
-  /**
-   * Camino declarado por el host (`config.tokenResponsePath`). Si viene,
-   * es el único que se prueba; si no, se prueban los habituales.
-   */
-  readonly tokenResponsePath?: string | undefined;
-  /**
-   * Nombre exacto del endpoint de login declarado por el host. Solo se
-   * usa como último recurso, si la detección por URI no encuentra nada.
-   */
-  readonly loginEndpointName?: string | undefined;
 }
 
 /**

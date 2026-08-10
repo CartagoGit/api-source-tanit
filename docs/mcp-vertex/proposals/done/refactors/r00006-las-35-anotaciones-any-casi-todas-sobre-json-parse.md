@@ -39,7 +39,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
 - global_gate: type
 
 ### S1 — Un lector de JSON que devuelve `unknown` y estrecha una vez
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/helpers/parse-json.helper.ts`, `tests/core/parse-json.helper.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -48,7 +48,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
   - "Trae los predicados de estrechamiento que los scanners repiten: ¿es objeto?, ¿es array de objetos?, ¿tiene esta clave string?"
 
 ### S2 — Los cuatro scanners que parsean manifiestos
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/frameworks/scanners/nestjs.scanner.ts`, `projects/frameworks/scanners/nextjs.scanner.ts`, `projects/frameworks/scanners/symfony.scanner.ts`
 - **Gate**: e2e
@@ -58,7 +58,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
   - "Los 21 ejemplos siguen detectándose"
 
 ### S3 — El scanner de OpenAPI, que es el que más superficie tiene
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-types.spec.ts`
 - **Gate**: e2e
@@ -68,7 +68,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
   - "Los 23 endpoints medidos del ejemplo siguen saliéndo"
 
 ### S4 — Los tests, y el gate ampliado
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2, S3]
 - **Files**: `tests/core/exporters.spec.ts`, `tests/e2e/django-comprehensive.test.ts`, `tests/e2e/flask-comprehensive.test.ts`, `tests/helpers/compare-json.ts`, `scripts/gates/lint-no-type-escapes.script.ts`
 - **Gate**: lint

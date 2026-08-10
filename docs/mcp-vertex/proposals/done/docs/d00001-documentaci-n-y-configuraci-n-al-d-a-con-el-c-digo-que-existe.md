@@ -42,7 +42,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
 - global_gate: lint
 
 ### S1 — El bootstrap describe la arquitectura que existe
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/AGENT-BOOTSTRAP.md`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts`
 - **Gate**: lint
 - acceptance:
@@ -52,7 +52,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
   - "La constante `NAMESPACE`, que no importa nadie y que §3.1 defendía, desaparece"
 
 ### S2 — Los sufijos que el repo usa, documentados
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/NAMING.md`
 - **Gate**: lint
 - acceptance:
@@ -60,7 +60,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
   - "La tabla coincide con lo que `lint:naming` acepta de verdad: hoy el lint conoce la lista y la documentación no"
 
 ### S3 — La configuración del servidor apunta a carpetas que existen
-- **Status**: pending
+- **Status**: done
 - **Files**: `mcp-vertex.config.json`, `tests/cli/mcp-config.spec.ts`
 - **Gate**: lint
 - acceptance:
@@ -69,7 +69,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
   - "Un test lo comprueba contra el disco, para que mover una carpeta lo rompa aquí y no en silencio"
 
 ### S4 — Gate que note cuando el bootstrap vuelva a separarse
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2]
 - **Files**: `scripts/gates/lint-bootstrap-drift.script.ts`, `tests/cli/bootstrap-drift.spec.ts`, `package.json`
 - **Gate**: lint
@@ -79,7 +79,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
   - "Se comprueba metiendo una ruta muerta y viendo romper el gate"
 
 ### S5 — Las dos carpetas vacías y el README de propuestas
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/proposals/README.md`, `.gitignore`
 - **Gate**: none
 - acceptance:
@@ -87,7 +87,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
   - "El README de propuestas dice que los ids nuevos llevan prefijo de kind (`a`, `x`, `r`, `f`…) y que `p` es el alias retirado de solo lectura, que es lo que el servidor exige hoy"
 
 ### S6 — CONTRIBUTING y README apuntan al contrato y a la auditoría vigentes
-- **Status**: pending
+- **Status**: done
 - **Files**: `CONTRIBUTING.md`, `README.md`, `docs/mcp-vertex/AUDIT-2026-08-08.md`
 - **Gate**: lint
 - acceptance:

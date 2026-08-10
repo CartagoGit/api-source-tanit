@@ -17,18 +17,7 @@
  * sigue sobrando.
  */
 import { padEnd, padStart, terminalWidth, truncate, visibleWidth } from "./ansi.helper.js";
-
-export interface IColumn {
-  readonly header: string;
-  /** Alineación del contenido. Los números se leen mejor a la derecha. */
-  readonly align?: "left" | "right";
-  /**
-   * Ancho mínimo que conserva al recortar.
-   *
-   * `GET` con dos caracteres no es un método; con seis, cualquiera lo es.
-   */
-  readonly min?: number;
-}
+import type { IColumn } from "../contracts/interfaces/cli/ui.interface.js";
 
 /** Separador entre columnas. Dos espacios: bastan y no roban ancho. */
 const GAP = "  ";

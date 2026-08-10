@@ -30,7 +30,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Las siete acciones que genera `resources`, con su forma REST. */
 const RESOURCE_ACTIONS = [

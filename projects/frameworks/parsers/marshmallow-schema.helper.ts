@@ -13,16 +13,8 @@
  * Igual que el resto de parsers del paquete, el análisis es textual: no
  * se importa el módulo del proyecto escaneado.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
-
-/** Un schema Marshmallow localizado en el fuente. */
-export interface IMarshmallowSchema {
-  readonly className: string;
-  /** Nombre del campo → expresión `fields.X(...)` completa. */
-  readonly fields: ReadonlyMap<string, string>;
-  /** Línea (0-based) donde arranca la clase. */
-  readonly line: number;
-}
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
+import type { IMarshmallowSchema } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** `class X(Schema):` y sus variantes habituales. */
 const SCHEMA_BASE_RE =

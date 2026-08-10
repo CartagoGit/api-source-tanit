@@ -31,27 +31,12 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
-import {
-  collectFilesFrom,
-  isSourceJsTsFile,
-} from "../../core/helpers/fs-walk.helper.js";
-import {
-  countLinesBefore,
-  findAllBalanced,
-  findOutsideStrings,
-  findNearestBalanced,
-  stripJsComments,
-  type IBalancedCall,
-} from "../../core/helpers/source-scan.helper.js";
-import {
-  joiFieldToSpec,
-  parseJoiObjectLiteral,
-} from "../parsers/joi-schema.helper.js";
-import {
-  parseZodObjectLiteral,
-  zodFieldToSpec,
-} from "../parsers/zod-schema.helper.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
+import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { countLinesBefore, findAllBalanced, findOutsideStrings, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.helper.js";
+import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
+import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Frameworks de Node que este scanner cubre por parecido con Express.
@@ -138,7 +123,6 @@ async function collectJsFiles(projectRoot: string): Promise<string[]> {
     isSourceJsTsFile,
   );
 }
-
 
 interface ParsedModule {
   file: string;

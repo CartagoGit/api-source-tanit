@@ -20,141 +20,43 @@
  * escritura a disco quedan fuera a propósito: son responsabilidad del
  * script, no del pipeline.
  */
-import type { EndpointSpec, PostmanCollection } from "../contracts/postman.interface.js";
-import type { ProjectConfig } from "../contracts/project-config.interface.js";
-import type { IProjectContext } from "../contracts/project-context.interface.js";
-import type { IProjectMatch, ParsedRoute } from "../contracts/scanner.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import type { IProjectMatch, ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 import { buildSpecsFromScanner } from "../adapters/parsed-route-to-spec.adapter.js";
 import { endpointKey } from "../helpers/route-identity.helper.js";
-import {
-  authVariablesFor,
-  detectAuthScheme,
-  type IDetectedAuthScheme,
-} from "../domain/auth-scheme.service.js";
-import {
-  hasLoginEndpoint,
-  applyAuthFlow,
-  authEnvironmentVariables,
-  detectLaravelTokenPath,
-  type IAuthFlow,
-} from "../domain/auth-flow.service.js";
+import { authVariablesFor, detectAuthScheme } from "../domain/auth-scheme.service.js";
+import { hasLoginEndpoint, applyAuthFlow, authEnvironmentVariables, detectLaravelTokenPath } from "../domain/auth-flow.service.js";
 import { buildCollection } from "../domain/collection-builder.service.js";
-import type { ILegacyDiscovery } from "../contracts/legacy-discovery.interface.js";
-import {
-  applyAgnosticInference,
-  inferCollectionVariables,
-} from "../domain/param-inferrer.service.js";
+import { applyAgnosticInference, inferCollectionVariables } from "../domain/param-inferrer.service.js";
 import { loadProject } from "./project-loader.service.js";
-import { withProjectRoot } from "./paths.service.js";
+
 import { resolveProjectContext } from "./project-context.service.js";
-import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
-
-/** Métricas del descubrimiento, para informes y tests. */
-export interface IGenerationMetrics {
-  readonly routes: number;
-  readonly specs: number;
-  readonly withValidation: number;
-  readonly withoutValidation: number;
-  readonly bodiesInferred: number;
-  readonly queriesInferred: number;
-}
-
-/** Resultado completo del pipeline. */
-export interface IGenerationResult {
-  readonly collection: PostmanCollection;
-  readonly specs: ReadonlyArray<EndpointSpec>;
-  readonly routes: ReadonlyArray<ParsedRoute>;
-  readonly config: ProjectConfig;
-  readonly match: IProjectMatch | null;
-  /** `"scanner"` si lo resolvió un scanner del registry; `"legacy"` si no. */
-  readonly origin: "scanner" | "legacy";
-  /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */
-  readonly authFlow: IAuthFlow | null;
-  /**
-   * Esquema de autenticación detectado, con su evidencia.
-   *
-   * Se expone para que los exportadores a otros formatos no lo deduzcan
-   * cada uno por su cuenta: cinco detecciones paralelas acabarían
-   * discrepando, y el mismo proyecto diría bearer en Postman y nada en
-   * Insomnia.
-   */
-  readonly authScheme: IDetectedAuthScheme;
-  /** Contexto resuelto del proyecto. */
-  readonly context: IProjectContext;
-  /**
-   * Avisos para la persona que ejecuta esto. No son errores: la
-   * colección se ha generado igual. Son las cosas que, de no decirse,
-   * dejan a alguien con una colección a la que le falta media API sin
-   * que lo sepa.
-   */
-  readonly warnings: ReadonlyArray<string>;
-  /** Todos los frameworks que reconocieron el proyecto, no solo el ganador. */
-  readonly frameworks: ReadonlyArray<string>;
-  /**
-   * De dónde salió la configuración.
-   *
-   * Lo necesita `summary` para decir si el proyecto trae config propia
-   * o va en zero-config. El pipeline ya lo sabe porque llama a
-   * `loadProject()`; exponerlo evita que el consumidor lo vuelva a
-   * cargar y se arriesgue a leer otra cosa.
-   */
-  readonly project: {
-    readonly zeroConfig: boolean;
-    readonly configPath: string;
-    readonly manualEndpoints: number;
-  };
-  readonly metrics: IGenerationMetrics;
-}
-
-/** Ajustes opcionales del pipeline. */
-export interface IGenerationOptions {
-  /** Sobrescribe `config.collectionName` (flag `--basename`). */
-  readonly collectionName?: string;
-  /**
-   * Catálogo de frameworks que se va a usar para detectar y escanear.
-   *
-   * Es obligatorio a propósito. Antes el pipeline importaba
-   * `defaultOrchestrator()` del registro concreto, y eso metía los 12
-   * scanners dentro del núcleo: `core` no podía compilarse, ni
-   * testearse, ni razonarse sin arrastrar Laravel, Gin y Spring Boot.
-   * Un núcleo que dice ser agnóstico no puede tener una arista hacia lo
-   * concreto.
-   *
-   * Quien compone la aplicación (los comandos del CLI, el plugin, los
-   * tests) decide qué catálogo inyecta. Para el catálogo completo hay
-   * `generateWithAllFrameworks()` en `frameworks/`.
-   */
-  readonly orchestrator: DiscoveryOrchestrator;
-  /**
-   * Qué hacer cuando ningún scanner reconoce el proyecto.
-   *
-   * Opcional: sin fallback, un proyecto no reconocido devuelve cero
-   * endpoints, que es una respuesta honesta. El CLI inyecta la
-   * heurística de Laravel por compatibilidad con los proyectos que
-   * usaban esto antes de que existieran los scanners.
-   */
-  readonly legacyFallback?: ILegacyDiscovery | undefined;
-  /**
-   * Framework a usar, saltándose la detección.
-   *
-   * Para cuando la autodetección no puede acertar: un monorepo cuyo
-   * manifiesto está en la raíz, una dependencia con alias, un
-   * manifiesto que se genera en el build. Quien ejecuta esto sabe de
-   * qué es su API; no poder decírselo convierte un caso resoluble en un
-   * callejón sin salida.
-   */
-  readonly forceFramework?: string | undefined;
-}
+import type {
+  IDetectedFramework,
+  IGenerationOptions,
+  IGenerationResult,
+} from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
  *
- * `projectRoot` manda: la llamada se envuelve en `withProjectRoot()`, así
- * que dos proyectos generados en el mismo proceso no se pisan aunque los
- * servicios de dentro sigan resolviendo rutas por el singleton de
- * `paths.service` (p00017 S3).
+ * `projectRoot` manda, y llega **como argumento** hasta abajo: el
+ * contexto se resuelve una vez aquí y viaja explícito por el pipeline,
+ * el loader y los scanners.
+ *
+ * Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
+ * de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
+ * precio de una cola: dos llamadas concurrentes se pisaban el estado,
+ * así que había que serializarlas. Dos análisis a la vez tardaban lo que
+ * la suma.
+ *
+ * Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
+ * frameworks distintos con `Promise.all` y comprueba que ninguno se
+ * cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
  */
 export async function generateCollection(
   projectRoot: string,
@@ -171,12 +73,8 @@ export async function generateCollection(
     );
   }
 
-  // El contexto se resuelve UNA vez y se pasa hacia abajo. El
-  // `withProjectRoot` sigue envolviendo la llamada porque `loadProject()`
-  // y algún servicio todavía leen el singleton de `paths.service`
-  // (p00017 S3, en curso); en cuanto todos reciban contexto, sobra.
   const context = resolveProjectContext({ projectRoot });
-  return withProjectRoot(projectRoot, () => buildFor(context, options));
+  return buildFor(context, options);
 }
 
 async function buildFor(
@@ -264,7 +162,7 @@ async function buildFor(
 async function forcedDetection(
   options: IGenerationOptions,
   projectRoot: string,
-): Promise<Awaited<ReturnType<DiscoveryOrchestrator["detectAll"]>>> {
+): Promise<IDetectedFramework[]> {
   const forced = await options.orchestrator.forceFramework(
     projectRoot,
     options.forceFramework!,
@@ -307,7 +205,13 @@ async function discoverSpecs(
   const detected = options.forceFramework
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
-  const { config, manualEndpoints, configPath, zeroConfig } = await loadProject();
+  // Con `context`: el loader deja de preguntarle al singleton qué
+  // proyecto es este. Era el único sitio del pipeline que aún lo hacía,
+  // y el motivo de que la llamada entera tuviera que ir envuelta.
+  const { config, manualEndpoints, configPath, zeroConfig } = await loadProject(
+    process.argv,
+    context,
+  );
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
 

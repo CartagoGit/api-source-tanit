@@ -25,33 +25,12 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { ParsedRoute } from "../../../../../core/contracts/scanner.interface";
-
-/** Un endpoint esperado en el `expected.json`. */
-export interface IExpectedRoute {
-  readonly method: string;
-  readonly uri: string;
-}
-
-/** Forma del `expected.json`. */
-export interface IExpectedFixture {
-  readonly framework: string;
-  readonly routes: ReadonlyArray<IExpectedRoute>;
-}
-
-/** Resultado del smoke-runner. */
-export interface ISmokeResult {
-  readonly ok: boolean;
-  readonly framework: string;
-  readonly fixtureRoot: string;
-  readonly actualCount: number;
-  readonly expectedCount: number;
-  /** Solo en rutas que están en `expected` pero NO en `actual`. */
-  readonly missing: ReadonlyArray<IExpectedRoute>;
-  /** Solo en rutas que están en `actual` pero NO en `expected`. */
-  readonly unexpected: ReadonlyArray<{ readonly method: string; readonly uri: string }>;
-  readonly durationMs: number;
-}
+import type { ParsedRoute } from "../../../../../contracts/interfaces/core/scanner.interface";
+import type {
+  IExpectedFixture,
+  IExpectedRoute,
+  ISmokeResult,
+} from "../contracts/interfaces/runner.interface";
 
 /** Llave estable para diffing (method+uri). */
 function key(r: { method: string; uri: string }): string {

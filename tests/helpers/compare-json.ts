@@ -3,13 +3,8 @@
  * campos volátiles (paths absolutos, IDs generados, timestamps).
  */
 import { createHash } from "node:crypto";
-import {
-  isRecord,
-  readArray,
-  readObject,
-  readString,
-} from "../../projects/core/helpers/parse-json.helper";
-import type { PostmanItem } from "../../projects/core/contracts/postman.interface";
+import { isRecord, readArray, readObject, readString } from "../../projects/core/helpers/parse-json.helper";
+import type { PostmanItem } from "../../projects/contracts/interfaces/core/postman.interface";
 
 const VOLATILE_KEYS = new Set([
   "_postman_id",

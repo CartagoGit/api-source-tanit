@@ -46,7 +46,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
 - global_gate: test
 
 ### S1 — Coverage por scope en Vitest
-- **Status**: pending
+- **Status**: done
 - **Files**: `vitest.config.ts`, `projects/plugins/mcp-vertex_expostman/vitest.config.ts`, `package.json`
 - **Gate**: test
 - acceptance:
@@ -55,7 +55,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
   - "La herramienta de coverage se integra sin romper la ejecucion habitual de `bun run test`"
 
 ### S2 — Umbrales y baseline realistas
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `scripts/gates/coverage-baseline.constant.ts`, `scripts/gates/check-coverage.script.ts`, `tests/cli/coverage-gate.spec.ts`, `package.json`
 - **Gate**: lint
@@ -65,7 +65,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
   - "La baseline se puede subir deliberadamente cuando mejore la suite, no por accidente"
 
 ### S3 — Presupuesto minimo de rendimiento para `bench:scan`
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `scripts/gates/bench-scan.script.ts`, `scripts/gates/check-scan-budget.script.ts`, `.github/workflows/validate.yml`
 - **Gate**: none

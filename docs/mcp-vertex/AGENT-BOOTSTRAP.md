@@ -160,7 +160,8 @@ a pointer.
 
 | Folder | Suffix | Example |
 | --- | --- | --- |
-| `projects/core/contracts/` | `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/scanner.interface.ts` |
+| `projects/contracts/interfaces/` | `*.interface.ts` | `projects/contracts/interfaces/core/scanner.interface.ts` |
+| `projects/contracts/constants/` | `*.constant.ts` | `projects/contracts/constants/core/postman.constant.ts` |
 | `projects/core/helpers/` | `*.helper.ts` | `projects/core/helpers/uri.helper.ts` |
 | `projects/core/` | `*.service.ts` / `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/discovery/generation.pipeline.ts` |
 | `projects/core/exporters/` | `*.exporter.ts` | `projects/core/exporters/openapi.exporter.ts` |
@@ -176,6 +177,25 @@ prefix is a read-only alias the server no longer allocates.
 
 Service → runtime-safe (no `plugin/` imports). Helper → pure
 functions only, no I/O. Tool → one tool per file.
+
+**Types and constants live in `projects/contracts/`, nowhere else.**
+Not a style preference — a measured one. With the type next to the
+function that introduced it, using the type drags in the implementation:
+the web UI imported `IProjectSummary` from `core/discovery/summary.service`,
+so *typing* a summary pulled the whole pipeline; the MCP plugin imported
+the framework catalog from `frameworks/index`, dragging all 21 scanners,
+to declare a `z.enum` of 21 strings.
+
+Worse, nothing stops duplication: `SummaryOutputSchema` re-declared
+`IProjectSummary` with zod, the two drifted, and the schema claimed 6
+fields while the handler returned 18.
+
+`bun run lint:contracts` enforces it. Two things are **not** contracts
+even though they use `const` — an asset the program serves verbatim
+(`UI_HTML`) and a composition root of instantiated objects
+(`DEFAULT_REGISTRY`). Both are declared in the gate's `EXCEPTIONS`
+**with a written reason**; the gate also fails when an exception stops
+being needed. See [`projects/contracts/README.md`](../../projects/contracts/README.md).
 
 ### 3.6 Plugin options
 
@@ -243,7 +263,7 @@ publish). Do not hard-require
 ### 3.8 Framework scanners — the discovery contract
 
 Discovery goes through **three** interfaces declared in
-[`projects/core/contracts/scanner.interface.ts`](../../projects/core/contracts/scanner.interface.ts):
+[`projects/contracts/interfaces/core/scanner.interface.ts`](../../projects/contracts/interfaces/core/scanner.interface.ts):
 
 ```ts
 IProjectScanner        // ¿es este proyecto mío?  detect() → 0..1, resolve()

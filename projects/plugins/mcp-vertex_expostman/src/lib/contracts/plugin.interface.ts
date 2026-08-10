@@ -9,8 +9,14 @@
 
 import { z } from "zod";
 
-import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
-import { supportedFormats } from "../../../../../core/exporters/export-registry.service";
+import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
+import { EXPORT_FORMATS } from "../../../../../contracts/constants/core/export-formats.constant";
+import type { IProjectSummary } from "../../../../../contracts/interfaces/core/domain.interface";
+import type { ICheckReport } from "../../../../../contracts/interfaces/cli/command-outcomes.interface";
+import type { IStatsOutcome } from "../../../../../contracts/interfaces/cli/stats-outcome.interface";
+import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-outcome.interface";
+import type { IPushOutcome } from "../../../../../contracts/interfaces/cli/push-outcome.interface";
+import type { IInitOutcome } from "../../../../../contracts/interfaces/cli/init-outcome.interface";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -64,11 +70,12 @@ export const GenerateInputSchema = z
      * tiene forma de aprovechar que la persona a la que asiste sí sabe
      * de qué es su API.
      *
-     * La lista sale del registro de scanners, igual que en `test`: una
+     * La lista sale del catálogo de contratos, igual que en `test`: una
      * lista escrita a mano rechazaría el framework número veinte el día
-     * que se añada.
+     * que se añada. Antes salía de `frameworks/index`, que para leer
+     * veintiún nombres arrastraba los veintiún scanners.
      */
-    framework: z.enum(SUPPORTED_FRAMEWORKS as [string, ...string[]]).optional(),
+    framework: z.enum([...FRAMEWORK_IDS]).optional(),
     /**
      * Formatos de salida. Por defecto solo Postman.
      *
@@ -81,7 +88,7 @@ export const GenerateInputSchema = z
      * día que se añada.
      */
     formats: z
-      .array(z.enum(supportedFormats() as [string, ...string[]]))
+      .array(z.enum([...EXPORT_FORMATS]))
       .optional(),
   })
   .strict();
@@ -119,11 +126,11 @@ export const TestInputSchema = z
      * un framework nuevo se acepta sin tocar este fichero.
      */
     framework: z
-      // La lista NO se escribe a mano: sale del registro de scanners.
+      // La lista NO se escribe a mano: sale del catálogo de contratos.
       // Antes era un `enum` con doce nombres, y al añadir el trece el
       // plugin lo rechazaba como input inválido — la misma clase de
       // lista paralela que hizo que `summary` divergiera de `generate`.
-      .enum(SUPPORTED_FRAMEWORKS as [string, ...string[]])
+      .enum([...FRAMEWORK_IDS])
       .optional(),
     /**
      * Si es `true`, corre `bun run typecheck` además de `bun test`.
@@ -287,6 +294,24 @@ export const SummaryOutputSchema = z.object({
 
 export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
 
+/**
+ * El esquema tiene que cubrir el contrato **entero**.
+ *
+ * Esto no es una comprobación decorativa: es la que impide que vuelva a
+ * pasar lo que ya pasó. `SummaryOutputSchema` declaraba 6 campos
+ * mientras el handler hacía `toolJson({ ok: true, ...summary })` y
+ * soltaba los dieciocho. El contrato escrito y el comportamiento
+ * llevaban tiempo sin coincidir y nadie podía notarlo, porque no había
+ * nada que los confrontara.
+ *
+ * Con esta línea, añadir un campo a `IProjectSummary` y olvidarse del
+ * esquema **no compila**. Los campos de más sí se permiten —el tool
+ * añade `ok`— porque lo que se comprueba es que no falte ninguno.
+ */
+const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
+  SummaryOutputSchema;
+void _summaryCubreElContrato;
+
 /** Un paso de `test`: la ejecución de un sub-comando. */
 export const TestStepSchema = z.object({
   name: z.string().describe("`typecheck`, `test e2e`, `smoke:<framework>`…"),
@@ -317,7 +342,6 @@ export const TestOutputSchema = z.object({
 });
 
 export type ITestOutput = z.infer<typeof TestOutputSchema>;
-
 
 // --- `check`: la pregunta que un agente mas quiere hacer ---------------------
 
@@ -376,6 +400,19 @@ export const CheckOutputSchema = z.object({
 
 export type ICheckOutput = z.infer<typeof CheckOutputSchema>;
 
+/**
+ * Igual que en `summary`: el esquema tiene que cubrir el informe entero.
+ *
+ * `ICheckReport` es lo que produce el comando; el tool le añade `ok` y
+ * `durationMs`. Si mañana el informe gana un campo y el esquema no, esto
+ * deja de compilar en vez de devolver una salida que el contrato del
+ * tool no describe.
+ */
+const _checkCubreElInforme: z.ZodType<
+  { ok: true; durationMs: number } & ICheckReport
+> = CheckOutputSchema;
+void _checkCubreElInforme;
+
 // --- `list`: los endpoints, en datos ----------------------------------------
 
 export const ListInputSchema = z
@@ -405,3 +442,262 @@ export const ListOutputSchema = z.object({
 });
 
 export type IListOutput = z.infer<typeof ListOutputSchema>;
+
+// --- `stats`: la forma de la coleccion, en numeros --------------------------
+
+export const StatsInputSchema = z
+  .object({ projectRoot: z.string().min(1).optional() })
+  .strict();
+
+export type IStatsInput = z.infer<typeof StatsInputSchema>;
+
+/**
+ * Lo que devuelve `stats`.
+ *
+ * El CLI imprime una tabla alineada con `padEnd`, que es lo peor que se
+ * le puede dar a un agente para parsear: el ancho de columna depende del
+ * nombre de carpeta mas largo, asi que cambia entre proyectos.
+ */
+export const StatsOutputSchema = z.object({
+  ok: z.literal(true),
+  total: z.number().int().nonnegative().describe("Requests en la coleccion."),
+  byMethod: z
+    .array(
+      z.object({
+        method: z.string(),
+        count: z.number().int().nonnegative(),
+      }),
+    )
+    .describe("De mayor a menor, igual que se imprime."),
+  zones: z
+    .array(
+      z.object({
+        zone: z.string(),
+        total: z.number().int().nonnegative(),
+        byFolder: z.array(
+          z.object({
+            folder: z.string().describe("La carpeta de primer nivel."),
+            count: z.number().int().nonnegative(),
+          }),
+        ),
+      }),
+    )
+    .describe(
+      "Solo las zonas con contenido. Un proyecto sin configuracion de " +
+        "zonas tiene una sola, la de por defecto.",
+    ),
+});
+
+export type IStatsOutput = z.infer<typeof StatsOutputSchema>;
+
+/**
+ * El esquema cubre lo que devuelve el comando, menos su codigo de salida.
+ *
+ * `code` no viaja al agente: un fallo se responde con `toolError`, que
+ * lleva su propio sobre. Lo demas —total y los dos desgloses— tiene que
+ * estar entero.
+ */
+const _statsCubreElComando: z.ZodType<{ ok: true } & Omit<IStatsOutcome, "code">> =
+  StatsOutputSchema;
+void _statsCubreElComando;
+
+// --- `scan`: que ve el discovery antes de generar nada ----------------------
+
+export const ScanInputSchema = z
+  .object({ projectRoot: z.string().min(1).optional() })
+  .strict();
+
+export type IScanInput = z.infer<typeof ScanInputSchema>;
+
+/**
+ * Lo que devuelve `scan`.
+ *
+ * Es la respuesta a «¿por que no encuentra mis rutas?». `summary` da el
+ * proyecto ya interpretado; esto da el paso anterior — que scanner gano,
+ * por que artefactos, y las rutas **crudas**, antes de que el pipeline
+ * las convierta en requests. Cuando los dos numeros no cuadran, la
+ * diferencia esta entre estos dos tools.
+ */
+export const ScanOutputSchema = z.object({
+  ok: z.literal(true),
+  detected: z
+    .boolean()
+    .describe(
+      "Distinto de `ok`: `ok` dice que el escaneo se pudo hacer, " +
+        "`detected` dice si reconocio algun framework. No reconocer nada " +
+        "es un resultado, no un fallo de la herramienta.",
+    ),
+  root: z.string().describe("La raiz que se escaneo, ya resuelta."),
+  framework: z.string().nullable(),
+  artifacts: z
+    .array(z.string())
+    .describe("Los ficheros que delataron al framework: `package.json`, `server.js`…"),
+  scanner: z
+    .string()
+    .nullable()
+    .describe("La clase que recorre las rutas. Util cuando el framework acierta y las rutas no."),
+  validation: z
+    .string()
+    .nullable()
+    .describe("El proveedor de reglas de validacion, o null si el framework no tiene."),
+  routes: z.array(
+    z.object({
+      method: z.string(),
+      uri: z.string(),
+      tags: z.array(z.string()),
+      description: z.string().nullable(),
+    }),
+  ),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IScanOutput = z.infer<typeof ScanOutputSchema>;
+
+/**
+ * Lo mismo para `scan`, menos `code`, y con `detected` y `durationMs`
+ * que anade el tool.
+ *
+ * `detected` no esta en el comando porque alli se deduce de que
+ * `framework` sea `null`; el tool lo hace explicito para que un agente
+ * no tenga que inferirlo.
+ */
+const _scanCubreElComando: z.ZodType<
+  { ok: true; detected: boolean; durationMs: number } & Omit<IScanOutcome, "code">
+> = ScanOutputSchema;
+void _scanCubreElComando;
+
+// --- `push`: la unica operacion que escribe fuera del disco -----------------
+
+/**
+ * Entrada de `push`.
+ *
+ * **No lleva `apiKey`.** El secreto no entra por el input del tool: lo
+ * lee el CLI de `POSTMAN_API_KEY`, que es donde el host puede guardarlo
+ * sin que viaje por la conversacion. Un `apiKey` en el esquema seria una
+ * invitacion a que el agente lo pida y lo repita.
+ */
+export const PushInputSchema = z
+  .object({
+    projectRoot: z.string().min(1).optional(),
+    /** Workspace destino. Si falta, el personal por defecto. */
+    workspaceId: z.string().min(1).optional(),
+    /** Framework a la fuerza, igual que en `generate`. */
+    framework: z.enum([...FRAMEWORK_IDS]).optional(),
+    /** Si es `false`, sube solo la coleccion. Por defecto sube tambien los entornos. */
+    withEnvironments: z.boolean().optional(),
+  })
+  .strict();
+
+export type IPushInput = z.infer<typeof PushInputSchema>;
+
+/** Un artefacto que ha llegado a Postman. */
+export const PushedArtifactSchema = z.object({
+  action: z.enum(["created", "updated"]).describe("`created` si no existia."),
+  uid: z.string().describe("UID que asigna Postman: `<userId>-<uuid>`."),
+  name: z.string(),
+});
+
+/**
+ * Lo que devuelve `push`.
+ *
+ * Ni un campo con el secreto, ni enmascarado. El fallo llega como
+ * `{ reason, nextAction }` **redactados**, no como el cuerpo crudo de la
+ * respuesta de Postman: ese cuerpo puede traer la peticion que lo causo,
+ * y con ella la cabecera de la clave.
+ */
+export const PushOutputSchema = z.object({
+  ok: z.literal(true),
+  pushed: z
+    .boolean()
+    .describe(
+      "Distinto de `ok`: `ok` dice que la operacion se pudo intentar, " +
+        "`pushed` dice si algo llego a Postman. Una clave caducada " +
+        "detectada es una comprobacion que ha funcionado.",
+    ),
+  user: z
+    .string()
+    .nullable()
+    .describe(
+      "Usuario con el que se autentico. Es lo que permite darse cuenta de " +
+        "que se ha subido al workspace equivocado, que es el error caro.",
+    ),
+  framework: z.string().nullable(),
+  requests: z.number().int().nonnegative(),
+  collection: PushedArtifactSchema.nullable(),
+  environments: z.array(PushedArtifactSchema),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IPushOutput = z.infer<typeof PushOutputSchema>;
+
+/**
+ * El esquema cubre el resultado del comando, menos `code` y `error`.
+ *
+ * `code` no viaja —el sobre de `toolError` ya distingue el fallo— y
+ * `error` tampoco: cuando lo hay, el tool responde con `toolError` en
+ * vez de con este esquema.
+ */
+const _pushCubreElComando: z.ZodType<
+  { ok: true; pushed: boolean; durationMs: number } & Omit<
+    IPushOutcome,
+    "code" | "error"
+  >
+> = PushOutputSchema;
+void _pushCubreElComando;
+
+// --- `init`: preparar la configuracion sin parsear stdout -------------------
+
+/**
+ * Entrada de `init`.
+ *
+ * `outputDir` existe porque el destino por defecto —
+ * `<raiz>/resources/postman/examples/<nombre>/` — viene de cuando esto
+ * era una herramienta de Laravel, y en otros ecosistemas no es donde
+ * nadie lo buscaria.
+ */
+export const InitInputSchema = z
+  .object({
+    projectRoot: z.string().min(1).optional(),
+    /** Nombre del proyecto, si la deteccion por manifiesto no acierta. */
+    name: z.string().min(1).optional(),
+    /** Donde escribir la configuracion. Por defecto, la ruta convencional. */
+    outputDir: z.string().min(1).optional(),
+  })
+  .strict();
+
+export type IInitInput = z.infer<typeof InitInputSchema>;
+
+/**
+ * Lo que devuelve `init`.
+ *
+ * Las dos rutas son lo importante: los ficheros que escribe estan llenos
+ * de `// TODO` a proposito, asi que el siguiente paso siempre es que
+ * alguien los edite. Un agente que no pueda decir **donde** estan no ha
+ * terminado el trabajo, solo lo ha empezado.
+ */
+export const InitOutputSchema = z.object({
+  ok: z.literal(true),
+  projectName: z.string().describe("Deducido del manifiesto del ecosistema."),
+  baseUrl: z.string().describe("Del `.env` del proyecto, o el valor por defecto."),
+  authGuards: z
+    .array(z.string())
+    .describe(
+      "`['token']` cuando no se reconoce ninguno: no es que no haya auth, " +
+        "es que no se ha podido deducir cual.",
+    ),
+  routeFiles: z.array(z.string()).describe("Ficheros de rutas encontrados."),
+  configPath: z.string().nullable().describe("El `config.constant.ts` escrito."),
+  endpointsPath: z
+    .string()
+    .nullable()
+    .describe("El `endpoints.constant.ts`, vacio, para overrides manuales."),
+  durationMs: z.number().nonnegative(),
+});
+
+export type IInitOutput = z.infer<typeof InitOutputSchema>;
+
+/** El esquema cubre el resultado del comando, menos `code` y `error`. */
+const _initCubreElComando: z.ZodType<
+  { ok: true; durationMs: number } & Omit<IInitOutcome, "code" | "error">
+> = InitOutputSchema;
+void _initCubreElComando;

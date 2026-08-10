@@ -9,19 +9,21 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  DEFAULT_FORMAT,
   describeFormats,
   exportTo,
   exportWarnings,
   exporterFor,
   parseFormats,
-  supportedFormats,
+  registeredFormats,
 } from "../../projects/core/exporters/export-registry.service";
+import {
+  DEFAULT_EXPORT_FORMAT,
+} from "../../projects/contracts/constants/core/export-formats.constant";
 import { buildOpenApiDocument } from "../../projects/core/exporters/openapi.exporter";
 import type {
   IExportInput,
-} from "../../projects/core/contracts/export-target.interface";
-import type { EndpointSpec } from "../../projects/core/contracts/postman.interface";
+} from "../../projects/contracts/interfaces/core/export-target.interface";
+import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
 
 const specs: EndpointSpec[] = [
   {
@@ -59,8 +61,8 @@ const input: IExportInput = {
 describe("el registro", () => {
   test("`postman` es un formato válido aunque no tenga exportador", () => {
     // Lo produce el pipeline, que hace bastante más que serializar.
-    expect(supportedFormats()).toContain(DEFAULT_FORMAT);
-    expect(exporterFor(DEFAULT_FORMAT)).toBeNull();
+    expect(registeredFormats()).toContain(DEFAULT_EXPORT_FORMAT);
+    expect(exporterFor(DEFAULT_EXPORT_FORMAT)).toBeNull();
   });
 
   test("los cinco formatos extra están registrados", () => {
@@ -78,7 +80,7 @@ describe("el registro", () => {
   // Una lista de formatos escrita a mano se quedaría vieja el día que se
   // añada el sexto, y rechazaría como inválido algo que sí existe.
   test("la lista de válidos sale del registro", () => {
-    expect(supportedFormats()).toEqual(
+    expect(registeredFormats()).toEqual(
       describeFormats().map((d) => d.format),
     );
   });

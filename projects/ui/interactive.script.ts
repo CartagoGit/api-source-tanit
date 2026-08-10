@@ -15,16 +15,16 @@ import { existsSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
 import { withProjectRoot, withScopedPaths } from "../core/discovery/paths.service.js";
-import { SUPPORTED_FRAMEWORKS } from "../frameworks/framework.registry.js";
-import { OUTPUT_DIR_NAME } from "../core/contracts/postman.constant.js";
-import {
-  DEFAULT_FORMAT,
-  describeFormats,
-} from "../core/exporters/export-registry.service.js";
-import { defaultPainter, type IPainter } from "./ansi.helper.js";
+
+import { OUTPUT_DIR_NAME } from "../contracts/constants/core/postman.constant.js";
+import { describeFormats } from "../core/exporters/export-registry.service.js";
+import { defaultPainter } from "./ansi.helper.js";
 import { renderTable } from "./table.helper.js";
-import { renderDashboard, type IQualityMetrics } from "./dashboard.helper.js";
-import type { EndpointSpec } from "../core/contracts/postman.interface.js";
+import { renderDashboard } from "./dashboard.helper.js";
+import type { EndpointSpec } from "../contracts/interfaces/core/postman.interface.js";
+import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
+import type { IPainter, IQualityMetrics } from "../contracts/interfaces/cli/ui.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../contracts/constants/core/export-formats.constant.js";
 
 /**
  * Lector de líneas de stdin.
@@ -97,7 +97,7 @@ async function confirm(question: string, fallback = true): Promise<boolean> {
  *
  * Una respuesta que no es un número de la lista se vuelve a pedir. Antes
  * caía a la primera opción en silencio, y con tres destinos era casi
- * inocuo; con los ${SUPPORTED_FRAMEWORKS.length} frameworks de la lista
+ * inocuo; con los ${FRAMEWORK_IDS.length} frameworks de la lista
  * de abajo significaría escanear el proyecto como Laravel porque alguien
  * escribió "fastify" en vez de su número.
  *
@@ -124,8 +124,8 @@ const BANNER = `
 │  export-to-postman — Postman collections from your API  │
 └──────────────────────────────────────────────────────────┘
 
-Supported frameworks: ${SUPPORTED_FRAMEWORKS.length}
-${SUPPORTED_FRAMEWORKS.join(", ")}
+Supported frameworks: ${FRAMEWORK_IDS.length}
+${FRAMEWORK_IDS.join(", ")}
 `;
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
@@ -170,10 +170,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.log("  the dependency is aliased, or it is generated at build time.");
 
     const choice = await choose("Which framework is it?", [
-      ...SUPPORTED_FRAMEWORKS,
+      ...FRAMEWORK_IDS,
       "None of these — give up",
     ]);
-    const picked = SUPPORTED_FRAMEWORKS[choice];
+    const picked = FRAMEWORK_IDS[choice];
     if (!picked) {
       console.error("\n✗ No endpoints found in that folder.");
       console.error("  Check docs/FRAMEWORKS.md to see what each scanner looks for.");
@@ -242,16 +242,16 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       "Just Postman",
       "Postman + OpenAPI",
       "All of them",
-      ...formats.filter((f) => f.format !== DEFAULT_FORMAT).map((f) => `Postman + ${f.summary}`),
+      ...formats.filter((f) => f.format !== DEFAULT_EXPORT_FORMAT).map((f) => `Postman + ${f.summary}`),
     ]);
     const selected =
       choice === 0
-        ? [DEFAULT_FORMAT]
+        ? [DEFAULT_EXPORT_FORMAT]
         : choice === 1
-          ? [DEFAULT_FORMAT, "openapi"]
+          ? [DEFAULT_EXPORT_FORMAT, "openapi"]
           : choice === 2
             ? formats.map((f) => f.format)
-            : [DEFAULT_FORMAT, formats.filter((f) => f.format !== DEFAULT_FORMAT)[choice - 3]?.format ?? DEFAULT_FORMAT];
+            : [DEFAULT_EXPORT_FORMAT, formats.filter((f) => f.format !== DEFAULT_EXPORT_FORMAT)[choice - 3]?.format ?? DEFAULT_EXPORT_FORMAT];
     if (selected.length > 1) formatArgs.push("--format", [...new Set(selected)].join(","));
   }
 

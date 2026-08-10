@@ -11,13 +11,13 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  DEFAULT_WIDTH,
   createPainter,
   padEnd,
   shouldUseColor,
   truncate,
   visibleWidth,
 } from "../../projects/ui/ansi.helper";
+import { DEFAULT_TERMINAL_WIDTH } from "../../projects/contracts/constants/cli/terminal.constant";
 import { renderTable } from "../../projects/ui/table.helper";
 import { bar, renderDashboard } from "../../projects/ui/dashboard.helper";
 
@@ -214,17 +214,17 @@ describe("el resumen entero", () => {
   // Un número de cobertura sin la acción que sugiere es un dato, no una
   // ayuda.
   test("dice cuántos endpoints hay que mirar a mano", () => {
-    expect(renderDashboard(plain, metrics).join("\n")).toContain("4 endpoint(s) sin reglas");
+    expect(renderDashboard(plain, metrics).join("\n")).toContain("4 endpoint(s) with no rules");
   });
 
   test("con todo cubierto no sugiere revisar nada", () => {
     const perfect = { ...metrics, withRules: 9 };
-    expect(renderDashboard(plain, perfect).join("\n")).not.toContain("sin reglas en el código");
+    expect(renderDashboard(plain, perfect).join("\n")).not.toContain("with no rules in the code");
   });
 });
 
 describe("el ancho por defecto", () => {
   test("es un ancho de terminal razonable", () => {
-    expect(DEFAULT_WIDTH).toBe(80);
+    expect(DEFAULT_TERMINAL_WIDTH).toBe(80);
   });
 });

@@ -16,17 +16,12 @@
  *     Pydantic de `flask-pydantic`.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
-import {
-  marshmallowSchemaToSpecs,
-  parseMarshmallowSchemas,
-} from "../parsers/marshmallow-schema.helper.js";
-import {
-  parsePydanticModels,
-  pydanticModelToSpecs,
-} from "../parsers/pydantic-schema.helper.js";
+import { marshmallowSchemaToSpecs, parseMarshmallowSchemas } from "../parsers/marshmallow-schema.helper.js";
+import { parsePydanticModels, pydanticModelToSpecs } from "../parsers/pydantic-schema.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -35,7 +30,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -219,9 +214,9 @@ async function parseFlaskFile(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    ROUTE_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = ROUTE_RE.exec(line)) !== null) {
+    const routeRe = ownRegex(ROUTE_RE);
+    while ((m = routeRe.exec(line)) !== null) {
       const ident = m[1] ?? "";
       const path = m[2] ?? "";
       const methodsList = m[3] ?? "";
@@ -253,8 +248,8 @@ async function parseFlaskFile(
         });
       }
     }
-    ADD_URL_RULE_RE.lastIndex = 0;
-    while ((m = ADD_URL_RULE_RE.exec(line)) !== null) {
+    const addUrlRuleRe = ownRegex(ADD_URL_RULE_RE);
+    while ((m = addUrlRuleRe.exec(line)) !== null) {
       const path = m[1] ?? "";
       const methodsList = m[2] ?? "";
       const methods = parseMethods(methodsList);

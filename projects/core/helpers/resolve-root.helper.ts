@@ -24,32 +24,10 @@
 import { resolve } from "node:path";
 
 import { readFlag } from "./argv.helper.js";
-
-/** De dónde salió la raíz. */
-export type RootOrigin = "flag" | "env" | "cwd";
-
-/**
- * La raíz, y de dónde salió.
- *
- * `origin` no es información de depuración: es lo que permite avisar
- * cuando la raíz se ha **adivinado**. Sin él, un comando no puede
- * distinguir «me han dicho que use este directorio» de «no me han dicho
- * nada y he cogido el actual», que es la diferencia entre escanear el
- * proyecto correcto y escanear lo que hubiera debajo del `cd` anterior.
- */
-export interface IResolvedRoot {
-  readonly root: string;
-  readonly origin: RootOrigin;
-  /** `true` cuando la eligió alguien; `false` cuando se adivinó. */
-  readonly explicit: boolean;
-}
-
-/** Lo inyectable, para poder probarlo sin tocar los globales. */
-export interface IResolveRootOptions {
-  readonly argv?: ReadonlyArray<string> | undefined;
-  readonly env?: Readonly<Record<string, string | undefined>> | undefined;
-  readonly cwd?: string | undefined;
-}
+import type {
+  IResolveRootOptions,
+  IResolvedRoot,
+} from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * La raíz del proyecto: `--project-root`, luego `POSTMAN_PROJECT_ROOT`,

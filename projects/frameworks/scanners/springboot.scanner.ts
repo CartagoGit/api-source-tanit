@@ -19,6 +19,7 @@
  *   - Limitado: solo constraints inline en el package local.
  */
 import { existsSync } from "node:fs";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
@@ -29,7 +30,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 
 async function isSpringBootProject(projectRoot: string): Promise<boolean> {
@@ -154,9 +155,9 @@ async function parseJavaFile(
   let classStart = -1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    CLASS_MAPPING_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = CLASS_MAPPING_RE.exec(line)) !== null) {
+    const classMappingRe = ownRegex(CLASS_MAPPING_RE);
+    while ((m = classMappingRe.exec(line)) !== null) {
       const decorator = m[1] ?? "";
       const args = m[2] ?? "";
       if (decorator === "RequestMapping") {
@@ -174,9 +175,9 @@ async function parseJavaFile(
   if (classStart < 0) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
-      CLASS_MAPPING_RE.lastIndex = 0;
       let m: RegExpExecArray | null;
-      while ((m = CLASS_MAPPING_RE.exec(line)) !== null) {
+      const classMappingRe = ownRegex(CLASS_MAPPING_RE);
+      while ((m = classMappingRe.exec(line)) !== null) {
         const decorator = m[1] ?? "";
         if (["Controller", "RestController"].includes(decorator)) {
           classStart = i;
@@ -191,9 +192,9 @@ async function parseJavaFile(
   // 2) Buscar method mappings.
   for (let i = classStart + 1; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    METHOD_MAPPING_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = METHOD_MAPPING_RE.exec(line)) !== null) {
+    const methodMappingRe = ownRegex(METHOD_MAPPING_RE);
+    while ((m = methodMappingRe.exec(line)) !== null) {
       const decorator = m[1] ?? "";
       const args = m[2] ?? "";
       const paths = extractPaths(args);

@@ -1,13 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  exampleForPathParam,
-  exampleForQueryField,
-  extractPathParams,
-  inferBodyForSpec,
-  inferQueryForSpec,
-} from "../../projects/core/domain/param-inferrer.service";
-import type { EndpointSpec } from "../../projects/core/contracts/postman.interface";
+import { exampleForPathParam, exampleForQueryField, extractPathParams, inferBodyForSpec, inferQueryForSpec } from "../../projects/core/domain/param-inferrer.service";
+import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
 
 /** Helper para construir un EndpointSpec mínimo en tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {

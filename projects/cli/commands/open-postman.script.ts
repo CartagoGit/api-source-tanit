@@ -23,7 +23,7 @@ import { outputDir } from "../../core/discovery/paths.service.js";
 const platform: string = process.platform ?? "linux";
 void platform; // suppress unused warning; kept for clarity
 
-async function main(): Promise<number> {
+export async function main(): Promise<number> {
   const args = process.argv.slice(2);
   const forceWeb = args.includes("--web");
   const fileFlag = args.indexOf("--file");
@@ -38,16 +38,16 @@ async function main(): Promise<number> {
     `${outputDir()}/${projectName ?? "collection"}.postman_collection.json`;
 
   if (!existsSync(collectionPath)) {
-    console.error(`✘ No se encuentra: ${collectionPath}`);
+    console.error(`✘ Not found: ${collectionPath}`);
     console.error(
-      "  Ejecuta primero `bun run build` (o genera con --output <ruta>).",
+      "  Run `generate` first (or pass --output <path>).",
     );
     return 1;
   }
 
   const os = platform;
-  console.log(`→ Abriendo Postman con: ${collectionPath}`);
-  console.log(`→ Plataforma: ${os}`);
+  console.log(`→ Opening Postman with: ${collectionPath}`);
+  console.log(`→ Platform: ${os}`);
 
   if (forceWeb) {
     return openWeb(collectionPath);
@@ -59,13 +59,13 @@ async function main(): Promise<number> {
       stdio: "inherit",
     });
     if (r.status === 0) {
-      console.log("✔ Postman.app abierto.");
+      console.log("✔ Postman.app opened.");
       return 0;
     }
-    console.log("  · Postman.app no encontrado, usando 'open' genérico…");
+    console.log("  · Postman.app not found, falling back to the generic `open`…");
     const r2 = spawnSync("open", [collectionPath], { stdio: "inherit" });
     if (r2.status === 0) {
-      console.log("✔ Apertura genérica OK.");
+      console.log("✔ Opened with the system default.");
       return 0;
     }
     return openWeb(collectionPath);
@@ -103,10 +103,10 @@ async function main(): Promise<number> {
 
 function openWeb(filePath: string): number {
   const url = "https://app.postman.com/import";
-  console.log("→ No se detectó app de escritorio; abriendo web…");
+  console.log("→ No desktop app detected; opening the web version…");
   console.log(`  ${url}`);
   console.log("");
-  console.log("  Arrastra este archivo al importador:");
+  console.log("  Drag this file into the importer:");
   console.log(`    ${filePath}`);
 
   const os = platform;
@@ -120,4 +120,6 @@ function openWeb(filePath: string): number {
   return 0;
 }
 
-process.exit(await main());
+if (import.meta.main) {
+  process.exit(await main());
+}

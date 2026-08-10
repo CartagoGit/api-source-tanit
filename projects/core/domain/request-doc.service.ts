@@ -12,7 +12,7 @@
  * respuestas de ejemplo: ver la nota de p00031 sobre por qué inventarlas
  * habría sido peor que no tenerlas.
  */
-import type { IEndpointField } from "../contracts/postman.interface.js";
+import type { IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
 
 /** Los sitios donde puede ir un parámetro, y cómo llamarlos. */
 const LOCATION_TITLES: Readonly<Record<string, string>> = {

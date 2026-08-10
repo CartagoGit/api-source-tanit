@@ -16,14 +16,7 @@
  * `g`**, de modo que `lastIndex` nunca avanzaba y el bucle no terminaba
  * nunca. Centralizarlas aquí elimina el bug y la divergencia.
  */
-
-/** Posición de una llamada balanceada: el `(` de apertura y su `)`. */
-export interface IBalancedCall {
-  /** Índice del `(` que abre la llamada. */
-  readonly callStart: number;
-  /** Índice del `)` que la cierra. */
-  readonly callEnd: number;
-}
+import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Elimina comentarios de bloque y de línea de un fuente JS/TS.

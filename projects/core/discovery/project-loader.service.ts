@@ -26,26 +26,12 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
-import type { EndpointSpec } from "../contracts/postman.interface.js";
-import type { ProjectConfig } from "../contracts/project-config.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { projectRoot } from "./paths.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";
-
-/**
- * La configuración del proyecto, ya resuelta, y de dónde ha salido.
- *
- * `configPath` importa tanto como el config: es la diferencia entre "no
- * encontré tu fichero" y "lo encontré y dice esto", que es lo primero
- * que hay que saber cuando la salida no es la esperada.
- */
-export interface LoadedProject {
-  config: ProjectConfig;
-  manualEndpoints: EndpointSpec[];
-  configPath: string;
-  endpointsPath: string | null;
-  /** True si se generó un ProjectConfig zero-config (sin archivo host). */
-  zeroConfig: boolean;
-}
+import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
 
 function resolveMaybeRelative(p: string, base: string): string {
   return isAbsolute(p) ? resolve(p) : resolve(base, p);
@@ -99,8 +85,10 @@ async function listDirs(p: string): Promise<string[]> {
  * `composer.json`, con lo que Laravel se llamaba como su paquete y los
  * otros once frameworks como su carpeta.
  */
-export async function detectProjectName(): Promise<string> {
-  const root = projectRoot();
+export async function detectProjectName(
+  context?: IProjectContext,
+): Promise<string> {
+  const root = context?.projectRoot ?? projectRoot();
   if (!root) return "unnamed";
   return detectProjectNameIn(root);
 }
@@ -113,11 +101,13 @@ export async function detectProjectName(): Promise<string> {
  * Si el nombre del directorio no coincide con `detectProjectName()`, busca
  * cualquier `examples/<*>/config.constant.ts` disponible.
  */
-async function findHostConfig(): Promise<string | null> {
-  const root = projectRoot();
+async function findHostConfig(
+  context?: IProjectContext,
+): Promise<string | null> {
+  const root = context?.projectRoot ?? projectRoot();
   if (!root) return null;
 
-  const name = await detectProjectName();
+  const name = await detectProjectName(context);
   for (const base of [
     join(root, "resources", "postman", "examples"),
     join(root, "examples"),
@@ -154,8 +144,10 @@ async function findHostConfig(): Promise<string | null> {
  *
  * → `{ "routes/externo.php": ["api", "externo"] }`
  */
-export async function detectFilePrefixes(): Promise<Record<string, string[]>> {
-  const root = projectRoot();
+export async function detectFilePrefixes(
+  context?: IProjectContext,
+): Promise<Record<string, string[]>> {
+  const root = context?.projectRoot ?? projectRoot();
   if (!root) return {};
   const provider = join(root, "app", "Providers", "RouteServiceProvider.php");
   if (!existsSync(provider)) return {};
@@ -202,9 +194,11 @@ export async function detectFilePrefixes(): Promise<Record<string, string[]>> {
  * Genera un ProjectConfig mínimo viable sin archivo del host.
  * Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
  */
-export async function buildZeroConfig(): Promise<ProjectConfig> {
-  const root = projectRoot();
-  const name = await detectProjectName();
+export async function buildZeroConfig(
+  context?: IProjectContext,
+): Promise<ProjectConfig> {
+  const root = context?.projectRoot ?? projectRoot();
+  const name = await detectProjectName(context);
   let baseUrl = "http://localhost/api";
 
   if (root) {
@@ -223,7 +217,7 @@ export async function buildZeroConfig(): Promise<ProjectConfig> {
     }
   }
 
-  const filePrefixes = await detectFilePrefixes();
+  const filePrefixes = await detectFilePrefixes(context);
   if (root) {
     try {
       const routesDir = join(root, "routes");
@@ -283,6 +277,7 @@ export async function buildZeroConfig(): Promise<ProjectConfig> {
  */
 export async function resolveConfigPath(
   argv: string[] = process.argv,
+  context?: IProjectContext,
 ): Promise<string> {
   const cli = readFlag(argv, "--config");
   if (cli) return resolveMaybeRelative(cli, process.cwd());
@@ -299,7 +294,7 @@ export async function resolveConfigPath(
     if (existsSync(legacy)) return legacy;
   }
 
-  const host = await findHostConfig();
+  const host = await findHostConfig(context);
   if (host) return host;
 
   return "__zero__";
@@ -311,13 +306,26 @@ export async function resolveConfigPath(
  * Si no encuentra ningún archivo de config, genera un zero-config en
  * memoria con autodetección de prefijo + baseUrl + nombre.
  */
+/**
+ * `context` es opcional y no es un descuido.
+ *
+ * Quien lo pasa —el pipeline— deja de depender del singleton de
+ * `paths.service` para saber qué proyecto está cargando. Quien no lo
+ * pasa —los comandos del CLI, un proceso por proyecto— sigue funcionando
+ * igual, porque ahí el estado global no puede confundirse con nada.
+ *
+ * La diferencia importa en consumidores de vida larga: el servidor MCP
+ * cargaba la config del proyecto A al pedirle el B, porque `projectRoot()`
+ * se resuelve una vez por proceso.
+ */
 export async function loadProject(
   argv: string[] = process.argv,
+  context?: IProjectContext,
 ): Promise<LoadedProject> {
-  const configPath = await resolveConfigPath(argv);
+  const configPath = await resolveConfigPath(argv, context);
 
   if (configPath === "__zero__") {
-    const config = await buildZeroConfig();
+    const config = await buildZeroConfig(context);
     return {
       config,
       manualEndpoints: [],

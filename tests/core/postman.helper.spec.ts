@@ -1,15 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  countItems,
-  pathToSegments,
-  uriFromRaw,
-  walkCollection,
-} from "../../projects/core/helpers/postman.helper";
+import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../projects/core/helpers/postman.helper";
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../../projects/core/contracts/postman.interface";
+} from "../../projects/contracts/interfaces/core/postman.interface";
 
 /** Construye una mini-colección para tests. */
 function fixtureCollection(): PostmanCollection {

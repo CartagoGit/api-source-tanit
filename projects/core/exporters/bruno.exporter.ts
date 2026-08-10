@@ -17,8 +17,8 @@ import type {
   IExportArtifact,
   IExportInput,
   IExportTarget,
-} from "../contracts/export-target.interface.js";
-import type { EndpointSpec } from "../contracts/postman.interface.js";
+} from "../../contracts/interfaces/core/export-target.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { topGroupFor } from "../helpers/uri.helper.js";
 
 /**

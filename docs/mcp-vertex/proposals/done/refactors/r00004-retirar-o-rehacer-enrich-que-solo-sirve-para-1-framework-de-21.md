@@ -41,7 +41,7 @@ Hallazgo 5 (BAD) de a00001. `enrich` descubre por el camino legacy de Laravel (`
 - global_gate: e2e
 
 ### S1 — Sacar de `frameworks/laravel/` lo que no es de Laravel
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/domain/catalog-enricher.service.ts`, `projects/frameworks/laravel/catalog-enricher.service.ts`, `projects/cli/commands/generate.script.ts`, `tests/core/catalog-enricher.service.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -50,7 +50,7 @@ Hallazgo 5 (BAD) de a00001. `enrich` descubre por el camino legacy de Laravel (`
   - "`lint:boundaries` sigue verde y los 21 ejemplos también"
 
 ### S2 — La decisión, medida en vez de opinada
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `docs/mcp-vertex/proposals/ready/DECISION-enrich.md`
 - **Gate**: none
@@ -60,7 +60,7 @@ Hallazgo 5 (BAD) de a00001. `enrich` descubre por el camino legacy de Laravel (`
   - "Si hace algo distinto: se nombra, y ese algo es lo único que sobrevive"
 
 ### S3 — Ejecutar la decisión
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `projects/cli/commands/enrich.script.ts`, `projects/cli/cli.script.ts`, `tests/cli/enrich-command.test.ts`, `docs/INSTALL.md`, `README.md`
 - **Gate**: e2e

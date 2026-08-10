@@ -38,7 +38,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
 - global_gate: e2e
 
 ### S1 — El contrato: `framework` y clave de operación
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/contracts/scanner.interface.ts`, `projects/core/helpers/route-identity.helper.ts`, `tests/core/route-identity.helper.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -47,7 +47,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
   - "Los casos de GraphQL y tRPC están en el test, no solo el REST"
 
 ### S2 — Retirar `__params` y sus dos `as any`
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-hybrid.spec.ts`
 - **Gate**: type
@@ -57,7 +57,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
   - "Un test cubre el proyecto híbrido que era la razón de existir de `__params`: Express con un spec OpenAPI al lado"
 
 ### S3 — Los cuatro sitios que improvisaban su clave usan la misma
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/core/discovery/generation.pipeline.ts`, `projects/core/helpers/collection-invariants.helper.ts`, `projects/cli/commands/diff.script.ts`, `tests/e2e/route-identity-rpc.test.ts`
 - **Gate**: e2e

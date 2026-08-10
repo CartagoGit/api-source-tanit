@@ -14,9 +14,10 @@
  *   - `projectRoot()`  → raíz del proyecto que se está escaneando.
  *
  * Resolución del `packageRoot`:
- *   1. `moduleDir(import.meta.url)` (Bun/Node ESM).
- *   2. Búsqueda subiendo desde `process.cwd()` hasta dar con
- *      `package.json` + `contracts/postman.constant.ts`.
+ *   1. Búsqueda subiendo desde la carpeta de **este módulo** hasta dar
+ *      con `package.json` + `projects/contracts/constants/core/postman.constant.ts`.
+ *   2. Si no aparece, el padre de esa carpeta. Es un último recurso que
+ *      ya mintió una vez (ver `findPackageRoot`).
  *
  * Resolución del `projectRoot`:
  *   1. CLI `--project-root <path>`.
@@ -38,7 +39,9 @@
  */
 import { existsSync } from "node:fs";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
-import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
+import type { IPathScope } from "../../contracts/interfaces/core/discovery.interface.js";
+import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-limits.constant.js";
 
 // ---------------------------------------------------------------------------
 // Caché interna
@@ -81,11 +84,43 @@ function walkUp(
   return null;
 }
 
+/**
+ * La raíz de **este** paquete, subiendo desde donde vive este módulo.
+ *
+ * El marcador es un fichero que solo existe aquí. Un `package.json` a
+ * secas no basta: instalado dentro de otro proyecto, el primero que se
+ * encuentra subiendo podría ser el del host.
+ *
+ * ## Por qué estaba roto
+ *
+ * El predicado buscaba `contract`, en singular, y la carpeta se llamaba
+ * `contracts`. Nunca casaba, así que `findPackageRoot` devolvía siempre
+ * `null` y `discover()` se caía a `dirnameUp(start, 1)` — el padre de
+ * `projects/core/discovery/`, o sea **`projects/core`**. El fallback fue
+ * correcto en su día, cuando este fichero vivía un nivel bajo la raíz;
+ * al mover el código a `projects/` dejó de serlo y nadie se enteró,
+ * porque el predicado tampoco funcionaba y los dos fallos se tapaban.
+ *
+ * Se pagó en dos sitios, los dos medidos:
+ *
+ *   · En modo repo —escanear este propio repositorio— la salida iba a
+ *     `projects/core/export-to-postman/`. Hay una colección de
+ *     `example-app` ahí dentro que lo demuestra.
+ *   · `POSTMAN_EXAMPLE` buscaba en `projects/core/examples/`, que no
+ *     existe, así que la variable no hacía nada en silencio.
+ *
+ * El marcador volvió a quedarse viejo al mudar los contratos a su propio
+ * proyecto (r00007 S2), y esta vez lo cazaron los tests en el acto. Esa
+ * es la diferencia entre una ruta escrita a mano y una ruta escrita a
+ * mano **con algo que la comprueba**.
+ */
 function findPackageRoot(start: string): string | null {
   return walkUp(start, (dir) => {
     return (
       existsSync(join(dir, "package.json")) &&
-      existsSync(join(dir, "contract"))
+      existsSync(
+        join(dir, "projects", "contracts", "constants", "core", "postman.constant.ts"),
+      )
     );
   });
 }
@@ -229,12 +264,6 @@ const SCOPE_VARS = {
   projectRoot: "POSTMAN_PROJECT_ROOT",
   outputDir: "POSTMAN_OUTPUT_DIR",
 } as const;
-
-/** Qué rutas fijar durante la sección. Lo que se omite no se toca. */
-export interface IPathScope {
-  readonly projectRoot?: string;
-  readonly outputDir?: string;
-}
 
 /**
  * Ejecuta `fn` con las rutas del scope fijadas, y restaura el estado
@@ -430,22 +459,6 @@ export async function outputEnvironmentPath(
   return join(outputDir(), `${base}.${slug}.postman_environment.json`);
 }
 
-/**
- * Raíces dentro de las cuales tiene que quedarse la salida, si las hay.
- *
- * Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
- * uso legítimo y no hay motivo para estorbarlo. La pone **el plugin
- * MCP** al spawnear el CLI, porque ahí quien elige la ruta es un agente
- * y una ruta con `../` escribiría fuera del proyecto.
- *
- * Son varias, separadas por el separador de rutas del sistema, porque
- * una sola no describe el uso legítimo: la salida puede ir con el
- * proyecto que se escanea, dentro del workspace, o en un temporal, y las
- * tres son razonables. Un guardián que bloquea el uso normal se acaba
- * quitando.
- */
-export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT" as const;
-
 async function ensureOutputDir(): Promise<void> {
   const fs = await import("node:fs/promises");
   const dir = outputDir();
@@ -513,15 +526,32 @@ export function fromProjectRelative(relPath: string): string {
  * Se imprime antes de escanear a propósito: cuando la salida no es la
  * esperada, lo primero que hay que descartar es que se esté mirando otra
  * carpeta.
+ *
+ * ## Por qué recibe el nombre del proyecto
+ *
+ * Porque sin él **mentía**, y justo en la línea que existe para no
+ * mentir. `outputBasename()` sin argumento se cae a `projectBasename()`,
+ * que es el nombre del **directorio**; el fichero real se llama como el
+ * proyecto dice llamarse en su manifiesto. Sobre una copia de
+ * `example-express` en una carpeta `api/`, la traza anunciaba
+ * `api.postman_collection.json` y el CLI escribía
+ * `sample-express.postman_collection.json` tres líneas más abajo.
+ *
+ * Quien la imprime todavía no ha cargado la configuración —esa es la
+ * gracia de imprimirla antes—, así que el nombre es opcional: sin él se
+ * dice que aún no se sabe, en vez de inventarse uno.
  */
-export function describeDiscoveredPaths(): string {
+export function describeDiscoveredPaths(projectName?: string): string {
   const d = discover();
+  const coleccion = projectName
+    ? join(outputDir(), `${outputBasename(projectName)}.json`)
+    : `${outputDir()}/<nombre-del-proyecto>.postman_collection.json`;
   return [
     `  · Package root:   ${d.packageRoot}`,
     `  · Project root:   ${d.projectRoot ?? "(not found)"}`,
     `  · Routes dir:     ${routesDir() ?? "(not found)"}`,
     `  · Requests dir:   ${requestsDir() ?? "(not found)"}`,
     `  · Output dir:     ${outputDir()}`,
-    `  · Collection:     ${join(outputDir(), `${outputBasename()}.json`)}`,
+    `  · Collection:     ${coleccion}`,
   ].join("\n");
 }

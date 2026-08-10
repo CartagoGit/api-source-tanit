@@ -5,7 +5,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../../projects/core/contracts/scanner.interface";
+} from "../../projects/contracts/interfaces/core/scanner.interface";
 
 function detector(framework: string, score: number, options: { throws?: boolean } = {}): IProjectScanner {
   return {
