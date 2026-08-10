@@ -11,13 +11,13 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  DEFAULT_WIDTH,
   createPainter,
   padEnd,
   shouldUseColor,
   truncate,
   visibleWidth,
 } from "../../projects/ui/ansi.helper";
+import { DEFAULT_TERMINAL_WIDTH } from "../../projects/contracts/constants/cli/terminal.constant";
 import { renderTable } from "../../projects/ui/table.helper";
 import { bar, renderDashboard } from "../../projects/ui/dashboard.helper";
 
@@ -225,6 +225,6 @@ describe("el resumen entero", () => {
 
 describe("el ancho por defecto", () => {
   test("es un ancho de terminal razonable", () => {
-    expect(DEFAULT_WIDTH).toBe(80);
+    expect(DEFAULT_TERMINAL_WIDTH).toBe(80);
   });
 });

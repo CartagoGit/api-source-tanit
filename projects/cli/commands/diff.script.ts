@@ -22,36 +22,7 @@ import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.se
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
-
-/** Un endpoint que está en un lado y no en el otro. */
-export interface IDriftedEndpoint {
-  readonly method: string;
-  readonly uri: string;
-  readonly name?: string | undefined;
-}
-
-/**
- * La deriva entre el código y la colección, en datos.
- *
- * Se devuelve además de imprimirse porque el CLI no es el único
- * consumidor: el tool `check` del plugin necesita **los endpoints**, no
- * la tabla. Parsear la salida por pantalla con regex es lo que se hacía
- * antes en otro tool del plugin, y se rompe el día que cambia una
- * columna.
- */
-export interface ICheckReport {
-  readonly inSync: boolean;
-  readonly routesInSource: number;
-  readonly requestsInCollection: number;
-  readonly missingInCollection: ReadonlyArray<IDriftedEndpoint>;
-  readonly missingInSource: ReadonlyArray<IDriftedEndpoint>;
-}
-
-/** Lo que devuelve comprobar: código de salida e informe. */
-export interface ICheckOutcome {
-  readonly code: number;
-  readonly report: ICheckReport | null;
-}
+import type { ICheckOutcome, ICheckReport } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /** Comprueba la deriva y devuelve el informe. `main` es quien lo pinta. */
 export async function runCheck(

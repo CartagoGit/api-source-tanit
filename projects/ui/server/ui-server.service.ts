@@ -17,10 +17,8 @@
  *   3. **Se apaga con SIGINT y SIGTERM.** Un servidor que no suelta el
  *      puerto obliga a buscar el proceso y matarlo a mano.
  */
-import {
-  handleUiRequest,
-  type IUiDeps,
-} from "./ui-routes.service.js";
+import { handleUiRequest } from "./ui-routes.service.js";
+import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 
 /** Solo el bucle local. Ver §1 de arriba. */
 const HOST = "127.0.0.1";
@@ -30,21 +28,6 @@ export const DEFAULT_UI_PORT = 4771;
 
 /** Cuántos puertos se prueban antes de rendirse. */
 const INTENTOS = 20;
-
-/** Un servidor levantado. */
-export interface IUiServer {
-  readonly url: string;
-  readonly port: number;
-  stop(): void;
-}
-
-/** Lo que hace falta para levantarlo. */
-export interface IUiServerOptions {
-  readonly deps: IUiDeps;
-  /** El HTML de la interfaz, ya embebido: el binario no lee ficheros. */
-  readonly html: string;
-  readonly port?: number | undefined;
-}
 
 /**
  * ¿Es un error de "puerto ocupado"?

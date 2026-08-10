@@ -29,8 +29,9 @@ import { withScopedPaths } from "../../core/discovery/paths.service.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
-import type { IUiDeps } from "../../ui/server/ui-routes.service.js";
+
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
+import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
 function abrirNavegador(url: string): void {

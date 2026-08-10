@@ -18,25 +18,13 @@
  * Y se enciende a la fuerza con `FORCE_COLOR`, que es lo que usan los
  * runners que sí saben interpretar ANSI aunque no sean un TTY.
  */
+import {
+  ANSI_CODES,
+  DEFAULT_TERMINAL_WIDTH,
+} from "../contracts/constants/cli/terminal.constant.js";
+import type { IPainter } from "../contracts/interfaces/cli/ui.interface.js";
 
-/** Los códigos que se usan. Ni uno más: lo que no se usa, no se declara. */
-const CODES = {
-  reset: "[0m",
-  bold: "[1m",
-  dim: "[2m",
-  red: "[31m",
-  green: "[32m",
-  yellow: "[33m",
-  blue: "[34m",
-  magenta: "[35m",
-  cyan: "[36m",
-  gray: "[90m",
-} as const;
 
-export type ColorName = keyof typeof CODES;
-
-/** Ancho por defecto cuando la terminal no dice el suyo. */
-export const DEFAULT_WIDTH = 80;
 
 /**
  * Si se debe pintar con color.
@@ -55,23 +43,15 @@ export function shouldUseColor(
   return isTty;
 }
 
-/** Un pintor: colorea o no, según se haya decidido una vez al arrancar. */
-export interface IPainter {
-  readonly enabled: boolean;
-  paint(text: string, color: ColorName): string;
-  /** Varios estilos a la vez: `paint(t, "bold", "green")`. */
-  style(text: string, ...colors: ColorName[]): string;
-}
-
 export function createPainter(enabled: boolean): IPainter {
   return {
     enabled,
     paint(text, color) {
-      return enabled ? `${CODES[color]}${text}${CODES.reset}` : text;
+      return enabled ? `${ANSI_CODES[color]}${text}${ANSI_CODES.reset}` : text;
     },
     style(text, ...colors) {
       if (!enabled || colors.length === 0) return text;
-      return `${colors.map((c) => CODES[c]).join("")}${text}${CODES.reset}`;
+      return `${colors.map((c) => ANSI_CODES[c]).join("")}${text}${ANSI_CODES.reset}`;
     },
   };
 }
@@ -125,7 +105,7 @@ export function terminalWidth(): number {
   const stdout = process.stdout as { columns?: number };
   const columns = stdout.columns;
   if (typeof columns !== "number" || !Number.isFinite(columns) || columns < 20) {
-    return DEFAULT_WIDTH;
+    return DEFAULT_TERMINAL_WIDTH;
   }
   return Math.min(columns, 160);
 }

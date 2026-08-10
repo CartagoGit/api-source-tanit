@@ -35,6 +35,7 @@ import {
 } from "../../contracts/interfaces/core/generate-report.interface.js";
 import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
@@ -118,21 +119,6 @@ async function warnOnIdentityClash(
   } catch {
     // Un JSON previo ilegible no es motivo para abortar la generación.
   }
-}
-
-/**
- * Lo que devuelve una generación: el código de salida y el informe.
- *
- * El informe se construye **siempre**, no solo con `--json`. Antes solo
- * existía dentro de ese `if`, así que cualquier otro consumidor
- * —`expostman ui`, un test, el plugin— tenía que volver a llamar al
- * pipeline o parsear la salida por pantalla. Las dos cosas son una
- * segunda implementación, y una segunda implementación se
- * desincroniza.
- */
-export interface IGenerateOutcome {
-  readonly code: number;
-  readonly report: IGenerateReport | null;
 }
 
 /**

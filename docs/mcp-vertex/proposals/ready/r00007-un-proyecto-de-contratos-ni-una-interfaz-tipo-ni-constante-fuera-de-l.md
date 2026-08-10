@@ -57,8 +57,24 @@ date: 2026-08-08
 > peligrosa aquella lista no era existir: era que nadie la comparaba. Hay
 > un test que las compara, verificado metiendo un id inventado.
 >
-> De S4 va lo escrito en la ronda anterior: `IScanOutcome` e
-> `IStatsOutcome` ya viven en `interfaces/cli/`. Quedan S4, S5 y S6.
+> **S4 entregada.** `projects/cli/` y `projects/ui/` tampoco exportan ya
+> ningún tipo. Los 15 están en `interfaces/cli/`, repartidos entre
+> `command-outcomes.interface.ts` (lo que devuelve cada comando) y
+> `ui.interface.ts` (lo que la interfaz declara).
+>
+> `ColorName` obligó a mover también la paleta ANSI: el tipo **es** la
+> lista de códigos (`keyof typeof CODES`), así que separarlos habría
+> dejado dos listas que se separan a la primera. Ahora `ANSI_CODES`,
+> `DEFAULT_TERMINAL_WIDTH` y `DEFAULT_UI_PORT` viven en
+> `constants/cli/terminal.constant.ts`.
+>
+> Y el test de autocontención tenía un falso positivo esperando: miraba
+> si el import empezaba por `../..` en vez de resolver la ruta. En cuanto
+> un contrato de `interfaces/cli/` importó uno de `constants/cli/` —que
+> sigue dentro de contratos— saltó. Ahora resuelve. Un contrato puede
+> apoyarse en otro; lo que no puede es apoyarse en una implementación.
+>
+> Quedan S5 y S6.
 
 # r00007 — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él
 
@@ -118,7 +134,7 @@ El gate va en el ultimo slice a proposito. Escribirlo primero obliga a un modo a
   - "Los tipos de parsers y scanners estan en contratos; sus implementaciones no exportan tipos"
 
 ### S4 — CLI y UI: los `Outcome` de cada comando son contrato, no detalle del script
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/contracts/interfaces/cli/`, `projects/cli/`, `projects/ui/`
 - **Gate**: type

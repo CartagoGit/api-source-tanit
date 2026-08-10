@@ -1,5 +1,4 @@
 /**
-import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
  * Qué contesta la interfaz a cada petición, sin saber de HTTP.
  *
  * Esto es una función de `(ruta, cuerpo)` a `(estado, datos)`. No toca
@@ -14,40 +13,7 @@ import type { IProjectSummary } from "../../contracts/interfaces/core/domain.int
  * pipeline que usa el CLI. La interfaz es otra puerta al mismo sitio,
  * no una segunda implementación que se desincronice.
  */
-import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
-
-/** Lo que la interfaz necesita del resto del programa. */
-export interface IUiDeps {
-  /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
-  readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
-  /** Genera la colección. Es lo que hace `generate`. */
-  readonly generate: (params: {
-    readonly projectRoot: string;
-    readonly outputDir?: string | undefined;
-    readonly formats?: ReadonlyArray<string> | undefined;
-  }) => Promise<IUiGenerateResult>;
-  /** Los formatos de salida que existen, del registro. */
-  readonly formats: () => ReadonlyArray<string>;
-  /** Los frameworks soportados, del registro. */
-  readonly frameworks: () => ReadonlyArray<string>;
-  /** ¿Existe este directorio? Inyectado para poder probarlo. */
-  readonly exists: (path: string) => Promise<boolean>;
-}
-
-/** Lo que devuelve generar, en lo que la interfaz enseña. */
-export interface IUiGenerateResult {
-  readonly collectionPath: string | null;
-  readonly requests: number;
-  readonly folders: number;
-  readonly extraPaths: ReadonlyArray<string>;
-  readonly warnings: ReadonlyArray<string>;
-}
-
-/** Una respuesta ya resuelta: estado y cuerpo, sin envoltorio HTTP. */
-export interface IUiResponse {
-  readonly status: number;
-  readonly body: unknown;
-}
+import type { IUiDeps, IUiResponse } from "../../contracts/interfaces/cli/ui.interface.js";
 
 const ok = (body: unknown): IUiResponse => ({ status: 200, body });
 

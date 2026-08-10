@@ -18,7 +18,7 @@
  */
 import { describe, expect, test } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -64,10 +64,22 @@ describe("projects/contracts/", () => {
     expect(ficheros.length).toBeGreaterThan(0);
   });
 
-  /** EL test: ni un import que salga de la carpeta. */
+  /**
+   * EL test: ni un import que salga de la carpeta.
+   *
+   * Se **resuelve** la ruta en vez de mirar si empieza por `../..`. Esa
+   * heurística daba un falso positivo en cuanto un contrato de
+   * `interfaces/cli/` importó uno de `constants/cli/`: sube dos niveles
+   * y sigue dentro de `projects/contracts/`, que es exactamente lo que
+   * se quiere permitir. Un contrato puede apoyarse en otro; lo que no
+   * puede es apoyarse en una implementación.
+   */
   test.for(ficheros)("%s no importa nada de fuera", async (fichero) => {
     const source = await readFile(fichero, "utf8");
-    const fuera = importsRelativos(source).filter((spec) => spec.startsWith("../.."));
+    const fuera = importsRelativos(source).filter((spec) => {
+      const destino = resolve(dirname(fichero), spec);
+      return relative(CONTRACTS, destino).startsWith("..");
+    });
     expect(fuera, `${relative(CONTRACTS, fichero)} sale de projects/contracts/`).toEqual(
       [],
     );

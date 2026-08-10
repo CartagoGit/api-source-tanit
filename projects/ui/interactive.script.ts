@@ -18,11 +18,12 @@ import { withProjectRoot, withScopedPaths } from "../core/discovery/paths.servic
 
 import { OUTPUT_DIR_NAME } from "../contracts/constants/core/postman.constant.js";
 import { DEFAULT_FORMAT, describeFormats } from "../core/exporters/export-registry.service.js";
-import { defaultPainter, type IPainter } from "./ansi.helper.js";
+import { defaultPainter } from "./ansi.helper.js";
 import { renderTable } from "./table.helper.js";
-import { renderDashboard, type IQualityMetrics } from "./dashboard.helper.js";
+import { renderDashboard } from "./dashboard.helper.js";
 import type { EndpointSpec } from "../contracts/interfaces/core/postman.interface.js";
 import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
+import type { IPainter, IQualityMetrics } from "../contracts/interfaces/cli/ui.interface.js";
 
 /**
  * Lector de líneas de stdin.
