@@ -23,10 +23,7 @@ import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helpe
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findAllBalanced, findOutsideStrings, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
-import {
-  parseZodObjectLiteral,
-  zodFieldToSpec,
-} from "../parsers/zod-schema.helper.js";
+import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type {
   IEndpointValidation,
   IProjectMatch,

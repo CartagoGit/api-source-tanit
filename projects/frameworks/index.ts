@@ -32,16 +32,13 @@ export { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 
 export {
   DEFAULT_REGISTRY,
-  SUPPORTED_FRAMEWORKS,
   defaultOrchestrator,
+  registeredFrameworkIds,
   scannerBundleFor,
-  type IScannerBundle,
 } from "./framework.registry.js";
-import type { IGenerationOptions, IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
+import type { IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
 import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
-
-/** Lo que se puede ajustar sin tocar el catálogo. */
-export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">;
+import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanners.interface.js";
 
 /**
  * Genera la colección con **todos** los frameworks soportados.

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 147 símbolos en 42 módulos.
+> 146 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1738,12 +1738,6 @@ vacías, que es lo que hacía bien el código anterior.
 ### `projects/frameworks/index.ts`
 
 Capa de frameworks — todo lo que sabe de un framework concreto.
-
-#### `IGenerateOptions`
-
-```ts
-export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">
-```
 
 #### `generateWithAllFrameworks`
 

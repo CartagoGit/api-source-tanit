@@ -8,7 +8,7 @@
  *
  * Y es exactamente el problema del que sale esta sección. Hoy la UI
  * importa `IProjectSummary` de `core/discovery/summary.service`, y el
- * plugin importa `SUPPORTED_FRAMEWORKS` de `frameworks/index` —que
+ * plugin importaba el catálogo de `frameworks/index` —que
  * arrastra los 21 scanners— solo para leer una lista de nombres.
  *
  * `tsconfig.contracts.json` ya lo impide en compilación, porque incluye

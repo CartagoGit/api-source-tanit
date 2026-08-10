@@ -40,8 +40,25 @@ date: 2026-08-08
 > · **`CORE_CONTRACTS_DIR`** en el registro de rutas del repo, sustituido
 >   por `CONTRACTS_DIR` y sus dos subcarpetas.
 >
+> **S3 entregada.** `projects/frameworks/` tampoco exporta ya ningún
+> tipo: los 15 están en `interfaces/frameworks/scanners.interface.ts`.
+>
+> Lo importante es la **inversión** del catálogo. `SUPPORTED_FRAMEWORKS`
+> se derivaba de `DEFAULT_REGISTRY.detectors`, así que leer veintiún
+> nombres obligaba a importar los veintiún scanners con sus parsers de
+> PHP, Go, Java, Python y Rust detrás — y el plugin MCP lo hacía solo
+> para declarar un `z.enum`. Ahora `FRAMEWORK_IDS` es una lista literal
+> en `constants/frameworks/` y el registro expone
+> `registeredFrameworkIds()`, que es **lo que cumple** del catálogo.
+>
+> El precio de invertirlo son dos listas, y este repositorio ya sabe cómo
+> acaba eso: `NON_LARAVEL_FRAMEWORKS` enumeraba once de doce, Laravel no
+> estaba, y `summary` decía 7 donde el pipeline encuentra 17. Lo que hacía
+> peligrosa aquella lista no era existir: era que nadie la comparaba. Hay
+> un test que las compara, verificado metiendo un id inventado.
+>
 > De S4 va lo escrito en la ronda anterior: `IScanOutcome` e
-> `IStatsOutcome` ya viven en `interfaces/cli/`. Quedan S3, S4, S5 y S6.
+> `IStatsOutcome` ya viven en `interfaces/cli/`. Quedan S4, S5 y S6.
 
 # r00007 — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él
 
@@ -91,7 +108,7 @@ El gate va en el ultimo slice a proposito. Escribirlo primero obliga a un modo a
   - "La suite de core pasa sin cambiar una sola asercion: es una mudanza, no un cambio de comportamiento"
 
 ### S3 — Frameworks: el catalogo deja de vivir dentro del registro que lo consume
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/contracts/interfaces/frameworks/`, `projects/contracts/constants/frameworks/`, `projects/frameworks/`
 - **Gate**: type

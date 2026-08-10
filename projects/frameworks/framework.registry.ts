@@ -14,20 +14,9 @@ import {
   GraphQlProjectScanner,
   GraphQlRouteScanner,
 } from "./scanners/graphql.scanner";
-import {
-  TrpcProjectScanner,
-  TrpcRouteScanner,
-} from "./scanners/trpc.scanner";
-import {
-  LaravelProjectScanner,
-  LaravelScanner,
-  LaravelFormRequestValidationProvider,
-} from "./laravel/laravel.scanner";
-import {
-  OpenApiProjectScanner,
-  OpenApiScanner,
-  OpenApiValidationProvider,
-} from "./scanners/openapi.scanner";
+import { TrpcProjectScanner, TrpcRouteScanner } from "./scanners/trpc.scanner";
+import { LaravelProjectScanner, LaravelScanner, LaravelFormRequestValidationProvider } from "./laravel/laravel.scanner";
+import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "./scanners/openapi.scanner";
 import {
   ExpressProjectScanner,
   ExpressScanner,
@@ -94,6 +83,7 @@ import {
   FiberRouteScanner,
   FiberValidateTagProvider,
 } from "./scanners/fiber.scanner";
+import type { IScannerBundle } from "../contracts/interfaces/frameworks/scanners.interface.js";
 import {
   RustProjectScanner,
   RustRouteScanner,
@@ -111,9 +101,6 @@ import { KtorProjectScanner, KtorRouteScanner } from "./scanners/ktor.scanner";
 
 import type {
   FrameworkId,
-  IProjectScanner,
-  IRouteScanner,
-  IValidationSpecProvider,
 } from "../contracts/interfaces/core/scanner.interface";
 
 /** Registry canónico con los 12 frameworks soportados. */
@@ -202,21 +189,22 @@ export function defaultOrchestrator(): DiscoveryOrchestrator {
 }
 
 /**
- * IDs de los frameworks soportados, derivados del propio registry.
+ * Los IDs que este registro reconoce de verdad.
  *
- * Cualquier consumidor que necesite iterar frameworks (el tool `test`,
- * los smoke runners, la documentación generada) debe leer esta lista en
- * lugar de mantener su propia copia: una lista paralela se desincroniza
- * en cuanto se añade un scanner.
+ * No es el catálogo — el catálogo es `FRAMEWORK_IDS`, en contratos, y
+ * esto es **lo que el registro cumple**. La dirección importa: derivar
+ * la lista de nombres del registro obligaba a arrastrar los veintiún
+ * scanners para leer veintiún strings, que es justo lo que hacía el
+ * plugin MCP para declarar un `z.enum`.
+ *
+ * Se conserva porque hay un test que compara las dos y falla si sobra o
+ * falta una. Una lista paralela no es peligrosa; una lista paralela que
+ * nadie compara sí — este repositorio ya lo pagó con
+ * `NON_LARAVEL_FRAMEWORKS`, que enumeraba once de doce frameworks y
+ * mandaba a Laravel por un camino distinto sin decirlo.
  */
-export const SUPPORTED_FRAMEWORKS: ReadonlyArray<FrameworkId> =
-  DEFAULT_REGISTRY.detectors.map((d) => d.framework);
-
-/** Trío de colaboradores de un framework, o `null` si no está soportado. */
-export interface IScannerBundle {
-  readonly projectScanner: IProjectScanner;
-  readonly routeScanner: IRouteScanner;
-  readonly validationProvider: IValidationSpecProvider | null;
+export function registeredFrameworkIds(): ReadonlyArray<FrameworkId> {
+  return DEFAULT_REGISTRY.detectors.map((d) => d.framework);
 }
 
 /**

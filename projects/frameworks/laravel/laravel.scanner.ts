@@ -23,6 +23,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../contracts/interfaces/core/scanner.interface.js";
+import type { LaravelScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const RESOURCE_RE =
@@ -219,11 +220,6 @@ function stripComments(src: string): string {
 // ---------------------------------------------------------------------------
 // Route scanner
 // ---------------------------------------------------------------------------
-
-export interface LaravelScannerOptions {
-  /** Mapa archivo → prefijos. Si null, autodetecta del RouteServiceProvider. */
-  readonly filePrefixes?: Record<string, string[]>;
-}
 
 export class LaravelScanner implements IRouteScanner {
   readonly framework = "laravel" as const;

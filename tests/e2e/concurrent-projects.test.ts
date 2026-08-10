@@ -26,10 +26,8 @@ import { comprehensiveFixtureDir, exampleDir } from "../../scripts/helpers/root.
 import { copyExampleClean } from "../helpers/fixtures";
 import { generateCollection } from "../../projects/core/discovery/generation.pipeline";
 import { defaultOrchestrator } from "../../projects/frameworks/framework.registry";
-import {
-  SUPPORTED_FRAMEWORKS,
-  generateWithAllFrameworks,
-} from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
 
 let work = "";
 let express = "";
@@ -117,7 +115,7 @@ describe("dos proyectos a la vez", () => {
  * hay que saber cuál es el número correcto, solo que sea el mismo.
  */
 describe("el mismo proyecto, dos veces a la vez", () => {
-  test.for([...SUPPORTED_FRAMEWORKS])(
+  test.for([...FRAMEWORK_IDS])(
     "%s: las dos ejecuciones ven exactamente lo mismo",
     { timeout: 240_000 },
     async (framework) => {

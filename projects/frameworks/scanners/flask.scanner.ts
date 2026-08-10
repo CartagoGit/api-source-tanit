@@ -20,14 +20,8 @@ import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
-import {
-  marshmallowSchemaToSpecs,
-  parseMarshmallowSchemas,
-} from "../parsers/marshmallow-schema.helper.js";
-import {
-  parsePydanticModels,
-  pydanticModelToSpecs,
-} from "../parsers/pydantic-schema.helper.js";
+import { marshmallowSchemaToSpecs, parseMarshmallowSchemas } from "../parsers/marshmallow-schema.helper.js";
+import { parsePydanticModels, pydanticModelToSpecs } from "../parsers/pydantic-schema.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,

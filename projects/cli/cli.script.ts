@@ -17,6 +17,7 @@
  * si es el punto de entrada (`import.meta.main`).
  */
 import { isAbsolute, resolve } from "node:path";
+import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Un comando del CLI: su descripción y cómo cargarlo. */
 interface ICommand {
@@ -77,7 +78,6 @@ const COMMANDS: Record<string, ICommand> = {
  * vieja exactamente igual que una constante paralela.
  */
 async function buildHelp(): Promise<string> {
-  const { SUPPORTED_FRAMEWORKS } = await import("../frameworks/index.js");
   const { describeFormats } = await import(
     "../core/exporters/export-registry.service.js"
   );
@@ -88,8 +88,8 @@ async function buildHelp(): Promise<string> {
     ),
   ).replace(
     "%FRAMEWORKS%",
-    `Detects ${SUPPORTED_FRAMEWORKS.length} frameworks automatically:\n` +
-      `${wrap([...SUPPORTED_FRAMEWORKS].sort().join(", "), 72, "  ")}\n` +
+    `Detects ${FRAMEWORK_IDS.length} frameworks automatically:\n` +
+      `${wrap([...FRAMEWORK_IDS].sort().join(", "), 72, "  ")}\n` +
       "Use --framework <id> when autodetection can't reach the manifest.",
   );
 }

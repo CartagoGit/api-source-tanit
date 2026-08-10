@@ -14,11 +14,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import {
-  OpenApiProjectScanner,
-  OpenApiScanner,
-  OpenApiValidationProvider,
-} from "../../projects/frameworks/scanners/openapi.scanner";
+import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
 import { smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type {
   IProjectMatch,

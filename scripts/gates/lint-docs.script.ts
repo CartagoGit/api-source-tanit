@@ -34,6 +34,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
 import { PACKAGE_JSON, REPO_ROOT } from "../helpers/root.helper.js";
+import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Carpetas de documentación que se revisan. */
 const DOC_ROOTS = ["docs", "examples", "."] as const;
@@ -139,8 +140,7 @@ const COUNTED_CLAIMS: ReadonlyArray<ICountedClaim> = [
     re: /\b(?:los|las)\s+(\d+)\s+scanners?\b/gi,
     what: "scanners registrados",
     count: async () => {
-      const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
-      return SUPPORTED_FRAMEWORKS.length;
+      return FRAMEWORK_IDS.length;
     },
   },
   {
@@ -149,8 +149,7 @@ const COUNTED_CLAIMS: ReadonlyArray<ICountedClaim> = [
     re: /\b(?:(\d+)\s+frameworks?\s+(?:soportados?|autom|detect)|[Ff]unciona con \*\*(\d+)\*\*)/g,
     what: "frameworks soportados",
     count: async () => {
-      const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
-      return SUPPORTED_FRAMEWORKS.length;
+      return FRAMEWORK_IDS.length;
     },
   },
 ];
@@ -391,7 +390,6 @@ function checkCommandTableRows(
  * ninguno se le escribió la sección — porque nada la pedía.
  */
 async function checkFrameworkSections(problems: IProblem[]): Promise<void> {
-  const { SUPPORTED_FRAMEWORKS } = await import("../../projects/frameworks/index.js");
   const path = join(REPO_ROOT, "docs", "FRAMEWORKS.md");
   let doc: string;
   try {
@@ -403,7 +401,7 @@ async function checkFrameworkSections(problems: IProblem[]): Promise<void> {
   // Se busca por el enlace al ejemplo o al fixture, que es lo que hace
   // una sección de verdad: una mención suelta del nombre en otra sección
   // no cuenta como documentarlo.
-  for (const framework of SUPPORTED_FRAMEWORKS) {
+  for (const framework of FRAMEWORK_IDS) {
     // `openapi` es el único cuyo ejemplo no sigue el patrón del nombre:
     // se llama `example-openapi-headers` porque lo que ejercita son las
     // cabeceras del spec.

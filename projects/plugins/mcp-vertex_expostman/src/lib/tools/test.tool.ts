@@ -38,10 +38,8 @@ import {
 } from "../contracts/plugin.interface";
 import { normalizeCwd, runBunCommand } from "../helpers/runner.helper";
 import { runSmoke } from "../helpers/smoke-runner.helper";
-import {
-  SUPPORTED_FRAMEWORKS,
-  scannerBundleFor,
-} from "../../../../../frameworks/framework.registry";
+import { scannerBundleFor } from "../../../../../frameworks/framework.registry";
+import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
 
 const TOOL_ID = "test";
 
@@ -244,7 +242,7 @@ export function buildTestToolRegistration(
             const failDetails: string[] = [];
             let passed = 0;
 
-            for (const framework of SUPPORTED_FRAMEWORKS) {
+            for (const framework of FRAMEWORK_IDS) {
               const fixtureRoot = smokeFixtureRoot(workspaceRoot, framework);
               if (!existsSync(fixtureRoot)) continue;
               const outcome = await smokeFramework(framework, fixtureRoot);

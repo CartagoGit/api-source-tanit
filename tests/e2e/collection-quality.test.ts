@@ -11,13 +11,11 @@
  */
 import { describe, expect, test } from "vitest";
 
-import {
-  SUPPORTED_FRAMEWORKS,
-  generateWithAllFrameworks,
-} from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 import { SUPPORTED_METHODS } from "../../projects/contracts/constants/core/postman.constant";
 import type { PostmanItem } from "../../projects/contracts/interfaces/core/postman.interface";
+import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
 
 /** Todas las requests de la colección, sin las carpetas. */
 function requestsOf(items: ReadonlyArray<PostmanItem>): PostmanItem[] {
@@ -26,7 +24,7 @@ function requestsOf(items: ReadonlyArray<PostmanItem>): PostmanItem[] {
   );
 }
 
-describe.each([...SUPPORTED_FRAMEWORKS])("colección de %s", (framework) => {
+describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
   test("toda request tiene nombre, método y URL", async () => {
     const { collection } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),

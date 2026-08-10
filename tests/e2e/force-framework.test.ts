@@ -18,11 +18,9 @@ import { cp, mkdtemp, rm, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import {
-  SUPPORTED_FRAMEWORKS,
-  generateWithAllFrameworks,
-} from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
+import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
 
 /** Copia del fixture de Fastify SIN su `package.json`. */
 let sinManifiesto = "";
@@ -81,7 +79,7 @@ describe("un id que no existe", () => {
 });
 
 describe("forzar no cambia nada cuando la detección ya acierta", () => {
-  test.each([...SUPPORTED_FRAMEWORKS])(
+  test.each([...FRAMEWORK_IDS])(
     "%s da lo mismo detectado que forzado",
     async (framework) => {
       const root = comprehensiveFixtureDir(framework);

@@ -18,25 +18,10 @@ import type {
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { projectDirs, toProjectRelative as toContextRelative } from "../../core/discovery/project-context.service.js";
 import { VARIANT_TAG } from "../../contracts/constants/core/postman.constant.js";
-import {
-  generateBodyVariants,
-  generateQueryVariants,
-  parseFormRequest,
-  type FormRequestRules,
-} from "./form-request-parser.service.js";
+import { generateBodyVariants, generateQueryVariants, parseFormRequest } from "./form-request-parser.service.js";
 import { requestsDir, toProjectRelative } from "../../core/discovery/paths.service.js";
-
-export interface EnrichmentStats {
-  bodyVariants: number;
-  queryVariants: number;
-  skippedManualBody: number;
-  unresolved: number;
-  resolved: number;
-  rulesWithUnknown: Array<{ formRequest: string; unknown: string[] }>;
-}
-
-/** Clave method+uri normalizada → ruta relativa del FormRequest. */
-export type FormRequestIndex = Map<string, string>;
+import type { EnrichmentStats, FormRequestIndex } from "../../contracts/interfaces/frameworks/scanners.interface.js";
+import type { FormRequestRules } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 function normalizeKey(method: string, uri: string): string {
   const u = uri

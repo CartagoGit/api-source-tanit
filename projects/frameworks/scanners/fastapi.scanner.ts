@@ -21,10 +21,7 @@ import { readFile, } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
-import {
-  parsePydanticModels,
-  pydanticFieldToSpec,
-} from "../parsers/pydantic-schema.helper.js";
+import { parsePydanticModels, pydanticFieldToSpec } from "../parsers/pydantic-schema.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,

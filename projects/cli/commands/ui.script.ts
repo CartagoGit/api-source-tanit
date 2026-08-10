@@ -23,13 +23,14 @@ import { stat } from "node:fs/promises";
 
 import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
-import { SUPPORTED_FRAMEWORKS } from "../../frameworks/framework.registry.js";
+
 import { supportedFormats } from "../../core/exporters/export-registry.service.js";
 import { withScopedPaths } from "../../core/discovery/paths.service.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
 import type { IUiDeps } from "../../ui/server/ui-routes.service.js";
+import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
 function abrirNavegador(url: string): void {
@@ -97,7 +98,7 @@ function dependencias(): IUiDeps {
       };
     },
     formats: () => supportedFormats(),
-    frameworks: () => SUPPORTED_FRAMEWORKS,
+    frameworks: () => FRAMEWORK_IDS,
     exists: async (path) => {
       try {
         return (await stat(path)).isDirectory();

@@ -1,15 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import {
-  detectTypedRule,
-  exampleValueForRule,
-  generateBodyVariants,
-  generateCompleteBody,
-  generateMinimalBody,
-  generateQueryVariants,
-  parseFormRequest,
-  type FormRequestRules,
-} from "../../projects/frameworks/laravel/form-request-parser.service";
+import { detectTypedRule, exampleValueForRule, generateBodyVariants, generateCompleteBody, generateMinimalBody, generateQueryVariants, parseFormRequest } from "../../projects/frameworks/laravel/form-request-parser.service";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
+import type { FormRequestRules } from "../../projects/contracts/interfaces/frameworks/scanners.interface";
 
 let project: ITempProject;
 

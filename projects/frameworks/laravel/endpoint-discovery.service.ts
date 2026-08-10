@@ -16,17 +16,12 @@ import { join } from "node:path";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
-import {
-  findFormRequestForController,
-  generateCompleteBody,
-  generateMinimalBody,
-  parseFormRequest,
-  type FormRequestRules,
-} from "./form-request-parser.service.js";
+import { findFormRequestForController, generateCompleteBody, generateMinimalBody, parseFormRequest } from "./form-request-parser.service.js";
 import { fromProjectRelative, projectRoot, toProjectRelative } from "../../core/discovery/paths.service.js";
-import { parseAllRoutes, stripComments, type ParsedRoute } from "./route-parser.service.js";
+import { parseAllRoutes, stripComments } from "./route-parser.service.js";
 import { mergeWithManual } from "../../core/domain/endpoint-merge.service.js";
 import { prettyGroupName, topGroupFor } from "../../core/helpers/uri.helper.js";
+import type { FormRequestRules, ParsedRoute } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 // ---------------------------------------------------------------------------
 // Nombres legibles a partir del método del controlador
@@ -281,7 +276,6 @@ async function routeToSpec(
 
   return spec;
 }
-
 
 /**
  * Descubre todos los endpoints del proyecto.

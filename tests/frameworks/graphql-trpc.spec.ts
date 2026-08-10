@@ -17,11 +17,7 @@ import {
   parseOperations,
   stripGraphQlComments,
 } from "../../projects/frameworks/scanners/graphql.scanner";
-import {
-  findNamedRouters,
-  parseRouterObject,
-  referencedRouterNames,
-} from "../../projects/frameworks/scanners/trpc.scanner";
+import { findNamedRouters, parseRouterObject, referencedRouterNames } from "../../projects/frameworks/scanners/trpc.scanner";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
 import { exampleDir } from "../../scripts/helpers/root.helper";
 

@@ -9,8 +9,8 @@
 
 import { z } from "zod";
 
-import { SUPPORTED_FRAMEWORKS } from "../../../../../frameworks/index";
 import { supportedFormats } from "../../../../../core/exporters/export-registry.service";
+import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -64,11 +64,12 @@ export const GenerateInputSchema = z
      * tiene forma de aprovechar que la persona a la que asiste sí sabe
      * de qué es su API.
      *
-     * La lista sale del registro de scanners, igual que en `test`: una
+     * La lista sale del catálogo de contratos, igual que en `test`: una
      * lista escrita a mano rechazaría el framework número veinte el día
-     * que se añada.
+     * que se añada. Antes salía de `frameworks/index`, que para leer
+     * veintiún nombres arrastraba los veintiún scanners.
      */
-    framework: z.enum(SUPPORTED_FRAMEWORKS as [string, ...string[]]).optional(),
+    framework: z.enum([...FRAMEWORK_IDS]).optional(),
     /**
      * Formatos de salida. Por defecto solo Postman.
      *
@@ -119,11 +120,11 @@ export const TestInputSchema = z
      * un framework nuevo se acepta sin tocar este fichero.
      */
     framework: z
-      // La lista NO se escribe a mano: sale del registro de scanners.
+      // La lista NO se escribe a mano: sale del catálogo de contratos.
       // Antes era un `enum` con doce nombres, y al añadir el trece el
       // plugin lo rechazaba como input inválido — la misma clase de
       // lista paralela que hizo que `summary` divergiera de `generate`.
-      .enum(SUPPORTED_FRAMEWORKS as [string, ...string[]])
+      .enum([...FRAMEWORK_IDS])
       .optional(),
     /**
      * Si es `true`, corre `bun run typecheck` además de `bun test`.
@@ -317,7 +318,6 @@ export const TestOutputSchema = z.object({
 });
 
 export type ITestOutput = z.infer<typeof TestOutputSchema>;
-
 
 // --- `check`: la pregunta que un agente mas quiere hacer ---------------------
 

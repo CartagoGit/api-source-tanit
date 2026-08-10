@@ -29,6 +29,7 @@ import type {
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import type { ITrpcProcedure } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** El prefijo con el que se monta tRPC casi siempre. */
 const DEFAULT_PREFIX = "/trpc";
@@ -56,13 +57,6 @@ export class TrpcProjectScanner implements IProjectScanner {
   async resolve(projectRoot: string): Promise<IProjectMatch> {
     return { framework: "trpc", projectRoot, artifacts: ["package.json"] };
   }
-}
-
-/** Un procedimiento con su ruta completa dentro del router. */
-export interface ITrpcProcedure {
-  /** `users.list`, con los routers anidados separados por punto. */
-  readonly path: string;
-  readonly kind: "query" | "mutation" | "subscription";
 }
 
 /** `router({ … })` y `t.router({ … })`. */

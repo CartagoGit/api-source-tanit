@@ -24,14 +24,7 @@ import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { fromProjectRoot, projectDirs } from "../../core/discovery/project-context.service.js";
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "../../core/discovery/paths.service.js";
-import type { ParsedRoute as NeutralParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
-
-/**
- * Re-export del tipo neutro para no romper imports existentes.
- * `route-parser.service.ts` se mantiene como IMPLEMENTACIÓN Laravel
- * del contrato `IRouteScanner` (ver `services/scanners/laravel.scanner.ts`).
- */
-export type ParsedRoute = NeutralParsedRoute;
+import type { ParsedRoute } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
