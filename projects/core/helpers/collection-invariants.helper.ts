@@ -14,13 +14,7 @@
  *                 vacía, dos requests idénticas).
  */
 import type { PostmanCollection, PostmanItem } from "../../contracts/interfaces/core/postman.interface.js";
-
-/** Un incumplimiento concreto, con su ruta dentro de la colección. */
-export interface ICollectionIssue {
-  readonly severity: "error" | "warning";
-  readonly path: string;
-  readonly message: string;
-}
+import type { ICollectionIssue } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /** Variables que Postman resuelve por su cuenta; no exigimos declararlas. */
 const POSTMAN_BUILTIN_VARIABLES = new Set([

@@ -47,30 +47,7 @@
  * habría sido la abstracción equivocada.
  */
 import { normalizeForComparison } from "./uri.helper.js";
-
-/** Lo que hace falta para identificar una operación. */
-export interface IEndpointIdentity {
-  /** Método HTTP en mayúsculas. */
-  readonly method: string;
-  /** URI, con o sin normalizar: aquí se normaliza igual. */
-  readonly uri: string;
-  /**
-   * Nombre de la operación, cuando el protocolo lo necesita.
-   *
-   * En REST sobra: `GET /users` ya es único. En RPC sobre POST es **lo
-   * único** que distingue una operación de otra, porque la URL es la
-   * misma para todas.
-   */
-  readonly name?: string | undefined;
-  /**
-   * Cuerpo exacto, como último recurso.
-   *
-   * Dos requests al mismo endpoint con el mismo nombre pero distinto
-   * cuerpo son dos variantes legítimas —el catálogo genera una por cada
-   * combinación de reglas— y no deben contarse como duplicadas.
-   */
-  readonly body?: string | undefined;
-}
+import type { IEndpointIdentity } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * La clave de una operación. Misma operación, misma clave.

@@ -20,10 +20,7 @@ import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
-import {
-  declaredDependencies,
-  parseJson,
-} from "../../core/helpers/parse-json.helper.js";
+import { declaredDependencies, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -269,7 +266,6 @@ const VALIDATOR_MAP: Record<string, { type: IValidationSpec["type"]; format?: st
   IsPositive: { type: "integer" },
   IsNegative: { type: "integer" },
 };
-
 
 export class NestJsClassValidatorProvider implements IValidationSpecProvider {
   readonly framework = "nestjs" as const;

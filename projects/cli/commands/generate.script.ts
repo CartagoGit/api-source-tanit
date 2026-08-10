@@ -17,12 +17,7 @@ import {
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join } from "node:path";
-import {
-  DEFAULT_FORMAT,
-  exportTo,
-  exportWarnings,
-  parseFormats,
-} from "../../core/exporters/export-registry.service.js";
+import { DEFAULT_FORMAT, exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -32,10 +27,7 @@ import {
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
 import { describeDiscoveredPaths, outputCollectionPath, outputDir as outputDirFor, outputEnvironmentPath, projectRoot } from "../../core/discovery/paths.service.js";
-import {
-  buildEnvironments,
-  defaultEnvironments,
-} from "../../core/domain/environment-builder.service.js";
+import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
 import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
 import {
   GENERATE_REPORT_VERSION,

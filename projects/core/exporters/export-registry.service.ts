@@ -16,6 +16,7 @@ import { BrunoExporter } from "./bruno.exporter.js";
 import { CurlExporter, HarExporter } from "./har.exporter.js";
 import { InsomniaExporter } from "./insomnia.exporter.js";
 import { OpenApiExporter } from "./openapi.exporter.js";
+import type { IParsedFormats } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
  * El formato por defecto, y el que no se puede quitar.
@@ -53,11 +54,6 @@ export function describeFormats(): Array<{ format: string; summary: string }> {
 export function exporterFor(format: string): IExportTarget | null {
   return TARGETS.find((t) => t.format === format.toLowerCase().trim()) ?? null;
 }
-
-/** Lo que devuelve el parseo de `--format`. */
-export type IParsedFormats =
-  | { readonly ok: true; readonly formats: string[] }
-  | { readonly ok: false; readonly invalid: string[]; readonly valid: string[] };
 
 /**
  * Interpreta `--format a,b,c`.

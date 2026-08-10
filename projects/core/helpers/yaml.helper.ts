@@ -32,16 +32,7 @@
  * JSON**, así que se delega en `JSON.stringify` en vez de reimplementarlo:
  * es la parte donde un fallo propio sería más difícil de ver.
  */
-
-/** Lo que este emisor sabe representar. */
-export type YamlValue =
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | YamlValue[]
-  | { [key: string]: YamlValue };
+import type { YamlValue } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Claves que pueden ir sin comillas.

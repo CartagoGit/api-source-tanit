@@ -17,24 +17,9 @@
  * @see https://learning.postman.com/docs/developer/postman-api/intro-api/
  */
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IPostmanApiOptions, IPostmanEnvironmentPayload, IPushResult } from "../../contracts/interfaces/core/domain.interface.js";
 
 const API_BASE = "https://api.getpostman.com";
-
-/** Environment de Postman, tal como lo emite `environment-builder`. */
-export interface IPostmanEnvironmentPayload {
-  readonly id?: string;
-  readonly name: string;
-  readonly values: ReadonlyArray<Record<string, unknown>>;
-}
-
-/** Resultado de subir un artefacto. */
-export interface IPushResult {
-  /** `"created"` si no existía, `"updated"` si se sobrescribió. */
-  readonly action: "created" | "updated";
-  /** UID que Postman asigna (`<userId>-<uuid>`). */
-  readonly uid: string;
-  readonly name: string;
-}
 
 /** Un error de la API con el detalle que devolvió Postman. */
 export class PostmanApiError extends Error {
@@ -46,15 +31,6 @@ export class PostmanApiError extends Error {
     super(message);
     this.name = "PostmanApiError";
   }
-}
-
-/** Opciones comunes de todas las llamadas. */
-export interface IPostmanApiOptions {
-  readonly apiKey: string;
-  /** Workspace destino. Si falta, va al workspace personal por defecto. */
-  readonly workspaceId?: string | undefined;
-  /** Inyectable para poder testear sin red. */
-  readonly fetchImpl?: typeof fetch;
 }
 
 /**

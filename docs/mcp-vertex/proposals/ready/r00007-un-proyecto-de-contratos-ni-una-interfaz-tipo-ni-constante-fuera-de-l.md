@@ -25,9 +25,23 @@ date: 2026-08-08
 >   que significa, para que la próxima sección nuclear no obligue a
 >   tocarlo otra vez.
 >
-> De S4 va lo escrito en esta misma ronda: `IScanOutcome` e
-> `IStatsOutcome` nacieron dentro de sus scripts y ya viven en
-> `interfaces/cli/`. El resto de S2–S5 sigue pendiente.
+> **S2 entregada.** `projects/core/` ya no exporta **ni una** interfaz ni
+> un tipo: 0 de 38. Los 8 ficheros de `core/contracts/` viven repartidos
+> en `interfaces/core/` y `constants/core/`, y los 38 tipos sueltos están
+> en tres ficheros por dominio —`discovery`, `domain`, `helpers`—.
+>
+> Tres cosas que la propuesta no preveía:
+>
+> · **`IGenerationOptions` no podía ser contrato tal cual.** Su firma
+>   llevaba la clase `DiscoveryOrchestrator`. Ahora hay
+>   `IDiscoveryOrchestrator` en contratos y la clase la implementa.
+> · **El marcador de `findPackageRoot()` se quedó viejo por segunda vez**,
+>   y esta vez lo cazaron los tests en el acto.
+> · **`CORE_CONTRACTS_DIR`** en el registro de rutas del repo, sustituido
+>   por `CONTRACTS_DIR` y sus dos subcarpetas.
+>
+> De S4 va lo escrito en la ronda anterior: `IScanOutcome` e
+> `IStatsOutcome` ya viven en `interfaces/cli/`. Quedan S3, S4, S5 y S6.
 
 # r00007 — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él
 
@@ -66,7 +80,7 @@ El gate va en el ultimo slice a proposito. Escribirlo primero obliga a un modo a
   - "`core` sigue sin poder importar de `frameworks`: la seccion nueva no relaja esa regla"
 
 ### S2 — El nucleo: sus 9 contratos adoptan la estructura y sus 21 tipos sueltos se mudan
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/contracts/interfaces/core/`, `projects/contracts/constants/core/`, `projects/core/`
 - **Gate**: type

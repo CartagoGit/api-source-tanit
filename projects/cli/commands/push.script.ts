@@ -12,16 +12,8 @@
  */
 import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import {
-  buildEnvironments,
-  defaultEnvironments,
-} from "../../core/domain/environment-builder.service.js";
-import {
-  PostmanApiError,
-  pushCollection,
-  pushEnvironment,
-  verifyApiKey,
-} from "../../core/domain/postman-api.service.js";
+import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
+import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../core/domain/postman-api.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {

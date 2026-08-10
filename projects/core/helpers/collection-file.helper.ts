@@ -24,11 +24,7 @@
 import { readFile } from "node:fs/promises";
 
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
-
-/** Lo que devuelve intentar leer la colección. */
-export type CollectionRead =
-  | { readonly ok: true; readonly collection: PostmanCollection }
-  | { readonly ok: false; readonly reason: string; readonly nextAction: string };
+import type { CollectionRead } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Lee y parsea la colección.

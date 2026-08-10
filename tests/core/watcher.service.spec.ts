@@ -10,12 +10,7 @@
  */
 import { describe, expect, test, vi } from "vitest";
 
-import {
-  DEFAULT_DEBOUNCE_MS,
-  IGNORED_DIRS,
-  createDebouncer,
-  shouldIgnore,
-} from "../../projects/core/domain/watcher.service";
+import { DEFAULT_DEBOUNCE_MS, IGNORED_DIRS, createDebouncer, shouldIgnore } from "../../projects/core/domain/watcher.service";
 import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
 
 describe("shouldIgnore", () => {

@@ -10,10 +10,7 @@
  * y una tabla alineada con `padEnd` es lo peor que se le puede dar a un
  * agente para que la parsee.
  */
-import {
-  explainReadFailure,
-  readCollection,
-} from "../../core/helpers/collection-file.helper.js";
+import { explainReadFailure, readCollection } from "../../core/helpers/collection-file.helper.js";
 import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";

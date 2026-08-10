@@ -26,12 +26,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../contracts/interfaces/core/scanner.interface.js";
-import {
-  isRecord,
-  readArray,
-  readObject,
-  readString,
-} from "../../core/helpers/parse-json.helper.js";
+import { isRecord, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
 const OPENAPI_CANDIDATES = [
@@ -69,7 +64,6 @@ const HTTP_METHODS = [
   "options",
   "trace",
 ] as const;
-
 
 // ---------------------------------------------------------------------------
 // YAML parser (NO usamos dependencias externas — subset suficiente)

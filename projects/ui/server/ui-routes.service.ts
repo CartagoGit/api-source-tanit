@@ -1,4 +1,5 @@
 /**
+import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
  * Qué contesta la interfaz a cada petición, sin saber de HTTP.
  *
  * Esto es una función de `(ruta, cuerpo)` a `(estado, datos)`. No toca
@@ -13,7 +14,7 @@
  * pipeline que usa el CLI. La interfaz es otra puerta al mismo sitio,
  * no una segunda implementación que se desincronice.
  */
-import type { IProjectSummary } from "../../core/discovery/summary.service.js";
+import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
 
 /** Lo que la interfaz necesita del resto del programa. */
 export interface IUiDeps {

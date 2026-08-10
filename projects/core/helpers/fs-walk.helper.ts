@@ -24,6 +24,7 @@
  */
 import { readdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
+import type { ICollectFilesOptions } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /** Entrada de directorio. */
 interface IDirentLike {
@@ -52,16 +53,6 @@ const ALWAYS_SKIPPED = new Set([
  * el disco entero.
  */
 const MAX_DEPTH = 40;
-
-/** Ajustes opcionales del recorrido. */
-export interface ICollectFilesOptions {
-  /**
-   * Si `false`, no se saltan `node_modules`, `.git`, `vendor`… Por
-   * defecto se saltan: escanear dependencias de terceros produce ruido
-   * (y en el caso del lint de tools, infracciones ajenas).
-   */
-  readonly skipVendorDirs?: boolean;
-}
 
 /**
  * Rutas absolutas de todos los ficheros bajo `root` (recursivo) cuyo

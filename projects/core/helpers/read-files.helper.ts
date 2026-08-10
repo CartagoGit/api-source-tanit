@@ -33,6 +33,7 @@
  *      que hacía cada scanner con su `try/catch`.
  */
 import { readFile } from "node:fs/promises";
+import type { IReadFile } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Cuántas lecturas se permiten a la vez.
@@ -44,12 +45,6 @@ import { readFile } from "node:fs/promises";
 export const READ_CONCURRENCY = 16;
 
 /** Un fichero leído. */
-/** Un fichero ya leído, con la ruta tal cual venía en la entrada. */
-export interface IReadFile {
-  /** Ruta absoluta, tal cual venía en la entrada. */
-  readonly path: string;
-  readonly text: string;
-}
 
 async function readOne(path: string): Promise<IReadFile | null> {
   try {

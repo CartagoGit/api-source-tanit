@@ -20,10 +20,7 @@ import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  declaredDependencies,
-  parseJson,
-} from "../../core/helpers/parse-json.helper.js";
+import { declaredDependencies, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -32,11 +29,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../contracts/interfaces/core/scanner.interface.js";
-import {
-  countLinesBefore,
-  findNearestBalanced,
-  stripJsComments,
-} from "../../core/helpers/source-scan.helper.js";
+import { countLinesBefore, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];

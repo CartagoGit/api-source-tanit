@@ -33,12 +33,7 @@ import { join } from "node:path";
 
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
-import {
-  findAllBalanced,
-  findOutsideStrings,
-  findClosingParen,
-  stripJsComments,
-} from "../../core/helpers/source-scan.helper.js";
+import { findAllBalanced, findOutsideStrings, findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { relative } from "node:path";
 import type {

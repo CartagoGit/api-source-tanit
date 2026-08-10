@@ -21,11 +21,7 @@
  */
 import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-
-/** Por qué se rechaza una ruta, para poder decirlo. */
-export type ContainmentResult =
-  | { readonly ok: true; readonly resolved: string }
-  | { readonly ok: false; readonly resolved: string; readonly reason: string };
+import type { ContainmentResult } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * El ancestro existente más cercano.

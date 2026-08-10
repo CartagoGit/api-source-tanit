@@ -18,11 +18,7 @@
 import { dirname, join, relative } from "node:path";
 import { mkdir } from "node:fs/promises";
 
-import {
-  DEFAULT_FORMAT,
-  exportTo,
-  parseFormats,
-} from "../../core/exporters/export-registry.service.js";
+import { DEFAULT_FORMAT, exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { outputCollectionPath, outputDir, projectRoot, projectRootWasExplicit } from "../../core/discovery/paths.service.js";

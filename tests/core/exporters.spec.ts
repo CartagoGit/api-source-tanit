@@ -8,15 +8,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import {
-  DEFAULT_FORMAT,
-  describeFormats,
-  exportTo,
-  exportWarnings,
-  exporterFor,
-  parseFormats,
-  supportedFormats,
-} from "../../projects/core/exporters/export-registry.service";
+import { DEFAULT_FORMAT, describeFormats, exportTo, exportWarnings, exporterFor, parseFormats, supportedFormats } from "../../projects/core/exporters/export-registry.service";
 import { buildOpenApiDocument } from "../../projects/core/exporters/openapi.exporter";
 import type {
   IExportInput,

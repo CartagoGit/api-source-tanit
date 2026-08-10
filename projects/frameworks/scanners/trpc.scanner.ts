@@ -26,10 +26,7 @@ import type {
   IRouteScanner,
   ParsedRoute,
 } from "../../contracts/interfaces/core/scanner.interface.js";
-import {
-  collectFilesFrom,
-  isSourceJsTsFile,
-} from "../../core/helpers/fs-walk.helper.js";
+import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 

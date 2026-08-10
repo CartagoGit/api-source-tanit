@@ -29,10 +29,7 @@ import { endpointKey } from "../helpers/route-identity.helper.js";
 import { authVariablesFor, detectAuthScheme } from "../domain/auth-scheme.service.js";
 import { hasLoginEndpoint, applyAuthFlow, authEnvironmentVariables, detectLaravelTokenPath } from "../domain/auth-flow.service.js";
 import { buildCollection } from "../domain/collection-builder.service.js";
-import {
-  applyAgnosticInference,
-  inferCollectionVariables,
-} from "../domain/param-inferrer.service.js";
+import { applyAgnosticInference, inferCollectionVariables } from "../domain/param-inferrer.service.js";
 import { loadProject } from "./project-loader.service.js";
 
 import { resolveProjectContext } from "./project-context.service.js";

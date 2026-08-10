@@ -1,10 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  PostmanApiError,
-  pushCollection,
-  pushEnvironment,
-  verifyApiKey,
-} from "../../projects/core/domain/postman-api.service";
+import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../projects/core/domain/postman-api.service";
 import { POSTMAN_SCHEMA_URL } from "../../projects/contracts/constants/core/postman.constant";
 import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
 

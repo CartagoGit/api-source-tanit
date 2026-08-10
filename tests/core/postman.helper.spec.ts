@@ -1,11 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  countItems,
-  pathToSegments,
-  uriFromRaw,
-  walkCollection,
-} from "../../projects/core/helpers/postman.helper";
+import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../projects/core/helpers/postman.helper";
 import type {
   PostmanCollection,
   PostmanItem,

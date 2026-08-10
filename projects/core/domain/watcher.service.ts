@@ -25,6 +25,7 @@ import { watch, type FSWatcher } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 
 import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
+import type { IWatchHandle, IWatchOptions } from "../../contracts/interfaces/core/domain.interface.js";
 
 /** Cuánto se espera a que pare el teclado antes de regenerar. */
 export const DEFAULT_DEBOUNCE_MS = 300;
@@ -118,23 +119,6 @@ export function createDebouncer(
       return batch.length;
     },
   };
-}
-
-/** Qué vigilar, con cuánto rebote, y qué hacer cuando algo cambia. */
-export interface IWatchOptions {
-  /** Raíz del proyecto a vigilar. */
-  readonly root: string;
-  /** Milisegundos de espera tras el último cambio. */
-  readonly debounceMs?: number;
-  /** Carpetas extra a ignorar, además de las de siempre. */
-  readonly ignoreDirs?: ReadonlySet<string>;
-  /** Qué hacer cuando un lote de cambios se asienta. */
-  readonly onChange: (changed: readonly string[]) => void | Promise<void>;
-}
-
-/** Lo que devuelve `watchProject` para poder parar. */
-export interface IWatchHandle {
-  close(): void;
 }
 
 /**

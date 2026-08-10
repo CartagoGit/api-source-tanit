@@ -24,10 +24,7 @@
  * de aquí y se lleva el catálogo completo cableado.
  */
 import { generateCollection } from "../core/discovery/generation.pipeline.js";
-import {
-  summarizeProject,
-  type IProjectSummary,
-} from "../core/discovery/summary.service.js";
+import { summarizeProject } from "../core/discovery/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 import { defaultOrchestrator } from "./framework.registry.js";
 
@@ -41,6 +38,7 @@ export {
   type IScannerBundle,
 } from "./framework.registry.js";
 import type { IGenerationOptions, IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
+import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
 
 /** Lo que se puede ajustar sin tocar el catálogo. */
 export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">;

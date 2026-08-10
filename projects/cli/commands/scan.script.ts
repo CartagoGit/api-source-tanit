@@ -25,10 +25,7 @@
  * comandos, y `lint:command-coverage` ahora lo exige.
  */
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
-import {
-  guessedRootNotice,
-  resolveRoot,
-} from "../../core/helpers/resolve-root.helper.js";
+import { guessedRootNotice, resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.interface.js";
 
 /** Escanea el proyecto y devuelve lo encontrado, imprimiéndolo por el camino. */

@@ -15,6 +15,7 @@
  * dependencia por 30 líneas.
  */
 import { createHash } from "node:crypto";
+import type { ICollectionIdentity } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
  * Namespace propio del paquete, generado una vez y fijado aquí.
@@ -52,18 +53,6 @@ export function stableUuid(seed: string): string {
     hex.slice(16, 20),
     hex.slice(20, 32),
   ].join("-");
-}
-
-/** Semilla de la colección de un proyecto. */
-export interface ICollectionIdentity {
-  /** ID fijado a mano por el host, si lo hay. Gana sobre todo lo demás. */
-  readonly explicitId?: string | undefined;
-  /** Nombre de la colección tal como se verá en Postman. */
-  readonly collectionName?: string | undefined;
-  /** Nombre corto del proyecto. */
-  readonly projectName?: string | undefined;
-  /** Framework detectado, para desempatar dos proyectos homónimos. */
-  readonly framework?: string | undefined;
 }
 
 /**

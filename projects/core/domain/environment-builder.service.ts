@@ -22,16 +22,7 @@ import type {
   PostmanEnvironment,
   PostmanVariable,
 } from "../../contracts/interfaces/core/postman.interface.js";
-
-/** Definición de un entorno (agnóstica del proyecto). */
-export interface EnvironmentDef {
-  /** Nombre que verá el usuario en Postman. */
-  name: string;
-  /** Color opcional en formato #RRGGBB. */
-  color?: string;
-  /** Mapa clave → valor que SOBREESCRIBE las variables base. */
-  overrides?: Record<string, string>;
-}
+import type { EnvironmentDef } from "../../contracts/interfaces/core/domain.interface.js";
 
 /** Variables base que Postman necesita SIEMPRE. */
 const BASE_VARIABLES: PostmanVariable[] = [

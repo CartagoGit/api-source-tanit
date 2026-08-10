@@ -17,7 +17,7 @@ import {
   handleUiRequest,
   type IUiDeps,
 } from "../../projects/ui/server/ui-routes.service";
-import type { IProjectSummary } from "../../projects/core/discovery/summary.service";
+import type { IProjectSummary } from "../../projects/contracts/interfaces/core/domain.interface";
 
 const RESUMEN: IProjectSummary = {
   framework: "express",

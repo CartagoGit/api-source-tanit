@@ -27,7 +27,8 @@ import type {
   IExportTarget,
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec, IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
-import { toYaml, type YamlValue } from "../helpers/yaml.helper.js";
+import { toYaml } from "../helpers/yaml.helper.js";
+import type { YamlValue } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /** `{{id}}` de Postman → `{id}` de OpenAPI. */
 function toOpenApiPath(uri: string): string {

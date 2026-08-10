@@ -23,6 +23,7 @@ import type {
   PostmanItem,
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IAuthFlow } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IApplyAuthFlowOptions } from "../../contracts/interfaces/core/domain.interface.js";
 
 /** Nombres de variable del environment donde viven las credenciales. */
 export const AUTH_USERNAME_VARIABLE = "authUsername";
@@ -108,28 +109,6 @@ export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null 
 
   if (!login && !refresh && !logout) return null;
   return { login, refresh, logout };
-}
-
-/**
- * Lo que el host puede declarar para ayudar a cablear la sesión.
- *
- * Las dos son **último recurso**, no configuración esperada: el flujo
- * detecta el login por método y URI, y el token probando los caminos
- * habituales de la respuesta en ejecución. Antes se exigía declarar el
- * camino del token, y el resultado fue que no se activaba en ninguno de
- * los once proyectos de ejemplo.
- */
-export interface IApplyAuthFlowOptions {
-  /**
-   * Camino declarado por el host (`config.tokenResponsePath`). Si viene,
-   * es el único que se prueba; si no, se prueban los habituales.
-   */
-  readonly tokenResponsePath?: string | undefined;
-  /**
-   * Nombre exacto del endpoint de login declarado por el host. Solo se
-   * usa como último recurso, si la detección por URI no encuentra nada.
-   */
-  readonly loginEndpointName?: string | undefined;
 }
 
 /**

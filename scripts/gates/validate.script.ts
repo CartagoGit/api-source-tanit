@@ -19,13 +19,11 @@ import { join, } from "node:path";
 import { existsSync } from "node:fs";
 
 import { generateWithAllFrameworks } from "../../projects/frameworks/index.js";
-import {
-  checkCollectionInvariants,
-  type ICollectionIssue,
-} from "../../projects/core/helpers/collection-invariants.helper.js";
+import { checkCollectionInvariants } from "../../projects/core/helpers/collection-invariants.helper.js";
 import { countItems } from "../../projects/core/helpers/postman.helper.js";
 import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface.js";
 import { EXAMPLES_DIR } from "../helpers/root.helper.js";
+import type { ICollectionIssue } from "../../projects/contracts/interfaces/core/helpers.interface.js";
 
 /** `example-app` no es un proyecto host: es el config de muestra. */
 const NOT_A_PROJECT = new Set(["example-app"]);

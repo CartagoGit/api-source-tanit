@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 172 símbolos en 42 módulos.
+> 147 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -443,12 +443,6 @@ carpeta, que siempre existe.
 
 `summary` — qué ve la herramienta en un proyecto, sin escribir nada.
 
-#### `IProjectSummary`
-
-```ts
-export interface IProjectSummary
-```
-
 #### `summarizeProject`
 
 ```ts
@@ -520,20 +514,6 @@ export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null
 
 Localiza los endpoints de login, refresh y logout en la colección.
 Devuelve `null` si el proyecto no tiene ninguno.
-
-#### `IApplyAuthFlowOptions`
-
-```ts
-export interface IApplyAuthFlowOptions
-```
-
-Lo que el host puede declarar para ayudar a cablear la sesión.
-
-Las dos son **último recurso**, no configuración esperada: el flujo
-detecta el login por método y URI, y el token probando los caminos
-habituales de la respuesta en ejecución. Antes se exigía declarar el
-camino del token, y el resultado fue que no se activaba en ninguno de
-los once proyectos de ejemplo.
 
 #### `applyAuthFlow`
 
@@ -665,12 +645,6 @@ corregir o ampliar lo que el scanner deduce.
 
 Genera environments Postman v2.1.0 agnósticos.
 
-#### `EnvironmentDef`
-
-```ts
-export interface EnvironmentDef
-```
-
 #### `buildEnvironment`
 
 ```ts
@@ -729,12 +703,6 @@ Un valor de ejemplo plausible para un parámetro de query, por su nombre.
 `page` da un número y `search` da texto. Es heurística pura: sirve para
 que la request se pueda lanzar sin editarla, no para acertar.
 
-#### `BodyInference`
-
-```ts
-export interface BodyInference
-```
-
 #### `inferBodyForSpec`
 
 ```ts
@@ -783,17 +751,6 @@ Reglas agnósticas:
     ya presente en `configVariables`.
   - El valor por defecto se infiere con `exampleForPathParam()`.
 
-#### `InferApplyStats`
-
-```ts
-export interface InferApplyStats
-```
-
-Cuánto ha rellenado la inferencia agnóstica.
-
-Lo imprime el CLI: es la forma de ver de un vistazo cuánto viene del
-código y cuánto de una heurística.
-
 #### `applyAgnosticInference`
 
 ```ts
@@ -818,28 +775,10 @@ El guion bajo es la señal: no forman parte del contrato del módulo.
 
 Cliente de la API pública de Postman.
 
-#### `IPostmanEnvironmentPayload`
-
-```ts
-export interface IPostmanEnvironmentPayload
-```
-
-#### `IPushResult`
-
-```ts
-export interface IPushResult
-```
-
 #### `PostmanApiError`
 
 ```ts
 export class PostmanApiError extends Error
-```
-
-#### `IPostmanApiOptions`
-
-```ts
-export interface IPostmanApiOptions
 ```
 
 #### `pushCollection`
@@ -949,18 +888,6 @@ Devuelve también un `cancel` para poder cerrar sin dejar un timer
 suelto: sin él, el proceso no termina al hacer Ctrl+C porque el event
 loop sigue teniendo trabajo pendiente.
 
-#### `IWatchOptions`
-
-```ts
-export interface IWatchOptions
-```
-
-#### `IWatchHandle`
-
-```ts
-export interface IWatchHandle
-```
-
 #### `watchProject`
 
 ```ts
@@ -1022,12 +949,6 @@ export function describeFormats(): Array<
 
 ```ts
 export function exporterFor(format: string): IExportTarget | null
-```
-
-#### `IParsedFormats`
-
-```ts
-export type IParsedFormats = |
 ```
 
 #### `parseFormats`
@@ -1168,12 +1089,6 @@ medias sin que el proceso llegue a morirse.
 
 Leer la colección del disco, o explicar por qué no se puede.
 
-#### `CollectionRead`
-
-```ts
-export type CollectionRead = |
-```
-
 #### `readCollection`
 
 ```ts
@@ -1213,12 +1128,6 @@ UUID v5 determinista a partir de una semilla.
             nombre del entorno…). Se normaliza para que diferencias de
             mayúsculas o espacios no produzcan IDs distintos.
 
-#### `ICollectionIdentity`
-
-```ts
-export interface ICollectionIdentity
-```
-
 #### `collectionIdFor`
 
 ```ts
@@ -1241,12 +1150,6 @@ export function environmentIdFor(collectionId: string, environmentName: string):
 
 Invariantes que debe cumplir una colección para que Postman la importe y sea usable.
 
-#### `ICollectionIssue`
-
-```ts
-export interface ICollectionIssue
-```
-
 #### `checkCollectionInvariants`
 
 ```ts
@@ -1265,12 +1168,6 @@ export function collectionErrors(collection: PostmanCollection): ICollectionIssu
 ### `projects/core/helpers/fs-walk.helper.ts`
 
 Recorrido recursivo de directorios para los scanners.
-
-#### `ICollectFilesOptions`
-
-```ts
-export interface ICollectFilesOptions
-```
 
 #### `collectFiles`
 
@@ -1352,12 +1249,6 @@ binario usa esta y tiene un plan B.
 
 Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
 
-#### `JsonRead`
-
-```ts
-export type JsonRead = |
-```
-
 #### `parseJson`
 
 ```ts
@@ -1413,12 +1304,6 @@ detectaba o no según cuál preguntara.
 
 ¿Esta ruta se sale de donde debería escribir?
 
-#### `ContainmentResult`
-
-```ts
-export type ContainmentResult = |
-```
-
 #### `ensureInside`
 
 ```ts
@@ -1465,12 +1350,6 @@ export function pathToSegments(rawUrl: string): string[]
 export function uriFromRaw(rawUrl: string): string
 ```
 
-#### `CollectionRequest`
-
-```ts
-export interface CollectionRequest
-```
-
 #### `walkCollection`
 
 ```ts
@@ -1501,12 +1380,6 @@ Cuántas lecturas se permiten a la vez.
 16 es suficiente para saturar un SSD y queda muy lejos del límite de
 descriptores de fichero del proceso (1024 por defecto en Linux), que
 es el motivo por el que esto lleva tope y no es un `Promise.all`.
-
-#### `IReadFile`
-
-```ts
-export interface IReadFile
-```
 
 #### `readAllFiles`
 
@@ -1539,32 +1412,6 @@ con `exec` sin coordinarse con el resto del proceso.
 
 De dónde sale la raíz del proyecto, una sola vez.
 
-#### `RootOrigin`
-
-```ts
-export type RootOrigin = "flag" | "env" | "cwd"
-```
-
-#### `IResolvedRoot`
-
-```ts
-export interface IResolvedRoot
-```
-
-La raíz, y de dónde salió.
-
-`origin` no es información de depuración: es lo que permite avisar
-cuando la raíz se ha **adivinado**. Sin él, un comando no puede
-distinguir «me han dicho que use este directorio» de «no me han dicho
-nada y he cogido el actual», que es la diferencia entre escanear el
-proyecto correcto y escanear lo que hubiera debajo del `cd` anterior.
-
-#### `IResolveRootOptions`
-
-```ts
-export interface IResolveRootOptions
-```
-
 #### `resolveRoot`
 
 ```ts
@@ -1593,12 +1440,6 @@ pueda probar sin capturar la salida.
 ### `projects/core/helpers/route-identity.helper.ts`
 
 Qué hace que dos endpoints sean el mismo endpoint.
-
-#### `IEndpointIdentity`
-
-```ts
-export interface IEndpointIdentity
-```
 
 #### `endpointKey`
 
@@ -1642,12 +1483,6 @@ que se soporte un framework nuevo.
 ### `projects/core/helpers/source-scan.helper.ts`
 
 Primitivas de escaneo de código fuente compartidas por los scanners.
-
-#### `IBalancedCall`
-
-```ts
-export interface IBalancedCall
-```
 
 #### `stripJsComments`
 
@@ -1856,12 +1691,6 @@ Postman: la clave sigue siendo la que agrupa.
 ### `projects/core/helpers/yaml.helper.ts`
 
 Serializador a YAML para datos planos.
-
-#### `YamlValue`
-
-```ts
-export type YamlValue = | string | number | boolean | null | undefined | YamlValue[] |
-```
 
 #### `toYaml`
 
