@@ -9,8 +9,12 @@
 
 import { z } from "zod";
 
-import { supportedFormats } from "../../../../../core/exporters/export-registry.service";
 import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
+import { EXPORT_FORMATS } from "../../../../../contracts/constants/core/export-formats.constant";
+import type { IProjectSummary } from "../../../../../contracts/interfaces/core/domain.interface";
+import type { ICheckReport } from "../../../../../contracts/interfaces/cli/command-outcomes.interface";
+import type { IStatsOutcome } from "../../../../../contracts/interfaces/cli/stats-outcome.interface";
+import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-outcome.interface";
 
 // --- Opciones del plugin (leídas de mcp-vertex.config.json) ------------------
 
@@ -82,7 +86,7 @@ export const GenerateInputSchema = z
      * día que se añada.
      */
     formats: z
-      .array(z.enum(supportedFormats() as [string, ...string[]]))
+      .array(z.enum([...EXPORT_FORMATS]))
       .optional(),
   })
   .strict();
@@ -288,6 +292,24 @@ export const SummaryOutputSchema = z.object({
 
 export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
 
+/**
+ * El esquema tiene que cubrir el contrato **entero**.
+ *
+ * Esto no es una comprobación decorativa: es la que impide que vuelva a
+ * pasar lo que ya pasó. `SummaryOutputSchema` declaraba 6 campos
+ * mientras el handler hacía `toolJson({ ok: true, ...summary })` y
+ * soltaba los dieciocho. El contrato escrito y el comportamiento
+ * llevaban tiempo sin coincidir y nadie podía notarlo, porque no había
+ * nada que los confrontara.
+ *
+ * Con esta línea, añadir un campo a `IProjectSummary` y olvidarse del
+ * esquema **no compila**. Los campos de más sí se permiten —el tool
+ * añade `ok`— porque lo que se comprueba es que no falte ninguno.
+ */
+const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
+  SummaryOutputSchema;
+void _summaryCubreElContrato;
+
 /** Un paso de `test`: la ejecución de un sub-comando. */
 export const TestStepSchema = z.object({
   name: z.string().describe("`typecheck`, `test e2e`, `smoke:<framework>`…"),
@@ -376,6 +398,19 @@ export const CheckOutputSchema = z.object({
 
 export type ICheckOutput = z.infer<typeof CheckOutputSchema>;
 
+/**
+ * Igual que en `summary`: el esquema tiene que cubrir el informe entero.
+ *
+ * `ICheckReport` es lo que produce el comando; el tool le añade `ok` y
+ * `durationMs`. Si mañana el informe gana un campo y el esquema no, esto
+ * deja de compilar en vez de devolver una salida que el contrato del
+ * tool no describe.
+ */
+const _checkCubreElInforme: z.ZodType<
+  { ok: true; durationMs: number } & ICheckReport
+> = CheckOutputSchema;
+void _checkCubreElInforme;
+
 // --- `list`: los endpoints, en datos ----------------------------------------
 
 export const ListInputSchema = z
@@ -453,6 +488,17 @@ export const StatsOutputSchema = z.object({
 
 export type IStatsOutput = z.infer<typeof StatsOutputSchema>;
 
+/**
+ * El esquema cubre lo que devuelve el comando, menos su codigo de salida.
+ *
+ * `code` no viaja al agente: un fallo se responde con `toolError`, que
+ * lleva su propio sobre. Lo demas —total y los dos desgloses— tiene que
+ * estar entero.
+ */
+const _statsCubreElComando: z.ZodType<{ ok: true } & Omit<IStatsOutcome, "code">> =
+  StatsOutputSchema;
+void _statsCubreElComando;
+
 // --- `scan`: que ve el discovery antes de generar nada ----------------------
 
 export const ScanInputSchema = z
@@ -504,3 +550,16 @@ export const ScanOutputSchema = z.object({
 });
 
 export type IScanOutput = z.infer<typeof ScanOutputSchema>;
+
+/**
+ * Lo mismo para `scan`, menos `code`, y con `detected` y `durationMs`
+ * que anade el tool.
+ *
+ * `detected` no esta en el comando porque alli se deduce de que
+ * `framework` sea `null`; el tool lo hace explicito para que un agente
+ * no tenga que inferirlo.
+ */
+const _scanCubreElComando: z.ZodType<
+  { ok: true; detected: boolean; durationMs: number } & Omit<IScanOutcome, "code">
+> = ScanOutputSchema;
+void _scanCubreElComando;

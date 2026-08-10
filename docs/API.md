@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 146 símbolos en 42 módulos.
+> 145 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -919,25 +919,17 @@ export class BrunoExporter implements IExportTarget
 
 El catálogo de formatos de salida.
 
-#### `DEFAULT_FORMAT`
+#### `registeredFormats`
 
 ```ts
-export const DEFAULT_FORMAT = "postman"
+export function registeredFormats(): string[]
 ```
 
-El formato por defecto, y el que no se puede quitar.
+Los formatos que este registro produce de verdad.
 
-`postman` no está en este registro: lo produce el pipeline con
-`buildCollection`, que hace bastante más que serializar (flujo de
-auth, aserciones, identidad de la colección). Se nombra aquí para que
-`--format postman,openapi` funcione y para que el CLI sepa que no es
-un formato desconocido.
-
-#### `supportedFormats`
-
-```ts
-export function supportedFormats(): string[]
-```
+No es el catálogo —el catálogo es `EXPORT_FORMATS`, en contratos— sino
+**lo que el registro cumple**. Un test compara los dos: una lista
+paralela no es peligrosa, una lista paralela que nadie compara sí.
 
 #### `describeFormats`
 

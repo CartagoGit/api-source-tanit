@@ -17,13 +17,14 @@ import { generateWithAllFrameworks } from "../frameworks/index.js";
 import { withProjectRoot, withScopedPaths } from "../core/discovery/paths.service.js";
 
 import { OUTPUT_DIR_NAME } from "../contracts/constants/core/postman.constant.js";
-import { DEFAULT_FORMAT, describeFormats } from "../core/exporters/export-registry.service.js";
+import { describeFormats } from "../core/exporters/export-registry.service.js";
 import { defaultPainter } from "./ansi.helper.js";
 import { renderTable } from "./table.helper.js";
 import { renderDashboard } from "./dashboard.helper.js";
 import type { EndpointSpec } from "../contracts/interfaces/core/postman.interface.js";
 import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
 import type { IPainter, IQualityMetrics } from "../contracts/interfaces/cli/ui.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../contracts/constants/core/export-formats.constant.js";
 
 /**
  * Lector de líneas de stdin.
@@ -241,16 +242,16 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       "Just Postman",
       "Postman + OpenAPI",
       "All of them",
-      ...formats.filter((f) => f.format !== DEFAULT_FORMAT).map((f) => `Postman + ${f.summary}`),
+      ...formats.filter((f) => f.format !== DEFAULT_EXPORT_FORMAT).map((f) => `Postman + ${f.summary}`),
     ]);
     const selected =
       choice === 0
-        ? [DEFAULT_FORMAT]
+        ? [DEFAULT_EXPORT_FORMAT]
         : choice === 1
-          ? [DEFAULT_FORMAT, "openapi"]
+          ? [DEFAULT_EXPORT_FORMAT, "openapi"]
           : choice === 2
             ? formats.map((f) => f.format)
-            : [DEFAULT_FORMAT, formats.filter((f) => f.format !== DEFAULT_FORMAT)[choice - 3]?.format ?? DEFAULT_FORMAT];
+            : [DEFAULT_EXPORT_FORMAT, formats.filter((f) => f.format !== DEFAULT_EXPORT_FORMAT)[choice - 3]?.format ?? DEFAULT_EXPORT_FORMAT];
     if (selected.length > 1) formatArgs.push("--format", [...new Set(selected)].join(","));
   }
 

@@ -17,17 +17,15 @@ import { CurlExporter, HarExporter } from "./har.exporter.js";
 import { InsomniaExporter } from "./insomnia.exporter.js";
 import { OpenApiExporter } from "./openapi.exporter.js";
 import type { IParsedFormats } from "../../contracts/interfaces/core/domain.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
 /**
- * El formato por defecto, y el que no se puede quitar.
+ * El formato por defecto.
  *
- * `postman` no está en este registro: lo produce el pipeline con
- * `buildCollection`, que hace bastante más que serializar (flujo de
- * auth, aserciones, identidad de la colección). Se nombra aquí para que
- * `--format postman,openapi` funcione y para que el CLI sepa que no es
- * un formato desconocido.
+ * Sale del catálogo de contratos, no de aquí: leer la lista de nombres
+ * no puede costar cargar los cinco exportadores.
  */
-export const DEFAULT_FORMAT = "postman";
+const DEFAULT_FORMAT = DEFAULT_EXPORT_FORMAT;
 
 const TARGETS: ReadonlyArray<IExportTarget> = [
   new OpenApiExporter(),
@@ -37,8 +35,14 @@ const TARGETS: ReadonlyArray<IExportTarget> = [
   new CurlExporter(),
 ];
 
-/** Todos los formatos válidos, incluido `postman`. */
-export function supportedFormats(): string[] {
+/**
+ * Los formatos que este registro produce de verdad.
+ *
+ * No es el catálogo —el catálogo es `EXPORT_FORMATS`, en contratos— sino
+ * **lo que el registro cumple**. Un test compara los dos: una lista
+ * paralela no es peligrosa, una lista paralela que nadie compara sí.
+ */
+export function registeredFormats(): string[] {
   return [DEFAULT_FORMAT, ...TARGETS.map((t) => t.format)];
 }
 
@@ -70,7 +74,7 @@ export function parseFormats(raw: string | null | undefined): IParsedFormats {
     .split(",")
     .map((f) => f.trim().toLowerCase())
     .filter(Boolean);
-  const valid = supportedFormats();
+  const valid = registeredFormats();
   const invalid = requested.filter((f) => !valid.includes(f));
   if (invalid.length > 0) return { ok: false, invalid, valid };
 

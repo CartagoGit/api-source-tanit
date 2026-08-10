@@ -18,7 +18,7 @@
 import { dirname, join, relative } from "node:path";
 import { mkdir } from "node:fs/promises";
 
-import { DEFAULT_FORMAT, exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
+import { exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { outputCollectionPath, outputDir, projectRoot, projectRootWasExplicit } from "../../core/discovery/paths.service.js";
@@ -28,6 +28,7 @@ import {
   writeFileAtomic,
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** `18:05:42`, que es lo que hace legible una traza que va creciendo. */
 function stamp(): string {
@@ -71,7 +72,7 @@ async function regenerate(
   await writeJsonAtomic(path, result.collection);
 
   let extra = 0;
-  const others = formats.filter((f) => f !== DEFAULT_FORMAT);
+  const others = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (others.length > 0) {
     const dir = outputDir();
     const artifacts = exportTo(others, {

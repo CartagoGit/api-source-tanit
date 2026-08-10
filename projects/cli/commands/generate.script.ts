@@ -17,7 +17,7 @@ import {
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
 import { dirname, join } from "node:path";
-import { DEFAULT_FORMAT, exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
+import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -36,6 +36,7 @@ import {
 import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
+import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
@@ -329,7 +330,7 @@ export async function runGenerate(
   // Los formatos extra se serializan del MISMO catálogo de endpoints que
   // la colección de Postman: dos formatos del mismo proyecto no pueden
   // discrepar porque cada uno haya escaneado por su cuenta.
-  const extraFormats = formats.filter((f) => f !== DEFAULT_FORMAT);
+  const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = outputDirFor();
     const exportInput = {

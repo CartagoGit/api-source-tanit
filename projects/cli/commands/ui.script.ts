@@ -24,7 +24,6 @@ import { stat } from "node:fs/promises";
 import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
 
-import { supportedFormats } from "../../core/exporters/export-registry.service.js";
 import { withScopedPaths } from "../../core/discovery/paths.service.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
@@ -32,6 +31,7 @@ import { UI_HTML } from "../../ui/web/index.html.constant.js";
 
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
 import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
+import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
 function abrirNavegador(url: string): void {
@@ -98,7 +98,7 @@ function dependencias(): IUiDeps {
         warnings: report.warnings,
       };
     },
-    formats: () => supportedFormats(),
+    formats: () => EXPORT_FORMATS,
     frameworks: () => FRAMEWORK_IDS,
     exists: async (path) => {
       try {

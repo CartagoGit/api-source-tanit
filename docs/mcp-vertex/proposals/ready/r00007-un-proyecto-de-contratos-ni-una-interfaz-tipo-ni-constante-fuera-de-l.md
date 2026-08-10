@@ -74,7 +74,30 @@ date: 2026-08-08
 > sigue dentro de contratos— saltó. Ahora resuelve. Un contrato puede
 > apoyarse en otro; lo que no puede es apoyarse en una implementación.
 >
-> Quedan S5 y S6.
+> **S5 entregada.** Cuatro esquemas zod del plugin —`summary`, `check`,
+> `stats` y `scan`— están **atados por tipo** a su contrato:
+>
+> ```ts
+> const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
+>   SummaryOutputSchema;
+> ```
+>
+> Añadir un campo al contrato y olvidarse del esquema deja de compilar.
+> Verificado metiendo uno: falla en el sitio exacto. Es la divergencia
+> que ya ocurrió —esquema con 6 campos, handler devolviendo 18— hecha
+> imposible.
+>
+> Y salió el gemelo del catálogo de frameworks: `supportedFormats()` se
+> derivaba de `TARGETS`, así que leer seis nombres costaba cargar los
+> cinco exportadores. Ahora `EXPORT_FORMATS` es dato en contratos,
+> `registeredFormats()` es lo que el registro cumple, y hay un test que
+> los compara — verificado metiendo un formato inventado.
+>
+> Del plugin ya solo salen imports de **ejecución** (`runList`,
+> `summarizeWithAllFrameworks`, `scannerBundleFor`) y el `withScopedPaths`
+> que `lint:project-context` tiene declarado como deuda. Ni uno de tipo.
+>
+> Queda S6.
 
 # r00007 — Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él
 
@@ -144,7 +167,7 @@ El gate va en el ultimo slice a proposito. Escribirlo primero obliga a un modo a
   - "Ningun `*.script.ts` exporta interfaces ni tipos"
 
 ### S5 — El plugin deja de reescribir con zod lo que ya es un contrato
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2, S3, S4]
 - **Files**: `projects/plugins/mcp-vertex_expostman/`
 - **Gate**: type
