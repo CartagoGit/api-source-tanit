@@ -40,7 +40,7 @@ export async function runInit(
   const root = projectRoot();
   if (!root) {
     console.error(
-      "✘ No se detecta proyecto Laravel. Define POSTMAN_PROJECT_ROOT.",
+      "✘ Could not determine the project root. Set POSTMAN_PROJECT_ROOT.",
     );
     return {
       code: 1,
@@ -51,8 +51,8 @@ export async function runInit(
       configPath: null,
       endpointsPath: null,
       error: {
-        reason: "No se pudo determinar la raíz del proyecto.",
-        nextAction: "Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.",
+        reason: "Could not determine the project root.",
+        nextAction: "Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.",
       },
     };
   }
@@ -224,20 +224,20 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
 `;
   await writeFileAtomic(endpointsPath, endpointsBody);
 
-  console.log(`✔ Proyecto detectado: ${projectName}`);
+  console.log(`✔ Project detected: ${projectName}`);
   console.log(`  · baseUrl:       ${baseUrl}`);
   console.log(`  · auth guards:   ${authGuards.join(", ")}`);
   console.log(`  · routes:        ${Object.keys(filePrefixes).join(", ")}`);
-  console.log(`✔ Generado:`);
+  console.log(`✔ Written:`);
   console.log(`  · ${configPath}`);
   console.log(`  · ${endpointsPath}`);
   console.log("");
-  console.log("Siguiente paso:");
+  console.log("Next step:");
   // `bun run build` es un script **de este repositorio**, no del
   // proyecto de quien usa la herramienta: en su terminal no existe. El
   // asistente está para quien no se sabe los flags, así que terminar
   // con un comando que no puede ejecutar es dejarlo peor que antes.
-  console.log("  export-to-postman generate   # genera la colección Postman");
+  console.log("  export-to-postman generate   # build the Postman collection");
   return {
     code: 0,
     projectName,

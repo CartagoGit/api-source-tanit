@@ -48,7 +48,7 @@ export async function runList(
   }
 
   console.log(
-    `${rows.length} endpoints en la colección, agrupados por zona:\n`,
+    `${rows.length} endpoints in the collection, grouped by zone:\n`,
   );
 
   const conContenido = [...byZone.entries()]

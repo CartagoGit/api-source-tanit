@@ -103,7 +103,7 @@ describe("watch rechaza lo que no puede hacer", () => {
       cwd: root,
       timeoutMs: 90_000,
     });
-    expect(output).toContain("Sin --project-root");
+    expect(output).toContain("No --project-root");
     expect(output).toContain(root);
   });
 

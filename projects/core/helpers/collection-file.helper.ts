@@ -43,17 +43,17 @@ export async function readCollection(path: string): Promise<CollectionRead> {
     if (code === "ENOENT") {
       return {
         ok: false,
-        reason: `No hay ninguna colección en '${path}'.`,
+        reason: `No collection at '${path}'.`,
         nextAction:
-          "Genérala primero:\n" +
-          "  export-to-postman generate --project-root <tu-proyecto>\n" +
-          "Si la tienes en otro sitio, dilo con `--output-dir`.",
+          "Generate it first:\n" +
+          "  export-to-postman generate --project-root <your-project>\n" +
+          "If it lives elsewhere, say so with `--output-dir`.",
       };
     }
     return {
       ok: false,
-      reason: `No se pudo leer '${path}': ${(error as Error).message}`,
-      nextAction: "Comprueba los permisos del fichero y de su carpeta.",
+      reason: `Could not read '${path}': ${(error as Error).message}`,
+      nextAction: "Check the permissions on the file and its folder.",
     };
   }
 
@@ -62,10 +62,10 @@ export async function readCollection(path: string): Promise<CollectionRead> {
   } catch (error) {
     return {
       ok: false,
-      reason: `'${path}' existe pero no es JSON válido: ${(error as Error).message}`,
+      reason: `'${path}' exists but is not valid JSON: ${(error as Error).message}`,
       nextAction:
-        "Suele significar que se escribió a medias. Vuelve a generarla:\n" +
-        "  export-to-postman generate --project-root <tu-proyecto>",
+        "That usually means it was written halfway. Generate it again:\n" +
+        "  export-to-postman generate --project-root <your-project>",
     };
   }
 }

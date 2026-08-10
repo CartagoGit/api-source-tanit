@@ -97,9 +97,9 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
     raw = await readFile(COLLECTION_PATH, "utf8");
   } catch (e) {
     console.error(
-      `✘ No se puede leer ${COLLECTION_PATH}: ${(e as Error).message}`,
+      `✘ Cannot read ${COLLECTION_PATH}: ${(e as Error).message}`,
     );
-    console.error("  Ejecuta primero `bun run build` para generarlo.");
+    console.error("  Run `generate` first to produce it.");
     return 1;
   }
 
@@ -147,7 +147,7 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
     issues.push({
       severity: "warning",
       message:
-        "Sin auth a nivel de colección (todas las requests necesitarán auth manual)",
+        "No collection-level auth (every request will need auth set by hand)",
     });
   }
 
@@ -178,7 +178,7 @@ export async function main(_argv: string[] = process.argv.slice(2)): Promise<num
     for (const w of warnings) console.warn(`    ${w.message}`);
   }
   if (errors.length === 0 && warnings.length === 0) {
-    console.log("✔ Colección Postman v2.1.0 válida.");
+    console.log("✔ Valid Postman v2.1.0 collection.");
     return 0;
   }
   return errors.length > 0 ? 1 : 0;

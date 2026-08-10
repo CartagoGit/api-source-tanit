@@ -44,14 +44,14 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
     // porque el enriquecido añade variantes de body para el MISMO
     // endpoint — variantes, no endpoints nuevos.
     `→ Endpoints:        ${s.routesInCode}`,
-    `→ Con reglas:       ${s.withFormRequest}`,
-    `→ Sin reglas:       ${s.withoutFormRequest}`,
-    `→ Bodies inferidos: ${s.bodiesAdded}`,
-    `→ Queries inferidas:${s.queriesAdded}`,
+    `→ With rules:       ${s.withFormRequest}`,
+    `→ Without rules:    ${s.withoutFormRequest}`,
+    `→ Inferred bodies:  ${s.bodiesAdded}`,
+    `→ Inferred queries: ${s.queriesAdded}`,
     `→ Variables:        ${s.inferredVariables}`,
     `→ Overrides:        ${s.manualEndpoints}`,
-    `→ Login:            ${s.auth ? s.auth.loginEndpoint : "no detectado"}`,
-    `→ Zero-config:      ${s.zeroConfig ? "sí" : "no"}`,
+    `→ Login:            ${s.auth ? s.auth.loginEndpoint : "not detected"}`,
+    `→ Zero-config:      ${s.zeroConfig ? "yes" : "no"}`,
     `→ Config:           ${s.configPath}`,
   ];
   for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);

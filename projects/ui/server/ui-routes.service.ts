@@ -76,8 +76,8 @@ export async function handleUiRequest(
       if (!(await deps.exists(projectRoot))) {
         return fail(
           404,
-          `No existe la carpeta '${projectRoot}'.`,
-          "Comprueba la ruta: tiene que ser la raíz del proyecto, donde está su manifiesto.",
+          `The folder '${projectRoot}' does not exist.`,
+          "Check the path: it has to be the project root, where its manifest lives.",
         );
       }
       const summary = await deps.summarize(projectRoot);
@@ -89,8 +89,8 @@ export async function handleUiRequest(
           // Pero decirlo aquí evita generar una colección vacía y que
           // parezca que la herramienta falló.
           notice:
-            "No se ha reconocido ninguna ruta. Si sabes de qué framework es, " +
-            "puedes forzarlo; si el proyecto aún no tiene rutas, esto es correcto.",
+            "No routes were recognised. If you know which framework it is, " +
+            "you can force it; if the project has no routes yet, this is correct.",
         });
       }
       return ok({ ok: true, summary });
@@ -103,15 +103,15 @@ export async function handleUiRequest(
         return fail(400, "Falta la carpeta del proyecto.", "Elige la raíz de tu API.");
       }
       if (!(await deps.exists(projectRoot))) {
-        return fail(404, `No existe la carpeta '${projectRoot}'.`, "Comprueba la ruta.");
+        return fail(404, `The folder '${projectRoot}' does not exist.`, "Comprueba la ruta.");
       }
       const formats = lista(body, "formats");
       const desconocidos = (formats ?? []).filter((f) => !deps.formats().includes(f));
       if (desconocidos.length > 0) {
         return fail(
           400,
-          `Formatos que no existen: ${desconocidos.join(", ")}.`,
-          `Los válidos son: ${deps.formats().join(", ")}.`,
+          `Unknown formats: ${desconocidos.join(", ")}.`,
+          `Valid ones are: ${deps.formats().join(", ")}.`,
         );
       }
       const result = await deps.generate({
@@ -125,7 +125,7 @@ export async function handleUiRequest(
     default:
       return fail(
         404,
-        `No hay nada en '${path}'.`,
+        `Nothing at '${path}'.`,
         "Rutas disponibles: /api/capabilities, /api/inspect, /api/generate.",
       );
   }

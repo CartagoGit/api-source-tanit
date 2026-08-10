@@ -214,12 +214,12 @@ describe("el resumen entero", () => {
   // Un número de cobertura sin la acción que sugiere es un dato, no una
   // ayuda.
   test("dice cuántos endpoints hay que mirar a mano", () => {
-    expect(renderDashboard(plain, metrics).join("\n")).toContain("4 endpoint(s) sin reglas");
+    expect(renderDashboard(plain, metrics).join("\n")).toContain("4 endpoint(s) with no rules");
   });
 
   test("con todo cubierto no sugiere revisar nada", () => {
     const perfect = { ...metrics, withRules: 9 };
-    expect(renderDashboard(plain, perfect).join("\n")).not.toContain("sin reglas en el código");
+    expect(renderDashboard(plain, perfect).join("\n")).not.toContain("with no rules in the code");
   });
 });
 

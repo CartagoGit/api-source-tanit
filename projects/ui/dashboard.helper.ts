@@ -84,7 +84,7 @@ export function renderDashboard(
   if (guessed > 0) {
     lines.push(
       "",
-      `  ${painter.paint("·", "gray")} ${guessed} endpoint(s) sin reglas en el código: ` +
+      `  ${painter.paint("·", "gray")} ${guessed} endpoint(s) with no rules in the code: ` +
         "su body sale de la inferencia y conviene revisarlo.",
     );
   }

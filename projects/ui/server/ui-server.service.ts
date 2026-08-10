@@ -114,7 +114,7 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
   }
 
   throw new Error(
-    `No se encontró un puerto libre entre ${desde} y ${desde + INTENTOS - 1}.\n` +
+    `No free port between ${desde} and ${desde + INTENTOS - 1}.\n` +
       "  · Cierra la otra instancia, o pasa `--port <n>`.",
   );
 }

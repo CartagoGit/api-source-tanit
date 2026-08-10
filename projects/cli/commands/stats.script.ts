@@ -64,10 +64,10 @@ export async function runStats(
       totalByMethod.set(m, (totalByMethod.get(m) ?? 0) + n);
   }
 
-  console.log("→ Estadísticas de la colección Postman");
+  console.log("→ Postman collection stats");
   console.log(`Total requests: ${totalRequests}\n`);
 
-  console.log("Por método HTTP (global):");
+  console.log("By HTTP method (global):");
   const methodsSorted = [...totalByMethod.entries()].sort(
     (a, b) => b[1] - a[1],
   );
@@ -78,7 +78,7 @@ export async function runStats(
 
   const porZona: IZoneStats[] = [];
 
-  console.log("Por zona:");
+  console.log("By zone:");
   for (const zone of zonesToDisplay(zones.keys(), config)) {
     const s = zones.get(zone);
     if (!s) continue;

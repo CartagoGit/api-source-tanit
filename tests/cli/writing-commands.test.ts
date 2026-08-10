@@ -52,7 +52,7 @@ describe("init", () => {
     expect(code, output).toBe(0);
     // La línea de detección, no la salida entera: las rutas que imprime
     // llevan el nombre del directorio dentro y eso es legítimo.
-    const detectado = /Proyecto detectado:\s+(\S+)/.exec(output)?.[1];
+    const detectado = /Project detected:\s+(\S+)/.exec(output)?.[1];
     expect(detectado).toBe("sample-express");
   });
 

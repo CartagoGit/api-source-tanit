@@ -97,7 +97,9 @@ export async function runCheck(
   }
 
   if (!existsSync(COLLECTION_PATH)) {
-    console.error(`✘ No se encontró la colección en "${COLLECTION_PATH}". Ejecuta 'bun run build' primero para generarla.`);
+    console.error(
+      `✘ Collection not found at "${COLLECTION_PATH}". Run \`generate\` first.`,
+    );
     return { code: 1, report: null };
   }
 
@@ -120,7 +122,7 @@ export async function runCheck(
   const onlyInColl = [...collKeys].filter((k) => !sourceKeys.has(k)).sort();
 
   console.log(`Routes en source:        ${sourceKeys.size}`);
-  console.log(`Requests en colección:   ${collKeys.size}`);
+  console.log(`Requests in collection:  ${collKeys.size}`);
   console.log();
 
   const informe: ICheckReport = {
@@ -132,12 +134,12 @@ export async function runCheck(
   };
 
   if (informe.inSync) {
-    console.log("✔ Colección sincronizada con el código fuente.");
+    console.log("✔ Collection is in sync with the source code.");
     return { code: 0, report: informe };
   }
 
   if (onlyInSource.length > 0) {
-    console.log(`✘ Faltan en la colección (${onlyInSource.length}):`);
+    console.log(`✘ Missing from the collection (${onlyInSource.length}):`);
     for (const k of onlyInSource) {
       const ep = sourceMap.get(k)!;
       console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
@@ -145,7 +147,7 @@ export async function runCheck(
     console.log();
   }
   if (onlyInColl.length > 0) {
-    console.log(`✘ Sobran en la colección (${onlyInColl.length}):`);
+    console.log(`✘ Not in the source code (${onlyInColl.length}):`);
     for (const k of onlyInColl) {
       const ep = collMap.get(k)!;
       console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);

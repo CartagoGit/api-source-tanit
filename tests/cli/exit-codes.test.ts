@@ -61,7 +61,7 @@ describe("códigos de salida de `generate`", () => {
   test("cero endpoints sale con 1 y no escribe nada", async () => {
     const result = await generate(["--project-root", emptyProject]);
     expect(result.code).toBe(1);
-    expect(result.output).toMatch(/ningún endpoint/i);
+    expect(result.output).toMatch(/no endpoints were found/i);
   }, 60_000);
 
   test("el mensaje de cero endpoints dice qué hacer", async () => {
@@ -99,7 +99,7 @@ describe("códigos de salida de `generate`", () => {
     async () => {
     const result = await generate(["--project-root", readOnlyProject]);
     expect(result.code).toBe(1);
-    expect(result.output).toMatch(/permiso/i);
+    expect(result.output).toMatch(/no permission/i);
     expect(result.output).toMatch(/--output-dir/);
       // Lo que NO debe salir: el volcado de Bun.
       expect(result.output).not.toMatch(/at <anonymous>/);

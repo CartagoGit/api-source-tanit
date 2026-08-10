@@ -64,7 +64,7 @@ describe.each(PROYECTOS)("sobre $framework", ({ framework, endpoints, rpc }) => 
     const { code, output } = await run("scan", framework);
     expect(code, output).toBe(0);
     expect(output).toContain(framework);
-    expect(output).toMatch(new RegExp(`${endpoints} rutas`));
+    expect(output).toMatch(new RegExp(`${endpoints} routes`));
   });
 
   /**
@@ -92,7 +92,7 @@ describe.each(PROYECTOS)("sobre $framework", ({ framework, endpoints, rpc }) => 
 
   test("stats no deja la sección de zonas vacía", { timeout: 120_000 }, async () => {
     const { output } = await run("stats", framework);
-    const zonas = output.slice(output.indexOf("Por zona:"));
+    const zonas = output.slice(output.indexOf("By zone:"));
     expect(zonas).toMatch(/─── .+ \(\d+\) ───/);
   });
 
@@ -150,7 +150,7 @@ describe("sin colección en disco", () => {
         vacio,
       ]);
       expect(code).toBe(1);
-      expect(output).toContain("No hay ninguna colección");
+      expect(output).toContain("No collection");
       // La salida, no solo el diagnóstico.
       expect(output).toContain("generate");
       // Y nada del volcado que había antes.

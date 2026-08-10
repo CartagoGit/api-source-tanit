@@ -54,9 +54,9 @@ export async function runPush(
     console.error("  POSTMAN_API_KEY=<key> export-to-postman push\n");
     console.error("Create one at https://postman.co/settings/me/api-keys");
     return sinSubir(1, {
-      reason: "No se ha dado ninguna clave de API de Postman.",
+      reason: "No Postman API key was given.",
       nextAction:
-        "Pasa `--api-key <clave>` o define POSTMAN_API_KEY. Se crea en " +
+        "Pass `--api-key <key>` or set POSTMAN_API_KEY. Create one at " +
         "https://postman.co/settings/me/api-keys",
     });
   }
@@ -72,8 +72,8 @@ export async function runPush(
     console.error("Could not determine the project root.");
     console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
     return sinSubir(1, {
-      reason: "No se pudo determinar la raíz del proyecto.",
-      nextAction: "Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.",
+      reason: "Could not determine the project root.",
+      nextAction: "Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.",
     });
   }
 
@@ -104,10 +104,10 @@ export async function runPush(
     console.error("Run `export-to-postman generate --inspect` to see what was detected.");
     return {
       ...sinSubir(1, {
-        reason: "No se ha encontrado ningún endpoint, no hay nada que subir.",
+        reason: "No endpoints were found, there is nothing to push.",
         nextAction:
-          "Ejecuta `scan` sobre el mismo proyecto para ver qué detecta el " +
-          "discovery, o fuerza el framework con `--framework <id>`.",
+          "Run `scan` on the same project to see what discovery finds, " +
+          "or force the framework with `--framework <id>`.",
       }),
       user: usuario,
       framework: result.match?.framework ?? null,
@@ -199,15 +199,15 @@ function falloDeApi(err: unknown): IPushFailure {
     return {
       reason: err.message,
       nextAction:
-        "Comprueba que la clave siga siendo válida y que tenga permiso " +
-        "sobre el workspace. El detalle completo sale en la traza del CLI; " +
-        "no se devuelve aquí porque puede incluir la petición, y con ella " +
-        "la clave.",
+        "Check that the key is still valid and has access to the workspace. " +
+        "The full detail goes to the CLI trace; it is not returned here " +
+        "because it can include the request, and with it the key." +
+        "",
     };
   }
   return {
     reason: err instanceof Error ? err.message : String(err),
-    nextAction: "Reintenta; si persiste, ejecuta `push` a mano para ver la traza.",
+    nextAction: "Retry; if it persists, run `push` by hand to see the trace.",
   };
 }
 

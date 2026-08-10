@@ -87,7 +87,7 @@ function dependencias(): IUiDeps {
       );
       if (code !== 0 || !report) {
         throw new Error(
-          "La generación no terminó bien. Mira la terminal desde la que lanzaste `expostman ui`.",
+          "Generation did not finish. Check the terminal where you started `expostman ui`.",
         );
       }
       return {
@@ -126,13 +126,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       ...(puerto !== undefined ? { port: puerto } : {}),
     });
   } catch (error) {
-    console.error(`\n✗ No se pudo levantar la interfaz.\n  · ${(error as Error).message}`);
+    console.error(`\n✗ Could not start the interface.\n  · ${(error as Error).message}`);
     return 1;
   }
 
   console.log(`\n✔ Interfaz en ${server.url}`);
-  console.log("  · Escucha solo en este equipo: no es alcanzable desde la red.");
-  console.log("  · Ctrl-C para cerrar.\n");
+  console.log("  · Listening on this machine only: not reachable from the network.");
+  console.log("  · Ctrl-C to stop.\n");
 
   if (!hasFlag(argv, "--no-open")) abrirNavegador(server.url);
 

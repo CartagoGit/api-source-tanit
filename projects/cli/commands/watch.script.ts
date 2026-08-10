@@ -105,8 +105,8 @@ async function regenerate(
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const root = projectRoot();
   if (!root) {
-    console.error("No se pudo determinar la raíz del proyecto.");
-    console.error("Pasa `--project-root <ruta>` o define POSTMAN_PROJECT_ROOT.");
+    console.error("Could not determine the project root.");
+    console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
     return 1;
   }
   // `watch` se queda mirando un árbol entero, así que importa más que en
@@ -114,7 +114,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
   // que hubiera debajo sin decir una palabra.
   if (!projectRootWasExplicit()) {
-    console.log(`→ Sin --project-root: se vigila el directorio actual (${root}).`);
+    console.log(`→ No --project-root: watching the current directory (${root}).`);
   }
 
   const frameworkIdx = argv.indexOf("--framework");
@@ -161,7 +161,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // no termina nunca.
   if (argv.includes("--once")) return 0;
 
-  console.log(`[${stamp()}] → vigilando ${root} (Ctrl+C para salir)`);
+  console.log(`[${stamp()}] → watching ${root} (Ctrl+C to stop)`);
 
   let last = previous;
   const handle = watchProject({

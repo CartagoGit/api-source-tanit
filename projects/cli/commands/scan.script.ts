@@ -41,7 +41,7 @@ export async function runScan(
   const aviso = guessedRootNotice(resolved);
   if (aviso) console.log(`${aviso}\n`);
 
-  console.log(`→ Escaneando ${root}\n`);
+  console.log(`→ Scanning ${root}\n`);
 
   const vacio = { root, artifacts: [], routes: [] } as const;
 
@@ -50,7 +50,7 @@ export async function runScan(
   const { match, scanner, validation } = await orch.detectProject(root);
   if (!match) {
     console.error(
-      "✘ No se detectó ningún framework. Comprueba la ruta o añade un IProjectScanner.",
+      "✘ No framework detected. Check the path, or add an IProjectScanner.",
     );
     return { ...vacio, code: 1, framework: null, scanner: null, validation: null };
   }
@@ -58,13 +58,13 @@ export async function runScan(
   const nombreScanner = scanner?.constructor.name ?? null;
   const nombreValidacion = validation?.constructor.name ?? null;
 
-  console.log(`✔ Framework ganador: ${match.framework}`);
-  console.log(`  · Artefactos:    ${match.artifacts.join(", ") || "(ninguno)"}`);
+  console.log(`✔ Winning framework: ${match.framework}`);
+  console.log(`  · Artifacts:     ${match.artifacts.join(", ") || "(ninguno)"}`);
   console.log(`  · RouteScanner:  ${nombreScanner ?? "(none)"}`);
   console.log(`  · Validation:    ${nombreValidacion ?? "(none)"}\n`);
 
   if (!scanner) {
-    console.error("✘ Hay match pero no hay scanner para este framework.");
+    console.error("✘ The project matched, but there is no route scanner for this framework.");
     return {
       ...vacio,
       code: 1,
@@ -76,7 +76,7 @@ export async function runScan(
   }
 
   const routes = await scanner.scan(match);
-  console.log(`✔ ${routes.length} rutas descubiertas:\n`);
+  console.log(`✔ ${routes.length} routes discovered:\n`);
   for (const r of routes) {
     const tags = r.tags?.length ? ` [${r.tags.join(", ")}]` : "";
     const desc = r.description ? ` — ${r.description}` : "";
