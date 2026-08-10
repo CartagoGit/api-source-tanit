@@ -49,11 +49,12 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
+/**
+ * El pipeline construye en memoria; escribir es cosa del script. Por eso
+ * aquí no se le pasa carpeta de salida: no la tiene.
+ */
 function generar(root: string) {
-  return generateCollection(root, {
-    orchestrator: defaultOrchestrator(),
-    outputDir: join(root, "export-to-postman"),
-  });
+  return generateCollection(root, { orchestrator: defaultOrchestrator() });
 }
 
 describe("dos proyectos a la vez", () => {

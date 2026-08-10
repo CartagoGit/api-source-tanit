@@ -16,7 +16,7 @@ import { isAbsolute, join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
 import { withProjectRoot, withScopedPaths } from "../core/discovery/paths.service.js";
 import { SUPPORTED_FRAMEWORKS } from "../frameworks/framework.registry.js";
-import { OUTPUT_DIR_NAME } from "../core/contracts/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../contracts/constants/core/postman.constant.js";
 import {
   DEFAULT_FORMAT,
   describeFormats,
@@ -24,7 +24,7 @@ import {
 import { defaultPainter, type IPainter } from "./ansi.helper.js";
 import { renderTable } from "./table.helper.js";
 import { renderDashboard, type IQualityMetrics } from "./dashboard.helper.js";
-import type { EndpointSpec } from "../core/contracts/postman.interface.js";
+import type { EndpointSpec } from "../contracts/interfaces/core/postman.interface.js";
 
 /**
  * Lector de líneas de stdin.

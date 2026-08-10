@@ -24,7 +24,7 @@
  *     lo que la API **recibe**; lo que devuelve no lo sabe, y afirmar que
  *     un `GET /users` devuelve un array sería adivinar.
  */
-import type { EndpointSpec, PostmanEvent } from "../contracts/postman.interface.js";
+import type { EndpointSpec, PostmanEvent } from "../../contracts/interfaces/core/postman.interface.js";
 
 /**
  * Códigos que son un éxito según el verbo.

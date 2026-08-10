@@ -21,14 +21,8 @@
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../contracts/postman.interface.js";
-
-/** Los tres endpoints del ciclo de sesión, si el proyecto los expone. */
-export interface IAuthFlow {
-  readonly login: PostmanItem | null;
-  readonly refresh: PostmanItem | null;
-  readonly logout: PostmanItem | null;
-}
+} from "../../contracts/interfaces/core/postman.interface.js";
+import type { IAuthFlow } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Nombres de variable del environment donde viven las credenciales. */
 export const AUTH_USERNAME_VARIABLE = "authUsername";

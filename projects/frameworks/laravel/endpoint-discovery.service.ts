@@ -10,11 +10,11 @@
  * Si se pasa un catálogo manual, se usa como **override** (misma
  * method+uri gana el manual: body, name, folder, description).
  */
-import type { IProjectContext } from "../../core/contracts/project-context.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { EndpointSpec } from "../../core/contracts/postman.interface.js";
-import type { ProjectConfig } from "../../core/contracts/project-config.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
 import {
   findFormRequestForController,

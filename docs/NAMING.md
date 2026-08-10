@@ -61,7 +61,8 @@ las dos dejan de coincidir, manda el gate y esto está mal.
 
 | Carpeta | Sufijos | Qué vive ahí |
 | --- | --- | --- |
-| `projects/core/contracts/` | `.interface.ts`, `.constant.ts`, `.d.ts` | Tipos y constantes compartidas |
+| `projects/contracts/interfaces/` | `.interface.ts`, `.d.ts` | Interfaces y tipos compartidos |
+| `projects/contracts/constants/` | `.constant.ts` | Constantes compartidas |
 | `projects/core/helpers/` | `.helper.ts` | Funciones puras, sin estado ni I/O |
 | `projects/core/exporters/` | `.exporter.ts`, `.service.ts` | Un formato de salida por fichero |
 | `projects/core/` (resto) | `.service.ts`, `.pipeline.ts`, `.orchestrator.ts`, `.adapter.ts` | El núcleo agnóstico |

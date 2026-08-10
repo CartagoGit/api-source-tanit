@@ -16,7 +16,7 @@
  *
  * @see https://learning.postman.com/docs/developer/postman-api/intro-api/
  */
-import type { PostmanCollection } from "../contracts/postman.interface.js";
+import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 
 const API_BASE = "https://api.getpostman.com";
 

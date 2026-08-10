@@ -16,7 +16,7 @@
  * instaladas, o directamente no ser ejecutable. Lo que no se reconoce se
  * degrada a `type: "string"` en lugar de romper el escaneo.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { splitTopLevel, unwrapObjectLiteralItem } from "../../core/helpers/source-scan.helper.js";
 
 /** Campo zod ya parseado, antes de convertirse en `IValidationSpec`. */

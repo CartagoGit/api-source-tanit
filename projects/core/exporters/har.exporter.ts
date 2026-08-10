@@ -22,8 +22,8 @@ import type {
   IExportArtifact,
   IExportInput,
   IExportTarget,
-} from "../contracts/export-target.interface.js";
-import type { EndpointSpec } from "../contracts/postman.interface.js";
+} from "../../contracts/interfaces/core/export-target.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 /** Las cabeceras que lleva una petición, según el esquema de auth. */
 function headersFor(

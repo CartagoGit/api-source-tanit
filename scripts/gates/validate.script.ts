@@ -24,7 +24,7 @@ import {
   type ICollectionIssue,
 } from "../../projects/core/helpers/collection-invariants.helper.js";
 import { countItems } from "../../projects/core/helpers/postman.helper.js";
-import type { PostmanCollection } from "../../projects/core/contracts/postman.interface.js";
+import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface.js";
 import { EXAMPLES_DIR } from "../helpers/root.helper.js";
 
 /** `example-app` no es un proyecto host: es el config de muestra. */

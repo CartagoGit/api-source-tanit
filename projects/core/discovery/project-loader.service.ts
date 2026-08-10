@@ -26,27 +26,12 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
-import type { EndpointSpec } from "../contracts/postman.interface.js";
-import type { ProjectConfig } from "../contracts/project-config.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { projectRoot } from "./paths.service.js";
-import type { IProjectContext } from "../contracts/project-context.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";
-
-/**
- * La configuración del proyecto, ya resuelta, y de dónde ha salido.
- *
- * `configPath` importa tanto como el config: es la diferencia entre "no
- * encontré tu fichero" y "lo encontré y dice esto", que es lo primero
- * que hay que saber cuando la salida no es la esperada.
- */
-export interface LoadedProject {
-  config: ProjectConfig;
-  manualEndpoints: EndpointSpec[];
-  configPath: string;
-  endpointsPath: string | null;
-  /** True si se generó un ProjectConfig zero-config (sin archivo host). */
-  zeroConfig: boolean;
-}
+import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
 
 function resolveMaybeRelative(p: string, base: string): string {
   return isAbsolute(p) ? resolve(p) : resolve(base, p);

@@ -16,7 +16,7 @@ import {
   createDebouncer,
   shouldIgnore,
 } from "../../projects/core/domain/watcher.service";
-import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
 
 describe("shouldIgnore", () => {
   // EL test. Sin esto, el watcher se retroalimenta.

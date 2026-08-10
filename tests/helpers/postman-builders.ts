@@ -21,7 +21,7 @@
 import type {
   PostmanItem,
   PostmanRequest,
-} from "../../projects/core/contracts/postman.interface";
+} from "../../projects/contracts/interfaces/core/postman.interface";
 
 /** Una request válida, para partir de algo que sí cumple el contrato. */
 export function validRequest(

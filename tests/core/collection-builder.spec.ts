@@ -5,8 +5,8 @@ import {
 } from "../../projects/core/domain/collection-builder.service";
 import type {
   EndpointSpec,
-} from "../../projects/core/contracts/postman.interface";
-import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface";
+} from "../../projects/contracts/interfaces/core/postman.interface";
+import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {
   name: "t",

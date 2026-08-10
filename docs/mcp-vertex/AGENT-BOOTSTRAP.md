@@ -160,7 +160,8 @@ a pointer.
 
 | Folder | Suffix | Example |
 | --- | --- | --- |
-| `projects/core/contracts/` | `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/scanner.interface.ts` |
+| `projects/contracts/interfaces/` | `*.interface.ts` | `projects/contracts/interfaces/core/scanner.interface.ts` |
+| `projects/contracts/constants/` | `*.constant.ts` | `projects/contracts/constants/core/postman.constant.ts` |
 | `projects/core/helpers/` | `*.helper.ts` | `projects/core/helpers/uri.helper.ts` |
 | `projects/core/` | `*.service.ts` / `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/discovery/generation.pipeline.ts` |
 | `projects/core/exporters/` | `*.exporter.ts` | `projects/core/exporters/openapi.exporter.ts` |
@@ -243,7 +244,7 @@ publish). Do not hard-require
 ### 3.8 Framework scanners — the discovery contract
 
 Discovery goes through **three** interfaces declared in
-[`projects/core/contracts/scanner.interface.ts`](../../projects/core/contracts/scanner.interface.ts):
+[`projects/contracts/interfaces/core/scanner.interface.ts`](../../projects/contracts/interfaces/core/scanner.interface.ts):
 
 ```ts
 IProjectScanner        // ¿es este proyecto mío?  detect() → 0..1, resolve()

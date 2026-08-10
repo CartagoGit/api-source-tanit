@@ -28,7 +28,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Métodos de Fiber, capitalizados como los escribe Go. */
 const METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options", "All"] as const;

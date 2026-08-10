@@ -1,15 +1,9 @@
 import { describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import {
-  fromProjectRoot,
-  hasProjectDir,
-  projectDirs,
-  resolveProjectContext,
-  toProjectRelative,
-} from "../../projects/core/discovery/project-context.service";
+import { fromProjectRoot, hasProjectDir, projectDirs, resolveProjectContext, toProjectRelative } from "../../projects/core/discovery/project-context.service";
 import { createTempProject } from "../helpers/scanner-fixture";
-import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
 
 const ctx = (projectRoot: string) => resolveProjectContext({ projectRoot });
 

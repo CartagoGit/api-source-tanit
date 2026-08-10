@@ -25,7 +25,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 import {
   collectFilesFrom,
   isSourceJsTsFile,

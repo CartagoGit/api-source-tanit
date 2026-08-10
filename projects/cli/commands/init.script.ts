@@ -122,7 +122,7 @@ export async function main(): Promise<number> {
  *
  * Edita los valores marcados con \`// TODO\` para personalizarlos.
  */
-import type { ProjectConfig } from "../../../../contracts/project-config.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 
 export const config: ProjectConfig = {
   name: "${projectName}",
@@ -182,7 +182,7 @@ export const config: ProjectConfig = {
  *
  * Ejemplo:
  * \`\`\`ts
- * import type { EndpointSpec } from "../../../../contracts/postman.interface.js";
+ * import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
  *
  * export const ALL_ENDPOINTS: EndpointSpec[] = [
  *   {
@@ -194,7 +194,7 @@ export const config: ProjectConfig = {
  * ];
  * \`\`\`
  */
-import type { EndpointSpec } from "../../../../contracts/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [
   // TODO añade aquí tus overrides

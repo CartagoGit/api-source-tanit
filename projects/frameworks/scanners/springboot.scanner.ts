@@ -30,7 +30,7 @@ import type {
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 
 async function isSpringBootProject(projectRoot: string): Promise<boolean> {

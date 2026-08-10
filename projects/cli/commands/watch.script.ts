@@ -25,12 +25,7 @@ import {
 } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import {
-  outputCollectionPath,
-  outputDir,
-  projectRoot,
-  projectRootWasExplicit,
-} from "../../core/discovery/paths.service.js";
+import { outputCollectionPath, outputDir, projectRoot, projectRootWasExplicit } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import {

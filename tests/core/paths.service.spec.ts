@@ -2,13 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import {
-  outputBasename,
-  outputDir,
-  outputEnvironmentPath,
-  packageRoot,
-  resetPathCache,
-} from "../../projects/core/discovery/paths.service";
+import { outputBasename, outputDir, outputEnvironmentPath, packageRoot, resetPathCache } from "../../projects/core/discovery/paths.service";
 
 describe("paths.service", () => {
   afterEach(() => {
@@ -132,8 +126,9 @@ describe("paths.service", () => {
       const marcador = join(
         packageRoot(),
         "projects",
-        "core",
         "contracts",
+        "constants",
+        "core",
         "postman.constant.ts",
       );
       expect(existsSync(marcador), marcador).toBe(true);

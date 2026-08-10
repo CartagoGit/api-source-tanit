@@ -20,8 +20,8 @@ import {
 import { buildOpenApiDocument } from "../../projects/core/exporters/openapi.exporter";
 import type {
   IExportInput,
-} from "../../projects/core/contracts/export-target.interface";
-import type { EndpointSpec } from "../../projects/core/contracts/postman.interface";
+} from "../../projects/contracts/interfaces/core/export-target.interface";
+import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
 
 const specs: EndpointSpec[] = [
   {

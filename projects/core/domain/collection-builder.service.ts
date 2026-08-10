@@ -24,20 +24,15 @@ import type {
   PostmanHeader,
   PostmanItem,
   PostmanRequest,
-} from "../contracts/postman.interface.js";
-import type { ProjectConfig } from "../contracts/project-config.interface.js";
+} from "../../contracts/interfaces/core/postman.interface.js";
+import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { collectionIdFor } from "../helpers/collection-identity.helper.js";
-import { POSTMAN_SCHEMA_URL } from "../contracts/postman.constant.js";
-import {
-  detectAuthScheme,
-  toPostmanAuth,
-  type AuthSchemeType,
-  type IDetectedAuthScheme,
-} from "./auth-scheme.service.js";
+import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
+import { detectAuthScheme, toPostmanAuth } from "./auth-scheme.service.js";
 import { buildRequestDescription } from "./request-doc.service.js";
 import { buildTestScript } from "./test-script.service.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
-
+import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

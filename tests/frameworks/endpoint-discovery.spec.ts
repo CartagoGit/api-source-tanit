@@ -2,8 +2,8 @@ import { describe, expect, test } from "vitest";
 
 import { enrichCatalogWithFormRequests } from "../../projects/frameworks/laravel/catalog-enricher.service";
 import { buildCollection } from "../../projects/core/domain/collection-builder.service";
-import type { EndpointSpec } from "../../projects/core/contracts/postman.interface";
-import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface";
+import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
+import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface";
 import { mergeWithManual } from "../../projects/core/domain/endpoint-merge.service";
 
 const spec = (partial: Partial<EndpointSpec>): EndpointSpec =>

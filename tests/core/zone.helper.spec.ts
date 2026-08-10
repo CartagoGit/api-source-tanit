@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { zoneForUri } from "../../projects/core/helpers/zone.helper";
-import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface";
+import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {
   name: "t",

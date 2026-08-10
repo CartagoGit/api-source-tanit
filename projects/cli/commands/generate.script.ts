@@ -24,31 +24,25 @@ import {
   parseFormats,
 } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import type { IGenerationResult } from "../../core/discovery/generation.pipeline.js";
+
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
-import {
-  describeDiscoveredPaths,
-  outputCollectionPath,
-  outputDir as outputDirFor,
-  outputEnvironmentPath,
-  projectRoot,
-} from "../../core/discovery/paths.service.js";
+import { describeDiscoveredPaths, outputCollectionPath, outputDir as outputDirFor, outputEnvironmentPath, projectRoot } from "../../core/discovery/paths.service.js";
 import {
   buildEnvironments,
   defaultEnvironments,
 } from "../../core/domain/environment-builder.service.js";
-import type { DiscoveredRoute } from "../../core/contracts/postman.interface.js";
+import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../core/contracts/generate-report.interface.js";
+} from "../../contracts/interfaces/core/generate-report.interface.js";
 import { AUTH_TOKEN_VARIABLE } from "../../core/domain/auth-flow.service.js";
-
+import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline

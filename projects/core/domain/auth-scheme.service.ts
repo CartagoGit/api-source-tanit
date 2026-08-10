@@ -23,10 +23,8 @@
  * `auth`, que es la respuesta honesta y además la que hace que Postman
  * no mande una cabecera `Authorization` vacía en cada petición.
  */
-import type { EndpointSpec } from "../contracts/postman.interface.js";
-
-/** Esquemas que se saben reconocer y escribir. */
-export type AuthSchemeType = "bearer" | "apikey" | "oauth2" | "none";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IDetectedAuthScheme, IPostmanAuth } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Variable de entorno donde vive la clave de API. */
 export const AUTH_API_KEY_VARIABLE = "apiKey";
@@ -34,32 +32,6 @@ export const AUTH_API_KEY_VARIABLE = "apiKey";
 export const AUTH_CLIENT_ID_VARIABLE = "clientId";
 /** Secreto de cliente para el flujo OAuth2. Va vacío y como secreto. */
 export const AUTH_CLIENT_SECRET_VARIABLE = "clientSecret";
-
-/**
- * El esquema de autenticación deducido, con la señal que lo delató.
- *
- * La `evidence` no es adorno: una detección automática que no se puede
- * contrastar hay que creérsela a ciegas.
- */
-export interface IDetectedAuthScheme {
-  readonly type: AuthSchemeType;
-  /** Nombre de la cabecera o del query param, solo para `apikey`. */
-  readonly keyName?: string;
-  /** Dónde viaja la clave, solo para `apikey`. */
-  readonly keyIn?: "header" | "query";
-  /** URL del endpoint de token, solo para `oauth2`. */
-  readonly tokenUrl?: string;
-  /** URL de autorización, solo para `oauth2`. */
-  readonly authorizeUrl?: string;
-  /**
-   * Por qué se ha decidido eso.
-   *
-   * Va al aviso del CLI y a la descripción de la colección: una
-   * detección automática que no se puede contrastar es una que hay que
-   * creerse a ciegas.
-   */
-  readonly evidence: string;
-}
 
 /**
  * Cabeceras que son una clave de API.
@@ -179,12 +151,6 @@ export function detectAuthScheme(
     type: "none",
     evidence: "no se ha encontrado ninguna señal de autenticación",
   };
-}
-
-/** El bloque `auth` de una colección Postman v2.1.0. */
-export interface IPostmanAuth {
-  readonly type: string;
-  readonly [key: string]: unknown;
 }
 
 /**

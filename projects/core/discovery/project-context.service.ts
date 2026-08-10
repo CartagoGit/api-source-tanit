@@ -14,22 +14,11 @@ import { join, resolve, sep } from "node:path";
 import type {
   IProjectContext,
   IProjectDirs,
-} from "../contracts/project-context.interface.js";
+} from "../../contracts/interfaces/core/project-context.interface.js";
 import { findRepoRoot, moduleDir } from "../helpers/module-path.helper.js";
-import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 import { readFlag } from "../helpers/argv.helper.js";
-
-/** Entradas de las que se puede derivar el contexto. */
-export interface IResolveContextOptions {
-  /** Raíz del proyecto. Si falta, se deduce de `argv` o `env`. */
-  readonly projectRoot?: string | undefined;
-  /** Directorio de salida. Si falta, `<raíz>/build`. */
-  readonly outputDir?: string | undefined;
-  /** `process.argv` inyectable, para poder testear sin tocar el global. */
-  readonly argv?: ReadonlyArray<string>;
-  /** `process.env` inyectable, por el mismo motivo. */
-  readonly env?: Readonly<Record<string, string | undefined>>;
-}
+import type { IResolveContextOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 // `findRepoRoot` y no `repoRoot`: este módulo acaba DENTRO del binario
 // compilado, donde los ficheros viven en `/$bunfs/root/` y no hay

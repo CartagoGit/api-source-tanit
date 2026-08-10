@@ -13,7 +13,7 @@
  * Igual que el resto de parsers del paquete, el análisis es textual: no
  * se importa el módulo del proyecto escaneado.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Un schema Marshmallow localizado en el fuente. */
 export interface IMarshmallowSchema {

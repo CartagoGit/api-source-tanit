@@ -27,29 +27,8 @@ import type {
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../contracts/scanner.interface.js";
-
-/**
- * El catálogo de scanners con el que trabaja un orquestador.
- *
- * Se inyecta en vez de importarse para que el núcleo no conozca ni un
- * framework: es lo que hace que `lint:boundaries` pueda prohibir que
- * `core/` importe de `frameworks/`.
- */
-export interface DiscoveryRegistry {
-  readonly detectors: ReadonlyArray<IProjectScanner>;
-  readonly routeScanners: ReadonlyArray<IRouteScanner>;
-  readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
-}
-
-/** Un framework que ha reconocido el proyecto, con sus colaboradores. */
-export interface IDetectedFramework {
-  readonly match: IProjectMatch;
-  readonly scanner: IRouteScanner | null;
-  readonly validation: IValidationSpecProvider | null;
-  /** Confianza del detector, de 0 a 1. */
-  readonly score: number;
-}
+} from "../../contracts/interfaces/core/scanner.interface.js";
+import type { DiscoveryRegistry, IDetectedFramework } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Decide qué framework es el proyecto y con qué colaboradores se escanea.

@@ -21,7 +21,7 @@
 import { resolve } from "node:path";
 
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
-import type { ILegacyDiscovery } from "../contracts/legacy-discovery.interface.js";
+import type { ILegacyDiscovery } from "../../contracts/interfaces/core/legacy-discovery.interface.js";
 import { generateCollection } from "./generation.pipeline.js";
 
 /** Resumen de un proyecto host para inspección rápida. */

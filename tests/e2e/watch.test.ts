@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { watchProject, type IWatchHandle } from "../../projects/core/domain/watcher.service";
-import { OUTPUT_DIR_NAME } from "../../projects/core/contracts/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
 
 let root = "";
 let handle: IWatchHandle | null = null;

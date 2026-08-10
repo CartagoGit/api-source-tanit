@@ -10,7 +10,7 @@
  * segura, simplemente no añade nada. Postman seguirá siendo útil, solo
  * perderemos ejemplos automáticos para esos casos.
  */
-import type { EndpointSpec } from "../contracts/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 /** Path params detectados en una URI ya normalizada a Postman (`{{x}}`). */
 export function extractPathParams(uri: string): string[] {

@@ -14,13 +14,10 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../../core/contracts/postman.interface.js";
-import type { IProjectContext } from "../../core/contracts/project-context.interface.js";
-import {
-  projectDirs,
-  toProjectRelative as toContextRelative,
-} from "../../core/discovery/project-context.service.js";
-import { VARIANT_TAG } from "../../core/contracts/postman.constant.js";
+} from "../../contracts/interfaces/core/postman.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { projectDirs, toProjectRelative as toContextRelative } from "../../core/discovery/project-context.service.js";
+import { VARIANT_TAG } from "../../contracts/constants/core/postman.constant.js";
 import {
   generateBodyVariants,
   generateQueryVariants,

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 223 símbolos en 50 módulos.
+> 172 símbolos en 42 módulos.
 
 ### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -42,17 +42,6 @@ Se exporta para poder probarla sola: es una función pura de la ruta, y
 lo contrario obligaría a montar un scanner entero para comprobar cómo
 queda un nombre.
 
-#### `AdapterResult`
-
-```ts
-export interface AdapterResult
-```
-
-Lo que sale de adaptar las rutas de un scanner al catálogo del núcleo.
-
-Los contadores de con y sin reglas van aquí porque son la medida de
-cuánto se ha podido deducir del código frente a cuánto se ha inferido.
-
 #### `buildSpecsFromScanner`
 
 ```ts
@@ -69,375 +58,9 @@ con la misma forma que el `discoverEndpoints` legacy.
 export async function _peekSpec(projectRoot: string): Promise<string | null>
 ```
 
-### `projects/core/contracts/export-target.interface.ts`
-
-El contrato de un formato de salida.
-
-#### `IExportArtifact`
-
-```ts
-export interface IExportArtifact
-```
-
-#### `IExportInput`
-
-```ts
-export interface IExportInput
-```
-
-#### `IExportAuth`
-
-```ts
-export interface IExportAuth
-```
-
-#### `IExportTarget`
-
-```ts
-export interface IExportTarget
-```
-
-Un formato de salida.
-
-Implementarlo y registrarlo en `export-registry.service.ts` es todo lo
-que hace falta para añadir un formato: el motor de escaneo no se toca,
-porque lo que se serializa es la representación intermedia que ya
-produce.
-
-### `projects/core/contracts/generate-report.interface.ts`
-
-Informe legible por máquina de una generación (`generate --json`).
-
-#### `GENERATE_REPORT_VERSION`
-
-```ts
-export const GENERATE_REPORT_VERSION = 3
-```
-
-Versión del contrato. Sube al cambiar la forma de manera incompatible.
-
-v2: añade `frameworks` y `warnings` (proyectos híbridos).
-
-#### `IGenerateReportAuth`
-
-```ts
-export interface IGenerateReportAuth
-```
-
-#### `IGenerateReport`
-
-```ts
-export interface IGenerateReport
-```
-
-### `projects/core/contracts/legacy-discovery.interface.ts`
-
-Estrategia de descubrimiento de último recurso.
-
-#### `ILegacyDiscoveryResult`
-
-```ts
-export interface ILegacyDiscoveryResult
-```
-
-#### `ILegacyDiscovery`
-
-```ts
-export interface ILegacyDiscovery
-```
-
-### `projects/core/contracts/postman.constant.ts`
-
-Constantes universales del paquete (agnósticas del proyecto).
-
-#### `POSTMAN_SCHEMA_URL`
-
-```ts
-export const POSTMAN_SCHEMA_URL = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-```
-
-La URL del esquema que declara la versión del formato.
-
-Postman la usa para decidir cómo leer el fichero al importarlo; una
-colección sin ella o con otra versión se interpreta distinto.
-
-#### `VARIANT_TAG`
-
-```ts
-export const VARIANT_TAG = " (auto · FormRequest)"
-```
-
-#### `OUTPUT_DIR_NAME`
-
-```ts
-export const OUTPUT_DIR_NAME = "export-to-postman"
-```
-
-Carpeta donde se escriben los artefactos, dentro del proyecto que se
-escanea.
-
-Antes era `build/`, y eso hacía daño: `build/` es la salida por
-defecto de Gradle, de Maven con ciertas configuraciones, de muchos
-proyectos de Go y de la mitad de los Makefile del mundo. Escribir ahí
-mezcla las colecciones con los artefactos de compilación de quien usa
-la herramienta, en una carpeta que su `clean` borra entera.
-
-`export-to-postman/` es el nombre del proyecto: nadie tiene una
-carpeta así, y si la tiene, es la nuestra.
-
-Se sobrescribe con `--output-dir` o `POSTMAN_OUTPUT_DIR`.
-
-#### `SUPPORTED_METHODS`
-
-```ts
-export const SUPPORTED_METHODS = [ "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS",
-```
-
-Métodos HTTP que se emiten a la colección.
-
-Es la MISMA lista que el tipo `EndpointSpec["method"]`, y existe para
-poder recorrerla en tiempo de ejecución. El adapter la usa para
-filtrar: tenerla escrita a mano allí hacía que añadir un método al
-tipo no sirviera de nada, y los `HEAD` que los scanners sí detectaban
-desaparecían en silencio.
-
-#### `BIN_NAME`
-
-```ts
-export const BIN_NAME = "expostman" as const
-```
-
-Nombre del ejecutable que se distribuye.
-
-Es el mismo que el `bin` del `package.json` y el que se escribe en la
-terminal. Estaba escrito a mano en el script de compilación, y se
-quedó en `postman-from-routes` —el nombre viejo— cuando el producto
-pasó a llamarse así: los binarios de las releases salían con un nombre
-que no existe en ninguna otra parte del proyecto.
-
-### `projects/core/contracts/postman.interface.ts`
-
-Tipos del schema Postman v2.1.0. Documentación oficial: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
-
-#### `PostmanUrl`
-
-```ts
-export interface PostmanUrl
-```
-
-Tipos del schema Postman v2.1.0.
-Documentación oficial: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
-
-#### `PostmanHeader`
-
-```ts
-export interface PostmanHeader
-```
-
-#### `PostmanBody`
-
-```ts
-export interface PostmanBody
-```
-
-El cuerpo de una petición.
-
-Este proyecto solo emite `raw` con JSON: es lo que se puede derivar de
-unas reglas de validación. Los otros modos existen en el formato y se
-declaran para poder leer una colección ajena sin perderlos.
-
-#### `PostmanRequest`
-
-```ts
-export interface PostmanRequest
-```
-
-La petición de un item: qué se manda y a dónde.
-
-`method` es `string` y no la unión de verbos porque aquí también se
-leen colecciones que no ha escrito esta herramienta.
-
-#### `PostmanEvent`
-
-```ts
-export interface PostmanEvent
-```
-
-Un script que Postman ejecuta alrededor de la petición.
-
-`prerequest` corre antes de mandarla; `test`, después de recibir la
-respuesta. `exec` es el script partido en líneas, que es como lo
-guarda el formato.
-
-#### `PostmanItem`
-
-```ts
-export interface PostmanItem
-```
-
-Un nodo del árbol de la colección.
-
-Es carpeta **o** petición según qué campo traiga: con `item` es
-carpeta y con `request` es petición. El formato no los separa en dos
-tipos, así que aquí tampoco.
-
-#### `PostmanVariable`
-
-```ts
-export interface PostmanVariable
-```
-
-Una variable de colección o de entorno.
-
-`type: "secret"` hace que Postman la oculte en la interfaz: es lo que
-llevan el token y las credenciales.
-
-#### `PostmanCollection`
-
-```ts
-export interface PostmanCollection
-```
-
-Una colección Postman v2.1.0 completa.
-
-El `_postman_id` de `info` es lo que decide si reimportar **actualiza**
-la colección o crea otra al lado, así que se deriva del proyecto y no
-se sortea (p00014).
-
-#### `EndpointSpec`
-
-```ts
-export interface EndpointSpec
-```
-
-#### `IEndpointField`
-
-```ts
-export interface IEndpointField
-```
-
-#### `DiscoveredRoute`
-
-```ts
-export interface DiscoveredRoute
-```
-
-#### `PostmanEnvironment`
-
-```ts
-export interface PostmanEnvironment
-```
-
-Environment Postman v2.1.0.
-https://learning.postman.com/docs/sending-requests/managing-environments/
-
-### `projects/core/contracts/project-config.interface.ts`
-
-Interfaz de configuración del proyecto.
-
-#### `ProjectConfig`
-
-```ts
-export interface ProjectConfig
-```
-
-Configuración completa que un proyecto debe proporcionar.
-
-### `projects/core/contracts/project-context.interface.ts`
-
-Contexto del proyecto que se está escaneando.
-
-#### `IProjectContext`
-
-```ts
-export interface IProjectContext
-```
-
-#### `IProjectDirs`
-
-```ts
-export interface IProjectDirs
-```
-
-### `projects/core/contracts/scanner.interface.ts`
-
-Contratos framework-agnostic para discovery y validación.
-
-#### `FrameworkId`
-
-```ts
-export type FrameworkId = "laravel" | "openapi" | "express" | "fastapi" | "symfony" | string
-```
-
-#### `IProjectMatch`
-
-```ts
-export interface IProjectMatch
-```
-
-#### `IProjectScanner`
-
-```ts
-export interface IProjectScanner
-```
-
-#### `ParsedRoute`
-
-```ts
-export interface ParsedRoute
-```
-
-#### `IRouteScanner`
-
-```ts
-export interface IRouteScanner
-```
-
-#### `IValidationSpec`
-
-```ts
-export interface IValidationSpec
-```
-
-#### `IEndpointValidation`
-
-```ts
-export interface IEndpointValidation
-```
-
-#### `IValidationSpecProvider`
-
-```ts
-export interface IValidationSpecProvider
-```
-
-#### `IDiscoveryOrchestrator`
-
-```ts
-export interface IDiscoveryOrchestrator
-```
-
 ### `projects/core/discovery/discovery.orchestrator.ts`
 
 `DiscoveryOrchestrator` — punto de entrada único del discovery framework-agnostic.
-
-#### `DiscoveryRegistry`
-
-```ts
-export interface DiscoveryRegistry
-```
-
-El catálogo de scanners con el que trabaja un orquestador.
-
-Se inyecta en vez de importarse para que el núcleo no conozca ni un
-framework: es lo que hace que `lint:boundaries` pueda prohibir que
-`core/` importe de `frameworks/`.
-
-#### `IDetectedFramework`
-
-```ts
-export interface IDetectedFramework
-```
 
 #### `DiscoveryOrchestrator`
 
@@ -455,24 +78,6 @@ endpoints sin decir nada.
 ### `projects/core/discovery/generation.pipeline.ts`
 
 Pipeline de generación: `projectRoot` → `PostmanCollection`.
-
-#### `IGenerationMetrics`
-
-```ts
-export interface IGenerationMetrics
-```
-
-#### `IGenerationResult`
-
-```ts
-export interface IGenerationResult
-```
-
-#### `IGenerationOptions`
-
-```ts
-export interface IGenerationOptions
-```
 
 #### `generateCollection`
 
@@ -527,12 +132,6 @@ ser una trampa en cuanto se dice en voz alta.
 
 ```ts
 export function resetPathCache(): void
-```
-
-#### `IPathScope`
-
-```ts
-export interface IPathScope
 ```
 
 #### `withScopedPaths`
@@ -702,12 +301,6 @@ carpeta.
 
 Resolución explícita del contexto de un proyecto.
 
-#### `IResolveContextOptions`
-
-```ts
-export interface IResolveContextOptions
-```
-
 #### `resolveProjectContext`
 
 ```ts
@@ -748,18 +341,6 @@ export function hasProjectDir(context: IProjectContext, relPath: string): boolea
 ### `projects/core/discovery/project-loader.service.ts`
 
 Carga la configuración del proyecto host de forma agnóstica.
-
-#### `LoadedProject`
-
-```ts
-export interface LoadedProject
-```
-
-La configuración del proyecto, ya resuelta, y de dónde ha salido.
-
-`configPath` importa tanto como el config: es la diferencia entre "no
-encontré tu fichero" y "lo encontré y dice esto", que es lo primero
-que hay que saber cuando la salida no es la esperada.
 
 #### `detectProjectName`
 
@@ -889,12 +470,6 @@ en `projects/frameworks/`.
 
 Flujo de autenticación de la colección.
 
-#### `IAuthFlow`
-
-```ts
-export interface IAuthFlow
-```
-
 #### `AUTH_USERNAME_VARIABLE`
 
 ```ts
@@ -999,12 +574,6 @@ patrones de respuesta. Si no encuentra nada, devuelve undefined.
 
 Qué esquema de autenticación usa la API, deducido de sus endpoints.
 
-#### `AuthSchemeType`
-
-```ts
-export type AuthSchemeType = "bearer" | "apikey" | "oauth2" | "none"
-```
-
 #### `AUTH_API_KEY_VARIABLE`
 
 ```ts
@@ -1023,17 +592,6 @@ export const AUTH_CLIENT_ID_VARIABLE = "clientId"
 export const AUTH_CLIENT_SECRET_VARIABLE = "clientSecret"
 ```
 
-#### `IDetectedAuthScheme`
-
-```ts
-export interface IDetectedAuthScheme
-```
-
-El esquema de autenticación deducido, con la señal que lo delató.
-
-La `evidence` no es adorno: una detección automática que no se puede
-contrastar hay que creérsela a ciegas.
-
 #### `detectAuthScheme`
 
 ```ts
@@ -1044,12 +602,6 @@ Deduce el esquema de autenticación de la API.
 
 `hasLoginFlow` lo pasa el pipeline: es si el proyecto expone un
 endpoint de sesión que el flujo de auth ha reconocido y cableado.
-
-#### `IPostmanAuth`
-
-```ts
-export interface IPostmanAuth
-```
 
 #### `toPostmanAuth`
 

@@ -23,7 +23,7 @@
  */
 import { readFile } from "node:fs/promises";
 
-import type { PostmanCollection } from "../contracts/postman.interface.js";
+import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 
 /** Lo que devuelve intentar leer la colección. */
 export type CollectionRead =

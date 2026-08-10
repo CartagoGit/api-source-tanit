@@ -16,8 +16,8 @@ import {
   generateWithAllFrameworks,
 } from "../../projects/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
-import { SUPPORTED_METHODS } from "../../projects/core/contracts/postman.constant";
-import type { PostmanItem } from "../../projects/core/contracts/postman.interface";
+import { SUPPORTED_METHODS } from "../../projects/contracts/constants/core/postman.constant";
+import type { PostmanItem } from "../../projects/contracts/interfaces/core/postman.interface";
 
 /** Todas las requests de la colección, sin las carpetas. */
 function requestsOf(items: ReadonlyArray<PostmanItem>): PostmanItem[] {

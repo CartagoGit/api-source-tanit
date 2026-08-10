@@ -20,7 +20,7 @@ import { endpointKey } from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
-import type { PostmanCollection } from "../../core/contracts/postman.interface.js";
+import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 
 /** Un endpoint que está en un lado y no en el otro. */

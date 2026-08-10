@@ -23,7 +23,7 @@ import { smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type {
   IProjectMatch,
   ParsedRoute,
-} from "../../projects/core/contracts/scanner.interface";
+} from "../../projects/contracts/interfaces/core/scanner.interface";
 
 const provider = new OpenApiValidationProvider();
 

@@ -17,11 +17,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import {
-  deriveName,
-  toPostmanUri,
-} from "../../projects/core/adapters/parsed-route-to-spec.adapter";
-import type { ParsedRoute } from "../../projects/core/contracts/scanner.interface";
+import { deriveName, toPostmanUri } from "../../projects/core/adapters/parsed-route-to-spec.adapter";
+import type { ParsedRoute } from "../../projects/contracts/interfaces/core/scanner.interface";
 
 function nameOf(route: Partial<ParsedRoute> & { method: string; uri: string }): string {
   return deriveName(route as ParsedRoute);

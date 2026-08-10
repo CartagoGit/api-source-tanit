@@ -22,7 +22,7 @@ import { describe, expect, test } from "vitest";
 
 import { scannerBundleFor } from "../../projects/frameworks/index";
 import { exampleDir } from "../../scripts/helpers/root.helper";
-import type { IValidationSpec } from "../../projects/core/contracts/scanner.interface";
+import type { IValidationSpec } from "../../projects/contracts/interfaces/core/scanner.interface";
 
 const bundle = scannerBundleFor("nestjs");
 

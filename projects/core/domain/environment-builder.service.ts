@@ -21,7 +21,7 @@ import type {
   EndpointSpec,
   PostmanEnvironment,
   PostmanVariable,
-} from "../contracts/postman.interface.js";
+} from "../../contracts/interfaces/core/postman.interface.js";
 
 /** Definición de un entorno (agnóstica del proyecto). */
 export interface EnvironmentDef {

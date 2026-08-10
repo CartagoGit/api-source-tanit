@@ -21,7 +21,7 @@ import { runProcess } from "../helpers/run-process";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../projects/core/contracts/generate-report.interface";
+} from "../../projects/contracts/interfaces/core/generate-report.interface";
 import { CLI_COMMANDS_DIR, MCP_VERTEX_PLUGIN_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");

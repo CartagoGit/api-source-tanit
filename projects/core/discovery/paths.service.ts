@@ -15,7 +15,7 @@
  *
  * Resolución del `packageRoot`:
  *   1. Búsqueda subiendo desde la carpeta de **este módulo** hasta dar
- *      con `package.json` + `projects/core/contracts/postman.constant.ts`.
+ *      con `package.json` + `projects/contracts/constants/core/postman.constant.ts`.
  *   2. Si no aparece, el padre de esa carpeta. Es un último recurso que
  *      ya mintió una vez (ver `findPackageRoot`).
  *
@@ -39,7 +39,8 @@
  */
 import { existsSync } from "node:fs";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
-import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
+import type { IPathScope } from "../../contracts/interfaces/core/discovery.interface.js";
 
 // ---------------------------------------------------------------------------
 // Caché interna
@@ -91,7 +92,7 @@ function walkUp(
  *
  * ## Por qué estaba roto
  *
- * El predicado buscaba `contract`, en singular, y la carpeta se llama
+ * El predicado buscaba `contract`, en singular, y la carpeta se llamaba
  * `contracts`. Nunca casaba, así que `findPackageRoot` devolvía siempre
  * `null` y `discover()` se caía a `dirnameUp(start, 1)` — el padre de
  * `projects/core/discovery/`, o sea **`projects/core`**. El fallback fue
@@ -106,12 +107,19 @@ function walkUp(
  *     `example-app` ahí dentro que lo demuestra.
  *   · `POSTMAN_EXAMPLE` buscaba en `projects/core/examples/`, que no
  *     existe, así que la variable no hacía nada en silencio.
+ *
+ * El marcador volvió a quedarse viejo al mudar los contratos a su propio
+ * proyecto (r00007 S2), y esta vez lo cazaron los tests en el acto. Esa
+ * es la diferencia entre una ruta escrita a mano y una ruta escrita a
+ * mano **con algo que la comprueba**.
  */
 function findPackageRoot(start: string): string | null {
   return walkUp(start, (dir) => {
     return (
       existsSync(join(dir, "package.json")) &&
-      existsSync(join(dir, "projects", "core", "contracts", "postman.constant.ts"))
+      existsSync(
+        join(dir, "projects", "contracts", "constants", "core", "postman.constant.ts"),
+      )
     );
   });
 }
@@ -255,12 +263,6 @@ const SCOPE_VARS = {
   projectRoot: "POSTMAN_PROJECT_ROOT",
   outputDir: "POSTMAN_OUTPUT_DIR",
 } as const;
-
-/** Qué rutas fijar durante la sección. Lo que se omite no se toca. */
-export interface IPathScope {
-  readonly projectRoot?: string;
-  readonly outputDir?: string;
-}
 
 /**
  * Ejecuta `fn` con las rutas del scope fijadas, y restaura el estado

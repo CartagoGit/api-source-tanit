@@ -24,7 +24,7 @@
 import { watch, type FSWatcher } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
 
-import { OUTPUT_DIR_NAME } from "../contracts/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 
 /** Cuánto se espera a que pare el teclado antes de regenerar. */
 export const DEFAULT_DEBOUNCE_MS = 300;

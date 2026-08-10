@@ -16,7 +16,7 @@
  */
 import { join } from "node:path";
 import { generateWithAllFrameworks } from "../../projects/frameworks/index";
-import type { PostmanCollection } from "../../projects/core/contracts/postman.interface";
+import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
 const PROJECT_ROOT = REPO_ROOT;

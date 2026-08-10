@@ -11,7 +11,7 @@ import type {
   IExportArtifact,
   IExportInput,
   IExportTarget,
-} from "../contracts/export-target.interface.js";
+} from "../../contracts/interfaces/core/export-target.interface.js";
 import { BrunoExporter } from "./bruno.exporter.js";
 import { CurlExporter, HarExporter } from "./har.exporter.js";
 import { InsomniaExporter } from "./insomnia.exporter.js";

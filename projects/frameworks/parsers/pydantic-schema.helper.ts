@@ -14,7 +14,7 @@
  * El análisis es textual: no se importa el módulo del proyecto
  * escaneado, que puede estar en otra versión de Python o sin instalar.
  */
-import type { IValidationSpec } from "../../core/contracts/scanner.interface.js";
+import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /** Un modelo Pydantic localizado en el fuente. */
 export interface IPydanticModel {

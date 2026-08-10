@@ -35,7 +35,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   ParsedRoute,
-} from "../../core/contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
 
 const METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
 

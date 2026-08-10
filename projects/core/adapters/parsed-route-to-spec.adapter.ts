@@ -24,15 +24,16 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { SUPPORTED_METHODS } from "../contracts/postman.constant.js";
-import type { EndpointSpec } from "../contracts/postman.interface.js";
+import { SUPPORTED_METHODS } from "../../contracts/constants/core/postman.constant.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type {
   IProjectMatch,
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
-} from "../contracts/scanner.interface.js";
+} from "../../contracts/interfaces/core/scanner.interface.js";
+import type { AdapterResult } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Traduce los parámetros de ruta al formato de Postman: `{{x}}`.
@@ -170,19 +171,6 @@ function specToEndpointArgs(
     value: String(v),
     description: spec.description ?? spec.format ?? spec.type,
   };
-}
-
-/**
- * Lo que sale de adaptar las rutas de un scanner al catálogo del núcleo.
- *
- * Los contadores de con y sin reglas van aquí porque son la medida de
- * cuánto se ha podido deducir del código frente a cuánto se ha inferido.
- */
-export interface AdapterResult {
-  readonly specs: EndpointSpec[];
-  readonly routes: ReadonlyArray<ParsedRoute>;
-  readonly withFormRequest: number;
-  readonly withoutFormRequest: number;
 }
 
 /**

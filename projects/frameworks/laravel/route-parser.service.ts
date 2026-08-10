@@ -19,12 +19,12 @@
  * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
  * URI. Esto permite generar carpetas automáticamente sin hardcodear.
  */
-import type { IProjectContext } from "../../core/contracts/project-context.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { fromProjectRoot, projectDirs } from "../../core/discovery/project-context.service.js";
 import { readFile } from "node:fs/promises";
 import { fromProjectRelative, routesDir } from "../../core/discovery/paths.service.js";
-import type { ParsedRoute as NeutralParsedRoute } from "../../core/contracts/scanner.interface.js";
+import type { ParsedRoute as NeutralParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
  * Re-export del tipo neutro para no romper imports existentes.

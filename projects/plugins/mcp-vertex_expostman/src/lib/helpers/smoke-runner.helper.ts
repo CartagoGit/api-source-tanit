@@ -25,7 +25,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { ParsedRoute } from "../../../../../core/contracts/scanner.interface";
+import type { ParsedRoute } from "../../../../../contracts/interfaces/core/scanner.interface";
 
 /** Un endpoint esperado en el `expected.json`. */
 export interface IExpectedRoute {

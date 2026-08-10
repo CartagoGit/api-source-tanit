@@ -78,6 +78,7 @@ import {
   AspNetRouteScanner,
   AspNetDataAnnotationsProvider,
 } from "./scanners/aspnet.scanner";
+import type { DiscoveryRegistry } from "../contracts/interfaces/core/discovery.interface";
 import {
   FastifyProjectScanner,
   FastifyRouteScanner,
@@ -108,13 +109,12 @@ import {
 } from "./scanners/phoenix.scanner";
 import { KtorProjectScanner, KtorRouteScanner } from "./scanners/ktor.scanner";
 
-import type { DiscoveryRegistry } from "../core/discovery/discovery.orchestrator";
 import type {
   FrameworkId,
   IProjectScanner,
   IRouteScanner,
   IValidationSpecProvider,
-} from "../core/contracts/scanner.interface";
+} from "../contracts/interfaces/core/scanner.interface";
 
 /** Registry canónico con los 12 frameworks soportados. */
 /**

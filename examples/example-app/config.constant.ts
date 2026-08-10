@@ -10,7 +10,7 @@
  *
  * @see ../../contracts/project-config.interface.ts para todos los campos disponibles.
  */
-import type { ProjectConfig } from "../../projects/core/contracts/project-config.interface.js";
+import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface.js";
 
 export const config: ProjectConfig = {
   name: "example-app",

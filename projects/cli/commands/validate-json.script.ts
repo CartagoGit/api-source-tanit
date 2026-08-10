@@ -13,8 +13,8 @@ import type {
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
-} from "../../core/contracts/postman.interface.js";
-import { POSTMAN_SCHEMA_URL } from "../../core/contracts/postman.constant.js";
+} from "../../contracts/interfaces/core/postman.interface.js";
+import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
