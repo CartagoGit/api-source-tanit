@@ -51,7 +51,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
 - global_gate: e2e
 
 ### S1 — `expostman ui`: servidor local sobre el binario que ya existe
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/server/ui-server.service.ts`, `projects/ui/server/ui-routes.service.ts`, `projects/cli/commands/ui.script.ts`, `tests/cli/ui-server.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -61,7 +61,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
   - "Se apaga limpio ante SIGINT y SIGTERM, sin dejar el puerto ocupado"
 
 ### S2 — La interfaz, con lo que el asistente ya sabe preguntar
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/ui/web/index.html`, `projects/ui/web/app.ts`, `projects/ui/web/styles.css`, `tests/cli/ui-web.spec.ts`
 - **Gate**: type
@@ -72,7 +72,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
   - "Sin dependencias de terceros: el binario no puede cargar paquetes en ejecución, así que la interfaz viaja dentro"
 
 ### S3 — Accesibilidad, que si no se hace ahora no se hace
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `projects/ui/web/a11y.ts`, `tests/cli/ui-a11y.spec.ts`
 - **Gate**: type
@@ -83,7 +83,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
   - "Respeta `prefers-reduced-motion` y `prefers-color-scheme`"
 
 ### S4 — Instaladores nativos con Tauri
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S3]
 - **Files**: `projects/desktop/tauri.conf.json`, `projects/desktop/src/main.rs`, `projects/desktop/Cargo.toml`, `.github/workflows/release-desktop.yml`
 - **Gate**: none

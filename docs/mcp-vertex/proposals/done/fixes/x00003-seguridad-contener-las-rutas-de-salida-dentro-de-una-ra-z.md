@@ -38,7 +38,7 @@ Hallazgo 7 (BAD) de a00001. `--output-dir` y `POSTMAN_OUTPUT_DIR` se aceptan tal
 - global_gate: type
 
 ### S1 — La comprobación de contención, pura y probada
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/helpers/path-containment.helper.ts`, `tests/core/path-containment.helper.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -47,7 +47,7 @@ Hallazgo 7 (BAD) de a00001. `--output-dir` y `POSTMAN_OUTPUT_DIR` se aceptan tal
   - "Es una función pura: decide, no escribe"
 
 ### S2 — El CLI la aplica cuando quien pide es un agente
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/core/discovery/paths.service.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `tests/core/output-containment.spec.ts`
 - **Gate**: e2e

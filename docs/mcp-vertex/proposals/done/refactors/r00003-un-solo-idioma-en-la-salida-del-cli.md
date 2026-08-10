@@ -2,7 +2,7 @@
 id: r00003
 title: "Un solo idioma en la salida del CLI"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08
@@ -69,9 +69,9 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
   - "Los 21 ejemplos siguen generando colección válida"
 
 ### S3 — Gate que no deje volver a mezclarlos
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `scripts/gates/lint-cli-language.script.ts`, `package.json`
+- **Files**: `scripts/gates/lint-output-language.script.ts`, `package.json`
 - **Gate**: lint
 - acceptance:
   - "El lint falla ante un literal de usuario escrito directamente en un comando"

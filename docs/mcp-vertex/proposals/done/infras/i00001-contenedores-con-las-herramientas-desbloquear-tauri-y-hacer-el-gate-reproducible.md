@@ -54,7 +54,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
 - global_gate: e2e
 
 ### S1 — `.docker/` con el taller, y que la imagen construya de verdad
-- **Status**: pending
+- **Status**: done
 - **Files**: `.docker/Dockerfile`, `.docker/docker-compose.yml`, `.dockerignore`
 - **Gate**: none
 - acceptance:
@@ -63,7 +63,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
   - "El contexto no arrastra `node_modules` del host: traen binarios compilados para el host y colarlos produce fallos que parecen del código"
 
 ### S2 — Atajos y documentación, para que se use sin leerse el compose
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `package.json`, `docs/INSTALL.md`, `CONTRIBUTING.md`
 - **Gate**: lint
@@ -73,7 +73,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
   - "`lint:docs` sigue verde"
 
 ### S3 — El gate completo dentro del contenedor, sin nada instalado a mano
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `.docker/README.md`
 - **Gate**: e2e
@@ -82,7 +82,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
   - "Si falla algo que en la máquina pasa, se anota: es una dependencia oculta del entorno y merece su propio arreglo"
 
 ### S4 — El binario probado en una imagen SIN Bun ni Node
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `.docker/smoke.md`
 - **Gate**: none
@@ -92,7 +92,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
   - "Si el ejecutable no fuera autocontenido, este servicio no arranca — que es justo lo que se quiere que pase aquí y no en la máquina de quien lo descargue"
 
 ### S5 — f00001 S4: los instaladores, compilados y verificados dentro
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2]
 - **Files**: `projects/desktop/tauri.conf.json`, `projects/desktop/Cargo.toml`, `projects/desktop/src/main.rs`, `projects/desktop/build.rs`, `.github/workflows/release-desktop.yml`
 - **Gate**: none

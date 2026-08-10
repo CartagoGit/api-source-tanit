@@ -39,7 +39,7 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
 - global_gate: e2e
 
 ### S1 — Los comandos de solo lectura: scan, list, stats, summary
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/cli/read-only-commands.test.ts`
 - **Gate**: e2e
 - acceptance:
@@ -48,7 +48,7 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
   - "Sin colección en disco, cada uno dice qué falta y con qué arreglarlo"
 
 ### S2 — Los comandos que escriben o hablan fuera: init, push, watch, open
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/cli/writing-commands.test.ts`, `tests/cli/push-command.test.ts`
 - **Gate**: e2e
 - acceptance:
@@ -58,7 +58,7 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
   - "`open` elige el comando correcto por plataforma sin llegar a lanzarlo"
 
 ### S3 — El parser de YAML contra entradas que nadie escribió
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/frameworks/yaml-parser-fuzz.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -67,7 +67,7 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
   - "Lo que no sepa parsear lo dice, en vez de devolver algo distinto en silencio"
 
 ### S4 — Gate que exija test a todo comando nuevo
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2]
 - **Files**: `scripts/gates/lint-command-coverage.script.ts`, `tests/cli/command-coverage.spec.ts`, `package.json`
 - **Gate**: lint

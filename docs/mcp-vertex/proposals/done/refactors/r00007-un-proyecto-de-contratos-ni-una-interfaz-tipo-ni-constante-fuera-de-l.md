@@ -2,7 +2,7 @@
 id: r00007
 title: "Un proyecto de contratos: ni una interfaz, tipo ni constante fuera de él"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08

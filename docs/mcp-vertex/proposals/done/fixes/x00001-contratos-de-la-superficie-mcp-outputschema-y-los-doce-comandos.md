@@ -2,7 +2,7 @@
 id: x00001
 title: "Contratos de la superficie MCP: del esquema correcto a la superficie util"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08

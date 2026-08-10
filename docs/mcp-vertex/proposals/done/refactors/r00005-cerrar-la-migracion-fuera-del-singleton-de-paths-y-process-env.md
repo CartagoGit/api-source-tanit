@@ -2,7 +2,7 @@
 id: r00005
 title: "Cerrar la migracion fuera del singleton de paths y process.env"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-08

@@ -34,7 +34,7 @@ Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `project
 - global_gate: e2e
 
 ### S1 — El helper de escritura atómica, con su test
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/core/helpers/atomic-write.helper.ts`, `tests/core/atomic-write.helper.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -43,7 +43,7 @@ Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `project
   - "Un test escribe encima de un fichero válido con un contenido que falla a mitad y comprueba que el original sigue intacto y sigue siendo JSON válido"
 
 ### S2 — Todos los comandos que escriben pasan por él
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/enrich.script.ts`, `projects/cli/commands/init.script.ts`
 - **Gate**: e2e
@@ -53,7 +53,7 @@ Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `project
   - "Los 21 ejemplos siguen generando colección válida"
 
 ### S3 — Gate que prohíba la escritura cruda
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
 - **Files**: `scripts/gates/lint-durable-writes.script.ts`, `tests/cli/durable-writes.spec.ts`, `package.json`
 - **Gate**: lint

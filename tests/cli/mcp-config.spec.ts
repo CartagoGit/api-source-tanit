@@ -78,6 +78,54 @@ describe("las raíces que escanean los plugins", () => {
   });
 });
 
+/**
+ * Los directorios sueltos que declara la configuración.
+ *
+ * `roots` ya se comprobaba; esto cubre el resto —`scaffoldDir`,
+ * `auditDir`, `proposalsDir`…—, que era por donde se coló el fallo:
+ * `issues.scaffoldDir` apuntaba a
+ * `docs/mcp-vertex/proposals/retired/issues`, dentro del árbol de
+ * propuestas, donde `lint:proposals` exige `<kind><NNNNN>-<slug>.md`. La
+ * primera issue escrita ahí habría roto el gate del repositorio.
+ */
+describe("los directorios declarados en la configuración", () => {
+  test("todos existen en disco", async () => {
+    const c = await config();
+    const fantasmas: string[] = [];
+
+    for (const [nombre, plugin] of Object.entries(c.plugins ?? {})) {
+      const options = (plugin as { options?: Record<string, unknown> }).options ?? {};
+      for (const [clave, valor] of Object.entries(options)) {
+        if (!/Dir$/.test(clave) || typeof valor !== "string") continue;
+        if (!(await esDirectorio(valor))) fantasmas.push(`${nombre}.${clave} → ${valor}`);
+      }
+    }
+
+    expect(fantasmas, `directorios declarados que no existen`).toEqual([]);
+  });
+
+  /**
+   * Y ninguno puede apuntar dentro del árbol de propuestas: ahí manda
+   * `lint:proposals`, que exige un nombre con id y kind. Un plugin que
+   * escriba ahí rompe el gate a la primera.
+   */
+  test("ninguno escribe dentro del árbol de propuestas", async () => {
+    const c = await config();
+    const invasores: string[] = [];
+
+    for (const [nombre, plugin] of Object.entries(c.plugins ?? {})) {
+      const options = (plugin as { options?: Record<string, unknown> }).options ?? {};
+      for (const [clave, valor] of Object.entries(options)) {
+        if (clave === "auditDir" || !/Dir$/.test(clave)) continue;
+        if (typeof valor !== "string") continue;
+        if (valor.includes("proposals/")) invasores.push(`${nombre}.${clave} → ${valor}`);
+      }
+    }
+
+    expect(invasores).toEqual([]);
+  });
+});
+
 describe("el plugin propio se declara con una ruta que existe", () => {
   /**
    * Un `path` que no resuelve deja al plugin fuera sin ruido: el
