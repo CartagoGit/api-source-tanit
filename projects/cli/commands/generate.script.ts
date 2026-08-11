@@ -297,7 +297,7 @@ export async function runGenerate(
     }
   }
   if (missingInSource.length || missingInCollection.length) {
-    console.error("\n→ Generación abortada.");
+    console.error("\n→ Generation aborted.");
     return { code: 1, report: null };
   }
 

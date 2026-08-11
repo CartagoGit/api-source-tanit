@@ -1,5 +1,5 @@
 /**
- * `OpenApiScanner` — implementación de `IProjectScanner` + `IRouteScanner`
+ * `OpenApiRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
  * que lee `openapi.json` / `openapi.yaml` / `openapi.yml` en la raíz
  * del proyecto.
  *
@@ -429,7 +429,7 @@ export class OpenApiProjectScanner implements IProjectScanner {
 // Route scanner
 // ---------------------------------------------------------------------------
 
-export class OpenApiScanner implements IRouteScanner {
+export class OpenApiRouteScanner implements IRouteScanner {
   readonly framework = "openapi" as const;
 
   constructor(private readonly opts: OpenApiScannerOptions = {}) {}
@@ -468,7 +468,7 @@ export class OpenApiScanner implements IRouteScanner {
       }
     } catch (e) {
       // Syntax error en YAML/JSON: abortar limpio.
-      throw new Error(`OpenApiScanner: cannot parse ${specRel}: ${(e as Error).message}`);
+      throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
     }
     const basePath: string =
       this.opts.basePath ?? readString(spec, "basePath") ?? "";

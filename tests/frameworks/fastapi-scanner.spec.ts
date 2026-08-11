@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   FastApiProjectScanner,
-  FastApiScanner,
+  FastApiRouteScanner,
   FastApiPydanticValidationProvider,
 } from "../../projects/frameworks/scanners/fastapi.scanner";
 
@@ -41,13 +41,13 @@ describe("FastAPI scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiScanner().scan(match);
+    const routes = await new FastApiRouteScanner().scan(match);
     expect(routes).toHaveLength(4);
   });
 
   test("GET /health, GET /api/users, POST /api/users, GET /api/users/{user_id}", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiScanner().scan(match);
+    const routes = await new FastApiRouteScanner().scan(match);
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /health");
     expect(pairs).toContain("GET /api/users");
@@ -58,20 +58,20 @@ describe("FastAPI scanner", () => {
 
   test("path param {user_id} preservado tal como lo escribe el dev", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiScanner().scan(match);
+    const routes = await new FastApiRouteScanner().scan(match);
     const show = routes.find((r) => r.uri.includes("{user_id}"));
     expect(show?.uri).toContain("{user_id}");
   });
 
   test("comprehensive: detecta >10 rutas con @router decorators y prefijos", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FastApiScanner().scan(match);
+    const routes = await new FastApiRouteScanner().scan(match);
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
   test("Pydantic provider resuelve campos de BaseModel para POST", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FastApiScanner().scan(match);
+    const routes = await new FastApiRouteScanner().scan(match);
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
     if (!post) return;
     const provider = new FastApiPydanticValidationProvider();

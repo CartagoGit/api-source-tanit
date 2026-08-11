@@ -15,16 +15,16 @@ import {
   GraphQlRouteScanner,
 } from "./scanners/graphql.scanner";
 import { TrpcProjectScanner, TrpcRouteScanner } from "./scanners/trpc.scanner";
-import { LaravelProjectScanner, LaravelScanner, LaravelFormRequestValidationProvider } from "./laravel/laravel.scanner";
-import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "./scanners/openapi.scanner";
+import { LaravelProjectScanner, LaravelRouteScanner, LaravelFormRequestValidationProvider } from "./laravel/laravel.scanner";
+import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "./scanners/openapi.scanner";
 import {
   ExpressProjectScanner,
-  ExpressScanner,
+  ExpressRouteScanner,
   ExpressZodValidationProvider,
 } from "./scanners/express.scanner";
 import {
   FastApiProjectScanner,
-  FastApiScanner,
+  FastApiRouteScanner,
   FastApiPydanticValidationProvider,
 } from "./scanners/fastapi.scanner";
 import {
@@ -150,9 +150,9 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     fiberRouteScanner,
     honoRouteScanner,
     fastifyRouteScanner,
-    new LaravelScanner(),
-    new OpenApiScanner(),
-    new FastApiScanner(),
+    new LaravelRouteScanner(),
+    new OpenApiRouteScanner(),
+    new FastApiRouteScanner(),
     new SymfonyRouteScanner(),
     new NestJsRouteScanner(),
     new DjangoRouteScanner(),
@@ -161,7 +161,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new FlaskRouteScanner(),
     new NextJsRouteScanner(),
     new GinRouteScanner(),
-    new ExpressScanner(),
+    new ExpressRouteScanner(),
   ],
   validationProviders: [
     new RustValidatorProvider(rustRouteScanner),

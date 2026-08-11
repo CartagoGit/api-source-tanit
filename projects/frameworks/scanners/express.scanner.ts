@@ -1,5 +1,5 @@
 /**
- * `ExpressScanner` — implementación de `IProjectScanner` + `IRouteScanner`
+ * `ExpressRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
  * para frameworks Node.js: Express, Fastify, Koa-router y Hapi.
  *
  * Detección:
@@ -217,7 +217,7 @@ function parseModule(file: string, raw: string): ParsedModule {
 // Route scanner
 // ---------------------------------------------------------------------------
 
-export class ExpressScanner implements IRouteScanner {
+export class ExpressRouteScanner implements IRouteScanner {
   readonly framework = "express" as const;
 
   matches(_match: IProjectMatch): boolean {

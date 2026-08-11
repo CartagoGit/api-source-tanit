@@ -129,6 +129,61 @@ describe("una colección desincronizada", () => {
   });
 });
 
+/**
+ * El otro protocolo, que era el 91 % sin cubrir.
+ *
+ * Este spec probaba **solo GraphQL**, y GraphQL estaba entre los nueve
+ * frameworks donde `check` funcionaba. El bug —13 de 22 ejemplos
+ * reportando deriva total sobre una colección recién generada— vivía en
+ * el resto, y ningún test lo miraba.
+ *
+ * Express es el contrario exacto de GraphQL: REST con parámetros de
+ * ruta, donde la URL identifica la operación y el nombre es ruido. Los
+ * dos casos juntos son los que fijan la regla.
+ */
+describe("un REST con parámetros de ruta", () => {
+  let rest = "";
+
+  beforeAll(async () => {
+    rest = join(work, "rest");
+    await cp(join(RAIZ, "examples/example-express"), rest, { recursive: true });
+    await rm(join(rest, "export-to-postman"), { recursive: true, force: true });
+    await cli(["generate", "--project-root", rest]);
+  }, 180_000);
+
+  /**
+   * EL test que faltaba. `/api/users/:id` en el código y
+   * `/api/users/{{id}}` en la colección son el mismo endpoint, y
+   * «Get Users» es un nombre que deriva el constructor, no una segunda
+   * operación.
+   */
+  test("una colección recién generada está al día", { timeout: 120_000 }, async () => {
+    const out = await check({ projectRoot: rest });
+    expect(out["ok"]).toBe(true);
+    expect(out["inSync"], JSON.stringify(out["missingInCollection"])).toBe(true);
+    expect(out["missingInCollection"]).toEqual([]);
+    expect(out["missingInSource"]).toEqual([]);
+  });
+
+  /** Y la deriva de verdad se sigue viendo. */
+  test("borrar una request sí sale como deriva", { timeout: 120_000 }, async () => {
+    const ruta = join(rest, "export-to-postman", "sample-express.postman_collection.json");
+    const original = await readFile(ruta, "utf8");
+    try {
+      const doc = JSON.parse(original) as { item: Array<{ item?: unknown[] }> };
+      const carpeta = doc.item.find((f) => Array.isArray(f.item) && f.item.length > 1);
+      carpeta!.item = carpeta!.item!.slice(1);
+      await writeFile(ruta, JSON.stringify(doc, null, 2));
+
+      const out = await check({ projectRoot: rest });
+      expect(out["inSync"]).toBe(false);
+      expect((out["missingInCollection"] as unknown[]).length).toBeGreaterThan(0);
+    } finally {
+      await writeFile(ruta, original);
+    }
+  });
+});
+
 describe("lo que no puede hacer, lo dice", () => {
   test("un projectRoot que no existe da error con salida", async () => {
     const handler = await captureHandler(

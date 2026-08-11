@@ -14,11 +14,15 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
+    "targets": "all",
     "category": "DeveloperTool",
-    "icon": ["icons/icon.png"],
+    "icon": [
+      "icons/icon.png"
+    ],
     "shortDescription": "Genera colecciones Postman desde el código de tu API",
     "longDescription": "Apunta a la carpeta de tu API y obtén una colección Postman v2.1.0 lista para importar. Detecta el framework automáticamente entre 21 soportados, sin anotaciones ni levantar el servidor.",
-    "externalBin": ["binaries/expostman"]
+    "externalBin": [
+      "binaries/expostman"
+    ]
   }
 }

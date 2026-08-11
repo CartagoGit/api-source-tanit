@@ -53,6 +53,12 @@ const MARCAS_ES = [
   /\b(?:generad[oa]s?|escrit[oa]s?|detectad[oa]s?|encontrad[oa]s?|cread[oa]s?)\b/i,
   /\b(?:carpeta|fichero|archivo|ruta|rutas|proyecto|siguiente|paso|prueba)\b/i,
   /\b(?:vigilando|abriendo|leyendo|escribiendo|comprueba|ejecuta|pasa|mira)\b/i,
+  // Los sustantivos que se colaron la primera vez. Un `✔ Interfaz en
+  // http://…` pasó el gate entero porque ninguna marca lo cubría: la
+  // lista de marcas es la parte del gate que hay que ampliar cuando algo
+  // se escapa, y esto es lo que se escapó.
+  /\b(?:interfaz|generaci[oó]n|creaci[oó]n|validaci[oó]n|configuraci[oó]n)\b/i,
+  /\b(?:resumen|salida|entrada|puerto|equipo|p[aá]gina|cerrando|abortada)\b/i,
 ];
 
 /** Dónde vive la salida que ve quien usa la herramienta. */

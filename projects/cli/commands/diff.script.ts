@@ -16,7 +16,10 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseAllRoutes } from "../../frameworks/laravel/route-parser.service.js";
 import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
-import { endpointKey } from "../../core/helpers/route-identity.helper.js";
+import {
+  endpointKey,
+  needsNameToDisambiguate,
+} from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
@@ -55,30 +58,41 @@ export async function runCheck(
   /**
    * La clave con la que se compara una ruta.
    *
-   * Método y URI **no bastan**. En REST la URL identifica la operación,
-   * pero en RPC sobre POST no: GraphQL tiene un solo endpoint y lo que
-   * distingue una consulta de otra es el nombre. Sin él, un proyecto
-   * GraphQL de cinco operaciones se contaba como **una** — y entonces
-   * `check` no podía detectar deriva ninguna: si cuatro desaparecían del
-   * código, seguía diciendo 1 contra 1 y dando el visto bueno.
+   * Método y URI **no bastan siempre**. En REST la URL identifica la
+   * operación, pero en RPC sobre POST no: GraphQL tiene un solo endpoint
+   * y lo que distingue una consulta de otra es el nombre. Sin él, un
+   * proyecto GraphQL de cinco operaciones se contaba como **una**, y
+   * entonces `check` no podía detectar deriva ninguna.
    *
-   * Es la tercera vez que la misma suposición muerde: ya pasó en el
-   * `dedupeSpecs` del pipeline y en el chequeo de duplicados de los
-   * invariantes.
+   * Pero meter el nombre **siempre** rompe el caso contrario, y eso es
+   * lo que pasaba: en REST el scanner no emite `displayName`, mientras
+   * que la colección sí tiene nombre de request —«Get Orders», derivado
+   * de la URI por el constructor—. Las dos claves salían distintas para
+   * el mismo endpoint, así que `GET /api/orders`, sin un solo parámetro,
+   * aparecía a la vez en «falta» y en «sobra».
+   *
+   * Se midió: **13 de 22 ejemplos** reportaban deriva total sobre una
+   * colección recién generada.
+   *
+   * La decisión no es por framework: es una propiedad de las rutas que
+   * llegan. `needsNameToDisambiguate` mira si dos comparten método y
+   * URI; si ninguna lo hace, el nombre es ruido y se queda fuera de los
+   * dos lados. Es la misma pregunta que ya se hacía el pipeline, hecha
+   * una vez aquí en lugar de suponerse.
    */
-  // La clave la construye `route-identity.helper`, que es la misma que
-  // usa `dedupeSpecs`. Tenerla en dos sitios fue lo que dejó que las dos
-  // divergieran: aquí ya llevaba el nombre y allí no.
-  const comparisonKey = (method: string, uri: string, name?: string): string =>
-    endpointKey({ method, uri, name });
+  const sourceRoutes: Array<{ method: string; uri: string; name?: string }> = [];
 
-  if (match && scanner && match.framework !== "laravel") {
-    // Fuente: scanner del orchestrator (OpenAPI, etc.)
-    const routes = await scanner.scan(match);
-    for (const r of routes) {
-      const key = comparisonKey(r.method, r.uri, r.displayName);
-      sourceKeys.add(key);
-      sourceMap.set(key, {
+  if (match && scanner) {
+    // El scanner del orchestrator, el mismo que usa `generate`.
+    //
+    // Antes había una rama `match.framework !== "laravel"` que mandaba a
+    // Laravel al camino legacy, y ese encuentra 7 rutas donde el
+    // pipeline encuentra 17: `check` no comparaba la colección contra lo
+    // que `generate` ve, sino contra otra heurística. Es la divergencia
+    // que ya tuvo `summary`, y `check` no puede tener una excepción para
+    // uno de los veintiún frameworks.
+    for (const r of await scanner.scan(match)) {
+      sourceRoutes.push({
         method: r.method,
         uri: r.uri,
         ...(r.displayName ? { name: r.displayName } : {}),
@@ -86,14 +100,13 @@ export async function runCheck(
     }
     console.log(`(source: ${match.framework} via orchestrator)`);
   } else {
-    // Fuente: Laravel legacy
-    const routes = await parseAllRoutes(config.filePrefixes);
-    for (const r of routes) {
-      const uri = stripApiPrefix(r.uri);
-      const key = endpointKey({ method: r.method, uri });
-      sourceKeys.add(key);
-      sourceMap.set(key, { method: r.method, uri });
+    // Sin scanner que reconozca el proyecto queda la heurística de
+    // Laravel, que es lo único que había antes de que existieran los
+    // scanners.
+    for (const r of await parseAllRoutes(config.filePrefixes)) {
+      sourceRoutes.push({ method: r.method, uri: stripApiPrefix(r.uri) });
     }
+    console.log("(source: legacy heuristic — no scanner matched)");
   }
 
   if (!existsSync(COLLECTION_PATH)) {
@@ -105,15 +118,45 @@ export async function runCheck(
 
   const raw = await readFile(COLLECTION_PATH, "utf8");
   const collection = JSON.parse(raw) as PostmanCollection;
+  const collRequests = [...walkCollection(collection)].map((r) => ({
+    method: r.method,
+    uri: r.uri,
+    name: r.name,
+  }));
+
+  /**
+   * ¿Hace falta el nombre para distinguir?
+   *
+   * Se pregunta **solo sobre la fuente**, y esa asimetría es
+   * deliberada. La fuente es el código: si dos rutas comparten método y
+   * URI ahí, el protocolo es RPC sobre POST y el nombre es lo único que
+   * las separa —GraphQL, tRPC—.
+   *
+   * La colección no sirve para decidirlo porque tiene **variantes**: el
+   * enricher emite el mismo endpoint dos veces con cuerpos distintos
+   * («base» y «Mínimo (solo required)»), y eso no son dos operaciones,
+   * es una con dos ejemplos. Preguntárselo a ella daba `true` en
+   * Laravel y metía el nombre en la clave de los dos lados; como la
+   * fuente REST no emite nombre, los 17 endpoints salían como «faltan»
+   * y los 18 como «sobran».
+   */
+  const conNombre = needsNameToDisambiguate(sourceRoutes);
+
+  const clave = (r: { method: string; uri: string; name?: string }): string =>
+    endpointKey(conNombre ? r : { method: r.method, uri: r.uri });
+
+  for (const r of sourceRoutes) {
+    const key = clave(r);
+    sourceKeys.add(key);
+    sourceMap.set(key, r);
+  }
+
   const collKeys = new Set<string>();
   const collMap = new Map<string, { method: string; uri: string; name?: string }>();
-
-  for (const r of walkCollection(collection)) {
-    // El nombre de la request en la colección es el `displayName` que
-    // emitió el scanner, así que las dos claves se construyen igual.
-    const key = comparisonKey(r.method, r.uri, r.name);
+  for (const r of collRequests) {
+    const key = clave(r);
     collKeys.add(key);
-    collMap.set(key, { method: r.method, uri: r.uri, ...(r.name ? { name: r.name } : {}) });
+    collMap.set(key, r);
   }
 
   const onlyInSource = [...sourceKeys]

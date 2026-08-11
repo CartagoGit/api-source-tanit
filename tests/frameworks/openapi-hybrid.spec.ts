@@ -14,7 +14,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
+import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
 import { smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type {
   IProjectMatch,
@@ -69,7 +69,7 @@ describe("de quién es cada ruta en un proyecto híbrido", () => {
 describe("el scanner ya no cuela nada fuera del contrato", () => {
   test("las rutas que emite solo llevan campos del contrato", async () => {
     const match = await new OpenApiProjectScanner().resolve(smokeFixtureDir("openapi"));
-    const rutas = await new OpenApiScanner().scan(match);
+    const rutas = await new OpenApiRouteScanner().scan(match);
     expect(rutas.length).toBeGreaterThan(0);
 
     // `__params` era la propiedad escondida: si vuelve, esto la caza.

@@ -69,7 +69,7 @@ describe("un proyecto que sí se reconoce", () => {
 
   test("nombra el scanner que recorre las rutas", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
-    expect(out["scanner"]).toBe("ExpressScanner");
+    expect(out["scanner"]).toBe("ExpressRouteScanner");
   });
 
   test("devuelve las rutas crudas, con método y URI", { timeout: 120_000 }, async () => {

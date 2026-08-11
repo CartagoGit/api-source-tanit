@@ -108,11 +108,16 @@ declara con `tokenResponsePath` en el config.
 
 ```bash
 expostman generate    # genera la colección + environments
+expostman ui          # abre una interfaz web para usarlo sin terminal
 expostman list        # lista los endpoints detectados
 expostman stats       # cuántos endpoints por método y zona
 expostman check       # ¿la colección sigue sincronizada?
 expostman validate    # valida el JSON contra el schema v2.1.0
+expostman push        # sube la colección a tu workspace de Postman
+expostman watch       # regenera al vuelo mientras editas rutas
 ```
+
+Los ocho, y solo esos ocho, son los que despacha el binario.
 
 Flags principales:
 
@@ -125,6 +130,42 @@ Flags principales:
 | `--inspect` | Solo informa; no escribe nada |
 
 Todas en [docs/INSTALL.md](docs/INSTALL.md#flags-y-variables-de-entorno).
+
+---
+
+## Sin terminal: la interfaz
+
+```bash
+expostman ui
+```
+
+Levanta una interfaz web en `http://127.0.0.1:4771` —o el siguiente
+puerto libre— y abre el navegador. Escucha **solo en este equipo**: no
+es alcanzable desde la red.
+
+Desde ahí se elige la carpeta del proyecto, se inspecciona antes de
+escribir nada, y se genera en los formatos que se quieran. Llama al
+mismo pipeline que el CLI: no es una segunda implementación que se
+desincronice.
+
+Para tocarla, `bun run ui:dev` la levanta y **la reinicia sola** al
+editar `projects/ui/`, manteniendo el puerto: basta con recargar la
+pestaña.
+
+Y para usarla sin instalar nada de Node hay instaladores nativos que
+abren esa misma interfaz en su propia ventana:
+
+```bash
+bun run desktop:build:linux    # .deb + .AppImage
+bun run desktop:build:mac      # .dmg + .app
+bun run desktop:build:windows  # .msi + .exe
+```
+
+Cada plataforma solo construye la suya —cada instalador exige el SDK de
+su sistema—; los tres a la vez salen de CI.
+
+- Cómo instalarlos: [docs/DESKTOP-INSTALL.md](docs/DESKTOP-INSTALL.md)
+- Cómo publicarlos: [docs/DESKTOP-PUBLISH.md](docs/DESKTOP-PUBLISH.md)
 
 ---
 

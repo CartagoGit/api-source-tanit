@@ -15,7 +15,7 @@
  *
  * Una vez resuelto el `IProjectMatch`, busca un `IRouteScanner` cuyo
  * `framework === match.framework` y un `IValidationSpecProvider` igual.
- * Si no hay scanner concreto, fallback a `OpenApiScanner` (cubre
+ * Si no hay scanner concreto, fallback a `OpenApiRouteScanner` (cubre
  * cualquier API documentada con OpenAPI).
  *
  * El `summary` tool del plugin MCP consume `detectProject()` para
