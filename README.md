@@ -143,6 +143,12 @@ Levanta una interfaz web en `http://127.0.0.1:4771` —o el siguiente
 puerto libre— y abre el navegador. Escucha **solo en este equipo**: no
 es alcanzable desde la red.
 
+Y solo contesta a su propia página. Escuchar en `127.0.0.1` no basta:
+el servidor no es alcanzable desde fuera, pero sí desde el navegador de
+quien lo ejecuta, así que cualquier web que visites mientras corre
+podría hacerle peticiones. Cada arranque genera un testigo que va dentro
+del HTML servido; una página de otro origen no puede leerlo.
+
 Desde ahí se elige la carpeta del proyecto, se inspecciona antes de
 escribir nada, y se genera en los formatos que se quieran. Llama al
 mismo pipeline que el CLI: no es una segunda implementación que se

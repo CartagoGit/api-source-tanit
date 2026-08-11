@@ -39,9 +39,22 @@ function puertoOcupado(error: unknown): boolean {
   return code === "EADDRINUSE";
 }
 
+/**
+ * Un testigo nuevo por ejecución.
+ *
+ * `randomUUID` y no un contador ni la hora: tiene que ser imposible de
+ * adivinar desde fuera, porque adivinarlo es exactamente el ataque.
+ * Nuevo en cada arranque, así que cerrar y volver a abrir la interfaz
+ * invalida cualquier página que hubiera quedado con el anterior.
+ */
+function nuevoTestigo(): string {
+  return crypto.randomUUID();
+}
+
 /** Levanta la interfaz y devuelve dónde ha quedado escuchando. */
 export function startUiServer(options: IUiServerOptions): IUiServer {
   const desde = options.port ?? DEFAULT_UI_PORT;
+  const testigo = nuevoTestigo();
 
   for (let intento = 0; intento < INTENTOS; intento++) {
     const port = desde + intento;
@@ -52,9 +65,18 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
         fetch: async (request) => {
           const { pathname } = new URL(request.url);
 
-          // La interfaz, servida desde memoria.
+          // La interfaz, servida desde memoria, con el testigo dentro.
+          //
+          // El testigo va como atributo del `<script>` en vez de en una
+          // cookie a propósito: una cookie la manda el navegador **sola**
+          // en cualquier petición a este origen, incluidas las que
+          // dispare otra web. Un atributo del HTML solo lo lee quien
+          // puede leer el HTML, y eso es justo lo que la política de
+          // mismo origen impide a un tercero.
           if (pathname === "/" || pathname === "/index.html") {
-            return new Response(options.html, {
+            return new Response(
+              options.html.replace("<script>", `<script data-token="${testigo}">`),
+              {
               status: 200,
               headers: {
                 "content-type": "text/html; charset=utf-8",
@@ -63,7 +85,64 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
                 "content-security-policy":
                   "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
               },
-            });
+              },
+            );
+          }
+
+          /**
+           * Solo contesta a la propia interfaz.
+           *
+           * Escuchar en `127.0.0.1` **no** basta, y esa es la trampa: el
+           * servidor no es alcanzable desde la red, pero sí desde el
+           * navegador de quien lo ejecuta. Cualquier web que esa persona
+           * visite mientras la interfaz corre puede hacerle un POST aquí.
+           *
+           * Se probó: con `content-type: text/plain` —una petición
+           * «simple», sin preflight— una página cualquiera conseguía que
+           * `/api/generate` **escribiera ficheros donde quisiera**, vía
+           * el `outputDir`. No podía leer la respuesta (eso sí lo corta
+           * el navegador), pero el efecto ya había ocurrido.
+           *
+           * Dos comprobaciones, y las dos hacen falta:
+           *
+           *   · El **testigo**, que solo está en el HTML servido. Un
+           *     tercero no puede leerlo.
+           *   · El **origen**, cuando viene. Corta el caso antes incluso
+           *     de mirar el cuerpo, y deja un mensaje que se entiende.
+           *
+           * Una petición sin `Origin` —curl, un test, un script— sí pasa:
+           * ahí no hay navegador al que engañar, y bloquearla rompería el
+           * uso legítimo desde la terminal sin ganar nada.
+           */
+          const origen = request.headers.get("origin");
+          if (origen !== null && origen !== `http://${HOST}:${port}`) {
+            return Response.json(
+              {
+                ok: false,
+                error: {
+                  reason: `This interface does not answer requests from ${origen}.`,
+                  nextAction:
+                    "Use the page the server itself serves. A web page cannot " +
+                    "drive this interface, and that is deliberate.",
+                },
+              },
+              { status: 403 },
+            );
+          }
+          if (request.headers.get("x-expostman-token") !== testigo) {
+            return Response.json(
+              {
+                ok: false,
+                error: {
+                  reason: "Missing or wrong request token.",
+                  nextAction:
+                    "The page the server serves carries it. If you are calling " +
+                    "the API by hand, read it from the `data-token` attribute " +
+                    "of the page's <script>.",
+                },
+              },
+              { status: 403 },
+            );
           }
 
           if (!pathname.startsWith("/api/")) {

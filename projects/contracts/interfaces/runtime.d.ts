@@ -395,6 +395,15 @@ declare const Bun: {
 interface IServerRequest {
   readonly url: string;
   readonly method: string;
+  /**
+   * Las cabeceras.
+   *
+   * Faltaban, y el hueco lo destapó cerrar el CSRF de la interfaz: sin
+   * ellas no hay forma de mirar el `Origin` ni un testigo, o sea que el
+   * servidor no podía distinguir su propia página de cualquier web que
+   * le hiciera un POST desde el navegador de quien lo ejecuta.
+   */
+  readonly headers: { get(name: string): string | null };
   text(): Promise<string>;
 }
 

@@ -155,15 +155,29 @@ export const UI_HTML = String.raw`<!doctype html>
     return t;
   }
 
+  // El testigo de esta ejecución, que el servidor inyecta al servir la
+  // página. Sin él la API no contesta.
+  //
+  // Es lo que impide que **otra web** use esta interfaz: el navegador le
+  // manda la petición igual —una página cualquiera puede hacer POST a
+  // 127.0.0.1— pero no puede leer este HTML para sacar el testigo,
+  // porque la política de mismo origen se lo impide.
+  var TESTIGO = document.currentScript
+    ? document.currentScript.getAttribute("data-token")
+    : "";
+
   function pide(ruta, cuerpo) {
     return fetch(ruta, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-expostman-token": TESTIGO },
       body: JSON.stringify(cuerpo || {})
     }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
   }
 
-  fetch("/api/capabilities", { method: "POST" })
+  fetch("/api/capabilities", {
+    method: "POST",
+    headers: { "x-expostman-token": TESTIGO }
+  })
     .then(function (r) { return r.json(); })
     .then(function (j) {
       var cont = $("formatos");

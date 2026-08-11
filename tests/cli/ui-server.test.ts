@@ -67,16 +67,27 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
+/** El testigo que sirve la página. Sin él la API no contesta. */
+async function testigo(): Promise<string> {
+  const html = await (await fetch(`${BASE}/`)).text();
+  return /data-token="([^"]+)"/.exec(html)?.[1] ?? "";
+}
+
 async function post(
   ruta: string,
   cuerpo?: unknown,
 ): Promise<{ status: number; json: Record<string, unknown> }> {
+  const token = await testigo();
   const res = await fetch(`${BASE}${ruta}`, {
     method: "POST",
+    headers: { "x-expostman-token": token },
     ...(cuerpo === undefined
       ? {}
       : {
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "x-expostman-token": token,
+          },
           body: JSON.stringify(cuerpo),
         }),
   });
@@ -106,7 +117,80 @@ describe("la página", () => {
   });
 
   test("lo que no es la página ni la API da 404", async () => {
-    expect((await fetch(`${BASE}/otra-cosa`)).status).toBe(404);
+    // Con testigo: sin él saldría un 403 y el 404 quedaría sin probar.
+    const res = await fetch(`${BASE}/otra-cosa`, {
+      headers: { "x-expostman-token": await testigo() },
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+/**
+ * Que **otra web** no pueda usar esta interfaz.
+ *
+ * Escuchar en `127.0.0.1` no basta, y esa es la trampa: el servidor no
+ * es alcanzable desde la red, pero sí desde el navegador de quien lo
+ * ejecuta. Cualquier página que esa persona visite mientras la interfaz
+ * corre puede hacerle un POST.
+ *
+ * Se midió antes de arreglarlo: con `content-type: text/plain` —una
+ * petición «simple», que el navegador manda **sin preflight**— una web
+ * cualquiera conseguía que `/api/generate` escribiera ficheros donde
+ * quisiera, vía `outputDir`. No podía leer la respuesta, pero el efecto
+ * ya había ocurrido.
+ */
+describe("la interfaz no se deja conducir desde fuera", () => {
+  test("sin testigo no contesta, aunque la petición sea válida", async () => {
+    const res = await fetch(`${BASE}/api/capabilities`, { method: "POST" });
+    expect(res.status).toBe(403);
+    const j = (await res.json()) as { error: { reason: string } };
+    expect(j.error.reason).toMatch(/token/i);
+  });
+
+  /**
+   * EL test. `text/plain` es lo que hace la petición «simple» y por
+   * tanto exenta de preflight: es la puerta exacta por la que entraba.
+   */
+  test("el POST simple con `text/plain` tampoco pasa", async () => {
+    // La carpeta va dentro del temporal de este test y no en `/tmp` a
+    // secas: una ruta fija hace que el test dependa de lo que dejó la
+    // ejecución anterior, y así pasó — al comprobar que el test cazaba
+    // el fallo, la ejecución sin guard creó la carpeta y la siguiente
+    // pasada falló por eso, no por el bug.
+    const noDeberia = join(work, "no-deberia-existir");
+    const res = await fetch(`${BASE}/api/generate`, {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: JSON.stringify({ projectRoot: proyecto, outputDir: noDeberia }),
+    });
+    expect(res.status).toBe(403);
+    // Y no ha escrito nada.
+    await expect(readdir(noDeberia)).rejects.toThrow();
+  });
+
+  test("un Origin ajeno se rechaza antes de mirar el cuerpo", async () => {
+    const res = await fetch(`${BASE}/api/capabilities`, {
+      method: "POST",
+      headers: { origin: "https://malicioso.example" },
+    });
+    expect(res.status).toBe(403);
+    const j = (await res.json()) as { error: { reason: string } };
+    expect(j.error.reason).toContain("malicioso.example");
+  });
+
+  test("la página lleva el testigo dentro, para que solo ella pueda usarlo", async () => {
+    const html = await (await fetch(`${BASE}/`)).text();
+    expect(html).toMatch(/data-token="[0-9a-f-]{36}"/);
+  });
+
+  /**
+   * El testigo va en el HTML y no en una cookie a propósito: una cookie
+   * la manda el navegador **sola** en cualquier petición a este origen,
+   * incluidas las que dispare otra web. Eso la haría inútil aquí.
+   */
+  test("no se apoya en cookies", async () => {
+    const res = await fetch(`${BASE}/`);
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });
 
@@ -126,7 +210,10 @@ describe("la API", () => {
   test("un cuerpo roto sí es un error, y lo dice", async () => {
     const res = await fetch(`${BASE}/api/inspect`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        "x-expostman-token": await testigo(),
+      },
       body: "{esto no es json",
     });
     expect(res.status).toBe(400);
