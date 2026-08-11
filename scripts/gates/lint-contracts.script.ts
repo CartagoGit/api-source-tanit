@@ -72,6 +72,14 @@ const EXCEPTIONS: readonly IException[] = [
       "es lo que la gente necesita leer.",
   },
   {
+    path: "projects/ui/web/theme.constant.ts",
+    why:
+      "`UI_STYLES` es la hoja de estilos, un asset que la página sirve tal " +
+      "cual. Lo que sí es contrato —los modos y los nombres de las " +
+      "variables, que comparten los ajustes, el servidor y esta hoja— vive " +
+      "en `contracts/constants/cli/theme.constant.ts`.",
+  },
+  {
     path: "projects/ui/web/index.html.constant.ts",
     why:
       "Es un asset, no una constante: la página entera de la interfaz web, " +

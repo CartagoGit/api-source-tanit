@@ -40,6 +40,7 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
   readonly generado: Array<Record<string, unknown>>;
 } {
   const generado: Array<Record<string, unknown>> = [];
+  const guardados: Record<string, unknown> = {};
   return {
     generado,
     locales: () => ({
@@ -54,6 +55,13 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
       ],
       rejected: [],
     }),
+    // Los ajustes del doble viven en memoria: probar las rutas no
+    // debería tocar el disco de nadie.
+    readSettings: async () => ({ settings: { version: 1, ...guardados }, problem: null }),
+    patchSettings: async (cambios) => {
+      Object.assign(guardados, cambios);
+      return { version: 1, ...guardados };
+    },
     summarize: async () => RESUMEN,
     generate: async (params) => {
       generado.push({ ...params });
@@ -109,6 +117,67 @@ describe("/api/locales", () => {
     );
     const rejected = cuerpo(r)["rejected"] as Array<{ file: string }>;
     expect(rejected[0]?.file).toBe("xx.json");
+  });
+});
+
+/**
+ * Los ajustes que sobreviven al cierre.
+ *
+ * No hay botón de guardar: la interfaz llama al guardar en cuanto se
+ * toca un control. Un botón se olvida, y entonces el ajuste que alguien
+ * cambió no está la próxima vez — que es justo lo que unos ajustes
+ * persistentes vienen a evitar.
+ */
+describe("/api/settings", () => {
+  test("devuelve lo guardado", async () => {
+    const d = deps();
+    await handleUiRequest("/api/settings/save", { locale: "es" }, d);
+    const r = await handleUiRequest("/api/settings", {}, d);
+
+    expect(r.status).toBe(200);
+    expect((cuerpo(r)["settings"] as { locale: string }).locale).toBe("es");
+  });
+
+  test("guardar uno conserva los demás", async () => {
+    const d = deps();
+    await handleUiRequest("/api/settings/save", { locale: "es", theme: "dark" }, d);
+    await handleUiRequest("/api/settings/save", { theme: "light" }, d);
+    const r = await handleUiRequest("/api/settings", {}, d);
+
+    const s = cuerpo(r)["settings"] as { locale: string; theme: string };
+    expect(s.theme).toBe("light");
+    expect(s.locale).toBe("es");
+  });
+
+  /**
+   * Un cuerpo sin nada reconocible es un error y no un guardado vacío:
+   * devolver `ok` sin haber guardado nada deja a quien llama creyendo
+   * que su ajuste está.
+   */
+  test("un guardado sin nada reconocible se rechaza", async () => {
+    const r = await handleUiRequest("/api/settings/save", { inventado: "x" }, deps());
+    expect(r.status).toBe(400);
+    const error = cuerpo(r)["error"] as { nextAction: string };
+    expect(error.nextAction).toContain("locale");
+  });
+
+  /**
+   * El motivo por el que no se pudieron leer los guardados viaja a la
+   * interfaz, no a un log del servidor: unos ajustes que desaparecen sin
+   * explicación parecen un fallo del programa.
+   */
+  test("un problema al leerlos llega a la interfaz", async () => {
+    const r = await handleUiRequest(
+      "/api/settings",
+      {},
+      deps({
+        readSettings: async () => ({
+          settings: { version: 1 },
+          problem: "the settings file is not valid JSON",
+        }),
+      }),
+    );
+    expect(cuerpo(r)["problem"]).toContain("not valid JSON");
   });
 });
 

@@ -14,6 +14,7 @@
  * no una segunda implementación que se desincronice.
  */
 import type { IUiDeps, IUiResponse } from "../../contracts/interfaces/cli/ui.interface.js";
+import type { ISettings } from "../../contracts/interfaces/cli/settings.interface.js";
 
 const ok = (body: unknown): IUiResponse => ({ status: 200, body });
 
@@ -81,6 +82,71 @@ export async function handleUiRequest(
           rejected: catalogo.rejected,
         },
       };
+    }
+
+    /**
+     * Los ajustes guardados.
+     *
+     * Van por su propia ruta porque son de quien usa la interfaz, no del
+     * producto — igual que los idiomas.
+     */
+    case "/api/settings": {
+      const { settings, problem } = await deps.readSettings();
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          settings,
+          // El motivo por el que no se pudieron usar los guardados, si
+          // lo hay. Viaja a la interfaz y no a un log: unos ajustes que
+          // desaparecen sin explicación parecen un fallo del programa.
+          problem,
+        },
+      };
+    }
+
+    /**
+     * Guarda unos cuantos ajustes.
+     *
+     * No hay botón de guardar: la interfaz llama aquí al tocar un
+     * control. Un botón se olvida, y entonces el ajuste que alguien
+     * cambió no está la próxima vez, que es justo lo que unos ajustes
+     * persistentes vienen a evitar.
+     */
+    case "/api/settings/save": {
+      // Se reutilizan los lectores del propio fichero en vez de escribir
+      // otros: dos formas de leer «una cadena no vacía» acaban difiriendo
+      // en el caso raro, que es el que rompe.
+      const locale = texto(body, "locale");
+      const theme = texto(body, "theme");
+      const proyecto = texto(body, "lastProjectRoot");
+      const salida = texto(body, "lastOutputDir");
+      const framework = texto(body, "lastFramework");
+      const formatos = lista(body, "lastFormats");
+
+      // Se construye de una vez y no campo a campo: los ajustes son
+      // `readonly`, y eso es a propósito — un objeto que se muta a
+      // trozos acaba guardándose a medias cuando alguien añade un
+      // `return` temprano.
+      const cambios: Partial<Omit<ISettings, "version">> = {
+        ...(locale ? { locale } : {}),
+        ...(theme ? { theme: theme as ISettings["theme"] } : {}),
+        ...(proyecto ? { lastProjectRoot: proyecto } : {}),
+        ...(salida ? { lastOutputDir: salida } : {}),
+        ...(framework ? { lastFramework: framework } : {}),
+        ...(formatos && formatos.length > 0 ? { lastFormats: formatos } : {}),
+      };
+
+      if (Object.keys(cambios).length === 0) {
+        return fail(
+          400,
+          "No recognised setting was sent.",
+          "Send at least one of: locale, theme, lastProjectRoot, lastOutputDir, " +
+            "lastFormats, lastFramework.",
+        );
+      }
+
+      return { status: 200, body: { ok: true, settings: await deps.patchSettings(cambios) } };
     }
 
     case "/api/capabilities":
@@ -155,7 +221,8 @@ export async function handleUiRequest(
       return fail(
         404,
         `Nothing at '${path}'.`,
-        "Available routes: /api/locales, /api/capabilities, /api/inspect, /api/generate.",
+        "Available routes: /api/locales, /api/settings, /api/settings/save, " +
+          "/api/capabilities, /api/inspect, /api/generate.",
       );
   }
 }

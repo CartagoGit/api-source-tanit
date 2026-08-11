@@ -34,6 +34,7 @@ import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface.js";
 import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
 import { userLocalesDir } from "../../ui/config-dir.helper.js";
+import { patchSettings, readSettings } from "../../ui/settings/settings.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
@@ -65,6 +66,12 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // sería releer quince ficheros por pulsación, y la carpeta solo
     // cambia entre arranques.
     locales: () => catalogo,
+    // Los ajustes viven en un fichero de la carpeta de configuración: no
+    // se pasan ya leídos porque cambian **mientras** la interfaz está
+    // abierta, y una copia en memoria se quedaría vieja en cuanto otra
+    // pestaña guardara algo.
+    readSettings: () => readSettings(),
+    patchSettings: (cambios) => patchSettings(cambios),
     summarize: (projectRoot) =>
       withScopedPaths({ projectRoot }, () => summarizeWithAllFrameworks(projectRoot)),
     // Llama al **mismo** comando que usa la terminal, con sus flags. No

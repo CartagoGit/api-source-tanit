@@ -13,6 +13,7 @@
 
 import type { IProjectSummary } from "../core/domain.interface.js";
 import type { II18nCatalog } from "./i18n.interface.js";
+import type { ISettings, ISettingsRead } from "./settings.interface.js";
 import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";
 
 export interface IColumn {
@@ -64,6 +65,18 @@ export interface IUiDeps {
    * quien la usa, o los dos— y así el test puede darle los suyos.
    */
   readonly locales: () => II18nCatalog;
+  /** Los ajustes guardados, o los de por defecto la primera vez. */
+  readonly readSettings: () => Promise<ISettingsRead>;
+  /**
+   * Cambia unos cuantos y devuelve el resultado.
+   *
+   * Se guarda **campo a campo** y no el objeto entero: la interfaz
+   * escribe al tocar cada control, y mandar el objeto completo haría
+   * que dos pestañas se pisaran lo que la otra acaba de cambiar.
+   */
+  readonly patchSettings: (
+    cambios: Partial<Omit<ISettings, "version">>,
+  ) => Promise<ISettings>;
   /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
   readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
   /** Genera la colección. Es lo que hace `generate`. */

@@ -170,6 +170,11 @@ const RULES: readonly INamingRule[] = [
     what: "la carga de idiomas",
     suffixes: [".service.ts"],
   },
+  {
+    path: "projects/ui/settings/",
+    what: "los ajustes que persisten entre aperturas",
+    suffixes: [".service.ts"],
+  },
   { path: "tests/contracts/", what: "tests de los contratos", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/cli/", what: "tests del CLI", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/e2e/", what: "tests de punta a punta", suffixes: [".spec.ts", ".test.ts"] },

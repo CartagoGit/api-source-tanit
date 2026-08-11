@@ -25,6 +25,22 @@ date: 2026-08-11
 > **funcion** dentro de `projects/contracts/`, que promete no tener
 > implementacion. Movida al servicio.
 >
+> **S2 y S3 entregadas.** El tema es variables CSS y nada mas: un test
+> falla si aparece un color literal en una regla, porque ese elemento se
+> veria igual en los dos temas —bien en el que se escribio y roto en el
+> otro—. Los tres bloques de variables definen exactamente las mismas.
+>
+> Los ajustes van a un fichero externo en la carpeta de configuracion
+> del sistema, verificado reiniciando: se guardan, se cierra, se reabre
+> y estan. Y las cuatro formas de estropearlos tienen test — sin
+> fichero, roto, editado a mano con un valor imposible, y escrito por
+> una version posterior—.
+>
+> El gate de contratos volvio a cazarme dos veces: `DEFAULT_SETTINGS`
+> era un valor compartido viviendo en el servicio, y el contrato de
+> ajustes importaba de `ui/web/`. Los modos de tema son contrato; la
+> hoja de estilos es un asset, como `UI_HTML`.
+>
 > 22 tests, incluido el de sincronia entre la carpeta de idiomas y la
 > lista que el servicio enumera a mano — que tiene que enumerar, para que
 > el empaquetador los vea, y por eso puede separarse.
@@ -87,7 +103,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Los quince van **empaquetados** ademas de leerse de disco: el binario compilado no tiene sistema de ficheros"
 
 ### S2 — El estilo, en variables, para que cambiar el tema sea cambiar valores
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/web/theme.constant.ts`, `tests/cli/theme.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -97,7 +113,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Un test falla si aparece un color literal fuera del bloque de variables"
 
 ### S3 — Los ajustes sobreviven al cierre, y en escritorio son un fichero externo
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/contracts/interfaces/cli/settings.interface.ts`, `projects/ui/settings/settings.service.ts`, `tests/cli/settings.spec.ts`
 - **Gate**: type
 - acceptance:
