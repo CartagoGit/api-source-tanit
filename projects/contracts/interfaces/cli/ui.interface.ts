@@ -12,6 +12,7 @@
  */
 
 import type { IProjectSummary } from "../core/domain.interface.js";
+import type { II18nCatalog } from "./i18n.interface.js";
 import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";
 
 export interface IColumn {
@@ -55,6 +56,14 @@ export interface IPainter {
 
 /** Lo que la interfaz necesita del resto del programa. */
 export interface IUiDeps {
+  /**
+   * Los idiomas disponibles, ya cargados.
+   *
+   * Se inyecta en vez de importarse por lo mismo que el resto: la
+   * interfaz no decide de dónde salen —empaquetados, de la carpeta de
+   * quien la usa, o los dos— y así el test puede darle los suyos.
+   */
+  readonly locales: () => II18nCatalog;
   /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
   readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
   /** Genera la colección. Es lo que hace `generate`. */

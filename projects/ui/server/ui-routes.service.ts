@@ -54,6 +54,35 @@ export async function handleUiRequest(
 ): Promise<IUiResponse> {
   switch (path) {
     /** Lo que la interfaz necesita para dibujarse: formatos y frameworks. */
+    /**
+     * Los idiomas, para que la página pinte su selector.
+     *
+     * Va aparte de `/api/capabilities` porque cambia por otro motivo:
+     * los formatos y los frameworks son del producto, y los idiomas son
+     * de quien lo usa —puede añadir uno dejando un fichero, y entonces
+     * esta respuesta cambia sin que el producto haya cambiado—.
+     */
+    case "/api/locales": {
+      const catalogo = deps.locales();
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          locales: catalogo.locales.map((l) => ({
+            code: l.code,
+            nativeName: l.nativeName,
+            rtl: l.rtl,
+            origin: l.origin,
+            translations: l.translations,
+          })),
+          // Los ficheros que alguien dejó y no se pudieron leer. Van en
+          // la respuesta y no en un log del servidor porque quien los
+          // escribió está mirando la interfaz, no la terminal.
+          rejected: catalogo.rejected,
+        },
+      };
+    }
+
     case "/api/capabilities":
       return ok({
         ok: true,
@@ -126,7 +155,7 @@ export async function handleUiRequest(
       return fail(
         404,
         `Nothing at '${path}'.`,
-        "Rutas disponibles: /api/capabilities, /api/inspect, /api/generate.",
+        "Available routes: /api/locales, /api/capabilities, /api/inspect, /api/generate.",
       );
   }
 }

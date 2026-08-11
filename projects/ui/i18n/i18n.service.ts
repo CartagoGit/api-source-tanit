@@ -24,8 +24,11 @@
  * 80 % traducido y el resto en inglés, en vez de descartarse entero o
  * —peor— enseñar la clave cruda (`settings.theme`) en la pantalla.
  */
-import { readdir, readFile } from "node:fs/promises";
+import { mkdir, readdir, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
+
+import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 
 import {
   BUNDLED_LOCALES,
@@ -168,6 +171,36 @@ async function leerExternos(
   }
 
   return { locales, rejected };
+}
+
+/**
+ * Deja los quince en disco la primera vez, para que se puedan tocar.
+ *
+ * Esto es lo que convierte «los idiomas están dentro del programa» en
+ * «los idiomas son ficheros que puedes abrir». Sin ello, quien instala
+ * el `.deb` no tiene **nada** que editar: sabría que hay quince idiomas
+ * pero no dónde, y añadir uno sería adivinar el nombre de una carpeta
+ * que no existe.
+ *
+ * ## Solo la primera vez
+ *
+ * Un fichero que ya está **no se toca**. Si se sobrescribiera en cada
+ * arranque, la primera corrección que alguien hiciera a una traducción
+ * desaparecería al reabrir, y eso es peor que no dejar editarlos.
+ *
+ * ## Si alguien los borra, no pasa nada
+ *
+ * Los quince siguen empaquetados: borrar la carpeta entera deja la
+ * interfaz exactamente igual que antes de sembrarla. No hay que
+ * reinstalar nada — el disco es una copia editable, no la fuente.
+ */
+export async function seedLocales(carpeta: string): Promise<void> {
+  await mkdir(carpeta, { recursive: true });
+  for (const [code, traducciones] of Object.entries(EMPAQUETADOS)) {
+    const destino = join(carpeta, `${code}.json`);
+    if (existsSync(destino)) continue;
+    await writeFileAtomic(destino, `${JSON.stringify(traducciones, null, 2)}\n`);
+  }
 }
 
 /**

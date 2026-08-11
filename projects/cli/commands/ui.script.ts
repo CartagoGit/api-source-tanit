@@ -31,6 +31,9 @@ import { UI_HTML } from "../../ui/web/index.html.constant.js";
 
 import { FRAMEWORK_IDS } from "../../contracts/constants/frameworks/framework-ids.constant.js";
 import type { IUiDeps } from "../../contracts/interfaces/cli/ui.interface.js";
+import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface.js";
+import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
+import { userLocalesDir } from "../../ui/config-dir.helper.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
@@ -56,8 +59,12 @@ function abrirNavegador(url: string): void {
  * descubrimiento de rutas cachea por proceso: sin esto, inspeccionar el
  * proyecto A y luego el B devolvería lo de A.
  */
-function dependencias(): IUiDeps {
+function dependencias(catalogo: II18nCatalog): IUiDeps {
   return {
+    // Se pasa ya cargado: leer la carpeta de idiomas en cada petición
+    // sería releer quince ficheros por pulsación, y la carpeta solo
+    // cambia entre arranques.
+    locales: () => catalogo,
     summarize: (projectRoot) =>
       withScopedPaths({ projectRoot }, () => summarizeWithAllFrameworks(projectRoot)),
     // Llama al **mismo** comando que usa la terminal, con sus flags. No
@@ -118,10 +125,30 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
+  // Los idiomas se dejan en disco la primera vez y se recargan desde
+  // ahí: es lo que hace que se puedan editar y que añadir uno sea dejar
+  // un fichero. Si la carpeta no se puede escribir —permisos, un
+  // sistema de solo lectura— se sigue con los empaquetados: quedarse sin
+  // interfaz por no poder escribir una copia editable sería absurdo.
+  const carpetaIdiomas = userLocalesDir();
+  try {
+    await seedLocales(carpetaIdiomas);
+  } catch (error) {
+    console.warn(
+      `⚠ Could not write the languages folder (${carpetaIdiomas}).\n` +
+        `  · ${(error as Error).message}\n` +
+        "  · The bundled languages still work; you just cannot edit them.",
+    );
+  }
+  const catalogo = await loadLocales(carpetaIdiomas);
+  for (const roto of catalogo.rejected) {
+    console.warn(`⚠ Language file ${roto.file} was ignored: ${roto.reason}`);
+  }
+
   let server;
   try {
     server = startUiServer({
-      deps: dependencias(),
+      deps: dependencias(catalogo),
       html: UI_HTML,
       ...(puerto !== undefined ? { port: puerto } : {}),
     });

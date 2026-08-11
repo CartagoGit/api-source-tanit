@@ -42,6 +42,18 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
   const generado: Array<Record<string, unknown>> = [];
   return {
     generado,
+    locales: () => ({
+      locales: [
+        {
+          code: "en",
+          nativeName: "English",
+          rtl: false,
+          translations: { "nav.settings": "Settings" },
+          origin: "bundled" as const,
+        },
+      ],
+      rejected: [],
+    }),
     summarize: async () => RESUMEN,
     generate: async (params) => {
       generado.push({ ...params });
@@ -62,6 +74,43 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
 
 const cuerpo = (r: { body: unknown }): Record<string, unknown> =>
   r.body as Record<string, unknown>;
+
+/**
+ * Los idiomas van por su propia ruta, y no en `/api/capabilities`,
+ * porque cambian por otro motivo: los formatos y los frameworks son del
+ * producto; los idiomas son de quien lo usa —puede añadir uno dejando
+ * un fichero, y entonces esta respuesta cambia sin que el producto haya
+ * cambiado—.
+ */
+describe("/api/locales", () => {
+  test("devuelve los idiomas con su nombre nativo y sus textos", async () => {
+    const r = await handleUiRequest("/api/locales", {}, deps());
+    expect(r.status).toBe(200);
+    const locales = cuerpo(r)["locales"] as Array<{ code: string; nativeName: string }>;
+    expect(locales[0]?.code).toBe("en");
+    expect(locales[0]?.nativeName).toBe("English");
+  });
+
+  /**
+   * Los ficheros que alguien dejó y no se pudieron leer viajan en la
+   * respuesta, no a un log del servidor: quien los escribió está
+   * mirando la interfaz, no la terminal.
+   */
+  test("los idiomas rechazados llegan a la interfaz, no a un log", async () => {
+    const r = await handleUiRequest(
+      "/api/locales",
+      {},
+      deps({
+        locales: () => ({
+          locales: [],
+          rejected: [{ file: "xx.json", reason: "is not valid JSON" }],
+        }),
+      }),
+    );
+    const rejected = cuerpo(r)["rejected"] as Array<{ file: string }>;
+    expect(rejected[0]?.file).toBe("xx.json");
+  });
+});
 
 describe("/api/capabilities", () => {
   test("dice qué formatos y frameworks hay, para que la interfaz se dibuje sola", async () => {

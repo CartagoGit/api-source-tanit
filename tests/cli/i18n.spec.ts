@@ -26,8 +26,13 @@ import {
 import {
   loadLocales,
   pickLocale,
+  seedLocales,
   translate,
 } from "../../projects/ui/i18n/i18n.service";
+import {
+  userConfigDir,
+  userLocalesDir,
+} from "../../projects/ui/config-dir.helper";
 import { fromRoot } from "../../scripts/helpers/root.helper";
 
 const CODIGOS = BUNDLED_LOCALES.map((l) => l.code);
@@ -203,6 +208,90 @@ describe("añadir un idioma es dejar un fichero", () => {
   });
 });
 
+/**
+ * Los idiomas tras instalar.
+ *
+ * La primera vez que arranca, la aplicación deja los quince en la
+ * carpeta de configuración del sistema. Eso es lo que convierte «los
+ * idiomas están dentro del programa» en «los idiomas son ficheros que
+ * puedes abrir»: sin ellos en disco, quien instala el `.deb` sabe que
+ * hay quince pero no dónde, y añadir uno sería adivinar el nombre de
+ * una carpeta que no existe.
+ */
+describe("los idiomas acaban en disco, para poder tocarlos", () => {
+  test("la primera vez deja los quince", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "seed-"));
+    try {
+      await seedLocales(join(dir, "locales"));
+      const ficheros = (await readdir(join(dir, "locales"))).sort();
+      expect(ficheros).toHaveLength(15);
+      expect(ficheros).toContain("es.json");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * EL test. Si sembrara en cada arranque, la primera corrección que
+   * alguien hiciera a una traducción desaparecería al reabrir — y eso
+   * es peor que no dejar editarlos.
+   */
+  test("no pisa lo que ya está: una corrección sobrevive al reinicio", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "seed-"));
+    const locales = join(dir, "locales");
+    try {
+      await seedLocales(locales);
+      await writeFile(
+        join(locales, "es.json"),
+        JSON.stringify({ "nav.settings": "Mi propia palabra" }),
+      );
+
+      await seedLocales(locales);
+
+      const { locales: cargados } = await loadLocales(locales);
+      const es = cargados.find((l) => l.code === "es")!;
+      expect(translate(es, "nav.settings")).toBe("Mi propia palabra");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("un idioma añadido a mano sobrevive a la siembra", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "seed-"));
+    const locales = join(dir, "locales");
+    try {
+      await seedLocales(locales);
+      await writeFile(join(locales, "eu.json"), JSON.stringify({ "nav.back": "Atzera" }));
+      await seedLocales(locales);
+
+      const { locales: cargados } = await loadLocales(locales);
+      expect(cargados.find((l) => l.code === "eu")).toBeDefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  /**
+   * Y si alguien borra la carpeta entera, la interfaz sigue igual: los
+   * quince están empaquetados. El disco es una copia editable, no la
+   * fuente, así que no hay que reinstalar nada.
+   */
+  test("borrar la carpeta entera no deja la interfaz sin idiomas", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "seed-"));
+    const locales = join(dir, "locales");
+    try {
+      await seedLocales(locales);
+      await rm(locales, { recursive: true, force: true });
+
+      const { locales: cargados, rejected } = await loadLocales(locales);
+      expect(cargados).toHaveLength(15);
+      expect(rejected).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("un idioma roto no tumba la interfaz, pero se dice", () => {
   test("un JSON inválido se rechaza con su motivo", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
@@ -246,5 +335,43 @@ describe("un idioma roto no tumba la interfaz, pero se dice", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * Dónde acaban esos ficheros en cada sistema.
+ *
+ * Las tres convenciones no son intercambiables: un `~/.config` en
+ * Windows deja una carpeta oculta en el perfil que nadie encuentra, y
+ * `%APPDATA%` en Linux no significa nada. Se inyectan `env` y
+ * `platform` porque es la única forma de probar las tres sin cambiar de
+ * sistema operativo.
+ */
+describe("la carpeta de configuración de cada sistema", () => {
+  test("Linux respeta XDG_CONFIG_HOME cuando está", () => {
+    expect(userConfigDir({ XDG_CONFIG_HOME: "/xdg" }, "linux", "/home/x")).toBe(
+      "/xdg/expostman",
+    );
+  });
+
+  test("Linux cae a ~/.config cuando no", () => {
+    expect(userConfigDir({}, "linux", "/home/x")).toBe("/home/x/.config/expostman");
+  });
+
+  test("macOS usa Application Support", () => {
+    expect(userConfigDir({}, "darwin", "/Users/x")).toBe(
+      "/Users/x/Library/Application Support/expostman",
+    );
+  });
+
+  test("Windows usa APPDATA", () => {
+    expect(userConfigDir({ APPDATA: "C:\\Users\\x\\AppData\\Roaming" }, "win32", "C:\\Users\\x")).toContain(
+      "expostman",
+    );
+  });
+
+  test("los idiomas cuelgan de ella, no de otro sitio", () => {
+    const base = userConfigDir({}, "linux", "/home/x");
+    expect(userLocalesDir({}, "linux", "/home/x")).toBe(`${base}/locales`);
   });
 });
