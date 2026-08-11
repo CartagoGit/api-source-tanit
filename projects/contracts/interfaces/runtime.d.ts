@@ -327,6 +327,12 @@ declare const process: {
    * el handle de `fs.watch` queda abierto y el proceso no termina.
    */
   once(event: "SIGINT" | "SIGTERM", listener: () => void): void;
+  /**
+   * Igual que `once`, pero para lo que se escucha mientras el proceso
+   * vive. `ui:dev` lo necesita: cierra el servidor hijo al recibir la
+   * señal, y eso puede pasar en cualquier momento.
+   */
+  on(event: "SIGINT" | "SIGTERM", listener: () => void): void;
 };
 declare const console: {
   log(...args: unknown[]): void;
@@ -356,6 +362,14 @@ declare const Bun: {
     readonly stdout: unknown;
     readonly stderr: unknown;
     readonly exited: Promise<number>;
+    /**
+     * Manda una señal al proceso hijo.
+     *
+     * Faltaba, y el hueco lo destapó `ui:dev`: sin esto, un script que
+     * lanza un servidor y lo reinicia no tiene forma de pararlo, y deja
+     * un proceso huérfano ocupando el puerto en cada guardado.
+     */
+    kill(signal?: "SIGTERM" | "SIGKILL" | "SIGINT"): void;
   };
   write(path: string, data: string): Promise<number>;
   file(path: string): { text(): Promise<string>; readonly size: number };

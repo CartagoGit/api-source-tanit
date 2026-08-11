@@ -148,11 +148,24 @@ escribir nada, y se genera en los formatos que se quieran. Llama al
 mismo pipeline que el CLI: no es una segunda implementación que se
 desincronice.
 
-Para usarlo sin instalar nada de Node hay instaladores nativos —`.deb`,
-`.AppImage`, `.dmg`, `.msi`— que abren esa misma interfaz en su propia
-ventana. Se construyen con `bun run desktop:build`, y los de Mac y
-Windows salen del workflow `release-desktop.yml`, cada uno en su
-corredor: cada plataforma exige su propio SDK y su firma.
+Para tocarla, `bun run ui:dev` la levanta y **la reinicia sola** al
+editar `projects/ui/`, manteniendo el puerto: basta con recargar la
+pestaña.
+
+Y para usarla sin instalar nada de Node hay instaladores nativos que
+abren esa misma interfaz en su propia ventana:
+
+```bash
+bun run desktop:build:linux    # .deb + .AppImage
+bun run desktop:build:mac      # .dmg + .app
+bun run desktop:build:windows  # .msi + .exe
+```
+
+Cada plataforma solo construye la suya —cada instalador exige el SDK de
+su sistema—; los tres a la vez salen de CI.
+
+- Cómo instalarlos: [docs/DESKTOP-INSTALL.md](docs/DESKTOP-INSTALL.md)
+- Cómo publicarlos: [docs/DESKTOP-PUBLISH.md](docs/DESKTOP-PUBLISH.md)
 
 ---
 

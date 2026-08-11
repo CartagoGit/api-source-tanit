@@ -2,11 +2,40 @@
 id: x00005
 title: "`check` dice que hay deriva en 13 de 22 proyectos recien generados"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-11
 ---
+
+> **Cerrada el mismo dia.** El test de S1 fallaba en los 13 medidos y
+> ahora pasan los 23 ejemplos.
+>
+> De los tres defectos que la propuesta describia, **uno no existia**:
+> `normalizeForComparison` ya unificaba las cuatro sintaxis de parametro
+> (`:id`, `{id}`, `<int:id>`, `{{id}}`). Lo comprobe leyendo el helper en
+> vez de fiarme del sintoma — `/api/users/:id` y `/api/users/{{id}}`
+> aparecian como deriva por el **segundo** defecto, no por el primero.
+> S2 se queda sin trabajo.
+>
+> Los otros dos si:
+>
+> · **El nombre entraba asimetrico.** El scanner REST no emite
+>   `displayName`; la coleccion siempre tiene nombre de request, derivado
+>   de la URI por el constructor. `GET /api/orders`, sin un solo
+>   parametro, salia a la vez en «falta» y en «sobra».
+>
+> · **Laravel comparaba contra el camino legacy** (7 rutas frente a las
+>   17 del pipeline). La rama `match.framework !== "laravel"` ha
+>   desaparecido: `check` no puede tener una excepcion para uno de los
+>   veintiun frameworks.
+>
+> Y salio un tercero que la propuesta no preveia: al preguntar
+> `needsNameToDisambiguate` sobre **la coleccion**, las variantes del
+> enricher —el mismo endpoint con dos cuerpos— parecian dos operaciones
+> y forzaban el nombre en la clave. La decision sale ahora **solo de la
+> fuente**, que es el codigo: si dos rutas comparten metodo y URI ahi, el
+> protocolo es RPC y el nombre hace falta.
 
 # x00005 — `check` dice que hay deriva en 13 de 22 proyectos recien generados
 
@@ -41,7 +70,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
 - global_gate: e2e
 
 ### S1 — El test que lo habria cazado: generar y comprobar en los 21 frameworks
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/e2e/check-after-generate.test.ts`
 - **Gate**: e2e
 - acceptance:
@@ -50,7 +79,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
   - "No se afirma un numero de endpoints: se afirma que las dos listas de deriva estan vacias, que es lo que hace el test valido en los 21 sin mantenerlo"
 
 ### S2 — Unificar la sintaxis de parametros antes de comparar
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/core/helpers/uri.helper.ts`, `tests/core/uri.helper.spec.ts`
 - **Gate**: type
@@ -60,7 +89,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
   - "Un parametro con tipo —`/users/<int:id>` de Django, `/users/{id:int}` de Rust— normaliza igual que sin el"
 
 ### S3 — `check` alimenta la clave igual por los dos lados, y sin excepciones por framework
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `projects/cli/commands/diff.script.ts`
 - **Gate**: e2e
@@ -71,7 +100,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
   - "Las dos decisiones quedan escritas en el codigo, no deducibles"
 
 ### S4 — Laravel deja de ser un caso aparte, y se demuestra
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S3]
 - **Files**: `tests/e2e/check-laravel.test.ts`
 - **Gate**: e2e
@@ -81,7 +110,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
   - "Cubre el caso que hoy falla: 7 frente a 18"
 
 ### S5 — El tool MCP hereda el arreglo y lo demuestra
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2, S3, S4]
 - **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
 - **Gate**: e2e
