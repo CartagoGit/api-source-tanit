@@ -1,0 +1,22 @@
+{
+  "app.title": "Export to Postman",
+  "nav.settings": "Settings",
+  "nav.back": "Back",
+  "project.label": "Project folder",
+  "project.browse": "Browse…",
+  "action.inspect": "Inspect",
+  "action.generate": "Generate",
+  "action.dryRun": "Dry run",
+  "format.label": "Output format",
+  "framework.label": "Framework",
+  "framework.auto": "Detect automatically",
+  "output.label": "Output folder",
+  "settings.language": "Language",
+  "settings.theme": "Theme",
+  "theme.system": "Follow the system",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "result.requests": "requests",
+  "result.folders": "folders",
+  "error.noFolder": "Pick the project root first"
+}

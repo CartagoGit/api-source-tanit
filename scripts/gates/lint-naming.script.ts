@@ -158,6 +158,18 @@ const RULES: readonly INamingRule[] = [
     what: "tests del plugin",
     suffixes: [".spec.ts", ".test.ts"],
   },
+  // Los idiomas de la interfaz: el servicio que los carga y los
+  // catálogos, que son datos y no código.
+  {
+    path: "projects/ui/i18n/locales/",
+    what: "un catálogo de traducciones por idioma",
+    suffixes: [".json"],
+  },
+  {
+    path: "projects/ui/i18n/",
+    what: "la carga de idiomas",
+    suffixes: [".service.ts"],
+  },
   { path: "tests/contracts/", what: "tests de los contratos", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/cli/", what: "tests del CLI", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/e2e/", what: "tests de punta a punta", suffixes: [".spec.ts", ".test.ts"] },

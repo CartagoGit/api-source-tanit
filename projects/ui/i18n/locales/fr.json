@@ -1,0 +1,22 @@
+{
+  "app.title": "Export to Postman",
+  "nav.settings": "Paramètres",
+  "nav.back": "Retour",
+  "project.label": "Dossier du projet",
+  "project.browse": "Parcourir…",
+  "action.inspect": "Inspecter",
+  "action.generate": "Générer",
+  "action.dryRun": "Essai",
+  "format.label": "Format de sortie",
+  "framework.label": "Framework",
+  "framework.auto": "Détecter automatiquement",
+  "output.label": "Dossier de sortie",
+  "settings.language": "Langue",
+  "settings.theme": "Thème",
+  "theme.system": "Suivre le système",
+  "theme.light": "Clair",
+  "theme.dark": "Sombre",
+  "result.requests": "requêtes",
+  "result.folders": "dossiers",
+  "error.noFolder": "Choisissez d'abord la racine du projet"
+}
