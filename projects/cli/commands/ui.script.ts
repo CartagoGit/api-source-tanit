@@ -21,7 +21,10 @@
  */
 import { stat } from "node:fs/promises";
 
-import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
+import {
+  generateWithAllFrameworks,
+  summarizeWithAllFrameworks,
+} from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
 
 import { withScopedPaths } from "../../core/discovery/paths.service.js";
@@ -35,6 +38,8 @@ import type { II18nCatalog } from "../../contracts/interfaces/cli/i18n.interface
 import { loadLocales, seedLocales } from "../../ui/i18n/i18n.service.js";
 import { userLocalesDir } from "../../ui/config-dir.helper.js";
 import { patchSettings, readSettings } from "../../ui/settings/settings.service.js";
+import { browseDirectory } from "../../ui/server/browse.service.js";
+import { planDryRun } from "../../ui/server/dry-run.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
@@ -70,6 +75,24 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // se pasan ya leídos porque cambian **mientras** la interfaz está
     // abierta, y una copia en memoria se quedaría vieja en cuanto otra
     // pestaña guardara algo.
+    browse: (path) => browseDirectory(path),
+    // El ensayo llama al pipeline de verdad —que construye en memoria—
+    // y planifica desde su resultado. Predecir los nombres a mano sería
+    // una segunda implementación que acabaría diciendo una cosa
+    // mientras `generate` hace otra.
+    dryRun: async ({ projectRoot, outputDir, formats, framework }) => {
+      const result = await withScopedPaths({ projectRoot }, () =>
+        generateWithAllFrameworks(projectRoot, {
+          ...(framework ? { forceFramework: framework } : {}),
+        }),
+      );
+      return planDryRun({
+        projectRoot,
+        ...(outputDir ? { outputDir } : {}),
+        ...(formats ? { formats } : {}),
+        result,
+      });
+    },
     readSettings: () => readSettings(),
     patchSettings: (cambios) => patchSettings(cambios),
     summarize: (projectRoot) =>

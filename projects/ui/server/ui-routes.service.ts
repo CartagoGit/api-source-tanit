@@ -149,6 +149,59 @@ export async function handleUiRequest(
       return { status: 200, body: { ok: true, settings: await deps.patchSettings(cambios) } };
     }
 
+    /**
+     * Navegar carpetas, para elegir origen y destino sin escribir la
+     * ruta a mano — que es donde más se falla: una errata devuelve «no
+     * existe» y no queda pista de dónde estabas.
+     */
+    case "/api/browse":
+      // El listado ya trae su propio `ok`, que dice si la carpeta se
+      // pudo leer. Se respeta tal cual en vez de forzarlo a `true`: una
+      // carpeta sin permiso es una respuesta legítima del explorador, no
+      // un fallo de la ruta.
+      return ok({ ...(await deps.browse(texto(body, "path"))) });
+
+    /**
+     * El ensayo. Enseña qué ficheros saldrían y **cuáles se
+     * sobrescribirían**, que es lo que de verdad importa a partir de la
+     * segunda vez.
+     */
+    case "/api/dry-run": {
+      const projectRoot = texto(body, "projectRoot");
+      if (!projectRoot) {
+        return fail(
+          400,
+          "No project folder was given.",
+          "Pick the project root: the folder where its manifest lives.",
+        );
+      }
+      if (!(await deps.exists(projectRoot))) {
+        return fail(
+          404,
+          `The folder '${projectRoot}' does not exist.`,
+          "Check the path: it has to be the project root, where its manifest lives.",
+        );
+      }
+
+      const plan = await deps.dryRun({
+        projectRoot,
+        outputDir: texto(body, "outputDir"),
+        formats: lista(body, "formats"),
+        framework: texto(body, "framework"),
+      });
+
+      // Un plan inválido —un formato que no existe— es un 400: se ha
+      // pedido algo imposible, no ha fallado el ensayo.
+      if (!plan.ok) {
+        return fail(
+          400,
+          plan.reason ?? "The plan is not valid.",
+          "Pick formats from the list the interface offers.",
+        );
+      }
+      return ok({ ok: true, plan });
+    }
+
     case "/api/capabilities":
       return ok({
         ok: true,
@@ -222,7 +275,8 @@ export async function handleUiRequest(
         404,
         `Nothing at '${path}'.`,
         "Available routes: /api/locales, /api/settings, /api/settings/save, " +
-          "/api/capabilities, /api/inspect, /api/generate.",
+          "/api/browse, /api/dry-run, /api/capabilities, /api/inspect, " +
+          "/api/generate.",
       );
   }
 }

@@ -14,6 +14,8 @@
 import type { IProjectSummary } from "../core/domain.interface.js";
 import type { II18nCatalog } from "./i18n.interface.js";
 import type { ISettings, ISettingsRead } from "./settings.interface.js";
+import type { IBrowseListing } from "./browse.interface.js";
+import type { IDryRunPlan } from "./dry-run.interface.js";
 import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";
 
 export interface IColumn {
@@ -77,6 +79,27 @@ export interface IUiDeps {
   readonly patchSettings: (
     cambios: Partial<Omit<ISettings, "version">>,
   ) => Promise<ISettings>;
+  /**
+   * Lista las carpetas de una ruta, para elegir explorando.
+   *
+   * Devuelve nombres de directorio y nada más: un endpoint que
+   * devolviera contenido sería un lector de ficheros arbitrario.
+   */
+  readonly browse: (path?: string) => Promise<IBrowseListing>;
+  /**
+   * Qué pasaría si se generara, sin generar.
+   *
+   * Llama al pipeline —que construye en memoria— y planifica desde su
+   * resultado. Predecir los nombres a mano sería una segunda
+   * implementación que acabaría diciendo una cosa mientras `generate`
+   * hace otra, que es el fallo que un ensayo viene a evitar.
+   */
+  readonly dryRun: (params: {
+    readonly projectRoot: string;
+    readonly outputDir?: string | undefined;
+    readonly formats?: ReadonlyArray<string> | undefined;
+    readonly framework?: string | undefined;
+  }) => Promise<IDryRunPlan>;
   /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
   readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
   /** Genera la colección. Es lo que hace `generate`. */

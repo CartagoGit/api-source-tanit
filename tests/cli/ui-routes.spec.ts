@@ -62,6 +62,30 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
       Object.assign(guardados, cambios);
       return { version: 1, ...guardados };
     },
+    browse: async (path) => ({
+      ok: true,
+      path: path ?? "/casa",
+      parent: "/",
+      entries: [{ name: "api", path: "/casa/api", readable: true }],
+      truncated: false,
+    }),
+    dryRun: async ({ outputDir }) => ({
+      ok: true,
+      outputDir: outputDir ?? "/x/export-to-postman",
+      projectName: "sample-express",
+      framework: "express",
+      requests: 9,
+      files: [
+        {
+          path: `${outputDir ?? "/x/export-to-postman"}/sample-express.postman_collection.json`,
+          kind: "collection" as const,
+          format: "postman",
+          overwrites: false,
+        },
+      ],
+      overwrites: 0,
+      warnings: [],
+    }),
     summarize: async () => RESUMEN,
     generate: async (params) => {
       generado.push({ ...params });
@@ -178,6 +202,109 @@ describe("/api/settings", () => {
       }),
     );
     expect(cuerpo(r)["problem"]).toContain("not valid JSON");
+  });
+});
+
+/**
+ * Elegir carpeta explorando, no escribiéndola: es donde más se falla,
+ * porque una errata devuelve «no existe» y no queda pista de dónde
+ * estabas.
+ */
+describe("/api/browse", () => {
+  test("lista las carpetas de una ruta", async () => {
+    const r = await handleUiRequest("/api/browse", { path: "/casa" }, deps());
+    expect(r.status).toBe(200);
+    const entries = cuerpo(r)["entries"] as Array<{ name: string }>;
+    expect(entries[0]?.name).toBe("api");
+  });
+
+  /**
+   * Una carpeta sin permiso es una respuesta legítima del explorador, no
+   * un fallo de la ruta: se devuelve tal cual, con su `ok: false`, para
+   * que la interfaz lo enseñe en vez de tratarlo como una caída.
+   */
+  test("una carpeta ilegible se devuelve tal cual, no como error HTTP", async () => {
+    const r = await handleUiRequest(
+      "/api/browse",
+      { path: "/root" },
+      deps({
+        browse: async () => ({
+          ok: false,
+          path: "/root",
+          parent: "/",
+          entries: [],
+          truncated: false,
+          reason: "could not be read",
+        }),
+      }),
+    );
+    expect(r.status).toBe(200);
+    expect(cuerpo(r)["ok"]).toBe(false);
+    expect(cuerpo(r)["reason"]).toContain("could not be read");
+  });
+});
+
+/**
+ * El ensayo: enseña qué saldría **sin escribir nada**.
+ */
+describe("/api/dry-run", () => {
+  test("devuelve el plan con los ficheros y las requests", async () => {
+    const r = await handleUiRequest("/api/dry-run", { projectRoot: "/x" }, deps());
+    expect(r.status).toBe(200);
+    const plan = cuerpo(r)["plan"] as { requests: number; files: unknown[] };
+    expect(plan.requests).toBe(9);
+    expect(plan.files).toHaveLength(1);
+  });
+
+  /** Y no genera: es un ensayo. */
+  test("ensayar no escribe nada", async () => {
+    const d = deps();
+    await handleUiRequest("/api/dry-run", { projectRoot: "/x" }, d);
+    expect(d.generado).toEqual([]);
+  });
+
+  test("sin carpeta lo dice y explica qué elegir", async () => {
+    const r = await handleUiRequest("/api/dry-run", {}, deps());
+    expect(r.status).toBe(400);
+    const error = cuerpo(r)["error"] as { nextAction: string };
+    expect(error.nextAction).toContain("project root");
+  });
+
+  test("una carpeta que no existe da 404", async () => {
+    const r = await handleUiRequest(
+      "/api/dry-run",
+      { projectRoot: "/no/existe" },
+      deps({ exists: async () => false }),
+    );
+    expect(r.status).toBe(404);
+  });
+
+  /**
+   * Un plan inválido es un 400: se ha pedido algo imposible, no ha
+   * fallado el ensayo.
+   */
+  test("un formato inventado invalida el plan con salida", async () => {
+    const r = await handleUiRequest(
+      "/api/dry-run",
+      { projectRoot: "/x", formats: ["inventado"] },
+      deps({
+        dryRun: async () => ({
+          ok: false,
+          outputDir: "/x",
+          projectName: "x",
+          framework: null,
+          requests: 0,
+          files: [],
+          overwrites: 0,
+          warnings: [],
+          reason: "Unknown formats: inventado.",
+        }),
+      }),
+    );
+    expect(r.status).toBe(400);
+    const error = cuerpo(r)["error"] as { reason: string; nextAction: string };
+    expect(error.reason).toContain("inventado");
+    expect(error.nextAction.length).toBeGreaterThan(0);
   });
 });
 

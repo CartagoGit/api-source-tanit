@@ -144,7 +144,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Se elige la carpeta de destino, y una fuera del proyecto se acepta —es un uso legitimo— pero se dice donde va a escribir"
 
 ### S6 — Elegir carpeta explorando, no escribiendo
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/server/browse.service.ts`, `tests/cli/browse.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -154,7 +154,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "La navegacion **no** puede convertirse en un lector de ficheros arbitrario: se devuelven nombres de directorio, nunca contenido"
 
 ### S7 — El ensayo: ver lo que va a pasar antes de escribir
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/server/dry-run.service.ts`, `tests/cli/dry-run.spec.ts`
 - **Gate**: e2e
 - acceptance:
