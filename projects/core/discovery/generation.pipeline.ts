@@ -238,6 +238,20 @@ async function discoverSpecs(
       routes.push(...result.routes);
       withValidation += result.withFormRequest;
       withoutValidation += result.withoutFormRequest;
+
+      // Un proveedor de validación que falla no aborta la generación
+      // —un endpoint sin reglas sigue siendo una colección válida— pero
+      // tampoco puede pasar en silencio: era indistinguible de un
+      // endpoint que legítimamente no valida nada, y así un parser roto
+      // degradaba la colección entera sin que nadie lo notase.
+      if (result.validationFailures.length > 0) {
+        warnings.push(
+          `${result.validationFailures.length} endpoint(s) of ` +
+            `${candidate.match.framework} have validation rules that could not ` +
+            `be read; their bodies come from the agnostic inference instead. ` +
+            `First one: ${result.validationFailures[0]}`,
+        );
+      }
     }
 
     if (usable.length > 1) {

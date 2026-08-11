@@ -193,6 +193,7 @@ export async function buildSpecsFromScanner(
     ...route,
   }));
   const specs: EndpointSpec[] = [];
+  const validationFailures: string[] = [];
   let withFormRequest = 0;
   let withoutFormRequest = 0;
 
@@ -228,7 +229,20 @@ export async function buildSpecsFromScanner(
       let rules;
       try {
         rules = await validation.resolve(route, match);
-      } catch {
+      } catch (error) {
+        // Se anota en vez de tragarse. Un proveedor que lanza dejaba el
+        // endpoint indistinguible de uno sin validación, así que un
+        // parser roto —un cambio de sintaxis en el framework, un
+        // fichero que ya no se lee— degradaba la colección en silencio.
+        //
+        // No se propaga: un endpoint sin reglas sigue siendo una
+        // colección válida, y abortar la generación entera por un
+        // parser sería peor. Pero tiene que decirse.
+        validationFailures.push(
+          `${route.method.toUpperCase()} ${route.uri}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
         rules = null;
       }
       if (rules && rules.fields.length > 0) {
@@ -316,7 +330,7 @@ export async function buildSpecsFromScanner(
     }
     specs.push(spec);
   }
-  return { specs, routes, withFormRequest, withoutFormRequest };
+  return { specs, routes, withFormRequest, withoutFormRequest, validationFailures };
 }
 
 /** Helper: lee el primer byte de un spec OpenAPI para validación (no usado). */

@@ -111,6 +111,56 @@ describe("toPostmanUri — normalización de parámetros", () => {
   });
 });
 
+/**
+ * Un proveedor de validación que **falla**.
+ *
+ * Antes se tragaba la excepción y devolvía `null`, con lo que el
+ * endpoint quedaba exactamente igual que uno que legítimamente no tiene
+ * reglas. Un parser roto —un cambio de sintaxis en el framework, un
+ * fichero que ya no se puede leer— degradaba la colección entera en
+ * silencio: lo único que cambiaba era un contador que nadie mira.
+ */
+describe("un proveedor de validación que revienta", () => {
+  const proveedorRoto = {
+    framework: "test",
+    supports: async () => true,
+    resolve: async () => {
+      throw new Error("el parser no supo leer el fichero");
+    },
+  };
+
+  test("no tumba la generación: el endpoint sale igual", async () => {
+    const result = await buildSpecsFromScanner(
+      scannerOf([route({ method: "POST", uri: "/users" })]),
+      MATCH,
+      proveedorRoto,
+    );
+    expect(result.specs).toHaveLength(1);
+  });
+
+  /** EL test: el fallo se anota en vez de desaparecer. */
+  test("pero queda anotado, con el endpoint y el motivo", async () => {
+    const result = await buildSpecsFromScanner(
+      scannerOf([route({ method: "POST", uri: "/users" })]),
+      MATCH,
+      proveedorRoto,
+    );
+    expect(result.validationFailures).toHaveLength(1);
+    expect(result.validationFailures[0]).toContain("POST /users");
+    expect(result.validationFailures[0]).toContain("no supo leer");
+  });
+
+  test("y no se confunde con un endpoint sin reglas", async () => {
+    const sinReglas = await buildSpecsFromScanner(
+      scannerOf([route({ method: "POST", uri: "/users" })]),
+      MATCH,
+      null,
+    );
+    expect(sinReglas.validationFailures).toEqual([]);
+    expect(sinReglas.withoutFormRequest).toBe(1);
+  });
+});
+
 describe("buildSpecsFromScanner — conversión de rutas", () => {
   test("convierte cada ruta en un spec", async () => {
     const result = await buildSpecsFromScanner(

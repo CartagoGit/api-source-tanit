@@ -231,4 +231,14 @@ export interface AdapterResult {
    */
   readonly withFormRequest: number;
   readonly withoutFormRequest: number;
+  /**
+   * Endpoints cuyo proveedor de validación **falló**.
+   *
+   * No es lo mismo que «sin reglas», y confundirlos era el problema: un
+   * proveedor que lanza dejaba el endpoint exactamente igual que uno que
+   * legítimamente no tiene validación, así que un parser roto degradaba
+   * la colección entera sin que nadie lo notara. Lo único que cambiaba
+   * era un contador que nadie miraba.
+   */
+  readonly validationFailures: ReadonlyArray<string>;
 }
