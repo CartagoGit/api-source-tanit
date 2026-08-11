@@ -89,7 +89,7 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
                   ok: false,
                   error: {
                     reason: "El cuerpo de la petición no es JSON válido.",
-                    nextAction: "Es un fallo de la interfaz; recarga la página.",
+                    nextAction: "This is an interface bug; reload the page.",
                   },
                 },
                 { status: 400 },

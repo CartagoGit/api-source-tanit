@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { OpenApiProjectScanner, OpenApiScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
+import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
@@ -29,13 +29,13 @@ describe("OpenAPI scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture (yaml)", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     expect(routes).toHaveLength(4);
   });
 
   test("GET /api/users, POST /api/users, GET /api/users/{id}, DELETE /api/users/{id}", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /api/users");
     expect(pairs).toContain("POST /api/users");
@@ -45,14 +45,14 @@ describe("OpenAPI scanner", () => {
 
   test("path param {id} de paths /api/users/{id} preservado", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     const withId = routes.filter((r) => r.uri.includes("{id}"));
     expect(withId.length).toBe(2);
   });
 
   test("OpenAPI validation provider resuelve campos de requestBody.schema para POST", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     const post = routes.find((r) => r.method === "POST");
     if (!post) return;
     const provider = new OpenApiValidationProvider();
@@ -68,7 +68,7 @@ describe("OpenAPI scanner", () => {
   // no un tipo "email" (que no existe en el contrato).
   test("campo email es string con format 'email'", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     const post = routes.find((r) => r.method === "POST");
     expect(post).toBeDefined();
     const result = await new OpenApiValidationProvider().resolve(post!, match);
@@ -80,7 +80,7 @@ describe("OpenAPI scanner", () => {
 
   test("comprehensive: detecta >20 rutas con $ref schemas y parámetros", async () => {
     const match = await new OpenApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new OpenApiScanner().scan(match);
+    const routes = await new OpenApiRouteScanner().scan(match);
     expect(routes.length).toBeGreaterThanOrEqual(20);
   });
 });

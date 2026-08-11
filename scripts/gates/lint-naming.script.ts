@@ -122,6 +122,43 @@ const RULES: readonly INamingRule[] = [
     what: "tests de los scanners",
     suffixes: [".spec.ts", ".test.ts"],
   },
+  // El plugin, que hasta ahora el gate no miraba **entera**: son
+  // treinta ficheros de la superficie pública MCP, y la regla existía
+  // solo en la cabeza de quien los escribió. Se destapó contando las
+  // carpetas con `.ts` (65) contra las carpetas con regla (17).
+  {
+    path: "projects/plugins/mcp-vertex_expostman/src/lib/tools/",
+    what: "un tool MCP por fichero",
+    suffixes: [".tool.ts"],
+  },
+  {
+    path: "projects/plugins/mcp-vertex_expostman/src/lib/helpers/",
+    what: "ayudantes internos del plugin",
+    suffixes: [".helper.ts"],
+  },
+  {
+    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/interfaces/",
+    what: "interfaces del plugin",
+    suffixes: [".interface.ts"],
+  },
+  {
+    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/constants/",
+    what: "constantes del plugin",
+    suffixes: [".constant.ts"],
+  },
+  // Los dobles compartidos van antes que la regla de tests: `bestMatch`
+  // se queda con el prefijo más largo, y este es más específico.
+  {
+    path: "projects/plugins/mcp-vertex_expostman/tests/helpers/",
+    what: "dobles compartidos entre los tests del plugin",
+    suffixes: [".helper.ts", "-context.ts"],
+  },
+  {
+    path: "projects/plugins/mcp-vertex_expostman/tests/",
+    what: "tests del plugin",
+    suffixes: [".spec.ts", ".test.ts"],
+  },
+  { path: "tests/contracts/", what: "tests de los contratos", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/cli/", what: "tests del CLI", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/e2e/", what: "tests de punta a punta", suffixes: [".spec.ts", ".test.ts"] },
 ];

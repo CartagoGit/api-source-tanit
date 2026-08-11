@@ -1,5 +1,5 @@
 /**
- * `FastApiScanner` — implementación de `IProjectScanner` + `IRouteScanner`
+ * `FastApiRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
  * + `IValidationSpecProvider` para proyectos FastAPI (Python).
  *
  * Detección:
@@ -12,7 +12,7 @@
  *   - Métodos soportados: get, post, put, delete, patch, options, head.
  *
  * Si el proyecto también expone `/openapi.json` o `/docs` (Swagger UI),
- * el `OpenApiScanner` lo descubrirá automáticamente porque busca
+ * el `OpenApiRouteScanner` lo descubrirá automáticamente porque busca
  * estos paths en la raíz del proyecto. Aquí solo cubrimos el caso
  * estático (sin servidor corriendo).
  */
@@ -104,7 +104,7 @@ async function collectPyFiles(projectRoot: string): Promise<string[]> {
 // Route scanner
 // ---------------------------------------------------------------------------
 
-export class FastApiScanner implements IRouteScanner {
+export class FastApiRouteScanner implements IRouteScanner {
   readonly framework = "fastapi" as const;
 
   matches(_match: IProjectMatch): boolean {

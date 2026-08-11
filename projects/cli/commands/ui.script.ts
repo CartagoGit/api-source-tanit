@@ -130,7 +130,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
-  console.log(`\n✔ Interfaz en ${server.url}`);
+  console.log(`\n✔ Interface at ${server.url}`);
   console.log("  · Listening on this machine only: not reachable from the network.");
   console.log("  · Ctrl-C to stop.\n");
 
@@ -141,7 +141,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // alguien espera tener que hacer.
   await new Promise<void>((resolve) => {
     const cerrar = (): void => {
-      console.log("\nCerrando la interfaz.");
+      console.log("\nShutting the interface down.");
       server.stop();
       resolve();
     };

@@ -1,9 +1,9 @@
 /**
- * `LaravelScanner` — implementación concreta del contrato
+ * `LaravelRouteScanner` — implementación concreta del contrato
  * `IRouteScanner` y `IProjectScanner` para proyectos Laravel.
  *
  * Esta clase es la PRIMERA implementación; convivirá con
- * `OpenApiScanner`, `ExpressScanner`, etc. cuando se añadan.
+ * `OpenApiRouteScanner`, `ExpressRouteScanner`, etc. cuando se añadan.
  *
  * Mantiene la lógica Laravel que vivía en `route-parser.service.ts` y
  * `paths.service.ts` para evitar regresiones: parsea `Route::…` con
@@ -221,7 +221,7 @@ function stripComments(src: string): string {
 // Route scanner
 // ---------------------------------------------------------------------------
 
-export class LaravelScanner implements IRouteScanner {
+export class LaravelRouteScanner implements IRouteScanner {
   readonly framework = "laravel" as const;
 
   constructor(private readonly opts: LaravelScannerOptions = {}) {}
