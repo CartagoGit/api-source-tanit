@@ -264,4 +264,88 @@ describe("la API", () => {
     const error = json["error"] as { nextAction: string };
     expect(error.nextAction).toContain("postman");
   });
+
+  test("los ajustes guardados llegan a la página", async () => {
+    const { status, json } = await post("/api/settings");
+    expect(status).toBe(200);
+    expect(json["ok"]).toBe(true);
+    const settings = json["settings"] as Record<string, unknown>;
+    expect(settings["version"]).toBe(1);
+  });
+
+  test("guardar un ajuste de la página lo persiste de verdad", async () => {
+    const guardado = await post("/api/settings/save", { theme: "dark" });
+    expect(guardado.status).toBe(200);
+    // Releído por una petición nueva: sobrevivió en disco.
+    const releido = await post("/api/settings");
+    const settings = releido.json["settings"] as Record<string, unknown>;
+    expect(settings["theme"]).toBe("dark");
+  });
+
+  test("los idiomas llegan con sus traducciones, para el selector", async () => {
+    const { status, json } = await post("/api/locales");
+    expect(status).toBe(200);
+    const locales = json["locales"] as Array<Record<string, unknown>>;
+    expect(locales.length).toBeGreaterThanOrEqual(15);
+    const es = locales.find((l) => l["code"] === "es");
+    expect(es).toBeDefined();
+    expect((es!["translations"] as Record<string, string>)["settings.theme"]).toBe("Tema");
+  });
+});
+
+/**
+ * S4 — la tuerca y la pantalla de ajustes, probadas sobre el HTML que
+ * el servidor sirve de verdad. El gate de esta slice es e2e: comprobar
+ * el string en memoria no vale, porque lo que se distribuye es lo que
+ * sale por HTTP.
+ */
+describe("la pantalla de ajustes (S4)", () => {
+  /** El HTML tal y como llega al navegador. */
+  async function pagina(): Promise<string> {
+    return (await fetch(`${BASE}/`)).text();
+  }
+
+  test("la tuerca está en la cabecera, con nombre accesible", async () => {
+    const html = await pagina();
+    expect(html).toContain('id="ajustes"');
+    expect(html).toMatch(/<(button|span|div)[^>]*id="ajustes"[^>]*aria-label="[^"]+"/);
+  });
+
+  test("la pantalla de ajustes existe y contiene idioma y tema", async () => {
+    const html = await pagina();
+    expect(html).toContain('id="vista-ajustes"');
+    expect(html).toContain('id="idioma"');
+    expect(html).toContain('id="tema"');
+  });
+
+  test("el tema elegido viaja en data-tema, no en clases repetidas", async () => {
+    const html = await pagina();
+    expect(html).toContain(':root[data-tema="dark"]');
+    expect(html).toContain(':root[data-tema="light"]');
+    // El bloque del sistema cede cuando hay elección manual.
+    expect(html).toContain(':root:not([data-tema="light"])');
+  });
+
+  test("los textos llevan su clave de traducción en data-i18n", async () => {
+    const html = await pagina();
+    expect(html).toContain('data-i18n="app.title"');
+    expect(html).toContain('data-i18n="settings.language"');
+    expect(html).toContain('data-i18n="settings.theme"');
+    expect(html).toContain('data-i18n="theme.system"');
+  });
+
+  test("no hay botón de guardar: el guardado es automático", async () => {
+    const html = await pagina();
+    // La sección de ajustes llama a /api/settings/save desde el script,
+    // pero ninguna parte declara un botón que diga guardar.
+    expect(html).not.toMatch(/id="guardar"/i);
+    expect(html).toContain("/api/settings/save");
+  });
+
+  test("la pantalla de ajustes no reemplaza el formulario: conserva el estado", async () => {
+    const html = await pagina();
+    // Las dos vistas conviven (una oculta); nada se destruye al cambiar.
+    expect(html).toContain('id="vista-principal"');
+    expect(html).toContain('id="vista-ajustes"');
+  });
 });
