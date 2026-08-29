@@ -2,13 +2,24 @@
 id: x00007
 title: "param-inferrer: sufijos camelCase muertos y query vacia que bloquea la inferencia"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
 related:
   - t00004
 ---
+
+> **Cerrada 2026-08-30.** Los dos defectos corregidos en `be5d67d`
+> (integrado por entrega del subagente + commit del dueño en paralelo;
+> contenido revisado por el orquestador contra la entrega declarada):
+> S1 — los sufijos camelCase (`Id`, `Codigo`) ahora se comparan contra el
+> nombre original, no contra `lname`; `DepartamentoId` infiere `"1"`.
+> S2 — `!s.query || s.query.length === 0`: vacío y ausente son lo mismo.
+> Suite: tests/core 688 verdes, plugin 118 verdes, `validate` exit 0
+> (128 ficheros / 2.585 tests). Novedad menor detectada y no arreglada
+> (fuera de scope): `codigo_proveedor` nunca recibe `PROV001` porque su
+> hint va después del de `codigo` en `PATH_PARAM_HINTS`.
 
 # x00007 — param-inferrer: sufijos camelCase muertos y query vacía que bloquea la inferencia
 
@@ -43,7 +54,7 @@ fixtures:
 - global_gate: none
 
 ### S1 — Sufijos camelCase de `_id` y `_codigo`
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/domain/param-inferrer.service.ts`,
   `tests/core/param-inferrer.branches.spec.ts`
 - **Gate**: test
@@ -52,7 +63,7 @@ fixtures:
   - "Los tests fijados con comentario en t00004 se actualizan al comportamiento correcto y se quita la nota de defecto"
 
 ### S2 — `query: []` y ausencia de query son lo mismo
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/domain/param-inferrer.service.ts`
 - **Gate**: test
 - acceptance:
@@ -60,7 +71,7 @@ fixtures:
   - "Ningún test existente de la familia param-inferrer se debilita"
 
 ### S3 — validate verde
-- **Status**: pending
+- **Status**: done
 - **Files**: (cadena)
 - **Gate**: test
 - acceptance:

@@ -59,6 +59,9 @@ date: 2026-08-30
 
 ## Registro de ejecución
 
+- 2026-08-30: `x00007` cerrada (be5d67d) — fixes de param-inferrer; el
+  subagente entregó también un fix de rutas relativas en `summary.tool.ts`
+  (fuera de sello, aceptado con su test de regresión Suite plugin 118.
 - 2026-08-30: `t00004` cerrada (91cc968) — branches 64,22→72,00 %, suelo 62→70.
 - 2026-08-30: `f515645` cierra F-009; `9d74ca0` cierra F-008; `226d97a` y
   limpieza cierran F-007. Plan creado con las 4 propuestas hijas listadas.
