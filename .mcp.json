@@ -4,6 +4,7 @@
       "type": "stdio",
       "command": "bun",
       "args": [
+        "--watch",
         "../mcp-vertex/tools/scripts/host/host-server.script.ts",
         "--workspace=.",
         "--config=./mcp-vertex.config.json"
