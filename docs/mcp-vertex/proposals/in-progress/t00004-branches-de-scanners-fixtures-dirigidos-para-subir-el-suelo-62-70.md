@@ -2,7 +2,7 @@
 id: t00004
 title: "branches de scanners: fixtures dirigidos para subir el suelo (62→70)"
 kind: test
-status: ready
+status: in-progress
 type: proposal
 track: export-to-postman
 date: 2026-08-29
@@ -67,21 +67,30 @@ tocar umbrales antes de demostrarlos.
   ficheros, 2.388 tests, branches 64,22 % = 3.711/5.778).
 
 ### S2 — Fixtures de branches para `laravel`
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/frameworks/laravel/**.spec.ts`, fixtures bajo `tests/fixtures/`
 - **Gate**: test
 - acceptance:
-  - "`endpoint-discovery.service.ts` y `route-parser.service.ts` suben de branches sin que ningún test existente se debilite"
+  - "endpoint-discovery.service.ts y route-parser.service.ts suben de branches sin que ningún test existente se debilite"
   - "Cada test nuevo recorre un `else` concreto de una forma de código real (no mock de internals)"
   - "`bun run validate` verde con los tests nuevos dentro"
+- evidence (`orchestrator`, 2026-08-30): endpoint-discovery 0,86 % → **79,31 %**
+  (116 → 24 branches sin cubrir), route-parser 6,81 % → **88,63 %** (44 → 5),
+  catalog-enricher 30,3 % → **75,75 %** (66 → 16), form-request-parser
+  58,8 % → **70,14 %**. Suite frameworks 31 ficheros / 785 tests verdes;
+  `validate` exit 0 con el lote dentro (2.505 tests).
 
 ### S3 — Fixtures de branches para `scanners/*`
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/frameworks/**.spec.ts`, fixtures bajo `tests/fixtures/`
 - **Gate**: test
 - acceptance:
   - "Las branches sin cubrir de `projects/frameworks/scanners/` bajan de 647"
   - "Los fixtures provienen de formas de código reales de los ejemplos o de variaciones mínimas de estas"
+- evidence (`orchestrator`, 2026-08-30): openapi 73,1 % → **86,81 %**,
+  django 65,9 % → **81,10 %**, symfony 68,5 % → **87,80 %** (además con el
+  fix de duplicados F-009 cazado por el test nuevo: commit `f515645`).
+  Branches global 64,22 % → **69,45 %** (4.021/5.789). `validate` exit 0.
 
 ### S4 — Fixtures de branches para `core/*` (domain, discovery, exporters)
 - **Status**: pending
