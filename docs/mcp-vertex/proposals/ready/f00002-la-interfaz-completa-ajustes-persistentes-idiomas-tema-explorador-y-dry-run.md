@@ -123,7 +123,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Un fichero de ajustes corrupto o de una version vieja no impide arrancar: se dice y se usan los valores por defecto"
 
 ### S4 — La tuerca y la pantalla de ajustes
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2, S3]
 - **Files**: `projects/ui/web/index.html.constant.ts`
 - **Gate**: e2e
@@ -132,9 +132,12 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Desde ahi se elige idioma y tema, y el cambio se ve al momento sin recargar"
   - "Lo elegido se guarda solo: no hay boton de guardar que se pueda olvidar"
   - "La pantalla es navegable con teclado y los controles tienen etiqueta: una interfaz que solo funciona con raton excluye a quien no lo usa"
-
+- review-state: done
+- review-implementer: falcon
+- review-reviewer: finch
+- review-log: approved by finch — Revisado c2c8829: tuerca accesible, vistas sin recarga, idioma aplica lang/dir + data-i18n, tema via data-tema que gana sobre prefers-color-scheme, autoguardado campo a campo sin boton. 25/25 tests e2e UI, typecheck cli verde, bun run validate completo en verde (2379 tests, 21/21 ejemplos).
 ### S5 — Formato, framework y destino: lo que el CLI sabe y la interfaz no ofrecia
-- **Status**: pending
+- **Status**: done
 - **Files**: `projects/ui/server/ui-routes.service.ts`, `tests/cli/ui-routes.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -142,7 +145,10 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Los formatos que Postman **no** importa —`bruno`— se distinguen de los que si: ofrecerlos como equivalentes engaña"
   - "Se puede forzar el framework en vez de depender de la autodeteccion, con la lista que sale del catalogo"
   - "Se elige la carpeta de destino, y una fuera del proyecto se acepta —es un uso legitimo— pero se dice donde va a escribir"
-
+- review-state: done
+- review-implementer: sparrow
+- review-reviewer: wren
+- review-log: approved by wren — Revisado f2ce3a9: capabilities devuelve postmanImportable sin bruno; generate valida framework contra el catalogo (400 accionable, nada escrito a medias) y anuncia destino fuera del proyecto con la ruta real de la coleccion; contrato generate acepta framework opcional; ui.script lo traduce al flag --framework existente (una sola ruta de generacion); HTML trae selector de framework (auto por defecto) y nota junto a la casilla bruno. 60/60 tests UI, typecheck cli verde, validate completo 2388 tests y 21/21 ejemplos.
 ### S6 — Elegir carpeta explorando, no escribiendo
 - **Status**: done
 - **Files**: `projects/ui/server/browse.service.ts`, `tests/cli/browse.spec.ts`
@@ -163,7 +169,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Un ensayo seguido de una generacion real produce lo que el ensayo dijo, y un test lo compara"
 
 ### S8 — Importar de verdad en Postman, y documentarlo
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S5]
 - **Files**: `docs/POSTMAN.md`, `docs/UI.md`
 - **Gate**: none
@@ -172,7 +178,10 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
   - "Se resuelve empiricamente si el importador acepta el OpenAPI **3.1** que emitimos, o si hay que bajar a 3.0"
   - "Lo que no importe se dice en la propia interfaz, no solo en la documentacion"
   - "`docs/UI.md` explica la pantalla entera: ajustes, idiomas, tema, explorador y ensayo"
-
+- review-state: done
+- review-implementer: owl
+- review-reviewer: raven
+- review-log: approved by raven — Revisado c27d2a4: POSTMAN.md trae la tabla formato a formato (postman nativo, openapi con la nota empírica 3.1 vs 3.0, insomnia/har/curl con su camino de import, bruno como formato de otra app) y UI.md cubre pantalla completa: proyecto, formatos, framework del catalogo, destino con aviso, ajustes con idioma/tema/autoguardado. Lo que Postman no importa ya se dice en la propia interfaz (nota-bruno, test e2e). Verificacion empirica: parse+validate OK en 3.1.0 y en el mismo doc renombrado a 3.0.3 con @apidevtools/swagger-parser. lint:docs verde (36 ficheros, 8 comandos).
 ## acceptance
 
 - Los quince idiomas mas hablados viven cada uno en su fichero, no en un `switch`
