@@ -9,7 +9,7 @@ import {
   outputEnvironmentPath,
   packageRoot,
   resetPathCache,
-} from "../../projects/core/discovery/paths.service";
+} from "../../packages/core/discovery/paths.service";
 
 describe("paths.service", () => {
   afterEach(() => {
@@ -107,19 +107,19 @@ describe("paths.service", () => {
   });
 
   /**
-   * `packageRoot()` decía `projects/core`, y llevaba tiempo.
+   * `packageRoot()` decía `packages/core`, y llevaba tiempo.
    *
    * El predicado que lo busca comprobaba una carpeta `contract`, en
    * singular, cuando se llama `contracts`: no casaba nunca, así que
    * siempre se caía al fallback «el padre de esta carpeta». Ese fallback
    * fue correcto cuando el fichero vivía un nivel bajo la raíz; al mover
-   * el código a `projects/` dejó de serlo, y los dos fallos se taparon
+   * el código a `packages/` dejó de serlo, y los dos fallos se taparon
    * mutuamente.
    *
    * Se pagó en dos sitios: en modo repo la salida iba a
-   * `projects/core/export-to-postman/` —quedó una colección de
+   * `packages/core/export-to-postman/` —quedó una colección de
    * `example-app` ahí dentro—, y `POSTMAN_EXAMPLE` buscaba en
-   * `projects/core/examples/`, que no existe, así que no hacía nada sin
+   * `packages/core/examples/`, que no existe, así que no hacía nada sin
    * decirlo.
    */
   /**
@@ -162,7 +162,7 @@ describe("paths.service", () => {
     test("contiene el marcador por el que se la reconoce", () => {
       const marcador = join(
         packageRoot(),
-        "projects",
+        "packages",
         "contracts",
         "constants",
         "core",
@@ -171,15 +171,15 @@ describe("paths.service", () => {
       expect(existsSync(marcador), marcador).toBe(true);
     });
 
-    test("no es una carpeta de dentro de projects/", () => {
-      expect(packageRoot().endsWith(join("projects", "core"))).toBe(false);
+    test("no es una carpeta de dentro de packages/", () => {
+      expect(packageRoot().endsWith(join("packages", "core"))).toBe(false);
     });
 
     /**
      * Escanear el propio repositorio tiene que escribir en su raíz, no
      * dentro del núcleo. Es el caso que el fallo rompía.
      */
-    test("en modo repo la salida va a la raíz, no dentro de projects/", () => {
+    test("en modo repo la salida va a la raíz, no dentro de packages/", () => {
       const raiz = packageRoot();
       process.env["POSTMAN_PROJECT_ROOT"] = raiz;
       resetPathCache();

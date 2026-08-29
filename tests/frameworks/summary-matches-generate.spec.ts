@@ -17,12 +17,12 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { generateWithAllFrameworks, summarizeWithAllFrameworks } from "../../projects/frameworks/index";
+import { generateWithAllFrameworks, summarizeWithAllFrameworks } from "../../packages/frameworks/index";
 import {
   PROPOSALS_DIR,
   comprehensiveFixtureDir,
 } from "../../scripts/helpers/root.helper";
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
 
 describe("summary y generate ven lo mismo", () => {
   test.each([...FRAMEWORK_IDS])(

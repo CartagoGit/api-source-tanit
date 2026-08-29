@@ -2,9 +2,27 @@
   "coreVersion": "0.1.0",
   "cacheDir": ".cache/mcp-vertex",
   "docsDir": "docs/mcp-vertex",
+  "surfaceMode": "managed",
+  "managedSurface": {
+    "loading": "lazy",
+    "idleTtlMs": 300000,
+    "maxWarmPlugins": 8
+  },
+  "agentWorktree": false,
+  "filesystem": {
+    "authorizedRoots": [
+      "packages",
+      "scripts",
+      "tests",
+      "docs",
+      "examples",
+      ".github",
+      ".vscode"
+    ]
+  },
   "convention": {
-    "pluginPathsRoot": "plugins",
-    "sourceRoot": "plugins"
+    "pluginPathsRoot": "packages",
+    "sourceRoot": "packages"
   },
   "plugins": {
     "git": {
@@ -15,7 +33,7 @@
     "search": {
       "options": {
         "roots": [
-          "projects",
+          "packages",
           "scripts",
           "tests",
           "docs",
@@ -53,7 +71,7 @@
         "roots": [
           "docs/mcp-vertex",
           "README.md",
-          "projects/plugins/mcp-vertex_expostman/README.md"
+          "packages/plugins/mcp-vertex_expostman/README.md"
         ],
         "extensions": [
           "md",
@@ -75,7 +93,7 @@
     "conventions": {
       "options": {
         "roots": [
-          "projects",
+          "packages",
           "scripts",
           "tests",
           "docs",
@@ -104,7 +122,15 @@
       }
     },
     "auto-plugin-selector": {
-      "options": {}
+      "options": {
+        "weights": {
+          "match": 0.2,
+          "tokenTax": 0.25,
+          "latencyTax": 0.15,
+          "historicalSuccess": 0.2,
+          "permissionRisk": 0.2
+        }
+      }
     },
     "cache": {
       "options": {
@@ -199,14 +225,79 @@
     "orchestrator-runner": {
       "options": {}
     },
+    "agent-orchestrator": {
+      "options": {
+        "policy": {
+          "defaultMode": "auto",
+          "defaults": {
+            "budget": {
+              "maxTokensOrchestrator": 200000,
+              "maxTokensPerSubagent": 50000,
+              "timeoutMs": 0
+            },
+            "rotation": {
+              "maxIterationsPerSubagent": 3,
+              "allow": [
+                "token-budget-exhausted",
+                "schema-violation",
+                "repeated-output",
+                "error-storm"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "commit-policy": {
+      "options": {
+        "gitTimeoutMs": 60000,
+        "commit": {
+          "enabled": true
+        },
+        "stash": {
+          "enabled": false
+        },
+        "push": {
+          "enabled": false,
+          "onCommit": false,
+          "force": "with-lease",
+          "protectedBranches": [
+            "main",
+            "master"
+          ],
+          "remote": "origin",
+          "branch": "develop"
+        },
+        "cadence": {
+          "triggers": [
+            {
+              "kind": "slice"
+            },
+            {
+              "kind": "interval",
+              "minutes": 5
+            }
+          ],
+          "sliceScoping": true,
+          "allowForeignChanges": true
+        },
+        "identity": {
+          "mode": "repo"
+        },
+        "audit": {
+          "trailer": "co-authored-by",
+          "agentFormat": "${host}/${model}"
+        }
+      }
+    },
     "prompt-eval": {
       "options": {}
     },
     "expostman": {
-      "path": "projects/plugins/mcp-vertex_expostman/src/index.ts",
+      "path": "packages/plugins/mcp-vertex_expostman/src/index.ts",
       "options": {
-        "defaultProjectRoot": "${workspaceFolder}/..",
-        "cliScript": "${workspaceFolder}/projects/cli/cli.script.ts"
+        "defaultProjectRoot": "${workspaceFolder}",
+        "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts"
       }
     }
   }

@@ -102,7 +102,7 @@ aspnet— que efectivamente no tienen ningún endpoint de sesión. Antes los
 
 ### S1 — detector de esquema
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/domain/auth-scheme.service.ts` (nuevo),
+- **Ficheros**: `packages/core/domain/auth-scheme.service.ts` (nuevo),
   `tests/core/auth-scheme.service.spec.ts` (nuevo, 16 tests).
 - `hasLoginEndpoint()` sale de `auth-flow.service.ts` y **comparte los
   patrones** con `detectAuthFlow`. Dos listas de rutas de login se
@@ -111,14 +111,14 @@ aspnet— que efectivamente no tienen ningún endpoint de sesión. Antes los
 
 ### S2 — generador del bloque `auth`
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/domain/collection-builder.service.ts`,
-  `projects/core/discovery/generation.pipeline.ts`.
+- **Ficheros**: `packages/core/domain/collection-builder.service.ts`,
+  `packages/core/discovery/generation.pipeline.ts`.
 - El esquema se resuelve **antes** de construir la colección: decide qué
   cabeceras lleva cada petición, así que no se puede parchear después.
 
 ### S3 — variables de entorno por esquema
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/discovery/generation.pipeline.ts`.
+- **Ficheros**: `packages/core/discovery/generation.pipeline.ts`.
 
 ### S4 — el ejemplo que lo ejercita
 - **Estado**: done (2026-08-07)

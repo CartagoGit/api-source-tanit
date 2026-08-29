@@ -12,7 +12,7 @@
  */
 import { describe, expect, test } from "vitest";
 import { join, } from "node:path";
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 
 const FIXTURES = FIXTURES_DIR;

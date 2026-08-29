@@ -99,7 +99,7 @@ De paso, `example-nestjs` declaraba su endpoint de actualización con
 
 ### S2 — DTOs de TypeScript (NestJS)
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/frameworks/scanners/nestjs.scanner.ts`,
+- **Ficheros**: `packages/frameworks/scanners/nestjs.scanner.ts`,
   `tests/frameworks/nestjs-dto.spec.ts` (nuevo, 8 tests).
 - Los cuatro bugs de arriba. Un DTO da ahora sus campos con tipo,
   formato, obligatoriedad, cotas y enums, esté importado o en el mismo

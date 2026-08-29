@@ -17,7 +17,7 @@ import {
   RustValidatorProvider,
   normalizePathParams,
   parseRustStruct,
-} from "../../projects/frameworks/scanners/rust.scanner";
+} from "../../packages/frameworks/scanners/rust.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";

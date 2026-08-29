@@ -5,8 +5,8 @@
  * comparten es una ruta escrita a mano. Y una ruta escrita a mano se
  * queda vieja sin decir nada.
  *
- * Pasó: al reorganizar en `projects/`, el CLI se movió de
- * `scripts/` a `projects/cli/`, y esta cadena se quedó en tres sitios
+ * Pasó: al reorganizar en `packages/`, el CLI se movió de
+ * `scripts/` a `packages/cli/`, y esta cadena se quedó en tres sitios
  * (los dos tools y `mcp-vertex.config.json`) apuntando a un fichero
  * inexistente. Nada falló en los gates —
  * `runBunScript` devuelve `ok: false` con "module not found", y eso solo
@@ -25,7 +25,7 @@
  * Separadores `/` a propósito: se compone con `${workspaceRoot}/…` y
  * tanto Bun como Node los aceptan también en Windows.
  */
-export const CLI_SCRIPT_RELATIVE = "projects/cli/cli.script.ts" as const;
+export const CLI_SCRIPT_RELATIVE = "packages/cli/cli.script.ts" as const;
 
 /**
  * El entrypoint del CLI para un workspace concreto.

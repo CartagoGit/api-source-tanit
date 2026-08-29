@@ -2,11 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildCollection,
-} from "../../projects/core/domain/collection-builder.service";
+} from "../../packages/core/domain/collection-builder.service";
 import type {
   EndpointSpec,
-} from "../../projects/contracts/interfaces/core/postman.interface";
-import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface";
+} from "../../packages/contracts/interfaces/core/postman.interface";
+import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {
   name: "t",

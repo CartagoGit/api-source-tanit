@@ -11,8 +11,8 @@
   // es una declaración que nadie ha comprobado que sirva.
   "extends": "./tsconfig.base.json",
   "include": [
-    "projects/contracts/**/*.ts",
-    "projects/contracts/**/*.d.ts",
+    "packages/contracts/**/*.ts",
+    "packages/contracts/**/*.d.ts",
     "tests/contracts/**/*.ts"
   ]
 }

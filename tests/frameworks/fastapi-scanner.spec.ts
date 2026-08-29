@@ -3,7 +3,7 @@ import {
   FastApiProjectScanner,
   FastApiRouteScanner,
   FastApiPydanticValidationProvider,
-} from "../../projects/frameworks/scanners/fastapi.scanner";
+} from "../../packages/frameworks/scanners/fastapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

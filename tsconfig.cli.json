@@ -5,12 +5,12 @@
   // de debajo a la vez.
   "extends": "./tsconfig.base.json",
   "include": [
-    "projects/contracts/**/*.d.ts",
-    "projects/core/**/*.ts",
-    "projects/core/**/*.d.ts",
-    "projects/frameworks/**/*.ts",
-    "projects/cli/**/*.ts",
-    "projects/ui/**/*.ts",
+    "packages/contracts/**/*.d.ts",
+    "packages/core/**/*.ts",
+    "packages/core/**/*.d.ts",
+    "packages/frameworks/**/*.ts",
+    "packages/cli/**/*.ts",
+    "packages/ui/**/*.ts",
     "scripts/**/*.ts",
     "tests/cli/**/*.ts",
     "tests/e2e/**/*.ts",

@@ -13,10 +13,10 @@ related:
 
 > **Cerrada 2026-08-06.** Las cinco slices.
 >
-> `projects/{core,frameworks,cli,ui,plugin}` y `scripts/{gates,build}`.
+> `packages/{core,frameworks,cli,ui,plugin}` y `scripts/{gates,build}`.
 > `core/` queda partido en `contracts/`, `domain/`, `discovery/`,
 > `adapters/` y `helpers/`; los 11 comandos salen de `scripts/` y se
-> agrupan en `projects/cli/commands/`.
+> agrupan en `packages/cli/commands/`.
 >
 > Los movimientos se hicieron con `scripts/gates/move-module.script.ts`,
 > nuevo: resuelve cada especificador a ruta absoluta, le aplica el
@@ -79,7 +79,7 @@ quedó en la de la primera versión. Los síntomas concretos:
 > no dentro.
 
 ```
-projects/
+packages/
   core/                    Lo agnóstico. No nombra ni un framework.
     contracts/             interfaces y constantes compartidas
     domain/                collection-builder, auth-flow, param-inferrer,
@@ -107,23 +107,23 @@ scripts/                   Tooling DEL REPO, no del producto
   build/                   build-binary
 
 examples/                  Un proyecto por framework + README
-tests/                     Espejo de projects/
+tests/                     Espejo de packages/
 docs/                      Documentación de usuario y de agentes
 ```
 
 `scripts/tools/` del boceto original desaparece: `diff`, `stats`,
 `list-endpoints`, `scan`, `init` y `summary` **son comandos del CLI** (se
-invocan por `cli.script.ts`), así que su sitio es `projects/cli/commands/`.
+invocan por `cli.script.ts`), así que su sitio es `packages/cli/commands/`.
 En `scripts/` solo queda lo que sirve al repo y no al producto.
 
-Lo que gana: `projects/core` se puede leer sin saber que existe un CLI, y
+Lo que gana: `packages/core` se puede leer sin saber que existe un CLI, y
 un scanner nuevo tiene un sitio evidente.
 
 ## slices
 
-### S1 — `projects/core`
+### S1 — `packages/core`
 - **Files**: mover `contracts/`, `services/`, `helpers/` bajo
-  `projects/core/` con la separación de arriba.
+  `packages/core/` con la separación de arriba.
 - **Gate**: `bun run validate`.
 
 - Los imports se reescriben mecánicamente.
@@ -132,9 +132,9 @@ un scanner nuevo tiene un sitio evidente.
 - **Acceptance**: `bun run validate` y `bun run validate:package` en
   verde; el tarball sigue trayendo lo mismo.
 
-### S2 — `projects/cli` y `projects/ui`
-- **Files**: `scripts/cli.script.ts` + los comandos → `projects/cli/`;
-  `scripts/interactive.script.ts` → `projects/ui/`.
+### S2 — `packages/cli` y `packages/ui`
+- **Files**: `scripts/cli.script.ts` + los comandos → `packages/cli/`;
+  `scripts/interactive.script.ts` → `packages/ui/`.
 - **Gate**: `bun test tests/e2e/cli-external-project.test.ts` y
   `tests/e2e/compiled-binary.test.ts`.
 
@@ -149,15 +149,15 @@ un scanner nuevo tiene un sitio evidente.
 - **Acceptance**: ningún script del `package.json` cambia de nombre;
   solo su ruta.
 
-### S4 — `projects/plugin`
-- **Files**: `plugins/postman-exporter/` → `projects/plugin/`.
+### S4 — `packages/plugin`
+- **Files**: `plugins/postman-exporter/` → `packages/plugin/`.
 - **Gate**: `bun test plugins/…/plugin-boot.spec.ts` y el `path` de
   `mcp-vertex.config.json`.
 
 - **Acceptance**: el host MCP sigue arrancando el plugin.
 
 ### S5 — `tests/` como espejo
-- **Files**: reorganizar `tests/` con la misma forma que `projects/`.
+- **Files**: reorganizar `tests/` con la misma forma que `packages/`.
 - **Gate**: `bun test`.
 
 - **Acceptance**: 1030+ tests en verde, ningún fichero perdido.

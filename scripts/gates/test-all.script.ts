@@ -16,11 +16,12 @@
  */
 import { readdir } from "node:fs/promises";
 import { join, } from "node:path";
-import { resetPathCache } from "../../projects/core/discovery/paths.service.js";
-import { defaultOrchestrator } from "../../projects/frameworks/framework.registry.js";
-import { buildSpecsFromScanner } from "../../projects/core/adapters/parsed-route-to-spec.adapter.js";
-import { loadProject } from "../../projects/core/discovery/project-loader.service.js";
-import { applyAgnosticInference } from "../../projects/core/domain/param-inferrer.service.js";
+import { resetPathCache } from "../../packages/core/discovery/paths.service.js";
+import { defaultOrchestrator } from "../../packages/frameworks/framework.registry.js";
+import { buildSpecsFromScanner } from "../../packages/core/adapters/parsed-route-to-spec.adapter.js";
+import { loadProject } from "../../packages/core/discovery/project-loader.service.js";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service.js";
+import { applyAgnosticInference } from "../../packages/core/domain/param-inferrer.service.js";
 import { FIXTURES_DIR } from "../helpers/root.helper.js";
 
 interface FixtureResult {
@@ -68,9 +69,10 @@ async function runFixture(fixture: string): Promise<FixtureResult> {
       const inferStats = applyAgnosticInference([...result.specs]);
       bodiesAuto = inferStats.bodiesAdded;
     } else {
-      const { config, manualEndpoints } = await loadProject();
-      const { discoverEndpoints } = await import("../../projects/frameworks/laravel/endpoint-discovery.service.js");
-      const discovered = await discoverEndpoints(config, manualEndpoints);
+      const context = resolveProjectContext({ projectRoot: fixture });
+      const { config, manualEndpoints } = await loadProject(process.argv, context);
+      const { discoverEndpoints } = await import("../../packages/frameworks/laravel/endpoint-discovery.service.js");
+      const discovered = await discoverEndpoints(config, manualEndpoints, context);
       routeCount = discovered.routes.length;
       withFR = discovered.withFormRequest;
       withoutFR = discovered.withoutFormRequest;

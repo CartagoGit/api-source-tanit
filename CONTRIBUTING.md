@@ -116,18 +116,18 @@ executive summary:
 
 | Suffix | Folder | What it is |
 | --- | --- | --- |
-| `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/` | Shared types and frozen constants. |
-| `*.helper.ts` | `projects/core/helpers/` | Pure utilities, no I/O. |
-| `*.service.ts` | `projects/core/` | Stateful business logic. |
-| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/` | Module kinds with their own meaning — see NAMING.md. |
-| `*.exporter.ts` | `projects/core/exporters/` | One `IExportTarget` per output format. |
-| `*.scanner.ts` | `projects/frameworks/` | One framework's route discovery. |
-| `*.script.ts` | `projects/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
-| `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
+| `*.interface.ts` / `*.constant.ts` | `packages/contracts/` | Shared types and frozen constants. |
+| `*.helper.ts` | `packages/core/helpers/` | Pure utilities, no I/O. |
+| `*.service.ts` | `packages/core/` | Stateful business logic. |
+| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `packages/core/` | Module kinds with their own meaning — see NAMING.md. |
+| `*.exporter.ts` | `packages/core/exporters/` | One `IExportTarget` per output format. |
+| `*.scanner.ts` | `packages/frameworks/` | One framework's route discovery. |
+| `*.script.ts` | `packages/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
+| `*.tool.ts` | `packages/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 
 The old table named `contracts/`, `services/` and `helpers/` as
-top-level folders. They have lived under `projects/` for three
+top-level folders. They have lived under `packages/` for three
 reorganisations.
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
 | `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
@@ -152,7 +152,7 @@ convenciones, solo por historia.
 ### El árbol
 
 ```
-projects/
+packages/
   core/            lo agnóstico — no nombra ni un framework
     contracts/     interfaces y constantes compartidas
     domain/        collection-builder, auth-flow, param-inferrer…
@@ -166,20 +166,20 @@ projects/
 scripts/
   gates/           typecheck, los 4 lints, validate, changed
   build/           binario compilado
-tests/             espejo de projects/
+tests/             espejo de packages/
 examples/          un proyecto por framework
 ```
 
 ### Las capas y su dirección
 
 ```
-projects/contracts/     interfaces, tipos y constantes. Sin implementación
+packages/contracts/     interfaces, tipos y constantes. Sin implementación
         ↑
-projects/core/          núcleo agnóstico
+packages/core/          núcleo agnóstico
         ↑
-projects/frameworks/    los 21 scanners y sus parsers
+packages/frameworks/    los 21 scanners y sus parsers
         ↑
-projects/cli/ + ui/     raíz de composición: une las dos
+packages/cli/ + ui/     raíz de composición: une las dos
 ```
 
 La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
@@ -187,7 +187,7 @@ El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
 
-### Los tipos y las constantes viven en `projects/contracts/`
+### Los tipos y las constantes viven en `packages/contracts/`
 
 Ni una `export interface`, `export type` o constante exportada fuera de
 ahí. `bun run lint:contracts` lo exige.
@@ -210,7 +210,7 @@ ya instanciados (`DEFAULT_REGISTRY`). Están declaradas en las
 `EXCEPTIONS` del gate con su motivo escrito, y el gate también falla
 cuando una excepción deja de hacer falta.
 
-Los detalles, en [`projects/contracts/README.md`](projects/contracts/README.md).
+Los detalles, en [`packages/contracts/README.md`](packages/contracts/README.md).
 
 ### Regex `g`: nunca se mueve el `lastIndex` de uno compartido
 
@@ -245,7 +245,7 @@ como si el repo estuviera vacío.
 | Quién | Qué usa |
 | --- | --- |
 | Gates y tests del repo | `scripts/helpers/root.helper.ts` |
-| Código de producción | `findRepoRoot()` de `projects/core/helpers/` |
+| Código de producción | `findRepoRoot()` de `packages/core/helpers/` |
 | Tests del plugin | `workspaceRoot()` de su `tests/helpers/` |
 
 `root.helper.spec.ts` comprueba que **todo** lo declarado existe en
@@ -275,7 +275,7 @@ es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 - **Dot, never hyphen.** `foo.service.ts`, not `foo-service.ts`.
 - **One tool per file.** No multi-tool `tools.ts`.
 - **One agent per file.** No multi-agent `agents.ts`.
-- **El plugin nunca importa `projects/core/` a pelo.** The plugin only invokes
+- **El plugin nunca importa `packages/core/` a pelo.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
 - **`services/` never imports `frameworks/`.** Lo exige
@@ -322,7 +322,7 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex_expostman/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `packages/plugins/mcp-vertex_expostman/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |

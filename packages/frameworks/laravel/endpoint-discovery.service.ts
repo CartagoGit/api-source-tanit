@@ -17,7 +17,6 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
 import { findFormRequestForController, generateCompleteBody, generateMinimalBody, parseFormRequest } from "./form-request-parser.service.js";
-import { fromProjectRelative, projectRoot, toProjectRelative } from "../../core/discovery/paths.service.js";
 import { parseAllRoutes, stripComments } from "./route-parser.service.js";
 import { mergeWithManual } from "../../core/domain/endpoint-merge.service.js";
 import { prettyGroupName, topGroupFor } from "../../core/helpers/uri.helper.js";
@@ -108,9 +107,9 @@ const controllerFormRequestCache = new Map<
  */
 async function parseControllerFormRequests(
   controllerFqcn: string,
+  context: IProjectContext,
 ): Promise<Map<string, string>> {
-  const root = projectRoot();
-  if (!root) return new Map();
+  const root = context.projectRoot;
 
   // App\Http\Controllers\Foo\BarController → app/Http/Controllers/Foo/BarController.php
   const rel = controllerFqcn.replace(/^App\\/, "app/").replace(/\\/g, "/") + ".php";
@@ -187,13 +186,14 @@ async function parseControllerFormRequests(
 
 async function resolveFormRequestPath(
   fqcn: string,
+  context: IProjectContext,
 ): Promise<string | null> {
   // App\Http\Requests\Usuarios\NuevoUsuarioRequest
   // → app/Http/Requests/Usuarios/NuevoUsuarioRequest.php
   if (!fqcn.startsWith("App\\Http\\Requests\\")) return null;
   const rel = fqcn.replace(/^App\\/, "app/").replace(/\\/g, "/") + ".php";
   try {
-    const abs = fromProjectRelative(rel);
+    const abs = join(context.projectRoot, rel);
     await readFile(abs, "utf8");
     return rel;
   } catch {
@@ -209,6 +209,7 @@ async function routeToSpec(
   route: ParsedRoute,
   config: ProjectConfig,
   rulesCache: Map<string, FormRequestRules | null>,
+  context: IProjectContext,
 ): Promise<EndpointSpec> {
   const postmanUri = toPostmanUri(route.uri);
   const overrides = config.uriGroupOverrides ?? {};
@@ -225,24 +226,25 @@ async function routeToSpec(
   // FormRequest desde firma del controlador (+ fallback por convención)
   let rules: FormRequestRules | null = null;
   if (route.controllerClass && route.actionName) {
-    const map = await parseControllerFormRequests(route.controllerClass);
+    const map = await parseControllerFormRequests(route.controllerClass, context);
     const frFqcn = map.get(route.actionName);
     let rel: string | null = null;
     if (frFqcn) {
-      rel = await resolveFormRequestPath(frFqcn);
+      rel = await resolveFormRequestPath(frFqcn, context);
     }
     if (!rel) {
       // Convención de nombre: IndexXRequest / StoreXRequest / etc.
       rel = await findFormRequestForController(
         route.controllerClass,
         route.actionName,
+        context,
       );
     }
     if (rel) {
       // Normaliza a ruta relativa al proyecto si vino absoluta.
       if (rel.startsWith("/")) {
         try {
-          rel = toProjectRelative(rel);
+          rel = rel.slice(context.projectRoot.length + 1);
         } catch {
           /* keep abs */
         }
@@ -250,7 +252,7 @@ async function routeToSpec(
       spec.formRequest = rel;
       if (!rulesCache.has(rel)) {
         try {
-          const r = await parseFormRequest(rel);
+          const r = await parseFormRequest(rel, context);
           rulesCache.set(rel, r.isEmpty ? null : r);
         } catch {
           rulesCache.set(rel, null);
@@ -286,7 +288,7 @@ async function routeToSpec(
 export async function discoverEndpoints(
   config: ProjectConfig,
   manualOverrides: EndpointSpec[] = [],
-  context?: IProjectContext,
+  context: IProjectContext,
 ): Promise<{
   specs: EndpointSpec[];
   routes: ParsedRoute[];
@@ -304,7 +306,7 @@ export async function discoverEndpoints(
     if (!["GET", "POST", "PUT", "DELETE", "PATCH"].includes(route.method)) {
       continue;
     }
-    const spec = await routeToSpec(route, config, rulesCache);
+    const spec = await routeToSpec(route, config, rulesCache, context);
     if (spec.description?.startsWith("Auto ·")) withFr += 1;
     else withoutFr += 1;
     auto.push(spec);

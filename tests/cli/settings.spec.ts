@@ -20,13 +20,13 @@ import { tmpdir } from "node:os";
 import {
   DEFAULT_SETTINGS,
   SETTINGS_VERSION,
-} from "../../projects/contracts/interfaces/cli/settings.interface";
+} from "../../packages/contracts/interfaces/cli/settings.interface";
 import {
   patchSettings,
   readSettings,
   settingsPath,
   writeSettings,
-} from "../../projects/ui/settings/settings.service";
+} from "../../packages/ui/settings/settings.service";
 
 /** Un fichero de ajustes en un temporal, distinto por test. */
 async function conFichero<T>(fn: (path: string) => Promise<T>): Promise<T> {

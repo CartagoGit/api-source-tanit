@@ -3,7 +3,7 @@ import {
   GinProjectScanner,
   GinRouteScanner,
   GinBindingProvider,
-} from "../../projects/frameworks/scanners/gin.scanner";
+} from "../../packages/frameworks/scanners/gin.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

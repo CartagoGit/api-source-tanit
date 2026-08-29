@@ -92,7 +92,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
 
 ### S1 — Prueba integrada del contrato que el árbol actual ya declara
 - **Status**: done
-- **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/generate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/summary.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/validate.tool.spec.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/test.tool.spec.ts`
+- **Files**: `packages/plugins/mcp-vertex_expostman/tests/integration/generate.tool.spec.ts`, `packages/plugins/mcp-vertex_expostman/tests/integration/summary.tool.spec.ts`, `packages/plugins/mcp-vertex_expostman/tests/integration/validate.tool.spec.ts`, `packages/plugins/mcp-vertex_expostman/tests/integration/test.tool.spec.ts`
 - **Gate**: plugin
 - acceptance:
   - "El plugin arranca y los 4 tools responden con una salida que valida contra su propio esquema"
@@ -102,7 +102,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
 ### S2 — Los tools de solo lectura que hoy faltan
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/check.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/list.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/stats.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/scan.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/index.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
+- **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/check.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/tools/list.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/tools/stats.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/tools/scan.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/index.ts`, `packages/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
 - **Gate**: plugin
 - acceptance:
   - "`check` responde si la colección se ha desincronizado del código, con la lista de lo que falta"
@@ -112,7 +112,7 @@ Hallazgo 18 (MINOR) de a00001, más la recalibración de la auditoría 2026-08-0
 ### S3 — Las operaciones útiles pero no triviales: `push` e `init`
 - **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/push.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`, `projects/plugins/mcp-vertex_expostman/tests/integration/push.tool.spec.ts`
+- **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/push.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`, `packages/plugins/mcp-vertex_expostman/tests/integration/push.tool.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "`init` permite a un agente scaffoldar una configuración válida sin parsear stdout humano"

@@ -31,7 +31,7 @@ import {
   type IScanOutput,
 } from "../contracts/plugin.interface";
 import { runScan } from "../../../../../cli/commands/scan.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "scan";
 
@@ -78,12 +78,8 @@ export function buildScanToolRegistration(ctx: IMcpPluginContext): IToolRegistra
           }
 
           const started = Date.now();
-          // El servidor MCP es de vida larga y el descubrimiento cachea
-          // por proceso: sin esto, escanear el proyecto A y luego el B
-          // devolvería lo de A.
-          const outcome = await withScopedPaths({ projectRoot }, () =>
-            runScan(["--project-root", projectRoot]),
-          );
+          const context = resolveProjectContext({ projectRoot });
+          const outcome = await runScan([], context);
 
           const out: IScanOutput = {
             ok: true,

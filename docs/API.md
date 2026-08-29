@@ -18,7 +18,7 @@ librería, `expostman --help` lista los comandos y las banderas.
 
 > 135 símbolos en 42 módulos.
 
-### `projects/core/adapters/parsed-route-to-spec.adapter.ts`
+### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
 Adapter universal: `ParsedRoute` (neutro) → `EndpointSpec` (Postman).
 
@@ -58,7 +58,7 @@ con la misma forma que el `discoverEndpoints` legacy.
 export async function _peekSpec(projectRoot: string): Promise<string | null>
 ```
 
-### `projects/core/discovery/discovery.orchestrator.ts`
+### `packages/core/discovery/discovery.orchestrator.ts`
 
 `DiscoveryOrchestrator` — punto de entrada único del discovery framework-agnostic.
 
@@ -75,7 +75,7 @@ queda con el primero: un repo con un Express heredado y rutas nuevas de
 Next.js casa con dos, y quedarse con uno devolvía un tercio de los
 endpoints sin decir nada.
 
-### `projects/core/discovery/generation.pipeline.ts`
+### `packages/core/discovery/generation.pipeline.ts`
 
 Pipeline de generación: `projectRoot` → `PostmanCollection`.
 
@@ -101,7 +101,7 @@ Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
 frameworks distintos con `Promise.all` y comprueba que ninguno se
 cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
 
-### `projects/core/discovery/paths.service.ts`
+### `packages/core/discovery/paths.service.ts`
 
 Fachada con estado sobre `project-context.service.ts`.
 
@@ -213,7 +213,7 @@ salga llamándose `export-to-postman` en vez de como la API.
 #### `outputDir`
 
 ```ts
-export function outputDir(): string
+export function outputDir(context?: IProjectContext): string
 ```
 
 Devuelve el directorio donde se escriben los artefactos.
@@ -236,7 +236,7 @@ Prioridad: env `POSTMAN_OUTPUT_BASENAME` → nombre del proyecto.
 #### `outputCollectionPath`
 
 ```ts
-export async function outputCollectionPath( projectName?: string, ): Promise<string>
+export async function outputCollectionPath( projectName?: string, context?: IProjectContext, ): Promise<string>
 ```
 
 #### `outputEnvironmentPath`
@@ -292,7 +292,7 @@ Quien la imprime todavía no ha cargado la configuración —esa es la
 gracia de imprimirla antes—, así que el nombre es opcional: sin él se
 dice que aún no se sabe, en vez de inventarse uno.
 
-### `projects/core/discovery/project-context.service.ts`
+### `packages/core/discovery/project-context.service.ts`
 
 Resolución explícita del contexto de un proyecto.
 
@@ -333,7 +333,7 @@ export function toProjectRelative(context: IProjectContext, absPath: string): st
 export function hasProjectDir(context: IProjectContext, relPath: string): boolean
 ```
 
-### `projects/core/discovery/project-loader.service.ts`
+### `packages/core/discovery/project-loader.service.ts`
 
 Carga la configuración del proyecto host de forma agnóstica.
 
@@ -419,7 +419,7 @@ Piezas internas expuestas **solo** para sus tests.
 El guion bajo es la señal: no forman parte del contrato del módulo y
 pueden cambiar sin aviso.
 
-### `projects/core/discovery/project-name.service.ts`
+### `packages/core/discovery/project-name.service.ts`
 
 Nombre del proyecto, leído del manifiesto de su ecosistema.
 
@@ -434,7 +434,7 @@ Nombre del proyecto en `projectRoot`.
 Nunca lanza: si no hay manifiesto legible, cae al nombre de la
 carpeta, que siempre existe.
 
-### `projects/core/discovery/summary.service.ts`
+### `packages/core/discovery/summary.service.ts`
 
 `summary` — qué ve la herramienta en un proyecto, sin escribir nada.
 
@@ -453,9 +453,9 @@ que es una respuesta honesta, no un error.
 El catálogo de frameworks y el fallback se inyectan, igual que en el
 pipeline: este servicio es del núcleo y no puede conocer los scanners
 concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
-en `projects/frameworks/`.
+en `packages/frameworks/`.
 
-### `projects/core/domain/auth-flow.service.ts`
+### `packages/core/domain/auth-flow.service.ts`
 
 Flujo de autenticación de la colección.
 
@@ -520,7 +520,7 @@ un proyecto Laravel.
 Mira los archivos `app/Http/Controllers/*Auth*Controller.php` y busca
 patrones de respuesta. Si no encuentra nada, devuelve undefined.
 
-### `projects/core/domain/auth-scheme.service.ts`
+### `packages/core/domain/auth-scheme.service.ts`
 
 Qué esquema de autenticación usa la API, deducido de sus endpoints.
 
@@ -560,7 +560,7 @@ Las variables de entorno que hace falta rellenar para ese esquema.
 Van vacías y marcadas como secreto: el valor lo pone quien usa la
 colección, y no debe acabar en un fichero versionado.
 
-### `projects/core/domain/collection-builder.service.ts`
+### `packages/core/domain/collection-builder.service.ts`
 
 Genera una colección Postman v2.1.0 a partir de un catálogo de `EndpointSpec` agrupando los endpoints en carpetas automáticamente.
 
@@ -576,7 +576,7 @@ y la configuración del proyecto.
 @param specs Catálogo de endpoints del proyecto.
 @param config Configuración del proyecto (nombre, variables, zonas…).
 
-### `projects/core/domain/endpoint-merge.service.ts`
+### `packages/core/domain/endpoint-merge.service.ts`
 
 Fusión de los endpoints descubiertos con los overrides manuales del host.
 
@@ -593,7 +593,7 @@ Exportado porque los overrides manuales no son una cosa de Laravel:
 cualquier proyecto puede declarar un `endpoints.constant.ts` para
 corregir o ampliar lo que el scanner deduce.
 
-### `projects/core/domain/environment-builder.service.ts`
+### `packages/core/domain/environment-builder.service.ts`
 
 Genera environments Postman v2.1.0 agnósticos.
 
@@ -628,7 +628,7 @@ base de variables.
 export function defaultEnvironments( baseUrl: string, ): EnvironmentDef[]
 ```
 
-### `projects/core/domain/param-inferrer.service.ts`
+### `packages/core/domain/param-inferrer.service.ts`
 
 Inferencia agnóstica de path params, query params y body para endpoints SIN FormRequest asociado.
 
@@ -723,7 +723,7 @@ Piezas internas expuestas **solo** para sus tests.
 
 El guion bajo es la señal: no forman parte del contrato del módulo.
 
-### `projects/core/domain/postman-api.service.ts`
+### `packages/core/domain/postman-api.service.ts`
 
 Cliente de la API pública de Postman.
 
@@ -754,7 +754,7 @@ export async function pushEnvironment( environment: IPostmanEnvironmentPayload, 
 export async function verifyApiKey( options: IPostmanApiOptions, ): Promise<
 ```
 
-### `projects/core/domain/request-doc.service.ts`
+### `packages/core/domain/request-doc.service.ts`
 
 La descripción de una request: qué acepta el endpoint, en una tabla.
 
@@ -772,7 +772,7 @@ en el panel de documentación de la request.
 escribió a propósito, y pisarlo con una tabla generada sería cambiar
 información por presentación.
 
-### `projects/core/domain/test-script.service.ts`
+### `packages/core/domain/test-script.service.ts`
 
 Las aserciones que lleva cada request de la colección.
 
@@ -795,7 +795,7 @@ logout el de borrarlo. Sustituir el array entero se los llevaría por
 delante y la colección dejaría de autenticar sola — que es la razón de
 ser del flujo de auth.
 
-### `projects/core/domain/watcher.service.ts`
+### `packages/core/domain/watcher.service.ts`
 
 Vigilar el proyecto y avisar cuando algo cambia.
 
@@ -840,7 +840,7 @@ Nunca hay dos `onChange` a la vez: si llega un cambio mientras se está
 regenerando, se encola y se ejecuta después. Dos generaciones
 simultáneas escribirían el mismo fichero a la vez.
 
-### `projects/core/exporters/bruno.exporter.ts`
+### `packages/core/exporters/bruno.exporter.ts`
 
 Exportador a Bruno.
 
@@ -850,7 +850,7 @@ Exportador a Bruno.
 export class BrunoExporter implements IExportTarget
 ```
 
-### `projects/core/exporters/export-registry.service.ts`
+### `packages/core/exporters/export-registry.service.ts`
 
 El catálogo de formatos de salida.
 
@@ -913,7 +913,7 @@ Se devuelve aparte de los artefactos porque no impide generarlos: el
 fichero sale igual, solo que incompleto, y quien lo pidió tiene que
 saberlo.
 
-### `projects/core/exporters/har.exporter.ts`
+### `packages/core/exporters/har.exporter.ts`
 
 Exportadores a HAR 1.2 y a cURL.
 
@@ -929,7 +929,7 @@ export class HarExporter implements IExportTarget
 export class CurlExporter implements IExportTarget
 ```
 
-### `projects/core/exporters/insomnia.exporter.ts`
+### `packages/core/exporters/insomnia.exporter.ts`
 
 Exportador a Insomnia v4.
 
@@ -939,7 +939,7 @@ Exportador a Insomnia v4.
 export class InsomniaExporter implements IExportTarget
 ```
 
-### `projects/core/exporters/openapi.exporter.ts`
+### `packages/core/exporters/openapi.exporter.ts`
 
 Exportador a OpenAPI 3.1.0.
 
@@ -961,7 +961,7 @@ correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
 export class OpenApiExporter implements IExportTarget
 ```
 
-### `projects/core/helpers/argv.helper.ts`
+### `packages/core/helpers/argv.helper.ts`
 
 Leer un flag de la línea de comandos, una sola vez.
 
@@ -984,7 +984,7 @@ parecía no estar.
 export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean
 ```
 
-### `projects/core/helpers/atomic-write.helper.ts`
+### `packages/core/helpers/atomic-write.helper.ts`
 
 Escribir un fichero entero, o no escribirlo.
 
@@ -1012,7 +1012,7 @@ un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
 Serializar mientras se escribe es como se acaba con un fichero a
 medias sin que el proceso llegue a morirse.
 
-### `projects/core/helpers/collection-file.helper.ts`
+### `packages/core/helpers/collection-file.helper.ts`
 
 Leer la colección del disco, o explicar por qué no se puede.
 
@@ -1039,7 +1039,7 @@ Imprime el fallo en el formato del resto del CLI y devuelve 1, para
 que un comando pueda hacer `return explain(result)` sin repetir el
 bloque de `console.error` en cada uno.
 
-### `projects/core/helpers/collection-identity.helper.ts`
+### `packages/core/helpers/collection-identity.helper.ts`
 
 Identidad estable de los artefactos Postman.
 
@@ -1073,7 +1073,7 @@ proyecto de carpeta.
 export function environmentIdFor(collectionId: string, environmentName: string): string
 ```
 
-### `projects/core/helpers/collection-invariants.helper.ts`
+### `packages/core/helpers/collection-invariants.helper.ts`
 
 Invariantes que debe cumplir una colección para que Postman la importe y sea usable.
 
@@ -1092,7 +1092,7 @@ Lista vacía = la colección es correcta.
 export function collectionErrors(collection: PostmanCollection): ICollectionIssue[]
 ```
 
-### `projects/core/helpers/fs-walk.helper.ts`
+### `packages/core/helpers/fs-walk.helper.ts`
 
 Recorrido recursivo de directorios para los scanners.
 
@@ -1124,7 +1124,7 @@ saltándose las que no existen.
 export function isSourceJsTsFile(name: string): boolean
 ```
 
-### `projects/core/helpers/module-path.helper.ts`
+### `packages/core/helpers/module-path.helper.ts`
 
 Directorio del módulo actual, de forma portable.
 
@@ -1148,7 +1148,7 @@ funciona hasta que el fichero cambia de carpeta, y entonces
 `PACKAGE_ROOT` apunta a otro sitio **sin fallar**: el script
 simplemente no encuentra nada y dice "no se encontró ninguna
 propuesta". Pasó con cuatro gates a la vez al reorganizar en
-`projects/`.
+`packages/`.
 
 Contar niveles es acoplar un fichero a su profundidad en el árbol.
 Buscar el marcador no.
@@ -1172,7 +1172,7 @@ Regla: los gates y los tests usan `repoRoot()`, que lanza porque un
 fallo ahí es un fallo del repo. El código que acaba dentro del
 binario usa esta y tiene un plan B.
 
-### `projects/core/helpers/parse-json.helper.ts`
+### `packages/core/helpers/parse-json.helper.ts`
 
 Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
 
@@ -1227,7 +1227,7 @@ scanners hacen es «¿este proyecto usa X?» y un framework en
 scanners las miraban y otros no, así que el mismo proyecto se
 detectaba o no según cuál preguntara.
 
-### `projects/core/helpers/path-containment.helper.ts`
+### `packages/core/helpers/path-containment.helper.ts`
 
 ¿Esta ruta se sale de donde debería escribir?
 
@@ -1261,7 +1261,7 @@ Lo que sí queda fuera es el resto del disco: la salida va con el
 proyecto, dentro del workspace, o en un temporal — no al `$HOME` de
 nadie porque un `../` se coló en un argumento.
 
-### `projects/core/helpers/postman.helper.ts`
+### `packages/core/helpers/postman.helper.ts`
 
 Helpers reutilizables para recorrer y analizar colecciones Postman.
 
@@ -1292,7 +1292,7 @@ Si `folder` se pasa, se usa como prefijo del path de carpetas.
 export function countItems(collection: PostmanCollection):
 ```
 
-### `projects/core/helpers/read-files.helper.ts`
+### `packages/core/helpers/read-files.helper.ts`
 
 Leer muchos ficheros sin leerlos de uno en uno.
 
@@ -1308,7 +1308,7 @@ Para quien necesite la lista entera de todas formas (un `Map` de
 módulo → contenido, por ejemplo). Si solo se va a recorrer una vez,
 usa el generador: gasta memoria acotada en vez de toda.
 
-### `projects/core/helpers/regex.helper.ts`
+### `packages/core/helpers/regex.helper.ts`
 
 Regex compartidos usados sin pisarse.
 
@@ -1323,7 +1323,7 @@ Una copia propia de un regex compartido.
 Nace con `lastIndex` a cero y nadie más la toca, así que se puede usar
 con `exec` sin coordinarse con el resto del proceso.
 
-### `projects/core/helpers/resolve-root.helper.ts`
+### `packages/core/helpers/resolve-root.helper.ts`
 
 De dónde sale la raíz del proyecto, una sola vez.
 
@@ -1352,7 +1352,7 @@ Se devuelve en vez de imprimirse para que quien llama decida dónde va
 —`console.log`, un informe JSON, la interfaz gráfica— y para que se
 pueda probar sin capturar la salida.
 
-### `projects/core/helpers/route-identity.helper.ts`
+### `packages/core/helpers/route-identity.helper.ts`
 
 Qué hace que dos endpoints sean el mismo endpoint.
 
@@ -1395,7 +1395,7 @@ queda — y da igual que sea GraphQL, tRPC o un JSON-RPC escrito a
 mano. Preguntarlo así evita una lista que haya que mantener cada vez
 que se soporte un framework nuevo.
 
-### `projects/core/helpers/source-scan.helper.ts`
+### `packages/core/helpers/source-scan.helper.ts`
 
 Primitivas de escaneo de código fuente compartidas por los scanners.
 
@@ -1518,7 +1518,7 @@ Saltarse la segunda mitad es fácil y el fallo es silencioso: los
 grupos capturados salen llenos de espacios y las rutas se descartan
 una a una sin que nada avise.
 
-### `projects/core/helpers/uri.helper.ts`
+### `packages/core/helpers/uri.helper.ts`
 
 Helpers para normalizar URIs antes de comparar.
 
@@ -1603,7 +1603,7 @@ El nombre legible de una carpeta a partir de su clave.
 `erp-productos` pasa a `Erp Productos`. Solo afecta a lo que se lee en
 Postman: la clave sigue siendo la que agrupa.
 
-### `projects/core/helpers/yaml.helper.ts`
+### `packages/core/helpers/yaml.helper.ts`
 
 Serializador a YAML para datos planos.
 
@@ -1613,7 +1613,7 @@ Serializador a YAML para datos planos.
 export function toYaml(value: YamlValue): string
 ```
 
-### `projects/core/helpers/zone.helper.ts`
+### `packages/core/helpers/zone.helper.ts`
 
 Helpers de zonas lógicas.
 
@@ -1650,7 +1650,7 @@ Aquí se devuelven las zonas presentes de verdad: primero las que
 alfabéticamente para que dos ejecuciones den lo mismo. Se omiten las
 vacías, que es lo que hacía bien el código anterior.
 
-### `projects/frameworks/index.ts`
+### `packages/frameworks/index.ts`
 
 Capa de frameworks — todo lo que sabe de un framework concreto.
 

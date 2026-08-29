@@ -28,8 +28,8 @@ import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
-import { projectRoot } from "./paths.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { resolveProjectContext } from "./project-context.service.js";
 import { readFlag } from "../helpers/argv.helper.js";
 import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
 
@@ -88,9 +88,8 @@ async function listDirs(p: string): Promise<string[]> {
 export async function detectProjectName(
   context?: IProjectContext,
 ): Promise<string> {
-  const root = context?.projectRoot ?? projectRoot();
-  if (!root) return "unnamed";
-  return detectProjectNameIn(root);
+  const resolved = context ?? resolveProjectContext();
+  return detectProjectNameIn(resolved.projectRoot);
 }
 
 /**
@@ -104,8 +103,7 @@ export async function detectProjectName(
 async function findHostConfig(
   context?: IProjectContext,
 ): Promise<string | null> {
-  const root = context?.projectRoot ?? projectRoot();
-  if (!root) return null;
+  const root = (context ?? resolveProjectContext()).projectRoot;
 
   const name = await detectProjectName(context);
   for (const base of [
@@ -147,8 +145,7 @@ async function findHostConfig(
 export async function detectFilePrefixes(
   context?: IProjectContext,
 ): Promise<Record<string, string[]>> {
-  const root = context?.projectRoot ?? projectRoot();
-  if (!root) return {};
+  const root = (context ?? resolveProjectContext()).projectRoot;
   const provider = join(root, "app", "Providers", "RouteServiceProvider.php");
   if (!existsSync(provider)) return {};
 
@@ -197,7 +194,7 @@ export async function detectFilePrefixes(
 export async function buildZeroConfig(
   context?: IProjectContext,
 ): Promise<ProjectConfig> {
-  const root = context?.projectRoot ?? projectRoot();
+  const root = (context ?? resolveProjectContext()).projectRoot;
   const name = await detectProjectName(context);
   let baseUrl = "http://localhost/api";
 
@@ -279,11 +276,12 @@ export async function resolveConfigPath(
   argv: string[] = process.argv,
   context?: IProjectContext,
 ): Promise<string> {
+  const root = (context ?? resolveProjectContext({ argv })).projectRoot;
   const cli = readFlag(argv, "--config");
-  if (cli) return resolveMaybeRelative(cli, process.cwd());
+  if (cli) return resolveMaybeRelative(cli, root);
 
   const env = process.env.POSTMAN_CONFIG?.trim();
-  if (env) return resolveMaybeRelative(env, process.cwd());
+  if (env) return resolveMaybeRelative(env, root);
 
   // LEGACY: ejemplos dentro del propio paquete (solo para compatibilidad
   // con este repo). NO se usa en proyectos externos.
@@ -322,10 +320,11 @@ export async function loadProject(
   argv: string[] = process.argv,
   context?: IProjectContext,
 ): Promise<LoadedProject> {
-  const configPath = await resolveConfigPath(argv, context);
+  const resolvedContext = context ?? resolveProjectContext({ argv });
+  const configPath = await resolveConfigPath(argv, resolvedContext);
 
   if (configPath === "__zero__") {
-    const config = await buildZeroConfig(context);
+    const config = await buildZeroConfig(resolvedContext);
     return {
       config,
       manualEndpoints: [],

@@ -55,8 +55,8 @@ medido pero no los caminos alternativos.
 
 ### S1 — `project-loader.service.ts` sin fallback al singleton
 - **Status**: pending
-- **Files**: `projects/core/discovery/project-loader.service.ts`,
-  `projects/cli/commands/*.script.ts` (los que llaman a `loadProject()`)
+- **Files**: `packages/core/discovery/project-loader.service.ts`,
+  `packages/cli/commands/*.script.ts` (los que llaman a `loadProject()`)
 - **Gate**: test
 - acceptance:
   - "Los comandos del CLI que llaman a `loadProject()` pasan el contexto resuelto por `resolveRoot()`"
@@ -64,8 +64,8 @@ medido pero no los caminos alternativos.
 
 ### S2 — Los tools del plugin reciben contexto, no envuelven
 - **Status**: pending
-- **Files**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/*.ts`,
-  `projects/cli/commands/{list,stats,scan,diff}.script.ts` (sus exports `run*`)
+- **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/*.ts`,
+  `packages/cli/commands/{list,stats,scan,diff}.script.ts` (sus exports `run*`)
 - **Gate**: test
 - acceptance:
   - "`runList`/`runStats`/`runScan`/`runCheck` aceptan un contexto explícito en vez de leer el singleton"
@@ -74,7 +74,7 @@ medido pero no los caminos alternativos.
 
 ### S3 — Camino legacy de Laravel fuera del singleton o retirado
 - **Status**: pending
-- **Files**: `projects/frameworks/laravel/*`
+- **Files**: `packages/frameworks/laravel/*`
 - **Gate**: test
 - acceptance:
   - "El camino legacy de Laravel no cae al singleton; recibe contexto como el resto o se retira con su último caller"
@@ -83,7 +83,7 @@ medido pero no los caminos alternativos.
 ### S4 — Encoger la lista `debt` y, si queda vacía, quitar la cola
 - **Status**: pending
 - **Files**: `scripts/gates/lint-project-context.script.ts`,
-  `projects/core/discovery/paths.service.ts`
+  `packages/core/discovery/paths.service.ts`
 - **Gate**: lint
 - acceptance:
   - "`lint:project-context` declara 0 `debt` o cada entrada restante tiene motivo nuevo verificado"

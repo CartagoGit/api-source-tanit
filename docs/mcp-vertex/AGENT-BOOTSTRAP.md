@@ -78,7 +78,7 @@ universal rule it replaces, so the divergence is auditable.
 
 ### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
 
-The 4 plugin tools in `projects/plugins/mcp-vertex_expostman/src/lib/tools/`
+The 4 plugin tools in `packages/plugins/mcp-vertex_expostman/src/lib/tools/`
 register themselves as `` `${ctx.namespacePrefix}_${TOOL_ID}` ``, where
 `namespacePrefix` comes from the host and `TOOL_ID` is the short,
 stable id declared at the top of each `*.tool.ts`:
@@ -160,14 +160,14 @@ a pointer.
 
 | Folder | Suffix | Example |
 | --- | --- | --- |
-| `projects/contracts/interfaces/` | `*.interface.ts` | `projects/contracts/interfaces/core/scanner.interface.ts` |
-| `projects/contracts/constants/` | `*.constant.ts` | `projects/contracts/constants/core/postman.constant.ts` |
-| `projects/core/helpers/` | `*.helper.ts` | `projects/core/helpers/uri.helper.ts` |
-| `projects/core/` | `*.service.ts` / `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/discovery/generation.pipeline.ts` |
-| `projects/core/exporters/` | `*.exporter.ts` | `projects/core/exporters/openapi.exporter.ts` |
-| `projects/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `projects/frameworks/scanners/express.scanner.ts` |
-| `projects/cli/commands/` | `*.script.ts` | `projects/cli/commands/generate.script.ts` |
-| `projects/plugins/*/src/lib/tools/` | `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts` |
+| `packages/contracts/interfaces/` | `*.interface.ts` | `packages/contracts/interfaces/core/scanner.interface.ts` |
+| `packages/contracts/constants/` | `*.constant.ts` | `packages/contracts/constants/core/postman.constant.ts` |
+| `packages/core/helpers/` | `*.helper.ts` | `packages/core/helpers/uri.helper.ts` |
+| `packages/core/` | `*.service.ts` / `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `packages/core/discovery/generation.pipeline.ts` |
+| `packages/core/exporters/` | `*.exporter.ts` | `packages/core/exporters/openapi.exporter.ts` |
+| `packages/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `packages/frameworks/scanners/express.scanner.ts` |
+| `packages/cli/commands/` | `*.script.ts` | `packages/cli/commands/generate.script.ts` |
+| `packages/plugins/*/src/lib/tools/` | `*.tool.ts` | `packages/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts` |
 | `docs/mcp-vertex/proposals/ready/` | `<kind><NNNNN>-<slug>.md` | `x00001-contratos-de-la-superficie-mcp.md` |
 
 The full table, derived from what `lint:naming` enforces, lives in
@@ -178,7 +178,7 @@ prefix is a read-only alias the server no longer allocates.
 Service → runtime-safe (no `plugin/` imports). Helper → pure
 functions only, no I/O. Tool → one tool per file.
 
-**Types and constants live in `projects/contracts/`, nowhere else.**
+**Types and constants live in `packages/contracts/`, nowhere else.**
 Not a style preference — a measured one. With the type next to the
 function that introduced it, using the type drags in the implementation:
 the web UI imported `IProjectSummary` from `core/discovery/summary.service`,
@@ -195,14 +195,14 @@ even though they use `const` — an asset the program serves verbatim
 (`UI_HTML`) and a composition root of instantiated objects
 (`DEFAULT_REGISTRY`). Both are declared in the gate's `EXCEPTIONS`
 **with a written reason**; the gate also fails when an exception stops
-being needed. See [`projects/contracts/README.md`](../../projects/contracts/README.md).
+being needed. See [`packages/contracts/README.md`](../../packages/contracts/README.md).
 
 ### 3.6 Plugin options
 
 Plugin options live at
 `mcp-vertex.config.json#plugins.export-to-postman.options` and are
 parsed by `ExportToPostmanOptionsSchema` in
-`projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`.
+`packages/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
 
@@ -250,7 +250,7 @@ relative sibling host script.
 > shape as the `exit-codes` test that only passed where nobody had run
 > the CLI before.
 
-Never commit absolute machine paths (e.g. `/home/<user>/_projects/...`).
+Never commit absolute machine paths (e.g. `/home/<user>/_packages/...`).
 
 When the CLI ships, replace the fallback with the canonical form and
 delete any remaining sibling-path notes from this section.
@@ -263,7 +263,7 @@ publish). Do not hard-require
 ### 3.8 Framework scanners — the discovery contract
 
 Discovery goes through **three** interfaces declared in
-[`projects/contracts/interfaces/core/scanner.interface.ts`](../../projects/contracts/interfaces/core/scanner.interface.ts):
+[`packages/contracts/interfaces/core/scanner.interface.ts`](../../packages/contracts/interfaces/core/scanner.interface.ts):
 
 ```ts
 IProjectScanner        // ¿es este proyecto mío?  detect() → 0..1, resolve()
@@ -272,7 +272,7 @@ IValidationSpecProvider // las reglas de cada ruta, si el framework las declara
 ```
 
 A framework ships them as a bundle registered in
-[`projects/frameworks/framework.registry.ts`](../../projects/frameworks/framework.registry.ts).
+[`packages/frameworks/framework.registry.ts`](../../packages/frameworks/framework.registry.ts).
 `discoverProject()` runs every registered `IProjectScanner`, scores them,
 and keeps the winner — several can match at once, and that is what makes
 a hybrid project work.
@@ -345,7 +345,7 @@ The universal bootstrap §5 DoD applies. Project-specific additions:
 
 - Universal bootstrap (vendored):
   [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md).
-- Plugin source: [`../../projects/plugins/mcp-vertex_expostman/`](../../projects/plugins/mcp-vertex_expostman/).
+- Plugin source: [`../../packages/plugins/mcp-vertex_expostman/`](../../packages/plugins/mcp-vertex_expostman/).
 - Proposals queue: [`proposals/`](proposals/).
 - Live catalog: call `mcp-vertex_overview` / `mcp-vertex_agent_catalog`
   — do not link generated host-hint files from another repo.

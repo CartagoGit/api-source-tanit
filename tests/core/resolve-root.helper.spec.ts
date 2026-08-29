@@ -11,7 +11,7 @@
 import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
-import { guessedRootNotice, resolveRoot } from "../../projects/core/helpers/resolve-root.helper";
+import { guessedRootNotice, resolveRoot } from "../../packages/core/helpers/resolve-root.helper";
 
 const SIN_ENV: Record<string, string | undefined> = {};
 

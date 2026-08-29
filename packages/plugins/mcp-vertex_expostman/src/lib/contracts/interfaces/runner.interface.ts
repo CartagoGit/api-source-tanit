@@ -6,7 +6,7 @@
  * importarla para declararlo, y los tools acaban arrastrando el runner
  * entero solo para tipar una respuesta.
  *
- * No están en `projects/contracts/` porque el plugin es un paquete
+ * No están en `packages/contracts/` porque el plugin es un paquete
  * independiente que se publica solo: compila con `@types/node` real
  * mientras el resto del repo usa declaraciones ambient escritas a mano.
  */

@@ -27,7 +27,7 @@ import {
   type IStatsOutput,
 } from "../contracts/plugin.interface";
 import { runStats } from "../../../../../cli/commands/stats.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "stats";
 
@@ -73,12 +73,8 @@ export function buildStatsToolRegistration(ctx: IMcpPluginContext): IToolRegistr
             );
           }
 
-          // El servidor MCP es de vida larga y el descubrimiento de rutas
-          // cachea por proceso: sin esto, pedir las estadísticas del
-          // proyecto A y luego las del B devolvería las de A.
-          const outcome = await withScopedPaths({ projectRoot }, () =>
-            runStats(["--project-root", projectRoot]),
-          );
+          const context = resolveProjectContext({ projectRoot });
+          const outcome = await runStats([], context);
 
           if (outcome.code !== 0) {
             return toolError(

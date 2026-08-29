@@ -155,7 +155,7 @@ mismo pipeline que el CLI: no es una segunda implementación que se
 desincronice.
 
 Para tocarla, `bun run ui:dev` la levanta y **la reinicia sola** al
-editar `projects/ui/`, manteniendo el puerto: basta con recargar la
+editar `packages/ui/`, manteniendo el puerto: basta con recargar la
 pestaña.
 
 Y para usarla sin instalar nada de Node hay instaladores nativos que

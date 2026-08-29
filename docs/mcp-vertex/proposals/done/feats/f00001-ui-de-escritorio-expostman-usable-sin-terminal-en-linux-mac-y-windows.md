@@ -37,7 +37,7 @@ Que alguien que no abre una terminal pueda apuntar a la carpeta de su API, ver l
 
 ## why
 
-Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux, un archivo de Mac y un `.exe` de Windows que abra una interfaz. Hoy la herramienta solo existe en la terminal, y eso deja fuera a quien prueba APIs sin vivir en ella — que es buena parte de quien usa Postman. El punto de partida es mejor de lo que parece: `projects/ui/` ya tiene el asistente interactivo, la tabla y el dashboard de calidad, así que la lógica de qué preguntar y qué enseñar está escrita y probada; y el pipeline entero es una función (`generateWithAllFrameworks`), no un script, así que una interfaz no tiene que reimplementar nada. Medido para decidir el camino: `Bun.serve` ya está en el runtime que el binario lleva dentro, así que servir la interfaz desde el propio ejecutable no añade ni una dependencia.
+Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux, un archivo de Mac y un `.exe` de Windows que abra una interfaz. Hoy la herramienta solo existe en la terminal, y eso deja fuera a quien prueba APIs sin vivir en ella — que es buena parte de quien usa Postman. El punto de partida es mejor de lo que parece: `packages/ui/` ya tiene el asistente interactivo, la tabla y el dashboard de calidad, así que la lógica de qué preguntar y qué enseñar está escrita y probada; y el pipeline entero es una función (`generateWithAllFrameworks`), no un script, así que una interfaz no tiene que reimplementar nada. Medido para decidir el camino: `Bun.serve` ya está en el runtime que el binario lleva dentro, así que servir la interfaz desde el propio ejecutable no añade ni una dependencia.
 
 ## non-goals
 
@@ -52,7 +52,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
 
 ### S1 — `expostman ui`: servidor local sobre el binario que ya existe
 - **Status**: done
-- **Files**: `projects/ui/server/ui-server.service.ts`, `projects/ui/server/ui-routes.service.ts`, `projects/cli/commands/ui.script.ts`, `tests/cli/ui-server.spec.ts`
+- **Files**: `packages/ui/server/ui-server.service.ts`, `packages/ui/server/ui-routes.service.ts`, `packages/cli/commands/ui.script.ts`, `tests/cli/ui-server.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "`expostman ui` levanta `localhost` en un puerto libre y abre el navegador; con `--no-open` solo imprime la URL"
@@ -63,7 +63,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
 ### S2 — La interfaz, con lo que el asistente ya sabe preguntar
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/ui/web/index.html`, `projects/ui/web/app.ts`, `projects/ui/web/styles.css`, `tests/cli/ui-web.spec.ts`
+- **Files**: `packages/ui/web/index.html`, `packages/ui/web/app.ts`, `packages/ui/web/styles.css`, `tests/cli/ui-web.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Elegir carpeta, ver framework detectado y endpoints **antes** de escribir nada, que es lo que ya hace bien el asistente"
@@ -74,7 +74,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
 ### S3 — Accesibilidad, que si no se hace ahora no se hace
 - **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `projects/ui/web/a11y.ts`, `tests/cli/ui-a11y.spec.ts`
+- **Files**: `packages/ui/web/a11y.ts`, `tests/cli/ui-a11y.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Todo se puede usar con teclado, con foco visible y en orden"
@@ -85,7 +85,7 @@ Encargo directo: poder usar el proyecto desde un `.deb` u otro formato de Linux,
 ### S4 — Instaladores nativos con Tauri
 - **Status**: done
 - **DependsOn**: [S3]
-- **Files**: `projects/desktop/tauri.conf.json`, `projects/desktop/src/main.rs`, `projects/desktop/Cargo.toml`, `.github/workflows/release-desktop.yml`
+- **Files**: `packages/desktop/tauri.conf.json`, `packages/desktop/src/main.rs`, `packages/desktop/Cargo.toml`, `.github/workflows/release-desktop.yml`
 - **Gate**: none
 - acceptance:
   - "La ventana nativa carga la misma interfaz de s2: el trabajo de A no se tira al hacer B"

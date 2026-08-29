@@ -29,7 +29,7 @@ function cli(args: readonly string[]): Promise<void> {
   return new Promise((resolve) => {
     const child = spawn(
       "bun",
-      ["run", join(RAIZ, "projects/cli/cli.script.ts"), ...args],
+      ["run", join(RAIZ, "packages/cli/cli.script.ts"), ...args],
       { stdio: ["ignore", "ignore", "ignore"] },
     );
     child.on("close", () => resolve());

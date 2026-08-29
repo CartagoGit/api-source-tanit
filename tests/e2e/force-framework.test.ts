@@ -18,9 +18,9 @@ import { cp, mkdtemp, rm, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
 
 /** Copia del fixture de Fastify SIN su `package.json`. */
 let sinManifiesto = "";

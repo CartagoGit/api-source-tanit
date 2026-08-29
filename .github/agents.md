@@ -63,7 +63,7 @@ projectRoot
   └─ auth-flow              ── login/refresh/logout + captura del token
 ```
 
-Todo eso lo orquesta **`projects/core/discovery/generation.pipeline.ts`**, que es el
+Todo eso lo orquesta **`packages/core/discovery/generation.pipeline.ts`**, que es el
 único sitio donde se decide el orden de los pasos. El CLI, los tests y el
 gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
@@ -73,13 +73,13 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 | Quiero… | Toco |
 |---|---|
-| Añadir un framework | `projects/frameworks/scanners/<fw>.scanner.ts` + registrarlo en `projects/frameworks/framework.registry.ts` |
-| Cambiar la forma de la colección | `projects/core/domain/collection-builder.service.ts` |
-| Cambiar el flujo de login | `projects/core/domain/auth-flow.service.ts` |
-| Parsear una librería de validación nueva | `projects/frameworks/parsers/<lib>-schema.helper.ts` |
-| Añadir un comando al CLI | `projects/cli/commands/<nombre>.script.ts` + entrada en `projects/cli/cli.script.ts` |
-| Añadir un formato de salida | `projects/core/exporters/<fmt>.exporter.ts` + registrarlo |
-| Añadir un tool MCP | `projects/plugins/mcp-vertex_expostman/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un framework | `packages/frameworks/scanners/<fw>.scanner.ts` + registrarlo en `packages/frameworks/framework.registry.ts` |
+| Cambiar la forma de la colección | `packages/core/domain/collection-builder.service.ts` |
+| Cambiar el flujo de login | `packages/core/domain/auth-flow.service.ts` |
+| Parsear una librería de validación nueva | `packages/frameworks/parsers/<lib>-schema.helper.ts` |
+| Añadir un comando al CLI | `packages/cli/commands/<nombre>.script.ts` + entrada en `packages/cli/cli.script.ts` |
+| Añadir un formato de salida | `packages/core/exporters/<fmt>.exporter.ts` + registrarlo |
+| Añadir un tool MCP | `packages/plugins/mcp-vertex_expostman/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -106,7 +106,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 Namespace `expostman` (el host los registra como
 `mcp-vertex_expostman_<tool>`), declarados en
-[`projects/plugins/mcp-vertex_expostman/src/index.ts`](../projects/plugins/mcp-vertex_expostman/src/index.ts):
+[`packages/plugins/mcp-vertex_expostman/src/index.ts`](../packages/plugins/mcp-vertex_expostman/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|

@@ -13,7 +13,7 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { runProcess } from "../helpers/run-process";
-import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { CLI_ENTRYPOINT, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
 
 const CLI = CLI_ENTRYPOINT;

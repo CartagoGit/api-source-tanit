@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { withProjectRoot } from "../../projects/core/discovery/paths.service";
-import { buildZeroConfig, detectProjectName, loadProject } from "../../projects/core/discovery/project-loader.service";
+import { withProjectRoot } from "../../packages/core/discovery/paths.service";
+import { buildZeroConfig, detectProjectName, loadProject } from "../../packages/core/discovery/project-loader.service";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 let project: ITempProject | null = null;

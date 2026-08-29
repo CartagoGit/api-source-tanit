@@ -6,7 +6,7 @@
  * las reglas de un FormRequest de Laravel, un procedimiento de tRPC— y
  * las opciones con las que se le puede ajustar.
  *
- * Viven fuera de `projects/frameworks/` porque quien las consume no
+ * Viven fuera de `packages/frameworks/` porque quien las consume no
  * debería cargar el scanner que las produce. Es el mismo motivo por el
  * que el catálogo de nombres salió del registro: leer una interfaz no
  * puede costar veinte kilobytes de expresiones regulares.

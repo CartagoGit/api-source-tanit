@@ -14,12 +14,12 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "../../projects/frameworks/scanners/openapi.scanner";
+import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "../../packages/frameworks/scanners/openapi.scanner";
 import { smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type {
   IProjectMatch,
   ParsedRoute,
-} from "../../projects/contracts/interfaces/core/scanner.interface";
+} from "../../packages/contracts/interfaces/core/scanner.interface";
 
 const provider = new OpenApiValidationProvider();
 

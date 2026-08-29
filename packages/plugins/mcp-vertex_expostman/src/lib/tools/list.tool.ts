@@ -22,7 +22,7 @@ import {
   type IListOutput,
 } from "../contracts/plugin.interface";
 import { runList } from "../../../../../cli/commands/list-endpoints.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "list";
 
@@ -68,12 +68,8 @@ export function buildListToolRegistration(ctx: IMcpPluginContext): IToolRegistra
             );
           }
 
-          // El servidor MCP es de vida larga y el descubrimiento de rutas
-          // cachea por proceso: sin esto, listar el proyecto A y luego el
-          // B devolvería lo de A.
-          const { code, endpoints } = await withScopedPaths({ projectRoot }, () =>
-            runList(["--project-root", projectRoot]),
-          );
+          const context = resolveProjectContext({ projectRoot });
+          const { code, endpoints } = await runList([], context);
 
           if (code !== 0) {
             return toolError(

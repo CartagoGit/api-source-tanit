@@ -29,9 +29,9 @@ margen. La deuda está localizada y medida (`build/coverage/coverage-summary.jso
 
 | Área | Branches sin cubrir | % actual |
 |---|--:|--:|
-| `projects/frameworks/scanners/*` | 647 | 73,2 % |
-| `projects/frameworks/laravel/*` | 335 | 44,3 % |
-| `projects/core/domain|discovery|exporters|helpers|adapters` | 561 | ~66 % |
+| `packages/frameworks/scanners/*` | 647 | 73,2 % |
+| `packages/frameworks/laravel/*` | 335 | 44,3 % |
+| `packages/core/domain|discovery|exporters|helpers|adapters` | 561 | ~66 % |
 
 Dentro de `laravel`, los dos peores son `endpoint-discovery.service.ts`
 (0,9 %, 115 sin cubrir) y `route-parser.service.ts` (6,8 %, 41) —
@@ -46,7 +46,7 @@ tocar umbrales antes de demostrarlos.
   ("se paga con fixtures, no con refactor").
 - Perseguir el 100 %: los scanners parsean código de terceros con
   formas infinitas; los suelos son medidos, no aspiracionales.
-- Cobertura de los comandos CLI (`projects/cli`, 458 branches
+- Cobertura de los comandos CLI (`packages/cli`, 458 branches
   descubiertas): es deuda de tests de integración/distinta naturaleza;
   si se quiere, otra propuesta.
 - Tocar el suelo en `vitest.config.ts` antes de que la nueva medida se
@@ -85,7 +85,7 @@ tocar umbrales antes de demostrarlos.
 - **Files**: `tests/frameworks/**.spec.ts`, fixtures bajo `tests/fixtures/`
 - **Gate**: test
 - acceptance:
-  - "Las branches sin cubrir de `projects/frameworks/scanners/` bajan de 647"
+  - "Las branches sin cubrir de `packages/frameworks/scanners/` bajan de 647"
   - "Los fixtures provienen de formas de código reales de los ejemplos o de variaciones mínimas de estas"
 - evidence (`orchestrator`, 2026-08-30): openapi 73,1 % → **86,81 %**,
   django 65,9 % → **81,10 %**, symfony 68,5 % → **87,80 %** (además con el
@@ -97,7 +97,7 @@ tocar umbrales antes de demostrarlos.
 - **Files**: `tests/core/**.spec.ts`
 - **Gate**: test
 - acceptance:
-  - "Las branches sin cubrir de `projects/core/*` bajan de 561"
+  - "Las branches sin cubrir de `packages/core/*` bajan de 561"
   - "Ningún cambio de comportamiento: solo tests y fixtures"
 
 ### S5 — Subir el suelo de branches de 62 a 70 y verificarlo en la cadena

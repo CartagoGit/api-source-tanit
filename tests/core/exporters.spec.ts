@@ -15,15 +15,15 @@ import {
   exporterFor,
   parseFormats,
   registeredFormats,
-} from "../../projects/core/exporters/export-registry.service";
+} from "../../packages/core/exporters/export-registry.service";
 import {
   DEFAULT_EXPORT_FORMAT,
-} from "../../projects/contracts/constants/core/export-formats.constant";
-import { buildOpenApiDocument } from "../../projects/core/exporters/openapi.exporter";
+} from "../../packages/contracts/constants/core/export-formats.constant";
+import { buildOpenApiDocument } from "../../packages/core/exporters/openapi.exporter";
 import type {
   IExportInput,
-} from "../../projects/contracts/interfaces/core/export-target.interface";
-import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
+} from "../../packages/contracts/interfaces/core/export-target.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const specs: EndpointSpec[] = [
   {

@@ -156,7 +156,7 @@ export async function registeredTools(
  * Antes esto era `resolve(__dirname, "../../../..")`. Contar niveles
  * acopla el fichero a su profundidad en el árbol, y ya ha fallado tres
  * veces en esta reorganización: al mover los gates, al mover el plugin
- * a `projects/`, y otra vez al meterlo en `projects/plugins/`. Cada vez
+ * a `packages/`, y otra vez al meterlo en `packages/plugins/`. Cada vez
  * el fallo fue silencioso, porque una ruta equivocada no lanza: solo no
  * encuentra nada.
  */

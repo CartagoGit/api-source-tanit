@@ -51,7 +51,7 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
 
 ### S1 — Recoger los mensajes en un solo sitio
 - **Status**: done
-- **Files**: `projects/ui/messages.constant.ts`, `tests/cli/messages.spec.ts`
+- **Files**: `packages/ui/messages.constant.ts`, `tests/cli/messages.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Todo texto que ve el usuario vive en un módulo, no repartido por `console.log`"
@@ -61,7 +61,7 @@ Hallazgo 13 de a00001. `generate` y `push` hablan inglés; `diff`, `enrich`, `in
 ### S2 — Los doce comandos usan esos mensajes
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/cli/commands/generate.script.ts`, `projects/cli/commands/diff.script.ts`, `projects/cli/commands/enrich.script.ts`, `projects/cli/commands/init.script.ts`, `projects/cli/commands/stats.script.ts`, `projects/cli/commands/validate-json.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/push.script.ts`, `projects/cli/commands/scan.script.ts`, `projects/cli/commands/list-endpoints.script.ts`, `projects/cli/commands/summary.script.ts`, `projects/cli/commands/open-postman.script.ts`
+- **Files**: `packages/cli/commands/generate.script.ts`, `packages/cli/commands/diff.script.ts`, `packages/cli/commands/enrich.script.ts`, `packages/cli/commands/init.script.ts`, `packages/cli/commands/stats.script.ts`, `packages/cli/commands/validate-json.script.ts`, `packages/cli/commands/watch.script.ts`, `packages/cli/commands/push.script.ts`, `packages/cli/commands/scan.script.ts`, `packages/cli/commands/list-endpoints.script.ts`, `packages/cli/commands/summary.script.ts`, `packages/cli/commands/open-postman.script.ts`
 - **Gate**: e2e
 - acceptance:
   - "Ningún comando mezcla idiomas, y menos dentro de la misma ejecución"

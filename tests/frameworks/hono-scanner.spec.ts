@@ -16,7 +16,7 @@ import {
   HonoProjectScanner,
   HonoRouteScanner,
   HonoZodValidatorProvider,
-} from "../../projects/frameworks/scanners/hono.scanner";
+} from "../../packages/frameworks/scanners/hono.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";

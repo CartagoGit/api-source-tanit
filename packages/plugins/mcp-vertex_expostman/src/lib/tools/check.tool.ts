@@ -30,7 +30,7 @@ import {
   type ICheckOutput,
 } from "../contracts/plugin.interface";
 import { runCheck } from "../../../../../cli/commands/diff.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "check";
 
@@ -77,14 +77,12 @@ export function buildCheckToolRegistration(ctx: IMcpPluginContext): IToolRegistr
             );
           }
 
-          const argv = ["--project-root", projectRoot];
+          const argv: string[] = [];
           if (args.collectionPath) argv.push("--output", args.collectionPath);
 
           const started = Date.now();
-          // `withScopedPaths` porque el servidor MCP es de vida larga y
-          // el descubrimiento de rutas cachea por proceso: sin esto,
-          // comprobar el proyecto A y luego el B miraría el de A.
-          const { report } = await withScopedPaths({ projectRoot }, () => runCheck(argv));
+          const context = resolveProjectContext({ projectRoot });
+          const { report } = await runCheck(argv, context);
 
           if (!report) {
             return toolError(

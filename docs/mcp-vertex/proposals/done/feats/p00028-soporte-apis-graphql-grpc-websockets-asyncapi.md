@@ -60,7 +60,7 @@ habría sido gratis. Van por WebSocket.
 
 ### S1 — Scanner de GraphQL
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/frameworks/scanners/graphql.scanner.ts`,
+- **Ficheros**: `packages/frameworks/scanners/graphql.scanner.ts`,
   `tests/frameworks/graphql-trpc.spec.ts`, `examples/example-graphql/`.
 
 Lo que hace útil la colección no es el endpoint —ese lo sabe cualquiera—
@@ -93,7 +93,7 @@ y los escalares de serie empiezan por mayúscula igual que los objetos.
 
 ### S4 — Scanner de tRPC
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/frameworks/scanners/trpc.scanner.ts`,
+- **Ficheros**: `packages/frameworks/scanners/trpc.scanner.ts`,
   `examples/example-trpc/`.
 
 tRPC es el que más valor tiene de los cuatro, y por un motivo que no está

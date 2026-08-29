@@ -16,9 +16,9 @@ import {
   buildQueryDocument,
   parseOperations,
   stripGraphQlComments,
-} from "../../projects/frameworks/scanners/graphql.scanner";
-import { findNamedRouters, parseRouterObject, referencedRouterNames } from "../../projects/frameworks/scanners/trpc.scanner";
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+} from "../../packages/frameworks/scanners/graphql.scanner";
+import { findNamedRouters, parseRouterObject, referencedRouterNames } from "../../packages/frameworks/scanners/trpc.scanner";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { exampleDir } from "../../scripts/helpers/root.helper";
 
 const SCHEMA = `

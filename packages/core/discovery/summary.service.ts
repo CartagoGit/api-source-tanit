@@ -35,7 +35,7 @@ import type { IProjectSummary } from "../../contracts/interfaces/core/domain.int
  * El catálogo de frameworks y el fallback se inyectan, igual que en el
  * pipeline: este servicio es del núcleo y no puede conocer los scanners
  * concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
- * en `projects/frameworks/`.
+ * en `packages/frameworks/`.
  */
 export async function summarizeProject(
   projectRoot: string,

@@ -37,7 +37,7 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
 /** Dónde viven los tools del plugin. */
 const TOOLS_DIR = join(
   REPO_ROOT,
-  "projects/plugins/mcp-vertex_expostman/src/lib/tools",
+  "packages/plugins/mcp-vertex_expostman/src/lib/tools",
 );
 
 interface IProblem {

@@ -26,19 +26,20 @@
  */
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import { guessedRootNotice, resolveRoot } from "../../core/helpers/resolve-root.helper.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.interface.js";
 
 /** Escanea el proyecto y devuelve lo encontrado, imprimiéndolo por el camino. */
 export async function runScan(
   argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<IScanOutcome> {
-  const resolved = resolveRoot({ argv });
-  const root = resolved.root;
+  const root = context?.projectRoot ?? resolveRoot({ argv }).root;
 
   // Decir cuando se ha adivinado: el último recurso es el directorio
   // actual, y escanear el sitio equivocado en silencio es cómo `watch`
   // acabó recorriendo `/tmp` entero.
-  const aviso = guessedRootNotice(resolved);
+  const aviso = context ? "" : guessedRootNotice(resolveRoot({ argv }));
   if (aviso) console.log(`${aviso}\n`);
 
   console.log(`→ Scanning ${root}\n`);

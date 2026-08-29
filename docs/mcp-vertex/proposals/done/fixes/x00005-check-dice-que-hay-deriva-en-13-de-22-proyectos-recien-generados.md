@@ -81,7 +81,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
 ### S2 — Unificar la sintaxis de parametros antes de comparar
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/core/helpers/uri.helper.ts`, `tests/core/uri.helper.spec.ts`
+- **Files**: `packages/core/helpers/uri.helper.ts`, `tests/core/uri.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`normalizeForComparison` deja `/users/:id`, `/users/{id}`, `/users/<id>` y `/users/{{id}}` en la misma forma"
@@ -91,7 +91,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
 ### S3 — `check` alimenta la clave igual por los dos lados, y sin excepciones por framework
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/cli/commands/diff.script.ts`
+- **Files**: `packages/cli/commands/diff.script.ts`
 - **Gate**: e2e
 - acceptance:
   - "`GET /api/orders` deja de aparecer en las dos listas a la vez: el nombre entra en la clave solo cuando los dos lados lo tienen"
@@ -112,7 +112,7 @@ Y hay una causa de fondo comun a los tres: **el test que deberia haberlo cazado 
 ### S5 — El tool MCP hereda el arreglo y lo demuestra
 - **Status**: done
 - **DependsOn**: [S2, S3, S4]
-- **Files**: `projects/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
+- **Files**: `packages/plugins/mcp-vertex_expostman/tests/integration/check.tool.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "El spec del tool deja de probar solo GraphQL y cubre al menos un REST con parametros de ruta y uno de RPC"

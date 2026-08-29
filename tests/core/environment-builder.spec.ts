@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { buildEnvironment, buildEnvironments, defaultEnvironments } from "../../projects/core/domain/environment-builder.service";
-import type { EndpointSpec, PostmanVariable } from "../../projects/contracts/interfaces/core/postman.interface";
+import { buildEnvironment, buildEnvironments, defaultEnvironments } from "../../packages/core/domain/environment-builder.service";
+import type { EndpointSpec, PostmanVariable } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const VARIABLES: PostmanVariable[] = [
   { key: "baseUrl", value: "http://localhost/api", type: "string" },

@@ -93,7 +93,7 @@ function candidatos(ruta: string): string[] {
   return [
     join(REPO_ROOT, limpia),
     join(REPO_ROOT, "docs", "mcp-vertex", limpia),
-    // `../../projects/...` desde el propio bootstrap.
+    // `../../packages/...` desde el propio bootstrap.
     join(REPO_ROOT, "docs", "mcp-vertex", ruta),
   ];
 }
@@ -117,7 +117,7 @@ async function main(): Promise<number> {
   const problems: IProblem[] = [];
 
   // Todo el código del repo, para buscar los símbolos citados.
-  const sources = await collectFiles(fromRoot("projects"), [".ts"]);
+  const sources = await collectFiles(fromRoot("packages"), [".ts"]);
   const codigo = (
     await Promise.all(sources.map((f) => readFile(f, "utf8")))
   ).join("\n");

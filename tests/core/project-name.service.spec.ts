@@ -13,7 +13,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { detectProjectNameIn } from "../../projects/core/discovery/project-name.service";
+import { detectProjectNameIn } from "../../packages/core/discovery/project-name.service";
 
 let root = "";
 

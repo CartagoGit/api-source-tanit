@@ -28,7 +28,7 @@
  *
  * Toda `export interface`, `export type` y constante exportada vive en
  * una carpeta `contracts/`, con `interfaces/` y `constants/` dentro. El
- * monorepo tiene la suya en `projects/contracts/`; el plugin, que es un
+ * monorepo tiene la suya en `packages/contracts/`; el plugin, que es un
  * paquete aparte y se publica solo, tiene la suya.
  *
  * ## Qué NO es una constante, aunque use `const`
@@ -62,7 +62,7 @@ interface IException {
 
 const EXCEPTIONS: readonly IException[] = [
   {
-    path: "projects/frameworks/framework.registry.ts",
+    path: "packages/frameworks/framework.registry.ts",
     why:
       "`DEFAULT_REGISTRY` no es un valor: es un grafo de scanners **ya " +
       "instanciados** (`new GraphQlProjectScanner()`…). Es la raíz de " +
@@ -72,7 +72,7 @@ const EXCEPTIONS: readonly IException[] = [
       "es lo que la gente necesita leer.",
   },
   {
-    path: "projects/ui/web/theme.constant.ts",
+    path: "packages/ui/web/theme.constant.ts",
     why:
       "`UI_STYLES` es la hoja de estilos, un asset que la página sirve tal " +
       "cual. Lo que sí es contrato —los modos y los nombres de las " +
@@ -80,7 +80,7 @@ const EXCEPTIONS: readonly IException[] = [
       "en `contracts/constants/cli/theme.constant.ts`.",
   },
   {
-    path: "projects/ui/web/index.html.constant.ts",
+    path: "packages/ui/web/index.html.constant.ts",
     why:
       "Es un asset, no una constante: la página entera de la interfaz web, " +
       "con su CSS y su JS. Meterla en un proyecto que declara «sin " +
@@ -96,8 +96,8 @@ const EXCEPTIONS: readonly IException[] = [
  * sección que promete no tener implementación.
  */
 const CONTRACT_DIRS = [
-  "projects/contracts/",
-  "projects/plugins/mcp-vertex_expostman/src/lib/contracts/",
+  "packages/contracts/",
+  "packages/plugins/mcp-vertex_expostman/src/lib/contracts/",
 ] as const;
 
 /** Lo que se busca: un tipo o una constante exportados. */
@@ -136,7 +136,7 @@ interface IProblem {
 }
 
 async function main(): Promise<number> {
-  const files = await collectFiles(fromRoot("projects"), [".ts"]);
+  const files = await collectFiles(fromRoot("packages"), [".ts"]);
 
   const problems: IProblem[] = [];
   const usadas = new Set<string>();
@@ -181,7 +181,7 @@ async function main(): Promise<number> {
       "\n  Un tipo declarado al lado de la función que lo estrenó obliga a\n" +
         "  importar esa función para usarlo. La interfaz web se llevaba el\n" +
         "  pipeline entero por delante solo para tipar un resumen.\n" +
-        "\n  Muévelo a `projects/contracts/interfaces/` o `constants/`, según\n" +
+        "\n  Muévelo a `packages/contracts/interfaces/` o `constants/`, según\n" +
         "  lo que sea. Si de verdad no es un contrato —un asset, un documento\n" +
         "  que el programa sirve tal cual— decláralo en `EXCEPTIONS` con su\n" +
         "  motivo.",

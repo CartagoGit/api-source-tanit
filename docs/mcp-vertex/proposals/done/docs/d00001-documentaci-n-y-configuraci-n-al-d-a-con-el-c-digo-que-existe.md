@@ -43,7 +43,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
 
 ### S1 — El bootstrap describe la arquitectura que existe
 - **Status**: done
-- **Files**: `docs/mcp-vertex/AGENT-BOOTSTRAP.md`, `projects/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts`
+- **Files**: `docs/mcp-vertex/AGENT-BOOTSTRAP.md`, `packages/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts`
 - **Gate**: lint
 - acceptance:
   - "§3.8 describe el trío `IProjectScanner` / `IRouteScanner` / `IValidationSpecProvider`, no `IRouterAdapter`"
@@ -83,7 +83,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
 - **Files**: `docs/mcp-vertex/proposals/README.md`, `.gitignore`
 - **Gate**: none
 - acceptance:
-  - "`projects/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen"
+  - "`packages/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen"
   - "El README de propuestas dice que los ids nuevos llevan prefijo de kind (`a`, `x`, `r`, `f`…) y que `p` es el alias retirado de solo lectura, que es lo que el servidor exige hoy"
 
 ### S6 — CONTRIBUTING y README apuntan al contrato y a la auditoría vigentes
@@ -109,7 +109,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
 - Toda ruta que el bootstrap cite entre backticks tiene que existir en disco
 - Todo símbolo que declare como contrato (`IRouterAdapter`, `NAMESPACE`…) tiene que existir en el código
 - Se comprueba metiendo una ruta muerta y viendo romper el gate
-- `projects/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen
+- `packages/core/export-to-postman/` y `tests/fixtures/fiber-comprehensive/internal/` desaparecen
 - El README de propuestas dice que los ids nuevos llevan prefijo de kind (`a`, `x`, `r`, `f`…) y que `p` es el alias retirado de solo lectura, que es lo que el servidor exige hoy
 - `CONTRIBUTING.md` deja de citar `docs/extension-contract.md` o cualquier otra fuente muerta
 - README enlaza la auditoría vigente y no una foto histórica como si fuera el estado actual

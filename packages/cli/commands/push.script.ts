@@ -10,7 +10,7 @@
  * La API key se saca de `--api-key` o de `POSTMAN_API_KEY`, y nunca se
  * imprime ni se escribe en disco.
  */
-import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
 import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../core/domain/postman-api.service.js";
@@ -20,6 +20,7 @@ import type {
   IPushOutcome,
   IPushedArtifact,
 } from "../../contracts/interfaces/cli/push-outcome.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 
 /** Lo que se devuelve cuando no se ha llegado a subir nada. */
 function sinSubir(code: number, error: IPushFailure | null): IPushOutcome {
@@ -46,6 +47,7 @@ function sinSubir(code: number, error: IPushFailure | null): IPushOutcome {
  */
 export async function runPush(
   argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<IPushOutcome> {
   const apiKey = readFlag(argv, "--api-key") ?? process.env["POSTMAN_API_KEY"] ?? "";
   if (!apiKey) {
@@ -67,15 +69,7 @@ export async function runPush(
 
   // `push` **no leía `--project-root`**: usaba solo el singleton, así
   // que pasarle el flag no hacía nada. Ahora resuelve como los demás.
-  const { root } = resolveRoot({ argv });
-  if (!root) {
-    console.error("Could not determine the project root.");
-    console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
-    return sinSubir(1, {
-      reason: "Could not determine the project root.",
-      nextAction: "Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.",
-    });
-  }
+  const root = (context ?? resolveProjectContext({ argv })).projectRoot;
 
   let usuario: string;
   try {

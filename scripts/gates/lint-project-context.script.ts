@@ -53,7 +53,7 @@ interface IException {
 const EXCEPTIONS: readonly IException[] = [
   // --- El borde del sistema ------------------------------------------------
   {
-    path: "projects/cli/",
+    path: "packages/cli/",
     kind: "entrypoint",
     why:
       "Un comando resuelve la raíz de sus flags porque es su trabajo, y el " +
@@ -61,26 +61,26 @@ const EXCEPTIONS: readonly IException[] = [
       "con el de nadie.",
   },
   {
-    path: "projects/ui/interactive.script.ts",
+    path: "packages/ui/interactive.script.ts",
     kind: "entrypoint",
     why: "El asistente interactivo es un entrypoint, igual que un comando.",
   },
 
   // --- Quienes implementan la resolución -----------------------------------
   {
-    path: "projects/core/discovery/paths.service.ts",
+    path: "packages/core/discovery/paths.service.ts",
     kind: "facade",
     why: "Es el singleton. Prohibirle leerse a sí mismo no tendría sentido.",
   },
   {
-    path: "projects/core/discovery/project-context.service.ts",
+    path: "packages/core/discovery/project-context.service.ts",
     kind: "facade",
     why:
       "Es la alternativa SIN estado: lee `POSTMAN_PROJECT_ROOT` del `env` que " +
       "le inyectan, no del global, y devuelve un objeto nuevo por llamada.",
   },
   {
-    path: "projects/core/helpers/resolve-root.helper.ts",
+    path: "packages/core/helpers/resolve-root.helper.ts",
     kind: "facade",
     why:
       "El resolutor único de `--project-root` para los entrypoints (r00005 S1). " +
@@ -88,31 +88,6 @@ const EXCEPTIONS: readonly IException[] = [
   },
 
   // --- Deuda declarada, que solo puede encoger -----------------------------
-  {
-    path: "projects/core/discovery/project-loader.service.ts",
-    kind: "debt",
-    why:
-      "Ya acepta `context` y el pipeline se lo pasa (r00005 S2). El fallback " +
-      "al singleton queda para los comandos del CLI que llaman a " +
-      "`loadProject()` sin contexto. Se va cuando esos comandos lo pasen.",
-  },
-  {
-    path: "projects/frameworks/laravel/",
-    kind: "debt",
-    why:
-      "El camino de descubrimiento legacy de Laravel. Acepta `context` y cae " +
-      "al singleton si no lo recibe; solo es alcanzable desde el CLI, que " +
-      "inyecta esa heurística como `legacyFallback`. Se va con el camino legacy.",
-  },
-  {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/tools/",
-    kind: "debt",
-    why:
-      "Los tools envuelven en `withScopedPaths` porque los comandos que " +
-      "invocan (`runList`, `runStats`, `runScan`, `runCheck`) todavía leen el " +
-      "singleton. Es el parche que compensa esa deuda, no una causa suya: se " +
-      "va cuando esos comandos reciban contexto.",
-  },
 ];
 
 /** Lo que cuenta como leer el estado global. */
@@ -131,7 +106,7 @@ function excepcionPara(rel: string): IException | undefined {
 }
 
 async function main(): Promise<number> {
-  const files = await collectFiles(fromRoot("projects"), [".ts"]);
+  const files = await collectFiles(fromRoot("packages"), [".ts"]);
 
   const infractores: string[] = [];
   const usadas = new Set<string>();

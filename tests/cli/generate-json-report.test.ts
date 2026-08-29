@@ -21,9 +21,9 @@ import { runProcess } from "../helpers/run-process";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,
-} from "../../projects/contracts/interfaces/core/generate-report.interface";
+} from "../../packages/contracts/interfaces/core/generate-report.interface";
 import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
-import { SUPPORTED_REPORT_VERSION } from "../../projects/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner.constant";
+import { SUPPORTED_REPORT_VERSION } from "../../packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner.constant";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 const SOURCE_PROJECT = exampleDir("express");

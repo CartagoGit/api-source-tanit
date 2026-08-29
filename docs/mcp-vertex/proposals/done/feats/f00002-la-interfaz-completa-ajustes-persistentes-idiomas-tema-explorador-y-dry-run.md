@@ -22,7 +22,7 @@ date: 2026-08-11
 > enseña el 80 % traducido y el resto en ingles, nunca la clave cruda.
 >
 > Y el gate de contratos me caz&oacute; en el acto: `pickLocale` era una
-> **funcion** dentro de `projects/contracts/`, que promete no tener
+> **funcion** dentro de `packages/contracts/`, que promete no tener
 > implementacion. Movida al servicio.
 >
 > **S2 y S3 entregadas.** El tema es variables CSS y nada mas: un test
@@ -93,7 +93,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 
 ### S1 — Los quince idiomas, en ficheros, con el del sistema por defecto
 - **Status**: done
-- **Files**: `projects/contracts/constants/cli/locales.constant.ts`, `projects/contracts/interfaces/cli/i18n.interface.ts`, `projects/ui/i18n/locales/`, `projects/ui/i18n/i18n.service.ts`, `tests/cli/i18n.spec.ts`
+- **Files**: `packages/contracts/constants/cli/locales.constant.ts`, `packages/contracts/interfaces/cli/i18n.interface.ts`, `packages/ui/i18n/locales/`, `packages/ui/i18n/i18n.service.ts`, `tests/cli/i18n.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Los quince idiomas mas hablados viven cada uno en su fichero, no en un `switch`"
@@ -104,7 +104,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 
 ### S2 — El estilo, en variables, para que cambiar el tema sea cambiar valores
 - **Status**: done
-- **Files**: `projects/ui/web/theme.constant.ts`, `tests/cli/theme.spec.ts`
+- **Files**: `packages/ui/web/theme.constant.ts`, `tests/cli/theme.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Ni un color escrito a pelo en la pagina: todo sale de variables CSS"
@@ -114,7 +114,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 
 ### S3 — Los ajustes sobreviven al cierre, y en escritorio son un fichero externo
 - **Status**: done
-- **Files**: `projects/contracts/interfaces/cli/settings.interface.ts`, `projects/ui/settings/settings.service.ts`, `tests/cli/settings.spec.ts`
+- **Files**: `packages/contracts/interfaces/cli/settings.interface.ts`, `packages/ui/settings/settings.service.ts`, `tests/cli/settings.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Al reabrir la interfaz vuelve la ultima configuracion guardada"
@@ -125,7 +125,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 ### S4 — La tuerca y la pantalla de ajustes
 - **Status**: done
 - **DependsOn**: [S1, S2, S3]
-- **Files**: `projects/ui/web/index.html.constant.ts`
+- **Files**: `packages/ui/web/index.html.constant.ts`
 - **Gate**: e2e
 - acceptance:
   - "Un icono de tuerca lleva a ajustes y se vuelve sin perder lo que hubiera puesto"
@@ -138,7 +138,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 - review-log: approved by finch — Revisado c2c8829: tuerca accesible, vistas sin recarga, idioma aplica lang/dir + data-i18n, tema via data-tema que gana sobre prefers-color-scheme, autoguardado campo a campo sin boton. 25/25 tests e2e UI, typecheck cli verde, bun run validate completo en verde (2379 tests, 21/21 ejemplos).
 ### S5 — Formato, framework y destino: lo que el CLI sabe y la interfaz no ofrecia
 - **Status**: done
-- **Files**: `projects/ui/server/ui-routes.service.ts`, `tests/cli/ui-routes.spec.ts`
+- **Files**: `packages/ui/server/ui-routes.service.ts`, `tests/cli/ui-routes.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Se elige el formato de salida, con Postman por defecto"
@@ -151,7 +151,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 - review-log: approved by wren — Revisado f2ce3a9: capabilities devuelve postmanImportable sin bruno; generate valida framework contra el catalogo (400 accionable, nada escrito a medias) y anuncia destino fuera del proyecto con la ruta real de la coleccion; contrato generate acepta framework opcional; ui.script lo traduce al flag --framework existente (una sola ruta de generacion); HTML trae selector de framework (auto por defecto) y nota junto a la casilla bruno. 60/60 tests UI, typecheck cli verde, validate completo 2388 tests y 21/21 ejemplos.
 ### S6 — Elegir carpeta explorando, no escribiendo
 - **Status**: done
-- **Files**: `projects/ui/server/browse.service.ts`, `tests/cli/browse.spec.ts`
+- **Files**: `packages/ui/server/browse.service.ts`, `tests/cli/browse.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Se navega el arbol de directorios desde la interfaz, para origen y para destino"
@@ -161,7 +161,7 @@ Los idiomas «cargados desde carpetas» chocan con que el binario compilado **no
 
 ### S7 — El ensayo: ver lo que va a pasar antes de escribir
 - **Status**: done
-- **Files**: `projects/ui/server/dry-run.service.ts`, `tests/cli/dry-run.spec.ts`
+- **Files**: `packages/ui/server/dry-run.service.ts`, `tests/cli/dry-run.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Enseña exactamente que ficheros se crearian y con que nombre, sin crear ninguno"

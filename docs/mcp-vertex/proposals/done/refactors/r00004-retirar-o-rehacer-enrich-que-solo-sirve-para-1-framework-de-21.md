@@ -42,7 +42,7 @@ Hallazgo 5 (BAD) de a00001. `enrich` descubre por el camino legacy de Laravel (`
 
 ### S1 — Sacar de `frameworks/laravel/` lo que no es de Laravel
 - **Status**: done
-- **Files**: `projects/core/domain/catalog-enricher.service.ts`, `projects/frameworks/laravel/catalog-enricher.service.ts`, `projects/cli/commands/generate.script.ts`, `tests/core/catalog-enricher.service.spec.ts`
+- **Files**: `packages/core/domain/catalog-enricher.service.ts`, `packages/frameworks/laravel/catalog-enricher.service.ts`, `packages/cli/commands/generate.script.ts`, `tests/core/catalog-enricher.service.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "`catalog-enricher` vive donde corresponde a algo que usan los 21 frameworks"
@@ -62,7 +62,7 @@ Hallazgo 5 (BAD) de a00001. `enrich` descubre por el camino legacy de Laravel (`
 ### S3 — Ejecutar la decisión
 - **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `projects/cli/commands/enrich.script.ts`, `projects/cli/cli.script.ts`, `tests/cli/enrich-command.test.ts`, `docs/INSTALL.md`, `README.md`
+- **Files**: `packages/cli/commands/enrich.script.ts`, `packages/cli/cli.script.ts`, `tests/cli/enrich-command.test.ts`, `docs/INSTALL.md`, `README.md`
 - **Gate**: e2e
 - acceptance:
   - "Si se retira: desaparece del CLI, del README y de `--help`, y no queda un comando fantasma que alguien encuentre en un script viejo"

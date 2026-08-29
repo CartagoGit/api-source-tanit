@@ -13,17 +13,17 @@ import {
   RailsRouteScanner,
   normalizeRailsParams,
   parseRoutesFile,
-} from "../../projects/frameworks/scanners/rails.scanner";
+} from "../../packages/frameworks/scanners/rails.scanner";
 import {
   PhoenixProjectScanner,
   PhoenixRouteScanner,
   parseRouter,
-} from "../../projects/frameworks/scanners/phoenix.scanner";
+} from "../../packages/frameworks/scanners/phoenix.scanner";
 import {
   KtorProjectScanner,
   KtorRouteScanner,
   parseKotlinRouting,
-} from "../../projects/frameworks/scanners/ktor.scanner";
+} from "../../packages/frameworks/scanners/ktor.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";

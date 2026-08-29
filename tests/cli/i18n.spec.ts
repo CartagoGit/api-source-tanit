@@ -22,17 +22,17 @@ import { tmpdir } from "node:os";
 import {
   BUNDLED_LOCALES,
   FALLBACK_LOCALE,
-} from "../../projects/contracts/constants/cli/locales.constant";
+} from "../../packages/contracts/constants/cli/locales.constant";
 import {
   loadLocales,
   pickLocale,
   seedLocales,
   translate,
-} from "../../projects/ui/i18n/i18n.service";
+} from "../../packages/ui/i18n/i18n.service";
 import {
   userConfigDir,
   userLocalesDir,
-} from "../../projects/ui/config-dir.helper";
+} from "../../packages/ui/config-dir.helper";
 import { fromRoot } from "../../scripts/helpers/root.helper";
 
 const CODIGOS = BUNDLED_LOCALES.map((l) => l.code);
@@ -72,7 +72,7 @@ describe("el catálogo de idiomas", () => {
    * que este repositorio ya pagó con `NON_LARAVEL_FRAMEWORKS`.
    */
   test("hay un fichero por cada idioma declarado, y ninguno de más", async () => {
-    const ficheros = (await readdir(fromRoot("projects/ui/i18n/locales")))
+    const ficheros = (await readdir(fromRoot("packages/ui/i18n/locales")))
       .filter((f) => f.endsWith(".json"))
       .map((f) => f.replace(/\.json$/, ""))
       .sort();

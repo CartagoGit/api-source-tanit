@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { isPydanticRequired, mapPydanticFormat, mapPydanticType, parsePydanticModels, pydanticModelToSpecs } from "../../projects/frameworks/parsers/pydantic-schema.helper";
-import { marshmallowFieldToSpec, marshmallowSchemaToSpecs, parseMarshmallowSchemas } from "../../projects/frameworks/parsers/marshmallow-schema.helper";
+import { isPydanticRequired, mapPydanticFormat, mapPydanticType, parsePydanticModels, pydanticModelToSpecs } from "../../packages/frameworks/parsers/pydantic-schema.helper";
+import { marshmallowFieldToSpec, marshmallowSchemaToSpecs, parseMarshmallowSchemas } from "../../packages/frameworks/parsers/marshmallow-schema.helper";
 
 describe("parsePydanticModels", () => {
   const source = `

@@ -13,8 +13,8 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, } from "node:path";
 import { tmpdir } from "node:os";
-import type { FrameworkId, IProjectMatch } from "../../projects/contracts/interfaces/core/scanner.interface";
-import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
+import type { FrameworkId, IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
+import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
 export const PACKAGE_ROOT = REPO_ROOT;
@@ -89,7 +89,7 @@ export async function matchFor(
 export async function scanProject(
   framework: FrameworkId,
   projectRoot: string,
-): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../projects/contracts/interfaces/core/scanner.interface").ParsedRoute> }> {
+): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../packages/contracts/interfaces/core/scanner.interface").ParsedRoute> }> {
   const bundle = scannerBundleFor(framework);
   if (!bundle) throw new Error(`framework "${framework}" no está en el scanner registry`);
   const match = await bundle.projectScanner.resolve(projectRoot);

@@ -75,7 +75,7 @@ igualmente.
 
 ### S1 — Robustez en JS/TS, sin parser
 - **Estado**: done (2026-08-07) por otra vía.
-- **Ficheros**: `projects/core/helpers/source-scan.helper.ts`
+- **Ficheros**: `packages/core/helpers/source-scan.helper.ts`
   (`maskStringLiterals`, `findOutsideStrings`), los scanners de
   `express`, `hono` y `fastify`, `tests/core/mask-strings.spec.ts`.
 - Express pasa a escanear el fichero entero; los tres dejan de contar

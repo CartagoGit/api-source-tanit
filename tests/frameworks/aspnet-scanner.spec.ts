@@ -3,11 +3,11 @@ import {
   AspNetProjectScanner,
   AspNetRouteScanner,
   AspNetDataAnnotationsProvider,
-} from "../../projects/frameworks/scanners/aspnet.scanner";
+} from "../../packages/frameworks/scanners/aspnet.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
-import { scannerBundleFor } from "../../projects/frameworks/framework.registry";
+import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({

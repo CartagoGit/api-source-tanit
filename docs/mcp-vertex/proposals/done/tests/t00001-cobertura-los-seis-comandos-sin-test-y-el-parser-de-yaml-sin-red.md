@@ -72,7 +72,7 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
 - **Files**: `scripts/gates/lint-command-coverage.script.ts`, `tests/cli/command-coverage.spec.ts`, `package.json`
 - **Gate**: lint
 - acceptance:
-  - "El lint falla si un `*.script.ts` de `projects/cli/commands/` no aparece en ningún test que lo ejecute"
+  - "El lint falla si un `*.script.ts` de `packages/cli/commands/` no aparece en ningún test que lo ejecute"
   - "Se comprueba añadiendo un comando vacío y viendo romper el gate"
   - "Entra en la cadena de `bun run lint`"
 
@@ -88,6 +88,6 @@ Hallazgos 14 y 16 de a00001. Ningún test lanza `scan`, `open-postman`, `init`, 
 - Property-based sobre documentos generados: indentación mezclada, tabuladores, claves repetidas, anclas, valores multilínea, UTF-8 y ficheros truncados
 - La invariante es que nunca cuelga, nunca lanza sin mensaje y nunca devuelve una ruta con el nombre vacío
 - Lo que no sepa parsear lo dice, en vez de devolver algo distinto en silencio
-- El lint falla si un `*.script.ts` de `projects/cli/commands/` no aparece en ningún test que lo ejecute
+- El lint falla si un `*.script.ts` de `packages/cli/commands/` no aparece en ningún test que lo ejecute
 - Se comprueba añadiendo un comando vacío y viendo romper el gate
 - Entra en la cadena de `bun run lint`

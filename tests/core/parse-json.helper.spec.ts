@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { declaredDependencies, isRecord, parseJson, readArray, readObject, readString } from "../../projects/core/helpers/parse-json.helper";
+import { declaredDependencies, isRecord, parseJson, readArray, readObject, readString } from "../../packages/core/helpers/parse-json.helper";
 
 describe("parseJson", () => {
   test("devuelve el valor cuando el JSON es válido", () => {

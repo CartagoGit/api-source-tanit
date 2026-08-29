@@ -22,7 +22,7 @@ Que ningún fallo a mitad de escritura pueda destruir una colección que ya esta
 
 ## why
 
-Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `projects/core` y `projects/cli`: `generate` (3 sitios), `watch` (2), `enrich` (1), `init` (2, además síncronas). Ninguna usa fichero temporal + rename; no hay un solo `rename(` en el árbol. `writeFile` sobre una ruta existente trunca primero y escribe después, y entre esos dos momentos el fichero está a medias — si el proceso muere ahí, la colección queda truncada, y un JSON truncado no es una colección incompleta: es un fichero que Postman no abre. El caso serio es `watch`, que reescribe la colección en cada cambio del proyecto mientras el flujo que documenta el README es tenerla importada en Postman. Cada guardado es una ventana para leer un JSON a medio escribir, y el producto entero de esta herramienta es ese fichero.
+Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `packages/core` y `packages/cli`: `generate` (3 sitios), `watch` (2), `enrich` (1), `init` (2, además síncronas). Ninguna usa fichero temporal + rename; no hay un solo `rename(` en el árbol. `writeFile` sobre una ruta existente trunca primero y escribe después, y entre esos dos momentos el fichero está a medias — si el proceso muere ahí, la colección queda truncada, y un JSON truncado no es una colección incompleta: es un fichero que Postman no abre. El caso serio es `watch`, que reescribe la colección en cada cambio del proyecto mientras el flujo que documenta el README es tenerla importada en Postman. Cada guardado es una ventana para leer un JSON a medio escribir, y el producto entero de esta herramienta es ese fichero.
 
 ## non-goals
 
@@ -35,7 +35,7 @@ Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `project
 
 ### S1 — El helper de escritura atómica, con su test
 - **Status**: done
-- **Files**: `projects/core/helpers/atomic-write.helper.ts`, `tests/core/atomic-write.helper.spec.ts`
+- **Files**: `packages/core/helpers/atomic-write.helper.ts`, `tests/core/atomic-write.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Escribe en un temporal **del mismo directorio** y renombra: un `rename` entre sistemas de ficheros no es atómico y falla con EXDEV"
@@ -45,7 +45,7 @@ Hallazgo 2 (FATAL) de a00001. Trazadas todas las escrituras durables de `project
 ### S2 — Todos los comandos que escriben pasan por él
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/enrich.script.ts`, `projects/cli/commands/init.script.ts`
+- **Files**: `packages/cli/commands/generate.script.ts`, `packages/cli/commands/watch.script.ts`, `packages/cli/commands/enrich.script.ts`, `packages/cli/commands/init.script.ts`
 - **Gate**: e2e
 - acceptance:
   - "Los 8 sitios que hoy llaman a `writeFile`/`writeFileSync` usan el helper"

@@ -14,7 +14,7 @@
  *   - Tooling y tests del repo → `scripts/helpers/root.helper.ts`, que
  *     tiene un nombre para cada carpeta conocida.
  *   - Código de producción     → `findRepoRoot()` de
- *     `projects/core/helpers/module-path.helper.ts`, que busca un
+ *     `packages/core/helpers/module-path.helper.ts`, que busca un
  *     marcador y devuelve `null` dentro del binario compilado.
  *   - Tests del plugin         → `workspaceRoot()` de su
  *     `tests/helpers/plugin-context.ts`.
@@ -38,8 +38,8 @@ const DEPTH_SEGMENTS = /(?:__dirname|moduleDir\([^)]*\))(?:\s*,\s*["']\.\.["']){
  */
 const ALLOWED = new Set([
   "scripts/helpers/root.helper.ts",
-  "projects/core/helpers/module-path.helper.ts",
-  "projects/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts",
+  "packages/core/helpers/module-path.helper.ts",
+  "packages/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts",
   "scripts/gates/lint-paths.script.ts",
 ]);
 
@@ -98,7 +98,7 @@ async function main(): Promise<number> {
     console.error(
       "\n  Usa el registro de rutas en vez de la profundidad:\n" +
         "    tooling y tests → scripts/helpers/root.helper.ts\n" +
-        "    producción      → findRepoRoot() de projects/core/helpers/\n",
+        "    producción      → findRepoRoot() de packages/core/helpers/\n",
     );
     return 1;
   }

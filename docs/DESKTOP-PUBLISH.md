@@ -33,7 +33,7 @@ quedarse sin las otras.
 
 ```bash
 # package.json  →  "version"
-# projects/desktop/tauri.conf.json  →  "version"
+# packages/desktop/tauri.conf.json  →  "version"
 ```
 
 Tienen que coincidir. El de `package.json` va al paquete npm y al `--help`

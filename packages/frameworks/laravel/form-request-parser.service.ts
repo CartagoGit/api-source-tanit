@@ -18,8 +18,8 @@
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { stripComments } from "./route-parser.service.js";
-import { fromProjectRelative, requestsDir } from "../../core/discovery/paths.service.js";
 import type { BodyVariant, FormRequestRules, QueryVariant } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const METHOD_RULES_RE = /public\s+function\s+rules\s*\([^)]*\)\s*:\s*array\s*\{/;
@@ -193,11 +193,9 @@ function parseRulesArray(block: string): { rules: Record<string, string[]>; unkn
 
 export async function parseFormRequest(
   relPath: string,
-  projectRootOverride?: string,
+  context: IProjectContext,
 ): Promise<FormRequestRules> {
-  const abs = projectRootOverride
-    ? join(projectRootOverride, relPath)
-    : fromProjectRelative(relPath);
+  const abs = join(context.projectRoot, relPath);
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
@@ -460,25 +458,19 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
 export async function findFormRequestForController(
   controllerClass: string,
   methodName: string,
-  projectRootOverride?: string,
+  context: IProjectContext,
 ): Promise<string | null> {
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
-  const { toProjectRelative } = await import("../../core/discovery/paths.service.js");
 
   // `projectRootOverride` es el camino preferente: mantiene el provider
   // reentrante (dos proyectos escaneados en el mismo proceso no se pisan).
   // Sin él caemos al singleton de `paths.service`, que resuelve la raíz
   // una única vez por proceso desde POSTMAN_PROJECT_ROOT / --project-root.
-  const base = projectRootOverride
-    ? path.join(projectRootOverride, "app", "Http", "Requests")
-    : requestsDir();
-  if (!base) return null;
+  const base = path.join(context.projectRoot, "app", "Http", "Requests");
 
   const toRelative = (abs: string): string =>
-    projectRootOverride
-      ? path.relative(projectRootOverride, abs).split(path.sep).join("/")
-      : toProjectRelative(abs);
+    path.relative(context.projectRoot, abs).split(path.sep).join("/");
 
   const ctrlSegs = controllerClass.split("\\").filter(Boolean);
   // App Http Controllers [Sub?] NameController

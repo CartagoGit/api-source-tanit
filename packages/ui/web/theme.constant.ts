@@ -7,7 +7,7 @@
  * prohíbe cargar nada de fuera.
  *
  * Es un **asset**, no un contrato, y por eso vive aquí y no en
- * `projects/contracts/`: lo que sí es contrato son los modos y los
+ * `packages/contracts/`: lo que sí es contrato son los modos y los
  * nombres de las variables, que los comparten los ajustes, el servidor
  * y esta hoja. Están en `contracts/constants/cli/theme.constant.ts`.
  *

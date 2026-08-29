@@ -128,7 +128,7 @@ describe("los lanzadores son finos", () => {
  */
 describe("el nombre del binario", () => {
   test("es el mismo que el `bin` del package.json", async () => {
-    const { BIN_NAME } = await import("../../projects/contracts/constants/core/postman.constant");
+    const { BIN_NAME } = await import("../../packages/contracts/constants/core/postman.constant");
     const pkg = JSON.parse(
       await readFile(join(REPO_ROOT, "package.json"), "utf8"),
     ) as { bin?: Record<string, string> };
@@ -136,7 +136,7 @@ describe("el nombre del binario", () => {
   });
 
   test("el workflow de releases publica ese patrón, no otro", async () => {
-    const { BIN_NAME } = await import("../../projects/contracts/constants/core/postman.constant");
+    const { BIN_NAME } = await import("../../packages/contracts/constants/core/postman.constant");
     const workflow = await readFile(
       join(REPO_ROOT, ".github", "workflows", "release-binaries.yml"),
       "utf8",

@@ -65,7 +65,7 @@ export const SECTIONS: readonly ISection[] = [
     // Va la primera en la lista porque el orden es el de ejecución de
     // los gates: lo más nuclear primero, para fallar pronto.
     description: "Interfaces, tipos y constantes compartidos. Sin implementación",
-    paths: ["projects/contracts/"],
+    paths: ["packages/contracts/"],
     tests: ["tests/contracts/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.contracts.json",
     dependsOn: [],
@@ -73,7 +73,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
-    paths: ["projects/core/"],
+    paths: ["packages/core/"],
     tests: ["tests/core/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.core.json",
     dependsOn: ["contracts"],
@@ -83,7 +83,7 @@ export const SECTIONS: readonly ISection[] = [
     // Sin número: una cuenta escrita a mano se queda vieja cada vez que
     // se añade un scanner, y ya lo hizo (decía 12 con 19 en el registro).
     description: "Lo concreto de cada framework: sus scanners y sus parsers",
-    paths: ["projects/frameworks/"],
+    paths: ["packages/frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",
     dependsOn: ["contracts", "core"],
@@ -91,7 +91,7 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "cli",
     description: "Comandos, asistente interactivo y binario compilado",
-    paths: ["projects/cli/", "projects/ui/", "scripts/"],
+    paths: ["packages/cli/", "packages/ui/", "scripts/"],
     tests: ["tests/cli/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks"],
@@ -107,10 +107,10 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "plugin",
     description: "Plugin de mcp-vertex — proyecto independiente, gates propios",
-    paths: ["projects/plugins/mcp-vertex_expostman/"],
-    tests: ["projects/plugins/mcp-vertex_expostman/tests/**/*.{spec,test}.ts"],
-    tsconfig: "projects/plugins/mcp-vertex_expostman/tsconfig.json",
-    ownTypecheck: { cwd: "projects/plugins/mcp-vertex_expostman", script: "typecheck" },
+    paths: ["packages/plugins/mcp-vertex_expostman/"],
+    tests: ["packages/plugins/mcp-vertex_expostman/tests/**/*.{spec,test}.ts"],
+    tsconfig: "packages/plugins/mcp-vertex_expostman/tsconfig.json",
+    ownTypecheck: { cwd: "packages/plugins/mcp-vertex_expostman", script: "typecheck" },
     // El plugin necesita el catálogo de frameworks (lo expone en su
     // tool `test` y en `summary`), así que la dependencia es real y se
     // declara. Declararla no es relajar la regla: la regla es que

@@ -23,7 +23,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 #    Sin esto, alguien que clona el repo y ejecuta `./bin/expostman`
 #    acaba en un 404 de npm — el paquete aún no está publicado — cuando
 #    tenía el CLI a dos carpetas de distancia.
-LOCAL_CLI="$HERE/../projects/cli/cli.script.ts"
+LOCAL_CLI="$HERE/../packages/cli/cli.script.ts"
 if [ -f "$LOCAL_CLI" ] && command -v bun >/dev/null 2>&1; then
   exec bun "$LOCAL_CLI" "$@"
 fi

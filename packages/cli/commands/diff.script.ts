@@ -21,8 +21,10 @@ import {
   needsNameToDisambiguate,
 } from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
-import { outputCollectionPath, projectRoot } from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import type { ICheckOutcome, ICheckReport } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
@@ -30,16 +32,18 @@ import type { ICheckOutcome, ICheckReport } from "../../contracts/interfaces/cli
 /** Comprueba la deriva y devuelve el informe. `main` es quien lo pinta. */
 export async function runCheck(
   argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<ICheckOutcome> {
-  const { config } = await loadProject();
+  const resolvedContext = context ?? resolveProjectContext({ argv });
+  const { config } = await loadProject(argv, resolvedContext);
   const outputIdx = argv.indexOf("--output");
   const outputFlag = outputIdx !== -1 ? argv[outputIdx + 1] ?? null : null;
   const COLLECTION_PATH = outputFlag
     ? outputFlag
-    : await outputCollectionPath(config.name);
+    : await outputCollectionPath(config.name, resolvedContext);
 
   const orch = defaultOrchestrator();
-  const root = projectRoot() ?? ".";
+  const root = resolvedContext.projectRoot;
   const { match, scanner } = await orch.detectProject(root);
 
   /**
@@ -103,7 +107,7 @@ export async function runCheck(
     // Sin scanner que reconozca el proyecto queda la heurística de
     // Laravel, que es lo único que había antes de que existieran los
     // scanners.
-    for (const r of await parseAllRoutes(config.filePrefixes)) {
+    for (const r of await parseAllRoutes(config.filePrefixes, resolvedContext)) {
       sourceRoutes.push({ method: r.method, uri: stripApiPrefix(r.uri) });
     }
     console.log("(source: legacy heuristic — no scanner matched)");

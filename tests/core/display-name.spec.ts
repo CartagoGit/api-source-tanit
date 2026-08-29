@@ -17,8 +17,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { deriveName, toPostmanUri } from "../../projects/core/adapters/parsed-route-to-spec.adapter";
-import type { ParsedRoute } from "../../projects/contracts/interfaces/core/scanner.interface";
+import { deriveName, toPostmanUri } from "../../packages/core/adapters/parsed-route-to-spec.adapter";
+import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface";
 
 function nameOf(route: Partial<ParsedRoute> & { method: string; uri: string }): string {
   return deriveName(route as ParsedRoute);
@@ -115,7 +115,7 @@ describe("las reglas de body solo van a los métodos que lo aceptan", () => {
   test.each(["GET", "DELETE", "HEAD", "OPTIONS"] as const)(
     "un %s no conserva reglas de body",
     async (method) => {
-      const { generateWithAllFrameworks } = await import("../../projects/frameworks/index");
+      const { generateWithAllFrameworks } = await import("../../packages/frameworks/index");
       const { exampleDir } = await import("../../scripts/helpers/root.helper");
       const result = await generateWithAllFrameworks(exampleDir("express"));
       for (const spec of result.specs) {
@@ -127,7 +127,7 @@ describe("las reglas de body solo van a los métodos que lo aceptan", () => {
   );
 
   test("un POST sí las conserva", async () => {
-    const { generateWithAllFrameworks } = await import("../../projects/frameworks/index");
+    const { generateWithAllFrameworks } = await import("../../packages/frameworks/index");
     const { exampleDir } = await import("../../scripts/helpers/root.helper");
     const result = await generateWithAllFrameworks(exampleDir("express"));
     const post = result.specs.find((s) => s.method === "POST" && s.uri === "/api/users");

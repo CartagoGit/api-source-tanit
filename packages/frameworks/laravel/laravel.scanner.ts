@@ -15,6 +15,7 @@ import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -413,13 +414,16 @@ export class LaravelFormRequestValidationProvider
     const rel = await findFormRequestForController(
       _route.controllerClass,
       _route.actionName,
-      _match.projectRoot,
+      resolveProjectContext({ projectRoot: _match.projectRoot }),
     );
     if (!rel) return { endpointKey, fields: [] };
 
     let rules;
     try {
-      rules = await parseFormRequest(rel, _match.projectRoot);
+      rules = await parseFormRequest(
+        rel,
+        resolveProjectContext({ projectRoot: _match.projectRoot }),
+      );
     } catch {
       return { endpointKey, fields: [] };
     }

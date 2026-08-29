@@ -3,7 +3,7 @@
  *
  * `plugins.search.options.roots` y `plugins.conventions.options.roots`
  * declaraban `contract`, `service`, `helper` y `plugins`: la estructura
- * anterior a que todo se moviera bajo `projects/`. El propio servidor lo
+ * anterior a que todo se moviera bajo `packages/`. El propio servidor lo
  * denunciaba en `overview.configIssues` con ocho incidencias —
  * *"does not exist in this workspace — the plugin will scan nothing"*.
  *
@@ -69,12 +69,12 @@ describe("las raíces que escanean los plugins", () => {
 
   /**
    * El fallo simétrico: declarar tan poco que el plugin no vea el código.
-   * `projects/` es donde vive todo lo que se publica; si no está, la
+   * `packages/` es donde vive todo lo que se publica; si no está, la
    * búsqueda y las convenciones miran cualquier cosa menos el producto.
    */
   test.for(CON_ROOTS)("%s cubre el código que se publica", async (plugin) => {
     const roots = (await config()).plugins?.[plugin]?.options?.roots ?? [];
-    expect(roots).toContain("projects");
+    expect(roots).toContain("packages");
   });
 });
 

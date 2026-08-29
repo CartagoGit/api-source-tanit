@@ -13,7 +13,7 @@
  *
  * El plugin queda fuera de esta lista a propósito: es un proyecto
  * independiente con su propio `vitest.config.ts`, y entra por el glob
- * `projects/plugins/mcp-vertex_expostman` como haría cualquier otro paquete del workspace.
+ * `packages/plugins/mcp-vertex_expostman` como haría cualquier otro paquete del workspace.
  */
 import { defineConfig } from "vitest/config";
 
@@ -40,7 +40,7 @@ export default defineConfig({
           },
         }),
       ),
-      "projects/plugins/mcp-vertex_expostman",
+      "packages/plugins/mcp-vertex_expostman",
     ],
 
     /**
@@ -65,28 +65,30 @@ export default defineConfig({
       provider: "v8" as const,
       reporter: ["text-summary", "json-summary", "html"],
       reportsDirectory: "build/coverage",
-      include: ["projects/**/*.ts"],
+      include: ["packages/**/*.ts"],
       exclude: [
         "**/node_modules/**",
         "**/dist/**",
         "**/*.d.ts",
         "tests/**",
         "scripts/**",
-        "projects/plugins/**/tests/**",
+        "packages/plugins/**/tests/**",
       ],
       // Medido el 2026-08-08 sobre 2.000 tests:
       //   statements 73,88 · branches 62,38 · functions 82,89 · lines 75,65
       // El umbral va justo debajo de cada uno: así una regresión falla y
       // una mejora se puede fijar subiendo el número.
       //
-      // `branches` es el punto flojo, y con diferencia. Tiene sentido:
+      // `branches` era el punto flojo, y con diferencia. Tiene sentido:
       // los scanners están llenos de `if` sobre formas de código ajeno
       // —el `else` del que no trae `@Query`, el del manifiesto sin
       // `devDependencies`— y esas ramas solo se recorren con un fixture
-      // que las provoque. Es la deuda de test que queda por pagar.
+      // que las provoque. La deuda se pagó con fixtures (t00004,
+      // 2026-08-30): el lote laravel/django/openapi + core subió la
+      // medida a 72,0 % y el umbral pasa de 62 a 70.
       thresholds: {
         statements: 73,
-        branches: 62,
+        branches: 70,
         functions: 82,
         lines: 75,
       },

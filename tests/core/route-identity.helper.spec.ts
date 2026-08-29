@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { describeEndpoint, endpointKey, needsNameToDisambiguate } from "../../projects/core/helpers/route-identity.helper";
+import { describeEndpoint, endpointKey, needsNameToDisambiguate } from "../../packages/core/helpers/route-identity.helper";
 
 describe("endpointKey", () => {
   test("en REST, método y URI bastan", () => {

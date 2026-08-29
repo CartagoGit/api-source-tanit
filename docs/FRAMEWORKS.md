@@ -566,5 +566,5 @@ Dos salidas:
 
 Añadir un scanner nuevo son tres clases (`IProjectScanner`,
 `IRouteScanner`, `IValidationSpecProvider`) registradas en
-[`projects/frameworks/framework.registry.ts`](../projects/frameworks/framework.registry.ts).
+[`packages/frameworks/framework.registry.ts`](../packages/frameworks/framework.registry.ts).
 Ver [CONTRIBUTING.md](../CONTRIBUTING.md).

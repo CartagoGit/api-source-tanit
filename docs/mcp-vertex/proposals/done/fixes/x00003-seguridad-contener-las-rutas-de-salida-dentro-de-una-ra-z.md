@@ -39,7 +39,7 @@ Hallazgo 7 (BAD) de a00001. `--output-dir` y `POSTMAN_OUTPUT_DIR` se aceptan tal
 
 ### S1 — La comprobación de contención, pura y probada
 - **Status**: done
-- **Files**: `projects/core/helpers/path-containment.helper.ts`, `tests/core/path-containment.helper.spec.ts`
+- **Files**: `packages/core/helpers/path-containment.helper.ts`, `tests/core/path-containment.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Resuelve enlaces simbólicos antes de comparar: `/tmp/enlace/..` no puede colarse"
@@ -49,7 +49,7 @@ Hallazgo 7 (BAD) de a00001. `--output-dir` y `POSTMAN_OUTPUT_DIR` se aceptan tal
 ### S2 — El CLI la aplica cuando quien pide es un agente
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/core/discovery/paths.service.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `tests/core/output-containment.spec.ts`
+- **Files**: `packages/core/discovery/paths.service.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `tests/core/output-containment.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Una ruta que se sale de la raíz se rechaza con mensaje claro y código 1, no con una traza"

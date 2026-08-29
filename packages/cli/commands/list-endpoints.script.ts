@@ -10,7 +10,9 @@ import { explainReadFailure, readCollection } from "../../core/helpers/collectio
 import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { IListOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /**
@@ -22,10 +24,12 @@ import type { IListOutcome } from "../../contracts/interfaces/cli/command-outcom
  * columna.
  */
 export async function runList(
-  _argv: string[] = process.argv.slice(2),
+  argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<IListOutcome> {
-  const { config } = await loadProject();
-  const COLLECTION_PATH = await outputCollectionPath(config.name);
+  const resolvedContext = context ?? resolveProjectContext({ argv });
+  const { config } = await loadProject(argv, resolvedContext);
+  const COLLECTION_PATH = await outputCollectionPath(config.name, resolvedContext);
 
   const read = await readCollection(COLLECTION_PATH);
   if (!read.ok) return { code: explainReadFailure(read), endpoints: [] };

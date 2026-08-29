@@ -89,7 +89,7 @@ wrappers finos que lo descarguen y lo invoquen.
   dominio; si alguno empieza a parsear rutas, está mal.
 
 ### S4 — el binario sabe autoactualizarse
-- **Files**: `projects/cli/` (comando `upgrade`).
+- **Files**: `packages/cli/` (comando `upgrade`).
 - **Gate**: `bun test`.
 
 - `postman-from-routes upgrade` comprueba la última release y sustituye

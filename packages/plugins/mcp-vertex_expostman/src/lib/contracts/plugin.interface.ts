@@ -34,7 +34,7 @@ export const ExportToPostmanOptionsSchema = z
      *
      * El valor por defecto vive en `cli-path.constant.ts`, no aquí: esta
      * frase decía `scripts/cli.script.ts` mucho después de que el CLI se
-     * moviera a `projects/`, que es justo el motivo de que ahora haya un
+     * moviera a `packages/`, que es justo el motivo de que ahora haya un
      * único sitio donde está escrito y un test que lo comprueba.
      */
     cliScript: z.string().min(1).optional(),

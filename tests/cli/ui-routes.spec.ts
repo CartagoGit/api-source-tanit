@@ -13,9 +13,9 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { handleUiRequest } from "../../projects/ui/server/ui-routes.service";
-import type { IProjectSummary } from "../../projects/contracts/interfaces/core/domain.interface";
-import type { IUiDeps } from "../../projects/contracts/interfaces/cli/ui.interface";
+import { handleUiRequest } from "../../packages/ui/server/ui-routes.service";
+import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface";
+import type { IUiDeps } from "../../packages/contracts/interfaces/cli/ui.interface";
 
 const RESUMEN: IProjectSummary = {
   framework: "express",

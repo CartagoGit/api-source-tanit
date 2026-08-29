@@ -37,7 +37,7 @@ function cli(args: readonly string[]): Promise<string> {
   return new Promise((resolve) => {
     const child = spawn(
       "bun",
-      ["run", join(RAIZ, "projects/cli/cli.script.ts"), ...args],
+      ["run", join(RAIZ, "packages/cli/cli.script.ts"), ...args],
       { stdio: ["ignore", "pipe", "pipe"] },
     );
     let salida = "";

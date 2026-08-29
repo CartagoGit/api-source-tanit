@@ -100,7 +100,7 @@ scanner que se añada copiará ese patrón.
 - `detectLaravelTokenPath` se invoca desde el scanner de Laravel, no
   desde el pipeline.
 - Los mensajes de error dejan de decir "proyecto Laravel".
-- **Acceptance**: `grep -rin "laravel" projects/core/` solo devuelve
+- **Acceptance**: `grep -rin "laravel" packages/core/` solo devuelve
   resultados dentro del scanner de Laravel y de sus tests.
 
 ### S4 — auditar el resto de asimetrías

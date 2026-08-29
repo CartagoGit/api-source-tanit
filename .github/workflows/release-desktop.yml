@@ -73,16 +73,16 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            projects/desktop/target/release/bundle/**/*.deb
-            projects/desktop/target/release/bundle/**/*.AppImage
-            projects/desktop/target/release/bundle/**/*.dmg
-            projects/desktop/target/release/bundle/**/*.msi
-            projects/desktop/target/release/bundle/**/*-setup.exe
+            packages/desktop/target/release/bundle/**/*.deb
+            packages/desktop/target/release/bundle/**/*.AppImage
+            packages/desktop/target/release/bundle/**/*.dmg
+            packages/desktop/target/release/bundle/**/*.msi
+            packages/desktop/target/release/bundle/**/*-setup.exe
 
       - name: Subir como artefacto (ejecución manual)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: instaladores-${{ matrix.os }}
-          path: projects/desktop/target/release/bundle/**/*
+          path: packages/desktop/target/release/bundle/**/*
           if-no-files-found: error

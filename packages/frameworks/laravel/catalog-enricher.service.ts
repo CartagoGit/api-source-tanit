@@ -19,7 +19,6 @@ import type { IProjectContext } from "../../contracts/interfaces/core/project-co
 import { projectDirs, toProjectRelative as toContextRelative } from "../../core/discovery/project-context.service.js";
 import { VARIANT_TAG } from "../../contracts/constants/core/postman.constant.js";
 import { generateBodyVariants, generateQueryVariants, parseFormRequest } from "./form-request-parser.service.js";
-import { requestsDir, toProjectRelative } from "../../core/discovery/paths.service.js";
 import type { EnrichmentStats, FormRequestIndex } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 import type { FormRequestRules } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
@@ -101,7 +100,7 @@ export async function enrichCatalogWithFormRequests(
     if (cache.has(relOrAbs)) return cache.get(relOrAbs)!;
     const p = (async () => {
       try {
-        const r = await parseFormRequest(relOrAbs);
+        const r = await parseFormRequest(relOrAbs, context!);
         if (r.isEmpty) return null;
         return r;
       } catch {
@@ -114,15 +113,7 @@ export async function enrichCatalogWithFormRequests(
 
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
-  const requestsRootValue = context ? projectDirs(context).requests : requestsDir();
-  if (!requestsRootValue) {
-    // Sin raíz determinable no se puede localizar ningún FormRequest,
-    // pero eso no es motivo para abortar la generación: los endpoints ya
-    // tienen su body del scanner.
-    stats.unresolved = formRequestByRoute.size;
-    return stats;
-  }
-  const REQUESTS_ROOT: string = requestsRootValue;
+  const REQUESTS_ROOT = projectDirs(context!).requests;
   const byClassName = new Map<string, string>();
   try {
     const entries = await fs.readdir(REQUESTS_ROOT, { recursive: true });
@@ -192,7 +183,7 @@ export async function enrichCatalogWithFormRequests(
     for (const guess of guessNamesFromEndpoint(item.name)) {
       const file = findFormRequestFile(guess);
       if (!file) continue;
-      const rel = context ? toContextRelative(context, file) : toProjectRelative(file);
+      const rel = toContextRelative(context!, file);
       const rules = await loadFormRequest(rel);
       if (rules) return rules;
     }

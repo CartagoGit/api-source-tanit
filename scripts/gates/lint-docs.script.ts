@@ -16,7 +16,7 @@
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
  * que hace es un comando que no funciona. Ya pasó — al reorganizar en
- * `projects/`, `docs/INSTALL.md` seguía diciendo
+ * `packages/`, `docs/INSTALL.md` seguía diciendo
  * `bun run scripts/generate.script.ts`, que llevaba tres commits sin
  * existir.
  *
@@ -34,7 +34,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
 import { PACKAGE_JSON, REPO_ROOT } from "../helpers/root.helper.js";
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant.js";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Carpetas de documentación que se revisan. */
 const DOC_ROOTS = ["docs", "examples", "."] as const;
@@ -278,7 +278,7 @@ function checkAnchors(
  *
  * Esto también se quedaba viejo en silencio: `docs/FRAMEWORKS.md`
  * enlazaba `services/scanner-registry.ts` mucho después de que el
- * registro pasara a `projects/frameworks/framework.registry.ts`, y era
+ * registro pasara a `packages/frameworks/framework.registry.ts`, y era
  * justo el enlace que le decías a alguien que quiere añadir un scanner.
  */
 async function checkLinks(
@@ -468,7 +468,7 @@ async function main(): Promise<number> {
   // Los comandos del CLI salen de su propio dispatcher, no de una lista
   // a mano: una lista paralela se queda vieja igual que la doc.
   const cliSource = await readFile(
-    join(REPO_ROOT, "projects", "cli", "cli.script.ts"),
+    join(REPO_ROOT, "packages", "cli", "cli.script.ts"),
     "utf8",
   );
   const commands = new Set(

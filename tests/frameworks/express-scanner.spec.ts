@@ -3,7 +3,7 @@ import {
   ExpressProjectScanner,
   ExpressRouteScanner,
   ExpressZodValidationProvider,
-} from "../../projects/frameworks/scanners/express.scanner";
+} from "../../packages/frameworks/scanners/express.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {

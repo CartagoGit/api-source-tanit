@@ -12,7 +12,7 @@ import { cp as cpAsync, rm as rmAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 
-import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 
 export type FixtureTree = Record<string, string>;
 

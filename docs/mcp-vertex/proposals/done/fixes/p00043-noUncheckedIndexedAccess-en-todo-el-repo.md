@@ -66,15 +66,15 @@ de otra persona.
 
 ### S1 — arreglar los 24 sitios
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/frameworks/laravel/form-request-parser.service.ts` (10),
-  `projects/frameworks/scanners/django.scanner.ts` (3),
-  `projects/core/discovery/project-loader.service.ts` (3),
-  `projects/core/discovery/paths.service.ts` (2),
-  `projects/core/domain/param-inferrer.service.ts`,
-  `projects/core/domain/environment-builder.service.ts`,
-  `projects/cli/commands/init.script.ts`,
-  `projects/frameworks/scanners/aspnet.scanner.ts`,
-  `projects/frameworks/scanners/springboot.scanner.ts`.
+- **Ficheros**: `packages/frameworks/laravel/form-request-parser.service.ts` (10),
+  `packages/frameworks/scanners/django.scanner.ts` (3),
+  `packages/core/discovery/project-loader.service.ts` (3),
+  `packages/core/discovery/paths.service.ts` (2),
+  `packages/core/domain/param-inferrer.service.ts`,
+  `packages/core/domain/environment-builder.service.ts`,
+  `packages/cli/commands/init.script.ts`,
+  `packages/frameworks/scanners/aspnet.scanner.ts`,
+  `packages/frameworks/scanners/springboot.scanner.ts`.
 - **Gate**: `bunx tsc --noEmit -p tsconfig.<x>.json --noUncheckedIndexedAccess`
   a 0 en las cuatro secciones.
 

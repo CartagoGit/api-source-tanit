@@ -19,8 +19,8 @@ import {
   DEFAULT_THEME,
   THEME_MODES,
   THEME_VARIABLES,
-} from "../../projects/contracts/constants/cli/theme.constant";
-import { UI_STYLES } from "../../projects/ui/web/theme.constant";
+} from "../../packages/contracts/constants/cli/theme.constant";
+import { UI_STYLES } from "../../packages/ui/web/theme.constant";
 
 /** Los bloques que declaran variables: `:root`, el del sistema y el elegido. */
 function bloquesDeVariables(css: string): string[] {

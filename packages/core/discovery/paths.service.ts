@@ -15,7 +15,7 @@
  *
  * Resolución del `packageRoot`:
  *   1. Búsqueda subiendo desde la carpeta de **este módulo** hasta dar
- *      con `package.json` + `projects/contracts/constants/core/postman.constant.ts`.
+ *      con `package.json` + `packages/contracts/constants/core/postman.constant.ts`.
  *   2. Si no aparece, el padre de esa carpeta. Es un último recurso que
  *      ya mintió una vez (ver `findPackageRoot`).
  *
@@ -41,6 +41,7 @@ import { existsSync } from "node:fs";
 import { delimiter, dirname, join, relative, resolve, sep } from "node:path";
 import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 import type { IPathScope } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-limits.constant.js";
 
 // ---------------------------------------------------------------------------
@@ -96,17 +97,17 @@ function walkUp(
  * El predicado buscaba `contract`, en singular, y la carpeta se llamaba
  * `contracts`. Nunca casaba, así que `findPackageRoot` devolvía siempre
  * `null` y `discover()` se caía a `dirnameUp(start, 1)` — el padre de
- * `projects/core/discovery/`, o sea **`projects/core`**. El fallback fue
+ * `packages/core/discovery/`, o sea **`packages/core`**. El fallback fue
  * correcto en su día, cuando este fichero vivía un nivel bajo la raíz;
- * al mover el código a `projects/` dejó de serlo y nadie se enteró,
+ * al mover el código a `packages/` dejó de serlo y nadie se enteró,
  * porque el predicado tampoco funcionaba y los dos fallos se tapaban.
  *
  * Se pagó en dos sitios, los dos medidos:
  *
  *   · En modo repo —escanear este propio repositorio— la salida iba a
- *     `projects/core/export-to-postman/`. Hay una colección de
+ *     `packages/core/export-to-postman/`. Hay una colección de
  *     `example-app` ahí dentro que lo demuestra.
- *   · `POSTMAN_EXAMPLE` buscaba en `projects/core/examples/`, que no
+ *   · `POSTMAN_EXAMPLE` buscaba en `packages/core/examples/`, que no
  *     existe, así que la variable no hacía nada en silencio.
  *
  * El marcador volvió a quedarse viejo al mudar los contratos a su propio
@@ -119,7 +120,7 @@ function findPackageRoot(start: string): string | null {
     return (
       existsSync(join(dir, "package.json")) &&
       existsSync(
-        join(dir, "projects", "contracts", "constants", "core", "postman.constant.ts"),
+        join(dir, "packages", "contracts", "constants", "core", "postman.constant.ts"),
       )
     );
   });
@@ -385,7 +386,8 @@ export function packageBasename(): string {
  *      Si NO → `${projectRoot}/export-to-postman/`.
  *   4. `process.cwd()/export-to-postman/` fallback.
  */
-export function outputDir(): string {
+export function outputDir(context?: IProjectContext): string {
+  if (context) return context.outputDir;
   const d = discover();
   const argv = process.argv;
 
@@ -436,9 +438,10 @@ export function outputBasename(projectName?: string): string {
 /** Ruta absoluta al JSON principal. Crea `outputDir` si no existe. */
 export async function outputCollectionPath(
   projectName?: string,
+  context?: IProjectContext,
 ): Promise<string> {
-  await ensureOutputDir();
-  return join(outputDir(), `${outputBasename(projectName)}.json`);
+  await ensureOutputDir(context);
+  return join(outputDir(context), `${outputBasename(projectName)}.json`);
 }
 
 /** Ruta absoluta al JSON enriquecido. */
@@ -459,9 +462,9 @@ export async function outputEnvironmentPath(
   return join(outputDir(), `${base}.${slug}.postman_environment.json`);
 }
 
-async function ensureOutputDir(): Promise<void> {
+async function ensureOutputDir(context?: IProjectContext): Promise<void> {
   const fs = await import("node:fs/promises");
-  const dir = outputDir();
+  const dir = outputDir(context);
 
   const contain = process.env[CONTAINMENT_ROOT_VAR];
   if (contain) {

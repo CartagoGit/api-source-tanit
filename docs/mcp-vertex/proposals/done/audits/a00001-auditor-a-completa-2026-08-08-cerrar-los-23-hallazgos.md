@@ -84,7 +84,7 @@ leerlo y sin preguntar al servidor, y se le escaparon los tres FATAL.
 
 ### 1. Declarar `outputSchema` en los cuatro tools del plugin
 
-**Fichero**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts#L55`
+**Fichero**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts#L55`
 
 ```ts
 server.registerTool(
@@ -123,20 +123,20 @@ del proyecto hacia otros agentes.
 
 ### 2. Escribir la colección de forma atómica
 
-**Fichero**: `projects/cli/commands/generate.script.ts#L312`
+**Fichero**: `packages/cli/commands/generate.script.ts#L312`
 
 ```ts
 await writeFile(OUTPUT_PATH, json + "\n", "utf8");
 ```
 
-**Fichero**: `projects/cli/commands/watch.script.ts#L76`
+**Fichero**: `packages/cli/commands/watch.script.ts#L76`
 
 ```ts
 await writeFile(path, JSON.stringify(result.collection, null, 2) + "\n", "utf8");
 ```
 
-Trazadas todas las escrituras durables de `projects/core` y
-`projects/cli`: `generate` (3 sitios), `watch` (2), `enrich` (1), `init`
+Trazadas todas las escrituras durables de `packages/core` y
+`packages/cli`: `generate` (3 sitios), `watch` (2), `enrich` (1), `init`
 (2, además síncronas). Ninguna usa fichero temporal + rename. No hay un
 solo `rename(` en el árbol.
 
@@ -158,7 +158,7 @@ producto entero de esta herramienta es ese fichero.
 
 ### 3. Retirar el `as any` que cuela `__params` fuera del contrato
 
-**Fichero**: `projects/frameworks/scanners/openapi.scanner.ts#L454`
+**Fichero**: `packages/frameworks/scanners/openapi.scanner.ts#L454`
 
 ```ts
 const params = [...pathLevelParams, ...opParams];
@@ -176,7 +176,7 @@ async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
 ```
 
 `__params` no está en `ParsedRoute`
-(`projects/core/contracts/scanner.interface.ts#L52`), y `grep` confirma
+(`packages/core/contracts/scanner.interface.ts#L52`), y `grep` confirma
 que no se lee en ningún otro sitio: `resolve()` vuelve a leer el spec
 del disco.
 
@@ -211,13 +211,13 @@ export interface IRouterAdapter {
 ```
 
 ```
-$ grep -rn "IRouterAdapter|router-dispatcher|router-adapters" projects/
+$ grep -rn "IRouterAdapter|router-dispatcher|router-adapters" packages/
 (vacío)
 ```
 
 Cuatro rutas citadas que no existen: `scripts/lint-tool-no-process.script.ts`
 (§4, está en `scripts/gates/`), `plugins/export-to-postman/src/lib/tools/`
-(§3.1 y §3.5, es `projects/plugins/mcp-vertex_expostman/`),
+(§3.1 y §3.5, es `packages/plugins/mcp-vertex_expostman/`),
 `services/router-dispatcher.service.ts` (§3.8) y `services/router-adapters/`
 (§3.5 y §3.8). Y §3.1 declara que los tools se registran como
 `${NAMESPACE}_exporter_<verb>` con `NAMESPACE = "postman"`; el código
@@ -241,7 +241,7 @@ que ya nadie contrasta con el código porque se ha vuelto folclore.
 
 ### 5. Decidir qué pasa con `enrich`
 
-**Fichero**: `projects/cli/commands/enrich.script.ts#L12`
+**Fichero**: `packages/cli/commands/enrich.script.ts#L12`
 
 ```ts
 import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -266,7 +266,7 @@ comando de 12 solo sirva para 1 framework de 21.
 
 ### 6. Dar identidad a `ParsedRoute`
 
-**Fichero**: `projects/core/contracts/scanner.interface.ts#L52`
+**Fichero**: `packages/core/contracts/scanner.interface.ts#L52`
 
 ```ts
 export interface ParsedRoute {
@@ -297,7 +297,7 @@ scanner no puede decir "esta ruta es mía". Nada impide la quinta.
 
 ### 7. Contener `--output-dir` dentro de una raíz
 
-**Fichero**: `projects/core/discovery/paths.service.ts#L418`
+**Fichero**: `packages/core/discovery/paths.service.ts#L418`
 
 ```ts
 await fs.mkdir(dir, { recursive: true });
@@ -310,7 +310,7 @@ No hay ninguna validación de contención: ni `startsWith(root)`, ni
 En un CLI que ejecuta una persona sobre su propia máquina eso es
 razonable. Pero el plugin MCP spawnea este mismo CLI con argumentos que
 vienen de un agente
-(`projects/plugins/mcp-vertex_expostman/src/lib/contracts/cli-path.constant.ts`),
+(`packages/plugins/mcp-vertex_expostman/src/lib/contracts/cli-path.constant.ts`),
 y ahí quien decide la ruta ya no es necesariamente la persona.
 
 **Impact**: una ruta con `../` escribe fuera del proyecto. El brief lo
@@ -325,13 +325,13 @@ barata.
 
 ### 8. Eliminar los 21 castings que apagan el compilador
 
-**Fichero**: `projects/core/helpers/collection-identity.helper.ts#L116`
+**Fichero**: `packages/core/helpers/collection-identity.helper.ts#L116`
 
 ```ts
 return Buffer.from(uuid.replace(/-/g, ""), "hex") as unknown as Uint8Array;
 ```
 
-**Fichero**: `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts#L245`
+**Fichero**: `packages/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts#L245`
 
 ```ts
 ? new TextDecoder().decode(r.stdout as unknown as Uint8Array)
@@ -361,13 +361,13 @@ llevaba tiempo mintiendo y nadie lo sabía.
 
 ### 9. Unificar `readFlag`, que tiene cuatro copias y dos tipos
 
-**Fichero**: `projects/core/discovery/project-context.service.ts#L107`
+**Fichero**: `packages/core/discovery/project-context.service.ts#L107`
 
 ```ts
 function readFlag(argv: ReadonlyArray<string>, name: string): string | undefined {
 ```
 
-**Fichero**: `projects/core/discovery/project-loader.service.ts#L49`
+**Fichero**: `packages/core/discovery/project-loader.service.ts#L49`
 
 ```ts
 function readFlag(argv: string[], name: string): string | null {
@@ -392,14 +392,14 @@ se aplica.
 
 ### 10. Compartir la detección por manifiesto entre scanners
 
-**Fichero**: `projects/frameworks/scanners/hono.scanner.ts#L73`
+**Fichero**: `packages/frameworks/scanners/hono.scanner.ts#L73`
 
 ```ts
 async function readPackageJson(projectRoot: string): Promise<Record<string, unknown> | null> {
 ```
 
 El mismo cuerpo, palabra por palabra, en
-`projects/frameworks/scanners/fastify.scanner.ts#L71`. Y otros cinco
+`packages/frameworks/scanners/fastify.scanner.ts#L71`. Y otros cinco
 scanners (`nextjs`, `trpc`, `express`, `nestjs`, `graphql`) leen
 `package.json` por su cuenta con reglas propias.
 
@@ -422,7 +422,7 @@ la misma.
 
 ### 11. Borrar la constante `NAMESPACE`, que no la usa nadie
 
-**Fichero**: `projects/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts#L2`
+**Fichero**: `packages/plugins/mcp-vertex_expostman/src/lib/contracts/namespace.ts#L2`
 
 ```ts
 export const NAMESPACE = "postman" as const;
@@ -452,7 +452,7 @@ El propio servidor lo denuncia en `overview.configIssues`: `"contract"
 does not exist in this workspace — the search plugin will scan nothing`.
 
 **Problem**: cuatro de las seis raíces (`contract`, `service`, `helper`,
-`plugins`) son de la estructura anterior a `projects/`.
+`plugins`) son de la estructura anterior a `packages/`.
 
 **Impact**: los plugins `search` y `conventions` escanean una fracción
 del repo y nadie se entera, porque devuelven resultados — solo que
@@ -464,7 +464,7 @@ incompletos.
 
 ### 13. Hablar un solo idioma en la salida del CLI
 
-**Fichero**: `projects/cli/commands/generate.script.ts#L238`
+**Fichero**: `packages/cli/commands/generate.script.ts#L238`
 
 ```ts
 console.log("→ Enriching with validation-rule variants…");
@@ -488,7 +488,7 @@ herramientas.
 
 ### 14. Probar los seis comandos que nadie ejecuta en tests
 
-**Fichero**: `projects/cli/commands/scan.script.ts`
+**Fichero**: `packages/cli/commands/scan.script.ts`
 
 Ningún test lanza `scan`, `open-postman`, `init`, `push`, `watch` ni
 `summary`. Algunos tienen probada su pieza pura
@@ -508,7 +508,7 @@ de ejecutarlo.
 
 ### 15. Partir el `main()` de 325 líneas de `generate`
 
-**Fichero**: `projects/cli/commands/generate.script.ts#L133`
+**Fichero**: `packages/cli/commands/generate.script.ts#L133`
 
 ```ts
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
@@ -530,7 +530,7 @@ fases tiene test propio.
 
 ### 16. Blindar el parser de YAML escrito a mano
 
-**Fichero**: `projects/frameworks/scanners/openapi.scanner.ts#L80`
+**Fichero**: `packages/frameworks/scanners/openapi.scanner.ts#L80`
 
 ```ts
 export function parseYamlLite(src: string): unknown {
@@ -557,13 +557,13 @@ distinto en vez de un error.
 
 La tabla de §3.5 declara cuatro sufijos: `*.service.ts`, `*.helper.ts`,
 `*.interface.ts` / `*.constant.ts`, `*.tool.ts`. `conventions_check`
-sobre `projects/` devuelve 57 sin rol canónico; quitando los fixtures
+sobre `packages/` devuelve 57 sin rol canónico; quitando los fixtures
 —que son código ajeno a propósito— quedan
-`projects/core/adapters/parsed-route-to-spec.adapter.ts`,
-`projects/core/discovery/discovery.orchestrator.ts`,
-`projects/core/discovery/generation.pipeline.ts`, los cuatro
-`projects/core/exporters/*.exporter.ts` y
-`projects/ui/interactive.script.ts`.
+`packages/core/adapters/parsed-route-to-spec.adapter.ts`,
+`packages/core/discovery/discovery.orchestrator.ts`,
+`packages/core/discovery/generation.pipeline.ts`, los cuatro
+`packages/core/exporters/*.exporter.ts` y
+`packages/ui/interactive.script.ts`.
 
 **Problem**: `.adapter.ts`, `.exporter.ts`, `.orchestrator.ts` y
 `.pipeline.ts` son sufijos buenos y descriptivos que no están
@@ -578,7 +578,7 @@ documentación no. Quien añada un exportador nuevo no tiene dónde mirar.
 
 ### 18. Llevar el plugin a los doce comandos
 
-**Fichero**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`
+**Fichero**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`
 
 Cuatro tools (`generate`, `validate`, `summary`, `test`) contra doce
 comandos del CLI.
@@ -596,7 +596,7 @@ querría hacer, y no está expuesta.
 
 ### 19. Borrar dos carpetas vacías
 
-**Fichero**: `projects/core/export-to-postman/`
+**Fichero**: `packages/core/export-to-postman/`
 
 Vacía, igual que `tests/fixtures/fiber-comprehensive/internal/`.
 
@@ -636,7 +636,7 @@ existen.
 
 ### 21. Seguridad operacional de ejecución: sin hallazgos
 
-**Fichero**: `projects/cli/commands/open-postman.script.ts#L76`
+**Fichero**: `packages/cli/commands/open-postman.script.ts#L76`
 
 ```ts
 const r = spawnSync("cmd", ["/c", "start", "", collectionPath], { stdio: "inherit" });
@@ -751,9 +751,9 @@ formato del brief, `audit_consolidate` devolvía `findings: []`.
 
 ## 📝 Recomendaciones prioritarias
 
-- 🔴 **P0** — Declarar `outputSchema` en los 4 tools y añadir el gate que lo exija · `projects/plugins/mcp-vertex_expostman/src/lib/tools/*.tool.ts`
-- 🔴 **P0** — Escribir con fichero temporal + `rename` toda salida durable · `projects/cli/commands/generate.script.ts#L312`, `watch.script.ts#L76`
-- 🔴 **P0** — Añadir `framework` y clave de operación a `ParsedRoute`; retirar `__params` · `projects/core/contracts/scanner.interface.ts#L52`
+- 🔴 **P0** — Declarar `outputSchema` en los 4 tools y añadir el gate que lo exija · `packages/plugins/mcp-vertex_expostman/src/lib/tools/*.tool.ts`
+- 🔴 **P0** — Escribir con fichero temporal + `rename` toda salida durable · `packages/cli/commands/generate.script.ts#L312`, `watch.script.ts#L76`
+- 🔴 **P0** — Añadir `framework` y clave de operación a `ParsedRoute`; retirar `__params` · `packages/core/contracts/scanner.interface.ts#L52`
 - 🟠 **P1** — Reescribir §3.1, §3.5 y §3.8 del bootstrap contra el código actual · `docs/mcp-vertex/AGENT-BOOTSTRAP.md`
 - 🟠 **P1** — Eliminar los 21 `as any` / `as unknown as` / `as never` · 8 ficheros, ver hallazgo 8
 

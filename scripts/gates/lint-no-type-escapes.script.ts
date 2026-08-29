@@ -37,7 +37,7 @@ import { REPO_ROOT, fromRoot } from "../helpers/root.helper.js";
 import { collectFiles } from "../helpers/walk.helper.js";
 
 /** Dónde se busca. */
-const ROOTS = ["projects", "scripts", "tests"] as const;
+const ROOTS = ["packages", "scripts", "tests"] as const;
 
 /**
  * Los sitios donde una aserción es legítima, **con su motivo**.
@@ -47,7 +47,7 @@ const ROOTS = ["projects", "scripts", "tests"] as const;
  * parece, en vez de copiar el patrón porque «ya había otro».
  */
 const PERMITIDOS: Readonly<Record<string, string>> = {
-  "projects/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts":
+  "packages/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts":
     "doble de test contra el McpServer del SDK: un tipo de terceros con decenas " +
     "de miembros del que solo se usa `registerTool`",
   "tests/helpers/postman-builders.ts":

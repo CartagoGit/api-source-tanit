@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { VARIANT_TAG } from "../../projects/contracts/constants/core/postman.constant";
-import { enrichCatalogWithFormRequests } from "../../projects/frameworks/laravel/catalog-enricher.service";
-import { discoverEndpoints, toPostmanUri } from "../../projects/frameworks/laravel/endpoint-discovery.service";
-import { buildCollection } from "../../projects/core/domain/collection-builder.service";
-import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
-import type { ProjectConfig } from "../../projects/contracts/interfaces/core/project-config.interface";
-import { mergeWithManual } from "../../projects/core/domain/endpoint-merge.service";
-import { resolveProjectContext } from "../../projects/core/discovery/project-context.service";
-import { withProjectRoot } from "../../projects/core/discovery/paths.service";
-import type { IProjectContext } from "../../projects/contracts/interfaces/core/project-context.interface";
+import { VARIANT_TAG } from "../../packages/contracts/constants/core/postman.constant";
+import { enrichCatalogWithFormRequests } from "../../packages/frameworks/laravel/catalog-enricher.service";
+import { discoverEndpoints, toPostmanUri } from "../../packages/frameworks/laravel/endpoint-discovery.service";
+import { buildCollection } from "../../packages/core/domain/collection-builder.service";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
+import { mergeWithManual } from "../../packages/core/domain/endpoint-merge.service";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
+import { withProjectRoot } from "../../packages/core/discovery/paths.service";
+import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 const spec = (partial: Partial<EndpointSpec>): EndpointSpec =>
@@ -113,14 +113,21 @@ describe("enrichCatalogWithFormRequests", () => {
   });
 
   test("cuenta como no resuelto lo que no encuentra", async () => {
+    const project = await createTempProject({});
+    const context = resolveProjectContext({ projectRoot: project.root });
     const collection = buildCollection([spec({ method: "POST", uri: "/users" })], {
       ...CONFIG,
     });
-    const stats = await enrichCatalogWithFormRequests(
-      collection,
-      new Map([["POST users", "app/Http/Requests/NoExiste.php"]]),
-    );
-    expect(stats.resolved).toBe(0);
+    try {
+      const stats = await enrichCatalogWithFormRequests(
+        collection,
+        new Map([["POST users", "app/Http/Requests/NoExiste.php"]]),
+        context,
+      );
+      expect(stats.resolved).toBe(0);
+    } finally {
+      await project.cleanup();
+    }
   });
 
   test("una colección vacía devuelve estadísticas en cero", async () => {

@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { hasFlag, readFlag } from "../../projects/core/helpers/argv.helper";
+import { hasFlag, readFlag } from "../../packages/core/helpers/argv.helper";
 
 describe("readFlag", () => {
   test("lee `--flag valor`", () => {

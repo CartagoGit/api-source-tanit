@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { collectFiles, collectFilesFrom, isSourceJsTsFile } from "../../projects/core/helpers/fs-walk.helper";
+import { collectFiles, collectFilesFrom, isSourceJsTsFile } from "../../packages/core/helpers/fs-walk.helper";
 
 let root = "";
 

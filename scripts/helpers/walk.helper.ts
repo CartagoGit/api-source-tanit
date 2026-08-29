@@ -9,7 +9,7 @@
  * no recorrían lo mismo.
  *
  * Esto es tooling del repo. El código que se publica **no** lo usa: para
- * eso está `projects/core/helpers/fs-walk.helper.ts`, que además resuelve
+ * eso está `packages/core/helpers/fs-walk.helper.ts`, que además resuelve
  * enlaces simbólicos y limita la profundidad porque recorre proyectos de
  * otra gente. Aquí el árbol es el nuestro y se sabe lo que hay.
  */

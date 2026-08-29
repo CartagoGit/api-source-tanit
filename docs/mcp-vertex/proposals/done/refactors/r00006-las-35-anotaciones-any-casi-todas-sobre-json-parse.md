@@ -40,7 +40,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
 
 ### S1 — Un lector de JSON que devuelve `unknown` y estrecha una vez
 - **Status**: done
-- **Files**: `projects/core/helpers/parse-json.helper.ts`, `tests/core/parse-json.helper.spec.ts`
+- **Files**: `packages/core/helpers/parse-json.helper.ts`, `tests/core/parse-json.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Devuelve `unknown`, nunca `any`"
@@ -50,7 +50,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
 ### S2 — Los cuatro scanners que parsean manifiestos
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/frameworks/scanners/nestjs.scanner.ts`, `projects/frameworks/scanners/nextjs.scanner.ts`, `projects/frameworks/scanners/symfony.scanner.ts`
+- **Files**: `packages/frameworks/scanners/nestjs.scanner.ts`, `packages/frameworks/scanners/nextjs.scanner.ts`, `packages/frameworks/scanners/symfony.scanner.ts`
 - **Gate**: e2e
 - acceptance:
   - "Cero `: any`"
@@ -60,7 +60,7 @@ Hallazgo nuevo, salido al escribir el gate de r00002. Al prohibir las aserciones
 ### S3 — El scanner de OpenAPI, que es el que más superficie tiene
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-types.spec.ts`
+- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-types.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Cero `: any` en los seis sitios, incluido `resolveRef`"

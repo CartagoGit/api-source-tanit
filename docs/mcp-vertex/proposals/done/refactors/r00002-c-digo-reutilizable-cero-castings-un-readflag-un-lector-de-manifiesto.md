@@ -38,7 +38,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
 
 ### S1 — Arreglar las declaraciones que obligan a mentir
 - **Status**: done
-- **Files**: `projects/core/contracts/postman.d.ts`, `projects/core/helpers/collection-identity.helper.ts`, `projects/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`
+- **Files**: `packages/core/contracts/postman.d.ts`, `packages/core/helpers/collection-identity.helper.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`
 - **Gate**: type
 - acceptance:
   - "`Buffer` se declara como lo que es, un `Uint8Array`, y el casting de `collection-identity` desaparece sin sustituto"
@@ -66,7 +66,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
 
 ### S4 — Un solo `readFlag`
 - **Status**: done
-- **Files**: `projects/core/helpers/argv.helper.ts`, `projects/core/discovery/project-loader.service.ts`, `projects/core/discovery/project-context.service.ts`, `projects/cli/commands/push.script.ts`, `tests/core/argv.helper.spec.ts`
+- **Files**: `packages/core/helpers/argv.helper.ts`, `packages/core/discovery/project-loader.service.ts`, `packages/core/discovery/project-context.service.ts`, `packages/cli/commands/push.script.ts`, `tests/core/argv.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "Una implementación, un tipo de retorno, y el criterio de por qué ese y no el otro escrito al lado"
@@ -75,7 +75,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
 
 ### S5 — Un lector de manifiesto por ecosistema
 - **Status**: done
-- **Files**: `projects/frameworks/parsers/manifest.helper.ts`, `projects/frameworks/scanners/hono.scanner.ts`, `projects/frameworks/scanners/fastify.scanner.ts`, `projects/frameworks/scanners/express.scanner.ts`, `projects/frameworks/scanners/nextjs.scanner.ts`, `projects/frameworks/scanners/nestjs.scanner.ts`, `projects/frameworks/scanners/graphql.scanner.ts`, `projects/frameworks/scanners/trpc.scanner.ts`, `tests/frameworks/manifest.helper.spec.ts`
+- **Files**: `packages/frameworks/parsers/manifest.helper.ts`, `packages/frameworks/scanners/hono.scanner.ts`, `packages/frameworks/scanners/fastify.scanner.ts`, `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/nextjs.scanner.ts`, `packages/frameworks/scanners/nestjs.scanner.ts`, `packages/frameworks/scanners/graphql.scanner.ts`, `packages/frameworks/scanners/trpc.scanner.ts`, `tests/frameworks/manifest.helper.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Los siete scanners de Node preguntan por el mismo sitio"
@@ -86,7 +86,7 @@ Hallazgos 8, 9, 10 y 15 de a00001. Veintiún castings apagan el compilador: `as 
 ### S6 — Partir el `main()` de 325 líneas de `generate`
 - **Status**: done
 - **DependsOn**: [S4]
-- **Files**: `projects/cli/commands/generate.script.ts`, `tests/cli/generate-phases.spec.ts`
+- **Files**: `packages/cli/commands/generate.script.ts`, `tests/cli/generate-phases.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Cada fase —descubrir, construir, auth, enriquecer, exportar, escribir, informar— es una función con nombre y con test propio"

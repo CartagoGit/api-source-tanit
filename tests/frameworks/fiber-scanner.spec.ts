@@ -14,7 +14,7 @@ import {
   FiberRouteScanner,
   FiberValidateTagProvider,
   parseGoStruct,
-} from "../../projects/frameworks/scanners/fiber.scanner";
+} from "../../packages/frameworks/scanners/fiber.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";

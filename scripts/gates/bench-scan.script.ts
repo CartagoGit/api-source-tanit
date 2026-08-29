@@ -21,9 +21,9 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { generateWithAllFrameworks } from "../../projects/frameworks/index.js";
-import { collectFiles } from "../../projects/core/helpers/fs-walk.helper.js";
-import { readAllFiles } from "../../projects/core/helpers/read-files.helper.js";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index.js";
+import { collectFiles } from "../../packages/core/helpers/fs-walk.helper.js";
+import { readAllFiles } from "../../packages/core/helpers/read-files.helper.js";
 
 /** Tamaños por defecto: suficientes para ver si la curva es lineal. */
 const DEFAULT_SIZES = [125, 250, 500, 1000] as const;

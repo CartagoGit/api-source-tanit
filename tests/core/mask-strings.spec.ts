@@ -15,7 +15,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { findOutsideStrings, maskStringLiterals } from "../../projects/core/helpers/source-scan.helper";
+import { findOutsideStrings, maskStringLiterals } from "../../packages/core/helpers/source-scan.helper";
 
 describe("maskStringLiterals", () => {
   // La longitud se conserva para que los desplazamientos de la máscara

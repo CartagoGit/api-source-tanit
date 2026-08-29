@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../projects/core/domain/postman-api.service";
-import { POSTMAN_SCHEMA_URL } from "../../projects/contracts/constants/core/postman.constant";
-import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
+import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../packages/core/domain/postman-api.service";
+import { POSTMAN_SCHEMA_URL } from "../../packages/contracts/constants/core/postman.constant";
+import type { PostmanCollection } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const COLLECTION_ID = "11111111-2222-3333-4444-555555555555";
 

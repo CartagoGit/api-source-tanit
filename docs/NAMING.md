@@ -13,7 +13,7 @@ bueno.
 | Bin canónico | **`expostman`** | `package.json` → `bin` |
 | Bin alias | `export-to-postman` | `package.json` → `bin`, mismo destino |
 | Plugin de mcp-vertex | `expostman` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin | `@expostman/mcp-vertex-plugin` | `projects/plugins/mcp-vertex_expostman/package.json` |
+| Paquete del plugin | `@expostman/mcp-vertex-plugin` | `packages/plugins/mcp-vertex_expostman/package.json` |
 | Tools MCP | `mcp-vertex_expostman_<tool>` | los construye el host |
 | Carpeta de salida | `export-to-postman/` | `OUTPUT_DIR_NAME` |
 | Prefijo de env vars | `POSTMAN_` | `POSTMAN_PROJECT_ROOT`, `POSTMAN_OUTPUT_DIR`… |
@@ -45,11 +45,11 @@ mcp-vertex_expostman_generate
 El prefijo `mcp-vertex_` ya dice de qué host es; el nombre del plugin no
 necesita repetir la frase entera.
 
-## Por qué el plugin vive en `projects/plugins/mcp-vertex_expostman/`
+## Por qué el plugin vive en `packages/plugins/mcp-vertex_expostman/`
 
 La carpeta dice **para qué host** es el plugin, no qué hace — eso ya lo
 dice el proyecto entero. Si algún día hay un plugin para otro host, su
-sitio es evidente: `projects/plugins/<host>/`.
+sitio es evidente: `packages/plugins/<host>/`.
 
 El plural sigue la regla del repo: una carpeta contenedora contiene
 varias cosas de ese tipo, aunque hoy haya una.
@@ -61,15 +61,15 @@ las dos dejan de coincidir, manda el gate y esto está mal.
 
 | Carpeta | Sufijos | Qué vive ahí |
 | --- | --- | --- |
-| `projects/contracts/interfaces/` | `.interface.ts`, `.d.ts` | Interfaces y tipos compartidos |
-| `projects/contracts/constants/` | `.constant.ts` | Constantes compartidas |
-| `projects/core/helpers/` | `.helper.ts` | Funciones puras, sin estado ni I/O |
-| `projects/core/exporters/` | `.exporter.ts`, `.service.ts` | Un formato de salida por fichero |
-| `projects/core/` (resto) | `.service.ts`, `.pipeline.ts`, `.orchestrator.ts`, `.adapter.ts` | El núcleo agnóstico |
-| `projects/frameworks/` | `.scanner.ts`, `.service.ts`, `.helper.ts`, `.registry.ts` | Lo concreto de cada framework |
-| `projects/cli/` | `.script.ts`, `.constant.ts` | El dispatcher y un fichero por comando |
-| `projects/ui/` | `.script.ts`, `.helper.ts`, `.constant.ts` | El asistente y lo que dibuja en la terminal |
-| `projects/plugins/*/src/lib/tools/` | `.tool.ts` | Un tool MCP por fichero |
+| `packages/contracts/interfaces/` | `.interface.ts`, `.d.ts` | Interfaces y tipos compartidos |
+| `packages/contracts/constants/` | `.constant.ts` | Constantes compartidas |
+| `packages/core/helpers/` | `.helper.ts` | Funciones puras, sin estado ni I/O |
+| `packages/core/exporters/` | `.exporter.ts`, `.service.ts` | Un formato de salida por fichero |
+| `packages/core/` (resto) | `.service.ts`, `.pipeline.ts`, `.orchestrator.ts`, `.adapter.ts` | El núcleo agnóstico |
+| `packages/frameworks/` | `.scanner.ts`, `.service.ts`, `.helper.ts`, `.registry.ts` | Lo concreto de cada framework |
+| `packages/cli/` | `.script.ts`, `.constant.ts` | El dispatcher y un fichero por comando |
+| `packages/ui/` | `.script.ts`, `.helper.ts`, `.constant.ts` | El asistente y lo que dibuja en la terminal |
+| `packages/plugins/*/src/lib/tools/` | `.tool.ts` | Un tool MCP por fichero |
 | `scripts/` | `.script.ts`, `.constant.ts` | Tooling del repo: gates y build |
 | `scripts/helpers/` | `.helper.ts` | Utilidades compartidas por el tooling |
 | `tests/**` | `.spec.ts`, `.test.ts` | `.spec` para unidad, `.test` para lo que arranca procesos |
@@ -78,7 +78,7 @@ las dos dejan de coincidir, manda el gate y esto está mal.
 
 Podrían ser todos `.service.ts` y el gate pasaría igual. No lo son
 porque **el sufijo es lo primero que se lee de un fichero**, y en
-`projects/core/` hay quince servicios: llamar `.service` a la tubería de
+`packages/core/` hay quince servicios: llamar `.service` a la tubería de
 generación la escondería entre ellos.
 
 Cada uno nombra un tipo de módulo con significado propio:

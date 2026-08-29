@@ -237,7 +237,7 @@ export async function runGenerate(
   }
 
   console.log("→ Enriching with validation-rule variants…");
-  const stats = await enrichCatalogWithFormRequests(collection, frIndex);
+  const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
   console.log(`  · Body variants:   ${stats.bodyVariants}`);
   console.log(`  · Query variants:  ${stats.queryVariants}`);
   console.log(`  · Rules resolved:  ${stats.resolved}`);

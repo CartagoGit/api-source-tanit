@@ -7,8 +7,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { buildTestScript } from "../../projects/core/domain/test-script.service";
-import type { EndpointSpec } from "../../projects/contracts/interfaces/core/postman.interface";
+import { buildTestScript } from "../../packages/core/domain/test-script.service";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const spec = (method: EndpointSpec["method"]): EndpointSpec =>
   ({ name: "x", method, uri: "/x" }) as EndpointSpec;

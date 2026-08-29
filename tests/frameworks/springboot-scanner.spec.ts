@@ -3,7 +3,7 @@ import {
   SpringBootProjectScanner,
   SpringBootRouteScanner,
   SpringBootBeanValidationProvider,
-} from "../../projects/frameworks/scanners/springboot.scanner";
+} from "../../packages/frameworks/scanners/springboot.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

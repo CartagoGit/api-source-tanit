@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { joiFieldToSpec, parseJoiFieldExpression, parseJoiObjectLiteral } from "../../projects/frameworks/parsers/joi-schema.helper";
+import { joiFieldToSpec, parseJoiFieldExpression, parseJoiObjectLiteral } from "../../packages/frameworks/parsers/joi-schema.helper";
 
 describe("parseJoiFieldExpression", () => {
   test("mapea Joi.string() a type string", () => {

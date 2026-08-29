@@ -21,10 +21,11 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { join, resolve } from "node:path";
-import { projectRoot } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { detectProjectNameIn } from "../../core/discovery/project-name.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 import type { IInitOutcome } from "../../contracts/interfaces/cli/init-outcome.interface.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 
 /**
  * Prepara la configuración y devuelve **qué ha escrito**.
@@ -36,26 +37,9 @@ import type { IInitOutcome } from "../../contracts/interfaces/cli/init-outcome.i
  */
 export async function runInit(
   argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<IInitOutcome> {
-  const root = projectRoot();
-  if (!root) {
-    console.error(
-      "✘ Could not determine the project root. Set POSTMAN_PROJECT_ROOT.",
-    );
-    return {
-      code: 1,
-      projectName: "",
-      baseUrl: "",
-      authGuards: [],
-      routeFiles: [],
-      configPath: null,
-      endpointsPath: null,
-      error: {
-        reason: "Could not determine the project root.",
-        nextAction: "Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.",
-      },
-    };
-  }
+  const root = (context ?? resolveProjectContext({ argv })).projectRoot;
 
   const nameFlag = readFlag(argv, "--name");
   const outFlag = readFlag(argv, "--output");

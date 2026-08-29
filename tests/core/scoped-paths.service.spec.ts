@@ -16,7 +16,7 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { resolve } from "node:path";
 
-import { outputDir, resetPathCache, withProjectRoot, withScopedPaths } from "../../projects/core/discovery/paths.service";
+import { outputDir, resetPathCache, withProjectRoot, withScopedPaths } from "../../packages/core/discovery/paths.service";
 
 describe("withScopedPaths", () => {
   afterEach(() => {

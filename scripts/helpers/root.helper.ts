@@ -2,14 +2,14 @@
  * Las rutas del repo, en un solo sitio.
  *
  * Nadie vuelve a escribir `resolve(__dirname, "../../..")` ni
- * `join(root, "projects", "cli", "cli.script.ts")` a mano. Cada carpeta
+ * `join(root, "packages", "cli", "cli.script.ts")` a mano. Cada carpeta
  * y cada fichero conocido tiene aquí un nombre.
  *
  * El motivo no es comodidad, es que la alternativa **falla en
  * silencio**. Contar `..` acopla un fichero a su profundidad en el
  * árbol, y durante la reorganización eso mordió tres veces seguidas: al
- * mover los gates a `scripts/gates/`, al mover el plugin a `projects/`,
- * y otra vez al meterlo en `projects/plugins/`. Ninguna de las tres
+ * mover los gates a `scripts/gates/`, al mover el plugin a `packages/`,
+ * y otra vez al meterlo en `packages/plugins/`. Ninguna de las tres
  * lanzó un error — una ruta equivocada no revienta, simplemente no
  * encuentra nada, y el lint decía "no se encontró ninguna propuesta"
  * como si el repo estuviera vacío.
@@ -21,7 +21,7 @@
  *
  * Esto es tooling del repo. El código que se publica **no** lo usa: en
  * el binario compilado no hay árbol de ficheros que recorrer, y para
- * eso está `findRepoRoot()` en `projects/core/helpers/`.
+ * eso está `findRepoRoot()` en `packages/core/helpers/`.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
  * Marcadores que identifican la raíz del repo.
  *
  * `package.json` a secas no vale: lo tienen también los paquetes de
- * `projects/plugins/*`, y la búsqueda pararía en el primero. Se exige
+ * `packages/plugins/*`, y la búsqueda pararía en el primero. Se exige
  * que estén los dos.
  */
 const ROOT_MARKERS = ["package.json", "mcp-vertex.config.json"] as const;
@@ -63,43 +63,43 @@ export function fromRoot(...segments: readonly string[]): string {
 // ---------------------------------------------------------------------------
 
 /** Todo el código del producto. */
-export const PROJECTS_DIR = fromRoot("projects");
+export const PACKAGES_DIR = fromRoot("packages");
 
 /**
  * Interfaces, tipos y constantes compartidos. Sin implementación.
  *
  * La sección más nuclear: no depende de nadie y todas dependen de ella.
- * Antes esto era `projects/core/contracts/`, dentro del núcleo, y por eso
+ * Antes esto era `packages/core/contracts/`, dentro del núcleo, y por eso
  * usarlo desde la UI o desde el plugin arrastraba el núcleo entero
  * (r00007).
  */
-export const CONTRACTS_DIR = join(PROJECTS_DIR, "contracts");
+export const CONTRACTS_DIR = join(PACKAGES_DIR, "contracts");
 export const CONTRACTS_INTERFACES_DIR = join(CONTRACTS_DIR, "interfaces");
 export const CONTRACTS_CONSTANTS_DIR = join(CONTRACTS_DIR, "constants");
 
 /** Núcleo agnóstico: no nombra ni un framework. */
-export const CORE_DIR = join(PROJECTS_DIR, "core");
+export const CORE_DIR = join(PACKAGES_DIR, "core");
 export const CORE_DOMAIN_DIR = join(CORE_DIR, "domain");
 export const CORE_DISCOVERY_DIR = join(CORE_DIR, "discovery");
 export const CORE_ADAPTERS_DIR = join(CORE_DIR, "adapters");
 export const CORE_HELPERS_DIR = join(CORE_DIR, "helpers");
 
 /** Lo concreto de cada framework. */
-export const FRAMEWORKS_DIR = join(PROJECTS_DIR, "frameworks");
+export const FRAMEWORKS_DIR = join(PACKAGES_DIR, "frameworks");
 export const FRAMEWORKS_SCANNERS_DIR = join(FRAMEWORKS_DIR, "scanners");
 export const FRAMEWORKS_PARSERS_DIR = join(FRAMEWORKS_DIR, "parsers");
 
 /** Raíz de composición: el CLI. */
-export const CLI_DIR = join(PROJECTS_DIR, "cli");
+export const CLI_DIR = join(PACKAGES_DIR, "cli");
 export const CLI_COMMANDS_DIR = join(CLI_DIR, "commands");
 /** El dispatcher. Es el `bin` del paquete y el entrypoint del binario. */
 export const CLI_ENTRYPOINT = join(CLI_DIR, "cli.script.ts");
 
 /** Asistente interactivo. */
-export const UI_DIR = join(PROJECTS_DIR, "ui");
+export const UI_DIR = join(PACKAGES_DIR, "ui");
 
 /** Plugins, uno por host. */
-export const PLUGINS_DIR = join(PROJECTS_DIR, "plugins");
+export const PLUGINS_DIR = join(PACKAGES_DIR, "plugins");
 /** El plugin de un host concreto. Hoy solo `mcp-vertex`. */
 export function pluginDir(host: string): string {
   return join(PLUGINS_DIR, host);
@@ -185,7 +185,7 @@ export const DIST_DIR = fromRoot("dist");
  */
 export const WELL_KNOWN_PATHS: Readonly<Record<string, string>> = {
   REPO_ROOT,
-  PROJECTS_DIR,
+  PACKAGES_DIR,
   CORE_DIR,
   CONTRACTS_DIR,
   CONTRACTS_INTERFACES_DIR,

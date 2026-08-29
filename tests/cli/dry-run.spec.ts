@@ -13,12 +13,12 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { planDryRun } from "../../projects/ui/server/dry-run.service";
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { planDryRun } from "../../packages/ui/server/dry-run.service";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
-import type { IGenerationResult } from "../../projects/contracts/interfaces/core/discovery.interface";
+import type { IGenerationResult } from "../../packages/contracts/interfaces/core/discovery.interface";
 
 let work = "";
 let proyecto = "";

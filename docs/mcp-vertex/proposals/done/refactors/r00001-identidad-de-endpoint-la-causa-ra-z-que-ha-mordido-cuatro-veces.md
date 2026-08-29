@@ -39,7 +39,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
 
 ### S1 — El contrato: `framework` y clave de operación
 - **Status**: done
-- **Files**: `projects/core/contracts/scanner.interface.ts`, `projects/core/helpers/route-identity.helper.ts`, `tests/core/route-identity.helper.spec.ts`
+- **Files**: `packages/core/contracts/scanner.interface.ts`, `packages/core/helpers/route-identity.helper.ts`, `tests/core/route-identity.helper.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`ParsedRoute` lleva `framework`, que hoy no se puede saber desde la ruta"
@@ -49,7 +49,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
 ### S2 — Retirar `__params` y sus dos `as any`
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-hybrid.spec.ts`
+- **Files**: `packages/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/openapi-hybrid.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`supports()` decide por el `framework` de la ruta, no por una propiedad escondida"
@@ -59,7 +59,7 @@ Hallazgos 3 (FATAL) y 6 (BAD) de a00001. `ParsedRoute` describe una ruta con `me
 ### S3 — Los cuatro sitios que improvisaban su clave usan la misma
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/core/discovery/generation.pipeline.ts`, `projects/core/helpers/collection-invariants.helper.ts`, `projects/cli/commands/diff.script.ts`, `tests/e2e/route-identity-rpc.test.ts`
+- **Files**: `packages/core/discovery/generation.pipeline.ts`, `packages/core/helpers/collection-invariants.helper.ts`, `packages/cli/commands/diff.script.ts`, `tests/e2e/route-identity-rpc.test.ts`
 - **Gate**: e2e
 - acceptance:
   - "`dedupeSpecs`, los invariantes y `check` llaman a la misma función"

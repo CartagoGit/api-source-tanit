@@ -7,8 +7,8 @@
   // cualquier fichero del repo sin tener que elegir proyecto.
   "extends": "./tsconfig.base.json",
   "include": [
-    "projects/**/*.ts",
-    "projects/**/*.d.ts",
+    "packages/**/*.ts",
+    "packages/**/*.d.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts",

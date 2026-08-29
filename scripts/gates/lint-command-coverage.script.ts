@@ -17,7 +17,7 @@
  * Los tres estaban a un `bun run` de distancia de verse. Lo que faltaba
  * no era ingenio: era que alguien los ejecutara alguna vez.
  *
- * Este gate exige que cada `projects/cli/commands/*.script.ts` aparezca
+ * Este gate exige que cada `packages/cli/commands/*.script.ts` aparezca
  * en algún test que lo **lance de verdad**. No comprueba qué se afirma
  * sobre él —eso es cosa del test— sino que exista quien lo arranque, que
  * es el listón que los tres bugs no pasaban.
@@ -45,7 +45,7 @@ import { collectFiles } from "../helpers/walk.helper.js";
 
 /** Un comando se considera ejercitado si su nombre aparece en un test. */
 const TESTS_DIR = fromRoot("tests");
-const COMMANDS_DIR = fromRoot("projects", "cli", "commands");
+const COMMANDS_DIR = fromRoot("packages", "cli", "commands");
 
 interface IProblem {
   readonly command: string;
@@ -63,7 +63,7 @@ interface IProblem {
  * este gate y el CLI se separen.
  */
 async function verbosPorFichero(): Promise<Map<string, string>> {
-  const source = await readFile(fromRoot("projects", "cli", "cli.script.ts"), "utf8");
+  const source = await readFile(fromRoot("packages", "cli", "cli.script.ts"), "utf8");
   const mapa = new Map<string, string>();
   const bloque = /^\s{2}([a-z][\w-]*):\s*\{[\s\S]*?import\("\.\/commands\/([\w.-]+)\.js"\)/gm;
   for (const m of source.matchAll(bloque)) {

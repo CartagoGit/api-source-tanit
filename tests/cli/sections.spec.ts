@@ -73,21 +73,21 @@ describe("SECTIONS", () => {
 
 describe("bestSectionFor — gana el prefijo más específico", () => {
   test.each([
-    ["projects/core/domain/collection-builder.service.ts", "core"],
-    ["projects/core/helpers/uri.helper.ts", "core"],
-    ["projects/core/contracts/postman.interface.ts", "core"],
+    ["packages/core/domain/collection-builder.service.ts", "core"],
+    ["packages/core/helpers/uri.helper.ts", "core"],
+    ["packages/core/contracts/postman.interface.ts", "core"],
     // Los scanners y los parsers de cada framework viven fuera del
     // núcleo desde que se separaron las dos capas.
-    ["projects/frameworks/scanners/gin.scanner.ts", "frameworks"],
-    ["projects/frameworks/laravel/laravel.scanner.ts", "frameworks"],
-    ["projects/frameworks/parsers/zod-schema.helper.ts", "frameworks"],
-    ["projects/frameworks/framework.registry.ts", "frameworks"],
+    ["packages/frameworks/scanners/gin.scanner.ts", "frameworks"],
+    ["packages/frameworks/laravel/laravel.scanner.ts", "frameworks"],
+    ["packages/frameworks/parsers/zod-schema.helper.ts", "frameworks"],
+    ["packages/frameworks/framework.registry.ts", "frameworks"],
     // El adapter sí es del núcleo: trabaja sobre el contrato genérico
     // `ParsedRoute`, no sobre ningún framework concreto.
-    ["projects/core/adapters/parsed-route-to-spec.adapter.ts", "core"],
-    ["projects/cli/commands/generate.script.ts", "cli"],
+    ["packages/core/adapters/parsed-route-to-spec.adapter.ts", "core"],
+    ["packages/cli/commands/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
-    ["projects/plugins/mcp-vertex_expostman/src/index.ts", "plugin"],
+    ["packages/plugins/mcp-vertex_expostman/src/index.ts", "plugin"],
   ])("%s → %s", (file, expected) => {
     expect(bestSectionFor(file)?.name).toBe(expected);
   });
@@ -101,15 +101,15 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
 describe("sectionsForFiles", () => {
   test("un scanner solo activa frameworks", () => {
     expect(
-      sectionsForFiles(["projects/frameworks/scanners/flask.scanner.ts"]).map((s) => s.name),
+      sectionsForFiles(["packages/frameworks/scanners/flask.scanner.ts"]).map((s) => s.name),
     ).toEqual(["frameworks"]);
   });
 
   test("varios ficheros activan varias secciones, sin repetir", () => {
     const names = sectionsForFiles([
-      "projects/frameworks/scanners/flask.scanner.ts",
-      "projects/frameworks/scanners/gin.scanner.ts",
-      "projects/cli/commands/push.script.ts",
+      "packages/frameworks/scanners/flask.scanner.ts",
+      "packages/frameworks/scanners/gin.scanner.ts",
+      "packages/cli/commands/push.script.ts",
     ]).map((s) => s.name);
     expect(names).toEqual(["frameworks", "cli"]);
   });

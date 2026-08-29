@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { parseAllRoutes, parseRoutesFile, stripComments } from "../../projects/frameworks/laravel/route-parser.service";
-import { prettyGroupName, topGroupFor } from "../../projects/core/helpers/uri.helper";
-import { resolveProjectContext } from "../../projects/core/discovery/project-context.service";
-import { withProjectRoot } from "../../projects/core/discovery/paths.service";
-import type { IProjectContext } from "../../projects/contracts/interfaces/core/project-context.interface";
+import { parseAllRoutes, parseRoutesFile, stripComments } from "../../packages/frameworks/laravel/route-parser.service";
+import { prettyGroupName, topGroupFor } from "../../packages/core/helpers/uri.helper";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
+import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 describe("route-parser.service (pure helpers)", () => {
@@ -196,11 +195,6 @@ describe("route-parser.service — parseRoutesFile sobre disco", () => {
     expect(libro?.actionName).toBe("crear");
   });
 
-  test("sin context se apoya en el singleton de paths.service", () =>
-    withProjectRoot(project.root, async () => {
-      const rutas = await parseRoutesFile("routes/api.php", ["api"]);
-      expect(rutas.some((r) => r.rawUri === "salud")).toBe(true);
-    }));
 });
 
 describe("route-parser.service — parseAllRoutes", () => {
@@ -241,12 +235,6 @@ describe("route-parser.service — parseAllRoutes", () => {
     const rutas = await parseAllRoutes({}, contexto);
     expect(rutas.some((r) => r.sourceFile === "routes/notas.txt")).toBe(false);
   });
-
-  test("sin context tira del singleton de paths.service", () =>
-    withProjectRoot(project.root, async () => {
-      const rutas = await parseAllRoutes({});
-      expect(rutas.length).toBeGreaterThan(0);
-    }));
 
   test("sin carpeta routes devuelve una lista vacía", async () => {
     const tmp = await createTempProject({ "composer.json": "{}" });

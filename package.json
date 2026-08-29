@@ -2,7 +2,7 @@
   "name": "export-to-postman",
   "version": "0.1.0",
   "workspaces": [
-    "projects/plugins/mcp-vertex_expostman"
+    "packages/plugins/mcp-vertex_expostman"
   ],
   "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
   "keywords": [
@@ -33,19 +33,19 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "expostman": "./projects/cli/cli.script.ts",
-    "export-to-postman": "./projects/cli/cli.script.ts"
+    "expostman": "./packages/cli/cli.script.ts",
+    "export-to-postman": "./packages/cli/cli.script.ts"
   },
-  "main": "./projects/cli/cli.script.ts",
-  "module": "./projects/cli/cli.script.ts",
+  "main": "./packages/cli/cli.script.ts",
+  "module": "./packages/cli/cli.script.ts",
   "exports": {
-    ".": "./projects/cli/cli.script.ts",
-    "./core/*": "./projects/core/*",
-    "./frameworks": "./projects/frameworks/index.ts"
+    ".": "./packages/cli/cli.script.ts",
+    "./core/*": "./packages/core/*",
+    "./frameworks": "./packages/frameworks/index.ts"
   },
   "files": [
     "bin/",
-    "projects/",
+    "packages/",
     "scripts/",
     "docs/INSTALL.md",
     "docs/FRAMEWORKS.md",
@@ -56,16 +56,16 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "bun run projects/cli/commands/generate.script.ts --project-root ./examples/example-express",
-    "check": "bun run projects/cli/commands/diff.script.ts --project-root ./examples/example-express && bun run projects/cli/commands/validate-json.script.ts --project-root ./examples/example-express",
+    "build": "bun run packages/cli/commands/generate.script.ts --project-root ./examples/example-express",
+    "check": "bun run packages/cli/commands/diff.script.ts --project-root ./examples/example-express && bun run packages/cli/commands/validate-json.script.ts --project-root ./examples/example-express",
     "typecheck": "bun run scripts/gates/typecheck.script.ts",
-    "list": "bun run projects/cli/commands/list-endpoints.script.ts",
-    "stats": "bun run projects/cli/commands/stats.script.ts",
-    "scan": "bun run projects/cli/commands/scan.script.ts",
-    "ui": "bun run projects/cli/commands/ui.script.ts",
+    "list": "bun run packages/cli/commands/list-endpoints.script.ts",
+    "stats": "bun run packages/cli/commands/stats.script.ts",
+    "scan": "bun run packages/cli/commands/scan.script.ts",
+    "ui": "bun run packages/cli/commands/ui.script.ts",
     "ui:dev": "bun run scripts/build/ui-dev.script.ts",
-    "open": "bun run projects/cli/commands/open-postman.script.ts",
-    "init": "bun run projects/cli/commands/init.script.ts",
+    "open": "bun run packages/cli/commands/open-postman.script.ts",
+    "init": "bun run packages/cli/commands/init.script.ts",
     "clean": "rm -f build/*.json",
     "test": "bunx vitest run",
     "lint:tools": "bun run scripts/gates/lint-tool-no-process.script.ts",
@@ -73,7 +73,7 @@
     "validate": "bun run typecheck && bun run lint && bun run test:coverage && bun run validate:examples && bun run bench:check",
     "validate:package": "bun run scripts/gates/validate-package.script.ts",
     "build:binary": "bun run scripts/build/build-binary.script.ts",
-    "push": "bun run projects/cli/commands/push.script.ts",
+    "push": "bun run packages/cli/commands/push.script.ts",
     "lint:proposals": "bun run scripts/gates/lint-proposals.script.ts",
     "test:watch": "bunx vitest",
     "test:contracts": "bunx vitest run --project contracts",
@@ -88,7 +88,7 @@
     "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",
     "typecheck:frameworks": "bun run scripts/gates/typecheck.script.ts frameworks",
     "typecheck:cli": "bun run scripts/gates/typecheck.script.ts cli",
-    "typecheck:plugin": "bun run --cwd projects/plugins/mcp-vertex_expostman typecheck",
+    "typecheck:plugin": "bun run --cwd packages/plugins/mcp-vertex_expostman typecheck",
     "lint:boundaries": "bun run scripts/gates/lint-boundaries.script.ts",
     "lint": "bun run lint:naming && bun run lint:paths && bun run lint:regex-state && bun run lint:tools && bun run lint:boundaries && bun run lint:mcp && bun run lint:docs && bun run lint:proposals && bun run lint:secrets && bun run lint:sast && bun run lint:tsdoc && bun run lint:api && bun run lint:frameworks-table && bun run lint:mcp-surface && bun run lint:durable-writes && bun run lint:bootstrap-drift && bun run lint:no-type-escapes && bun run lint:command-coverage && bun run lint:project-context && bun run lint:contracts && bun run lint:output-language",
     "lint:naming": "bun run scripts/gates/lint-naming.script.ts",

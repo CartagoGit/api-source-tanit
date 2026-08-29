@@ -94,7 +94,7 @@ Que ninguna tarea de este repositorio quede bloqueada por una herramienta ausent
 ### S5 — f00001 S4: los instaladores, compilados y verificados dentro
 - **Status**: done
 - **DependsOn**: [S1, S2]
-- **Files**: `projects/desktop/tauri.conf.json`, `projects/desktop/Cargo.toml`, `projects/desktop/src/main.rs`, `projects/desktop/build.rs`, `.github/workflows/release-desktop.yml`
+- **Files**: `packages/desktop/tauri.conf.json`, `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/build.rs`, `.github/workflows/release-desktop.yml`
 - **Gate**: none
 - acceptance:
   - "La ventana nativa carga la **misma** interfaz que `expostman ui`: el trabajo de f00001 no se reescribe"

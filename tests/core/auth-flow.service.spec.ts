@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import { folder } from "../helpers/postman-builders";
-import { applyAuthFlow, authEnvironmentVariables, detectAuthFlow } from "../../projects/core/domain/auth-flow.service";
-import { POSTMAN_SCHEMA_URL } from "../../projects/contracts/constants/core/postman.constant";
-import type { PostmanCollection, PostmanItem } from "../../projects/contracts/interfaces/core/postman.interface";
-import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../projects/contracts/constants/core/auth.constant";
+import { applyAuthFlow, authEnvironmentVariables, detectAuthFlow } from "../../packages/core/domain/auth-flow.service";
+import { POSTMAN_SCHEMA_URL } from "../../packages/contracts/constants/core/postman.constant";
+import type { PostmanCollection, PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
+import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../packages/contracts/constants/core/auth.constant";
 
 function request(
   name: string,

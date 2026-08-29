@@ -40,7 +40,7 @@ Estado verificado en esta pasada:
 - La superficie MCP publica del plugin ya declara `outputSchema` en los 4 tools (`generate`, `summary`, `validate`, `test`), asi que el FATAL principal de `a00001` ya no describe el arbol actual.
 - `bun run validate` rojo en el workspace actual por `lint:api`: `docs/API.md` no coincide con el codigo real.
 - `mcp-vertex_overview` reporta 8 `configIssues`: `search` y `conventions` apuntan a `contract`, `service`, `helper` y `plugins`, carpetas que no existen en este repo.
-- El arbol de trabajo contiene una remediacion en curso para escrituras atomicas (`projects/core/helpers/atomic-write.helper.ts`, migracion de `generate`, `watch`, `init`, `enrich` y el gate `lint:durable-writes`). Es una buena direccion, pero mientras no se aterrice como slice validada sigue siendo riesgo operativo, no garantia.
+- El arbol de trabajo contiene una remediacion en curso para escrituras atomicas (`packages/core/helpers/atomic-write.helper.ts`, migracion de `generate`, `watch`, `init`, `enrich` y el gate `lint:durable-writes`). Es una buena direccion, pero mientras no se aterrice como slice validada sigue siendo riesgo operativo, no garantia.
 - `CONTRIBUTING.md` sigue citando `docs/extension-contract.md` como fuente de verdad y hoy ese archivo no existe.
 - `paths.service.ts` sigue sosteniendo un singleton con cola de serializacion para consumidores concurrentes.
 - No existe coverage cuantitativa por lineas o ramas: hay mucha prueba, pero no un umbral medible de zonas cubiertas.
@@ -57,7 +57,7 @@ La conclusion no es que el proyecto este mal. Al contrario: el suelo de calidad 
 
 ### H1 - La configuracion MCP escanea un repo que no existe
 
-`mcp-vertex_overview` denuncia 8 incidencias de configuracion. En `mcp-vertex.config.json`, tanto `plugins.search.options.roots` como `plugins.conventions.options.roots` usan `contract`, `service`, `helper` y `plugins`, pero el repo real organiza el codigo bajo `projects/`, `scripts/`, `tests/`, `docs/` y `examples/`.
+`mcp-vertex_overview` denuncia 8 incidencias de configuracion. En `mcp-vertex.config.json`, tanto `plugins.search.options.roots` como `plugins.conventions.options.roots` usan `contract`, `service`, `helper` y `plugins`, pero el repo real organiza el codigo bajo `packages/`, `scripts/`, `tests/`, `docs/` y `examples/`.
 
 Impacto:
 
@@ -69,7 +69,7 @@ Resolution track: `d00001` S3-S4, con prioridad inmediata.
 
 ### H2 - La API publica documentada puede quedarse atras del codigo sin una pasada final de sincronizacion
 
-`bun run validate` cae en `lint:api`. Al regenerar `docs/API.md` durante la comprobacion se observa el desfase exacto: la referencia pasa de 194 simbolos en 42 modulos a 196 simbolos en 43 modulos e incorpora `projects/core/helpers/atomic-write.helper.ts`.
+`bun run validate` cae en `lint:api`. Al regenerar `docs/API.md` durante la comprobacion se observa el desfase exacto: la referencia pasa de 194 simbolos en 42 modulos a 196 simbolos en 43 modulos e incorpora `packages/core/helpers/atomic-write.helper.ts`.
 
 Impacto:
 
@@ -110,7 +110,7 @@ El problema ya no es "no sabemos que hacer", sino ejecutar ese backlog en orden 
 
 ### S1 - Aterrizar o aparcar limpiamente la slice de escrituras atomicas
 
-- **Files**: `package.json`, `projects/core/helpers/atomic-write.helper.ts`, `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `projects/cli/commands/init.script.ts`, `projects/cli/commands/enrich.script.ts`, `scripts/gates/lint-durable-writes.script.ts`, `tests/core/atomic-write.helper.spec.ts`, `docs/API.md`
+- **Files**: `package.json`, `packages/core/helpers/atomic-write.helper.ts`, `packages/cli/commands/generate.script.ts`, `packages/cli/commands/watch.script.ts`, `packages/cli/commands/init.script.ts`, `packages/cli/commands/enrich.script.ts`, `scripts/gates/lint-durable-writes.script.ts`, `tests/core/atomic-write.helper.spec.ts`, `docs/API.md`
 - **Gate**: `bun run validate`
 - acceptance:
   - "No quedan escrituras crudas en codigo de producto fuera del helper atomico"

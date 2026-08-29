@@ -84,7 +84,7 @@ palabra nueva, se marca.
 ### S1 — Cobertura TSDoc 100% en exports públicos
 - **Estado**: done (2026-08-07)
 - **Ficheros**: `scripts/gates/lint-tsdoc.script.ts` (nuevo) + 36
-  docblocks escritos en `projects/core/`.
+  docblocks escritos en `packages/core/`.
 - Se midió antes: 36 exports públicos sin explicar, entre ellos los
   siete tipos del formato Postman —los que más se importan— y las cinco
   clases de exportador recién añadidas.

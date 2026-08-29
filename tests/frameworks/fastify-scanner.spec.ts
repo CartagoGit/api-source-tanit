@@ -17,7 +17,7 @@ import {
   FastifyRouteScanner,
   FastifySchemaProvider,
   parseFastifySchema,
-} from "../../projects/frameworks/scanners/fastify.scanner";
+} from "../../packages/frameworks/scanners/fastify.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";

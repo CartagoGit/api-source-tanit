@@ -65,7 +65,7 @@ Que el contexto del proyecto deje de vivir en estado global de proceso, para que
 
 ## why
 
-La refactorizacion de `p00017` mejoro mucho la situacion, pero no la cerro. `projects/core/discovery/paths.service.ts` sigue diciendo en su propia cabecera que se prefiera `resolveProjectContext()` en codigo nuevo, y a la vez mantiene `let cache: Discovered | null = null`, una `queue` para serializar llamadas concurrentes y `withScopedPaths()` para salvar el estado global mientras ocho servicios y varios scripts aun dependen de el. Eso ya no es deuda teorica: es deuda observada y documentada por el propio codigo. `summary.script.ts` sigue resolviendo `--project-root` con `process.env.POSTMAN_PROJECT_ROOT` o cwd, `scan.script.ts` mezcla `projectRootFlag ?? process.env.POSTMAN_PROJECT_ROOT ?? projectRoot()`, `push.script.ts` llama a `projectRoot()` del singleton, y `project-loader.service.ts` sigue leyendo `POSTMAN_CONFIG` y `POSTMAN_EXAMPLE` directamente.
+La refactorizacion de `p00017` mejoro mucho la situacion, pero no la cerro. `packages/core/discovery/paths.service.ts` sigue diciendo en su propia cabecera que se prefiera `resolveProjectContext()` en codigo nuevo, y a la vez mantiene `let cache: Discovered | null = null`, una `queue` para serializar llamadas concurrentes y `withScopedPaths()` para salvar el estado global mientras ocho servicios y varios scripts aun dependen de el. Eso ya no es deuda teorica: es deuda observada y documentada por el propio codigo. `summary.script.ts` sigue resolviendo `--project-root` con `process.env.POSTMAN_PROJECT_ROOT` o cwd, `scan.script.ts` mezcla `projectRootFlag ?? process.env.POSTMAN_PROJECT_ROOT ?? projectRoot()`, `push.script.ts` llama a `projectRoot()` del singleton, y `project-loader.service.ts` sigue leyendo `POSTMAN_CONFIG` y `POSTMAN_EXAMPLE` directamente.
 
 La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
 
@@ -85,7 +85,7 @@ La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
 
 ### S1 — Un solo lector de contexto para los entrypoints que aun divergen
 - **Status**: done
-- **Files**: `projects/core/discovery/project-context.service.ts`, `projects/core/discovery/project-loader.service.ts`, `projects/cli/commands/summary.script.ts`, `projects/cli/commands/scan.script.ts`, `projects/cli/commands/push.script.ts`, `tests/core/project-context.service.spec.ts`
+- **Files**: `packages/core/discovery/project-context.service.ts`, `packages/core/discovery/project-loader.service.ts`, `packages/cli/commands/summary.script.ts`, `packages/cli/commands/scan.script.ts`, `packages/cli/commands/push.script.ts`, `tests/core/project-context.service.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`summary`, `scan` y `push` dejan de resolver `projectRoot` cada uno a su manera"
@@ -95,7 +95,7 @@ La consecuencia no es solo estetica. Mientras el contexto del proyecto viva ahi:
 ### S2 — Sacar al pipeline y a los comandos del singleton caliente
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `projects/core/discovery/paths.service.ts`, `projects/core/discovery/generation.pipeline.ts`, `projects/core/discovery/project-context.service.ts`, `projects/cli/commands/generate.script.ts`, `projects/cli/commands/watch.script.ts`, `tests/core/scoped-paths.service.spec.ts`
+- **Files**: `packages/core/discovery/paths.service.ts`, `packages/core/discovery/generation.pipeline.ts`, `packages/core/discovery/project-context.service.ts`, `packages/cli/commands/generate.script.ts`, `packages/cli/commands/watch.script.ts`, `tests/core/scoped-paths.service.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "La ruta feliz del producto deja de depender de `withScopedPaths()` y de la `queue` global"

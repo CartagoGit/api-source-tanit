@@ -22,7 +22,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { parseYamlLite, unsupportedYamlFeatures } from "../../projects/frameworks/scanners/openapi.scanner";
+import { parseYamlLite, unsupportedYamlFeatures } from "../../packages/frameworks/scanners/openapi.scanner";
 
 /** Trozos con los que se construyen documentos al azar. */
 const PIEZAS = [

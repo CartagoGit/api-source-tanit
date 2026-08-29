@@ -165,7 +165,7 @@ cambiaron los cinco imports por especificador. Typechequea, pero:
 
 > Bun **copia** un `file:` en vez de enlazarlo. Se comprobó con inodos
 > distintos y con la prueba directa: se añade un `export` a
-> `projects/frameworks/index.ts` y la copia de
+> `packages/frameworks/index.ts` y la copia de
 > `node_modules/.bun/export-to-postman@root/` no lo ve. El plugin
 > tiparía y testearía contra una **foto congelada** del repo hasta el
 > siguiente `bun install`.

@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import {
   writeFileAtomic,
   writeJsonAtomic,
-} from "../../projects/core/helpers/atomic-write.helper";
+} from "../../packages/core/helpers/atomic-write.helper";
 
 let dir = "";
 

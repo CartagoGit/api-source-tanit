@@ -94,7 +94,7 @@ tests.
 
 ## no-objetivos
 
-- Reorganizar en `projects/{core,cli,ui}` — eso es p00020, y es más
+- Reorganizar en `packages/{core,cli,ui}` — eso es p00020, y es más
   grande. Esto es la capa de convenciones, que se puede hacer antes y
   deja p00020 más fácil.
 - Cambiar el nombre del paquete o del binario — eso es p00025.

@@ -18,7 +18,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
+import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
 /** Lo que da analizar un fixture a solas, que es la verdad de referencia. */

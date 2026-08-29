@@ -38,27 +38,27 @@ const RULES: readonly INamingRule[] = [
   // dentro de `interfaces/` es justo el desorden que la separación viene
   // a evitar, así que cada una declara solo el suyo.
   {
-    path: "projects/contracts/interfaces/",
+    path: "packages/contracts/interfaces/",
     what: "interfaces y tipos compartidos",
     suffixes: [".interface.ts", ".d.ts"],
   },
   {
-    path: "projects/contracts/constants/",
+    path: "packages/contracts/constants/",
     what: "constantes compartidas",
     suffixes: [".constant.ts"],
   },
   {
-    path: "projects/core/contracts/",
+    path: "packages/core/contracts/",
     what: "tipos y constantes compartidas",
     suffixes: [".interface.ts", ".constant.ts", ".d.ts"],
   },
   {
-    path: "projects/core/helpers/",
+    path: "packages/core/helpers/",
     what: "funciones puras sin estado",
     suffixes: [".helper.ts"],
   },
   {
-    path: "projects/core/exporters/",
+    path: "packages/core/exporters/",
     what: "un formato de salida por fichero",
     // `.exporter` es un tipo de módulo con significado propio: implementa
     // `IExportTarget` y traduce el catálogo de endpoints a UN formato.
@@ -66,7 +66,7 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".exporter.ts", ".service.ts"],
   },
   {
-    path: "projects/core/",
+    path: "packages/core/",
     what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con
     // significado propio, igual que `.service`: no son un servicio
@@ -74,28 +74,28 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts"],
   },
   {
-    path: "projects/frameworks/",
+    path: "packages/frameworks/",
     what: "lo concreto de cada framework",
     suffixes: [".scanner.ts", ".service.ts", ".helper.ts", ".registry.ts"],
     exact: ["index.ts", "legacy-discovery.ts"],
   },
   {
-    path: "projects/cli/",
+    path: "packages/cli/",
     what: "el dispatcher y un fichero por comando",
     suffixes: [".script.ts", ".constant.ts"],
   },
   {
-    path: "projects/ui/server/",
+    path: "packages/ui/server/",
     what: "el servidor de `expostman ui`: rutas y transporte, separados",
     suffixes: [".service.ts"],
   },
   {
-    path: "projects/ui/web/",
+    path: "packages/ui/web/",
     what: "la interfaz, embebida como texto para que el binario la lleve dentro",
     suffixes: [".constant.ts"],
   },
   {
-    path: "projects/ui/",
+    path: "packages/ui/",
     what: "el asistente interactivo y lo que dibuja en la terminal",
     // `.helper` entra porque el asistente ya no es un solo fichero: la
     // tabla, las barras y el color son funciones puras con sus tests, y
@@ -127,51 +127,51 @@ const RULES: readonly INamingRule[] = [
   // solo en la cabeza de quien los escribió. Se destapó contando las
   // carpetas con `.ts` (65) contra las carpetas con regla (17).
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/tools/",
+    path: "packages/plugins/mcp-vertex_expostman/src/lib/tools/",
     what: "un tool MCP por fichero",
     suffixes: [".tool.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/helpers/",
+    path: "packages/plugins/mcp-vertex_expostman/src/lib/helpers/",
     what: "ayudantes internos del plugin",
     suffixes: [".helper.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/interfaces/",
+    path: "packages/plugins/mcp-vertex_expostman/src/lib/contracts/interfaces/",
     what: "interfaces del plugin",
     suffixes: [".interface.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/constants/",
+    path: "packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/",
     what: "constantes del plugin",
     suffixes: [".constant.ts"],
   },
   // Los dobles compartidos van antes que la regla de tests: `bestMatch`
   // se queda con el prefijo más largo, y este es más específico.
   {
-    path: "projects/plugins/mcp-vertex_expostman/tests/helpers/",
+    path: "packages/plugins/mcp-vertex_expostman/tests/helpers/",
     what: "dobles compartidos entre los tests del plugin",
     suffixes: [".helper.ts", "-context.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/tests/",
+    path: "packages/plugins/mcp-vertex_expostman/tests/",
     what: "tests del plugin",
     suffixes: [".spec.ts", ".test.ts"],
   },
   // Los idiomas de la interfaz: el servicio que los carga y los
   // catálogos, que son datos y no código.
   {
-    path: "projects/ui/i18n/locales/",
+    path: "packages/ui/i18n/locales/",
     what: "un catálogo de traducciones por idioma",
     suffixes: [".json"],
   },
   {
-    path: "projects/ui/i18n/",
+    path: "packages/ui/i18n/",
     what: "la carga de idiomas",
     suffixes: [".service.ts"],
   },
   {
-    path: "projects/ui/settings/",
+    path: "packages/ui/settings/",
     what: "los ajustes que persisten entre aperturas",
     suffixes: [".service.ts"],
   },

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   NestJsProjectScanner,
   NestJsRouteScanner,
-} from "../../projects/frameworks/scanners/nestjs.scanner";
+} from "../../packages/frameworks/scanners/nestjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {

@@ -55,7 +55,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
 
 ### S1 — Coverage por scope en Vitest
 - **Status**: done
-- **Files**: `vitest.config.ts`, `projects/plugins/mcp-vertex_expostman/vitest.config.ts`, `package.json`
+- **Files**: `vitest.config.ts`, `packages/plugins/mcp-vertex_expostman/vitest.config.ts`, `package.json`
 - **Gate**: test
 - acceptance:
   - "Se añade un script dedicado de coverage por scope"

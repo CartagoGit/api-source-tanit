@@ -67,7 +67,7 @@ es información; abrir una ventana es una interrupción.
 
 ### El asistente interactivo — pregunta
 
-Vive en `projects/ui/interactive.script.ts` y funciona a base de
+Vive en `packages/ui/interactive.script.ts` y funciona a base de
 preguntas encadenadas. Un tool MCP no tiene con quién dialogar.
 
 **Alternativa:** los tools que ya existen. El asistente es un envoltorio

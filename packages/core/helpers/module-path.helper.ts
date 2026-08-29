@@ -33,7 +33,7 @@ export function moduleDir(importMetaUrl: string): string {
  * `PACKAGE_ROOT` apunta a otro sitio **sin fallar**: el script
  * simplemente no encuentra nada y dice "no se encontró ninguna
  * propuesta". Pasó con cuatro gates a la vez al reorganizar en
- * `projects/`.
+ * `packages/`.
  *
  * Contar niveles es acoplar un fichero a su profundidad en el árbol.
  * Buscar el marcador no.

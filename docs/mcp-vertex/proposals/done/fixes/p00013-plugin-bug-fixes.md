@@ -23,7 +23,7 @@ related:
 
 ## Goal
 
-Make `bun /home/cartago/_projects/mcp-vertex/tools/scripts/host/host-server.script.ts
+Make `bun /home/cartago/_packages/mcp-vertex/tools/scripts/host/host-server.script.ts
 --workspace . --config ./mcp-vertex.config.json` boot cleanly with the
 `postman-exporter` and `postman-exporter-testing` plugins loaded, the
 4 tool ids exposed, and `bun run build` typecheck green inside both
@@ -44,7 +44,7 @@ to be addressed before the plugin can be trusted by a CI gate.
 ## Symptom surface (verified)
 
 ```
-$ bun /home/cartago/_projects/mcp-vertex/tools/scripts/host/host-server.script.ts \
+$ bun /home/cartago/_packages/mcp-vertex/tools/scripts/host/host-server.script.ts \
     --workspace . --config ./mcp-vertex.config.json
 [mcp-vertex] boot failed: ReferenceError: NAMESPACE is not defined
     at register (.../postman-exporter/src/lib/tools/generate.tool.ts:47:10)
@@ -94,7 +94,7 @@ Fix:
 
 Acceptance:
 
-- `bun /home/cartago/_projects/mcp-vertex/tools/scripts/host/host-server.script.ts --workspace . --config ./mcp-vertex.config.json`
+- `bun /home/cartago/_packages/mcp-vertex/tools/scripts/host/host-server.script.ts --workspace . --config ./mcp-vertex.config.json`
   no longer crashes with `ReferenceError`. Process is killed by
   SIGTERM after the 5s smoke-test window; exit code is 143.
 - `mcp-vertex_overview { compact: true }` lists the 4 plugin tools

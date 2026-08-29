@@ -28,7 +28,7 @@ import {
   pluginDir,
   smokeFixtureDir,
 } from "../../scripts/helpers/root.helper";
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
 
 describe("WELL_KNOWN_PATHS", () => {
   // El test que importa: si alguien mueve una carpeta y no toca el
@@ -57,12 +57,12 @@ describe("WELL_KNOWN_PATHS", () => {
 
 describe("REPO_ROOT", () => {
   // La búsqueda exige package.json Y mcp-vertex.config.json juntos: con
-  // solo el primero pararía en `projects/plugins/mcp-vertex_expostman`, que
+  // solo el primero pararía en `packages/plugins/mcp-vertex_expostman`, que
   // también tiene el suyo.
   test("es la raíz de verdad, no la de un paquete de dentro", () => {
     expect(existsSync(join(REPO_ROOT, "package.json"))).toBe(true);
     expect(existsSync(join(REPO_ROOT, "mcp-vertex.config.json"))).toBe(true);
-    expect(existsSync(join(REPO_ROOT, "projects"))).toBe(true);
+    expect(existsSync(join(REPO_ROOT, "packages"))).toBe(true);
   });
 
   test("el plugin también tiene package.json, y no es la raíz", () => {
@@ -77,7 +77,7 @@ describe("fromRoot", () => {
   });
 
   test("acepta varios segmentos", () => {
-    expect(fromRoot("projects", "core")).toBe(join(REPO_ROOT, "projects", "core"));
+    expect(fromRoot("packages", "core")).toBe(join(REPO_ROOT, "packages", "core"));
   });
 
   test("sin segmentos devuelve la raíz", () => {

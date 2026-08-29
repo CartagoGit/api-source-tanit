@@ -3,7 +3,7 @@
  *
  * Este spec existe porque el plugin y el CLI **no comparten tipos**: lo
  * único que los une es una cadena con una ruta, y una cadena no la
- * comprueba nadie. Al reorganizar en `projects/` el CLI se movió y esta
+ * comprueba nadie. Al reorganizar en `packages/` el CLI se movió y esta
  * cadena se quedó atrás en tres sitios; los tools seguían registrándose,
  * los tests seguían verdes, y `generate` fallaba solo al ejecutarlo de
  * verdad contra el host.

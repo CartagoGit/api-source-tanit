@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
  * mentira justo en el fichero que viene a comprobarlo.
  */
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const CONTRACTS = join(AQUI, "..", "..", "projects", "contracts");
+const CONTRACTS = join(AQUI, "..", "..", "packages", "contracts");
 
 /** Los `.ts` de un árbol, sin depender del walker del repo. */
 async function collectFiles(dir: string): Promise<string[]> {
@@ -59,7 +59,7 @@ function importsRelativos(source: string): string[] {
 
 const ficheros = await collectFiles(CONTRACTS);
 
-describe("projects/contracts/", () => {
+describe("packages/contracts/", () => {
   test("tiene contratos dentro", () => {
     expect(ficheros.length).toBeGreaterThan(0);
   });
@@ -70,7 +70,7 @@ describe("projects/contracts/", () => {
    * Se **resuelve** la ruta en vez de mirar si empieza por `../..`. Esa
    * heurística daba un falso positivo en cuanto un contrato de
    * `interfaces/cli/` importó uno de `constants/cli/`: sube dos niveles
-   * y sigue dentro de `projects/contracts/`, que es exactamente lo que
+   * y sigue dentro de `packages/contracts/`, que es exactamente lo que
    * se quiere permitir. Un contrato puede apoyarse en otro; lo que no
    * puede es apoyarse en una implementación.
    */
@@ -80,7 +80,7 @@ describe("projects/contracts/", () => {
       const destino = resolve(dirname(fichero), spec);
       return relative(CONTRACTS, destino).startsWith("..");
     });
-    expect(fuera, `${relative(CONTRACTS, fichero)} sale de projects/contracts/`).toEqual(
+    expect(fuera, `${relative(CONTRACTS, fichero)} sale de packages/contracts/`).toEqual(
       [],
     );
   });

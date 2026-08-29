@@ -10,10 +10,10 @@
  */
 import { describe, expect, test, vi } from "vitest";
 
-import { createDebouncer, shouldIgnore } from "../../projects/core/domain/watcher.service";
-import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant";
-import { DEFAULT_DEBOUNCE_MS } from "../../projects/contracts/constants/core/runtime-limits.constant";
-import { IGNORED_DIRS } from "../../projects/contracts/constants/core/watch.constant";
+import { createDebouncer, shouldIgnore } from "../../packages/core/domain/watcher.service";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
+import { DEFAULT_DEBOUNCE_MS } from "../../packages/contracts/constants/core/runtime-limits.constant";
+import { IGNORED_DIRS } from "../../packages/contracts/constants/core/watch.constant";
 
 describe("shouldIgnore", () => {
   // EL test. Sin esto, el watcher se retroalimenta.

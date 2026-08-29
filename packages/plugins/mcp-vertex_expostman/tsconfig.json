@@ -35,7 +35,7 @@
     // `wire-plugin.ts`, de otro repositorio, que no son nuestros para
     // arreglar. `skipLibCheck` no los tapa porque son `.ts`, no `.d.ts`.
     //
-    // Ver p00027 S4: la ruta relativa a `projects/` NO era la causa, y
+    // Ver p00027 S4: la ruta relativa a `packages/` NO era la causa, y
     // sustituirla por una dependencia de paquete resultó peor (Bun copia
     // los `file:`, así que el plugin tiparía contra una foto congelada
     // del repo hasta el siguiente `bun install`).

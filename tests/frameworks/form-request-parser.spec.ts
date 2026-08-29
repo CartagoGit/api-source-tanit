@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { detectTypedRule, exampleValueForRule, generateBodyVariants, generateCompleteBody, generateMinimalBody, generateQueryVariants, parseFormRequest } from "../../projects/frameworks/laravel/form-request-parser.service";
+import { detectTypedRule, exampleValueForRule, generateBodyVariants, generateCompleteBody, generateMinimalBody, generateQueryVariants, parseFormRequest } from "../../packages/frameworks/laravel/form-request-parser.service";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
-import type { FormRequestRules } from "../../projects/contracts/interfaces/frameworks/scanners.interface";
+import type { FormRequestRules } from "../../packages/contracts/interfaces/frameworks/scanners.interface";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
 
 let project: ITempProject;
+let context: ReturnType<typeof resolveProjectContext>;
 
 const FORM_REQUEST = `<?php
 
@@ -39,6 +41,7 @@ class EmptyRequest extends FormRequest
 }
 `,
   });
+  context = resolveProjectContext({ projectRoot: project.root });
 });
 
 afterAll(async () => {
@@ -49,7 +52,7 @@ describe("parseFormRequest", () => {
   test("extrae todos los campos de rules()", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
-      project.root,
+      context,
     );
     expect(Object.keys(rules.rules)).toEqual(["name", "email", "age", "role", "avatar"]);
   });
@@ -57,7 +60,7 @@ describe("parseFormRequest", () => {
   test("lee el nombre de la clase", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
-      project.root,
+      context,
     );
     expect(rules.className).toBe("CreateUserRequest");
   });
@@ -65,7 +68,7 @@ describe("parseFormRequest", () => {
   test("entiende las reglas en array", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
-      project.root,
+      context,
     );
     expect(rules.rules["name"]).toEqual(["required", "string", "max:80"]);
   });
@@ -74,22 +77,20 @@ describe("parseFormRequest", () => {
   test("entiende las reglas en string separadas por |", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
-      project.root,
+      context,
     );
     expect(rules.rules["email"]).toEqual(["required", "email", "unique:users"]);
   });
 
   test("un rules() vacío se marca como isEmpty", async () => {
-    const rules = await parseFormRequest("app/Http/Requests/EmptyRequest.php", project.root);
+    const rules = await parseFormRequest("app/Http/Requests/EmptyRequest.php", context);
     expect(rules.isEmpty).toBe(true);
   });
 
-  // Sin la raíz explícita, el parser dependía del singleton de
-  // paths.service y no resolvía nada fuera del CLI.
   test("respeta la raíz de proyecto que se le pasa", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
-      project.root,
+      context,
     );
     expect(rules.sourceFile).toBe("app/Http/Requests/CreateUserRequest.php");
   });

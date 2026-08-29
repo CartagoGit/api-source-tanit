@@ -18,8 +18,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant";
-import { registeredFrameworkIds } from "../../projects/frameworks/framework.registry";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
+import { registeredFrameworkIds } from "../../packages/frameworks/framework.registry";
 
 describe("el catálogo y el registro", () => {
   /** EL test: ni sobra ni falta ninguno, en ninguno de los dos lados. */
@@ -65,7 +65,7 @@ describe("el catálogo y el registro", () => {
         aqui,
         "..",
         "..",
-        "projects",
+        "packages",
         "contracts",
         "constants",
         "frameworks",

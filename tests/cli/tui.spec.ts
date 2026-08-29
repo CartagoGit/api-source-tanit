@@ -16,10 +16,10 @@ import {
   shouldUseColor,
   truncate,
   visibleWidth,
-} from "../../projects/ui/ansi.helper";
-import { DEFAULT_TERMINAL_WIDTH } from "../../projects/contracts/constants/cli/terminal.constant";
-import { renderTable } from "../../projects/ui/table.helper";
-import { bar, renderDashboard } from "../../projects/ui/dashboard.helper";
+} from "../../packages/ui/ansi.helper";
+import { DEFAULT_TERMINAL_WIDTH } from "../../packages/contracts/constants/cli/terminal.constant";
+import { renderTable } from "../../packages/ui/table.helper";
+import { bar, renderDashboard } from "../../packages/ui/dashboard.helper";
 
 const color = createPainter(true);
 const plain = createPainter(false);

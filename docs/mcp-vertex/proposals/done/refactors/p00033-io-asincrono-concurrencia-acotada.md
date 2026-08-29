@@ -75,7 +75,7 @@ problema era de constante, no de forma.
 
 ### S1 — el helper de lectura acotada
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/helpers/read-files.helper.ts` (nuevo),
+- **Ficheros**: `packages/core/helpers/read-files.helper.ts` (nuevo),
   `tests/core/read-files.helper.spec.ts` (nuevo).
 
 `readFilesInOrder(paths, limit)` es un generador con ventana deslizante.

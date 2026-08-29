@@ -24,7 +24,7 @@ import {
   breadcrumbs,
   browseDirectory,
   defaultBrowseRoot,
-} from "../../projects/ui/server/browse.service";
+} from "../../packages/ui/server/browse.service";
 
 let raiz = "";
 

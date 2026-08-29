@@ -39,7 +39,7 @@ import {
   type IInitOutput,
 } from "../contracts/plugin.interface";
 import { runInit } from "../../../../../cli/commands/init.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "init";
 
@@ -86,15 +86,16 @@ export function buildInitToolRegistration(ctx: IMcpPluginContext): IToolRegistra
             );
           }
 
-          const argv = ["--project-root", projectRoot];
+          const argv: string[] = [];
           if (args.name) argv.push("--name", args.name);
           if (args.outputDir) argv.push("--output", args.outputDir);
 
           const started = Date.now();
-          // `init` resuelve la raíz por el singleton, así que sin esto
-          // escribiría la configuración del proyecto A dentro del B en
-          // cuanto el servidor atendiera dos peticiones.
-          const outcome = await withScopedPaths({ projectRoot }, () => runInit(argv));
+          const context = resolveProjectContext({
+            projectRoot,
+            ...(args.outputDir ? { outputDir: args.outputDir } : {}),
+          });
+          const outcome = await runInit(argv, context);
 
           if (outcome.error) {
             return toolError(outcome.error.reason, outcome.error.nextAction);

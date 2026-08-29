@@ -50,7 +50,7 @@ import { describe, expect, test } from "vitest";
  * la realidad que no.
  */
 const contratos = await import(
-  "../../projects/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface"
+  "../../packages/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface"
 ).catch(() => null);
 
 const PLUGIN_DEPS = contratos !== null;

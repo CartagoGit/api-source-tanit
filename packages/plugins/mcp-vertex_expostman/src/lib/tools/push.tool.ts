@@ -39,7 +39,7 @@ import {
   type IPushOutput,
 } from "../contracts/plugin.interface";
 import { runPush } from "../../../../../cli/commands/push.script";
-import { withScopedPaths } from "../../../../../core/discovery/paths.service";
+import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
 
 const TOOL_ID = "push";
 
@@ -86,16 +86,14 @@ export function buildPushToolRegistration(ctx: IMcpPluginContext): IToolRegistra
             );
           }
 
-          const argv = ["--project-root", projectRoot];
+          const argv: string[] = [];
           if (args.workspaceId) argv.push("--workspace", args.workspaceId);
           if (args.framework) argv.push("--framework", args.framework);
           if (args.withEnvironments === false) argv.push("--no-environments");
 
           const started = Date.now();
-          // El servidor MCP es de vida larga y el descubrimiento cachea
-          // por proceso: sin esto, subir el proyecto A y luego el B
-          // publicaría el de A dos veces.
-          const outcome = await withScopedPaths({ projectRoot }, () => runPush(argv));
+          const context = resolveProjectContext({ projectRoot });
+          const outcome = await runPush(argv, context);
 
           if (outcome.error) {
             // El motivo ya viene redactado de `runPush`: nunca trae el

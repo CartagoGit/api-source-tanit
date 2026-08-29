@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { countLinesBefore, findAllBalanced, findClosingParen, findNearestBalanced, splitTopLevel, stripJsComments, unwrapObjectLiteralItem } from "../../projects/core/helpers/source-scan.helper";
+import { countLinesBefore, findAllBalanced, findClosingParen, findNearestBalanced, splitTopLevel, stripJsComments, unwrapObjectLiteralItem } from "../../packages/core/helpers/source-scan.helper";
 
 describe("stripJsComments", () => {
   test("elimina comentarios de bloque", () => {

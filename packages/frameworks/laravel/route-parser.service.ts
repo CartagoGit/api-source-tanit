@@ -23,7 +23,6 @@ import type { IProjectContext } from "../../contracts/interfaces/core/project-co
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { fromProjectRoot, projectDirs } from "../../core/discovery/project-context.service.js";
 import { readFile } from "node:fs/promises";
-import { fromProjectRelative, routesDir } from "../../core/discovery/paths.service.js";
 import type { ParsedRoute } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
@@ -51,9 +50,9 @@ export function stripComments(src: string): string {
 export async function parseRoutesFile(
   relPath: string,
   initialPrefix: string[] = [],
-  context?: IProjectContext,
+  context: IProjectContext,
 ): Promise<ParsedRoute[]> {
-  const abs = context ? fromProjectRoot(context, relPath) : fromProjectRelative(relPath);
+  const abs = fromProjectRoot(context, relPath);
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
@@ -130,15 +129,14 @@ export async function parseRoutesFile(
  */
 export async function parseAllRoutes(
   filePrefixes: Record<string, string[]> = {},
-  context?: IProjectContext,
+  context: IProjectContext,
 ): Promise<ParsedRoute[]> {
   // Recorremos `routes/` directamente: cualquier archivo PHP es un
   // archivo de rutas. Si está en `filePrefixes`, usamos esos prefijos;
   // si no, asumimos el prefijo `api/` que añade Laravel por defecto
   // en `RouteServiceProvider::mapApiRoutes()`.
   const fs = await import("node:fs/promises");
-  const ROUTES_DIR = context ? projectDirs(context).routes : routesDir();
-  if (!ROUTES_DIR) return [];
+  const ROUTES_DIR = projectDirs(context).routes;
   let entries: string[];
   try {
     entries = await fs.readdir(ROUTES_DIR);

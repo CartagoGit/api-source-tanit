@@ -18,8 +18,8 @@ import {
   DEFAULT_EXPORT_FORMAT,
   EXPORT_FORMATS,
   EXPORTER_FORMATS,
-} from "../../projects/contracts/constants/core/export-formats.constant";
-import { registeredFormats } from "../../projects/core/exporters/export-registry.service";
+} from "../../packages/contracts/constants/core/export-formats.constant";
+import { registeredFormats } from "../../packages/core/exporters/export-registry.service";
 
 describe("el catálogo de formatos y el registro", () => {
   /** EL test: ni sobra ni falta ninguno. */

@@ -8,8 +8,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { buildRequestDescription } from "../../projects/core/domain/request-doc.service";
-import type { IEndpointField } from "../../projects/contracts/interfaces/core/postman.interface";
+import { buildRequestDescription } from "../../packages/core/domain/request-doc.service";
+import type { IEndpointField } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const field = (partial: Partial<IEndpointField> & { fieldName: string }): IEndpointField =>
   ({ location: "body", type: "string", required: true, ...partial }) as IEndpointField;

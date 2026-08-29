@@ -54,7 +54,7 @@ el modo watch se habría publicado sin funcionar y pareciendo probado.
 
 ### S1 — watcher con rebote
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/domain/watcher.service.ts` (nuevo),
+- **Ficheros**: `packages/core/domain/watcher.service.ts` (nuevo),
   `tests/core/watcher.service.spec.ts` (20 tests),
   `tests/e2e/watch.test.ts` (5 tests).
 - `fs.watch` recursivo, sin sondeo (era un no-objetivo). Si el sistema no
@@ -68,8 +68,8 @@ el modo watch se habría publicado sin funcionar y pareciendo probado.
 
 ### S2 — integración con el CLI
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/cli/commands/watch.script.ts` (nuevo),
-  `projects/cli/cli.script.ts`.
+- **Ficheros**: `packages/cli/commands/watch.script.ts` (nuevo),
+  `packages/cli/cli.script.ts`.
 
 Es un **comando**, no un flag. La propuesta pedía `--watch`, pero el CLI
 ya tiene un dispatcher por comandos y un flag que cambia el modo de

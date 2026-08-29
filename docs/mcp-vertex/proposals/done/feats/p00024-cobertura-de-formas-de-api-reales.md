@@ -87,7 +87,7 @@ Cada una necesita un fixture y, si falla, arreglo:
   endpoints; los 11 ejemplos de un solo framework no cambian ni un byte.
 
 ### S2 — avisar de la ambigüedad
-- **Files**: `projects/cli/`.
+- **Files**: `packages/cli/`.
 - **Gate**: revisión manual del output.
 
 - Cuando hay más de un match, el CLI lista los frameworks detectados y
@@ -105,7 +105,7 @@ Cada una necesita un fixture y, si falla, arreglo:
   "limitación documentada". Ninguna en "por comprobar".
 
 ### S4 — aviso de endpoints probablemente perdidos
-- **Files**: `projects/core/discovery/`.
+- **Files**: `packages/core/discovery/`.
 - **Gate**: `bun test`.
 
 - Heurística: si en un fichero de rutas hay líneas que parecen

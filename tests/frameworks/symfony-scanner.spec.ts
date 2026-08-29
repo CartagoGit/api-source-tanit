@@ -3,12 +3,12 @@ import {
   SymfonyProjectScanner,
   SymfonyRouteScanner,
   SymfonyAttributesValidationProvider,
-} from "../../projects/frameworks/scanners/symfony.scanner";
+} from "../../packages/frameworks/scanners/symfony.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, createTempProject, scanProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
-import type { ParsedRoute } from "../../projects/contracts/interfaces/core/scanner.interface";
+import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface";
 
 describeScannerContract({
   framework: "symfony",

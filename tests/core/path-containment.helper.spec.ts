@@ -15,7 +15,7 @@ import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promis
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { ensureInside } from "../../projects/core/helpers/path-containment.helper";
+import { ensureInside } from "../../packages/core/helpers/path-containment.helper";
 
 let base = "";
 let raiz = "";

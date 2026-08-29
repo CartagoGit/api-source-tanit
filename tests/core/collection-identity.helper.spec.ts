@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { collectionIdFor, environmentIdFor, stableUuid } from "../../projects/core/helpers/collection-identity.helper";
+import { collectionIdFor, environmentIdFor, stableUuid } from "../../packages/core/helpers/collection-identity.helper";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

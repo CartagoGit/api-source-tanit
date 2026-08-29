@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { toYaml } from "../../projects/core/helpers/yaml.helper";
+import { toYaml } from "../../packages/core/helpers/yaml.helper";
 
 describe("las cadenas peligrosas van citadas", () => {
   // La tabla del infierno de YAML: sin comillas, cada una de estas deja

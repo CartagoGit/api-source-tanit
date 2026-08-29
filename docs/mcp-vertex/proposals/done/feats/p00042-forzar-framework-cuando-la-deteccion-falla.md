@@ -48,9 +48,9 @@ proyecto"— suena a que la herramienta no lo soporta cuando sí lo hace.
 
 ### S1 — `--framework <id>` en el CLI y en el pipeline
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/discovery/generation.pipeline.ts`,
-  `projects/core/discovery/discovery.orchestrator.ts`,
-  `projects/cli/commands/generate.script.ts`.
+- **Ficheros**: `packages/core/discovery/generation.pipeline.ts`,
+  `packages/core/discovery/discovery.orchestrator.ts`,
+  `packages/cli/commands/generate.script.ts`.
 - **Gate**: un test que fuerza el framework sobre un proyecto sin
   manifiesto y obtiene sus endpoints.
 
@@ -62,9 +62,9 @@ proyecto"— suena a que la herramienta no lo soporta cuando sí lo hace.
 
 ### S2 — el asistente interactivo lo ofrece
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/ui/interactive.script.ts`,
-  `projects/cli/commands/push.script.ts`,
-  `projects/core/discovery/paths.service.ts`.
+- **Ficheros**: `packages/ui/interactive.script.ts`,
+  `packages/cli/commands/push.script.ts`,
+  `packages/core/discovery/paths.service.ts`.
 - **Gate**: `tests/core/scoped-paths.service.spec.ts`.
 
 Cuando el escaneo no detecta nada, en vez de rendirse ofrece la lista de
@@ -88,7 +88,7 @@ reentrante — anidar dos secciones se bloqueaba para siempre.
 
 ### S3 — el plugin de mcp-vertex lo expone
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`,
+- **Ficheros**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts`,
   `.../contracts/plugin.interface.ts`, `.../contracts/cli-path.constant.ts`.
 - **Gate**: `tests/integration/generate.tool.spec.ts` del plugin.
 
@@ -101,7 +101,7 @@ El tool `generate` acepta `framework` opcional. Un agente que recibe
   nada" es un callejón sin salida para un agente que no sabe que existe
   el parámetro.
 - Escribir el test destapó que el tool spawneaba `scripts/cli.script.ts`,
-  ruta que murió al reorganizar en `projects/`. `generate` y `validate`
+  ruta que murió al reorganizar en `packages/`. `generate` y `validate`
   llevaban commits rotos con los tests en verde, porque ninguno llegaba a
   ejecutar el CLI. Ahora la ruta está una vez (`cli-path.constant.ts`) y
   un test comprueba que el fichero existe.

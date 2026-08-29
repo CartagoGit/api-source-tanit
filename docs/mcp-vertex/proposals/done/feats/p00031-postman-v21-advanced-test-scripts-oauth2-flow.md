@@ -40,9 +40,9 @@ nada.
 
 ## S2 — aserciones en todas las requests
 - **Estado**: done (2026-08-07)
-- **Ficheros**: `projects/core/domain/test-script.service.ts` (nuevo),
-  `projects/core/domain/collection-builder.service.ts`,
-  `projects/core/domain/auth-flow.service.ts`,
+- **Ficheros**: `packages/core/domain/test-script.service.ts` (nuevo),
+  `packages/core/domain/collection-builder.service.ts`,
+  `packages/core/domain/auth-flow.service.ts`,
   `tests/core/test-script.service.spec.ts` (nuevo, 12 tests).
 
 La regla que gobierna el fichero: **no se afirma nada que no se sepa**.
@@ -86,9 +86,9 @@ formato, cotas, valores de enum— ya se extraía del código fuente para
 construir el body de ejemplo, y se tiraba. El ejemplo enseña **un** valor
 válido; la tabla dice cuáles lo son.
 
-- **Ficheros**: `projects/core/domain/request-doc.service.ts` (nuevo),
-  `projects/core/contracts/postman.interface.ts` (`EndpointSpec.fields`),
-  `projects/core/adapters/parsed-route-to-spec.adapter.ts`,
+- **Ficheros**: `packages/core/domain/request-doc.service.ts` (nuevo),
+  `packages/core/contracts/postman.interface.ts` (`EndpointSpec.fields`),
+  `packages/core/adapters/parsed-route-to-spec.adapter.ts`,
   `tests/core/request-doc.service.spec.ts` (nuevo, 12 tests).
 
 ```

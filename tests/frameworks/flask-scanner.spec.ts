@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   FlaskProjectScanner,
   FlaskRouteScanner,
-} from "../../projects/frameworks/scanners/flask.scanner";
+} from "../../packages/frameworks/scanners/flask.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";

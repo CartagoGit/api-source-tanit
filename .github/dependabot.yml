@@ -42,7 +42,7 @@
 # de verdad:
 #
 #   /                                      el paquete
-#   /projects/plugins/mcp-vertex_expostman el plugin, que se publica aparte
+#   /packages/plugins/mcp-vertex_expostman el plugin, que se publica aparte
 #
 version: 2
 
@@ -65,7 +65,7 @@ updates:
   # El plugin de mcp-vertex es un paquete independiente con su propio
   # `package.json`, y ese sí se instala.
   - package-ecosystem: npm
-    directory: "/projects/plugins/mcp-vertex_expostman"
+    directory: "/packages/plugins/mcp-vertex_expostman"
     schedule:
       interval: weekly
     open-pull-requests-limit: 3

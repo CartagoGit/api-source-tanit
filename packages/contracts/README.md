@@ -1,4 +1,4 @@
-# `projects/contracts` — interfaces, tipos y constantes
+# `packages/contracts` — interfaces, tipos y constantes
 
 La sección más nuclear del repositorio: **no depende de nadie y todas
 dependen de ella**. Aquí no hay una sola línea ejecutable.
@@ -104,7 +104,7 @@ Falla de dos maneras, las dos comprobadas reintroduciendo el fallo:
 ## Los contratos del plugin
 
 El plugin de mcp-vertex tiene **su propia** carpeta de contratos, en
-`projects/plugins/mcp-vertex_expostman/src/lib/contracts/`, con la misma
+`packages/plugins/mcp-vertex_expostman/src/lib/contracts/`, con la misma
 estructura. No es una excepción a la regla: es un paquete independiente
 que se publica solo, compila con `@types/node` real mientras el resto del
 repo usa declaraciones ambient escritas a mano, y sus esquemas zod son

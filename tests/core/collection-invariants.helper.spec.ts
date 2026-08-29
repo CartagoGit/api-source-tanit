@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { checkCollectionInvariants, collectionErrors } from "../../projects/core/helpers/collection-invariants.helper";
-import { POSTMAN_SCHEMA_URL } from "../../projects/contracts/constants/core/postman.constant";
-import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
+import { checkCollectionInvariants, collectionErrors } from "../../packages/core/helpers/collection-invariants.helper";
+import { POSTMAN_SCHEMA_URL } from "../../packages/contracts/constants/core/postman.constant";
+import type { PostmanCollection } from "../../packages/contracts/interfaces/core/postman.interface";
 import { brokenRequest, folder, validRequest } from "../helpers/postman-builders";
 
 const request = validRequest;
