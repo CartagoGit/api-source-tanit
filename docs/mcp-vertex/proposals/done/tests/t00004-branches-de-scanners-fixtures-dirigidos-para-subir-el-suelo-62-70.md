@@ -2,7 +2,7 @@
 id: t00004
 title: "branches de scanners: fixtures dirigidos para subir el suelo (62→70)"
 kind: test
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-29
@@ -93,21 +93,30 @@ tocar umbrales antes de demostrarlos.
   Branches global 64,22 % → **69,45 %** (4.021/5.789). `validate` exit 0.
 
 ### S4 — Fixtures de branches para `core/*` (domain, discovery, exporters)
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/core/**.spec.ts`
 - **Gate**: test
 - acceptance:
   - "Las branches sin cubrir de `packages/core/*` bajan de 561"
   - "Ningún cambio de comportamiento: solo tests y fixtures"
+- evidence (`orchestrator` + `implementation-runner`, 2026-08-30): 90 tests
+  nuevos en `tests/core/{param-inferrer,project-loader,exporters}.branches.spec.ts`
+  (rutas de error, fallback y bordes, fixtures reales). Branches de core suben
+  con el lote: global 69,45 % → **72,00 %** (4.160/5.777). Dos defectos de
+  param-inferrer quedaron fijados en test con comentario (sufijos camelCase
+  muertos; `query: []` que bloquea la inferencia) sin cambiar comportamiento.
 
 ### S5 — Subir el suelo de branches de 62 a 70 y verificarlo en la cadena
-- **Status**: pending
+- **Status**: done
 - **Files**: `vitest.config.ts`
 - **Gate**: test
 - acceptance:
   - "`vitest.config.ts` exige branches >= 70"
   - "`bun run validate` falla si se introduce una regresión que baje del nuevo suelo"
   - "La propuesta se cierra con la medida final escrita en evidencia"
+- evidence (`orchestrator`, 2026-08-30): `vitest.config.ts` exige branches >= 70;
+  `bun run validate` completo → **exit 0** con 72,00 % medidos (2 puntos de
+  margen) y bench plano ×0.78. Commit `fc4e8f8`.
 
 ## acceptance
 
