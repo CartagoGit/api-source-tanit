@@ -401,6 +401,80 @@ describe("/api/generate", () => {
     await handleUiRequest("/api/generate", { projectRoot: "/x" }, d);
     expect(d.generado[0]).not.toHaveProperty("formats");
   });
+
+  /**
+   * La autodetección no puede acertar siempre —monorepos, dependencias
+   * con alias—. Forzar el framework en la interfaz apoya a quien la
+   * detección deja fuera, y la lista viene del catálogo, no de una
+   * segunda fuente.
+   */
+  test("un framework del catálogo se pasa al pipeline tal cual", async () => {
+    const d = deps();
+    const r = await handleUiRequest(
+      "/api/generate",
+      { projectRoot: "/x", framework: "laravel" },
+      d,
+    );
+    expect(r.status).toBe(200);
+    expect(d.generado[0]).toMatchObject({ projectRoot: "/x", framework: "laravel" });
+  });
+
+  test("un framework inventado se rechaza con la lista del catálogo", async () => {
+    const d = deps();
+    const r = await handleUiRequest(
+      "/api/generate",
+      { projectRoot: "/x", framework: "inventado" },
+      d,
+    );
+    expect(r.status).toBe(400);
+    expect(d.generado).toEqual([]);
+    const error = cuerpo(r)["error"] as { nextAction: string };
+    expect(error.nextAction).toContain("laravel");
+  });
+
+  /**
+   * Escribir fuera del proyecto es un uso legítimo —recoger varias
+   * colecciones en un sitio—. Lo que no puede pasar desapercibido: la
+   * respuesta dicen dónde quedó la colección cuando el destino no es el
+   * de dentro del proyecto.
+   */
+  test("un destino fuera del proyecto se acepta y se anuncia", async () => {
+    const r = await handleUiRequest(
+      "/api/generate",
+      { projectRoot: "/x", outputDir: "/otro/sitio" },
+      deps(),
+    );
+    expect(r.status).toBe(200);
+    const aviso = cuerpo(r)["notice"] as string;
+    // El aviso señala la colección real, que es lo que la persona venir
+    // a buscar.
+    expect(aviso).toContain("outside the project");
+    expect(aviso).toContain(".postman_collection.json");
+  });
+
+  test("el destino por defecto, dentro del proyecto, no genera aviso", async () => {
+    const r = await handleUiRequest(
+      "/api/generate",
+      { projectRoot: "/x", outputDir: "/x/export-to-postman" },
+      deps(),
+    );
+    expect(r.status).toBe(200);
+    expect(cuerpo(r)["notice"]).toBeUndefined();
+  });
+
+  /**
+   * `bruno` es el formato nativo de otro producto. Postman no lo
+   * importa; ofrecerlo como equivalente engañaría a quien elige con la
+   * expectativa de reimportar ahí.
+   */
+  test("capabilities distingue lo que Postman importa de lo que no", async () => {
+    const r = await handleUiRequest("/api/capabilities", {}, deps());
+    expect(r.status).toBe(200);
+    expect(cuerpo(r)["formats"]).toContain("bruno");
+    const importables = cuerpo(r)["postmanImportable"] as string[];
+    expect(importables).not.toContain("bruno");
+    expect(importables).toContain("postman");
+  });
 });
 
 describe("una ruta que no existe", () => {

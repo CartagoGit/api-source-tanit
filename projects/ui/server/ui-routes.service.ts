@@ -207,6 +207,13 @@ export async function handleUiRequest(
         ok: true,
         formats: deps.formats(),
         frameworks: deps.frameworks(),
+        /**
+         * Qué formatos importa Postman. No es decoración: `bruno` es el
+         * formato nativo de otro producto, y ofrecerlo como equivalente
+         * — sin decir que hay que abrirlo allí — sería engañar a quien
+         * elige con la expectativa de reimportar en Postman.
+         */
+        postmanImportable: deps.formats().filter((f) => f !== "bruno"),
       });
 
     /**
@@ -262,12 +269,48 @@ export async function handleUiRequest(
           `Valid ones are: ${deps.formats().join(", ")}.`,
         );
       }
+
+      /**
+       * El framework forzado se valida contra el catálogo antes de
+       * llegar al pipeline: rechazarlo aquí es un 400 accionable con la
+       * lista exacta; dejarlo pasar para que la autodetección del
+       * pipeline lo ignore en silencio generaría lo opuesto a lo que la
+       * persona pidió.
+       */
+      const framework = texto(body, "framework");
+      if (framework && !deps.frameworks().includes(framework)) {
+        return fail(
+          400,
+          `Unknown framework: ${framework}.`,
+          `Valid ones are: ${deps.frameworks().join(", ")}.`,
+        );
+      }
+
+      const outputDir = texto(body, "outputDir");
+
       const result = await deps.generate({
         projectRoot,
-        outputDir: texto(body, "outputDir"),
+        ...(outputDir ? { outputDir } : {}),
         ...(formats ? { formats } : {}),
+        ...(framework ? { framework } : {}),
       });
-      return ok({ ok: true, result });
+
+      /**
+       * Escribir fuera del proyecto es un uso legítimo —recoger varias
+       * colecciones en un sitio—, pero no puede parecer un aviso más del
+       * resultado: se dice **dónde** va a aparecer la salida, y solo
+       * cuando la carpeta elegida no es la de dentro del proyecto.
+       */
+      const avisoDestino =
+        outputDir && outputDir !== `${projectRoot}/export-to-postman`
+          ? `The output was written outside the project: ${result.collectionPath ?? outputDir}.`
+          : undefined;
+
+      return ok({
+        ok: true,
+        result,
+        ...(avisoDestino ? { notice: avisoDestino } : {}),
+      });
     }
 
     default:

@@ -107,6 +107,16 @@ export interface IUiDeps {
     readonly projectRoot: string;
     readonly outputDir?: string | undefined;
     readonly formats?: ReadonlyArray<string> | undefined;
+    /**
+     * Framework forzado, del catálogo (`frameworks()`).
+     *
+     * Aceptarlo aquí y no una segunda vía es lo que mantiene **una sola
+     * ruta** de generación: el valor viaja hasta el `--framework` que ya
+     * entiende el CLI, que se salta la autodetección. En un monorepo o
+     * con una dependencia con alias, la detección no puede acertar
+     * siempre; esta es la salida para esa persona.
+     */
+    readonly framework?: string | undefined;
   }) => Promise<IUiGenerateResult>;
   /** Los formatos de salida que existen, del registro. */
   readonly formats: () => ReadonlyArray<string>;

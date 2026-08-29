@@ -100,10 +100,14 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // Llama al **mismo** comando que usa la terminal, con sus flags. No
     // hay una segunda ruta de generación que pueda desincronizarse: si
     // `generate` cambia, la interfaz cambia con él.
-    generate: async ({ projectRoot, outputDir, formats }) => {
+    generate: async ({ projectRoot, outputDir, formats, framework }) => {
       const argv = ["--project-root", projectRoot];
       if (outputDir) argv.push("--output-dir", outputDir);
       if (formats && formats.length > 0) argv.push("--format", formats.join(","));
+      // Forzar el framework se apoya en el flag que ya existe: se salta
+      // la autodetección. La ruta ya fue validada contra el catálogo en
+      // las rutas de la interfaz.
+      if (framework) argv.push("--framework", framework);
 
       // `withScopedPaths` **no es opcional aquí**, y costó verlo: el
       // argv que se le pasa a `runGenerate` lo leen sus propios flags,

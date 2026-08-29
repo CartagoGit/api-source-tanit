@@ -149,9 +149,18 @@ export const UI_HTML = String.raw`<!doctype html>
         <label for="salida"><span data-i18n="output.label">Carpeta de salida</span> <span class="sub">(opcional)</span></label>
         <input type="text" id="salida" name="salida" autocomplete="off"
                placeholder="por defecto, dentro del proyecto">
+        <div class="fila">
+          <div>
+            <label for="framework" data-i18n="framework.label">Framework</label>
+            <select id="framework">
+              <option value="" data-i18n="framework.auto">Detectar automáticamente</option>
+            </select>
+          </div>
+        </div>
         <fieldset style="margin-top:1rem">
           <legend data-i18n="format.label">Formatos</legend>
           <div class="formatos" id="formatos" role="group" aria-label="Formatos de salida"></div>
+          <p class="sub" id="nota-bruno" hidden></p>
         </fieldset>
         <div class="acciones">
           <button type="button" id="generar" data-i18n="action.generate">Generar</button>
@@ -411,6 +420,23 @@ export const UI_HTML = String.raw`<!doctype html>
         l.appendChild(document.createTextNode(f));
         l.htmlFor = id;
         cont.appendChild(l);
+        // Lo que Postman no reimporta no puede parecer equivalente: la
+        // nota va junto a la casilla, no enterrada en la documentación.
+        if ((j.postmanImportable || []).indexOf(f) === -1) {
+          $("nota-bruno").hidden = false;
+          $("nota-bruno").textContent =
+            f + ": generated, but Postman does not import it — open it in Bruno.";
+        }
+      });
+
+      // El framework forzado, con la lista del catálogo. "Auto" vale
+      // para quien no la necesita; el resto elige de la lista real.
+      var selFW = $("framework");
+      (j.frameworks || []).forEach(function (fw) {
+        var o = document.createElement("option");
+        o.value = fw;
+        o.textContent = fw;
+        selFW.appendChild(o);
       });
     });
 
@@ -455,7 +481,9 @@ export const UI_HTML = String.raw`<!doctype html>
     pide("/api/generate", {
       projectRoot: $("raiz").value.trim(),
       outputDir: $("salida").value.trim() || undefined,
-      formats: formatos
+      formats: formatos,
+      // Vacío significa "detecta": solo se fuerza si hay elección.
+      framework: $("framework").value || undefined
     }).then(function (res) {
       boton.disabled = false;
       if (!res.ok) {

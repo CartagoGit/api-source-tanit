@@ -349,3 +349,40 @@ describe("la pantalla de ajustes (S4)", () => {
     expect(html).toContain('id="vista-ajustes"');
   });
 });
+
+/**
+ * S5 — formato, framework forzado y aviso de destino, probados sobre el
+ * HTML que el servidor sirve: la interfaz debe **ofrecer** lo que el
+ * CLI ya sabía hacer, no solo aceptarlo si llega escrito a mano.
+ */
+describe("formato, framework y destino (S5)", () => {
+  test("la página pinta el selector de framework vacío, con la opción auto", async () => {
+    const html = await (await fetch(`${BASE}/`)).text();
+    expect(html).toContain('id="framework"');
+    expect(html).toContain('data-i18n="framework.auto"');
+    // La lista la rellena /api/capabilities: el HTML no la lleva a mano.
+    expect(html).not.toMatch(/<option value="express"/);
+  });
+
+  test("la página reserva sitio para la nota de los formatos no reimportables", async () => {
+    const html = await (await fetch(`${BASE}/`)).text();
+    expect(html).toContain('id="nota-bruno"');
+  });
+
+  test("capabilities de verdad marca bruno como no importable", async () => {
+    const { status, json } = await post("/api/capabilities");
+    expect(status).toBe(200);
+    const importables = json["postmanImportable"] as string[];
+    expect(importables).not.toContain("bruno");
+  });
+
+  test("generar con framework inventado, sobre el proceso real, da 400", async () => {
+    const { status, json } = await post("/api/generate", {
+      projectRoot: proyecto,
+      framework: "inventado",
+    });
+    expect(status).toBe(400);
+    const error = json["error"] as { nextAction: string };
+    expect(error.nextAction).toContain("express");
+  });
+});
