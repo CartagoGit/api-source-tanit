@@ -70,7 +70,7 @@
     "test": "bunx vitest run",
     "lint:tools": "bun run scripts/gates/lint-tool-no-process.script.ts",
     "validate:examples": "bun run scripts/gates/validate.script.ts",
-    "validate": "bun run typecheck && bun run lint && bun run test && bun run validate:examples",
+    "validate": "bun run typecheck && bun run lint && bun run test:coverage && bun run validate:examples",
     "validate:package": "bun run scripts/gates/validate-package.script.ts",
     "build:binary": "bun run scripts/build/build-binary.script.ts",
     "push": "bun run projects/cli/commands/push.script.ts",
