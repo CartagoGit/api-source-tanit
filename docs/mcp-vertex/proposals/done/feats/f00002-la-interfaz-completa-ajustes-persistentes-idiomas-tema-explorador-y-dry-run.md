@@ -2,7 +2,7 @@
 id: f00002
 title: "La interfaz completa: ajustes persistentes, idiomas, tema, explorador y dry run"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-11
