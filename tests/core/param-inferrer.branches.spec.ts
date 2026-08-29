@@ -126,13 +126,16 @@ describe("exampleForBodyField — familia por familia (vía _internals)", () => 
   test("sufijos de identificador sin hint", () => {
     expect(ejemplo("usuario_id")).toBe("1");
     expect(ejemplo("producto_codigo")).toBe("COD001");
-    // Los sufijos en camelCase (`Id`, `Codigo`) NO casan: el ayudante
-    // compara el nombre ya en minúsculas contra sufijos con mayúscula,
-    // así que esas dos ramas del diccionario son inalcanzables y
-    // `DepartamentoId` cae al fallback genérico. Comportamiento
-    // actual, documentado en el informe — no corregido aquí.
-    expect(ejemplo("DepartamentoId")).toBe("sample_departamentoid");
-    expect(ejemplo("departamentoId")).toBe("sample_departamentoid");
+    // Las variantes camelCase de los sufijos también casan: el
+    // sufijo con mayúscula se compara contra el nombre ORIGINAL, no
+    // contra la copia en minúsculas (donde nunca podía encajar).
+    expect(ejemplo("DepartamentoId")).toBe("1");
+    expect(ejemplo("departamentoId")).toBe("1");
+    expect(ejemplo("DepartamentoCodigo")).toBe("COD001");
+    // Un nombre que termina en "id" minúscula por pura morfología no
+    // es un identificador: solo el sufijo exacto (`_id` / `Id`) activa
+    // la heurística.
+    expect(ejemplo("madrid")).toBe("sample_madrid");
   });
 
   test("campos de contacto y credenciales", () => {
@@ -410,17 +413,21 @@ describe("applyAgnosticInference — quién se toca y quién no", () => {
     expect(s.description).toContain("Body inferido: Genérico para POST.");
   });
 
-  test("un query:[] cuenta como query presente y bloquea la inferencia", () => {
-    // El guardián es `if (!s.query)`, y un array vacío es truthy: el
-    // GET sale SIN query heurística aunque no trajera ninguna. Los
-    // specs que llegan del helper de tests (y algunos adapters) traen
-    // `query: []`, así que en la práctica casi nadie la recibe. Se
-    // documenta en el informe como hallazgo; aquí se fija el
-    // comportamiento que hoy se observa.
-    const s = spec({ method: "GET", uri: "/items", query: [] });
-    const stats = applyAgnosticInference([s]);
-    expect(stats.queriesAdded).toBe(0);
-    expect(s.query).toEqual([]);
+  test("un query:[] y la propiedad ausente reciben la misma heurística", () => {
+    // Un array vacío ES "sin query": el guardián lo trata igual que
+    // la propiedad ausente, así que el GET recibe la heurística
+    // estándar en los dos casos. Solo una query no vacía (manual)
+    // se conserva tal cual.
+    const vacio = spec({ method: "GET", uri: "/items", query: [] });
+    const ausente = spec({ method: "GET", uri: "/items", query: undefined });
+    const stats = applyAgnosticInference([vacio, ausente]);
+    expect(stats.queriesAdded).toBe(2);
+    expect(vacio.query?.map((q) => q.key)).toEqual([
+      "pagina",
+      "items_por_pagina",
+      "q",
+    ]);
+    expect(ausente.query).toEqual(vacio.query);
   });
 
   test("con overrideExisting, un FormRequest también recibe la heurística", () => {

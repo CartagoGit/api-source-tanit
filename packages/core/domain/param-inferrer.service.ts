@@ -145,8 +145,13 @@ function exampleForBodyField(name: string, hint?: string): unknown {
   if (hint) {
     if (/^id$|^codigo$/.test(hint.toLowerCase())) return "1";
   }
-  if (lname.endsWith("_id") || lname.endsWith("Id")) return "1";
-  if (lname.endsWith("_codigo") || lname.endsWith("Codigo")) return "COD001";
+  // `lname` ya está en minúsculas, así que los sufijos camelCase
+  // (`Id`, `Codigo`) solo pueden casarse contra el nombre ORIGINAL.
+  // Compararlos contra `lname` era compararlos contra una cadena que
+  // no contiene mayúsculas: rama muerta y `DepartamentoId` caía al
+  // fallback genérico en vez de al ejemplo del sufijo.
+  if (lname.endsWith("_id") || name.endsWith("Id")) return "1";
+  if (lname.endsWith("_codigo") || name.endsWith("Codigo")) return "COD001";
   if (lname === "email") return "user@example.com";
   if (lname === "password" || lname === "pass" || lname === "contrasena")
     return "********";
@@ -343,7 +348,11 @@ export function applyAgnosticInference(
       stats.skippedManual += 1;
     }
 
-    if (!s.query) {
+    // Un `query: []` y la propiedad ausente son la misma cosa: "sin
+    // query". Un array vacío es truthy, así que el guardián original
+    // (`!s.query`) dejaba fuera de la heurística a la mayoría de los
+    // specs, que llegan con `[]` desde el adapter.
+    if (!s.query || s.query.length === 0) {
       const q = inferQueryForSpec(s);
       if (q.length > 0) {
         s.query = q;

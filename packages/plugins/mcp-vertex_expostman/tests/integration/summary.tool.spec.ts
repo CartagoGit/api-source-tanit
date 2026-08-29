@@ -47,7 +47,7 @@ describe("expostman_summary", () => {
     const reg = buildSummaryToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({
-      projectRoot: process.cwd() + "/tests/smoke-fixtures/django-mini",
+      projectRoot: "tests/smoke-fixtures/django-mini",
     });
     expect(result.isError).toBeFalsy();
     const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
@@ -60,6 +60,24 @@ describe("expostman_summary", () => {
     expect(parsed.framework).toBe("django");
     expect(parsed.routesInCode).toBe(4);
     expect(parsed.zeroConfig).toBe(true);
+  });
+
+  test("resuelve defaultProjectRoot relativo al workspace del plugin", async () => {
+    const reg = buildSummaryToolRegistration(
+      makeCtx({ defaultProjectRoot: "tests/smoke-fixtures/django-mini" }),
+    );
+    const handler = await captureHandler(reg);
+    const result = await handler({});
+    const parsed = JSON.parse(result.content[0]?.text ?? "{}") as {
+      ok: boolean;
+      framework: string;
+      configPath: string;
+    };
+
+    expect(result.isError).toBeFalsy();
+    expect(parsed.ok).toBe(true);
+    expect(parsed.framework).toBe("django");
+    expect(parsed.configPath).toBe("<zero-config>");
   });
 
   test("devuelve el mismo resultado en llamadas consecutivas (cache reset)", async () => {

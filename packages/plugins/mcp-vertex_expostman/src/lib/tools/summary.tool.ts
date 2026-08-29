@@ -28,6 +28,7 @@ import {
   type ISummaryOutput,
 } from "../contracts/plugin.interface";
 import { existsSync } from "node:fs";
+import { isAbsolute, resolve } from "node:path";
 import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
 
 const TOOL_ID = "summary";
@@ -66,8 +67,11 @@ export function buildSummaryToolRegistration(
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
             | undefined;
-          const projectRoot =
+          const requestedProjectRoot =
             args.projectRoot ?? defaultProjectRoot ?? workspaceRoot;
+          const projectRoot = isAbsolute(requestedProjectRoot)
+            ? resolve(requestedProjectRoot)
+            : resolve(workspaceRoot, requestedProjectRoot);
           if (!existsSync(projectRoot)) {
             return toolError(
               `projectRoot no existe: ${projectRoot}`,
