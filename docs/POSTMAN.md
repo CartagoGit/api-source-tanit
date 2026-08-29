@@ -3,7 +3,8 @@
 De los ficheros generados a la primera respuesta 200. Cinco minutos, sin
 saber nada de Postman.
 
-Si aún no has generado nada: [INSTALL.md](INSTALL.md).
+Si aún no has generado nada: [INSTALL.md](INSTALL.md). Si prefieres no
+abrir una terminal: [UI.md](UI.md), la interfaz gráfica.
 
 ---
 
@@ -30,6 +31,36 @@ Son dos cosas distintas y **necesitas las dos**:
 La colección usa `{{baseUrl}}` y `{{token}}`. Sin el environment activo
 esas variables no valen nada y **todas las requests fallan**. Es el error
 número uno.
+
+---
+
+## Qué formato elegir, y qué pasa con cada uno en Postman
+
+El generador produce seis formatos. **No todos son para Postman**, y la
+propia interfaz los distingue para no vender gato por liebre:
+
+| Formato | Lo importa Postman | Cómo |
+|---|---|---|
+| `postman` | **Sí** | El camino principal: v2.1 nativa |
+| `openapi` | **Sí, probablemente** | *Import* → fichero. Ver la nota 3.1 |
+| `insomnia` | Sí | *Import* → fichero (export v4 de Insomnia) |
+| `har` | Sí | *Import* → pestaña *Raw text* y pegar el JSON |
+| `curl` | Sí | *Import* → pestaña *Raw text*, una línea por request |
+| `bruno` | **No** | Es el formato nativo de [Bruno](https://www.usebruno.com/) |
+
+`bruno` no es un fallo: es el formato de otra aplicación, y se genera
+para quien usa las dos. La interfaz lo marca junto a su casilla.
+
+### La nota del OpenAPI 3.1
+
+Emitimos `openapi: 3.1.0`. Lo comprobado, no lo supuesto: el documento
+parsea y valida sin errores con `@apidevtools/swagger-parser` —el parser
+que usa el importador de Postman—, y el mismo documento validado como
+`3.0.3` también pasa. El importador oficial de Postman ha sido
+irregular con 3.1 según la versión: si la tuya no lo trae, el síntoma es
+que el import del `openapi` no produce nada *en Postman* — no que falle
+la generación —. En ese caso: usa la colección nativa (`postman`), que
+no depende del importador, o convierte la especificación a 3.0.
 
 ---
 
