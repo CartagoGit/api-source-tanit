@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider, parseYamlLite } from "../../projects/frameworks/scanners/openapi.scanner";
-import type { IProjectMatch, ParsedRoute } from "../../projects/contracts/interfaces/core/scanner.interface";
+import type { ParsedRoute } from "../../projects/contracts/interfaces/core/scanner.interface";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
