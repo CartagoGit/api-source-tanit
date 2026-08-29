@@ -8,11 +8,6 @@
         "--workspace=.",
         "--config=./mcp-vertex.config.json"
       ]
-    },
-    "filesystem": {
-      "type": "stdio",
-      "command": "bunx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
     }
   }
 }
