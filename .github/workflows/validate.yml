@@ -19,9 +19,12 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # `bun run validate` encadena typecheck, lint de tools, la suite de
-      # tests y la generación real de todos los proyectos de examples/.
-      # Es el mismo comando que se corre en local: si pasa aquí, pasa allí.
+      # `bun run validate` encadena typecheck, los lints del repo, la
+      # suite de tests con sus umbrales de cobertura, la generación real
+      # de todos los proyectos de examples/ y el presupuesto de forma del
+      # scan (`bench:check`: que el coste por fichero no crezca con el
+      # tamaño). Es el mismo comando que se corre en local: si pasa aquí,
+      # pasa allí.
       - name: Validate
         run: bun run validate
 

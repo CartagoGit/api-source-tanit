@@ -23,6 +23,14 @@ related:
 > `branches` queda como la deuda de test pendiente, con su motivo escrito
 > en el config.
 
+> **Corrección 2026-08-29 (t00003).** Los scripts dedicados que S2 y S3
+> prometían (`check-coverage.script.ts`, `coverage-baseline.constant.ts`,
+> `coverage-gate.spec.ts`, `check-scan-budget.script.ts`) nunca se
+> crearon. Lo integrado de verdad: los umbrales en `vitest.config.ts` y
+> el flag `--check` de `bench-scan.script.ts`. La cobertura entró en la
+> cadena de `validate` con `b5d700b`; el presupuesto de forma se cableó
+> con `t00003`.
+
 # t00002 — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento
 
 ## Goal
@@ -57,7 +65,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
 ### S2 — Umbrales y baseline realistas
 - **Status**: done
 - **DependsOn**: [S1]
-- **Files**: `scripts/gates/coverage-baseline.constant.ts`, `scripts/gates/check-coverage.script.ts`, `tests/cli/coverage-gate.spec.ts`, `package.json`
+- **Files**: `vitest.config.ts`, `package.json` — los thresholds viven en `vitest.config.ts`; no existió `check-coverage.script.ts` ni `coverage-baseline.constant.ts` ni `coverage-gate.spec.ts`
 - **Gate**: lint
 - acceptance:
   - "Cada scope tiene un suelo explicito, no un 100% ficticio"
@@ -67,7 +75,7 @@ Hay un caso parecido en rendimiento. El repo ya tiene `bench:scan` y su propia p
 ### S3 — Presupuesto minimo de rendimiento para `bench:scan`
 - **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `scripts/gates/bench-scan.script.ts`, `scripts/gates/check-scan-budget.script.ts`, `.github/workflows/validate.yml`
+- **Files**: `scripts/gates/bench-scan.script.ts` (con `--check`), `.github/workflows/validate.yml` — no existió `check-scan-budget.script.ts`; el cableado en `validate` llegó con `t00003`
 - **Gate**: none
 - acceptance:
   - "Existe una comprobacion reproducible que alerta de degradaciones groseras del scan sintetico"
