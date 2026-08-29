@@ -168,7 +168,39 @@ function dedupeRoutes(routes: ParsedRoute[]): ParsedRoute[] {
       byKey.set(key, candidate);
     }
   }
-  return [...byKey.values()];
+  const result = [...byKey.values()];
+  // Segunda pasada (F-009): el mismo endpoint físico puede llegar dos
+  // veces con URI distinta — vía `resource:` del YAML con el prefijo del
+  // import (`/api/widgets`) y vía el recorrido de src/Controller, donde
+  // la clase aporta su propio prefijo (`/widgets`). La identidad física
+  // es el trío (fichero fuente, línea del atributo, método): compartir
+  // los tres significa que ambas copias leen el mismo `#[Route]` del
+  // mismo controlador. Symfony registra una sola — aquí gana la de URI
+  // más larga, que es la que lleva el prefijo del import.
+  //
+  // Solo rutas de atributos (lineNumber > 0): las entradas YAML directas
+  // comparten fichero y lineNumber 0 entre sí, y no son la misma ruta.
+  const identidad = (r: ParsedRoute): string =>
+    `${r.method} ${r.sourceFile}:${r.lineNumber}`;
+  const mejorPorIdentidad = new Map<string, ParsedRoute>();
+  const conDuplicado = new Set<string>();
+  for (const r of result) {
+    if (r.lineNumber <= 0) continue;
+    const id = identidad(r);
+    const actual = mejorPorIdentidad.get(id);
+    if (!actual) {
+      mejorPorIdentidad.set(id, r);
+      continue;
+    }
+    conDuplicado.add(id);
+    if (r.uri.length > actual.uri.length) {
+      mejorPorIdentidad.set(id, r);
+    }
+  }
+  if (conDuplicado.size === 0) return result;
+  return result.filter(
+    (r) => r.lineNumber <= 0 || !conDuplicado.has(identidad(r)) || mejorPorIdentidad.get(identidad(r)) === r,
+  );
 }
 
 /** Quita la barra final (`/users/` y `/users` son la misma ruta). */
