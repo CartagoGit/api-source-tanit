@@ -84,7 +84,7 @@ describe("lo que NO se afirma", () => {
 describe("método no reconocido", () => {
   // Un verbo fuera del catálogo (ej. CONNECT, TRACE) cae al código 200.
   test("un método desconocido acepta 200 como fallback", () => {
-    const script = buildTestScript({ name: "x", method: "CONNECT", uri: "/x" } as unknown as EndpointSpec)
+    const script = buildTestScript({ name: "x", method: "CONNECT" as string as EndpointSpec["method"], uri: "/x" })
       .script.exec.join("\n");
     expect(script).toContain("[200]");
   });

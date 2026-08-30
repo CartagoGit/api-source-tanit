@@ -178,14 +178,15 @@ describe("collectionErrors", () => {
 
 describe("errores de .info — casos extremos", () => {
   test("info completamente ausente produce error y corta la comprobación", () => {
-    const c = { ...collection() } as unknown as PostmanCollection;
-    delete (c as unknown as Record<string, unknown>)["info"];
+    const c = collection();
+    Reflect.deleteProperty(c, "info");
     const issues = checkCollectionInvariants(c);
     expect(issues.some((i) => i.message === "falta .info")).toBe(true);
   });
 
   test("item que no es un array produce error", () => {
-    const c = { ...collection(), item: "no-array" } as unknown as PostmanCollection;
+    const c = collection();
+    Reflect.set(c, "item", "no-array");
     const issues = checkCollectionInvariants(c);
     expect(issues.some((i) => i.message === "no es un array")).toBe(true);
   });

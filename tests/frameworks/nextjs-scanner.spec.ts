@@ -122,3 +122,129 @@ describe("Next.js scanner", () => {
     }
   });
 });
+
+describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
+  test("detect() === 1 con src/app (Next.js 13+ en src layout)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "src/app/api/ping/route.ts": "export async function GET() { return Response.json({ ok: true }); }",
+    });
+    try {
+      expect(await new NextJsProjectScanner().detect(project.root)).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 1 con src/pages (Pages Router en src layout)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
+      "src/pages/api/health.ts": "export default function handler(req, res) { res.json({ ok: true }); }",
+    });
+    try {
+      expect(await new NextJsProjectScanner().detect(project.root)).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 0.5 cuando hay next pero no hay carpetas app/ ni pages/", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+    });
+    try {
+      expect(await new NextJsProjectScanner().detect(project.root)).toBe(0.5);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("scan() descubre rutas en src/app con segments dinámicos", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "src/app/api/products/route.ts": "export async function GET() { return Response.json([]); }\nexport async function POST() { return Response.json({}); }",
+      "src/app/api/products/[id]/route.ts": "export async function GET() { return Response.json({}); }\nexport async function DELETE() { return Response.json({}); }",
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = await new NextJsRouteScanner().scan(match);
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /api/products");
+      expect(pairs).toContain("POST /api/products");
+      expect(pairs).toContain("GET /api/products/:id");
+      expect(pairs).toContain("DELETE /api/products/:id");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("Pages Router: switch/case por req.method genera rutas múltiples", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
+      "pages/api/orders.ts": [
+        "export default function handler(req, res) {",
+        "  switch (req.method) {",
+        "    case 'GET': return res.json([]);",
+        "    case 'POST': return res.json({});",
+        "    case 'DELETE': return res.json(null);",
+        "    default: res.status(405).end();",
+        "  }",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = await new NextJsRouteScanner().scan(match);
+      const methods = routes.map((r) => r.method).sort();
+      expect(methods).toContain("GET");
+      expect(methods).toContain("POST");
+      expect(methods).toContain("DELETE");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("Pages Router: req.method === comparación genera la ruta de ese método", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
+      "pages/api/items.ts": [
+        "export default function handler(req, res) {",
+        "  if (req.method === 'POST') return res.json({});",
+        "  if (req.method !== 'GET') return res.status(405).end();",
+        "  res.json([]);",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = await new NextJsRouteScanner().scan(match);
+      const methods = routes.map((r) => r.method).sort();
+      expect(methods).toContain("POST");
+      expect(methods).toContain("GET");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("Pages Router: index.ts en subdirectorio da uri = /api/subdir", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
+      "pages/api/users/index.ts": "export default function handler(req, res) { res.json([]); }",
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = await new NextJsRouteScanner().scan(match);
+      const uris = routes.map((r) => r.uri);
+      expect(uris).toContain("/api/users");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

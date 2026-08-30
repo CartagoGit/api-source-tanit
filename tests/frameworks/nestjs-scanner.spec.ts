@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   NestJsProjectScanner,
   NestJsRouteScanner,
+  NestJsClassValidatorProvider,
 } from "../../packages/frameworks/scanners/nestjs.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
@@ -139,5 +140,302 @@ export class UsersController {
       "GET /api/users",
       "POST /api/users",
     ]);
+  });
+});
+
+describe("NestJS — detect() score variants", () => {
+  const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+
+  test("detect() === 1 cuando hay src y nest-cli.json", async () => {
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "nest-cli.json": "{}",
+      "src/main.ts": "// bootstrap",
+    });
+    try {
+      expect(await new NestJsProjectScanner().detect(project.root)).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 0.8 cuando hay src pero no nest-cli.json", async () => {
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/main.ts": "// bootstrap",
+    });
+    try {
+      expect(await new NestJsProjectScanner().detect(project.root)).toBe(0.8);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 0.5 cuando no hay src ni nest-cli.json", async () => {
+    const project = await createTempProject({ "package.json": PACKAGE });
+    try {
+      expect(await new NestJsProjectScanner().detect(project.root)).toBe(0.5);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("NestJS — @Controller object form", () => {
+  const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+
+  test("@Controller({ path: 'items' }) aplica el path como prefijo", async () => {
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/items/items.controller.ts": [
+        'import { Controller, Get } from "@nestjs/common";',
+        "@Controller({ path: 'items', version: '1' })",
+        "export class ItemsController {",
+        "  @Get() list() { return []; }",
+        "  @Get(':id') show() { return {}; }",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("nestjs", project.root);
+      const uris = routes.map((r) => r.uri);
+      expect(uris.some((u) => u.startsWith("/items"))).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("archivo sin @Controller no produce rutas", async () => {
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/service.ts": [
+        "export class ItemsService {",
+        "  findAll() { return []; }",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("nestjs", project.root);
+      expect(routes).toHaveLength(0);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("NestJS — ClassValidatorProvider", () => {
+  const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+
+  test("supports() === false cuando la ruta no tiene description", async () => {
+    const provider = new NestJsClassValidatorProvider();
+    const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [] };
+    const match = { framework: "nestjs" as const, projectRoot: "/tmp", artifacts: [] };
+    expect(await provider.supports(route, match)).toBe(false);
+  });
+
+  test("supports() === false cuando framework no es nestjs", async () => {
+    const provider = new NestJsClassValidatorProvider();
+    const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [], description: "list" };
+    const match = { framework: "express" as const, projectRoot: "/tmp", artifacts: [] };
+    expect(await provider.supports(route, match)).toBe(false);
+  });
+
+  test("resuelve DTO inline con IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl", async () => {
+    const controllerSource = [
+      'import { Controller, Post, Body } from "@nestjs/common";',
+      'import { IsString, IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl, IsInt, IsNumber, IsOptional, IsObject, IsNotEmpty, IsDefined, IsPositive, IsNegative, MinLength, MaxLength, Length, Min, Max } from "class-validator";',
+      "export class CreateItemDto {",
+      "  @IsString()",
+      "  name: string;",
+      "  @IsEmail()",
+      "  email: string;",
+      "  @IsUUID()",
+      "  id: string;",
+      "  @IsArray()",
+      "  tags: string[];",
+      "  @IsBoolean()",
+      "  active: boolean;",
+      "  @IsDate()",
+      "  createdAt: Date;",
+      "  @IsEnum(['admin','user'])",
+      "  role: string;",
+      "  @IsUrl()",
+      "  website: string;",
+      "  @IsInt()",
+      "  count: number;",
+      "  @IsNumber()",
+      "  price: number;",
+      "  @IsOptional()",
+      "  @IsString()",
+      "  note?: string;",
+      "  @IsObject()",
+      "  meta: object;",
+      "  @IsNotEmpty()",
+      "  label: string;",
+      "  @IsDefined()",
+      "  code: string;",
+      "  @IsPositive()",
+      "  qty: number;",
+      "  @IsNegative()",
+      "  diff: number;",
+      "  @MinLength(2)",
+      "  slug: string;",
+      "  @MaxLength(100)",
+      "  description: string;",
+      "  @Length(1, 50)",
+      "  title: string;",
+      "  @Min(0)",
+      "  min: number;",
+      "  @Max(100)",
+      "  max: number;",
+      "}",
+      "@Controller('items')",
+      "export class ItemsController {",
+      "  @Post()",
+      "  create(@Body() body: CreateItemDto) { return body; }",
+      "}",
+    ].join("\n");
+
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/items/items.controller.ts": controllerSource,
+    });
+    try {
+      const { routes, match } = await scanProject("nestjs", project.root).then(async (r) => ({ ...r, match: await new NestJsProjectScanner().resolve(project.root) }));
+      const post = routes.find((r) => r.method === "POST");
+      if (!post) return;
+      const provider = new NestJsClassValidatorProvider();
+      const { fields } = await provider.resolve(post, match);
+      const names = fields.map((f) => f.fieldName);
+      expect(names).toContain("name");
+      expect(names).toContain("email");
+      expect(fields.find((f) => f.fieldName === "email")?.format).toBe("email");
+      expect(names).toContain("id");
+      expect(fields.find((f) => f.fieldName === "id")?.format).toBe("uuid");
+      expect(names).toContain("tags");
+      expect(fields.find((f) => f.fieldName === "tags")?.type).toBe("array");
+      expect(names).toContain("active");
+      expect(fields.find((f) => f.fieldName === "active")?.type).toBe("boolean");
+      expect(names).toContain("role");
+      expect(fields.find((f) => f.fieldName === "role")?.type).toBe("enum");
+      expect(names).toContain("website");
+      expect(fields.find((f) => f.fieldName === "website")?.format).toBe("url");
+      const note = fields.find((f) => f.fieldName === "note");
+      expect(note?.required).toBe(false);
+      const slug = fields.find((f) => f.fieldName === "slug");
+      expect(slug?.minLength).toBe(2);
+      const desc = fields.find((f) => f.fieldName === "description");
+      expect(desc?.maxLength).toBe(100);
+      const title = fields.find((f) => f.fieldName === "title");
+      expect(title?.minLength).toBe(1);
+      expect(title?.maxLength).toBe(50);
+      const minField = fields.find((f) => f.fieldName === "min");
+      expect(minField?.minimum).toBe(0);
+      const maxField = fields.find((f) => f.fieldName === "max");
+      expect(maxField?.maximum).toBe(100);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("parseSignatureParams extrae @Param, @Query y @Headers", async () => {
+    const controllerSource = [
+      'import { Controller, Get, Param, Query, Headers } from "@nestjs/common";',
+      "@Controller('items')",
+      "export class ItemsController {",
+      "  @Get(':id')",
+      "  show(@Param('id') id: string, @Query('page') page: number, @Headers('x-tenant') tenant: string) { return {}; }",
+      "}",
+    ].join("\n");
+
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/items/items.controller.ts": controllerSource,
+    });
+    try {
+      const { routes, match } = await scanProject("nestjs", project.root).then(async (r) => ({ ...r, match: await new NestJsProjectScanner().resolve(project.root) }));
+      const get = routes.find((r) => r.method === "GET");
+      if (!get) return;
+      const provider = new NestJsClassValidatorProvider();
+      const { fields } = await provider.resolve(get, match);
+      const names = fields.map((f) => f.fieldName);
+      expect(names).toContain("id");
+      expect(fields.find((f) => f.fieldName === "id")?.location).toBe("path");
+      expect(names).toContain("page");
+      expect(fields.find((f) => f.fieldName === "page")?.location).toBe("query");
+      expect(fields.find((f) => f.fieldName === "page")?.type).toBe("number");
+      expect(names).toContain("x-tenant");
+      expect(fields.find((f) => f.fieldName === "x-tenant")?.location).toBe("header");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("DTO importado desde archivo externo se resuelve correctamente", async () => {
+    const dtoSource = [
+      'import { IsString, IsEmail } from "class-validator";',
+      "export class RegisterDto {",
+      "  @IsString()",
+      "  name: string;",
+      "  @IsEmail()",
+      "  email: string;",
+      "}",
+    ].join("\n");
+
+    const controllerSource = [
+      'import { Controller, Post, Body } from "@nestjs/common";',
+      'import { RegisterDto } from "./register.dto";',
+      "@Controller('auth')",
+      "export class AuthController {",
+      "  @Post('register')",
+      "  register(@Body() body: RegisterDto) { return body; }",
+      "}",
+    ].join("\n");
+
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/auth/register.dto.ts": dtoSource,
+      "src/auth/auth.controller.ts": controllerSource,
+    });
+    try {
+      const { routes, match } = await scanProject("nestjs", project.root).then(async (r) => ({ ...r, match: await new NestJsProjectScanner().resolve(project.root) }));
+      const post = routes.find((r) => r.method === "POST");
+      if (!post) return;
+      const provider = new NestJsClassValidatorProvider();
+      const { fields } = await provider.resolve(post, match);
+      expect(fields.map((f) => f.fieldName)).toContain("name");
+      expect(fields.map((f) => f.fieldName)).toContain("email");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("tsTypeToSpecType: number, boolean, date y array como tipos TypeScript", async () => {
+    const controllerSource = [
+      'import { Controller, Get, Query } from "@nestjs/common";',
+      "@Controller('items')",
+      "export class ItemsController {",
+      "  @Get()",
+      "  list(@Query('count') count: number, @Query('active') active: boolean, @Query('since') since: Date, @Query('tags') tags: string[]) { return []; }",
+      "}",
+    ].join("\n");
+
+    const project = await createTempProject({
+      "package.json": PACKAGE,
+      "src/items/items.controller.ts": controllerSource,
+    });
+    try {
+      const { routes, match } = await scanProject("nestjs", project.root).then(async (r) => ({ ...r, match: await new NestJsProjectScanner().resolve(project.root) }));
+      const get = routes.find((r) => r.method === "GET");
+      if (!get) return;
+      const provider = new NestJsClassValidatorProvider();
+      const { fields } = await provider.resolve(get, match);
+      expect(fields.find((f) => f.fieldName === "count")?.type).toBe("number");
+      expect(fields.find((f) => f.fieldName === "active")?.type).toBe("boolean");
+      expect(fields.find((f) => f.fieldName === "since")?.type).toBe("date");
+      expect(fields.find((f) => f.fieldName === "tags")?.type).toBe("array");
+    } finally {
+      await project.cleanup();
+    }
   });
 });

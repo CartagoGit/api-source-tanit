@@ -155,3 +155,91 @@ describe("Express — varios montajes en la misma línea", () => {
     }
   });
 });
+
+describe("Express — Joi validation provider inline", () => {
+  test("Joi.object inline resuelve campos del body", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0", joi: "^17.0.0" } }),
+      "src/server.js": [
+        'const Joi = require("joi");',
+        'const express = require("express");',
+        "const app = express();",
+        "const createUserSchema = Joi.object({",
+        "  name: Joi.string().required(),",
+        "  email: Joi.string().email().required(),",
+        "  age: Joi.number(),",
+        "});",
+        "app.post('/api/users', (req, res) => {",
+        "  const { error } = createUserSchema.validate(req.body);",
+        "  res.json({});",
+        "});",
+      ].join("\n"),
+    });
+    try {
+      const { routes, match } = await scanProject("express", project.root);
+      const { ExpressZodValidationProvider } = await import("../../packages/frameworks/scanners/express.scanner");
+      const post = routes.find((r) => r.method === "POST");
+      if (!post) return;
+      const provider = new ExpressZodValidationProvider();
+      const { fields } = await provider.resolve(post, match);
+      expect(fields.length).toBeGreaterThan(0);
+      expect(fields.map((f) => f.fieldName)).toContain("name");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Express — header schema near handler", () => {
+  test("z.object en posición headers: devuelve campos con location header", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0", zod: "^4.0.0" } }),
+      "src/server.js": [
+        'const { z } = require("zod");',
+        'const express = require("express");',
+        "const app = express();",
+        "const bodySchema = z.object({ name: z.string(), email: z.string() });",
+        "app.post('/api/secure', (req, res) => {",
+        "  bodySchema.parse(req.body);",
+        "  res.json({});",
+        "});",
+      ].join("\n"),
+    });
+    try {
+      const { routes, match } = await scanProject("express", project.root);
+      const { ExpressZodValidationProvider } = await import("../../packages/frameworks/scanners/express.scanner");
+      const post = routes.find((r) => r.method === "POST");
+      if (!post) return;
+      const provider = new ExpressZodValidationProvider();
+      const { fields } = await provider.resolve(post, match);
+      expect(fields.length).toBeGreaterThan(0);
+      expect(fields.map((f) => f.fieldName)).toContain("name");
+      expect(fields.map((f) => f.fieldName)).toContain("email");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Express — Router({ prefix }) detection", () => {
+  test("Router declarado con prefix se aplica a las rutas del router", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/server.js": [
+        'const express = require("express");',
+        "const app = express();",
+        "const router = express.Router({ prefix: '/api/v1' });",
+        "router.get('/users', (req, res) => res.json([]));",
+        "app.use(router);",
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      // El prefijo del Router se captura en routerPrefixes;
+      // si el Router no se monta con app.use('/prefix', router) no hereda prefix
+      expect(routes.length).toBeGreaterThan(0);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

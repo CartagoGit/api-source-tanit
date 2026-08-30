@@ -146,3 +146,131 @@ describe("el provider resuelve el body del handler", () => {
     expect(await provider.supports(health, match)).toBe(false);
   });
 });
+
+describe("Rust — detección Rocket", () => {
+  test("detect() > 0 con Cargo.toml que tiene rocket", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nrocket = "0.5"\n',
+      "src/main.rs": '#[macro_use] extern crate rocket;\n\n#[get("/health")]\nfn health() -> &\'static str { "ok" }\n',
+    });
+    try {
+      expect(await new RustProjectScanner().detect(project.root)).toBeGreaterThan(0);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 0 cuando Cargo.toml no tiene actix-web ni rocket", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nserde = "1.0"\n',
+    });
+    try {
+      expect(await new RustProjectScanner().detect(project.root)).toBe(0);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("Rocket <param> → {param} en la URI (normalizePathParams)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nrocket = "0.5"\n',
+      "src/main.rs": [
+        '#[macro_use] extern crate rocket;',
+        '#[get("/users/<id>")]',
+        'fn show_user(id: u64) -> String { id.to_string() }',
+        '#[get("/files/<path..>")]',
+        'fn serve_file(path: std::path::PathBuf) -> String { "ok".into() }',
+      ].join("\n"),
+    });
+    try {
+      const match = await new RustProjectScanner().resolve(project.root);
+      const routes = await new RustRouteScanner().scan(match);
+      const uris = routes.map((r) => r.uri);
+      expect(uris.some((u) => u.includes("{id}"))).toBe(true);
+      expect(uris.some((u) => u.includes("{path}"))).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Rust — rutas programáticas y scope múltiple", () => {
+  test(".route('/x', web::get()) genera rutas programáticas", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nactix-web = "4"\n',
+      "src/main.rs": [
+        "use actix_web::{web, App, HttpServer, HttpResponse};",
+        "async fn list_items() -> HttpResponse { HttpResponse::Ok().finish() }",
+        "async fn create_item() -> HttpResponse { HttpResponse::Created().finish() }",
+        "#[actix_web::main]",
+        "async fn main() {",
+        "    HttpServer::new(|| {",
+        "        App::new()",
+        '            .route("/items", web::get().to(list_items))',
+        '            .route("/items", web::post().to(create_item))',
+        "    });",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new RustProjectScanner().resolve(project.root);
+      const routes = await new RustRouteScanner().scan(match);
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /items");
+      expect(pairs).toContain("POST /items");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("múltiples web::scope en el mismo archivo → prefijo vacío (ambiguo)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nactix-web = "4"\n',
+      "src/main.rs": [
+        "use actix_web::{web, get};",
+        '#[get("/ping")]',
+        'async fn ping() -> &\'static str { "pong" }',
+        "fn config(cfg: &mut web::ServiceConfig) {",
+        '    cfg.service(web::scope("/api").service(ping));',
+        '    cfg.service(web::scope("/v2").service(ping));',
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new RustProjectScanner().resolve(project.root);
+      const routes = await new RustRouteScanner().scan(match);
+      // Con múltiples scopes el prefijo queda vacío para evitar asignarlo mal
+      const uris = routes.map((r) => r.uri);
+      expect(uris).toContain("/ping");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Rust — parseRustStruct tipos adicionales", () => {
+  const source = `
+pub struct Metadata {
+    #[validate(url)]
+    pub website: String,
+    #[validate(range(min = 1, max = 100))]
+    pub score: i32,
+    pub data: serde_json::Value,
+}
+`;
+
+  test("format url se detecta en validate(url)", () => {
+    const fields = parseRustStruct(source, "Metadata");
+    expect(fields.find((f) => f.fieldName === "website")?.format).toBe("url");
+  });
+
+  test("tipo desconocido (serde_json::Value) mapea a object", () => {
+    const fields = parseRustStruct(source, "Metadata");
+    expect(fields.find((f) => f.fieldName === "data")?.type).toBe("object");
+  });
+});

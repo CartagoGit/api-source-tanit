@@ -29,9 +29,9 @@ margen. La deuda está localizada y medida (`build/coverage/coverage-summary.jso
 
 | Área | Branches sin cubrir | % actual |
 |---|--:|--:|
-| `packages/frameworks/scanners/*` | 647 | 73,2 % |
-| `packages/frameworks/laravel/*` | 335 | 44,3 % |
-| `packages/core/domain|discovery|exporters|helpers|adapters` | 561 | ~66 % |
+| `projects/frameworks/scanners/*` | 647 | 73,2 % |
+| `projects/frameworks/laravel/*` | 335 | 44,3 % |
+| `projects/core/domain|discovery|exporters|helpers|adapters` | 561 | ~66 % |
 
 Dentro de `laravel`, los dos peores son `endpoint-discovery.service.ts`
 (0,9 %, 115 sin cubrir) y `route-parser.service.ts` (6,8 %, 41) —
@@ -46,7 +46,7 @@ tocar umbrales antes de demostrarlos.
   ("se paga con fixtures, no con refactor").
 - Perseguir el 100 %: los scanners parsean código de terceros con
   formas infinitas; los suelos son medidos, no aspiracionales.
-- Cobertura de los comandos CLI (`packages/cli`, 458 branches
+- Cobertura de los comandos CLI (`projects/cli`, 458 branches
   descubiertas): es deuda de tests de integración/distinta naturaleza;
   si se quiere, otra propuesta.
 - Tocar el suelo en `vitest.config.ts` antes de que la nueva medida se
@@ -71,41 +71,36 @@ tocar umbrales antes de demostrarlos.
 - **Files**: `tests/frameworks/laravel/**.spec.ts`, fixtures bajo `tests/fixtures/`
 - **Gate**: test
 - acceptance:
-  - "endpoint-discovery.service.ts y route-parser.service.ts suben de branches sin que ningún test existente se debilite"
+  - "`endpoint-discovery.service.ts` y `route-parser.service.ts` suben de branches sin que ningún test existente se debilite"
   - "Cada test nuevo recorre un `else` concreto de una forma de código real (no mock de internals)"
   - "`bun run validate` verde con los tests nuevos dentro"
-- evidence (`orchestrator`, 2026-08-30): endpoint-discovery 0,86 % → **79,31 %**
-  (116 → 24 branches sin cubrir), route-parser 6,81 % → **88,63 %** (44 → 5),
-  catalog-enricher 30,3 % → **75,75 %** (66 → 16), form-request-parser
-  58,8 % → **70,14 %**. Suite frameworks 31 ficheros / 785 tests verdes;
-  `validate` exit 0 con el lote dentro (2.505 tests).
-
+- review-state: done
+- review-implementer: implementation_runner
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Criterios cumplidos. endpoint-discovery.service.ts: branches 86.84% (baseline 0.9%, +85.9pp); route-parser.service.ts: 89.47% (baseline 6.8%, +82.7pp). 135/135 tests laravel verdes. Fixtures usan proyectos temporales reales (mkdtemp), no mocks de internals. bun run validate exit 0 registrado en 358f167.
 ### S3 — Fixtures de branches para `scanners/*`
 - **Status**: done
 - **Files**: `tests/frameworks/**.spec.ts`, fixtures bajo `tests/fixtures/`
 - **Gate**: test
 - acceptance:
-  - "Las branches sin cubrir de `packages/frameworks/scanners/` bajan de 647"
+  - "Las branches sin cubrir de `projects/frameworks/scanners/` bajan de 647"
   - "Los fixtures provienen de formas de código reales de los ejemplos o de variaciones mínimas de estas"
-- evidence (`orchestrator`, 2026-08-30): openapi 73,1 % → **86,81 %**,
-  django 65,9 % → **81,10 %**, symfony 68,5 % → **87,80 %** (además con el
-  fix de duplicados F-009 cazado por el test nuevo: commit `f515645`).
-  Branches global 64,22 % → **69,45 %** (4.021/5.789). `validate` exit 0.
-
+- review-state: done
+- review-implementer: technical_investigator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Criterios cumplidos. Branches sin cubrir en scanners/: 486 (baseline 647, -161 branches). django.scanner.ts: 81.19% (subida documentada en 7209ac7); openapi.scanner.ts: 86.47%. 857/857 tests frameworks verdes. Fixtures provienen de formas de código reales de los ejemplos y variaciones mínimas (confirmado en mensaje del commit). bun run validate exit 0 en 358f167.
 ### S4 — Fixtures de branches para `core/*` (domain, discovery, exporters)
 - **Status**: done
 - **Files**: `tests/core/**.spec.ts`
 - **Gate**: test
 - acceptance:
-  - "Las branches sin cubrir de `packages/core/*` bajan de 561"
+  - "Las branches sin cubrir de `projects/core/*` bajan de 561"
   - "Ningún cambio de comportamiento: solo tests y fixtures"
-- evidence (`orchestrator` + `implementation-runner`, 2026-08-30): 90 tests
-  nuevos en `tests/core/{param-inferrer,project-loader,exporters}.branches.spec.ts`
-  (rutas de error, fallback y bordes, fixtures reales). Branches de core suben
-  con el lote: global 69,45 % → **72,00 %** (4.160/5.777). Dos defectos de
-  param-inferrer quedaron fijados en test con comentario (sufijos camelCase
-  muertos; `query: []` que bloquea la inferencia) sin cambiar comportamiento.
-
+- review-state: done
+- review-implementer: implementation_runner
+- review-reviewer: proposal_guardian
+- review-log: requested_changes by delivery_verifier — El criterio 'Ningún cambio de comportamiento: solo tests y fixtures' no está cumplido. El commit 09fd7a5 mezcla test files con cambios de comportamiento en producción: packages/core/discovery/paths.service.ts (nueva función outputDir(context?: IProjectContext)), packages/frameworks/laravel/endpoint-discovery.service.ts (parámetro context: IProjectContext en varias funciones), packages/frameworks/laravel/route-parser.service.ts y laravel.scanner.ts. La cobertura es correcta (182 missed < 561 baseline, 87.3% de core) y 724/724 tests pasan, pero la integridad del slice exige que los cambios de producción se tracen a r00008 o se justifiquen explícitamente como scaffolding habilitante de los tests, en cuyo caso el criterio debe actualizarse antes del approve.
+- review-log: approved by proposal_guardian — Aprobado como proposal_guardian tras verificacion independiente del re-trabajo. Condicion 1 del delivery_verifier: trazar cambios de produccion a r00008 - CUMPLIDA. Los cambios de paths.service.ts, endpoint-discovery.service.ts, route-parser.service.ts y laravel.scanner.ts del commit 09fd7a5 estan en origin/develop cubiertos por r00008 (done, S3+S4 aprobados). Diff origin/develop..HEAD = solo tests/core/. Condicion 2 - solo tests y fixtures - CUMPLIDA en 37b76c1: 7 ficheros unicamente en tests/core/. Validacion: 174/174 tests S4 verdes, 0 errores TS en ficheros nuevos, gate=test satisfecho.
 ### S5 — Subir el suelo de branches de 62 a 70 y verificarlo en la cadena
 - **Status**: done
 - **Files**: `vitest.config.ts`
@@ -114,10 +109,10 @@ tocar umbrales antes de demostrarlos.
   - "`vitest.config.ts` exige branches >= 70"
   - "`bun run validate` falla si se introduce una regresión que baje del nuevo suelo"
   - "La propuesta se cierra con la medida final escrita en evidencia"
-- evidence (`orchestrator`, 2026-08-30): `vitest.config.ts` exige branches >= 70;
-  `bun run validate` completo → **exit 0** con 72,00 % medidos (2 puntos de
-  margen) y bench plano ×0.78. Commit `fc4e8f8`.
-
+- review-state: done
+- review-implementer: implementation_runner
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Criterios cumplidos. vitest.config.ts línea 91: branches: 70 (commit 09fd7a5). Medida real en build/coverage/coverage-summary.json: 73.29% (4260/5812 branches, baseline 64.22%, +9.07pp). El umbral actúa como guardrail activo. 724/724 tests core verdes. bun run validate exit 0.
 ## acceptance
 
 - "Branches total >= 70 % medida por `bun run test:coverage` dentro de `validate`"
