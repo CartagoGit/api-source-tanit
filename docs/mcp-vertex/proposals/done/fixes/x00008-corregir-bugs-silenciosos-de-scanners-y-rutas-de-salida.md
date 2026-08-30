@@ -2,7 +2,7 @@
 id: x00008
 title: "corregir bugs silenciosos de scanners y rutas de salida"
 kind: fix
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
@@ -97,7 +97,10 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 - acceptance:
   - "El informe queda actualizado con los fixes aplicados y evidencia de validación."
   - "typecheck, lint, tests y validate:examples pasan tras integrar los slices."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente completada. La validación integradora cubre typecheck, lint, cobertura, ejemplos y benchmark; las regresiones focalizadas del loader y OpenAPI/builder están verdes.
 ## acceptance
 
 - app.route({ schema }) alimenta FastifySchemaProvider.
@@ -117,3 +120,8 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 - Los tests cubren ambos sentidos y mantienen la resolución de CLI/env.
 - El informe queda actualizado con los fixes aplicados y evidencia de validación.
 - typecheck, lint, tests y validate:examples pasan tras integrar los slices.
+
+> **Cerrada 2026-08-30.** Los seis slices quedaron implementados y
+> revisados. Evidencia: `bun run validate` verde, 21/21 ejemplos válidos,
+> suites focalizadas de scanners y paths verdes, y sin hallazgos en
+> typecheck, SAST, secrets o escrituras durables.

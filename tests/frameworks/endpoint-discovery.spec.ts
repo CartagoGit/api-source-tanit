@@ -8,7 +8,6 @@ import type { EndpointSpec } from "../../packages/contracts/interfaces/core/post
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 import { mergeWithManual } from "../../packages/core/domain/endpoint-merge.service";
 import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
-import { withProjectRoot } from "../../packages/core/discovery/paths.service";
 import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
@@ -350,8 +349,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     await project.cleanup();
   });
 
-  const descubre = () =>
-    withProjectRoot(project.root, () => discoverEndpoints(configPara(), [], contexto));
+  const descubre = () => discoverEndpoints(configPara(), [], contexto);
 
   test("convierte las rutas en specs con uri Postman y nombre legible", async () => {
     const res = await descubre();
@@ -458,20 +456,18 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
   });
 
   test("los overrides manuales ganan pero conservan el formRequest", async () => {
-    const res = await withProjectRoot(project.root, () =>
-      discoverEndpoints(
-        configPara(),
-        [
-          {
-            name: "Alta de cliente",
-            method: "POST",
-            uri: "/usuarios",
-            headers: [],
-            query: [],
-          } as EndpointSpec,
-        ],
-        contexto,
-      ),
+    const res = await discoverEndpoints(
+      configPara(),
+      [
+        {
+          name: "Alta de cliente",
+          method: "POST",
+          uri: "/usuarios",
+          headers: [],
+          query: [],
+        } as EndpointSpec,
+      ],
+      contexto,
     );
     const crear = res.specs.find((s) => s.method === "POST" && s.uri === "/usuarios");
     expect(crear?.name).toBe("Alta de cliente");
@@ -482,9 +478,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     const tmp = await createTempProject({ "composer.json": "{}" });
     try {
       const ctxLocal = resolveProjectContext({ projectRoot: tmp.root });
-      const res = await withProjectRoot(tmp.root, () =>
-        discoverEndpoints(configPara(), [], ctxLocal),
-      );
+      const res = await discoverEndpoints(configPara(), [], ctxLocal);
       expect(res.specs).toEqual([]);
       expect(res.routes).toEqual([]);
       expect(res.withFormRequest).toBe(0);
@@ -560,14 +554,13 @@ class DinamicaRequest extends FormRequest
   const nodoEndpoint = (collection: ReturnType<typeof buildCollection>) =>
     collection.item[0]?.item?.[0];
 
-  const enriquecer = (specs: EndpointSpec[], indice: Map<string, string>) =>
-    withProjectRoot(project.root, async () => {
-      const collection = buildCollection(specs, { ...CONFIG });
-      return {
-        collection,
-        stats: await enrichCatalogWithFormRequests(collection, indice, contexto),
-      };
-    });
+  const enriquecer = async (specs: EndpointSpec[], indice: Map<string, string>) => {
+    const collection = buildCollection(specs, { ...CONFIG });
+    return {
+      collection,
+      stats: await enrichCatalogWithFormRequests(collection, indice, contexto),
+    };
+  };
 
   test("GET con reglas de búsqueda genera variantes de query y envuelve el item", async () => {
     const { collection, stats } = await enriquecer(
@@ -689,19 +682,17 @@ class DinamicaRequest extends FormRequest
 
   test("Eliminar resuelve por la adivinanza Destroy cuando el índice falla", async () => {
     let collection: ReturnType<typeof buildCollection>;
-    const stats = await withProjectRoot(project.root, async () => {
-      collection = buildCollection(
-        [spec({ name: "Eliminar Usuario", method: "DELETE", uri: "/usuarios/{{id}}" })],
-        { ...CONFIG },
-      );
-      // Índice sin archivo: la resolución recae en la heurística de
-      // nombres (Eliminar → DestroyUsuarioRequest del fixture principal).
-      return enrichCatalogWithFormRequests(
-        collection,
-        new Map([["DELETE usuarios/:p", "app/Http/Requests/NoExisteRequest.php"]]),
-        contexto,
-      );
-    });
+    collection = buildCollection(
+      [spec({ name: "Eliminar Usuario", method: "DELETE", uri: "/usuarios/{{id}}" })],
+      { ...CONFIG },
+    );
+    // Índice sin archivo: la resolución recae en la heurística de
+    // nombres (Eliminar → DestroyUsuarioRequest del fixture principal).
+    const stats = await enrichCatalogWithFormRequests(
+      collection,
+      new Map([["DELETE usuarios/:p", "app/Http/Requests/NoExisteRequest.php"]]),
+      contexto,
+    );
     expect(stats.resolved).toBe(1);
   });
 

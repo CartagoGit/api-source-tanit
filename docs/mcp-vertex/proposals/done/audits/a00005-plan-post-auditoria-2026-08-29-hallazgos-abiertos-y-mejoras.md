@@ -2,7 +2,7 @@
 id: a00005
 title: "Plan post-auditoría 2026-08-29: hallazgos abiertos y mejoras"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
@@ -44,7 +44,7 @@ date: 2026-08-30
 - global_gate: lint
 
 ### S1 — Mantener el mapa de hallazgos y dependencias
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/AUDIT-2026-08-29.md`, `docs/mcp-vertex/AUDIT-2026-08-30.md`, `docs/mcp-vertex/proposals/INDEX.md`
 - **Gate**: lint
 - acceptance:
@@ -52,7 +52,7 @@ date: 2026-08-30
   - "Las propuestas hijas se referencian por id, nunca por una ruta mutable."
 
 ### S2 — Coordinar el cierre de las propuestas hijas
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/proposals/ready/*.md`, `docs/mcp-vertex/proposals/in-progress/*.md`
 - **Gate**: none
 - acceptance:
@@ -96,3 +96,8 @@ date: 2026-08-30
   La pasada estática clasifica D-001 como MEDIUM y D-002/D-003 como LOW;
   no se encontró CRITICAL/HIGH. El build nativo queda condicionado a Rust,
   Tauri CLI y SDKs/dependencias de plataforma.
+
+> **Cerrada 2026-08-30.** El mapa de hallazgos quedó actualizado y las
+> propuestas hijas no bloqueadas tienen estado y evidencia coherentes.
+> `p00007` permanece `blocked` porque depende de consumir un paquete
+> `@mcp-vertex/core` publicado; ese bloqueo no se resuelve desde este repo.

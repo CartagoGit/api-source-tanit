@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, test } from "vitest";
-import { withProjectRoot } from "../../packages/core/discovery/paths.service";
 import { buildZeroConfig, detectProjectName, loadProject } from "../../packages/core/discovery/project-loader.service";
 import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
 import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
@@ -18,9 +17,7 @@ async function inProject<T>(
   fn: (context: IProjectContext) => Promise<T>,
 ): Promise<T> {
   project = await createTempProject(files);
-  return withProjectRoot(project.root, () =>
-    fn(resolveProjectContext({ projectRoot: project!.root })),
-  );
+  return fn(resolveProjectContext({ projectRoot: project.root }));
 }
 
 describe("detectProjectName", () => {

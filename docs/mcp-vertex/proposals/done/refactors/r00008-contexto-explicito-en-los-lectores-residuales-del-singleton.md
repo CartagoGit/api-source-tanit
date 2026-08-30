@@ -2,7 +2,7 @@
 id: r00008
 title: "contexto explicito en los lectores residuales del singleton"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-29
@@ -54,7 +54,7 @@ medido pero no los caminos alternativos.
 - global_gate: lint
 
 ### S1 — `project-loader.service.ts` sin fallback al singleton
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/discovery/project-loader.service.ts`,
   `packages/cli/commands/*.script.ts` (los que llaman a `loadProject()`)
 - **Gate**: test
@@ -63,7 +63,7 @@ medido pero no los caminos alternativos.
   - "El fallback al singleton en `loadProject()` desaparece o queda reservado a un único borde declarado"
 
 ### S2 — Los tools del plugin reciben contexto, no envuelven
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/*.ts`,
   `packages/cli/commands/{list,stats,scan,diff}.script.ts` (sus exports `run*`)
 - **Gate**: test
@@ -73,7 +73,7 @@ medido pero no los caminos alternativos.
   - "`validate` sigue verde con las 10 tools ejercitadas por el plugin"
 
 ### S3 — Camino legacy de Laravel fuera del singleton o retirado
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/laravel/*`
 - **Gate**: test
 - acceptance:
@@ -81,7 +81,7 @@ medido pero no los caminos alternativos.
   - "Si se retira, queda escrito en la propuesta qué lo sustituye"
 
 ### S4 — Encoger la lista `debt` y, si queda vacía, quitar la cola
-- **Status**: pending
+- **Status**: done
 - **Files**: `scripts/gates/lint-project-context.script.ts`,
   `packages/core/discovery/paths.service.ts`
 - **Gate**: lint
@@ -94,3 +94,9 @@ medido pero no los caminos alternativos.
 - "`bun run lint:project-context` muestra 3 → 0 (o motivo nuevo) lectores en `debt`"
 - "Dos consumidores en el mismo proceso pueden analizar proyectos distintos sin depender de la cola"
 - "`bun run validate` verde al cierre con la cadena completa"
+
+> **Cerrada 2026-08-30.** Se migraron los lectores residuales a
+> `IProjectContext`, se retiró la cola global de `paths.service.ts` y
+> `lint:project-context` informa 0 lectores en deuda. Evidencia:
+> `bun run validate` verde, incluyendo 128 suites y 2.591 tests; la
+> ejecución nativa del host MCP no forma parte de este gate.

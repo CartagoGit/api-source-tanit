@@ -2,7 +2,7 @@
 id: c00002
 title: "release automatizada de npm desde CI"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
@@ -40,7 +40,7 @@ hoy no existe.
 - global_gate: none
 
 ### S1 — Workflow de release por tag
-- **Status**: pending
+- **Status**: done
 - **Files**: `.github/workflows/release-npm.yml` (nuevo)
 - **Gate**: none (workflow; se valida a posteriori con el primer tag real)
 - acceptance:
@@ -52,3 +52,9 @@ hoy no existe.
 
 - "Un tag vX.Y.Z en origin dispara build + validate + publish automático"
 - "El paquete publicado lleva provenance y no requiere la máquina del dueño"
+
+> **Cerrada 2026-08-30.** Añadido `.github/workflows/release-npm.yml`,
+> limitado a tags `v*.*.*`, con `bun install --frozen-lockfile`,
+> `bun run validate`, `bun run validate:package` y publicación con
+> `npm publish --provenance` usando `NPM_TOKEN`. El disparo real de un tag
+> queda pendiente de verificarse en GitHub Actions al publicar una versión.

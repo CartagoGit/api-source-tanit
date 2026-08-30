@@ -2,7 +2,7 @@
 id: a00004
 title: "auditoria de la zona Rust de escritorio"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
@@ -40,7 +40,7 @@ que el frontend de escritorio puede ejecutar en el sistema.
 - global_gate: none
 
 ### S1 — Inventario y threat model de packages/desktop
-- **Status**: pending
+- **Status**: done
 - **Files**: `docs/mcp-vertex/AUDIT-<fecha>-desktop.md` (informe nuevo)
 - **Gate**: none
 - acceptance:
@@ -48,7 +48,7 @@ que el frontend de escritorio puede ejecutar en el sistema.
   - "Build de escritorio reproducido al menos una vez en local (o documentado el bloqueo exacto si no hay toolchain)"
 
 ### S2 — Hallazgos con clasificación y destino
-- **Status**: pending
+- **Status**: done
 - **Files**: el mismo informe; propuestas hijas si hay fixes
 - **Gate**: none
 - acceptance:
@@ -58,3 +58,9 @@ que el frontend de escritorio puede ejecutar en el sistema.
 
 - "Existe AUDIT-<fecha>-desktop.md con snapshot, hallazgos clasificados y cobertura declarada"
 - "Los hallazgos CRITICAL/HIGH tienen propuesta creada o corrección hecha"
+
+> **Cerrada 2026-08-30.** El informe [AUDIT-2026-08-30-desktop.md](../../AUDIT-2026-08-30-desktop.md)
+> contiene el inventario, trust boundaries, hallazgos clasificados y
+> decisiones de destino. No aparecieron hallazgos CRITICAL/HIGH. El build
+> nativo queda documentado como no ejecutado por falta de toolchain Rust/Tauri
+> y dependencias de plataforma en este entorno.
