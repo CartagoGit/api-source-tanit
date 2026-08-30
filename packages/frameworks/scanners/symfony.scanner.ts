@@ -26,7 +26,7 @@
 import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { isRecord } from "../../core/helpers/parse-json.helper.js";
 import type {
   IProjectMatch,
@@ -45,32 +45,29 @@ const SYMFONY_REQUIRE_KEYS = ["symfony/framework-bundle", "symfony/routing"];
  * Lee composer.json y devuelve true si alguna de las SYMFONY_REQUIRE_KEYS
  * está en `require` o `require-dev`.
  */
-async function isSymfonyProject(projectRoot: string): Promise<{
-  yes: boolean;
-  composerJson?: Record<string, unknown>;
-}> {
+async function isSymfonyProject(projectRoot: string): Promise<boolean> {
   const composerPath = join(projectRoot, "composer.json");
-  if (!existsSync(composerPath)) return { yes: false };
+  if (!existsSync(composerPath)) return false;
   let raw: string;
   try {
     raw = await readFile(composerPath, "utf8");
   } catch {
-    return { yes: false };
+    return false;
   }
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { yes: false };
+    return false;
   }
   const req = (parsed.require ?? {}) as Record<string, string>;
   const reqDev = (parsed["require-dev"] ?? {}) as Record<string, string>;
   for (const key of SYMFONY_REQUIRE_KEYS) {
     if (typeof req[key] === "string" || typeof reqDev[key] === "string") {
-      return { yes: true, composerJson: parsed };
+      return true;
     }
   }
-  return { yes: false };
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +78,8 @@ export class SymfonyProjectScanner implements IProjectScanner {
   readonly framework = "symfony" as const;
 
   async detect(projectRoot: string): Promise<number> {
-    const det = await isSymfonyProject(projectRoot);
-    if (!det.yes) return 0;
+    const detected = await isSymfonyProject(projectRoot);
+    if (!detected) return 0;
     const hasBinConsole = existsSync(join(projectRoot, "bin", "console"));
     const hasConfigRoutes = existsSync(join(projectRoot, "config", "routes.yaml"));
     const hasSrcController = existsSync(join(projectRoot, "src", "Controller"));
@@ -257,21 +254,27 @@ async function parseRoutesYamlFile(
     if (path && controller && methods.length > 0) {
       const fullPath = (prefix + path).replace(/\/+/g, "/");
       for (const method of methods) {
+        const controllerPath = controller?.split("::")[0];
         out.push({
           method: method.toUpperCase(),
           uri: fullPath,
           rawUri: fullPath,
-          sourceFile: relPath,
+          sourceFile: controllerPath
+            ? toProjectRelative(resolve(projectRoot, "src", "Controller", `${controllerPath.split("\\").pop() ?? ""}.php`), projectRoot)
+            : relPath,
           lineNumber: 0,
           prefixChain: prefix ? [prefix] : [],
           displayName: name,
-          description: typeof bodyObj.methods === "string" ? bodyObj.methods : "",
+          ...(controller?.includes("::")
+            ? { actionName: controller.split("::").pop() ?? "" }
+            : {}),
         });
       }
     } else if (resource && /\.\/.*Controller.*\.php/.test(resource)) {
       // Apunta a un controller: parseamos sus attributes.
-      // Resolución: ../../src/Controller/... (asumimos config/ relativo)
-      const ctrlAbs = join(absPath, "..", "..", resource);
+      const relativeController = resolve(dirname(absPath), resource);
+      const rootController = resolve(projectRoot, resource);
+      const ctrlAbs = existsSync(relativeController) ? relativeController : rootController;
       // OJO: el tercer argumento es el projectRoot, no el YAML de origen.
       // Pasar `relPath` aquí dejaba `sourceFile` como ruta absoluta y el
       // validation provider no encontraba nunca el controller.
@@ -528,10 +531,9 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
         fields.push(cf);
       }
     }
-    // 2) Si la ruta viene de YAML controller ref, route.description es
-    //    el nombre del método: localizar el method en el archivo.
-    if (fields.length === 0 && route.description) {
-      const methodName = route.description;
+    // 2) Si la ruta viene de YAML controller ref, localizar la acción.
+    if (fields.length === 0 && (route.actionName || route.description)) {
+      const methodName = route.actionName || route.description || "";
       const idx = lines.findIndex((l) =>
         new RegExp(`function\\s+${methodName}\\s*\\(`).test(l),
       );

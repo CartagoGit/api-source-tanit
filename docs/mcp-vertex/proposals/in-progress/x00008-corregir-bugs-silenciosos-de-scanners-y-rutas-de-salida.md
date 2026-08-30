@@ -42,14 +42,17 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 - review-reviewer: delivery_verifier
 - review-log: approved by delivery_verifier — Revisión independiente completada: el cambio registra schemas de app.route para cada método y deriva el pathname de servers[0].url manteniendo prioridad de opts.basePath/spec.basePath. Tests focalizados: 75/75; get_errors sin errores. Aprobado.
 ### S2 — Django y Gin: métodos y rawUri
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/django.scanner.ts`, `packages/frameworks/scanners/gin.scanner.ts`, `tests/frameworks/django-scanner.spec.ts`, `tests/frameworks/gin-scanner.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "ReadOnlyModelViewSet solo genera GET."
   - "Los CBV bajo src/ resuelven su clase base."
   - "Gin conserva rawUri sin prefijos y no aborta el recorrido por una rama muerta."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente: ReadOnlyModelViewSet queda limitado a GET; findBaseClass incluye src; Gin conserva rawUri declarado y la rama de duplicado usa continue. Tests focalizados 76/76 y get_errors sin errores. Aprobado.
 ### S3 — Symfony: YAML, resources y limpieza
 - **Status**: pending
 - **Files**: `packages/frameworks/scanners/symfony.scanner.ts`, `tests/frameworks/symfony-scanner.spec.ts`

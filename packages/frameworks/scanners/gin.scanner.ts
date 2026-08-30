@@ -103,7 +103,7 @@ export class GinRouteScanner implements IRouteScanner {
           ? f.slice(projectRoot.length + 1).split("/").join("/")
           : f;
         // Evitar duplicar main.go raíz.
-        if (rel === "main.go") return;
+        if (rel === "main.go") continue;
         out.push(...(await parseGoFile(f, rel, projectRoot)));
       }
     });
@@ -175,7 +175,7 @@ async function parseGoFile(
     out.push({
       method: method.toUpperCase(),
       uri: fullPath,
-      rawUri: fullPath,
+      rawUri: path,
       sourceFile: relPath,
       lineNumber: 0,
       prefixChain: prefix ? [prefix] : [],

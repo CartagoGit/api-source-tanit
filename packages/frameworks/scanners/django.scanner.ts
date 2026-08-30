@@ -332,9 +332,11 @@ async function expandViewSetMethods(
 
 function methodsFromBaseClass(baseClass: string | null): string[] {
   if (!baseClass) return ["get"];
+  if (baseClass.includes("ReadOnlyModelViewSet")) {
+    return ["get"];
+  }
   if (
     baseClass.includes("ModelViewSet") ||
-    baseClass.includes("ReadOnlyModelViewSet") ||
     baseClass.includes("ViewSet")
   ) {
     return ["get", "post", "put", "patch", "delete"];
@@ -371,6 +373,7 @@ async function findBaseClass(
   const candidates = [
     join(projectRoot, "app"),
     join(projectRoot, "apps"),
+    join(projectRoot, "src"),
   ];
   for (const base of candidates) {
     if (!existsSync(base)) continue;

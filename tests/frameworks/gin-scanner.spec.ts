@@ -63,6 +63,13 @@ describe("Gin scanner", () => {
     expect(withId.length).toBeGreaterThanOrEqual(2);
   });
 
+  test("rawUri conserva el path sin el prefijo del Group", async () => {
+    const match = await new GinProjectScanner().resolve(ROOT);
+    const routes = await new GinRouteScanner().scan(match);
+    const route = routes.find((item) => item.uri === "/api/users/:id");
+    expect(route?.rawUri).toBe("/users/:id");
+  });
+
   test("prefijo de Group /api aplicado a todas las subrutas", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = await new GinRouteScanner().scan(match);

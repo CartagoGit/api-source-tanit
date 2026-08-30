@@ -146,7 +146,7 @@ describe("Django — expansión de ViewSets por clase base", () => {
     ["generics.RetrieveAPIView", "GET"],
     ["generics.ListAPIView", "GET"],
     ["viewsets.ModelViewSet", "DELETE,GET,PATCH,POST,PUT"],
-    ["viewsets.ReadOnlyModelViewSet", "DELETE,GET,PATCH,POST,PUT"],
+    ["viewsets.ReadOnlyModelViewSet", "GET"],
     ["viewsets.ViewSet", "DELETE,GET,PATCH,POST,PUT"],
   ];
 
@@ -163,6 +163,24 @@ describe("Django — expansión de ViewSets por clase base", () => {
         .sort()
         .join(",");
       expect(metodos).toBe(esperados);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("CBV bajo src/ resuelve la clase base", async () => {
+    const project = await createTempProject(
+      drfProject("src/items", "CosasView", "viewsets.ModelViewSet"),
+    );
+    try {
+      const { routes } = await scanProject("django", project.root);
+      expect(routes.map((route) => route.method).sort()).toEqual([
+        "DELETE",
+        "GET",
+        "PATCH",
+        "POST",
+        "PUT",
+      ]);
     } finally {
       await project.cleanup();
     }

@@ -167,7 +167,7 @@ describe("Symfony detect — variantes", () => {
 const COMPOSER = '{"require":{"symfony/framework-bundle":"^7.0"}}';
 
 describe("Symfony — rutas YAML", () => {
-  test("prefix se concatena y los methods string pasan a description", async () => {
+  test("prefix se concatena y controller::action queda en actionName", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -192,11 +192,12 @@ describe("Symfony — rutas YAML", () => {
       expect(prefijo).toBeDefined();
       expect(prefijo?.prefixChain).toEqual(["/api"]);
       expect(prefijo?.displayName).toBe("con_prefijo");
-      expect(prefijo?.description).toBe("");
-      // methods como string: se parte por | o ,  y además alimenta description.
+      expect(prefijo?.description).toBeUndefined();
+      // methods como string: se parte por | o , sin contaminar description.
       const str = routes.find((r) => r.uri === "/s");
       expect(str?.method).toBe("GET");
-      expect(str?.description).toBe("GET");
+      expect(str?.description).toBeUndefined();
+      expect(str?.actionName).toBe("s");
       // Ni controller ni entrada escalar producen nada.
       expect(routes).toHaveLength(2);
     } finally {
@@ -271,6 +272,33 @@ describe("Symfony — rutas YAML", () => {
       expect(routes[0]?.prefixChain).toEqual(["/api/widgets"]);
       // sourceFile relativo: el bug histórico de Symfony.
       expect(routes[0]?.sourceFile).toBe("src/Controller/WidgetController.php");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("resource en config/routes se resuelve relativo al YAML", async () => {
+    const project = await createTempProject({
+      "composer.json": COMPOSER,
+      "config/routes.yaml": "imports:\n  resource: ./routes/api.yaml\n",
+      "config/routes/api.yaml": [
+        "widgets:",
+        "  resource: ../../src/Controller/WidgetController.php",
+      ].join("\n"),
+      "src/Controller/WidgetController.php": [
+        "<?php",
+        "namespace App\\Controller;",
+        "use Symfony\\Component\\Routing\\Attribute\\Route;",
+        "class WidgetController",
+        "{",
+        "    #[Route('/widgets', methods: ['GET'])]",
+        "    public function list() {}",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("symfony", project.root);
+      expect(routes.map((route) => route.uri)).toContain("/widgets");
     } finally {
       await project.cleanup();
     }
@@ -446,6 +474,35 @@ describe("Symfony — atributos #[Route]", () => {
 // ---------------------------------------------------------------------------
 
 describe("Symfony — provider de assertions", () => {
+  test("YAML controller::action resuelve assertions del método", async () => {
+    const project = await createTempProject({
+      "composer.json": COMPOSER,
+      "config/routes.yaml": [
+        "create:",
+        "  path: /orders",
+        "  controller: App\\Controller\\OrderController::create",
+        "  methods: [POST]",
+      ].join("\n"),
+      "src/Controller/OrderController.php": [
+        "<?php",
+        "namespace App\\Controller;",
+        "use Symfony\\Component\\Validator\\Constraints as Assert;",
+        "class OrderController",
+        "{",
+        "    public function create(#[Assert\\NotBlank] string $reference) {}",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const { match, routes } = await scanProject("symfony", project.root);
+      const route = routes.find((item) => item.uri === "/orders")!;
+      const provider = new SymfonyAttributesValidationProvider();
+      const result = await provider.resolve(route, match);
+      expect(result.fields.map((field) => field.fieldName)).toContain("reference");
+    } finally {
+      await project.cleanup();
+    }
+  });
   const provider = new SymfonyAttributesValidationProvider();
 
   test("todos los tipos de Assert: formato, cotas, enum y allowNull", async () => {
