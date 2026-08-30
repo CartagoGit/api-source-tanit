@@ -1,11 +1,14 @@
 ---
+id: a00008
 title: "Auditoria completa 2026-08-29 — el gate de DoD con agujeros, cerrados y verificados"
+kind: audit
 date: 2026-08-29
-status: vigente
+status: done
+type: proposal
 track: export-to-postman
 ---
 
-# Auditoria completa 2026-08-29 — el gate de DoD con agujeros, cerrados y verificados
+# a00008 — Auditoria completa 2026-08-29 — el gate de DoD con agujeros, cerrados y verificados
 
 Esta es la auditoria vigente del repositorio. Sustituye como foto actual a la de
 2026-08-08 (que a su vez sustituyo a la de 2026-08-06): aquellas siguen siendo el

@@ -94,12 +94,11 @@ quien añadiera un exportador nuevo no tenía dónde mirar.
 
 ## Lo que NO se renombra
 
-La prosa de las propuestas cerradas (`done/`, `retired/`, `blocked/`) y
-los informes fechados bajo `docs/mcp-vertex/audits/`. Son registro de lo
-que pasó y describen el proyecto como se llamaba entonces; reescribirlos
-convertiría un archivo histórico en una ficción. Las propuestas audit
-actuales sí viven en `docs/mcp-vertex/proposals/` y siguen el contrato de
-estado, id y kind.
+La prosa de las propuestas cerradas (`done/`, `retired/`, `blocked/`) se
+conserva como registro histórico. Las auditorías canónicas viven en
+`docs/mcp-vertex/proposals/done/audits/`, con `id`, `kind: audit`, `status:
+done` y ruta indexada. `docs/mcp-vertex/audits/` queda reservado para
+informes crudos todavía no convertidos en propuesta.
 
 ## Si hay que cambiar alguno
 

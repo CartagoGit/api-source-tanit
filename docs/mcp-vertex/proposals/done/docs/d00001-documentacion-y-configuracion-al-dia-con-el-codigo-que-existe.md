@@ -88,7 +88,7 @@ Hallazgos 4 (BAD), 11, 12, 17 y 19 de a00001, más el drift adicional detectado 
 
 ### S6 — CONTRIBUTING y README apuntan al contrato y a la auditoría vigentes
 - **Status**: done
-- **Files**: `CONTRIBUTING.md`, `README.md`, `docs/mcp-vertex/audits/2026-08-08-estado-real-y-backlog.md`
+- **Files**: `CONTRIBUTING.md`, `README.md`, propuesta canónica `a00007`
 - **Gate**: lint
 - acceptance:
   - "`CONTRIBUTING.md` deja de citar `docs/extension-contract.md` o cualquier otra fuente muerta"

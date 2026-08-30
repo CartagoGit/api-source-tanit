@@ -1,11 +1,14 @@
 ---
+id: a00003
 title: "Auditoría completa — postman-exporter"
+kind: audit
 date: 2026-08-06
-status: vigente
+status: done
+type: proposal
 track: postman-exporter
 ---
 
-# Auditoría completa — `postman-exporter`
+# a00003 — Auditoría completa — `postman-exporter`
 
 Estado del repo al arrancar: `main` y `develop` divergentes, la suite de
 tests **no terminaba nunca**, `tsc --noEmit` con 8 errores, y 9 tests en

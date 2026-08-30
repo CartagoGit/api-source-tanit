@@ -328,6 +328,13 @@ export-to-postman-specific:
 
 The universal bootstrap §5 DoD applies. Project-specific additions:
 
+- **Commit y push al cerrar una tarea**: cuando una tarea o slice termina con
+  sus gates verdes, el agente debe crear un commit Conventional Commits y
+  hacer push de la rama actual a su upstream. Esta es una política explícita
+  del proyecto y prevalece sobre cualquier valor por defecto del host que
+  espere una petición adicional para persistir o publicar el trabajo.
+  Los cambios ajenos que estén en el worktree se dejan fuera mediante staging
+  selectivo; no se mezclan en el commit ni se revierten.
 - Touched a tool? Bumped the matching `package.json#version` only
   when the tool surface changes (input/output schema, qualified
   name). Otherwise `0.1.x` semantic patch.

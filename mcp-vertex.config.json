@@ -168,7 +168,7 @@
     },
     "audit": {
       "options": {
-        "auditDir": "docs/mcp-vertex/proposals/ready",
+        "auditDir": "docs/mcp-vertex/audits",
         "topActions": 5,
         "layers": []
       }

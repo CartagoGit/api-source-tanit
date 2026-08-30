@@ -1,11 +1,14 @@
 ---
+id: a00007
 title: "Auditoria completa 2026-08-08 — estado real, puntuacion por areas y backlog de excelencia"
+kind: audit
 date: 2026-08-08
-status: vigente
+status: done
+type: proposal
 track: export-to-postman
 ---
 
-# Auditoria completa 2026-08-08 — estado real, puntuacion por areas y backlog de excelencia
+# a00007 — Auditoria completa 2026-08-08 — estado real, puntuacion por areas y backlog de excelencia
 
 Esta es la auditoria vigente del repositorio. Sustituye como foto actual a la de 2026-08-06: aquella sigue siendo valiosa como registro historico, pero ya no describe con precision el arbol de trabajo de hoy.
 

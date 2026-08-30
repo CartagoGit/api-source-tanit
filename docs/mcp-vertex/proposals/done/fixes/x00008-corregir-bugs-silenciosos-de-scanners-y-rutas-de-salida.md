@@ -2,7 +2,7 @@
 id: x00008
 title: "corregir bugs silenciosos de scanners y rutas de salida"
 kind: fix
-status: review
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
@@ -12,7 +12,7 @@ date: 2026-08-30
 
 ## Goal
 
-Corregir los defectos F-001..F-010 y C-001..C-003 documentados en AUDIT-2026-08-30.md, preservando los contratos existentes y añadiendo regresiones focalizadas.
+Corregir los defectos F-001..F-010 y C-001..C-003 documentados en la auditoría canónica `a00006`, preservando los contratos existentes y añadiendo regresiones focalizadas.
 
 ## why
 
@@ -92,12 +92,15 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 ### S6 — Validación integradora y cierre
 - **Status**: done
 - **DependsOn**: [S1, S2, S3, S4, S5]
-- **Files**: `docs/mcp-vertex/AUDIT-2026-08-30.md`
+- **Files**: `docs/mcp-vertex/proposals/done/audits/a00006-auditoria-exhaustiva-de-tipado-validacion-lint-y-bugs.md`
 - **Gate**: lint
 - acceptance:
   - "El informe queda actualizado con los fixes aplicados y evidencia de validación."
   - "typecheck, lint, tests y validate:examples pasan tras integrar los slices."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente completada. La auditoría canónica `a00006` fue verificada contra `x00008`: los 13 hallazgos (F-001..F-010, C-001..C-003) están transcritos fielmente, las correcciones y conteos de tests coinciden con los review-logs de S1–S5 (75+76+46+89+31=317/317), el mapa de slices en §3 es consistente y la evidencia refleja los gates de `a00006`. lint:docs y lint:proposals pasan para el árbol canónico. Aprobado.
 ## acceptance
 
 - app.route({ schema }) alimenta FastifySchemaProvider.
