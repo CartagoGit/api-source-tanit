@@ -33,7 +33,7 @@ que el frontend de escritorio puede ejecutar en el sistema.
 ## non-goals
 
 - Cambiar la tecnología de escritorio ni añadir features.
-- Auditarlos workflows de release móvil/web (no existen).
+- Auditar los workflows de release móvil/web (no existen).
 
 ## Slices
 

@@ -75,6 +75,12 @@ describe("paths.service", () => {
       const path = await outputEnvironmentPath("Dev", "my-app");
       expect(path).toMatch(/my-app\.dev\.postman_environment\.json$/);
     });
+
+    test("sin projectName no duplica el sufijo de colección", async () => {
+      const path = await outputEnvironmentPath("Local");
+      expect(path).not.toMatch(/\.postman_collection\.local\.postman_environment\.json$/);
+      expect(path).toMatch(/\.local\.postman_environment\.json$/);
+    });
   });
 
   describe("outputDir CLI/env resolution", () => {

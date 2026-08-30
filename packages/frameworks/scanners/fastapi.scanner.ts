@@ -156,7 +156,7 @@ export class FastApiRouteScanner implements IRouteScanner {
           // Buscar el handler name en las siguientes líneas (típico: `def handlerName(`).
           let handlerName: string | undefined;
           for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
-            const hm = /^def\s+([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
+            const hm = /^(?:async\s+)?def\s+([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
             if (hm?.[1]) {
               handlerName = hm[1];
               break;

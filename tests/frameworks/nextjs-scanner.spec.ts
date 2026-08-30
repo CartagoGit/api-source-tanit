@@ -113,9 +113,10 @@ describe("Next.js scanner", () => {
       const routes = await new NextJsRouteScanner().scan(match);
       const pairs = routes.map((r) => `${r.method} ${r.uri}`);
       expect(pairs).toContain("GET /api/users");
-      expect(pairs).toContain("POST /api/users");
+      expect(pairs).not.toContain("POST /api/users");
+      expect(pairs).not.toContain("DELETE /api/users");
       expect(pairs).toContain("GET /api/users/:id");
-      expect(pairs).toContain("DELETE /api/users/:id");
+      expect(pairs).not.toContain("DELETE /api/users/:id");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

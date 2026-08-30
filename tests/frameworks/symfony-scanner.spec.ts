@@ -192,6 +192,7 @@ describe("Symfony — rutas YAML", () => {
       expect(prefijo).toBeDefined();
       expect(prefijo?.prefixChain).toEqual(["/api"]);
       expect(prefijo?.displayName).toBe("con_prefijo");
+      expect(prefijo?.controllerClass).toBe("App\\Controller\\C");
       expect(prefijo?.description).toBeUndefined();
       // methods como string: se parte por | o , sin contaminar description.
       const str = routes.find((r) => r.uri === "/s");

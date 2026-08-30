@@ -242,7 +242,7 @@ export async function outputCollectionPath( projectName?: string, context?: IPro
 #### `outputEnvironmentPath`
 
 ```ts
-export async function outputEnvironmentPath( envName: string, projectName?: string, ): Promise<string>
+export async function outputEnvironmentPath( envName: string, projectName?: string, context?: IProjectContext, ): Promise<string>
 ```
 
 #### `toProjectRelative`
@@ -397,16 +397,8 @@ Orden:
 export async function loadProject( argv: string[] = process.argv, context?: IProjectContext, ): Promise<LoadedProject>
 ```
 
-`context` es opcional y no es un descuido.
-
-Quien lo pasa —el pipeline— deja de depender del singleton de
-`paths.service` para saber qué proyecto está cargando. Quien no lo
-pasa —los comandos del CLI, un proceso por proyecto— sigue funcionando
-igual, porque ahí el estado global no puede confundirse con nada.
-
-La diferencia importa en consumidores de vida larga: el servidor MCP
-cargaba la config del proyecto A al pedirle el B, porque `projectRoot()`
-se resuelve una vez por proceso.
+El contexto es obligatorio para que el loader sea seguro en procesos de
+vida larga y no vuelva a leer la raíz cacheada de `paths.service`.
 
 #### `_internal`
 

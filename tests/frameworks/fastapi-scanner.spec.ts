@@ -6,7 +6,7 @@ import {
 } from "../../packages/frameworks/scanners/fastapi.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
@@ -31,6 +31,26 @@ const ROOT = smokeFixtureDir("fastapi");
 const COMPREHENSIVE = comprehensiveFixtureDir("fastapi");
 
 describe("FastAPI scanner", () => {
+  test("async def conserva el nombre del handler", async () => {
+    const project = await createTempProject({
+      "requirements.txt": "fastapi\n",
+      "main.py": [
+        "from fastapi import FastAPI",
+        "app = FastAPI()",
+        "@app.post('/users')",
+        "async def create_user():",
+        "    return {}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new FastApiProjectScanner().resolve(project.root);
+      const routes = await new FastApiRouteScanner().scan(match);
+      expect(routes[0]?.displayName).toBe("create_user");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
   test("detect() > 0 cuando requirements.txt tiene 'fastapi'", async () => {
     expect(await new FastApiProjectScanner().detect(ROOT)).toBeGreaterThan(0);
   });

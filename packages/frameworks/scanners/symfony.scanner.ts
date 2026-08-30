@@ -254,17 +254,17 @@ async function parseRoutesYamlFile(
     if (path && controller && methods.length > 0) {
       const fullPath = (prefix + path).replace(/\/+/g, "/");
       for (const method of methods) {
-        const controllerPath = controller?.split("::")[0];
         out.push({
           method: method.toUpperCase(),
           uri: fullPath,
           rawUri: fullPath,
-          sourceFile: controllerPath
-            ? toProjectRelative(resolve(projectRoot, "src", "Controller", `${controllerPath.split("\\").pop() ?? ""}.php`), projectRoot)
-            : relPath,
+          sourceFile: relPath,
           lineNumber: 0,
           prefixChain: prefix ? [prefix] : [],
           displayName: name,
+          ...(controller?.includes("\\")
+            ? { controllerClass: controller.split("::")[0] }
+            : {}),
           ...(controller?.includes("::")
             ? { actionName: controller.split("::").pop() ?? "" }
             : {}),
@@ -510,7 +510,10 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
   }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
-    const abs = join(match.projectRoot, route.sourceFile);
+    const controllerPath = route.controllerClass
+      ? await findControllerFile(match.projectRoot, route.controllerClass)
+      : null;
+    const abs = controllerPath ?? join(match.projectRoot, route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");
@@ -546,6 +549,34 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
     }
     return { endpointKey, fields };
   }
+}
+
+async function findControllerFile(
+  projectRoot: string,
+  controllerClass: string,
+): Promise<string | null> {
+  const className = controllerClass.split("\\").pop();
+  if (!className) return null;
+  const controllerRoot = join(projectRoot, "src", "Controller");
+  if (!existsSync(controllerRoot)) return null;
+  const visit = async (dir: string): Promise<string | null> => {
+    let entries: string[];
+    try {
+      entries = await readdir(dir);
+    } catch {
+      return null;
+    }
+    for (const entry of entries) {
+      const child = join(dir, entry);
+      if (entry === `${className}.php`) return child;
+      if (!entry.includes(".")) {
+        const found = await visit(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return visit(controllerRoot);
 }
 
 /**

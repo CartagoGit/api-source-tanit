@@ -361,13 +361,7 @@ export function outputDir(context?: IProjectContext): string {
   // 3. Inferencia por relación packageRoot ↔ projectRoot.
   if (d.projectRoot) {
     const rel = relative(d.projectRoot, d.packageRoot);
-    // Si `rel` no empieza por ".." ni es absoluto, packageRoot está DENTRO
-    // del proyecto. En ese caso el output va en la carpeta del paquete.
-    // `inside=true` solo si projectRoot ⊂ packageRoot o packageRoot ⊂ projectRoot.
-    // Caso típico: packageRoot = ${projectRoot}/resources/postman, projectRoot = ${projectRoot}.
-    // rel = ".." + "resources/postman" → startsWith(".."), así que outside.
-    // Si está dentro: rel = "resources/postman" → inside.
-    const pkgInsideProj = rel === ".." || (!rel.startsWith("..") && rel !== "");
+    const pkgInsideProj = rel === "" || (!rel.startsWith("..") && !rel.startsWith(sep));
     return pkgInsideProj
       ? join(d.packageRoot, OUTPUT_DIR_NAME)
       : join(d.projectRoot, OUTPUT_DIR_NAME);
@@ -410,7 +404,7 @@ export async function outputEnvironmentPath(
   context?: IProjectContext,
 ): Promise<string> {
   await ensureOutputDir(context);
-  const base = projectName?.trim() || outputBasename();
+  const base = projectName?.trim() || outputBasename().replace(/\.postman_collection$/, "");
   const slug = envName
     .toLowerCase()
     .normalize("NFD")

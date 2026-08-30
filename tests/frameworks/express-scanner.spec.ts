@@ -135,4 +135,23 @@ describe("Express — varios montajes en la misma línea", () => {
       await project.cleanup();
     }
   });
+
+  test("concatena el prefijo aunque la ruta ya empiece por /api", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/server.js": [
+        'const express = require("express");',
+        "const app = express();",
+        "const router = express.Router();",
+        'router.get("/api/users", h);',
+        'app.use("/api/v2", router);',
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      expect(routes.map((route) => route.uri)).toContain("/api/v2/api/users");
+    } finally {
+      await project.cleanup();
+    }
+  });
 });

@@ -27,7 +27,7 @@ heurísticamente.
 | [Rails](#rails) | 13 | 0 |
 | [Phoenix](#phoenix) | 12 | 0 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
-| [Fastify](#fastify) | 9 | 3 |
+| [Fastify](#fastify) | 9 | 4 |
 | [Hono](#hono) | 9 | 3 |
 | [Fiber](#fiber) | 7 | 2 |
 | [Ktor](#ktor) | 7 | 0 |

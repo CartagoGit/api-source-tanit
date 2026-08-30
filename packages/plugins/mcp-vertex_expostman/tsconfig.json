@@ -26,26 +26,16 @@
     "noUncheckedIndexedAccess": true,
     // `noUnusedLocals` NO, y no por nuestro código.
     //
-    // `customConditions: ["@mcp-vertex/source"]` hace que
-    // `@mcp-vertex/core` resuelva a su **código fuente** en vez de a sus
-    // declaraciones — que es lo que queremos, porque así el plugin se
-    // entera si el core cambia de forma. El precio es que sus ficheros
-    // entran en este programa y heredan estas reglas: activar
-    // `noUnusedLocals` produce 3 errores en `assemble-plugins.ts` y
-    // `wire-plugin.ts`, de otro repositorio, que no son nuestros para
-    // arreglar. `skipLibCheck` no los tapa porque son `.ts`, no `.d.ts`.
-    //
-    // Ver p00027 S4: la ruta relativa a `packages/` NO era la causa, y
-    // sustituirla por una dependencia de paquete resultó peor (Bun copia
-    // los `file:`, así que el plugin tiparía contra una foto congelada
-    // del repo hasta el siguiente `bun install`).
+    // El plugin tipa contra las declaraciones publicadas de
+    // `@mcp-vertex/core`. Forzar `@mcp-vertex/source` arrastra el checkout
+    // externo completo al programa y hace que un fallo de sintaxis ajeno
+    // rompa este gate.
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "customConditions": ["@mcp-vertex/source"],
     // `noEmit` con `declaration` era contradictorio: pedía generar los
     // .d.ts y a la vez no escribir nada. El build de verdad lo hace
     // `bun run build`; este proyecto solo comprueba tipos.

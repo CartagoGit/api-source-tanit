@@ -252,10 +252,6 @@ export class ExpressRouteScanner implements IRouteScanner {
         if (r.routerName && routerPrefixes.has(r.routerName)) {
           prefix = routerPrefixes.get(r.routerName) ?? "";
         }
-        // Si el path ya empieza con `/api` o `/v1`, no aplicar ningún prefix.
-        if (r.path.startsWith("/api/") || r.path.startsWith("/v1/")) {
-          prefix = "";
-        }
         // Normaliza dobles slashes y slash final.
         const fullPath = (prefix + r.path)
           .replace(/\/+/g, "/")

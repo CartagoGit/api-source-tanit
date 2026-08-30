@@ -246,18 +246,7 @@ function toHierarchical(
   const map = new Map<string, HierarchicalFolder>();
 
   for (const { g, autoMainKey } of annotated) {
-    let mainKey: string;
-    if (g.explicit) {
-      if (reservedMainKeys.has(autoMainKey)) {
-        mainKey = autoMainKey;
-      } else if (reservedMainKeys.has(g.key)) {
-        mainKey = g.key;
-      } else {
-        mainKey = g.key;
-      }
-    } else {
-      mainKey = autoMainKey;
-    }
+    const mainKey = g.explicit ? g.key : autoMainKey;
 
     let h = map.get(mainKey);
     if (!h) {

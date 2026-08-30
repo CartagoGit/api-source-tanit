@@ -227,12 +227,21 @@ async function parsePageRouteFile(
   } catch {
     return [];
   }
-  // Detectar métodos desde `export const config = { api: { bodyParser: ... } }`
-  // o simplemente asumir GET/POST (los handlers de Pages Router suelen aceptar ambos).
   const hasHandler = PAGE_HANDLER_RE.test(raw);
   if (!hasHandler) return out;
-  // Default: soportar GET, POST, PUT, DELETE.
-  for (const method of ["GET", "POST", "PUT", "DELETE", "PATCH"]) {
+  const methods = new Set<string>();
+  for (const methodMatch of raw.matchAll(
+    /(?:req\.method|request\.method)\s*(?:===|!==|==|!=)\s*["'](GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)["']/gi,
+  )) {
+    methods.add((methodMatch[1] ?? "").toUpperCase());
+  }
+  for (const methodMatch of raw.matchAll(
+    /case\s*["'](GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)["']\s*:/gi,
+  )) {
+    methods.add((methodMatch[1] ?? "").toUpperCase());
+  }
+  if (methods.size === 0) methods.add("GET");
+  for (const method of methods) {
     out.push({
       method,
       uri: routePath,

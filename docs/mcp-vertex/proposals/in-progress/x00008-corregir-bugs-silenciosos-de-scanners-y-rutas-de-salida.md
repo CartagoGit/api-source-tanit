@@ -54,34 +54,43 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 - review-reviewer: delivery_verifier
 - review-log: approved by delivery_verifier — Revisión independiente: ReadOnlyModelViewSet queda limitado a GET; findBaseClass incluye src; Gin conserva rawUri declarado y la rama de duplicado usa continue. Tests focalizados 76/76 y get_errors sin errores. Aprobado.
 ### S3 — Symfony: YAML, resources y limpieza
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/symfony.scanner.ts`, `tests/frameworks/symfony-scanner.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "controller::action en YAML permite resolver assertions del método."
   - "resource en config/routes/*.yaml se resuelve relativo al archivo de origen."
   - "Se eliminan o consumen composerJson y controller muertos."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente: sourceFile mantiene el YAML de origen, controllerClass/actionName conectan el provider con el controller PHP, resource se resuelve relativo al YAML con fallback compatible. Suite Symfony 46/46 y get_errors sin errores. Aprobado.
 ### S4 — Express, Next y FastAPI: métodos y handlers
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/express.scanner.ts`, `packages/frameworks/scanners/nextjs.scanner.ts`, `packages/frameworks/scanners/fastapi.scanner.ts`, `tests/frameworks/express-scanner.spec.ts`, `tests/frameworks/nextjs-scanner.spec.ts`, `tests/frameworks/fastapi-scanner.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Express concatena prefijos reales aunque el path incluya /api o /v1."
   - "Next.js no inventa métodos no declarados por el handler."
   - "FastAPI reconoce async def y localiza el modelo Pydantic."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente: Express conserva la concatenación real de prefijos; Next.js usa métodos explícitos y fallback GET; FastAPI reconoce async def. Suites focalizadas 89/89 y get_errors sin errores. Aprobado.
 ### S5 — Paths y nombres de environments
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/discovery/paths.service.ts`, `tests/core/paths.service.spec.ts`, `tests/cli/output-dir.test.ts`, `tests/cli/cli-external-project.test.ts`
 - **Gate**: e2e
 - acceptance:
   - "outputEnvironmentPath no duplica postman_collection."
   - "outputDir distingue correctamente packageRoot dentro y fuera de projectRoot."
   - "Los tests cubren ambos sentidos y mantienen la resolución de CLI/env."
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente: outputEnvironmentPath elimina el sufijo de colección duplicado y outputDir usa una comprobación inequívoca de contención. Tests paths/CLI 31/31 y get_errors sin errores. Aprobado.
 ### S6 — Validación integradora y cierre
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1, S2, S3, S4, S5]
 - **Files**: `docs/mcp-vertex/AUDIT-2026-08-30.md`
 - **Gate**: lint
