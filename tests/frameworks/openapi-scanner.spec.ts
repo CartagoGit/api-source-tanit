@@ -291,6 +291,24 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
+  test("servers[0].url aporta el prefijo en OpenAPI 3", async () => {
+    const project = await createTempProject({
+      "openapi.json": JSON.stringify({
+        openapi: "3.0.3",
+        servers: [{ url: "https://api.example.test/v1" }],
+        paths: { "/users": { get: {} } },
+      }),
+    });
+    try {
+      const match = await new OpenApiProjectScanner().resolve(project.root);
+      const routes = await new OpenApiRouteScanner().scan(match);
+      expect(routes[0]?.uri).toBe("/v1/users");
+      expect(routes[0]?.prefixChain).toEqual(["/v1"]);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
   test("displayName y description: operationId > summary > método+path", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({

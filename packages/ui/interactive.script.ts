@@ -14,7 +14,7 @@
 import { existsSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { generateWithAllFrameworks } from "../frameworks/index.js";
-import { withProjectRoot, withScopedPaths } from "../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../core/discovery/project-context.service.js";
 
 import { OUTPUT_DIR_NAME } from "../contracts/constants/core/postman.constant.js";
 import { describeFormats } from "../core/exporters/export-registry.service.js";
@@ -264,20 +264,21 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   // 4. Delegar en `generate`, que ya sabe escribir y trazar.
   //
-  // El scope no es decorativo: `outputDir()` lee `process.argv`, y el
-  // argv de este proceso es el del asistente, no el array que se le pasa
-  // a `generateMain`. Sin fijarlo aquí, la carpeta que acaba de elegir
-  // quien está delante se ignora en silencio.
+  // El contexto viaja explícito (r00008): `runGenerate` lo inyecta en
+  // el pipeline y ninguna ruta del camino vuelve a leer `process.argv`
+  // del proceso del asistente.
+  const context = resolveProjectContext({ projectRoot, outputDir });
   const { main: generateMain } = await import("../cli/commands/generate.script.js");
-  return withScopedPaths({ projectRoot, outputDir }, () =>
-    generateMain([
+  return generateMain(
+    [
       "--project-root",
       projectRoot,
       "--output-dir",
       outputDir,
       ...forcedArgs,
       ...formatArgs,
-    ]),
+    ],
+    context,
   );
 }
 
@@ -294,8 +295,9 @@ async function runPush(projectRoot: string, argv: string[]): Promise<number> {
   }
 
   const { main: pushMain } = await import("../cli/commands/push.script.js");
-  return withProjectRoot(projectRoot, () =>
-    pushMain(["--project-root", projectRoot, ...argv]),
+  return pushMain(
+    ["--project-root", projectRoot, ...argv],
+    resolveProjectContext({ projectRoot }),
   );
 }
 

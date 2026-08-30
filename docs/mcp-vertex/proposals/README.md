@@ -31,7 +31,6 @@ Para que la vista de cerradas escale, `done/` refleja los kinds:
 | `tests/` | `test` |
 | `audits/` | `audit` |
 | `perfs/` | `perf` |
-| `plans/` | `plan` |
 | `resumes/` | `resume` |
 
 Las subcarpetas están todas creadas de antemano, aunque estén vacías.
@@ -43,7 +42,7 @@ la última propuesta de un estado se mueve a otro sitio la carpeta
 desaparece del repo — y el siguiente que quiera dejar algo en `review/`
 se encuentra sin sitio donde dejarlo, o lo deja en la raíz.
 
-El esqueleto entero (18 carpetas: 8 estados + 10 kinds dentro de `done/`)
+El esqueleto entero (8 carpetas de estado + 13 kinds dentro de `done/`)
 está anclado con `.gitkeep` y `lint:proposals` lo comprueba en cada
 `bun run validate`. La lista no se escribe a mano en el lint: se deriva
 de los mismos mapas de estados y kinds, así que añadir un estado nuevo
@@ -78,6 +77,13 @@ rompería las referencias cruzadas entre ellas.
    sin esa nota no dice si se hizo entera.
 5. **Las carpetas no se borran nunca**, ni cuando se quedan vacías. El
    `.gitkeep` las mantiene y el lint lo exige.
+
+## Índice
+
+El índice mantenido de propuestas activas y sus rutas canónicas está en
+[`INDEX.md`](INDEX.md). Las propuestas cerradas se consultan por kind bajo
+`done/`; los ids son estables aunque cambien el nombre del fichero o su
+carpeta de estado.
 
 ## Estado actual
 

@@ -86,9 +86,10 @@ async function listDirs(p: string): Promise<string[]> {
  * otros once frameworks como su carpeta.
  */
 export async function detectProjectName(
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<string> {
-  return detectProjectNameIn(context.projectRoot);
+  const resolved = context ?? resolveProjectContext();
+  return detectProjectNameIn(resolved.projectRoot);
 }
 
 /**
@@ -100,9 +101,9 @@ export async function detectProjectName(
  * cualquier `examples/<*>/config.constant.ts` disponible.
  */
 async function findHostConfig(
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<string | null> {
-  const root = context.projectRoot;
+  const root = (context ?? resolveProjectContext()).projectRoot;
 
   const name = await detectProjectName(context);
   for (const base of [
@@ -142,9 +143,9 @@ async function findHostConfig(
  * → `{ "routes/externo.php": ["api", "externo"] }`
  */
 export async function detectFilePrefixes(
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<Record<string, string[]>> {
-  const root = context.projectRoot;
+  const root = (context ?? resolveProjectContext()).projectRoot;
   const provider = join(root, "app", "Providers", "RouteServiceProvider.php");
   if (!existsSync(provider)) return {};
 
@@ -191,9 +192,9 @@ export async function detectFilePrefixes(
  * Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
  */
 export async function buildZeroConfig(
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<ProjectConfig> {
-  const root = context.projectRoot;
+  const root = (context ?? resolveProjectContext()).projectRoot;
   const name = await detectProjectName(context);
   let baseUrl = "http://localhost/api";
 
@@ -273,9 +274,9 @@ export async function buildZeroConfig(
  */
 export async function resolveConfigPath(
   argv: string[] = process.argv,
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<string> {
-  const root = context.projectRoot;
+  const root = (context ?? resolveProjectContext({ argv })).projectRoot;
   const cli = readFlag(argv, "--config");
   if (cli) return resolveMaybeRelative(cli, root);
 
@@ -286,7 +287,8 @@ export async function resolveConfigPath(
   // con este repo). NO se usa en proyectos externos.
   const forced = process.env.POSTMAN_EXAMPLE?.trim();
   if (forced) {
-    const legacy = join(context.packageRoot, "examples", forced, "config.constant.ts");
+    const pkg = (await import("./paths.service.js")).packageRoot();
+    const legacy = join(pkg, "examples", forced, "config.constant.ts");
     if (existsSync(legacy)) return legacy;
   }
 
@@ -303,17 +305,26 @@ export async function resolveConfigPath(
  * memoria con autodetección de prefijo + baseUrl + nombre.
  */
 /**
- * El contexto es obligatorio para que el loader sea seguro en procesos de
- * vida larga y no vuelva a leer la raíz cacheada de `paths.service`.
+ * `context` es opcional y no es un descuido.
+ *
+ * Quien lo pasa —el pipeline— deja de depender del singleton de
+ * `paths.service` para saber qué proyecto está cargando. Quien no lo
+ * pasa —los comandos del CLI, un proceso por proyecto— sigue funcionando
+ * igual, porque ahí el estado global no puede confundirse con nada.
+ *
+ * La diferencia importa en consumidores de vida larga: el servidor MCP
+ * cargaba la config del proyecto A al pedirle el B, porque `projectRoot()`
+ * se resuelve una vez por proceso.
  */
 export async function loadProject(
   argv: string[] = process.argv,
-  context: IProjectContext,
+  context?: IProjectContext,
 ): Promise<LoadedProject> {
-  const configPath = await resolveConfigPath(argv, context);
+  const resolvedContext = context ?? resolveProjectContext({ argv });
+  const configPath = await resolveConfigPath(argv, resolvedContext);
 
   if (configPath === "__zero__") {
-    const config = await buildZeroConfig(context);
+    const config = await buildZeroConfig(resolvedContext);
     return {
       config,
       manualEndpoints: [],

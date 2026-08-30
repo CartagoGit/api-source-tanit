@@ -470,8 +470,10 @@ export class OpenApiRouteScanner implements IRouteScanner {
       // Syntax error en YAML/JSON: abortar limpio.
       throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
     }
-    const basePath: string =
-      this.opts.basePath ?? readString(spec, "basePath") ?? "";
+    const basePath =
+      this.opts.basePath ??
+      readString(spec, "basePath") ??
+      serverPath(readArray(spec, "servers"));
     const paths = readObject(spec, "paths") ?? {};
     const out: ParsedRoute[] = [];
     for (const [pathTemplate, pathItem] of Object.entries(paths)) {
@@ -505,6 +507,17 @@ export class OpenApiRouteScanner implements IRouteScanner {
       }
     }
     return out;
+  }
+}
+
+function serverPath(servers: unknown[] | undefined): string {
+  const first = servers?.[0];
+  const url = isRecord(first) ? readString(first, "url") : undefined;
+  if (!url) return "";
+  try {
+    return new URL(url, "http://openapi.local").pathname.replace(/\/$/, "");
+  } catch {
+    return url.split(/[?#]/, 1)[0]?.replace(/^https?:\/\/[^/]+/i, "").replace(/\/$/, "") ?? "";
   }
 }
 

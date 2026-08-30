@@ -60,11 +60,6 @@ const EXCEPTIONS: readonly IException[] = [
       "CLI es un proceso por proyecto: el estado global no puede confundirse " +
       "con el de nadie.",
   },
-  {
-    path: "packages/ui/interactive.script.ts",
-    kind: "entrypoint",
-    why: "El asistente interactivo es un entrypoint, igual que un comando.",
-  },
 
   // --- Quienes implementan la resolución -----------------------------------
   {

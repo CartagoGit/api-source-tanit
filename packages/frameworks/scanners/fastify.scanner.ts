@@ -146,8 +146,14 @@ export class FastifyRouteScanner implements IRouteScanner {
         const schema = schemaInCall(source, callStart, callEnd);
         if (schema) this.schemas.set(`${route.method} ${route.uri}`, schema);
       }
-      for (const route of parseRouteObjects(source, prefix, sourceFile)) {
+      for (const { route, callStart, callEnd } of parseRouteObjects(
+        source,
+        prefix,
+        sourceFile,
+      )) {
         routes.push(route);
+        const schema = schemaInCall(source, callStart, callEnd);
+        if (schema) this.schemas.set(`${route.method} ${route.uri}`, schema);
       }
     }
 
@@ -211,8 +217,8 @@ function parseRouteObjects(
   source: string,
   prefix: string,
   sourceFile: string,
-): ParsedRoute[] {
-  const routes: ParsedRoute[] = [];
+): IShortRoute[] {
+  const routes: IShortRoute[] = [];
 
   for (const call of findAllBalanced(source, ROUTE_OBJECT_RE)) {
     const body = source.slice(call.callStart, call.callEnd);
@@ -233,12 +239,16 @@ function parseRouteObjects(
 
     for (const method of methods) {
       routes.push({
-        lineNumber: lineOf(source, call.callStart),
-        method: method.toUpperCase(),
-        uri: joinRoutePath(prefix, rawUri),
-        rawUri,
-        sourceFile,
-        prefixChain: prefix ? [prefix] : [],
+        route: {
+          lineNumber: lineOf(source, call.callStart),
+          method: method.toUpperCase(),
+          uri: joinRoutePath(prefix, rawUri),
+          rawUri,
+          sourceFile,
+          prefixChain: prefix ? [prefix] : [],
+        },
+        callStart: call.callStart,
+        callEnd: call.callEnd,
       });
     }
   }

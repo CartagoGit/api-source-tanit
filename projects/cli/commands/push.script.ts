@@ -162,11 +162,8 @@ export async function runPush(
 }
 
 /** La envoltura que usa el CLI: solo el código de salida. */
-export async function main(
-  argv: string[] = process.argv.slice(2),
-  context?: IProjectContext,
-): Promise<number> {
-  return (await runPush(argv, context)).code;
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  return (await runPush(argv)).code;
 }
 
 interface IItem {

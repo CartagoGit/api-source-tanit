@@ -4,8 +4,8 @@
  * **Preferir `resolveProjectContext()` en código nuevo.** Este módulo
  * cachea la raíz una vez por proceso, lo que sirve para el CLI —un
  * proceso por proyecto— pero no para consumidores de vida larga. Existe
- * porque el CLI conserva una fachada histórica; el código de vida larga
- * debe recibir `IProjectContext` explícito.
+ * porque ocho servicios y varios scripts aún lo usan; `withProjectRoot()`
+ * cubre el hueco mientras tanto (p00017).
  *
  * Descubrimiento automático de rutas (agnóstico del proyecto).
  *
@@ -15,7 +15,7 @@
  *
  * Resolución del `packageRoot`:
  *   1. Búsqueda subiendo desde la carpeta de **este módulo** hasta dar
- *      con `package.json` + `packages/contracts/constants/core/postman.constant.ts`.
+ *      con `package.json` + `projects/contracts/constants/core/postman.constant.ts`.
  *   2. Si no aparece, el padre de esa carpeta. Es un último recurso que
  *      ya mintió una vez (ver `findPackageRoot`).
  *
@@ -97,17 +97,17 @@ function walkUp(
  * El predicado buscaba `contract`, en singular, y la carpeta se llamaba
  * `contracts`. Nunca casaba, así que `findPackageRoot` devolvía siempre
  * `null` y `discover()` se caía a `dirnameUp(start, 1)` — el padre de
- * `packages/core/discovery/`, o sea **`packages/core`**. El fallback fue
+ * `projects/core/discovery/`, o sea **`projects/core`**. El fallback fue
  * correcto en su día, cuando este fichero vivía un nivel bajo la raíz;
- * al mover el código a `packages/` dejó de serlo y nadie se enteró,
+ * al mover el código a `projects/` dejó de serlo y nadie se enteró,
  * porque el predicado tampoco funcionaba y los dos fallos se tapaban.
  *
  * Se pagó en dos sitios, los dos medidos:
  *
  *   · En modo repo —escanear este propio repositorio— la salida iba a
- *     `packages/core/export-to-postman/`. Hay una colección de
+ *     `projects/core/export-to-postman/`. Hay una colección de
  *     `example-app` ahí dentro que lo demuestra.
- *   · `POSTMAN_EXAMPLE` buscaba en `packages/core/examples/`, que no
+ *   · `POSTMAN_EXAMPLE` buscaba en `projects/core/examples/`, que no
  *     existe, así que la variable no hacía nada en silencio.
  *
  * El marcador volvió a quedarse viejo al mudar los contratos a su propio
@@ -120,7 +120,7 @@ function findPackageRoot(start: string): string | null {
     return (
       existsSync(join(dir, "package.json")) &&
       existsSync(
-        join(dir, "packages", "contracts", "constants", "core", "postman.constant.ts"),
+        join(dir, "projects", "contracts", "constants", "core", "postman.constant.ts"),
       )
     );
   });
@@ -229,6 +229,37 @@ export function resetPathCache(): void {
  * siguiente —`IProjectContext` explícito en cada firma— sigue pendiente
  * (p00017 S3).
  */
+/**
+ * Cola de acceso al singleton.
+ *
+ * `withProjectRoot` guarda el estado global, lo pisa, ejecuta y lo
+ * restaura. Dos llamadas **concurrentes** se destrozan: la segunda pisa
+ * el valor mientras la primera sigue viva, y al terminar la primera
+ * restaura el estado de antes dejando a la segunda mirando la raíz
+ * equivocada.
+ *
+ * Se detectó comparando `summary` con `generate` sobre el mismo
+ * proyecto lanzados con `Promise.all`: daban 16 y 17 endpoints donde
+ * secuencialmente dan 18 los dos. No es teórico — un servidor MCP puede
+ * atender dos peticiones a la vez.
+ *
+ * Serializar es la cura correcta mientras el singleton exista: dos
+ * análisis concurrentes tardan lo que la suma, pero ninguno miente. La
+ * cura de fondo es que nadie lea estado global (p00017), y entonces
+ * esta cola sobra.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Cuántas secciones anidadas hay abiertas.
+ *
+ * Sin esto, anidar dos scopes se cuelga para siempre: el de dentro se
+ * encola detrás del de fuera, que no puede terminar hasta que el de
+ * dentro lo haga. Ya estando dentro de una sección el acceso al
+ * singleton está serializado, así que la de dentro se ejecuta directa.
+ */
+let depth = 0;
+
 /** Las variables de entorno que fijan las rutas del proyecto. */
 const SCOPE_VARS = {
   projectRoot: "POSTMAN_PROJECT_ROOT",
@@ -251,26 +282,38 @@ export async function withScopedPaths<T>(
   scope: IPathScope,
   fn: () => Promise<T>,
 ): Promise<T> {
-  const previousEnv: Partial<Record<string, string | undefined>> = {};
-  const previousCache = cache;
+  const apply = async (): Promise<T> => {
+    const previousEnv: Partial<Record<string, string | undefined>> = {};
+    const previousCache = cache;
+    depth++;
 
-  for (const [key, variable] of Object.entries(SCOPE_VARS)) {
-    const value = scope[key as keyof IPathScope];
-    if (value === undefined) continue;
-    previousEnv[variable] = process.env[variable];
-    process.env[variable] = resolve(value);
-  }
-  cache = null;
-
-  try {
-    return await fn();
-  } finally {
-    for (const [variable, value] of Object.entries(previousEnv)) {
-      if (value === undefined) delete process.env[variable];
-      else process.env[variable] = value;
+    for (const [key, variable] of Object.entries(SCOPE_VARS)) {
+      const value = scope[key as keyof IPathScope];
+      if (value === undefined) continue;
+      previousEnv[variable] = process.env[variable];
+      process.env[variable] = resolve(value);
     }
-    cache = previousCache;
-  }
+    cache = null;
+
+    try {
+      return await fn();
+    } finally {
+      for (const [variable, value] of Object.entries(previousEnv)) {
+        if (value === undefined) delete process.env[variable];
+        else process.env[variable] = value;
+      }
+      cache = previousCache;
+      depth--;
+    }
+  };
+
+  if (depth > 0) return apply();
+
+  const run = queue.then(apply);
+  // La cola no debe romperse porque una llamada falle: se encadena el
+  // resultado ya neutralizado, y el error se propaga solo a quien llamó.
+  queue = run.catch(() => undefined);
+  return run as Promise<T>;
 }
 
 /**
@@ -407,17 +450,16 @@ export async function outputCollectionPath(
 export async function outputEnvironmentPath(
   envName: string,
   projectName?: string,
-  context?: IProjectContext,
 ): Promise<string> {
-  await ensureOutputDir(context);
-  const base = projectName?.trim() || outputBasename();
+  await ensureOutputDir();
+  const base = projectName?.trim() || projectBasename();
   const slug = envName
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return join(outputDir(context), `${base}.${slug}.postman_environment.json`);
+  return join(outputDir(), `${base}.${slug}.postman_environment.json`);
 }
 
 async function ensureOutputDir(context?: IProjectContext): Promise<void> {

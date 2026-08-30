@@ -104,7 +104,11 @@ async function collectProposals(dir: string): Promise<IProposal[]> {
       out.push(...(await collectProposals(full)));
       continue;
     }
-    if (!entry.name.endsWith(".md") || entry.name === "README.md") continue;
+    if (
+      !entry.name.endsWith(".md") ||
+      entry.name === "README.md" ||
+      entry.name === "INDEX.md"
+    ) continue;
 
     const text = await readFile(full, "utf8");
     const frontmatter = text.startsWith("---") ? (text.split("---")[1] ?? "") : "";

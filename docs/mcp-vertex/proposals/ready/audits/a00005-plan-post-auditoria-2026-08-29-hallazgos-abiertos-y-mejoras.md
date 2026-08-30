@@ -8,7 +8,7 @@ track: export-to-postman
 date: 2026-08-30
 ---
 
-# a00005 — PLAN post-auditoría 2026-08-29/30: hallazgos abiertos y mejoras
+# a00005 — Plan post-auditoría 2026-08-29/30: hallazgos abiertos y mejoras
 
 > **Documento padre de las propuestas abiertas** nacidas de la auditoría
 > vigente (`docs/mcp-vertex/AUDIT-2026-08-29.md`) y de su primera pasada
@@ -38,6 +38,26 @@ date: 2026-08-30
 | F-007 | Duplicado huérfano de propuesta en ready/ | **cerrado** | residuo untracked borrado; `lint:proposals` verde |
 | F-008 | Drift `.vscode/mcp.json` vs fuente única | **cerrado** | `226d97a` + `9d74ca0` (—watch pedido por el dueño, fijado en la fuente) |
 | F-009 | Symfony registra el mismo endpoint dos veces (`resource:` + directorio) | **cerrado** | `f515645`; test del lote `t00004` |
+
+## Slices
+
+- global_gate: lint
+
+### S1 — Mantener el mapa de hallazgos y dependencias
+- **Status**: pending
+- **Files**: `docs/mcp-vertex/AUDIT-2026-08-29.md`, `docs/mcp-vertex/AUDIT-2026-08-30.md`, `docs/mcp-vertex/proposals/INDEX.md`
+- **Gate**: lint
+- acceptance:
+  - "Los hallazgos abiertos y cerrados tienen evidencia y propuesta de destino."
+  - "Las propuestas hijas se referencian por id, nunca por una ruta mutable."
+
+### S2 — Coordinar el cierre de las propuestas hijas
+- **Status**: pending
+- **Files**: `docs/mcp-vertex/proposals/ready/*.md`, `docs/mcp-vertex/proposals/in-progress/*.md`
+- **Gate**: none
+- acceptance:
+  - "Cada propuesta hija conserva su propio kind, estado, slices y gate."
+  - "El plan no duplica trabajo de fixes, refactors, chores o auditorías hijas."
 
 ## Propuestas hijas (orden de ejecución)
 

@@ -19,7 +19,7 @@ import {
   parseFastifySchema,
 } from "../../packages/frameworks/scanners/fastify.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
@@ -109,6 +109,29 @@ describe("esquemas JSON Schema de la propia ruta", () => {
     expect(byName.get("email")?.format).toBe("email");
     expect(byName.get("age")?.type).toBe("integer");
     expect(byName.get("role")?.enumValues).toEqual(["admin", "user", "guest"]);
+  });
+
+  test("el provider resuelve el schema de app.route", async () => {
+    const project = await createTempProject({
+      "package.json": '{"name":"mini","dependencies":{"fastify":"^4.26.0"}}',
+      "server.js": [
+        'import Fastify from "fastify";',
+        'const app = Fastify();',
+        'app.route({ method: "POST", url: "/users", schema: { body: { type: "object", required: ["email"], properties: { email: { type: "string", format: "email" } } } }, handler: async () => ({}) });',
+      ].join("\n"),
+    });
+    try {
+      const detector = new FastifyProjectScanner();
+      const match = await detector.resolve(project.root);
+      const scanner = new FastifyRouteScanner();
+      const routes = await scanner.scan(match);
+      const route = routes.find((item) => item.method === "POST" && item.uri === "/users")!;
+      const provider = new FastifySchemaProvider(scanner);
+      expect(await provider.supports(route, match)).toBe(true);
+      expect((await provider.resolve(route, match)).fields[0]?.required).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
   });
 
   test("una ruta sin esquema no lo finge", async () => {

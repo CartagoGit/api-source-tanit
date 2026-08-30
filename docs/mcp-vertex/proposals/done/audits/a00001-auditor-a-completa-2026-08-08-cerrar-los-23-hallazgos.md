@@ -765,7 +765,7 @@ formato del brief, `audit_consolidate` devolvía `findings: []`.
 
 ### S1 — Seguimiento: que los 23 hallazgos acaben cerrados
 - **Status**: done
-- **Files**: `docs/mcp-vertex/proposals/ready/a00001-auditor-a-completa-2026-08-08-cerrar-los-23-hallazgos.md`
+- **Files**: `docs/mcp-vertex/proposals/done/audits/a00001-auditor-a-completa-2026-08-08-cerrar-los-23-hallazgos.md`
 - **Gate**: none
 - acceptance:
   - "Cada hallazgo de esta auditoría está o corregido o repartido en una propuesta con id"

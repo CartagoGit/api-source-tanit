@@ -92,7 +92,7 @@ Criterios de elección (en orden):
 
 ### S1 — Decisión de naming + ADR corto
 - **Files**:
-  - `docs/mcp-vertex/proposals/ready/p00025-nombre-corto-producto-y-bin.md`
+  - `docs/mcp-vertex/proposals/done/feats/p00025-nombre-corto-producto-y-bin.md`
     (esta propuesta: rellenar la tabla “Decidido”).
   - `docs/NAMING.md` (nuevo, ≤ 80 líneas): producto, acrónimo, bin
     canónico, alias, package name npm, env vars prefijo.
