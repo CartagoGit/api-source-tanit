@@ -20,10 +20,10 @@ date: 2026-08-30
 ## Snapshot base
 
 - `TARGET_PROJECT_ROOT`: `/home/cartago/_projects/export-to-postman`
-- Rama `develop`; la auditoría cerró sobre `4b84…→1b84ffc`; la primera
-  ejecución de este plan dejó `develop` en `91cc968` con `validate` exit 0
-  (128 ficheros / 2.584 tests, cobertura 83,1/72,0/87,8/84,8, bench plano
-  ×0.78).
+- Rama `develop`; este snapshot se actualiza el 2026-08-30 sobre el trabajo
+  local de contexto explícito. Las pruebas estáticas de los slices tocados
+  no reportan errores en el editor; la salida de Vitest/Bun sigue sin ser
+  observable en este host y no se declara verde por ese motivo.
 
 ## Estado de los hallazgos F-xxx
 
@@ -34,7 +34,7 @@ date: 2026-08-30
 | F-003 | `bench:check` no vigilaba nada | **cerrado** | `f967468` + `t00003` |
 | F-004 | Trabajo done viviendo en ready/ | **cerrado** | `901dfe8` (AUDIT-2026-08-29) |
 | F-005 | Config MCP apunta a checkout hermano | abierto, **bloqueado** por `p00007` | AUDIT-2026-08-29 §3 |
-| F-006 | Deuda: branches + reentrancia singleton | **parcialmente cerrado** | branches: `t00004` (64,2→72 %, suelo 70). Reentrancia: `r00008` (abierta) |
+| F-006 | Deuda: branches + reentrancia singleton | **parcialmente cerrado** | branches: `t00004` (64,2→72 %, suelo 70). Reentrancia: `r00008` (código y callers migrados a contexto explícito; cierre formal pendiente) |
 | F-007 | Duplicado huérfano de propuesta en ready/ | **cerrado** | residuo untracked borrado; `lint:proposals` verde |
 | F-008 | Drift `.vscode/mcp.json` vs fuente única | **cerrado** | `226d97a` + `9d74ca0` (—watch pedido por el dueño, fijado en la fuente) |
 | F-009 | Symfony registra el mismo endpoint dos veces (`resource:` + directorio) | **cerrado** | `f515645`; test del lote `t00004` |
@@ -85,3 +85,14 @@ date: 2026-08-30
 - 2026-08-30: `t00004` cerrada (91cc968) — branches 64,22→72,00 %, suelo 62→70.
 - 2026-08-30: `f515645` cierra F-009; `9d74ca0` cierra F-008; `226d97a` y
   limpieza cierran F-007. Plan creado con las 4 propuestas hijas listadas.
+- 2026-08-30: `r00008` — migrados loader, generación, UI, push, Laravel y
+  watch a `IProjectContext`; eliminada la cola global de `paths.service`.
+  Tests de loader y scopes ajustados al contrato explícito; cierre formal
+  pendiente de la revisión de propuesta y de una ejecución visible de gates.
+- 2026-08-30: `c00002` — añadido `.github/workflows/release-npm.yml`, disparado
+  sólo por tags `v*.*.*`, con `validate`, `validate:package` y
+  `npm publish --provenance` usando `NPM_TOKEN`.
+- 2026-08-30: `a00004` — añadido `docs/mcp-vertex/AUDIT-2026-08-30-desktop.md`.
+  La pasada estática clasifica D-001 como MEDIUM y D-002/D-003 como LOW;
+  no se encontró CRITICAL/HIGH. El build nativo queda condicionado a Rust,
+  Tauri CLI y SDKs/dependencias de plataforma.

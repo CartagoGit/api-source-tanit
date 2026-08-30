@@ -340,7 +340,7 @@ Carga la configuración del proyecto host de forma agnóstica.
 #### `detectProjectName`
 
 ```ts
-export async function detectProjectName( context?: IProjectContext, ): Promise<string>
+export async function detectProjectName( context: IProjectContext, ): Promise<string>
 ```
 
 Devuelve el nombre del proyecto host.
@@ -353,7 +353,7 @@ otros once frameworks como su carpeta.
 #### `detectFilePrefixes`
 
 ```ts
-export async function detectFilePrefixes( context?: IProjectContext, ): Promise<Record<string, string[]>>
+export async function detectFilePrefixes( context: IProjectContext, ): Promise<Record<string, string[]>>
 ```
 
 Lee `RouteServiceProvider.php` para extraer el mapa
@@ -370,7 +370,7 @@ Ejemplo Laravel:
 #### `buildZeroConfig`
 
 ```ts
-export async function buildZeroConfig( context?: IProjectContext, ): Promise<ProjectConfig>
+export async function buildZeroConfig( context: IProjectContext, ): Promise<ProjectConfig>
 ```
 
 Genera un ProjectConfig mínimo viable sin archivo del host.
@@ -379,7 +379,7 @@ Genera un ProjectConfig mínimo viable sin archivo del host.
 #### `resolveConfigPath`
 
 ```ts
-export async function resolveConfigPath( argv: string[] = process.argv, context?: IProjectContext, ): Promise<string>
+export async function resolveConfigPath( argv: string[] = process.argv, context: IProjectContext, ): Promise<string>
 ```
 
 Resuelve la ruta del módulo de configuración del host.
@@ -394,7 +394,7 @@ Orden:
 #### `loadProject`
 
 ```ts
-export async function loadProject( argv: string[] = process.argv, context?: IProjectContext, ): Promise<LoadedProject>
+export async function loadProject( argv: string[] = process.argv, context: IProjectContext, ): Promise<LoadedProject>
 ```
 
 El contexto es obligatorio para que el loader sea seguro en procesos de

@@ -9,17 +9,19 @@
  * lectores de `RouteServiceProvider` y `routes/` del zero-config.
  */
 import { afterEach, describe, expect, test } from "vitest";
-import { withProjectRoot } from "../../packages/core/discovery/paths.service";
 import {
   _internal,
-  buildZeroConfig,
-  detectFilePrefixes,
-  loadProject,
-  resolveConfigPath,
+  buildZeroConfig as buildZeroConfigImpl,
+  detectFilePrefixes as detectFilePrefixesImpl,
+  loadProject as loadProjectImpl,
+  resolveConfigPath as resolveConfigPathImpl,
 } from "../../packages/core/discovery/project-loader.service";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
+import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 let project: ITempProject | null = null;
+let currentContext: IProjectContext | undefined;
 
 afterEach(async () => {
   await project?.cleanup();
@@ -51,10 +53,37 @@ export { TOKEN };
 /** Monta un proyecto temporal y ejecuta `fn` con la raíz fijada a él. */
 async function inProject<T>(
   files: Record<string, string>,
-  fn: () => Promise<T>,
+  fn: (context: IProjectContext) => Promise<T>,
 ): Promise<T> {
   project = await createTempProject(files);
-  return withProjectRoot(project.root, fn);
+  const previous = currentContext;
+  currentContext = resolveProjectContext({ projectRoot: project.root });
+  try {
+    return await fn(currentContext);
+  } finally {
+    currentContext = previous;
+  }
+}
+
+function context(): IProjectContext {
+  if (!currentContext) throw new Error("test context not initialized");
+  return currentContext;
+}
+
+function resolveConfigPath(argv: string[] = process.argv): Promise<string> {
+  return resolveConfigPathImpl(argv, context());
+}
+
+function loadProject(argv: string[] = process.argv) {
+  return loadProjectImpl(argv, context());
+}
+
+function buildZeroConfig() {
+  return buildZeroConfigImpl(context());
+}
+
+function detectFilePrefixes() {
+  return detectFilePrefixesImpl(context());
 }
 
 describe("resolveConfigPath", () => {
@@ -150,7 +179,7 @@ describe("loadProject con config explícito", () => {
         "composer.json": '{"name":"acme/tienda"}',
         "resources/postman/examples/tienda/config.constant.ts": CONFIG_OK,
       },
-      loadProject,
+      (context) => loadProjectImpl(process.argv, context),
     );
     expect(loaded.zeroConfig).toBe(false);
     expect(loaded.config.name).toBe("tienda");
@@ -167,7 +196,7 @@ describe("loadProject con config explícito", () => {
           "composer.json": '{"name":"acme/tienda"}',
           "examples/tienda/config.constant.ts": CONFIG_TODO,
         },
-        loadProject,
+        (context) => loadProjectImpl(process.argv, context),
       ),
     ).rejects.toThrow(/No se encontró export 'config'/);
   });
@@ -183,7 +212,7 @@ export const ALL_ENDPOINTS = [
 ];
 `,
       },
-      loadProject,
+      (context) => loadProjectImpl(process.argv, context),
     );
     expect(loaded.endpointsPath).toContain("endpoints.constant.ts");
     expect(loaded.manualEndpoints).toHaveLength(1);
@@ -199,7 +228,7 @@ export const ALL_ENDPOINTS = [
           "examples/tienda/endpoints.constant.ts":
             "export const ALL_ENDPOINTS = { nope: true };\n",
         },
-        loadProject,
+        (context) => loadProjectImpl(process.argv, context),
       ),
     ).rejects.toThrow("El export de endpoints manuales no es un array.");
   });
@@ -212,7 +241,7 @@ export const ALL_ENDPOINTS = [
         "examples/tienda/endpoints.ts":
           "export const endpoints = [] as unknown[];\n",
       },
-      loadProject,
+      (context) => loadProjectImpl(process.argv, context),
     );
     expect(loaded.endpointsPath).toContain("endpoints.ts");
     expect(loaded.manualEndpoints).toEqual([]);
@@ -407,7 +436,7 @@ describe("_internal — extractores sueltos", () => {
         "composer.json": '{"name":"acme/tienda"}',
         "examples/otro-nombre/config.constant.ts": CONFIG_OK,
       },
-      () => _internal.findHostConfig(),
+      (context) => _internal.findHostConfig(context),
     );
     expect(res).toContain("examples/otro-nombre/config.constant.ts");
   });

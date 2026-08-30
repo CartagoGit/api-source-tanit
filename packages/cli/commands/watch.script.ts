@@ -21,7 +21,12 @@ import { mkdir } from "node:fs/promises";
 import { exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import { outputCollectionPath, outputDir, projectRoot, projectRootWasExplicit } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
+import {
+  outputCollectionPath,
+  projectRoot,
+  projectRootWasExplicit,
+} from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import {
@@ -63,18 +68,19 @@ async function regenerate(
   root: string,
   forceFramework: string | null,
   formats: ReadonlyArray<string>,
+  context = resolveProjectContext({ projectRoot: root }),
 ): Promise<IRunResult> {
   const started = Date.now();
   const result = await generateWithAllFrameworks(root, {
     ...(forceFramework ? { forceFramework } : {}),
   });
-  const path = await outputCollectionPath(result.config.name);
+  const path = await outputCollectionPath(result.config.name, context);
   await writeJsonAtomic(path, result.collection);
 
   let extra = 0;
   const others = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (others.length > 0) {
-    const dir = outputDir();
+    const dir = context.outputDir;
     const artifacts = exportTo(others, {
       specs: result.specs,
       config: result.config,
@@ -109,6 +115,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
     return 1;
   }
+  const context = resolveProjectContext({ projectRoot: root });
   // `watch` se queda mirando un árbol entero, así que importa más que en
   // ningún otro comando saber **cuál**. Sin `--project-root` cae al
   // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
@@ -144,7 +151,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // vale enterarse ahora que quedarse esperando cambios en algo roto.
   let previous: IRunResult;
   try {
-    previous = await regenerate(root, forceFramework, formats);
+    previous = await regenerate(root, forceFramework, formats, context);
   } catch (error) {
     console.error(`✗ ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -172,7 +179,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       const more = changed.length > 1 ? ` y ${changed.length - 1} más` : "";
       console.log(`[${stamp()}] · cambió ${relative(root, first) || first}${more}`);
       try {
-        const now = await regenerate(root, forceFramework, formats);
+        const now = await regenerate(root, forceFramework, formats, context);
         console.log(
           `[${stamp()}] ✔ ${now.requests}${delta(now.requests, last.requests)} requests ` +
             `en ${now.folders} carpetas` +

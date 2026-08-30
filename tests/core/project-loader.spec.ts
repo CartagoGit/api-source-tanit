@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test } from "vitest";
 import { withProjectRoot } from "../../packages/core/discovery/paths.service";
 import { buildZeroConfig, detectProjectName, loadProject } from "../../packages/core/discovery/project-loader.service";
+import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";
+import type { IProjectContext } from "../../packages/contracts/interfaces/core/project-context.interface";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 
 let project: ITempProject | null = null;
@@ -13,17 +15,19 @@ afterEach(async () => {
 /** Monta un proyecto temporal y ejecuta `fn` con la raíz fijada a él. */
 async function inProject<T>(
   files: Record<string, string>,
-  fn: () => Promise<T>,
+  fn: (context: IProjectContext) => Promise<T>,
 ): Promise<T> {
   project = await createTempProject(files);
-  return withProjectRoot(project.root, fn);
+  return withProjectRoot(project.root, () =>
+    fn(resolveProjectContext({ projectRoot: project!.root })),
+  );
 }
 
 describe("detectProjectName", () => {
   test("usa el name de composer.json", async () => {
     const name = await inProject(
       { "composer.json": '{"name": "acme/mi-tienda"}' },
-      detectProjectName,
+      (context) => detectProjectName(context),
     );
     expect(name).toBe("mi-tienda");
   });
@@ -31,26 +35,26 @@ describe("detectProjectName", () => {
   test("se queda con el último segmento de vendor/paquete", async () => {
     const name = await inProject(
       { "composer.json": '{"name": "vendor/sub/api"}' },
-      detectProjectName,
+      (context) => detectProjectName(context),
     );
     expect(name).toBe("api");
   });
 
   test("sin composer.json cae al nombre de la carpeta", async () => {
-    const name = await inProject({ ".env": "APP_NAME=Demo\n" }, detectProjectName);
+    const name = await inProject({ ".env": "APP_NAME=Demo\n" }, (context) => detectProjectName(context));
     expect(name.length).toBeGreaterThan(0);
     expect(name).not.toBe("unnamed");
   });
 
   test("un composer.json sin name cae al nombre de la carpeta", async () => {
-    const name = await inProject({ "composer.json": "{}" }, detectProjectName);
+    const name = await inProject({ "composer.json": "{}" }, (context) => detectProjectName(context));
     expect(name.length).toBeGreaterThan(0);
   });
 });
 
 describe("buildZeroConfig", () => {
   test("produce un config utilizable sin fichero de configuración", async () => {
-    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, buildZeroConfig);
+    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, (context) => buildZeroConfig(context));
 
     expect(config.name.length).toBeGreaterThan(0);
     expect(config.collectionName.length).toBeGreaterThan(0);
@@ -61,18 +65,18 @@ describe("buildZeroConfig", () => {
   test("toma la baseUrl de APP_URL", async () => {
     const config = await inProject(
       { ".env": "APP_NAME=Demo\nAPP_URL=https://api.midominio.com\n" },
-      buildZeroConfig,
+      (context) => buildZeroConfig(context),
     );
     expect(config.baseUrl).toContain("midominio.com");
   });
 
   test("sin APP_URL usa un localhost por defecto", async () => {
-    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, buildZeroConfig);
+    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, (context) => buildZeroConfig(context));
     expect(config.baseUrl).toContain("localhost");
   });
 
   test("declara siempre baseUrl y token como variables", async () => {
-    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, buildZeroConfig);
+    const config = await inProject({ ".env": "APP_NAME=Demo\n" }, (context) => buildZeroConfig(context));
     const keys = config.variables.map((v) => v.key);
     expect(keys).toContain("baseUrl");
     expect(keys).toContain("token");
@@ -83,19 +87,25 @@ describe("loadProject", () => {
   test("devuelve config aunque el proyecto no tenga config.constant.ts", async () => {
     const { config, manualEndpoints } = await inProject(
       { ".env": "APP_NAME=Demo\n", "package.json": '{"dependencies":{"express":"^4"}}' },
-      loadProject,
+      (context) => loadProject(process.argv, context),
     );
     expect(config.name.length).toBeGreaterThan(0);
     expect(manualEndpoints).toEqual([]);
   });
 
   test("informa de la ruta de config usada", async () => {
-    const { configPath } = await inProject({ ".env": "APP_NAME=Demo\n" }, loadProject);
+    const { configPath } = await inProject(
+      { ".env": "APP_NAME=Demo\n" },
+      (context) => loadProject(process.argv, context),
+    );
     expect(typeof configPath).toBe("string");
   });
 
   test("sin overrides manuales, endpointsPath es null", async () => {
-    const { endpointsPath } = await inProject({ ".env": "APP_NAME=Demo\n" }, loadProject);
+    const { endpointsPath } = await inProject(
+      { ".env": "APP_NAME=Demo\n" },
+      (context) => loadProject(process.argv, context),
+    );
     expect(endpointsPath).toBeNull();
   });
 
@@ -105,8 +115,14 @@ describe("loadProject", () => {
     const first = await createTempProject({ ".env": "APP_NAME=Primero\n" });
     const second = await createTempProject({ ".env": "APP_NAME=Segundo\n" });
     try {
-      const a = await withProjectRoot(first.root, loadProject);
-      const b = await withProjectRoot(second.root, loadProject);
+      const a = await loadProject(
+        process.argv,
+        resolveProjectContext({ projectRoot: first.root }),
+      );
+      const b = await loadProject(
+        process.argv,
+        resolveProjectContext({ projectRoot: second.root }),
+      );
       expect(a.config.name).not.toBe(b.config.name);
     } finally {
       await first.cleanup();

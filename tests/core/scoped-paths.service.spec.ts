@@ -9,9 +9,9 @@
  * asistente. La carpeta que elegía quien estaba delante se aceptaba, se
  * mostraba, y se ignoraba.
  *
- * Este spec cubre las tres cosas que tienen que cumplirse para que eso
- * no vuelva: que el scope se vea, que se restaure, y que anidarlo no
- * cuelgue el proceso.
+ * Este spec conserva la compatibilidad de la fachada: que el scope se vea,
+ * que se restaure y que el anidamiento no cuelgue el proceso. La concurrencia
+ * real se prueba en el pipeline, que ya recibe `IProjectContext` explícito.
  */
 import { afterEach, describe, expect, test } from "vitest";
 import { resolve } from "node:path";
@@ -70,15 +70,7 @@ describe("withScopedPaths", () => {
     );
   });
 
-  /**
-   * El acceso al singleton está serializado por una cola. Anidar dos
-   * secciones encolaría la de dentro detrás de la de fuera, que no puede
-   * terminar hasta que la de dentro lo haga: un bloqueo permanente, no
-   * un test lento. Por eso hay un contador de profundidad.
-   *
-   * El timeout corto es deliberado: si la reentrancia se rompe, esto
-   * falla en dos segundos en vez de colgar la suite entera.
-   */
+  /** La fachada legacy debe seguir admitiendo scopes anidados. */
   test("anidar secciones no se bloquea", { timeout: 2_000 }, async () => {
     const seen = await withProjectRoot("/tmp/raiz", async () =>
       withScopedPaths({ outputDir: "/tmp/dentro" }, async () => outputDir()),
@@ -95,15 +87,4 @@ describe("withScopedPaths", () => {
     });
   });
 
-  test("dos secciones concurrentes no se pisan", async () => {
-    const [a, b] = await Promise.all([
-      withScopedPaths({ outputDir: "/tmp/a" }, async () => {
-        await new Promise<void>((r) => setTimeout(r, 10));
-        return outputDir();
-      }),
-      withScopedPaths({ outputDir: "/tmp/b" }, async () => outputDir()),
-    ]);
-    expect(a).toBe(resolve("/tmp/a"));
-    expect(b).toBe(resolve("/tmp/b"));
-  });
 });

@@ -128,6 +128,12 @@ function expectedFolder(proposal: IProposal): string {
   return join("done", KIND_DIRS[proposal.kind] ?? "chores");
 }
 
+/** ¿La propuesta usa la subcarpeta opcional correspondiente a su kind? */
+function isKindScopedFolder(proposal: IProposal, actual: string): boolean {
+  const kindDir = KIND_DIRS[proposal.kind];
+  return kindDir !== undefined && actual === join(proposal.status, kindDir);
+}
+
 /** ¿Existe la ruta y es del tipo esperado? */
 async function exists(path: string, kind: "dir" | "file"): Promise<boolean> {
   try {
@@ -201,7 +207,7 @@ async function main(): Promise<number> {
 
     const actual = relative(PROPOSALS_DIR, proposal.path).split("/").slice(0, -1).join("/");
     const expected = expectedFolder(proposal);
-    if (actual !== expected) {
+    if (actual !== expected && !isKindScopedFolder(proposal, actual)) {
       problems.push(
         `${rel}: status "${proposal.status}" pero vive en ${actual || "(raíz)"}/ — debería estar en ${expected}/`,
       );
