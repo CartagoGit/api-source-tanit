@@ -2,7 +2,7 @@
 id: x00008
 title: "corregir bugs silenciosos de scanners y rutas de salida"
 kind: fix
-status: done
+status: review
 type: proposal
 track: export-to-postman
 date: 2026-08-30

@@ -41,7 +41,7 @@ que el frontend de escritorio puede ejecutar en el sistema.
 
 ### S1 — Inventario y threat model de packages/desktop
 - **Status**: done
-- **Files**: `docs/mcp-vertex/audits/<fecha>-desktop.md` (informe nuevo)
+- **Files**: `docs/mcp-vertex/AUDIT-<fecha>-desktop.md` (informe nuevo)
 - **Gate**: none
 - acceptance:
   - "Queda escrito el inventario real (ficheros Rust/TS, permisos Tauri, comandos expuestos) y los trust boundaries"
@@ -56,10 +56,10 @@ que el frontend de escritorio puede ejecutar en el sistema.
 
 ## acceptance
 
-  - "Existe `docs/mcp-vertex/audits/<fecha>-desktop.md` con snapshot, hallazgos clasificados y cobertura declarada"
+- "Existe AUDIT-<fecha>-desktop.md con snapshot, hallazgos clasificados y cobertura declarada"
 - "Los hallazgos CRITICAL/HIGH tienen propuesta creada o corrección hecha"
 
-> **Cerrada 2026-08-30.** El informe [2026-08-30-desktop.md](../../../audits/2026-08-30-desktop.md)
+> **Cerrada 2026-08-30.** El informe [AUDIT-2026-08-30-desktop.md](../../AUDIT-2026-08-30-desktop.md)
 > contiene el inventario, trust boundaries, hallazgos clasificados y
 > decisiones de destino. No aparecieron hallazgos CRITICAL/HIGH. El build
 > nativo queda documentado como no ejecutado por falta de toolchain Rust/Tauri

@@ -61,7 +61,10 @@ medido pero no los caminos alternativos.
 - acceptance:
   - "Los comandos del CLI que llaman a `loadProject()` pasan el contexto resuelto por `resolveRoot()`"
   - "El fallback al singleton en `loadProject()` desaparece o queda reservado a un único borde declarado"
-
+- review-state: done
+- review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Aprobado tras revisión independiente. S1-S4 satisfechos: contexto explícito en loader/callers/tools/Laravel, debt=0 y eliminación de queue/depth.
 ### S2 — Los tools del plugin reciben contexto, no envuelven
 - **Status**: done
 - **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/*.ts`,
