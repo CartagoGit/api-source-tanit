@@ -27,7 +27,7 @@ import {
 } from "../../frameworks/index.js";
 import { runGenerate } from "./generate.script.js";
 
-import { withScopedPaths } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { startUiServer } from "../../ui/server/ui-server.service.js";
 import { UI_HTML } from "../../ui/web/index.html.constant.js";
@@ -81,11 +81,12 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // una segunda implementación que acabaría diciendo una cosa
     // mientras `generate` hace otra.
     dryRun: async ({ projectRoot, outputDir, formats, framework }) => {
-      const result = await withScopedPaths({ projectRoot }, () =>
-        generateWithAllFrameworks(projectRoot, {
-          ...(framework ? { forceFramework: framework } : {}),
-        }),
-      );
+      // `generateWithAllFrameworks` recibe la raíz por argumento y no
+      // lee el singleton: sin contexto global que proteger, el
+      // `withScopedPaths` de aquí solo añadía serialización.
+      const result = await generateWithAllFrameworks(projectRoot, {
+        ...(framework ? { forceFramework: framework } : {}),
+      });
       return planDryRun({
         projectRoot,
         ...(outputDir ? { outputDir } : {}),
@@ -95,8 +96,7 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     },
     readSettings: () => readSettings(),
     patchSettings: (cambios) => patchSettings(cambios),
-    summarize: (projectRoot) =>
-      withScopedPaths({ projectRoot }, () => summarizeWithAllFrameworks(projectRoot)),
+    summarize: (projectRoot) => summarizeWithAllFrameworks(projectRoot),
     // Llama al **mismo** comando que usa la terminal, con sus flags. No
     // hay una segunda ruta de generación que pueda desincronizarse: si
     // `generate` cambia, la interfaz cambia con él.
@@ -109,23 +109,15 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
       // las rutas de la interfaz.
       if (framework) argv.push("--framework", framework);
 
-      // `withScopedPaths` **no es opcional aquí**, y costó verlo: el
-      // argv que se le pasa a `runGenerate` lo leen sus propios flags,
-      // pero `paths.service` resuelve la raíz y la salida leyendo
-      // `process.argv` del proceso — que en un servidor de vida larga es
-      // el del `expostman ui`, no el de la petición.
-      //
-      // Sin esto, pedir la colección del proyecto A generaba la del
-      // directorio desde el que se lanzó la interfaz. Se vio ejercitando
-      // la API de verdad: devolvió una ruta dentro de este mismo
-      // repositorio en vez de la del proyecto pedido.
-      //
-      // Es la deuda que r00005 viene a cerrar; mientras el singleton
-      // exista, todo consumidor de vida larga necesita este envoltorio.
-      const { code, report } = await withScopedPaths(
-        { projectRoot, ...(outputDir ? { outputDir } : {}) },
-        () => runGenerate(argv),
-      );
+      // El contexto va explícito (r00008 S2): `runGenerate` lo inyecta
+      // en el pipeline y ninguna ruta lee `process.argv` del proceso.
+      // Antes esto exigía `withScopedPaths`, que pisa y restaura estado
+      // global — y dos peticiones concurrentes se lo destrozaban.
+      const context = resolveProjectContext({
+        projectRoot,
+        ...(outputDir ? { outputDir } : {}),
+      });
+      const { code, report } = await runGenerate(argv, context);
       if (code !== 0 || !report) {
         throw new Error(
           "Generation did not finish. Check the terminal where you started `expostman ui`.",

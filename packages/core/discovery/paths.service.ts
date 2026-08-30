@@ -450,16 +450,17 @@ export async function outputCollectionPath(
 export async function outputEnvironmentPath(
   envName: string,
   projectName?: string,
+  context?: IProjectContext,
 ): Promise<string> {
-  await ensureOutputDir();
-  const base = projectName?.trim() || projectBasename();
+  await ensureOutputDir(context);
+  const base = projectName?.trim() || outputBasename();
   const slug = envName
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return join(outputDir(), `${base}.${slug}.postman_environment.json`);
+  return join(outputDir(context), `${base}.${slug}.postman_environment.json`);
 }
 
 async function ensureOutputDir(context?: IProjectContext): Promise<void> {

@@ -27,6 +27,7 @@ import {
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
 import { describeDiscoveredPaths, outputCollectionPath, outputDir as outputDirFor, outputEnvironmentPath, projectRoot } from "../../core/discovery/paths.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
 import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
 import {
@@ -51,15 +52,18 @@ import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constan
 async function runPipeline(
   basename: string | null,
   forceFramework: string | null,
+  context?: IProjectContext,
 ): Promise<IGenerationResult> {
   console.log("→ Resolved paths:");
-  console.log(describeDiscoveredPaths());
+  console.log(context ? describeDiscoveredPaths(context.projectRoot) : describeDiscoveredPaths());
 
   // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
   // con `cwd` = raíz del paquete, así que un path relativo apunta al
   // propio export-to-postman y el escaneo sale vacío. `projectRoot()`
   // resuelve el flag `--project-root` y `POSTMAN_PROJECT_ROOT`.
-  const root = projectRoot();
+  // Con contexto inyectado (ui, tests, tools) el singleton ni se mira:
+  // r00008 S2 — el argv del proceso no es el de la petición.
+  const root = context ? context.projectRoot : projectRoot();
   if (!root) {
     throw new Error(
       "Could not determine the project root. Pass `--project-root <path>` " +
@@ -131,6 +135,7 @@ async function warnOnIdentityClash(
  */
 export async function runGenerate(
   argv: string[] = process.argv.slice(2),
+  context?: IProjectContext,
 ): Promise<IGenerateOutcome> {
   const args = argv;
   const startedAt = Date.now();
@@ -184,7 +189,7 @@ export async function runGenerate(
       ? (args[envsIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
       : null;
 
-  const pipeline = await runPipeline(basenameFlag, frameworkFlag);
+  const pipeline = await runPipeline(basenameFlag, frameworkFlag, context);
   const discoveredSpecs = pipeline.specs;
 
   // Los avisos van ANTES de escribir nada: si alguien corta la
@@ -307,7 +312,7 @@ export async function runGenerate(
   }
   const OUTPUT_PATH = outputFlag
     ? outputFlag
-    : await outputCollectionPath(config.name);
+    : await outputCollectionPath(config.name, context);
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
   await writeFileAtomic(OUTPUT_PATH, json + "\n");
@@ -333,7 +338,7 @@ export async function runGenerate(
   // discrepar porque cada uno haya escaneado por su cuenta.
   const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
-    const dir = outputDirFor();
+    const dir = context ? context.outputDir : outputDirFor();
     const exportInput = {
       specs: discoveredSpecs,
       config,
@@ -392,7 +397,7 @@ export async function runGenerate(
     );
     const env = envs[0];
     if (!env) continue;
-    const envPath = await outputEnvironmentPath(env.name, config.name);
+    const envPath = await outputEnvironmentPath(env.name, config.name, context);
     await writeJsonAtomic(envPath, env);
     environmentPaths.push(envPath);
     console.log(
