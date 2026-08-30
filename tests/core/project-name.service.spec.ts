@@ -162,3 +162,25 @@ describe("prioridad y fallbacks", () => {
     expect(a).not.toBe(b);
   });
 });
+
+describe("manifiestos adicionales", () => {
+  test("settings.gradle.kts — Kotlin DSL", async () => {
+    const dir = await project({
+      "settings.gradle.kts": `rootProject.name = "inventario-api"\n`,
+    });
+    expect(await detectProjectNameIn(dir)).toBe("inventario-api");
+  });
+
+  test("go.mod con path de un solo segmento (sin slash)", async () => {
+    const dir = await project({ "go.mod": `module monorepo\n\ngo 1.22\n` });
+    expect(await detectProjectNameIn(dir)).toBe("monorepo");
+  });
+
+  test("package.json sin campo name cae al siguiente manifiesto", async () => {
+    const dir = await project({
+      "package.json": `{"version": "1.0.0"}`,
+      "go.mod": `module github.com/acme/pagos\n\ngo 1.22\n`,
+    });
+    expect(await detectProjectNameIn(dir)).toBe("pagos");
+  });
+});

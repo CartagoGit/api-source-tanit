@@ -171,3 +171,55 @@ describe("defaultEnvironments", () => {
     }
   });
 });
+
+describe("buildEnvironments — inferencia de valores de path variables", () => {
+  function envVars(uri: string) {
+    return buildEnvironments([spec(uri)], [], [{ name: "Local", overrides: {} }])[0]?.values ?? [];
+  }
+  const valueOf = (vars: ReturnType<typeof envVars>, key: string) =>
+    vars.find((v) => v.key === key)?.value;
+
+  test("{{email}} recibe un ejemplo de correo", () => {
+    expect(valueOf(envVars("/users/{{userEmail}}"), "userEmail")).toBe("user@example.com");
+  });
+
+  test("{{uuid}} recibe un UUID de ejemplo", () => {
+    expect(valueOf(envVars("/orders/{{orderId_uuid}}"), "orderId_uuid")).toMatch(
+      /^00000000-0000-0000-0000-/,
+    );
+  });
+
+  test("{{codigo}} recibe un código de ejemplo", () => {
+    expect(valueOf(envVars("/items/{{codigo}}"), "codigo")).toBe("COD001");
+  });
+
+  test("{{matricula}} recibe un valor de ejemplo", () => {
+    expect(valueOf(envVars("/vehiculos/{{matricula}}"), "matricula")).toBe("1234ABC");
+  });
+
+  test("{{url}} recibe una URL de ejemplo", () => {
+    expect(valueOf(envVars("/proxy/{{targetUrl}}"), "targetUrl")).toBe("https://example.com");
+  });
+
+  test("{{date}} recibe una fecha de ejemplo", () => {
+    expect(valueOf(envVars("/reports/{{date}}"), "date")).toBe("2024-01-15");
+  });
+
+  test("{{fecha}} también recibe una fecha (alias en español)", () => {
+    expect(valueOf(envVars("/facturas/{{fecha}}"), "fecha")).toBe("2024-01-15");
+  });
+
+  test("una variable sin patrón especial recibe '1'", () => {
+    expect(valueOf(envVars("/items/{{itemId}}"), "itemId")).toBe("1");
+  });
+
+  test("config con value vacío toma el ejemplo inferido", () => {
+    const envs = buildEnvironments(
+      [spec("/users/{{id}}")],
+      [{ key: "id", value: "", type: "string" }],
+      [{ name: "Local", overrides: {} }],
+    );
+    const idVar = envs[0]?.values.find((v) => v.key === "id");
+    expect(idVar?.value).toBe("1");
+  });
+});

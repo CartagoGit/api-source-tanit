@@ -7,8 +7,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { buildTestScript } from "../../packages/core/domain/test-script.service";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import { appendTestScript, buildTestScript } from "../../packages/core/domain/test-script.service";
+import type { EndpointSpec, PostmanEvent } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const spec = (method: EndpointSpec["method"]): EndpointSpec =>
   ({ name: "x", method, uri: "/x" }) as EndpointSpec;
@@ -78,5 +78,34 @@ describe("lo que NO se afirma", () => {
     const script = scriptOf("GET");
     expect(script).not.toMatch(/to\.be\.an\(['"]array['"]\)/);
     expect(script).not.toMatch(/\.to\.have\.property/);
+  });
+});
+
+describe("método no reconocido", () => {
+  // Un verbo fuera del catálogo (ej. CONNECT, TRACE) cae al código 200.
+  test("un método desconocido acepta 200 como fallback", () => {
+    const script = buildTestScript({ name: "x", method: "CONNECT", uri: "/x" } as unknown as EndpointSpec)
+      .script.exec.join("\n");
+    expect(script).toContain("[200]");
+  });
+});
+
+describe("appendTestScript", () => {
+  // El login ya trae su script de captura de token; appendTestScript lo
+  // conserva y añade el nuevo al final, sin sobrescribir.
+  test("preserva los eventos previos y añade el nuevo", () => {
+    const existing: PostmanEvent[] = [{ listen: "test", script: { type: "text/javascript", exec: ["// pre"] } }];
+    const s = spec("GET");
+    const result = appendTestScript(existing, s);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBe(existing[0]);
+    expect(result[1]?.listen).toBe("test");
+  });
+
+  test("sin eventos previos produce exactamente el script generado", () => {
+    const s = spec("DELETE");
+    const result = appendTestScript(undefined, s);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.script.exec.join("\n")).toContain("DELETE");
   });
 });

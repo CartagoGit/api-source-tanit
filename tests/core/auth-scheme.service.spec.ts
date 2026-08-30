@@ -183,3 +183,35 @@ describe("la evidencia", () => {
     }
   });
 });
+
+describe("toPostmanAuth — formatos de bloque", () => {
+  test("bearer produce el bloque con {{token}}", () => {
+    const auth = toPostmanAuth({ type: "bearer", evidence: "" });
+    expect(auth?.type).toBe("bearer");
+    const entries = auth?.["bearer"] as Array<{ key: string; value: string }>;
+    expect(entries).toContainEqual({ key: "token", value: "{{token}}", type: "string" });
+  });
+
+  test("oauth2 produce clientCredentials con tokenUrl", () => {
+    const auth = toPostmanAuth({ type: "oauth2", tokenUrl: "/oauth/token", evidence: "" });
+    expect(auth?.type).toBe("oauth2");
+    const entries = auth?.["oauth2"] as Array<{ key: string; value: string }>;
+    expect(entries.some((e) => e.key === "grant_type" && e.value === "client_credentials")).toBe(true);
+    expect(entries.some((e) => e.key === "accessTokenUrl")).toBe(true);
+  });
+
+  test("oauth2 con authorizeUrl añade el campo authUrl", () => {
+    const auth = toPostmanAuth({
+      type: "oauth2",
+      tokenUrl: "/oauth/token",
+      authorizeUrl: "/oauth/authorize",
+      evidence: "",
+    });
+    const entries = auth?.["oauth2"] as Array<{ key: string; value: string }>;
+    expect(entries.some((e) => e.key === "authUrl" && e.value.includes("/oauth/authorize"))).toBe(true);
+  });
+
+  test("none devuelve null — sin bloque auth", () => {
+    expect(toPostmanAuth({ type: "none", evidence: "" })).toBeNull();
+  });
+});

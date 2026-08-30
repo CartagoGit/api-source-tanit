@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { folder } from "../helpers/postman-builders";
-import { applyAuthFlow, authEnvironmentVariables, detectAuthFlow } from "../../packages/core/domain/auth-flow.service";
+import { applyAuthFlow, authEnvironmentVariables, detectAuthFlow, detectLaravelTokenPath, hasLoginEndpoint } from "../../packages/core/domain/auth-flow.service";
 import { POSTMAN_SCHEMA_URL } from "../../packages/contracts/constants/core/postman.constant";
 import type { PostmanCollection, PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
 import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../packages/contracts/constants/core/auth.constant";
@@ -245,5 +245,71 @@ describe("authEnvironmentVariables", () => {
 
   test("las marca como secret para que Postman no las exporte en claro", () => {
     for (const v of authEnvironmentVariables()) expect(v.type).toBe("secret");
+  });
+});
+
+describe("hasLoginEndpoint", () => {
+  test("reconoce POST /login en los specs", () => {
+    expect(hasLoginEndpoint([{ method: "POST", uri: "/login" }])).toBe(true);
+  });
+
+  test("GET /login no cuenta", () => {
+    expect(hasLoginEndpoint([{ method: "GET", uri: "/login" }])).toBe(false);
+  });
+
+  test("sin specs devuelve false", () => {
+    expect(hasLoginEndpoint([])).toBe(false);
+  });
+
+  test("reconoce /sessions como login endpoint", () => {
+    expect(hasLoginEndpoint([{ method: "POST", uri: "/sessions" }])).toBe(true);
+  });
+});
+
+describe("detectLaravelTokenPath", () => {
+  test("sin directorio Controllers devuelve undefined", async () => {
+    const result = await detectLaravelTokenPath("/ruta/que/no/existe");
+    expect(result).toBeUndefined();
+  });
+
+  test("con directorio Controllers pero sin auth controllers devuelve undefined", async () => {
+    const { mkdtemp, mkdir } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const root = await mkdtemp(join(tmpdir(), "laravel-test-"));
+    await mkdir(join(root, "app/Http/Controllers"), { recursive: true });
+    const result = await detectLaravelTokenPath(root);
+    expect(result).toBeUndefined();
+    await import("node:fs/promises").then(({ rm }) => rm(root, { recursive: true, force: true }));
+  });
+
+  test("con AuthController que devuelve access_token lo detecta", async () => {
+    const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const root = await mkdtemp(join(tmpdir(), "laravel-test-"));
+    await mkdir(join(root, "app/Http/Controllers"), { recursive: true });
+    await writeFile(
+      join(root, "app/Http/Controllers/AuthController.php"),
+      `<?php\nreturn ['access_token' => $token];\n`,
+    );
+    const result = await detectLaravelTokenPath(root);
+    expect(result).toBe("access_token");
+    await import("node:fs/promises").then(({ rm }) => rm(root, { recursive: true, force: true }));
+  });
+
+  test("con AuthController que devuelve data.token lo detecta", async () => {
+    const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    const root = await mkdtemp(join(tmpdir(), "laravel-test-"));
+    await mkdir(join(root, "app/Http/Controllers"), { recursive: true });
+    await writeFile(
+      join(root, "app/Http/Controllers/AuthController.php"),
+      `<?php\nreturn ['data' => ['token' => $t]];\n`,
+    );
+    const result = await detectLaravelTokenPath(root);
+    expect(result).toBe("data.token");
+    await import("node:fs/promises").then(({ rm }) => rm(root, { recursive: true, force: true }));
   });
 });

@@ -175,3 +175,71 @@ describe("collectionErrors", () => {
     expect(collectionErrors(c)).toEqual([]);
   });
 });
+
+describe("errores de .info — casos extremos", () => {
+  test("info completamente ausente produce error y corta la comprobación", () => {
+    const c = { ...collection() } as unknown as PostmanCollection;
+    delete (c as unknown as Record<string, unknown>)["info"];
+    const issues = checkCollectionInvariants(c);
+    expect(issues.some((i) => i.message === "falta .info")).toBe(true);
+  });
+
+  test("item que no es un array produce error", () => {
+    const c = { ...collection(), item: "no-array" } as unknown as PostmanCollection;
+    const issues = checkCollectionInvariants(c);
+    expect(issues.some((i) => i.message === "no es un array")).toBe(true);
+  });
+});
+
+describe("URL con doble barra", () => {
+  test("una URL con doble barra es aviso, no error", () => {
+    const c = collection({
+      item: [request("Raro", "GET", "{{baseUrl}}//users")],
+    });
+    const issues = checkCollectionInvariants(c);
+    const issue = issues.find((i) => i.message.includes("doble barra"));
+    expect(issue).toBeDefined();
+    expect(issue?.severity).toBe("warning");
+  });
+});
+
+describe("duplicados con cuerpo (RPC sobre POST)", () => {
+  // GraphQL usa siempre POST /graphql; el cuerpo distingue la operación.
+  function rpcItem(name: string, body: string) {
+    return {
+      name,
+      request: {
+        method: "POST",
+        header: [],
+        url: { raw: "{{baseUrl}}/graphql", host: ["{{baseUrl}}"], path: ["graphql"] },
+        body: { mode: "raw" as const, raw: body },
+      },
+    };
+  }
+
+  test("misma URL y método pero cuerpos distintos no es duplicado", () => {
+    const items = [
+      rpcItem("Query usuarios", `{"query":"{users}"}`),
+      rpcItem("Query pedidos", `{"query":"{orders}"}`),
+    ];
+    expect(checkCollectionInvariants(collection({ item: items }))).toEqual([]);
+  });
+
+  test("misma URL, método Y cuerpo sí es duplicado", () => {
+    const body = `{"query":"{users}"}`;
+    const items = [rpcItem("Primera", body), rpcItem("Segunda", body)];
+    expect(
+      checkCollectionInvariants(collection({ item: items })).some((i) => i.message.includes("duplica")),
+    ).toBe(true);
+  });
+});
+
+describe("variable con nombre vacío tras trim", () => {
+  test("{{   }} con solo espacios no genera aviso de variable", () => {
+    const c = collection({
+      item: [request("Ver", "GET", "{{baseUrl}}/x/{{   }}")],
+    });
+    const issues = checkCollectionInvariants(c);
+    expect(issues.every((i) => !i.message.includes("{{   }}"))).toBe(true);
+  });
+});

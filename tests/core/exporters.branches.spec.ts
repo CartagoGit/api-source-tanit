@@ -379,3 +379,72 @@ describe("colecciones en los bordes", () => {
     expect(exportWarnings(["openapi"], rest)).toEqual([]);
   });
 });
+
+describe("OpenAPI — branches de buildOperation", () => {
+  test("path param con campo declarado usa el schema del campo", () => {
+    const doc = buildOpenApiDocument(
+      input({
+        auth: { type: "none" },
+        specs: [
+          spec({
+            name: "GetById",
+            method: "GET",
+            uri: "/items/{{id}}",
+            fields: [
+              { fieldName: "id", location: "path", type: "integer", required: true },
+            ],
+          } as Partial<EndpointSpec>),
+        ],
+      }),
+    ) as Record<string, any>;
+    const params = doc.paths["/items/{id}"].get.parameters;
+    const idParam = params.find((p: Record<string, unknown>) => p.name === "id");
+    expect(idParam.schema.type).toBe("integer");
+  });
+
+  test("body con fields Y body example incluye el example en la salida", () => {
+    const doc = buildOpenApiDocument(
+      input({
+        auth: { type: "none" },
+        specs: [
+          spec({
+            name: "Crear",
+            method: "POST",
+            uri: "/items",
+            body: { nombre: "demo", cantidad: 5 },
+            fields: [
+              { fieldName: "nombre", location: "body", type: "string", required: true },
+              { fieldName: "cantidad", location: "body", type: "integer", required: false },
+            ],
+          } as Partial<EndpointSpec>),
+        ],
+      }),
+    ) as Record<string, any>;
+    const content = doc.paths["/items"].post.requestBody.content["application/json"];
+    expect(content.schema).toBeDefined();
+    expect(content.example).toEqual({ nombre: "demo", cantidad: 5 });
+  });
+
+  test("body con todos los campos opcionales: required queda en false", () => {
+    const doc = buildOpenApiDocument(
+      input({
+        auth: { type: "none" },
+        specs: [
+          spec({
+            name: "Actualizar",
+            method: "PATCH",
+            uri: "/items/{{id}}",
+            fields: [
+              { fieldName: "nombre", location: "body", type: "string", required: false },
+              { fieldName: "id", location: "path", type: "integer", required: true },
+            ],
+          } as Partial<EndpointSpec>),
+        ],
+      }),
+    ) as Record<string, any>;
+    const reqBody = doc.paths["/items/{id}"].patch.requestBody;
+    expect(reqBody.required).toBe(false);
+    const schema = reqBody.content["application/json"].schema;
+    expect(schema.required).toBeUndefined();
+  });
+});
