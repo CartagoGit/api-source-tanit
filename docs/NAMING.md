@@ -95,10 +95,11 @@ quien añadiera un exportador nuevo no tenía dónde mirar.
 ## Lo que NO se renombra
 
 La prosa de las propuestas cerradas (`done/`, `retired/`, `blocked/`) y
-`AUDIT-2026-08-06.md`. Son registro de lo que pasó y describen el
-proyecto como se llamaba entonces; reescribirlas convertiría un archivo
-histórico en una ficción. Solo se les corrigió el `track:`, que es
-metadato de a qué proyecto pertenecen.
+los informes fechados bajo `docs/mcp-vertex/audits/`. Son registro de lo
+que pasó y describen el proyecto como se llamaba entonces; reescribirlos
+convertiría un archivo histórico en una ficción. Las propuestas audit
+actuales sí viven en `docs/mcp-vertex/proposals/` y siguen el contrato de
+estado, id y kind.
 
 ## Si hay que cambiar alguno
 

@@ -1,8 +1,11 @@
 ---
+id: a00006
 title: "Auditoría exhaustiva de tipado, validación, lint y bugs"
+kind: audit
 track: export-to-postman
 date: 2026-08-30
-status: in-progress
+status: done
+type: proposal
 ---
 
 # Auditoría 2026-08-30

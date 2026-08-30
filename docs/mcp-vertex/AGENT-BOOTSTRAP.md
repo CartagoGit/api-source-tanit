@@ -168,7 +168,7 @@ a pointer.
 | `packages/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `packages/frameworks/scanners/express.scanner.ts` |
 | `packages/cli/commands/` | `*.script.ts` | `packages/cli/commands/generate.script.ts` |
 | `packages/plugins/*/src/lib/tools/` | `*.tool.ts` | `packages/plugins/mcp-vertex_expostman/src/lib/tools/generate.tool.ts` |
-| `docs/mcp-vertex/proposals/ready/` | `<kind><NNNNN>-<slug>.md` | `x00001-contratos-de-la-superficie-mcp.md` |
+| `docs/mcp-vertex/proposals/ready/` | `<kind><NNNNN>-<slug>.md` directamente en `ready/` | `x00001-contratos-de-la-superficie-mcp.md` |
 
 The full table, derived from what `lint:naming` enforces, lives in
 [`docs/NAMING.md`](../NAMING.md#sufijos-por-carpeta). New proposal ids
@@ -320,8 +320,9 @@ export-to-postman-specific:
   process.env in tools" (per p00011). It runs as part of
   `bun run validate` / lint.
 - **Proposal workflow** is under `docs/mcp-vertex/proposals/`. Open
-  new ones as `p<NNNN>-<slug>.md` with `status: ready`. The
-  orchestrator transitions via the proposals plugin tools.
+  new ones directly in `ready/` as `<kind><NNNNN>-<slug>.md` with
+  `status: ready`; the orchestrator transitions them via the proposals
+  plugin tools. Closed proposals are archived in `done/<kind>/`.
 
 ## 5. Definition of done — local deltas
 

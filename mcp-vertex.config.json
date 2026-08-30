@@ -258,8 +258,8 @@
           "enabled": false
         },
         "push": {
-          "enabled": false,
-          "onCommit": false,
+          "enabled": true,
+          "onCommit": true,
           "force": "with-lease",
           "protectedBranches": [
             "main",
@@ -278,11 +278,15 @@
               "minutes": 5
             }
           ],
-          "sliceScoping": true,
+          "sliceScoping": false,
           "allowForeignChanges": true
         },
         "identity": {
-          "mode": "repo"
+          "mode": "explicit",
+          "owner": {
+            "name": "Cartago",
+            "email": "cartago.relaxingcup@gmail.com"
+          }
         },
         "audit": {
           "trailer": "co-authored-by",

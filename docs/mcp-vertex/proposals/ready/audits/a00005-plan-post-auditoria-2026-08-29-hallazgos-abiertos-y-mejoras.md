@@ -11,7 +11,7 @@ date: 2026-08-30
 # a00005 — Plan post-auditoría 2026-08-29/30: hallazgos abiertos y mejoras
 
 > **Documento padre de las propuestas abiertas** nacidas de la auditoría
-> vigente (`docs/mcp-vertex/audits/2026-08-29-gate-dod.md`) y de su primera pasada
+> vigente (`docs/mcp-vertex/AUDIT-2026-08-29.md`) y de su primera pasada
 > de ejecución (commits `226d97a`…`91cc968`, 2026-08-29/30). Este repo no
 > usa kind `plan` en el sistema de propuestas, así que el plan vive aquí,
 > dentro del árbol de propuestas, y las propuestas hijas lo referencian
@@ -29,11 +29,11 @@ date: 2026-08-30
 
 | ID | Título | Estado | Evidencia |
 |---|---|---|---|
-| F-001 | Umbrales de cobertura sin ejecutar | **cerrado** | `b5d700b` (auditoría 2026-08-29) |
-| F-002 | Propuesta done con ficheros inexistentes | **cerrado** | `f967468` (auditoría 2026-08-29) |
+| F-001 | Umbrales de cobertura sin ejecutar | **cerrado** | `b5d700b` (AUDIT-2026-08-29) |
+| F-002 | Propuesta done con ficheros inexistentes | **cerrado** | `f967468` (AUDIT-2026-08-29) |
 | F-003 | `bench:check` no vigilaba nada | **cerrado** | `f967468` + `t00003` |
-| F-004 | Trabajo done viviendo en ready/ | **cerrado** | `901dfe8` (auditoría 2026-08-29) |
-| F-005 | Config MCP apunta a checkout hermano | abierto, **bloqueado** por `p00007` | auditoría 2026-08-29 §3 |
+| F-004 | Trabajo done viviendo en ready/ | **cerrado** | `901dfe8` (AUDIT-2026-08-29) |
+| F-005 | Config MCP apunta a checkout hermano | abierto, **bloqueado** por `p00007` | AUDIT-2026-08-29 §3 |
 | F-006 | Deuda: branches + reentrancia singleton | **parcialmente cerrado** | branches: `t00004` (64,2→72 %, suelo 70). Reentrancia: `r00008` (código y callers migrados a contexto explícito; cierre formal pendiente) |
 | F-007 | Duplicado huérfano de propuesta en ready/ | **cerrado** | residuo untracked borrado; `lint:proposals` verde |
 | F-008 | Drift `.vscode/mcp.json` vs fuente única | **cerrado** | `226d97a` + `9d74ca0` (—watch pedido por el dueño, fijado en la fuente) |
@@ -45,7 +45,7 @@ date: 2026-08-30
 
 ### S1 — Mantener el mapa de hallazgos y dependencias
 - **Status**: done
-- **Files**: `docs/mcp-vertex/audits/2026-08-29-gate-dod.md`, `docs/mcp-vertex/audits/2026-08-30-tipado-validacion-lint.md`, `docs/mcp-vertex/proposals/INDEX.md`
+- **Files**: `docs/mcp-vertex/AUDIT-2026-08-29.md`, `docs/mcp-vertex/AUDIT-2026-08-30.md`, `docs/mcp-vertex/proposals/INDEX.md`
 - **Gate**: lint
 - acceptance:
   - "Los hallazgos abiertos y cerrados tienen evidencia y propuesta de destino."
@@ -92,7 +92,7 @@ date: 2026-08-30
 - 2026-08-30: `c00002` — añadido `.github/workflows/release-npm.yml`, disparado
   sólo por tags `v*.*.*`, con `validate`, `validate:package` y
   `npm publish --provenance` usando `NPM_TOKEN`.
-- 2026-08-30: `a00004` — añadido `docs/mcp-vertex/audits/2026-08-30-desktop.md`.
+- 2026-08-30: `a00004` — añadido `docs/mcp-vertex/AUDIT-2026-08-30-desktop.md`.
   La pasada estática clasifica D-001 como MEDIUM y D-002/D-003 como LOW;
   no se encontró CRITICAL/HIGH. El build nativo queda condicionado a Rust,
   Tauri CLI y SDKs/dependencias de plataforma.

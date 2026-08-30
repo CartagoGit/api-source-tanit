@@ -12,9 +12,7 @@ date: 2026-08-30
 
 ## Goal
 
-Corregir los defectos F-001..F-010 y C-001..C-003 documentados en
-`docs/mcp-vertex/audits/2026-08-30-tipado-validacion-lint.md`, preservando
-los contratos existentes y añadiendo regresiones focalizadas.
+Corregir los defectos F-001..F-010 y C-001..C-003 documentados en AUDIT-2026-08-30.md, preservando los contratos existentes y añadiendo regresiones focalizadas.
 
 ## why
 
@@ -94,15 +92,12 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 ### S6 — Validación integradora y cierre
 - **Status**: done
 - **DependsOn**: [S1, S2, S3, S4, S5]
-- **Files**: `docs/mcp-vertex/audits/2026-08-30-tipado-validacion-lint.md`
+- **Files**: `docs/mcp-vertex/AUDIT-2026-08-30.md`
 - **Gate**: lint
 - acceptance:
   - "El informe queda actualizado con los fixes aplicados y evidencia de validación."
   - "typecheck, lint, tests y validate:examples pasan tras integrar los slices."
-- review-state: done
-- review-implementer: orchestrator
-- review-reviewer: delivery_verifier
-- review-log: approved by delivery_verifier — Revisión independiente completada. La validación integradora cubre typecheck, lint, cobertura, ejemplos y benchmark; las regresiones focalizadas del loader y OpenAPI/builder están verdes.
+
 ## acceptance
 
 - app.route({ schema }) alimenta FastifySchemaProvider.
