@@ -30,15 +30,17 @@ Los gates globales están verdes, pero la auditoría detectó rutas HTTP incorre
 - global_gate: lint
 
 ### S1 — Fastify y OpenAPI: schemas y prefijos
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/fastify.scanner.ts`, `packages/frameworks/scanners/openapi.scanner.ts`, `tests/frameworks/fastify-scanner.spec.ts`, `tests/frameworks/openapi-scanner.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "app.route({ schema }) alimenta FastifySchemaProvider."
   - "OpenAPI 3 usa servers[0].url como prefijo cuando no hay basePath explícito."
   - "Las regresiones cubren schema de app.route y servers con URL absoluta y path."
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente completada: el cambio registra schemas de app.route para cada método y deriva el pathname de servers[0].url manteniendo prioridad de opts.basePath/spec.basePath. Tests focalizados: 75/75; get_errors sin errores. Aprobado.
 ### S2 — Django y Gin: métodos y rawUri
 - **Status**: pending
 - **Files**: `packages/frameworks/scanners/django.scanner.ts`, `packages/frameworks/scanners/gin.scanner.ts`, `tests/frameworks/django-scanner.spec.ts`, `tests/frameworks/gin-scanner.spec.ts`
