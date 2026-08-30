@@ -17,7 +17,9 @@ import type {
 import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 
 interface Issue {
   severity: "error" | "warning";
@@ -82,16 +84,22 @@ function walk(items: PostmanItem[], issues: Issue[], path: string): void {
   }
 }
 
-export async function main(_argv: string[] = process.argv.slice(2)): Promise<number> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   let projectName: string | undefined;
+  let resolvedContext: IProjectContext | undefined;
   try {
-    const loaded = await loadProject();
+    // Contexto explícito (r00008 S1): como el resto de comandos, el
+    // loader no debe caer al singleton para saber qué proyecto es.
+    resolvedContext = resolveProjectContext({ argv });
+    const loaded = await loadProject(argv, resolvedContext);
     projectName = loaded.config.name;
   } catch {
     // validate puede correr solo con el JSON ya generado
   }
-  const COLLECTION_PATH = await outputCollectionPath(projectName);
-
+  const COLLECTION_PATH = await outputCollectionPath(
+    projectName,
+    resolvedContext,
+  );
   let raw: string;
   try {
     raw = await readFile(COLLECTION_PATH, "utf8");

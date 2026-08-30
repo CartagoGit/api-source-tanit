@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import { outputDir } from "../../core/discovery/paths.service.js";
+import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 
 const platform: string = process.platform ?? "linux";
 void platform; // suppress unused warning; kept for clarity
@@ -30,12 +31,17 @@ export async function main(): Promise<number> {
   const explicitFile =
     fileFlag !== -1 ? args[fileFlag + 1] ?? null : null;
 
-  const { config } = await loadProject().catch(() => ({ config: undefined }));
+  // Contexto explícito (r00008 S1): como el resto de comandos, el
+  // loader no debe caer al singleton para saber qué proyecto es.
+  const resolvedContext = resolveProjectContext({ argv: args });
+  const { config } = await loadProject(args, resolvedContext).catch(() => ({
+    config: undefined,
+  }));
   const projectName = config?.name;
 
   const collectionPath =
     explicitFile ??
-    `${outputDir()}/${projectName ?? "collection"}.postman_collection.json`;
+    `${outputDir(resolvedContext)}/${projectName ?? "collection"}.postman_collection.json`;
 
   if (!existsSync(collectionPath)) {
     console.error(`✘ Not found: ${collectionPath}`);
