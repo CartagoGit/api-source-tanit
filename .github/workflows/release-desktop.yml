@@ -58,10 +58,7 @@ jobs:
             patchelf \
             libfuse2
 
-      # `|| true` por el `file:` del plugin, que apunta fuera del
-      # repositorio (p00007). El empaquetado no lo necesita: compila el
-      # CLI, que no importa el plugin.
-      - run: bun install || true
+      - run: bun install
 
       - name: Empaquetar
         run: bun run desktop:build
