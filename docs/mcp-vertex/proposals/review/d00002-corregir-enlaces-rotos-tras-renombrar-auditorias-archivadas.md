@@ -40,7 +40,8 @@ una ruta antigua de `a00003`. El índice también conservaba rutas obsoletas par
 - **Gate**: `bun run lint:docs && bun run lint:proposals`
 - **Result**: Actualizadas las rutas de `a00003`, `a00007` y `a00008` a sus
 	nombres canónicos actuales.
-
+- review-state: in_review
+- review-implementer: orchestrator
 ## acceptance
 
 - `bun run lint:docs` termina con código 0.
