@@ -37,7 +37,7 @@ TODO: why this work matters now.
 - review-log: approved by proposal_guardian
 ### S2 — Concurrencia y callers
 - **Status**: done
-- **Files**: `packages/core/**/*.ts`, `packages/cli/**/*.ts`, `packages/plugins/mcp-vertex_expostman/**/*.ts`
+- **Files**: `packages/cli/commands/generate.script.ts`, `packages/cli/commands/watch.script.ts`
 - **Gate**: none
 - review-state: done
 - review-implementer: orchestrator-cartago
