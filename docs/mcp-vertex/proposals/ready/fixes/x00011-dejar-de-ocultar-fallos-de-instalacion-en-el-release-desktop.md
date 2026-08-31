@@ -39,7 +39,8 @@ TODO: why this work matters now.
 - **Status**: pending
 - **Files**: `packages/desktop`, `scripts`, `docs/DESKTOP-PUBLISH.md`
 - **Gate**: none
-
+- review-state: in_review
+- review-implementer: orchestrator-cartago
 ## acceptance
 
 - TODO: observable acceptance criteria.
