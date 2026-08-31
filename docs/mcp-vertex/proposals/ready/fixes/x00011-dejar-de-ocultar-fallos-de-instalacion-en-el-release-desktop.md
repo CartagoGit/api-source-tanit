@@ -27,11 +27,13 @@ TODO: why this work matters now.
 - global_gate: none
 
 ### S1 — Instalación estricta
-- **Status**: pending
+- **Status**: done
 - **Files**: `.github/workflows/release-desktop.yml`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago
+- review-reviewer: proposal_guardian
+- review-log: approved by proposal_guardian
 ### S2 — Build desktop verificable
 - **Status**: pending
 - **Files**: `packages/desktop`, `scripts`, `docs/DESKTOP-PUBLISH.md`
