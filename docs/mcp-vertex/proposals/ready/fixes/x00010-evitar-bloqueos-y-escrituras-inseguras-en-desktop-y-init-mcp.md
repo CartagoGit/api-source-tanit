@@ -6,6 +6,7 @@ status: ready
 type: proposal
 track: general
 date: 2026-08-30
+shipped-in: ["47785ab", "09fd7a5"]
 ---
 
 # x00010 — Evitar bloqueos y escrituras inseguras en desktop y init MCP
