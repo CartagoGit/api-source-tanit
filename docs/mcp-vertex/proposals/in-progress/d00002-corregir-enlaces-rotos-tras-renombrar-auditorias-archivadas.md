@@ -2,10 +2,13 @@
 id: d00002
 title: "Corregir enlaces rotos tras renombrar auditorías archivadas"
 kind: docs
-status: ready
+status: in-progress
 type: proposal
 track: general
 date: 2026-08-30
+last-transition-id: 1ba3c71a-039e-4052-9756-f094a1a36a2a
+last-correlation-id: 1ba3c71a-039e-4052-9756-f094a1a36a2a
+last-transition-from: ready
 ---
 
 # d00002 — Corregir enlaces rotos tras renombrar auditorías archivadas
