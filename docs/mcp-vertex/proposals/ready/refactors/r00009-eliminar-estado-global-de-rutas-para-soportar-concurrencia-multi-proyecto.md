@@ -6,6 +6,7 @@ status: ready
 type: proposal
 track: general
 date: 2026-08-30
+shipped-in: ["50f248c", "97b8625"]
 ---
 
 # r00009 — Eliminar estado global de rutas para soportar concurrencia multi-proyecto
