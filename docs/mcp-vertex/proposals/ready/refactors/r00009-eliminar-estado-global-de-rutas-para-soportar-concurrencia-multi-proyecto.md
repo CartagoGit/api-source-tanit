@@ -27,11 +27,13 @@ TODO: why this work matters now.
 - global_gate: none
 
 ### S1 — Contexto explícito
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/discovery/paths.service.ts`, `packages/contracts/interfaces/core/project-context.interface.ts`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago
+- review-reviewer: proposal_guardian
+- review-log: approved by proposal_guardian
 ### S2 — Concurrencia y callers
 - **Status**: pending
 - **Files**: `packages/core/**/*.ts`, `packages/cli/**/*.ts`, `packages/plugins/mcp-vertex_expostman/**/*.ts`
