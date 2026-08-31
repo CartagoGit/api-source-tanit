@@ -2,7 +2,7 @@
 id: x00009
 title: "Resolver el arranque MCP portable sin checkout hermano"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: general
 date: 2026-08-30
