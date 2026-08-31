@@ -35,11 +35,13 @@ TODO: why this work matters now.
 - review-reviewer: proposal_guardian
 - review-log: approved by proposal_guardian
 ### S2 — Concurrencia y callers
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/**/*.ts`, `packages/cli/**/*.ts`, `packages/plugins/mcp-vertex_expostman/**/*.ts`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago
+- review-reviewer: proposal_guardian
+- review-log: approved by proposal_guardian
 ## acceptance
 
 - TODO: observable acceptance criteria.
