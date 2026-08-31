@@ -15,9 +15,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::io::{BufRead, BufReader};
+use std::sync::mpsc;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -54,20 +55,20 @@ fn arrancar_sidecar(ruta: &std::path::Path) -> Result<(Child, String), String> {
         .take()
         .ok_or_else(|| "el sidecar no expuso su salida".to_string())?;
 
-    let inicio = Instant::now();
-    let lector = BufReader::new(salida);
-    for linea in lector.lines() {
-        if inicio.elapsed() > ARRANQUE_MAX {
-            break;
-        }
-        let linea = linea.map_err(|e| format!("no se pudo leer del sidecar: {e}"))?;
-        if let Some(pos) = linea.find("http://127.0.0.1:") {
-            let url: String = linea[pos..]
-                .chars()
-                .take_while(|c| !c.is_whitespace())
-                .collect();
-            return Ok((hijo, url));
-        }
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let resultado = BufReader::new(salida)
+            .lines()
+            .find_map(|linea| match linea {
+                Ok(linea) => extraer_url(&linea),
+                Err(error) => Some(Err(format!("no se pudo leer del sidecar: {error}"))),
+            })
+            .unwrap_or_else(|| Err("el sidecar terminó sin anunciar una URL".to_string()));
+        let _ = tx.send(resultado);
+    });
+
+    if let Ok(Ok(url)) = rx.recv_timeout(ARRANQUE_MAX) {
+        return Ok((hijo, url));
     }
 
     let _ = hijo.kill();
@@ -75,6 +76,33 @@ fn arrancar_sidecar(ruta: &std::path::Path) -> Result<(Child, String), String> {
         "el sidecar no dijo por dónde escuchaba en {} s",
         ARRANQUE_MAX.as_secs()
     ))
+}
+
+fn extraer_url(linea: &str) -> Option<Result<String, String>> {
+    let pos = linea.find("http://127.0.0.1:")?;
+    let url = linea[pos..]
+        .chars()
+        .take_while(|caracter| !caracter.is_whitespace())
+        .collect();
+    Some(Ok(url))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extraer_url;
+
+    #[test]
+    fn extrae_la_url_del_mensaje_del_sidecar() {
+        assert_eq!(
+            extraer_url("escuchando en http://127.0.0.1:4771\n"),
+            Some(Ok("http://127.0.0.1:4771".to_string()))
+        );
+    }
+
+    #[test]
+    fn ignora_lineas_sin_url() {
+        assert_eq!(extraer_url("iniciando"), None);
+    }
 }
 
 fn main() {
