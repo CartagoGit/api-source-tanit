@@ -38,7 +38,8 @@ TODO: why this work matters now.
 - **Status**: pending
 - **Files**: `packages/core/**/*.ts`, `packages/cli/**/*.ts`, `packages/plugins/mcp-vertex_expostman/**/*.ts`
 - **Gate**: none
-
+- review-state: in_review
+- review-implementer: orchestrator-cartago
 ## acceptance
 
 - TODO: observable acceptance criteria.
