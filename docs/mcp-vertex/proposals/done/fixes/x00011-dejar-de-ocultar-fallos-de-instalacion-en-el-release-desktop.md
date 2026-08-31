@@ -2,11 +2,14 @@
 id: x00011
 title: "Dejar de ocultar fallos de instalación en el release desktop"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: general
 date: 2026-08-30
 shipped-in: ["109bd1f", "7e95e27"]
+last-transition-id: ef150bb4-7964-4d06-b9bd-7ee37661a8e7
+last-correlation-id: ef150bb4-7964-4d06-b9bd-7ee37661a8e7
+last-transition-from: ready
 ---
 
 # x00011 — Dejar de ocultar fallos de instalación en el release desktop
