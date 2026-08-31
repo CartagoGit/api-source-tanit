@@ -36,11 +36,13 @@ TODO: why this work matters now.
 - review-reviewer: proposal_guardian
 - review-log: approved by proposal_guardian
 ### S2 — Build desktop verificable
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/desktop`, `scripts`, `docs/DESKTOP-PUBLISH.md`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago
+- review-reviewer: proposal_guardian
+- review-log: approved by proposal_guardian
 ## acceptance
 
 - TODO: observable acceptance criteria.
