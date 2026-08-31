@@ -35,11 +35,13 @@ TODO: why this work matters now.
 - review-reviewer: proposal_guardian
 - review-log: approved by proposal_guardian
 ### S2 — Contención de init
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `packages/cli/commands/init.script.ts`, `tests/cli/output-containment.spec.ts`
 - **Gate**: none
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago
+- review-reviewer: proposal_guardian
+- review-log: approved by proposal_guardian
 ## acceptance
 
 - TODO: observable acceptance criteria.
