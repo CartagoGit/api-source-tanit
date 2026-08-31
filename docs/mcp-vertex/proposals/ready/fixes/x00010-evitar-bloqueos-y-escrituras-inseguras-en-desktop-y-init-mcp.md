@@ -30,7 +30,8 @@ TODO: why this work matters now.
 - **Status**: pending
 - **Files**: `packages/desktop/src/main.rs`, `packages/desktop/tests`
 - **Gate**: none
-
+- review-state: in_review
+- review-implementer: orchestrator-cartago
 ### S2 — Contención de init
 - **Status**: pending
 - **Files**: `packages/plugins/mcp-vertex_expostman/src/lib/tools/init.tool.ts`, `packages/plugins/mcp-vertex_expostman/src/lib/helpers/runner.helper.ts`, `packages/cli/commands/init.script.ts`, `tests/cli/output-containment.spec.ts`
