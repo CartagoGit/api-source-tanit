@@ -22,11 +22,7 @@ import { exportTo, parseFormats } from "../../core/exporters/export-registry.ser
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
-import {
-  outputCollectionPath,
-  projectRoot,
-  projectRootWasExplicit,
-} from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import {
@@ -109,18 +105,14 @@ async function regenerate(
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  const root = projectRoot();
-  if (!root) {
-    console.error("Could not determine the project root.");
-    console.error("Pass `--project-root <path>` or set POSTMAN_PROJECT_ROOT.");
-    return 1;
-  }
-  const context = resolveProjectContext({ projectRoot: root });
+  const context = resolveProjectContext({ argv });
+  const root = context.projectRoot;
   // `watch` se queda mirando un árbol entero, así que importa más que en
   // ningún otro comando saber **cuál**. Sin `--project-root` cae al
   // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
   // que hubiera debajo sin decir una palabra.
-  if (!projectRootWasExplicit()) {
+  const projectRootWasExplicit = argv.includes("--project-root") || Boolean(process.env.POSTMAN_PROJECT_ROOT);
+  if (!projectRootWasExplicit) {
     console.log(`→ No --project-root: watching the current directory (${root}).`);
   }
 
