@@ -30,7 +30,8 @@ TODO: why this work matters now.
 - **Status**: pending
 - **Files**: `.github/workflows/release-desktop.yml`
 - **Gate**: none
-
+- review-state: in_review
+- review-implementer: orchestrator-cartago
 ### S2 — Build desktop verificable
 - **Status**: pending
 - **Files**: `packages/desktop`, `scripts`, `docs/DESKTOP-PUBLISH.md`
