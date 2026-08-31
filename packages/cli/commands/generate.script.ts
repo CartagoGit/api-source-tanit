@@ -26,7 +26,7 @@ import {
   stripApiPrefix,
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
-import { describeDiscoveredPaths, outputCollectionPath, outputDir as outputDirFor, outputEnvironmentPath } from "../../core/discovery/paths.service.js";
+import { describeDiscoveredPaths, outputCollectionPath, outputEnvironmentPath } from "../../core/discovery/paths.service.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
