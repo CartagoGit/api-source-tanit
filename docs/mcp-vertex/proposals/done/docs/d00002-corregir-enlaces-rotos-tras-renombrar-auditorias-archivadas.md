@@ -2,7 +2,7 @@
 id: d00002
 title: "Corregir enlaces rotos tras renombrar auditorías archivadas"
 kind: docs
-status: review
+status: done
 type: proposal
 track: general
 date: 2026-08-30
@@ -40,8 +40,10 @@ una ruta antigua de `a00003`. El índice también conservaba rutas obsoletas par
 - **Gate**: `bun run lint:docs && bun run lint:proposals`
 - **Result**: Actualizadas las rutas de `a00003`, `a00007` y `a00008` a sus
 	nombres canónicos actuales.
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator
+- review-reviewer: delivery-verifier
+- review-log: approved by delivery-verifier — Revisión independiente aprobada: las rutas a a00003, a00007 y a00008 existen; lint:docs y lint:proposals pasan.
 ## acceptance
 
 - `bun run lint:docs` termina con código 0.
