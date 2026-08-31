@@ -42,12 +42,12 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 
 | Id | Kind | Ruta |
 |---|---|---|
-| `a00003` | `audit` | [`done/audits/a00003-auditoria-completa-postman-exporter-2026-08-06.md`](done/audits/a00003-auditoria-completa-postman-exporter-2026-08-06.md) |
+| `a00003` | `audit` | [`done/audits/a00003-auditoria-completa-postman-exporter.md`](done/audits/a00003-auditoria-completa-postman-exporter.md) |
 | `a00004` | `audit` | [`done/audits/a00004-auditoria-de-la-zona-rust-de-escritorio.md`](done/audits/a00004-auditoria-de-la-zona-rust-de-escritorio.md) |
 | `a00005` | `audit` | [`done/audits/a00005-plan-post-auditoria-2026-08-29-hallazgos-abiertos-y-mejoras.md`](done/audits/a00005-plan-post-auditoria-2026-08-29-hallazgos-abiertos-y-mejoras.md) |
 | `a00006` | `audit` | [`done/audits/a00006-auditoria-exhaustiva-de-tipado-validacion-lint-y-bugs.md`](done/audits/a00006-auditoria-exhaustiva-de-tipado-validacion-lint-y-bugs.md) |
-| `a00007` | `audit` | [`done/audits/a00007-auditoria-estado-real-y-backlog-2026-08-08.md`](done/audits/a00007-auditoria-estado-real-y-backlog-2026-08-08.md) |
-| `a00008` | `audit` | [`done/audits/a00008-auditoria-gate-dod-2026-08-29.md`](done/audits/a00008-auditoria-gate-dod-2026-08-29.md) |
+| `a00007` | `audit` | [`done/audits/a00007-auditoria-completa-2026-08-08-estado-real-puntuacion-por-areas-y-backlog-de-excelencia.md`](done/audits/a00007-auditoria-completa-2026-08-08-estado-real-puntuacion-por-areas-y-backlog-de-excelencia.md) |
+| `a00008` | `audit` | [`done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md`](done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
 | `x00008` | `fix` | [`done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md`](done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md) |

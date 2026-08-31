@@ -12,25 +12,34 @@ date: 2026-08-30
 
 ## Goal
 
-TODO: describe the goal.
+Mantener navegables las referencias a propuestas archivadas después de que sus
+ficheros hayan sido renombrados por el sistema de propuestas.
 
-## why
+## Why
 
-TODO: why this work matters now.
+`bun run validate` fallaba en `lint:docs` porque `.github/agents.md` apuntaba a
+una ruta antigua de `a00003`. El índice también conservaba rutas obsoletas para
+`a00007` y `a00008`, dejando inconsistentes el registro y la navegación.
 
-## non-goals
+## Non-goals
 
-- TODO: what this proposal deliberately skips.
+- No renombrar propuestas archivadas.
+- No modificar el contenido histórico de las auditorías.
+- No corregir enlaces ajenos a las propuestas auditadas.
 
 ## Slices
 
 - global_gate: none
 
 ### S1 — Referencias archivadas
-- **Status**: pending
+- **Status**: done
 - **Files**: `.github/agents.md`, `docs/mcp-vertex/proposals/INDEX.md`
-- **Gate**: none
+- **Gate**: `bun run lint:docs && bun run lint:proposals`
+- **Result**: Actualizadas las rutas de `a00003`, `a00007` y `a00008` a sus
+	nombres canónicos actuales.
 
 ## acceptance
 
-- TODO: observable acceptance criteria.
+- `bun run lint:docs` termina con código 0.
+- `bun run lint:proposals` termina con código 0.
+- Las referencias de `a00003`, `a00007` y `a00008` apuntan a ficheros existentes.

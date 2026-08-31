@@ -119,7 +119,7 @@ Namespace `expostman` (el host los registra como
 
 ## Estado
 
-- **Auditoría histórica**: propuesta canónica [`a00003`](../docs/mcp-vertex/proposals/done/audits/a00003-auditoria-completa-postman-exporter-2026-08-06.md)
+- **Auditoría histórica**: propuesta canónica [`a00003`](../docs/mcp-vertex/proposals/done/audits/a00003-auditoria-completa-postman-exporter.md)
   — bugs encontrados, causas raíz y lo que queda abierto.
 - **Propuestas**: [`docs/mcp-vertex/proposals/`](../docs/mcp-vertex/proposals/),
   con la misma disposición que mcp-vertex: la carpeta **es** el estado
