@@ -20,12 +20,13 @@
 > `.claude/agents/*.md`) points here, **not** to the universal
 > bootstrap directly, and **never** to a path outside this repository.
 >
-> **Agnostic / portable rule:** do not require a sibling checkout of
-> `mcp-vertex`. Local absolute paths under a developer's machine are
-> forbidden in committed docs and configs. Pre-publish launch of the
-> MCP host may temporarily use a relative sibling path in
-> `.vscode/mcp.json`; that is documented as temporary and must switch
-> to the published `@mcp-vertex/cli` form when available.
+**Agnostic / portable rule:** do not require a sibling checkout of
+`mcp-vertex` for consumers. Local absolute paths under a developer's
+machine are forbidden in committed docs and configs. While the
+`@mcp-vertex/cli` package is not published, this repository may use the
+relative sibling host in `.mcp.json` and `.vscode/mcp.json` for local MCP
+development. Once the package is published, the published CLI form can
+replace that local configuration.
 
 ---
 
@@ -213,8 +214,7 @@ A new field:
 
 ### 3.7 MCP server launch — portable first
 
-**Canonical (published) form** — preferred as soon as `@mcp-vertex/cli`
-is on npm:
+**Published form** — use this when `@mcp-vertex/cli` is available on npm:
 
 ```json
 {
@@ -235,9 +235,9 @@ is on npm:
 }
 ```
 
-**Temporary pre-publish fallback** (local developers who also have a
-sibling `mcp-vertex` checkout): `.vscode/mcp.json` may point at a
-relative sibling host script.
+**Current local form** — until `@mcp-vertex/cli` is published, local
+developers with a sibling `mcp-vertex` checkout may point `.mcp.json`
+and its generated `.vscode/mcp.json` at the relative sibling host script.
 
 > The path is `../mcp-vertex/tools/scripts/host/host-server.script.ts`.
 > It lives in a quote because it is **outside this repository** — the
@@ -252,8 +252,8 @@ relative sibling host script.
 
 Never commit absolute machine paths (e.g. `/home/<user>/_packages/...`).
 
-When the CLI ships, replace the fallback with the canonical form and
-delete any remaining sibling-path notes from this section.
+When the CLI ships, replace the local form with the published form and
+remove the sibling-path notes from this section.
 
 Schema reference for `mcp-vertex.config.json`: use the schema shipped
 with the installed `@mcp-vertex/core` package (or omit `$schema` until

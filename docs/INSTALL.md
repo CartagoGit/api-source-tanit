@@ -21,6 +21,17 @@ Tres formas de usarlo, según cómo trabajes.
 
 Requisito común: **[Bun](https://bun.sh) 1.0 o superior**.
 
+## Host MCP local durante el desarrollo
+
+El paquete `@mcp-vertex/cli` todavía no está publicado. En este
+repositorio, el host MCP de desarrollo se ejecuta desde el checkout local
+hermano mediante la configuración ya existente en `.mcp.json`; VS Code usa
+su copia sincronizada en `.vscode/mcp.json`.
+
+Ese arranque local es intencionado mientras el paquete no esté disponible
+en npm. Cuando se publique, podrá sustituirse por la forma `bunx
+--package @mcp-vertex/cli mcpv __serve` descrita en el bootstrap.
+
 ---
 
 ## Instalar hoy (desde el repositorio)

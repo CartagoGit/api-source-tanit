@@ -135,3 +135,7 @@ Tauri enlaza contra las librerías nativas de la máquina. Pedir otra
 falla con el motivo escrito en vez de producir algo que no arranca.
 
 Los tres a la vez salen de CI — ver [DESKTOP-PUBLISH.md](DESKTOP-PUBLISH.md).
+
+La aplicación de escritorio es autónoma: su build no necesita levantar el
+host MCP de desarrollo. El checkout local del host solo se usa para las
+herramientas MCP durante el desarrollo del repositorio.
