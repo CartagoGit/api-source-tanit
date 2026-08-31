@@ -6,6 +6,7 @@ status: ready
 type: proposal
 track: general
 date: 2026-08-30
+shipped-in: ["109bd1f", "7e95e27"]
 ---
 
 # x00011 — Dejar de ocultar fallos de instalación en el release desktop
