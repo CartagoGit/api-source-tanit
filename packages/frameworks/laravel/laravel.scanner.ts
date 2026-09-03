@@ -163,6 +163,9 @@ function singularizeResourceName(resourceUri: string): string {
   if (/(ches|shes|sses|xes|zes)$/i.test(lastSegment)) {
     return lastSegment.slice(0, -2);
   }
+  if (/ses$/i.test(lastSegment)) {
+    return lastSegment.slice(0, -2);
+  }
   if (/s$/i.test(lastSegment) && !/ss$/i.test(lastSegment)) {
     return lastSegment.slice(0, -1);
   }
@@ -349,7 +352,8 @@ export async function parseRoutesFile(
       const kind = resourceMatch[1];
       const resourceUri = resourceMatch[2];
       const alias = resourceMatch[3];
-      const options = resourceMatch[4] ?? "";
+      const matchEnd = (resourceMatch.index ?? 0) + resourceMatch[0].length;
+      const options = `${resourceMatch[4] ?? ""}${line.slice(matchEnd)}`;
       const controllerClass = resolveControllerClass(alias, imports);
       const whereConstraints = captureWhereConstraints(lines, i);
       const expanded =

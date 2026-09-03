@@ -183,6 +183,37 @@ Route::resource('users', UC::class);
     }
   });
 
+  test("singulariza nombres irregulares y terminados en -ies", async () => {
+    const { routes, cleanup } = await withRoutesFile(
+      `<?php
+Route::apiResource('categories', CategoryController::class);
+Route::apiResource('statuses', StatusController::class);
+Route::apiResource('people', PersonController::class);
+`,
+    );
+    try {
+      expect(routes.some((route) => route.uri === "/api/categories/{category}")).toBe(true);
+      expect(routes.some((route) => route.uri === "/api/statuses/{status}")).toBe(true);
+      expect(routes.some((route) => route.uri === "/api/people/{person}")).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("->parameters() sobrescribe el nombre del parámetro del recurso", async () => {
+    const { routes, cleanup } = await withRoutesFile(
+      `<?php
+Route::apiResource('users', UserController::class)->parameters(['users' => 'user_id']);
+`,
+    );
+    try {
+      expect(routes.some((route) => route.uri === "/api/users/{user_id}")).toBe(true);
+      expect(routes.some((route) => route.uri.includes("{user}"))).toBe(false);
+    } finally {
+      cleanup();
+    }
+  });
+
   test("prefijo externo (api/v1) se aplica a las expandidas", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
