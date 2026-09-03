@@ -6,16 +6,15 @@ actual del frontmatter y, para `done`, también el `kind`.
 ## Ready
 
 Las propuestas nuevas se escriben directamente en `ready/`, sin una
-subcarpeta por kind. Directorio vivo: [`a00012`](ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md).
-Es la consolidación de los hallazgos abiertos tras `a00010`/`a00011`
-y `f00010`/`f00011`. Empieza por **S0 — restaurar CI reproducible**
-antes de cualquier feature nueva.
+subcarpeta por kind. Directorio vivo: vacío (todas las propuestas
+abiertas están archivadas como `done/` o retiradas en `retired/`).
+Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran
+en este pase.
 
 ## Activas
 
 | Id | Kind | Estado | Ruta |
 |---|---|---|---|
-| `a00012` | `audit` | `ready` | [`ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md`](ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md) |
 | `p00006` | `legacy` | `retired` | [`retired/p00006-document-extension-contract.md`](retired/p00006-document-extension-contract.md) |
 
 ## Cerradas
@@ -40,7 +39,7 @@ Las referencias entre propuestas deben usar el id (`a00005`, `r00008`, etc.)
 y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
-`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `c00002`,
+`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `c00002`,
 `f00010`, `f00011`,
 `p00007`,
 `r00008`, `r00010`,
@@ -58,6 +57,7 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00009` | `audit` | [`done/audits/a00009-auditoria-exhaustiva-2026-09-03-cli-scanners-core-ui.md`](done/audits/a00009-auditoria-exhaustiva-2026-09-03-cli-scanners-core-ui.md) |
 | `a00010` | `audit` | [`done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md`](done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md) |
 | `a00011` | `audit` | [`done/audits/a00011-plan-correcciones-revision-a00010.md`](done/audits/a00011-plan-correcciones-revision-a00010.md) |
+| `a00012` | `audit` | [`done/audits/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md`](done/audits/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
 | `p00007` | `chore` | [`done/chores/p00007-consumir-mcp-vertex-core-publicado.md`](done/chores/p00007-consumir-mcp-vertex-core-publicado.md) |
 | `f00010` | `feat` | [`done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md`](done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md) |
