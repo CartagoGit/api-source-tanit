@@ -2,6 +2,7 @@
  * Tipos del schema Postman v2.1.0.
  * Documentación oficial: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
  */
+import type { ISchemaGraph } from "./schema.interface.js";
 
 export interface PostmanUrl {
   raw: string;
@@ -163,8 +164,34 @@ export interface EndpointSpec {
    * Se guarda aparte del `body` porque un ejemplo no se puede
    * des-ejemplificar: del JSON ya construido no hay forma de recuperar
    * qué era obligatorio ni qué formato tenía cada campo.
+   *
+   * Se queda como fuente de verdad **plana** mientras los 21 scanners
+   * no se hayan migrado al grafo (a00010 S6 introduce el grafo y deja
+   * esta lista como fallback); ver `schemaGraph`.
    */
   fields?: ReadonlyArray<IEndpointField>;
+  /**
+   * Grafo de tipos del endpoint, si el scanner lo emite.
+   *
+   * Cuando está, los exportadores que saben consumirlo (OpenAPI por
+   * ahora) prefieren el grafo sobre `fields`: el grafo expresa
+   * objetos anidados, arrays de objetos, uniones (`oneOf`/`anyOf`),
+   * referencias cruzadas y recursión, que la lista plana no puede
+   * representar — el OpenAPI exporter emitía `items: string` cuando el
+   * items real era un objeto, por ejemplo.
+   *
+   * `root` apunta al nodo que describe el body de la request. Los
+   * demás nodos son accesibles por id desde el mapa `nodes`.
+   *
+   * Es opcional a propósito: los 21 scanners actuales siguen emitiendo
+   * solo `fields`. Migrar cada uno queda como follow-up de a00010 S7
+   * (AST TypeScript) y siguientes. Mientras tanto, los exportadores
+   * que aún no consumen el grafo pueden llamar a `flatten-helper` para
+   * reconstruir la lista plana.
+   *
+   * @see ./schema.interface.ts
+   */
+  schemaGraph?: ISchemaGraph;
 }
 
 /** Una regla de validación, tal como se documenta en la colección. */
