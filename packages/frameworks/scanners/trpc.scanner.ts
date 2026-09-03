@@ -17,7 +17,7 @@
  * `appRouter → users → list` es `users.list`.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -49,7 +49,13 @@ export class TrpcProjectScanner implements IProjectScanner {
       ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
       ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
     };
-    return emptyResult(TRPC_PACKAGES.some((name) => deps[name]) ? 0.95 : 0);
+    const matched = TRPC_PACKAGES.filter((name) => deps[name]);
+    if (matched.length === 0) return emptyResult(0);
+    return withEvidence(0.95, matched.map((name) => ({
+      signal: `package.json declara ${name}`,
+      weight: 0.95 / matched.length,
+      artifact: "package.json",
+    })));
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

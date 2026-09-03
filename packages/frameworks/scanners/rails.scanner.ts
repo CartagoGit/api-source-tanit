@@ -21,7 +21,7 @@
  *   - `member do` / `collection do` — rutas extra dentro de un recurso.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -72,7 +72,11 @@ export class RailsProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     if (!existsSync(join(projectRoot, "config", "routes.rb"))) return emptyResult(0);
     // `Gemfile` + `config/routes.rb` es Rails sin lugar a dudas.
-    return emptyResult(existsSync(join(projectRoot, "Gemfile")) ? 1 : 0.7);
+    const hasGemfile = existsSync(join(projectRoot, "Gemfile"));
+    return withEvidence(hasGemfile ? 1 : 0.7, [
+      { signal: "config/routes.rb presente (entry-point canónico de Rails)", weight: 0.7, artifact: "config/routes.rb" },
+      ...(hasGemfile ? [{ signal: "Gemfile presente (Rails confirmado)", weight: 0.3, artifact: "Gemfile" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

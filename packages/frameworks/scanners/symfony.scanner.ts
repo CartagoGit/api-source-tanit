@@ -24,7 +24,7 @@
  *   - Constraints deben estar en el método (no en una Entity separada).
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -79,9 +79,13 @@ export class SymfonyProjectScanner implements IProjectScanner {
     const hasBinConsole = existsSync(join(projectRoot, "bin", "console"));
     const hasConfigRoutes = existsSync(join(projectRoot, "config", "routes.yaml"));
     const hasSrcController = existsSync(join(projectRoot, "src", "Controller"));
-    if (hasBinConsole) return emptyResult(1);
-    if (hasConfigRoutes || hasSrcController) return emptyResult(0.8);
-    return emptyResult(0.4);
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
+      { signal: "composer.json declara symfony/framework-bundle o symfony/routing", weight: 0.6, artifact: "composer.json" },
+    ];
+    if (hasBinConsole) signals.push({ signal: "bin/console presente", weight: 0.3, artifact: "bin/console" });
+    if (hasConfigRoutes) signals.push({ signal: "config/routes.yaml presente", weight: 0.1, artifact: "config/routes.yaml" });
+    if (hasSrcController) signals.push({ signal: "src/Controller presente", weight: 0.1, artifact: "src/Controller/" });
+    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -13,7 +13,7 @@
  * `binding:"required"` de Gin.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -66,7 +66,10 @@ export class FiberProjectScanner implements IProjectScanner {
     if (!(await usesFiber(projectRoot))) return emptyResult(0);
     const hasEntrypoint =
       existsSync(join(projectRoot, "main.go")) || existsSync(join(projectRoot, "cmd"));
-    return emptyResult(hasEntrypoint ? 1 : 0.5);
+    return withEvidence(hasEntrypoint ? 1 : 0.5, [
+      { signal: "go.mod con import fiber", weight: hasEntrypoint ? 0.6 : 0.5, artifact: "go.mod" },
+      ...(hasEntrypoint ? [{ signal: "main.go o cmd/ presente", weight: 0.4, artifact: "main.go" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

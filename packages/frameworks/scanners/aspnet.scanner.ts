@@ -1,6 +1,6 @@
 
 import { readFile, readdir } from "node:fs/promises";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
@@ -45,7 +45,11 @@ export class AspNetProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isAsp = await isAspNetProject(projectRoot);
     if (!isAsp) return emptyResult(0);
-    return emptyResult(1);
+    return withEvidence(1, [{
+      signal: ".csproj presente con Microsoft.AspNetCore",
+      weight: 1,
+      artifact: "*.csproj",
+    }]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -24,7 +24,7 @@
  * pipeline: no hay que normalizar nada.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -72,7 +72,11 @@ export class KtorProjectScanner implements IProjectScanner {
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     if (!(await declaresKtor(projectRoot))) return emptyResult(0);
-    return emptyResult(existsSync(join(projectRoot, "src")) ? 1 : 0.6);
+    const hasSrc = existsSync(join(projectRoot, "src"));
+    return withEvidence(hasSrc ? 1 : 0.6, [
+      { signal: "build.gradle.kts o build.gradle declara ktor", weight: 0.6 },
+      ...(hasSrc ? [{ signal: "src/ presente (convención Ktor)", weight: 0.4, artifact: "src/" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

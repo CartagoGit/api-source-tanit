@@ -17,7 +17,7 @@
  * primer Send, que es peor que no entregarla.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -59,6 +59,7 @@ export class GraphQlProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const pkgPath = join(projectRoot, "package.json");
     let fromPackage = 0;
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [];
     if (existsSync(pkgPath)) {
       const parsed = parseJson(await readFile(pkgPath, "utf8"));
       if (parsed.ok && isRecord(parsed.value)) {
@@ -66,7 +67,10 @@ export class GraphQlProjectScanner implements IProjectScanner {
           ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
           ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
         };
-        if (GRAPHQL_PACKAGES.some((name) => deps[name])) fromPackage = 0.8;
+        if (GRAPHQL_PACKAGES.some((name) => deps[name])) {
+          fromPackage = 0.8;
+          signals.push({ signal: "package.json declara un paquete GraphQL", weight: 0.8, artifact: "package.json" });
+        }
       }
     }
 
@@ -74,11 +78,23 @@ export class GraphQlProjectScanner implements IProjectScanner {
     // depende del ecosistema ni del gestor de paquetes, así que también
     // reconoce un esquema de Go, Python o Java.
     const schemas = await collectFiles(projectRoot, isSchemaFile);
-    if (schemas.length === 0) return emptyResult(fromPackage);
-    for await (const { text } of readFilesInOrder(schemas)) {
-      if (/\btype\s+(Query|Mutation)\b/.test(text)) return emptyResult(1);
+    if (schemas.length === 0) {
+      return signals.length > 0
+        ? withEvidence(fromPackage, signals)
+        : emptyResult(0);
     }
-    return emptyResult(Math.max(fromPackage, 0.5));
+    for await (const entry of readFilesInOrder(schemas)) {
+      const text = entry.text;
+      if (/\btype\s+(Query|Mutation)\b/.test(text)) {
+        return withEvidence(1, [
+          { signal: `Esquema GraphQL con type Query/Mutation (${entry.path})`, weight: 1, artifact: entry.path },
+          ...signals,
+        ]);
+      }
+    }
+    return signals.length > 0
+      ? withEvidence(Math.max(fromPackage, 0.5), signals)
+      : emptyResult(0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

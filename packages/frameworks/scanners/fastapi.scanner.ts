@@ -17,7 +17,7 @@
  * estático (sin servidor corriendo).
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile, } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
@@ -59,18 +59,25 @@ export class FastApiProjectScanner implements IProjectScanner {
   readonly framework = "fastapi" as const;
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
-    let score = 0;
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [];
     for (const file of ["pyproject.toml", "requirements.txt", "Pipfile"]) {
       const p = join(projectRoot, file);
       if (!existsSync(p)) continue;
       try {
         const text = await readFile(p, "utf8");
-        if (/\bfastapi\b/i.test(text)) score = Math.max(score, 1);
+        if (/\bfastapi\b/i.test(text)) {
+          signals.push({
+            signal: `fastapi mencionado en ${file}`,
+            weight: 1,
+            artifact: file,
+          });
+        }
       } catch {
         /* ignore */
       }
     }
-    return emptyResult(score);
+    if (signals.length === 0) return emptyResult(0);
+    return withEvidence(1, signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

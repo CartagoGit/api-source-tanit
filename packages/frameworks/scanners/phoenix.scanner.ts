@@ -15,7 +15,7 @@
  *   - Los path params se escriben `:id`, igual que en Rails.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -69,7 +69,11 @@ export class PhoenixProjectScanner implements IProjectScanner {
     } catch {
       return emptyResult(0);
     }
-    return emptyResult((await findRouter(projectRoot)) ? 1 : 0.5);
+    const hasRouter = await findRouter(projectRoot);
+    return withEvidence(hasRouter ? 1 : 0.5, [
+      { signal: "mix.exs declara la dependencia :phoenix", weight: 0.6, artifact: "mix.exs" },
+      ...(hasRouter ? [{ signal: "Phoenix router presente (router.ex)", weight: 0.4, artifact: "router.ex" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

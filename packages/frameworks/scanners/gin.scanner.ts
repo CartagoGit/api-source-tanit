@@ -17,7 +17,7 @@
  *     parcial y no soporta referencias a otros paquetes.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -57,8 +57,11 @@ export class GinProjectScanner implements IProjectScanner {
     if (!isGin) return emptyResult(0);
     const hasMain = existsSync(join(projectRoot, "main.go"));
     const hasCmd = existsSync(join(projectRoot, "cmd"));
-    if (hasMain || hasCmd) return emptyResult(1);
-    return emptyResult(0.5);
+    return withEvidence(hasMain || hasCmd ? 1 : 0.5, [
+      { signal: "go.mod con import gin-gonic/gin", weight: hasMain || hasCmd ? 0.7 : 0.5, artifact: "go.mod" },
+      ...(hasMain ? [{ signal: "main.go presente", weight: 0.2, artifact: "main.go" }] : []),
+      ...(hasCmd ? [{ signal: "cmd/ presente", weight: 0.1, artifact: "cmd/" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

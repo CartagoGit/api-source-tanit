@@ -21,7 +21,7 @@
  * del struct.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -86,7 +86,11 @@ export class RustProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const crate = await detectCrate(projectRoot);
     if (!crate) return emptyResult(0);
-    return emptyResult(existsSync(join(projectRoot, "src")) ? 1 : 0.5);
+    const hasSrc = existsSync(join(projectRoot, "src"));
+    return withEvidence(hasSrc ? 1 : 0.5, [
+      { signal: `Cargo.toml declara framework web Rust (${crate})`, weight: 0.5, artifact: "Cargo.toml" },
+      ...(hasSrc ? [{ signal: "src/ presente (convención del crate)", weight: 0.5, artifact: "src/" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

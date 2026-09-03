@@ -131,7 +131,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
       "src/app/api/ping/route.ts": "export async function GET() { return Response.json({ ok: true }); }",
     });
     try {
-      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.9);
     } finally {
       await project.cleanup();
     }
@@ -144,7 +144,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
       "src/pages/api/health.ts": "export default function handler(req, res) { res.json({ ok: true }); }",
     });
     try {
-      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.9);
     } finally {
       await project.cleanup();
     }

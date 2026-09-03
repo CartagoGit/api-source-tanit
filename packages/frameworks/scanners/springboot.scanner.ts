@@ -19,7 +19,7 @@
  *   - Limitado: solo constraints inline en el package local.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -59,8 +59,10 @@ export class SpringBootProjectScanner implements IProjectScanner {
     const isSpring = await isSpringBootProject(projectRoot);
     if (!isSpring) return emptyResult(0);
     const hasSrc = existsSync(join(projectRoot, "src"));
-    if (hasSrc) return emptyResult(1);
-    return emptyResult(0.7);
+    return withEvidence(hasSrc ? 1 : 0.7, [
+      { signal: "pom.xml o build.gradle con spring-boot-starter", weight: 0.7 },
+      ...(hasSrc ? [{ signal: "src/ presente (estructura canónica de Maven/Gradle)", weight: 0.3, artifact: "src/" }] : []),
+    ]);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -16,7 +16,7 @@
  *     Pydantic de `flask-pydantic`.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -71,8 +71,12 @@ export class FlaskProjectScanner implements IProjectScanner {
     if (!isFlask) return emptyResult(0);
     const hasApp = existsSync(join(projectRoot, "app.py"));
     const hasWsgi = existsSync(join(projectRoot, "wsgi.py"));
-    if (hasApp || hasWsgi) return emptyResult(1);
-    return emptyResult(0.7);
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
+      { signal: "Flask referenciado como dependencia Python", weight: 0.7 },
+    ];
+    if (hasApp) signals.push({ signal: "app.py presente", weight: 0.2, artifact: "app.py" });
+    if (hasWsgi) signals.push({ signal: "wsgi.py presente", weight: 0.1, artifact: "wsgi.py" });
+    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

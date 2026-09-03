@@ -17,7 +17,7 @@
  *   - Si hay `class-transformer` o `class-validator`, son las dependencias.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -68,9 +68,12 @@ export class NestJsProjectScanner implements IProjectScanner {
     if (!isNest) return emptyResult(0);
     const hasSrc = existsSync(join(projectRoot, "src"));
     const hasNestCli = existsSync(join(projectRoot, "nest-cli.json"));
-    if (hasSrc && hasNestCli) return emptyResult(1);
-    if (hasSrc) return emptyResult(0.8);
-    return emptyResult(0.5);
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
+      { signal: "@nestjs/core declarado como dependencia", weight: 0.5, artifact: "package.json" },
+    ];
+    if (hasNestCli) signals.push({ signal: "nest-cli.json presente", weight: 0.3, artifact: "nest-cli.json" });
+    if (hasSrc) signals.push({ signal: "directorio src/ presente", weight: 0.2, artifact: "src/" });
+    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

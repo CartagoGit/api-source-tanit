@@ -17,7 +17,7 @@
  *     route handlers (`const schema = z.object({...})`).
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -65,11 +65,19 @@ export class NextJsProjectScanner implements IProjectScanner {
     if (!isNext) return emptyResult(0);
     const hasApp = existsSync(join(projectRoot, "app"));
     const hasPages = existsSync(join(projectRoot, "pages"));
-    if (hasApp || hasPages) return emptyResult(1);
     const hasSrcApp = existsSync(join(projectRoot, "src", "app"));
     const hasSrcPages = existsSync(join(projectRoot, "src", "pages"));
-    if (hasSrcApp || hasSrcPages) return emptyResult(1);
-    return emptyResult(0.5);
+    const hasNextConfig =
+      existsSync(join(projectRoot, "next.config.js")) ||
+      existsSync(join(projectRoot, "next.config.mjs")) ||
+      existsSync(join(projectRoot, "next.config.ts"));
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
+      { signal: "next declarado como dependencia", weight: 0.5, artifact: "package.json" },
+    ];
+    if (hasApp || hasSrcApp) signals.push({ signal: "App Router presente", weight: 0.4, artifact: "app/" });
+    if (hasPages || hasSrcPages) signals.push({ signal: "Pages Router presente", weight: 0.4, artifact: "pages/" });
+    if (hasNextConfig) signals.push({ signal: "next.config.* presente", weight: 0.2 });
+    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

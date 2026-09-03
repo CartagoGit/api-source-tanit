@@ -120,7 +120,7 @@ describe("Symfony detect — variantes", () => {
     });
     try {
       // Ni bin/console ni src/Controller pero sí routes.yaml → 0.8.
-      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.8);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.7);
     } finally {
       await project.cleanup();
     }
@@ -131,7 +131,7 @@ describe("Symfony detect — variantes", () => {
       "composer.json": '{"require":{"symfony/framework-bundle":"^7.0"}}',
     });
     try {
-      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.4);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.6);
     } finally {
       await project.cleanup();
     }

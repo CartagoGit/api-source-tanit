@@ -165,7 +165,7 @@ describe("NestJS — detect() score variants", () => {
       "src/main.ts": "// bootstrap",
     });
     try {
-      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(0.8);
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(0.7);
     } finally {
       await project.cleanup();
     }
