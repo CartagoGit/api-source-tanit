@@ -107,6 +107,17 @@ export function buildGenerateToolRegistration(
             cliArgs.push("--format", args.formats.join(","));
           }
           if (args.openAfter) cliArgs.push("--open");
+          // `--framework-search-root` se cuelga del CLI cuando la
+          // detección por monorepo no basta: la opción del plugin
+          // (configurada por el host en `mcp-vertex.config.json`) o
+          // el valor que el agente pase al tool. La validación del
+          // subdir (sin `/` inicial, sin `..`) vive en el pipeline;
+          // aquí se pasa tal cual. f00011 S3.
+          const pluginSearchRoot = ctx.options["frameworkSearchRoot"] as
+            | string
+            | undefined;
+          const searchRoot = pluginSearchRoot ?? args.frameworkSearchRoot;
+          if (searchRoot) cliArgs.push("--framework-search-root", searchRoot);
 
           const cliScriptPath = resolveCliScript(
             workspaceRoot,

@@ -81,12 +81,13 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // y planifica desde su resultado. Predecir los nombres a mano sería
     // una segunda implementación que acabaría diciendo una cosa
     // mientras `generate` hace otra.
-    dryRun: async ({ projectRoot, outputDir, formats, framework }) => {
+    dryRun: async ({ projectRoot, outputDir, formats, framework, frameworkSearchRoot }) => {
       // `generateWithAllFrameworks` recibe la raíz por argumento y no
       // lee el singleton: sin contexto global que proteger, el
       // `withScopedPaths` de aquí solo añadía serialización.
       const result = await generateWithAllFrameworks(projectRoot, {
         ...(framework ? { forceFramework: framework } : {}),
+        ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
       });
       return planDryRun({
         projectRoot,
@@ -101,7 +102,7 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     // Llama al **mismo** comando que usa la terminal, con sus flags. No
     // hay una segunda ruta de generación que pueda desincronizarse: si
     // `generate` cambia, la interfaz cambia con él.
-    generate: async ({ projectRoot, outputDir, formats, framework }) => {
+    generate: async ({ projectRoot, outputDir, formats, framework, frameworkSearchRoot }) => {
       const argv = ["--project-root", projectRoot];
       if (outputDir) argv.push("--output-dir", outputDir);
       if (formats && formats.length > 0) argv.push("--format", formats.join(","));
@@ -109,6 +110,10 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
       // la autodetección. La ruta ya fue validada contra el catálogo en
       // las rutas de la interfaz.
       if (framework) argv.push("--framework", framework);
+      // `--framework-search-root` se cuelga del CLI igual: el flag ya
+      // está y `runGenerate` lo lee. La validación del subdir vive en
+      // el pipeline, no en la UI; aquí se pasa tal cual.
+      if (frameworkSearchRoot) argv.push("--framework-search-root", frameworkSearchRoot);
 
       // El contexto va explícito (r00008 S2): `runGenerate` lo inyecta
       // en el pipeline y ninguna ruta lee `process.argv` del proceso.

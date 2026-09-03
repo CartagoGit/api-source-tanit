@@ -23,7 +23,11 @@
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
-import type { IProjectMatch, ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
+import type {
+  IDetectedFramework,
+  IProjectMatch,
+  ParsedRoute,
+} from "../../contracts/interfaces/core/scanner.interface.js";
 import { buildSpecsFromScanner } from "../adapters/parsed-route-to-spec.adapter.js";
 import { endpointKey } from "../helpers/route-identity.helper.js";
 import { authVariablesFor, detectAuthScheme } from "../domain/auth-scheme.service.js";
@@ -35,10 +39,6 @@ import { loadProject } from "./project-loader.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
-import type {
-  IDetectedFramework,
-  IProjectMatch,
-} from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   IGenerationOptions,
   IGenerationResult,
@@ -190,6 +190,108 @@ async function forcedDetection(
   return [forced];
 }
 
+/**
+ * Resuelve el `frameworkSearchRoot` y lo pega a cada match detectado.
+ *
+ * La prioridad está documentada en `IGenerationOptions.frameworkSearchRoot`:
+ * el override del usuario gana sobre la auto-detección de monorepo, y
+ * la auto-detección solo se aplica cuando hay **exactamente un**
+ * workspace. Con varios, no rellena nada: el orquestador prefiere
+ * quedarse quieto a equivocarse.
+ *
+ * Devuelve una copia del array de entrada con los `match` reasignados.
+ * `IProjectMatch` es `readonly`; lo que se devuelve es un objeto
+ * nuevo con `frameworkSearchRoot` añadido cuando toca. Los campos
+ * restantes se preservan por spread, así que el resto del pipeline no
+ * tiene que saber que hubo augmentación.
+ *
+ * f00011 S3. La detección vive en `monorepo-detector.helper.ts`; este
+ * wrapper es lo único que el pipeline invoca.
+ */
+async function applyFrameworkSearchRoot(
+  detected: ReadonlyArray<IDetectedFramework>,
+  projectRoot: string,
+  userOverride: string | undefined,
+): Promise<{
+  readonly augmented: ReadonlyArray<IDetectedFramework>;
+  readonly detection: IMonorepoDetection | null;
+}> {
+  // Caso 1: el usuario forzó `--framework-search-root` o
+  // `mcp-vertex.config.json#frameworkSearchRoot`. El valor se valida
+  // abajo (no debe tener barras iniciales ni `..`); lo que llega de la
+  // CLI ya pasó por `readFlag`, lo que llega del plugin ya pasó por
+  // zod. Aquí se queda como viene.
+  if (userOverride && userOverride.length > 0) {
+    if (!isSafeRelativeSubdir(userOverride)) {
+      throw new Error(
+        `--framework-search-root debe ser un subdirectorio relativo a projectRoot ` +
+          `(sin "/" inicial, sin ".."). Recibido: "${userOverride}"`,
+      );
+    }
+    return {
+      augmented: detected.map((d) => augmentMatch(d, userOverride)),
+      detection: null,
+    };
+  }
+
+  // Caso 2: auto-detección por monorepo. Si la raíz no es un monorepo,
+  // o lo es pero tiene varios workspaces, no se hace nada.
+  const detection = await detectMonorepo(projectRoot);
+  if (!detection.frameworkSearchRoot) {
+    return { augmented: detected, detection };
+  }
+  return {
+    augmented: detected.map((d) => augmentMatch(d, detection.frameworkSearchRoot!)),
+    detection,
+  };
+}
+
+/**
+ * Construye un `IDetectedFramework` con el `frameworkSearchRoot` pegado
+ * al `match`. Se preserva el resto (score, evidence, scanner,
+ * validation) por spread.
+ */
+function augmentMatch(
+  detected: IDetectedFramework,
+  frameworkSearchRoot: string,
+): IDetectedFramework {
+  const match: IProjectMatch = {
+    framework: detected.match.framework,
+    projectRoot: detected.match.projectRoot,
+    artifacts: detected.match.artifacts,
+    ...(detected.match.version !== undefined
+      ? { version: detected.match.version }
+      : {}),
+    frameworkSearchRoot,
+  };
+  return {
+    match,
+    score: detected.score,
+    evidence: detected.evidence,
+    scanner: detected.scanner,
+    validation: detected.validation,
+  };
+}
+
+/**
+ * ¿Es un segmento relativo seguro para usar como `frameworkSearchRoot`?
+ *
+ * Las dos trampas que evita:
+ *  - Absoluto (`/etc/passwd`, `C:\…`): nunca se acepta; la raíz la
+ *    fija el orquestador y este campo solo añade un segmento.
+ *  - Escape (`..`, `apps/../../etc`): si el usuario lo escribe y nadie
+ *    lo para, un scanner puede acabar leyendo fuera del proyecto. Los
+ *    scanners ya hacen `join(match.projectRoot, match.frameworkSearchRoot)`,
+ *    y `path.join` colapsa los `..`, así que la única defensa está aquí.
+ */
+function isSafeRelativeSubdir(value: string): boolean {
+  if (value.length === 0) return false;
+  if (value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value)) return false;
+  if (value.includes("..")) return false;
+  if (value.includes("\0")) return false;
+  return true;
+}
+
 interface IDiscovery {
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
@@ -217,9 +319,19 @@ async function discoverSpecs(
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
-  const detected = options.forceFramework
+  const rawDetected = options.forceFramework
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
+  // f00011 S3: aplica `--framework-search-root` (override) o la
+  // auto-detección de monorepo. Es **el** sitio donde se pega al
+  // `match.frameworkSearchRoot`; los scanners ya lo leen (S1) y los
+  // tests de los scanners ya lo cubren (tests/frameworks).
+  const { augmented: detected, detection: monorepoDetection } =
+    await applyFrameworkSearchRoot(
+      rawDetected,
+      context.projectRoot,
+      options.frameworkSearchRoot,
+    );
   // Con `context`: el loader deja de preguntarle al singleton qué
   // proyecto es este. Era el único sitio del pipeline que aún lo hacía,
   // y el motivo de que la llamada entera tuviera que ir envuelta.
@@ -230,6 +342,22 @@ async function discoverSpecs(
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
 
+  // Si la raíz era un monorepo y la auto-detección eligió el único
+  // workspace, se avisa. La idea es que un usuario que lanza el CLI
+  // sin saber qué es `frameworkSearchRoot` vea por qué el escaneo se
+  // concentró en `apps/api` y no en la raíz.
+  const warnings: string[] = [];
+  if (
+    monorepoDetection?.frameworkSearchRoot &&
+    !options.frameworkSearchRoot
+  ) {
+    warnings.push(
+      `Monorepo detectado por ${monorepoDetection.signal}: el escaneo se ` +
+        `limita al workspace "${monorepoDetection.frameworkSearchRoot}". ` +
+        `Si quieres escanear otro, pásalo con --framework-search-root.`,
+    );
+  }
+
   if (usable.length > 0) {
     // Se escanean TODOS los que reconocen el proyecto, no solo el
     // primero. Un repo con un Express heredado y rutas nuevas de
@@ -239,7 +367,6 @@ async function discoverSpecs(
     // esto no cambia nada.
     const specs: EndpointSpec[] = [];
     const routes: ParsedRoute[] = [];
-    const warnings: string[] = [];
     let withValidation = 0;
     let withoutValidation = 0;
     /** Lo que devuelve cada scanner, con su framework y score, para el merger. */

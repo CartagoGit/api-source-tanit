@@ -51,6 +51,28 @@ export const ExportToPostmanOptionsSchema = z
      * plugin depende de `PATH` del shell de quien arranca el host.
      */
     mcpVertexBunBin: z.string().min(1).optional(),
+    /**
+     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     *
+     * Cuando el proyecto es un monorepo (`turbo.json`,
+     * `pnpm-workspace.yaml`, ...) o un proyecto donde el manifiesto
+     * está en la raíz pero el código del framework vive en un
+     * subdir, la autodetección del orquestador mira la raíz por
+     * defecto y no encuentra nada. Con esta opción el plugin pasa
+     * el subdir al CLI (`--framework-search-root <sub>`) y el
+     * orquestador lo pega al `match.frameworkSearchRoot` que ya
+     * leen los scanners (f00011 S1).
+     *
+     * Sin esta opción, el orquestador auto-detecta cuando hay un
+     * solo workspace en el monorepo; con varios, no elige por su
+     * cuenta y devuelve un aviso.
+     *
+     * **Nunca absoluto.** La raíz del proyecto la fija
+     * `defaultProjectRoot ?? ctx.workspace`; este campo solo añade
+     * un segmento POSIX. El CLI lo valida antes de pasarlo al
+     * pipeline, así que el plugin no tiene que repetirlo.
+     */
+    frameworkSearchRoot: z.string().min(1).optional(),
   })
   .strict();
 
@@ -89,6 +111,20 @@ export const GenerateInputSchema = z
      * veintiún nombres arrastraba los veintiún scanners.
      */
     framework: z.enum([...FRAMEWORK_IDS]).optional(),
+    /**
+     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     *
+     * Cuando el proyecto es un monorepo o tiene el manifiesto en
+     * la raíz y el código en un subdir, esta opción viaja hasta
+     * el `--framework-search-root` del CLI. El agente puede
+     * pasarlo aquí, o el host puede fijarlo de antemano en
+     * `mcp-vertex.config.json` (`ExportToPostmanOptionsSchema.
+     * frameworkSearchRoot`); el segundo gana cuando ambos están.
+     *
+     * El valor se valida en `generation.pipeline.ts`: no puede ser
+     * absoluto ni contener `..`.
+     */
+    frameworkSearchRoot: z.string().min(1).optional(),
     /**
      * Formatos de salida. Por defecto solo Postman.
      *

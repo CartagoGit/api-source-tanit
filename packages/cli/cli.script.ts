@@ -132,6 +132,8 @@ COMMON FLAGS
   --config <path>         ProjectConfig file. Auto-detected when omitted.
   --envs <a,b,c>          Which environments to generate.
   --framework <id>        Skip autodetection and scan as this framework.
+  --framework-search-root <sub>   Workspace dir to scan inside a monorepo.
+                                  Auto-detected when omitted (f00011 S3).
   --format <a,b,c>        Output formats. Defaults to postman.
   --inspect               Report what was detected; write nothing.
   --allow-empty           Exit 0 even when no endpoint was found.
@@ -186,6 +188,9 @@ function absolutizePathFlags(argv: string[]): string[] {
     const value = i === -1 ? null : out[i + 1];
     if (value && !isAbsolute(value)) out[i + 1] = resolve(value);
   }
+  // `--framework-search-root` es un subdir, no una ruta absoluta: se
+  // deja pasar tal cual. La validación (sin `/` inicial, sin `..`) vive
+  // en `generation.pipeline.ts`.
   return out;
 }
 

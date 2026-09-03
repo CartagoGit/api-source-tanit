@@ -87,9 +87,14 @@ export async function runPush(
   // subirlos: el mismo proyecto funcionaba con un comando y no con el
   // otro, sin ninguna razón que se pudiera explicar.
   const forceFramework = readFlag(argv, "--framework");
+  // `--framework-search-root` se pasa tal cual al pipeline. La validación
+  // de la ruta (sin `/` inicial, sin `..`) vive en `generation.pipeline.ts`;
+  // aquí solo se lee.
+  const frameworkSearchRoot = readFlag(argv, "--framework-search-root");
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
     ...(forceFramework ? { forceFramework } : {}),
+    ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
   });
 
   const requestCount = countRequests(result.collection.item as IItem[]);

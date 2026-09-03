@@ -59,6 +59,7 @@ async function runPipeline(
   basename: string | null,
   forceFramework: string | null,
   context: IProjectContext,
+  frameworkSearchRoot: string | null,
 ): Promise<IGenerationResult> {
   console.log("→ Resolved paths:");
   console.log(describeDiscoveredPaths(context));
@@ -73,6 +74,7 @@ async function runPipeline(
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
     ...(forceFramework ? { forceFramework } : {}),
+    ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
   });
 
   console.log(
@@ -170,6 +172,21 @@ export async function runGenerate(
   const frameworkIdx = args.indexOf("--framework");
   const frameworkFlag = frameworkIdx !== -1 ? (args[frameworkIdx + 1] ?? null) : null;
 
+  // `--framework-search-root <subdir>` apunta al workspace concreto
+  // del framework dentro del proyecto. Tiene dos usos:
+  //   1. Forzar un subdir que la detección por monorepo no acertaría
+  //      (varios workspaces con un solo manifest en la raíz).
+  //   2. Apuntar a un subdir cuando la autodetección tampoco lo hace
+  //      (manifest en raíz, dependencia con alias, ...).
+  //
+  // Si se omite y el proyecto es un monorepo con un solo workspace,
+  // el orquestador lo rellena automáticamente. La validación de la
+  // ruta (sin `/` inicial, sin `..`) vive en el pipeline; aquí solo
+  // se lee.
+  const searchRootIdx = args.indexOf("--framework-search-root");
+  const frameworkSearchRoot =
+    searchRootIdx !== -1 ? (args[searchRootIdx + 1] ?? null) : null;
+
   // `--format a,b,c`. Se valida ANTES de escanear: un nombre mal escrito
   // descubierto al final, tras recorrer el proyecto y sin haber escrito
   // el fichero que se pedía, no dice nada de lo que ha pasado.
@@ -190,7 +207,12 @@ export async function runGenerate(
       ? (args[envsIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
       : null;
 
-  const pipeline = await runPipeline(basenameFlag, frameworkFlag, resolvedContext);
+  const pipeline = await runPipeline(
+    basenameFlag,
+    frameworkFlag,
+    resolvedContext,
+    frameworkSearchRoot,
+  );
   const discoveredSpecs = pipeline.specs;
 
   // Los avisos van ANTES de escribir nada: si alguien corta la
@@ -215,6 +237,12 @@ export async function runGenerate(
     console.log(`  · Specs:          ${pipeline.metrics.specs}`);
     console.log(`  · With rules:     ${pipeline.metrics.withValidation}`);
     console.log(`  · Without rules:  ${pipeline.metrics.withoutValidation}`);
+    if (pipeline.match?.frameworkSearchRoot) {
+      console.log(
+        `  · Search root:    ${pipeline.match.frameworkSearchRoot}` +
+          (frameworkSearchRoot ? " (--framework-search-root)" : " (auto-detected)"),
+      );
+    }
     console.log(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
     console.log(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
     console.log(`  · Base URL:       ${config.baseUrl}`);

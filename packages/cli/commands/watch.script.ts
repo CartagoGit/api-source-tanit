@@ -66,10 +66,12 @@ async function regenerate(
   forceFramework: string | null,
   formats: ReadonlyArray<string>,
   context = resolveProjectContext({ projectRoot: root }),
+  frameworkSearchRoot: string | null = null,
 ): Promise<IRunResult> {
   const started = Date.now();
   const result = await generateWithAllFrameworks(root, {
     ...(forceFramework ? { forceFramework } : {}),
+    ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
   });
   const path = await outputCollectionPath(context, result.config.name);
   await writeJsonAtomic(path, result.collection);
@@ -122,6 +124,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   const frameworkIdx = argv.indexOf("--framework");
   const forceFramework = frameworkIdx !== -1 ? (argv[frameworkIdx + 1] ?? null) : null;
+  // `--framework-search-root` se pasa al pipeline tal cual. La
+  // validación (sin `/` inicial, sin `..`) vive en `generation.pipeline.ts`;
+  // `watch` solo lo lee.
+  const searchRootIdx = argv.indexOf("--framework-search-root");
+  const frameworkSearchRoot =
+    searchRootIdx !== -1 ? (argv[searchRootIdx + 1] ?? null) : null;
   const debounceIdx = argv.indexOf("--debounce");
   const debounceMs =
     debounceIdx !== -1 ? Number(argv[debounceIdx + 1] ?? "") : undefined;
@@ -147,7 +155,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   // vale enterarse ahora que quedarse esperando cambios en algo roto.
   let previous: IRunResult;
   try {
-    previous = await regenerate(root, forceFramework, formats, context);
+    previous = await regenerate(root, forceFramework, formats, context, frameworkSearchRoot);
   } catch (error) {
     console.error(`✗ ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -175,7 +183,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       const more = changed.length > 1 ? ` y ${changed.length - 1} más` : "";
       console.log(`[${stamp()}] · cambió ${relative(root, first) || first}${more}`);
       try {
-        const now = await regenerate(root, forceFramework, formats, context);
+        const now = await regenerate(root, forceFramework, formats, context, frameworkSearchRoot);
         console.log(
           `[${stamp()}] ✔ ${now.requests}${delta(now.requests, last.requests)} requests ` +
             `en ${now.folders} carpetas` +

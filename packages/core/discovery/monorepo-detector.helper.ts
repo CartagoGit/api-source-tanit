@@ -36,7 +36,7 @@
  */
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { isAbsolute, join, posix, relative, sep } from "node:path";
+import { isAbsolute, join, relative, sep } from "node:path";
 
 /** Lo que `detectMonorepo()` devuelve. Siempre, incluso sin monorepo. */
 export interface IMonorepoDetection {
@@ -95,17 +95,18 @@ export async function detectMonorepo(
   for (const file of MONOREPO_SIGNALS) {
     const path = join(projectRoot, file);
     if (!existsSync(path)) continue;
-    const dirs = file === "pnpm-workspace.yaml"
-      ? await readPnpmWorkspaces(path)
-      : await readJsonWorkspaces(path);
-    return finalize(file, dirs);
+    const rawGlobs =
+      file === "pnpm-workspace.yaml"
+        ? await readPnpmWorkspaces(path)
+        : await readJsonWorkspaces(path);
+    return finalize(file, rawGlobs, projectRoot);
   }
 
   // 2) `package.json#workspaces` (npm/yarn).
   const pkgPath = join(projectRoot, "package.json");
   if (existsSync(pkgPath)) {
-    const dirs = await readPackageJsonWorkspaces(pkgPath);
-    if (dirs.length > 0) return finalize("package.json#workspaces", dirs);
+    const rawGlobs = await readPackageJsonWorkspaces(pkgPath);
+    if (rawGlobs.length > 0) return finalize("package.json#workspaces", rawGlobs, projectRoot);
   }
 
   return {
@@ -118,24 +119,49 @@ export async function detectMonorepo(
 
 function finalize(
   signal: string,
-  rawDirs: ReadonlyArray<string>,
+  rawGlobs: ReadonlyArray<string>,
+  projectRoot: string,
 ): IMonorepoDetection {
-  // Dedup + sort: los globs suelen solaparse
-  // (`["apps/*", "apps/api"]` resuelve dos veces el mismo dir).
+  // 1) Normaliza cada glob (rechaza absolutos, escapa `..`) y dedup.
+  //    Los globs suelen solaparse (`["apps/*", "apps/api"]`) y la
+  //    detección no debe duplicar el resultado.
   const seen = new Set<string>();
-  const dirs: string[] = [];
-  for (const candidate of rawDirs) {
+  const cleaned: string[] = [];
+  for (const candidate of rawGlobs) {
     const normalized = normalizeRel(candidate);
-    if (!normalized || seen.has(normalized)) continue;
-    seen.add(normalized);
-    dirs.push(normalized);
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized);
+      cleaned.push(normalized);
+    }
   }
-  dirs.sort();
+  if (cleaned.length === 0) {
+    return {
+      isMonorepo: true,
+      signal,
+      workspaceDirs: [],
+      frameworkSearchRoot: null,
+    };
+  }
+  // 2) Resuelve los globs contra el disco: `apps/*` → `apps` solo si
+  //    existe; `apps/api` → `apps/api` solo si existe. Si el workspace
+  //    no está materializado todavía (un repo recién clonado sin
+  //    `node_modules`), no aparece.
+  const resolved = resolveWorkspaceDirs(projectRoot, cleaned);
+  // Dedup post-resolve: `apps/*` y `apps/api` resuelven al mismo dir.
+  const resolvedSeen = new Set<string>();
+  const deduped: string[] = [];
+  for (const dir of resolved) {
+    if (!resolvedSeen.has(dir)) {
+      resolvedSeen.add(dir);
+      deduped.push(dir);
+    }
+  }
+  deduped.sort();
   return {
     isMonorepo: true,
     signal,
-    workspaceDirs: dirs,
-    frameworkSearchRoot: dirs.length === 1 ? dirs[0]! : null,
+    workspaceDirs: deduped,
+    frameworkSearchRoot: deduped.length === 1 ? deduped[0]! : null,
   };
 }
 
@@ -143,6 +169,12 @@ function finalize(
  * Normaliza un directorio a formato POSIX relativo, sin `.`, `..`, ni
  * absolutos. Lo que devuelven los parsers viene en formas distintas
  * (algunos con `./`, otros con `/`); aquí se aplana a una sola.
+ *
+ * La normalización POSIX se hace a mano porque el proyecto no depende
+ * de `@types/node` ni `bun-types` — `runtime.d.ts` declara el mínimo
+ * de `node:path` y nada más. Es cuatro líneas, evita una rama nueva
+ * en las declaraciones ambient y se queda donde se entiende: junto a
+ * la función que la usa.
  */
 function normalizeRel(value: string): string | null {
   const cleaned = value
@@ -152,19 +184,57 @@ function normalizeRel(value: string): string | null {
   if (cleaned.length === 0 || cleaned.startsWith("/") || cleaned.startsWith("..")) {
     return null;
   }
-  // Una entrada como `apps/../api` se colapsa a `api`. La libreria
-  // `path.posix.normalize` lo hace sin I/O y sin tocar el disco.
-  const normalized = posix.normalize(cleaned);
-  if (normalized === "." || normalized.startsWith("..") || normalized.startsWith("/")) {
+  const normalized = collapsePosix(cleaned);
+  if (normalized === "" || normalized === "." || normalized.startsWith("/")) {
     return null;
   }
   return normalized;
 }
 
 /**
+ * Colapsa `.` y `..` en una ruta POSIX sin tocar el disco.
+ *
+ * El contrato:
+ *  - `apps/api` → `apps/api`
+ *  - `apps/../api` → `api` (un `..` que sale de un segmento se queda)
+ *  - `apps/../../api` → `../api` (escapa: lo rechaza `normalizeRel`)
+ *
+ * No es `path.posix.normalize` completo (no resuelve `//` ni quita
+ * segmentos vacíos redundantes), pero el input son globs de workspaces
+ * que rara vez tienen esos casos.
+ */
+function collapsePosix(input: string): string {
+  const segments = input.split("/");
+  const out: string[] = [];
+  for (const segment of segments) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      // Solo colapsa si hay algo a qué volver; si no, el `..` se
+      // mantiene y `normalizeRel` lo rechaza arriba.
+      if (out.length > 0 && out[out.length - 1] !== "..") {
+        out.pop();
+      } else {
+        out.push("..");
+      }
+      continue;
+    }
+    out.push(segment);
+  }
+  return out.join("/");
+}
+
+/**
  * Lee los workspaces desde un JSON (turbo.json / lerna.json /
- * package.json). Acepta tanto el formato array como el objeto
- * `{ packages: [...] }` de npm 7+.
+ * package.json). Acepta:
+ *
+ *  - `workspaces: ["a", "b"]` (npm/yarn clásico)
+ *  - `workspaces: { packages: ["a", "b"] }` (npm 7+)
+ *  - `packages: ["a", "b"]` (Lerna)
+ *  - `workspaces: [...]` con `packages` (turbo) — se funden
+ *
+ * El orden es importante: `packages` cubre Lerna y turbo a la vez;
+ * `workspaces` cubre npm/yarn. Si los dos están en el mismo fichero,
+ * se concatenan.
  */
 async function readJsonWorkspaces(jsonPath: string): Promise<ReadonlyArray<string>> {
   let raw: string;
@@ -182,11 +252,16 @@ async function readJsonWorkspaces(jsonPath: string): Promise<ReadonlyArray<strin
   if (!parsed || typeof parsed !== "object") return [];
   const obj = parsed as Record<string, unknown>;
   const candidates: unknown[] = [];
-  if (Array.isArray(obj["workspaces"])) {
-    candidates.push(...obj["workspaces"]);
-  } else if (Array.isArray(obj["packages"])) {
-    candidates.push(...obj["packages"]);
+  const collect = (value: unknown): void => {
+    if (Array.isArray(value)) candidates.push(...value);
+  };
+  // 1) `workspaces` puede ser array o `{ packages: [...] }`.
+  collect(obj["workspaces"]);
+  if (obj["workspaces"] && typeof obj["workspaces"] === "object" && !Array.isArray(obj["workspaces"])) {
+    collect((obj["workspaces"] as Record<string, unknown>)["packages"]);
   }
+  // 2) `packages` en la raíz (Lerna, turbo cuando no usa `workspaces`).
+  collect(obj["packages"]);
   return candidates.filter((c): c is string => typeof c === "string");
 }
 
@@ -225,10 +300,39 @@ async function readPnpmWorkspaces(yamlPath: string): Promise<ReadonlyArray<strin
     if (/^[A-Za-z_]/.test(line)) break;
     const match = /^\s*-\s*(.+?)\s*$/.exec(line);
     if (!match || !match[1]) continue;
-    const value = match[1].replace(/^["']|["']$/g, "");
-    // Quita comentarios inline.
-    const clean = value.split("#")[0]?.trim() ?? "";
-    if (clean.length > 0) out.push(clean);
+    const value = stripPnpmComment(match[1]).trim();
+    const unquoted = value.replace(/^["']|["']$/g, "");
+    if (unquoted.length > 0) out.push(unquoted);
+  }
+  return out;
+}
+
+/**
+ * Quita el comentario inline de una línea YAML, pero solo si está
+ * fuera de comillas. Se hace a mano porque no hay parser YAML y el
+ * caso `"apps/api" # comentario` (la única cita entrecomillada que
+ * aparece en `pnpm-workspace.yaml` reales) no se cubre con un split
+ * por `#`.
+ *
+ * La heurística: si el valor empieza por `"` o `'`, el `#` se ignora
+ * hasta encontrar la pareja. Si no, se corta al primer `#`.
+ */
+function stripPnpmComment(value: string): string {
+  const first = value.charAt(0);
+  if (first !== '"' && first !== "'") {
+    const idx = value.indexOf("#");
+    return idx === -1 ? value : value.slice(0, idx);
+  }
+  let out = first;
+  for (let i = 1; i < value.length; i++) {
+    const ch = value[i];
+    if (ch === "\\" && i + 1 < value.length) {
+      out += ch + value[i + 1];
+      i++;
+      continue;
+    }
+    if (ch === first) return out + ch;
+    out += ch;
   }
   return out;
 }

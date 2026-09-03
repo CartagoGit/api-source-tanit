@@ -100,6 +100,14 @@ export interface IUiDeps {
     readonly outputDir?: string | undefined;
     readonly formats?: ReadonlyArray<string> | undefined;
     readonly framework?: string | undefined;
+    /**
+     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     *
+     * Si la UI lo conoce (un campo en el formulario que la persona
+     * rellena), se pasa al pipeline; si no, el orquestador decide por
+     * monorepo. El valor se valida en `generation.pipeline.ts`.
+     */
+    readonly frameworkSearchRoot?: string | undefined;
   }) => Promise<IDryRunPlan>;
   /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
   readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
@@ -118,6 +126,13 @@ export interface IUiDeps {
      * siempre; esta es la salida para esa persona.
      */
     readonly framework?: string | undefined;
+    /**
+     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     *
+     * Mismo contrato que `dryRun`: si la UI lo conoce, viaja hasta el
+     * `--framework-search-root` del CLI; si no, el orquestador decide.
+     */
+    readonly frameworkSearchRoot?: string | undefined;
   }) => Promise<IUiGenerateResult>;
   /**
    * El historial de generaciones, ya limitado y ordenado.
