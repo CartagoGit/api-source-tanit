@@ -28,6 +28,7 @@ import { join, relative } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveScanRoot } from "../../core/discovery/scan-root.helper.js";
 import type {
   IEndpointValidation,
   IProjectMatch,
@@ -114,7 +115,11 @@ export class RustRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectFiles(match.projectRoot, isRustSourceFile);
+    // a00012 S1.b: la raíz efectiva respeta `frameworkSearchRoot` para
+    // monorepos. Antes era `match.projectRoot` directo, lo que en un
+    // monorepo hacía que `collectFiles` caminase el árbol del
+    // workspace entero en lugar del subdirectorio del framework.
+    const files = await collectFiles(effectiveScanRoot(match), isRustSourceFile);
     const routes: ParsedRoute[] = [];
     // `structs` vive aquí, no como `private readonly` de instancia: si
     // sobreviviera entre llamadas, dos escaneos consecutivos compartirían

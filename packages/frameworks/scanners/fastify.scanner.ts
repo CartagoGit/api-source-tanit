@@ -37,6 +37,7 @@ import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findAllBalanced, findOutsideStrings, findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveScanRoot } from "../../core/discovery/scan-root.helper.js";
 import { relative } from "node:path";
 import type {
   IEndpointValidation,
@@ -156,7 +157,11 @@ export class FastifyRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectFiles(match.projectRoot, isSourceJsTsFile);
+    // a00012 S1.b: la raíz efectiva respeta `frameworkSearchRoot` para
+    // monorepos. Antes era `match.projectRoot` directo, lo que en un
+    // monorepo hacía que `collectFiles` caminase el árbol del
+    // workspace entero en lugar del subdirectorio del framework.
+    const files = await collectFiles(effectiveScanRoot(match), isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
     // `schemas` vive aquí, no como campo de instancia: si sobreviviera
     // entre llamadas, dos escaneos consecutivos compartirían los JSON
