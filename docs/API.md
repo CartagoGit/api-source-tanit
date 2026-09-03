@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 146 símbolos en 50 módulos.
+> 147 símbolos en 51 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -682,6 +682,30 @@ export async function pushEnvironment( environment: IPostmanEnvironmentPayload, 
 ```ts
 export async function verifyApiKey( options: IPostmanApiOptions, ): Promise<
 ```
+
+### `packages/core/domain/project-health.service.ts`
+
+Salud de la documentación de un proyecto: porcentajes por categoría.
+
+#### `computeProjectHealth`
+
+```ts
+export function computeProjectHealth( specs: ReadonlyArray<EndpointSpec>, ): IProjectHealth
+```
+
+Computa la salud del proyecto a partir de los specs finales.
+
+Con cero endpoints, todos los porcentajes son `0`: no hay nada que
+documentar y un `NaN` o un 100 sin rutas serían las dos mentiras
+posibles. Con rutas, cada porcentaje es el cociente de endpoints que
+llevan la pieza, redondeado a entero para que el CLI y el tool MCP
+lo muestren tal cual.
+
+El body cuenta si el spec lleva uno —de reglas resueltas o de la
+inferencia agnóstica, que ya corrió antes de aquí—. Los ejemplos
+cuentan cuando el body lleva algún valor o hay params con valor;
+son las dos vías por las que la colección enseña **un** valor válido
+al usuario.
 
 ### `packages/core/domain/request-doc.service.ts`
 

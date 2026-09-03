@@ -154,6 +154,12 @@ describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de ve
       auth: { loginEndpoint: "POST /login" },
       warnings: [],
       evidence: [],
+      health: {
+        withValidationPercent: 22,
+        withBodySchemaPercent: 33,
+        withExamplesPercent: 33,
+        withDescriptionPercent: 0,
+      },
     };
     expect(contratos!.SummaryOutputSchema.safeParse(completo).success).toBe(true);
   });
@@ -203,6 +209,12 @@ describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de ve
         inferredVariables: 0,
         auth: null,
         warnings: [],
+        health: {
+          withValidationPercent: 0,
+          withBodySchemaPercent: 0,
+          withExamplesPercent: 0,
+          withDescriptionPercent: 0,
+        },
       }).success,
     ).toBe(false);
   });

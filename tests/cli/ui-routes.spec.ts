@@ -34,6 +34,12 @@ const RESUMEN: IProjectSummary = {
   auth: { loginEndpoint: "POST /login" },
   warnings: [],
   evidence: [],
+  health: {
+    withValidationPercent: 100,
+    withBodySchemaPercent: 100,
+    withExamplesPercent: 100,
+    withDescriptionPercent: 100,
+  },
 };
 
 /** Dobles que registran con qué se les llamó. */
