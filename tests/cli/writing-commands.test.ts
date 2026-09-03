@@ -136,6 +136,49 @@ describe("open", () => {
   });
 });
 
+describe("generate --open", () => {
+  /**
+   * Antes esto construía una ruta muerta
+   * (`(import.meta as { dir?: string }).dir ?? process.cwd()` +
+   * `/open-postman.script.ts`) y producía `MODULE_NOT_FOUND`. Ahora
+   * `generate` importa el `main` del módulo hermano y lo llama en
+   * proceso. Aquí se verifica la **integración**: el comando
+   * efectivamente llama a la función, y `open-postman` corre.
+   *
+   * Se fuerza `POSTMAN_FORCE_OPEN=web` para que open-postman no intente
+   * lanzar la app de escritorio (lo que bloquearía el test en CI sin
+   * display) y salga por la rama web determinística.
+   */
+  test("invoca open-postman en proceso (rama web)", { timeout: 120_000 }, async () => {
+    const root = await proyecto("generate-open");
+    const { code, output } = await runProcess(
+      "bun",
+      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
+      { env: { POSTMAN_FORCE_OPEN: "web" } },
+    );
+    expect(code, output).toBe(0);
+    expect(output).toContain("--open");
+  });
+
+  /**
+   * `generate` debe generar **primero** y abrir **después**. Si el
+   * orden se invierte, `--open` abre un fichero que aún no existe y
+   * confunde al usuario.
+   */
+  test("genera antes de abrir", { timeout: 120_000 }, async () => {
+    const root = await proyecto("generate-open-orden");
+    const { output } = await runProcess(
+      "bun",
+      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
+      { env: { POSTMAN_FORCE_OPEN: "web" } },
+    );
+    const idxGenerate = output.indexOf("✔");
+    const idxOpen = output.indexOf("--open");
+    expect(idxGenerate).toBeGreaterThanOrEqual(0);
+    expect(idxOpen).toBeGreaterThan(idxGenerate);
+  });
+});
+
 describe("los comandos que escriben lo hacen de forma atómica", () => {
   /**
    * `init` escribía con `writeFileSync`. Un fallo a mitad dejaba una

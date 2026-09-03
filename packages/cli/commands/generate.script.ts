@@ -33,6 +33,7 @@ import {
 } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { main as runOpenPostman } from "./open-postman.script.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
 import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
 import {
@@ -406,19 +407,19 @@ export async function runGenerate(
   }
 
   if (openAfter) {
-    const { spawnSync } = await import("node:child_process");
-    const start =
-      (import.meta as { dir?: string }).dir ?? process.cwd();
-    const openScript = `${start}/open-postman.script.ts`;
+    // Antes esto hacía `spawnSync("bun", ["run", "<dir>/open-postman.script.ts", …])`
+    // con `(import.meta as { dir?: string }).dir ?? process.cwd()`. Tres
+    // defectos a la vez: el cast silenciaba un campo que no existe en
+    // `import.meta`, el fallback caía a `process.cwd()` (vetado por
+    // `lint:tools`/`lint:lint-tool-no-process.script.ts`), y la ruta
+    // construida no resolvía al fichero desde la reorg de `packages/`.
+    // Llamar al `main` del módulo hermano en proceso es la versión
+    // correcta: misma exit code, sin spawn, sin globales.
     console.log("\n→ --open: lanzando open-postman…");
-    const r = spawnSync(
-      "bun",
-      ["run", openScript, "--file", OUTPUT_PATH],
-      { stdio: "inherit" },
-    );
-    if (r.status !== 0) {
+    const exit = await runOpenPostman();
+    if (exit !== 0) {
       console.error("✘ open-postman.script.ts falló.");
-      return { code: r.status ?? 1, report: null };
+      return { code: exit, report: null };
     }
   }
 
