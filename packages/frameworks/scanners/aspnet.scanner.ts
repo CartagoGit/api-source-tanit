@@ -124,6 +124,45 @@ async function walkCs(
   }
 }
 
+/**
+ * Normaliza la ruta de ASP.NET a la forma de la colección.
+ *
+ * Tres transformaciones:
+ *
+ *   1. Restricciones de path: `{id:int}`, `{id:guid}`, `{id:minlength(2)}`
+ *      → `{id}`. La restricción es documentación de servidor; en la
+ *      colección el token es lo que el usuario sustituye.
+ *   2. `[controller]` / `[action]` → el nombre del controller/action
+ *      cuando se puede derivar (`UsersController` → `users`). Antes
+ *      el token literal `[controller]` acababa en la URL, que es justo
+ *      el tipo de colección que el usuario tiene que arreglar a mano.
+ *   3. Cualquier token residual entre llaves con `:` dentro se limpia
+ *      por la regla 1.
+ */
+function normalizeAspNetPath(path: string, fallbackAction: string): string {
+  return path
+    .replace(/\{(\w+):[^}]+\}/g, "{$1}")
+    .replace(/\[controller\]/gi, deriveControllerToken(path) ?? "controller")
+    .replace(/\[action\]/gi, fallbackAction)
+    .replace(/\{(\w+):[^}]+\}/g, "{$1}");
+}
+
+/**
+ * Deriva el token de `[controller]` mirando la propia ruta fuente.
+ *
+ * ASP.NET lo resuelve al nombre del controller sin el sufijo
+ * `Controller` en kebab/lower. No tenemos el nombre de la clase en
+ * esta función (se procesa por línea), así que el caller lo pasa como
+ * fallback; aquí solo limpiamos lo que venga en el propio path.
+ */
+function deriveControllerToken(path: string): string | null {
+  // `[Route("[controller]/[action]")]` no lleva el nombre: sin la
+  // declaración de la clase no se puede derivar. Devolver null y que
+  // el caller decida su fallback.
+  const m = /\[controller\]\s*\/?\s*\[?([\w-]+)\]?/.exec(path);
+  return m?.[1] ?? null;
+}
+
 async function parseCsFile(
   absPath: string,
   relPath: string,
@@ -250,7 +289,7 @@ function parseMinimalApis(lines: string[], relPath: string): ParsedRoute[] {
       const fullPath = joinRoutePath("/", prefix, path);
       out.push({
         method: method.toUpperCase(),
-        uri: fullPath,
+        uri: normalizeAspNetPath(fullPath, "index"),
         rawUri: fullPath,
         sourceFile: relPath,
         lineNumber: i + 1,

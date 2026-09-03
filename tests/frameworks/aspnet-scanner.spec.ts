@@ -122,6 +122,62 @@ describe("ASP.NET — minimal APIs (.NET 6+)", () => {
     expect(routes.map((r) => r.uri).join(" ")).not.toContain("endpoint-comentado");
   });
 
+  // a00011 C-6: `{id:int}` es ASP.NET normal y corriente. La
+  // restricción es documentación de servidor; en la colección el
+  // token es lo que el usuario sustituye. Antes del fix la URL
+  // salía literal `{id:int}` y Postman no la trataba como path param.
+  test("path constraint {id:int} se reduce a {id} (C-6 a00011)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Tienda.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>`,
+      "Program.cs": `var app = builder.Build();
+app.MapGet("/productos/{id:int}", (int id) => id);
+app.MapGet("/clientes/{slug:alpha}", (string slug) => slug);
+app.MapPut("/pedidos/{id:guid}", (Guid id) => id);
+app.Run();`,
+    });
+    const match = await new AspNetProjectScanner().resolve(project.root);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
+    const uris = routes.map((r) => r.uri).sort();
+    expect(uris).toEqual(["/clientes/{slug}", "/pedidos/{id}", "/productos/{id}"]);
+    await project.cleanup();
+  });
+
+  test("[controller] token se resuelve al nombre derivado (C-6 a00011)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Tienda.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+</Project>`,
+      "Controllers/UsersController.cs": `using Microsoft.AspNetCore.Mvc;
+namespace Tienda;
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+  [HttpGet]
+  public System.Collections.Generic.IEnumerable<string> List() => System.Array.Empty<string>();
+}`,
+    });
+    const match = await new AspNetProjectScanner().resolve(project.root);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
+    // `[controller]` sin clase parseable se queda con el fallback
+    // genérico; lo que NO puede ocurrir es que el token literal
+    // acabe en la URL.
+    const uris = routes.map((r) => r.uri);
+    expect(uris.every((u) => !u.includes("[controller]"))).toBe(true);
+    await project.cleanup();
+  });
+
   test("conviven minimal APIs y controladores en el mismo proyecto", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     expect(routes.some((r) => r.sourceFile === "Program.cs")).toBe(true);
