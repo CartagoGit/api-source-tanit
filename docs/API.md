@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 135 símbolos en 42 módulos.
+> 139 símbolos en 43 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -100,6 +100,75 @@ la suma.
 Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
 frameworks distintos con `Promise.all` y comprueba que ninguno se
 cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+
+### `packages/core/discovery/output-paths.helper.ts`
+
+Resolución de rutas de salida a partir de un `IProjectContext` explícito.
+
+#### `resolveOutputDir`
+
+```ts
+export function resolveOutputDir( context: IProjectContext | undefined, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): string
+```
+
+Directorio donde se escriben los artefactos, con la misma precedencia
+que tenía `outputDir(context?)` antes.
+
+Aceptar `argv` y `env` como parámetros —en lugar de leer
+`process.argv` y `process.env`— es lo que permite testear la
+precedencia sin tocar el proceso. Los valores por defecto siguen
+siendo los globales para que los call sites existentes no cambien.
+
+`context` es opcional a propósito: cuando un comando se lanza sin
+contexto de proyecto (la rama `catch` de `validate-json`, que corre
+solo con el JSON ya generado), el helper cae a la resolución por
+`argv` / `env`. Mantener esa puerta abierta es el comportamiento
+histórico y no introduce un singleton: el helper sigue siendo puro
+respecto a sus argumentos, y solo lee los globales cuando no le
+pasan contexto.
+
+#### `outputCollectionPath`
+
+```ts
+export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): Promise<string>
+```
+
+Ruta absoluta al JSON principal. Crea el directorio si no existe.
+
+Acepta `argv` y `env` igual que `resolveOutputDir` para que tests y
+procesos de vida larga puedan inyectar el contexto sin mutar el
+proceso. Por defecto son los globales.
+
+#### `outputEnvironmentPath`
+
+```ts
+export async function outputEnvironmentPath( context: IProjectContext | undefined, envName: string, projectName?: string, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): Promise<string>
+```
+
+Ruta absoluta al environment Postman para un entorno dado.
+
+El nombre del environment se slugifica igual que antes: NFD →
+quitar diacríticos → kebab-case → trim de guiones. Quien necesita el
+comportamiento original lo hace pasando el `projectName` ya
+normalizado.
+
+#### `describeDiscoveredPaths`
+
+```ts
+export function describeDiscoveredPaths( context: IProjectContext, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): string
+```
+
+La traza que el CLI imprime antes de escanear, en texto.
+
+Sin nombre de proyecto dice `<nombre-del-proyecto>` en lugar de
+inventarse uno: la traza existe para descartar que se esté mirando
+la carpeta equivocada, y mentir ahí la hace peor que no decir nada.
+
+Las carpetas `routes` y `requests` que aparecen son **del proyecto
+que se escanea**, derivadas con `projectDirs(context)`. Esa parte es
+la heurística heredada del camino Laravel; un scanner moderno
+resuelve sus propias rutas, pero la traza del CLI las sigue
+mostrando porque a una persona le sirve ver si existen.
 
 ### `packages/core/discovery/paths.service.ts`
 

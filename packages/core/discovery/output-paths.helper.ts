@@ -95,8 +95,8 @@ export function resolveOutputDir(
   //    regla universal §6 prohíbe en engines.
   throw new Error(
     "No se pudo determinar la carpeta de salida. " +
-      "Pasa `--output-dir <ruta>` o `--project-root <ruta>`, o define " +
-      "POSTMAN_OUTPUT_DIR / POSTMAN_PROJECT_ROOT.",
+      "Pasa `--output-dir <ruta>` y/o `--project-root <ruta>`, o define " +
+      "las variables de entorno equivalentes.",
   );
 }
 
