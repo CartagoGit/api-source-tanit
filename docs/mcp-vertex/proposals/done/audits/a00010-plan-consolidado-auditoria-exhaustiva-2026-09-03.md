@@ -3,7 +3,7 @@ id: a00010
 title: "Plan consolidado auditoría exhaustiva 2026-09-03 — bugs P1, IR SchemaGraph, AST, fusión híbrida"
 kind: audit
 date: 2026-09-03
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 dependsOn:
@@ -18,6 +18,80 @@ related:
   - x00021
 supersedes:
   - a00008
+---
+
+# a00010 — Plan consolidado auditoría exhaustiva 2026-09-03 — **CERRADO**
+
+> **Cierre 2026-09-03.** Esta auditoría se ejecutó en su totalidad en la
+> misma sesión que la redactó. La rama `develop` recibió 5 commits que
+> cierran los slices S1–S8 y deja el `bun run validate` en verde (2765
+> tests pasan, 21/21 ejemplos generan, bench plano, cobertura por encima
+> de los suelos). El log de commits es la fuente de verdad del cierre.
+
+## Slices cerrados
+
+| Slice | Cierra | Commit | Notas |
+|---|---|---|---|
+| **S1** pathFields ⇒ path only | B-01 | `30670df` | El adapter ya no concatena `pathFields` a `spec.query`. Test de regresión añadido. |
+| **S2** state lives in `IScanResult` | B-06 | `0fe4645` | Subagente `implementation-runner`. 4 scanners refactorizados; lint nuevo `lint:no-instance-mutable-maps-in-scanners`. 1162 ins / 339 del. |
+| **S3** Gin HEAD/OPTIONS + Laravel/Rails singular + PATCH | B-02, B-03, B-04 | `2551435` + `d72a769` | Rails: 7 acciones → 8 (PUT + PATCH). Laravel: path param `/{user}` y `/{order}`. Fixture actualizado. |
+| **S4** Spring Boot `src/main/kotlin` | B-05 | `2551435` | `detect()` y `scan()` ahora cubren ambas raíces. Nuevo fixture `springboot-kotlin-mini`. |
+| **S5** EndpointMerger | ext-FEAT-009 | `1ab0c39` | Subagente `implementation-runner`. 25 tests unitarios. Provenance por pieza. |
+| **S6** SchemaGraph | ext-IR | `b2bcdcc` | Subagente. 12 tests. OpenAPI exporter consume SchemaGraph nativo cuando está presente. |
+| **S7** AST TypeScript frontend | ext-AST | `51ddd72` | Subagente. Express migrado al AST con `@babel/parser`. Login ahora con valores reales de Zod (mejora UX). |
+| **S8** E2E same-framework concurrent | ext-TEST | `0fe4645` + `d72a769` | `concurrent-projects.test.ts` extendido a Fastify, Hono, Fiber, Rust. |
+
+## Estado del gate
+
+```
+$ bun run typecheck
+typecheck — 6 sección(es)  ✔ todas verdes
+
+$ bun run lint
+22 lints verdes (incluido el nuevo lint:no-instance-mutable-maps-in-scanners)
+
+$ bun run test:coverage
+ Test Files  133 passed
+      Tests  2765 passed | 1 skipped (2767)
+
+$ bun run validate:examples
+21/21 ejemplos generan una colección válida
+
+$ bun run bench:check
+✔ Coste por fichero plano: ×0.78 de 125 a 1000 rutas (máximo 1.6×).
+```
+
+## Bugs del audit externo aún abiertos (no en scope de a00010)
+
+- **B-07** (BUG-005…014 de a00009): defectos menores cerrados en su
+  mayoría por commits previos; quedan `validate-json` `url` array, push
+  stderr leak, basename env, runner process.cwd, namespace muerto. Son
+  P2-bajo; viven en `ready/` como `x0001x` o ya cerrados.
+- **B-09** MCP dependency `file:../mcp-vertex/...`: vive en `p00007 blocked`.
+  Depende de publicar `@mcp-vertex/core`.
+
+## Lo que queda vivo en `ready/`
+
+- `f00010` y `f00011` (FEAT nuevos detectores / lenguajes) — siguen
+  abiertas. Consumirán la evidencia de esta auditoría y de `a00009`.
+- Cualquier sub-slice que el equipo decida abrir para profundizar los
+  estructural: SchemaGraph con consumidores en todos los exportadores,
+  AST migrado a NestJS/Fastify/Hono/Next/tRPC (sólo Express migrado).
+
+## Por qué esta auditoría se cierra, no se reabre
+
+El audit pegado por el usuario tenía tres tipos de salida:
+1. **Bugs reales del HEAD** → cerrados en S1–S4 + S8.
+2. **Mejoras estructurales** (IR, AST, Merger) → entregados en S5–S7.
+3. **Recomendaciones de roadmap** (gRPC, Axum, monorepos, AST por
+   lenguaje, runtime opt-in) → registradas para propuestas futuras,
+   fuera del scope del cierre de DoD de un solo commit.
+
+La auditoría cierra cuando (a) los bugs del HEAD están arreglados y
+probados, (b) las mejoras estructurales están integradas con su propia
+suite, y (c) `bun run validate` está verde. Esas tres condiciones se
+cumplen.
+
 ---
 
 # a00010 — Plan consolidado auditoría exhaustiva 2026-09-03
