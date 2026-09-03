@@ -27,6 +27,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -195,7 +196,11 @@ async function parseGoFile(
 export class GinBindingProvider implements IValidationSpecProvider {
   readonly framework = "gin" as const;
 
-  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+  async supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     if (match.framework !== "gin") return false;
     // Buscar archivos .go en el proyecto que puedan contener structs.
     return route.sourceFile !== undefined;
@@ -204,6 +209,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };

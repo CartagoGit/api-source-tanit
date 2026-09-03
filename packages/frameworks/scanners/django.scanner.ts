@@ -33,6 +33,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -496,13 +497,18 @@ const FIELD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
 export class DjangoSerializerProvider implements IValidationSpecProvider {
   readonly framework = "django" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
+  async supports(
+    _r: ParsedRoute,
+    _m: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return _m.framework === "django";
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
