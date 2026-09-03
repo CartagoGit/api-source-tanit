@@ -38,6 +38,27 @@ const DEFAULT_PREFIX = "/trpc";
 
 const TRPC_PACKAGES = ["@trpc/server", "@trpc/client", "@trpc/next"];
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
+ * (bun). El detector de tRPC casi siempre llega a 0.95 por la
+ * dependencia; el bonus aparece en `evidence` aunque no cambie el
+ * score visible — exactamente lo que se busca: trazabilidad, no
+ * detección.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 export class TrpcProjectScanner implements IProjectScanner {
   readonly framework = "trpc" as const;
 
@@ -52,11 +73,17 @@ export class TrpcProjectScanner implements IProjectScanner {
     };
     const matched = TRPC_PACKAGES.filter((name) => deps[name]);
     if (matched.length === 0) return emptyResult(0);
-    return withEvidence(0.95, matched.map((name) => ({
+    const evidence = matched.map((name) => ({
       signal: `package.json declara ${name}`,
       weight: 0.95 / matched.length,
       artifact: "package.json",
-    })));
+    }));
+    // f00011 S4: lockfile como bonus de runtime. Sumamos al final
+    // para que no pueda tapar una ausencia de framework.
+    const locks = lockfileSignals(projectRoot);
+    evidence.push(...locks);
+    const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
+    return withEvidence(0.95 + lockBonus, evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

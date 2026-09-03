@@ -75,6 +75,27 @@ function nestjsEffectiveSearchRoot(match: IProjectMatch): string {
     : match.projectRoot;
 }
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
+ * (bun). Vive aquí —igual que `nestjsEffectiveSearchRoot`— porque
+ * cada scanner decide qué hacer con la señal. El cap a 1 del
+ * `withEvidence` ya absorbe el caso de un NestJS que sin esto ya
+ * puntuaba al tope.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Project detection
 // ---------------------------------------------------------------------------
@@ -97,6 +118,9 @@ export class NestJsProjectScanner implements IProjectScanner {
     // proyecto con CLI casi siempre tiene el layout esperado.
     if (hasNestCli) signals.push({ signal: "nest-cli.json presente", weight: 0.7, artifact: "nest-cli.json" });
     if (hasSrc) signals.push({ signal: "directorio src/ presente", weight: 0.2, artifact: "src/" });
+    // f00011 S4: lockfile como bonus de runtime. Sumamos al final
+    // para que no pueda tapar una ausencia de framework.
+    for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
     return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 

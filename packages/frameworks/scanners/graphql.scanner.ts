@@ -54,6 +54,28 @@ function isSchemaFile(name: string): boolean {
   return name.endsWith(".graphql") || name.endsWith(".gql");
 }
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
+ * (bun). El detector de GraphQL suma evidencia y luego devuelve el
+ * `Math.max(fromPackage, 0.5)` o `1`; el bonus aparece en `evidence`
+ * aunque el cap no le deje mover el score visible — exactamente lo
+ * que se busca con esta propuesta: trazabilidad de runtime, no
+ * detección nueva.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 export class GraphQlProjectScanner implements IProjectScanner {
   readonly framework = "graphql" as const;
 
@@ -74,6 +96,14 @@ export class GraphQlProjectScanner implements IProjectScanner {
         }
       }
     }
+
+    // f00011 S4: lockfile como bonus de runtime. Se acumula en
+    // `signals` para que aparezca en `evidence` independientemente
+    // de la rama que termine devolviendo el resultado. Sumamos al
+    // final para que un lockfile no pueda tapar una ausencia de
+    // framework — la detección por `package.json` o esquema va
+    // siempre delante.
+    for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
 
     // Un `.graphql` con `type Query` es la señal más fuerte que hay: no
     // depende del ecosistema ni del gestor de paquetes, así que también

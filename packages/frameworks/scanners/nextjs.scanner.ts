@@ -130,6 +130,33 @@ function parseJsonSafe(pkgPath: string): Record<string, unknown> | null {
   return parsed.value as Record<string, unknown>;
 }
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` **afinan** la confianza de
+ * un detector que ya reconoció el framework. No la introducen — un
+ * `pnpm-lock.yaml` sin `next` declarado sigue siendo `score: 0`—. Por
+ * eso los pesos son pequeños: +0.1 (pnpm) y +0.15 (bun). El cap a 1
+ * que el `withEvidence` aplica al score final absorbe el caso en el
+ * que la señal llega a un detector que ya estaba al tope (un Next.js
+ * completo sigue marcando 1, no 1.1).
+ *
+ * Vive aquí en vez de en un helper compartido porque cada scanner
+ * decide qué hace con la señal (Next.js la acumula; otros podrían
+ * filtrarla por runtime). El patrón es el mismo que `honoDeps()` o
+ * `dependsOnFastify()`: helper local, contrato en `contracts/`.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Project detection
 // ---------------------------------------------------------------------------
@@ -181,6 +208,10 @@ export class NextJsProjectScanner implements IProjectScanner {
         artifact: "package.json",
       });
     }
+    // f00011 S4: lockfile como bonus de runtime. Sumamos al final para
+    // que un lockfile no pueda tapar una ausencia de framework — la
+    // señal solo aporta cuando el detector ya estaba convencido.
+    for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
     return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 

@@ -56,6 +56,28 @@ import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.i
 const FRAMEWORK_PACKAGES = ["express", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector de Express (y Koa/Hapi, que comparten este scanner). Pesos
+ * pequeños: +0.1 (pnpm), +0.15 (bun). El score final pasa por
+ * `withEvidence(score, evidence)` sin cap aquí —el detector ya
+ * devuelve 0.7–0.9— así que el bonus sí mueve la aguja en estos
+ * casos. La señal nunca tapa la ausencia de framework: se suma al
+ * final, después del paquete que ya dio la detección principal.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 // Las regex multilínea que reconocían `app.METHOD(path, handler)`,
 // `Router({ prefix })` y `app.use('/prefix', router)` vivían aquí.
 // a00010 S7 las sustituye por el AST que produce el frontend
@@ -105,7 +127,18 @@ export class ExpressProjectScanner implements IProjectScanner {
         artifact: "package.json",
       };
     });
-    return withEvidence(score, evidence);
+    // f00011 S4: lockfile como bonus de runtime. El score base es el
+    // máximo de los pesos de cada match (varios paquetes compatibles
+    // no se acumulan); el lockfile sí se suma al final porque es una
+    // señal ortogonal, no competidora. Sumamos al final para que un
+    // lockfile no pueda tapar una ausencia de framework — la
+    // detección por `package.json` siempre va delante.
+    let finalScore = score;
+    for (const lock of lockfileSignals(projectRoot)) {
+      evidence.push(lock);
+      finalScore += lock.weight;
+    }
+    return withEvidence(finalScore, evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

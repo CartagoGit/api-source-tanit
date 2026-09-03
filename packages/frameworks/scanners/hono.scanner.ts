@@ -101,11 +101,38 @@ function honoEffectiveSearchRoot(match: IProjectMatch): string {
     : match.projectRoot;
 }
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
+ * (bun) — Bun es especialmente relevante para Hono porque es uno de
+ * los runtimes de borde que Hono soporta como first-class. El cap a
+ * 1 del `withEvidence` ya absorbe el caso de un Hono con `hono`
+ * declarado, donde el bonus queda en `evidence` aunque no cambie el
+ * score visible.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 export class HonoProjectScanner implements IProjectScanner {
   readonly framework = "hono" as const;
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const deps = honoDeps(await readPackageJson(projectRoot));
+    // f00011 S4: lockfile como bonus de runtime. Se calcula una vez
+    // aquí y se suma al final de cada rama positiva para que un
+    // lockfile no pueda tapar una ausencia de framework — la
+    // detección por dependencia o `wrangler.toml` va siempre delante.
+    const locks = lockfileSignals(projectRoot);
     if (deps["hono"]) {
       const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
         { signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" },
@@ -125,21 +152,30 @@ export class HonoProjectScanner implements IProjectScanner {
           artifact: "wrangler.toml",
         });
       }
+      for (const lock of locks) evidence.push(lock);
       return withEvidence(Math.min(evidence.reduce((a, s) => a + s.weight, 0), 1), evidence);
     }
     // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
     const pluginMatch = Object.keys(deps).some((name) => name.startsWith("@hono/"));
     if (pluginMatch) {
-      return withEvidence(0.6, [{ signal: "package.json solo declara plugins @hono/* (uso de refilón)", weight: 0.6, artifact: "package.json" }]);
+      const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
+        { signal: "package.json solo declara plugins @hono/* (uso de refilón)", weight: 0.6, artifact: "package.json" },
+        ...locks,
+      ];
+      const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
+      return withEvidence(0.6 + lockBonus, evidence);
     }
     // f00011 S1: `wrangler.toml` sin hono declarado. Caso raro (un
     // worker que aún no incluye la dependencia), pero si está, sigue
     // siendo la mejor pista disponible. 0.6 — el mismo peso que la
     // rama de `@hono/*` plugins, porque ambas son señales indirectas.
     if (existsSync(join(projectRoot, "wrangler.toml"))) {
-      return withEvidence(0.6, [
+      const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
         { signal: "wrangler.toml presente (runtime de borde)", weight: 0.6, artifact: "wrangler.toml" },
-      ]);
+        ...locks,
+      ];
+      const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
+      return withEvidence(0.6 + lockBonus, evidence);
     }
     return emptyResult(0);
   }

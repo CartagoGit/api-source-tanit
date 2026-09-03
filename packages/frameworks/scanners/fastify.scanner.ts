@@ -90,6 +90,27 @@ function dependsOnFastify(pkg: Record<string, unknown> | null): boolean {
   return Object.keys(deps).some((name) => name === "fastify" || name.startsWith("@fastify/"));
 }
 
+/**
+ * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ *
+ * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
+ * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
+ * (bun). El detector de Fastify ya está casi siempre al tope (1.0 con
+ * `fastify` directo) — la señal queda en `evidence` aunque no cambie
+ * el score visible. La idea es exactamente esa: el lockfile es
+ * **trazabilidad de runtime**, no detección.
+ */
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
+  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+  if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
+    out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
+  }
+  if (existsSync(join(projectRoot, "bun.lockb"))) {
+    out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
+  }
+  return out;
+}
+
 export class FastifyProjectScanner implements IProjectScanner {
   readonly framework = "fastify" as const;
 
@@ -106,7 +127,13 @@ export class FastifyProjectScanner implements IProjectScanner {
     const evidence = hasFastifyDirect
       ? [{ signal: "package.json declara fastify directamente", weight: 1, artifact: "package.json" }]
       : [{ signal: "package.json solo declara plugins @fastify/* (uso de refilón)", weight: 0.6, artifact: "package.json" }];
-    return withEvidence(hasFastifyDirect ? 1 : 0.6, evidence);
+    // f00011 S4: lockfile como bonus de runtime. Sumamos al final
+    // para que no pueda tapar una ausencia de framework.
+    const locks = lockfileSignals(projectRoot);
+    evidence.push(...locks);
+    const baseScore = hasFastifyDirect ? 1 : 0.6;
+    const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
+    return withEvidence(baseScore + lockBonus, evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
