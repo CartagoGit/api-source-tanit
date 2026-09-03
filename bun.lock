@@ -4,8 +4,10 @@
   "workspaces": {
     "": {
       "name": "export-to-postman",
-      "devDependencies": {
+      "dependencies": {
         "@babel/parser": "7.29.8",
+      },
+      "devDependencies": {
         "@vitest/coverage-v8": "^4.1.10",
         "vitest": "^4.1.10",
       },
