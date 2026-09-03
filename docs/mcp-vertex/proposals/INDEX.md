@@ -6,9 +6,10 @@ actual del frontmatter y, para `done`, también el `kind`.
 ## Ready
 
 Las propuestas nuevas se escriben directamente en `ready/`, sin una
-subcarpeta por kind. Directorio vivo: `f00010`, `f00011`, `x00012`,
-`x00013`, `x00014`, `x00020`, `x00021`. Las nuevas detecciones de
-lenguaje y los FEAT/REF que aún no entran en este pase.
+subcarpeta por kind. Directorio vivo: vacío (todas las propuestas
+abiertas están archivadas como `done/` o bloqueadas en `blocked/`).
+Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran
+en este pase.
 
 ## Activas
 
@@ -41,7 +42,9 @@ y no un nombre de fichero mutable.
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
 `a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `c00002`,
 `f00010`, `f00011`,
-`r00008`, `r00010` y `x00008`; están archivadas bajo sus carpetas canónicas:
+`r00008`, `r00010`,
+`x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`,
+`c00003`; están archivadas bajo sus carpetas canónicas:
 
 | Id | Kind | Ruta |
 |---|---|---|
