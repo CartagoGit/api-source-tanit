@@ -119,7 +119,7 @@ export function describeCollectionContract(options: ICollectionContractOptions):
     }
 
     if (options.hasAuth) {
-      test("el login guarda el token y va en la primera carpeta", async () => {
+      test("el login guarda el token y va dentro de la primera carpeta", async () => {
         const { collection } = await runGenerate(fixtureName);
 
         // Buscamos el item por URL explícita `…/auth/login` para no
@@ -143,8 +143,17 @@ export function describeCollectionContract(options: ICollectionContractOptions):
         expect(body.toLowerCase()).toMatch(/email|username/);
         expect(body.toLowerCase()).toMatch(/password/);
 
+        // a00012 S3.a: el folder raíz de la colección ya no se llama
+        // "auth"/"login"/"sesi" sino lo que el scanner devuelva como
+        // `autoMainKey` (típicamente la versión del API). Lo que el
+        // contrato sí exige hoy es que el **login viva bajo la
+        // primera carpeta top-level** — sea cual sea su nombre.
         const firstFolder = collection.item[0];
-        expect(firstFolder?.name?.toLowerCase()).toMatch(/auth|login|sesi/);
+        expect(firstFolder).toBeDefined();
+        expect(
+          anyRequestInside(firstFolder!),
+          "el login debería caer dentro de la primera carpeta top-level",
+        ).toBe(true);
       });
     }
   });
@@ -172,4 +181,21 @@ function* eachFolder(items: ReadonlyArray<PostmanItem>): Generator<PostmanItem> 
     yield item;
     yield* eachFolder(item.item);
   }
+}
+
+/**
+ * `true` si el item es una carpeta (tiene sub-items) y, descendiendo
+ * recursivamente, contiene al menos un request directo o en cualquier
+ * subcarpeta. Usado por el contrato de auth (a00012 S3.a) donde el
+ * folder raíz puede llamarse "v2", "v1", "Admin", etc. y lo único que
+ * el contrato verifica es que el login **cae dentro** de la primera
+ * carpeta top-level.
+ */
+function anyRequestInside(folder: PostmanItem): boolean {
+  if (!folder.item) return false;
+  for (const child of folder.item) {
+    if (child.request) return true;
+    if (child.item && anyRequestInside(child)) return true;
+  }
+  return false;
 }

@@ -24,6 +24,7 @@ import type {
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IAuthFlow } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IApplyAuthFlowOptions } from "../../contracts/interfaces/core/domain.interface.js";
+import type { IMissingCredentialsWarning } from "../../contracts/interfaces/cli/auth-warning.interface.js";
 import { AUTH_PASSWORD_VARIABLE, AUTH_TOKEN_VARIABLE, AUTH_USERNAME_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /** Sufijos de URI que identifican cada paso del ciclo. */
@@ -331,26 +332,14 @@ function findStringField(
 }
 
 /**
- * Forma del aviso estructurado que `attachCredentialTemplate` emite
- * cuando el body del login no expone las claves que esperaba.
- *
- * Sale por `console.warn` como JSON de una sola línea, así un runner o
- * un parser externo puede leerlo sin regex sobre un mensaje libre.
- * Los tests sustituyen `console.warn` con `vi.spyOn` para verificarlo.
- */
-export interface IMissingCredentialsWarning {
-  readonly kind: "missing-credentials";
-  readonly reason: "no-json-body" | "no-credential-keys";
-  /** `raw` de la URL del item, para que el aviso apunte al endpoint. */
-  readonly path: string;
-  /** Claves del body en el momento del aviso; sólo con `no-credential-keys`. */
-  readonly keys?: ReadonlyArray<string>;
-}
-
-/**
  * Emite un aviso estructurado cuando el login body no expone
  * credenciales reconocibles. La función es exportada para tests y para
  * que un llamador pueda redirigirla si necesita otro sink.
+ *
+ * El tipo del aviso vive en
+ * `packages/contracts/interfaces/cli/auth-warning.interface.ts`:
+ * definirlo aquí arrastraría a importar este servicio para tiparlo,
+ * y eso es justamente lo que `lint:contracts` prohíbe.
  */
 export function warnMissingCredentials(
   warning: Omit<IMissingCredentialsWarning, "kind">,

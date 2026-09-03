@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 154 símbolos en 54 módulos.
+> 153 símbolos en 54 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -519,19 +519,6 @@ export function authEnvironmentVariables(): Array<
 Variables que el environment necesita para el flujo de auth.
 Se añaden solo si la colección tiene login.
 
-#### `IMissingCredentialsWarning`
-
-```ts
-export interface IMissingCredentialsWarning
-```
-
-Forma del aviso estructurado que `attachCredentialTemplate` emite
-cuando el body del login no expone las claves que esperaba.
-
-Sale por `console.warn` como JSON de una sola línea, así un runner o
-un parser externo puede leerlo sin regex sobre un mensaje libre.
-Los tests sustituyen `console.warn` con `vi.spyOn` para verificarlo.
-
 #### `warnMissingCredentials`
 
 ```ts
@@ -541,6 +528,11 @@ export function warnMissingCredentials( warning: Omit<IMissingCredentialsWarning
 Emite un aviso estructurado cuando el login body no expone
 credenciales reconocibles. La función es exportada para tests y para
 que un llamador pueda redirigirla si necesita otro sink.
+
+El tipo del aviso vive en
+`packages/contracts/interfaces/cli/auth-warning.interface.ts`:
+definirlo aquí arrastraría a importar este servicio para tiparlo,
+y eso es justamente lo que `lint:contracts` prohíbe.
 
 #### `detectLaravelTokenPath`
 
