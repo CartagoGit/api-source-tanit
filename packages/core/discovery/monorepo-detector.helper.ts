@@ -38,31 +38,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 
-/** Lo que `detectMonorepo()` devuelve. Siempre, incluso sin monorepo. */
-export interface IMonorepoDetection {
-  /** ¿Hay alguna señal estándar de monorepo en la raíz? */
-  readonly isMonorepo: boolean;
-  /**
-   * El archivo exacto que se leyó para concluir `isMonorepo`.
-   * `null` cuando no hay monorepo: así los avisos del pipeline pueden
-   * decir "no se detectó monorepo" sin filtrar cuál de los cuatro se
-   * miró primero.
-   */
-  readonly signal: string | null;
-  /**
-   * Los subdirectorios del workspace, relativos a `projectRoot`, en
-   * formato POSIX y sin `..`. Vacío cuando no es monorepo o cuando los
-   * globs no resuelven a ningún directorio existente.
-   */
-  readonly workspaceDirs: ReadonlyArray<string>;
-  /**
-   * Recomendación cuando hay **exactamente un** workspace. `null` en
-   * cualquier otro caso (no-monorepo, cero workspaces o varios). El
-   * orquestador pega este valor en `match.frameworkSearchRoot` solo
-   * si la persona no pasó `--framework-search-root`.
-   */
-  readonly frameworkSearchRoot: string | null;
-}
+import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Los archivos que identifican un monorepo, en orden de prioridad. */
 const MONOREPO_SIGNALS = [

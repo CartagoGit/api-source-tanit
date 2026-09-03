@@ -50,8 +50,8 @@ import {
 } from "./endpoint-merger.service.js";
 import {
   detectMonorepo,
-  type IMonorepoDetection,
 } from "./monorepo-detector.helper.js";
+import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
