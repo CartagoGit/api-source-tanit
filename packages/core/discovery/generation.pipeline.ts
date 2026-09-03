@@ -40,6 +40,11 @@ import type {
   IGenerationOptions,
   IGenerationResult,
 } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IEndpointProvenanceEntry } from "../../contracts/interfaces/core/merge.interface.js";
+import {
+  endpointSpecFromMerged,
+  mergeEndpoints,
+} from "./endpoint-merger.service.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
@@ -141,6 +146,7 @@ async function buildFor(
     warnings: discovery.warnings,
     frameworks: discovery.frameworks,
     project: discovery.project,
+    ...(discovery.provenance ? { provenance: discovery.provenance } : {}),
     metrics: {
       routes: discovery.routes.length,
       specs: specs.length,
@@ -189,6 +195,8 @@ interface IDiscovery {
   /** Todos los frameworks que reconocieron el proyecto. */
   readonly frameworks: ReadonlyArray<string>;
   readonly project: IGenerationResult["project"];
+  /** Provenance por endpoint, presente solo cuando la detección fue híbrida. */
+  readonly provenance?: ReadonlyArray<IEndpointProvenanceEntry>;
 }
 
 /**
@@ -227,6 +235,13 @@ async function discoverSpecs(
     const warnings: string[] = [];
     let withValidation = 0;
     let withoutValidation = 0;
+    /** Lo que devuelve cada scanner, con su framework y score, para el merger. */
+    interface IPerScanner {
+      readonly framework: string;
+      readonly scannerScore: number;
+      readonly scannerSpecs: ReadonlyArray<EndpointSpec>;
+    }
+    const perScanner: IPerScanner[] = [];
 
     for (const candidate of usable) {
       const result = await buildSpecsFromScanner(
@@ -238,6 +253,11 @@ async function discoverSpecs(
       routes.push(...result.routes);
       withValidation += result.withFormRequest;
       withoutValidation += result.withoutFormRequest;
+      perScanner.push({
+        framework: candidate.match.framework,
+        scannerScore: candidate.score,
+        scannerSpecs: result.specs,
+      });
 
       // Un proveedor de validación que falla no aborta la generación
       // —un endpoint sin reglas sigue siendo una colección válida— pero
@@ -254,6 +274,8 @@ async function discoverSpecs(
       }
     }
 
+    let provenance: ReadonlyArray<IEndpointProvenanceEntry> | undefined;
+
     if (usable.length > 1) {
       const names = usable.map((c) => `${c.match.framework} (${c.score})`).join(", ");
       warnings.push(
@@ -261,6 +283,57 @@ async function discoverSpecs(
           "Se han escaneado todos y se han fusionado los endpoints. " +
           "Si alguno sobra, acota el escaneo con `--project-root` a la carpeta que toque.",
       );
+
+      // Fusión híbrida: cada scanner aporta sus specs con su framework.
+      // El merger agrupa por identidad (method + uri + name) y elige
+      // pieza a pieza (body, fields, auth, description) al de mayor
+      // confianza, dejando provenance de quién aportó qué. Antes
+      // hacía "first wins" sobre los specs ya mezclados, que perdía
+      // sin aviso la información del resto.
+      const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs }) =>
+        scannerSpecs.map((spec) => ({
+          framework,
+          scannerScore,
+          method: spec.method,
+          uri: spec.uri,
+          ...(spec.name !== undefined && spec.name !== ""
+            ? { name: spec.name }
+            : {}),
+          ...(spec.body !== undefined ? { body: spec.body } : {}),
+          ...(spec.fields ? { fields: spec.fields } : {}),
+          ...(spec.description !== undefined
+            ? { description: spec.description }
+            : {}),
+        })),
+      );
+
+      const mergedOutcome = mergeEndpoints(candidates);
+      const merged = mergedOutcome.specs.map(endpointSpecFromMerged);
+      provenance = mergedOutcome.provenance;
+      for (const w of mergedOutcome.warnings) warnings.push(w);
+
+      const collisions = specs.length - merged.length;
+      if (collisions > 0) {
+        warnings.push(
+          `${collisions} endpoint(s) estaban declarados por más de un ` +
+            "framework y se han fusionado pieza a pieza " +
+            "(route + body + auth + description) con provenance.",
+        );
+      }
+
+      return {
+        specs: mergeWithManual(merged, [...manualEndpoints]),
+        routes,
+        config,
+        match: usable[0]!.match,
+        origin: "scanner",
+        withValidation,
+        withoutValidation,
+        warnings,
+        frameworks: usable.map((c) => c.match.framework),
+        project,
+        provenance,
+      };
     }
 
     const merged = dedupeSpecs(specs);

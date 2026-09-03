@@ -22,6 +22,7 @@ import type {
 import type { ProjectConfig } from "./project-config.interface.js";
 import type { IProjectContext } from "./project-context.interface.js";
 import type { ILegacyDiscovery } from "./legacy-discovery.interface.js";
+import type { IEndpointProvenanceEntry } from "./merge.interface.js";
 
 /** El catálogo de detectores, scanners y proveedores de validación. */
 export interface DiscoveryRegistry {
@@ -198,6 +199,22 @@ export interface IGenerationResult {
     readonly manualEndpoints: number;
   };
   readonly metrics: IGenerationMetrics;
+  /**
+   * Provenance por endpoint, cuando la detección fue híbrida
+   * (2+ frameworks). Cada entrada dice de qué scanner vino cada
+   * pieza del endpoint (ruta, body, auth, descripción).
+   *
+   * Es `undefined` cuando solo un scanner reconoció el proyecto:
+   * no hay nada que reconciliar y el `provenance` sería trivial
+   * (un solo contributor).
+   *
+   * Los campos de los `EndpointSpec` resultantes son los que ganó la
+   * comparación, no los del scanner que más rutas aportó: en un
+   * híbrido, OpenAPI puede tener la ruta y Fastify el body, y el
+   * spec fusionado lleva el body de Fastify con la provenance de
+   * ambos.
+   */
+  readonly provenance?: ReadonlyArray<IEndpointProvenanceEntry>;
 }
 
 /** La configuración del proyecto, ya resuelta, y de dónde ha salido. */
