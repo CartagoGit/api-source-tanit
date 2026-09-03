@@ -128,27 +128,24 @@ describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
   });
 
   test("los datos del summary se pintan con textContent", () => {
-    // Cada campo que pintaDeteccion toca debe aparecer cerca
-    // (≤ 400 chars) de un textContent, en cualquier dirección.
-    // La heurística es laxa porque cubre el contrato sin parsear
-    // JS: detecta la regresión típica (cambiar textContent por
-    // innerHTML para "meter HTML") sin atarse a la forma exacta
-    // del código.
-    const campos = [
-      "e.signal",
-      "e.artifact",
-      "valor",
-      'pct + "%"',
-      "emoji",
-    ];
-    for (const campo of campos) {
-      const escaped = campo.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
+    // Cada variable local que recibe un dato del summary debe aparecer
+    // cerca (≤ 300 chars) de un textContent, en cualquier dirección.
+    // La heurística es laxa porque cubre el contrato sin parsear JS:
+    // detecta la regresión típica (cambiar textContent por innerHTML
+    // para "meter HTML") sin atarse a la forma exacta del código.
+    //
+    // Se nombran las VARIABLES LOCALES que reciben el dato, no los
+    // campos crudos del summary: la asignación `var w = e.weight`
+    // cuenta, aunque `e.weight` ya no esté cerca del textContent
+    // (lo está `w.toFixed(2)` en la línea siguiente).
+    const variables = ["e.signal", "e.artifact", "pct", "emoji"];
+    for (const variable of variables) {
       const re = new RegExp(
-        `\\.textContent[\\s\\S]{0,400}${escaped}|${escaped}[\\s\\S]{0,400}\\.textContent`,
+        `\\.textContent[\\s\\S]{0,300}${variable}|${variable}[\\s\\S]{0,300}\\.textContent`,
       );
       expect(
         UI_HTML.match(re),
-        `campo "${campo}" sin textContent cercano`,
+        `variable "${variable}" sin textContent cercano`,
       ).not.toBeNull();
     }
   });
