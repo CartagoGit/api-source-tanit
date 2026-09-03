@@ -140,3 +140,84 @@ describe("validación con @hono/zod-validator", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// f00011 S1 — regresiones de señales nuevas (wrangler.toml +
+// frameworkSearchRoot).
+// ---------------------------------------------------------------------------
+
+describe("Hono — detect() por wrangler.toml (f00011 S1)", () => {
+  // f00011 S1: `wrangler.toml` en raíz es la señal canónica de un
+  // proyecto Cloudflare Workers (el caso de uso de Hono). Peso 0.6 —
+  // alto, pero no tanto como la dependencia directa (1.0) porque
+  // `wrangler.toml` también lo usan proyectos que no son hono.
+  test("detect() === 1 (cap) cuando hay wrangler.toml + hono como dependencia", async () => {
+    const project = await createTempProject({
+      "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "wrangler.toml": 'name = "demo"\nmain = "src/index.ts"\n',
+    });
+    try {
+      // 1.0 (hono dep) + 0.6 (wrangler.toml) = 1.6 → cap 1.
+      expect((await new HonoProjectScanner().detect(project.root)).score).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 0.6 cuando solo hay wrangler.toml (sin hono declarado)", async () => {
+    const project = await createTempProject({
+      "package.json": '{"name":"demo"}',
+      "wrangler.toml": 'name = "demo"\nmain = "src/index.ts"\n',
+    });
+    try {
+      // Caso raro (un worker que aún no incluye la dependencia), pero
+      // es la mejor pista disponible y por eso puntúa 0.6.
+      expect((await new HonoProjectScanner().detect(project.root)).score).toBe(0.6);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("evidence incluye 'wrangler.toml presente' cuando aplica", async () => {
+    const project = await createTempProject({
+      "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "wrangler.toml": 'name = "demo"\n',
+    });
+    try {
+      const result = await new HonoProjectScanner().detect(project.root);
+      const wranglerEvidence = result.evidence.find((e) =>
+        e.signal.includes("wrangler.toml"),
+      );
+      expect(wranglerEvidence).toBeDefined();
+      expect(wranglerEvidence?.weight).toBe(0.6);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Hono — frameworkSearchRoot para monorepos (f00011 S1)", () => {
+  // f00011 S1: en un monorepo `apps/api/` tiene el `index.ts` con
+  // las rutas de Hono. Sin `frameworkSearchRoot` el scanner camina la
+  // raíz y no encuentra nada; con él, sale el scan del subdir.
+  test("scan() encuentra rutas cuando frameworkSearchRoot apunta al subdir con index.ts", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ workspaces: ["apps/*"] }),
+      "apps/api/package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "apps/api/wrangler.toml": 'name = "demo"\n',
+      "apps/api/index.ts":
+        'import { Hono } from "hono";\nconst app = new Hono();\napp.get("/health", (c) => c.json({}));\nexport default app;\n',
+    });
+    try {
+      const match = await new HonoProjectScanner().resolve(project.root);
+      const routes = (await new HonoRouteScanner().scan({
+        ...match,
+        frameworkSearchRoot: "apps/api",
+      })).routes;
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /health");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

@@ -116,6 +116,41 @@ export const UI_HTML = String.raw`<!doctype html>
     width: 100%; padding: .55rem .7rem; border: 1px solid var(--borde); border-radius: 6px;
     background: var(--campo); color: var(--texto); font: inherit;
   }
+  /*
+   * Dashboard de historial (f00010 S4).
+   *
+   * Tarjeta plana encima del formulario: "lo último que se generó"
+   * se ve antes de empezar a escribir rutas. Cada entrada es una fila
+   * con proyecto, framework y fecha; un enlace textual al final abre
+   * la ruta del proyecto en una nueva pestaña si el navegador lo
+   * permite (file://), y si no, la copia.
+   */
+  .historial {
+    margin: 0 0 1.25rem;
+  }
+  .historial ol {
+    list-style: none; padding: 0; margin: .25rem 0 0;
+  }
+  .historial li {
+    display: grid; grid-template-columns: auto 1fr auto; gap: .35rem .8rem;
+    padding: .4rem 0; border-top: 1px solid var(--borde);
+    align-items: baseline;
+  }
+  .historial li:first-child { border-top: 0; }
+  .historial .cuando {
+    font-variant-numeric: tabular-nums; color: var(--tenue); font-size: .9rem;
+  }
+  .historial .que { font-weight: 600; }
+  .historial .que small {
+    font-weight: 400; color: var(--tenue); margin-left: .35rem;
+  }
+  .historial .accion {
+    font-size: .85rem; color: var(--acento); background: transparent;
+    border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+  }
+  .historial .vacio {
+    color: var(--tenue); margin: .25rem 0 0; font-style: italic;
+  }
   @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -130,6 +165,20 @@ export const UI_HTML = String.raw`<!doctype html>
   </div>
 
   <div id="vista-principal">
+    <!--
+      f00010 S4: dashboard de historial de generaciones.
+      Se rellena por JS al cargar (pide /api/history) y tras cada
+      generación satisfactoria (refresca). Sin historial, dice "todavía
+      nada" en vez de esconder la sección: esconderla es como no tener
+      dashboard.
+    -->
+    <section id="historial" class="tarjeta historial" aria-labelledby="historial-titulo">
+      <h2 id="historial-titulo">Historial reciente</h2>
+      <div id="historial-lista" aria-live="polite">
+        <p class="vacio">Cargando…</p>
+      </div>
+    </section>
+
     <form id="form">
       <fieldset>
         <legend>Proyecto</legend>
@@ -499,8 +548,87 @@ export const UI_HTML = String.raw`<!doctype html>
       (r.extraPaths || []).forEach(function (p, i) { filas.push(["Extra " + (i + 1), p]); });
       (r.warnings || []).forEach(function (w, i) { filas.push(["Aviso " + (i + 1), w]); });
       pinta("exito", "Colección generada", tabla(filas));
+      // f00010 S4: refresca el dashboard para que la entrada recién
+      // generada aparezca arriba. Se hace **después** de mostrar el
+      // resultado para no hacer esperar al usuario, y se ignoran
+      // errores: si el historial falla, la generación ya salió bien.
+      cargarHistorial();
     });
   });
+
+  /**
+   * Carga y pinta el historial de generaciones.
+   *
+   * El dashboard enseña las últimas 20 entradas por defecto; si el
+   * servidor las manda vacías, dice "todavía nada" — esconder la
+   * tarjeta cuando está vacía es como no tener dashboard. La lista
+   * se actualiza en orden inverso al devuelto por la API, así que lo
+   * más reciente queda arriba.
+   *
+   * No se mete en la cadena de errores: si el historial falla al
+   * cargar, el formulario sigue funcionando y la persona puede
+   * generar sin más. El aviso se imprime en consola y se abandona.
+   */
+  function cargarHistorial() {
+    pide("/api/history", {}).then(function (res) {
+      var cont = $("historial-lista");
+      cont.innerHTML = "";
+      if (!res.ok) {
+        var p = document.createElement("p");
+        p.className = "vacio";
+        p.textContent = "Could not load history.";
+        cont.appendChild(p);
+        return;
+      }
+      var entries = (res.j && res.j.entries) || [];
+      if (entries.length === 0) {
+        var v = document.createElement("p");
+        v.className = "vacio";
+        v.textContent = "No generations yet. Once you generate one, it will appear here.";
+        cont.appendChild(v);
+        return;
+      }
+      var ol = document.createElement("ol");
+      entries.forEach(function (e) {
+        var li = document.createElement("li");
+        var cuando = document.createElement("span");
+        cuando.className = "cuando";
+        // ISO 8601 → "YYYY-MM-DD HH:MM" sin la T ni los segundos.
+        cuando.textContent = (e.timestamp || "").replace("T", " ").slice(0, 16);
+        var que = document.createElement("span");
+        que.className = "que";
+        var verbo = e.kind === "generate" ? "generated" : "summarised";
+        que.textContent = (e.projectName || "(unnamed)") + " · " + (e.framework || "?");
+        var sub = document.createElement("small");
+        sub.textContent = verbo + " · " + (e.endpoints || 0) + " endpoints";
+        que.appendChild(sub);
+        var accion = document.createElement("button");
+        accion.type = "button";
+        accion.className = "accion";
+        accion.textContent = "Use this project";
+        // Rellena el campo "raíz" y pone el foco ahí: el siguiente
+        // paso natural es inspeccionar o generar otra vez sobre el
+        // mismo proyecto, no abrir un diálogo aparte.
+        accion.addEventListener("click", function () {
+          $("raiz").value = e.projectRoot || "";
+          $("raiz").focus();
+          $("raiz").scrollIntoView({ block: "start" });
+        });
+        li.appendChild(cuando);
+        li.appendChild(que);
+        li.appendChild(accion);
+        ol.appendChild(li);
+      });
+      cont.appendChild(ol);
+    }).catch(function () {
+      // Sin red o sin servidor: el dashboard queda con su texto por
+      // defecto. Quien está sin interfaz ya verá que la página está
+      // rota por el resto de indicadores.
+    });
+  }
+
+  // Carga inicial, en paralelo con capacidades e idiomas.
+  cargarHistorial();
 })();
 </script>
 </body>

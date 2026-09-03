@@ -84,28 +84,74 @@ function honoDeps(pkg: Record<string, unknown> | null): Record<string, string> {
   };
 }
 
+/**
+ * Devuelve la raíz efectiva donde este scanner mira sus fuentes.
+ *
+ * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
+ * tras detectar monorepo), se une con `projectRoot`. Si está ausente,
+ * se devuelve `projectRoot` sin modificar.
+ *
+ * Renombrada local (`honoEffectiveSearchRoot`) por la misma razón que
+ * en `nestjs.scanner.ts`: cada scanner tiene su propia implementación
+ * porque cada uno necesita un search root distinto. f00011 S1.
+ */
+function honoEffectiveSearchRoot(match: IProjectMatch): string {
+  return match.frameworkSearchRoot
+    ? join(match.projectRoot, match.frameworkSearchRoot)
+    : match.projectRoot;
+}
+
 export class HonoProjectScanner implements IProjectScanner {
   readonly framework = "hono" as const;
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const deps = honoDeps(await readPackageJson(projectRoot));
     if (deps["hono"]) {
-      return withEvidence(1, [{ signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" }]);
+      const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
+        { signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" },
+      ];
+      // f00011 S1: `wrangler.toml` en raíz identifica un proyecto
+      // desplegado en Cloudflare Workers — el caso de uso canónico de
+      // Hono. Antes solo se reconocía por la dependencia; ahora un
+      // worker sin `hono` declarado todavía (lo normal en proyectos
+      // muy nuevos) sale como hono por el manifiesto del runtime.
+      // 0.6 es el peso propuesto: alto, pero no tanto como la
+      // dependencia directa (1.0) — `wrangler.toml` también lo usan
+      // proyectos que no son hono.
+      if (existsSync(join(projectRoot, "wrangler.toml"))) {
+        evidence.push({
+          signal: "wrangler.toml presente (runtime de borde)",
+          weight: 0.6,
+          artifact: "wrangler.toml",
+        });
+      }
+      return withEvidence(Math.min(evidence.reduce((a, s) => a + s.weight, 0), 1), evidence);
     }
     // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
     const pluginMatch = Object.keys(deps).some((name) => name.startsWith("@hono/"));
     if (pluginMatch) {
       return withEvidence(0.6, [{ signal: "package.json solo declara plugins @hono/* (uso de refilón)", weight: 0.6, artifact: "package.json" }]);
     }
+    // f00011 S1: `wrangler.toml` sin hono declarado. Caso raro (un
+    // worker que aún no incluye la dependencia), pero si está, sigue
+    // siendo la mejor pista disponible. 0.6 — el mismo peso que la
+    // rama de `@hono/*` plugins, porque ambas son señales indirectas.
+    if (existsSync(join(projectRoot, "wrangler.toml"))) {
+      return withEvidence(0.6, [
+        { signal: "wrangler.toml presente (runtime de borde)", weight: 0.6, artifact: "wrangler.toml" },
+      ]);
+    }
     return emptyResult(0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
     const deps = honoDeps(await readPackageJson(projectRoot));
+    const artifacts: string[] = ["package.json"];
+    if (existsSync(join(projectRoot, "wrangler.toml"))) artifacts.push("wrangler.toml");
     return {
       framework: "hono",
       projectRoot,
-      artifacts: ["package.json"],
+      artifacts,
       ...(deps["hono"] ? { version: deps["hono"] } : {}),
     };
   }
@@ -119,7 +165,14 @@ export class HonoRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectFiles(match.projectRoot, isSourceJsTsFile);
+    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
+    // (ej. `"apps/api"`) y el scanner camina ahí en vez de en la
+    // raíz. Sin esto, un proyecto Hono dentro de un worker monorepo
+    // salía sin rutas porque `src/` vive en el subdir. La raíz se
+    // mantiene en `match.projectRoot` para que las rutas (`sourceFile`)
+    // sigan siendo relativas al proyecto host.
+    const searchRoot = honoEffectiveSearchRoot(match);
+    const files = await collectFiles(searchRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
     // `validators` vive aquí, no en un campo de instancia: si
     // sobreviviera entre llamadas, dos escaneos consecutivos compartirían

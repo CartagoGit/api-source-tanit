@@ -104,6 +104,22 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
         warnings: [],
       };
     },
+    /**
+     * Doble de historial: vacío por defecto. Las pruebas que necesitan
+     * entradas concretas lo sobreescriben vía `overrides`.
+     *
+     * La firma coincide con `IUiDeps["history"]`: un objeto con
+     * `limit?` y `projectRoot?`. Devolver `ok: true` con `entries: []`
+     * y `totalEntries: 0` es lo mismo que enseña el servicio real
+     * cuando el fichero no existe — los tests existentes no
+     * comprueban historial, así que el doble no debe pintar nada.
+     */
+    history: async () => ({
+      ok: true as const,
+      entries: [],
+      rejected: [],
+      totalEntries: 0,
+    }),
     formats: () => ["postman", "openapi", "insomnia", "bruno", "har", "curl"],
     frameworks: () => ["express", "laravel", "graphql"],
     exists: async () => true,

@@ -16,7 +16,7 @@
  *   - `NextJsZodProvider` (best-effort): extrae zod schemas inline en
  *     route handlers (`const schema = z.object({...})`).
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
@@ -54,6 +54,82 @@ async function isNextJsProject(projectRoot: string): Promise<boolean> {
   return typeof deps.next === "string";
 }
 
+/**
+ * Devuelve la raíz efectiva donde este scanner mira sus señales.
+ *
+ * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
+ * tras detectar monorepo), se une con `projectRoot`. En monorepos el
+ * `package.json` raíz es el del workspace y el `next.config.*` vive en
+ * `apps/web/` — sin este salto, el detector miraba donde no tocaba y el
+ * scan salía vacío. Si el campo está ausente, se devuelve `projectRoot`
+ * sin modificar (compatibilidad con los proyectos planos).
+ *
+ * Función pura: vive aquí en vez de en `core/helpers/` para no abrir
+ * un módulo nuevo por una sola función. La usan los tres scanners que
+ * tocan f00011 S1.
+ */
+function effectiveSearchRoot(match: IProjectMatch): string {
+  return match.frameworkSearchRoot
+    ? join(match.projectRoot, match.frameworkSearchRoot)
+    : match.projectRoot;
+}
+
+/**
+ * ¿El proyecto donde se mira es un monorepo?
+ *
+ * Turbo (`turbo.json` en raíz) y npm/yarn/pnpm workspaces
+ * (`package.json#workspaces`) son señales **agnósticas del framework**:
+ * no cambian qué framework es el proyecto, solo confirman que el
+ * `projectRoot` raíz no es donde vive el framework. Por eso viven en un
+ * helper compartido por los scanners que pueden recibirlas (de momento
+ * Next.js, por la propuesta f00011 S1) y no en uno concreto.
+ *
+ * La función no lanza y devuelve `false` si el `package.json` no
+ * parsea — el detector ya filtró esa posibilidad, pero leer el campo en
+ * crudo dejaría un `any` pululando.
+ */
+function hasMonorepoMarkers(projectRoot: string): boolean {
+  if (existsSync(join(projectRoot, "turbo.json"))) return true;
+  const pkgPath = join(projectRoot, "package.json");
+  if (!existsSync(pkgPath)) return false;
+  const parsed = parseJsonSafe(pkgPath);
+  if (!parsed) return false;
+  // `workspaces` puede ser un array (npm/yarn clásico) o un objeto con
+  // `packages` (yarn/pnpm). Cualquiera de los dos cuenta.
+  const ws = parsed["workspaces"];
+  if (Array.isArray(ws) && ws.length > 0) return true;
+  if (
+    typeof ws === "object" &&
+    ws !== null &&
+    Array.isArray((ws as Record<string, unknown>)["packages"]) &&
+    ((ws as Record<string, unknown>)["packages"] as unknown[]).length > 0
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Variante local de `parseJson` que devuelve `null` cuando algo falla.
+ *
+ * El scanner ya pasó por `isNextJsProject` y sabe que el `package.json`
+ * existe y parsea — aquí solo queremos el valor del campo
+ * `workspaces`, así que un fallo de parse se trata como "ausencia".
+ */
+function parseJsonSafe(pkgPath: string): Record<string, unknown> | null {
+  let raw: string;
+  try {
+    raw = readFileSync(pkgPath, "utf8");
+  } catch {
+    return null;
+  }
+  const parsed = parseJson(raw);
+  if (!parsed.ok || typeof parsed.value !== "object" || parsed.value === null) {
+    return null;
+  }
+  return parsed.value as Record<string, unknown>;
+}
+
 // ---------------------------------------------------------------------------
 // Project detection
 // ---------------------------------------------------------------------------
@@ -72,12 +148,39 @@ export class NextJsProjectScanner implements IProjectScanner {
       existsSync(join(projectRoot, "next.config.js")) ||
       existsSync(join(projectRoot, "next.config.mjs")) ||
       existsSync(join(projectRoot, "next.config.ts"));
+    const hasRouter = hasApp || hasSrcApp || hasPages || hasSrcPages;
     const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
       { signal: "next declarado como dependencia", weight: 0.5, artifact: "package.json" },
     ];
     if (hasApp || hasSrcApp) signals.push({ signal: "App Router presente", weight: 0.4, artifact: "app/" });
     if (hasPages || hasSrcPages) signals.push({ signal: "Pages Router presente", weight: 0.4, artifact: "pages/" });
-    if (hasNextConfig) signals.push({ signal: "next.config.* presente", weight: 0.2 });
+    // f00011 S1: `next.config.*` por sí solo ya era 0.2 (puede ser de un
+    // proyecto que solo usa Next como bundler, sin rutas). La propuesta
+    // sube el peso a 0.5 cuando además hay un router real (App/Pages).
+    // Sin router, el peso se queda en 0.2 — evita inflar el score en
+    // proyectos donde next es solo una dependencia auxiliar.
+    if (hasNextConfig) {
+      signals.push({
+        signal: hasRouter
+          ? "next.config.* presente (con App/Pages Router)"
+          : "next.config.* presente",
+        weight: hasRouter ? 0.5 : 0.2,
+        ...(hasNextConfig ? {} : {}),
+      });
+    }
+    // f00011 S1: señales agnósticas de monorepo. Si el `package.json`
+    // raíz declara workspaces o hay `turbo.json`, el framework puede
+    // vivir en un subdir — vale subir el score 0.1 para empujar al
+    // orquestador a aplicar `frameworkSearchRoot`. Sin esta pista, un
+    // Next.js en `apps/web/` salía con score 0.5 porque el manifiesto
+    // raíz nunca tenía `next` como dependencia directa.
+    if (hasMonorepoMarkers(projectRoot)) {
+      signals.push({
+        signal: "monorepo (turbo.json o workspaces)",
+        weight: 0.1,
+        artifact: "package.json",
+      });
+    }
     return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
 
@@ -114,7 +217,11 @@ export class NextJsRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
+    // (ej. `"apps/web"`) y el scanner mira ahí en vez de en la raíz.
+    // Sin esto, un proyecto Next.js dentro de `apps/web/` salía con
+    // cero rutas porque `app/` y `pages/` viven en el subdir.
+    const projectRoot = effectiveSearchRoot(match);
     // 1) App Router.
     for (const base of ["app", join("src", "app")]) {
       const dir = join(projectRoot, base);

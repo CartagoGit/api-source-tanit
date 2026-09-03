@@ -35,6 +35,22 @@ export interface IProjectMatch {
   readonly version?: string;
   /** Raíz del proyecto resuelta. */
   readonly projectRoot: string;
+  /**
+   * Subdirectorio del proyecto donde vive el framework, **relativo** a
+   * `projectRoot`. Útil en monorepos (`apps/web`, `packages/api`,
+   * `services/orders`) donde el manifiesto raíz no es el del framework.
+   *
+   * Lo calcula el HOST (CLI/MCP) tras detectar monorepo y se lo pasa al
+   * scanner vía este campo. Si está ausente, los scanners miran la
+   * raíz. **Nunca** se concatena con `process.cwd()` ni se acepta
+   * absoluto: la raíz es siempre `projectRoot` y este campo solo añade
+   * un segmento, igual que `--framework-search-root` en el CLI.
+   *
+   * Añadido en f00011 S1. La detección del propio monorepo (turbo.json,
+   * `package.json#workspaces`, ...) vive en el orquestador y queda fuera
+   * del contrato del scanner: este campo es el resultado, no el método.
+   */
+  readonly frameworkSearchRoot?: string;
   /** Rutas de artefactos extra relevantes (composer.json, openapi.yaml...). */
   readonly artifacts: ReadonlyArray<string>;
 }

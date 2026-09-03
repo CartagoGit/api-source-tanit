@@ -249,3 +249,101 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// f00011 S1 — regresiones de señales nuevas (next.config.* boost + monorepo
+// + frameworkSearchRoot).
+// ---------------------------------------------------------------------------
+
+describe("Next.js — detect() boost por next.config.* con App/Pages Router (f00011 S1)", () => {
+  // f00011 S1: `next.config.*` solo (sin router) sigue pesando 0.2.
+  // La subida a 0.5 solo se aplica cuando hay App o Pages Router, que
+  // es cuando el proyecto realmente usa Next como framework de rutas.
+  test("detect() === 0.7 cuando hay next.config.* + next como dependencia pero sin App/Pages Router", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "next.config.js": "module.exports = { reactStrictMode: true };\n",
+    });
+    try {
+      // 0.5 (next dep) + 0.2 (next.config.* sin router) = 0.7.
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.7);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 1 (cap) cuando hay next.config.* + App Router", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "next.config.js": "module.exports = {};\n",
+      "app/api/health/route.ts": "export async function GET() { return Response.json({ ok: true }); }\n",
+    });
+    try {
+      // 0.5 (next dep) + 0.4 (App Router) + 0.5 (next.config.* con router) = 1.4 → cap 1.
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("Next.js — frameworkSearchRoot para monorepos (f00011 S1)", () => {
+  // f00011 S1: en un monorepo el `package.json` raíz es el del workspace
+  // y el `next.config.*` + `app/` viven en un subdir (`apps/web`).
+  // Sin `frameworkSearchRoot`, el scanner mira la raíz y no encuentra
+  // nada. Con él, las rutas salen del subdir.
+  test("scan() encuentra rutas cuando frameworkSearchRoot apunta al subdir con App Router", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ workspaces: ["apps/*"] }),
+      "apps/web/package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "apps/web/next.config.js": "module.exports = {};\n",
+      "apps/web/app/api/users/route.ts": "export async function GET() { return Response.json([]); }\n",
+      "apps/web/app/api/users/[id]/route.ts": "export async function GET() { return Response.json({}); }\n",
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = (await new NextJsRouteScanner().scan({
+        ...match,
+        frameworkSearchRoot: "apps/web",
+      })).routes;
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /api/users");
+      expect(pairs).toContain("GET /api/users/:id");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() suma 0.1 cuando turbo.json está en la raíz (señal de monorepo)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
+      "turbo.json": JSON.stringify({ $schema: "https://turbo.build/schema.json", pipeline: {} }),
+    });
+    try {
+      // 0.5 (next dep) + 0.1 (turbo.json) = 0.6.
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.6);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() suma 0.1 cuando package.json declara workspaces (señal de monorepo)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({
+        dependencies: { next: "^14.0.0" },
+        workspaces: ["apps/*", "packages/*"],
+      }),
+    });
+    try {
+      // 0.5 (next dep) + 0.1 (workspaces) = 0.6.
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.6);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

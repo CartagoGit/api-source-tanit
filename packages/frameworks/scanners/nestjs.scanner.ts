@@ -57,6 +57,24 @@ async function isNestJsProject(projectRoot: string): Promise<boolean> {
   return typeof deps["@nestjs/core"] === "string";
 }
 
+/**
+ * Devuelve la raíz efectiva donde este scanner mira `src/`.
+ *
+ * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
+ * tras detectar monorepo), se une con `projectRoot`. Si está ausente,
+ * se devuelve `projectRoot` sin modificar.
+ *
+ * Renombrada local (`nestjsEffectiveSearchRoot`) para no chocar con la
+ * homónima en `nextjs.scanner.ts`: cada scanner tiene su propia
+ * implementación porque cada uno necesita un search root distinto —
+ * aquí solo `src/`; en nextjs, `app/` y `pages/`. f00011 S1.
+ */
+function nestjsEffectiveSearchRoot(match: IProjectMatch): string {
+  return match.frameworkSearchRoot
+    ? join(match.projectRoot, match.frameworkSearchRoot)
+    : match.projectRoot;
+}
+
 // ---------------------------------------------------------------------------
 // Project detection
 // ---------------------------------------------------------------------------
@@ -72,7 +90,12 @@ export class NestJsProjectScanner implements IProjectScanner {
     const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
       { signal: "@nestjs/core declarado como dependencia", weight: 0.5, artifact: "package.json" },
     ];
-    if (hasNestCli) signals.push({ signal: "nest-cli.json presente", weight: 0.3, artifact: "nest-cli.json" });
+    // f00011 S1: `nest-cli.json` es la señal canónica de que el
+    // proyecto fue inicializado con la CLI de Nest (no es solo una
+    // dependencia suelta). Antes pesaba 0.3; la propuesta lo sube a
+    // 0.7 — más cerca del peso del `@nestjs/core` en sí, porque un
+    // proyecto con CLI casi siempre tiene el layout esperado.
+    if (hasNestCli) signals.push({ signal: "nest-cli.json presente", weight: 0.7, artifact: "nest-cli.json" });
     if (hasSrc) signals.push({ signal: "directorio src/ presente", weight: 0.2, artifact: "src/" });
     return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
   }
@@ -109,13 +132,22 @@ export class NestJsRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const srcDir = join(match.projectRoot, "src");
+    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
+    // (ej. `"apps/api"`) y el scanner mira ahí. Sin esto, un proyecto
+    // NestJS en `apps/api/` salía sin rutas porque `src/` vive en el
+    // subdir. La raíz se mantiene en `match.projectRoot` para que el
+    // `setGlobalPrefix` se siga buscando donde el orquestador lo dejó.
+    const searchRoot = nestjsEffectiveSearchRoot(match);
+    const srcDir = join(searchRoot, "src");
     if (!existsSync(srcDir)) return { routes: out };
-    await this.walkDir(srcDir, match.projectRoot, out);
+    await this.walkDir(srcDir, searchRoot, out);
 
     // `app.setGlobalPrefix("api/v1")` en el bootstrap se aplica a TODOS
     // los controladores. Sin esto, un proyecto que lo use —lo normal en
     // NestJS— produce URIs sin el prefijo y ninguna request responde.
+    // El bootstrap se busca en `projectRoot` (no en `searchRoot`)
+    // porque `main.ts` rara vez se mueve a un subdir dentro del
+    // workspace de Nest.
     const globalPrefix = await readGlobalPrefix(match.projectRoot);
     if (!globalPrefix) return { routes: out };
 

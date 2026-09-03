@@ -63,6 +63,10 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Regenerate the collection whenever a route file changes",
     load: () => import("./commands/watch.script.js"),
   },
+  history: {
+    summary: "List past generations and inspections, most recent first",
+    load: () => import("./commands/history.script.js"),
+  },
 };
 
 /**

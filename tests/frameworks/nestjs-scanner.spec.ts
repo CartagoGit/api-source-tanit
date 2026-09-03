@@ -224,6 +224,109 @@ describe("NestJS — @Controller object form", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// f00011 S1 — regresiones de señales nuevas (nest-cli.json boost +
+// frameworkSearchRoot).
+// ---------------------------------------------------------------------------
+
+describe("NestJS — detect() boost por nest-cli.json (f00011 S1)", () => {
+  const PKG = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+  // f00011 S1: el peso de `nest-cli.json` sube de 0.3 a 0.7. Es la
+  // señal canónica de que el proyecto fue inicializado con la CLI de
+  // Nest (no es solo una dependencia suelta).
+  test("detect() === 1 (cap) cuando hay nest-cli.json + @nestjs/core + src/", async () => {
+    const project = await createTempProject({
+      "package.json": PKG,
+      "nest-cli.json": "{}",
+      "src/main.ts": "const app = 1;",
+    });
+    try {
+      // 0.5 (@nestjs/core) + 0.7 (nest-cli.json) + 0.2 (src/) = 1.4 → cap 1.
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("detect() === 1 (cap) cuando hay nest-cli.json pero NO hay src/", async () => {
+    const project = await createTempProject({
+      "package.json": PKG,
+      "nest-cli.json": "{}",
+    });
+    try {
+      // 0.5 (@nestjs/core) + 0.7 (nest-cli.json) = 1.2 → cap 1.
+      // El cap hace que coincida con el caso anterior — eso es lo
+      // correcto: el cap evita inflar más allá de "detectado".
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("NestJS — frameworkSearchRoot para monorepos (f00011 S1)", () => {
+  const PKG = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
+  // f00011 S1: en un monorepo el `src/` está en `apps/api/`. Sin
+  // `frameworkSearchRoot` el scanner mira la raíz y no encuentra
+  // controladores; con él, sale el scan completo del subdir.
+  test("scan() encuentra rutas cuando frameworkSearchRoot apunta al subdir con src/", async () => {
+    const CONTROLLER = [
+      'import { Controller, Get } from "@nestjs/common";',
+      '@Controller("users")',
+      "export class UsersController {",
+      "  @Get() list() { return []; }",
+      "}",
+    ].join("\n");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ workspaces: ["apps/*"] }),
+      "apps/api/package.json": PKG,
+      "apps/api/nest-cli.json": "{}",
+      "apps/api/src/users.controller.ts": CONTROLLER,
+    });
+    try {
+      const { match } = await scanProject("nestjs", project.root);
+      const routes = (await new NestJsRouteScanner().scan({
+        ...match,
+        frameworkSearchRoot: "apps/api",
+      })).routes;
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /users");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  // El `setGlobalPrefix` se sigue buscando en `projectRoot` aunque el
+  // `src/` esté en un subdir — es donde vive el `main.ts` y donde el
+  // orquestador espera encontrar el bootstrap.
+  test("setGlobalPrefix se aplica aunque frameworkSearchRoot apunte a un subdir", async () => {
+    const CONTROLLER = [
+      'import { Controller, Get } from "@nestjs/common";',
+      '@Controller("orders")',
+      "export class OrdersController {",
+      "  @Get() list() { return []; }",
+      "}",
+    ].join("\n");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ workspaces: ["apps/*"] }),
+      "apps/api/package.json": PKG,
+      "apps/api/src/orders.controller.ts": CONTROLLER,
+      "src/main.ts": 'app.setGlobalPrefix("api/v1");',
+    });
+    try {
+      const { match } = await scanProject("nestjs", project.root);
+      const routes = (await new NestJsRouteScanner().scan({
+        ...match,
+        frameworkSearchRoot: "apps/api",
+      })).routes;
+      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      expect(pairs).toContain("GET /api/v1/orders");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
 describe("NestJS — ClassValidatorProvider", () => {
   const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
 

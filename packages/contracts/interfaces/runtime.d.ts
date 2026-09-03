@@ -76,6 +76,21 @@ declare module "node:fs/promises" {
     path: string,
     options?: { recursive?: boolean; force?: boolean },
   ): Promise<void>;
+  /**
+   * Append al final de un fichero existente (o lo crea si no existe).
+   *
+   * En POSIX abre con `O_APPEND`, que es atómico por cada `write(2)`
+   * sobre ficheros del mismo sistema. Es lo que sostiene el
+   * `appendFileAtomic` que `history.service` usa para escribir
+   * `~/.expostman/history.jsonl` sin pisarse con un escritor
+   * concurrente.
+   */
+  export function appendFile(
+    path: string,
+    data: string,
+    encoding?: "utf8" | "utf-8",
+  ): Promise<void>;
+  export function unlink(path: string): Promise<void>;
 }
 
 // --- node:os -------------------------------------------------------------

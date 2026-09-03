@@ -251,7 +251,7 @@ export async function handleUiRequest(
       return ok({ ok: true, summary });
     }
 
-    /** Genera de verdad. Solo después de que se haya visto lo detectado. */
+        /** Genera de verdad. Solo después de que se haya visto lo detectado. */
     case "/api/generate": {
       const projectRoot = texto(body, "projectRoot");
       if (!projectRoot) {
@@ -313,13 +313,40 @@ export async function handleUiRequest(
       });
     }
 
+    /**
+     * El historial de generaciones, para el dashboard.
+     *
+     * Devuelve las últimas N entradas (`limit`, 20 por defecto) y
+     * deja a la UI enseñarlas sin tener que volver a leer cada
+     * proyecto. Un `projectRoot` filtra a un único proyecto; sin él,
+     * todos.
+     *
+     * No es decorativo: la ruta existe **porque** la página la
+     * llama al cargar, y enseñarla como parte del formulario
+     * principal es lo que materializa FEAT-001 (dashboard
+     * multi-proyecto).
+     */
+    case "/api/history": {
+      const limitText = body["limit"];
+      const limitNum =
+        typeof limitText === "number" && Number.isInteger(limitText) && limitText > 0
+          ? limitText
+          : undefined;
+      const projectRootText = texto(body, "projectRoot");
+      const history = await deps.history({
+        ...(limitNum !== undefined ? { limit: limitNum } : {}),
+        ...(projectRootText !== undefined ? { projectRoot: projectRootText } : {}),
+      });
+      return ok(history);
+    }
+
     default:
       return fail(
         404,
         `Nothing at '${path}'.`,
         "Available routes: /api/locales, /api/settings, /api/settings/save, " +
           "/api/browse, /api/dry-run, /api/capabilities, /api/inspect, " +
-          "/api/generate.",
+          "/api/generate, /api/history.",
       );
   }
 }

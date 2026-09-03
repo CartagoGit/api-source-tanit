@@ -26,7 +26,7 @@
  *   2. **El temporal se borra si algo falla**, para no dejar basura al
  *      lado de la colección con un nombre que nadie reconoce.
  */
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 /**
@@ -84,4 +84,38 @@ export async function writeJsonAtomic(
 ): Promise<void> {
   const json = `${JSON.stringify(valor, null, espacios)}\n`;
   await writeFileAtomic(destino, json);
+}
+
+/**
+ * Append atómico de `contenido` al final de `destino`.
+ *
+ * Se diferencia de `writeFileAtomic` en lo que protege:
+ *
+ *   - `writeFileAtomic` escribe el fichero **entero**: un `rename`
+ *     dentro del mismo sistema de ficheros es atómico, pero el fichero
+ *     se trunca antes del rename. Es lo que se quiere para una
+ *     colección de Postman, donde el lector necesita la versión
+ *     completa o nada.
+ *
+ *   - `appendFileAtomic` añade `contenido` al final: usa `appendFile`,
+ *     que abre el destino con `O_APPEND`. En POSIX eso es atómico
+ *     por cada `write(2)`: dos procesos que escriben a la vez no se
+ *     pisan —sus bytes van al final en algún orden, pero ninguno se
+ *     pierde a medias—. Es lo que se quiere para un log en JSONL:
+ *     cada línea es una entrada, y leer las últimas N líneas debe ser
+ *     seguro aunque haya otra escritura en curso.
+ *
+ * Si el fichero no existe, lo crea (mkdir recursivo del directorio,
+ * igual que `writeFileAtomic`). Si la escritura falla, no deja
+ * contenido parcial visible: `appendFile` no trunca antes de escribir,
+ * así que un fallo a mitad de línea se ve como un prefijo sin newline,
+ * y eso lo maneja la lectura tratándolo como línea corrupta.
+ */
+export async function appendFileAtomic(
+  destino: string,
+  contenido: string,
+): Promise<void> {
+  const dir = dirname(destino);
+  await mkdir(dir, { recursive: true });
+  await appendFile(destino, contenido, "utf8");
 }

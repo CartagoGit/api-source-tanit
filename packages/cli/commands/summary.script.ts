@@ -7,15 +7,19 @@
  * in-process a `summarizeWithAllFrameworks()`.
  *
  * Uso:
- *   bun scripts/summary.script.ts [--project-root <path>] [--format text|json]
+ *   bun scripts/summary.script.ts [--project-root <path>] [--format text|json] [--no-history]
  *
  * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` o cwd.
  * Default format: `text` (salida humana). `json` vuelca IProjectSummary.
+ * `--no-history` desactiva el append a `~/.expostman/history.jsonl`,
+ * para tests y para quien no quiera historial.
  */
 
 
 import { summarizeWithAllFrameworks } from "../../frameworks/index.js";
 import { resolveRoot } from "../../core/helpers/resolve-root.helper.js";
+import { hasFlag } from "../../core/helpers/argv.helper.js";
+import { appendHistory } from "../../ui/server/history.service.js";
 
 interface ParsedArgs {
   projectRoot: string;
@@ -78,13 +82,32 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
 }
 
 export async function main(): Promise<number> {
-  const { projectRoot, format } = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const { projectRoot, format } = parseArgs(argv);
   try {
     const summary = await summarizeWithAllFrameworks(projectRoot);
     if (format === "json") {
       console.log(JSON.stringify(summary, null, 2));
     } else {
       console.log(asText(summary));
+    }
+    // f00010 S4: dejar huella de la inspección en `~/.expostman/
+    // history.jsonl`. El append es **best-effort**: si falla (disco
+    // lleno, permisos), `summary` ya imprimió su resultado y la huella
+    // que no se pudo escribir no es motivo para devolver código 1.
+    // `--no-history` apaga la huella para tests repetidos y para
+    // quien no quiera historial.
+    if (!hasFlag(argv, "--no-history")) {
+      const outcome = await appendHistory({
+        kind: "summary",
+        projectRoot,
+        summary,
+      });
+      if (!outcome.ok) {
+        console.warn(
+          `\n⚠ Could not record this summary in the history (${outcome.path}): ${outcome.reason}`,
+        );
+      }
     }
     return 0;
   } catch (err) {

@@ -16,6 +16,7 @@ import type { II18nCatalog } from "./i18n.interface.js";
 import type { ISettings, ISettingsRead } from "./settings.interface.js";
 import type { IBrowseListing } from "./browse.interface.js";
 import type { IDryRunPlan } from "./dry-run.interface.js";
+import type { IHistoryReadResult } from "./history.interface.js";
 import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";
 
 export interface IColumn {
@@ -118,6 +119,20 @@ export interface IUiDeps {
      */
     readonly framework?: string | undefined;
   }) => Promise<IUiGenerateResult>;
+  /**
+   * El historial de generaciones, ya limitado y ordenado.
+   *
+   * Se inyecta —en vez de llamarse directamente a `readHistory()` desde
+   * la ruta— por la misma razón que el resto de colaboradores: poder
+   * probar `handleUiRequest` con dobles, sin tocar el disco. La UI
+   * pide aquí lo que va a enseñar en el dashboard; un `limit`
+   * arbitrario no se manda desde la página para que el servidor
+   * decida cuánto cargar.
+   */
+  readonly history: (params: {
+    readonly limit?: number | undefined;
+    readonly projectRoot?: string | undefined;
+  }) => Promise<IHistoryReadResult>;
   /** Los formatos de salida que existen, del registro. */
   readonly formats: () => ReadonlyArray<string>;
   /** Los frameworks soportados, del registro. */

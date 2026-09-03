@@ -40,6 +40,7 @@ import { userLocalesDir } from "../../ui/config-dir.helper.js";
 import { patchSettings, readSettings } from "../../ui/settings/settings.service.js";
 import { browseDirectory } from "../../ui/server/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
+import { readHistory } from "../../ui/server/history.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
@@ -133,6 +134,19 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     },
     formats: () => EXPORT_FORMATS,
     frameworks: () => FRAMEWORK_IDS,
+    /**
+     * Lee el historial compartido. No se inyecta `home` ni `env` porque
+     * el servidor es de la persona que lo arranca: su carpeta es la que
+     * tiene sentido. En un test el doble sustituye este método y la
+     * ruta real queda sin ejercitar — es el contrato que
+     * `tests/cli/ui-routes.spec.ts` ya prueba para el resto de
+     * colaboradores.
+     */
+    history: ({ limit, projectRoot }) =>
+      readHistory({
+        ...(limit !== undefined ? { limit } : {}),
+        ...(projectRoot !== undefined ? { projectRoot } : {}),
+      }),
     exists: async (path) => {
       try {
         return (await stat(path)).isDirectory();
