@@ -48,8 +48,8 @@ const TRPC_PACKAGES = ["@trpc/server", "@trpc/client", "@trpc/next"];
  * score visible — exactamente lo que se busca: trazabilidad, no
  * detección.
  */
-function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
-  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact: string }> {
+  const out: Array<{ signal: string; weight: number; artifact: string }> = [];
   if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
     out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
   }

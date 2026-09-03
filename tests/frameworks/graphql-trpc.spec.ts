@@ -19,6 +19,7 @@ import {
 } from "../../packages/frameworks/scanners/graphql.scanner";
 import { findNamedRouters, parseRouterObject, referencedRouterNames } from "../../packages/frameworks/scanners/trpc.scanner";
 import { generateWithAllFrameworks } from "../../packages/frameworks/index";
+import { createTempProject } from "../helpers/scanner-fixture";
 import { exampleDir } from "../../scripts/helpers/root.helper";
 
 const SCHEMA = `
@@ -220,5 +221,165 @@ describe("tRPC: el proyecto de ejemplo", () => {
   test("las suscripciones se quedan fuera, igual que en GraphQL", async () => {
     const result = await generateWithAllFrameworks(exampleDir("trpc"));
     expect(result.specs.some((s) => s.uri.includes("onOrder"))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// f00011 S4 — lockfiles como bonus de scoring en detect().
+// ---------------------------------------------------------------------------
+
+describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
+  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
+  // +0.15 (bun). El detector de tRPC suele estar casi al tope
+  // (0.95 por la dependencia); el bonus aparece en `evidence`
+  // aunque el score visible apenas cambie — exactamente lo que se
+  // busca con esta propuesta: trazabilidad, no detección.
+  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+      "pnpm-lock.yaml": "",
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      const pnpm = result.evidence.find((e) => e.artifact === "pnpm-lock.yaml");
+      expect(pnpm).toBeDefined();
+      expect(pnpm?.weight).toBe(0.1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("bun.lockb añade evidencia con peso 0.15", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lockb");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+      "pnpm-lock.yaml": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(false);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("GraphQL — lockfiles como bonus de runtime (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
+  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
+  // +0.15 (bun). El detector de GraphQL suma evidencia en todas
+  // sus ramas positivas (package.json, esquema, o ambas); el lockfile
+  // se añade en `signals` antes de cualquier `return`, así que
+  // aparece en `evidence` para todas las variantes.
+  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+      "pnpm-lock.yaml": "",
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      const pnpm = result.evidence.find((e) => e.artifact === "pnpm-lock.yaml");
+      expect(pnpm).toBeDefined();
+      expect(pnpm?.weight).toBe(0.1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("bun.lockb añade evidencia con peso 0.15", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lockb");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+      "pnpm-lock.yaml": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(false);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
   });
 });

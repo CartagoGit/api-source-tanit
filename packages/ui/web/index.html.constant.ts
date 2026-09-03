@@ -35,12 +35,14 @@ export const UI_HTML = String.raw`<!doctype html>
     color-scheme: light dark;
     --fondo: #ffffff; --texto: #1a1a1a; --tenue: #5c5c5c;
     --borde: #d4d4d4; --acento: #cc5500; --error: #b00020; --ok: #006644;
+    --aviso: #9a6700;
     --campo: #ffffff;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-tema="light"]) {
       --fondo: #16181c; --texto: #eceff4; --tenue: #a8b0bd;
       --borde: #333842; --acento: #ff9552; --error: #ff8a8a; --ok: #6ee7a8;
+      --aviso: #d29922;
       --campo: #1e2128;
     }
   }
@@ -49,12 +51,14 @@ export const UI_HTML = String.raw`<!doctype html>
     color-scheme: dark;
     --fondo: #16181c; --texto: #eceff4; --tenue: #a8b0bd;
     --borde: #333842; --acento: #ff9552; --error: #ff8a8a; --ok: #6ee7a8;
+    --aviso: #d29922;
     --campo: #1e2128;
   }
   :root[data-tema="light"] {
     color-scheme: light;
     --fondo: #ffffff; --texto: #1a1a1a; --tenue: #5c5c5c;
     --borde: #d4d4d4; --acento: #cc5500; --error: #b00020; --ok: #006644;
+    --aviso: #9a6700;
     --campo: #ffffff;
   }
   * { box-sizing: border-box; }
@@ -151,6 +155,123 @@ export const UI_HTML = String.raw`<!doctype html>
   .historial .vacio {
     color: var(--tenue); margin: .25rem 0 0; font-style: italic;
   }
+  /*
+   * f00010 S3: detalle de la detección.
+   *
+   * La misma información que la CLI imprime bajo "→ ¿Por qué ...?" y
+   * "→ Health: ..." se enseña aquí con emoji + color. Dos bloques
+   * (evidencia y salud) en una rejilla que se apila en móvil y se
+   * separa en escritorio. Los colores salen de las variables del
+   * tema, así que un cambio de tema pinta esta sección sin tocarla.
+   */
+  .deteccion { margin-top: 1.25rem; }
+  .deteccion-cuerpo {
+    display: grid; gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 38rem) {
+    .deteccion-cuerpo { grid-template-columns: 1fr 1fr; }
+  }
+  .deteccion-bloque {
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: .75rem .9rem;
+    background: var(--campo);
+  }
+  .deteccion-bloque-titulo {
+    margin: 0 0 .55rem;
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--tenue);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .deteccion .vacio {
+    color: var(--tenue); font-style: italic; margin: 0;
+  }
+  /*
+   * Evidencia: cada señal es una fila con la señal, su peso y el
+   * artefacto del que salió. En móvil el archivo baja a una segunda
+   * línea; en escritorio, tres columnas alineadas a la línea base.
+   */
+  .evidencia-lista { list-style: none; padding: 0; margin: 0; }
+  .evidencia-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "senial peso"
+      "archivo archivo";
+    gap: .15rem .6rem;
+    padding: .4rem 0;
+    border-top: 1px solid var(--borde);
+  }
+  .evidencia-item:first-child { border-top: 0; padding-top: .15rem; }
+  @media (min-width: 30rem) {
+    .evidencia-item {
+      grid-template-columns: 1fr auto auto;
+      grid-template-areas: "senial peso archivo";
+      align-items: baseline;
+    }
+  }
+  .evidencia-senial { grid-area: senial; font-weight: 500; }
+  .evidencia-peso {
+    grid-area: peso;
+    font-variant-numeric: tabular-nums;
+    font-size: .9rem;
+    color: var(--tenue);
+  }
+  .evidencia-archivo {
+    grid-area: archivo;
+    color: var(--tenue);
+    font-size: .8rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  /* La brújula precede cada señal: apunta a por qué se eligió. */
+  .evidencia-senial::before {
+    content: "\u{1F9ED} ";
+    margin-right: .15rem;
+  }
+  /*
+   * Salud: cuatro barras (validación / body / ejemplos / descripciones)
+   * con un círculo de color que codifica el tramo. El porcentaje va al
+   * lado del texto, no solo el color: la barra cambia de tono, el
+   * texto repite la cifra. Quien mira el código ve ambas; quien solo
+   * mira, entiende igual (WCAG 1.4.1).
+   */
+  .salud-grid { display: grid; gap: .6rem .8rem; }
+  .salud-celda {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "etiqueta porcentaje"
+      "barra barra";
+    gap: .2rem .6rem;
+    align-items: baseline;
+  }
+  .salud-etiqueta { grid-area: etiqueta; font-weight: 600; }
+  .salud-porcentaje {
+    grid-area: porcentaje;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+  .salud-barra {
+    grid-area: barra;
+    height: 6px;
+    background: var(--borde);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .salud-barra-relleno {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .25s ease-out;
+  }
+  .salud-celda--ok .salud-barra-relleno { background: var(--ok); }
+  .salud-celda--ok .salud-porcentaje { color: var(--ok); }
+  .salud-celda--aviso .salud-barra-relleno { background: var(--aviso); }
+  .salud-celda--aviso .salud-porcentaje { color: var(--aviso); }
+  .salud-celda--error .salud-barra-relleno { background: var(--error); }
+  .salud-celda--error .salud-porcentaje { color: var(--error); }
   @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -218,6 +339,27 @@ export const UI_HTML = String.raw`<!doctype html>
     </form>
   </div>
 
+  <!--
+    f00010 S3: detalle de la detección.
+    La sección se rellena tras /api/inspect con la evidencia y la
+    salud que ya vienen en el summary (S1 + S2). Vacía al cargar:
+    "todavía nada" en vez de oculta — quien no sabe que existe, no la
+    busca; quien la ve, entiende que se completa al inspeccionar.
+  -->
+  <section id="deteccion" class="tarjeta deteccion" hidden aria-labelledby="deteccion-titulo">
+    <h2 id="deteccion-titulo">¿Por qué este framework? · Salud de la documentación</h2>
+    <div class="deteccion-cuerpo">
+      <div class="deteccion-bloque">
+        <h3 class="deteccion-bloque-titulo">Señales que motivaron la elección</h3>
+        <div class="evidencia" id="evidencia-lista" aria-live="polite"></div>
+      </div>
+      <div class="deteccion-bloque">
+        <h3 class="deteccion-bloque-titulo">Salud de la documentación</h3>
+        <div class="salud" id="salud-cuadro" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
   <section id="vista-ajustes" class="tarjeta" hidden>
     <h2 data-i18n="nav.settings">Ajustes</h2>
     <div class="fila">
@@ -278,6 +420,141 @@ export const UI_HTML = String.raw`<!doctype html>
     });
     t.appendChild(tb);
     return t;
+  }
+
+  /**
+   * f00010 S3: pinta la tarjeta "¿Por qué este framework? · Salud de
+   * la documentación" tras una inspección exitosa.
+   *
+   * El summary que devuelve '/api/inspect' ya lleva los bloques
+   * 'evidence' (S1) y 'health' (S2); este render solo les da una cara
+   * legible. Dos tarjetas en paralelo en escritorio, apiladas en
+   * móvil:
+   *
+   *   · Evidencia: cada señal con su peso y el artefacto del que salió.
+   *     Un detector sin anotar (la mayoría, hoy) muestra "todavía sin
+   *     señales" en vez de esconder la tarjeta — esconder sería como
+   *     decir que no existe.
+   *   · Salud: cuatro barras con porcentaje + emoji + color. El color
+   *     va por tramo (ok ≥ 75 %, aviso ≥ 50 %, error < 50 %) y se
+   *     repite el porcentaje como texto, no solo como color.
+   *
+   * Todo se monta con 'createElement' y 'textContent'. Los nombres de
+   * archivo y las señales son strings arbitrarios del usuario o del
+   * detector; pasarlos por 'innerHTML' los interpretaría como HTML y
+   * un '<' o un '&' rompería el render o abriría XSS. El 'innerHTML =
+   * ""' que aparece aquí limpia el contenedor entre inspecciones: no
+   * se interpolan datos del summary, así que es seguro.
+   */
+  function pintaDeteccion(s) {
+    var seccion = $("deteccion");
+    var lista = $("evidencia-lista");
+    var cuadro = $("salud-cuadro");
+    if (!seccion || !lista || !cuadro) return;
+    seccion.hidden = false;
+    lista.innerHTML = "";
+    cuadro.innerHTML = "";
+    pintaEvidencia(s.evidence || [], lista);
+    pintaSalud(s.health, cuadro);
+  }
+
+  /**
+   * Cada señal es una fila con: la señal en sí (la brújula la pone el
+   * CSS, no JS), el peso y, si lo hay, el artefacto del que se leyó.
+   * Vacío si el detector aún no se ha enriquecido: se dice "todavía
+   * sin señales", no se esconde el bloque.
+   */
+  function pintaEvidencia(evidence, cont) {
+    if (!evidence || evidence.length === 0) {
+      var vacio = document.createElement("p");
+      vacio.className = "vacio";
+      vacio.textContent = "El detector aún no anota señales para este framework.";
+      cont.appendChild(vacio);
+      return;
+    }
+    var ul = document.createElement("ul");
+    ul.className = "evidencia-lista";
+    evidence.forEach(function (e) {
+      var li = document.createElement("li");
+      li.className = "evidencia-item";
+      var senial = document.createElement("span");
+      senial.className = "evidencia-senial";
+      senial.textContent = e.signal || "";
+      var peso = document.createElement("span");
+      peso.className = "evidencia-peso";
+      // El peso puede ser negativo (penalizaciones): se imprime con
+      // su signo y dos decimales para que la columna no salte al
+      // cambiar la escala.
+      var w = typeof e.weight === "number" ? e.weight : 0;
+      peso.textContent = (w >= 0 ? "+" : "") + w.toFixed(2);
+      li.appendChild(senial);
+      li.appendChild(peso);
+      if (e.artifact) {
+        var archivo = document.createElement("span");
+        archivo.className = "evidencia-archivo";
+        archivo.textContent = e.artifact;
+        li.appendChild(archivo);
+      }
+      ul.appendChild(li);
+    });
+    cont.appendChild(ul);
+  }
+
+  /**
+   * Cuatro barras, una por categoría del health:
+   *   · 75 % o más → ok (verde, círculo verde).
+   *   · 50 % o más → aviso (ámbar, círculo amarillo).
+   *   · menos de 50 % → error (rojo, círculo rojo).
+   *
+   * El emoji y el porcentaje van juntos para que el color no sea lo
+   * único que comunica el estado (WCAG 1.4.1). Si 'health' no viene
+   * (versiones viejas del API), se pinta un mensaje neutro en vez de
+   * reventar.
+   */
+  function pintaSalud(health, cont) {
+    if (!health || typeof health !== "object") {
+      var v = document.createElement("p");
+      v.className = "vacio";
+      v.textContent = "La salud de la documentación no está disponible.";
+      cont.appendChild(v);
+      return;
+    }
+    var rejilla = document.createElement("div");
+    rejilla.className = "salud-grid";
+    var piezas = [
+      { clave: "withValidationPercent",  etiqueta: "Validación" },
+      { clave: "withBodySchemaPercent",  etiqueta: "Body schema" },
+      { clave: "withExamplesPercent",    etiqueta: "Ejemplos" },
+      { clave: "withDescriptionPercent", etiqueta: "Descripciones" },
+    ];
+    piezas.forEach(function (p) {
+      var valor = health[p.clave];
+      var pct = typeof valor === "number" ? Math.max(0, Math.min(100, Math.round(valor))) : 0;
+      var tramo = pct >= 75 ? "ok" : pct >= 50 ? "aviso" : "error";
+      var emoji = tramo === "ok" ? "\u{1F7E2}" : tramo === "aviso" ? "\u{1F7E1}" : "\u{1F534}";
+      var celda = document.createElement("div");
+      celda.className = "salud-celda salud-celda--" + tramo;
+      var et = document.createElement("span");
+      et.className = "salud-etiqueta";
+      et.textContent = emoji + " " + p.etiqueta;
+      var pc = document.createElement("span");
+      pc.className = "salud-porcentaje";
+      pc.textContent = pct + "%";
+      var barra = document.createElement("div");
+      barra.className = "salud-barra";
+      var relleno = document.createElement("div");
+      relleno.className = "salud-barra-relleno";
+      // El ancho va por style (CSSOM), no por innerHTML: no es
+      // interpolación de texto del usuario, es un porcentaje
+      // numérico ya acotado a 0..100.
+      relleno.style.width = pct + "%";
+      barra.appendChild(relleno);
+      celda.appendChild(et);
+      celda.appendChild(pc);
+      celda.appendChild(barra);
+      rejilla.appendChild(celda);
+    });
+    cont.appendChild(rejilla);
   }
 
   // El testigo de esta ejecución, que el servidor inyecta al servir la
@@ -500,6 +777,9 @@ export const UI_HTML = String.raw`<!doctype html>
       if (!res.ok) {
         pinta("error", res.j.error.reason, tabla([["Qué hacer", res.j.error.nextAction]]));
         $("paso-generar").hidden = true;
+        // f00010 S3: esconder la tarjeta para que los datos del
+        // proyecto anterior no se queden colgados.
+        if ($("deteccion")) $("deteccion").hidden = true;
         return;
       }
       var s = res.j.summary;
@@ -510,6 +790,10 @@ export const UI_HTML = String.raw`<!doctype html>
         ["Sin reglas", s.withoutFormRequest],
         ["Login", s.auth ? s.auth.loginEndpoint : "no detectado"]
       ]));
+      // f00010 S3: pinta la tarjeta de evidencia + salud. Va después
+      // del resumen plano para que el orden visual sea de lo
+      // conocido a lo explicado, no al revés.
+      pintaDeteccion(s);
       if (res.j.notice) {
         var p = document.createElement("p");
         p.textContent = res.j.notice;

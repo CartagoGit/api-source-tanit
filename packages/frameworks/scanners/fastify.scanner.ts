@@ -100,8 +100,8 @@ function dependsOnFastify(pkg: Record<string, unknown> | null): boolean {
  * el score visible. La idea es exactamente esa: el lockfile es
  * **trazabilidad de runtime**, no detección.
  */
-function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
-  const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
+function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact: string }> {
+  const out: Array<{ signal: string; weight: number; artifact: string }> = [];
   if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
     out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
   }

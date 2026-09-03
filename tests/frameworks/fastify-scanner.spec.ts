@@ -185,3 +185,73 @@ describe("parseFastifySchema", () => {
     expect(fields.map((f) => f.fieldName)).toContain("despues");
   });
 });
+
+// ---------------------------------------------------------------------------
+// f00011 S4 — lockfiles como bonus de scoring en detect().
+// ---------------------------------------------------------------------------
+
+describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
+  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
+  // +0.15 (bun). El detector de Fastify suele estar al tope (1.0 con
+  // `fastify` directo), así que el bonus aparece en `evidence`
+  // aunque no cambie el score visible — exactamente lo que se busca
+  // con esta propuesta: trazabilidad, no detección.
+  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+      "pnpm-lock.yaml": "",
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      const pnpm = result.evidence.find((e) => e.artifact === "pnpm-lock.yaml");
+      expect(pnpm).toBeDefined();
+      expect(pnpm?.weight).toBe(0.1);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("bun.lockb añade evidencia con peso 0.15", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lockb");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+      "pnpm-lock.yaml": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "pnpm-lock.yaml")).toBe(false);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
