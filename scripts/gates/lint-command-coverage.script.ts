@@ -46,6 +46,31 @@ import { collectFiles } from "../helpers/walk.helper.js";
 /** Un comando se considera ejercitado si su nombre aparece en un test. */
 const TESTS_DIR = fromRoot("tests");
 const COMMANDS_DIR = fromRoot("packages", "cli", "commands");
+/**
+ * Scripts ejecutables del repo: tanto los comandos del CLI como los
+ * gates y los builders. Comparten el riesgo —un `process.exit` sin
+ * `import.meta.main` mata cualquier proceso que los importe—, así que
+ * el gate los vigila a todos con la misma regla.
+ *
+ * El patrón `*.script.ts` (en todas las raíces registradas abajo)
+ * recoge `packages/cli/commands/`, `scripts/gates/` y `scripts/build/`.
+ * La función `verbosPorFichero`
+ * sólo sabe mapear verbos para los comandos del CLI; para el resto, el
+ * "verbo" es el nombre del fichero, que es lo bastante bueno para la
+ * comprobación del guard (`process.exit` no necesita nombre de verbo).
+ */
+const SCRIPTS_GLOB = "**/*.script.ts";
+const SCRIPTS_ROOTS = [COMMANDS_DIR, fromRoot("scripts", "gates"), fromRoot("scripts", "build")];
+
+/** Tipo de ejecutable:CLI command o gate. */
+type ScriptKind = "command" | "script";
+
+interface IScript {
+  readonly file: string;
+  readonly name: string;
+  readonly verb: string;
+  readonly kind: ScriptKind;
+}
 
 interface IProblem {
   readonly command: string;
@@ -76,19 +101,34 @@ async function verbosPorFichero(): Promise<Map<string, string>> {
 
 async function main(): Promise<number> {
   const verbos = await verbosPorFichero();
-  const comandos = (await collectFiles(COMMANDS_DIR, [".script.ts"])).map((f) => {
+  // Recoge todos los `*.script.ts` del repo (CLI + gates + build) y los
+  // separa en dos: comandos del CLI (con verbo mapeado por el dispatcher)
+  // y resto de scripts (cuyo "verbo" es su nombre de fichero).
+  const allFiles: string[] = [];
+  for (const root of SCRIPTS_ROOTS) {
+    for (const f of await collectFiles(root, [".script.ts"])) allFiles.push(f);
+  }
+
+  const scripts: IScript[] = allFiles.map((f) => {
     const fichero = basename(f, ".ts");
+    const kind: ScriptKind =
+      // CLI commands live directly under packages/cli/commands/.
+      f.includes(`${COMMANDS_DIR}/`) ? "command" : "script";
+    const verb =
+      kind === "command"
+        ? verbos.get(fichero) ?? basename(f, ".script.ts")
+        : basename(f, ".script.ts");
     return {
       file: relative(REPO_ROOT, f),
       // `generate.script.ts` → `generate`
       name: basename(f, ".script.ts"),
-      // El verbo del CLI, que puede no coincidir con el fichero.
-      verb: verbos.get(fichero) ?? basename(f, ".script.ts"),
+      verb,
+      kind,
     };
   });
 
-  if (comandos.length === 0) {
-    console.error("lint:command-coverage — no se encontró ningún comando");
+  if (scripts.length === 0) {
+    console.error("lint:command-coverage — no se encontró ningún ejecutable");
     return 1;
   }
 
@@ -96,16 +136,16 @@ async function main(): Promise<number> {
   // delante. Se busca al principio de línea porque dentro del guard va
   // indentado, que es justo la diferencia entre correcto e incorrecto.
   const sinGuard: IProblem[] = [];
-  for (const comando of comandos) {
-    const fuente = await readFile(fromRoot(comando.file), "utf8");
+  for (const script of scripts) {
+    const fuente = await readFile(fromRoot(script.file), "utf8");
     if (/^process\.exit\(/m.test(fuente)) {
-      sinGuard.push({ command: comando.verb, file: comando.file });
+      sinGuard.push({ command: script.verb, file: script.file });
     }
   }
 
   if (sinGuard.length > 0) {
     console.error(
-      `lint:command-coverage — ${sinGuard.length} comando(s) que se ejecutan al importarse:\n`,
+      `lint:command-coverage — ${sinGuard.length} ejecutable(s) que se ejecutan al importarse:\n`,
     );
     for (const p of sinGuard) console.error(`  ✗ ${p.command}  (${p.file})`);
     console.error(
@@ -124,16 +164,21 @@ async function main(): Promise<number> {
   const cuerpo = (await Promise.all(tests.map((f) => readFile(f, "utf8")))).join("\n");
 
   const problems: IProblem[] = [];
-  for (const comando of comandos) {
+  for (const script of scripts) {
+    // La prueba de "está ejercitado" sólo aplica a los comandos del
+    // CLI. Los gates y builders son ejecutables que el propio repo
+    // lanza desde `package.json#scripts`, no tests; pedirles test
+    // sería ruido.
+    if (script.kind !== "command") continue;
     // Se busca el nombre del fichero del comando —`generate.script.ts`—
     // o el verbo entre comillas, que es como lo invoca el CLI
     // (`"generate"`). Buscar solo el verbo daría falsos positivos con
     // cualquier palabra suelta.
-    const porFichero = cuerpo.includes(`${comando.name}.script.ts`);
+    const porFichero = cuerpo.includes(`${script.name}.script.ts`);
     const porVerbo =
-      cuerpo.includes(`"${comando.verb}"`) || cuerpo.includes(`'${comando.verb}'`);
+      cuerpo.includes(`"${script.verb}"`) || cuerpo.includes(`'${script.verb}'`);
     if (!porFichero && !porVerbo) {
-      problems.push({ command: comando.verb, file: comando.file });
+      problems.push({ command: script.verb, file: script.file });
     }
   }
 
@@ -151,8 +196,10 @@ async function main(): Promise<number> {
     return 1;
   }
 
+  const totalCommands = scripts.filter((s) => s.kind === "command").length;
+  const totalScripts = scripts.filter((s) => s.kind === "script").length;
   console.log(
-    `lint:command-coverage — ${comandos.length} comandos, todos importables y ejercitados por algún test`,
+    `lint:command-coverage — ${totalCommands} comandos (todos ejercitados) + ${totalScripts} scripts, todos importables`,
   );
   return 0;
 }
