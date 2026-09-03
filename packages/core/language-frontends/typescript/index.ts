@@ -13,7 +13,7 @@
  * (a00010 S7 — slice AST TypeScript)
  */
 
-export { parse } from "./typescript.parser.js";
+export { parse, parseModule } from "./typescript.parser.js";
 
 export type {
   TSAssignment,
@@ -22,6 +22,7 @@ export type {
   TSDecorator,
   TSFile,
   TSImport,
+  TSImportBinding,
   TSSymbol,
   TSSymbolKind,
   TSMethodCall,

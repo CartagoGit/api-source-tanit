@@ -40,9 +40,40 @@ import type { TSLiteral } from "./typescript-frontend-literal.interface.js";
  * (`import x as y from ...` todavía no se modela: los seis scanners
  * solo miran el `from`).
  */
+export interface TSImportBinding {
+  /** Nombre que recibe el binding en el scope local del módulo. */
+  readonly local: string;
+  /**
+   * Nombre exportado por el módulo origen: `"Router"` en
+   * `import { Router as R }`, `"default"` en un default import,
+   * `"*"` en un namespace import.
+   */
+  readonly imported: string;
+  /** `true` solo en `import x from "..."` (imported es "default"). */
+  readonly isDefault: boolean;
+  /** `true` solo en `import * as x from "..."` (imported es "*"). */
+  readonly isNamespace?: boolean;
+}
+
 export interface TSImport {
   readonly source: string;
+  /** Nombres tal cual aparecen entre llaves (compat). */
   readonly names: ReadonlyArray<string>;
+  /**
+   * Bindings locales: qué nombre local recibe cada importado.
+   *
+   * `import { Router as R } from "express"` →
+   * `[{ local: "R", imported: "Router", isDefault: false }]`.
+   * `import exp from "express"` →
+   * `[{ local: "exp", imported: "default", isDefault: true }]`.
+   * `import * as fs from "fs"` →
+   * `[{ local: "fs", imported: "*", isDefault: false,
+   *    isNamespace: true }]`.
+   *
+   * `names` se deriva de `bindings` (compat); el grafo de mounts
+   * cross-file consume `bindings`, no `names`.
+   */
+  readonly bindings: ReadonlyArray<TSImportBinding>;
 }
 
 /** Una declaración en el módulo: función, clase, variable o método. */

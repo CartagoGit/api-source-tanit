@@ -181,6 +181,30 @@ export interface IScanResult {
    * está declarado.
    */
   readonly structs?: ReadonlyMap<string, IStructDescriptor>;
+  /**
+   * Errores no fatales encontrados durante el scan: ficheros que un
+   * parser de terceros no pudo procesar pero que no abortan el scan.
+   *
+   * Lo rellena `ExpressRouteScanner` desde `parseModule` del frontend
+   * TypeScript: un fichero con sintaxis inválida sale como `null` en el
+   * AST y deja aquí la razón, para que no desaparezca sin rastro.
+   */
+  readonly diagnostics?: ReadonlyArray<IParseDiagnostic>;
+}
+
+/**
+ * Un problema de parseo no fatal: el fichero no se pudo procesar,
+ * pero el scan continúa.
+ *
+ * Vive en este paquete (no en el del frontend) para que scanners de
+ * cualquier lenguaje puedan reutilizarlo — el shape es agnóstico.
+ */
+export interface IParseDiagnostic {
+  /** Fichero que no se pudo procesar (tal como se pasó al parser). */
+  readonly file: string;
+  readonly severity: "error" | "warning";
+  /** Razón legible: el mensaje del parser, sin stack. */
+  readonly reason: string;
 }
 
 /**

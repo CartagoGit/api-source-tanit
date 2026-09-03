@@ -150,17 +150,6 @@ interface ParsedModule {
  * pasada por el AST produce `imports`, `assignments` y `methodCalls`
  * que el adapter de Express consume.
  */
-function parseModule(file: string, raw: string): ParsedModule {
-  const ast = parseAstSafe(raw, file);
-  if (!ast) {
-    // Si Babel no pudo parsear el archivo (sintaxis inválida,
-    // archivos muy exóticos), caemos a una pasada vacía: el
-    // scanner sigue funcionando, solo no encuentra rutas en
-    // ese fichero. El error de sintaxis se loggea por el
-    // `parseAstSafe` interno.
-    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
-  }
-
   const routerPrefixes = new Map<string, string>();
   const appUsePrefixes = new Map<string, string>();
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];

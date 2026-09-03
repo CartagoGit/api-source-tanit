@@ -51,6 +51,7 @@ import type {
   TSDecorator,
   TSFile,
   TSImport,
+  TSImportBinding,
   TSMethodCall,
   TSSymbol,
 } from "../../../contracts/interfaces/core/language/typescript-frontend.interface.js";
@@ -117,7 +118,13 @@ function asArray(value: unknown): ReadonlyArray<BabelNode> {
  * internamente — Babel lo acepta pero aquí no nos interesa.
  *
  * Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
- * callers lo capturan y reportan como "archivo no procesable".
+ * callers que quieren degradar sin ruido usan `parseModule` con un
+ * array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+ *
+ * El orden dentro de cada colección de `TSFile` es top-down respecto
+ * al archivo: al final del parse cada colección se ordena por
+ * `(line, column)` ascendente, de modo que el contrato no dependa del
+ * orden interno del walker (a00011 C-7 / B-rev-11).
  */
 export function parse(source: string, filename: string): TSFile {
   const ast = babelParse(source, {
@@ -142,7 +149,7 @@ export function parse(source: string, filename: string): TSFile {
 
   const body = asArray(ast.program["body"]);
 
-  return {
+  return sortTopDown({
     imports: collectImports(body),
     symbols: collectSymbols(body),
     classes: collectClasses(body),
@@ -150,12 +157,83 @@ export function parse(source: string, filename: string): TSFile {
     assignments: collectAssignments(body),
     decorators: collectDecorators(body),
     filename,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Top-down ordering (a00011 C-7 / B-rev-11)
+// ---------------------------------------------------------------------------
+
+/** Posición (línea, columna) de cualquier nodo ordenable del AST. */
+interface IPositioned {
+  readonly line: number;
+  readonly column?: number;
+}
+
+/**
+ * Ordena cada colección del `TSFile` por posición ascendente.
+ *
+ * La comparación es `(line, column)`: mismo criterio con el que un
+ * lector humano recorre el archivo. `Array.prototype.sort` es estable
+ * (spec ES2019), así que los empates conservan el orden de emisión.
+ *
+ * Las colecciones sin `column` (`symbols`, `assignments`, `decorators`,
+ * `classes`) comparan por `line` sola — el `?? 0` de `column` solo
+ * desempata cuando ambas líneas son iguales, que es exactamente el
+ * caso en que hace falta.
+ */
+function sortTopDown(file: TSFile): TSFile {
+  const byPosition = (a: IPositioned, b: IPositioned): number =>
+    a.line - b.line || (a.column ?? 0) - (b.column ?? 0);
+  return {
+    imports: [...file.imports], // ya salen en orden de declaración; copia por uniformidad
+    symbols: [...file.symbols].sort(byPosition),
+    classes: [...file.classes].sort(byPosition),
+    methodCalls: [...file.methodCalls].sort(byPosition),
+    assignments: [...file.assignments].sort(byPosition),
+    decorators: [...file.decorators].sort(byPosition),
+    filename: file.filename,
   };
 }
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
+
+/**
+ * Extrae el binding local de un specifier de import.
+ *
+ * `import x from "m"` → `{ local: "x", imported: "default", ... }`.
+ * `import * as ns from "m"` → `{ local: "ns", imported: "*", ... }`.
+ * `import { A as B } from "m"` → `{ local: "B", imported: "A", ... }`.
+ *
+ * Devuelve `null` para specifiers sin nombre reconocible (no debería
+ * pasar con Babel, pero el cast permisivo del AST lo permite).
+ */
+function bindingFromSpecifier(spec: BabelNode): TSImportBinding | null {
+  if (spec.type === "ImportDefaultSpecifier") {
+    const local = asBabelNode(get(spec, "local"));
+    const name = String(local.name ?? "");
+    return name ? { local: name, imported: "default", isDefault: true } : null;
+  }
+  if (spec.type === "ImportNamespaceSpecifier") {
+    const local = asBabelNode(get(spec, "local"));
+    const name = String(local.name ?? "");
+    return name
+      ? { local: name, imported: "*", isDefault: false, isNamespace: true }
+      : null;
+  }
+  if (spec.type === "ImportSpecifier") {
+    const imported = asBabelNode(get(spec, "imported"));
+    const local = asBabelNode(get(spec, "local"));
+    const importedName = String(imported.name ?? imported.value ?? "");
+    const localName = String(local.name ?? importedName);
+    return importedName
+      ? { local: localName, imported: importedName, isDefault: false }
+      : null;
+  }
+  return null;
+}
 
 function collectImports(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSImport> {
   const out: TSImport[] = [];
@@ -164,15 +242,15 @@ function collectImports(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSImport>
     const sourceNode = asBabelNode(get(node, "source"));
     if (sourceNode.type !== "StringLiteral") continue;
     const source = String(sourceNode.value ?? "");
-    const names: string[] = [];
+    const bindings: TSImportBinding[] = [];
     for (const spec of asArray(get(node, "specifiers"))) {
-      if (spec.type === "ImportDefaultSpecifier") names.push("default");
-      else if (spec.type === "ImportSpecifier") {
-        const imported = asBabelNode(get(spec, "imported"));
-        if (imported.name) names.push(String(imported.name));
-      } else if (spec.type === "ImportNamespaceSpecifier") names.push("*");
+      const binding = bindingFromSpecifier(spec);
+      if (binding) bindings.push(binding);
     }
-    out.push({ source, names });
+    // `names` se deriva de `bindings` para compat con los scanners
+    // que ya lo consumen (a00011 C-7 / B-rev-12).
+    const names = bindings.map((b) => b.imported);
+    out.push({ source, names, bindings });
   }
   return out;
 }
