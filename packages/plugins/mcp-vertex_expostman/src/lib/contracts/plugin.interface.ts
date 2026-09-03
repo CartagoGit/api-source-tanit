@@ -38,6 +38,19 @@ export const ExportToPostmanOptionsSchema = z
      * único sitio donde está escrito y un test que lo comprueba.
      */
     cliScript: z.string().min(1).optional(),
+    /**
+     * Ruta absoluta al binario `bun` que el plugin usa para invocar al
+     * CLI. Se lee una vez al boot (no en cada tool call) y se pasa al
+     * `runner.helper` a través de `IRunnerContext.bunBin`. Si no se
+     * fija, el helper cae al `MCP_VERTEX_BUN_BIN` del entorno y luego
+     * a `Bun.which("bun")` / `command -v bun`.
+     *
+     * Esta opción existe para que los hosts AI que filtran `PATH`
+     * antes de spawn (algunos clientes MCP recortan variables) puedan
+     * garantizar que el plugin encuentra su binario. Sin ella el
+     * plugin depende de `PATH` del shell de quien arranca el host.
+     */
+    mcpVertexBunBin: z.string().min(1).optional(),
   })
   .strict();
 

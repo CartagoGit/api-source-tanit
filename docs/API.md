@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 139 símbolos en 43 módulos.
+> 121 símbolos en 42 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -170,197 +170,6 @@ la heurística heredada del camino Laravel; un scanner moderno
 resuelve sus propias rutas, pero la traza del CLI las sigue
 mostrando porque a una persona le sirve ver si existen.
 
-### `packages/core/discovery/paths.service.ts`
-
-Fachada con estado sobre `project-context.service.ts`.
-
-#### `projectRootWasExplicit`
-
-```ts
-export function projectRootWasExplicit(): boolean
-```
-
-¿La raíz del proyecto la eligió alguien, o se cayó al directorio
-actual?
-
-`projectRoot()` **nunca** devuelve `null`: si no hay `--project-root`
-ni `POSTMAN_PROJECT_ROOT`, acaba en `process.cwd()`. Eso deja muerta
-la rama «no se pudo determinar la raíz» que varios comandos tienen
-escrita, y —peor— hace que lanzar la herramienta desde el sitio
-equivocado escanee ese árbol entero sin decir nada.
-
-Se midió: `watch --once` lanzado desde `/tmp` recorrió el directorio,
-encontró un proyecto suelto y generó su colección. Desde `$HOME`
-recorrería la casa.
-
-No se cambia el fallback —es cómodo y hay quien lo usa—, pero quien
-llama puede preguntar y avisar. Un comportamiento implícito deja de
-ser una trampa en cuanto se dice en voz alta.
-
-#### `resetPathCache`
-
-```ts
-export function resetPathCache(): void
-```
-
-#### `withScopedPaths`
-
-```ts
-export async function withScopedPaths<T>( scope: IPathScope, fn: () => Promise<T>, ): Promise<T>
-```
-
-Ejecuta `fn` con las rutas del scope fijadas, y restaura el estado
-anterior al terminar (también si `fn` lanza).
-
-Existe porque `outputDir()` y `projectRoot()` leen `process.argv` y
-`process.env`, no argumentos. Quien invoca un comando **en el mismo
-proceso** —el asistente interactivo llamando a `generate`— le pasa un
-array de flags que esas funciones no miran: leen el argv del proceso,
-que es el del asistente. El resultado era que la opción "escribir en
-otra carpeta" del asistente aceptaba la carpeta, la mostraba, y
-escribía en la de por defecto.
-
-#### `withProjectRoot`
-
-```ts
-export async function withProjectRoot<T>( root: string, fn: () => Promise<T>, ): Promise<T>
-```
-
-Ejecuta `fn` con la raíz del proyecto fijada a `root`.
-
-Atajo de `withScopedPaths` para el caso más común. Restaura el estado
-anterior al terminar, también si `fn` lanza.
-
-#### `packageRoot`
-
-```ts
-export function packageRoot(): string
-```
-
-#### `projectRoot`
-
-```ts
-export function projectRoot(): string | null
-```
-
-#### `routesDir`
-
-```ts
-export function routesDir(): string | null
-```
-
-#### `appDir`
-
-```ts
-export function appDir(): string | null
-```
-
-#### `requestsDir`
-
-```ts
-export function requestsDir(): string | null
-```
-
-#### `projectBasename`
-
-```ts
-export function projectBasename(): string
-```
-
-#### `packageBasename`
-
-```ts
-export function packageBasename(): string
-```
-
-Nombre de **este** paquete, no del proyecto que se escanea.
-
-La distinción importa: cuando la herramienta está instalada dentro del
-proyecto, los dos nombres conviven y confundirlos hace que la colección
-salga llamándose `export-to-postman` en vez de como la API.
-
-#### `outputDir`
-
-```ts
-export function outputDir(context?: IProjectContext): string
-```
-
-Devuelve el directorio donde se escriben los artefactos.
-Regla:
-  1. CLI `--output-dir <path>` o `--output <file>` (parent).
-  2. Env `POSTMAN_OUTPUT_DIR`.
-  3. Si el paquete está **dentro** del proyecto → `${packageRoot}/export-to-postman/`.
-     Si NO → `${projectRoot}/export-to-postman/`.
-  4. `process.cwd()/export-to-postman/` fallback.
-
-#### `outputBasename`
-
-```ts
-export function outputBasename(projectName?: string): string
-```
-
-Nombre base del JSON de salida.
-Prioridad: env `POSTMAN_OUTPUT_BASENAME` → nombre del proyecto.
-
-#### `outputCollectionPath`
-
-```ts
-export async function outputCollectionPath( projectName?: string, context?: IProjectContext, ): Promise<string>
-```
-
-#### `outputEnvironmentPath`
-
-```ts
-export async function outputEnvironmentPath( envName: string, projectName?: string, context?: IProjectContext, ): Promise<string>
-```
-
-#### `toProjectRelative`
-
-```ts
-export function toProjectRelative(absPath: string): string
-```
-
-Convierte una ruta absoluta del proyecto a una relativa al proyecto
-(formato POSIX). Lanza si no hay raíz de proyecto conocida.
-
-#### `fromProjectRelative`
-
-```ts
-export function fromProjectRelative(relPath: string): string
-```
-
-Convierte una ruta relativa al proyecto escaneado en absoluta.
-
-Ojo: relativa al **proyecto que se escanea**, no a este paquete. Es la
-distinción que hace que un scanner pueda emitir `src/routes/x.ts` sin
-saber dónde está instalado.
-
-#### `describeDiscoveredPaths`
-
-```ts
-export function describeDiscoveredPaths(projectName?: string): string
-```
-
-Las rutas resueltas, en texto, para la traza del CLI.
-
-Se imprime antes de escanear a propósito: cuando la salida no es la
-esperada, lo primero que hay que descartar es que se esté mirando otra
-carpeta.
-
-## Por qué recibe el nombre del proyecto
-
-Porque sin él **mentía**, y justo en la línea que existe para no
-mentir. `outputBasename()` sin argumento se cae a `projectBasename()`,
-que es el nombre del **directorio**; el fichero real se llama como el
-proyecto dice llamarse en su manifiesto. Sobre una copia de
-`example-express` en una carpeta `api/`, la traza anunciaba
-`api.postman_collection.json` y el CLI escribía
-`sample-express.postman_collection.json` tres líneas más abajo.
-
-Quien la imprime todavía no ha cargado la configuración —esa es la
-gracia de imprimirla antes—, así que el nombre es opcional: sin él se
-dice que aún no se sabe, en vez de inventarse uno.
-
 ### `packages/core/discovery/project-context.service.ts`
 
 Resolución explícita del contexto de un proyecto.
@@ -466,8 +275,9 @@ Orden:
 export async function loadProject( argv: string[] = process.argv, context: IProjectContext, ): Promise<LoadedProject>
 ```
 
-El contexto es obligatorio para que el loader sea seguro en procesos de
-vida larga y no vuelva a leer la raíz cacheada de `paths.service`.
+El contexto es obligatorio para que el loader sea seguro en procesos
+de vida larga y no vuelva a leer la raíz cacheada del singleton
+retirado de `paths.service` en r00010 S2 (2026-09-03).
 
 #### `_internal`
 

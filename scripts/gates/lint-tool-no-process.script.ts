@@ -57,6 +57,24 @@ interface IViolation {
 }
 
 /**
+ * Ficheros donde la prohibición se levanta — **con motivo**.
+ *
+ * El único caso legítimo en este plugin es el snapshot inmutable del
+ * proceso (`process-snapshot.helper.ts`): su razón de existir es leer
+ * `process.env` / `process.cwd()` **una vez al boot** y exponer el
+ * resultado como constantes congeladas. El universal §6 ("Async I/O
+ * only in hot paths; `*Sync` is boot-time only") lo permite; el gate
+ * lo prohíbe por defecto porque la mayoría de los lectores del proceso
+ * lo hacen en hot path. Aquí se documenta la excepción.
+ */
+const PERMITIDOS: Readonly<Record<string, string>> = {
+  "packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner-snapshot.constant.ts":
+    "snapshot inmutable del proceso al boot del plugin (universal §6: lectura " +
+    "de proceso es boot-time); el resto del plugin consume las constantes " +
+    "congeladas en vez de leer process.* en hot path",
+};
+
+/**
  * Comprueba un fuente y devuelve sus infracciones.
  *
  * Se ignoran las líneas de comentario: la prohibición se explica en el
@@ -98,11 +116,15 @@ async function main(): Promise<number> {
 
   const violations: IViolation[] = [];
   for (const file of files) {
+    const rel = relative(REPO_ROOT, file);
+    if (PERMITIDOS[rel] !== undefined) continue;
     violations.push(...lintToolSource(file, await readFile(file, "utf8")));
   }
 
   if (violations.length === 0) {
-    console.log(`lint:tools — ${files.length} tools/helpers, sin infracciones`);
+    console.log(
+      `lint:tools — ${files.length} tools/helpers (${Object.keys(PERMITIDOS).length} excepción con motivo), sin infracciones`,
+    );
     return 0;
   }
 

@@ -78,6 +78,10 @@ export function buildValidateToolRegistration(
 
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
+            ctx: {
+              cwd: workspaceRoot,
+              bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+            },
           });
           // Mutable aquí y `readonly` en el contrato de salida: la anotación
           // anterior decía `readonly[]` y aun así hacía push.

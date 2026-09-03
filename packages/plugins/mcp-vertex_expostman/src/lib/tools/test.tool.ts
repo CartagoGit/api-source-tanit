@@ -214,6 +214,10 @@ export function buildTestToolRegistration(
             const r = runBunCommand(["run", "typecheck"], {
               cwd: workspaceRoot,
               timeoutMs: 60_000,
+              ctx: {
+                cwd: workspaceRoot,
+                bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+              },
             });
             const detail = r.ok
               ? undefined

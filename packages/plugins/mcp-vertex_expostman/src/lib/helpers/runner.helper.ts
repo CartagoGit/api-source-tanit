@@ -15,6 +15,7 @@
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { delimiter as pathDelimiter } from "node:path";
+import { execSync as stdlibExecSync } from "node:child_process";
 import { z } from "zod";
 import {
   GenerateReportSchema,
@@ -24,10 +25,13 @@ import {
 import { SUPPORTED_REPORT_VERSION } from "../contracts/constants/runner.constant";
 import {
   type IRunnerContext,
+} from "../contracts/interfaces/runner-context.interface";
+import {
   resolveBunBinFromCtx,
   resolveCwd,
   resolveEnv,
-} from "./runner.context";
+} from "./runner-context.helper";
+import { BUN_BIN_SNAPSHOT } from "../contracts/constants/runner-snapshot.constant";
 
 // `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
 // reproduce cuando el host MCP arranca el plugin bajo Bun y el
@@ -92,16 +96,14 @@ const useBunSpawn = typeof bunSpawnSync === "function";
 function resolveBunBin(ctx: IRunnerContext | undefined): string {
   const fromCtx = resolveBunBinFromCtx(ctx);
   if (fromCtx && fromCtx.length > 0) return fromCtx;
-  // 1) Variable de entorno explícita (operador puede forzarla).
-  const fromEnv = process.env["MCP_VERTEX_BUN_BIN"];
-  if (fromEnv && fromEnv.length > 0) return fromEnv;
+  // 1) Variable de entorno explícita capturada al boot.
+  if (BUN_BIN_SNAPSHOT && BUN_BIN_SNAPSHOT.length > 0) return BUN_BIN_SNAPSHOT;
   // 2) `Bun.which` (disponible en runtime Bun).
   const w = bunGlobal?.which?.("bun");
   if (typeof w === "string" && w.length > 0) return w;
   // 3) `which` por stdlib (cubre ejecución vía Node puro).
   try {
-    const { execSync } = require("node:child_process") as typeof import("node:child_process");
-    const out = execSync("command -v bun", { encoding: "utf8" }).trim();
+    const out = stdlibExecSync("command -v bun", { encoding: "utf8" }).trim();
     if (out.length > 0) return out;
   } catch {
     // ignore — caemos al fallback

@@ -116,7 +116,14 @@ export function buildGenerateToolRegistration(
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
             containRoots: [projectRoot],
-            ctx: { cwd: workspaceRoot, env: process.env, bunBin: process.env["MCP_VERTEX_BUN_BIN"] },
+            ctx: {
+              cwd: workspaceRoot,
+              // El binario viene de la opción validada del plugin (o
+              // cae al MCP_VERTEX_BUN_BIN / Bun.which / command -v que
+              // el helper aplica). El env lo toma el helper de su
+              // default: el plugin no necesita leerlo para nada.
+              bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+            },
           });
           if (!result.ok) {
             return toolError(
