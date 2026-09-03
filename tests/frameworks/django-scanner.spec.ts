@@ -10,6 +10,7 @@ import { comprehensiveFixture, createTempProject, scanProject } from "../helpers
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "django",
   fixtureRoot: comprehensiveFixture("django"),
@@ -46,13 +47,13 @@ describe("Django scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
-    const routes = await new DjangoRouteScanner().scan(match);
+    const routes = (await new DjangoRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("rutas contienen health, api/users, api/users/<int:id>", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
-    const routes = await new DjangoRouteScanner().scan(match);
+    const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const uris = routes.map((r) => r.uri);
     expect(uris).toContain("/health/");
     expect(uris.some((u) => u.includes("/api/users/"))).toBe(true);
@@ -61,24 +62,24 @@ describe("Django scanner", () => {
 
   test("path param Django <int:id> preservado en uri del ParsedRoute", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
-    const routes = await new DjangoRouteScanner().scan(match);
+    const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.uri.includes("<int:id>"));
     expect(show).toBeDefined();
   });
 
   test("comprehensive: detecta >15 rutas con include() y CBVs/FBVs", async () => {
     const match = await new DjangoProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new DjangoRouteScanner().scan(match);
+    const routes = (await new DjangoRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(15);
   });
 
   test("DRF serializer provider resuelve campos para POST /api/users", async () => {
     const match = await new DjangoProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new DjangoRouteScanner().scan(match);
+    const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("api/users"));
     if (!post) return;
     const provider = new DjangoSerializerProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     expect(result.fields.some((f) => f.fieldName === "name" || f.fieldName === "email")).toBe(true);
   });
@@ -341,7 +342,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     const project = await createTempProject({ "manage.py": "" });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/x/", ""), match);
+      const result = await provider.resolve(ruta("/x/", ""), match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
       expect(result.endpointKey).toBe("post /x/");
     } finally {
@@ -357,7 +358,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/cosas/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/cosas/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -371,7 +372,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/huerfana/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/huerfana/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -394,7 +395,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/users/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/users/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       const byName = new Map(result.fields.map((f) => [f.fieldName, f]));
       expect(byName.get("name")).toMatchObject({ type: "string", required: true });
       expect(byName.get("email")).toMatchObject({ type: "string", format: "email" });
@@ -418,7 +419,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/raro/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/raro/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       expect(result.fields[0]).toMatchObject({ fieldName: "desconocido", type: "any" });
     } finally {
       await project.cleanup();
@@ -442,7 +443,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/inline/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/inline/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       const byName = new Map(result.fields.map((f) => [f.fieldName, f]));
       expect(byName.get("titulo")).toMatchObject({ type: "string", required: true });
       expect(byName.get("activo")).toMatchObject({ type: "boolean" });
@@ -463,7 +464,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/fbv/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/fbv/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((f) => f.fieldName)).toEqual(["x"]);
     } finally {
       await project.cleanup();
@@ -478,7 +479,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      const result = await provider.resolve(ruta("/solo/", "app/urls.py"), match);
+      const result = await provider.resolve(ruta("/solo/", "app/urls.py"), match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -502,6 +503,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
       const result = await provider.resolve(
         ruta("/api/lista/", "app/api/urls.py", "POST", { prefixChain: ["api/"] }),
         match,
+        EMPTY_SCAN_RESULT,
       );
       expect(result.endpointKey).toBe("post /api/lista/");
       expect(result.fields.map((f) => f.fieldName)).toEqual(["v"]);
@@ -519,7 +521,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
       // Tras normalizar, la URI relativa queda vacía: rama del path("").
-      const result = await provider.resolve(ruta("/", "app/urls.py", "GET"), match);
+      const result = await provider.resolve(ruta("/", "app/urls.py", "GET"), match, EMPTY_SCAN_RESULT);
       expect(result.endpointKey).toBe("get /");
       expect(result.fields).toEqual([]);
     } finally {

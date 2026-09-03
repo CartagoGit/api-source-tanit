@@ -130,7 +130,7 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
   test("el scanner completo lee el fixture", async () => {
     const scanner = new RailsRouteScanner();
     const match = await new RailsProjectScanner().resolve(comprehensiveFixtureDir("rails"));
-    expect((await scanner.scan(match)).length).toBeGreaterThan(10);
+    expect((await scanner.scan(match)).routes.length).toBeGreaterThan(10);
   });
 });
 
@@ -172,7 +172,7 @@ describe("Phoenix: scopes anidados y resources", () => {
     const match = await new PhoenixProjectScanner().resolve(
       comprehensiveFixtureDir("phoenix"),
     );
-    expect((await scanner.scan(match)).length).toBeGreaterThan(10);
+    expect((await scanner.scan(match)).routes.length).toBeGreaterThan(10);
   });
 });
 
@@ -217,6 +217,6 @@ describe("Ktor: el DSL anidado por llaves", () => {
   test("el scanner completo lee el fixture", async () => {
     const scanner = new KtorRouteScanner();
     const match = await new KtorProjectScanner().resolve(comprehensiveFixtureDir("ktor"));
-    expect((await scanner.scan(match)).length).toBeGreaterThan(5);
+    expect((await scanner.scan(match)).routes.length).toBeGreaterThan(5);
   });
 });

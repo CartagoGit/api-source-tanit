@@ -107,7 +107,7 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       try {
         const bundle = scannerBundleFor(framework)!;
         const match = await bundle.projectScanner.resolve(empty.root);
-        expect(await bundle.routeScanner.scan(match)).toEqual([]);
+        expect((await bundle.routeScanner.scan(match)).routes).toEqual([]);
       } finally {
         await empty.cleanup();
       }
@@ -189,15 +189,22 @@ export function describeScannerContract(options: IScannerContractOptions): void 
         const bundle = scannerBundleFor(framework)!;
         expect(bundle.validationProvider).not.toBeNull();
 
-        const { match, routes } = await scanProject(framework, fixtureRoot);
+        const { match, result, routes } = await scanProject(framework, fixtureRoot);
         const posts = routes.filter((r) => r.method === "POST");
         expect(posts.length).toBeGreaterThan(0);
 
         let resolved = 0;
         for (const post of posts) {
-          const result = await bundle.validationProvider!.resolve(post, match);
-          if (result.fields.length > 0) resolved += 1;
-          for (const field of result.fields) {
+          // El contrato exige `scanResult` como tercer argumento
+          // aunque la mayoría de providers no lo usen. Es el camino
+          // que evita el estado mutable en los scanners (a00010 S2).
+          const validation = await bundle.validationProvider!.resolve(
+            post,
+            match,
+            result,
+          );
+          if (validation.fields.length > 0) resolved += 1;
+          for (const field of validation.fields) {
             expect(field.fieldName.length).toBeGreaterThan(0);
             expect(["body", "query", "path", "header", "cookie"]).toContain(field.location);
             expect(typeof field.required).toBe("boolean");

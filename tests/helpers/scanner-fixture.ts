@@ -17,6 +17,7 @@ import type { FrameworkId, IProjectMatch } from "../../packages/contracts/interf
 import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
+
 export const PACKAGE_ROOT = REPO_ROOT;
 
 /** Proyecto temporal en disco, con su limpieza. */
@@ -85,13 +86,24 @@ export async function matchFor(
 /**
  * Escanea una raíz con el scanner registrado del framework y devuelve
  * las rutas junto al match usado.
+ *
+ * A partir de a00010 S2, `scan()` devuelve un `IScanResult`: las
+ * rutas y (cuando aplica) los mapas auxiliares con schemas,
+ * validators o structs. Los consumidores que solo querían la lista
+ * de rutas piden `routes` — el resto del `IScanResult` se conserva en
+ * `result` por si lo necesitan.
  */
 export async function scanProject(
   framework: FrameworkId,
   projectRoot: string,
-): Promise<{ match: IProjectMatch; routes: ReadonlyArray<import("../../packages/contracts/interfaces/core/scanner.interface").ParsedRoute> }> {
+): Promise<{
+  match: IProjectMatch;
+  result: import("../../packages/contracts/interfaces/core/scanner.interface").IScanResult;
+  routes: ReadonlyArray<import("../../packages/contracts/interfaces/core/scanner.interface").ParsedRoute>;
+}> {
   const bundle = scannerBundleFor(framework);
   if (!bundle) throw new Error(`framework "${framework}" no está en el scanner registry`);
   const match = await bundle.projectScanner.resolve(projectRoot);
-  return { match, routes: await bundle.routeScanner.scan(match) };
+  const result = await bundle.routeScanner.scan(match);
+  return { match, result, routes: result.routes };
 }

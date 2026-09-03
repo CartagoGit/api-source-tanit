@@ -39,7 +39,7 @@ function scannerOf(routes: ParsedRoute[]): IRouteScanner {
   return {
     framework: "demo",
     matches: () => true,
-    scan: async () => routes,
+    scan: async () => ({ routes }),
   };
 }
 
@@ -112,7 +112,7 @@ describe("toPostmanUri — normalización de parámetros", () => {
 });
 
 /**
- * Un proveedor de validación que **falla**.
+ * Un proveedor de validación que **faila**.
  *
  * Antes se tragaba la excepción y devolvía `null`, con lo que el
  * endpoint quedaba exactamente igual que uno que legítimamente no tiene

@@ -8,6 +8,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -90,12 +91,12 @@ export class AspNetRouteScanner implements IRouteScanner {
     return match.framework === "aspnet";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     // Buscar *.cs recursivamente.
     await walkCs(projectRoot, projectRoot, out);
-    return out;
+    return { routes: out };
   }
 }
 
@@ -279,7 +280,11 @@ function stripCsComments(src: string): string {
 export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   readonly framework = "aspnet" as const;
 
-  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+  async supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     if (match.framework !== "aspnet") return false;
     return route.sourceFile !== undefined;
   }
@@ -287,6 +292,7 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };

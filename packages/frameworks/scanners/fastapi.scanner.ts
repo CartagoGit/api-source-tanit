@@ -119,7 +119,7 @@ export class FastApiRouteScanner implements IRouteScanner {
     return _match.framework === "fastapi";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectPyFiles(match.projectRoot);
     const routerPrefixes = new Map<string, string>();
     const out: ParsedRoute[] = [];
@@ -184,7 +184,7 @@ export class FastApiRouteScanner implements IRouteScanner {
       }
     }
 
-    return out;
+    return { routes: out };
   }
 }
 

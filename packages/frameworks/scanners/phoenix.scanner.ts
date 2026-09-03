@@ -24,6 +24,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /** Acciones REST de `resources` que tienen sentido en una API JSON. */
@@ -88,18 +89,18 @@ export class PhoenixRouteScanner implements IRouteScanner {
     return match.framework === "phoenix";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const router = await findRouter(match.projectRoot);
-    if (!router) return [];
+    if (!router) return { routes: [] };
 
     let source: string;
     try {
       source = await readFile(router, "utf8");
     } catch {
-      return [];
+      return { routes: [] };
     }
     const sourceFile = router.slice(match.projectRoot.length + 1);
-    return parseRouter(source, sourceFile);
+    return { routes: parseRouter(source, sourceFile) };
   }
 }
 

@@ -33,6 +33,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -113,7 +114,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
     return match.framework === "symfony";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     // 1) YAML routes (config/routes.yaml + config/routes/*.yaml).
@@ -144,7 +145,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
     // Un mismo endpoint puede llegar por dos vías: declarado en YAML y
     // además como `#[Route]` en el controller (o vía `resource:` que ya
     // apunta al mismo fichero). Symfony lo registra una sola vez.
-    return dedupeRoutes(out);
+    return { routes: dedupeRoutes(out) };
   }
 }
 
@@ -500,11 +501,19 @@ const ATTR_ASSERT_RE = /#\[Assert\\([A-Z][\w]*)(?:\s*\(([^)]*)\))?\s*\]/gi;
 export class SymfonyAttributesValidationProvider implements IValidationSpecProvider {
   readonly framework = "symfony" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
+  async supports(
+    _r: ParsedRoute,
+    _m: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return _m.framework === "symfony" && Boolean(_r.sourceFile);
   }
 
-  async resolve(route: ParsedRoute, match: IProjectMatch): Promise<{
+  async resolve(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<{
     endpointKey: string;
     fields: IValidationSpec[];
   }> {

@@ -6,6 +6,7 @@ import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "openapi",
   fixtureRoot: comprehensiveFixture("openapi"),
@@ -30,13 +31,13 @@ describe("OpenAPI scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture (yaml)", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("GET /api/users, POST /api/users, GET /api/users/{id}, DELETE /api/users/{id}", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /api/users");
     expect(pairs).toContain("POST /api/users");
@@ -46,18 +47,18 @@ describe("OpenAPI scanner", () => {
 
   test("path param {id} de paths /api/users/{id} preservado", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes("{id}"));
     expect(withId.length).toBe(2);
   });
 
   test("OpenAPI validation provider resuelve campos de requestBody.schema para POST", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST");
     if (!post) return;
     const provider = new OpenApiValidationProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
@@ -69,11 +70,16 @@ describe("OpenAPI scanner", () => {
   // no un tipo "email" (que no existe en el contrato).
   test("campo email es string con format 'email'", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const result = await new OpenApiRouteScanner().scan(match);
+    const routes = result.routes;
     const post = routes.find((r) => r.method === "POST");
     expect(post).toBeDefined();
-    const result = await new OpenApiValidationProvider().resolve(post!, match);
-    const email = result.fields.find((f) => f.fieldName === "email");
+    const validation = await new OpenApiValidationProvider().resolve(
+      post!,
+      match,
+      result,
+    );
+    const email = validation.fields.find((f) => f.fieldName === "email");
     expect(email).toBeDefined();
     expect(email?.type).toBe("string");
     expect(email?.format).toBe("email");
@@ -81,7 +87,7 @@ describe("OpenAPI scanner", () => {
 
   test("comprehensive: detecta >20 rutas con $ref schemas y parámetros", async () => {
     const match = await new OpenApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new OpenApiRouteScanner().scan(match);
+    const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(20);
   });
 });
@@ -204,7 +210,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
       expect(match.artifacts[0]).toBe("openapi.json");
-      const routes = await new OpenApiRouteScanner({ specPath: "docs/openapi.json" }).scan(match);
+      const routes = (await new OpenApiRouteScanner({ specPath: "docs/openapi.json" }).scan(match)).routes;
       expect(routes.map((r) => r.uri)).toEqual(["/docs"]);
       expect(routes[0]?.sourceFile).toBe("docs/openapi.json#GET/docs");
     } finally {
@@ -218,7 +224,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner({ specPath: "missing.json" }).scan(match);
+      const routes = (await new OpenApiRouteScanner({ specPath: "missing.json" }).scan(match)).routes;
       expect(routes).toEqual([]);
     } finally {
       await project.cleanup();
@@ -226,12 +232,12 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
   });
 
   test("match sin artefactos devuelve []", async () => {
-    const routes = await new OpenApiRouteScanner().scan({
+    const result = await new OpenApiRouteScanner().scan({
       framework: "openapi",
       projectRoot: "/tmp",
       artifacts: [],
     });
-    expect(routes).toEqual([]);
+    expect(result.routes).toEqual([]);
   });
 
   test("JSON inválido lanza con mensaje claro", async () => {
@@ -251,7 +257,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner().scan(match);
+      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
       expect(warn).toHaveBeenCalled();
       expect(routes.map((r) => r.uri)).toEqual(["/a"]);
     } finally {
@@ -266,10 +272,10 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const conOpcion = await new OpenApiRouteScanner({ basePath: "/api/v2" }).scan(match);
+      const conOpcion = (await new OpenApiRouteScanner({ basePath: "/api/v2" }).scan(match)).routes;
       expect(conOpcion[0]?.uri).toBe("/api/v2/users");
       expect(conOpcion[0]?.prefixChain).toEqual(["/api/v2"]);
-      const sinOpcion = await new OpenApiRouteScanner().scan(match);
+      const sinOpcion = (await new OpenApiRouteScanner().scan(match)).routes;
       expect(sinOpcion[0]?.uri).toBe("/v3/users");
       expect(sinOpcion[0]?.prefixChain).toEqual(["/v3"]);
     } finally {
@@ -283,7 +289,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner().scan(match);
+      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
       expect(routes[0]?.prefixChain).toEqual([]);
       expect(routes[0]?.uri).toBe("/users");
     } finally {
@@ -301,7 +307,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner().scan(match);
+      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
       expect(routes[0]?.uri).toBe("/v1/users");
       expect(routes[0]?.prefixChain).toEqual(["/v1"]);
     } finally {
@@ -323,7 +329,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner().scan(match);
+      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
       const get = routes.find((r) => r.method === "GET");
       expect(get?.displayName).toBe("opId");
       expect(get?.tags).toEqual(["t1", "t2"]);
@@ -349,7 +355,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const methods = (await new OpenApiRouteScanner().scan(match)).map((r) => r.method).sort();
+      const methods = (await new OpenApiRouteScanner().scan(match)).routes.map((r) => r.method).sort();
       expect(methods).toEqual(["HEAD", "OPTIONS", "TRACE"]);
     } finally {
       await project.cleanup();
@@ -367,7 +373,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const routes = await new OpenApiRouteScanner().scan(match);
+      const routes = (await new OpenApiRouteScanner().scan(match)).routes;
       expect(routes.map((r) => `${r.method} ${r.uri}`)).toEqual(["POST /medio"]);
     } finally {
       await project.cleanup();
@@ -406,6 +412,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     const result = await provider.resolve(
       { method: "GET", uri: "/Users", rawUri: "/Users", sourceFile: "", lineNumber: 0, prefixChain: [] },
       { framework: "openapi", projectRoot: "/tmp", artifacts: [] },
+      EMPTY_SCAN_RESULT,
     );
     expect(result.endpointKey).toBe("get /users");
     expect(result.fields).toEqual([]);
@@ -414,7 +421,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
   test("spec ilegible (JSON roto) devuelve fields vacías sin lanzar", async () => {
     const { project, match } = await specProject("{roto");
     try {
-      const result = await provider.resolve(rutaDe("GET", "/users"), match);
+      const result = await provider.resolve(rutaDe("GET", "/users"), match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -424,10 +431,10 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
   test("rawUri sin pathItem u op en el spec devuelve fields vacías", async () => {
     const { project, match } = await specProject({ paths: { "/users": { post: {} } } });
     try {
-      const sinPath = await provider.resolve(rutaDe("GET", "/no-existe"), match);
+      const sinPath = await provider.resolve(rutaDe("GET", "/no-existe"), match, EMPTY_SCAN_RESULT);
       expect(sinPath.fields).toEqual([]);
       // El path existe pero no el verbo.
-      const sinOp = await provider.resolve(rutaDe("GET", "/users"), match);
+      const sinOp = await provider.resolve(rutaDe("GET", "/users"), match, EMPTY_SCAN_RESULT);
       expect(sinOp.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -462,7 +469,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
       },
     });
     try {
-      const result = await provider.resolve(rutaDe("GET", "/users"), match);
+      const result = await provider.resolve(rutaDe("GET", "/users"), match, EMPTY_SCAN_RESULT);
       const byName = new Map(result.fields.map((f) => [f.fieldName, f]));
       expect(byName.get("limit")).toMatchObject({ location: "query", required: true, type: "integer", minimum: 1, maximum: 100 });
       expect(byName.get("fallback")).toMatchObject({ location: "header" });
@@ -506,7 +513,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
       },
     });
     try {
-      const result = await provider.resolve(rutaDe("POST", "/things"), match);
+      const result = await provider.resolve(rutaDe("POST", "/things"), match, EMPTY_SCAN_RESULT);
       const tipos = new Map(result.fields.map((f) => [f.fieldName, f.type]));
       expect(tipos.get("a")).toBe("integer");
       expect(tipos.get("b")).toBe("number");
@@ -576,20 +583,20 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
       },
     });
     try {
-      const porRef = await provider.resolve(rutaDe("POST", "/ref"), match);
+      const porRef = await provider.resolve(rutaDe("POST", "/ref"), match, EMPTY_SCAN_RESULT);
       expect(porRef.fields.map((f) => f.fieldName)).toContain("id");
 
-      const allOf = await provider.resolve(rutaDe("POST", "/allof"), match);
+      const allOf = await provider.resolve(rutaDe("POST", "/allof"), match, EMPTY_SCAN_RESULT);
       const mergeado = new Map(allOf.fields.map((f) => [f.fieldName, f]));
       expect(mergeado.get("id")?.required).toBe(true);
       expect(mergeado.get("name")?.required).toBe(true);
 
       // El ciclo no puede colgar: la cota de $ref visitados corta la rama.
-      const ciclo = await provider.resolve(rutaDe("POST", "/ciclo"), match);
+      const ciclo = await provider.resolve(rutaDe("POST", "/ciclo"), match, EMPTY_SCAN_RESULT);
       expect(ciclo.fields).toEqual([]);
 
       // Schema vacío: ni properties ni required → cero campos.
-      const vacio = await provider.resolve(rutaDe("POST", "/vacio"), match);
+      const vacio = await provider.resolve(rutaDe("POST", "/vacio"), match, EMPTY_SCAN_RESULT);
       expect(vacio.fields).toEqual([]);
     } finally {
       await project.cleanup();
@@ -612,7 +619,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
-      const result = await provider.resolve(rutaDe("POST", "/yaml"), match);
+      const result = await provider.resolve(rutaDe("POST", "/yaml"), match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((f) => f.fieldName)).toEqual(["name"]);
     } finally {
       await project.cleanup();

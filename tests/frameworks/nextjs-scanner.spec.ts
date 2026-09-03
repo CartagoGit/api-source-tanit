@@ -9,6 +9,7 @@ import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "nextjs",
   fixtureRoot: comprehensiveFixture("nextjs"),
@@ -41,13 +42,13 @@ describe("Next.js scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture (App Router)", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
-    const routes = await new NextJsRouteScanner().scan(match);
+    const routes = (await new NextJsRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("GET y POST en /api/users, GET y DELETE en /api/users/:id", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
-    const routes = await new NextJsRouteScanner().scan(match);
+    const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /api/users");
     expect(pairs).toContain("POST /api/users");
@@ -57,7 +58,7 @@ describe("Next.js scanner", () => {
 
   test("[id] en nombre de directorio → :id en la uri (segmento dinámico App Router)", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
-    const routes = await new NextJsRouteScanner().scan(match);
+    const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const dynamic = routes.filter((r) => r.uri.includes(":id"));
     expect(dynamic.length).toBeGreaterThanOrEqual(2);
     for (const r of dynamic) expect(r.uri).not.toContain("[id]");
@@ -65,7 +66,7 @@ describe("Next.js scanner", () => {
 
   test("comprehensive: detecta >10 rutas incluyendo auth y orders", async () => {
     const match = await new NextJsProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new NextJsRouteScanner().scan(match);
+    const routes = (await new NextJsRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
     const uris = routes.map((r) => r.uri);
     expect(uris.some((u) => u.includes("auth"))).toBe(true);
@@ -74,11 +75,11 @@ describe("Next.js scanner", () => {
 
   test("zod provider resuelve campos de z.object para POST /api/users", async () => {
     const match = await new NextJsProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new NextJsRouteScanner().scan(match);
+    const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users") && !r.uri.includes(":"));
     if (!post) return;
     const provider = new NextJsZodProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
@@ -110,7 +111,7 @@ describe("Next.js scanner", () => {
 
     try {
       const match = await new NextJsProjectScanner().resolve(dir);
-      const routes = await new NextJsRouteScanner().scan(match);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const pairs = routes.map((r) => `${r.method} ${r.uri}`);
       expect(pairs).toContain("GET /api/users");
       expect(pairs).not.toContain("POST /api/users");
@@ -171,7 +172,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     });
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
-      const routes = await new NextJsRouteScanner().scan(match);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const pairs = routes.map((r) => `${r.method} ${r.uri}`);
       expect(pairs).toContain("GET /api/products");
       expect(pairs).toContain("POST /api/products");
@@ -199,7 +200,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     });
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
-      const routes = await new NextJsRouteScanner().scan(match);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const methods = routes.map((r) => r.method).sort();
       expect(methods).toContain("GET");
       expect(methods).toContain("POST");
@@ -223,7 +224,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     });
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
-      const routes = await new NextJsRouteScanner().scan(match);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const methods = routes.map((r) => r.method).sort();
       expect(methods).toContain("POST");
       expect(methods).toContain("GET");
@@ -240,7 +241,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     });
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
-      const routes = await new NextJsRouteScanner().scan(match);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const uris = routes.map((r) => r.uri);
       expect(uris).toContain("/api/users");
     } finally {

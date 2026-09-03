@@ -38,8 +38,8 @@ const FIXTURE = comprehensiveFixtureDir("rust");
 async function scanFixture() {
   const match = await new RustProjectScanner().resolve(FIXTURE);
   const scanner = new RustRouteScanner();
-  const routes = await scanner.scan(match);
-  return { match, scanner, routes };
+  const result = await scanner.scan(match);
+  return { match, scanner, result, routes: result.routes };
 }
 
 describe("detección", () => {
@@ -131,19 +131,19 @@ pub struct Ejemplo {
 
 describe("el provider resuelve el body del handler", () => {
   test("un POST con web::Json<T> trae sus campos", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new RustValidatorProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new RustValidatorProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri.endsWith("/users"))!;
 
-    const { fields } = await provider.resolve(post, match);
+    const { fields } = await provider.resolve(post, match, result);
     expect(fields.map((f) => f.fieldName)).toContain("email");
   });
 
   test("un GET sin Json<T> no finge reglas", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new RustValidatorProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new RustValidatorProvider();
     const health = routes.find((r) => r.uri.endsWith("/health"))!;
-    expect(await provider.supports(health, match)).toBe(false);
+    expect(await provider.supports(health, match, result)).toBe(false);
   });
 });
 
@@ -187,7 +187,8 @@ describe("Rust — detección Rocket", () => {
     });
     try {
       const match = await new RustProjectScanner().resolve(project.root);
-      const routes = await new RustRouteScanner().scan(match);
+      const result = await new RustRouteScanner().scan(match);
+      const routes = result.routes;
       const uris = routes.map((r) => r.uri);
       expect(uris.some((u) => u.includes("{id}"))).toBe(true);
       expect(uris.some((u) => u.includes("{path}"))).toBe(true);
@@ -218,8 +219,8 @@ describe("Rust — rutas programáticas y scope múltiple", () => {
     });
     try {
       const match = await new RustProjectScanner().resolve(project.root);
-      const routes = await new RustRouteScanner().scan(match);
-      const pairs = routes.map((r) => `${r.method} ${r.uri}`);
+      const result = await new RustRouteScanner().scan(match);
+      const pairs = result.routes.map((r) => `${r.method} ${r.uri}`);
       expect(pairs).toContain("GET /items");
       expect(pairs).toContain("POST /items");
     } finally {
@@ -243,9 +244,9 @@ describe("Rust — rutas programáticas y scope múltiple", () => {
     });
     try {
       const match = await new RustProjectScanner().resolve(project.root);
-      const routes = await new RustRouteScanner().scan(match);
+      const result = await new RustRouteScanner().scan(match);
       // Con múltiples scopes el prefijo queda vacío para evitar asignarlo mal
-      const uris = routes.map((r) => r.uri);
+      const uris = result.routes.map((r) => r.uri);
       expect(uris).toContain("/ping");
     } finally {
       await project.cleanup();

@@ -9,6 +9,7 @@ import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "gin",
   fixtureRoot: comprehensiveFixture("gin"),
@@ -41,13 +42,13 @@ describe("Gin scanner", () => {
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
   });
 
   test("GET /health y CRUD /api/users presentes", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /health");
     expect(pairs).toContain("GET /api/users");
@@ -58,39 +59,39 @@ describe("Gin scanner", () => {
 
   test("path param Gin :id preservado en uri", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.endsWith(":id"));
     expect(withId.length).toBeGreaterThanOrEqual(2);
   });
 
   test("rawUri conserva el path sin el prefijo del Group", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     const route = routes.find((item) => item.uri === "/api/users/:id");
     expect(route?.rawUri).toBe("/users/:id");
   });
 
   test("prefijo de Group /api aplicado a todas las subrutas", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     const apiRoutes = routes.filter((r) => r.uri.startsWith("/api"));
     expect(apiRoutes.length).toBeGreaterThanOrEqual(4);
   });
 
   test("comprehensive: detecta >13 rutas en multi-file Go", async () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(13);
   });
 
   test("GinBindingProvider extrae campos binding de POST /api/users", async () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new GinRouteScanner().scan(match);
+    const routes = (await new GinRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users");
     if (!post) return;
 
     const provider = new GinBindingProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
 
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((field) => field.fieldName);

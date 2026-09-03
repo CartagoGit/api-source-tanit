@@ -8,6 +8,7 @@ import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "springboot",
   fixtureRoot: comprehensiveFixture("springboot"),
@@ -40,43 +41,43 @@ describe("Spring Boot scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
     const match = await new SpringBootProjectScanner().resolve(ROOT);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("@RequestMapping('/api/users') aplicado como prefijo de clase", async () => {
     const match = await new SpringBootProjectScanner().resolve(ROOT);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     for (const r of routes) expect(r.uri).toMatch(/^\/api\/users/);
   });
 
   test("GET, POST, GET/{id}, DELETE/{id} todos presentes", async () => {
     const match = await new SpringBootProjectScanner().resolve(ROOT);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     const methods = routes.map((r) => r.method).sort();
     expect(methods).toEqual(["DELETE", "GET", "GET", "POST"]);
   });
 
   test("path param {id} de @GetMapping('/{id}') en la uri", async () => {
     const match = await new SpringBootProjectScanner().resolve(ROOT);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.method === "GET" && r.uri.includes("{id}"));
     expect(show).toBeDefined();
   });
 
   test("comprehensive: detecta >10 rutas en multi-controller Java", async () => {
     const match = await new SpringBootProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
   test("@RequestBody provider resuelve campos del DTO para POST", async () => {
     const match = await new SpringBootProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SpringBootRouteScanner().scan(match);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
     if (!post) return;
     const provider = new SpringBootBeanValidationProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
@@ -156,7 +157,7 @@ describe("Spring Boot — @RestController sin @RequestMapping (sin classPrefix)"
     });
     try {
       const match = await new SpringBootProjectScanner().resolve(project.root);
-      const routes = await new SpringBootRouteScanner().scan(match);
+      const routes = (await new SpringBootRouteScanner().scan(match)).routes;
       const uris = routes.map((r) => r.uri);
       expect(uris).toContain("/health");
       expect(uris).toContain("/echo");
@@ -186,7 +187,7 @@ describe("Spring Boot — @RequestMapping con method = RequestMethod.X", () => {
     });
     try {
       const match = await new SpringBootProjectScanner().resolve(project.root);
-      const routes = await new SpringBootRouteScanner().scan(match);
+      const routes = (await new SpringBootRouteScanner().scan(match)).routes;
       const pairs = routes.map((r) => `${r.method} ${r.uri}`);
       expect(pairs).toContain("POST /api/orders/submit");
       expect(pairs).toContain("GET /api/orders/list");
@@ -216,7 +217,7 @@ describe("Spring Boot — Kotlin (.kt) controllers", () => {
     });
     try {
       const match = await new SpringBootProjectScanner().resolve(project.root);
-      const routes = await new SpringBootRouteScanner().scan(match);
+      const routes = (await new SpringBootRouteScanner().scan(match)).routes;
       const uris = routes.map((r) => r.uri);
       expect(uris.some((u) => u.startsWith("/api/products"))).toBe(true);
     } finally {
@@ -230,14 +231,14 @@ describe("Spring Boot — BeanValidationProvider branches", () => {
     const route = { method: "GET", uri: "/items", rawUri: "/items", sourceFile: (undefined as string | undefined) as string, lineNumber: 1, prefixChain: [] };
     const match = { framework: "springboot" as const, projectRoot: "/tmp", artifacts: [] };
     const provider = new SpringBootBeanValidationProvider();
-    expect(await provider.supports(route, match)).toBe(false);
+    expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
   test("supports() === false cuando framework no es springboot", async () => {
     const route = { method: "GET", uri: "/items", rawUri: "/items", sourceFile: "ItemsController.java", lineNumber: 1, prefixChain: [] };
     const match = { framework: "nestjs" as const, projectRoot: "/tmp", artifacts: [] };
     const provider = new SpringBootBeanValidationProvider();
-    expect(await provider.supports(route, match)).toBe(false);
+    expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
   test("resolve() devuelve vacío cuando no hay @RequestBody en el archivo", async () => {
@@ -257,11 +258,11 @@ describe("Spring Boot — BeanValidationProvider branches", () => {
     });
     try {
       const match = await new SpringBootProjectScanner().resolve(project.root);
-      const routes = await new SpringBootRouteScanner().scan(match);
+      const routes = (await new SpringBootRouteScanner().scan(match)).routes;
       const get = routes.find((r) => r.method === "GET");
       if (!get) return;
       const provider = new SpringBootBeanValidationProvider();
-      const result = await provider.resolve(get, match);
+      const result = await provider.resolve(get, match, EMPTY_SCAN_RESULT);
       expect(result.fields).toHaveLength(0);
     } finally {
       await project.cleanup();
@@ -296,11 +297,11 @@ describe("Spring Boot — BeanValidationProvider branches", () => {
     });
     try {
       const match = await new SpringBootProjectScanner().resolve(project.root);
-      const routes = await new SpringBootRouteScanner().scan(match);
+      const routes = (await new SpringBootRouteScanner().scan(match)).routes;
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new SpringBootBeanValidationProvider();
-      const result = await provider.resolve(post, match);
+      const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((f) => f.fieldName)).toContain("name");
     } finally {
       await project.cleanup();

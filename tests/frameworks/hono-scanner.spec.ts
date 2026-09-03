@@ -41,8 +41,8 @@ const FIXTURE = comprehensiveFixtureDir("hono");
 async function scanFixture() {
   const match = await new HonoProjectScanner().resolve(FIXTURE);
   const scanner = new HonoRouteScanner();
-  const routes = await scanner.scan(match);
-  return { match, scanner, routes };
+  const result = await scanner.scan(match);
+  return { match, scanner, result, routes: result.routes };
 }
 
 describe("detección", () => {
@@ -84,11 +84,11 @@ describe("formas propias de Hono", () => {
 
 describe("validación con @hono/zod-validator", () => {
   test("resuelve el esquema de un POST", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new HonoZodValidatorProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new HonoZodValidatorProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users")!;
 
-    const { fields } = await provider.resolve(post, match);
+    const { fields } = await provider.resolve(post, match, result);
     const byName = new Map(fields.map((f) => [f.fieldName, f]));
     expect([...byName.keys()].sort()).toEqual(["age", "email", "name", "role"]);
     expect(byName.get("email")?.required).toBe(true);
@@ -97,11 +97,11 @@ describe("validación con @hono/zod-validator", () => {
 
   // `zValidator("query", …)` no valida el body: sus campos son query.
   test("el target del validador decide dónde van los campos", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new HonoZodValidatorProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new HonoZodValidatorProvider();
     const get = routes.find((r) => r.method === "GET" && r.uri === "/api/users")!;
 
-    const { fields } = await provider.resolve(get, match);
+    const { fields } = await provider.resolve(get, match, result);
     expect(fields.length).toBeGreaterThan(0);
     expect(fields.every((f) => f.location === "query")).toBe(true);
   });
@@ -109,9 +109,9 @@ describe("validación con @hono/zod-validator", () => {
   // La regresión: con una ventana de caracteres, una ruta sin validador
   // se quedaba con el de la siguiente y salía con reglas ajenas.
   test("una ruta sin validador no hereda el de otra", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new HonoZodValidatorProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new HonoZodValidatorProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
-    expect(await provider.supports(health, match)).toBe(false);
+    expect(await provider.supports(health, match, result)).toBe(false);
   });
 });

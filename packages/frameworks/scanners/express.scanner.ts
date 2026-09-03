@@ -238,7 +238,7 @@ export class ExpressRouteScanner implements IRouteScanner {
     return _match.framework === "express";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectJsFiles(match.projectRoot);
     const modules: ParsedModule[] = [];
     // En paralelo con tope, entregados en el orden de entrada: la
@@ -285,7 +285,7 @@ export class ExpressRouteScanner implements IRouteScanner {
         });
       }
     }
-    return out;
+    return { routes: out };
   }
 }
 

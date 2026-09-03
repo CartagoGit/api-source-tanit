@@ -25,6 +25,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
@@ -222,7 +223,7 @@ export class TrpcRouteScanner implements IRouteScanner {
     return match.framework === "trpc";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFilesFrom(
       ["src", "server", "app", ""].map((d) => (d ? join(match.projectRoot, d) : match.projectRoot)),
       isSourceJsTsFile,
@@ -287,6 +288,6 @@ export class TrpcRouteScanner implements IRouteScanner {
         }
       }
     }
-    return routes;
+    return { routes: routes };
   }
 }

@@ -92,7 +92,7 @@ export class GinRouteScanner implements IRouteScanner {
     return match.framework === "gin";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     // 1) main.go (si está en raíz).
@@ -111,7 +111,7 @@ export class GinRouteScanner implements IRouteScanner {
         out.push(...(await parseGoFile(f, rel, projectRoot)));
       }
     });
-    return out;
+    return { routes: out };
   }
 }
 

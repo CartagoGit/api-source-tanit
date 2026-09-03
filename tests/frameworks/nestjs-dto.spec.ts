@@ -29,10 +29,11 @@ const bundle = scannerBundleFor("nestjs");
 async function fieldsFor(uri: string, method = "POST"): Promise<IValidationSpec[]> {
   if (!bundle?.validationProvider) throw new Error("nestjs no está en el registro");
   const match = await bundle.projectScanner.resolve(exampleDir("nestjs"));
-  const routes = await bundle.routeScanner.scan(match);
+  const result = await bundle.routeScanner.scan(match);
+  const routes = result.routes;
   const route = routes.find((r) => r.method === method && r.uri === uri);
   if (!route) throw new Error(`no se encontró ${method} ${uri} — hay: ${routes.map((r) => `${r.method} ${r.uri}`).join(", ")}`);
-  return [...(await bundle.validationProvider.resolve(route, match)).fields];
+  return [...(await bundle.validationProvider.resolve(route, match, result)).fields];
 }
 
 describe("DTO declarado en el mismo fichero que el controlador", () => {

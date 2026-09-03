@@ -31,6 +31,8 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
+  IValidatorDescriptor,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -112,20 +114,19 @@ export class HonoProjectScanner implements IProjectScanner {
 export class HonoRouteScanner implements IRouteScanner {
   readonly framework = "hono" as const;
 
-  /** `MÉTODO uri` → nombre del esquema de zod que la valida. */
-  private readonly validators = new Map<string, { schema: string; file: string }>();
-
   matches(match: IProjectMatch): boolean {
     return match.framework === "hono";
   }
 
-  validatorFor(method: string, uri: string): { schema: string; file: string } | undefined {
-    return this.validators.get(`${method} ${uri}`);
-  }
-
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
+    // `validators` vive aquí, no en un campo de instancia: si
+    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
+    // los descriptores y un `GET /health` sin zValidator podría heredar
+    // el del `POST /users` del escaneo anterior. Es el bug que cerró
+    // a00010 S2.
+    const validators = new Map<string, IValidatorDescriptor>();
 
     // Lectura en paralelo con tope, entregada en el orden de
     // entrada: la colección tiene que salir igual cada vez.
@@ -159,11 +160,17 @@ export class HonoRouteScanner implements IRouteScanner {
         });
 
         const validator = validatorInCall(source, routeMatch.index ?? 0);
-        if (validator) this.validators.set(`${method} ${uri}`, { ...validator, file });
+        if (validator) {
+          validators.set(`${method} ${uri}`, { name: validator.schema, file });
+        }
       }
     }
 
-    return dedupe(routes);
+    const unique = dedupe(routes);
+    return {
+      routes: unique,
+      ...(validators.size > 0 ? { validators } : {}),
+    };
   }
 }
 
@@ -241,19 +248,31 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
  * Reutiliza el parser de zod que ya existe: es la misma librería que en
  * Express o Next.js, solo cambia quién la invoca. Escribir un segundo
  * parser de zod sería la forma más rápida de que los dos divergieran.
+ *
+ * No guarda el scanner: el nombre del esquema y el fichero donde está
+ * declarado viajan en `scanResult.validators`, que se rellena en cada
+ * `scan()` y se descarta al terminar. Antes tenía
+ * `private readonly scanner: HonoRouteScanner` y un `Map` de
+ * instancia, y dos escaneos consecutivos se contaminaban (a00010 S2).
  */
 export class HonoZodValidatorProvider implements IValidationSpecProvider {
   readonly framework = "hono" as const;
 
-  constructor(private readonly scanner: HonoRouteScanner) {}
-
-  async supports(route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
-    return this.scanner.validatorFor(route.method, route.uri) !== undefined;
+  async supports(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<boolean> {
+    return scanResult.validators?.has(`${route.method} ${route.uri}`) ?? false;
   }
 
-  async resolve(route: ParsedRoute, _match: IProjectMatch): Promise<IEndpointValidation> {
+  async resolve(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<IEndpointValidation> {
     const endpointKey = `${route.method} ${route.uri}`;
-    const validator = this.scanner.validatorFor(route.method, route.uri);
+    const validator = scanResult.validators?.get(`${route.method} ${route.uri}`);
     if (!validator) return { endpointKey, fields: [] };
 
     let source: string;
@@ -263,8 +282,8 @@ export class HonoZodValidatorProvider implements IValidationSpecProvider {
       return { endpointKey, fields: [] };
     }
 
-    const location = locationOfValidator(source, validator.schema);
-    const literal = zodObjectLiteralOf(source, validator.schema);
+    const location = locationOfValidator(source, validator.name);
+    const literal = zodObjectLiteralOf(source, validator.name);
     if (!literal) return { endpointKey, fields: [] };
 
     const fields = parseZodObjectLiteral(literal).map((field) =>

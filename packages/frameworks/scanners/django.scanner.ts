@@ -113,7 +113,7 @@ export class DjangoRouteScanner implements IRouteScanner {
     return match.framework === "django";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     const processed = new Set<string>(); // rutas absolutas ya procesadas.
@@ -149,7 +149,7 @@ export class DjangoRouteScanner implements IRouteScanner {
         : abs;
       out.push(...(await parseUrlsPy(abs, rel, projectRoot, "", processed)));
     }
-    return out;
+    return { routes: out };
   }
 }
 

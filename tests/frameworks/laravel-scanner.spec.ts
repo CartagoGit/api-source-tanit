@@ -5,6 +5,7 @@ import { LaravelFormRequestValidationProvider } from "../../packages/frameworks/
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 
 describeScannerContract({
   framework: "laravel",
@@ -244,7 +245,7 @@ Route::resource('users', UserController::class);
         framework: "laravel",
         projectRoot: dir,
         artifacts: [],
-      });
+      }, EMPTY_SCAN_RESULT);
 
       expect(result.fields.length).toBeGreaterThan(0);
       const names = result.fields.map((field) => field.fieldName);

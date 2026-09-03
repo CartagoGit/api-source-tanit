@@ -10,6 +10,7 @@ import { comprehensiveFixture, scanProject } from "../helpers/scanner-fixture";
 import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "aspnet",
   fixtureRoot: comprehensiveFixture("aspnet"),
@@ -42,43 +43,43 @@ describe("ASP.NET scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("[Route('api/users')] aplicado como prefijo de clase a todas las rutas", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     for (const r of routes) expect(r.uri).toMatch(/api\/users/);
   });
 
   test("GET, POST, GET/{id}, DELETE/{id} todos presentes", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const methods = routes.map((r) => r.method).sort();
     expect(methods).toEqual(["DELETE", "GET", "GET", "POST"]);
   });
 
   test("[HttpGet('{id}')] → path param {id} en la uri", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.method === "GET" && r.uri.includes("{id}"));
     expect(show).toBeDefined();
   });
 
   test("comprehensive: detecta >10 rutas en multi-controller C#", async () => {
     const match = await new AspNetProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
   test("[FromBody] provider resuelve campos del modelo para POST", async () => {
     const match = await new AspNetProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new AspNetRouteScanner().scan(match);
+    const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
     if (!post) return;
     const provider = new AspNetDataAnnotationsProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName.toLowerCase());
     expect(names).toContain("name");
@@ -142,7 +143,7 @@ describe("ASP.NET — resolución del DTO por ruta", () => {
     const { match, routes } = await scanProject("aspnet", ROOT);
     const route = routes.find((r) => r.method === method && r.uri === uri);
     expect(route).toBeDefined();
-    const result = await bundle.validationProvider!.resolve(route!, match);
+    const result = await bundle.validationProvider!.resolve(route!, match, EMPTY_SCAN_RESULT);
     return result.fields.map((f) => f.fieldName);
   }
 

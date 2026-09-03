@@ -40,13 +40,13 @@ describe("Flask scanner", () => {
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {
     const match = await new FlaskProjectScanner().resolve(ROOT);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
   });
 
   test("GET /health, GET/POST /api/users, GET/DELETE /api/users/<int:id>", async () => {
     const match = await new FlaskProjectScanner().resolve(ROOT);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /health");
     expect(pairs).toContain("GET /api/users");
@@ -57,20 +57,20 @@ describe("Flask scanner", () => {
 
   test("path param <int:id> preservado como lo define Flask", async () => {
     const match = await new FlaskProjectScanner().resolve(ROOT);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes("<int:id>"));
     expect(withId.length).toBe(2);
   });
 
   test("comprehensive: detecta >13 rutas con Blueprints", async () => {
     const match = await new FlaskProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(13);
   });
 
   test("BluePrints aplican url_prefix y métodos reales por módulo", async () => {
     const match = await new FlaskProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
 
     expect(pairs).toContain("GET /api/users");
@@ -100,7 +100,7 @@ describe("Flask scanner", () => {
 
     try {
       const match = await new FlaskProjectScanner().resolve(dir);
-      const routes = await new FlaskRouteScanner().scan(match);
+      const routes = (await new FlaskRouteScanner().scan(match)).routes;
       expect(routes.map((r) => `${r.method} ${r.uri}`)).toContain("GET /health");
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -109,7 +109,7 @@ describe("Flask scanner", () => {
 
   test("multi-method @app.route con methods=[GET, POST] produce dos ParsedRoute", async () => {
     const match = await new FlaskProjectScanner().resolve(ROOT);
-    const routes = await new FlaskRouteScanner().scan(match);
+    const routes = (await new FlaskRouteScanner().scan(match)).routes;
     const userRoutes = routes.filter((r) => r.uri === "/api/users");
     expect(userRoutes.length).toBeGreaterThanOrEqual(2);
   });

@@ -164,10 +164,18 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new ExpressRouteScanner(),
   ],
   validationProviders: [
-    new RustValidatorProvider(rustRouteScanner),
-    new FiberValidateTagProvider(fiberRouteScanner),
-    new HonoZodValidatorProvider(honoRouteScanner),
-    new FastifySchemaProvider(fastifyRouteScanner),
+    /**
+     * Las cuatro que migran a `IScanResult` (a00010 S2) ya no
+     * reciben el scanner: leen sus datos auxiliares (esquemas /
+     * validators / structs) del `scanResult` que el adapter les pasa.
+     * Antes compartían el scanner con un `Map` de instancia y dos
+     * escaneos consecutivos se contaminaban — eso es lo que cerró este
+     * slice.
+     */
+    new RustValidatorProvider(),
+    new FiberValidateTagProvider(),
+    new HonoZodValidatorProvider(),
+    new FastifySchemaProvider(),
     new LaravelFormRequestValidationProvider(),
     new OpenApiValidationProvider(),
     new FastApiPydanticValidationProvider(),

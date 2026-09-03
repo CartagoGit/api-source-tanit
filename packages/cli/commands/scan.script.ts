@@ -76,7 +76,7 @@ export async function runScan(
     };
   }
 
-  const routes = await scanner.scan(match);
+  const routes = (await scanner.scan(match)).routes;
   console.log(`✔ ${routes.length} routes discovered:\n`);
   for (const r of routes) {
     const tags = r.tags?.length ? ` [${r.tags.join(", ")}]` : "";

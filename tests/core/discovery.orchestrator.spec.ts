@@ -26,7 +26,7 @@ function routeScanner(framework: string): IRouteScanner {
   return {
     framework,
     matches: (match) => match.framework === framework,
-    scan: async () => [],
+    scan: async () => ({ routes: [] }),
   };
 }
 

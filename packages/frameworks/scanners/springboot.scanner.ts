@@ -28,6 +28,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -102,13 +103,13 @@ export class SpringBootRouteScanner implements IRouteScanner {
     return match.framework === "springboot";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     const srcMain = join(projectRoot, "src", "main", "java");
-    if (!existsSync(srcMain)) return out;
+    if (!existsSync(srcMain)) return { routes: out };
     await walkJava(srcMain, projectRoot, out);
-    return out;
+    return { routes: out };
   }
 }
 
@@ -271,7 +272,11 @@ function stripJavaComments(src: string): string {
 export class SpringBootBeanValidationProvider implements IValidationSpecProvider {
   readonly framework = "springboot" as const;
 
-  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+  async supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     if (match.framework !== "springboot") return false;
     return route.sourceFile !== undefined;
   }
@@ -279,6 +284,7 @@ export class SpringBootBeanValidationProvider implements IValidationSpecProvider
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };

@@ -25,6 +25,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
@@ -241,7 +242,7 @@ export class GraphQlRouteScanner implements IRouteScanner {
     return match.framework === "graphql";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isSchemaFile);
     const routes: ParsedRoute[] = [];
     const seen = new Set<string>();
@@ -281,6 +282,6 @@ export class GraphQlRouteScanner implements IRouteScanner {
         }
       }
     }
-    return routes;
+    return { routes: routes };
   }
 }

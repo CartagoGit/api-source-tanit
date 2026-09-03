@@ -30,6 +30,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /** Las siete acciones que genera `resources`, con su forma REST. */
@@ -95,10 +96,10 @@ export class RailsRouteScanner implements IRouteScanner {
     return match.framework === "rails";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const source = await readRoutesFile(match.projectRoot);
-    if (!source) return [];
-    return parseRoutesFile(source, "config/routes.rb");
+    if (!source) return { routes: [] };
+    return { routes: parseRoutesFile(source, "config/routes.rb") };
   }
 }
 

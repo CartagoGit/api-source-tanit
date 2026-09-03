@@ -445,15 +445,15 @@ export class OpenApiRouteScanner implements IRouteScanner {
     return _match.framework === "openapi";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const specRel = this.opts.specPath ?? match.artifacts[0];
-    if (!specRel) return [];
+    if (!specRel) return { routes: [] };
     const absPath = resolve(match.projectRoot, specRel);
     let raw: string;
     try {
       raw = await readFile(absPath, "utf8");
     } catch {
-      return [];
+      return { routes: [] };
     }
     let spec: unknown;
     if (specRel.endsWith(".json")) {
@@ -517,7 +517,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
         });
       }
     }
-    return out;
+    return { routes: out };
   }
 }
 

@@ -10,6 +10,7 @@ import { comprehensiveFixture, createTempProject, scanProject } from "../helpers
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "symfony",
   fixtureRoot: comprehensiveFixture("symfony"),
@@ -43,13 +44,13 @@ describe("Symfony scanner", () => {
 
   test("scan() devuelve las 3 rutas del mini-fixture (routes.yaml)", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(3);
   });
 
   test("rutas incluyen GET y POST sobre /api/users", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const uris = routes.map((r) => `${r.method} ${r.uri}`);
     expect(uris).toContain("GET /api/users");
     expect(uris).toContain("POST /api/users");
@@ -57,27 +58,27 @@ describe("Symfony scanner", () => {
 
   test("path param {id} presente en la ruta show", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.method === "GET" && r.uri.includes("{id}"));
     expect(show).toBeDefined();
   });
 
   test("comprehensive: detecta las 14 rutas con prefijos de controller class", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     expect(routes.length).toBe(14);
   });
 
   test("no duplica endpoints declarados a la vez en YAML y en #[Route]", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const keys = routes.map((r) => `${r.method} ${r.uri}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
   test("sourceFile es siempre relativo al proyecto", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     for (const route of routes) {
       expect(route.sourceFile.startsWith("/")).toBe(false);
       expect(route.sourceFile).not.toContain("symfony-comprehensive");
@@ -86,11 +87,11 @@ describe("Symfony scanner", () => {
 
   test("validation provider resuelve #[Assert\\NotBlank] para POST /users", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri === "/users");
     expect(post).toBeDefined();
     const provider = new SymfonyAttributesValidationProvider();
-    const result = await provider.resolve(post!, match);
+    const result = await provider.resolve(post!, match, EMPTY_SCAN_RESULT);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
     expect(names).toContain("email");
@@ -100,11 +101,16 @@ describe("Symfony scanner", () => {
 
   test("validation provider resuelve los Assert del login (otro controller)", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new SymfonyRouteScanner().scan(match);
+    const result = await new SymfonyRouteScanner().scan(match);
+    const routes = result.routes;
     const login = routes.find((r) => r.method === "POST" && r.uri === "/api/auth/login");
     expect(login).toBeDefined();
-    const result = await new SymfonyAttributesValidationProvider().resolve(login!, match);
-    expect(result.fields.map((f) => f.fieldName)).toEqual(["email", "password"]);
+    const validation = await new SymfonyAttributesValidationProvider().resolve(
+      login!,
+      match,
+      result,
+    );
+    expect(validation.fields.map((f) => f.fieldName)).toEqual(["email", "password"]);
   });
 });
 
@@ -498,7 +504,7 @@ describe("Symfony — provider de assertions", () => {
       const { match, routes } = await scanProject("symfony", project.root);
       const route = routes.find((item) => item.uri === "/orders")!;
       const provider = new SymfonyAttributesValidationProvider();
-      const result = await provider.resolve(route, match);
+      const result = await provider.resolve(route, match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((field) => field.fieldName)).toContain("reference");
     } finally {
       await project.cleanup();
@@ -530,7 +536,7 @@ describe("Symfony — provider de assertions", () => {
       const { match, routes } = await scanProject("symfony", proyecto.root);
       const post = routes.find((r) => r.method === "POST");
       expect(post).toBeDefined();
-      const result = await provider.resolve(post!, match);
+      const result = await provider.resolve(post!, match, EMPTY_SCAN_RESULT);
       const byName = new Map(result.fields.map((f) => [f.fieldName, f]));
       expect(byName.get("name")).toMatchObject({ type: "string", required: true });
       expect(byName.get("email")).toMatchObject({ type: "string", format: "email" });
@@ -562,7 +568,7 @@ describe("Symfony — provider de assertions", () => {
     });
     try {
       const { match, routes } = await scanProject("symfony", proyecto.root);
-      const result = await provider.resolve(routes.find((r) => r.method === "POST")!, match);
+      const result = await provider.resolve(routes.find((r) => r.method === "POST")!, match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((f) => f.fieldName)).toEqual(["nombre"]);
     } finally {
       await proyecto.cleanup();
@@ -593,7 +599,7 @@ describe("Symfony — provider de assertions", () => {
         prefixChain: [],
         description: "accion",
       };
-      const result = await provider.resolve(rutaYaml, match);
+      const result = await provider.resolve(rutaYaml, match, EMPTY_SCAN_RESULT);
       expect(result.fields.map((f) => f.fieldName)).toEqual(["campo"]);
     } finally {
       await proyecto.cleanup();
@@ -607,13 +613,13 @@ describe("Symfony — provider de assertions", () => {
       const sinSource: ParsedRoute = {
         method: "GET", uri: "/x", rawUri: "/x", sourceFile: "", lineNumber: 0, prefixChain: [],
       };
-      expect((await provider.resolve(sinSource, match)).fields).toEqual([]);
-      expect(await provider.supports(sinSource, match)).toBe(false);
+      expect((await provider.resolve(sinSource, match, EMPTY_SCAN_RESULT)).fields).toEqual([]);
+      expect(await provider.supports(sinSource, match, EMPTY_SCAN_RESULT)).toBe(false);
       const inexistente: ParsedRoute = {
         method: "GET", uri: "/x", rawUri: "/x",
         sourceFile: "src/Controller/NoExiste.php", lineNumber: 1, prefixChain: [],
       };
-      expect((await provider.resolve(inexistente, match)).fields).toEqual([]);
+      expect((await provider.resolve(inexistente, match, EMPTY_SCAN_RESULT)).fields).toEqual([]);
     } finally {
       await proyecto.cleanup();
     }
@@ -632,7 +638,7 @@ describe("Symfony — provider de assertions", () => {
     });
     try {
       const { match, routes } = await scanProject("symfony", proyecto.root);
-      const result = await provider.resolve(routes[0]!, match);
+      const result = await provider.resolve(routes[0]!, match, EMPTY_SCAN_RESULT);
       expect(result.fields).toEqual([]);
     } finally {
       await proyecto.cleanup();

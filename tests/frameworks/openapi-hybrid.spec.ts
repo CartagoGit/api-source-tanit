@@ -20,6 +20,7 @@ import type {
   IProjectMatch,
   ParsedRoute,
 } from "../../packages/contracts/interfaces/core/scanner.interface";
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 
 const provider = new OpenApiValidationProvider();
 
@@ -46,30 +47,30 @@ describe("de quién es cada ruta en un proyecto híbrido", () => {
    * ahí salió `__params`.
    */
   test("una ruta de OpenAPI en un proyecto Express es suya", async () => {
-    await expect(provider.supports(ruta("openapi"), proyecto("express"))).resolves.toBe(
+    await expect(provider.supports(ruta("openapi"), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(
       true,
     );
   });
 
   test("una ruta de Express en un proyecto Express no lo es", async () => {
-    await expect(provider.supports(ruta("express"), proyecto("express"))).resolves.toBe(
+    await expect(provider.supports(ruta("express"), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(
       false,
     );
   });
 
   test("en un proyecto OpenAPI puro sigue diciendo que sí", async () => {
-    await expect(provider.supports(ruta(), proyecto("openapi"))).resolves.toBe(true);
+    await expect(provider.supports(ruta(), proyecto("openapi"), EMPTY_SCAN_RESULT)).resolves.toBe(true);
   });
 
   test("una ruta sin framework en un proyecto ajeno no se reclama", async () => {
-    await expect(provider.supports(ruta(), proyecto("express"))).resolves.toBe(false);
+    await expect(provider.supports(ruta(), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(false);
   });
 });
 
 describe("el scanner ya no cuela nada fuera del contrato", () => {
   test("las rutas que emite solo llevan campos del contrato", async () => {
     const match = await new OpenApiProjectScanner().resolve(smokeFixtureDir("openapi"));
-    const rutas = await new OpenApiRouteScanner().scan(match);
+    const rutas = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(rutas.length).toBeGreaterThan(0);
 
     // `__params` era la propiedad escondida: si vuelve, esto la caza.

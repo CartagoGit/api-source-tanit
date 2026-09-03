@@ -9,6 +9,7 @@ import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "fastapi",
   fixtureRoot: comprehensiveFixture("fastapi"),
@@ -44,7 +45,7 @@ describe("FastAPI scanner", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       expect(routes[0]?.displayName).toBe("create_user");
     } finally {
       await project.cleanup();
@@ -61,13 +62,13 @@ describe("FastAPI scanner", () => {
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiRouteScanner().scan(match);
+    const routes = (await new FastApiRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
   test("GET /health, GET /api/users, POST /api/users, GET /api/users/{user_id}", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiRouteScanner().scan(match);
+    const routes = (await new FastApiRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /health");
     expect(pairs).toContain("GET /api/users");
@@ -78,24 +79,24 @@ describe("FastAPI scanner", () => {
 
   test("path param {user_id} preservado tal como lo escribe el dev", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
-    const routes = await new FastApiRouteScanner().scan(match);
+    const routes = (await new FastApiRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.uri.includes("{user_id}"));
     expect(show?.uri).toContain("{user_id}");
   });
 
   test("comprehensive: detecta >10 rutas con @router decorators y prefijos", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FastApiRouteScanner().scan(match);
+    const routes = (await new FastApiRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
   test("Pydantic provider resuelve campos de BaseModel para POST", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new FastApiRouteScanner().scan(match);
+    const routes = (await new FastApiRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
     if (!post) return;
     const provider = new FastApiPydanticValidationProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
@@ -157,7 +158,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       const uris = routes.map((r) => r.uri);
       expect(uris).toContain("/api/v1/users");
     } finally {
@@ -179,7 +180,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       expect(routes.some((r) => r.uri === "/items")).toBe(true);
     } finally {
       await project.cleanup();
@@ -198,7 +199,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       const r = routes.find((r) => r.uri === "/status");
       expect(r).toBeDefined();
       expect(r?.displayName).toBeUndefined();
@@ -221,11 +222,11 @@ describe("FastAPI — Pydantic validation branches", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new FastApiPydanticValidationProvider();
-      const result = await provider.resolve(post, match);
+      const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       expect(result.fields).toHaveLength(0);
     } finally {
       await project.cleanup();
@@ -247,11 +248,11 @@ describe("FastAPI — Pydantic validation branches", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       const get = routes.find((r) => r.uri.includes("{item_id}"));
       if (!get) return;
       const provider = new FastApiPydanticValidationProvider();
-      const result = await provider.resolve(get, match);
+      const result = await provider.resolve(get, match, EMPTY_SCAN_RESULT);
       expect(result.fields).toHaveLength(0);
     } finally {
       await project.cleanup();
@@ -273,11 +274,11 @@ describe("FastAPI — Pydantic validation branches", () => {
     });
     try {
       const match = await new FastApiProjectScanner().resolve(project.root);
-      const routes = await new FastApiRouteScanner().scan(match);
+      const routes = (await new FastApiRouteScanner().scan(match)).routes;
       const del = routes.find((r) => r.method === "DELETE");
       if (!del) return;
       const provider = new FastApiPydanticValidationProvider();
-      const result = await provider.resolve(del, match);
+      const result = await provider.resolve(del, match, EMPTY_SCAN_RESULT);
       expect(result.fields).toHaveLength(0);
     } finally {
       await project.cleanup();

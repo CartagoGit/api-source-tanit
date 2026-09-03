@@ -104,12 +104,13 @@ export function diffRoutes(
 export async function runSmoke(opts: {
   framework: string;
   fixtureRoot: string;
-  scanner: { scan(match: { projectRoot: string }): Promise<ReadonlyArray<ParsedRoute>> };
+  scanner: { scan(match: { projectRoot: string }): Promise<{ routes: ReadonlyArray<ParsedRoute> }> };
   match: { projectRoot: string };
 }): Promise<ISmokeResult> {
   const start = Date.now();
   const expected = await loadExpected(opts.fixtureRoot);
-  const actual = await opts.scanner.scan(opts.match);
+  const result = await opts.scanner.scan(opts.match);
+  const actual = result.routes;
   const { missing, unexpected } = diffRoutes(actual, expected.routes);
   return {
     ok: missing.length === 0 && unexpected.length === 0,

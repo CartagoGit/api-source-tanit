@@ -23,6 +23,7 @@ import type {
   IProjectScanner,
   IProjectScannerResult,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
@@ -239,16 +240,16 @@ export class LaravelRouteScanner implements IRouteScanner {
     return _match.framework === "laravel";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const projectRoot = match.projectRoot;
     const routesDir = join(projectRoot, "routes");
-    if (!existsSync(routesDir)) return [];
+    if (!existsSync(routesDir)) return { routes: [] };
 
     let entries: string[];
     try {
       entries = await readdir(routesDir);
     } catch {
-      return [];
+      return { routes: [] };
     }
 
     const filePrefixes =
@@ -263,7 +264,7 @@ export class LaravelRouteScanner implements IRouteScanner {
       const parsed = await parseRoutesFile(rel, prefixes, projectRoot);
       out.push(...parsed);
     }
-    return out;
+    return { routes: out };
   }
 }
 
@@ -398,13 +399,18 @@ export class LaravelFormRequestValidationProvider
 {
   readonly framework = "laravel" as const;
 
-  async supports(_route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
+  async supports(
+    _route: ParsedRoute,
+    _match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return Boolean(_route.controllerClass && _route.actionName);
   }
 
   async resolve(
     _route: ParsedRoute,
     _match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<Awaited<ReturnType<IValidationSpecProvider["resolve"]>>> {
     const endpointKey = `${_route.method} ${_route.uri}`.toLowerCase();
     if (!_route.controllerClass || !_route.actionName) {

@@ -27,6 +27,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -106,23 +107,23 @@ export class NestJsRouteScanner implements IRouteScanner {
     return match.framework === "nestjs";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const srcDir = join(match.projectRoot, "src");
-    if (!existsSync(srcDir)) return out;
+    if (!existsSync(srcDir)) return { routes: out };
     await this.walkDir(srcDir, match.projectRoot, out);
 
     // `app.setGlobalPrefix("api/v1")` en el bootstrap se aplica a TODOS
     // los controladores. Sin esto, un proyecto que lo use —lo normal en
     // NestJS— produce URIs sin el prefijo y ninguna request responde.
     const globalPrefix = await readGlobalPrefix(match.projectRoot);
-    if (!globalPrefix) return out;
+    if (!globalPrefix) return { routes: out };
 
-    return out.map((route) => ({
+    return { routes: out.map((route) => ({
       ...route,
       uri: joinRoutePath("/", globalPrefix, route.uri),
       prefixChain: [globalPrefix, ...route.prefixChain],
-    }));
+    })) };
   }
 
   private async walkDir(
@@ -273,13 +274,18 @@ const VALIDATOR_MAP: Record<string, { type: IValidationSpec["type"]; format?: st
 export class NestJsClassValidatorProvider implements IValidationSpecProvider {
   readonly framework = "nestjs" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
+  async supports(
+    _r: ParsedRoute,
+    _m: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return _m.framework === "nestjs" && Boolean(_r.description);
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile || !route.description) return { endpointKey, fields: [] };

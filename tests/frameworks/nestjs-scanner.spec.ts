@@ -13,6 +13,7 @@ import {
 } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "nestjs",
   fixtureRoot: comprehensiveFixture("nestjs"),
@@ -50,7 +51,7 @@ describe("NestJS scanner", () => {
   test("scan() devuelve las 5 rutas del mini-fixture", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
-    const routes = await new NestJsRouteScanner().scan(match);
+    const routes = (await new NestJsRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
     const methods = routes.map((r) => r.method).sort();
     expect(methods).toEqual(["DELETE", "GET", "GET", "POST", "PUT"]);
@@ -59,14 +60,14 @@ describe("NestJS scanner", () => {
   test("prefix @Controller('users') se aplica a todas las rutas", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
-    const routes = await new NestJsRouteScanner().scan(match);
+    const routes = (await new NestJsRouteScanner().scan(match)).routes;
     for (const r of routes) expect(r.uri).toMatch(/^\/users/);
   });
 
   test("path param ':id' presente en rutas con @Get(':id'), @Put(':id'), @Delete(':id')", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
-    const routes = await new NestJsRouteScanner().scan(match);
+    const routes = (await new NestJsRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes(":id"));
     expect(withId.length).toBeGreaterThanOrEqual(3);
   });
@@ -74,7 +75,7 @@ describe("NestJS scanner", () => {
   test("comprehensive: detecta >10 rutas repartidas en 3 controllers", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(COMPREHENSIVE);
-    const routes = await new NestJsRouteScanner().scan(match);
+    const routes = (await new NestJsRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(11);
     const uris = routes.map((r) => r.uri);
     expect(uris.some((u) => u.startsWith("/api/users"))).toBe(true);
@@ -230,14 +231,14 @@ describe("NestJS — ClassValidatorProvider", () => {
     const provider = new NestJsClassValidatorProvider();
     const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [] };
     const match = { framework: "nestjs" as const, projectRoot: "/tmp", artifacts: [] };
-    expect(await provider.supports(route, match)).toBe(false);
+    expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
   test("supports() === false cuando framework no es nestjs", async () => {
     const provider = new NestJsClassValidatorProvider();
     const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [], description: "list" };
     const match = { framework: "express" as const, projectRoot: "/tmp", artifacts: [] };
-    expect(await provider.supports(route, match)).toBe(false);
+    expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
   test("resuelve DTO inline con IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl", async () => {
@@ -305,7 +306,7 @@ describe("NestJS — ClassValidatorProvider", () => {
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new NestJsClassValidatorProvider();
-      const { fields } = await provider.resolve(post, match);
+      const { fields } = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       const names = fields.map((f) => f.fieldName);
       expect(names).toContain("name");
       expect(names).toContain("email");
@@ -357,7 +358,7 @@ describe("NestJS — ClassValidatorProvider", () => {
       const get = routes.find((r) => r.method === "GET");
       if (!get) return;
       const provider = new NestJsClassValidatorProvider();
-      const { fields } = await provider.resolve(get, match);
+      const { fields } = await provider.resolve(get, match, EMPTY_SCAN_RESULT);
       const names = fields.map((f) => f.fieldName);
       expect(names).toContain("id");
       expect(fields.find((f) => f.fieldName === "id")?.location).toBe("path");
@@ -402,7 +403,7 @@ describe("NestJS — ClassValidatorProvider", () => {
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new NestJsClassValidatorProvider();
-      const { fields } = await provider.resolve(post, match);
+      const { fields } = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       expect(fields.map((f) => f.fieldName)).toContain("name");
       expect(fields.map((f) => f.fieldName)).toContain("email");
     } finally {
@@ -429,7 +430,7 @@ describe("NestJS — ClassValidatorProvider", () => {
       const get = routes.find((r) => r.method === "GET");
       if (!get) return;
       const provider = new NestJsClassValidatorProvider();
-      const { fields } = await provider.resolve(get, match);
+      const { fields } = await provider.resolve(get, match, EMPTY_SCAN_RESULT);
       expect(fields.find((f) => f.fieldName === "count")?.type).toBe("number");
       expect(fields.find((f) => f.fieldName === "active")?.type).toBe("boolean");
       expect(fields.find((f) => f.fieldName === "since")?.type).toBe("date");

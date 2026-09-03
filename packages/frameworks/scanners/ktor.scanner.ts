@@ -35,6 +35,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
@@ -91,7 +92,7 @@ export class KtorRouteScanner implements IRouteScanner {
     return match.framework === "ktor";
   }
 
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isKotlinSourceFile);
     const routes: ParsedRoute[] = [];
 
@@ -102,7 +103,7 @@ export class KtorRouteScanner implements IRouteScanner {
       routes.push(...parseKotlinRouting(source, relative(match.projectRoot, file)));
     }
 
-    return dedupe(routes);
+    return { routes: dedupe(routes) };
   }
 }
 

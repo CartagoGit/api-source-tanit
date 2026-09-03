@@ -35,8 +35,8 @@ const FIXTURE = comprehensiveFixtureDir("fiber");
 async function scanFixture() {
   const match = await new FiberProjectScanner().resolve(FIXTURE);
   const scanner = new FiberRouteScanner();
-  const routes = await scanner.scan(match);
-  return { match, scanner, routes };
+  const result = await scanner.scan(match);
+  return { match, scanner, result, routes: result.routes };
 }
 
 describe("detección", () => {
@@ -78,11 +78,11 @@ describe("rutas", () => {
 
 describe("tags validate: de go-playground/validator", () => {
   test("resuelve el struct del body de un POST", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new FiberValidateTagProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new FiberValidateTagProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users")!;
 
-    const { fields } = await provider.resolve(post, match);
+    const { fields } = await provider.resolve(post, match, result);
     const byName = new Map(fields.map((f) => [f.fieldName, f]));
     expect(byName.get("email")?.required).toBe(true);
     expect(byName.get("email")?.format).toBe("email");
@@ -91,10 +91,10 @@ describe("tags validate: de go-playground/validator", () => {
   });
 
   test("un GET sin struct no finge reglas", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new FiberValidateTagProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new FiberValidateTagProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
-    expect(await provider.supports(health, match)).toBe(false);
+    expect(await provider.supports(health, match, result)).toBe(false);
   });
 });
 

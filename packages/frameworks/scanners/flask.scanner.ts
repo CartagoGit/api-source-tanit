@@ -28,6 +28,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -113,7 +114,7 @@ export class FlaskRouteScanner implements IRouteScanner {
     return match.framework === "flask";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     // 1) app.py + src/*.py + views.py.
@@ -137,7 +138,7 @@ export class FlaskRouteScanner implements IRouteScanner {
         : abs;
       out.push(...(await parseFlaskFile(abs, rel, true)));
     }
-    return out;
+    return { routes: out };
   }
 }
 
@@ -319,13 +320,18 @@ function stripPyComments(src: string): string {
 export class FlaskValidationProvider implements IValidationSpecProvider {
   readonly framework = "flask" as const;
 
-  async supports(_route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
+  async supports(
+    _route: ParsedRoute,
+    _match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return true;
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
 

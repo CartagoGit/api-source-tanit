@@ -48,8 +48,8 @@ async function scanFixture() {
   const detector = new FastifyProjectScanner();
   const match = await detector.resolve(FIXTURE);
   const scanner = new FastifyRouteScanner();
-  const routes = await scanner.scan(match);
-  return { match, scanner, routes };
+  const result = await scanner.scan(match);
+  return { match, scanner, result, routes: result.routes };
 }
 
 describe("detección", () => {
@@ -98,12 +98,12 @@ describe("las tres formas de declarar una ruta", () => {
 
 describe("esquemas JSON Schema de la propia ruta", () => {
   test("el provider resuelve la ruta que declara body", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new FastifySchemaProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new FastifySchemaProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users")!;
-    expect(await provider.supports(post, match)).toBe(true);
+    expect(await provider.supports(post, match, result)).toBe(true);
 
-    const { fields } = await provider.resolve(post, match);
+    const { fields } = await provider.resolve(post, match, result);
     const byName = new Map(fields.map((f) => [f.fieldName, f]));
     expect(byName.get("email")?.required).toBe(true);
     expect(byName.get("email")?.format).toBe("email");
@@ -124,21 +124,22 @@ describe("esquemas JSON Schema de la propia ruta", () => {
       const detector = new FastifyProjectScanner();
       const match = await detector.resolve(project.root);
       const scanner = new FastifyRouteScanner();
-      const routes = await scanner.scan(match);
+      const result = await scanner.scan(match);
+      const routes = result.routes;
       const route = routes.find((item) => item.method === "POST" && item.uri === "/users")!;
-      const provider = new FastifySchemaProvider(scanner);
-      expect(await provider.supports(route, match)).toBe(true);
-      expect((await provider.resolve(route, match)).fields[0]?.required).toBe(true);
+      const provider = new FastifySchemaProvider();
+      expect(await provider.supports(route, match, result)).toBe(true);
+      expect((await provider.resolve(route, match, result)).fields[0]?.required).toBe(true);
     } finally {
       await project.cleanup();
     }
   });
 
   test("una ruta sin esquema no lo finge", async () => {
-    const { match, scanner, routes } = await scanFixture();
-    const provider = new FastifySchemaProvider(scanner);
+    const { match, result, routes } = await scanFixture();
+    const provider = new FastifySchemaProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
-    expect(await provider.supports(health, match)).toBe(false);
+    expect(await provider.supports(health, match, result)).toBe(false);
   });
 });
 

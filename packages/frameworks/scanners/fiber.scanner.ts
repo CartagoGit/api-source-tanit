@@ -26,6 +26,8 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
+  IStructDescriptor,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -80,20 +82,18 @@ export class FiberProjectScanner implements IProjectScanner {
 export class FiberRouteScanner implements IRouteScanner {
   readonly framework = "fiber" as const;
 
-  /** `MÉTODO uri` → nombre del struct que valida su body. */
-  private readonly bodyStructs = new Map<string, { struct: string; file: string }>();
-
   matches(match: IProjectMatch): boolean {
     return match.framework === "fiber";
   }
 
-  structFor(method: string, uri: string): { struct: string; file: string } | undefined {
-    return this.bodyStructs.get(`${method} ${uri}`);
-  }
-
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isGoSourceFile);
     const routes: ParsedRoute[] = [];
+    // `structs` vive aquí, no como `private readonly` de instancia: si
+    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
+    // los structs y una ruta sin `BodyParser` heredaría el de la
+    // anterior. Es el bug que cerró a00010 S2.
+    const structs = new Map<string, IStructDescriptor>();
 
     // Lectura en paralelo con tope, entregada en el orden de
     // entrada: la colección tiene que salir igual cada vez.
@@ -126,11 +126,17 @@ export class FiberRouteScanner implements IRouteScanner {
         });
 
         const struct = bodyStructNear(source, routeMatch.index);
-        if (struct) this.bodyStructs.set(`${method} ${uri}`, { struct, file });
+        if (struct) {
+          structs.set(`${method} ${uri}`, { name: struct, file });
+        }
       }
     }
 
-    return dedupe(routes);
+    const unique = dedupe(routes);
+    return {
+      routes: unique,
+      ...(structs.size > 0 ? { structs } : {}),
+    };
   }
 }
 
@@ -202,19 +208,31 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
  * Es el equivalente de Fiber al `binding:"…"` de Gin: la misma idea con
  * otro nombre, porque Fiber no trae validador propio y todo el mundo usa
  * el mismo paquete.
+ *
+ * No guarda el scanner: el struct que parsea el body y el fichero donde
+ * está declarado viajan en `scanResult.structs`, que se rellena en cada
+ * `scan()` y se descarta al terminar. Antes tenía
+ * `private readonly scanner: FiberRouteScanner` y un `Map` de instancia,
+ * y dos escaneos consecutivos se contaminaban (a00010 S2).
  */
 export class FiberValidateTagProvider implements IValidationSpecProvider {
   readonly framework = "fiber" as const;
 
-  constructor(private readonly scanner: FiberRouteScanner) {}
-
-  async supports(route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
-    return this.scanner.structFor(route.method, route.uri) !== undefined;
+  async supports(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<boolean> {
+    return scanResult.structs?.has(`${route.method} ${route.uri}`) ?? false;
   }
 
-  async resolve(route: ParsedRoute, _match: IProjectMatch): Promise<IEndpointValidation> {
+  async resolve(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<IEndpointValidation> {
     const endpointKey = `${route.method} ${route.uri}`;
-    const target = this.scanner.structFor(route.method, route.uri);
+    const target = scanResult.structs?.get(`${route.method} ${route.uri}`);
     if (!target) return { endpointKey, fields: [] };
 
     let source: string;
@@ -223,7 +241,7 @@ export class FiberValidateTagProvider implements IValidationSpecProvider {
     } catch {
       return { endpointKey, fields: [] };
     }
-    return { endpointKey, fields: parseGoStruct(source, target.struct) };
+    return { endpointKey, fields: parseGoStruct(source, target.name) };
   }
 }
 

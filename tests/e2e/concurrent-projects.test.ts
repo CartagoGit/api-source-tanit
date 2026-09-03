@@ -115,6 +115,93 @@ describe("dos proyectos a la vez", () => {
  * Comparar una ejecución consigo misma es lo que lo hace detectable: no
  * hay que saber cuál es el número correcto, solo que sea el mismo.
  */
+
+/**
+ * Mismo framework, dos fixtures distintos a la vez.
+ *
+ * El test de arriba cubre framework-distinto (Express vs GraphQL),
+ * donde el bug de a00010 B-06 no se reproduce porque cada pipeline
+ * usa un scanner con estado independiente. Pero el bug que este slice
+ * cierra era otro: cuatro scanners (Fastify, Hono, Fiber, Rust)
+ * guardaban los schemas / validators / structs en un `Map` de
+ * instancia, y dos escaneos **del mismo framework** sobre **dos
+ * fixtures distintos** se contaminaban. Aquí se reproduce exactamente
+ * ese caso: el pipeline termina sobre `fastify-a` y `fastify-b` a la
+ * vez, y se comparan las colecciones — no el contador, porque ahora
+ * cada escaneo construye su propio `IScanResult` y la regla es que las
+ * dos ejecuciones son **independientes**, no idénticas.
+ */
+describe("mismo framework, dos fixtures distintos, a la vez", () => {
+  /**
+   * Genera un mini-fixture de Fastify con POST /users y un schema
+   * concreto. El sufijo `tag` aparece solo en este fixture, así que si
+   * se cuela en la colección del otro sabemos que el `schemas` del
+   * primer escaneo se filtró al segundo.
+   */
+  let fastifyA = "";
+  let fastifyB = "";
+  const cleanupDirs: string[] = [];
+
+  async function fastifyFixture(tag: string): Promise<string> {
+    const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const root = await mkdtemp(join(tmpdir(), `concurrent-same-fw-${tag}-`));
+    cleanupDirs.push(root);
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(
+      join(root, "package.json"),
+      '{"name":"x","dependencies":{"fastify":"^4.0.0"}}',
+      "utf8",
+    );
+    await writeFile(
+      join(root, "src/server.js"),
+      [
+        "import Fastify from \"fastify\";",
+        "const app = Fastify();",
+        `app.post("/users", { schema: { body: { type: "object", required: ["email"], properties: { email: { type: "string", format: "email" }, tag_${tag}: { type: "string" } } } } }, async () => ({}));`,
+        "app.get(\"/users\", async () => []);",
+        "export default app;",
+      ].join("\n"),
+      "utf8",
+    );
+    return root;
+  }
+
+  beforeAll(async () => {
+    // Prepara los dos fixtures en serie porque `mkdtemp` con prefijo
+    // común puede coincidir si se llama en paralelo dentro del mismo
+    // proceso y la ventana del timestamp es estrecha.
+    fastifyA = await fastifyFixture("a");
+    fastifyB = await fastifyFixture("b");
+  }, 30_000);
+
+  afterAll(async () => {
+    const { rm } = await import("node:fs/promises");
+    for (const dir of cleanupDirs) await rm(dir, { recursive: true, force: true });
+  });
+
+  test("los schemas de un escaneo no se cuelan en la colección del otro", async () => {
+    expect(fastifyA).toBeTruthy();
+    expect(fastifyB).toBeTruthy();
+
+    const [resA, resB] = await Promise.all([
+      generateWithAllFrameworks(fastifyA),
+      generateWithAllFrameworks(fastifyB),
+    ]);
+
+    // Cada escaneo produce el schema con su propio sufijo y solo el
+    // suyo. Si el `Map` de FastifyScanner se compartiera entre
+    // llamadas, el esquema de `b` aparecería también en `a`.
+    const matchesAny = (result: typeof resA, suffix: string) =>
+      result.specs.some((s) => JSON.stringify(s).includes(`tag_${suffix}`));
+
+    expect(matchesAny(resA, "a")).toBe(true);
+    expect(matchesAny(resB, "b")).toBe(true);
+    // Y la colección del otro no lo trae:
+    expect(matchesAny(resA, "b")).toBe(false);
+    expect(matchesAny(resB, "a")).toBe(false);
+  }, 60_000);
+});
 describe("el mismo proyecto, dos veces a la vez", () => {
   test.for([...FRAMEWORK_IDS])(
     "%s: las dos ejecuciones ven exactamente lo mismo",

@@ -33,6 +33,8 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
+  IStructDescriptor,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -107,20 +109,18 @@ export class RustProjectScanner implements IProjectScanner {
 export class RustRouteScanner implements IRouteScanner {
   readonly framework = "rust" as const;
 
-  /** `MÉTODO uri` → struct que deserializa su body. */
-  private readonly bodyStructs = new Map<string, { struct: string; file: string }>();
-
   matches(match: IProjectMatch): boolean {
     return match.framework === "rust";
   }
 
-  structFor(method: string, uri: string): { struct: string; file: string } | undefined {
-    return this.bodyStructs.get(`${method} ${uri}`);
-  }
-
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isRustSourceFile);
     const routes: ParsedRoute[] = [];
+    // `structs` vive aquí, no como `private readonly` de instancia: si
+    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
+    // los structs y una ruta sin `Json<T>` heredaría el de la anterior.
+    // Es el bug que cerró a00010 S2.
+    const structs = new Map<string, IStructDescriptor>();
 
     // Lectura en paralelo con tope, entregada en el orden de
     // entrada: la colección tiene que salir igual cada vez.
@@ -132,8 +132,8 @@ export class RustRouteScanner implements IRouteScanner {
       for (const route of parseAttributeRoutes(source, prefix, sourceFile)) {
         routes.push(route.route);
         if (route.bodyStruct) {
-          this.bodyStructs.set(`${route.route.method} ${route.route.uri}`, {
-            struct: route.bodyStruct,
+          structs.set(`${route.route.method} ${route.route.uri}`, {
+            name: route.bodyStruct,
             file,
           });
         }
@@ -144,7 +144,11 @@ export class RustRouteScanner implements IRouteScanner {
       }
     }
 
-    return dedupe(routes);
+    const unique = dedupe(routes);
+    return {
+      routes: unique,
+      ...(structs.size > 0 ? { structs } : {}),
+    };
   }
 }
 
@@ -265,15 +269,21 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
 export class RustValidatorProvider implements IValidationSpecProvider {
   readonly framework = "rust" as const;
 
-  constructor(private readonly scanner: RustRouteScanner) {}
-
-  async supports(route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
-    return this.scanner.structFor(route.method, route.uri) !== undefined;
+  async supports(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<boolean> {
+    return scanResult.structs?.has(`${route.method} ${route.uri}`) ?? false;
   }
 
-  async resolve(route: ParsedRoute, _match: IProjectMatch): Promise<IEndpointValidation> {
+  async resolve(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<IEndpointValidation> {
     const endpointKey = `${route.method} ${route.uri}`;
-    const target = this.scanner.structFor(route.method, route.uri);
+    const target = scanResult.structs?.get(`${route.method} ${route.uri}`);
     if (!target) return { endpointKey, fields: [] };
 
     let source: string;
@@ -282,7 +292,7 @@ export class RustValidatorProvider implements IValidationSpecProvider {
     } catch {
       return { endpointKey, fields: [] };
     }
-    return { endpointKey, fields: parseRustStruct(source, target.struct) };
+    return { endpointKey, fields: parseRustStruct(source, target.name) };
   }
 }
 

@@ -29,6 +29,7 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import type {
   IProjectMatch,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute,
@@ -188,7 +189,13 @@ export async function buildSpecsFromScanner(
   // repitan su propio id en cada ruta sería pedirles que se acuerden de
   // algo que ya está escrito. Antes no estaba, y el de OpenAPI se
   // inventó `__params` con `as any` para reconocer las suyas.
-  const routes = (await scanner.scan(match)).map((route) => ({
+  //
+  // `scanResult` se conserva entero: además de las rutas lleva los
+  // mapas auxiliares que el scanner recogió (schemas, validators,
+  // structs), y se pasa al provider para que su lectura no dependa de
+  // estado mutable en el scanner (a00010 S2).
+  const scanResult: IScanResult = await scanner.scan(match);
+  const routes = scanResult.routes.map((route) => ({
     framework: scanner.framework,
     ...route,
   }));
@@ -228,7 +235,7 @@ export async function buildSpecsFromScanner(
     if (validation) {
       let rules;
       try {
-        rules = await validation.resolve(route, match);
+        rules = await validation.resolve(route, match, scanResult);
       } catch (error) {
         // Se anota en vez de tragarse. Un proveedor que lanza dejaba el
         // endpoint indistinguible de uno sin validación, así que un
@@ -257,7 +264,6 @@ export async function buildSpecsFromScanner(
         const bodyFields = rules.fields.filter((f) => f.location === "body");
         const queryFields = rules.fields.filter((f) => f.location === "query");
         const headerFields = rules.fields.filter((f) => f.location === "header");
-        const pathFields = rules.fields.filter((f) => f.location === "path");
         // Un `GET`, `DELETE`, `HEAD` u `OPTIONS` no lleva cuerpo, así que
         // sus reglas de body no pueden ser suyas: son las del vecino.
         //

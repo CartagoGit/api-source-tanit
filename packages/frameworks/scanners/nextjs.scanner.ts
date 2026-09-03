@@ -112,7 +112,7 @@ export class NextJsRouteScanner implements IRouteScanner {
     return match.framework === "nextjs";
   }
 
-  async scan(match: IProjectMatch): Promise<ParsedRoute[]> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
     // 1) App Router.
@@ -129,7 +129,7 @@ export class NextJsRouteScanner implements IRouteScanner {
         await walkApiTs(dir, projectRoot, out, "/api");
       }
     }
-    return out;
+    return { routes: out };
   }
 }
 

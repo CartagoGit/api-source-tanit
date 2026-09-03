@@ -13,6 +13,7 @@ import {
 } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
 
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
   framework: "express",
   fixtureRoot: comprehensiveFixture("express"),
@@ -45,13 +46,13 @@ describe("Express scanner", () => {
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
-    const routes = await new ExpressRouteScanner().scan(match);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
   });
 
   test("GET /health y GET/POST /api/users están presentes", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
-    const routes = await new ExpressRouteScanner().scan(match);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
     expect(pairs).toContain("GET /health");
     expect(pairs).toContain("GET /api/users");
@@ -60,24 +61,24 @@ describe("Express scanner", () => {
 
   test("path param :id en app.get('/api/users/:id') → uri con :id", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
-    const routes = await new ExpressRouteScanner().scan(match);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes(":id"));
     expect(withId.length).toBeGreaterThanOrEqual(2);
   });
 
   test("comprehensive: detecta >10 rutas de router encadenado", async () => {
     const match = await new ExpressProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new ExpressRouteScanner().scan(match);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
   test("zod provider resuelve campos del body para POST", async () => {
     const match = await new ExpressProjectScanner().resolve(COMPREHENSIVE);
-    const routes = await new ExpressRouteScanner().scan(match);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
     if (!post) return;
     const provider = new ExpressZodValidationProvider();
-    const result = await provider.resolve(post, match);
+    const result = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
     expect(result.fields.length).toBeGreaterThan(0);
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
@@ -181,7 +182,7 @@ describe("Express — Joi validation provider inline", () => {
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new ExpressZodValidationProvider();
-      const { fields } = await provider.resolve(post, match);
+      const { fields } = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       expect(fields.length).toBeGreaterThan(0);
       expect(fields.map((f) => f.fieldName)).toContain("name");
     } finally {
@@ -211,7 +212,7 @@ describe("Express — header schema near handler", () => {
       const post = routes.find((r) => r.method === "POST");
       if (!post) return;
       const provider = new ExpressZodValidationProvider();
-      const { fields } = await provider.resolve(post, match);
+      const { fields } = await provider.resolve(post, match, EMPTY_SCAN_RESULT);
       expect(fields.length).toBeGreaterThan(0);
       expect(fields.map((f) => f.fieldName)).toContain("name");
       expect(fields.map((f) => f.fieldName)).toContain("email");

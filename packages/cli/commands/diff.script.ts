@@ -95,7 +95,7 @@ export async function runCheck(
     // que `generate` ve, sino contra otra heurística. Es la divergencia
     // que ya tuvo `summary`, y `check` no puede tener una excepción para
     // uno de los veintiún frameworks.
-    for (const r of await scanner.scan(match)) {
+    for (const r of (await scanner.scan(match)).routes) {
       sourceRoutes.push({
         method: r.method,
         uri: r.uri,

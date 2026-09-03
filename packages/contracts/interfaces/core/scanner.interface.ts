@@ -130,13 +130,94 @@ export interface ParsedRoute {
   description?: string;
 }
 
-/** Ruta escaneada del proyecto host. */
+/**
+ * Lo que devuelve `IRouteScanner.scan()`.
+ *
+ * Antes los scanners guardaban en un `Map` de instancia los esquemas /
+ * validators / structs que iban encontrando: dos invocaciones sobre el
+ * mismo scanner contaminaban el resultado, y eso dejó bugs reales
+ * (cerrados en a00010 S2). La forma honesta es que el estado **viva
+ * en la salida de `scan()`** y se descarte al terminar la llamada —
+ * si la siguiente necesita otra vez los datos, los recomputa.
+ *
+ * `routes` son las rutas en formato neutro. Los mapas auxiliares son
+ * **opcionales y agnósticos del tipo**: cada scanner los puebla como
+ * buenamente pueda, y solo los consume su propio provider en la misma
+ * llamada. Un mapa vacío significa "este scanner no recogió nada
+ * auxiliar"; `undefined` significa "no aplica a este framework".
+ *
+ * El shape abierto (`schemas` como `Map<string, string>`, `validators`
+ * y `structs` como `Map<string, I…Descriptor>`) viene de que los
+ * cuatro frameworks tienen dialectos distintos: Fastify lleva el JSON
+ * Schema dentro de la propia ruta, Hono monta el validador con
+ * `zValidator(...)` y necesita saber en qué fichero está el esquema
+ * zod, Fiber y Rust leen el body con `BodyParser` / `web::Json<T>` y
+ * tienen que abrir el struct declarado en otro sitio. Echarlo todo a
+ * un mismo `Map<string, string>` obligaría a duplicar el descriptor
+ * dentro del string serializado.
+ */
+export interface IScanResult {
+  readonly routes: ReadonlyArray<ParsedRoute>;
+  /**
+   * Mapa `${method} ${uri}` → descriptor auxiliar.
+   *
+   * Lo usa `FastifyRouteScanner` para guardar el JSON Schema declarado
+   * en la propia ruta. Los demás frameworks lo dejan `undefined`.
+   */
+  readonly schemas?: ReadonlyMap<string, string>;
+  /**
+   * Los descriptores del validador, indexados por `${method} ${uri}`.
+   *
+   * Solo `HonoRouteScanner` lo rellena: el nombre del esquema zod
+   * con el que `zValidator(...)` valida, más el fichero donde está
+   * declarado (es típicamente OTRO fichero).
+   */
+  readonly validators?: ReadonlyMap<string, IValidatorDescriptor>;
+  /**
+   * Los structs que parsean el body en Go/Rust, indexados igual.
+   *
+   * Lo usan `FiberRouteScanner` y `RustRouteScanner`: el struct al que
+   * apunta `BodyParser` / `web::Json<T>`, más el fichero donde
+   * está declarado.
+   */
+  readonly structs?: ReadonlyMap<string, IStructDescriptor>;
+}
+
+/**
+ * Lo que Hono asocia a una ruta: nombre del esquema + ruta del
+ * fichero donde está declarado.
+ *
+ * El nombre se queda solo para los mensajes de error; los campos se
+ * leen parseando el `z.object({…})` que vive en `file`.
+ */
+export interface IValidatorDescriptor {
+  readonly name: string;
+  readonly file: string;
+}
+
+/** Lo que Fiber y Rust asocian a una ruta: el struct que parsea el body. */
+export interface IStructDescriptor {
+  readonly name: string;
+  readonly file: string;
+}
+
+/**
+ * Ruta escaneada del proyecto host. */
 export interface IRouteScanner {
   readonly framework: FrameworkId;
   /** Matchea con IProjectScanner.framework. */
   matches(match: IProjectMatch): boolean;
-  /** Devuelve rutas en formato neutro. */
-  scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>>;
+  /**
+   * Devuelve las rutas y los artefactos auxiliares en un objeto.
+   *
+   * El resultado **no se reutiliza entre llamadas**: cada scanner es
+   * stateless respecto a invocaciones anteriores, y los `Map` que
+   * pueda necesitar viven dentro de este método y se descartan al
+   * volver. Antes los cuatro scanners afectados por a00010 B-06
+   * guardaban esos `Map` como `private readonly`, y dos escaneos
+   * consecutivos compartían el resultado.
+   */
+  scan(match: IProjectMatch): Promise<IScanResult>;
 }
 
 /** Especificación de validación de un parámetro (agnostic). */
@@ -191,10 +272,33 @@ export interface IEndpointValidation {
 /** Provider de ValidationSpec para un framework. */
 export interface IValidationSpecProvider {
   readonly framework: FrameworkId;
-  /** ¿Tiene specs de validación para este endpoint? */
-  supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean>;
-  /** Resuelve los campos. */
-  resolve(route: ParsedRoute, match: IProjectMatch): Promise<IEndpointValidation>;
+  /**
+   * ¿Tiene specs de validación para este endpoint?
+   *
+   * `scanResult` es lo que acaba de devolver `IRouteScanner.scan()`
+   * para el mismo `match`. Los providers que no necesitan auxiliares
+   * (los dieciséis que NO son Fastify/Hono/Fiber/Rust) lo ignoran.
+   */
+  supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<boolean>;
+  /**
+   * Resuelve los campos.
+   *
+   * El contrato exige `scanResult` aunque la mayoría de providers no
+   * lo miren: así los cuatro que sí lo necesitan (Fastify, Hono,
+   * Fiber, Rust) leen directamente sus mapas del resultado del
+   * scanner, sin depender de estado oculto. Es lo que cerró a00010
+   * S2 — antes compartían una instancia del scanner con un `Map`
+   * mutable, y dos escaneos consecutivos se contaminaban.
+   */
+  resolve(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<IEndpointValidation>;
 }
 
 /** Punto de entrada principal: "dado un projectRoot, dame el scanner adecuado". */
