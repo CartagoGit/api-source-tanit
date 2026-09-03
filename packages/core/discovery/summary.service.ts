@@ -23,6 +23,7 @@ import { resolve } from "node:path";
 import type { DiscoveryOrchestrator } from "./discovery.orchestrator.js";
 import type { ILegacyDiscovery } from "../../contracts/interfaces/core/legacy-discovery.interface.js";
 import { generateCollection } from "./generation.pipeline.js";
+import { computeProjectHealth } from "../domain/project-health.service.js";
 import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
@@ -77,5 +78,9 @@ export async function summarizeProject(
           .find((f) => f.match.framework === result.match!.framework)
           ?.evidence ?? []
       : [],
+    // Sobre `result.specs`, no sobre los contadores del adapter: los
+    // specs ya llevan dentro la inferencia agnóstica y el merge de
+    // overrides, que es justo lo que `generate` escribiría.
+    health: computeProjectHealth(result.specs),
   };
 }

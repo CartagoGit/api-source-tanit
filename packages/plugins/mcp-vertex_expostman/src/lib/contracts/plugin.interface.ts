@@ -126,6 +126,49 @@ export const SummaryInputSchema = z
 export type ISummaryInput = z.infer<typeof SummaryInputSchema>;
 
 /**
+ * Salud de la documentación del proyecto, en porcentajes `0..100`.
+ *
+ * Espejo zod de `IProjectHealth` (contratos). Cada campo responde "de
+ * cuántos endpoints la colección va a llevar esta pieza": con ellos un
+ * agente ve si la API está bien documentada **antes** de generar, sin
+ * abrir la colección para contarlo a mano.
+ */
+export const ProjectHealthSchema = z
+  .object({
+    withValidationPercent: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .describe("% de endpoints cuyas reglas de validación se resolvieron."),
+    withBodySchemaPercent: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .describe(
+        "% de endpoints con body de ejemplo (de reglas resueltas o inferido).",
+      ),
+    withExamplesPercent: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .describe(
+        "% de endpoints que llevan al menos un ejemplo de valor (body o params).",
+      ),
+    withDescriptionPercent: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .describe("% de endpoints con descripción."),
+  })
+  .strict();
+
+export type IProjectHealthOutput = z.infer<typeof ProjectHealthSchema>;
+
+/**
  * Inputs del tool `test`. Por defecto corre la suite e2e completa del
  * propio paquete export-to-postman (ya en workspace). Si se pasa
  * `framework`, corre un smoke test contra el fixture correspondiente
@@ -322,6 +365,12 @@ export const SummaryOutputSchema = z.object({
     .describe(
       "Vacío si el detector aún no se ha enriquecido; se rellena progresivamente.",
     ),
+  // f00010 S2: la salud de la documentación, en porcentajes. Sobre los
+  // specs finales (los mismos que alimentaría `generate`), así que lo
+  // que dice el health es lo que la colección va a llevar.
+  health: ProjectHealthSchema.describe(
+    "Salud de la documentación, en porcentajes 0..100. 0 en todo con cero endpoints.",
+  ),
 });
 
 export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
@@ -338,7 +387,10 @@ export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
  *
  * Con esta línea, añadir un campo a `IProjectSummary` y olvidarse del
  * esquema **no compila**. Los campos de más sí se permiten —el tool
- * añade `ok`— porque lo que se comprueba es que no falte ninguno.
+ * añade `ok`— porque lo que se comprueba es que no falte ninguno. Es
+ * la que cazó `health` el día que `IProjectSummary` lo estrenó: sin
+ * ella, `SummaryOutputSchema` habría seguido describiendo el resumen
+ * de hace dos slices.
  */
 const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
   SummaryOutputSchema;

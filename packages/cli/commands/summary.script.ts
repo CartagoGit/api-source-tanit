@@ -53,6 +53,13 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
     `→ Login:            ${s.auth ? s.auth.loginEndpoint : "not detected"}`,
     `→ Zero-config:      ${s.zeroConfig ? "yes" : "no"}`,
     `→ Config:           ${s.configPath}`,
+    // f00010 S2: la salud de la documentación, en una línea. El
+    // detalle completo viaja en el JSON; aquí solo la lectura rápida:
+    // "validación 44% · bodies 100% · ejemplos 100% · descripciones 100%".
+    `→ Health:           validation ${s.health.withValidationPercent}% · ` +
+      `body ${s.health.withBodySchemaPercent}% · ` +
+      `examples ${s.health.withExamplesPercent}% · ` +
+      `descriptions ${s.health.withDescriptionPercent}%`,
   ];
   for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);
   // f00010 S3: el usuario ve **por qué** se eligió el framework, no

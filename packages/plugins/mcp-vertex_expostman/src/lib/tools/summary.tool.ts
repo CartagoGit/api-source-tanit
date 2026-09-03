@@ -50,7 +50,8 @@ export function buildSummaryToolRegistration(
           description:
             "Inspecciona un proyecto host sin escribir archivos. " +
             "Devuelve { framework, projectName, baseUrl, routesInCode, withFormRequest, " +
-            "withoutFormRequest, bodiesAdded, queriesAdded, zeroConfig, configPath, manualEndpoints }.",
+            "withoutFormRequest, bodiesAdded, queriesAdded, zeroConfig, configPath, manualEndpoints, " +
+            "health: porcentajes de endpoints con validación, body, ejemplos y descripción }.",
           inputSchema: SummaryInputSchema,
           outputSchema: SummaryOutputSchema,
         },
@@ -104,6 +105,16 @@ export function buildSummaryToolRegistration(
               inferredVariables: summary.inferredVariables,
               auth: summary.auth ? { loginEndpoint: summary.auth.loginEndpoint } : null,
               warnings: [...summary.warnings],
+              // f00010 S2: salud de la documentación, en porcentajes.
+              // La salida va **proyectada campo a campo** (nunca spread):
+              // si el resumen estrena un campo y este bloque no se toca,
+              // el guard de `plugin.interface.ts` no compila.
+              health: {
+                withValidationPercent: summary.health.withValidationPercent,
+                withBodySchemaPercent: summary.health.withBodySchemaPercent,
+                withExamplesPercent: summary.health.withExamplesPercent,
+                withDescriptionPercent: summary.health.withDescriptionPercent,
+              },
             };
             return toolJson(out);
           } catch (err) {

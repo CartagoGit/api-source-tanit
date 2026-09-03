@@ -110,6 +110,26 @@ export type IParsedFormats =
   | { readonly ok: true; readonly formats: string[] }
   | { readonly ok: false; readonly invalid: string[]; readonly valid: string[] };
 
+/**
+ * Estado de salud de la documentación de un proyecto, en porcentajes.
+ *
+ * Cada campo es `0..100` (entero, redondeado) y responde "de cuántos
+ * endpoints la colección va a llevar esta pieza". Son la señal de
+ * FEAT-003: con ellos, un usuario ve en un vistazo si su API está bien
+ * documentada **antes** de generar la colección, sin abrir un Postman
+ * para contarlo a mano.
+ */
+export interface IProjectHealth {
+  /** % de endpoints cuyas reglas de validación se resolvieron. */
+  readonly withValidationPercent: number;
+  /** % de endpoints con body de ejemplo (reglas resueltas o inferido). */
+  readonly withBodySchemaPercent: number;
+  /** % de endpoints que llevan al menos un ejemplo de valor. */
+  readonly withExamplesPercent: number;
+  /** % de endpoints con descripción. */
+  readonly withDescriptionPercent: number;
+}
+
 /** Resumen de un proyecto host para inspección rápida. */
 export interface IProjectSummary {
   /** Framework detectado. `"unknown"` si no lo reconoció ninguno. */
@@ -165,4 +185,12 @@ export interface IProjectSummary {
    * Vacío si el detector aún no se ha enriquecido (la mayoría, hoy).
    */
   evidence: ReadonlyArray<import("./scanner.interface.js").IProjectDetectionEvidence>;
+  /**
+   * Salud de la documentación, en porcentajes `0..100`.
+   *
+   * Se computa sobre los specs finales —los mismos que alimentan la
+   * colección—, así que lo que dice es lo que `generate` produce. Con
+   * cero endpoints, todos los porcentajes son `0`.
+   */
+  health: IProjectHealth;
 }
