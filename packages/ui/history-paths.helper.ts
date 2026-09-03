@@ -23,8 +23,10 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-/** El nombre del directorio, con punto para que sea oculto en Unix. */
-const CARPETA = ".expostman";
+import {
+  HISTORY_DIR_NAME,
+  HISTORY_FILE_NAME,
+} from "../contracts/constants/cli/history.constant.js";
 
 /**
  * La carpeta del historial de generaciones, dentro del `homedir` de
@@ -47,12 +49,12 @@ export function userHistoryDir(
   // exactamente el tipo de sorpresa que un historial automático no
   // debería traer. `.expostman/` dentro de `homedir` es predecible.
   if (platform === "win32") {
-    return join(env["APPDATA"] ?? join(home, "AppData", "Roaming"), CARPETA);
+    return join(env["APPDATA"] ?? join(home, "AppData", "Roaming"), HISTORY_DIR_NAME);
   }
   if (platform === "darwin") {
-    return join(home, CARPETA);
+    return join(home, HISTORY_DIR_NAME);
   }
-  return join(home, CARPETA);
+  return join(home, HISTORY_DIR_NAME);
 }
 
 /** El fichero JSONL donde se acumula el historial. */
@@ -61,14 +63,6 @@ export function historyPath(
   platform?: string,
   home?: string,
 ): string {
-  return join(userHistoryDir(env, platform, home), "history.jsonl");
+  return join(userHistoryDir(env, platform, home), HISTORY_FILE_NAME);
 }
 
-/**
- * Permiso a usar cuando hace falta crear la carpeta del historial.
- *
- * `0o755` en Unix: el dueño puede escribir y los demás solo leer. Es lo
- * razonable para un log que solo escribe el programa que corre como
- * ese usuario, y que nadie más necesita modificar.
- */
-export const HISTORY_DIR_MODE = 0o755;

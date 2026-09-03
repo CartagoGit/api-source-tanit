@@ -22,13 +22,11 @@ import {
   readHistory,
 } from "../../ui/server/history.service.js";
 import { historyPath } from "../../ui/history-paths.helper.js";
-import type { IHistoryEntry } from "../../contracts/interfaces/cli/history.interface.js";
-
-/** Lo que devuelve `runHistory`: código de salida y texto para stdout. */
-export interface IHistoryOutcome {
-  readonly code: 0 | 1;
-  readonly output: string;
-}
+import type {
+  IHistoryEntry,
+  IHistoryOutcome,
+  IRunHistoryOptions,
+} from "../../contracts/interfaces/cli/history.interface.js";
 
 function formatEntry(entry: IHistoryEntry, anchoProyecto = 24): string {
   const fecha = entry.timestamp.replace("T", " ").slice(0, 19);
@@ -79,14 +77,6 @@ function asText(
     if (rejected.length > 5) lines.push(`  · … and ${rejected.length - 5} more`);
   }
   return lines.join("\n");
-}
-
-/** Argumentos opcionales de `runHistory`, en un solo objeto. */
-export interface IRunHistoryOptions {
-  /** Ruta absoluta al fichero de historial. Si falta, se calcula con `historyPath()`. */
-  readonly historyPath?: string;
-  /** HOME a usar para resolver `historyPath()`. Solo si no se pasa `historyPath`. */
-  readonly home?: string;
 }
 
 /**
@@ -163,11 +153,15 @@ export async function runHistory(
   }
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** La envoltura que usa el CLI: imprime la salida y devuelve el código. */
 export async function main(
   argv: string[] = process.argv.slice(2),
 ): Promise<number> {
-  return (await runHistory(argv)).code;
+  const outcome = await runHistory(argv);
+  if (outcome.output !== "") {
+    process.stdout.write(`${outcome.output}\n`);
+  }
+  return outcome.code;
 }
 
 if (import.meta.main) {

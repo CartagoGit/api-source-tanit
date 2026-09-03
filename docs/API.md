@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 147 símbolos en 51 módulos.
+> 148 símbolos en 51 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -964,6 +964,36 @@ Serializa **antes** de tocar el disco: si el objeto tiene un ciclo o
 un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
 Serializar mientras se escribe es como se acaba con un fichero a
 medias sin que el proceso llegue a morirse.
+
+#### `appendFileAtomic`
+
+```ts
+export async function appendFileAtomic( destino: string, contenido: string, ): Promise<void>
+```
+
+Append atómico de `contenido` al final de `destino`.
+
+Se diferencia de `writeFileAtomic` en lo que protege:
+
+  - `writeFileAtomic` escribe el fichero **entero**: un `rename`
+    dentro del mismo sistema de ficheros es atómico, pero el fichero
+    se trunca antes del rename. Es lo que se quiere para una
+    colección de Postman, donde el lector necesita la versión
+    completa o nada.
+
+  - `appendFileAtomic` añade `contenido` al final: usa `appendFile`,
+    que abre el destino con `O_APPEND`. En POSIX eso es atómico
+    por cada `write(2)`: dos procesos que escriben a la vez no se
+    pisan —sus bytes van al final en algún orden, pero ninguno se
+    pierde a medias—. Es lo que se quiere para un log en JSONL:
+    cada línea es una entrada, y leer las últimas N líneas debe ser
+    seguro aunque haya otra escritura en curso.
+
+Si el fichero no existe, lo crea (mkdir recursivo del directorio,
+igual que `writeFileAtomic`). Si la escritura falla, no deja
+contenido parcial visible: `appendFile` no trunca antes de escribir,
+así que un fallo a mitad de línea se ve como un prefijo sin newline,
+y eso lo maneja la lectura tratándolo como línea corrupta.
 
 ### `packages/core/helpers/collection-file.helper.ts`
 

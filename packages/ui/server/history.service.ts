@@ -33,21 +33,19 @@ import { dirname } from "node:path";
 import { appendFileAtomic } from "../../core/helpers/atomic-write.helper.js";
 import { parseJson } from "../../core/helpers/parse-json.helper.js";
 import type {
+  IHistoryAppendResult,
   IHistoryEntry,
   IHistoryEntryInput,
   IHistoryReadOptions,
   IHistoryReadResult,
 } from "../../contracts/interfaces/cli/history.interface.js";
 import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
+import { HISTORY_DIR_MODE, HISTORY_ENTRY_VERSION } from "../../contracts/constants/cli/history.constant.js";
 
 import {
-  HISTORY_DIR_MODE,
   historyPath,
   userHistoryDir,
 } from "../history-paths.helper.js";
-
-/** Versión de la forma de cada entrada. Sube si se cambia un campo. */
-const ENTRY_VERSION = 1;
 
 /**
  * Construye una entrada lista para serializar.
@@ -89,12 +87,13 @@ function buildEntry(
  * colección. Se devuelve `{ ok: false, reason }` y quien llamó decide
  * si lo dice o se lo calla (en el CLI, lo segundo; en la UI, lo
  * primero, porque el usuario sí está mirando).
+ *
+ * El tipo vive en `contracts/interfaces/cli/history.interface.ts` —
+ * no aquí. Un tipo declarado al lado de la función que lo estrenó
+ * obliga a importar esa función para usarlo, y `history.script.ts` lo
+ * necesita sin tener que importar el servicio entero.
  */
-export interface IAppendResult {
-  readonly ok: boolean;
-  readonly path: string;
-  readonly reason?: string;
-}
+export type { IHistoryAppendResult } from "../../contracts/interfaces/cli/history.interface.js";
 
 /**
  * Añade una entrada al historial.
@@ -107,11 +106,11 @@ export async function appendHistory(
   input: IHistoryEntryInput,
   path: string = historyPath(),
   now: Date = new Date(),
-): Promise<IAppendResult> {
+): Promise<IHistoryAppendResult> {
   try {
     await mkdir(dirname(path), { recursive: true, mode: HISTORY_DIR_MODE });
     const entry = buildEntry(input, now);
-    const linea = `${JSON.stringify({ version: ENTRY_VERSION, ...entry })}\n`;
+    const linea = `${JSON.stringify({ version: HISTORY_ENTRY_VERSION, ...entry })}\n`;
     await appendFileAtomic(path, linea);
     return { ok: true, path };
   } catch (error) {
@@ -228,7 +227,7 @@ export async function readHistory(
 export function formatHistoryJsonl(
   entries: ReadonlyArray<IHistoryEntry>,
 ): string {
-  return entries.map((e) => JSON.stringify({ version: ENTRY_VERSION, ...e })).join("\n");
+  return entries.map((e) => JSON.stringify({ version: HISTORY_ENTRY_VERSION, ...e })).join("\n");
 }
 
 /**

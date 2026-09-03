@@ -232,8 +232,15 @@ quieras versionar la colección para revisarla en los PRs.
 | `watch` | Regenera al guardar. Se queda vigilando el proyecto hasta que lo pares con Ctrl+C. |
 | `push` | Sube la colección **directamente** a tu workspace de Postman, sin pasar por el fichero. |
 | `ui` | Abre la interfaz gráfica en el navegador. Para quien no quiere aprenderse los flags. |
+| `history` | Lista las generaciones previas guardadas en `~/.expostman/history.jsonl` con `--limit N`, filtro por `--project`, salida `--json` y `--clear`. |
 
-### `ui` — sin terminal
+### `history` — ver qué se ha generado antes
+
+```sh
+expostman history --limit 20
+expostman history --project <ruta> --json
+expostman history --clear
+```
 
 ```sh
 expostman ui
