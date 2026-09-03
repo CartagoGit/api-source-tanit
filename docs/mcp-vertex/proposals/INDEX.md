@@ -6,15 +6,16 @@ actual del frontmatter y, para `done`, también el `kind`.
 ## Ready
 
 Las propuestas nuevas se escriben directamente en `ready/`, sin una
-subcarpeta por kind. Directorio vivo: vacío (todas las propuestas
-abiertas están archivadas como `done/` o retiradas en `retired/`).
-Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran
-en este pase.
+subcarpeta por kind. Directorio vivo: [`a00012`](ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md).
+Es la consolidación de los hallazgos abiertos tras `a00010`/`a00011`
+y `f00010`/`f00011`. Empieza por **S0 — restaurar CI reproducible**
+antes de cualquier feature nueva.
 
 ## Activas
 
 | Id | Kind | Estado | Ruta |
 |---|---|---|---|
+| `a00012` | `audit` | `ready` | [`ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md`](ready/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md) |
 | `p00006` | `legacy` | `retired` | [`retired/p00006-document-extension-contract.md`](retired/p00006-document-extension-contract.md) |
 
 ## Cerradas
