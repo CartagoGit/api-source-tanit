@@ -39,13 +39,42 @@ export interface IProjectMatch {
   readonly artifacts: ReadonlyArray<string>;
 }
 
-/** Detector declarativo: ¿este scanner sabe trabajar con este proyecto? */
+/**
+ * Detector declarativo: ¿este scanner sabe trabajar con este proyecto?
+ *
+ * `detect()` devuelve `{ score, evidence }` para que la UI pueda
+ * enseñar **por qué** se eligió un framework, no solo cuál. Cada
+ * scanner anota cada señal que vio y el delta exacto al score;
+ * la colección se pinta en `summary` y en la UI.
+ */
 export interface IProjectScanner {
   readonly framework: FrameworkId;
-  /** Score (0-1) que indica la confianza. Si 0, no se intenta. */
-  detect(projectRoot: string): Promise<number>;
+  /**
+   * Score (0-1) que indica la confianza, más la lista de señales que
+   * motivaron la puntuación. Si score=0, evidence se ignora y no se
+   * intenta.
+   */
+  detect(projectRoot: string): Promise<IProjectScannerResult>;
   /** Construye el IProjectMatch final. Llamado solo si detect > 0. */
   resolve(projectRoot: string): Promise<IProjectMatch>;
+}
+
+/** Lo que `IProjectScanner.detect` devuelve. */
+export interface IProjectScannerResult {
+  /** Score 0-1. Si 0, el orquestador lo descarta. */
+  readonly score: number;
+  /** Las señales que subieron el score. */
+  readonly evidence: ReadonlyArray<IProjectDetectionEvidence>;
+}
+
+/** Una señal individual de detección, expuesta a través de la UI. */
+export interface IProjectDetectionEvidence {
+  /** Qué vio el detector, en una línea legible. */
+  readonly signal: string;
+  /** Subida al score que aportó esta señal. */
+  readonly weight: number;
+  /** Fichero del que se leyó la señal (relativo al projectRoot). */
+  readonly artifact?: string;
 }
 
 /** Ruta en formato neutro. Se transforma a EndpointSpec al final. */

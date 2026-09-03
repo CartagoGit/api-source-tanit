@@ -24,6 +24,7 @@
  *   - Constraints deben estar en el método (no en una Entity separada).
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -34,8 +35,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { parseYamlLite } from "./openapi.scanner.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
@@ -73,15 +73,15 @@ async function isSymfonyProject(projectRoot: string): Promise<boolean> {
 export class SymfonyProjectScanner implements IProjectScanner {
   readonly framework = "symfony" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const detected = await isSymfonyProject(projectRoot);
-    if (!detected) return 0;
+    if (!detected) return emptyResult(0);
     const hasBinConsole = existsSync(join(projectRoot, "bin", "console"));
     const hasConfigRoutes = existsSync(join(projectRoot, "config", "routes.yaml"));
     const hasSrcController = existsSync(join(projectRoot, "src", "Controller"));
-    if (hasBinConsole) return 1;
-    if (hasConfigRoutes || hasSrcController) return 0.8;
-    return 0.4;
+    if (hasBinConsole) return emptyResult(1);
+    if (hasConfigRoutes || hasSrcController) return emptyResult(0.8);
+    return emptyResult(0.4);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -23,6 +23,7 @@
  *   - Includes anidados pueden no resolver el `urls.py` del sub-app.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
@@ -34,8 +35,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 
 /**
@@ -66,13 +66,13 @@ async function isDjangoProject(projectRoot: string): Promise<boolean> {
 export class DjangoProjectScanner implements IProjectScanner {
   readonly framework = "django" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const hasManage = existsSync(join(projectRoot, "manage.py"));
     const isDjango = await isDjangoProject(projectRoot);
-    if (!isDjango && !hasManage) return 0;
-    if (hasManage) return 1;
-    if (isDjango) return 0.8;
-    return 0.5;
+    if (!isDjango && !hasManage) return emptyResult(0);
+    if (hasManage) return emptyResult(1);
+    if (isDjango) return emptyResult(0.8);
+    return emptyResult(0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

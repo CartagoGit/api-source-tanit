@@ -17,6 +17,7 @@
  *     parcial y no soporta referencias a otros paquetes.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -28,8 +29,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -52,13 +52,13 @@ async function isGinProject(projectRoot: string): Promise<boolean> {
 export class GinProjectScanner implements IProjectScanner {
   readonly framework = "gin" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isGin = await isGinProject(projectRoot);
-    if (!isGin) return 0;
+    if (!isGin) return emptyResult(0);
     const hasMain = existsSync(join(projectRoot, "main.go"));
     const hasCmd = existsSync(join(projectRoot, "cmd"));
-    if (hasMain || hasCmd) return 1;
-    return 0.5;
+    if (hasMain || hasCmd) return emptyResult(1);
+    return emptyResult(0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

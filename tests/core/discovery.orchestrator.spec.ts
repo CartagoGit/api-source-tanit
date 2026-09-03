@@ -12,7 +12,7 @@ function detector(framework: string, score: number, options: { throws?: boolean 
     framework,
     detect: async () => {
       if (options.throws) throw new Error("detector roto");
-      return score;
+      return { score, evidence: [] };
     },
     resolve: async (projectRoot): Promise<IProjectMatch> => ({
       framework,

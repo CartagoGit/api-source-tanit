@@ -17,6 +17,7 @@
  *   - Si hay `class-transformer` o `class-validator`, son las dependencias.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -28,8 +29,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
@@ -63,14 +63,14 @@ async function isNestJsProject(projectRoot: string): Promise<boolean> {
 export class NestJsProjectScanner implements IProjectScanner {
   readonly framework = "nestjs" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isNest = await isNestJsProject(projectRoot);
-    if (!isNest) return 0;
+    if (!isNest) return emptyResult(0);
     const hasSrc = existsSync(join(projectRoot, "src"));
     const hasNestCli = existsSync(join(projectRoot, "nest-cli.json"));
-    if (hasSrc && hasNestCli) return 1;
-    if (hasSrc) return 0.8;
-    return 0.5;
+    if (hasSrc && hasNestCli) return emptyResult(1);
+    if (hasSrc) return emptyResult(0.8);
+    return emptyResult(0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -21,6 +21,7 @@
  *   - `member do` / `collection do` — rutas extra dentro de un recurso.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -29,8 +30,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /** Las siete acciones que genera `resources`, con su forma REST. */
 const RESOURCE_ACTIONS = [
@@ -69,10 +69,10 @@ async function readRoutesFile(projectRoot: string): Promise<string | null> {
 export class RailsProjectScanner implements IProjectScanner {
   readonly framework = "rails" as const;
 
-  async detect(projectRoot: string): Promise<number> {
-    if (!existsSync(join(projectRoot, "config", "routes.rb"))) return 0;
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
+    if (!existsSync(join(projectRoot, "config", "routes.rb"))) return emptyResult(0);
     // `Gemfile` + `config/routes.rb` es Rails sin lugar a dudas.
-    return existsSync(join(projectRoot, "Gemfile")) ? 1 : 0.7;
+    return emptyResult(existsSync(join(projectRoot, "Gemfile")) ? 1 : 0.7);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

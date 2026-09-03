@@ -52,11 +52,11 @@ describe("FastAPI scanner", () => {
   });
 
   test("detect() > 0 cuando requirements.txt tiene 'fastapi'", async () => {
-    expect(await new FastApiProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new FastApiProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay requirements.txt ni pyproject.toml", async () => {
-    expect(await new FastApiProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new FastApiProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
@@ -109,7 +109,7 @@ describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
       "pyproject.toml": '[project]\nname = "demo"\ndependencies = ["fastapi>=0.100"]\n',
     });
     try {
-      expect(await new FastApiProjectScanner().detect(project.root)).toBeGreaterThan(0);
+      expect((await new FastApiProjectScanner().detect(project.root)).score).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
     }
@@ -120,7 +120,7 @@ describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
       "Pipfile": '[packages]\nfastapi = "*"\n',
     });
     try {
-      expect(await new FastApiProjectScanner().detect(project.root)).toBeGreaterThan(0);
+      expect((await new FastApiProjectScanner().detect(project.root)).score).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
     }

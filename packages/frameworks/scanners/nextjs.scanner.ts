@@ -17,6 +17,7 @@
  *     route handlers (`const schema = z.object({...})`).
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -27,8 +28,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { countLinesBefore, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 
@@ -60,16 +60,16 @@ async function isNextJsProject(projectRoot: string): Promise<boolean> {
 export class NextJsProjectScanner implements IProjectScanner {
   readonly framework = "nextjs" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isNext = await isNextJsProject(projectRoot);
-    if (!isNext) return 0;
+    if (!isNext) return emptyResult(0);
     const hasApp = existsSync(join(projectRoot, "app"));
     const hasPages = existsSync(join(projectRoot, "pages"));
-    if (hasApp || hasPages) return 1;
+    if (hasApp || hasPages) return emptyResult(1);
     const hasSrcApp = existsSync(join(projectRoot, "src", "app"));
     const hasSrcPages = existsSync(join(projectRoot, "src", "pages"));
-    if (hasSrcApp || hasSrcPages) return 1;
-    return 0.5;
+    if (hasSrcApp || hasSrcPages) return emptyResult(1);
+    return emptyResult(0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

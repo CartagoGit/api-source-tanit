@@ -15,6 +15,7 @@
  *   - Los path params se escriben `:id`, igual que en Rails.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -23,8 +24,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /** Acciones REST de `resources` que tienen sentido en una API JSON. */
 const RESOURCE_ACTIONS = [
@@ -61,15 +61,15 @@ async function findRouter(projectRoot: string): Promise<string | null> {
 export class PhoenixProjectScanner implements IProjectScanner {
   readonly framework = "phoenix" as const;
 
-  async detect(projectRoot: string): Promise<number> {
-    if (!existsSync(join(projectRoot, "mix.exs"))) return 0;
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
+    if (!existsSync(join(projectRoot, "mix.exs"))) return emptyResult(0);
     try {
       const mix = await readFile(join(projectRoot, "mix.exs"), "utf8");
-      if (!/:phoenix\b/.test(mix)) return 0;
+      if (!/:phoenix\b/.test(mix)) return emptyResult(0);
     } catch {
-      return 0;
+      return emptyResult(0);
     }
-    return (await findRouter(projectRoot)) ? 1 : 0.5;
+    return emptyResult((await findRouter(projectRoot)) ? 1 : 0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

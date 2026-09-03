@@ -44,11 +44,11 @@ async function scanFixture() {
 
 describe("detección", () => {
   test("un Cargo.toml con actix-web puntúa 1", async () => {
-    expect(await new RustProjectScanner().detect(FIXTURE)).toBe(1);
+    expect((await new RustProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
   test("un proyecto de Go no es Rust", async () => {
-    expect(await new RustProjectScanner().detect(comprehensiveFixtureDir("fiber"))).toBe(0);
+    expect((await new RustProjectScanner().detect(comprehensiveFixtureDir("fiber"))).score).toBe(0);
   });
 });
 
@@ -155,7 +155,7 @@ describe("Rust — detección Rocket", () => {
       "src/main.rs": '#[macro_use] extern crate rocket;\n\n#[get("/health")]\nfn health() -> &\'static str { "ok" }\n',
     });
     try {
-      expect(await new RustProjectScanner().detect(project.root)).toBeGreaterThan(0);
+      expect((await new RustProjectScanner().detect(project.root)).score).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
     }
@@ -167,7 +167,7 @@ describe("Rust — detección Rocket", () => {
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nserde = "1.0"\n',
     });
     try {
-      expect(await new RustProjectScanner().detect(project.root)).toBe(0);
+      expect((await new RustProjectScanner().detect(project.root)).score).toBe(0);
     } finally {
       await project.cleanup();
     }

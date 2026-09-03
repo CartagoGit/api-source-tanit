@@ -153,6 +153,7 @@ describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de ve
       inferredVariables: 2,
       auth: { loginEndpoint: "POST /login" },
       warnings: [],
+      evidence: [],
     };
     expect(contratos!.SummaryOutputSchema.safeParse(completo).success).toBe(true);
   });

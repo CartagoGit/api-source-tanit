@@ -124,7 +124,7 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
   });
 
   test("detecta por config/routes.rb + Gemfile", async () => {
-    expect(await new RailsProjectScanner().detect(comprehensiveFixtureDir("rails"))).toBe(1);
+    expect((await new RailsProjectScanner().detect(comprehensiveFixtureDir("rails"))).score).toBe(1);
   });
 
   test("el scanner completo lee el fixture", async () => {
@@ -158,13 +158,13 @@ describe("Phoenix: scopes anidados y resources", () => {
   });
 
   test("detecta por mix.exs con :phoenix", async () => {
-    expect(await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("phoenix"))).toBe(
+    expect((await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("phoenix"))).score).toBe(
       1,
     );
   });
 
   test("un proyecto sin phoenix no puntúa", async () => {
-    expect(await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("rails"))).toBe(0);
+    expect((await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("rails"))).score).toBe(0);
   });
 
   test("el scanner completo lee el fixture", async () => {
@@ -211,7 +211,7 @@ describe("Ktor: el DSL anidado por llaves", () => {
   });
 
   test("detecta por la dependencia de ktor", async () => {
-    expect(await new KtorProjectScanner().detect(comprehensiveFixtureDir("ktor"))).toBe(1);
+    expect((await new KtorProjectScanner().detect(comprehensiveFixtureDir("ktor"))).score).toBe(1);
   });
 
   test("el scanner completo lee el fixture", async () => {

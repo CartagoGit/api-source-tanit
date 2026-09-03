@@ -32,11 +32,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("gin");
 
 describe("Gin scanner", () => {
   test("detect() > 0 cuando go.mod tiene github.com/gin-gonic/gin", async () => {
-    expect(await new GinProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new GinProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay go.mod", async () => {
-    expect(await new GinProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new GinProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {

@@ -303,6 +303,25 @@ export const SummaryOutputSchema = z.object({
   warnings: z
     .array(z.string())
     .describe("Avisos accionables: proyecto híbrido, nada reconocido…"),
+  // f00010 S3: las señales que motivaron la elección del framework. La
+  // UI las pinta como tarjetas; el agente las puede reusar para
+  // responder "¿por qué Laravel?" sin tener que re-escanear.
+  evidence: z
+    .array(
+      z.object({
+        signal: z.string().describe("Lo que el detector vio, en una línea."),
+        weight: z
+          .number()
+          .describe("Subida al score (puede ser negativo si el detector restó)."),
+        artifact: z
+          .string()
+          .optional()
+          .describe("Fichero del que se leyó la señal, relativo al projectRoot."),
+      }),
+    )
+    .describe(
+      "Vacío si el detector aún no se ha enriquecido; se rellena progresivamente.",
+    ),
 });
 
 export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;

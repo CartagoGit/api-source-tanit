@@ -13,6 +13,7 @@
  * `binding:"required"` de Gin.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -27,8 +28,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /** Métodos de Fiber, capitalizados como los escribe Go. */
 const METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options", "All"] as const;
@@ -62,11 +62,11 @@ async function usesFiber(projectRoot: string): Promise<boolean> {
 export class FiberProjectScanner implements IProjectScanner {
   readonly framework = "fiber" as const;
 
-  async detect(projectRoot: string): Promise<number> {
-    if (!(await usesFiber(projectRoot))) return 0;
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
+    if (!(await usesFiber(projectRoot))) return emptyResult(0);
     const hasEntrypoint =
       existsSync(join(projectRoot, "main.go")) || existsSync(join(projectRoot, "cmd"));
-    return hasEntrypoint ? 1 : 0.5;
+    return emptyResult(hasEntrypoint ? 1 : 0.5);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

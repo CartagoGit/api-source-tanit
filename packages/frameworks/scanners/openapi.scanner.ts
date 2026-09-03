@@ -16,6 +16,7 @@
  * Si no hay ningún fichero OpenAPI, `detect()` devuelve 0.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {
@@ -24,8 +25,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { isRecord, parseJson, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
@@ -404,11 +404,11 @@ export function parseYamlLite(src: string): unknown {
 export class OpenApiProjectScanner implements IProjectScanner {
   readonly framework = "openapi" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     for (const rel of OPENAPI_CANDIDATES) {
-      if (existsSync(join(projectRoot, rel))) return 1;
+      if (existsSync(join(projectRoot, rel))) return emptyResult(1);
     }
-    return 0;
+    return emptyResult(0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

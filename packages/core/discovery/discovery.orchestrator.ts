@@ -28,7 +28,10 @@ import type {
   IRouteScanner,
   IValidationSpecProvider,
 } from "../../contracts/interfaces/core/scanner.interface.js";
-import type { DiscoveryRegistry, IDetectedFramework } from "../../contracts/interfaces/core/discovery.interface.js";
+import type {
+  DiscoveryRegistry,
+  IDetectedFramework,
+} from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
  * Decide qué framework es el proyecto y con qué colaboradores se escanea.
@@ -66,6 +69,7 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     return {
       match,
       score: 1,
+      evidence: [],
       scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
       validation:
         this.registry.validationProviders.find((v) => v.framework === framework) ?? null,
@@ -78,25 +82,28 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
   }
 
   async detectAll(projectRoot: string): Promise<IDetectedFramework[]> {
-    const scored: Array<{ detector: IProjectScanner; score: number }> = [];
+    const scored: Array<{ detector: IProjectScanner; score: number; evidence: IDetectedFramework["evidence"] }> = [];
     for (const detector of this.registry.detectors) {
-      let score: number;
+      let result: { score: number; evidence: ReadonlyArray<IDetectedFramework["evidence"][number]> };
       try {
-        score = await detector.detect(projectRoot);
+        result = await detector.detect(projectRoot);
       } catch {
         // Un detector que revienta no puede tumbar a los otros once.
-        score = 0;
+        result = { score: 0, evidence: [] };
       }
-      if (score > 0) scored.push({ detector, score });
+      if (result.score > 0) {
+        scored.push({ detector, score: result.score, evidence: result.evidence });
+      }
     }
     scored.sort((a, b) => b.score - a.score);
 
     const detected: IDetectedFramework[] = [];
-    for (const { detector, score } of scored) {
+    for (const { detector, score, evidence } of scored) {
       const match = await detector.resolve(projectRoot);
       detected.push({
         match,
         score,
+        evidence,
         scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
         validation:
           this.registry.validationProviders.find((v) => v.framework === match.framework) ??

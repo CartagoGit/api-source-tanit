@@ -33,6 +33,7 @@ const RESUMEN: IProjectSummary = {
   inferredVariables: 5,
   auth: { loginEndpoint: "POST /login" },
   warnings: [],
+  evidence: [],
 };
 
 /** Dobles que registran con qué se les llamó. */

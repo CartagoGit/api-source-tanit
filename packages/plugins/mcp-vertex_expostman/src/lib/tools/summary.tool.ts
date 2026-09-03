@@ -97,6 +97,7 @@ export function buildSummaryToolRegistration(
               withoutFormRequest: summary.withoutFormRequest,
               bodiesAdded: summary.bodiesAdded,
               queriesAdded: summary.queriesAdded,
+              evidence: [...summary.evidence],
               zeroConfig: summary.zeroConfig,
               configPath: summary.configPath,
               manualEndpoints: summary.manualEndpoints,

@@ -31,11 +31,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("flask");
 
 describe("Flask scanner", () => {
   test("detect() > 0 cuando requirements.txt tiene 'flask'", async () => {
-    expect(await new FlaskProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new FlaskProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay requirements.txt", async () => {
-    expect(await new FlaskProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new FlaskProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {

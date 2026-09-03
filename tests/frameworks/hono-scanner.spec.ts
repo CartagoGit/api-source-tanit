@@ -47,11 +47,11 @@ async function scanFixture() {
 
 describe("detección", () => {
   test("un proyecto con `hono` puntúa 1", async () => {
-    expect(await new HonoProjectScanner().detect(FIXTURE)).toBe(1);
+    expect((await new HonoProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
   test("un proyecto sin hono no puntúa", async () => {
-    expect(await new HonoProjectScanner().detect(comprehensiveFixtureDir("gin"))).toBe(0);
+    expect((await new HonoProjectScanner().detect(comprehensiveFixtureDir("gin"))).score).toBe(0);
   });
 });
 

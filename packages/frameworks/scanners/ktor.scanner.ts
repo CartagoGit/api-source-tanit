@@ -24,6 +24,7 @@
  * pipeline: no hay que normalizar nada.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -34,8 +35,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
 
@@ -70,9 +70,9 @@ async function declaresKtor(projectRoot: string): Promise<boolean> {
 export class KtorProjectScanner implements IProjectScanner {
   readonly framework = "ktor" as const;
 
-  async detect(projectRoot: string): Promise<number> {
-    if (!(await declaresKtor(projectRoot))) return 0;
-    return existsSync(join(projectRoot, "src")) ? 1 : 0.6;
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
+    if (!(await declaresKtor(projectRoot))) return emptyResult(0);
+    return emptyResult(existsSync(join(projectRoot, "src")) ? 1 : 0.6);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

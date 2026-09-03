@@ -1,5 +1,6 @@
 
 import { readFile, readdir } from "node:fs/promises";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
@@ -9,8 +10,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -42,10 +42,10 @@ async function isAspNetProject(projectRoot: string): Promise<boolean> {
 export class AspNetProjectScanner implements IProjectScanner {
   readonly framework = "aspnet" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isAsp = await isAspNetProject(projectRoot);
-    if (!isAsp) return 0;
-    return 1;
+    if (!isAsp) return emptyResult(0);
+    return emptyResult(1);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

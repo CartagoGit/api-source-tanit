@@ -28,6 +28,7 @@
  *   externa de validación.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -44,8 +45,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
 
@@ -92,16 +92,16 @@ function dependsOnFastify(pkg: Record<string, unknown> | null): boolean {
 export class FastifyProjectScanner implements IProjectScanner {
   readonly framework = "fastify" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const pkg = await readPackageJson(projectRoot);
-    if (!dependsOnFastify(pkg)) return 0;
+    if (!dependsOnFastify(pkg)) return emptyResult(0);
     // El paquete `fastify` a secas es señal fuerte; solo un plugin
     // `@fastify/*` puede ser un proyecto que lo use de refilón.
     const deps = {
       ...((pkg?.["dependencies"] as Record<string, string>) ?? {}),
       ...((pkg?.["devDependencies"] as Record<string, string>) ?? {}),
     };
-    return "fastify" in deps ? 1 : 0.6;
+    return emptyResult("fastify" in deps ? 1 : 0.6);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

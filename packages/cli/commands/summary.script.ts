@@ -55,6 +55,18 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
     `→ Config:           ${s.configPath}`,
   ];
   for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);
+  // f00010 S3: el usuario ve **por qué** se eligió el framework, no
+  // solo cuál. Cada señal es una línea con su peso; los detectores
+  // que aún no se han enriquecido (la mayoría) muestran sólo el
+  // framework + score y se quedan sin bloque, que es lo honesto.
+  if (s.evidence.length > 0) {
+    lines.push(`\n→ ¿Por qué ${s.framework}?`);
+    for (const e of s.evidence) {
+      const weight = e.weight >= 0 ? `+${e.weight.toFixed(2)}` : e.weight.toFixed(2);
+      const artifact = e.artifact ? ` (${e.artifact})` : "";
+      lines.push(`  · ${e.signal}${artifact}  [${weight}]`);
+    }
+  }
   return lines.join("\n");
 }
 

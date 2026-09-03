@@ -41,11 +41,11 @@ async function scanFixture() {
 
 describe("detección", () => {
   test("un go.mod con gofiber puntúa 1", async () => {
-    expect(await new FiberProjectScanner().detect(FIXTURE)).toBe(1);
+    expect((await new FiberProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
   test("un proyecto de Gin no es Fiber", async () => {
-    expect(await new FiberProjectScanner().detect(comprehensiveFixtureDir("gin"))).toBe(0);
+    expect((await new FiberProjectScanner().detect(comprehensiveFixtureDir("gin"))).score).toBe(0);
   });
 });
 

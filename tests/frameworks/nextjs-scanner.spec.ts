@@ -32,11 +32,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("nextjs");
 
 describe("Next.js scanner", () => {
   test("detect() > 0 cuando package.json tiene 'next' como dependencia", async () => {
-    expect(await new NextJsProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new NextJsProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay package.json", async () => {
-    expect(await new NextJsProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new NextJsProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture (App Router)", async () => {
@@ -131,7 +131,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
       "src/app/api/ping/route.ts": "export async function GET() { return Response.json({ ok: true }); }",
     });
     try {
-      expect(await new NextJsProjectScanner().detect(project.root)).toBe(1);
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
     } finally {
       await project.cleanup();
     }
@@ -144,7 +144,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
       "src/pages/api/health.ts": "export default function handler(req, res) { res.json({ ok: true }); }",
     });
     try {
-      expect(await new NextJsProjectScanner().detect(project.root)).toBe(1);
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
     } finally {
       await project.cleanup();
     }
@@ -156,7 +156,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
     });
     try {
-      expect(await new NextJsProjectScanner().detect(project.root)).toBe(0.5);
+      expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.5);
     } finally {
       await project.cleanup();
     }

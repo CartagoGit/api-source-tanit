@@ -37,13 +37,13 @@ const COMPREHENSIVE = comprehensiveFixtureDir("nestjs");
 describe("NestJS scanner", () => {
   test("detect() > 0 cuando package.json tiene @nestjs/core", async () => {
     const scanner = new NestJsProjectScanner();
-    const score = await scanner.detect(ROOT);
+    const score = (await scanner.detect(ROOT)).score;
     expect(score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 en un directorio vacío", async () => {
     const scanner = new NestJsProjectScanner();
-    const score = await scanner.detect("/tmp");
+    const score = (await scanner.detect("/tmp")).score;
     expect(score).toBe(0);
   });
 
@@ -153,7 +153,7 @@ describe("NestJS — detect() score variants", () => {
       "src/main.ts": "// bootstrap",
     });
     try {
-      expect(await new NestJsProjectScanner().detect(project.root)).toBe(1);
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(1);
     } finally {
       await project.cleanup();
     }
@@ -165,7 +165,7 @@ describe("NestJS — detect() score variants", () => {
       "src/main.ts": "// bootstrap",
     });
     try {
-      expect(await new NestJsProjectScanner().detect(project.root)).toBe(0.8);
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(0.8);
     } finally {
       await project.cleanup();
     }
@@ -174,7 +174,7 @@ describe("NestJS — detect() score variants", () => {
   test("detect() === 0.5 cuando no hay src ni nest-cli.json", async () => {
     const project = await createTempProject({ "package.json": PACKAGE });
     try {
-      expect(await new NestJsProjectScanner().detect(project.root)).toBe(0.5);
+      expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(0.5);
     } finally {
       await project.cleanup();
     }

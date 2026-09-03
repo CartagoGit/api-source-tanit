@@ -87,14 +87,16 @@ export function describeScannerContract(options: IScannerContractOptions): void 
 
     test("detect() da confianza > 0 sobre su fixture", async () => {
       const bundle = scannerBundleFor(framework)!;
-      expect(await bundle.projectScanner.detect(fixtureRoot)).toBeGreaterThan(0);
+      const result = await bundle.projectScanner.detect(fixtureRoot);
+      expect(result.score).toBeGreaterThan(0);
     });
 
     test("detect() da 0 sobre un directorio vacío", async () => {
       const empty = await createTempProject({});
       try {
         const bundle = scannerBundleFor(framework)!;
-        expect(await bundle.projectScanner.detect(empty.root)).toBe(0);
+        const result = await bundle.projectScanner.detect(empty.root);
+        expect(result.score).toBe(0);
       } finally {
         await empty.cleanup();
       }

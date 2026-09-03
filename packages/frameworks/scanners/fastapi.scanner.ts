@@ -17,6 +17,7 @@
  * estático (sin servidor corriendo).
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile, } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
@@ -28,8 +29,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = [
   "get",
@@ -58,7 +58,7 @@ const ROUTER_VAR_RE = /([a-zA-Z_$][\w$]*)\s*=\s*APIRouter/gi;
 export class FastApiProjectScanner implements IProjectScanner {
   readonly framework = "fastapi" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     let score = 0;
     for (const file of ["pyproject.toml", "requirements.txt", "Pipfile"]) {
       const p = join(projectRoot, file);
@@ -70,7 +70,7 @@ export class FastApiProjectScanner implements IProjectScanner {
         /* ignore */
       }
     }
-    return score;
+    return emptyResult(score);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

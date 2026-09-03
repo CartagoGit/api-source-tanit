@@ -15,6 +15,7 @@
  * escribir otro — es la misma librería, solo cambia quién la invoca.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -32,8 +33,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "options", "all"] as const;
 
@@ -85,11 +85,11 @@ function honoDeps(pkg: Record<string, unknown> | null): Record<string, string> {
 export class HonoProjectScanner implements IProjectScanner {
   readonly framework = "hono" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const deps = honoDeps(await readPackageJson(projectRoot));
-    if (deps["hono"]) return 1;
+    if (deps["hono"]) return emptyResult(1);
     // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
-    return Object.keys(deps).some((name) => name.startsWith("@hono/")) ? 0.6 : 0;
+    return emptyResult(Object.keys(deps).some((name) => name.startsWith("@hono/")) ? 0.6 : 0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

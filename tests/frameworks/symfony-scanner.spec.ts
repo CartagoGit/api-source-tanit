@@ -34,11 +34,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("symfony");
 
 describe("Symfony scanner", () => {
   test("detect() > 0 cuando composer.json tiene symfony/framework-bundle", async () => {
-    expect(await new SymfonyProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new SymfonyProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 en directorio sin composer.json", async () => {
-    expect(await new SymfonyProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new SymfonyProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() devuelve las 3 rutas del mini-fixture (routes.yaml)", async () => {
@@ -120,7 +120,7 @@ describe("Symfony detect — variantes", () => {
     });
     try {
       // Ni bin/console ni src/Controller pero sí routes.yaml → 0.8.
-      expect(await new SymfonyProjectScanner().detect(project.root)).toBe(0.8);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.8);
     } finally {
       await project.cleanup();
     }
@@ -131,7 +131,7 @@ describe("Symfony detect — variantes", () => {
       "composer.json": '{"require":{"symfony/framework-bundle":"^7.0"}}',
     });
     try {
-      expect(await new SymfonyProjectScanner().detect(project.root)).toBe(0.4);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.4);
     } finally {
       await project.cleanup();
     }
@@ -142,7 +142,7 @@ describe("Symfony detect — variantes", () => {
       "composer.json": "{json roto",
     });
     try {
-      expect(await new SymfonyProjectScanner().detect(project.root)).toBe(0);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0);
     } finally {
       await project.cleanup();
     }
@@ -153,7 +153,7 @@ describe("Symfony detect — variantes", () => {
       "composer.json": '{"name":"sin-dependencias"}',
     });
     try {
-      expect(await new SymfonyProjectScanner().detect(project.root)).toBe(0);
+      expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0);
     } finally {
       await project.cleanup();
     }

@@ -17,6 +17,7 @@
  * primer Send, que es peor que no entregarla.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -24,8 +25,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
@@ -56,7 +56,7 @@ function isSchemaFile(name: string): boolean {
 export class GraphQlProjectScanner implements IProjectScanner {
   readonly framework = "graphql" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const pkgPath = join(projectRoot, "package.json");
     let fromPackage = 0;
     if (existsSync(pkgPath)) {
@@ -74,11 +74,11 @@ export class GraphQlProjectScanner implements IProjectScanner {
     // depende del ecosistema ni del gestor de paquetes, así que también
     // reconoce un esquema de Go, Python o Java.
     const schemas = await collectFiles(projectRoot, isSchemaFile);
-    if (schemas.length === 0) return fromPackage;
+    if (schemas.length === 0) return emptyResult(fromPackage);
     for await (const { text } of readFilesInOrder(schemas)) {
-      if (/\btype\s+(Query|Mutation)\b/.test(text)) return 1;
+      if (/\btype\s+(Query|Mutation)\b/.test(text)) return emptyResult(1);
     }
-    return Math.max(fromPackage, 0.5);
+    return emptyResult(Math.max(fromPackage, 0.5));
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

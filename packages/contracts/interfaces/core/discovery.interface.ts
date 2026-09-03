@@ -30,6 +30,16 @@ export interface DiscoveryRegistry {
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
 }
 
+/**
+ * Una señal individual de detección.
+ *
+ * Re-export del tipo de `IProjectScanner` para que el contrato de
+ * discovery (que se importa desde la UI, el CLI y el plugin) no tenga
+ * que arrastrar el de scanner. El alias es estable; el original vive
+ * en `scanner.interface.ts` que es donde lo rellenan los detectores.
+ */
+export type IDetectionEvidence = import("./scanner.interface.js").IProjectDetectionEvidence;
+
 /** Un framework que ha reconocido el proyecto, con sus colaboradores. */
 export interface IDetectedFramework {
   readonly match: IProjectMatch;
@@ -37,6 +47,8 @@ export interface IDetectedFramework {
   readonly validation: IValidationSpecProvider | null;
   /** Confianza del detector, de 0 a 1. */
   readonly score: number;
+  /** Las señales que motivaron la puntuación. */
+  readonly evidence: ReadonlyArray<IDetectionEvidence>;
 }
 
 /**

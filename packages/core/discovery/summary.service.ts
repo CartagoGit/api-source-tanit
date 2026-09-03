@@ -72,5 +72,10 @@ export async function summarizeProject(
         }
       : null,
     warnings: result.warnings,
+    evidence: result.match
+      ? (await orchestrator.detectAll(resolve(projectRoot)))
+          .find((f) => f.match.framework === result.match!.framework)
+          ?.evidence ?? []
+      : [],
   };
 }

@@ -153,4 +153,16 @@ export interface IProjectSummary {
   auth: { readonly loginEndpoint: string } | null;
   /** Avisos accionables: proyecto híbrido, nada reconocido… */
   warnings: ReadonlyArray<string>;
+  /**
+   * Las señales que motivaron la elección del framework.
+   *
+   * Cada elemento es una cosa que el detector vio y la subida exacta
+   * al score. La CLI los imprime bajo `¿Por qué ${framework}?`; el
+   * tool MCP los expone en `summary.evidence`; la UI los pinta como
+   * tarjetas con icono. Es lo que convierte "framework: express
+   * (0.9)" en "porque `package.json` declara express en deps".
+   *
+   * Vacío si el detector aún no se ha enriquecido (la mayoría, hoy).
+   */
+  evidence: ReadonlyArray<import("./scanner.interface.js").IProjectDetectionEvidence>;
 }

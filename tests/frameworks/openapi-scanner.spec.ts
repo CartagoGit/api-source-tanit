@@ -21,11 +21,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("openapi");
 
 describe("OpenAPI scanner", () => {
   test("detect() > 0 cuando hay openapi.yaml en la raíz", async () => {
-    expect(await new OpenApiProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new OpenApiProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay archivo openapi/swagger", async () => {
-    expect(await new OpenApiProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new OpenApiProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture (yaml)", async () => {

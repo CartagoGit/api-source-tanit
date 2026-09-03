@@ -54,12 +54,12 @@ async function scanFixture() {
 
 describe("detección", () => {
   test("un proyecto con `fastify` puntúa 1", async () => {
-    expect(await new FastifyProjectScanner().detect(FIXTURE)).toBe(1);
+    expect((await new FastifyProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
   test("un proyecto sin fastify no puntúa", async () => {
     expect(
-      await new FastifyProjectScanner().detect(comprehensiveFixtureDir("django")),
+      (await new FastifyProjectScanner().detect(comprehensiveFixtureDir("django"))).score,
     ).toBe(0);
   });
 });

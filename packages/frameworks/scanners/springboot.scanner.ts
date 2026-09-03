@@ -19,6 +19,7 @@
  *   - Limitado: solo constraints inline en el package local.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -29,8 +30,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 
 async function isSpringBootProject(projectRoot: string): Promise<boolean> {
@@ -55,12 +55,12 @@ async function isSpringBootProject(projectRoot: string): Promise<boolean> {
 export class SpringBootProjectScanner implements IProjectScanner {
   readonly framework = "springboot" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isSpring = await isSpringBootProject(projectRoot);
-    if (!isSpring) return 0;
+    if (!isSpring) return emptyResult(0);
     const hasSrc = existsSync(join(projectRoot, "src"));
-    if (hasSrc) return 1;
-    return 0.7;
+    if (hasSrc) return emptyResult(1);
+    return emptyResult(0.7);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

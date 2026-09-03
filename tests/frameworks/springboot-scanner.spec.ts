@@ -31,11 +31,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("springboot");
 
 describe("Spring Boot scanner", () => {
   test("detect() > 0 cuando pom.xml tiene spring-boot-starter-web", async () => {
-    expect(await new SpringBootProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new SpringBootProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay pom.xml ni build.gradle", async () => {
-    expect(await new SpringBootProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new SpringBootProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
@@ -92,7 +92,7 @@ describe("Spring Boot — build.gradle detection y variantes", () => {
       "src/main/java/com/example/App.java": "package com.example;\npublic class App {}",
     });
     try {
-      expect(await new SpringBootProjectScanner().detect(project.root)).toBeGreaterThan(0);
+      expect((await new SpringBootProjectScanner().detect(project.root)).score).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
     }
@@ -104,7 +104,7 @@ describe("Spring Boot — build.gradle detection y variantes", () => {
       "pom.xml": "<project><dependencies><dependency><artifactId>spring-boot-starter-web</artifactId></dependency></dependencies></project>",
     });
     try {
-      expect(await new SpringBootProjectScanner().detect(project.root)).toBe(0.7);
+      expect((await new SpringBootProjectScanner().detect(project.root)).score).toBe(0.7);
     } finally {
       await project.cleanup();
     }
@@ -130,7 +130,7 @@ describe("Spring Boot — build.gradle detection y variantes", () => {
       "build.gradle.kts": 'id("org.springframework.boot") version "3.2.0"\nimplementation("org.springframework.boot:spring-boot-starter-web:3.2.0")\n',
     });
     try {
-      expect(await new SpringBootProjectScanner().detect(project.root)).toBeGreaterThan(0);
+      expect((await new SpringBootProjectScanner().detect(project.root)).score).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
     }

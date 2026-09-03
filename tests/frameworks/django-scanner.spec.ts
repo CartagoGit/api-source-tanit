@@ -37,11 +37,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("django");
 
 describe("Django scanner", () => {
   test("detect() > 0 cuando hay manage.py", async () => {
-    expect(await new DjangoProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new DjangoProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay manage.py", async () => {
-    expect(await new DjangoProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new DjangoProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
@@ -94,7 +94,7 @@ describe("Django detect — variantes de manifest", () => {
       Pipfile: '[packages]\ndjango = "*"\n',
     });
     try {
-      expect(await new DjangoProjectScanner().detect(project.root)).toBe(0.8);
+      expect((await new DjangoProjectScanner().detect(project.root)).score).toBe(0.8);
     } finally {
       await project.cleanup();
     }
@@ -105,7 +105,7 @@ describe("Django detect — variantes de manifest", () => {
       "pyproject.toml": '[project]\ndependencies = ["djangorestframework"]\n',
     });
     try {
-      expect(await new DjangoProjectScanner().detect(project.root)).toBe(0.8);
+      expect((await new DjangoProjectScanner().detect(project.root)).score).toBe(0.8);
     } finally {
       await project.cleanup();
     }
@@ -116,7 +116,7 @@ describe("Django detect — variantes de manifest", () => {
       "requirements.txt": "flask==3.0\n",
     });
     try {
-      expect(await new DjangoProjectScanner().detect(project.root)).toBe(0);
+      expect((await new DjangoProjectScanner().detect(project.root)).score).toBe(0);
     } finally {
       await project.cleanup();
     }

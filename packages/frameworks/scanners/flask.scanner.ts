@@ -16,6 +16,7 @@
  *     Pydantic de `flask-pydantic`.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
@@ -29,8 +30,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
 
@@ -66,13 +66,13 @@ async function isFlaskProject(projectRoot: string): Promise<boolean> {
 export class FlaskProjectScanner implements IProjectScanner {
   readonly framework = "flask" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isFlask = await isFlaskProject(projectRoot);
-    if (!isFlask) return 0;
+    if (!isFlask) return emptyResult(0);
     const hasApp = existsSync(join(projectRoot, "app.py"));
     const hasWsgi = existsSync(join(projectRoot, "wsgi.py"));
-    if (hasApp || hasWsgi) return 1;
-    return 0.7;
+    if (hasApp || hasWsgi) return emptyResult(1);
+    return emptyResult(0.7);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

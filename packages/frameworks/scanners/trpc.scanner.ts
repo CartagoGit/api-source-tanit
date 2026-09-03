@@ -17,6 +17,7 @@
  * `appRouter → users → list` es `users.list`.
  */
 import { existsSync } from "node:fs";
+import { emptyResult } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -24,8 +25,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
@@ -40,16 +40,16 @@ const TRPC_PACKAGES = ["@trpc/server", "@trpc/client", "@trpc/next"];
 export class TrpcProjectScanner implements IProjectScanner {
   readonly framework = "trpc" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const pkgPath = join(projectRoot, "package.json");
-    if (!existsSync(pkgPath)) return 0;
+    if (!existsSync(pkgPath)) return emptyResult(0);
     const parsed = parseJson(await readFile(pkgPath, "utf8"));
-    if (!parsed.ok || !isRecord(parsed.value)) return 0;
+    if (!parsed.ok || !isRecord(parsed.value)) return emptyResult(0);
     const deps = {
       ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
       ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
     };
-    return TRPC_PACKAGES.some((name) => deps[name]) ? 0.95 : 0;
+    return emptyResult(TRPC_PACKAGES.some((name) => deps[name]) ? 0.95 : 0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

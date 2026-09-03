@@ -17,9 +17,11 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
+import { emptyResult } from "../scanners/detect-result.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
+  IProjectScannerResult,
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
@@ -146,15 +148,15 @@ const NON_API_ROUTE_FILES = new Set([
 export class LaravelProjectScanner implements IProjectScanner {
   readonly framework = "laravel" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const hasArtisan = existsSync(join(projectRoot, "artisan"));
     const hasRoutes = existsSync(join(projectRoot, "routes"));
     const hasApp = existsSync(join(projectRoot, "app"));
     const hasComposer = existsSync(join(projectRoot, "composer.json"));
-    if (!hasArtisan) return 0;
-    if (!hasRoutes || !hasApp) return 0.5;
-    if (hasComposer) return 1;
-    return 0.7;
+    if (!hasArtisan) return emptyResult(0);
+    if (!hasRoutes || !hasApp) return emptyResult(0.5);
+    if (hasComposer) return emptyResult(1);
+    return emptyResult(0.7);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -36,11 +36,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("express");
 
 describe("Express scanner", () => {
   test("detect() > 0 cuando package.json tiene 'express'", async () => {
-    expect(await new ExpressProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new ExpressProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 en directorio sin package.json", async () => {
-    expect(await new ExpressProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new ExpressProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 5 rutas del mini-fixture", async () => {

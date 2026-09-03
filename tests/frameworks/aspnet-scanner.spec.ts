@@ -33,11 +33,11 @@ const COMPREHENSIVE = comprehensiveFixtureDir("aspnet");
 
 describe("ASP.NET scanner", () => {
   test("detect() > 0 cuando hay un .csproj con Microsoft.AspNetCore", async () => {
-    expect(await new AspNetProjectScanner().detect(ROOT)).toBeGreaterThan(0);
+    expect((await new AspNetProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
   test("detect() === 0 cuando no hay .csproj", async () => {
-    expect(await new AspNetProjectScanner().detect("/tmp")).toBe(0);
+    expect((await new AspNetProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
   test("scan() encuentra las 4 rutas del mini-fixture", async () => {
