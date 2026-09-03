@@ -313,8 +313,15 @@ function emitSchemaNode(
       return emitSchemaNode(graph, target, state);
     }
     case "nullable": {
-      if (!node.inner) return {};
-      return { ...emitFromId(graph, node.inner, state), nullable: true };
+      // OpenAPI 3.1 usa JSON Schema 2020-12: `nullable: true` está
+      // deprecado. La nulabilidad se modela con `type: [T, "null"]`
+      // cuando el inner tiene un `type` escalar (string/number/etc.,
+      // incluido object y array — JSON Schema 2020-12 acepta arrays
+      // de tipos para todas las clases), o `oneOf: [T, { type: "null" }]`
+      // cuando no lo tiene (unions, references con `$ref`). Si el
+      // `inner` falta (grafo incompleto), emitimos `{ type: "null" }`
+      // — el fallback vive dentro de `emitNullable`.
+      return emitNullable(graph, node, state);
     }
   }
 }
@@ -423,6 +430,49 @@ function emitScalarSchema(node: ISchemaNode): Record<string, unknown> {
   if (c.maxLength !== undefined) out["maxLength"] = c.maxLength;
   if (c.pattern !== undefined) out["pattern"] = c.pattern;
   return out;
+}
+
+/**
+ * Emite un nodo `nullable` como composición válida en OpenAPI 3.1.
+ *
+ * OpenAPI 3.1 adopta JSON Schema 2020-12 y elimina `nullable: true`.
+ * La nulabilidad se modela así:
+ *
+ *   - **Escalares** (`scalar`/`enum`/`literal`): `type: [T, "null"]`
+ *     — la forma más compacta y fiel a la intención.
+ *   - **Compuestos** (`object`/`array`/`union`/`intersection`):
+ *     `oneOf: [{...inner}, { type: "null" }]` — aquí el `type` no
+ *     admite array, así que pasamos por composición.
+ *   - **References**: el `$ref` también puede envolverse en
+ *     `oneOf: [{$ref}, { type: "null" }]`; el formato 3.1 lo permite.
+ *
+ * Si el inner no resuelve a nada (grafo incompleto), devolvemos
+ * `{ type: "null" }`: "esto puede ser null, nada más" es lo más
+ * honesto que podemos decir sin inventar.
+ */
+function emitNullable(
+  graph: ISchemaGraph,
+  node: ISchemaNode,
+  state: { components: Record<string, Record<string, unknown>>; visiting: Set<SchemaNodeId> },
+): Record<string, unknown> {
+  const inner = node.inner ? emitFromId(graph, node.inner, state) : {};
+  // Si el inner no resuelve a nada (grafo incompleto), caemos a
+  // `{ type: "null" }`: "esto puede ser null, nada más" es lo más
+  // honesto que podemos decir sin inventar.
+  if (Object.keys(inner).length === 0) {
+    return { type: "null" };
+  }
+  // Si el inner tiene un `type` escalar (string, number, object,
+  // array, …), la nulabilidad va como `type: [T, "null"]`. JSON
+  // Schema 2020-12 (y por tanto OpenAPI 3.1) admite esto para
+  // cualquier `type`, no solo los escalares en sentido estricto.
+  const innerType = inner["type"];
+  if (typeof innerType === "string") {
+    return { ...inner, type: [innerType, "null"] };
+  }
+  // El inner no tiene `type` propio (es un `oneOf`/`allOf`/`$ref`):
+  // pasamos a composición explícita.
+  return { oneOf: [inner, { type: "null" }] };
 }
 
 /** El bloque `securitySchemes`, derivado de lo ya detectado. */

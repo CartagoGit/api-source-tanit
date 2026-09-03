@@ -35,6 +35,7 @@ import type {
   ISchemaNode,
   SchemaNodeId,
 } from "../../contracts/interfaces/core/schema.interface.js";
+import { createSchemaGraph } from "./serialize.helper.js";
 import {
   constraintsFromValidationSpec,
   createEnumNode,
@@ -184,7 +185,12 @@ export class SchemaGraphBuilder {
       );
     }
     this.sealed = true;
-    return { nodes: this.map, root: rootId };
+    // Envolvemos con `createSchemaGraph` para que el grafo resultante
+    // satisfaga el contrato `ISchemaGraph.toDTO()`. Sin esto, el
+    // interface exige un método que el literal `{ nodes, root }` no
+    // tiene, y los consumidores (MCP, UI, caché) no podrían
+    // serializarlo.
+    return createSchemaGraph(this.map, rootId);
   }
 
   /**

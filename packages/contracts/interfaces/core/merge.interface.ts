@@ -163,9 +163,39 @@ export interface IEndpointMergeCandidate {
  * reglas distintas (p. ej. priorizar siempre OpenAPI sin mirar el
  * resto). Pasarlo por abstracción permite inyectarlo desde los
  * tests sin levantar el `EndpointMerger` real.
+ *
+ * `merge()` devuelve un `IMergeResult` que combina el endpoint
+ * fusionado con los **conflictos** que el merger resolvió
+ * (intersección vacía de enums, formatos incompatibles, etc.).
+ * `IMergedEndpoint` solo lleva el resultado; los avisos viajan
+ * separados porque en el pipeline se agregan al `IMergeOutcome.warnings`
+ * que también recoge los conflictos de auth — mezclar los dos en el
+ * `IMergedEndpoint` haría cada endpoint responsable de su propia
+ * auditoría, que es justo lo contrario de un pipeline.
  */
 export interface IEndpointMerger {
-  merge(candidates: ReadonlyArray<IEndpointMergeCandidate>): IMergedEndpoint;
+  merge(
+    candidates: ReadonlyArray<IEndpointMergeCandidate>,
+  ): IMergeResult;
+}
+
+/**
+ * Salida de `IEndpointMerger.merge`: el endpoint fusionado y la lista
+ * de conflictos que el merger **no pudo resolver por sí solo**.
+ *
+ * Cada conflicto es una línea legible apta para CLI/UI. El caller
+ * decide dónde la mete (warnings del pipeline, log, popup). El merger
+ * no la imprime: eso sería acoplar el dominio a `console.log`, que
+ * ya mordió a los helpers de detección.
+ */
+export interface IMergeResult {
+  readonly merged: IMergedEndpoint;
+  /**
+   * Conflictos resueltos con aviso: intersección vacía de enums,
+   * formatos/patrones divergentes, type mismatch entre scanners, etc.
+   * Vacío en el camino feliz.
+   */
+  readonly conflicts: ReadonlyArray<string>;
 }
 
 /**

@@ -131,11 +131,37 @@ export interface ISchemaEdge {
  * dos llamadas que partan de las mismas specs producen el mismo mapa de
  * nodos. Eso permite que los exportadores cacheen resultados por
  * `SchemaNodeId` y que los diffs entre dos pasadas sean estables.
+ *
+ * `nodes` es un `ReadonlyMap` por velocidad dentro del proceso; para
+ * cruzar la frontera de proceso (MCP, JSON, caché, UI), se serializa
+ * con `toDTO()` — un `ReadonlyMap` no sobrevive `JSON.stringify`.
  */
 export interface ISchemaGraph {
   readonly nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>;
   /** El id del nodo raíz del grafo. */
   readonly root: SchemaNodeId;
+  /**
+   * Forma serializable del grafo para cruzar fronteras de proceso
+   * (MCP, JSON, caché, UI). Ver `ISchemaGraphDTO`. La conversión es
+   * estable: dos llamadas al mismo grafo producen el mismo DTO.
+   */
+  toDTO(): ISchemaGraphDTO;
+}
+
+/**
+ * Forma plana y JSON-serializable de un `ISchemaGraph`.
+ *
+ * `nodes` se almacena como `entries` (`Array<[id, node]>`) porque
+ * `JSON.stringify(new Map(...))` devuelve `"{}"` y se pierde la
+ * información. La frontera de proceso **exige** este DTO; dentro del
+ * proceso, `ISchemaGraph` con su `ReadonlyMap` es la forma canónica.
+ *
+ * Orden: la primera entrada del array se mantiene estable para el
+ * mismo grafo (los `SchemaNodeId` son únicos por construcción).
+ */
+export interface ISchemaGraphDTO {
+  nodes: ReadonlyArray<readonly [SchemaNodeId, ISchemaNode]>;
+  root: SchemaNodeId;
 }
 
 /**
@@ -185,32 +211,6 @@ export interface IScalarOptions {
 }
 
 /** Opciones comunes a los nodos compuestos (`union`/`intersection`/`object`/`array`). */
-export interface ICompositeOptions {
-  /** Nombre lógico (ej. `UserOrError`). Lo usan los exportadores como `$ref`. */
-  readonly name?: string;
-  /** Restricciones adicionales aplicables al nodo compuesto. */
-  readonly constraints?: ISchemaConstraints;
-}
-
-/** Opciones al construir un nodo `reference`. */
-export interface IReferenceOptions {
-  /** Nombre del nodo referencia (si lo tiene; los `$ref` nominales lo usan). */
-  readonly name?: string;
-  /** Descripción opcional del enlace. */
-  readonly description?: string;
-}
-
-/** Opciones para los constructores de nodos compuestos (`object`/`array`/`tuple`). */
-export interface ICompositeNodeOptions extends ICompositeOptions {}
-/** Opciones al construir un nodo `scalar` o `enum`. */
-export interface IScalarOptions {
-  /** Restricciones adicionales: format, min/max, pattern, etc. */
-  readonly constraints?: ISchemaConstraints;
-  /** Nombre lógico (ej. `UserId`). Lo recogen los exportadores como `$ref`. */
-  readonly name?: string;
-}
-
-/** Opciones comunes a los nodos compuestos (`union`, `intersection`, `object`, `array`). */
 export interface ICompositeOptions {
   /** Nombre lógico (ej. `UserOrError`). Lo usan los exportadores como `$ref`. */
   readonly name?: string;

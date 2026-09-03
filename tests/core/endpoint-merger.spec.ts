@@ -51,7 +51,7 @@ function candidate(
 describe("EndpointMerger — identidad", () => {
   test("1 candidato es identity passthrough", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "express",
         scannerScore: 0.6,
@@ -76,7 +76,7 @@ describe("EndpointMerger — identidad", () => {
 
   test("method se normaliza a uppercase en la salida", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ method: "post", uri: "/users", framework: "openapi" }),
     ]);
     expect(merged.method).toBe("POST");
@@ -84,7 +84,7 @@ describe("EndpointMerger — identidad", () => {
 
   test("name se preserva del ganador (GraphQL/tRPC identity)", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         method: "post",
         uri: "/graphql",
@@ -114,7 +114,7 @@ describe("EndpointMerger — identidad", () => {
 describe("EndpointMerger — body", () => {
   test("gana el de mayor confianza: OpenAPI > Fastify > resto", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "express", scannerScore: 0.9, body: REGEX_BODY }),
       candidate({ framework: "fastify", scannerScore: 0.9, body: FASTIFY_BODY }),
       candidate({ framework: "openapi", scannerScore: 0.7, body: OPENAPI_BODY }),
@@ -126,7 +126,7 @@ describe("EndpointMerger — body", () => {
 
   test("a igual confianza gana el primero en orden de llegada", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "laravel", scannerScore: 0.9, body: body("laravel") }),
       candidate({ framework: "symfony", scannerScore: 0.9, body: body("symfony") }),
     ]);
@@ -139,7 +139,7 @@ describe("EndpointMerger — body", () => {
 describe("EndpointMerger — fields", () => {
   test("unión por fieldName: required true gana sobre false", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "fastify",
         scannerScore: 0.9,
@@ -159,7 +159,7 @@ describe("EndpointMerger — fields", () => {
 
   test("unión: integer gana sobre string cuando required coincide", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "laravel",
         scannerScore: 0.9,
@@ -177,7 +177,7 @@ describe("EndpointMerger — fields", () => {
 
   test("unión con format declarado gana sobre sin format", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "laravel",
         scannerScore: 0.9,
@@ -202,7 +202,7 @@ describe("EndpointMerger — fields", () => {
 
   test("fields de 3 candidatos: 2 únicos, 1 compartido (restrictivo gana)", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "openapi",
         scannerScore: 0.9,
@@ -234,7 +234,7 @@ describe("EndpointMerger — fields", () => {
 
   test("ningún candidato con fields → fields undefined", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "express", scannerScore: 0.6 }),
     ]);
     expect(merged.fields).toBeUndefined();
@@ -244,7 +244,7 @@ describe("EndpointMerger — fields", () => {
 describe("EndpointMerger — auth", () => {
   test("auth sin conflicto: gana el de mayor confianza", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "express", scannerScore: 0.5, authScheme: BEARER }),
       candidate({ framework: "fastify", scannerScore: 0.85, authScheme: BEARER }),
     ]);
@@ -311,7 +311,7 @@ describe("EndpointMerger — auth", () => {
 describe("EndpointMerger — description", () => {
   test("gana la más larga en chars", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "express",
         scannerScore: 0.5,
@@ -332,7 +332,7 @@ describe("EndpointMerger — description", () => {
 
   test("a igual longitud gana la primera", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "laravel",
         scannerScore: 0.9,
@@ -353,7 +353,7 @@ describe("EndpointMerger — description", () => {
 describe("EndpointMerger — provenance", () => {
   test("está presente en todos los casos (incluso 1 candidato)", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([candidate({ framework: "express" })]);
+    const { merged } = merger.merge([candidate({ framework: "express" })]);
 
     expect(merged.provenance).toBeDefined();
     expect(merged.provenance.route).toBeDefined();
@@ -362,7 +362,7 @@ describe("EndpointMerger — provenance", () => {
 
   test("contributors lista todos los frameworks del grupo", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "express", scannerScore: 0.9 }),
       candidate({ framework: "openapi", scannerScore: 0.7 }),
       candidate({ framework: "fastify", scannerScore: 0.85 }),
@@ -379,7 +379,7 @@ describe("EndpointMerger — provenance", () => {
 describe("EndpointMerger — confidence global (media ponderada)", () => {
   test("4 piezas presentes: pesos originales", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "openapi",
         scannerScore: 0.95,
@@ -409,7 +409,7 @@ describe("EndpointMerger — confidence global (media ponderada)", () => {
 
   test("pieza ausente redistribuye su peso: solo ruta → confidence = ruta", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({ framework: "express", scannerScore: 0.5 }),
     ]);
 
@@ -420,7 +420,7 @@ describe("EndpointMerger — confidence global (media ponderada)", () => {
 
   test("dos piezas (ruta + body): se redistribuye auth y desc", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "fastify",
         scannerScore: 0.85,
@@ -515,7 +515,7 @@ describe("mergeEndpoints — pipeline-level", () => {
 describe("EndpointMerger — interactúa con la tabla de confianza", () => {
   test("default frameworkConfidence hace ganar a OpenAPI sobre regex-based", () => {
     const merger = new EndpointMerger();
-    const merged = merger.merge([
+    const { merged } = merger.merge([
       candidate({
         framework: "laravel",
         scannerScore: 0.99, // scannerScore alto pero framework bajo
@@ -529,6 +529,376 @@ describe("EndpointMerger — interactúa con la tabla de confianza", () => {
     ]);
 
     // OpenAPI (0.95) > Laravel (0.5) → gana OpenAPI
+    expect(merged.provenance.body?.framework).toBe("openapi");
+    expect(merged.body).toEqual(body("openapi"));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// a00011 C-3 — correcciones del review post-a00010 (B-rev-3 / 4 / 5 / 15)
+// ─────────────────────────────────────────────────────────────────────
+
+describe("EndpointMerger — identidad contextual REST vs RPC (a00011 B-rev-3)", () => {
+  test("dos candidatos REST mismo (method, uri) y distinto name → un merged", () => {
+    // REST no multiplexa: openapi y express comparten identidad y se
+    // fusionan. El nombre del ganador (openapi, confianza 0.95) gana.
+    const result = mergeEndpoints([
+      candidate({
+        method: "POST",
+        uri: "/users",
+        name: "Create a new user account",
+        framework: "openapi",
+        scannerScore: 0.95,
+      }),
+      candidate({
+        method: "POST",
+        uri: "/users",
+        name: "Create Users",
+        framework: "express",
+        scannerScore: 0.6,
+      }),
+    ]);
+
+    expect(result.specs).toHaveLength(1);
+    expect(result.specs[0]?.method).toBe("POST");
+    expect(result.specs[0]?.uri).toBe("/users");
+    expect(result.specs[0]?.name).toBe("Create a new user account");
+    expect(result.provenance).toHaveLength(1);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("dos candidatos GraphQL mismo (method+uri), distinto name → DOS merged", () => {
+    // GraphQL multiplexa por nombre: dos POST /graphql con nombres
+    // distintos son dos operaciones distintas. Antes colisionaban en
+    // una sola, perdiendo una operación silenciosamente.
+    const result = mergeEndpoints([
+      candidate({
+        method: "POST",
+        uri: "/graphql",
+        name: "QueryUsers",
+        framework: "graphql",
+        scannerScore: 0.7,
+      }),
+      candidate({
+        method: "POST",
+        uri: "/graphql",
+        name: "MutationCreateUser",
+        framework: "graphql",
+        scannerScore: 0.7,
+      }),
+    ]);
+
+    expect(result.specs).toHaveLength(2);
+    const names = result.specs.map((s) => s.name).sort();
+    expect(names).toEqual(["MutationCreateUser", "QueryUsers"]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("REST y RPC sobre la misma (method, uri) NO colisionan (cada uno a su grupo)", () => {
+    // graphql (RPC, incluye name en la clave) y express (REST, no la
+    // incluye) generan dos claves distintas → dos grupos, dos merges.
+    // Esto es deliberado: el adapter agnóstico prefiere dos endpoints
+    // separados a una fusión silenciosa.
+    const result = mergeEndpoints([
+      candidate({
+        method: "POST",
+        uri: "/users",
+        name: "ExpressCreate",
+        framework: "express",
+        scannerScore: 0.6,
+      }),
+      candidate({
+        method: "POST",
+        uri: "/graphql",
+        name: "GraphqlCreateUser",
+        framework: "graphql",
+        scannerScore: 0.7,
+      }),
+    ]);
+
+    expect(result.specs).toHaveLength(2);
+    const uris = result.specs.map((s) => s.uri).sort();
+    expect(uris).toEqual(["/graphql", "/users"]);
+  });
+});
+
+describe("EndpointMerger — field merge por location:fieldName (a00011 B-rev-4)", () => {
+  test("path.id y query.id son DOS campos en el merged (clave compuesta)", () => {
+    // Antes ambos campos colisionaban en una sola entrada porque la
+    // clave era `fieldName` desnudo; ahora `${location}:${fieldName}`
+    // los separa y cada uno conserva su location.
+    const result = mergeEndpoints([
+      candidate({
+        method: "GET",
+        uri: "/items/{id}",
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [
+          field({ fieldName: "id", location: "path", type: "string", required: true }),
+        ],
+      }),
+      candidate({
+        method: "GET",
+        uri: "/items/{id}",
+        framework: "express",
+        scannerScore: 0.6,
+        fields: [
+          field({ fieldName: "id", location: "query", type: "string", required: false }),
+        ],
+      }),
+    ]);
+
+    expect(result.specs).toHaveLength(1);
+    const fields = result.specs[0]?.fields ?? [];
+    expect(fields).toHaveLength(2);
+    const byLoc = Object.fromEntries(
+      fields.map((f) => [`${f.location}:${f.fieldName}`, f]),
+    );
+    expect(byLoc["path:id"]?.required).toBe(true);
+    expect(byLoc["query:id"]?.required).toBe(false);
+    expect(result.warnings).toEqual([]);
+  });
+});
+
+describe("EndpointMerger — mergeFieldSpecs cumple su contrato (a00011 B-rev-5)", () => {
+  test("minLength: max(mínimos)", () => {
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [field({ fieldName: "username", type: "string", minLength: 3 })],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [field({ fieldName: "username", type: "string", minLength: 5 })],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.minLength).toBe(5);
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("maximum: min(máximos)", () => {
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [field({ fieldName: "age", type: "integer", maximum: 120 })],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [field({ fieldName: "age", type: "integer", maximum: 99 })],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.maximum).toBe(99);
+  });
+
+  test("enumValues: intersección vacía → warning + enumValues vacío", () => {
+    // Disjuntos: ningún valor satisface a los dos scanners. El merger
+    // no inventa: emite warning y deja la intersección (vacía) para
+    // que el operador decida.
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [
+          field({
+            fieldName: "role",
+            type: "string",
+            enumValues: ["a", "b", "c"],
+          }),
+        ],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [
+          field({
+            fieldName: "role",
+            type: "string",
+            enumValues: ["b", "c", "d"],
+          }),
+        ],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.enumValues).toEqual(["b", "c"]);
+    // La intersección NO es vacía: hay warning sólo si lo es.
+    expect(result.warnings).toEqual([]);
+  });
+
+  test("enumValues: intersección vacía real → warning emitido", () => {
+    // Aquí sí son disjuntos: el warning debe salir en `IMergeOutcome.warnings`.
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [
+          field({
+            fieldName: "role",
+            type: "string",
+            enumValues: ["a", "b"],
+          }),
+        ],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [
+          field({
+            fieldName: "role",
+            type: "string",
+            enumValues: ["c", "d"],
+          }),
+        ],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.enumValues).toEqual([]);
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/body:role/);
+    expect(result.warnings[0]).toMatch(/enum intersection empty/);
+  });
+
+  test("type mismatch (string vs object) → conflicto + ganador por mayor confianza", () => {
+    // A: 'object' con scannerScore 0.95 (openapi). B: 'string' con
+    // scannerScore 0.85 (fastify). openapi gana por frameworkConfidence
+    // (0.95 vs 0.85), y el tipo del ganador es 'object'.
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [field({ fieldName: "payload", type: "string", required: false })],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [field({ fieldName: "payload", type: "object", required: false })],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.type).toBe("object");
+  });
+
+  test("type mismatch con confianza igual → ganador es A + conflict warning", () => {
+    // Dos scanners con la misma frameworkConfidence (cayendo al
+    // default 0.5 por no estar en la tabla). A gana por orden de
+    // llegada, y el merger avisa.
+    const result = mergeEndpoints([
+      candidate({
+        framework: "laravel",
+        scannerScore: 0.5,
+        fields: [field({ fieldName: "payload", type: "string", required: false })],
+      }),
+      candidate({
+        framework: "symfony",
+        scannerScore: 0.5,
+        fields: [field({ fieldName: "payload", type: "object", required: false })],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.type).toBe("string");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/type mismatch: string vs object/);
+  });
+
+  test("pattern divergente → warning + ganador A (openapi primero por frameworkConfidence)", () => {
+    // Con la tabla por defecto, openapi (0.95) gana a fastify (0.85),
+    // así que A es openapi en `mergeFieldSpecs`. El contrato es
+    // "gana el primero en el orden del caller"; aquí ese orden es el
+    // de `sortCandidates`, que pone openapi primero.
+    const result = mergeEndpoints([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        fields: [
+          field({ fieldName: "slug", type: "string", pattern: "^[a-z0-9-]+$" }),
+        ],
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        fields: [
+          field({ fieldName: "slug", type: "string", pattern: "^[a-z0-9_-]+$" }),
+        ],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0] as IValidationSpec | undefined;
+    expect(f?.pattern).toBe("^[a-z0-9_-]+$");
+    expect(result.warnings).toHaveLength(1);
+    expect(result.warnings[0]).toMatch(/pattern mismatch/);
+  });
+});
+
+describe("EndpointMerger — frameworkConfidence se respeta en sortCandidates (a00011 B-rev-15)", () => {
+  test("express gana body pese a menor scannerScore porque frameworkConfidence lo declara superior", () => {
+    // a00011 B-rev-15: sortCandidates debe usar la tabla inyectada, no
+    // la constante global. Aquí openapi tiene scannerScore mayor
+    // (0.95 vs 0.5) pero express tiene mayor frameworkConfidence
+    // (0.9 vs 0.2). El body ganador debe ser el de express.
+    //
+    // El spec del usuario decía "openapi gana... aun teniendo menos
+    // scannerScore"; con los valores 0.2/0.9 que daba el ejemplo
+    // eso era imposible. Interpreto la intención del fix B-rev-15
+    // (frameworkConfidence ordena candidatos) y escribo el caso
+    // coherente con los números.
+    const result = mergeEndpoints(
+      [
+        candidate({
+          method: "POST",
+          uri: "/x",
+          framework: "openapi",
+          scannerScore: 0.95,
+          body: body("openapi"),
+        }),
+        candidate({
+          method: "POST",
+          uri: "/x",
+          framework: "express",
+          scannerScore: 0.5,
+          body: body("express"),
+        }),
+      ],
+      {
+        frameworkConfidence: {
+          openapi: 0.2,
+          express: 0.9,
+        },
+      },
+    );
+
+    expect(result.specs).toHaveLength(1);
+    expect(result.specs[0]?.body).toEqual(body("express"));
+    expect(result.specs[0]?.provenance.body?.framework).toBe("express");
+  });
+
+  test("con frameworkConfidence por defecto, openapi sigue ganando por tabla interna", () => {
+    // Regresión: el comportamiento por defecto (sin override) sigue
+    // dando openapi (0.95) por encima de express (default 0.5).
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.5,
+        body: body("openapi"),
+      }),
+      candidate({
+        framework: "express",
+        scannerScore: 0.95,
+        body: body("express"),
+      }),
+    ]);
+
     expect(merged.provenance.body?.framework).toBe("openapi");
     expect(merged.body).toEqual(body("openapi"));
   });
