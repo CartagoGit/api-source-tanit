@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 148 símbolos en 51 módulos.
+> 150 símbolos en 52 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -158,6 +158,38 @@ la suma.
 Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
 frameworks distintos con `Promise.all` y comprueba que ninguno se
 cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+
+### `packages/core/discovery/monorepo-detector.helper.ts`
+
+Detección de monorepo workspace — f00011 S3.
+
+#### `detectMonorepo`
+
+```ts
+export async function detectMonorepo( projectRoot: string, ): Promise<IMonorepoDetection>
+```
+
+Punto de entrada: devuelve la detección para una raíz de proyecto.
+
+`projectRoot` debe ser absoluto (los scanners y el pipeline ya lo
+absolutizaron antes). Si llega relativo, se devuelve "no es monorepo"
+con `null` por todas partes — el orquestador no debería tener que
+adivinar cuál es la raíz.
+
+#### `resolveWorkspaceDirs`
+
+```ts
+export function resolveWorkspaceDirs( projectRoot: string, globs: ReadonlyArray<string>, ): string[]
+```
+
+Resuelve un glob de workspace a su primer directorio real bajo
+`projectRoot`. Lo que sale del parser son globs (`apps/*`,
+`packages/api`); este helper materializa cada uno con `existsSync`
+(es boot-time / una vez por escaneo, no hot path).
+
+Devuelve solo los que **existen**: si el `workspaces` lista `apps/*`
+pero la carpeta está vacía, no se devuelve nada — sería peor
+confundir "el workspace está vacío" con "no es monorepo".
 
 ### `packages/core/discovery/output-paths.helper.ts`
 
