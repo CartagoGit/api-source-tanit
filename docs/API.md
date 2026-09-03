@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 152 símbolos en 54 módulos.
+> 154 símbolos en 54 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -329,10 +329,16 @@ export async function buildZeroConfig( context: IProjectContext, ): Promise<Proj
 Genera un ProjectConfig mínimo viable sin archivo del host.
 Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
 
+`baseUrl` por defecto es el origen (`DEFAULT_BASE_URL`). El sufijo
+`/api` **no** se añade automáticamente: solo aparece cuando una de
+las fuentes documentadas en `BASE_PATH_SOURCES` lo aporta. Esto
+cierra el bug que producía `http://localhost/api/users` en proyectos
+Express/Flask/Gin/FastAPI sin prefijo global (a00012 H-P2e, S4).
+
 #### `resolveConfigPath`
 
 ```ts
-export async function resolveConfigPath( argv: string[] = process.argv, context: IProjectContext, ): Promise<string>
+export async function resolveConfigPath( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<string>
 ```
 
 Resuelve la ruta del módulo de configuración del host.
@@ -347,7 +353,7 @@ Orden:
 #### `loadProject`
 
 ```ts
-export async function loadProject( argv: string[] = process.argv, context: IProjectContext, ): Promise<LoadedProject>
+export async function loadProject( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<LoadedProject>
 ```
 
 El contexto es obligatorio para que el loader sea seguro en procesos
@@ -512,6 +518,29 @@ export function authEnvironmentVariables(): Array<
 
 Variables que el environment necesita para el flujo de auth.
 Se añaden solo si la colección tiene login.
+
+#### `IMissingCredentialsWarning`
+
+```ts
+export interface IMissingCredentialsWarning
+```
+
+Forma del aviso estructurado que `attachCredentialTemplate` emite
+cuando el body del login no expone las claves que esperaba.
+
+Sale por `console.warn` como JSON de una sola línea, así un runner o
+un parser externo puede leerlo sin regex sobre un mensaje libre.
+Los tests sustituyen `console.warn` con `vi.spyOn` para verificarlo.
+
+#### `warnMissingCredentials`
+
+```ts
+export function warnMissingCredentials( warning: Omit<IMissingCredentialsWarning, "kind">, ): void
+```
+
+Emite un aviso estructurado cuando el login body no expone
+credenciales reconocibles. La función es exportada para tests y para
+que un llamador pueda redirigirla si necesita otro sink.
 
 #### `detectLaravelTokenPath`
 
