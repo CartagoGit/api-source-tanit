@@ -46,6 +46,7 @@
   "files": [
     "bin/",
     "packages/",
+    "!packages/plugins/mcp-vertex_expostman/",
     "scripts/",
     "docs/INSTALL.md",
     "docs/FRAMEWORKS.md",

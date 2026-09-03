@@ -23,6 +23,22 @@ import { PACKAGE_JSON, REPO_ROOT, exampleDir } from "../helpers/root.helper.js";
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */
 const EXPECTED_REQUESTS = 9;
 
+/**
+ * Prefijo dentro del tarball que, **si aparece**, indica que el plugin
+ * MCP se está filtrando al producto público. El `file:` del
+ * `@mcp-vertex/core` no resuelve fuera del worktree del desarrollador y
+ * el plugin depende de ese path: distribuirlo empaquetado rompe la
+ * instalación del usuario sin que nada falle aquí.
+ *
+ * El prefijo incluye `packages/` porque `files` en el `package.json`
+ * raíz lista `packages/` y npm lo preserva tal cual dentro del tarball;
+ * el plugin acaba como `package/packages/plugins/mcp-vertex_expostman/`,
+ * no como `package/plugins/...`.
+ *
+ * Slice S0 de la propuesta `a00012`.
+ */
+const MCP_PLUGIN_TARBALL_PATH = "package/packages/plugins/mcp-vertex_expostman/";
+
 interface IStep {
   readonly name: string;
   readonly ok: boolean;
@@ -65,6 +81,31 @@ async function main(): Promise<number> {
       detail: tarball ?? pack.output.slice(-300),
     });
     if (!tarball) return report(steps);
+
+    // 1.b Aserción de DoD de packaging (slice S0 de `a00012`):
+    // el plugin MCP es un workspace privado; confiar en `"private": true`
+    // no basta porque el `files` del `package.json` raíz lista
+    // `packages/` y npm incluye los workspaces que coincidan. Hay que
+    // leer el tarball real y confirmar que la ruta del plugin **no**
+    // aparece. Si aparece, fallamos con un mensaje explícito en vez de
+    // dejar que el siguiente paso lo descubra cuando ya es tarde.
+    const listing = await run(["tar", "-tzf", join(workDir, tarball)], workDir);
+    const leaked = listing.ok
+      ? listing.output
+          .split("\n")
+          .filter((line) => line.startsWith(MCP_PLUGIN_TARBALL_PATH))
+      : [];
+    steps.push({
+      name: "el plugin MCP no debe entrar en el tarball público",
+      ok: listing.ok && leaked.length === 0,
+      detail:
+        leaked.length === 0
+          ? `${MCP_PLUGIN_TARBALL_PATH} ausente`
+          : leaked.length === 1
+            ? `${MCP_PLUGIN_TARBALL_PATH} aparece en el tarball`
+            : `${leaked.length} entradas con prefijo ${MCP_PLUGIN_TARBALL_PATH}`,
+    });
+    if (leaked.length > 0) return report(steps);
 
     // 2. Instalarlo en un proyecto limpio.
     const consumer = join(workDir, "consumer");
