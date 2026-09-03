@@ -39,7 +39,7 @@ Las referencias entre propuestas deben usar el id (`a00005`, `r00008`, etc.)
 y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
-`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `c00002`,
+`a00007`, `a00008`, `a00009`, `a00010`, `c00002`,
 `r00008`, `r00010` y `x00008`; están archivadas bajo sus carpetas canónicas:
 
 | Id | Kind | Ruta |
@@ -52,7 +52,6 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00008` | `audit` | [`done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md`](done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md) |
 | `a00009` | `audit` | [`done/audits/a00009-auditoria-exhaustiva-2026-09-03-cli-scanners-core-ui.md`](done/audits/a00009-auditoria-exhaustiva-2026-09-03-cli-scanners-core-ui.md) |
 | `a00010` | `audit` | [`done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md`](done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md) |
-| `a00011` | `audit` | [`done/audits/a00011-plan-correcciones-revision-a00010.md`](done/audits/a00011-plan-correcciones-revision-a00010.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
 | `r00010` | `refactor` | [`done/refactors/r00010-eliminar-el-singleton-de-paths-service.md`](done/refactors/r00010-eliminar-el-singleton-de-paths-service.md) |
