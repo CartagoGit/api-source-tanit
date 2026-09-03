@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 153 símbolos en 54 módulos.
+> 157 símbolos en 55 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2057,6 +2057,53 @@ Construye un nodo `intersection` (`allOf`).
 Vacío: un `allOf` sin candidatos equivale a `true` en JSON Schema,
 que es un caso patológico. El caller decide si pasa lista vacía
 (el helper la respeta sin error) o si la rechaza antes de llamar.
+
+### `packages/core/validation/validation-enricher.service.ts`
+
+Registry de enriquecedores de validación agnósticos.
+
+#### `registerValidationEnricher`
+
+```ts
+export function registerValidationEnricher(e: IValidationEnricher): void
+```
+
+Registra (o reemplaza) un enricher para su provider.
+
+Idempotente: registrar dos veces el mismo provider deja al segundo
+como activo. El contrato dice "un enricher por provider", así que
+los dobles registros son un error de programación — pero el registry
+no se queja porque un test que registra un stub y luego el real
+(o al revés) sigue siendo útil mientras los dos se comporten igual.
+
+#### `getValidationEnricher`
+
+```ts
+export function getValidationEnricher( p: ValidationProvider, ): IValidationEnricher | undefined
+```
+
+#### `runValidationEnrichers`
+
+```ts
+export function runValidationEnrichers(spec: EndpointSpec): EndpointSpec
+```
+
+Ejecuta el enricher registrado para el `provider` del spec.
+
+  - Sin `validationSource` → no hay nada que enriquecer; devuelve el spec igual.
+  - Con `validationSource` pero sin enricher registrado → no es un
+    error: significa que ese framework aún no migró. El spec vuelve igual.
+  - Con enricher registrado → devuelve `enricher.enrich(spec)`.
+
+La función es pura y síncrona. Phase 1 sólo necesita esto; mover el
+I/O a los enrichers será follow-up de la siguiente fase (cada
+provider ya carga sus reglas cuando construye el spec, en el adapter).
+
+#### `_resetValidationEnrichersForTests`
+
+```ts
+export function _resetValidationEnrichersForTests(): void
+```
 
 ### `packages/frameworks/index.ts`
 
