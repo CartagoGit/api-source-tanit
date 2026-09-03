@@ -38,7 +38,7 @@ y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
 `a00007`, `a00008`, `c00002`,
-`r00008` y `x00008`; están archivadas bajo sus carpetas canónicas:
+`r00008`, `r00010` y `x00008`; están archivadas bajo sus carpetas canónicas:
 
 | Id | Kind | Ruta |
 |---|---|---|
@@ -50,6 +50,7 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00008` | `audit` | [`done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md`](done/audits/a00008-auditoria-completa-2026-08-29-el-gate-de-dod-con-agujeros-cerrados-y-verificados.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
+| `r00010` | `refactor` | [`done/refactors/r00010-eliminar-el-singleton-de-paths-service.md`](done/refactors/r00010-eliminar-el-singleton-de-paths-service.md) |
 | `x00008` | `fix` | [`done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md`](done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md) |
 
 Los informes crudos de auditoría, distintos de las propuestas `kind: audit`,
