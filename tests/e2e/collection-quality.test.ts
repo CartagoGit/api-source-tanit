@@ -112,6 +112,8 @@ describe("métodos HTTP que Postman soporta", () => {
 
   // La lista del adapter y la del tipo eran dos: añadir un método al
   // tipo no servía de nada hasta acordarse de la otra.
+  // a00012 S3.c añadió TRACE porque el scanner de OpenAPI lo reconoce
+  // (`paths./y.trace`) pero el adapter lo filtraba en silencio.
   test("la lista del adapter y la del contrato son la misma", () => {
     expect([...SUPPORTED_METHODS]).toEqual([
       "GET",
@@ -121,6 +123,7 @@ describe("métodos HTTP que Postman soporta", () => {
       "DELETE",
       "HEAD",
       "OPTIONS",
+      "TRACE",
     ]);
   });
 });

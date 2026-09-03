@@ -117,12 +117,26 @@ export interface EndpointSpec {
   /**
    * Método HTTP.
    *
-   * `HEAD` y `OPTIONS` entran aquí porque los scanners los detectan y
-   * Postman los soporta. Sin ellos, un `method: ["GET", "HEAD"]` de
-   * Fastify —o un `app.Options()` de Fiber— se escaneaba bien y
-   * desaparecía en el adapter sin decir nada.
+   * `HEAD`, `OPTIONS` y `TRACE` entran aquí porque los scanners los
+   * detectan y Postman los soporta. Sin ellos, un `method: ["GET",
+   * "HEAD"]` de Fastify, un `app.Options()` de Fiber o un `trace:` en
+   * un path de OpenAPI se escaneaban bien y desaparecían en el adapter
+   * sin decir nada.
+   *
+   * La lista runtime vive en `SUPPORTED_METHODS` (mismo paquete) y es
+   * la que el adapter consulta para decidir qué deja pasar: tener las
+   * dos en sync es la garantía de que añadir un verbo aquí surte
+   * efecto.
    */
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
+  method:
+    | "GET"
+    | "POST"
+    | "PUT"
+    | "PATCH"
+    | "DELETE"
+    | "HEAD"
+    | "OPTIONS"
+    | "TRACE";
   /** URI relativa sin el prefijo `/api`. Empieza con `/`. */
   uri: string;
   description?: string;

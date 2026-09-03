@@ -44,6 +44,11 @@ export const OUTPUT_DIR_NAME = "export-to-postman";
  * filtrar: tenerla escrita a mano allí hacía que añadir un método al
  * tipo no sirviera de nada, y los `HEAD` que los scanners sí detectaban
  * desaparecían en silencio.
+ *
+ * `TRACE` se añadió en a00012 S3.c porque el scanner de OpenAPI lo
+ * reconocía (`paths./y.trace`) pero el adapter lo filtraba; los demás
+ * frameworks no lo emiten, así que la entrada solo se materializa
+ * cuando el spec lo trae.
  */
 export const SUPPORTED_METHODS = [
   "GET",
@@ -53,6 +58,7 @@ export const SUPPORTED_METHODS = [
   "DELETE",
   "HEAD",
   "OPTIONS",
+  "TRACE",
 ] as const;
 
 

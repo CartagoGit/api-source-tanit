@@ -27,7 +27,16 @@ import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { createTempProject, scanProject } from "./scanner-fixture";
 
 /** Verbos que el pipeline sabe convertir en requests de Postman. */
-const SUPPORTED_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
+const SUPPORTED_METHODS = new Set([
+  "GET",
+  "POST",
+  "PUT",
+  "PATCH",
+  "DELETE",
+  "HEAD",
+  "OPTIONS",
+  "TRACE",
+]);
 
 /** Qué sabe hacer el scanner de este framework. */
 export interface IScannerCapabilities {

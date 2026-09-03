@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { buildSpecsFromScanner, toPostmanUri } from "../../packages/core/adapters/parsed-route-to-spec.adapter";
+import { SUPPORTED_METHODS } from "../../packages/contracts/constants/core/postman.constant";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
 import type {
   IProjectMatch,
   IRouteScanner,
@@ -172,7 +174,11 @@ describe("buildSpecsFromScanner — conversión de rutas", () => {
     expect(result.specs[0]).toMatchObject({ method: "GET", uri: "/users" });
   });
 
-  test("descarta los verbos que Postman no va a usar", async () => {
+  // a00012 S3.c añadió TRACE al catálogo y al union: antes lo
+  // descartaba el adapter aunque el scanner de OpenAPI sí lo detectaba.
+  // CONNECT sigue siendo un verbo que Postman no soporta, así que se
+  // mantiene como ejemplo de descarte.
+  test("descarta los verbos que Postman no va a usar (CONNECT)", async () => {
     const result = await buildSpecsFromScanner(
       scannerOf([
         route({ method: "GET" }),
@@ -182,7 +188,7 @@ describe("buildSpecsFromScanner — conversión de rutas", () => {
       MATCH,
       null,
     );
-    expect(result.specs).toHaveLength(1);
+    expect(result.specs.map((s) => s.method)).toEqual(["GET", "TRACE"]);
   });
 
   test("normaliza el método a mayúsculas", async () => {
@@ -378,5 +384,37 @@ describe("buildSpecsFromScanner — valores de ejemplo", () => {
       providerOf([field({ fieldName: "Authorization", location: "header" })]),
     );
     expect(result.specs[0]?.headers?.[0]?.value).toBe("{{token}}");
+  });
+});
+
+// a00012 S3.c — TRACE en el contrato.
+//
+// El union `EndpointSpec["method"]` y el catálogo `SUPPORTED_METHODS`
+// no incluían "TRACE". El scanner de OpenAPI sí lo reconocía
+// (`paths./y.trace`), pero el adapter lo filtraba. Este slice
+// materializa el fix en código y tests.
+describe("a00012 S3.c — TRACE en el contrato", () => {
+  test("el catálogo runtime contiene TRACE", () => {
+    expect(SUPPORTED_METHODS).toContain("TRACE");
+  });
+
+  // Si "TRACE" deja de estar en el union, este archivo NO compila y
+  // `bun run typecheck` falla. La aserción runtime es trivial; el valor
+  // real está en el chequeo en tiempo de compilación.
+  test('el union EndpointSpec["method"] acepta "TRACE" como literal', () => {
+    type IncludesTrace = "TRACE" extends EndpointSpec["method"] ? true : false;
+    const _check: IncludesTrace = true;
+    expect(_check).toBe(true);
+  });
+
+  test("el adapter deja pasar una ruta con method=TRACE (no la filtra)", async () => {
+    const result = await buildSpecsFromScanner(
+      scannerOf([route({ method: "TRACE", uri: "/debug" })]),
+      MATCH,
+      null,
+    );
+    expect(result.specs).toHaveLength(1);
+    expect(result.specs[0]?.method).toBe("TRACE");
+    expect(result.specs[0]?.uri).toBe("/debug");
   });
 });
