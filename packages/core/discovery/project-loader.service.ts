@@ -302,8 +302,9 @@ export async function resolveConfigPath(
  * memoria con autodetección de prefijo + baseUrl + nombre.
  */
 /**
- * El contexto es obligatorio para que el loader sea seguro en procesos de
- * vida larga y no vuelva a leer la raíz cacheada de `paths.service`.
+ * El contexto es obligatorio para que el loader sea seguro en procesos
+ * de vida larga y no vuelva a leer la raíz cacheada del singleton
+ * retirado de `paths.service` en r00010 S2 (2026-09-03).
  */
 export async function loadProject(
   argv: string[] = process.argv,

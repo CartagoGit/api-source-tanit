@@ -1,15 +1,15 @@
 /**
  * Resolución de rutas de salida a partir de un `IProjectContext` explícito.
  *
- * Sustituye a las funciones de `paths.service` que la fachada con estado
- * exponía — `outputDir`, `outputCollectionPath`, `outputEnvironmentPath`,
- * `describeDiscoveredPaths`—. Aquí todas reciben el contexto como
- * argumento: no leen globales, no cachean nada, y dos llamadas en el
- * mismo proceso con contextos distintos no se pisan.
+ * Sustituye a las funciones del singleton retirado de `paths.service`
+ * (r00010 S2, 2026-09-03) — `outputDir`, `outputCollectionPath`,
+ * `outputEnvironmentPath`, `describeDiscoveredPaths`—. Aquí todas
+ * reciben el contexto como argumento: no leen globales, no cachean
+ * nada, y dos llamadas en el mismo proceso con contextos distintos no
+ * se pisan.
  *
- * El singleton de `paths.service` sigue existiendo para los pocos
- * consumidores que aún no reciben contexto (S2 los migra). Este helper
- * no importa de ahí ni comparte estado con él.
+ * Este helper no comparte estado con el singleton (retirado) y es la
+ * única ruta de salida para los siete comandos del CLI migrados.
  *
  * Precedencia del directorio de salida (mismas reglas que
  * `outputDir(context?)` antes, sin el caché):

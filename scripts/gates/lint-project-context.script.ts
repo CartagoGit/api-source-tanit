@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 /**
- * `bun run lint:project-context` — quién puede preguntarle al singleton.
+ * `bun run lint:project-context` — quién puede leer el contexto global.
  *
- * `paths.service` resuelve la raíz del proyecto **una vez por proceso** y
- * la cachea. Para el CLI está bien: un proceso por proyecto. Para
- * cualquier consumidor de vida larga —el servidor MCP, la interfaz web—
- * es una trampa, y ya mordió tres veces:
+ * El proyecto pasó por un singleton (`packages/core/discovery/paths.service.ts`)
+ * que resolvía la raíz del proyecto **una vez por proceso** y la cacheaba.
+ * Para el CLI estaba bien —un proceso por proyecto—, pero para cualquier
+ * consumidor de vida larga —el servidor MCP, la interfaz web— era una
+ * trampa, y ya mordió tres veces:
  *
  *   · `generate` desde la UI escribía dentro de este repositorio en vez
  *     de en el proyecto pedido.
@@ -14,18 +15,19 @@
  *     vez escondía que los scanners se pisaban los regex compartidos
  *     (r00005 S2).
  *
- * La cura de fondo es que el contexto entre **como argumento**. Este
- * gate no la impone de golpe —quedan capas por migrar— pero sí congela
- * el avance: cada sitio que hoy lee el singleton está declarado abajo
- * **con su motivo**, y uno nuevo no compila el gate.
+ * El singleton se retiró en r00010 S2 (2026-09-03). Lo que queda es el
+ * resolutor explícito (`IProjectContext`), y este gate se asegura de que
+ * ningún nuevo lector resucite el patrón: cada sitio que hoy lee la
+ * variable global de la raíz está declarado abajo **con su motivo**, y
+ * uno nuevo no pasa el gate.
  *
  * ## Las tres categorías, y por qué no son la misma
  *
  * - `entrypoint`: el borde del sistema. Un comando del CLI resuelve la
  *   raíz de los flags porque es su trabajo; ahí el estado global no
  *   puede confundirse con nada porque solo hay un proyecto por proceso.
- * - `facade`: el propio `paths.service` y el resolutor explícito. Son
- *   los que *implementan* la resolución; prohibírselo no tendría sentido.
+ * - `facade`: el resolutor explícito. Es el que *implementa* la
+ *   resolución; prohibírselo no tendría sentido.
  * - `debt`: lo que debería recibir contexto y todavía no. Cada uno dice
  *   qué hace falta para quitarlo. Esta lista solo puede encoger.
  *
@@ -63,15 +65,10 @@ const EXCEPTIONS: readonly IException[] = [
 
   // --- Quienes implementan la resolución -----------------------------------
   {
-    path: "packages/core/discovery/paths.service.ts",
-    kind: "facade",
-    why: "Es el singleton. Prohibirle leerse a sí mismo no tendría sentido.",
-  },
-  {
     path: "packages/core/discovery/project-context.service.ts",
     kind: "facade",
     why:
-      "Es la alternativa SIN estado: lee `POSTMAN_PROJECT_ROOT` del `env` que " +
+      "Es el resolutor SIN estado: lee `POSTMAN_PROJECT_ROOT` del `env` que " +
       "le inyectan, no del global, y devuelve un objeto nuevo por llamada.",
   },
   {

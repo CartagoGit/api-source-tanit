@@ -465,8 +465,9 @@ export async function findFormRequestForController(
 
   // `projectRootOverride` es el camino preferente: mantiene el provider
   // reentrante (dos proyectos escaneados en el mismo proceso no se pisan).
-  // Sin él caemos al singleton de `paths.service`, que resuelve la raíz
-  // una única vez por proceso desde POSTMAN_PROJECT_ROOT / --project-root.
+  // Antes, sin él, caíamos al singleton de `paths.service` (retirado en
+  // r00010 S2, 2026-09-03), que resolvía la raíz una única vez por
+  // proceso desde POSTMAN_PROJECT_ROOT / --project-root.
   const base = path.join(context.projectRoot, "app", "Http", "Requests");
 
   const toRelative = (abs: string): string =>

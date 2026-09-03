@@ -1,10 +1,11 @@
 /**
  * Reentrancia del pipeline: dos proyectos en el mismo proceso.
  *
- * `paths.service` resuelve la raíz del proyecto **una vez por proceso** y
- * la cachea. Vale para el CLI, que arranca un proceso por proyecto, pero
- * rompe a cualquier consumidor de vida larga —el servidor MCP, el gate,
- * la propia suite de tests—: el segundo proyecto analizado recibía la
+ * El singleton retirado de `paths.service` (r00010 S2, 2026-09-03)
+ * resolvía la raíz del proyecto **una vez por proceso** y la cacheaba.
+ * Valía para el CLI, que arranca un proceso por proyecto, pero rompía
+ * a cualquier consumidor de vida larga —el servidor MCP, el gate, la
+ * propia suite de tests—: el segundo proyecto analizado recibía la
  * configuración y las rutas del primero.
  *
  * Era además la causa de fondo del bug del provider de FormRequests de

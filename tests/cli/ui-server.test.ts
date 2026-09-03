@@ -13,10 +13,11 @@
  *
  * El caso de la generación no es hipotético. Ejercitando la API a mano,
  * la primera versión escribió la colección **dentro de este
- * repositorio** en vez de en el proyecto pedido: `runGenerate` lee sus
- * flags del argv que se le pasa, pero `paths.service` resuelve la raíz
- * leyendo `process.argv` del proceso — que en un servidor de vida larga
- * es el del `expostman ui`. Es la deuda que r00005 viene a cerrar.
+ * repositorio** en vez de en el proyecto pedido: `runGenerate` leía sus
+ * flags del argv que se le pasaba, pero el singleton retirado de
+ * `paths.service` (r00010 S2, 2026-09-03) resolvía la raíz leyendo
+ * `process.argv` del proceso — que en un servidor de vida larga era el
+ * del `expostman ui`. Es la deuda que r00005 vino a cerrar.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";

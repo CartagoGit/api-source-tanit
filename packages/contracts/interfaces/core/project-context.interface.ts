@@ -1,10 +1,10 @@
 /**
  * Contexto del proyecto que se está escaneando.
  *
- * Sustituye a la resolución implícita por el singleton de
- * `paths.service`, que se calculaba **una vez por proceso** desde
- * `POSTMAN_PROJECT_ROOT` o `--project-root`. Eso valía para el CLI —un
- * proceso por proyecto— pero:
+ * Sustituye a la resolución implícita por el singleton retirado de
+ * `paths.service` (r00010 S2, 2026-09-03), que se calculaba **una vez
+ * por proceso** desde `POSTMAN_PROJECT_ROOT` o `--project-root`. Eso
+ * valía para el CLI —un proceso por proyecto— pero:
  *
  *   - Un consumidor de vida larga (el servidor MCP) que analizase el
  *     proyecto A y luego el B recibía las rutas de A.

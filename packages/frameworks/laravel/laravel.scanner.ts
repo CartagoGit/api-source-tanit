@@ -6,9 +6,10 @@
  * `OpenApiRouteScanner`, `ExpressRouteScanner`, etc. cuando se añadan.
  *
  * Mantiene la lógica Laravel que vivía en `route-parser.service.ts` y
- * `paths.service.ts` para evitar regresiones: parsea `Route::…` con
- * regex, resuelve prefijos de `RouteServiceProvider`, devuelve
- * `ParsedRoute` en su forma neutra.
+ * en el singleton ya retirado `paths.service.ts` (r00010 S2,
+ * 2026-09-03), para evitar regresiones: parsea `Route::…` con regex,
+ * resuelve prefijos de `RouteServiceProvider`, devuelve `ParsedRoute`
+ * en su forma neutra.
  */
 import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
@@ -408,9 +409,10 @@ export class LaravelFormRequestValidationProvider
       "./form-request-parser.service.js"
     );
 
-    // El projectRoot viene del match, no del singleton de paths.service:
-    // así el provider funciona sobre cualquier proyecto sin depender de
-    // POSTMAN_PROJECT_ROOT y dos escaneos en el mismo proceso no se pisan.
+    // El projectRoot viene del match, no del singleton retirado de
+    // `paths.service` (r00010 S2, 2026-09-03): así el provider funciona
+    // sobre cualquier proyecto sin depender de POSTMAN_PROJECT_ROOT y dos
+    // escaneos en el mismo proceso no se pisan.
     const rel = await findFormRequestForController(
       _route.controllerClass,
       _route.actionName,

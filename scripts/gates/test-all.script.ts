@@ -16,7 +16,6 @@
  */
 import { readdir } from "node:fs/promises";
 import { join, } from "node:path";
-import { resetPathCache } from "../../packages/core/discovery/paths.service.js";
 import { defaultOrchestrator } from "../../packages/frameworks/framework.registry.js";
 import { buildSpecsFromScanner } from "../../packages/core/adapters/parsed-route-to-spec.adapter.js";
 import { loadProject } from "../../packages/core/discovery/project-loader.service.js";
@@ -48,7 +47,6 @@ async function runFixture(fixture: string): Promise<FixtureResult> {
 
   const prevRoot = process.env["POSTMAN_PROJECT_ROOT"];
   process.env["POSTMAN_PROJECT_ROOT"] = fixturePath;
-  resetPathCache();
 
   try {
     const orch = defaultOrchestrator();
@@ -111,7 +109,6 @@ async function runFixture(fixture: string): Promise<FixtureResult> {
     } else {
       process.env["POSTMAN_PROJECT_ROOT"] = prevRoot;
     }
-    resetPathCache();
   }
 }
 

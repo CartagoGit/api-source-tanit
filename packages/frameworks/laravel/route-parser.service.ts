@@ -43,9 +43,10 @@ export function stripComments(src: string): string {
 
 /** Parsea un archivo de rutas Laravel y devuelve las rutas descubiertas. */
 /**
- * `context` es opcional por compatibilidad: sin él se cae al singleton de
- * `paths.service`, que resuelve la raíz una vez por proceso. Pásalo desde
- * código nuevo (p00017).
+ * `context` es obligatorio. Antes era opcional por compatibilidad: sin él
+ * se caía al singleton retirado de `paths.service` (r00010 S2,
+ * 2026-09-03), que resolvía la raíz una vez por proceso. Pásalo siempre
+ * desde código nuevo (ver p00017).
  */
 export async function parseRoutesFile(
   relPath: string,

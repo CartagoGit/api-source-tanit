@@ -3,10 +3,11 @@
  *
  * Es la prueba que decide si el pipeline puede soltar
  * `withProjectRoot()`. Mientras los servicios de dentro resolvían sus
- * rutas por el singleton de `paths.service`, dos llamadas concurrentes
- * se destrozaban: la segunda pisaba el estado global mientras la primera
- * seguía viva, y al terminar la primera restauraba el de antes dejando a
- * la segunda mirando la raíz equivocada.
+ * rutas por el singleton de `paths.service` (retirado en r00010 S2,
+ * 2026-09-03), dos llamadas concurrentes se destrozaban: la segunda
+ * pisaba el estado global mientras la primera seguía viva, y al
+ * terminar la primera restauraba el de antes dejando a la segunda
+ * mirando la raíz equivocada.
  *
  * Se midió en su día comparando `summary` con `generate` sobre el mismo
  * proyecto lanzados con `Promise.all`: 16 y 17 endpoints donde

@@ -1,13 +1,13 @@
 /**
  * Resolución explícita del contexto de un proyecto.
  *
- * Es la alternativa sin estado a `paths.service`, que cachea la raíz una
- * vez por proceso. Aquí cada llamada devuelve un objeto nuevo, así que
- * dos proyectos analizados a la vez no se pisan.
+ * Es la alternativa sin estado al singleton retirado de `paths.service`
+ * (r00010 S2, 2026-09-03), que cacheaba la raíz una vez por proceso.
+ * Aquí cada llamada devuelve un objeto nuevo, así que dos proyectos
+ * analizados a la vez no se pisan.
  *
- * `paths.service` sigue existiendo como fachada para el CLI y los
- * consumidores que aún no reciben contexto; internamente resuelve lo
- * mismo. Ver p00017.
+ * Ver p00017 para el recorrido completo: la fachada con estado cayó
+ * definitivamente en r00010 y este es el único resolutor que queda.
  */
 import { existsSync } from "node:fs";
 import { join, resolve, sep } from "node:path";

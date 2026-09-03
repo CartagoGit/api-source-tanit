@@ -1,10 +1,11 @@
 /**
  * Precedencia del directorio de salida en el helper sin estado.
  *
- * Antes estas reglas vivían dentro de `paths.service.outputDir(context?)`,
- * mezcladas con la caché del singleton y con `process.argv` / `process.env`
- * leídos directamente. Aquí se prueban en aislamiento: con un contexto
- * fabricado, sin tocar el proceso.
+ * Antes estas reglas vivían dentro de `paths.service.outputDir(context?)`
+ * (singleton retirado en r00010 S2, 2026-09-03), mezcladas con la caché
+ * del singleton y con `process.argv` / `process.env` leídos directamente.
+ * Aquí se prueban en aislamiento: con un contexto fabricado, sin tocar
+ * el proceso.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -192,8 +193,9 @@ describe("describeDiscoveredPaths — la traza no miente", () => {
   /**
    * Sin projectName la traza dice `<nombre-del-proyecto>`, no se
    * inventa el nombre del directorio. Es el mismo contrato que
-   * `paths.service.describeDiscoveredPaths` ya tenía; lo que cambia es
-   * que aquí lo cumple un helper sin estado.
+   * `describeDiscoveredPaths` ya tenía en el singleton retirado de
+   * `paths.service` (r00010 S2, 2026-09-03); lo que cambia es que aquí
+   * lo cumple un helper sin estado.
    */
   test("sin nombre de proyecto dice que aún no lo sabe", () => {
     const traza = describeDiscoveredPaths(makeContext({ projectBasename: "carpeta-ajena" }), undefined, []);
