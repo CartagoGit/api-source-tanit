@@ -25,6 +25,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { isRecord, parseJson } from "../../../../../core/helpers/parse-json.helper";
 import type { ParsedRoute } from "../../../../../contracts/interfaces/core/scanner.interface";
 import type {
   IExpectedFixture,
@@ -41,19 +42,38 @@ function key(r: { method: string; uri: string }): string {
  * Carga el `expected.json` desde la raíz del fixture. Lanza si no
  * existe o no se puede parsear.
  */
+/**
+ * Estrecha un `Record<string, unknown>` a `IExpectedFixture`, validando
+ * los campos obligatorios. Sustituye al `as IExpectedFixture` que
+ * silenciaba manifestas inválidos: si el `expected.json` no tiene la
+ * forma correcta, el smoke-runner lo dice con un mensaje accionable.
+ */
+function asExpectedFixture(
+  value: Record<string, unknown>,
+  source: string,
+): IExpectedFixture {
+  if (
+    typeof value["framework"] !== "string" ||
+    !Array.isArray(value["routes"])
+  ) {
+    throw new Error(
+      `expected.json inválido en ${source}: requiere { framework: string, routes: array }`,
+    );
+  }
+  // La estrechez final es legítima: el predicado ya validó la forma.
+  return value as unknown as IExpectedFixture;
+}
+
 export async function loadExpected(fixtureRoot: string): Promise<IExpectedFixture> {
   const path = join(fixtureRoot, "expected.json");
   const raw = await readFile(path, "utf8");
-  const parsed = JSON.parse(raw) as IExpectedFixture;
-  if (
-    typeof parsed.framework !== "string" ||
-    !Array.isArray(parsed.routes)
-  ) {
+  const result = parseJson(raw);
+  if (!result.ok || !isRecord(result.value)) {
     throw new Error(
-      `expected.json inválido en ${fixtureRoot}: requiere { framework, routes[] }`,
+      `expected.json inválido en ${fixtureRoot}: ${result.ok ? "no es un objeto" : result.reason}`,
     );
   }
-  return parsed;
+  return asExpectedFixture(result.value, fixtureRoot);
 }
 
 /**

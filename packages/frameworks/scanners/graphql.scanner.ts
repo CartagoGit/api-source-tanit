@@ -28,6 +28,7 @@ import type {
 } from "../../contracts/interfaces/core/scanner.interface.js";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 
 /** Paquetes que delatan un servidor GraphQL. */
 const GRAPHQL_PACKAGES = [
@@ -59,15 +60,13 @@ export class GraphQlProjectScanner implements IProjectScanner {
     const pkgPath = join(projectRoot, "package.json");
     let fromPackage = 0;
     if (existsSync(pkgPath)) {
-      try {
-        const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as {
-          dependencies?: Record<string, string>;
-          devDependencies?: Record<string, string>;
+      const parsed = parseJson(await readFile(pkgPath, "utf8"));
+      if (parsed.ok && isRecord(parsed.value)) {
+        const deps = {
+          ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
+          ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
         };
-        const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
         if (GRAPHQL_PACKAGES.some((name) => deps[name])) fromPackage = 0.8;
-      } catch {
-        fromPackage = 0;
       }
     }
 

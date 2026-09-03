@@ -27,7 +27,7 @@ import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { isRecord } from "../../core/helpers/parse-json.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -54,14 +54,10 @@ async function isSymfonyProject(projectRoot: string): Promise<boolean> {
   } catch {
     return false;
   }
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  const req = (parsed.require ?? {}) as Record<string, string>;
-  const reqDev = (parsed["require-dev"] ?? {}) as Record<string, string>;
+  const parsed = parseJson(raw);
+  if (!parsed.ok || !isRecord(parsed.value)) return false;
+  const req = (parsed.value["require"] ?? {}) as Record<string, string>;
+  const reqDev = (parsed.value["require-dev"] ?? {}) as Record<string, string>;
   for (const key of SYMFONY_REQUIRE_KEYS) {
     if (typeof req[key] === "string" || typeof reqDev[key] === "string") {
       return true;

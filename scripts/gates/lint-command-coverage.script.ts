@@ -59,7 +59,6 @@ const COMMANDS_DIR = fromRoot("packages", "cli", "commands");
  * "verbo" es el nombre del fichero, que es lo bastante bueno para la
  * comprobación del guard (`process.exit` no necesita nombre de verbo).
  */
-const SCRIPTS_GLOB = "**/*.script.ts";
 const SCRIPTS_ROOTS = [COMMANDS_DIR, fromRoot("scripts", "gates"), fromRoot("scripts", "build")];
 
 /** Tipo de ejecutable:CLI command o gate. */

@@ -34,6 +34,7 @@ import { join } from "node:path";
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findAllBalanced, findOutsideStrings, findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { relative } from "node:path";
 import type {
@@ -63,14 +64,20 @@ const URL_FIELD_RE = /url\s*:\s*(['"`])([^'"`]+)\1/i;
 /** `app.register(x, { prefix: "/api" })`. */
 const REGISTER_PREFIX_RE = /\.register\s*\([^)]*?prefix\s*:\s*(['"`])([^'"`]+)\1/g;
 
+/**
+ * Lee el `package.json` del proyecto y devuelve el objeto parseado, o
+ * `null` si no existe o no parsea. Pasar por `parseJson` distingue
+ * "no se pudo leer" de "parseó a `null`": el segundo caso es legítimo
+ * (un `package.json` válido que contiene `null`); el primero es el
+ * caso `SyntaxError` que el patrón anterior silenciaba.
+ */
 async function readPackageJson(projectRoot: string): Promise<Record<string, unknown> | null> {
   const path = join(projectRoot, "package.json");
   if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  const raw = await readFile(path, "utf8");
+  const parsed = parseJson(raw);
+  if (!parsed.ok) return null;
+  return isRecord(parsed.value) ? parsed.value : null;
 }
 
 function dependsOnFastify(pkg: Record<string, unknown> | null): boolean {

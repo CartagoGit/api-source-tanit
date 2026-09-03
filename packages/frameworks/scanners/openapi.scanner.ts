@@ -26,7 +26,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute,
 } from "../../contracts/interfaces/core/scanner.interface.js";
-import { isRecord, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
+import { isRecord, parseJson, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
@@ -449,26 +449,30 @@ export class OpenApiRouteScanner implements IRouteScanner {
       return [];
     }
     let spec: unknown;
-    try {
-      if (specRel.endsWith(".json")) {
-        spec = JSON.parse(raw);
-      } else {
-        // Avisar **antes** de parsear: el parser no lanza ante estas
-        // construcciones, devuelve valores que no son los del spec. Un
-        // fallo que no se ve es el que acaba en la colección.
-        const noSoportado = unsupportedYamlFeatures(raw);
-        if (noSoportado.length > 0) {
-          console.warn(
-            `⚠ ${specRel} usa YAML que este parser no entiende: ${noSoportado.join(", ")}.\n` +
-              "  · Los valores afectados saldrán mal en la colección, sin más aviso que este.\n" +
-              "  · Conviértelo a JSON (`openapi.json`) y se leerá entero.",
-          );
-        }
-        spec = parseYamlLite(raw);
+    if (specRel.endsWith(".json")) {
+      const parsed = parseJson(raw);
+      if (!parsed.ok) {
+        throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${parsed.reason}`);
       }
-    } catch (e) {
-      // Syntax error en YAML/JSON: abortar limpio.
-      throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
+      spec = parsed.value;
+    } else {
+      // Avisar **antes** de parsear: el parser no lanza ante estas
+      // construcciones, devuelve valores que no son los del spec. Un
+      // fallo que no se ve es el que acaba en la colección.
+      const noSoportado = unsupportedYamlFeatures(raw);
+      if (noSoportado.length > 0) {
+        console.warn(
+          `⚠ ${specRel} usa YAML que este parser no entiende: ${noSoportado.join(", ")}.\n` +
+            "  · Los valores afectados saldrán mal en la colección, sin más aviso que este.\n" +
+            "  · Conviértelo a JSON (`openapi.json`) y se leerá entero.",
+        );
+      }
+      try {
+        spec = parseYamlLite(raw);
+      } catch (e) {
+        // Syntax error en YAML: abortar limpio.
+        throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
+      }
     }
     const basePath =
       this.opts.basePath ??
@@ -622,10 +626,18 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
       return { endpointKey: keyOf(route), fields: [] };
     }
     let spec: unknown;
-    try {
-      spec = specRel.endsWith(".json") ? JSON.parse(raw) : parseYamlLite(raw);
-    } catch {
-      return { endpointKey: keyOf(route), fields: [] };
+    if (specRel.endsWith(".json")) {
+      const parsed = parseJson(raw);
+      if (!parsed.ok) {
+        return { endpointKey: keyOf(route), fields: [] };
+      }
+      spec = parsed.value;
+    } else {
+      try {
+        spec = parseYamlLite(raw);
+      } catch {
+        return { endpointKey: keyOf(route), fields: [] };
+      }
     }
     const pathItem = readObject(readObject(spec, "paths"), route.rawUri);
     if (!pathItem) return { endpointKey: keyOf(route), fields: [] };

@@ -50,6 +50,10 @@ const PERMITIDOS: Readonly<Record<string, string>> = {
   "packages/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts":
     "doble de test contra el McpServer del SDK: un tipo de terceros con decenas " +
     "de miembros del que solo se usa `registerTool`",
+  "packages/plugins/mcp-vertex_expostman/src/lib/helpers/smoke-runner.helper.ts":
+    "estrechez de un Record<string,unknown> validado a IExpectedFixture: el predicado " +
+    "asExpectedFixture ya garantiza la forma, pero TS no puede inferir la estrechez " +
+    "sin el cast",
   "tests/helpers/postman-builders.ts":
     "construye items inválidos a propósito para los tests de invariantes, y " +
     "declara qué le falta a cada uno",

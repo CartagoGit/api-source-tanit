@@ -22,6 +22,7 @@ import { join, relative } from "node:path";
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findAllBalanced, findOutsideStrings, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type {
@@ -67,11 +68,10 @@ const TARGET_TO_LOCATION: Record<string, IValidationSpec["location"]> = {
 async function readPackageJson(projectRoot: string): Promise<Record<string, unknown> | null> {
   const path = join(projectRoot, "package.json");
   if (!existsSync(path)) return null;
-  try {
-    return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+  const raw = await readFile(path, "utf8");
+  const parsed = parseJson(raw);
+  if (!parsed.ok) return null;
+  return isRecord(parsed.value) ? parsed.value : null;
 }
 
 function honoDeps(pkg: Record<string, unknown> | null): Record<string, string> {

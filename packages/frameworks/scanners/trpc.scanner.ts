@@ -29,6 +29,7 @@ import type {
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type { ITrpcProcedure } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** El prefijo con el que se monta tRPC casi siempre. */
@@ -42,16 +43,13 @@ export class TrpcProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<number> {
     const pkgPath = join(projectRoot, "package.json");
     if (!existsSync(pkgPath)) return 0;
-    try {
-      const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      const deps = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
-      return TRPC_PACKAGES.some((name) => deps[name]) ? 0.95 : 0;
-    } catch {
-      return 0;
-    }
+    const parsed = parseJson(await readFile(pkgPath, "utf8"));
+    if (!parsed.ok || !isRecord(parsed.value)) return 0;
+    const deps = {
+      ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
+      ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
+    };
+    return TRPC_PACKAGES.some((name) => deps[name]) ? 0.95 : 0;
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

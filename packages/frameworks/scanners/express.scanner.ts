@@ -24,6 +24,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
+import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -78,28 +79,21 @@ export class ExpressProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<number> {
     const pkgPath = join(projectRoot, "package.json");
     if (!existsSync(pkgPath)) return 0;
-    try {
-      const text = await readFile(pkgPath, "utf8");
-      const pkg = JSON.parse(text) as {
-        dependencies?: Record<string, string>;
-        devDependencies?: Record<string, string>;
-      };
-      const deps = {
-        ...(pkg.dependencies ?? {}),
-        ...(pkg.devDependencies ?? {}),
-      };
-      const score = FRAMEWORK_PACKAGES.reduce((acc, name) => {
-        if (deps[name]) return Math.max(acc, 0.9);
-        // También busca sub-ranges (express-*).
-        if (Object.keys(deps).some((k) => k.startsWith(name))) {
-          return Math.max(acc, 0.7);
-        }
-        return acc;
-      }, 0);
-      return score;
-    } catch {
-      return 0;
-    }
+    const parsed = parseJson(await readFile(pkgPath, "utf8"));
+    if (!parsed.ok || !isRecord(parsed.value)) return 0;
+    const deps = {
+      ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
+      ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
+    };
+    const score = FRAMEWORK_PACKAGES.reduce((acc, name) => {
+      if (deps[name]) return Math.max(acc, 0.9);
+      // También busca sub-ranges (express-*).
+      if (Object.keys(deps).some((k) => k.startsWith(name))) {
+        return Math.max(acc, 0.7);
+      }
+      return acc;
+    }, 0);
+    return score;
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
