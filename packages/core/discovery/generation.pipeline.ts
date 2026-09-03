@@ -35,8 +35,8 @@ import { loadProject } from "./project-loader.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
+import type { IDetectedFramework } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
-  IDetectedFramework,
   IGenerationOptions,
   IGenerationResult,
 } from "../../contracts/interfaces/core/discovery.interface.js";
@@ -169,10 +169,10 @@ async function forcedDetection(
   options: IGenerationOptions,
   projectRoot: string,
 ): Promise<IDetectedFramework[]> {
-  const forced = await options.orchestrator.forceFramework(
+  const forced = await options.orchestrator.forceFramework({
     projectRoot,
-    options.forceFramework!,
-  );
+    framework: options.forceFramework!,
+  });
   if (!forced) {
     const supported = options.orchestrator.supportedFrameworks().sort().join(", ");
     throw new Error(

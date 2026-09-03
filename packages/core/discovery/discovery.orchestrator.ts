@@ -22,6 +22,7 @@
  * evitar tener que generar artefactos para responder "¿qué ves?".
  */
 import type {
+  IDetectedFramework,
   IDiscoveryOrchestrator,
   IProjectMatch,
   IProjectScanner,
@@ -30,7 +31,6 @@ import type {
 } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   DiscoveryRegistry,
-  IDetectedFramework,
 } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
@@ -57,22 +57,31 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
    *
    * Devuelve `null` si ese id no está registrado, para que quien llama
    * pueda fallar con un mensaje útil en vez de escanear en vano.
+   *
+   * La firma recibe un objeto nomado `{ projectRoot, framework }` —
+   * la antigua `(projectRoot, framework)` y la del contrato público
+   * `(framework, projectRoot)` eran incompatibles pero ambas `string`,
+   * y TypeScript no marcaba el intercambio. El objeto nomado cierra
+   * el bug: la clave, no la posición, decide el rol.
    */
   async forceFramework(
-    projectRoot: string,
-    framework: string,
+    args: { projectRoot: string; framework: string },
   ): Promise<IDetectedFramework | null> {
-    const detector = this.registry.detectors.find((d) => d.framework === framework);
+    const detector = this.registry.detectors.find(
+      (d) => d.framework === args.framework,
+    );
     if (!detector) return null;
 
-    const match = await detector.resolve(projectRoot);
+    const match = await detector.resolve(args.projectRoot);
     return {
       match,
       score: 1,
       evidence: [],
       scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
       validation:
-        this.registry.validationProviders.find((v) => v.framework === framework) ?? null,
+        this.registry.validationProviders.find(
+          (v) => v.framework === args.framework,
+        ) ?? null,
     };
   }
 

@@ -301,11 +301,45 @@ export interface IValidationSpecProvider {
   ): Promise<IEndpointValidation>;
 }
 
-/** Punto de entrada principal: "dado un projectRoot, dame el scanner adecuado". */
+/**
+ * Un framework que ha reconocido el proyecto, con sus colaboradores.
+ *
+ * Vive aquí —no en `discovery.interface.ts`— porque `IDiscoveryOrchestrator`
+ * la devuelve y el contrato del orchestrator vive en esta casa: junto a
+ * los scanners que producen el `evidence`, no junto al pipeline que los
+ * consume. Tener dos declaraciones del mismo tipo en módulos distintos
+ * es una grieta por la que se cuela la deriva; las interfaces se
+ * fusionan en TS, pero el contrato conceptual deja de ser único.
+ */
+export interface IDetectedFramework {
+  readonly match: IProjectMatch;
+  readonly scanner: IRouteScanner | null;
+  readonly validation: IValidationSpecProvider | null;
+  /** Confianza del detector, de 0 a 1. */
+  readonly score: number;
+  /** Las señales que motivaron la puntuación. */
+  readonly evidence: ReadonlyArray<IProjectDetectionEvidence>;
+}
+
+/**
+ * Punto de entrada principal: "dado un projectRoot, dame el scanner adecuado".
+ *
+ * `forceFramework` recibe **un objeto nombrado** con `projectRoot` y
+ * `framework`. Antes la firma era `(framework, projectRoot)` en la
+ * interfaz y `(projectRoot, framework)` en la implementación —
+ * incompatibles, pero `string` y `string` pasan por TypeScript sin
+ * chistar. Un implementador externo perfectamente conforme con el
+ * contrato público recibía los argumentos invertidos sin error de
+ * tipo. El objeto nomado cierra el bug: la clave, no la posición,
+ * decide el rol.
+ */
 export interface IDiscoveryOrchestrator {
-  detectProject(projectRoot: string): Promise<{
-    match: IProjectMatch | null;
-    scanner: IRouteScanner | null;
-    validation: IValidationSpecProvider | null;
-  }>;
+  /** Todos los que reconocen el proyecto, ordenados por confianza. */
+  detectAll(projectRoot: string): Promise<IDetectedFramework[]>;
+  /** Fuerza un framework concreto, saltándose la detección. */
+  forceFramework(
+    args: { projectRoot: string; framework: string },
+  ): Promise<IDetectedFramework | null>;
+  /** Los identificadores que este catálogo sabe reconocer. */
+  supportedFrameworks(): string[];
 }

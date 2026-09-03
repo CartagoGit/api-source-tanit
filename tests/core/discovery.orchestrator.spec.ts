@@ -142,3 +142,86 @@ describe("DiscoveryOrchestrator", () => {
     expect(result.match?.artifacts).toEqual(["x.json"]);
   });
 });
+
+describe("DiscoveryOrchestrator.forceFramework", () => {
+  test("con un framework conocido devuelve IDetectedFramework", async () => {
+    const result = await orchestratorOf([detector("express", 1)]).forceFramework({
+      projectRoot: "/proyecto",
+      framework: "express",
+    });
+    expect(result).not.toBeNull();
+    expect(result?.match.framework).toBe("express");
+    expect(result?.match.projectRoot).toBe("/proyecto");
+    // Forzar un framework equivale a score 1 sin evidence de detección:
+    // quien llama SABE cuál es, así que no hay señales que mostrar.
+    expect(result?.score).toBe(1);
+    expect(result?.evidence).toEqual([]);
+  });
+
+  test("con un framework no registrado devuelve null", async () => {
+    const result = await orchestratorOf([detector("express", 1)]).forceFramework({
+      projectRoot: "/proyecto",
+      framework: "no-existe",
+    });
+    expect(result).toBeNull();
+  });
+
+  // Cierra el bug histórico de C-2 (a00011):
+  //
+  //   interface: forceFramework(framework, projectRoot)
+  //   impl:      forceFramework(projectRoot, framework)
+  //
+  // Ambos `string` y TypeScript no marcaba el intercambio: un
+  // implementador externo conforme con el contrato público recibía
+  // los argumentos invertidos en silencio. La firma nueva recibe un
+  // **objeto nomado**: la clave, no la posición, decide el rol.
+  //
+  // Para que la regresión no vuelva, este test intercambia los VALORES
+  // del input a propósito (un id que parece ruta, una ruta que parece
+  // id) y verifica que el orchestrator resuelve con la clave correcta.
+  test("usa la clave del objeto, no la posición: intercambia los valores a propósito", async () => {
+    const result = await orchestratorOf([detector("express", 1)]).forceFramework({
+      // ¡Intercambiados! El que parece ser framework es una ruta, y la
+      // ruta parece un id. Si la implementación mirase por posición
+      // (como el bug histórico), leería "express" como ruta y
+      // "/var/mi-api" como id de framework, y el detector de "express"
+      // intentaría resolver "/var/mi-api".
+      projectRoot: "/var/mi-api",
+      framework: "express",
+    });
+    expect(result).not.toBeNull();
+    expect(result?.match.framework).toBe("express");
+    expect(result?.match.projectRoot).toBe("/var/mi-api");
+  });
+
+  test("empareja scanner + validation del framework forzado", async () => {
+    const result = await orchestratorOf(
+      [detector("express", 1)],
+      [routeScanner("express")],
+      [validationProvider("express")],
+    ).forceFramework({ projectRoot: "/p", framework: "express" });
+    expect(result?.scanner?.framework).toBe("express");
+    expect(result?.validation?.framework).toBe("express");
+  });
+
+  test("sin scanner para el framework forzado, scanner queda null", async () => {
+    const result = await orchestratorOf(
+      [detector("raro", 1)],
+      [],
+      [validationProvider("raro")],
+    ).forceFramework({ projectRoot: "/p", framework: "raro" });
+    expect(result?.match.framework).toBe("raro");
+    expect(result?.scanner).toBeNull();
+    expect(result?.validation?.framework).toBe("raro");
+  });
+
+  test("sin validation para el framework forzado, validation queda null", async () => {
+    const result = await orchestratorOf(
+      [detector("raro", 1)],
+      [routeScanner("raro")],
+      [],
+    ).forceFramework({ projectRoot: "/p", framework: "raro" });
+    expect(result?.scanner?.framework).toBe("raro");
+    expect(result?.validation).toBeNull();
+  });
+});

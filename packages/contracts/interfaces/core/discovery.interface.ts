@@ -8,6 +8,7 @@
  */
 
 import type {
+  IDiscoveryOrchestrator,
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
@@ -29,48 +30,6 @@ export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;
   readonly routeScanners: ReadonlyArray<IRouteScanner>;
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
-}
-
-/**
- * Una señal individual de detección.
- *
- * Re-export del tipo de `IProjectScanner` para que el contrato de
- * discovery (que se importa desde la UI, el CLI y el plugin) no tenga
- * que arrastrar el de scanner. El alias es estable; el original vive
- * en `scanner.interface.ts` que es donde lo rellenan los detectores.
- */
-export type IDetectionEvidence = import("./scanner.interface.js").IProjectDetectionEvidence;
-
-/** Un framework que ha reconocido el proyecto, con sus colaboradores. */
-export interface IDetectedFramework {
-  readonly match: IProjectMatch;
-  readonly scanner: IRouteScanner | null;
-  readonly validation: IValidationSpecProvider | null;
-  /** Confianza del detector, de 0 a 1. */
-  readonly score: number;
-  /** Las señales que motivaron la puntuación. */
-  readonly evidence: ReadonlyArray<IDetectionEvidence>;
-}
-
-/**
- * Quien decide qué framework es el proyecto.
- *
- * Existe como interfaz —y no solo como la clase que la implementa— para
- * que `IGenerationOptions` pueda vivir aquí. Con la clase en la firma,
- * declarar las opciones del pipeline obligaba a importar el orquestador,
- * y con él su registro entero. Es la regla de siempre: quien consume
- * depende de la abstracción, no de quien la cumple.
- */
-export interface IDiscoveryOrchestrator {
-  /** Todos los que reconocen el proyecto, ordenados por confianza. */
-  detectAll(projectRoot: string): Promise<IDetectedFramework[]>;
-  /** Fuerza un framework concreto, saltándose la detección. */
-  forceFramework(
-    framework: string,
-    projectRoot: string,
-  ): Promise<IDetectedFramework | null>;
-  /** Los identificadores que este catálogo sabe reconocer. */
-  supportedFrameworks(): string[];
 }
 
 /** Métricas del descubrimiento, para informes y tests. */
