@@ -21,6 +21,7 @@
  * depende de `applyAgnosticInference` para generar body/query heurísticos.
  */
 import { existsSync } from "node:fs";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
@@ -31,8 +32,7 @@ import type {
   IRouteScanner,
   IValidationSpec,
   IValidationSpecProvider,
-  ParsedRoute,
-} from "../../contracts/interfaces/core/scanner.interface.js";
+  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { countLinesBefore, findAllBalanced, findOutsideStrings, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.helper.js";
@@ -76,24 +76,43 @@ const HAPI_ROUTE_RE =
 export class ExpressProjectScanner implements IProjectScanner {
   readonly framework = "express" as const;
 
-  async detect(projectRoot: string): Promise<number> {
+  async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const pkgPath = join(projectRoot, "package.json");
-    if (!existsSync(pkgPath)) return 0;
+    if (!existsSync(pkgPath)) return emptyResult(0);
     const parsed = parseJson(await readFile(pkgPath, "utf8"));
-    if (!parsed.ok || !isRecord(parsed.value)) return 0;
+    if (!parsed.ok || !isRecord(parsed.value)) return emptyResult(0);
     const deps = {
       ...((parsed.value["dependencies"] as Record<string, string>) ?? {}),
       ...((parsed.value["devDependencies"] as Record<string, string>) ?? {}),
     };
-    const score = FRAMEWORK_PACKAGES.reduce((acc, name) => {
-      if (deps[name]) return Math.max(acc, 0.9);
-      // También busca sub-ranges (express-*).
-      if (Object.keys(deps).some((k) => k.startsWith(name))) {
-        return Math.max(acc, 0.7);
-      }
-      return acc;
-    }, 0);
-    return score;
+    const matches = FRAMEWORK_PACKAGES.filter(
+      (name) =>
+        deps[name] !== undefined ||
+        Object.keys(deps).some((k) => k.startsWith(name)),
+    );
+    if (matches.length === 0) return emptyResult(0);
+    const score = matches.reduce(
+      (acc, name) =>
+        deps[name] !== undefined ? Math.max(acc, 0.9) : Math.max(acc, 0.7),
+      0,
+    );
+    // f00010 S2: el detector explica por qué puntuó. Cada match
+    // (directo o por prefijo) sube el score y se anota en evidence
+    // para que `summary` y la UI muestren la trazabilidad.
+    const pkg = parsed.value;
+    const evidence = matches.map((name) => {
+      const inDeps = name in ((pkg["dependencies"] as Record<string, string> | undefined) ?? {});
+      const where = inDeps ? "dependencies" : "devDependencies";
+      return {
+        signal:
+          deps[name] !== undefined
+            ? `package.json declara ${name} en ${where}`
+            : `package.json declara ${name}* (paquete con prefijo coincidente)`,
+        weight: deps[name] !== undefined ? 0.9 : 0.7,
+        artifact: "package.json",
+      };
+    });
+    return withEvidence(score, evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
