@@ -4,6 +4,12 @@
  * Single Responsibility: abstraer `Bun.spawn` con timeout, captura
  * de stdout/stderr y parseo seguro de output. Sin estado global, sin
  * dependencias de filesystem fuera del path que se le pasa.
+ *
+ * El cwd, el env y la ruta a `bun` se reciben por parámetro (`ctx:
+ * IRunnerContext`); los defaults documentados caen al global solo si
+ * el caller no los aporta — que es lo que pasa en tests sueltos,
+ * nunca en el flujo del plugin, donde `ctx.workspace.root` siempre
+ * está disponible.
  */
 
 import { spawnSync } from "node:child_process";
@@ -16,6 +22,12 @@ import {
   type IRunScriptResult,
 } from "../contracts/interfaces/runner.interface";
 import { SUPPORTED_REPORT_VERSION } from "../contracts/constants/runner.constant";
+import {
+  type IRunnerContext,
+  resolveBunBinFromCtx,
+  resolveCwd,
+  resolveEnv,
+} from "./runner.context";
 
 // `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
 // reproduce cuando el host MCP arranca el plugin bajo Bun y el
@@ -71,8 +83,15 @@ const useBunSpawn = typeof bunSpawnSync === "function";
  * `node:child_process.spawnSync` para mantener el sync; resolvemos
  * la path absoluta una vez para sobrevivir a `env` recortadas por
  * hosts AI (algunos clientes MCP filtran `PATH` antes de spawn).
+ *
+ * Si el contexto ya trae `bunBin`, se devuelve tal cual. Si no, se
+ * busca por el orden documentado: variable de entorno explícita →
+ * `Bun.which` → `command -v bun` → `"bun"` como último fallback para
+ * que `spawnSync` falle con ENOENT (que es legible) en vez de inventar.
  */
-function resolveBunBin(): string {
+function resolveBunBin(ctx: IRunnerContext | undefined): string {
+  const fromCtx = resolveBunBinFromCtx(ctx);
+  if (fromCtx && fromCtx.length > 0) return fromCtx;
   // 1) Variable de entorno explícita (operador puede forzarla).
   const fromEnv = process.env["MCP_VERTEX_BUN_BIN"];
   if (fromEnv && fromEnv.length > 0) return fromEnv;
@@ -95,13 +114,17 @@ function resolveBunBin(): string {
  * Normaliza un cwd para spawnSync. Acepta:
  *   - paths absolutos (`/foo/bar`)
  *   - URLs file:// (`file:///foo/bar/`)
- *   - `process.cwd()` cuando se pasa un string vacío o "."
+ *   - el cwd del contexto (o `process.cwd()` como último recurso) cuando
+ *     se pasa un string vacío o "."
  *
  * `Bun.spawnSync` con `cwd: "file:///..."` falla con ENOENT porque no
  * entiende el prefijo — necesitamos un path real del FS.
  */
-export function normalizeCwd(cwd: string | undefined): string {
-  if (!cwd || cwd === "." || cwd === "./") return process.cwd();
+export function normalizeCwd(
+  cwd: string | undefined,
+  ctx?: IRunnerContext,
+): string {
+  if (!cwd || cwd === "." || cwd === "./") return resolveCwd(ctx);
   if (cwd.startsWith("file://")) {
     try {
       return new URL(cwd).pathname;
@@ -131,21 +154,29 @@ export function runBunCommand(
      * delante.
      */
     readonly containRoots?: ReadonlyArray<string>;
-  } = { cwd: process.cwd() },
+    /**
+     * Contexto de runtime. Si el caller omite `cwd` (raro) el helper
+     * cae al `cwd` del contexto, y si tampoco está ahí, a
+     * `process.cwd()` (test suelto). El `env` y el `bunBin` siguen la
+     * misma cascada.
+     */
+    readonly ctx?: IRunnerContext;
+  },
 ): IRunScriptResult {
   const start = Date.now();
   const timeout = options.timeoutMs ?? 60_000;
-  const bunBin = resolveBunBin();
+  const bunBin = resolveBunBin(options.ctx);
   const cmd = [bunBin, ...args];
-  const cwd = normalizeCwd(options.cwd);
+  const cwd = normalizeCwd(options.cwd, options.ctx);
+  const env = resolveEnv(options.ctx);
   const raw = useBunSpawn
-    ? runBunSpawnSyncArray([...cmd], cwd, timeout, process.env)
+    ? runBunSpawnSyncArray([...cmd], cwd, timeout, env)
     : spawnSync(bunBin, [...args], {
         cwd,
         encoding: "utf8",
         timeout,
         stdio: ["ignore", "pipe", "pipe"],
-        env: process.env,
+        env,
       });
 
   return toRunResult(raw, start);
@@ -215,13 +246,17 @@ export function runBunScript(
      * delante.
      */
     readonly containRoots?: ReadonlyArray<string>;
-  } = { cwd: process.cwd() },
+    /**
+     * Contexto de runtime. Misma cascada que en `runBunCommand`.
+     */
+    readonly ctx?: IRunnerContext;
+  },
 ): IRunScriptResult {
   const start = Date.now();
   const timeout = options.timeoutMs ?? 60_000;
-  const bunBin = resolveBunBin();
+  const bunBin = resolveBunBin(options.ctx);
   const cmd = [bunBin, "run", scriptPath, ...args];
-  const cwd = normalizeCwd(options.cwd);
+  const cwd = normalizeCwd(options.cwd, options.ctx);
 
   // El CLI lanzado a mano acepta `--output-dir` donde sea, y así debe
   // ser. A través del plugin no: un `../` en un argumento no puede
@@ -234,7 +269,11 @@ export function runBunScript(
   // convertiría el guardián en un estorbo que alguien acabaría
   // quitando.
   const roots = [...(options.containRoots ?? []), cwd, tmpdir()];
-  const env = { ...process.env, POSTMAN_CONTAIN_ROOT: roots.join(pathDelimiter) };
+  const baseEnv = resolveEnv(options.ctx);
+  const env: Record<string, string | undefined> = {
+    ...baseEnv,
+    POSTMAN_CONTAIN_ROOT: roots.join(pathDelimiter),
+  };
 
   const result = useBunSpawn
     ? runBunSpawnSyncArray(cmd, cwd, timeout, env)

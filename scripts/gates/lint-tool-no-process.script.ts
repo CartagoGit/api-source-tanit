@@ -78,12 +78,21 @@ export function lintToolSource(file: string, source: string): IViolation[] {
 }
 
 async function main(): Promise<number> {
+  // Los tools (`*.tool.ts`) son la superficie del plugin. Los helpers
+  // (`*.helper.ts`) viven en el mismo ciclo de vida del servidor MCP
+  // de vida larga, así que la prohibición del universal §6 ("no
+  // process.cwd() / process.env en engines") aplica a los dos. Antes
+  // solo se cubrían los tools y se les colaba `process.cwd()` desde
+  // los helpers: cualquier agente que pidiera cwd vía context lo
+  // recibía vacío y caía al global.
   const files = (
-    await collectFiles(TOOLS_GLOB_ROOT, (name) => name.endsWith(".tool.ts"))
-  ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}tools${"/"}`));
+    await collectFiles(TOOLS_GLOB_ROOT, (name) =>
+      name.endsWith(".tool.ts") || name.endsWith(".helper.ts"),
+    )
+  ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}`));
 
   if (files.length === 0) {
-    console.log("lint:tools — no se encontró ningún *.tool.ts bajo packages/plugins/mcp-vertex_expostman/");
+    console.log("lint:tools — no se encontró ningún *.tool.ts / *.helper.ts bajo packages/plugins/mcp-vertex_expostman/src/lib/");
     return 0;
   }
 
@@ -93,7 +102,7 @@ async function main(): Promise<number> {
   }
 
   if (violations.length === 0) {
-    console.log(`lint:tools — ${files.length} tools, sin infracciones`);
+    console.log(`lint:tools — ${files.length} tools/helpers, sin infracciones`);
     return 0;
   }
 

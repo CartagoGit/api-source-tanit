@@ -116,6 +116,7 @@ export function buildGenerateToolRegistration(
           const result = runBunScript(cliScriptPath, cliArgs, {
             cwd: workspaceRoot,
             containRoots: [projectRoot],
+            ctx: { cwd: workspaceRoot, env: process.env, bunBin: process.env["MCP_VERTEX_BUN_BIN"] },
           });
           if (!result.ok) {
             return toolError(
