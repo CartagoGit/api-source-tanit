@@ -63,18 +63,17 @@ enlace no resuelve, el install del workspace se queda a medias y todo lo
 que dependa de él falla.
 
 Se intentó montar el checkout hermano dentro y no basta —bun no
-materializa el enlace—, pero sobre todo **no debería hacer falta**: el
-bootstrap prohíbe expresamente que este repositorio exija un checkout al
-lado.
+materializa el enlace—. La postura del proyecto cambió el 2026-09-03:
+mientras `@mcp-vertex/core` siga sin publicación oficial, este repo
+**asume el checkout hermano como flujo soportado** (`p00007` cerrado
+en `done` con esa lectura — ver
+[`AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md) §3.7).
 
-O sea que el contenedor no ha causado nada: le ha puesto número a
-[`p00007`](../docs/mcp-vertex/proposals/blocked/p00007-consumir-mcp-vertex-core-publicado.md).
-Lo que esa propuesta describe como «cambiar una línea cuando se
-publique» es, en realidad, **el repositorio no siendo autocontenido** —
-y solo se nota cuando intentas construirlo en un sitio limpio.
-
-El día que `@mcp-vertex/core` esté en npm, `docker:validate` pasa a ser
-`bun run validate` a secas y esta sección se borra.
+Por tanto, este contenedor **sí monta el checkout hermano**: lo añade a
+`/workspace/mcp-vertex` y añade su `packages/core` al `path` cuando el
+plugin MCP se ejecuta dentro. Lo que no se hace es fingir que no
+depende de él — sería volver a la postura antigua que el contenedor
+ya probó falsa.
 
 ## El aviso de `glib`, y por qué sigue ahí
 

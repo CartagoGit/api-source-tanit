@@ -212,9 +212,17 @@ A new field:
 - Must be self-describing (`.describe("<doc>")`).
 - Must not be `z.any()`.
 
-### 3.7 MCP server launch — portable first
+### 3.7 MCP server launch — **sibling mientras no haya release**
 
-**Published form** — use this when `@mcp-vertex/cli` is available on npm:
+Mientras `@mcp-vertex/cli` no esté publicado en npm (ver `p00007`,
+actualizado a `done` el 2026-09-03), **el flujo oficial** es consumir el
+`@mcp-vertex/core` desde el checkout hermano de `mcp-vertex` mediante
+enlace `file:` y arrancar el host desde su host-script. Esto no es
+deuda: es la forma soportada hasta que se publique la primera versión
+semver del paquete. Decisión del proyecto.
+
+**Forma published (referencia futura)** — úsala cuando
+`@mcp-vertex/cli` esté en npm:
 
 ```json
 {
@@ -235,29 +243,57 @@ A new field:
 }
 ```
 
-**Current local form** — until `@mcp-vertex/cli` is published, local
-developers with a sibling `mcp-vertex` checkout may point `.mcp.json`
-and its generated `.vscode/mcp.json` at the relative sibling host script.
+**Forma local actual (mientras `npm view @mcp-vertex/core version` siga
+devolviendo 404)** — la práctica oficial y soportada:
 
-> The path is `../mcp-vertex/tools/scripts/host/host-server.script.ts`.
-> It lives in a quote because it is **outside this repository** — the
-> only place `lint:bootstrap-drift` allows naming something that does
-> not exist here. That is exactly the point: the path is not required
-> for cloning or using this repository elsewhere.
->
-> A container build caught this. On a machine that happens to have the
-> sibling checked out, the gate passed; in a clean one it did not. Same
-> shape as the `exit-codes` test that only passed where nobody had run
-> the CLI before.
+```json
+{
+  "servers": {
+    "mcp-vertex": {
+      "type": "stdio",
+      "command": "bun",
+      "args": [
+        "run",
+        "../mcp-vertex/tools/scripts/host/host-server.script.ts",
+        "--workspace=${workspaceFolder}",
+        "--config=${workspaceFolder}/mcp-vertex.config.json"
+      ]
+    }
+  }
+}
+```
 
-Never commit absolute machine paths (e.g. `/home/<user>/_packages/...`).
+Equivalencias:
 
-When the CLI ships, replace the local form with the published form and
-remove the sibling-path notes from this section.
+- `.mcp.json` apunta al `host-server.script.ts` del repo hermano con
+  un path relativo (`../mcp-vertex/...`). Nunca absoluto del estilo
+  `/home/<user>/_packages/...`.
+- `.vscode/mcp.json` lo genera `bun run lint:mcp` a partir del
+  anterior y queda en este repo (es `.gitignore`d).
+- El plugin `packages/plugins/mcp-vertex_expostman/package.json`
+  declara `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`.
+  El plugin es `"private": true`, no viaja en el tarball público y
+  por tanto **no rompe la distribución** del CLI aunque el `file:`
+  no resuelva fuera del worktree del desarrollador.
 
-Schema reference for `mcp-vertex.config.json`: use the schema shipped
-with the installed `@mcp-vertex/core` package (or omit `$schema` until
-publish). Do not hard-require
+> El path `../mcp-vertex/...` se cita dentro de un quote porque vive
+> **fuera de este repositorio** — es el único caso en el que
+> `lint:bootstrap-drift` permite nombrar algo que no existe aquí.
+
+**Migración a la forma published cuando `@mcp-vertex/core` se
+publique** (es la reactivación futura de `p00007`):
+
+1. `npm view @mcp-vertex/core version` deja de devolver 404.
+2. Cambiar el `file:` por `^<versión>` en
+   `packages/plugins/mcp-vertex_expostman/package.json`.
+3. `bun install` regenera el lockfile.
+4. Sustituir `.mcp.json` por la forma published.
+5. Archivar la propuesta reabierta como `done`.
+
+Schema reference for `mcp-vertex.config.json`: usa el schema que
+embargue el paquete `@mcp-vertex/core` instalado (u omite `$schema`
+mientras no exista publicación). No exijas
+`../mcp-vertex/packages/core/schema/...`.
 `../mcp-vertex/packages/core/schema/...` for third-party clones.
 
 ### 3.8 Framework scanners — the discovery contract

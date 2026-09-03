@@ -7,7 +7,7 @@ actual del frontmatter y, para `done`, también el `kind`.
 
 Las propuestas nuevas se escriben directamente en `ready/`, sin una
 subcarpeta por kind. Directorio vivo: vacío (todas las propuestas
-abiertas están archivadas como `done/` o bloqueadas en `blocked/`).
+abiertas están archivadas como `done/` o retiradas en `retired/`).
 Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran
 en este pase.
 
@@ -15,7 +15,6 @@ en este pase.
 
 | Id | Kind | Estado | Ruta |
 |---|---|---|---|
-| `p00007` | `legacy` | `blocked` | [`blocked/p00007-consumir-mcp-vertex-core-publicado.md`](blocked/p00007-consumir-mcp-vertex-core-publicado.md) |
 | `p00006` | `legacy` | `retired` | [`retired/p00006-document-extension-contract.md`](retired/p00006-document-extension-contract.md) |
 
 ## Cerradas
@@ -42,6 +41,7 @@ y no un nombre de fichero mutable.
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
 `a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `c00002`,
 `f00010`, `f00011`,
+`p00007`,
 `r00008`, `r00010`,
 `x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`,
 `c00003`; están archivadas bajo sus carpetas canónicas:
@@ -58,6 +58,7 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00010` | `audit` | [`done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md`](done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md) |
 | `a00011` | `audit` | [`done/audits/a00011-plan-correcciones-revision-a00010.md`](done/audits/a00011-plan-correcciones-revision-a00010.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
+| `p00007` | `chore` | [`done/chores/p00007-consumir-mcp-vertex-core-publicado.md`](done/chores/p00007-consumir-mcp-vertex-core-publicado.md) |
 | `f00010` | `feat` | [`done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md`](done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md) |
 | `f00011` | `feat` | [`done/feats/f00011-mejoras-en-la-deteccion-de-lenguajes.md`](done/feats/f00011-mejoras-en-la-deteccion-de-lenguajes.md) |
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
