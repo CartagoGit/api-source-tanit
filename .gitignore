@@ -27,11 +27,6 @@ projects/desktop/target/
 # TypeScript emite `.js` al verificar tipos de algunas secciones o al
 # ejecutar build:binary. Sólo los fuentes (.ts) y los assets de tests
 # (server.js en fixtures y examples) están versionados.
-packages/cli/commands/*.js
-packages/contracts/**/*.js
-packages/core/**/*.js
-packages/frameworks/**/*.js
+packages/**/*.js
 scripts/**/*.js
-tests/cli/*.js
-tests/core/*.js
-tests/contracts/*.js
+tests/**/*.js

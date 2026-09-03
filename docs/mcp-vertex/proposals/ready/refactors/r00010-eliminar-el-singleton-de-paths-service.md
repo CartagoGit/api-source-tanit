@@ -103,7 +103,8 @@ Test verde existente al que se suma:
 
 ### S1 — Migrar los siete callers a `IProjectContext` explícito
 
-- **Status**: ready
+- **Status**: done
+- **Commit**: `5936178` (complements WIP `e0538bd` left untouched per no-amend rule)
 - **Files**:
   - `packages/cli/commands/diff.script.ts`
   - `packages/cli/commands/generate.script.ts`

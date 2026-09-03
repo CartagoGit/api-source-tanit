@@ -45,6 +45,27 @@ async function main(): Promise<number> {
   const steps: IStep[] = [];
   const workDir = await mkdtemp(join(tmpdir(), "postman-package-"));
 
+  // 0. El plugin debe poder compilarse a `dist/`.
+  //
+  // El plugin publica su `dist/` (lo declara `package.json#main` y
+  // `files`). Si la build falla, el tarball lleva un `dist/` vacío y
+  // cualquier consumidor que lo instale ve el plugin caer al cargar.
+  // Medir la build aquí cierra BUG-004 de `a00009`: cualquier
+  // regresión del build (rootDir, imports cruzados, etc.) se detecta
+  // antes de publicar.
+  const pluginDir = join(REPO_ROOT, "packages", "plugins", "mcp-vertex_expostman");
+  const build = await run(["bun", "run", "build"], pluginDir);
+  steps.push({
+    name: "build del plugin genera dist/index.js",
+    ok: build.ok && existsSync(join(pluginDir, "dist", "index.js")),
+    detail: build.ok
+      ? "dist/index.js presente"
+      : build.output.split("\n").slice(-3).join(" · "),
+  });
+  if (!build.ok || !existsSync(join(pluginDir, "dist", "index.js"))) {
+    return report(steps);
+  }
+
   try {
     // 1. Empaquetar tal cual lo haría `npm publish`.
     const pack = await run(
