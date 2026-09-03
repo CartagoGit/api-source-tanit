@@ -32,7 +32,7 @@ import type { LaravelScannerOptions } from "../../contracts/interfaces/framework
 
 const ROUTE_METHOD_RE = /Route::(get|post|put|delete|patch)\s*\(\s*['"]([^'"]*)['"]/i;
 const RESOURCE_RE =
-  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*([A-Za-z0-9_\\]+)::class/;
+  /Route::(apiResource|resource)\s*\(\s*['"]([^'"]+)['"]\s*,\s*([A-Za-z0-9_\\]+)::class([^)]*)\)/;
 const PREFIX_RE = /Route::prefix\(\s*['"]([^'"]+)['"]/;
 const ACTION_RE =
   /\[\s*([A-Za-z0-9_]+)::class\s*,\s*['"]([A-Za-z0-9_]+)['"]\s*\]/;
@@ -141,6 +141,38 @@ const NON_API_ROUTE_FILES = new Set([
   "channels.php",
   "api.php.bak",
 ]);
+
+function singularizeResourceName(resourceUri: string): string {
+  const lastSegment = resourceUri.split("/").filter(Boolean).pop() ?? resourceUri;
+  const irregular: Record<string, string> = {
+    people: "person",
+    men: "man",
+    women: "woman",
+    children: "child",
+  };
+  const lower = lastSegment.toLowerCase();
+  const irregularSingular = irregular[lower];
+  if (irregularSingular) {
+    return lastSegment === lower
+      ? irregularSingular
+      : `${lastSegment.slice(0, 1)}${irregularSingular.slice(1)}`;
+  }
+  if (/ies$/i.test(lastSegment) && lastSegment.length > 3) {
+    return `${lastSegment.slice(0, -3)}y`;
+  }
+  if (/(ches|shes|sses|xes|zes)$/i.test(lastSegment)) {
+    return lastSegment.slice(0, -2);
+  }
+  if (/s$/i.test(lastSegment) && !/ss$/i.test(lastSegment)) {
+    return lastSegment.slice(0, -1);
+  }
+  return lastSegment;
+}
+
+function resourceParameterName(options: string, resourceUri: string): string {
+  const explicit = /parameters\s*\(\s*\[?\s*['"]?[^'"\]]+['"]?\s*=>\s*['"]([^'"]+)['"]/i.exec(options);
+  return explicit?.[1] ?? singularizeResourceName(resourceUri);
+}
 
 // ---------------------------------------------------------------------------
 // Project detection
@@ -317,19 +349,16 @@ export async function parseRoutesFile(
       const kind = resourceMatch[1];
       const resourceUri = resourceMatch[2];
       const alias = resourceMatch[3];
+      const options = resourceMatch[4] ?? "";
       const controllerClass = resolveControllerClass(alias, imports);
       const whereConstraints = captureWhereConstraints(lines, i);
       const expanded =
         kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES;
-      // a00010 / B-03: Laravel singulariza el nombre del recurso como
-      // path param por defecto (`Route::resource('users', …)` →
-      // `/users/{user}`). Lo respetamos para que la colección se
-      // autodocumente bien; el caso degenerado cae a `{id}`.
-      const singularGuess = resourceUri.endsWith("s")
-        ? resourceUri.slice(0, -1)
-        : resourceUri;
-      const paramToken = /^[a-z_][\w]*$/i.test(singularGuess)
-        ? `{${singularGuess}}`
+      // Laravel usa el nombre singular del recurso como parámetro implícito;
+      // `->parameters(['users' => 'user_id'])` permite sobrescribirlo.
+      const parameterName = resourceParameterName(options, resourceUri);
+      const paramToken = /^[a-z_][\w]*$/i.test(parameterName)
+        ? `{${parameterName}}`
         : "{id}";
       for (const r of expanded) {
         const rawForThis = (resourceUri + r.suffix)
