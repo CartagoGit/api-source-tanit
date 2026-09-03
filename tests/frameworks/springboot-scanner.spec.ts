@@ -106,6 +106,47 @@ describe("Spring Boot scanner", () => {
     const match = await new SpringBootProjectScanner().resolve(kotlinRoot);
     expect(match.artifacts).toContain("src/main/kotlin");
   });
+
+  // a00011 C-6: la anotación multilínea es Java normal y corriente.
+  // Antes del fix, `\([^)]*\)` exigía el cierre en la misma línea y
+  // `@GetMapping(path = "/users", produces = ...)` entero se perdía.
+  test("anotación multilínea con path = ... se parsea (C-6 a00011)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "pom.xml": `<?xml version="1.0"?>
+<project>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+  </dependencies>
+</project>`,
+      "src/main/java/com/ej/App.java": `package com.ej;
+import org.springframework.web.bind.annotation.*;
+@RestController
+@RequestMapping("/api")
+public class App {
+  @GetMapping(
+      path = "/users",
+      produces = "application/json"
+  )
+  public java.util.List<String> list() { return java.util.List.of(); }
+
+  @PostMapping(
+      value = "/users",
+      consumes = "application/json"
+  )
+  public String create(@RequestBody String body) { return body; }
+}
+`,
+    });
+    const match = await new SpringBootProjectScanner().resolve(project.root);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
+    const uris = routes.map((r) => `${r.method.toUpperCase()} ${r.uri}`).sort();
+    expect(uris).toEqual(["GET /api/users", "POST /api/users"]);
+    await project.cleanup();
+  });
 });
 
 describe("Spring Boot — build.gradle detection y variantes", () => {

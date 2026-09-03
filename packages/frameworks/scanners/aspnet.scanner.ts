@@ -187,7 +187,7 @@ async function parseCsFile(
       }
       out.push({
         method: method.toUpperCase(),
-        uri: fullPath,
+        uri: normalizeAspNetPath(fullPath, methodName || "index"),
         rawUri: fullPath,
         sourceFile: relPath,
         lineNumber: i + 1,

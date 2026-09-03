@@ -174,7 +174,52 @@ async function parseJavaFile(
     return [];
   }
   const text = stripJavaComments(raw);
-  const lines = text.split("\n");
+  // a00011 C-6: las anotaciones multilínea son Java normal y corriente:
+  //
+  //   @GetMapping(
+  //       path = "/users",
+  //       produces = "application/json"
+  //   )
+  //
+  // El regex `\([^)]*\)` exige el cierre en la misma línea, así que
+  // esta forma se perdía entera y con ella el endpoint. La solución es
+  // **pre-fusionar**: juntar líneas hasta que los paréntesis balanceen
+  // antes de partir en líneas para el matching. El `lineNumber` que
+  // se reporta es el de la PRIMERA línea de la anotación, que es
+  // donde un usuario miraría al buscarla en el fuente.
+  const lines = mergeBalancedParens(text.split("\n"));
+
+  /**
+   * Fusiona cada línea con las siguientes hasta que su contenido
+   * balancea paréntesis. Una línea ya balanceada sale tal cual.
+   */
+  function mergeBalancedParens(source: string[]): string[] {
+    const merged: string[] = [];
+    let buffer = "";
+    let depth = 0;
+    let startLine = 0;
+    for (let i = 0; i < source.length; i++) {
+      const line = source[i] ?? "";
+      if (buffer === "") {
+        buffer = line;
+        startLine = i;
+      } else {
+        buffer += `\n${line}`;
+      }
+      for (const ch of line) {
+        if (ch === "(") depth += 1;
+        else if (ch === ")") depth -= 1;
+      }
+      if (depth <= 0) {
+        merged.push(buffer);
+        buffer = "";
+        depth = 0;
+        void startLine;
+      }
+    }
+    if (buffer !== "") merged.push(buffer);
+    return merged;
+  }
 
   // 1) Detectar prefijo del controller.
   //    Pasada 1: encontrar @RequestMapping con args (prefiere con path).
