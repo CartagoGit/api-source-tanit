@@ -23,7 +23,7 @@
  *   - Includes anidados pueden no resolver el `urls.py` del sub-app.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
@@ -70,8 +70,13 @@ export class DjangoProjectScanner implements IProjectScanner {
     const hasManage = existsSync(join(projectRoot, "manage.py"));
     const isDjango = await isDjangoProject(projectRoot);
     if (!isDjango && !hasManage) return emptyResult(0);
-    if (hasManage) return emptyResult(1);
-    if (isDjango) return emptyResult(0.8);
+    if (hasManage) {
+      return withEvidence(1, [
+        { signal: "manage.py presente (entry-point canónico de Django)", weight: 0.5, artifact: "manage.py" },
+        ...(isDjango ? [{ signal: "Django referenciado en requirements/requirements.txt/pyproject.toml", weight: 0.5, artifact: isDjango.toString().includes("requirements") ? "requirements.txt" : "pyproject.toml" }] : []),
+      ]);
+    }
+    if (isDjango) return withEvidence(0.8, [{ signal: "Django declarado como dependencia del proyecto", weight: 0.8, artifact: "requirements.txt" }]);
     return emptyResult(0.5);
   }
 

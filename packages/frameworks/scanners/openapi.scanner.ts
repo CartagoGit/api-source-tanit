@@ -16,7 +16,7 @@
  * Si no hay ningún fichero OpenAPI, `detect()` devuelve 0.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type {
@@ -406,7 +406,13 @@ export class OpenApiProjectScanner implements IProjectScanner {
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     for (const rel of OPENAPI_CANDIDATES) {
-      if (existsSync(join(projectRoot, rel))) return emptyResult(1);
+      if (existsSync(join(projectRoot, rel))) {
+        return withEvidence(1, [{
+          signal: `Spec OpenAPI/Swagger presente (${rel})`,
+          weight: 1,
+          artifact: rel,
+        }]);
+      }
     }
     return emptyResult(0);
   }

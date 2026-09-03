@@ -17,7 +17,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
-import { emptyResult } from "../scanners/detect-result.helper.js";
+import { emptyResult, withEvidence } from "../scanners/detect-result.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -154,9 +154,14 @@ export class LaravelProjectScanner implements IProjectScanner {
     const hasApp = existsSync(join(projectRoot, "app"));
     const hasComposer = existsSync(join(projectRoot, "composer.json"));
     if (!hasArtisan) return emptyResult(0);
-    if (!hasRoutes || !hasApp) return emptyResult(0.5);
-    if (hasComposer) return emptyResult(1);
-    return emptyResult(0.7);
+    const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
+      { signal: "artisan presente (CLI canónico de Laravel)", weight: 0.4, artifact: "artisan" },
+    ];
+    if (hasRoutes) signals.push({ signal: "directorio routes/ presente", weight: 0.2, artifact: "routes/" });
+    if (hasApp) signals.push({ signal: "directorio app/ presente", weight: 0.2, artifact: "app/" });
+    if (hasComposer) signals.push({ signal: "composer.json presente", weight: 0.2, artifact: "composer.json" });
+    const score = signals.reduce((acc, s) => acc + s.weight, 0);
+    return withEvidence(Math.min(score, 1), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

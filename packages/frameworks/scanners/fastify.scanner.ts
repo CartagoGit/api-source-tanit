@@ -28,7 +28,7 @@
  *   externa de validación.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -101,7 +101,11 @@ export class FastifyProjectScanner implements IProjectScanner {
       ...((pkg?.["dependencies"] as Record<string, string>) ?? {}),
       ...((pkg?.["devDependencies"] as Record<string, string>) ?? {}),
     };
-    return emptyResult("fastify" in deps ? 1 : 0.6);
+    const hasFastifyDirect = "fastify" in deps;
+    const evidence = hasFastifyDirect
+      ? [{ signal: "package.json declara fastify directamente", weight: 1, artifact: "package.json" }]
+      : [{ signal: "package.json solo declara plugins @fastify/* (uso de refilón)", weight: 0.6, artifact: "package.json" }];
+    return withEvidence(hasFastifyDirect ? 1 : 0.6, evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

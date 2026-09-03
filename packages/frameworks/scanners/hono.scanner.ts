@@ -15,7 +15,7 @@
  * escribir otro — es la misma librería, solo cambia quién la invoca.
  */
 import { existsSync } from "node:fs";
-import { emptyResult } from "./detect-result.helper";
+import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -87,9 +87,15 @@ export class HonoProjectScanner implements IProjectScanner {
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const deps = honoDeps(await readPackageJson(projectRoot));
-    if (deps["hono"]) return emptyResult(1);
+    if (deps["hono"]) {
+      return withEvidence(1, [{ signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" }]);
+    }
     // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
-    return emptyResult(Object.keys(deps).some((name) => name.startsWith("@hono/")) ? 0.6 : 0);
+    const pluginMatch = Object.keys(deps).some((name) => name.startsWith("@hono/"));
+    if (pluginMatch) {
+      return withEvidence(0.6, [{ signal: "package.json solo declara plugins @hono/* (uso de refilón)", weight: 0.6, artifact: "package.json" }]);
+    }
+    return emptyResult(0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
