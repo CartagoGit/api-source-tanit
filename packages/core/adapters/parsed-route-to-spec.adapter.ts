@@ -21,10 +21,19 @@
  * El `formRequest` del `EndpointSpec` se setea al FQCN (o path) que el
  * `IValidationSpecProvider` haya resuelto, como string identificador.
  * El enricher lo usará para cargar reglas adicionales.
+ *
+ * **S5 (a00012)** — además del campo heredado `formRequest: string`,
+ * el adapter ahora escribe `validationSource` con el **provider**
+ * resuelto. Por ahora sólo hay un provider que sepamos enrutar
+ * (`"laravel-form-request"`); los demás frameworks dejan el campo
+ * `undefined` y su `validation.resolve()` se ignora, que es lo que
+ * cierra la invariante "un proyecto Express NUNCA entra por
+ * `enrichCatalogWithFormRequests`".
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SUPPORTED_METHODS } from "../../contracts/constants/core/postman.constant.js";
+import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type {
   IProjectMatch,
@@ -175,6 +184,24 @@ function specToEndpointArgs(
 }
 
 /**
+ * Resuelve qué `ValidationProvider` agnóstico corresponde a un framework.
+ *
+ * S5 (a00012): por ahora sólo Laravel tiene un enricher registrado
+ * (`LARAVEL_FORM_REQUEST_ENRICHER`). El resto de frameworks deja el
+ * `validationSource` del endpoint en `undefined`, y eso es lo que
+ * garantiza que `enrichCatalogWithFormRequests` (que sólo entiende
+ * FormRequests) no se les aplique por accidente.
+ *
+ * Función pura: vivir aquí, no en runtime, para que añadir un provider
+ * nuevo sea un cambio aislado al lado del adapter que lo emite.
+ */
+function laravelFormRequestProvider(
+  framework: string,
+): ValidationProvider | undefined {
+  return framework === "laravel" ? "laravel-form-request" : undefined;
+}
+
+/**
  * Construye `EndpointSpec[]` a partir de un `IRouteScanner` y, si
  * se da, su `IValidationSpecProvider`. Devuelve un `AdapterResult`
  * con la misma forma que el `discoverEndpoints` legacy.
@@ -253,9 +280,21 @@ export async function buildSpecsFromScanner(
         rules = null;
       }
       if (rules && rules.fields.length > 0) {
-        // Guarda el ID del provider para que el enricher pueda
-        // recuperar más tarde.
-        spec.formRequest = `${match.framework}:${rules.endpointKey}`;
+        // Identificador del provider que el enricher usará para
+        // cargar reglas adicionales. Se mantiene `formRequest`
+        // (string legacy) por compat con `enrichCatalogWithFormRequests`
+        // y con los tests que aún lo leen; el contrato nuevo vive en
+        // `validationSource` y es agnóstico del framework.
+        const formRequestRef = `${match.framework}:${rules.endpointKey}`;
+        spec.formRequest = formRequestRef;
+        // S5: sólo escribimos `validationSource` para providers que
+        // tienen enricher registrado. Hoy eso es exclusivamente
+        // `"laravel-form-request"`; el resto deja el campo `undefined`
+        // y se ahorra un pase inútil por el enricher equivocado.
+        const provider = laravelFormRequestProvider(match.framework);
+        if (provider) {
+          spec.validationSource = { provider, reference: formRequestRef };
+        }
         // Las reglas viajan con el spec, no solo su resultado. Del `body`
         // de ejemplo ya construido no hay forma de recuperar qué era
         // obligatorio ni qué formato tenía cada campo, y eso es

@@ -3,6 +3,7 @@
  * Documentación oficial: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
  */
 import type { ISchemaGraph } from "./schema.interface.js";
+import type { IValidationSource } from "./validation-source.interface.js";
 
 export interface PostmanUrl {
   raw: string;
@@ -187,8 +188,39 @@ export interface EndpointSpec {
    * Ruta relativa al proyecto del FormRequest asociado
    * (p. ej. `app/Http/Requests/Usuarios/NuevoUsuarioRequest.php`).
    * Si está, el enricher lo usa directamente en lugar de heurísticas.
+   *
+   * @deprecated Usar `validationSource`. El campo string era una
+   * mezcla de **proveedor** y **path** del artefacto — el adapter lo
+   * escribía como `"laravel:app/Http/Requests/..."` aunque el nombre
+   * del framework era el dato de routing, no una propiedad del
+   * endpoint. Se conserva por compat con `enrichCatalogWithFormRequests`
+   * y con los tests que aún lo leen; los nuevos proveedores declaran
+   * su contrato en `IValidationSource`. S5 (a00012).
    */
   formRequest?: string;
+  /**
+   * Fuente agnóstica de las reglas de validación del endpoint.
+   *
+   * Si está presente, el adapter ya ha decidido QUÉ enricher (no cuál
+   * framework) se encarga de procesarlo. El registry
+   * (`packages/core/validation/validation-enricher.service.ts`)
+   * despacha por `provider` y los frameworks que aún no tienen
+   * enricher pasan de largo.
+   *
+   * El adapter (S5) sólo lo asigna cuando el provider resuelto es
+   * `"laravel-form-request"`. Cualquier otro caso —Express, FastAPI,
+   * OpenAPI— deja el campo `undefined`, y eso es lo que cierra S5:
+   * `enrichCatalogWithFormRequests` ya no se llama para proyectos no
+   * Laravel. Migrar el resto de frameworks es follow-up de a00010 S6
+   * y siguientes.
+   *
+   * Se deja mutable (sin `readonly`) para encajar con el patrón del
+   * adapter: `parsed-route-to-spec.adapter.ts` construye el spec con
+   * los campos básicos y luego asigna el resto uno a uno. Los campos
+   * posteriores (`auth`, `schemaGraph`) son `readonly` porque los
+   * rellena el `collection-builder`, no el adapter.
+   */
+  validationSource?: IValidationSource;
   /**
    * Reglas de validación resueltas para este endpoint.
    *

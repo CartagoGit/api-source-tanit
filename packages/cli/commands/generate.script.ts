@@ -20,7 +20,8 @@ import { dirname, join } from "node:path";
 import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 
-import { enrichCatalogWithFormRequests } from "../../frameworks/laravel/catalog-enricher.service.js";
+import { enrichCatalogWithFormRequests, LARAVEL_FORM_REQUEST_ENRICHER, enrichValidationSources } from "../../frameworks/laravel/catalog-enricher.service.js";
+import { registerValidationEnricher } from "../../core/validation/validation-enricher.service.js";
 import {
   normalizeForComparison,
   stripApiPrefix,
@@ -271,6 +272,19 @@ export async function runGenerate(
   }
 
   console.log("→ Enriching with validation-rule variants…");
+  // S5 (a00012): side-effect registration del enricher Laravel. El
+  // registry es global al proceso; registrarlo aquí garantiza que
+  // cualquier tool/test que importe `runValidationEnrichers` después
+  // de arrancar `generate` vea al provider. Phase 2 moverá el registro
+  // al bootstrap, pero mientras `core` no sepa de Laravel, esto vive
+  // en el script que conoce ambos lados.
+  registerValidationEnricher(LARAVEL_FORM_REQUEST_ENRICHER);
+  // S5: despacha los specs por provider a través del registry. Los
+  // que no tengan `validationSource` o cuyo provider no esté
+  // registrado vuelven idénticos (Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER`
+  // es idempotente). La generación real de variantes sigue en
+  // `enrichCatalogWithFormRequests`, llamada justo debajo.
+  enrichValidationSources(discoveredSpecs);
   const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
   console.log(`  · Body variants:   ${stats.bodyVariants}`);
   console.log(`  · Query variants:  ${stats.queryVariants}`);
