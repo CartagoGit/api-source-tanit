@@ -29,16 +29,20 @@
 import type { TSLiteral } from "./typescript-frontend-literal.interface.js";
 
 /**
- * Import del módulo: su fuente y los nombres que arrastra.
+ * Import del módulo: su fuente, los nombres que arrastra y los
+ * bindings locales que recibe cada uno.
  *
- * `import express from "express"` se representa como
- * `{ source: "express", names: ["default"] }`.
- * `import { Router } from "express"` se representa como
- * `{ source: "express", names: ["Router"] }`.
+ * `import express from "express"` →
+ * `{ source: "express", names: ["default"], bindings: [{ local:
+ * "express", imported: "default", isDefault: true }] }`.
+ * `import { Router } from "express"` →
+ * `{ source: "express", names: ["Router"], bindings: [{ local:
+ * "Router", imported: "Router", isDefault: false }] }`.
  *
- * `names` es **lo que se trae al scope local**, no el alias
- * (`import x as y from ...` todavía no se modela: los seis scanners
- * solo miran el `from`).
+ * `names` es **lo que se importa del módulo origen** (compat, se
+ * deriva de `bindings`); el alias local vive en `bindings` — es lo
+ * que necesita el futuro grafo de mounts cross-file para saber que
+ * `R` en el código es `Router` de `express` (a00011 C-7 / B-rev-12).
  */
 export interface TSImportBinding {
   /** Nombre que recibe el binding en el scope local del módulo. */
@@ -211,8 +215,11 @@ export interface TSDecorator {
  * `methodCalls` tenga que cargar el grafo entero, y le da al
  * compilador pie para emitir un `Record & Tuple` futuro si conviene.
  *
- * El orden dentro de cada colección es el del archivo (top-down), que
- * es el orden natural para reportar errores o presentar al usuario.
+ * El orden dentro de cada colección es el del archivo (top-down):
+ * desde a00011 C-7 (B-rev-11) el parser lo garantiza ordenando cada
+ * colección por `(line, column)` ascendente al cerrar el parse — es
+ * determinista, independiente del orden del walker, y es el orden
+ * natural para reportar errores o presentar al usuario.
  */
 export interface TSFile {
   readonly imports: ReadonlyArray<TSImport>;

@@ -733,8 +733,12 @@ describe("EndpointMerger — mergeFieldSpecs cumple su contrato (a00011 B-rev-5)
     expect(result.warnings).toEqual([]);
   });
 
-  test("enumValues: intersección vacía real → warning emitido", () => {
-    // Aquí sí son disjuntos: el warning debe salir en `IMergeOutcome.warnings`.
+  test("enumValues: intersección vacía real → warning + enum del lado de mayor confianza", () => {
+    // Dominios disjuntos: el warning debe salir en
+    // `IMergeOutcome.warnings`. Publicar `[]` descartaría el dominio
+    // entero: el contrato (a00011 B-rev-5) es conservar el enum del
+    // lado de mayor confidence/provenance. OpenAPI (0.95) > fastify
+    // (0.85), así que gana `["c", "d"]` de openapi.
     const result = mergeEndpoints([
       candidate({
         framework: "fastify",
@@ -761,10 +765,35 @@ describe("EndpointMerger — mergeFieldSpecs cumple su contrato (a00011 B-rev-5)
     ]);
 
     const f = result.specs[0]?.fields?.[0];
-    expect(f?.enumValues).toEqual([]);
+    expect(f?.enumValues).toEqual(["c", "d"]);
     expect(result.warnings).toHaveLength(1);
     expect(result.warnings[0]).toMatch(/body:role/);
     expect(result.warnings[0]).toMatch(/enum intersection empty/);
+  });
+
+  test("enumValues: intersección vacía con confianza igual → enum de A (primero en orden)", () => {
+    // Empate de confianza (default 0.5 para ambos): gana A, el
+    // primero en el orden del caller (body-winner / llegada).
+    const result = mergeEndpoints([
+      candidate({
+        framework: "laravel",
+        scannerScore: 0.5,
+        fields: [
+          field({ fieldName: "role", type: "string", enumValues: ["a"] }),
+        ],
+      }),
+      candidate({
+        framework: "symfony",
+        scannerScore: 0.5,
+        fields: [
+          field({ fieldName: "role", type: "string", enumValues: ["b"] }),
+        ],
+      }),
+    ]);
+
+    const f = result.specs[0]?.fields?.[0];
+    expect(f?.enumValues).toEqual(["a"]);
+    expect(result.warnings).toHaveLength(1);
   });
 
   test("type mismatch (string vs object) → conflicto + ganador por mayor confianza", () => {

@@ -39,8 +39,8 @@ import { countLinesBefore, findAllBalanced, findNearestBalanced, stripJsComments
 import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
-import { parse } from "../../core/language-frontends/typescript/index.js";
-import type { TSFile } from "../../contracts/interfaces/core/language/typescript-frontend.interface.js";
+import { parseModule } from "../../core/language-frontends/typescript/index.js";
+import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
  * Frameworks de Node que este scanner cubre por parecido con Express.
@@ -149,7 +149,23 @@ interface ParsedModule {
  * multilínea, strings anidadas, comentarios), ahora una sola
  * pasada por el AST produce `imports`, `assignments` y `methodCalls`
  * que el adapter de Express consume.
+ *
+ * `diagnostics` (a00011 C-7 / B-rev-13) acumula los ficheros que el
+ * frontend no pudo parsear: la función devuelve módulo vacío y añade
+ * la razón al array del caller, que la eleva a `IScanResult`.
  */
+function parseModuleSafe(
+  file: string,
+  raw: string,
+  diagnostics: Array<IParseDiagnostic>,
+): ParsedModule {
+  const ast = parseModule(raw, file, diagnostics);
+  if (!ast) {
+    // El motivo ya quedó registrado en `diagnostics` por el frontend:
+    // el scanner sigue funcionando, solo no encuentra rutas en
+    // ese fichero.
+    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
+  }
   const routerPrefixes = new Map<string, string>();
   const appUsePrefixes = new Map<string, string>();
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
@@ -227,18 +243,11 @@ interface ParsedModule {
 
 /**
  * Llama al frontend con `errorRecovery: true` para no romper el
- * scan cuando un archivo tiene sintaxis rara (un fichero `.vue`
- * malformado, un `.json` parseado como JS, etc.). Si Babel no
- * puede hacer nada con el archivo, devolvemos `null` y el scanner
- * sigue.
+ * scan cuando un archivo tiene sintaxis rara. Si Babel no puede
+ * hacer nada con el archivo, el frontend devuelve `null` y registra
+ * la razón en `diagnostics` (a00011 C-7 / B-rev-13): el scan sigue,
+ * pero el fichero no desaparece sin rastro.
  */
-function parseAstSafe(raw: string, file: string): TSFile | null {
-  try {
-    return parse(raw, file);
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Route scanner
@@ -254,10 +263,11 @@ export class ExpressRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectJsFiles(match.projectRoot);
     const modules: ParsedModule[] = [];
+    const diagnostics: Array<IParseDiagnostic> = [];
     // En paralelo con tope, entregados en el orden de entrada: la
     // colección tiene que salir igual en cada ejecución.
     for await (const { path, text } of readFilesInOrder(files)) {
-      modules.push(parseModule(path, text));
+      modules.push(parseModuleSafe(path, text, diagnostics));
     }
 
     // Mapa routerName → prefix (incluye app.use prefixes).
@@ -298,7 +308,10 @@ export class ExpressRouteScanner implements IRouteScanner {
         });
       }
     }
-    return { routes: out };
+    // Los ficheros que el frontend no pudo parsear no abortan el
+    // scan, pero tampoco desaparecen sin rastro: suben como
+    // diagnostics (a00011 C-7 / B-rev-13).
+    return diagnostics.length > 0 ? { routes: out, diagnostics } : { routes: out };
   }
 }
 

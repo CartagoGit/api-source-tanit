@@ -59,6 +59,7 @@ import type {
   TSLiteral,
   TSLiteralBodyRange,
 } from "../../../contracts/interfaces/core/language/typescript-frontend-literal.interface.js";
+import type { IParseDiagnostic } from "../../../contracts/interfaces/core/scanner.interface.js";
 
 // ---------------------------------------------------------------------------
 // Babel node helpers
@@ -656,4 +657,31 @@ function collectChildren(node: BabelNode): ReadonlyArray<BabelNode> {
     }
   }
   return children;
+}
+
+// ---------------------------------------------------------------------------
+// Safe entry point (a00011 C-7 / B-rev-13)
+// ---------------------------------------------------------------------------
+
+/**
+ * Variante no lanzadora de `parse`: si Babel rechaza el archivo,
+ * devuelve `null` y registra la razón en `diagnostics` (si el array
+ * vino) en vez de tragar el error en silencio.
+ *
+ * El scanner sigue funcionando — un fichero con sintaxis inválida no
+ * aborta el scan — pero el fallo queda visible para quien quiera
+ * reportarlo (hoy: `IScanResult.diagnostics`).
+ */
+export function parseModule(
+  source: string,
+  filename: string,
+  diagnostics?: Array<IParseDiagnostic>,
+): TSFile | null {
+  try {
+    return parse(source, filename);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    diagnostics?.push({ file: filename, severity: "error", reason });
+    return null;
+  }
 }

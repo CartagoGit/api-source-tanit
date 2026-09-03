@@ -638,7 +638,9 @@ function confidenceFor(
  *      Si solo uno existe, ese sin warning.
  *   7. **`enumValues`**: intersección. Si el resultado es vacío,
  *      **warning** (intersección vacía = "ningún valor satisface a
- *      los dos", hay que mirar qué scanner tiene más razón).
+ *      los dos", hay que mirar qué scanner tiene más razón) y se
+ *      conserva el enum del lado de mayor `confidence`/provenance —
+ *      publicar `[]` descartaría el dominio entero.
  *   8. **`description`**: gana la más larga.
  *   9. **`example`**: gana el primero (el del body-winner).
  *
@@ -712,10 +714,18 @@ function mergeFieldSpecs(
   let enumValues: ReadonlyArray<string> | undefined;
   let enumConflict: string | undefined;
   if (a.enumValues !== undefined && b.enumValues !== undefined) {
-    const intersection = a.enumValues.filter((v) => b.enumValues!.includes(v));
+    const intersection = a.enumValues.filter((v) =>
+      b.enumValues!.includes(v),
+    );
     if (intersection.length === 0) {
-      enumValues = [];
-      enumConflict = `enum intersection empty: [${a.enumValues.join(",")}] vs [${b.enumValues.join(",")}]`;
+      // Intersección vacía = los dos scanners describen dominios
+      // disjuntos; ninguna petición podría satisfacer a los dos si
+      // se publicara `[]`. Perder el enum entero (o publicarlo vacío)
+      // es peor que confiar en la fuente más fiable: se conserva el
+      // lado de mayor `confidence`/provenance y se avisa con ambos
+      // dominios para que el operador decida (contrato a00011 B-rev-5).
+      enumValues = confidence.b > confidence.a ? b.enumValues : a.enumValues;
+      enumConflict = `enum intersection empty: [${a.enumValues.join(",")}] vs [${b.enumValues.join(",")}] — se conserva el enum de mayor confianza`;
     } else {
       enumValues = intersection;
     }

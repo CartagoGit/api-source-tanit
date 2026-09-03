@@ -19,7 +19,7 @@
 
 import { describe, expect, test } from "vitest";
 
-import { parse } from "../../packages/core/language-frontends/typescript";
+import { parse, parseModule } from "../../packages/core/language-frontends/typescript";
 
 describe("TypeScript frontend — imports", () => {
   test("import default detecta source y `default` como name", () => {
@@ -253,5 +253,135 @@ describe("TypeScript frontend — integración Express", () => {
     expect(getCall?.args[0]).toMatchObject({ kind: "string", value: "/health" });
     expect(postCall?.args[0]).toMatchObject({ kind: "string", value: "/users" });
     expect(postCall?.bodyRange).toBeDefined();
+  });
+});
+
+// -------------------------------------------------------------------------
+// a00011 C-7 — B-rev-11 / B-rev-12 / B-rev-13
+// -------------------------------------------------------------------------
+
+describe("TypeScript frontend — orden top-down (B-rev-11)", () => {
+  test("methodCalls sale ordenado por (line, column), no en orden de walker", () => {
+    // `app.post` aparece en la línea 10, `app.get` en la 5. El walker
+    // LIFO podría devolverlos al revés; el contrato garantiza top-down.
+    const lines: string[] = [];
+    lines[4] = `app.get('/get-route', (req, res) => res.json({}));`;
+    lines[9] = `app.post('/post-route', (req, res) => res.json({}));`;
+    const source = Array.from({ length: 10 }, (_, i) => lines[i] ?? "").join("\n");
+
+    const file = parse(source, "server.ts");
+    const routeCalls = file.methodCalls.filter((c) =>
+      ["app.get", "app.post"].includes(c.callee),
+    );
+    expect(routeCalls).toHaveLength(2);
+    expect(routeCalls[0]?.callee).toBe("app.get");
+    expect(routeCalls[0]?.line).toBe(5);
+    expect(routeCalls[1]?.callee).toBe("app.post");
+    expect(routeCalls[1]?.line).toBe(10);
+  });
+
+  test("el orden se mantiene con las llamadas anidadas al principio del archivo", () => {
+    // Llamada anidada en línea 1 y llamada simple en línea 3: el walker
+    // visita la outer antes que la inner, pero ambas salen en orden
+    // de línea.
+    const source = [
+      `app.use("/api", router.get("/users", h));`,
+      ``,
+      `app.post("/things", (req, res) => res.json({}));`,
+    ].join("\n");
+    const file = parse(source, "server.ts");
+    const lines = file.methodCalls.map((c) => c.line);
+    expect([...lines].sort((a, b) => a - b)).toEqual(lines);
+    expect(file.methodCalls[0]?.line).toBe(1);
+  });
+
+  test("assignments y symbols también quedan en orden de línea", () => {
+    const source = [
+      `const first = Router({ prefix: '/a' });`,
+      `function middle() {}`,
+      `const last = Router({ prefix: '/z' });`,
+    ].join("\n");
+    const file = parse(source, "server.ts");
+    const assignmentLines = file.assignments.map((a) => a.line);
+    const symbolLines = file.symbols.map((s) => s.line);
+    expect(assignmentLines).toEqual([1, 3]);
+    expect(symbolLines).toEqual([1, 2, 3]);
+  });
+});
+
+describe("TypeScript frontend — bindings de imports (B-rev-12)", () => {
+  test("import { Router as R } conserva el alias en bindings", () => {
+    const file = parse(`import { Router as R } from "express";`, "server.ts");
+    expect(file.imports).toHaveLength(1);
+    expect(file.imports[0]?.bindings).toEqual([
+      { local: "R", imported: "Router", isDefault: false },
+    ]);
+    // `names` sigue siendo el nombre importado (compat).
+    expect(file.imports[0]?.names).toEqual(["Router"]);
+  });
+
+  test("import default → imported 'default' + isDefault true", () => {
+    const file = parse(`import exp from "express";`, "server.ts");
+    expect(file.imports[0]?.bindings).toEqual([
+      { local: "exp", imported: "default", isDefault: true },
+    ]);
+    expect(file.imports[0]?.names).toEqual(["default"]);
+  });
+
+  test("import * as fs → imported '*' + isNamespace true", () => {
+    const file = parse(`import * as fs from "fs";`, "server.ts");
+    expect(file.imports[0]?.bindings).toEqual([
+      { local: "fs", imported: "*", isDefault: false, isNamespace: true },
+    ]);
+    expect(file.imports[0]?.names).toEqual(["*"]);
+  });
+
+  test("import sin alias: local === imported", () => {
+    const file = parse(`import { Router, json } from "express";`, "server.ts");
+    expect(file.imports[0]?.bindings).toEqual([
+      { local: "Router", imported: "Router", isDefault: false },
+      { local: "json", imported: "json", isDefault: false },
+    ]);
+  });
+
+  test("mixto: default + named con alias en una sola declaración", () => {
+    const file = parse(
+      `import exp, { Router as R } from "express";`,
+      "server.ts",
+    );
+    expect(file.imports[0]?.bindings).toEqual([
+      { local: "exp", imported: "default", isDefault: true },
+      { local: "R", imported: "Router", isDefault: false },
+    ]);
+  });
+});
+
+describe("TypeScript frontend — parseModule con diagnostics (B-rev-13)", () => {
+  test("source inválido devuelve null y registra un diagnostic de severidad error", () => {
+    const diagnostics: Parameters<typeof parseModule>[2] = [];
+    const file = parseModule(`const = = =`, "broken.ts", diagnostics);
+    expect(file).toBeNull();
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.severity).toBe("error");
+    expect(diagnostics[0]?.file).toBe("broken.ts");
+    expect(typeof diagnostics[0]?.reason).toBe("string");
+    expect(diagnostics[0]?.reason.length).toBeGreaterThan(0);
+  });
+
+  test("sin array de diagnostics no lanza y sigue devolviendo null", () => {
+    expect(() => parseModule(`const = = =`, "broken.ts")).not.toThrow();
+    expect(parseModule(`const = = =`, "broken.ts")).toBeNull();
+  });
+
+  test("source válido parsea igual que parse y no emite diagnostics", () => {
+    const diagnostics: Parameters<typeof parseModule>[2] = [];
+    const file = parseModule(
+      `app.get('/users', (req, res) => res.json({}));`,
+      "server.ts",
+      diagnostics,
+    );
+    expect(file).not.toBeNull();
+    expect(file?.methodCalls[0]?.callee).toBe("app.get");
+    expect(diagnostics).toHaveLength(0);
   });
 });

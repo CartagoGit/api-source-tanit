@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 145 símbolos en 50 módulos.
+> 146 símbolos en 50 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1596,7 +1596,27 @@ reportar errores y los scanners enseñárselo al usuario. No se usa
 internamente — Babel lo acepta pero aquí no nos interesa.
 
 Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
-callers lo capturan y reportan como "archivo no procesable".
+callers que quieren degradar sin ruido usan `parseModule` con un
+array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+
+El orden dentro de cada colección de `TSFile` es top-down respecto
+al archivo: al final del parse cada colección se ordena por
+`(line, column)` ascendente, de modo que el contrato no dependa del
+orden interno del walker (a00011 C-7 / B-rev-11).
+
+#### `parseModule`
+
+```ts
+export function parseModule( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): TSFile | null
+```
+
+Variante no lanzadora de `parse`: si Babel rechaza el archivo,
+devuelve `null` y registra la razón en `diagnostics` (si el array
+vino) en vez de tragar el error en silencio.
+
+El scanner sigue funcionando — un fichero con sintaxis inválida no
+aborta el scan — pero el fallo queda visible para quien quiera
+reportarlo (hoy: `IScanResult.diagnostics`).
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 
