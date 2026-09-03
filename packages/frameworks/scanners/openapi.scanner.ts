@@ -23,6 +23,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -614,13 +615,18 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
    * cada ruta. Con `route.framework` la pregunta se responde sola, y el
    * contrato vuelve a describir todo lo que circula por el pipeline.
    */
-  async supports(route: ParsedRoute, match: IProjectMatch): Promise<boolean> {
+  async supports(
+    route: ParsedRoute,
+    match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return route.framework === "openapi" || match.framework === "openapi";
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<Awaited<ReturnType<IValidationSpecProvider["resolve"]>>> {
     const specRel = this.getSpecPath(match);
     if (!specRel) return { endpointKey: keyOf(route), fields: [] };

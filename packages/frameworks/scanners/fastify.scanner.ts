@@ -43,6 +43,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -123,21 +124,18 @@ export class FastifyProjectScanner implements IProjectScanner {
 export class FastifyRouteScanner implements IRouteScanner {
   readonly framework = "fastify" as const;
 
-  /** `MÉTODO uri` → el JSON Schema declarado en esa ruta. */
-  private readonly schemas = new Map<string, string>();
-
   matches(match: IProjectMatch): boolean {
     return match.framework === "fastify";
   }
 
-  /** Lo consume `FastifySchemaProvider`, que corre después del escaneo. */
-  schemaFor(method: string, uri: string): string | undefined {
-    return this.schemas.get(`${method} ${uri}`);
-  }
-
-  async scan(match: IProjectMatch): Promise<ReadonlyArray<ParsedRoute>> {
+  async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFiles(match.projectRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
+    // `schemas` vive aquí, no como campo de instancia: si sobreviviera
+    // entre llamadas, dos escaneos consecutivos compartirían los JSON
+    // Schemas y una ruta "sin schema" podría heredarlo de la anterior.
+    // Es el bug que cerró a00010 S2.
+    const schemas = new Map<string, string>();
 
     // Lectura en paralelo con tope, entregada en el orden de
     // entrada: la colección tiene que salir igual cada vez.
@@ -155,7 +153,7 @@ export class FastifyRouteScanner implements IRouteScanner {
       )) {
         routes.push(route);
         const schema = schemaInCall(source, callStart, callEnd);
-        if (schema) this.schemas.set(`${route.method} ${route.uri}`, schema);
+        if (schema) schemas.set(`${route.method} ${route.uri}`, schema);
       }
       for (const { route, callStart, callEnd } of parseRouteObjects(
         source,
@@ -164,11 +162,18 @@ export class FastifyRouteScanner implements IRouteScanner {
       )) {
         routes.push(route);
         const schema = schemaInCall(source, callStart, callEnd);
-        if (schema) this.schemas.set(`${route.method} ${route.uri}`, schema);
+        if (schema) schemas.set(`${route.method} ${route.uri}`, schema);
       }
     }
 
-    return dedupe(routes);
+    const unique = dedupe(routes);
+    return {
+      routes: unique,
+      // Solo emite `schemas` cuando hay al menos uno: ahorra un `Map`
+      // vacío en el `IScanResult` que el provider tendría que tratar
+      // como "no encontrado".
+      ...(schemas.size > 0 ? { schemas } : {}),
+    };
   }
 }
 
@@ -318,19 +323,30 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
  * A diferencia de zod o Joi, aquí no hay que interpretar el DSL de una
  * librería: Fastify usa JSON Schema, que ya dice el tipo, qué campos son
  * obligatorios y los límites. Es información exacta, no inferida.
+ *
+ * No guarda el scanner: el JSON Schema vive en `scanResult.schemas`,
+ * que se construye en cada `scan()` y se descarta al terminar. Antes
+ * tenía `private readonly scanner: FastifyRouteScanner` y leía de un
+ * `Map` de instancia, y dos escaneos se contaminaban (a00010 S2).
  */
 export class FastifySchemaProvider implements IValidationSpecProvider {
   readonly framework = "fastify" as const;
 
-  constructor(private readonly scanner: FastifyRouteScanner) {}
-
-  async supports(route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
-    return this.scanner.schemaFor(route.method, route.uri) !== undefined;
+  async supports(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<boolean> {
+    return scanResult.schemas?.has(`${route.method} ${route.uri}`) ?? false;
   }
 
-  async resolve(route: ParsedRoute, _match: IProjectMatch): Promise<IEndpointValidation> {
+  async resolve(
+    route: ParsedRoute,
+    _match: IProjectMatch,
+    scanResult: IScanResult,
+  ): Promise<IEndpointValidation> {
     const endpointKey = `${route.method} ${route.uri}`;
-    const json = this.scanner.schemaFor(route.method, route.uri);
+    const json = scanResult.schemas?.get(`${route.method} ${route.uri}`);
     return { endpointKey, fields: json ? parseFastifySchema(json) : [] };
   }
 }
