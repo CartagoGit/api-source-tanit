@@ -171,14 +171,49 @@ async function parseGoFile(
   const raw = stripJsComments(source);
 
   // 1) Detectar prefixes de Groups.
+  //
+  // a00011 C-8: los grupos se anidan como un grafo. La forma canónica:
+  //
+  //   api := r.Group("/api")
+  //   users := api.Group("/users")     // ← el receptor de ESTE grupo
+  //   users.GET("/list", h)            //   es OTRO grupo, no la raíz
+  //
+  // El GROUP_RE captura el receptor (`users`) y el emisor (`api`).
+  // Resolver el prefix de un grupo significa subir por la cadena de
+  // emisores hasta llegar a la raíz (`r`), concatenando los prefijos
+  // en el camino. Antes solo se miraba el prefix literal del propio
+  // grupo, así que `/api/users/list` salía como `/users/list`.
   const groupPrefix = new Map<string, string>();
+  /** Quién es el emisor de cada grupo (`users` → `api`). */
+  const groupParent = new Map<string, string>();
   let m: RegExpExecArray | null;
   const groupRe = ownRegex(GROUP_RE);
   while ((m = groupRe.exec(raw)) !== null) {
     const ident = m[1] ?? "";
-    const prefix = m[2] ?? "";
+    const emitter = m[2] ?? "";
+    const prefix = m[3] ?? "";
     groupPrefix.set(ident, prefix);
+    groupParent.set(ident, emitter);
   }
+
+  /**
+   * Prefijo completo de un grupo, subiendo por la cadena de padres.
+   * Un guard de profundidad evita el ciclo imposible (`a := a.Group`)
+   * que un fuente roto podría declarar.
+   */
+  const resolveGroupPrefix = (ident: string): string => {
+    const parts: string[] = [];
+    const seen = new Set<string>();
+    let current: string | undefined = ident;
+    while (current !== undefined && !seen.has(current)) {
+      seen.add(current);
+      const own = groupPrefix.get(current);
+      if (own !== undefined) parts.unshift(own);
+      current = groupParent.get(current);
+    }
+    return joinRoutePath(...parts);
+  };
+
   // 2) Buscar routes.
   const routeRe = ownRegex(ROUTE_RE);
   while ((m = routeRe.exec(raw)) !== null) {
@@ -186,7 +221,7 @@ async function parseGoFile(
     const method = (m[2] ?? "").toLowerCase();
     const path = m[3] ?? "";
     if (!HTTP_METHODS.includes(method)) continue;
-    const prefix = groupPrefix.get(ident) ?? "";
+    const prefix = groupPrefix.has(ident) ? resolveGroupPrefix(ident) : "";
     const fullPath = joinRoutePath(prefix, path);
     out.push({
       method: method.toUpperCase(),
@@ -194,7 +229,7 @@ async function parseGoFile(
       rawUri: path,
       sourceFile: relPath,
       lineNumber: 0,
-      prefixChain: prefix ? [prefix] : [],
+      prefixChain: prefix ? prefix.split("/") : [],
       displayName: `${method.toUpperCase()} ${path}`,
     });
   }
