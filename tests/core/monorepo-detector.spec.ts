@@ -7,7 +7,8 @@
  *  - Las cuatro señales estándar (turbo.json, pnpm-workspace.yaml,
  *    lerna.json, package.json#workspaces).
  *  - La prioridad entre ellas (turbo > pnpm > lerna > package.json).
- *  - La resolución de globs (`apps/*` → `apps/`).
+ *  - La resolución de globs (`apps/*` → subdirectorios reales, no el
+ *    prefijo; ver a00012 S1.a).
  *  - Las normalizaciones (`./apps/api`, `apps/../api`, escapes).
  *  - El contrato de `frameworkSearchRoot`: solo se rellena cuando hay
  *    **exactamente un** workspace; con cero o varios, `null`.
@@ -72,12 +73,13 @@ describe("detectMonorepo — turbo.json", () => {
     const result = await detectMonorepo(root);
     expect(result.isMonorepo).toBe(true);
     expect(result.signal).toBe("turbo.json");
-    // Los globs se resuelven al directorio padre. La detección de
-    // subdirs concretos la hace el scanner; aquí solo se confirma que
-    // el prefijo existe.
-    expect(result.workspaceDirs).toContain("apps");
-    expect(result.workspaceDirs).toContain("packages");
-    expect(result.frameworkSearchRoot).toBeNull(); // hay dos prefijos
+    // a00012 S1.a: los globs se materializan a los subdirectorios
+    // reales, no al prefijo. El scanner consume `workspaceDirs`
+    // directamente sin tener que re-enumerar.
+    expect(result.workspaceDirs).toContain("apps/api");
+    expect(result.workspaceDirs).toContain("apps/web");
+    expect(result.workspaceDirs).toContain("packages/auth");
+    expect(result.frameworkSearchRoot).toBeNull(); // hay tres workspaces distintos
   });
 
   test("turbo.json con `packages:` (Lerna-style)", async () => {
@@ -85,7 +87,7 @@ describe("detectMonorepo — turbo.json", () => {
     await makeDir("apps/api");
     const result = await detectMonorepo(root);
     expect(result.isMonorepo).toBe(true);
-    expect(result.workspaceDirs).toEqual(["apps"]);
+    expect(result.workspaceDirs).toEqual(["apps/api"]);
   });
 
   test("turbo.json con un solo workspace concreto → frameworkSearchRoot", async () => {
@@ -107,8 +109,9 @@ describe("detectMonorepo — pnpm-workspace.yaml", () => {
     const result = await detectMonorepo(root);
     expect(result.isMonorepo).toBe(true);
     expect(result.signal).toBe("pnpm-workspace.yaml");
-    expect(result.workspaceDirs).toContain("apps");
-    expect(result.workspaceDirs).toContain("packages");
+    // a00012 S1.a: materialización real, no prefijo.
+    expect(result.workspaceDirs).toContain("apps/api");
+    expect(result.workspaceDirs).toContain("packages/auth");
   });
 
   test("con workspaces entrecomillados y comentarios inline", async () => {
@@ -132,7 +135,7 @@ describe("detectMonorepo — pnpm-workspace.yaml", () => {
     );
     await makeDir("apps/api");
     const result = await detectMonorepo(root);
-    expect(result.workspaceDirs).toContain("apps");
+    expect(result.workspaceDirs).toContain("apps/api");
   });
 
   test("un YAML sin `packages:` no detecta", async () => {
@@ -151,7 +154,7 @@ describe("detectMonorepo — lerna.json", () => {
     const result = await detectMonorepo(root);
     expect(result.isMonorepo).toBe(true);
     expect(result.signal).toBe("lerna.json");
-    expect(result.workspaceDirs).toEqual(["packages"]);
+    expect(result.workspaceDirs).toEqual(["packages/api"]);
   });
 });
 
@@ -165,7 +168,7 @@ describe("detectMonorepo — package.json#workspaces", () => {
     const result = await detectMonorepo(root);
     expect(result.isMonorepo).toBe(true);
     expect(result.signal).toBe("package.json#workspaces");
-    expect(result.workspaceDirs).toEqual(["apps"]);
+    expect(result.workspaceDirs).toEqual(["apps/api"]);
   });
 
   test("package.json con workspaces en formato objeto (npm 7+)", async () => {

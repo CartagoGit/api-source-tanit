@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 150 símbolos en 52 módulos.
+> 152 símbolos en 54 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -175,21 +175,6 @@ Punto de entrada: devuelve la detección para una raíz de proyecto.
 absolutizaron antes). Si llega relativo, se devuelve "no es monorepo"
 con `null` por todas partes — el orquestador no debería tener que
 adivinar cuál es la raíz.
-
-#### `resolveWorkspaceDirs`
-
-```ts
-export function resolveWorkspaceDirs( projectRoot: string, globs: ReadonlyArray<string>, ): string[]
-```
-
-Resuelve un glob de workspace a su primer directorio real bajo
-`projectRoot`. Lo que sale del parser son globs (`apps/*`,
-`packages/api`); este helper materializa cada uno con `existsSync`
-(es boot-time / una vez por escaneo, no hot path).
-
-Devuelve solo los que **existen**: si el `workspaces` lista `apps/*`
-pero la carpeta está vacía, no se devuelve nada — sería peor
-confundir "el workspace está vacío" con "no es monorepo".
 
 ### `packages/core/discovery/output-paths.helper.ts`
 
@@ -395,6 +380,44 @@ Nombre del proyecto en `projectRoot`.
 Nunca lanza: si no hay manifiesto legible, cae al nombre de la
 carpeta, que siempre existe.
 
+### `packages/core/discovery/scan-root.helper.ts`
+
+Raíz efectiva de escaneo de un scanner — a00012 S1.b.
+
+#### `effectiveScanRoot`
+
+```ts
+export function effectiveScanRoot(match: IProjectMatch): string
+```
+
+La raíz donde un scanner debe mirar sus fuentes.
+
+- Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
+  con proyectos planos y con los tests que no rellenan el campo).
+- Con `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, siempre que el resultado siga dentro de
+  `projectRoot`.
+
+Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
+`projectRoot` (típicamente porque contiene `..` o es absoluto).
+
+#### `safeScanRoot`
+
+```ts
+export function safeScanRoot(match: IProjectMatch): string
+```
+
+Alias de `effectiveScanRoot` con un nombre que enfatiza que el
+helper **puede lanzar** cuando la ruta de búsqueda escapa de la
+raíz del proyecto. Útil cuando el llamante quiere dejar explícito
+que está haciendo una verificación de contención (por ejemplo, en
+pipelines de varios pasos donde conviene que el `try`/`catch`
+quede claro).
+
+El comportamiento es idéntico al de `effectiveScanRoot`: misma
+resolución, misma guarda, mismo error. Sólo cambia el nombre para
+que el código que la usa pueda expresar su intención.
+
 ### `packages/core/discovery/summary.service.ts`
 
 `summary` — qué ve la herramienta en un proyecto, sin escribir nada.
@@ -415,6 +438,26 @@ El catálogo de frameworks y el fallback se inyectan, igual que en el
 pipeline: este servicio es del núcleo y no puede conocer los scanners
 concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
 en `packages/frameworks/`.
+
+### `packages/core/discovery/workspace-glob.helper.ts`
+
+Resolver de globs de workspaces — a00012 S1.a.
+
+#### `resolveWorkspaceGlobs`
+
+```ts
+export async function resolveWorkspaceGlobs( projectRoot: string, globs: ReadonlyArray<string>, ): Promise<ReadonlyArray<string>>
+```
+
+Materializa una lista de globs de workspaces en directorios reales.
+
+@param projectRoot Raíz absoluta del proyecto (los callers ya la
+  absolutizaron fuera de este helper).
+@param globs Globs en formato POSIX relativo, posiblemente
+  prefijados con `!` para excluirlos.
+@returns Directorios existentes bajo `projectRoot`, en formato
+  POSIX relativo, ordenados lexicográficamente y deduplicados.
+  Una ruta raíz inválida devuelve `[]`.
 
 ### `packages/core/domain/auth-flow.service.ts`
 

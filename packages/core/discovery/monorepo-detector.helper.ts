@@ -36,9 +36,10 @@
  */
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { isAbsolute, join, relative, sep } from "node:path";
+import { isAbsolute, join } from "node:path";
 
 import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
+import { resolveWorkspaceGlobs } from "./workspace-glob.helper.js";
 
 /** Los archivos que identifican un monorepo, en orden de prioridad. */
 const MONOREPO_SIGNALS = [
@@ -75,14 +76,14 @@ export async function detectMonorepo(
       file === "pnpm-workspace.yaml"
         ? await readPnpmWorkspaces(path)
         : await readJsonWorkspaces(path);
-    return finalize(file, rawGlobs, projectRoot);
+    return await finalize(file, rawGlobs, projectRoot);
   }
 
   // 2) `package.json#workspaces` (npm/yarn).
   const pkgPath = join(projectRoot, "package.json");
   if (existsSync(pkgPath)) {
     const rawGlobs = await readPackageJsonWorkspaces(pkgPath);
-    if (rawGlobs.length > 0) return finalize("package.json#workspaces", rawGlobs, projectRoot);
+    if (rawGlobs.length > 0) return await finalize("package.json#workspaces", rawGlobs, projectRoot);
   }
 
   return {
@@ -93,11 +94,11 @@ export async function detectMonorepo(
   };
 }
 
-function finalize(
+async function finalize(
   signal: string,
   rawGlobs: ReadonlyArray<string>,
   projectRoot: string,
-): IMonorepoDetection {
+): Promise<IMonorepoDetection> {
   // 1) Normaliza cada glob (rechaza absolutos, escapa `..`) y dedup.
   //    Los globs suelen solaparse (`["apps/*", "apps/api"]`) y la
   //    detección no debe duplicar el resultado.
@@ -118,26 +119,19 @@ function finalize(
       frameworkSearchRoot: null,
     };
   }
-  // 2) Resuelve los globs contra el disco: `apps/*` → `apps` solo si
-  //    existe; `apps/api` → `apps/api` solo si existe. Si el workspace
-  //    no está materializado todavía (un repo recién clonado sin
-  //    `node_modules`), no aparece.
-  const resolved = resolveWorkspaceDirs(projectRoot, cleaned);
-  // Dedup post-resolve: `apps/*` y `apps/api` resuelven al mismo dir.
-  const resolvedSeen = new Set<string>();
-  const deduped: string[] = [];
-  for (const dir of resolved) {
-    if (!resolvedSeen.has(dir)) {
-      resolvedSeen.add(dir);
-      deduped.push(dir);
-    }
-  }
-  deduped.sort();
+  // 2) Materializa los globs contra el disco: `apps/*` → los hijos
+  //    reales de `apps` (`apps/api`, `apps/web`, …); `apps/api` →
+  //    `apps/api` solo si existe. Si el workspace no está materializado
+  //    todavía (un repo recién clonado sin subdirs), el resultado es
+  //    `[]` — sería peor confundir "el workspace está vacío" con
+  //    "no es monorepo". El resolver ya deduplica y ordena, así que no
+  //    hace falta otra pasada.
+  const resolved = await resolveWorkspaceGlobs(projectRoot, cleaned);
   return {
     isMonorepo: true,
     signal,
-    workspaceDirs: deduped,
-    frameworkSearchRoot: deduped.length === 1 ? deduped[0]! : null,
+    workspaceDirs: resolved,
+    frameworkSearchRoot: resolved.length === 1 ? resolved[0]! : null,
   };
 }
 
@@ -324,35 +318,7 @@ async function readPackageJsonWorkspaces(
   return readJsonWorkspaces(pkgPath);
 }
 
-/**
- * Resuelve un glob de workspace a su primer directorio real bajo
- * `projectRoot`. Lo que sale del parser son globs (`apps/*`,
- * `packages/api`); este helper materializa cada uno con `existsSync`
- * (es boot-time / una vez por escaneo, no hot path).
- *
- * Devuelve solo los que **existen**: si el `workspaces` lista `apps/*`
- * pero la carpeta está vacía, no se devuelve nada — sería peor
- * confundir "el workspace está vacío" con "no es monorepo".
- */
-export function resolveWorkspaceDirs(
-  projectRoot: string,
-  globs: ReadonlyArray<string>,
-): string[] {
-  const out: string[] = [];
-  for (const glob of globs) {
-    if (glob.includes("*")) {
-      // Para globs miramos el prefijo (todo lo anterior al primer `*`).
-      // No resolvemos `**` ni `?` porque ningún workspace real los usa.
-      const prefix = glob.split("*")[0]!.replace(/\/$/, "");
-      const concrete = join(projectRoot, prefix);
-      if (existsSync(concrete)) {
-        const rel = relative(projectRoot, concrete).split(sep).join("/");
-        if (rel && !rel.startsWith("..")) out.push(rel);
-      }
-    } else {
-      const concrete = join(projectRoot, glob);
-      if (existsSync(concrete)) out.push(glob);
-    }
-  }
-  return out;
-}
+// La resolución de globs se movió a `workspace-glob.helper.ts`
+// (a00012 S1.a): ya no se devuelve el prefijo (`apps`) sino los
+// subdirectorios reales (`apps/api`, `apps/web`). El detector lo
+// invoca directamente con `await`.
