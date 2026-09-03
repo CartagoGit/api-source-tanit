@@ -136,7 +136,8 @@ Test verde existente al que se suma:
 
 ### S2 — Borrar el singleton y la bandaid `withScopedPaths`
 
-- **Status**: ready
+- **Status**: done
+- **Commit**: `fceb2e1` (parallel-agent completed it 30s before the runner; identical scope, no amend per no-amend rule)
 - **Files**:
   - `packages/core/discovery/paths.service.ts` — eliminar completo
     (o reducirlo a un `index.ts` que reexporte `output-paths.helper`
