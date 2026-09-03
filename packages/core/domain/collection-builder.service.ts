@@ -215,38 +215,21 @@ function toHierarchical(
     };
   });
 
-  const autoMainCounts = new Map<string, number>();
-  for (const a of annotated) {
-    autoMainCounts.set(
-      a.autoMainKey,
-      (autoMainCounts.get(a.autoMainKey) ?? 0) + 1,
-    );
-  }
-  const reservedMainKeys = new Set<string>();
-  for (const [key, count] of autoMainCounts) {
-    if (count >= 2) reservedMainKeys.add(key);
-  }
-  for (const a of annotated) {
-    if (!a.g.explicit) reservedMainKeys.add(a.autoMainKey);
-  }
-  const explicitAutoMainCounts = new Map<string, number>();
-  for (const a of annotated) {
-    if (a.g.explicit) {
-      explicitAutoMainCounts.set(
-        a.autoMainKey,
-        (explicitAutoMainCounts.get(a.autoMainKey) ?? 0) + 1,
-      );
-    }
-  }
-  for (const [key, count] of explicitAutoMainCounts) {
-    if (count >= 2) reservedMainKeys.add(key);
-  }
-
   const order: string[] = [];
   const map = new Map<string, HierarchicalFolder>();
 
   for (const { g, autoMainKey } of annotated) {
-    const mainKey = g.explicit ? g.key : autoMainKey;
+    // La `mainKey` de la carpeta raíz se calcula siempre a partir del
+    // URI del grupo (no del `folder` explícito del endpoint).
+    //
+    // Antes era `g.explicit ? g.key : autoMainKey`, lo que hacía que
+    // `g.key === mainKey` fuese trivialmente cierto cuando el grupo era
+    // explícito → la rama de `subs` (subcarpeta explícita) nunca se
+    // ejecutaba. Con `autoMainKey` como `mainKey` en todos los casos,
+    // la decisión `direct` vs `subs` se basa en si el `folder:`
+    // explícito coincide o no con el top real del endpoint — que es el
+    // caso de uso legítimo de subcarpeta explícita.
+    const mainKey = autoMainKey;
 
     let h = map.get(mainKey);
     if (!h) {
@@ -258,8 +241,13 @@ function toHierarchical(
 
     if (g.explicit) {
       if (g.key === mainKey) {
+        // Grupo explícito autorreferencial: su `folder:` coincide con
+        // el top real calculado del URI, así que vive en `direct`.
         h.direct.push(...g.items);
       } else {
+        // Grupo explícito con `folder:` distinto del top real: es una
+        // subcarpeta explícita bajo `mainKey`. Esta rama era la que el
+        // bug dejaba muerta (a00012 H-P2a / S3.a).
         h.subs.push({ key: g.key, name: g.name, items: g.items });
       }
     } else {
