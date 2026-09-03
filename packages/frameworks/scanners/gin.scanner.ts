@@ -70,11 +70,12 @@ export class GinProjectScanner implements IProjectScanner {
     if (!isGin) return emptyResult(0);
     const hasMain = existsSync(join(projectRoot, "main.go"));
     const hasCmd = existsSync(join(projectRoot, "cmd"));
-    return withEvidence(hasMain || hasCmd ? 1 : 0.5, [
-      { signal: "go.mod con import gin-gonic/gin", weight: hasMain || hasCmd ? 0.7 : 0.5, artifact: "go.mod" },
+    const evidence = [
+      { signal: "go.mod con import gin-gonic/gin", weight: 0.7, artifact: "go.mod" },
       ...(hasMain ? [{ signal: "main.go presente", weight: 0.2, artifact: "main.go" }] : []),
       ...(hasCmd ? [{ signal: "cmd/ presente", weight: 0.1, artifact: "cmd/" }] : []),
-    ]);
+    ];
+    return withEvidence(evidence.reduce((score, item) => score + item.weight, 0), evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
@@ -95,7 +96,7 @@ export class GinProjectScanner implements IProjectScanner {
  */
 const ROUTE_RE = /([a-zA-Z_][\w.]*)\s*\.\s*(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s*\(\s*"([^"]+)"/g;
 
-const GROUP_RE = /([a-zA-Z_][\w]*)\s*:?=\s*[a-zA-Z_][\w]*\s*\.\s*Group\s*\(\s*"([^"]+)"/g;
+const GROUP_RE = /([a-zA-Z_][\w]*)\s*:?=\s*([a-zA-Z_][\w]*)\s*\.\s*Group\s*\(\s*"([^"]+)"/g;
 
 export class GinRouteScanner implements IRouteScanner {
   readonly framework = "gin" as const;

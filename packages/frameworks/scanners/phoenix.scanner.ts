@@ -71,10 +71,11 @@ export class PhoenixProjectScanner implements IProjectScanner {
       return emptyResult(0);
     }
     const hasRouter = await findRouter(projectRoot);
-    return withEvidence(hasRouter ? 1 : 0.5, [
+    const evidence = [
       { signal: "mix.exs declara la dependencia :phoenix", weight: 0.6, artifact: "mix.exs" },
       ...(hasRouter ? [{ signal: "Phoenix router presente (router.ex)", weight: 0.4, artifact: "router.ex" }] : []),
-    ]);
+    ];
+    return withEvidence(evidence.reduce((score, item) => score + item.weight, 0), evidence);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

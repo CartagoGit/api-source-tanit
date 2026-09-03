@@ -78,7 +78,7 @@ export class DjangoProjectScanner implements IProjectScanner {
       ]);
     }
     if (isDjango) return withEvidence(0.8, [{ signal: "Django declarado como dependencia del proyecto", weight: 0.8, artifact: "requirements.txt" }]);
-    return emptyResult(0.5);
+    return emptyResult(0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -8,6 +8,7 @@ import {
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
+import { createTempProject } from "../helpers/scanner-fixture";
 
 import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
@@ -76,6 +77,33 @@ describe("Gin scanner", () => {
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const apiRoutes = routes.filter((r) => r.uri.startsWith("/api"));
     expect(apiRoutes.length).toBeGreaterThanOrEqual(4);
+  });
+
+  test("resuelve prefijos de Group anidados", async () => {
+    const project = await createTempProject({
+      "go.mod": "module nested-gin\n\nrequire github.com/gin-gonic/gin v1.9.1\n",
+      "main.go": [
+        "package main",
+        "",
+        "import \"github.com/gin-gonic/gin\"",
+        "",
+        "func main() {",
+        "    r := gin.Default()",
+        "    api := r.Group(\"/api\")",
+        "    users := api.Group(\"/users\")",
+        "    users.GET(\"/list\", nil)",
+        "}",
+        "",
+      ].join("\\n"),
+    }, "gin-nested-group-");
+
+    try {
+      const match = await new GinProjectScanner().resolve(project.root);
+      const routes = (await new GinRouteScanner().scan(match)).routes;
+      expect(routes.map((route) => `${route.method} ${route.uri}`)).toContain("GET /api/users/list");
+    } finally {
+      await project.cleanup();
+    }
   });
 
   // a00010 / B-02: el regex reconocía HEAD/OPTIONS pero la lista
