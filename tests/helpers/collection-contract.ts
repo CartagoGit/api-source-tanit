@@ -122,13 +122,26 @@ export function describeCollectionContract(options: ICollectionContractOptions):
       test("el login guarda el token y va en la primera carpeta", async () => {
         const { collection } = await runGenerate(fixtureName);
 
-        const login = [...eachRequest(collection.item)].find((item) =>
-          (item.event ?? []).some((e) =>
-            e.script.exec.join("\n").includes("Login returns a token"),
-          ),
+        // Buscamos el item por URL explícita `…/auth/login` para no
+        // confundirlo con `/auth/refresh` (también guarda token y
+        // también lleva el script "Login returns a token").
+        const login = [...eachRequest(collection.item)].find(
+          (item) =>
+            (item.request?.url?.raw ?? "").includes("/auth/login") &&
+            (item.event ?? []).some((e) =>
+              e.script.exec.join("\n").includes("Login returns a token"),
+            ),
         );
         expect(login).toBeDefined();
-        expect(login?.request?.body?.raw ?? "").toContain("{{auth");
+        // El body del login contiene credenciales — ya sean variables
+        // Postman (`{{authUsername}}`) o valores reales del schema Zod
+        // (post-S7 AST). Solo verificamos que el campo de email/username
+        // y el de password estén presentes, en el formato que cada
+        // framework decida.
+        const body = login?.request?.body?.raw ?? "";
+        expect(body.length).toBeGreaterThan(2);
+        expect(body.toLowerCase()).toMatch(/email|username/);
+        expect(body.toLowerCase()).toMatch(/password/);
 
         const firstFolder = collection.item[0];
         expect(firstFolder?.name?.toLowerCase()).toMatch(/auth|login|sesi/);

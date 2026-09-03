@@ -20,7 +20,10 @@ import { describeCollectionContract } from "../helpers/collection-contract";
 
 describeCollectionContract({
   fixtureName: "laravel-comprehensive",
-  expectedRequests: 17,
+  // a00010 / B-04: el `update` ahora produce PUT + PATCH (+1 por cada
+  // resource con `update`). Con 2 apiResources (users, orders) pasamos
+  // de 17 a 19.
+  expectedRequests: 19,
   hasAuth: true,
 });
 
@@ -48,23 +51,25 @@ describe("Laravel — comprehensive fixture", () => {
     // Health — el prefijo /api lo aplica el RouteServiceProvider al
     // registrar routes/api.php, aunque el código no lo escriba.
     expect(findEndpoint(collection, "GET", "/api/health")).not.toBeNull();
-    // Users — apiResource
+    // Users — apiResource (a00010 / B-03: path param es el singular del
+    // recurso; a00010 / B-04: update produce PUT + PATCH).
     expect(findEndpoint(collection, "GET", "/api/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/users")).not.toBeNull();
-    expect(findEndpoint(collection, "GET", "/api/users/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "DELETE", "/api/users/{{id}}")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/users/{{user}}")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/users/{{user}}")).not.toBeNull();
+    expect(findEndpoint(collection, "PATCH", "/api/users/{{user}}")).not.toBeNull();
+    expect(findEndpoint(collection, "DELETE", "/api/users/{{user}}")).not.toBeNull();
     // Users — extras
-    expect(findEndpoint(collection, "PUT", "/api/users/{{id}}/address")).not.toBeNull();
-    expect(findEndpoint(collection, "GET", "/api/users/{{id}}/orders")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/users/{{user}}/address")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/users/{{user}}/orders")).not.toBeNull();
     // Orders — apiResource
     expect(findEndpoint(collection, "GET", "/api/orders")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/orders")).not.toBeNull();
-    expect(findEndpoint(collection, "GET", "/api/orders/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "PUT", "/api/orders/{{id}}")).not.toBeNull();
-    expect(findEndpoint(collection, "DELETE", "/api/orders/{{id}}")).not.toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/orders/{{order}}")).not.toBeNull();
+    expect(findEndpoint(collection, "PUT", "/api/orders/{{order}}")).not.toBeNull();
+    expect(findEndpoint(collection, "DELETE", "/api/orders/{{order}}")).not.toBeNull();
     // Orders — action
-    expect(findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel")).not.toBeNull();
+    expect(findEndpoint(collection, "POST", "/api/orders/{{order}}/cancel")).not.toBeNull();
     // Auth
     expect(findEndpoint(collection, "POST", "/api/auth/login")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/auth/refresh")).not.toBeNull();
@@ -82,9 +87,9 @@ describe("Laravel — comprehensive fixture", () => {
     expect(body).toHaveProperty("role");
   });
 
-  test("PUT /api/users/{id}/address tiene body desde UpdateAddressRequest", async () => {
+  test("PUT /api/users/{user}/address tiene body desde UpdateAddressRequest", async () => {
     const { collection } = await runGenerate("laravel-comprehensive");
-    const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address");
+    const ep = findEndpoint(collection, "PUT", "/api/users/{{user}}/address");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("street");
@@ -113,14 +118,15 @@ describe("Laravel — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("Route::apiResource genera exactamente 5 rutas para users (sin create/edit)", async () => {
+  test("Route::apiResource genera exactamente 6 rutas para users (sin create/edit, + PATCH)", async () => {
     const { collection } = await runGenerate("laravel-comprehensive");
     const userUris = [
       "GET /api/users",
       "POST /api/users",
-      "GET /api/users/{{id}}",
-      "PUT /api/users/{{id}}",
-      "DELETE /api/users/{{id}}",
+      "GET /api/users/{{user}}",
+      "PUT /api/users/{{user}}",
+      "PATCH /api/users/{{user}}",
+      "DELETE /api/users/{{user}}",
     ];
     for (const ref of userUris) {
       const [method, uri] = ref.split(" ") as [string, string];
@@ -128,6 +134,6 @@ describe("Laravel — comprehensive fixture", () => {
     }
     // apiResource NO genera /create ni /edit
     expect(findEndpoint(collection, "GET", "/api/users/create")).toBeNull();
-    expect(findEndpoint(collection, "GET", "/api/users/{{id}}/edit")).toBeNull();
+    expect(findEndpoint(collection, "GET", "/api/users/{{user}}/edit")).toBeNull();
   });
 });

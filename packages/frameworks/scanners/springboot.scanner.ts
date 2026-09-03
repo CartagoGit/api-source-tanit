@@ -59,10 +59,25 @@ export class SpringBootProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isSpring = await isSpringBootProject(projectRoot);
     if (!isSpring) return emptyResult(0);
-    const hasSrc = existsSync(join(projectRoot, "src"));
-    return withEvidence(hasSrc ? 1 : 0.7, [
+    // a00010 / B-05: distinguir Java vs Kotlin cambia las rutas de
+    // entrada (`src/main/java` vs `src/main/kotlin`) y el evidence
+    // que se le enseña al usuario.
+    const hasJava = existsSync(join(projectRoot, "src", "main", "java"));
+    const hasKotlin = existsSync(join(projectRoot, "src", "main", "kotlin"));
+    const hasSrc = hasJava || hasKotlin;
+    const score = hasSrc ? 1 : 0.7;
+    const langSignal = hasKotlin && hasJava
+      ? "src/main/{java,kotlin}/ presente (Java + Kotlin)"
+      : hasKotlin
+        ? "src/main/kotlin/ presente (proyecto Kotlin)"
+        : hasJava
+          ? "src/main/java/ presente (proyecto Java)"
+          : "src/ presente (estructura canónica de Maven/Gradle)";
+    return withEvidence(score, [
       { signal: "pom.xml o build.gradle con spring-boot-starter", weight: 0.7 },
-      ...(hasSrc ? [{ signal: "src/ presente (estructura canónica de Maven/Gradle)", weight: 0.3, artifact: "src/" }] : []),
+      ...(hasSrc
+        ? [{ signal: langSignal, weight: 0.3, artifact: hasKotlin ? "src/main/kotlin/" : "src/main/java/" }]
+        : []),
     ]);
   }
 
@@ -70,7 +85,9 @@ export class SpringBootProjectScanner implements IProjectScanner {
     const artifacts: string[] = [];
     if (existsSync(join(projectRoot, "pom.xml"))) artifacts.push("pom.xml");
     if (existsSync(join(projectRoot, "build.gradle"))) artifacts.push("build.gradle");
-    if (existsSync(join(projectRoot, "src"))) artifacts.push("src");
+    if (existsSync(join(projectRoot, "src", "main", "java"))) artifacts.push("src/main/java");
+    // a00010 / B-05: registrar Kotlin como artefacto canónico.
+    if (existsSync(join(projectRoot, "src", "main", "kotlin"))) artifacts.push("src/main/kotlin");
     return { framework: "springboot", projectRoot, artifacts };
   }
 }
@@ -106,9 +123,17 @@ export class SpringBootRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = match.projectRoot;
-    const srcMain = join(projectRoot, "src", "main", "java");
-    if (!existsSync(srcMain)) return { routes: out };
-    await walkJava(srcMain, projectRoot, out);
+    // a00010 / B-05: escanear AMBAS raíces canónicas — Java y Kotlin.
+    // Un proyecto Kotlin estándar vive en `src/main/kotlin/`; antes se
+    // ignoraba entero porque `scan()` solo entraba por `java`.
+    const roots = [
+      join(projectRoot, "src", "main", "java"),
+      join(projectRoot, "src", "main", "kotlin"),
+    ];
+    for (const srcMain of roots) {
+      if (!existsSync(srcMain)) continue;
+      await walkJava(srcMain, projectRoot, out);
+    }
     return { routes: out };
   }
 }

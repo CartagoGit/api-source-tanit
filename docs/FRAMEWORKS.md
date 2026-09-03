@@ -15,16 +15,16 @@ heurísticamente.
 |---|---:|---:|
 | [OpenAPI](#openapi--swagger) | 23 | 22 |
 | [FastAPI](#fastapi) | 19 | 14 |
+| [Laravel](#laravel) | 19 | 8 |
 | [Django](#django--drf) | 18 | 16 |
 | [ASP.NET Core](#aspnet-core) | 17 | 7 |
-| [Laravel](#laravel) | 17 | 6 |
+| [Rails](#rails) | 15 | 0 |
 | [Express](#express--koa--hapi) | 14 | 13 |
 | [Flask](#flask) | 14 | 7 |
 | [Gin](#gin) | 14 | 8 |
 | [Next.js](#nextjs) | 14 | 11 |
 | [Symfony](#symfony) | 14 | 7 |
 | [NestJS](#nestjs) | 13 | 10 |
-| [Rails](#rails) | 13 | 0 |
 | [Phoenix](#phoenix) | 12 | 0 |
 | [Spring Boot](#spring-boot) | 11 | 11 |
 | [Fastify](#fastify) | 9 | 4 |

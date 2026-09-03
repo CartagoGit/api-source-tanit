@@ -83,6 +83,29 @@ describe("Spring Boot scanner", () => {
     expect(names).toContain("name");
     expect(names).toContain("email");
   });
+
+  // a00010 / B-05: el fixture canónico de Kotlin vive en
+  // `src/main/kotlin/`. Antes del fix, el scanner solo entraba por
+  // `src/main/java/` y un proyecto Kotlin estándar se quedaba en cero.
+  test("scan() lee `src/main/kotlin/` (B-05 a00010)", async () => {
+    const kotlinRoot = smokeFixtureDir("springboot-kotlin");
+    const match = await new SpringBootProjectScanner().resolve(kotlinRoot);
+    const routes = (await new SpringBootRouteScanner().scan(match)).routes;
+    expect(routes).toHaveLength(4);
+    const uris = routes.map((r) => `${r.method} ${r.uri}`).sort();
+    expect(uris).toEqual([
+      "DELETE /api/users/{id}",
+      "GET /api/users",
+      "GET /api/users/{id}",
+      "POST /api/users",
+    ]);
+  });
+
+  test("detect() expone el artefacto Kotlin", async () => {
+    const kotlinRoot = smokeFixtureDir("springboot-kotlin");
+    const match = await new SpringBootProjectScanner().resolve(kotlinRoot);
+    expect(match.artifacts).toContain("src/main/kotlin");
+  });
 });
 
 describe("Spring Boot — build.gradle detection y variantes", () => {

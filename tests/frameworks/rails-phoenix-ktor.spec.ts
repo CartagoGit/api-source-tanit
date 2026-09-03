@@ -78,10 +78,11 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
 
   // Rails genera SIETE acciones, pero `new` y `edit` devuelven
   // formularios HTML: en una API JSON no existen, y meterlas llenaría la
-  // colección de endpoints que dan 404.
+  // colección de endpoints que dan 404. El `update` aparece dos veces
+  // (PUT y PATCH) desde a00010 / B-04 — Rails 5+ acepta ambos.
   test("omite las acciones de formulario (new, edit)", () => {
     const found = routes("Rails.application.routes.draw do\n  resources :users\nend");
-    expect(found).toHaveLength(5);
+    expect(found).toHaveLength(6);
     expect(found.some((r) => r.uri.includes("/new"))).toBe(false);
     expect(found.some((r) => r.uri.includes("/edit"))).toBe(false);
   });
@@ -113,6 +114,30 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
       'Rails.application.routes.draw do\n  namespace :api do\n    namespace :v1 do\n      get "/x", to: "a#b"\n    end\n  end\nend',
     );
     expect(found[0]?.uri).toBe("/api/v1/x");
+  });
+
+  // a00010 / B-03: el path param por defecto es el singular del recurso
+  // (`resources :users` → `/users/{user}`).
+  test("path param por defecto es el singular del recurso (B-03 a00010)", () => {
+    const found = routes(
+      "Rails.application.routes.draw do\n  resources :users\nend",
+    );
+    const withUser = found.filter((r) => r.uri.includes("{user}"));
+    expect(withUser.length).toBeGreaterThanOrEqual(3);
+    // El singularizer falla para nombres que no encajan.
+    const noneWithId = found.filter(
+      (r) => r.uri.includes("{id}") && r.actionName !== undefined,
+    );
+    expect(noneWithId).toHaveLength(0);
+  });
+
+  // a00010 / B-04: `update` produce dos rutas — PUT y PATCH.
+  test("update produce PUT + PATCH (B-04 a00010)", () => {
+    const found = routes(
+      "Rails.application.routes.draw do\n  resources :users\nend",
+    );
+    const updates = found.filter((r) => r.actionName === "update");
+    expect(updates.map((r) => r.method).sort()).toEqual(["PATCH", "PUT"]);
   });
 
   test.each([
