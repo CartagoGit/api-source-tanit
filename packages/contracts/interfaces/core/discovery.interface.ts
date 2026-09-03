@@ -113,6 +113,37 @@ export interface IGenerationOptions {
    * que se genera en el build.
    */
   readonly forceFramework?: string | undefined;
+  /**
+   * Subdirectorio del proyecto donde vive el framework, **relativo** a
+   * `projectRoot`.
+   *
+   * Acepta dos formas de pasarlo:
+   *
+   *  - **Forzado** (CLI `--framework-search-root`, opción del plugin):
+   *    se usa literalmente, sin mirar el árbol. Quien lo sabe de su
+   *    API y no puede esperar a la autodetección lo da así.
+   *  - **Auto**: si se omite y la raíz es un monorepo (turbo.json,
+   *    pnpm-workspace.yaml, lerna.json o `package.json#workspaces`) con
+   *    exactamente **un** workspace, el orquestador lo rellena solo.
+   *    Con varios workspaces, no rellena nada: la elección entre
+   *    `apps/api`, `apps/web` y `packages/auth` la hace quien conoce
+   *    su repo.
+   *
+   * El valor resuelto acaba en `IProjectMatch.frameworkSearchRoot`,
+   * que es lo que los scanners ya leen (f00011 S1). Aquí solo se
+   * declara la entrada del pipeline; la asignación al `match` vive en
+   * `generation.pipeline.ts`.
+   *
+   * **Nunca absoluto**: la raíz es siempre `projectRoot` y este campo
+   * solo añade un segmento, igual que `--framework-search-root` en el CLI.
+   * Concatenar con `process.cwd()` está vetado por el gate universal
+   * de no-leer-globales-en-hot-path.
+   *
+   * Añadido en f00011 S3 (2026-09-03). S1 dejó el campo en
+   * `IProjectMatch` y los scanners leyéndolo; S3 cierra el lado host
+   * (CLI, config y orquestador).
+   */
+  readonly frameworkSearchRoot?: string | undefined;
 }
 
 /** Resultado completo del pipeline. */

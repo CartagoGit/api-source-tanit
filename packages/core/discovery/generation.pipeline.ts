@@ -35,7 +35,10 @@ import { loadProject } from "./project-loader.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
-import type { IDetectedFramework } from "../../contracts/interfaces/core/scanner.interface.js";
+import type {
+  IDetectedFramework,
+  IProjectMatch,
+} from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   IGenerationOptions,
   IGenerationResult,
@@ -45,6 +48,10 @@ import {
   endpointSpecFromMerged,
   mergeEndpoints,
 } from "./endpoint-merger.service.js";
+import {
+  detectMonorepo,
+  type IMonorepoDetection,
+} from "./monorepo-detector.helper.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
