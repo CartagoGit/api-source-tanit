@@ -1,6 +1,7 @@
 {
-  "name": "@expostman/mcp-vertex-plugin",
-  "version": "0.1.1",
+  "name": "mcp-vertex-plugin-expostman",
+  "version": "0.0.0",
+  "private": true,
   "type": "module",
   "description": "Plugin de mcp-vertex para expostman. Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI).",
   "author": "Cartago",
@@ -15,23 +16,10 @@
     "agent",
     "ai"
   ],
-  "main": "./dist/index.js",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
   "exports": {
-    ".": {
-      "@mcp-vertex/source": {
-        "types": "./src/index.ts"
-      },
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target=node --format=esm --sourcemap=external",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run"
   },
