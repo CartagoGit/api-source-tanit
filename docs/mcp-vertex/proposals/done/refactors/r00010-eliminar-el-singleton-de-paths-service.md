@@ -2,10 +2,12 @@
 id: r00010
 title: "Eliminar el singleton de paths.service y cerrar la F-006 del DoD"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: general
 date: 2026-09-03
+shipped-in: ["5936178", "fceb2e1", "3aac5af"]
+last-transition-from: ready
 ---
 
 # r00010 — Eliminar el singleton de `paths.service` y cerrar la F-006 del DoD
@@ -174,7 +176,7 @@ Test verde existente al que se suma:
 
 ### S3 — Verificación end-to-end y cierre
 
-- **Status**: ready
+- **Status**: done
 - **Files**:
   - `tests/e2e/concurrent-projects.test.ts` (existente) — verificar
     que sigue verde con dos proyectos en paralelo.
@@ -210,3 +212,13 @@ Test verde existente al que se suma:
   en paralelo real, sin cola de serialización.
 - F-006 cerrada en `a00008` con un blockquote al final.
 - `r00010` archivada en `done/refactors/` con `shipped-in: [<sha>]`.
+
+> **Cerrado en r00010 S3 (2026-09-03)**: el singleton
+> `packages/core/discovery/paths.service.ts` se borró junto con la
+> bandaid `withScopedPaths`, `withProjectRoot` y `resetPathCache`. La
+> fachada vive ahora en `output-paths.helper.ts` y solo opera sobre
+> `IProjectContext` explícito. El e2e concurrente
+> (`tests/e2e/concurrent-projects.test.ts`) verifica que dos proyectos
+> en `Promise.all` no se pisan (9 endpoints en express + 5 en graphql,
+> context roots distintos) en ~1,32× el tiempo de un solo proyecto.
+> F-006 cerrada en `a00008`.

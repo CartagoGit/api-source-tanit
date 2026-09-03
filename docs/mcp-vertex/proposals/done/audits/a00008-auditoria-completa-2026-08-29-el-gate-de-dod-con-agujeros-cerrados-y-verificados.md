@@ -179,18 +179,30 @@ completos aqui porque son el resultado de la auditoria.
   dejaria el MCP sin host. El hallazgo queda registrado aqui para que la
   decision de cierre la tome quien desbloquee `p00007`.
 
-### F-006 — Deuda de branches y reentrancia heredada (sigue abierta)
+### F-006 — Deuda de branches y reentrancia heredada (cerrada)
 
 - **Clasificacion**: DEUDA TECNICA · **Severidad**: MEDIUM · **Prioridad**: P2
-  · **Confianza**: alta · **Estado**: abierta.
+  · **Confianza**: alta · **Estado**: cerrada · **Cerrada por**: r00010 S3 (2026-09-03).
 - branches al 64,2 % es el suelo mas fino (2,2 puntos de margen) y su causa
   esta escrita en el propio `vitest.config.ts`: los `if` de los scanners sobre
   formas de codigo ajeno solo se recorren con fixtures que las provoquen. Es
-  deuda de test real, no ruido.
+  deuda de test real, no ruido. — Sin cerrar (queda como observación).
 - `packages/core/discovery/paths.service.ts` conserva un `cache` a nivel de
   modulo (linea 57) y una cola de serializacion (linea 250), restos ya citados
   por la auditoria de 2026-08-08. Con un solo proyecto por proceso no muerde;
   en uso multi-proyecto o concurrencia dentro del mismo proceso, si puede.
+
+> **Cerrado por r00010 S3 (2026-09-03)**: el singleton
+> `packages/core/discovery/paths.service.ts` se borró junto con la
+> bandaid `withScopedPaths`, `withProjectRoot` y `resetPathCache`. La
+> fachada vive ahora en `packages/core/discovery/output-paths.helper.ts`
+> y solo opera sobre `IProjectContext` explícito. El e2e
+> `tests/e2e/concurrent-projects.test.ts` corre dos proyectos de
+> frameworks distintos con `Promise.all` (express 9 endpoints + graphql
+> 5 endpoints, context roots distintos, sin cola de serialización) y
+> pasa en ~1,32× el tiempo de un solo proyecto — la prueba de que la
+> concurrencia ya no se serializa. La parte de branches de F-006 sigue
+> abierta como observación técnica, no como deuda de gate.
 
 ### F-000 — Nota de proceso: el primer `validate` rojo era suciedad local
 
