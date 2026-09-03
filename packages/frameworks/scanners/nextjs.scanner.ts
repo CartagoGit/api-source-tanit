@@ -212,7 +212,7 @@ export class NextJsProjectScanner implements IProjectScanner {
     // que un lockfile no pueda tapar una ausencia de framework — la
     // señal solo aporta cuando el detector ya estaba convencido.
     for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
-    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
+    return withEvidence(signals.reduce((a, s) => a + s.weight, 0), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

@@ -21,7 +21,35 @@ import type {
 
 /** Construye un resultado vacío (sin evidence) — el caso por defecto. */
 export function emptyResult(score: number): IProjectScannerResult {
-  return { score, evidence: [] };
+  return { score: clampScore(score), evidence: [] };
+}
+
+/**
+ * Normaliza un score al rango `[0, 1]` que el orquestador (y la UI)
+ * esperan.
+ *
+ * Reglas explícitas —no delegación a `Math.max(0, Math.min(1, …))`—
+ * para que un test pueda fijar cada caso sin tener que recordar el
+ * comportamiento por defecto de `Math`:
+ *
+ * - `NaN` → `0` (un detector que devuelve NaN es un detector roto).
+ * - `+Infinity` → `1`, `-Infinity` → `0` (los el `<` y `>` los cubrían
+ *   ya, pero la spec los nombra explícitamente).
+ * - `value < 0` → `0`, `value > 1` → `1`.
+ * - resto → `value`.
+ *
+ * Centralizado aquí (a00012 S2) para que ningún scanner tenga que
+ * aplicar `Math.min(…, 1)` a mano, y para que la evidencia pueda llevar
+ * pesos fuera de `[0, 1]` sin propagar `NaN`/`±Infinity` al score
+ * final.
+ */
+export function clampScore(value: number): number {
+  if (Number.isNaN(value)) return 0;
+  if (value === Number.POSITIVE_INFINITY) return 1;
+  if (value === Number.NEGATIVE_INFINITY) return 0;
+  if (value < 0) return 0;
+  if (value > 1) return 1;
+  return value;
 }
 
 /** Construye un resultado con una o varias señales. */
@@ -29,5 +57,5 @@ export function withEvidence(
   score: number,
   evidence: ReadonlyArray<IProjectDetectionEvidence>,
 ): IProjectScannerResult {
-  return { score, evidence };
+  return { score: clampScore(score), evidence };
 }

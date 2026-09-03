@@ -121,7 +121,7 @@ export class NestJsProjectScanner implements IProjectScanner {
     // f00011 S4: lockfile como bonus de runtime. Sumamos al final
     // para que no pueda tapar una ausencia de framework.
     for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
-    return withEvidence(Math.min(signals.reduce((a, s) => a + s.weight, 0), 1), signals);
+    return withEvidence(signals.reduce((a, s) => a + s.weight, 0), signals);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {

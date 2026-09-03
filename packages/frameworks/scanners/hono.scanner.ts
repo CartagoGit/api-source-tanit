@@ -153,7 +153,7 @@ export class HonoProjectScanner implements IProjectScanner {
         });
       }
       for (const lock of locks) evidence.push(lock);
-      return withEvidence(Math.min(evidence.reduce((a, s) => a + s.weight, 0), 1), evidence);
+      return withEvidence(evidence.reduce((a, s) => a + s.weight, 0), evidence);
     }
     // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
     const pluginMatch = Object.keys(deps).some((name) => name.startsWith("@hono/"));
