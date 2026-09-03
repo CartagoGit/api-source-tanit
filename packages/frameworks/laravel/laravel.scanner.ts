@@ -321,8 +321,21 @@ export async function parseRoutesFile(
       const whereConstraints = captureWhereConstraints(lines, i);
       const expanded =
         kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES;
+      // a00010 / B-03: Laravel singulariza el nombre del recurso como
+      // path param por defecto (`Route::resource('users', …)` →
+      // `/users/{user}`). Lo respetamos para que la colección se
+      // autodocumente bien; el caso degenerado cae a `{id}`.
+      const singularGuess = resourceUri.endsWith("s")
+        ? resourceUri.slice(0, -1)
+        : resourceUri;
+      const paramToken = /^[a-z_][\w]*$/i.test(singularGuess)
+        ? `{${singularGuess}}`
+        : "{id}";
       for (const r of expanded) {
-        const rawForThis = (resourceUri + r.suffix).replace(/^\/+/, "");
+        const rawForThis = (resourceUri + r.suffix)
+          .replace(/^\/+/, "")
+          // Sustituir el `/{id}` literal del sufijo por el param correcto.
+          .replace(/\{id\}/g, paramToken);
         const segments = rawForThis
           ? [...prefixStack, rawForThis]
           : [...prefixStack];
@@ -337,6 +350,19 @@ export async function parseRoutesFile(
           controllerClass,
           actionName: r.action,
         });
+        // a00010 / B-04: `update` también acepta PATCH en Laravel 5+.
+        if (r.action === "update") {
+          out.push({
+            method: "PATCH",
+            uri: encodeWithConstraintsInUri(full, whereConstraints),
+            rawUri: rawForThis,
+            sourceFile: relPath,
+            lineNumber: i + 1,
+            prefixChain: [...prefixStack],
+            controllerClass,
+            actionName: r.action,
+          });
+        }
       }
       continue;
     }

@@ -33,15 +33,28 @@ import type {
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-/** Las siete acciones que genera `resources`, con su forma REST. */
+/**
+ * Las siete acciones que genera `resources`, con su forma REST.
+ *
+ * `paramName` es el nombre del path param tal como lo declara Rails por
+ * defecto (a00010 / B-03): singular del recurso, no `id`. Un
+ * `resources :users` produce `/users/{user}` y no `/users/{id}`. Rails
+ * permite sobreescribirlo con `param: :otro`, pero ese caso se queda
+ * registrado para el refactor del parser; el comportamiento por defecto
+ * es lo que la colección espera ver.
+ *
+ * El `id` genérico se conserva como fallback solo para `resources` sin
+ * nombre inferible (caso degenerado: recurso con caracteres que rompan
+ * el singularizer).
+ */
 const RESOURCE_ACTIONS = [
-  { action: "index", method: "GET", suffix: "" },
-  { action: "create", method: "POST", suffix: "" },
-  { action: "new", method: "GET", suffix: "/new" },
-  { action: "edit", method: "GET", suffix: "/{id}/edit" },
-  { action: "show", method: "GET", suffix: "/{id}" },
-  { action: "update", method: "PUT", suffix: "/{id}" },
-  { action: "destroy", method: "DELETE", suffix: "/{id}" },
+  { action: "index", method: "GET", suffix: "", paramName: "{id}" },
+  { action: "create", method: "POST", suffix: "", paramName: "{id}" },
+  { action: "new", method: "GET", suffix: "/new", paramName: "{id}" },
+  { action: "edit", method: "GET", suffix: "/{id}/edit", paramName: "{id}" },
+  { action: "show", method: "GET", suffix: "/{id}", paramName: "{id}" },
+  { action: "update", method: "PUT", suffix: "/{id}", paramName: "{id}" },
+  { action: "destroy", method: "DELETE", suffix: "/{id}", paramName: "{id}" },
 ] as const;
 
 /**
@@ -204,7 +217,16 @@ function expandResource(
     // Un recurso singular (`resource :perfil`) no tiene listado ni
     // `:id`: siempre opera sobre "el mío".
     if (singular && action === "index") continue;
-    const path = singular ? suffix.replace("/{id}", "") : suffix;
+    // a00010 / B-03: el path param por defecto es el singular del
+    // recurso (Rails: `resources :users` → `/users/{user}`). El caso
+    // degenerado sin singularizer fiable cae al `{id}` genérico.
+    const singularName = name.endsWith("s") ? name.slice(0, -1) : `${name}`;
+    const paramToken = /^[a-z_]\w*$/i.test(singularName)
+      ? `{${singularName}}`
+      : "{id}";
+    const path = singular
+      ? suffix.replace(/^\/\{id\}/, "")
+      : suffix.replace(/\{id\}/g, paramToken);
 
     routes.push({
       lineNumber,
@@ -215,6 +237,22 @@ function expandResource(
       prefixChain: prefix ? prefix.split("/") : [],
       actionName: action,
     });
+
+    // a00010 / B-04: Rails 5+ acepta PATCH además de PUT para la acción
+    // `update`. Sin la segunda entrada, la colección miente: el usuario
+    // importa, prueba con PUT, falla, y tiene que acordarse de probar
+    // PATCH él solo. Lo declaramos los dos.
+    if (action === "update") {
+      routes.push({
+        lineNumber,
+        method: "PATCH",
+        uri: joinRoutePath("/", prefix, name, path),
+        rawUri: `${name}${path}`,
+        sourceFile,
+        prefixChain: prefix ? prefix.split("/") : [],
+        actionName: action,
+      });
+    }
   }
   return routes;
 }

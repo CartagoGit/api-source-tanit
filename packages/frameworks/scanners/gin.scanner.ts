@@ -32,7 +32,19 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
+const HTTP_METHODS = [
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  // a00010 / B-02: `HEAD` y `OPTIONS` se reconocen en el regex
+  // (`ROUTE_RE`) pero la lista posterior los descartaba en silencio.
+  // Postman los soporta; un `r.HEAD("/health")` terminaba sin salir
+  // en la colección.
+  "head",
+  "options",
+];
 
 async function isGinProject(projectRoot: string): Promise<boolean> {
   const goMod = join(projectRoot, "go.mod");

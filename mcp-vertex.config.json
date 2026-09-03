@@ -4,7 +4,7 @@
   "docsDir": "docs/mcp-vertex",
   "surfaceMode": "managed",
   "managedSurface": {
-    "loading": "lazy",
+    "loading": "eager",
     "idleTtlMs": 300000,
     "maxWarmPlugins": 8
   },
@@ -172,9 +172,6 @@
         "topActions": 5,
         "layers": []
       }
-    },
-    "changelog": {
-      "options": {}
     },
     "issues": {
       "options": {

@@ -51,7 +51,7 @@ async function withRoutesFile(
 }
 
 describe("Laravel scanner — Route::resource + where()", () => {
-  test("Route::resource expande a 7 rutas RESTful", async () => {
+  test("Route::resource expande a 7 rutas RESTful (+ PATCH para update)", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 use Illuminate\\Support\\Facades\\Route;
@@ -60,11 +60,15 @@ Route::resource('users', UserController::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
+      // a00010 / B-03, B-04: 7 acciones REST + 1 PATCH adicional para
+      // `update` (Laravel 5+ acepta PUT y PATCH). El path param es
+      // `{user}`, no `{id}`.
+      expect(routes).toHaveLength(8);
       const methods = routes.map((r) => r.method);
       expect(methods).toContain("GET");
       expect(methods).toContain("POST");
       expect(methods).toContain("PUT");
+      expect(methods).toContain("PATCH");
       expect(methods).toContain("DELETE");
       // 4 GET: index, create, show, edit
       const getRoutes = routes.filter((r) => r.method === "GET");
@@ -81,6 +85,8 @@ Route::resource('users', UserController::class);
 `,
     );
     try {
+      // `update` aparece dos veces (PUT y PATCH); las acciones siguen
+      // siendo las 7 canónicas.
       const actions = routes.map((r) => r.actionName).sort();
       expect(actions).toEqual([
         "create",
@@ -90,26 +96,29 @@ Route::resource('users', UserController::class);
         "show",
         "store",
         "update",
+        "update",
       ]);
     } finally {
       cleanup();
     }
   });
 
-  test("Route::apiResource expande a 5 rutas (sin create/edit)", async () => {
+  test("Route::apiResource expande a 5 rutas (+ PATCH para update)", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::apiResource('orders', OrderController::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(5);
+      // 5 + 1 PATCH para update.
+      expect(routes).toHaveLength(6);
       const actions = routes.map((r) => r.actionName).sort();
       expect(actions).toEqual([
         "destroy",
         "index",
         "show",
         "store",
+        "update",
         "update",
       ]);
       // apiResource NO debe sacar /create o /edit
@@ -136,19 +145,21 @@ Route::get('/items/{id}', [ItemController::class, 'show'])->where('id', '\\d+');
     }
   });
 
-  test("->where('id', '\\d+') aplica al {id} de Route::resource", async () => {
+  test("->where('user', '\\d+') aplica al {user} (singular) de Route::resource", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
-Route::resource('users', UserController::class)->where('id', '\\d+');
+Route::resource('users', UserController::class)->where('user', '\\d+');
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
-      // Las 4 rutas con {id} deben llevar la constraint
-      const withId = routes.filter((r) => r.uri.includes("{id"));
-      expect(withId.length).toBeGreaterThan(0);
-      for (const r of withId) {
-        expect(r.uri).toContain("{id:\\d+}");
+      // 7 + 1 PATCH = 8 rutas.
+      expect(routes).toHaveLength(8);
+      // a00010 / B-03: el path param es `{user}`, no `{id}`. La
+      // constraint se aplica por nombre.
+      const withUser = routes.filter((r) => r.uri.includes("{user"));
+      expect(withUser.length).toBeGreaterThan(0);
+      for (const r of withUser) {
+        expect(r.uri).toContain("{user:\\d+}");
       }
     } finally {
       cleanup();
@@ -163,7 +174,7 @@ Route::resource('users', UC::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
+      expect(routes).toHaveLength(8);
       for (const r of routes) {
         expect(r.controllerClass).toBe("App\\Http\\Controllers\\UserController");
       }
@@ -180,7 +191,7 @@ Route::resource('users', UserController::class);
       ["api/v1"],
     );
     try {
-      expect(routes).toHaveLength(7);
+      expect(routes).toHaveLength(8);
       for (const r of routes) {
         expect(r.uri.startsWith("/api/v1/")).toBe(true);
       }
@@ -197,8 +208,8 @@ Route::get('/health', fn() => ['ok' => true]);
 `,
     );
     try {
-      // 7 (resource) + 1 (health)
-      expect(routes).toHaveLength(8);
+      // 7 (resource) + 1 (PATCH update) + 1 (health) = 9.
+      expect(routes).toHaveLength(9);
       const health = routes.find((r) => r.uri === "/api/health");
       expect(health).toBeDefined();
     } finally {

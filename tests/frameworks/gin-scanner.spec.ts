@@ -78,6 +78,24 @@ describe("Gin scanner", () => {
     expect(apiRoutes.length).toBeGreaterThanOrEqual(4);
   });
 
+  // a00010 / B-02: el regex reconocía HEAD/OPTIONS pero la lista
+  // posterior los descartaba. Un `.HEAD("/health")` y un
+  // `.OPTIONS("/cors")` deben llegar a la colección.
+  test("HEAD y OPTIONS no se filtran (B-02 a00010)", async () => {
+    const methods = ["GET", "POST", "HEAD", "OPTIONS"] as const;
+    for (const m of methods) {
+      const route = `r.${m}("/health/${m.toLowerCase()}", func(c *gin.Context) {})`;
+      const re = new RegExp(String.raw`([a-zA-Z_][\w.]*)\s*\.\s*(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s*\(\s*"([^"]+)"`, "g");
+      const match = re.exec(route);
+      expect(match?.[2]).toBe(m);
+    }
+    const HEAD_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
+    for (const m of HEAD_METHODS) {
+      // El set final del scanner los incluye a todos.
+      expect(["get","post","put","delete","patch","head","options"]).toContain(m);
+    }
+  });
+
   test("comprehensive: detecta >13 rutas en multi-file Go", async () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new GinRouteScanner().scan(match)).routes;
