@@ -242,11 +242,21 @@ describe("summary — health: el cómputo combinado", () => {
       "withValidationPercent",
     ]);
     // Y todas las firmas son `number`: si alguien metiera un string por
-    // accidente, el CLI imprimiría `validation abc%`.
-    const bloque = summary.health as unknown as Record<string, unknown>;
-    for (const clave of claves) {
-      expect(typeof bloque[clave]).toBe("number");
+    // accidente, el CLI imprimiría `validation abc%`. El listado de
+    // claves ya viene tipado por `Object.keys` — pero `IProjectHealth`
+    // no expone firma dinámica, así que se itera como unión literal
+    // (las cuatro claves contractuales, en su orden) en lugar de un
+    // index dinámico.
+    const clavesTipadas: ReadonlyArray<keyof IProjectHealth> = [
+      "withBodySchemaPercent",
+      "withDescriptionPercent",
+      "withExamplesPercent",
+      "withValidationPercent",
+    ];
+    for (const clave of clavesTipadas) {
+      expect(typeof summary.health[clave]).toBe("number");
     }
+    expect(claves).toEqual([...clavesTipadas].sort());
   });
 });
 
