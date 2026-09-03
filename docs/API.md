@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 141 símbolos en 49 módulos.
+> 145 símbolos en 50 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1789,6 +1789,75 @@ metadato sin tener que recorrerse el grafo.
 Devuelve `undefined` si no hay ninguna restricción: el `ISchemaNode`
 distingue entre "no tiene constraints" y "tiene constraints vacíos",
 y aquí respetamos esa distinción.
+
+### `packages/core/schema/serialize.helper.ts`
+
+Serialización del `SchemaGraph` para fronteras de proceso.
+
+#### `createSchemaGraph`
+
+```ts
+export function createSchemaGraph( nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>, root: SchemaNodeId, ): ISchemaGraph
+```
+
+Construye un `ISchemaGraph` a partir de un `Map` y un id raíz.
+
+Devuelve un objeto con `toDTO()` enlazado al mapa. Es la única
+forma válida de satisfacer el interface desde código externo: los
+literales `{ nodes: map, root }` ya no compilan porque al interface
+le falta `toDTO`.
+
+Si necesitas un grafo desde un DTO, usa `fromDTO(dto)` (que a su
+vez delega aquí).
+
+#### `toDTO`
+
+```ts
+export function toDTO(graph: ISchemaGraph): ISchemaGraphDTO
+```
+
+Convierte un `ISchemaGraph` a su DTO JSON-serializable.
+
+Implementa el método `toDTO()` del interface y, además, está
+exportada como función libre. Los dos caminos producen el mismo
+resultado: `graph.toDTO() === toDTO(graph)` para cualquier grafo.
+
+El array `nodes` sale en el orden de iteración del `Map` subyacente
+(orden de inserción). Eso garantiza que dos llamadas sobre el mismo
+grafo producen el mismo DTO, y que `fromDTO(toDTO(graph))` recupera
+el mismo grafo por igualdad de contenido.
+
+#### `fromDTO`
+
+```ts
+export function fromDTO(dto: ISchemaGraphDTO): ISchemaGraph
+```
+
+Reconstruye un `ISchemaGraph` desde un DTO.
+
+Crea un nuevo `Map` con las entradas del DTO y lo envuelve con
+`createSchemaGraph` (que añade `toDTO`). Útil en la frontera
+contraria: si el grafo viene como JSON desde MCP, caché o un
+snapshot persistido, esta función lo devuelve en la forma in-memory
+con la que trabajan los exportadores.
+
+#### `sortByLocation`
+
+```ts
+export function sortByLocation(graph: ISchemaGraph): ISchemaGraph
+```
+
+Devuelve una copia del grafo con los nodos en orden estable.
+
+Hoy: la copia mantiene el orden de iteración del `Map` original
+(que es el orden de inserción), así que el resultado es estable
+para el mismo grafo de entrada.
+
+Mañana: cuando `ISchemaNode` lleve `location?: { line, column }`,
+esta función ordena por `(line, column, id)` — el mismo orden en
+que aparecen en el fichero fuente. Los AST frontend
+(`a00010 S7`) producen ese orden top-down; este helper lo
+preserva al cruzar la frontera JSON.
 
 ### `packages/core/schema/union.helper.ts`
 
