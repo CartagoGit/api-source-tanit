@@ -10,7 +10,9 @@
  *   5. **Zero-config**: genera un `ProjectConfig` mínimo viable en memoria
  *      con autodetección de:
  *        - `name` (composer.json → nombre del paquete; fallback basename)
- *        - `baseUrl` (.env → APP_URL + "/api"; fallback "http://localhost/api")
+ *        - `baseUrl` (`.env` → `APP_URL`; `DEFAULT_BASE_URL` por defecto;
+ *          `/api` solo cuando Laravel + RouteServiceProvider lo declara o
+ *          `POSTMAN_BASE_PATH` lo aporta — `a00012 S4`)
  *        - `filePrefixes` (RouteServiceProvider → regex sobre mapXxxRoutes)
  *        - `loginEndpointName` (heurística: primera ruta POST sin auth)
  *        - `tokenResponsePath` (JWT → "access_token", Sanctum → "data.token")
@@ -31,6 +33,10 @@ import type { ProjectConfig } from "../../contracts/interfaces/core/project-conf
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";
 import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
+import {
+  BASE_PATH_ENV_VAR,
+  DEFAULT_BASE_URL,
+} from "../../contracts/constants/core/base-url.constant.js";
 
 function resolveMaybeRelative(p: string, base: string): string {
   return isAbsolute(p) ? resolve(p) : resolve(base, p);
@@ -188,14 +194,23 @@ export async function detectFilePrefixes(
 /**
  * Genera un ProjectConfig mínimo viable sin archivo del host.
  * Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
+ *
+ * `baseUrl` por defecto es el origen (`DEFAULT_BASE_URL`). El sufijo
+ * `/api` **no** se añade automáticamente: solo aparece cuando una de
+ * las fuentes documentadas en `BASE_PATH_SOURCES` lo aporta. Esto
+ * cierra el bug que producía `http://localhost/api/users` en proyectos
+ * Express/Flask/Gin/FastAPI sin prefijo global (a00012 H-P2e, S4).
  */
 export async function buildZeroConfig(
   context: IProjectContext,
 ): Promise<ProjectConfig> {
   const root = context.projectRoot;
   const name = await detectProjectName(context);
-  let baseUrl = "http://localhost/api";
+  let baseUrl: string = DEFAULT_BASE_URL;
 
+  // APP_URL del `.env` se respeta tal cual: quien lo declara sabe lo
+  // que hace. Antes se le pegaba `/api` automáticamente, lo que rompía
+  // proyectos no-Laravel y proyectos Laravel que ya lo traían.
   if (root) {
     for (const envFile of [".env", ".env.example"]) {
       try {
@@ -203,7 +218,6 @@ export async function buildZeroConfig(
         const m = text.match(/^APP_URL\s*=\s*(.+)$/m);
         if (m?.[1] !== undefined) {
           baseUrl = m[1].trim().replace(/^["']|["']$/g, "");
-          if (!/\/api\/?$/.test(baseUrl)) baseUrl += "/api";
           break;
         }
       } catch {
@@ -213,6 +227,13 @@ export async function buildZeroConfig(
   }
 
   const filePrefixes = await detectFilePrefixes(context);
+
+  // Las rutas de Laravel cuyo RouteServiceProvider **no** mapea
+  // reciben `["api"]` como prefijo lógico (la ruta se imprimirá como
+  // `/api/<resto>` en la colección). Esto NO toca la `baseUrl`: el
+  // sufijo en `baseUrl` solo aparece cuando el RouteServiceProvider
+  // declara explícitamente el prefijo o el `POSTMAN_BASE_PATH` lo
+  // aporta — ver `applyBasePathSources()`.
   if (root) {
     try {
       const routesDir = join(root, "routes");
@@ -235,6 +256,8 @@ export async function buildZeroConfig(
       /* ignore */
     }
   }
+
+  baseUrl = applyBasePathSources(baseUrl, filePrefixes);
 
   return {
     name,
@@ -261,6 +284,85 @@ export async function buildZeroConfig(
 }
 
 /**
+ * Aplica las fuentes de `basePath` que la propuesta `a00012 S4`
+ * acepta para añadir un sufijo a la `baseUrl` por defecto.
+ *
+ * Las cinco fuentes documentadas son:
+ *   1. ruta explícita (un `routePrefix` matcheado por un scanner) — se
+ *      materializa en `filePrefixes` por el `detectFilePrefixes` y por
+ *      los adapters de scanner; este helper recibe el resultado.
+ *   2. framework (Laravel/Express/...): `filePrefixes` lo trae.
+ *   3. config explícito (`mcp-vertex.config.json#basePath`,
+ *      `.expostmanrc.json#basePath`) — futuro; ver S4.
+ *   4. OpenAPI `servers[]` — futuro; ver S4.
+ *   5. variable de entorno `POSTMAN_BASE_PATH` — implementada aquí.
+ *
+ * Devuelve la `baseUrl` con el sufijo pegado **una sola vez**: si ya
+ * termina en el mismo segmento, no lo duplica.
+ */
+function applyBasePathSources(
+  baseUrl: string,
+  filePrefixes: Record<string, ReadonlyArray<string>>,
+): string {
+  const envPath = process.env[BASE_PATH_ENV_VAR]?.trim();
+  if (envPath && envPath.length > 0) {
+    return appendBasePath(baseUrl, envPath);
+  }
+  // Si el primer prefijo de filePrefixes tiene un único segmento (caso
+  // típico Laravel: `["api"]`), lo usamos. Esto cubre la fuente (2):
+  // el framework ya recogió el prefijo y no hace falta volver a
+  // pedirlo al usuario.
+  const firstPrefix = firstSingleSegmentPrefix(filePrefixes);
+  if (firstPrefix) {
+    return appendBasePath(baseUrl, firstPrefix);
+  }
+  return baseUrl;
+}
+
+/**
+ * Suma un segmento de path a la `baseUrl`, evitando duplicarlo cuando
+ * ya está presente.
+ *
+ * `appendBasePath("http://localhost", "api")` → `"http://localhost/api"`.
+ * `appendBasePath("http://localhost/api", "api")` → `"http://localhost/api"`.
+ * `appendBasePath("http://localhost", "/api/v1")` → `"http://localhost/api/v1"`.
+ */
+function appendBasePath(baseUrl: string, segment: string): string {
+  const clean = segment.replace(/^\/+/, "").replace(/\/+$/, "");
+  if (clean.length === 0) return baseUrl;
+  // Comprobación barata: si la URL ya termina en `/<clean>` (o en su
+  // forma con slash final), no se duplica. No es un parseo estricto
+  // porque no queremos arrastrar `URL` aquí; basta con el sufijo.
+  if (baseUrl === `${baseUrl.replace(/\/$/, "")}/${clean}`) return baseUrl;
+  if (new RegExp(`/${escapeRegExp(clean)}/?$`).test(baseUrl)) return baseUrl;
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return `${trimmed}/${clean}`;
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Devuelve el primer prefijo de `filePrefixes` que tiene un único
+ * segmento (caso Laravel `["api"]`). `null` si no hay ninguno.
+ *
+ * Usado por `applyBasePathSources` para detectar la fuente "framework
+ * routePrefix" sin asumir que TODOS los archivos Laravel tienen el
+ * mismo prefijo — `detectFilePrefixes` solo llena los que el
+ * RouteServiceProvider mapea, así que `null` aquí significa "el
+ * usuario no pidió prefijo o el framework no recogió nada".
+ */
+function firstSingleSegmentPrefix(
+  filePrefixes: Record<string, ReadonlyArray<string>>,
+): string | null {
+  for (const prefixes of Object.values(filePrefixes)) {
+    if (prefixes.length === 1) return prefixes[0] ?? null;
+  }
+  return null;
+}
+
+/**
  * Resuelve la ruta del módulo de configuración del host.
  *
  * Orden:
@@ -271,7 +373,7 @@ export async function buildZeroConfig(
  *      buildZeroConfig().
  */
 export async function resolveConfigPath(
-  argv: string[] = process.argv,
+  argv: ReadonlyArray<string> = [],
   context: IProjectContext,
 ): Promise<string> {
   const root = context.projectRoot;
@@ -307,7 +409,7 @@ export async function resolveConfigPath(
  * retirado de `paths.service` en r00010 S2 (2026-09-03).
  */
 export async function loadProject(
-  argv: string[] = process.argv,
+  argv: ReadonlyArray<string> = [],
   context: IProjectContext,
 ): Promise<LoadedProject> {
   const configPath = await resolveConfigPath(argv, context);

@@ -15,9 +15,9 @@
  *   name: "mi-api",
  *   collectionName: "Mi API (Catálogo)",
  *   collectionDescription: "Colección Postman de Mi API.",
- *   baseUrl: "http://localhost/api",
+ *   baseUrl: "http://localhost",
  *   variables: [
- *     { key: "baseUrl", value: "http://localhost/api", type: "string" },
+ *     { key: "baseUrl", value: "http://localhost", type: "string" },
  *     { key: "token", value: "", type: "string" },
  *   ],
  *   filePrefixes: {},
@@ -28,6 +28,10 @@
  *   loginEndpointName: "Login",
  * };
  * ```
+ *
+ * `baseUrl` por defecto es el **origen** (`DEFAULT_BASE_URL`). El sufijo
+ * `/api` solo aparece cuando una de las fuentes documentadas en
+ * `BASE_PATH_SOURCES` lo aporta — ver `a00012 S4`.
  */
 import type { PostmanVariable } from "./postman.interface.js";
 
@@ -56,7 +60,10 @@ export interface ProjectConfig {
   /** Descripción de la colección (`info.description`). */
   collectionDescription: string;
 
-  /** URL base por defecto (incluye `/api` si aplica). */
+  /**
+   * URL base por defecto (origen puro; el sufijo `/api` solo se añade
+   * cuando una fuente explícita lo aporta — ver cabecera del fichero).
+   */
   baseUrl: string;
 
   /** Variables de colección Postman. */

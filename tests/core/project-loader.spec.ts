@@ -84,7 +84,7 @@ describe("loadProject", () => {
   test("devuelve config aunque el proyecto no tenga config.constant.ts", async () => {
     const { config, manualEndpoints } = await inProject(
       { ".env": "APP_NAME=Demo\n", "package.json": '{"dependencies":{"express":"^4"}}' },
-      (context) => loadProject(process.argv, context),
+      (context) => loadProject([], context),
     );
     expect(config.name.length).toBeGreaterThan(0);
     expect(manualEndpoints).toEqual([]);
@@ -93,7 +93,7 @@ describe("loadProject", () => {
   test("informa de la ruta de config usada", async () => {
     const { configPath } = await inProject(
       { ".env": "APP_NAME=Demo\n" },
-      (context) => loadProject(process.argv, context),
+      (context) => loadProject([], context),
     );
     expect(typeof configPath).toBe("string");
   });
@@ -101,7 +101,7 @@ describe("loadProject", () => {
   test("sin overrides manuales, endpointsPath es null", async () => {
     const { endpointsPath } = await inProject(
       { ".env": "APP_NAME=Demo\n" },
-      (context) => loadProject(process.argv, context),
+      (context) => loadProject([], context),
     );
     expect(endpointsPath).toBeNull();
   });
@@ -113,11 +113,11 @@ describe("loadProject", () => {
     const second = await createTempProject({ ".env": "APP_NAME=Segundo\n" });
     try {
       const a = await loadProject(
-        process.argv,
+        [],
         resolveProjectContext({ projectRoot: first.root }),
       );
       const b = await loadProject(
-        process.argv,
+        [],
         resolveProjectContext({ projectRoot: second.root }),
       );
       expect(a.config.name).not.toBe(b.config.name);

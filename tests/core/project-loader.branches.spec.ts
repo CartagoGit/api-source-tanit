@@ -70,11 +70,11 @@ function context(): IProjectContext {
   return currentContext;
 }
 
-function resolveConfigPath(argv: string[] = process.argv): Promise<string> {
+function resolveConfigPath(argv: ReadonlyArray<string> = []): Promise<string> {
   return resolveConfigPathImpl(argv, context());
 }
 
-function loadProject(argv: string[] = process.argv) {
+function loadProject(argv: ReadonlyArray<string> = []) {
   return loadProjectImpl(argv, context());
 }
 
@@ -179,7 +179,7 @@ describe("loadProject con config explícito", () => {
         "composer.json": '{"name":"acme/tienda"}',
         "resources/postman/examples/tienda/config.constant.ts": CONFIG_OK,
       },
-      (context) => loadProjectImpl(process.argv, context),
+      (context) => loadProjectImpl([], context),
     );
     expect(loaded.zeroConfig).toBe(false);
     expect(loaded.config.name).toBe("tienda");
@@ -196,7 +196,7 @@ describe("loadProject con config explícito", () => {
           "composer.json": '{"name":"acme/tienda"}',
           "examples/tienda/config.constant.ts": CONFIG_TODO,
         },
-        (context) => loadProjectImpl(process.argv, context),
+        (context) => loadProjectImpl([], context),
       ),
     ).rejects.toThrow(/No se encontró export 'config'/);
   });
@@ -212,7 +212,7 @@ export const ALL_ENDPOINTS = [
 ];
 `,
       },
-      (context) => loadProjectImpl(process.argv, context),
+      (context) => loadProjectImpl([], context),
     );
     expect(loaded.endpointsPath).toContain("endpoints.constant.ts");
     expect(loaded.manualEndpoints).toHaveLength(1);
@@ -228,7 +228,7 @@ export const ALL_ENDPOINTS = [
           "examples/tienda/endpoints.constant.ts":
             "export const ALL_ENDPOINTS = { nope: true };\n",
         },
-        (context) => loadProjectImpl(process.argv, context),
+        (context) => loadProjectImpl([], context),
       ),
     ).rejects.toThrow("El export de endpoints manuales no es un array.");
   });
@@ -241,7 +241,7 @@ export const ALL_ENDPOINTS = [
         "examples/tienda/endpoints.ts":
           "export const endpoints = [] as unknown[];\n",
       },
-      (context) => loadProjectImpl(process.argv, context),
+      (context) => loadProjectImpl([], context),
     );
     expect(loaded.endpointsPath).toContain("endpoints.ts");
     expect(loaded.manualEndpoints).toEqual([]);
@@ -266,11 +266,14 @@ describe("buildZeroConfig — caminos alternativos", () => {
   });
 
   test("APP_URL entre comillas se limpia", async () => {
+    // a00012 S4: ya no se añade `/api` automáticamente. El APP_URL se
+    // respeta tal cual; el sufijo solo lo aporta una fuente explícita
+    // (Laravel + RouteServiceProvider, `POSTMAN_BASE_PATH`, …).
     const config = await inProject(
       { ".env": 'APP_URL="https://api.midominio.com"\n' },
       buildZeroConfig,
     );
-    expect(config.baseUrl).toBe("https://api.midominio.com/api");
+    expect(config.baseUrl).toBe("https://api.midominio.com");
   });
 
   test(".env.example vale cuando no hay .env", async () => {
@@ -286,11 +289,16 @@ describe("buildZeroConfig — caminos alternativos", () => {
     // directorios con ese nombre exacto), así que la rama `catch` se
     // provoca con un `.env` que NO declara APP_URL y un segundo
     // `.env.example` también mudo: la rama de `break` no se alcanza.
+    //
+    // a00012 S4: la baseUrl por defecto es el ORIGEN (`http://localhost`).
+    // El `/api` ya no se pega automáticamente: solo aparece cuando una
+    // fuente explícita lo aporta (Laravel + RouteServiceProvider,
+    // `POSTMAN_BASE_PATH`, …).
     const config = await inProject(
       { ".env": "APP_KEY=xxx\n" },
       buildZeroConfig,
     );
-    expect(config.baseUrl).toBe("http://localhost/api");
+    expect(config.baseUrl).toBe("http://localhost");
   });
 
   test("el mapa filePrefixes sale del RouteServiceProvider", async () => {

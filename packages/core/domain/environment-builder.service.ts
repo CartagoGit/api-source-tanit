@@ -23,10 +23,11 @@ import type {
   PostmanVariable,
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { EnvironmentDef } from "../../contracts/interfaces/core/domain.interface.js";
+import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
 /** Variables base que Postman necesita SIEMPRE. */
 const BASE_VARIABLES: PostmanVariable[] = [
-  { key: "baseUrl", value: "http://localhost/api", type: "string" },
+  { key: "baseUrl", value: DEFAULT_BASE_URL, type: "string" },
   { key: "token", value: "", type: "string" },
 ];
 

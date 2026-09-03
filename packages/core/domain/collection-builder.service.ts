@@ -20,6 +20,7 @@
  */
 import type {
   EndpointSpec,
+  IEndpointAuth,
   PostmanCollection,
   PostmanHeader,
   PostmanItem,
@@ -47,21 +48,42 @@ import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interf
  * respuesta era un 401 que no tenía nada que ver con lo que se estaba
  * probando. Con API key sobra igual: el bloque `auth` de la colección ya
  * mete la clave donde toca.
+ *
+ * Override por operación (`a00012 S3.b`): si el endpoint trae
+ * `auth: { kind: "none" }`, se omite la cabecera `Authorization` para
+ * esa request aunque el esquema global sea bearer. Es el caso de los
+ * endpoints públicos —login, /health, /register— que no deben llevar
+ * credenciales: el token todavía no existe cuando se llaman.
  */
-function defaultHeaders(scheme: AuthSchemeType): PostmanHeader[] {
+function defaultHeaders(
+  ep: EndpointSpec,
+  scheme: AuthSchemeType,
+): PostmanHeader[] {
   const headers: PostmanHeader[] = [
     { key: "Accept", value: "application/json", type: "text" },
   ];
+  if (isEndpointAuthNone(ep.auth)) return headers;
   if (scheme === "bearer") {
     headers.push({ key: "Authorization", value: "Bearer {{token}}", type: "text" });
   }
   return headers;
 }
 
+/**
+ * `true` cuando el endpoint declara explícitamente que no lleva auth.
+ *
+ * Implementa la rama `kind: "none"` del union `IEndpointAuth`. El
+ * discriminador `kind` se chequea primero para no romper si en el
+ * futuro se añade `kind: "scheme"` con campos adicionales.
+ */
+function isEndpointAuthNone(auth: IEndpointAuth | undefined): boolean {
+  return auth !== undefined && auth.kind === "none";
+}
+
 function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest {
   const req: PostmanRequest = {
     method: ep.method,
-    header: defaultHeaders(scheme),
+    header: defaultHeaders(ep, scheme),
     url: {
       raw: "{{baseUrl}}" + ep.uri,
       host: ["{{baseUrl}}"],

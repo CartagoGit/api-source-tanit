@@ -162,6 +162,28 @@ export interface EndpointSpec {
    */
   folder?: string;
   /**
+   * Override por operación del esquema de auth de la colección.
+   *
+   * Antes el builder inyectaba `Authorization: Bearer {{token}}` en
+   * **cada** request cuando el esquema global era bearer —también
+   * en `/auth/login`, que es el endpoint que precisamente emite el
+   * token. Resultado: un 401 al primer Send, con la culpa apuntando a
+   * una request que en realidad es lo que rellena la variable.
+   *
+   * Con este campo, un endpoint puede declararse público
+   * (`auth: { kind: "none" }`) y el builder omite la cabecera
+   * `Authorization` para él, sin tocar el esquema global. Pensado
+   * para login, /health, /register, /forgot-password y similares.
+   *
+   * El discriminador `scheme` se reserva para overrides por esquema
+   * futuros (apiKey, oauth2) — hoy el único caso útil es `none`.
+   *
+   * S3.b (a00012). La regla vive en
+   * `packages/core/domain/collection-builder.service.ts` →
+   * `defaultHeaders()`.
+   */
+  auth?: IEndpointAuth;
+  /**
    * Ruta relativa al proyecto del FormRequest asociado
    * (p. ej. `app/Http/Requests/Usuarios/NuevoUsuarioRequest.php`).
    * Si está, el enricher lo usa directamente en lugar de heurísticas.
@@ -207,6 +229,18 @@ export interface EndpointSpec {
    */
   schemaGraph?: ISchemaGraph;
 }
+
+/**
+ * Override por operación del esquema de auth de la colección.
+ *
+ * Es un union discriminado: el `kind` marca el caso. Solo se admite
+ * `none` hoy —la cabecera `Authorization` no se inyecta—, pero la
+ * forma está dimensionada para añadir `scheme: "bearer"|"apiKey"|...`
+ * sin tener que cambiar el call site (a00012 S3.b).
+ */
+export type IEndpointAuth =
+  | { readonly kind: "none" }
+  | { readonly kind: "scheme"; readonly scheme: "bearer" | "apiKey" | "oauth2" };
 
 /** Una regla de validación, tal como se documenta en la colección. */
 export interface IEndpointField {

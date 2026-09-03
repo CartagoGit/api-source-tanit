@@ -126,7 +126,7 @@ export function applyAuthFlow(
   if (flow.login) {
     flow.login.event = [...(flow.login.event ?? []), tokenCaptureEvent(paths)];
     flow.login.description = LOGIN_DESCRIPTION;
-    useCredentialVariables(flow.login);
+    attachCredentialTemplate(flow.login);
   }
   if (flow.refresh) {
     flow.refresh.event = [...(flow.refresh.event ?? []), tokenCaptureEvent(paths)];
@@ -255,47 +255,108 @@ function tokenClearEvent(): NonNullable<PostmanItem["event"]>[number] {
 // ---------------------------------------------------------------------------
 
 /**
- * Deja el body del login con las credenciales apuntando al environment.
+ * Deja el body del login con las credenciales apuntando al environment,
+ * **sin reemplazar nada que no sea una credencial**.
  *
- * Dos casos:
+ * `useCredentialVariables` (la versión que sustituye) tenía un caso
+ * destructivo: cuando el body no traía `username`/`email`/`password`,
+ * machacaba el body entero con un par inventado. Eso rompía los logins
+ * OAuth2 con `grant_type`/`client_id`/`client_secret`, los flujos OTP,
+ * los formularios `tenant`/`apiKey` y cualquier login que el scanner
+ * hubiera descrito con sus campos reales.
  *
- *   - El scanner extrajo los campos reales (`email`/`password`,
- *     `username`/`password`…): se conservan los nombres y solo se
- *     sustituyen los valores.
- *   - No los extrajo: el inferidor agnóstico había rellenado el body con
- *     campos genéricos inventados —`{"force": false, "notes": "Operación
- *     POST sobre auth"}`— que en un login no solo no sirven, sino que
- *     confunden. Se sustituyen por un par de credenciales convencional.
+ * Esta versión (`a00012 S3.b`) cumple tres reglas:
+ *
+ *   1. Sólo parchea claves que ya estén en el body y cuyo valor sea un
+ *      `string`. Numéricos, booleanos o `null` se respetan: el usuario
+ *      probablemente sabe lo que hace.
+ *   2. Nunca sustituye el body entero. Si no encuentra credenciales,
+ *      deja el body como estaba y avisa con `warnMissingCredentials`.
+ *      El caller decide: mostrar la advertencia al usuario, saltarse
+ *      el login, o lo que toque.
+ *   3. Si encuentra ambas claves (`username`/`password` o
+ *      `email`/`password`), escribe los placeholders `{{...}}` encima.
+ *      Lo demás del body (campos extra que el scanner sí reconoció) se
+ *      conserva.
+ *
+ * Para login con body vacío o no-JSON el comportamiento es idéntico:
+ * no se inventa nada, se avisa.
  */
-function useCredentialVariables(login: PostmanItem): void {
+function attachCredentialTemplate(login: PostmanItem): void {
   const request = login.request;
   if (!request) return;
 
   const parsed = parseJsonObject(request.body?.raw);
-  const usernameKey = parsed && findField(parsed, USERNAME_FIELDS);
-  const passwordKey = parsed && findField(parsed, PASSWORD_FIELDS);
-
-  // Body real con credenciales: respetamos los nombres del proyecto.
-  if (parsed && usernameKey && passwordKey) {
-    parsed[usernameKey] = `{{${AUTH_USERNAME_VARIABLE}}}`;
-    parsed[passwordKey] = `{{${AUTH_PASSWORD_VARIABLE}}}`;
-    writeJsonBody(login, parsed);
+  if (!parsed) {
+    warnMissingCredentials({
+      reason: "no-json-body",
+      path: request.url?.raw ?? "",
+    });
     return;
   }
 
-  // Sin credenciales reconocibles: el body que hubiera es ruido inferido.
-  writeJsonBody(login, {
-    email: `{{${AUTH_USERNAME_VARIABLE}}}`,
-    password: `{{${AUTH_PASSWORD_VARIABLE}}}`,
-  });
+  const usernameKey = findStringField(parsed, USERNAME_FIELDS);
+  const passwordKey = findStringField(parsed, PASSWORD_FIELDS);
+  if (!usernameKey || !passwordKey) {
+    warnMissingCredentials({
+      reason: "no-credential-keys",
+      path: request.url?.raw ?? "",
+      keys: Object.keys(parsed),
+    });
+    return;
+  }
+
+  // Parchea sólo las claves de credencial y deja todo lo demás intacto.
+  parsed[usernameKey] = `{{${AUTH_USERNAME_VARIABLE}}}`;
+  parsed[passwordKey] = `{{${AUTH_PASSWORD_VARIABLE}}}`;
+  writeJsonBody(login, parsed);
 }
 
-/** Primera clave del objeto que esté en `candidates` (case-insensitive). */
-function findField(
+/**
+ * Primera clave del objeto que esté en `candidates` (case-insensitive)
+ * **y cuyo valor sea `string`**. Si el body tiene `email: 1` (un
+ * scanner que rellenó con un placeholder numérico), no se considera
+ * credencial: se respeta.
+ */
+function findStringField(
   body: Record<string, unknown>,
   candidates: ReadonlyArray<string>,
 ): string | undefined {
-  return Object.keys(body).find((k) => candidates.includes(k.toLowerCase()));
+  for (const key of Object.keys(body)) {
+    if (!candidates.includes(key.toLowerCase())) continue;
+    if (typeof body[key] !== "string") continue;
+    return key;
+  }
+  return undefined;
+}
+
+/**
+ * Forma del aviso estructurado que `attachCredentialTemplate` emite
+ * cuando el body del login no expone las claves que esperaba.
+ *
+ * Sale por `console.warn` como JSON de una sola línea, así un runner o
+ * un parser externo puede leerlo sin regex sobre un mensaje libre.
+ * Los tests sustituyen `console.warn` con `vi.spyOn` para verificarlo.
+ */
+export interface IMissingCredentialsWarning {
+  readonly kind: "missing-credentials";
+  readonly reason: "no-json-body" | "no-credential-keys";
+  /** `raw` de la URL del item, para que el aviso apunte al endpoint. */
+  readonly path: string;
+  /** Claves del body en el momento del aviso; sólo con `no-credential-keys`. */
+  readonly keys?: ReadonlyArray<string>;
+}
+
+/**
+ * Emite un aviso estructurado cuando el login body no expone
+ * credenciales reconocibles. La función es exportada para tests y para
+ * que un llamador pueda redirigirla si necesita otro sink.
+ */
+export function warnMissingCredentials(
+  warning: Omit<IMissingCredentialsWarning, "kind">,
+): void {
+  const payload: IMissingCredentialsWarning = { kind: "missing-credentials", ...warning };
+  console.warn(JSON.stringify(payload));
 }
 
 function parseJsonObject(raw: string | undefined): Record<string, unknown> | null {

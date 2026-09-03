@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { folder } from "../helpers/postman-builders";
 import { applyAuthFlow, authEnvironmentVariables, detectAuthFlow, detectLaravelTokenPath, hasLoginEndpoint } from "../../packages/core/domain/auth-flow.service";
@@ -176,32 +176,86 @@ describe("applyAuthFlow — body de credenciales", () => {
     );
   });
 
-  // El inferidor agnóstico rellenaba los logins sin reglas con campos
-  // inventados: {"force": false, "notes": "Operación POST sobre auth"}.
-  test("sustituye un body inferido sin credenciales", () => {
+  // `attachCredentialTemplate` ya no sustituye un body desconocido
+  // por uno inventado: deja el body intacto y avisa (a00012 S3.b).
+  // El test anterior (que sí lo sustituía) validaba el comportamiento
+  // viejo; mantenemos la intención —"un body inferido sin credenciales
+  // NO debe contaminar el que arma el builder"—, pero la garantía pasa
+  // a ser "lo deja como está" en lugar de "lo machaca".
+  test("preserva un body inferido sin credenciales y avisa", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const c = collection([
+        request("x", "POST", "/auth/login", { force: false, notes: "Operación POST sobre auth" }),
+      ]);
+      const body = bodyOf(applyAuthFlow(c)?.login ?? null);
+      // El body original se conserva TAL CUAL —no se inyectan credenciales
+      // que no estaban, ni se borran los campos que sí estaban.
+      expect(body).toEqual({ force: false, notes: "Operación POST sobre auth" });
+      // Y se emite el aviso estructurado explicando por qué.
+      expect(warn).toHaveBeenCalled();
+      const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
+        kind: string;
+        reason: string;
+        path: string;
+        keys?: string[];
+      };
+      expect(payload.kind).toBe("missing-credentials");
+      expect(payload.reason).toBe("no-credential-keys");
+      expect(payload.path).toContain("/auth/login");
+      expect(payload.keys).toContain("force");
+      expect(payload.keys).toContain("notes");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  test("preserva el body vacío del login y avisa (no crea uno inventado)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const c = collection([request("x", "POST", "/auth/login")]);
+      const login = applyAuthFlow(c)?.login ?? null;
+      // El body sigue ausente: no se inventa uno con email/password.
+      expect(login?.request?.body).toBeUndefined();
+      // Aviso estructurado en su lugar.
+      const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
+        kind: string;
+        reason: string;
+      };
+      expect(payload.kind).toBe("missing-credentials");
+      expect(payload.reason).toBe("no-json-body");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  // Antes se añadía Content-Type SIEMPRE, porque la función vieja
+  // machacaba el body con uno inventado aunque no hubiera credenciales.
+  // `attachCredentialTemplate` (a00012 S3.b) sólo escribe el body (y por
+  // tanto añade Content-Type) cuando realmente parchea credenciales.
+  // Mantenemos la intención —"cuando escribimos JSON, marcamos el
+  // Content-Type"—, pero limitada al caso en que hay credenciales.
+  test("añade Content-Type: application/json cuando parchea credenciales", () => {
     const c = collection([
-      request("x", "POST", "/auth/login", { force: false, notes: "Operación POST sobre auth" }),
+      request("x", "POST", "/auth/login", { username: "demo", password: "1234" }),
     ]);
-    const body = bodyOf(applyAuthFlow(c)?.login ?? null);
-    expect(body).toEqual({
-      email: `{{${AUTH_USERNAME_VARIABLE}}}`,
-      password: `{{${AUTH_PASSWORD_VARIABLE}}}`,
-    });
-    expect(body["notes"]).toBeUndefined();
-  });
-
-  test("crea el body cuando el login no tenía ninguno", () => {
-    const c = collection([request("x", "POST", "/auth/login")]);
-    expect(bodyOf(applyAuthFlow(c)?.login ?? null)).toEqual({
-      email: `{{${AUTH_USERNAME_VARIABLE}}}`,
-      password: `{{${AUTH_PASSWORD_VARIABLE}}}`,
-    });
-  });
-
-  test("añade Content-Type: application/json si faltaba", () => {
-    const c = collection([request("x", "POST", "/auth/login")]);
     const headers = applyAuthFlow(c)?.login?.request?.header ?? [];
     expect(headers.some((h) => h.key === "Content-Type")).toBe(true);
+  });
+
+  test("NO añade Content-Type cuando deja el body intacto", () => {
+    // Si el login no traía credenciales, no se escribe body y por
+    // tanto no hay razón para añadir Content-Type.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const c = collection([
+        request("x", "POST", "/auth/login", { force: false, notes: "x" }),
+      ]);
+      const headers = applyAuthFlow(c)?.login?.request?.header ?? [];
+      expect(headers.some((h) => h.key === "Content-Type")).toBe(false);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   test("no duplica el Content-Type si ya estaba", () => {

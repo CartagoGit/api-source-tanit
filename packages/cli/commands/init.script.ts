@@ -26,6 +26,7 @@ import { detectProjectNameIn } from "../../core/discovery/project-name.service.j
 import { readFlag } from "../../core/helpers/argv.helper.js";
 import type { IInitOutcome } from "../../contracts/interfaces/cli/init-outcome.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { BASE_PATH_ENV_VAR, DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
 /**
  * Prepara la configuración y devuelve **qué ha escrito**.
@@ -59,7 +60,20 @@ export async function runInit(
   const projectName = nameFlag ?? (await detectProjectNameIn(root));
 
   // --- Detección de baseUrl -----------------------------------------
-  let baseUrl = "http://localhost/api";
+  //
+  // El default es el origen (a00012 S4). El sufijo `/api` solo aparece
+  // cuando una de las fuentes documentadas lo aporta:
+  //   1. ruta explícita (routePrefix matcheado por un scanner),
+  //   2. framework (Laravel/Express/... → prefix del router),
+  //   3. config explícito (`mcp-vertex.config.json#basePath`,
+  //      `.expostmanrc.json#basePath`),
+  //   4. OpenAPI `servers[]`,
+  //   5. variable de entorno `POSTMAN_BASE_PATH`.
+  //
+  // Aquí se cubren las dos que aplican al asistente: `APP_URL` (con su
+  // sufijo tal cual) y `POSTMAN_BASE_PATH` (env). Las tres primeras
+  // corresponden a decisiones del proyecto, no del asistente.
+  let baseUrl: string = DEFAULT_BASE_URL;
   for (const f of [".env", ".env.example"]) {
     const p = join(root, f);
     if (!existsSync(p)) continue;
@@ -70,11 +84,17 @@ export async function runInit(
         text.match(/^APP_BASE_URL\s*=\s*(.+)$/m);
       if (m?.[1] !== undefined) {
         baseUrl = m[1].trim().replace(/^["']|["']$/g, "");
-        if (!/\/api\/?$/.test(baseUrl)) baseUrl += "/api";
         break;
       }
     } catch {
       /* ignore */
+    }
+  }
+  const envBasePath = process.env[BASE_PATH_ENV_VAR]?.trim();
+  if (envBasePath && envBasePath.length > 0) {
+    const clean = envBasePath.replace(/^\/+/, "").replace(/\/+$/, "");
+    if (clean.length > 0 && !baseUrl.endsWith(`/${clean}`)) {
+      baseUrl = `${baseUrl.replace(/\/+$/, "")}/${clean}`;
     }
   }
 

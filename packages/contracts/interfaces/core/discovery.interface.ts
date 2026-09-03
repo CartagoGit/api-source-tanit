@@ -144,6 +144,19 @@ export interface IGenerationOptions {
    * (CLI, config y orquestador).
    */
   readonly frameworkSearchRoot?: string | undefined;
+  /**
+   * `argv` que el pipeline pasa al loader (`loadProject`). Vacío por
+   * defecto: el core NO lee `process.argv` en runtime — quien invoca
+   * el pipeline (CLI, plugin MCP, UI web, tests) decide qué pasar.
+   *
+   * Si falta, el loader trata la ausencia como "ningún flag `--config`",
+   * que es lo que ya hacía antes cuando `argv` no llegaba. El CLI pasa
+   * `process.argv.slice(2)` desde `cli.script.ts` (composition root),
+   * los tests pasan un array vacío o el que necesiten.
+   *
+   * a00012 S4.
+   */
+  readonly argv?: ReadonlyArray<string> | undefined;
 }
 
 /**

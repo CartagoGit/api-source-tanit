@@ -284,8 +284,12 @@ describe("inferQueryForSpec — ramas de forma de la URI", () => {
 
 describe("inferCollectionVariables — host y descubiertas conviven", () => {
   test("base mínima sin nada exterior", () => {
+    // a00012 S4: la baseUrl por defecto es el origen puro
+    // (`DEFAULT_BASE_URL` = "http://localhost"). El `/api` ya no se
+    // añade automáticamente; lo aporta una fuente explícita cuando
+    // exista.
     expect(inferCollectionVariables([])).toEqual([
-      { key: "baseUrl", value: "http://localhost/api", type: "string" },
+      { key: "baseUrl", value: "http://localhost", type: "string" },
       { key: "token", value: "", type: "string" },
     ]);
   });

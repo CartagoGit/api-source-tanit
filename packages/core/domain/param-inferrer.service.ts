@@ -12,6 +12,7 @@
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { BodyInference, InferApplyStats } from "../../contracts/interfaces/core/domain.interface.js";
+import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
 /** Path params detectados en una URI ya normalizada a Postman (`{{x}}`). */
 export function extractPathParams(uri: string): string[] {
@@ -295,7 +296,7 @@ export function inferCollectionVariables(
   }
 
   if (!out.has("baseUrl")) {
-    out.set("baseUrl", { value: "http://localhost/api", type: "string" });
+    out.set("baseUrl", { value: DEFAULT_BASE_URL, type: "string" });
   }
   if (!out.has("token")) out.set("token", { value: "", type: "string" });
 

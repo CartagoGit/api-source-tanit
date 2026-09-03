@@ -335,8 +335,15 @@ async function discoverSpecs(
   // Con `context`: el loader deja de preguntarle al singleton qué
   // proyecto es este. Era el único sitio del pipeline que aún lo hacía,
   // y el motivo de que la llamada entera tuviera que ir envuelta.
+  //
+  // `argv` se pasa **explícito y vacío** por defecto: el core no lee
+  // `process.argv` en runtime. Quien invoca el pipeline (CLI, plugin
+  // MCP, UI web, tests) decide qué pasar. Si se omite, `loadProject`
+  // trata la ausencia como "ningún flag `--config`" — comportamiento
+  // documentado en `a00012 S4` y verificado por
+  // `tests/core/process-argv-free.spec.ts`.
   const { config, manualEndpoints, configPath, zeroConfig } = await loadProject(
-    process.argv,
+    options.argv ?? [],
     context,
   );
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
