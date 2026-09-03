@@ -44,7 +44,7 @@ import { buildValidateToolRegistration } from "./lib/tools/validate.tool";
 
 export default definePlugin({
   name: "expostman",
-  version: "0.1.0",
+  version: "0.1.1",
   describe:
     "Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas " +
     "de cualquier proyecto de API. Pensado para ser invocado por agentes " +
