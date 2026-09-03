@@ -207,6 +207,17 @@ function expandResource(
 ): ParsedRoute[] {
   const only = listOption(options, "only");
   const except = listOption(options, "except");
+  // a00011 C-1: `resources :users, param: :otro` lo respeta. Por
+  // defecto Rails usa `:id`, NO el singular del recurso — el
+  // singularizer naïve que había aquí (`users → user`) se llevaba
+  // mal con `categories → categorie` y similares. La doc oficial
+  // (guides.rubyonrails.org/routing.html#singular-resources) es
+  // clara: el param por defecto es `id`, configurable con
+  // `param: :otro`. Lo respetamos.
+  const explicitParam = paramOption(options);
+  const paramToken = explicitParam !== null
+    ? `{${explicitParam}}`
+    : "{id}";
 
   const routes: ParsedRoute[] = [];
   for (const { action, method, suffix } of RESOURCE_ACTIONS) {
@@ -217,13 +228,6 @@ function expandResource(
     // Un recurso singular (`resource :perfil`) no tiene listado ni
     // `:id`: siempre opera sobre "el mío".
     if (singular && action === "index") continue;
-    // a00010 / B-03: el path param por defecto es el singular del
-    // recurso (Rails: `resources :users` → `/users/{user}`). El caso
-    // degenerado sin singularizer fiable cae al `{id}` genérico.
-    const singularName = name.endsWith("s") ? name.slice(0, -1) : `${name}`;
-    const paramToken = /^[a-z_]\w*$/i.test(singularName)
-      ? `{${singularName}}`
-      : "{id}";
     const path = singular
       ? suffix.replace(/^\/\{id\}/, "")
       : suffix.replace(/\{id\}/g, paramToken);
@@ -255,6 +259,16 @@ function expandResource(
     }
   }
   return routes;
+}
+
+/**
+ * Extrae `param: :nombre` de las opciones de `resources` / `resource`.
+ * Devuelve `null` si no está declarado, que es la señal de "usar
+ * `{id}` por defecto".
+ */
+function paramOption(options: string): string | null {
+  const match = /param\s*:\s*:?(\w+)/.exec(options);
+  return match?.[1] ?? null;
 }
 
 /** `only: [:index, :show]` → `["index", "show"]`. */

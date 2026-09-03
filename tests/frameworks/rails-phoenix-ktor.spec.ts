@@ -116,19 +116,39 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
     expect(found[0]?.uri).toBe("/api/v1/x");
   });
 
-  // a00010 / B-03: el path param por defecto es el singular del recurso
-  // (`resources :users` → `/users/{user}`).
-  test("path param por defecto es el singular del recurso (B-03 a00010)", () => {
+  // a00011 C-1: el path param por defecto es `{id}` (Rails oficial),
+  // NO el singular del recurso. El singularizer naïve (`users → user`)
+  // se llevaba mal con `categories → categorie`, `people → people`,
+  // etc. — producía URLs incorrectas y ningún warning.
+  test("path param por defecto es `{id}` (Rails 5+ default)", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users\nend",
     );
-    const withUser = found.filter((r) => r.uri.includes("{user}"));
-    expect(withUser.length).toBeGreaterThanOrEqual(3);
-    // El singularizer falla para nombres que no encajan.
-    const noneWithId = found.filter(
+    const withId = found.filter(
       (r) => r.uri.includes("{id}") && r.actionName !== undefined,
     );
-    expect(noneWithId).toHaveLength(0);
+    expect(withId.length).toBeGreaterThanOrEqual(3);
+    // Ningún endpoint REST lleva `{user}` (el singularizer está
+    // desactivado por defecto).
+    const withUser = found.filter(
+      (r) => r.uri.includes("{user}") && r.actionName !== undefined,
+    );
+    expect(withUser).toHaveLength(0);
+  });
+
+  // a00011 C-1: `resources :users, param: :slug` lo respeta.
+  test("`param: :otro` override del path param", () => {
+    const found = routes(
+      "Rails.application.routes.draw do\n  resources :users, param: :slug\nend",
+    );
+    const withSlug = found.filter(
+      (r) => r.uri.includes("{slug}") && r.actionName !== undefined,
+    );
+    expect(withSlug.length).toBeGreaterThanOrEqual(3);
+    const withId = found.filter(
+      (r) => r.uri.includes("{id}") && r.actionName !== undefined,
+    );
+    expect(withId).toHaveLength(0);
   });
 
   // a00010 / B-04: `update` produce dos rutas — PUT y PATCH.
