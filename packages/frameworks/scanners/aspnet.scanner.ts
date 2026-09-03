@@ -139,10 +139,10 @@ async function walkCs(
  *   3. Cualquier token residual entre llaves con `:` dentro se limpia
  *      por la regla 1.
  */
-function normalizeAspNetPath(path: string, fallbackAction: string): string {
+function normalizeAspNetPath(path: string, fallbackAction: string, controllerToken?: string): string {
   return path
     .replace(/\{(\w+):[^}]+\}/g, "{$1}")
-    .replace(/\[controller\]/gi, deriveControllerToken(path) ?? "controller")
+    .replace(/\[controller\]/gi, controllerToken ?? deriveControllerToken(path) ?? "controller")
     .replace(/\[action\]/gi, fallbackAction)
     .replace(/\{(\w+):[^}]+\}/g, "{$1}");
 }
@@ -202,6 +202,14 @@ async function parseCsFile(
   }
   if (classStart < 0) return out;
 
+  let controllerToken: string | undefined;
+  for (let i = classStart; i < lines.length; i++) {
+    const classMatch = /\bclass\s+([A-Za-z_][\w]*)/.exec(lines[i] ?? "");
+    if (!classMatch?.[1]) continue;
+    controllerToken = classMatch[1].replace(/Controller$/i, "").toLowerCase();
+    break;
+  }
+
 
   // 2) Buscar method attributes.
   for (let i = classStart + 1; i < lines.length; i++) {
@@ -226,7 +234,7 @@ async function parseCsFile(
       }
       out.push({
         method: method.toUpperCase(),
-        uri: normalizeAspNetPath(fullPath, methodName || "index"),
+        uri: normalizeAspNetPath(fullPath, methodName || "index", controllerToken),
         rawUri: fullPath,
         sourceFile: relPath,
         lineNumber: i + 1,

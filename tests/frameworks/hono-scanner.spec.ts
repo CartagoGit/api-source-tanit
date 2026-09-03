@@ -18,7 +18,7 @@ import {
   HonoZodValidatorProvider,
 } from "../../packages/frameworks/scanners/hono.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
@@ -113,5 +113,30 @@ describe("validación con @hono/zod-validator", () => {
     const provider = new HonoZodValidatorProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
     expect(await provider.supports(health, match, result)).toBe(false);
+  });
+
+  test("dos escaneos concurrentes no mezclan validators", async () => {
+    const projects = await Promise.all([
+      createTempProject({
+        "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+        "index.ts": 'import { Hono } from "hono";\nconst app = new Hono();\napp.post("/a", zValidator("json", tag_a));\n',
+      }, "hono-concurrent-a-"),
+      createTempProject({
+        "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+        "index.ts": 'import { Hono } from "hono";\nconst app = new Hono();\napp.post("/b", zValidator("json", tag_b));\n',
+      }, "hono-concurrent-b-"),
+    ]);
+    try {
+      const results = await Promise.all(projects.map(async (project) => {
+        const match = await new HonoProjectScanner().resolve(project.root);
+        return new HonoRouteScanner().scan(match);
+      }));
+      expect(results[0]?.validators?.get("POST /a")?.name).toBe("tag_a");
+      expect(results[0]?.validators?.has("POST /b")).toBe(false);
+      expect(results[1]?.validators?.get("POST /b")?.name).toBe("tag_b");
+      expect(results[1]?.validators?.has("POST /a")).toBe(false);
+    } finally {
+      await Promise.all(projects.map((project) => project.cleanup()));
+    }
   });
 });

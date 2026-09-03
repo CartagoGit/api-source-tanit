@@ -16,7 +16,7 @@ import {
   parseGoStruct,
 } from "../../packages/frameworks/scanners/fiber.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
@@ -95,6 +95,31 @@ describe("tags validate: de go-playground/validator", () => {
     const provider = new FiberValidateTagProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
     expect(await provider.supports(health, match, result)).toBe(false);
+  });
+
+  test("dos escaneos concurrentes no mezclan structs", async () => {
+    const projects = await Promise.all([
+      createTempProject({
+        "go.mod": "module fiber-a\n\nrequire github.com/gofiber/fiber/v2 v2.52.0\n",
+        "main.go": 'package main\n\nimport "github.com/gofiber/fiber/v2"\n\ntype CreateA struct { TagA string `json:"tag_a"` }\nfunc main() { app := fiber.New(); app.Post("/a", func(c *fiber.Ctx) error { var body CreateA; return c.BodyParser(&body) }) }\n',
+      }, "fiber-concurrent-a-"),
+      createTempProject({
+        "go.mod": "module fiber-b\n\nrequire github.com/gofiber/fiber/v2 v2.52.0\n",
+        "main.go": 'package main\n\nimport "github.com/gofiber/fiber/v2"\n\ntype CreateB struct { TagB string `json:"tag_b"` }\nfunc main() { app := fiber.New(); app.Post("/b", func(c *fiber.Ctx) error { var body CreateB; return c.BodyParser(&body) }) }\n',
+      }, "fiber-concurrent-b-"),
+    ]);
+    try {
+      const results = await Promise.all(projects.map(async (project) => {
+        const match = await new FiberProjectScanner().resolve(project.root);
+        return new FiberRouteScanner().scan(match);
+      }));
+      expect(results[0]?.structs?.get("POST /a")?.name).toBe("CreateA");
+      expect(results[0]?.structs?.has("POST /b")).toBe(false);
+      expect(results[1]?.structs?.get("POST /b")?.name).toBe("CreateB");
+      expect(results[1]?.structs?.has("POST /a")).toBe(false);
+    } finally {
+      await Promise.all(projects.map((project) => project.cleanup()));
+    }
   });
 });
 

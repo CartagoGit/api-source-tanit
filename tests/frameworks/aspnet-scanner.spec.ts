@@ -170,10 +170,8 @@ public class UsersController : ControllerBase
     });
     const match = await new AspNetProjectScanner().resolve(project.root);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
-    // `[controller]` sin clase parseable se queda con el fallback
-    // genérico; lo que NO puede ocurrir es que el token literal
-    // acabe en la URL.
     const uris = routes.map((r) => r.uri);
+    expect(uris).toContain("/api/users");
     expect(uris.every((u) => !u.includes("[controller]"))).toBe(true);
     await project.cleanup();
   });

@@ -19,7 +19,7 @@ import {
   parseRustStruct,
 } from "../../packages/frameworks/scanners/rust.scanner";
 import { describeScannerContract } from "../helpers/scanner-contract";
-import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { comprehensiveFixture, createTempProject } from "../helpers/scanner-fixture";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
 describeScannerContract({
@@ -144,6 +144,31 @@ describe("el provider resuelve el body del handler", () => {
     const provider = new RustValidatorProvider();
     const health = routes.find((r) => r.uri.endsWith("/health"))!;
     expect(await provider.supports(health, match, result)).toBe(false);
+  });
+
+  test("dos escaneos concurrentes no mezclan structs", async () => {
+    const projects = await Promise.all([
+      createTempProject({
+        "Cargo.toml": '[package]\nname = "rust-a"\n\n[dependencies]\nactix-web = "4.5"\n',
+        "src/main.rs": 'use actix_web::{post, web::Json};\nstruct CreateA {\n    tag_a: String,\n}\n#[post("/a")]\nasync fn a(body: web::Json<CreateA>) -> String { String::new() }\n',
+      }, "rust-concurrent-a-"),
+      createTempProject({
+        "Cargo.toml": '[package]\nname = "rust-b"\n\n[dependencies]\nactix-web = "4.5"\n',
+        "src/main.rs": 'use actix_web::{post, web::Json};\nstruct CreateB {\n    tag_b: String,\n}\n#[post("/b")]\nasync fn b(body: web::Json<CreateB>) -> String { String::new() }\n',
+      }, "rust-concurrent-b-"),
+    ]);
+    try {
+      const results = await Promise.all(projects.map(async (project) => {
+        const match = await new RustProjectScanner().resolve(project.root);
+        return new RustRouteScanner().scan(match);
+      }));
+      expect(results[0]?.structs?.get("POST /a")?.name).toBe("CreateA");
+      expect(results[0]?.structs?.has("POST /b")).toBe(false);
+      expect(results[1]?.structs?.get("POST /b")?.name).toBe("CreateB");
+      expect(results[1]?.structs?.has("POST /a")).toBe(false);
+    } finally {
+      await Promise.all(projects.map((project) => project.cleanup()));
+    }
   });
 });
 

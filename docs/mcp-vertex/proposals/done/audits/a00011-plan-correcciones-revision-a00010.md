@@ -3,7 +3,7 @@ id: a00011
 title: "Plan de correcciones post-revisión a00010 — Rails, orchestrator, merger, schema 3.1 y observabilidad"
 kind: audit
 date: 2026-09-03
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 dependsOn:
@@ -12,6 +12,15 @@ related:
   - a00009
   - a00010
 ---
+
+> **Cierre 2026-09-03.** Los slices C-1 a C-9 quedaron implementados y
+> verificados en `develop`. La validación final pasó los 6 typechecks,
+> todos los gates de lint, 135 archivos de test con 2820 tests pasados y
+> 1 omitido, 21/21 ejemplos válidos y el benchmark de escaneo. C-5 añade
+> pruebas concurrentes con datos exclusivos para Hono, Fiber y Rust; C-6
+> deriva `[controller]` desde `UsersController`; C-8 resuelve grupos Gin
+> anidados; y C-9 hace coherentes score y evidence en Gin, Phoenix y
+> Django.
 
 # a00011 — Plan de correcciones post-revisión a00010
 
