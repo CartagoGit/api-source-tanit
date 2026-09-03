@@ -13,7 +13,7 @@ bueno.
 | Bin canónico | **`expostman`** | `package.json` → `bin` |
 | Bin alias | `export-to-postman` | `package.json` → `bin`, mismo destino |
 | Plugin de mcp-vertex | `expostman` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin | `@expostman/mcp-vertex-plugin` | `packages/plugins/mcp-vertex_expostman/package.json` |
+| Paquete del plugin (interno) | `mcp-vertex-plugin-expostman` | `packages/plugins/mcp-vertex_expostman/package.json` — `"private": true`, NO se publica |
 | Tools MCP | `mcp-vertex_expostman_<tool>` | los construye el host |
 | Carpeta de salida | `export-to-postman/` | `OUTPUT_DIR_NAME` |
 | Prefijo de env vars | `POSTMAN_` | `POSTMAN_PROJECT_ROOT`, `POSTMAN_OUTPUT_DIR`… |

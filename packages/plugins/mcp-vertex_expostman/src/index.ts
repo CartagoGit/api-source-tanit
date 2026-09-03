@@ -1,5 +1,6 @@
 /**
- * `@expostman/mcp-vertex-plugin` — entry point.
+ * Plugin MCP-vertex de expostman — entry point. USO INTERNO: este
+ * paquete es `"private": true`, no se publica y se carga desde su TS.
  *
  * Expone el proyecto export-to-postman como tools descubribles por
  * cualquier agente MCP-vertex compatible.
