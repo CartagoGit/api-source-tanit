@@ -30,6 +30,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -308,7 +309,11 @@ export class ExpressRouteScanner implements IRouteScanner {
 export class ExpressZodValidationProvider implements IValidationSpecProvider {
   readonly framework = "express" as const;
 
-  async supports(_route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
+  async supports(
+    _route: ParsedRoute,
+    _match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     // En principio siempre intentamos; el resolve devuelve [] si no encuentra.
     return true;
   }
@@ -316,6 +321,7 @@ export class ExpressZodValidationProvider implements IValidationSpecProvider {
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     const fields = await findInlineSchema(route, match);

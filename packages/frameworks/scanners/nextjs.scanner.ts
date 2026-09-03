@@ -26,6 +26,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -270,16 +271,20 @@ async function parsePageRouteFile(
 /** `z.object(` — schema de body declarado en el propio route handler. */
 const ZOD_OBJECT_RE = /\bz\s*\.\s*object\s*\(/;
 
-export class NextJsZodProvider implements IValidationSpecProvider {
-  readonly framework = "nextjs" as const;
+export class NextJsZodProvider implements IValidationSpecProvider {  readonly framework = "nextjs" as const;
 
-  async supports(_r: ParsedRoute, _m: IProjectMatch): Promise<boolean> {
+  async supports(
+    _r: ParsedRoute,
+    _m: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return true;
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };

@@ -27,6 +27,7 @@ import type {
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
+  IScanResult,
   IValidationSpec,
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
@@ -203,13 +204,18 @@ interface ModelInfo {
 export class FastApiPydanticValidationProvider implements IValidationSpecProvider {
   readonly framework = "fastapi" as const;
 
-  async supports(_route: ParsedRoute, _match: IProjectMatch): Promise<boolean> {
+  async supports(
+    _route: ParsedRoute,
+    _match: IProjectMatch,
+    _scanResult: IScanResult,
+  ): Promise<boolean> {
     return true;
   }
 
   async resolve(
     route: ParsedRoute,
     match: IProjectMatch,
+    _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     const files = await collectPyFiles(match.projectRoot);
