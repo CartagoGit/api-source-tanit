@@ -23,7 +23,7 @@ import { exportTo, parseFormats } from "../../core/exporters/export-registry.ser
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
-import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
 import { watchProject } from "../../core/domain/watcher.service.js";
 import {
@@ -71,7 +71,7 @@ async function regenerate(
   const result = await generateWithAllFrameworks(root, {
     ...(forceFramework ? { forceFramework } : {}),
   });
-  const path = await outputCollectionPath(result.config.name, context);
+  const path = await outputCollectionPath(context, result.config.name);
   await writeJsonAtomic(path, result.collection);
 
   let extra = 0;

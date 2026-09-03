@@ -70,8 +70,12 @@ const RULES: readonly INamingRule[] = [
     what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con
     // significado propio, igual que `.service`: no son un servicio
-    // cualquiera y llamarlos así lo escondería.
-    suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts"],
+    // cualquiera y llamarlos así lo escondería. `.helper.ts` también
+    // entra aquí: una función pura no es un servicio (no tiene estado),
+    // y `packages/core/helpers/` es solo una de las carpetas donde
+    // pueden vivir — `packages/core/discovery/` ya tiene la suya desde
+    // r00010 S1.
+    suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts", ".helper.ts"],
   },
   {
     path: "packages/frameworks/",

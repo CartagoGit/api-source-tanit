@@ -21,7 +21,7 @@ import {
   needsNameToDisambiguate,
 } from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
-import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
@@ -40,7 +40,7 @@ export async function runCheck(
   const outputFlag = outputIdx !== -1 ? argv[outputIdx + 1] ?? null : null;
   const COLLECTION_PATH = outputFlag
     ? outputFlag
-    : await outputCollectionPath(config.name, resolvedContext);
+    : await outputCollectionPath(resolvedContext, config.name);
 
   const orch = defaultOrchestrator();
   const root = resolvedContext.projectRoot;

@@ -13,7 +13,7 @@
 import { explainReadFailure, readCollection } from "../../core/helpers/collection-file.helper.js";
 import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
-import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
@@ -34,7 +34,7 @@ export async function runStats(
 ): Promise<IStatsOutcome> {
   const resolvedContext = context ?? resolveProjectContext({ argv });
   const { config } = await loadProject(argv, resolvedContext);
-  const COLLECTION_PATH = await outputCollectionPath(config.name, resolvedContext);
+  const COLLECTION_PATH = await outputCollectionPath(resolvedContext, config.name);
 
   const read = await readCollection(COLLECTION_PATH);
   if (!read.ok) {

@@ -16,7 +16,7 @@ import type {
 } from "../../contracts/interfaces/core/postman.interface.js";
 import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
-import { outputCollectionPath } from "../../core/discovery/paths.service.js";
+import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
@@ -97,8 +97,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     // validate puede correr solo con el JSON ya generado
   }
   const COLLECTION_PATH = await outputCollectionPath(
-    projectName,
     resolvedContext,
+    projectName,
   );
   let raw: string;
   try {

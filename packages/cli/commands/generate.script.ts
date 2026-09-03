@@ -26,7 +26,11 @@ import {
   stripApiPrefix,
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
-import { describeDiscoveredPaths, outputCollectionPath, outputEnvironmentPath } from "../../core/discovery/paths.service.js";
+import {
+  describeDiscoveredPaths,
+  outputCollectionPath,
+  outputEnvironmentPath,
+} from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
@@ -56,7 +60,7 @@ async function runPipeline(
   context: IProjectContext,
 ): Promise<IGenerationResult> {
   console.log("→ Resolved paths:");
-  console.log(describeDiscoveredPaths(context.projectRoot));
+  console.log(describeDiscoveredPaths(context));
 
   // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
   // con `cwd` = raíz del paquete, así que un path relativo apunta al
@@ -308,7 +312,7 @@ export async function runGenerate(
   }
   const OUTPUT_PATH = outputFlag
     ? outputFlag
-    : await outputCollectionPath(config.name, resolvedContext);
+    : await outputCollectionPath(resolvedContext, config.name);
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
   await writeFileAtomic(OUTPUT_PATH, json + "\n");
@@ -393,7 +397,7 @@ export async function runGenerate(
     );
     const env = envs[0];
     if (!env) continue;
-    const envPath = await outputEnvironmentPath(env.name, config.name, resolvedContext);
+    const envPath = await outputEnvironmentPath(resolvedContext, env.name, config.name);
     await writeJsonAtomic(envPath, env);
     environmentPaths.push(envPath);
     console.log(

@@ -18,7 +18,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
-import { outputDir } from "../../core/discovery/paths.service.js";
+import { resolveOutputDir } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 
 const platform: string = process.platform ?? "linux";
@@ -41,7 +41,7 @@ export async function main(): Promise<number> {
 
   const collectionPath =
     explicitFile ??
-    `${outputDir(resolvedContext)}/${projectName ?? "collection"}.postman_collection.json`;
+    `${resolveOutputDir(resolvedContext)}/${projectName ?? "collection"}.postman_collection.json`;
 
   if (!existsSync(collectionPath)) {
     console.error(`✘ Not found: ${collectionPath}`);
