@@ -298,18 +298,21 @@ export async function buildSpecsFromScanner(
 
           if (Object.keys(body).length > 0) spec.body = body;
         }
-        // query: required + params derivados
+        // query: solo reglas con `location === "query"`.
+        //
+        // Las reglas con `location === "path"` NO se concatenan a
+        // `spec.query`: los path params son una cosa conceptualmente
+        // distinta, y mezclarlos producía `GET /users/{{id}}?id=1` —
+        // el mismo parámetro declarado dos veces. El audit a00010
+        // (B-01) lo cazó sobre HEAD; las reglas con `location: "path"`
+        // siguen viajando en `spec.fields` y el exporter OpenAPI las
+        // pinta como `parameters` con `in: path` desde
+        // `pathParamsOf(spec.uri)`, así que la fidelidad no se pierde.
         const queryFromRules = queryFields.map(specToEndpointArgs);
-        const pathFromRules = pathFields.map((f) => ({
-          key: f.fieldName,
-          value: String(exampleValueForField(f)),
-          description: f.description ?? `Path param ${f.fieldName}`,
-        }));
-        const extraQuery = [...queryFromRules, ...pathFromRules];
-        if (extraQuery.length > 0) {
+        if (queryFromRules.length > 0) {
           const existing = spec.query ?? [];
           const existingKeys = new Set(existing.map((q) => q.key));
-          for (const q of extraQuery) {
+          for (const q of queryFromRules) {
             if (!existingKeys.has(q.key)) existing.push(q);
           }
           spec.query = existing;

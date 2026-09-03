@@ -280,6 +280,39 @@ describe("buildSpecsFromScanner — reglas de validación", () => {
     expect(result.specs[0]?.query?.map((q) => q.key)).toContain("page");
   });
 
+  // a00010 / B-01: las reglas con `location: "path"` NO deben acabar en
+  // `spec.query` — el path param ya viaja en la URI y se documenta vía
+  // `spec.fields` con `location: "path"`.
+  test("los campos path NO se añaden a query (B-01 a00010)", async () => {
+    const result = await buildSpecsFromScanner(
+      scannerOf([route({ method: "GET", uri: "/users/{{id}}" })]),
+      MATCH,
+      providerOf([
+        field({ fieldName: "id", location: "path", type: "string", required: true }),
+      ]),
+    );
+    const spec = result.specs[0];
+    expect(spec?.query ?? []).toEqual([]);
+    const pathFields = (spec?.fields ?? []).filter((f) => f.location === "path");
+    expect(pathFields.map((f) => f.fieldName)).toEqual(["id"]);
+  });
+
+  // Combinado: una ruta con un path param y un query param real.
+  // Solo el query param debe llegar a `spec.query`.
+  test("mezcla de path y query: solo query llega a spec.query", async () => {
+    const result = await buildSpecsFromScanner(
+      scannerOf([route({ method: "GET", uri: "/users/{{id}}" })]),
+      MATCH,
+      providerOf([
+        field({ fieldName: "id", location: "path", type: "string", required: true }),
+        field({ fieldName: "include", location: "query", type: "string", required: false }),
+      ]),
+    );
+    const spec = result.specs[0];
+    expect(spec?.query?.map((q) => q.key)).toEqual(["include"]);
+    expect((spec?.fields ?? []).filter((f) => f.location === "path").map((f) => f.fieldName)).toEqual(["id"]);
+  });
+
   test("cuenta los endpoints con y sin reglas", async () => {
     const withRules = await buildSpecsFromScanner(
       scannerOf([route({ method: "POST" })]),
