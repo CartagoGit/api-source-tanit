@@ -21,6 +21,7 @@ import { mkdir } from "node:fs/promises";
 import { exportTo, parseFormats } from "../../core/exporters/export-registry.service.js";
 
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
+import { readFlag } from "../../core/helpers/argv.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { outputCollectionPath } from "../../core/discovery/paths.service.js";
 import { countItems } from "../../core/helpers/postman.helper.js";
@@ -105,16 +106,19 @@ async function regenerate(
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  const context = resolveProjectContext({ argv });
-  const root = context.projectRoot;
   // `watch` se queda mirando un árbol entero, así que importa más que en
   // ningún otro comando saber **cuál**. Sin `--project-root` cae al
   // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
-  // que hubiera debajo sin decir una palabra.
-  const projectRootWasExplicit = argv.includes("--project-root") || Boolean(process.env.POSTMAN_PROJECT_ROOT);
-  if (!projectRootWasExplicit) {
+  // que hubiera debajo sin decir una palabra. Por eso `watch` resuelve
+  // su propia raíz con fallback a `cwd` en vez de delegar esa decisión
+  // en `resolveProjectContext`, que es estricto a propósito.
+  const explicitRoot =
+    readFlag(argv, "--project-root") ?? process.env["POSTMAN_PROJECT_ROOT"];
+  const root = explicitRoot ?? process.cwd();
+  if (explicitRoot === undefined) {
     console.log(`→ No --project-root: watching the current directory (${root}).`);
   }
+  const context = resolveProjectContext({ argv, projectRoot: root });
 
   const frameworkIdx = argv.indexOf("--framework");
   const forceFramework = frameworkIdx !== -1 ? (argv[frameworkIdx + 1] ?? null) : null;
