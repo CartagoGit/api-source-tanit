@@ -28,7 +28,7 @@ Cambiar la dependencia del plugin:
 + "@mcp-vertex/core": "^<versión publicada>"
 ```
 
-para que `plugins/postman-exporter/` no dependa de que el repositorio
+para que `packages/plugins/mcp-vertex_expostman/` no dependa de que el repositorio
 `mcp-vertex` esté clonado como hermano de este.
 
 ## reparto real
@@ -78,12 +78,12 @@ no hay nada que podamos hacer hasta que el paquete exista en npm.
 ## slices
 
 ### S1 — cambiar la dependencia
-- **Files**: `plugins/postman-exporter/package.json`, `bun.lock`.
+- **Files**: `packages/plugins/mcp-vertex_expostman/package.json`, `bun.lock`.
 - **Gate**: `bun install && bun run validate`.
 
 - Sustituir el `file:` por la versión publicada con rango caret.
 - **Acceptance**: `bun install` resuelve desde npm y
-  `bun test plugins/postman-exporter/tests/` sigue verde.
+  `bun run --cwd packages/plugins/mcp-vertex_expostman test` sigue verde.
 
 ### S2 — comprobar que el plugin arranca sin el repo hermano
 - **Files**: ninguno (verificación).
@@ -91,12 +91,12 @@ no hay nada que podamos hacer hasta que el paquete exista en npm.
   `../mcp-vertex`, y correr `bun install && bun run validate`.
 
 - **Acceptance**: el gate pasa y
-  `plugins/postman-exporter/tests/integration/plugin-boot.spec.ts` sigue
+  `packages/plugins/mcp-vertex_expostman/tests/integration/plugin-boot.spec.ts` sigue
   registrando los 4 tools.
 
 ## acceptance
 
-- `grep -rn "file:../../../mcp-vertex" plugins/` no devuelve nada.
+- `rg 'file:.*mcp-vertex' packages/plugins/mcp-vertex_expostman package.json` no devuelve nada.
 - El repositorio se puede clonar y validar en solitario.
 - La versión queda fijada con caret, no con `*` ni `latest`.
 

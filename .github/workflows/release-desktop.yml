@@ -42,7 +42,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.3.14
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -58,7 +58,7 @@ jobs:
             patchelf \
             libfuse2
 
-      - run: bun install
+      - run: bun install --frozen-lockfile
 
       - name: Empaquetar
         run: bun run desktop:build
