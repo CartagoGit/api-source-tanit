@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 121 símbolos en 42 módulos.
+> 141 símbolos en 49 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -74,6 +74,64 @@ Puntúa todos los detectores del registro y ordena por confianza. No se
 queda con el primero: un repo con un Express heredado y rutas nuevas de
 Next.js casa con dos, y quedarse con uno devolvía un tercio de los
 endpoints sin decir nada.
+
+### `packages/core/discovery/endpoint-merger.service.ts`
+
+`EndpointMerger`: el reconciliador de endpoints para proyectos híbridos.
+
+#### `EndpointMerger`
+
+```ts
+export class EndpointMerger implements IEndpointMerger
+```
+
+Implementación por defecto del `IEndpointMerger`. Stateless: el
+estado vive en `merge()` (los candidatos), no en la instancia.
+Reutilizable entre llamadas concurrentes.
+
+#### `mergeEndpoints`
+
+```ts
+export function mergeEndpoints( candidates: ReadonlyArray<IEndpointMergeCandidate>, options: IMergeEndpointsOptions =
+```
+
+Punto de entrada de pipeline: recibe la lista plana de candidatos
+y devuelve los endpoints fusionados + provenance + warnings.
+
+Los candidatos ya vienen ordenados por `scannerScore` descendente
+(es lo que hace `discoverSpecs`); el merger los re-ordena dentro
+de cada grupo por `frameworkConfidence` y desempata por el orden
+de llegada, que coincide con el del orquestador.
+
+#### `candidatesFromSpecs`
+
+```ts
+export function candidatesFromSpecs( scannerScore: ReadonlyMap<string, Confidence>, ): ( specs: ReadonlyArray<
+```
+
+Wrapper para consumir candidatos desde `EndpointSpec[]` (la forma
+que produce el adapter). Conserva el `framework` por candidato a
+partir de la metadata del spec: el pipeline marca el spec con
+`formRequest` o el nombre del controller, pero la fuente más
+fiable es pasar el `framework` explícitamente (que es lo que
+hace `discoverSpecs` cuando itera sobre los `usable`).
+
+#### `endpointSpecFromMerged`
+
+```ts
+export function endpointSpecFromMerged(m: IMergedEndpoint):
+```
+
+Inversa de `candidatesFromSpecs`: convierte un `IMergedEndpoint`
+de vuelta a `EndpointSpec` para que el pipeline siga operando con
+la forma que ya consumen el resto de servicios.
+
+Solo copia los campos que el merger decide: identidad (method,
+uri, name) y las piezas que ganó (body, fields, description).
+El `authScheme` del `IMergedEndpoint` **no** se copia al
+`EndpointSpec`: la auth se resuelve globalmente en
+`detectAuthScheme` después del pipeline, y el de cada endpoint
+sería ruido (todos los endpoints de un proyecto comparten auth).
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
@@ -1520,6 +1578,246 @@ Aquí se devuelven las zonas presentes de verdad: primero las que
 `zoneOrder` nombra, en su orden, y después el resto ordenadas
 alfabéticamente para que dos ejecuciones den lo mismo. Se omiten las
 vacías, que es lo que hacía bien el código anterior.
+
+### `packages/core/language-frontends/typescript/typescript.parser.ts`
+
+`parse(source, filename): TSFile` — el frontend TypeScript.
+
+#### `parse`
+
+```ts
+export function parse(source: string, filename: string): TSFile
+```
+
+Parsea `source` (código TS/JS) y devuelve el AST normalizado.
+
+`filename` se adjunta al AST para que los adapters puedan
+reportar errores y los scanners enseñárselo al usuario. No se usa
+internamente — Babel lo acepta pero aquí no nos interesa.
+
+Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
+callers lo capturan y reportan como "archivo no procesable".
+
+### `packages/core/schema/build-schema-graph.helper.ts`
+
+Construir un `SchemaGraph` desde `IValidationSpec[]`.
+
+#### `createObjectNode`
+
+```ts
+export function createObjectNode( id: SchemaNodeId, children: ReadonlyArray<ISchemaEdge>, options: ICompositeOptions =
+```
+
+Construye un nodo `object` con los hijos dados.
+
+`children` se copia: mutar el array del caller después no afecta al
+nodo. El id lo pasa el caller (típicamente, el builder) para evitar
+colisiones en grafos en construcción.
+
+#### `createArrayNode`
+
+```ts
+export function createArrayNode( id: SchemaNodeId, itemId: SchemaNodeId, options: ICompositeOptions =
+```
+
+Construye un nodo `array` cuyo único hijo es `itemId`.
+
+El item va en un `ISchemaEdge` con `name: "items"` y `required: true`
+— un array sin item no es un array, y un item opcional en un array
+no existe en JSON Schema (el `items` siempre aplica a todos los
+elementos).
+
+#### `SchemaGraphBuilder`
+
+```ts
+export class SchemaGraphBuilder
+```
+
+Builder de `SchemaGraph`.
+
+Mantiene un contador local de ids y un mapa de nodos. Cada `add*`
+devuelve el id del nodo creado, así el caller puede encadenar
+referencias sin tener que inventar ids. El builder es **monouso**:
+tras `build()`, no admite más `add*`.
+
+#### `buildSchemaGraph`
+
+```ts
+export function buildSchemaGraph( specs: ReadonlyArray<IValidationSpec>, options: IBuildOptions =
+```
+
+Construye un `SchemaGraph` mínimo a partir de `IValidationSpec[]`.
+
+El nodo raíz es un `object` con un hijo por spec. Cada spec se
+traduce con `SchemaGraphBuilder.addFromSpec`. El grafo resultante
+sirve para los exportadores que saben leerlo y, con `flatten-helper`,
+para los que no.
+
+### `packages/core/schema/flatten.helper.ts`
+
+Aplanar un `SchemaGraph` a la lista plana `IEndpointField[]`.
+
+#### `flatten`
+
+```ts
+export function flatten( graph: ISchemaGraph, location: TFieldLocation = "body", ): IEndpointField[]
+```
+
+Aplana el grafo a partir de su raíz.
+
+Atajo para `flattenFrom(graph, graph.root, "body")`.
+
+#### `flattenFrom`
+
+```ts
+export function flattenFrom( graph: ISchemaGraph, rootId: SchemaNodeId, location: TFieldLocation, ): IEndpointField[]
+```
+
+Aplana un subgrafo empezando por un nodo concreto.
+
+`rootId` debe estar en `graph.nodes`. Si no lo está, devuelve `[]`:
+el grafo no contiene la raíz, así que tampoco tiene qué aplanar.
+
+`location` es la ubicación que se les pone a los campos emitidos.
+Un mismo grafo puede aplanarse una vez con `body` y otra con `query`
+si al caller le interesa (no es el caso hoy, pero la función lo
+admite sin coste).
+
+### `packages/core/schema/reference.helper.ts`
+
+Nodos de referencia y resolución de `$ref` en el `SchemaGraph`.
+
+#### `createReferenceNode`
+
+```ts
+export function createReferenceNode( ref: SchemaNodeId, id: SchemaNodeId, options: IReferenceOptions =
+```
+
+Construye un nodo `reference`.
+
+El id del nodo referencia (`ref`) debe existir en el grafo destino.
+Comprobarlo al construir costaría O(n) en cada nodo y se vuelve
+frágil en grafos en construcción: el builder suele añadir el
+destino **después** del `reference` y la verificación temprana
+fallaría. La invariante se valida al cierre (`resolveReference` o
+en `flatten-helper`), no en cada `add`.
+
+#### `resolveReference`
+
+```ts
+export function resolveReference( graph: ISchemaGraph, ref: SchemaNodeId, ): ISchemaNode | undefined
+```
+
+Resuelve un `$ref` local.
+
+Si el grafo contiene el destino, devuelve el nodo. Si no, devuelve
+`undefined`: el caller decide si tratarlo como error (validación
+estricta) o emitir el `$ref` literal (exportador laxo).
+
+#### `deriveLocalRefName`
+
+```ts
+export function deriveLocalRefName( node: ISchemaNode, fallback: (node: ISchemaNode) => string = (n) => n.id, ): string
+```
+
+Deriva un nombre estable para usar como `$ref` nominal.
+
+Si el nodo tiene `name`, se usa tal cual: es el nombre lógico que el
+scanner puso y el que cabe esperar en el documento destino. Si no,
+se cae al id: menos bonito, pero garantiza que dos llamadas con el
+mismo input produzcan el mismo nombre.
+
+Exportadores que prefieran no inventar nombres para nodos anónimos
+deberían chequear `node.name !== undefined` antes de llamar aquí.
+
+### `packages/core/schema/scalar.helper.ts`
+
+Constructores de nodos escalares del `SchemaGraph`.
+
+#### `createScalarNode`
+
+```ts
+export function createScalarNode( scalarType: ScalarType, id: SchemaNodeId, options: IScalarOptions =
+```
+
+Construye un nodo `scalar`.
+
+El id lo pasa el caller: normalmente viene del `SchemaGraphBuilder`,
+que mantiene el registro único de nodos. Pasar ids externos al
+builder produciría colisiones silenciosas.
+
+#### `createEnumNode`
+
+```ts
+export function createEnumNode( values: ReadonlyArray<string>, id: SchemaNodeId, options: IScalarOptions =
+```
+
+Construye un nodo `enum`.
+
+`values` no se valida aquí: el caller sabe lo que está declarando, y
+una lista vacía es un caso real (un `enum` declarado en el código
+que el scanner no ha sabido poblar). Lo que sí se congela es la
+referencia: un `enum` no debería mutar tras construirse.
+
+#### `createLiteralNode`
+
+```ts
+export function createLiteralNode( literal: unknown, id: SchemaNodeId, ): ISchemaNode
+```
+
+Construye un nodo `literal`.
+
+`literal` es `unknown` porque admite cualquier valor JSON primitivo:
+un `42`, un `"foo"`, un `true`, un `null`. Lo que el exportador hace
+con él depende del formato destino: JSON Schema lo pinta como
+`{ const: <valor> }`.
+
+#### `constraintsFromValidationSpec`
+
+```ts
+export function constraintsFromValidationSpec( spec: IValidationSpec, ): ISchemaConstraints | undefined
+```
+
+Traduce las restricciones de un `IValidationSpec` a `ISchemaConstraints`.
+
+Las restricciones viven **fuera del nodo**: un nodo `scalar` lleva su
+tipo (`string`, `integer`…) y este objeto lleva los adornos
+(`format`, `minimum`, `pattern`…). Separarlas deja claro que son
+ortogonales y que `flatten-helper` puede tratar los constraints como
+metadato sin tener que recorrerse el grafo.
+
+Devuelve `undefined` si no hay ninguna restricción: el `ISchemaNode`
+distingue entre "no tiene constraints" y "tiene constraints vacíos",
+y aquí respetamos esa distinción.
+
+### `packages/core/schema/union.helper.ts`
+
+Nodos de unión e intersección para el `SchemaGraph`.
+
+#### `createUnionNode`
+
+```ts
+export function createUnionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
+```
+
+Construye un nodo `union` (`oneOf`).
+
+`alternatives` puede tener un solo elemento: `oneOf` con un único
+candidato es legal y se aplana al candidato. No lo aplanamos aquí:
+si el caller lo quiere plano, lo construye plano. El helper solo
+respeta el shape que le llega.
+
+#### `createIntersectionNode`
+
+```ts
+export function createIntersectionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
+```
+
+Construye un nodo `intersection` (`allOf`).
+
+Vacío: un `allOf` sin candidatos equivale a `true` en JSON Schema,
+que es un caso patológico. El caller decide si pasa lista vacía
+(el helper la respeta sin error) o si la rechaza antes de llamar.
 
 ### `packages/frameworks/index.ts`
 

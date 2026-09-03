@@ -5,6 +5,7 @@
     "": {
       "name": "export-to-postman",
       "devDependencies": {
+        "@babel/parser": "7.29.8",
         "@vitest/coverage-v8": "^4.1.10",
         "vitest": "^4.1.10",
       },

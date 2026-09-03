@@ -35,10 +35,12 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
-import { countLinesBefore, findAllBalanced, findOutsideStrings, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { countLinesBefore, findAllBalanced, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
+import { parse } from "../../core/language-frontends/typescript/index.js";
+import type { TSFile } from "../../contracts/interfaces/core/language/typescript-frontend.interface.js";
 
 /**
  * Frameworks de Node que este scanner cubre por parecido con Express.
@@ -54,21 +56,11 @@ import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.inte
 const FRAMEWORK_PACKAGES = ["express", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
-// Regex para `<ident>.METHOD(path, handler)` o `app.METHOD(path, handler)`.
-// Captura: 1=ident (router name), 2=method, 3=path (entre comilla simple o doble).
-// Usa lookbehind negativo para evitar que matchee `myRouter` SIN `Router` antes.
-// `\s*` cruza saltos de línea, que es lo que permite reconocer la forma
-// multilínea: `router.post(\n  "/x",\n  handler,\n)`.
-const APP_METHOD_RE =
-  /([a-zA-Z_$][\w$]*)\s*\.\s*(get|post|put|delete|patch|head|options)\s*\(\s*(['"])([^'"\n]+)\3/gi;
-// Regex para `Router({ prefix: 'api/v1' })`.
-const ROUTER_PREFIX_RE = /Router\s*\(\s*\{[^}]*prefix\s*:\s*['"]([^'"]+)['"]/gi;
-// Regex para `app.use('/prefix', router)`.
-const APP_USE_PREFIX_RE = /\bapp\s*\.\s*use\s*\(\s*(['"])([^'"]+)\1\s*,\s*([a-zA-Z_$][\w$]*)/gi;
-// Regex para `app.use('/prefix')` (sin router, modo middleware).
-// Hapi: `server.route({ method: 'GET', path: '/users', handler: ... })`.
-const HAPI_ROUTE_RE =
-  /method\s*:\s*['"](get|post|put|delete|patch|head|options)['"]\s*,\s*path\s*:\s*(['"])([^'"]+)\2/gi;
+// Las regex multilínea que reconocían `app.METHOD(path, handler)`,
+// `Router({ prefix })` y `app.use('/prefix', router)` vivían aquí.
+// a00010 S7 las sustituye por el AST que produce el frontend
+// TypeScript — la forma es la misma, pero ya no hay falsos
+// positivos en strings ni hace falta `findOutsideStrings`.
 
 // ---------------------------------------------------------------------------
 // Project detection
@@ -151,63 +143,67 @@ interface ParsedModule {
  * Es lo que permite que quien llama pida los ficheros en paralelo con
  * tope en vez de uno detrás de otro. La alternativa —dejar la lectura
  * aquí dentro— obliga a que el bucle de fuera espere a cada disco.
+ *
+ * Migrado en a00010 S7 a consumir el AST del frontend TypeScript:
+ * antes regex sobre el código fuente (con sus falsos positivos:
+ * multilínea, strings anidadas, comentarios), ahora una sola
+ * pasada por el AST produce `imports`, `assignments` y `methodCalls`
+ * que el adapter de Express consume.
  */
 function parseModule(file: string, raw: string): ParsedModule {
-  const text = stripJsComments(raw);
-  const lines = text.split("\n");
-  const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
-  const routerPrefixes = new Map<string, string>();
-  const appUsePrefixes = new Map<string, string>();
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i] ?? "";
-
-    // router = Router({ prefix: '/api/v1' })
-    const rpM = new RegExp(ROUTER_PREFIX_RE.source, "gi").exec(line);
-    if (rpM?.[1]) {
-      // Igual que arriba: todas las declaraciones de la línea, no solo
-      // la primera.
-      const varReg = /([a-zA-Z_$][\w$]*)\s*=\s*(?:express\.)?Router/g;
-      let varMatch: RegExpExecArray | null;
-      while ((varMatch = varReg.exec(line)) !== null) {
-        if (varMatch[1]) routerPrefixes.set(varMatch[1], rpM[1]);
-      }
-    }
-
-    // app.use('/prefix', router) → el router montado hereda el prefijo.
-    // Se recorren TODAS las coincidencias de la línea: con `.exec()` una
-    // sola vez, `app.use("/v1", a); app.use("/v2", b);` en la misma línea
-    // perdía el segundo montaje y sus rutas salían sin prefijo.
-    const auReg = new RegExp(APP_USE_PREFIX_RE.source, "gi");
-    let auM: RegExpExecArray | null;
-    while ((auM = auReg.exec(line)) !== null) {
-      if (auM[2] && auM[3]) appUsePrefixes.set(auM[3], auM[2]);
-    }
-
+  const ast = parseAstSafe(raw, file);
+  if (!ast) {
+    // Si Babel no pudo parsear el archivo (sintaxis inválida,
+    // archivos muy exóticos), caemos a una pasada vacía: el
+    // scanner sigue funcionando, solo no encuentra rutas en
+    // ese fichero. El error de sintaxis se loggea por el
+    // `parseAstSafe` interno.
+    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
   }
 
-  // Las rutas se buscan sobre el fichero ENTERO, no línea a línea.
-  //
-  // Dos motivos, los dos medidos:
-  //
-  //   1. **Multilínea.** `router.post(\n  "/x",\n  handler,\n)` es la forma
-  //      normal de escribirlo en cuanto hay middlewares, y un bucle por
-  //      líneas no ve el path porque está en otra que la llamada.
-  //   2. **Cadenas.** `const ayuda = 'usa router.get("/x")'` producía un
-  //      endpoint que no existe. `findOutsideStrings` enmascara el
-  //      contenido de las cadenas antes de buscar, así que una llamada
-  //      que vive dentro de una desaparece.
-  //
-  // Es lo que la propuesta del motor de AST venía a resolver, sin el
-  // parser: el problema no era el regex, era mirar una línea cada vez.
-  for (const { match } of findOutsideStrings(text, APP_METHOD_RE)) {
-    const ident = (match[1] ?? "").trim();
-    const method = (match[2] ?? "").toLowerCase();
-    const path = (match[4] ?? "").trim();
+  const routerPrefixes = new Map<string, string>();
+  const appUsePrefixes = new Map<string, string>();
+  const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
+
+  // (1) Router prefix declarations: `const r = Router({ prefix: '/api/v1' })`.
+  // El frontend devuelve el `objectShape` del argumento (que el
+  // parser desempaca del CallExpression cuando es un wrapper
+  // transparente); el adapter busca el campo `prefix` aquí.
+  for (const assignment of ast.assignments) {
+    const value = assignment.value;
+    if (value.kind !== "object" || !value.objectShape) continue;
+    const prefixField = value.objectShape.find((p) => p.key === "prefix");
+    if (!prefixField) continue;
+    if (prefixField.literal.kind !== "string") continue;
+    const prefix = prefixField.literal.value;
+    if (typeof prefix !== "string") continue;
+    routerPrefixes.set(assignment.name, prefix);
+  }
+
+  // (2) `app.use('/prefix', router)` y `app.use('/prefix')` —
+  // el primero monta un router con prefijo; el segundo es
+  // middleware puro (sin router al que prefijar).
+  for (const call of ast.methodCalls) {
+    if (call.callee !== "app.use") continue;
+    const prefixArg = call.args[0];
+    const routerArg = call.args[1];
+    if (prefixArg?.kind !== "string") continue;
+    const prefix = prefixArg.value;
+    if (typeof prefix !== "string") continue;
+    if (routerArg?.kind !== "identifier" || typeof routerArg.identifierName !== "string") continue;
+    appUsePrefixes.set(routerArg.identifierName, prefix);
+  }
+
+  // (3) Method calls que parecen declaraciones de ruta.
+  for (const call of ast.methodCalls) {
+    const [ident, method] = call.callee.split(".");
+    if (!ident || !method) continue;
     if (!HTTP_METHODS.includes(method)) continue;
-    if (!path.startsWith("/")) continue;
-    const line = countLinesBefore(text, match.index) + 1;
-    // Heurística: el ident es un router (NO 'app', 'server', 'fastify', 'koa')
+    const pathArg = call.args[0];
+    if (pathArg?.kind !== "string") continue;
+    const path = pathArg.value;
+    if (typeof path !== "string" || !path.startsWith("/")) continue;
+    const line = call.line;
     if (ident !== "app" && ident !== "server" && ident !== "fastify" && ident !== "koa") {
       routes.push({ method, path, line, routerName: ident });
     } else {
@@ -215,16 +211,44 @@ function parseModule(file: string, raw: string): ParsedModule {
     }
   }
 
-  // Hapi: server.route({ method, path, ... })
-  for (const { match } of findOutsideStrings(text, HAPI_ROUTE_RE)) {
-    const method = (match[1] ?? "").toLowerCase();
-    const path = (match[3] ?? "").trim();
+  // (4) Hapi: `server.route({ method: 'GET', path: '/users', ... })`.
+  // Babel emite este shape como un `CallExpression` a
+  // `<ident>.route(...)` con un ObjectExpression como argumento.
+  // Buscamos directamente en `methodCalls` por el callee.
+  for (const call of ast.methodCalls) {
+    if (!call.callee.endsWith(".route")) continue;
+    const obj = call.args[0];
+    if (obj?.kind !== "object" || !obj.objectShape) continue;
+    const methodField = obj.objectShape.find((p) => p.key === "method");
+    const pathField = obj.objectShape.find((p) => p.key === "path");
+    if (!methodField || !pathField) continue;
+    if (methodField.literal.kind !== "string" || pathField.literal.kind !== "string") continue;
+    const methodRaw = methodField.literal.value;
+    const pathRaw = pathField.literal.value;
+    if (typeof methodRaw !== "string" || typeof pathRaw !== "string") continue;
+    const method = methodRaw.toLowerCase();
+    const path = pathRaw;
     if (!HTTP_METHODS.includes(method)) continue;
     if (!path.startsWith("/")) continue;
-    routes.push({ method, path, line: countLinesBefore(text, match.index) + 1 });
+    routes.push({ method, path, line: call.line });
   }
 
   return { file, routes, routerPrefixes, appUsePrefixes };
+}
+
+/**
+ * Llama al frontend con `errorRecovery: true` para no romper el
+ * scan cuando un archivo tiene sintaxis rara (un fichero `.vue`
+ * malformado, un `.json` parseado como JS, etc.). Si Babel no
+ * puede hacer nada con el archivo, devolvemos `null` y el scanner
+ * sigue.
+ */
+function parseAstSafe(raw: string, file: string): TSFile | null {
+  try {
+    return parse(raw, file);
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------

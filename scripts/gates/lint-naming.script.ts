@@ -77,6 +77,17 @@ const RULES: readonly INamingRule[] = [
     // r00010 S1.
     suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts", ".helper.ts"],
   },
+  // Un parser es su propio tipo de módulo: consume código fuente y
+  // devuelve un AST. El primero del repo vive en
+  // `packages/core/language-frontends/typescript/`, introducido por
+  // a00010 S7 — los 6 scanners JS/TS (Express, NestJS, Fastify, Hono,
+  // Next.js, tRPC) consumen el AST que produce.
+  {
+    path: "packages/core/language-frontends/",
+    what: "frontends de lenguajes (AST compartido por los scanners)",
+    suffixes: [".parser.ts"],
+    exact: ["index.ts"],
+  },
   {
     path: "packages/frameworks/",
     what: "lo concreto de cada framework",
