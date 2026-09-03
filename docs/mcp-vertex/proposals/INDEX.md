@@ -40,6 +40,7 @@ y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
 `a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `c00002`,
+`f00010`, `f00011`,
 `r00008`, `r00010` y `x00008`; están archivadas bajo sus carpetas canónicas:
 
 | Id | Kind | Ruta |
@@ -54,6 +55,8 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00010` | `audit` | [`done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md`](done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md) |
 | `a00011` | `audit` | [`done/audits/a00011-plan-correcciones-revision-a00010.md`](done/audits/a00011-plan-correcciones-revision-a00010.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
+| `f00010` | `feat` | [`done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md`](done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md) |
+| `f00011` | `feat` | [`done/feats/f00011-mejoras-en-la-deteccion-de-lenguajes.md`](done/feats/f00011-mejoras-en-la-deteccion-de-lenguajes.md) |
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
 | `r00010` | `refactor` | [`done/refactors/r00010-eliminar-el-singleton-de-paths-service.md`](done/refactors/r00010-eliminar-el-singleton-de-paths-service.md) |
 | `x00008` | `fix` | [`done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md`](done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md) |
