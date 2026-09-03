@@ -25,7 +25,7 @@
  *   3. El pipeline (`generation.pipeline.ts`) pasa `options.argv ?? []`
  *      a `loadProject`, de modo que quien lo invoca controla el array.
  */
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
 import {
   buildZeroConfig,
@@ -45,14 +45,20 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-/** Stub de `process.argv` con backup/restore alrededor del test. */
+/**
+ * Stub de `process.argv` con backup/restore alrededor del test.
+ *
+ * `process.argv` es **getter-only** en Bun y Node 20+, así que la
+ * forma correcta es `vi.spyOn(process, "argv", "get")`. La función
+ * devuelve el spy para que el test pueda asertar contra él sin
+ * re-llamar.
+ */
 function withStubbedArgv<T>(argv: string[], fn: () => Promise<T>): Promise<T> {
-  const backup = process.argv;
-  process.argv = argv;
+  const spy = vi.spyOn(process, "argv", "get").mockReturnValue(argv);
   try {
     return fn();
   } finally {
-    process.argv = backup;
+    spy.mockRestore();
   }
 }
 
