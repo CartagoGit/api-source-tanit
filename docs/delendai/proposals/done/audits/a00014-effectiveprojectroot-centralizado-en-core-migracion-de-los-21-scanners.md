@@ -2,10 +2,15 @@
 id: a00014
 title: "effectiveProjectRoot centralizado en core + migración de los 21 scanners"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - 3a1a4f9  # S1: helper effectiveProjectRoot + 13 tests
+  - 6a539e3  # S2: migrar 20 scanners a effectiveProjectRoot(match)
+  - 070836c  # S3: lint:effective-project-root gate
+  - f0a3aa5  # merge into develop + push
 dependsOn:
   - a00012
 related:
