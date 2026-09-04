@@ -1,10 +1,10 @@
 /**
- * El descubrimiento: quién reconoce un proyecto y qué sale de escanearlo.
+ * Discovery: who recognizes a project, and what comes out of scanning it.
  *
- * Todo lo de aquí son **formas de dato**, sin una línea ejecutable. Es lo
- * que permite que el plugin MCP o la interfaz web declaren la salida del
- * pipeline sin importar el pipeline —que arrastra los 21 scanners
- * detrás—, que es exactamente lo que hacían antes.
+ * Everything here is **data shapes**, no executable line. That is
+ * what lets the MCP plugin or the web UI declare the pipeline's
+ * output without importing the pipeline — which drags the 21
+ * scanners behind — which is exactly what they used to do.
  */
 
 import type {
@@ -25,14 +25,14 @@ import type { IProjectContext } from "./project-context.interface.js";
 import type { ILegacyDiscovery } from "./legacy-discovery.interface.js";
 import type { IEndpointProvenanceEntry } from "./merge.interface.js";
 
-/** El catálogo de detectores, scanners y proveedores de validación. */
+/** Catalog of detectors, scanners, and validation providers. */
 export interface DiscoveryRegistry {
   readonly detectors: ReadonlyArray<IProjectScanner>;
   readonly routeScanners: ReadonlyArray<IRouteScanner>;
   readonly validationProviders: ReadonlyArray<IValidationSpecProvider>;
 }
 
-/** Métricas del descubrimiento, para informes y tests. */
+/** Discovery metrics, for reports and tests. */
 export interface IGenerationMetrics {
   readonly routes: number;
   readonly specs: number;
@@ -42,158 +42,160 @@ export interface IGenerationMetrics {
   readonly queriesInferred: number;
 }
 
-/** Las formas de autenticación que se saben reconocer. */
+/** Authentication forms the scanner can recognize. */
 export type AuthSchemeType = "bearer" | "apikey" | "oauth2" | "none";
 
 /**
- * El esquema de autenticación deducido, con la señal que lo delató.
+ * The detected authentication scheme, with the signal that gave it away.
  *
- * La `evidence` no es adorno: una detección automática que no se puede
- * contrastar hay que creérsela a ciegas.
+ * `evidence` is not decoration: an automatic detection that cannot be
+ * cross-checked has to be trusted blindly.
  */
 export interface IDetectedAuthScheme {
   readonly type: AuthSchemeType;
-  /** Nombre de la cabecera o del query param, solo para `apikey`. */
+  /** Header or query-param name, only for `apikey`. */
   readonly keyName?: string;
-  /** Dónde viaja la clave, solo para `apikey`. */
+  /** Where the key travels, only for `apikey`. */
   readonly keyIn?: "header" | "query";
-  /** URL del endpoint de token, solo para `oauth2`. */
+  /** Token endpoint URL, only for `oauth2`. */
   readonly tokenUrl?: string;
-  /** URL de autorización, solo para `oauth2`. */
+  /** Authorization URL, only for `oauth2`. */
   readonly authorizeUrl?: string;
   /**
-   * Por qué se ha decidido eso.
+   * Why this was decided.
    *
-   * Va al aviso del CLI y a la descripción de la colección: una
-   * detección automática que no se puede contrastar es una que hay que
-   * creerse a ciegas.
+   * Surfaces in the CLI warning and in the collection description: an
+   * automatic detection that cannot be cross-checked has to be
+   * trusted blindly.
    */
   readonly evidence: string;
 }
 
-/** El bloque `auth` tal y como lo espera Postman. */
+/** The `auth` block as Postman expects it. */
 export interface IPostmanAuth {
   readonly type: string;
   readonly [key: string]: unknown;
 }
 
-/** Los tres pasos del ciclo de sesión, cableados en la colección. */
+/** The three steps of the session cycle, wired into the collection. */
 export interface IAuthFlow {
   readonly login: PostmanItem | null;
   readonly refresh: PostmanItem | null;
   readonly logout: PostmanItem | null;
 }
 
-/** Ajustes opcionales del pipeline. */
+/** Optional pipeline settings. */
 export interface IGenerationOptions {
-  /** Sobrescribe `config.collectionName` (flag `--basename`). */
+  /** Overrides `config.collectionName` (flag `--basename`). */
   readonly collectionName?: string;
   /**
-   * Catálogo de frameworks que se va a usar para detectar y escanear.
+   * Framework catalog to use for detection and scanning.
    *
-   * Es obligatorio a propósito. Antes el pipeline importaba
-   * `defaultOrchestrator()` del registro concreto, y eso metía los
-   * scanners dentro del núcleo: `core` no podía compilarse, ni testearse,
-   * ni razonarse sin arrastrar Laravel, Gin y Spring Boot. Un núcleo que
-   * dice ser agnóstico no puede tener una arista hacia lo concreto.
+   * Intentionally required. The pipeline used to import
+   * `defaultOrchestrator()` from the concrete registry, and that
+   * pulled the scanners into core: `core` could not be compiled,
+   * tested, or reasoned about without dragging Laravel, Gin, and
+   * Spring Boot. A core that claims to be agnostic cannot have an
+   * edge into anything concrete.
    */
   readonly orchestrator: IDiscoveryOrchestrator;
   /**
-   * Qué hacer cuando ningún scanner reconoce el proyecto.
+   * What to do when no scanner recognizes the project.
    *
-   * Opcional: sin fallback, un proyecto no reconocido devuelve cero
-   * endpoints, que es una respuesta honesta.
+   * Optional: with no fallback, an unrecognized project returns zero
+   * endpoints — an honest answer.
    */
   readonly legacyFallback?: ILegacyDiscovery | undefined;
   /**
-   * Framework a usar, saltándose la detección.
+   * Framework to use, skipping detection.
    *
-   * Para cuando la autodetección no puede acertar: un monorepo cuyo
-   * manifiesto está en la raíz, una dependencia con alias, un manifiesto
-   * que se genera en el build.
+   * For when autodetection cannot guess: a monorepo whose manifest
+   * is at the root, an aliased dependency, a generated-at-build
+   * manifest.
    */
   readonly forceFramework?: string | undefined;
   /**
-   * Subdirectorio del proyecto donde vive el framework, **relativo** a
+   * Subdirectory where the framework lives, **relative** to
    * `projectRoot`.
    *
-   * Acepta dos formas de pasarlo:
+   * Two ways to pass it:
    *
-   *  - **Forzado** (CLI `--framework-search-root`, opción del plugin):
-   *    se usa literalmente, sin mirar el árbol. Quien lo sabe de su
-   *    API y no puede esperar a la autodetección lo da así.
-   *  - **Auto**: si se omite y la raíz es un monorepo (turbo.json,
-   *    pnpm-workspace.yaml, lerna.json o `package.json#workspaces`) con
-   *    exactamente **un** workspace, el orquestador lo rellena solo.
-   *    Con varios workspaces, no rellena nada: la elección entre
-   *    `apps/api`, `apps/web` y `packages/auth` la hace quien conoce
-   *    su repo.
+   *  - **Forced** (CLI `--framework-search-root`, plugin option):
+   *    used literally, with no tree walk. Whoever knows their API
+   *    and cannot wait for autodetection passes it this way.
+   *  - **Auto**: if omitted and the root is a monorepo (turbo.json,
+   *    pnpm-workspace.yaml, lerna.json, or `package.json#workspaces`)
+   *    with exactly **one** workspace, the orchestrator fills it in
+   *    itself. With several workspaces, it fills nothing: the
+   *    choice between `apps/api`, `apps/web`, and `packages/auth`
+   *    is made by whoever knows their repo.
    *
-   * El valor resuelto acaba en `IProjectMatch.frameworkSearchRoot`,
-   * que es lo que los scanners ya leen (f00011 S1). Aquí solo se
-   * declara la entrada del pipeline; la asignación al `match` vive en
-   * `generation.pipeline.ts`.
+   * The resolved value lands in `IProjectMatch.frameworkSearchRoot`,
+   * which is what the scanners already read (f00011 S1). Only the
+   * pipeline entry is declared here; the assignment to `match`
+   * lives in `generation.pipeline.ts`.
    *
-   * **Nunca absoluto**: la raíz es siempre `projectRoot` y este campo
-   * solo añade un segmento, igual que `--framework-search-root` en el CLI.
-   * Concatenar con `process.cwd()` está vetado por el gate universal
-   * de no-leer-globales-en-hot-path.
+   * **Never absolute**: the root is always `projectRoot` and this
+   * field only adds one segment, exactly like
+   * `--framework-search-root` in the CLI. Concatenating with
+   * `process.cwd()` is forbidden by the universal no-globals-in-hot-path
+   * gate.
    *
-   * Añadido en f00011 S3 (2026-09-03). S1 dejó el campo en
-   * `IProjectMatch` y los scanners leyéndolo; S3 cierra el lado host
-   * (CLI, config y orquestador).
+   * Added in f00011 S3 (2026-09-03). S1 left the field in
+   * `IProjectMatch` with scanners reading it; S3 closes the host
+   * side (CLI, config, and orchestrator).
    */
   readonly frameworkSearchRoot?: string | undefined;
   /**
-   * `argv` que el pipeline pasa al loader (`loadProject`). Vacío por
-   * defecto: el core NO lee `process.argv` en runtime — quien invoca
-   * el pipeline (CLI, plugin MCP, UI web, tests) decide qué pasar.
+   * `argv` passed by the pipeline to the loader (`loadProject`).
+   * Empty by default: core does NOT read `process.argv` at
+   * runtime — whoever invokes the pipeline (CLI, MCP plugin, web UI,
+   * tests) decides what to pass.
    *
-   * Si falta, el loader trata la ausencia como "ningún flag `--config`",
-   * que es lo que ya hacía antes cuando `argv` no llegaba. El CLI pasa
-   * `process.argv.slice(2)` desde `cli.script.ts` (composition root),
-   * los tests pasan un array vacío o el que necesiten.
+   * If missing, the loader treats the absence as "no `--config` flag",
+   * which is what it did before when `argv` did not arrive. The CLI
+   * passes `process.argv.slice(2)` from `cli.script.ts` (composition
+   * root); the tests pass an empty array or whatever they need.
    *
    * a00012 S4.
    */
   readonly argv?: ReadonlyArray<string> | undefined;
   /**
-   * Combinar todos los servicios de un monorepo en una sola
-   * coleccion. Default `false`: el pipeline emite una coleccion
-   * por servicio. Solo aplica a multi-service (a00013 S3); en
-   * proyectos planos se ignora.
+   * Combine all services of a monorepo into a single collection.
+   * Default `false`: the pipeline emits one collection per service.
+   * Only applies to multi-service (a00013 S3); on flat projects it
+   * is ignored.
    *
-   * Cuando `true`, el `PipelineResult` siempre es
-   * `IGenerationResult` (no array). Cuando `false` o ausente y
-   * los `services` detectados son > 1, devuelve
-   * `IGenerationResult[]`. Un solo servicio detectado siempre
-   * devuelve `IGenerationResult` (legacy).
+   * When `true`, `PipelineResult` is always `IGenerationResult`
+   * (not an array). When `false` or absent and the detected
+   * `services` count is > 1, returns `IGenerationResult[]`. A
+   * single detected service always returns `IGenerationResult`
+   * (legacy).
    *
-   * El caller decide: el CLI pasa este flag segun
-   * `--combine-services`; el plugin MCP y la web lo pasan segun
-   * una opcion de la UI equivalente.
+   * The caller decides: the CLI passes this flag based on
+   * `--combine-services`; the MCP plugin and the web UI pass an
+   * equivalent UI option.
    */
   readonly combineServices?: boolean | undefined;
 }
 
 /**
- * Lo que `detectMonorepo()` (`packages/core/discovery/monorepo-detector.helper.ts`)
- * devuelve. f00011 S3.
+ * Return shape of `detectMonorepo()`
+ * (`packages/core/discovery/monorepo-detector.helper.ts`). f00011 S3.
  *
- * Vive aquí —no al lado del helper— porque es una forma de dato que el
- * pipeline y los tests consumen, y `lint:contracts` exige que los
- * tipos compartidos entre implementaciones vivan en `contracts/`. El
- * helper es **puro** y solo se usa desde `generation.pipeline.ts` y
- * desde `tests/core/monorepo-detector.spec.ts`.
+ * Lives here — not next to the helper — because it is a data shape
+ * the pipeline and tests consume, and `lint:contracts` requires
+ * shared types between implementations to live in `contracts/`. The
+ * helper is **pure** and only used by `generation.pipeline.ts` and
+ * `tests/core/monorepo-detector.spec.ts`.
  */
 export interface IMonorepoDetection {
-  /** ¿Hay alguna señal estándar de monorepo en la raíz? */
+  /** Is there any standard monorepo signal at the root? */
   readonly isMonorepo: boolean;
   /**
-   * El archivo exacto que se leyó para concluir `isMonorepo`.
-   * `null` cuando no hay monorepo: así los avisos del pipeline pueden
-   * decir "no se detectó monorepo" sin filtrar cuál de los cuatro se
-   * miró primero.
+   * The exact file read to conclude `isMonorepo`. `null` when there
+   * is no monorepo: pipeline warnings can say "no monorepo detected"
+   * without filtering which of the four was looked at first.
    */
   readonly signal: string | null;
   /**
