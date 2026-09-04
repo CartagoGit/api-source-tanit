@@ -11,10 +11,10 @@ on:
 # En local eso lo resuelve el desarrollador; en CI hay que materializar
 # ese checkout explícitamente. El SHA vive en
 # `packages/contracts/constants/core/delendai-sha.constant.ts`
-# (`MCP_VERTEX_SHA`) y se refleja aquí en `env` para que el workflow y
+# (`DELENDAI_SHA`) y se refleja aquí en `env` para que el workflow y
 # el código se revisen en el mismo commit (slice S0 de `a00012`).
 env:
-  MCP_VERTEX_SHA: f86e0ee9ee79f2dc82e294bb0030547b1639dbc1
+  DELENDAI_SHA: f86e0ee9ee79f2dc82e294bb0030547b1639dbc1
 
 jobs:
   validate:
@@ -33,7 +33,7 @@ jobs:
         with:
           repository: CartagoGit/delendai
           path: ../delendai
-          ref: ${{ env.MCP_VERTEX_SHA }}
+          ref: ${{ env.DELENDAI_SHA }}
 
       - uses: oven-sh/setup-bun@v2
         with:

@@ -30,7 +30,7 @@ export const CWD_SNAPSHOT: string = process.cwd();
 
 /**
  * Snapshot del binario `bun`, con la cascada documentada:
- *   1. `MCP_VERTEX_BUN_BIN` del entorno capturado (operador forzado).
+ *   1. `DELENDAI_BUN_BIN` del entorno capturado (operador forzado).
  *   2. `undefined` para que `runner.helper` aplique su propio fallback
  *      (Bun.which / command -v / "bun").
  *
@@ -40,7 +40,7 @@ export const CWD_SNAPSHOT: string = process.cwd();
  * respeta).
  */
 export const BUN_BIN_SNAPSHOT: string | undefined = (() => {
-  const fromEnv = ENV_SNAPSHOT["MCP_VERTEX_BUN_BIN"];
+  const fromEnv = ENV_SNAPSHOT["DELENDAI_BUN_BIN"];
   if (typeof fromEnv === "string" && fromEnv.length > 0) return fromEnv;
   return undefined;
 })();

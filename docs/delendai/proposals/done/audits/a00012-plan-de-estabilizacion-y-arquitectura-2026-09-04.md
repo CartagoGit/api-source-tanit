@@ -39,7 +39,7 @@ related:
 
 | Slice | Commit | Notas |
 |---|---|---|
-| **S0** CI reproducible | `9e00a5e` | Materializado checkout de `CartagoGit/delendai` en `validate.yml` fijado a SHA. Constante `MCP_VERTEX_SHA` (`packages/contracts/constants/core/delendai-sha.constant.ts`). Aserción nueva en `validate-package`: el plugin NO entra en el tarball (`files` con negación explícita en `package.json` raíz). |
+| **S0** CI reproducible | `9e00a5e` | Materializado checkout de `CartagoGit/delendai` en `validate.yml` fijado a SHA. Constante `DELENDAI_SHA` (`packages/contracts/constants/core/delendai-sha.constant.ts`). Aserción nueva en `validate-package`: el plugin NO entra en el tarball (`files` con negación explícita en `package.json` raíz). |
 | **S1.a** Workspace-glob | `c8be286` | `packages/core/discovery/workspace-glob.helper.ts` enumeración real (`apps/*` → `apps/api, apps/web`, exclusiones `!`, `**` recursivo). Integrada en `monorepo-detector.helper.ts`. 21 tests nuevos. |
 | **S1.b** scanRoot | `3b671ae` | `packages/core/discovery/scan-root.helper.ts` (`effectiveScanRoot` / `safeScanRoot`). `fastify/fiber/rust` scanner migrados; los 18 restantes ya respetaban el campo. |
 | **S2** Score clamp | `50221f7` / `8a0a18d` | `clampScore(value)` con NaN/±Infinity normalizado. `withEvidence` y `emptyResult` clampean automáticamente. Eliminados los `Math.min(…, 1)` manuales en hono/nestjs/nextjs. |

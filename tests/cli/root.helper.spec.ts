@@ -18,7 +18,7 @@ import { isAbsolute, join } from "node:path";
 import {
   CLI_ENTRYPOINT,
   EXAMPLES_DIR,
-  MCP_VERTEX_PLUGIN_DIR,
+  DELENDAI_PLUGIN_DIR,
   PROPOSALS_DIR,
   REPO_ROOT,
   WELL_KNOWN_PATHS,
@@ -66,8 +66,8 @@ describe("REPO_ROOT", () => {
   });
 
   test("el plugin también tiene package.json, y no es la raíz", () => {
-    expect(existsSync(join(MCP_VERTEX_PLUGIN_DIR, "package.json"))).toBe(true);
-    expect(MCP_VERTEX_PLUGIN_DIR).not.toBe(REPO_ROOT);
+    expect(existsSync(join(DELENDAI_PLUGIN_DIR, "package.json"))).toBe(true);
+    expect(DELENDAI_PLUGIN_DIR).not.toBe(REPO_ROOT);
   });
 });
 
@@ -107,7 +107,7 @@ describe("rutas parametrizadas", () => {
   });
 
   test("pluginDir compone bajo plugins/", () => {
-    expect(pluginDir("delendai_expostman")).toBe(MCP_VERTEX_PLUGIN_DIR);
+    expect(pluginDir("delendai_expostman")).toBe(DELENDAI_PLUGIN_DIR);
   });
 
   test("las propuestas están donde dice el registro", () => {

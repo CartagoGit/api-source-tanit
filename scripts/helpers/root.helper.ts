@@ -111,7 +111,7 @@ export function pluginDir(host: string): string {
  * tools (`delendai_expostman_generate`), así que leyendo el árbol se
  * sabe de qué host es y qué producto expone.
  */
-export const MCP_VERTEX_PLUGIN_DIR = pluginDir("delendai_expostman");
+export const DELENDAI_PLUGIN_DIR = pluginDir("delendai_expostman");
 
 // ---------------------------------------------------------------------------
 // Tooling del repo
@@ -164,7 +164,7 @@ export const PROPOSALS_DIR = join(DOCS_DIR, "delendai", "proposals");
 
 export const PACKAGE_JSON = fromRoot("package.json");
 /** Config del host delendai: qué plugins carga y desde dónde. */
-export const MCP_VERTEX_CONFIG = fromRoot("delendai.config.json");
+export const DELENDAI_CONFIG = fromRoot("delendai.config.json");
 /** Config MCP de Claude Code. Es la fuente de verdad (ver `mcp:sync`). */
 export const MCP_JSON = fromRoot(".mcp.json");
 export const VSCODE_DIR = fromRoot(".vscode");
@@ -202,7 +202,7 @@ export const WELL_KNOWN_PATHS: Readonly<Record<string, string>> = {
   CLI_ENTRYPOINT,
   UI_DIR,
   PLUGINS_DIR,
-  MCP_VERTEX_PLUGIN_DIR,
+  DELENDAI_PLUGIN_DIR,
   SCRIPTS_DIR,
   GATES_DIR,
   BUILD_SCRIPTS_DIR,
@@ -215,7 +215,7 @@ export const WELL_KNOWN_PATHS: Readonly<Record<string, string>> = {
   DOCS_DIR,
   PROPOSALS_DIR,
   PACKAGE_JSON,
-  MCP_VERTEX_CONFIG,
+  DELENDAI_CONFIG,
   MCP_JSON,
   VSCODE_DIR,
   VSCODE_MCP_JSON,

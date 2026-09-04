@@ -130,10 +130,10 @@ export function buildGenerateToolRegistration(
             ctx: {
               cwd: workspaceRoot,
               // El binario viene de la opción validada del plugin (o
-              // cae al MCP_VERTEX_BUN_BIN / Bun.which / command -v que
+              // cae al DELENDAI_BUN_BIN / Bun.which / command -v que
               // el helper aplica). El env lo toma el helper de su
               // default: el plugin no necesita leerlo para nada.
-              bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+              bunBin: ctx.options["delendaiBunBin"] as string | undefined,
             },
           });
           if (!result.ok) {

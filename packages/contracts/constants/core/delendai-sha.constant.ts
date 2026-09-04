@@ -22,7 +22,7 @@
  * Esta constante es la **fuente de verdad del repositorio**. Cuando se
  * publique una nueva versión de `@delendai/core` y haya que subir el
  * pin, se cambia este valor, se regenera `bun.lock` y se actualiza el
- * `env.MCP_VERTEX_SHA` del workflow con el mismo literal. Las dos
+ * `env.DELENDAI_SHA` del workflow con el mismo literal. Las dos
  * referencias se revisan en el mismo commit — son la misma decisión.
  *
  * El valor por defecto apunta a la cabecera de `develop` de
@@ -31,4 +31,4 @@
  * path `file:` se sustituye por `^<versión>` y este SHA deja de tener
  * efecto (ver `p00007` archivado en `done/chores/`).
  */
-export const MCP_VERTEX_SHA = "f86e0ee9ee79f2dc82e294bb0030547b1639dbc1";
+export const DELENDAI_SHA = "f86e0ee9ee79f2dc82e294bb0030547b1639dbc1";

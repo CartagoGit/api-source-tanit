@@ -14,7 +14,7 @@
  *     dependan del shell de quien corre la suite.
  *   - `bunBin`: ruta absoluta al binario `bun`. El host lo resuelve
  *     una vez al arrancar y lo inyecta; si el agente lo necesita
- *     también lo puede fijar vía `MCP_VERTEX_BUN_BIN` (lo lee el
+ *     también lo puede fijar vía `DELENDAI_BUN_BIN` (lo lee el
  *     runner si `bunBin` no se le pasa).
  *
  * Cada campo es opcional: si falta, el runner cae a su default
@@ -31,6 +31,6 @@ export interface IRunnerContext {
   readonly cwd?: string;
   /** Entorno a heredar para el subproceso. Default: el snapshot del env al boot. */
   readonly env?: Readonly<Record<string, string | undefined>>;
-  /** Path absoluta al binario `bun`. Default: `MCP_VERTEX_BUN_BIN` → `Bun.which("bun")` → `command -v bun` → `"bun"`. */
+  /** Path absoluta al binario `bun`. Default: `DELENDAI_BUN_BIN` → `Bun.which("bun")` → `command -v bun` → `"bun"`. */
   readonly bunBin?: string;
 }
