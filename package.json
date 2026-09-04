@@ -1,11 +1,15 @@
 {
-  "name": "export-to-postman",
-  "version": "0.1.0",
+  "name": "api-source-tanit",
+  "version": "1.0.0",
   "workspaces": [
     "packages/plugins/delendai_tanit"
   ],
-  "description": "Generador agnóstico de colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API. Detecta el framework automáticamente (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI) y extrae endpoints, bodies y parámetros sin configuración manual.",
+  "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
+    "tanit",
+    "api-source",
+    "discovery",
+    "source-code-analysis",
     "postman",
     "laravel",
     "api",
@@ -21,11 +25,11 @@
   "author": "Cartago",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CartagoGit/export-to-postman.git"
+    "url": "git+https://github.com/CartagoGit/api-source-tanit.git"
   },
-  "homepage": "https://github.com/CartagoGit/export-to-postman#readme",
+  "homepage": "https://github.com/CartagoGit/api-source-tanit",
   "bugs": {
-    "url": "https://github.com/CartagoGit/export-to-postman/issues"
+    "url": "https://github.com/CartagoGit/api-source-tanit/issues"
   },
   "type": "module",
   "engines": {
@@ -33,8 +37,7 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "expostman": "./packages/cli/cli.script.ts",
-    "export-to-postman": "./packages/cli/cli.script.ts"
+    "apisrc": "./bin/apisrc"
   },
   "main": "./packages/cli/cli.script.ts",
   "module": "./packages/cli/cli.script.ts",
