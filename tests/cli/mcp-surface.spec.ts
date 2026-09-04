@@ -4,7 +4,7 @@
  * `AGENT-BOOTSTRAP.md#L62` copia por referencia el invariante universal
  * §6 —"Every public tool declares an `outputSchema`"— y §3.2 lo repite.
  * **Ninguno de los cuatro lo declaraba.** Un agente que llamaba a
- * `mcp-vertex_expostman_generate` recibía una salida sin contrato: no
+ * `delendai_expostman_generate` recibía una salida sin contrato: no
  * podía validar la respuesta ni saber qué campos existen sin ejecutarla
  * y mirar lo que salía.
  *
@@ -29,7 +29,7 @@ import { describe, expect, test } from "vitest";
  * paquete: los esquemas se construyen con `zod`, que es suya.
  *
  * Y esas no siempre están. El plugin declara
- * `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`, un
+ * `"@delendai/core": "file:../../../../delendai/packages/core"`, un
  * `file:` que apunta fuera del repositorio, así que en cualquier sitio
  * sin el checkout hermano —un contenedor limpio, un CI, un clon
  * recién hecho— el install del workspace se queda a medias y `zod` no
@@ -50,7 +50,7 @@ import { describe, expect, test } from "vitest";
  * la realidad que no.
  */
 const contratos = await import(
-  "../../packages/plugins/mcp-vertex_expostman/src/lib/contracts/plugin.interface"
+  "../../packages/plugins/delendai_expostman/src/lib/contracts/plugin.interface"
 ).catch(() => null);
 
 const PLUGIN_DEPS = contratos !== null;

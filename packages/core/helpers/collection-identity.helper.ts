@@ -97,7 +97,7 @@ function normalizeSeed(seed: string): string {
  * Convierte un UUID canónico a sus 16 bytes.
  *
  * El tipo de retorno se anota como `Uint8Array` y no como el
- * `BufferLike` ambient de este paquete: el plugin de mcp-vertex importa
+ * `BufferLike` ambient de este paquete: el plugin de delendai importa
  * este helper y se tipa con `@types/node`, donde ese nombre no existe.
  * `Uint8Array` es estándar y ambos mundos lo entienden.
  */

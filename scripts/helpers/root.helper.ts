@@ -34,7 +34,7 @@ import { fileURLToPath } from "node:url";
  * `packages/plugins/*`, y la búsqueda pararía en el primero. Se exige
  * que estén los dos.
  */
-const ROOT_MARKERS = ["package.json", "mcp-vertex.config.json"] as const;
+const ROOT_MARKERS = ["package.json", "delendai.config.json"] as const;
 
 function findRoot(): string {
   let dir = dirname(fileURLToPath(import.meta.url));
@@ -100,18 +100,18 @@ export const UI_DIR = join(PACKAGES_DIR, "ui");
 
 /** Plugins, uno por host. */
 export const PLUGINS_DIR = join(PACKAGES_DIR, "plugins");
-/** El plugin de un host concreto. Hoy solo `mcp-vertex`. */
+/** El plugin de un host concreto. Hoy solo `delendai`. */
 export function pluginDir(host: string): string {
   return join(PLUGINS_DIR, host);
 }
 /**
- * El plugin de mcp-vertex.
+ * El plugin de delendai.
  *
  * La carpeta se llama como el prefijo con el que el host registra sus
- * tools (`mcp-vertex_expostman_generate`), así que leyendo el árbol se
+ * tools (`delendai_expostman_generate`), así que leyendo el árbol se
  * sabe de qué host es y qué producto expone.
  */
-export const MCP_VERTEX_PLUGIN_DIR = pluginDir("mcp-vertex_expostman");
+export const MCP_VERTEX_PLUGIN_DIR = pluginDir("delendai_expostman");
 
 // ---------------------------------------------------------------------------
 // Tooling del repo
@@ -156,15 +156,15 @@ export function exampleDir(framework: string): string {
 }
 
 export const DOCS_DIR = fromRoot("docs");
-export const PROPOSALS_DIR = join(DOCS_DIR, "mcp-vertex", "proposals");
+export const PROPOSALS_DIR = join(DOCS_DIR, "delendai", "proposals");
 
 // ---------------------------------------------------------------------------
 // Ficheros sueltos que se leen o escriben desde el tooling
 // ---------------------------------------------------------------------------
 
 export const PACKAGE_JSON = fromRoot("package.json");
-/** Config del host mcp-vertex: qué plugins carga y desde dónde. */
-export const MCP_VERTEX_CONFIG = fromRoot("mcp-vertex.config.json");
+/** Config del host delendai: qué plugins carga y desde dónde. */
+export const MCP_VERTEX_CONFIG = fromRoot("delendai.config.json");
 /** Config MCP de Claude Code. Es la fuente de verdad (ver `mcp:sync`). */
 export const MCP_JSON = fromRoot(".mcp.json");
 export const VSCODE_DIR = fromRoot(".vscode");

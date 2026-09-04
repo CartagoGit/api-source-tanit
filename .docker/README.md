@@ -49,7 +49,7 @@ que un sitio limpio no tiene.
   un test que no puede fallar es peor que no tenerlo, porque además
   cuenta como cobertura.
 - **`lint:bootstrap-drift` pasaba por suerte.** El bootstrap citaba una
-  ruta del checkout hermano de `mcp-vertex`, que existe en la máquina de
+  ruta del checkout hermano de `delendai`, que existe en la máquina de
   desarrollo y en ningún otro sitio.
 
 ## La limitación que queda, y de quién es
@@ -57,20 +57,20 @@ que un sitio limpio no tiene.
 `docker:validate` **no corre la sección `plugin`**, y no es un descuido.
 
 El plugin declara
-`"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`: un
+`"@delendai/core": "file:../../../../delendai/packages/core"`: un
 `file:` que apunta **fuera** del repositorio. En un sitio limpio ese
 enlace no resuelve, el install del workspace se queda a medias y todo lo
 que dependa de él falla.
 
 Se intentó montar el checkout hermano dentro y no basta —bun no
 materializa el enlace—. La postura del proyecto cambió el 2026-09-03:
-mientras `@mcp-vertex/core` siga sin publicación oficial, este repo
+mientras `@delendai/core` siga sin publicación oficial, este repo
 **asume el checkout hermano como flujo soportado** (`p00007` cerrado
 en `done` con esa lectura — ver
-[`AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md) §3.7).
+[`AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md) §3.7).
 
 Por tanto, este contenedor **sí monta el checkout hermano**: lo añade a
-`/workspace/mcp-vertex` y añade su `packages/core` al `path` cuando el
+`/workspace/delendai` y añade su `packages/core` al `path` cuando el
 plugin MCP se ejecuta dentro. Lo que no se hace es fingir que no
 depende de él — sería volver a la postura antigua que el contenedor
 ya probó falsa.

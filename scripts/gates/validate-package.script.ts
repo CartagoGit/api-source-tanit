@@ -26,18 +26,18 @@ const EXPECTED_REQUESTS = 9;
 /**
  * Prefijo dentro del tarball que, **si aparece**, indica que el plugin
  * MCP se está filtrando al producto público. El `file:` del
- * `@mcp-vertex/core` no resuelve fuera del worktree del desarrollador y
+ * `@delendai/core` no resuelve fuera del worktree del desarrollador y
  * el plugin depende de ese path: distribuirlo empaquetado rompe la
  * instalación del usuario sin que nada falle aquí.
  *
  * El prefijo incluye `packages/` porque `files` en el `package.json`
  * raíz lista `packages/` y npm lo preserva tal cual dentro del tarball;
- * el plugin acaba como `package/packages/plugins/mcp-vertex_expostman/`,
+ * el plugin acaba como `package/packages/plugins/delendai_expostman/`,
  * no como `package/plugins/...`.
  *
  * Slice S0 de la propuesta `a00012`.
  */
-const MCP_PLUGIN_TARBALL_PATH = "package/packages/plugins/mcp-vertex_expostman/";
+const MCP_PLUGIN_TARBALL_PATH = "package/packages/plugins/delendai_expostman/";
 
 interface IStep {
   readonly name: string;
@@ -61,7 +61,7 @@ async function main(): Promise<number> {
   const steps: IStep[] = [];
   const workDir = await mkdtemp(join(tmpdir(), "postman-package-"));
 
-  // El plugin de mcp-vertex (`packages/plugins/mcp-vertex_expostman`)
+  // El plugin de delendai (`packages/plugins/delendai_expostman`)
   // NO participa en este gate: es una pieza interna del repo
   // (`"private": true`), se carga directo desde su TS y no viaja en el
   // tarball. Empaquetarlo aquí era herencia de cuando se pensó como

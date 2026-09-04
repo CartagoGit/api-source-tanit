@@ -12,9 +12,9 @@ bueno.
 | Producto / repositorio | `export-to-postman` | nombre del repo, `package.json` |
 | Bin canónico | **`expostman`** | `package.json` → `bin` |
 | Bin alias | `export-to-postman` | `package.json` → `bin`, mismo destino |
-| Plugin de mcp-vertex | `expostman` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin (interno) | `mcp-vertex-plugin-expostman` | `packages/plugins/mcp-vertex_expostman/package.json` — `"private": true`, NO se publica |
-| Tools MCP | `mcp-vertex_expostman_<tool>` | los construye el host |
+| Plugin de delendai | `expostman` | `src/index.ts` → `plugin.name` |
+| Paquete del plugin (interno) | `delendai-plugin-expostman` | `packages/plugins/delendai_expostman/package.json` — `"private": true`, NO se publica |
+| Tools MCP | `delendai_expostman_<tool>` | los construye el host |
 | Carpeta de salida | `export-to-postman/` | `OUTPUT_DIR_NAME` |
 | Prefijo de env vars | `POSTMAN_` | `POSTMAN_PROJECT_ROOT`, `POSTMAN_OUTPUT_DIR`… |
 
@@ -33,19 +33,19 @@ Los tools MCP se registran como `<host>_<plugin>_<tool>`. Con el nombre
 largo salían así:
 
 ```
-mcp-vertex_export-to-postman_generate
+delendai_export-to-postman_generate
 ```
 
 39 caracteres para invocar una herramienta desde un agente. Con el corto:
 
 ```
-mcp-vertex_expostman_generate
+delendai_expostman_generate
 ```
 
-El prefijo `mcp-vertex_` ya dice de qué host es; el nombre del plugin no
+El prefijo `delendai_` ya dice de qué host es; el nombre del plugin no
 necesita repetir la frase entera.
 
-## Por qué el plugin vive en `packages/plugins/mcp-vertex_expostman/`
+## Por qué el plugin vive en `packages/plugins/delendai_expostman/`
 
 La carpeta dice **para qué host** es el plugin, no qué hace — eso ya lo
 dice el proyecto entero. Si algún día hay un plugin para otro host, su
@@ -96,8 +96,8 @@ quien añadiera un exportador nuevo no tenía dónde mirar.
 
 La prosa de las propuestas cerradas (`done/`, `retired/`, `blocked/`) se
 conserva como registro histórico. Las auditorías canónicas viven en
-`docs/mcp-vertex/proposals/done/audits/`, con `id`, `kind: audit`, `status:
-done` y ruta indexada. `docs/mcp-vertex/audits/` queda reservado para
+`docs/delendai/proposals/done/audits/`, con `id`, `kind: audit`, `status:
+done` y ruta indexada. `docs/delendai/audits/` queda reservado para
 informes crudos todavía no convertidos en propuesta.
 
 ## Si hay que cambiar alguno

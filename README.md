@@ -207,8 +207,8 @@ bun run validate:package   # empaqueta, instala en un proyecto limpio y ejecuta 
 ```
 
 Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
-Estado y decisiones: [auditorías canónicas](docs/mcp-vertex/proposals/INDEX.md) y
-[propuestas](docs/mcp-vertex/proposals/).
+Estado y decisiones: [auditorías canónicas](docs/delendai/proposals/INDEX.md) y
+[propuestas](docs/delendai/proposals/).
 
 ---
 

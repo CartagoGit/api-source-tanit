@@ -42,7 +42,7 @@
 # de verdad:
 #
 #   /                                      el paquete
-#   /packages/plugins/mcp-vertex_expostman el plugin, que se publica aparte
+#   /packages/plugins/delendai_expostman el plugin, que se publica aparte
 #
 version: 2
 
@@ -62,10 +62,10 @@ updates:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
 
-  # El plugin de mcp-vertex es un paquete independiente con su propio
+  # El plugin de delendai es un paquete independiente con su propio
   # `package.json`, y ese sí se instala.
   - package-ecosystem: npm
-    directory: "/packages/plugins/mcp-vertex_expostman"
+    directory: "/packages/plugins/delendai_expostman"
     schedule:
       interval: weekly
     open-pull-requests-limit: 3

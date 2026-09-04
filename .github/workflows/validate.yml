@@ -6,11 +6,11 @@ on:
   pull_request:
     branches: [main, develop]
 
-# El plugin MCP declara `@mcp-vertex/core` como dependencia `file:`
-# contra un checkout hermano (`../../../../mcp-vertex/packages/core`).
+# El plugin MCP declara `@delendai/core` como dependencia `file:`
+# contra un checkout hermano (`../../../../delendai/packages/core`).
 # En local eso lo resuelve el desarrollador; en CI hay que materializar
 # ese checkout explícitamente. El SHA vive en
-# `packages/contracts/constants/core/mcp-vertex-sha.constant.ts`
+# `packages/contracts/constants/core/delendai-sha.constant.ts`
 # (`MCP_VERTEX_SHA`) y se refleja aquí en `env` para que el workflow y
 # el código se revisen en el mismo commit (slice S0 de `a00012`).
 env:
@@ -25,14 +25,14 @@ jobs:
       # Materializa el checkout hermano que `bun install` necesita para
       # resolver el `file:` del plugin. Va **antes** de `setup-bun` y
       # `bun install`: el install lee `bun.lock`, que apunta a
-      # `../../../../mcp-vertex/packages/core` desde
-      # `packages/plugins/mcp-vertex_expostman/`, y eso sólo existe si
+      # `../../../../delendai/packages/core` desde
+      # `packages/plugins/delendai_expostman/`, y eso sólo existe si
       # este step corrió antes.
-      - name: Checkout mcp-vertex sibling
+      - name: Checkout delendai sibling
         uses: actions/checkout@v7
         with:
-          repository: CartagoGit/mcp-vertex
-          path: ../mcp-vertex
+          repository: CartagoGit/delendai
+          path: ../delendai
           ref: ${{ env.MCP_VERTEX_SHA }}
 
       - uses: oven-sh/setup-bun@v2

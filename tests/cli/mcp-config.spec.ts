@@ -32,7 +32,7 @@ interface IMcpConfig {
 
 async function config(): Promise<IMcpConfig> {
   return JSON.parse(
-    await readFile(join(REPO_ROOT, "mcp-vertex.config.json"), "utf8"),
+    await readFile(join(REPO_ROOT, "delendai.config.json"), "utf8"),
   ) as IMcpConfig;
 }
 
@@ -84,7 +84,7 @@ describe("las raíces que escanean los plugins", () => {
  * `roots` ya se comprobaba; esto cubre el resto —`scaffoldDir`,
  * `auditDir`, `proposalsDir`…—, que era por donde se coló el fallo:
  * `issues.scaffoldDir` apuntaba a
- * `docs/mcp-vertex/proposals/retired/issues`, dentro del árbol de
+ * `docs/delendai/proposals/retired/issues`, dentro del árbol de
  * propuestas, donde `lint:proposals` exige `<kind><NNNNN>-<slug>.md`. La
  * primera issue escrita ahí habría roto el gate del repositorio.
  */
@@ -134,7 +134,7 @@ describe("el plugin propio se declara con una ruta que existe", () => {
    * añadir un plugin nuevo con una ruta mal escrita también falle.
    */
   test("todos los `path` declarados apuntan a algo que existe", async () => {
-    const raw = await readFile(join(REPO_ROOT, "mcp-vertex.config.json"), "utf8");
+    const raw = await readFile(join(REPO_ROOT, "delendai.config.json"), "utf8");
     const rutas = [...raw.matchAll(/"path"\s*:\s*"([^"]+)"/g)].map((m) => m[1] ?? "");
     expect(rutas.length, "ningún plugin declara `path`").toBeGreaterThan(0);
     for (const ruta of rutas) {

@@ -142,34 +142,34 @@ const RULES: readonly INamingRule[] = [
   // solo en la cabeza de quien los escribió. Se destapó contando las
   // carpetas con `.ts` (65) contra las carpetas con regla (17).
   {
-    path: "packages/plugins/mcp-vertex_expostman/src/lib/tools/",
+    path: "packages/plugins/delendai_expostman/src/lib/tools/",
     what: "un tool MCP por fichero",
     suffixes: [".tool.ts"],
   },
   {
-    path: "packages/plugins/mcp-vertex_expostman/src/lib/helpers/",
+    path: "packages/plugins/delendai_expostman/src/lib/helpers/",
     what: "ayudantes internos del plugin",
     suffixes: [".helper.ts"],
   },
   {
-    path: "packages/plugins/mcp-vertex_expostman/src/lib/contracts/interfaces/",
+    path: "packages/plugins/delendai_expostman/src/lib/contracts/interfaces/",
     what: "interfaces del plugin",
     suffixes: [".interface.ts"],
   },
   {
-    path: "packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/",
+    path: "packages/plugins/delendai_expostman/src/lib/contracts/constants/",
     what: "constantes del plugin",
     suffixes: [".constant.ts"],
   },
   // Los dobles compartidos van antes que la regla de tests: `bestMatch`
   // se queda con el prefijo más largo, y este es más específico.
   {
-    path: "packages/plugins/mcp-vertex_expostman/tests/helpers/",
+    path: "packages/plugins/delendai_expostman/tests/helpers/",
     what: "dobles compartidos entre los tests del plugin",
     suffixes: [".helper.ts", "-context.ts"],
   },
   {
-    path: "packages/plugins/mcp-vertex_expostman/tests/",
+    path: "packages/plugins/delendai_expostman/tests/",
     what: "tests del plugin",
     suffixes: [".spec.ts", ".test.ts"],
   },

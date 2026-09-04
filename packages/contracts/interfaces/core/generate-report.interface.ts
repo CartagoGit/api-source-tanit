@@ -1,7 +1,7 @@
 /**
  * Informe legible por máquina de una generación (`generate --json`).
  *
- * Existe porque el plugin de mcp-vertex necesitaba saber qué ficheros se
+ * Existe porque el plugin de delendai necesitaba saber qué ficheros se
  * habían escrito y cuántos endpoints había, y lo sacaba con expresiones
  * regulares sobre el texto que el CLI imprime para personas. Eso se
  * rompió en silencio en cuanto el CLI se tradujo al inglés: el plugin

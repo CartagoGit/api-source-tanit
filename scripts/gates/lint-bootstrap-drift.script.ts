@@ -40,7 +40,7 @@ import { REPO_ROOT, fromRoot } from "../helpers/root.helper.js";
 import { collectFiles } from "../helpers/walk.helper.js";
 
 /** El fichero que gobierna el trabajo de los agentes. */
-const BOOTSTRAP = fromRoot("docs", "mcp-vertex", "AGENT-BOOTSTRAP.md");
+const BOOTSTRAP = fromRoot("docs", "delendai", "AGENT-BOOTSTRAP.md");
 
 /**
  * Una ruta del repo entre backticks.
@@ -87,14 +87,14 @@ function pareceRutaDelRepo(ruta: string): boolean {
   return EXTENSIONES.some((ext) => ruta.endsWith(ext));
 }
 
-/** Resuelve una ruta del bootstrap, que puede ser relativa a `docs/mcp-vertex/`. */
+/** Resuelve una ruta del bootstrap, que puede ser relativa a `docs/delendai/`. */
 function candidatos(ruta: string): string[] {
   const limpia = ruta.replace(/^\.\//, "");
   return [
     join(REPO_ROOT, limpia),
-    join(REPO_ROOT, "docs", "mcp-vertex", limpia),
+    join(REPO_ROOT, "docs", "delendai", limpia),
     // `../../packages/...` desde el propio bootstrap.
-    join(REPO_ROOT, "docs", "mcp-vertex", ruta),
+    join(REPO_ROOT, "docs", "delendai", ruta),
   ];
 }
 

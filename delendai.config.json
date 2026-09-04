@@ -1,0 +1,305 @@
+{
+  "coreVersion": "0.1.0",
+  "cacheDir": ".cache/delendai",
+  "docsDir": "docs/delendai",
+  "surfaceMode": "managed",
+  "managedSurface": {
+    "loading": "eager",
+    "idleTtlMs": 300000,
+    "maxWarmPlugins": 8
+  },
+  "agentWorktree": false,
+  "filesystem": {
+    "authorizedRoots": [
+      "packages",
+      "scripts",
+      "tests",
+      "docs",
+      "examples",
+      ".github",
+      ".vscode"
+    ]
+  },
+  "convention": {
+    "pluginPathsRoot": "packages",
+    "sourceRoot": "packages"
+  },
+  "plugins": {
+    "git": {
+      "options": {
+        "allowForge": true
+      }
+    },
+    "search": {
+      "options": {
+        "roots": [
+          "packages",
+          "scripts",
+          "tests",
+          "docs",
+          "examples"
+        ],
+        "extensions": [
+          "ts",
+          "tsx",
+          "js",
+          "mjs",
+          "cjs",
+          "md",
+          "mdx",
+          "json"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist",
+          "build",
+          ".git"
+        ]
+      }
+    },
+    "memory": {
+      "options": {
+        "bm25K1": 1.5,
+        "bm25B": 0.75,
+        "titleWeight": 2,
+        "maxNotes": 1000
+      }
+    },
+    "docs": {
+      "options": {
+        "roots": [
+          "docs/delendai",
+          "README.md",
+          "packages/plugins/delendai_expostman/README.md"
+        ],
+        "extensions": [
+          "md",
+          "mdx"
+        ],
+        "ignoreDirs": [
+          "node_modules",
+          ".cache",
+          "dist"
+        ]
+      }
+    },
+    "rules": {
+      "options": {}
+    },
+    "quality": {
+      "options": {}
+    },
+    "conventions": {
+      "options": {
+        "roots": [
+          "packages",
+          "scripts",
+          "tests",
+          "docs",
+          "examples"
+        ]
+      }
+    },
+    "proposals": {
+      "options": {
+        "validationCommand": "bun run validate",
+        "namePool": [
+          "falcon",
+          "owl",
+          "crow",
+          "sparrow",
+          "finch"
+        ],
+        "orchestration": {
+          "delegateAfterToolCalls": 3
+        }
+      }
+    },
+    "auto-agent-selector": {
+      "options": {
+        "costQualityTradeoff": 8
+      }
+    },
+    "auto-plugin-selector": {
+      "options": {
+        "weights": {
+          "match": 0.2,
+          "tokenTax": 0.25,
+          "latencyTax": 0.15,
+          "historicalSuccess": 0.2,
+          "permissionRisk": 0.2
+        }
+      }
+    },
+    "cache": {
+      "options": {
+        "maxAgeDays": 30,
+        "worktrees": {
+          "enabled": true,
+          "keepLastN": 3
+        }
+      }
+    },
+    "deps": {
+      "options": {
+        "manifest": "package.json",
+        "allowNetwork": false,
+        "allowWrite": false
+      }
+    },
+    "env": {
+      "options": {}
+    },
+    "diagram": {
+      "options": {}
+    },
+    "perf": {
+      "options": {}
+    },
+    "security": {
+      "options": {}
+    },
+    "tech-debt": {
+      "options": {}
+    },
+    "link-check": {
+      "options": {}
+    },
+    "audit": {
+      "options": {
+        "auditDir": "docs/delendai/audits",
+        "topActions": 5,
+        "layers": []
+      }
+    },
+    "issues": {
+      "options": {
+        "scaffoldDir": "docs/delendai/issues"
+      }
+    },
+    "refactor": {
+      "options": {}
+    },
+    "forge": {
+      "options": {}
+    },
+    "web-fetch": {
+      "options": {
+        "allowList": []
+      }
+    },
+    "skills-pack": {
+      "options": {}
+    },
+    "prompts-pack": {
+      "options": {}
+    },
+    "i18n": {
+      "options": {}
+    },
+    "test-convention": {
+      "options": {}
+    },
+    "test-policy": {
+      "options": {}
+    },
+    "container": {
+      "options": {}
+    },
+    "api": {
+      "options": {}
+    },
+    "browser": {
+      "options": {}
+    },
+    "observability": {
+      "options": {}
+    },
+    "usage-tracking": {
+      "options": {}
+    },
+    "orchestrator-runner": {
+      "options": {}
+    },
+    "agent-orchestrator": {
+      "options": {
+        "policy": {
+          "defaultMode": "auto",
+          "defaults": {
+            "budget": {
+              "maxTokensOrchestrator": 200000,
+              "maxTokensPerSubagent": 50000,
+              "timeoutMs": 0
+            },
+            "rotation": {
+              "maxIterationsPerSubagent": 3,
+              "allow": [
+                "token-budget-exhausted",
+                "schema-violation",
+                "repeated-output",
+                "error-storm"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "commit-policy": {
+      "options": {
+        "gitTimeoutMs": 60000,
+        "commit": {
+          "enabled": true
+        },
+        "stash": {
+          "enabled": false
+        },
+        "push": {
+          "enabled": true,
+          "onCommit": true,
+          "force": "with-lease",
+          "protectedBranches": [
+            "main",
+            "master"
+          ],
+          "remote": "origin",
+          "branch": "develop"
+        },
+        "cadence": {
+          "triggers": [
+            {
+              "kind": "slice"
+            },
+            {
+              "kind": "interval",
+              "minutes": 5
+            }
+          ],
+          "sliceScoping": false,
+          "allowForeignChanges": true
+        },
+        "identity": {
+          "mode": "explicit",
+          "owner": {
+            "name": "Cartago",
+            "email": "cartago.relaxingcup@gmail.com"
+          }
+        },
+        "audit": {
+          "trailer": "co-authored-by",
+          "agentFormat": "${host}/${model}"
+        }
+      }
+    },
+    "prompt-eval": {
+      "options": {}
+    },
+    "expostman": {
+      "path": "packages/plugins/delendai_expostman/src/index.ts",
+      "options": {
+        "defaultProjectRoot": "${workspaceFolder}",
+        "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts"
+      }
+    }
+  }
+}

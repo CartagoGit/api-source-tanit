@@ -1,7 +1,7 @@
 /**
  * `generate --json` — el contrato máquina del CLI.
  *
- * Es lo que consume el plugin de mcp-vertex. Antes no existía: el
+ * Es lo que consume el plugin de delendai. Antes no existía: el
  * plugin sacaba las rutas con expresiones regulares sobre el texto para
  * personas, y se rompió sin hacer ruido en cuanto ese texto pasó del
  * castellano al inglés. Estos tests fijan la forma para que la próxima
@@ -23,7 +23,7 @@ import {
   type IGenerateReport,
 } from "../../packages/contracts/interfaces/core/generate-report.interface";
 import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
-import { SUPPORTED_REPORT_VERSION } from "../../packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner.constant";
+import { SUPPORTED_REPORT_VERSION } from "../../packages/plugins/delendai_expostman/src/lib/contracts/constants/runner.constant";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 const SOURCE_PROJECT = exampleDir("express");
@@ -66,7 +66,7 @@ describe("generate --json", () => {
   });
 
   /**
-   * El plugin de mcp-vertex rechaza un informe cuya versión no conoce.
+   * El plugin de delendai rechaza un informe cuya versión no conoce.
    * Si alguien sube `GENERATE_REPORT_VERSION` y se olvida del plugin, el
    * tool `generate` deja de funcionar entero, y sin este test nadie se
    * entera hasta que un agente lo invoca de verdad.

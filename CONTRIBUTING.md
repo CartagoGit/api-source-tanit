@@ -1,6 +1,6 @@
 # Contributing to `export-to-postman`
 
-> **Source of truth**: this file + [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](docs/mcp-vertex/AGENT-BOOTSTRAP.md)
+> **Source of truth**: this file + [`docs/delendai/AGENT-BOOTSTRAP.md`](docs/delendai/AGENT-BOOTSTRAP.md)
 > + [`docs/NAMING.md`](docs/NAMING.md). Humans and LLMs committing to
 > this repo are expected to follow this contract without exception.
 >
@@ -45,7 +45,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 - Explain **why**, not what.
 - Reference the proposal id (`p00001` / `p00004`) when the change
   closes a slice.
-- Reference a host commit when the change unblocks a mcp-vertex
+- Reference a host commit when the change unblocks a delendai
   upstream change.
 
 ### Good examples
@@ -63,9 +63,9 @@ memory_save + proposals_close_slice close-out.
 ```
 fix(agents): replace unsupported MCP glob with explicit tool names
 
-VS Code silently ignores 'mcp-project-mcp-vertex/*' in the agents'
+VS Code silently ignores 'mcp-project-delendai/*' in the agents'
 `tools:` permission list — confirmed by the prompt validator warning
-"Unknown tool 'mcp-project-mcp-vertex/*' will be ignored." Each
+"Unknown tool 'mcp-project-delendai/*' will be ignored." Each
 agent was left with only `read, search` (or `read, search, execute`),
 unable to invoke the MCP server at all.
 
@@ -76,7 +76,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin MCP-vertex export-to-postman + config local   ← wrong prefix style
+[FEAT] Plugin delendai export-to-postman + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -109,7 +109,7 @@ lying around. They are listed in [`.docker/README.md`](.docker/README.md).
 
 ## File conventions
 
-This repo follows the same TypeScript profile as `@mcp-vertex/core`.
+This repo follows the same TypeScript profile as `@delendai/core`.
 Full table in [`docs/NAMING.md`](docs/NAMING.md#sufijos-por-carpeta),
 which is derived from what `lint:naming` actually enforces. The
 executive summary:
@@ -123,7 +123,7 @@ executive summary:
 | `*.exporter.ts` | `packages/core/exporters/` | One `IExportTarget` per output format. |
 | `*.scanner.ts` | `packages/frameworks/` | One framework's route discovery. |
 | `*.script.ts` | `packages/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
-| `*.tool.ts` | `packages/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
+| `*.tool.ts` | `packages/plugins/delendai_expostman/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 
 The old table named `contracts/`, `services/` and `helpers/` as
@@ -162,7 +162,7 @@ packages/
   frameworks/      lo concreto — 12 scanners, parsers y el registro
   cli/             dispatcher + un fichero por comando en commands/
   ui/              asistente interactivo
-  plugin/          plugin de mcp-vertex, paquete independiente
+  plugin/          plugin de delendai, paquete independiente
 scripts/
   gates/           typecheck, los 4 lints, validate, changed
   build/           binario compilado
@@ -287,29 +287,29 @@ es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 
 VS Code's prompt validator accepts the slash form
 `<server-name>/<tool-or-glob>` in the agent `tools:` permission list.
-The legacy form (`mcp-vertex_overview`) is renamed on save with a
+The legacy form (`delendai_overview`) is renamed on save with a
 yellow squiggle. Use the slash form.
 
-There is **one MCP server** in this workspace (`mcp-vertex`, registered
+There is **one MCP server** in this workspace (`delendai`, registered
 in `.vscode/mcp.json`). The plugin tools (`postman_exporter_generate`,
 …) live **inside** that server under the namespace prefix. So every
-MCP tool reference uses the `mcp-vertex/...` prefix; the plugin tools
-are reachable as `mcp-vertex/postman_exporter_generate`, etc. The
+MCP tool reference uses the `delendai/...` prefix; the plugin tools
+are reachable as `delendai/postman_exporter_generate`, etc. The
 `postman_exporter/*` form is **not** a valid MCP server here.
 
 Pick the narrowest pattern that covers the lane — **least privilege**:
 
 | Pattern | When |
 | --- | --- |
-| `mcp-vertex/<server>_<plugin>_<tool>` (slash-qualified) | **Always preferred.** The `<server>` prefix is the namespace, the second `<server>_<plugin>_<tool>` is the actual tool ID. e.g. `mcp-vertex/mcp-vertex_proposals_proposal_board`, `mcp-vertex/postman_exporter_generate`. |
-| `mcp-vertex/*` | Avoid. Grants ~190 tools. Use only if the agent legitimately needs every one. |
+| `delendai/<server>_<plugin>_<tool>` (slash-qualified) | **Always preferred.** The `<server>` prefix is the namespace, the second `<server>_<plugin>_<tool>` is the actual tool ID. e.g. `delendai/delendai_proposals_proposal_board`, `delendai/postman_exporter_generate`. |
+| `delendai/*` | Avoid. Grants ~190 tools. Use only if the agent legitimately needs every one. |
 
-The double `<server>` prefix (`mcp-vertex/mcp-vertex_*`) is intentional:
-the **slash-form** names the MCP server (the first `mcp-vertex`); the
+The double `<server>` prefix (`delendai/delendai_*`) is intentional:
+the **slash-form** names the MCP server (the first `delendai`); the
 **tool ID** keeps the original `<server>_<plugin>_<tool>` triple that
-the server itself emits (e.g. `mcp-vertex_proposals_proposal_board`).
-The prompt validator renames `mcp-vertex_proposals_proposal_board`
-→ `mcp-vertex/mcp-vertex_proposals_proposal_board` on save; if you
+the server itself emits (e.g. `delendai_proposals_proposal_board`).
+The prompt validator renames `delendai_proposals_proposal_board`
+→ `delendai/delendai_proposals_proposal_board` on save; if you
 forget the slash you'll see the same yellow squiggle.
 
 ---
@@ -322,7 +322,7 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `packages/plugins/mcp-vertex_expostman/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `packages/plugins/delendai_expostman/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
@@ -344,22 +344,22 @@ agent does **not** pick up additional permissions at runtime.
 
 | Agent | File | Tools |
 | --- | --- | --- |
-| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
-| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_expostman_summary` |
-| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_generate, mcp-vertex/mcp-vertex_expostman_summary` |
-| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_validate` |
-| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_test` |
+| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, delendai/delendai_overview, delendai/delendai_agent_catalog, delendai/delendai_proposals_proposal_board, delendai/delendai_proposals_close_slice, delendai/delendai_memory_save` |
+| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_expostman_summary` |
+| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_expostman_generate, delendai/delendai_expostman_summary` |
+| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_expostman_validate` |
+| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_expostman_test` |
 
 When adding a new tool a lane needs, **add it to that agent's `tools:`
-list** — do **not** widen to `mcp-vertex/*`.
+list** — do **not** widen to `delendai/*`.
 
 ---
 
 ## Proposal workflow
 
 Every non-trivial change starts as a proposal under
-`docs/mcp-vertex/proposals/`. **The folder IS the state** — same layout
-as the `mcp-vertex` repo:
+`docs/delendai/proposals/`. **The folder IS the state** — same layout
+as the `delendai` repo:
 
 | Folder | `status:` |
 |---|---|
@@ -376,7 +376,7 @@ Moving the file and changing `status:` is a **single** operation;
 `bun run lint:proposals` fails if you only do one of the two. Always
 reference a proposal by its `id`, never by its filename — filenames move,
 ids do not. Full rules in
-[`docs/mcp-vertex/proposals/README.md`](docs/mcp-vertex/proposals/README.md).
+[`docs/delendai/proposals/README.md`](docs/delendai/proposals/README.md).
 
 ```yaml
 ---

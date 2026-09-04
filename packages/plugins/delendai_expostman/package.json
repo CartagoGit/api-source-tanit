@@ -1,0 +1,39 @@
+{
+  "name": "delendai-plugin-expostman",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Plugin de delendai para expostman. Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI).",
+  "author": "Cartago",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "delendai",
+    "plugin",
+    "postman",
+    "api",
+    "collection",
+    "agent",
+    "ai"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@delendai/core": "file:../../../../delendai/packages/core",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}

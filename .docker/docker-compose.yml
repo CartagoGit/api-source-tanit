@@ -46,7 +46,7 @@ x-toolchain: &toolchain
     # el directorio está vacío. El síntoma es un typecheck que falla
     # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
     # tiene nada que ver con los tipos.
-    - plugin_node_modules:/work/projects/plugins/mcp-vertex_expostman/node_modules
+    - plugin_node_modules:/work/projects/plugins/delendai_expostman/node_modules
     - cargo_registry:/usr/local/cargo/registry
     # Fuera del árbol del repo, a propósito.
     #
@@ -73,7 +73,7 @@ services:
   # pasa»: aquí no hay nada instalado a mano.
   #
   # **Sin la sección `plugin`, y no es un descuido.** El plugin declara
-  # `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`, un
+  # `"@delendai/core": "file:../../../../delendai/packages/core"`, un
   # `file:` que apunta **fuera** del repositorio. Montar el checkout
   # hermano dentro se probó y no basta —bun no materializa el enlace—,
   # pero sobre todo **no debería hacer falta**: el bootstrap prohíbe
@@ -83,7 +83,7 @@ services:
   # `p00007`. Lo que esa propuesta describe como «cambiar una línea
   # cuando se publique» es en realidad **el repositorio no siendo
   # autocontenido**, y se nota en cuanto se intenta construir en un sitio
-  # limpio. El día que `@mcp-vertex/core` esté en npm, esto pasa a ser
+  # limpio. El día que `@delendai/core` esté en npm, esto pasa a ser
   # `bun run validate` a secas.
   #
   # `mcp-surface.spec.ts` se salta **solo**, declarando su precondición:

@@ -15,7 +15,7 @@
  * Las cinco fuentes documentadas que sí lo aportan:
  *   1. ruta explícita (routePrefix matcheado por un scanner);
  *   2. framework (Laravel/Express/... → prefix del router);
- *   3. config explícito (`mcp-vertex.config.json#basePath`,
+ *   3. config explícito (`delendai.config.json#basePath`,
  *      `.expostmanrc.json#basePath`);
  *   4. OpenAPI `servers[]`;
  *   5. variable de entorno `POSTMAN_BASE_PATH`.

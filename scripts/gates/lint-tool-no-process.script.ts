@@ -10,7 +10,7 @@
  *   - no es portable (el cwd de producción no es el de desarrollo),
  *   - y en el caso de `process.env` filtra secretos del host.
  *
- * Alcance: `packages/plugins/mcp-vertex_expostman/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
+ * Alcance: `packages/plugins/delendai_expostman/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
  * leer `process.env` — `POSTMAN_PROJECT_ROOT` es un fallback documentado.
  *
  * Uso:
@@ -21,7 +21,7 @@ import { relative, resolve } from "node:path";
 import { collectFiles } from "../../packages/core/helpers/fs-walk.helper.js";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 
-const TOOLS_GLOB_ROOT = resolve(REPO_ROOT, "packages/plugins/mcp-vertex_expostman");
+const TOOLS_GLOB_ROOT = resolve(REPO_ROOT, "packages/plugins/delendai_expostman");
 
 /** Cada regla es un patrón + la explicación de por qué está prohibido. */
 interface IRule {
@@ -68,7 +68,7 @@ interface IViolation {
  * lo hacen en hot path. Aquí se documenta la excepción.
  */
 const PERMITIDOS: Readonly<Record<string, string>> = {
-  "packages/plugins/mcp-vertex_expostman/src/lib/contracts/constants/runner-snapshot.constant.ts":
+  "packages/plugins/delendai_expostman/src/lib/contracts/constants/runner-snapshot.constant.ts":
     "snapshot inmutable del proceso al boot del plugin (universal §6: lectura " +
     "de proceso es boot-time); el resto del plugin consume las constantes " +
     "congeladas en vez de leer process.* en hot path",
@@ -110,7 +110,7 @@ async function main(): Promise<number> {
   ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}`));
 
   if (files.length === 0) {
-    console.log("lint:tools — no se encontró ningún *.tool.ts / *.helper.ts bajo packages/plugins/mcp-vertex_expostman/src/lib/");
+    console.log("lint:tools — no se encontró ningún *.tool.ts / *.helper.ts bajo packages/plugins/delendai_expostman/src/lib/");
     return 0;
   }
 

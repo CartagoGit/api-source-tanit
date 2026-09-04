@@ -42,7 +42,7 @@ import { collectFiles } from "../helpers/walk.helper.js";
  */
 const ROOTS = [
   "packages/frameworks/scanners",
-  "packages/plugins/mcp-vertex_expostman/src",
+  "packages/plugins/delendai_expostman/src",
 ] as const;
 
 /**

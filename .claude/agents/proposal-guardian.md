@@ -1,12 +1,12 @@
 ---
 name: proposal-guardian
-description: Bounded subagent for @export-to-postman/core. The real contract lives in the project bootstrap (docs/mcp-vertex/AGENT-BOOTSTRAP.md) and the mcp-vertex MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
+description: Bounded subagent for @export-to-postman/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
 ---
 
-# Proposal Guardian (mcp-vertex)
+# Proposal Guardian (delendai)
 
-This file is a pointer. Authoritative rules: [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../../docs/mcp-vertex/AGENT-BOOTSTRAP.md) (extends the vendored universal bootstrap at [`docs/mcp-vertex/UNIVERSAL-AGENT-BOOTSTRAP.md`](../../docs/mcp-vertex/UNIVERSAL-AGENT-BOOTSTRAP.md)).
+This file is a pointer. Authoritative rules: [`docs/delendai/AGENT-BOOTSTRAP.md`](../../docs/delendai/AGENT-BOOTSTRAP.md) (extends the vendored universal bootstrap at [`docs/delendai/UNIVERSAL-AGENT-BOOTSTRAP.md`](../../docs/delendai/UNIVERSAL-AGENT-BOOTSTRAP.md)).
 
 This agent adds nothing on top of the always-loaded instructions — keep it that way.
 
-Live catalogs: `mcp-vertex_overview` / `mcp-vertex_agent_catalog` (MCP server).
+Live catalogs: `delendai_overview` / `delendai_agent_catalog` (MCP server).

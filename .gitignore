@@ -15,7 +15,7 @@ build/
 # binario legacy se queda fuera.
 bun.lockb
 
-# Cache local de mcp-vertex
+# Cache local de delendai
 .cache/
 # Binarios compilados por `bun run build:binary`.
 dist/

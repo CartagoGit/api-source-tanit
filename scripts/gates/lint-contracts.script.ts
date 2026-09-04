@@ -97,7 +97,7 @@ const EXCEPTIONS: readonly IException[] = [
  */
 const CONTRACT_DIRS = [
   "packages/contracts/",
-  "packages/plugins/mcp-vertex_expostman/src/lib/contracts/",
+  "packages/plugins/delendai_expostman/src/lib/contracts/",
 ] as const;
 
 /** Lo que se busca: un tipo o una constante exportados. */

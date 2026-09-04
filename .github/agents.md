@@ -1,7 +1,7 @@
 # agents.md — `export-to-postman`
 
 Una página para orientarse antes de tocar nada. Las reglas vinculantes
-viven en [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md);
+viven en [`docs/delendai/AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md);
 esto es el mapa.
 
 ---
@@ -18,7 +18,7 @@ request por operación del esquema, con la consulta escrita) y **tRPC**
 (la traducción a HTTP que nadie se sabe de memoria).
 
 Se distribuye de tres formas: paquete npm (`export-to-postman`),
-binario autocontenido por plataforma, y plugin de mcp-vertex.
+binario autocontenido por plataforma, y plugin de delendai.
 
 ---
 
@@ -79,7 +79,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 | Parsear una librería de validación nueva | `packages/frameworks/parsers/<lib>-schema.helper.ts` |
 | Añadir un comando al CLI | `packages/cli/commands/<nombre>.script.ts` + entrada en `packages/cli/cli.script.ts` |
 | Añadir un formato de salida | `packages/core/exporters/<fmt>.exporter.ts` + registrarlo |
-| Añadir un tool MCP | `packages/plugins/mcp-vertex_expostman/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un tool MCP | `packages/plugins/delendai_expostman/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -105,8 +105,8 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 ## Tools del plugin MCP
 
 Namespace `expostman` (el host los registra como
-`mcp-vertex_expostman_<tool>`), declarados en
-[`packages/plugins/mcp-vertex_expostman/src/index.ts`](../packages/plugins/mcp-vertex_expostman/src/index.ts):
+`delendai_expostman_<tool>`), declarados en
+[`packages/plugins/delendai_expostman/src/index.ts`](../packages/plugins/delendai_expostman/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|
@@ -119,10 +119,10 @@ Namespace `expostman` (el host los registra como
 
 ## Estado
 
-- **Auditoría histórica**: propuesta canónica [`a00003`](../docs/mcp-vertex/proposals/done/audits/a00003-auditoria-completa-postman-exporter.md)
+- **Auditoría histórica**: propuesta canónica [`a00003`](../docs/delendai/proposals/done/audits/a00003-auditoria-completa-postman-exporter.md)
   — bugs encontrados, causas raíz y lo que queda abierto.
-- **Propuestas**: [`docs/mcp-vertex/proposals/`](../docs/mcp-vertex/proposals/),
-  con la misma disposición que mcp-vertex: la carpeta **es** el estado
+- **Propuestas**: [`docs/delendai/proposals/`](../docs/delendai/proposals/),
+  con la misma disposición que delendai: la carpeta **es** el estado
   (`ready/`, `in-progress/`, `review/`, `done/`, `paused/`, `blocked/`,
   `retired/`, `legacy/`), y `done/` archiva por kind. Moverla de carpeta
   y cambiar su `status` es la misma operación; `bun run lint:proposals`

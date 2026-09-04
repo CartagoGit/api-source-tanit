@@ -2,7 +2,7 @@
 /**
  * Lint de propuestas: la carpeta tiene que coincidir con el `status`.
  *
- * Es la misma regla que aplica `mcp-vertex` (su
+ * Es la misma regla que aplica `delendai` (su
  * `proposal-folder-drift.script.ts`). Sin ella el árbol miente en cuanto
  * alguien cambia el frontmatter y se olvida de mover el fichero, o al
  * revés — y entonces `ready/` deja de ser una lista fiable de qué queda

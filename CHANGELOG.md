@@ -25,13 +25,13 @@
   Fiber copia la API de Express pero en Go. No se reutiliza el scanner de Gin porque las diferencias no son cosmeticas: Fiber agrupa con `app.Group("/api")` devolviendo un router encadenable, y sus tags son `validate:"..."` (go-playground/validator) en vez del `binding:"..."` de Gin.
 - **hono**: scanner propio, y arreglo de un bug del parser de zod compartido (`9fe1c71`)
   Hono es el framework de los runtimes de borde (Workers, Deno, Bun). Se parece a Express, pero dos cosas rompen un scanner escrito para Express:
-- **fastify**: scanner propio que lee su JSON Schema (p00029 S1) y plugin en mcp-vertex_expostman (`ed4a7eb`)
+- **fastify**: scanner propio que lee su JSON Schema (p00029 S1) y plugin en delendai_expostman (`ed4a7eb`)
   Fastify lo recogia el scanner de Express, que lo reconocia por parecido de sintaxis y se perdia los esquemas enteros. Y eso es tirar la mejor fuente que puede tener un scanner: Fastify declara el esquema DENTRO de la propia ruta, y es JSON Schema, o sea tipos exactos en vez de inferidos.
 - **bin**: lanzadores por ecosistema, sin reimplementar nada (p00022) (`b84b0f6`)
   bin/expostman (POSIX), bin/expostman.ps1 (Windows) y bin/wrappers/ con Python y PHP. Go, Gradle y Make se documentan como una linea en su fichero de build, que es todo lo que necesitan.
 - **paths**: registro de rutas del repo y lint que prohibe contar ".." (`5a0148c`)
   Escribir resolve(__dirname, "../../..") ata un fichero a su profundidad en el arbol. En cuanto se mueve, la constante apunta a otro sitio Y NO FALLA: una ruta equivocada no lanza, simplemente no encuentra nada.
-- **naming**: expostman como bin canonico y el plugin bajo plugins/mcp-vertex (p00025) (`28e662e`)
+- **naming**: expostman como bin canonico y el plugin bajo plugins/delendai (p00025) (`28e662e`)
   Habia tres nombres a la vez y ninguno decia cual era el bueno: postman-from-routes, postman-exporter y export-to-postman.
 - **output**: escribir en export-to-postman/ y no en el build/ ajeno (p00041 S1) (`c98a2c5`)
   La salida iba a `${projectRoot}/build/`. build/ no es una carpeta cualquiera: es la salida por defecto de Gradle, de Maven con ciertas configuraciones, de muchos proyectos de Go y de medio mundo de Makefiles. Estabamos mezclando nuestras colecciones con los artefactos de compilacion de quien usa la herramienta, en una carpeta que su `clean` borra entera.
@@ -104,7 +104,7 @@
 - **discovery**: escanear todos los frameworks que reconocen el proyecto (p00024) (`13f8240`)
   Un repo hibrido —un Express heredado sirviendo la API vieja mientras las rutas nuevas se escriben en Next.js— es una forma de API real y frecuente, y el pipeline la trataba fatal: el orchestrator puntuaba los dos detectores, se quedaba con el de mas score y tiraba el otro.
 - **plugin**: el plugin como proyecto independiente y su contrato con el CLI (p00027) (`160365d`)
-  El plugin es un paquete propio que mcp-vertex carga en su proceso, pero estaba tratado como una carpeta mas del CLI. Eso habia dejado cuatro cosas rotas a la vez, todas en silencio.
+  El plugin es un paquete propio que delendai carga en su proceso, pero estaba tratado como una carpeta mas del CLI. Eso habia dejado cuatro cosas rotas a la vez, todas en silencio.
 - **plugin**: errores de tipos que el gate nunca había visto (p00025 S1+S2) (`2f7b465`)
   `bun run typecheck` usa el tsconfig de la raíz, cuyo `include` no lista `plugins/`. El plugin llevaba desde siempre fuera del gate y tenía 5 errores:
 - **scanners**: tres bugs que hacían perder endpoints en proyectos reales (`c5f993f`)
@@ -132,10 +132,10 @@
 - **runner**: tolerate invalid cwd / missing bun binary (`b329829`)
   runBunSpawnSyncArray used to throw on cwd inválido or binario no encontrado, which propagated up to MCP tools as an unhandled exception. Wrap the spawn in try/catch and return a 'failed' result (status:null, error:Error) so the caller can report it as a step with ok=false and an actionable detail instead of crashing.
 - **p00013**: plugin boot, zod v4 alignment, namespace contract (`ce6dc37`)
-  Server boot was failing with `ReferenceError: NAMESPACE is not defined` in 3 tools of the postman-exporter plugin. Beyond that, the plugin did not typecheck (6 ZodObject vs ZodRawShapeCompat errors, 1 readonly-issues.push error, missing @types/node). All four classes of bug share one root cause: the plugin was pinned to zod 3.23.8 while @mcp-vertex/core uses zod 4.4.x, whose ZodRawShapeCompat requires the standard interface (`~standard`, `~validate`).
+  Server boot was failing with `ReferenceError: NAMESPACE is not defined` in 3 tools of the postman-exporter plugin. Beyond that, the plugin did not typecheck (6 ZodObject vs ZodRawShapeCompat errors, 1 readonly-issues.push error, missing @types/node). All four classes of bug share one root cause: the plugin was pinned to zod 3.23.8 while @delendai/core uses zod 4.4.x, whose ZodRawShapeCompat requires the standard interface (`~standard`, `~validate`).
 - **agents**: replace unsupported GPT-5.4 model with MiniMax M3 (`ede6494`)
 - **agents**: replace unsupported MCP glob with explicit tool names (`a8276a6`)
-  VS Code silently ignores 'mcp-project-mcp-vertex/*' in the agents' `tools:` permission list — confirmed by the prompt validator warning "Unknown tool 'mcp-project-mcp-vertex/*' will be ignored." Each agent was left with only `read, search` (or `read, search, execute`), unable to invoke the MCP server at all.
+  VS Code silently ignores 'mcp-project-delendai/*' in the agents' `tools:` permission list — confirmed by the prompt validator warning "Unknown tool 'mcp-project-delendai/*' will be ignored." Each agent was left with only `read, search` (or `read, search, execute`), unable to invoke the MCP server at all.
 
 ### Rendimiento
 
@@ -145,7 +145,7 @@
 ### Refactors
 
 - **naming**: el plugin y su namespace MCP se llaman como el proyecto (`b60433c`)
-  El proyecto se renombro a export-to-postman pero el plugin se quedo en postman-exporter, asi que sus tools se registraban como `mcp-vertex_postman-exporter_generate` mientras el binario ya era `export-to-postman`. Dos nombres para una cosa.
+  El proyecto se renombro a export-to-postman pero el plugin se quedo en postman-exporter, asi que sus tools se registraban como `delendai_postman-exporter_generate` mientras el binario ya era `export-to-postman`. Dos nombres para una cosa.
 - projects/{core,frameworks,cli,ui,plugin} y scripts/{gates,build} (p00020) (`ad962f8`)
   La estructura era la de la primera version, cuando esto solo generaba colecciones de Laravel. No habia un centro: lo que el proyecto HACE estaba repartido en tres carpetas de la raiz, al mismo nivel que docs/ y examples/. Y scripts/ tenia 19 ficheros planos que eran tres familias distintas.
 - carpetas contenedoras en plural (p00041 S2) (`54ddc4e`)
@@ -159,7 +159,7 @@
 
 - add proposals for advanced API protocol support and expanded framework coverage, and update project configuration and scripts. (`01d8d19`)
 - **p00007**: reescribir con el reparto real entre los dos repositorios (`53dc58b`)
-  La propuesta decía "publicar @mcp-vertex/core en npm **y** cambiar los plugins". La primera mitad no es de este repositorio.
+  La propuesta decía "publicar @delendai/core en npm **y** cambiar los plugins". La primera mitad no es de este repositorio.
 - **audit**: segunda tanda de bugs y estado final (0 propuestas abiertas) (`c855934`)
 - **audit**: estado final, 6 bugs nuevos y lo que queda abierto (`54ba809`)
 - reescribir la documentación de uso e import en Postman (p00019) (`391924f`)
@@ -215,16 +215,16 @@
 - rename project and binaries to "export-to-postman" (`7755d31`)
 - **proposals**: anclar el esqueleto de carpetas con .gitkeep (`8217410`)
   git no versiona directorios: en cuanto la ultima propuesta de un estado se movia a otro, la carpeta desaparecia del repo y el siguiente que quisiera usar ese estado se quedaba sin sitio donde dejarla.
-- **proposals**: adoptar la disposición por estado de mcp-vertex (`b638fc4`)
+- **proposals**: adoptar la disposición por estado de delendai (`b638fc4`)
   Las 25 propuestas vivían todas en `ready/`, incluidas las 17 cerradas. `ready/` no servía para saber qué queda por hacer, que es justo para lo que existe.
 - cerrar p00003, p00004, p00005, p00012 y p00013 (`5707dcf`)
   Revisadas contra el estado real del repo, no contra lo que decían.
 - **merge**: unificar main y develop en una sola línea de trabajo (`7d74fa9`)
   main llevaba todo el trabajo de scanners (12 frameworks, fixtures, suites unit/e2e) mientras develop llevaba las propuestas p00004-p00013, CLAUDE.md, CONTRIBUTING.md, los agents de host y el bootstrap de proyecto. Este merge junta ambas.
 - **docs**: project bootstrap + extension-contract superseded (`8f9a28e`)
-  Wire the project-specific agent bootstrap chain so postman-exporter follows the same host-appendix pattern that mcp-vertex itself uses, instead of being a hand-rolled copy of the universal bootstrap.
-- **workspace**: align postman-exporter with mcp-vertex host contract (`88e892a`)
-  Adopt the canonical cross-project setup from mcp-vertex docs/CROSS-PROJECT-SETUP.md and docs/mcp-vertex/CROSS-IDE.md so this workspace follows the same host contract as mcp-vertex itself.
+  Wire the project-specific agent bootstrap chain so postman-exporter follows the same host-appendix pattern that delendai itself uses, instead of being a hand-rolled copy of the universal bootstrap.
+- **workspace**: align postman-exporter with delendai host contract (`88e892a`)
+  Adopt the canonical cross-project setup from delendai docs/CROSS-PROJECT-SETUP.md and docs/delendai/CROSS-IDE.md so this workspace follows the same host contract as delendai itself.
 
 _8 commit(s) fuera del convenio `tipo: asunto`, no listados._
 

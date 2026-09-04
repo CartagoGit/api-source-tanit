@@ -356,7 +356,7 @@ async function applyFrameworkSearchRoot(
   readonly detection: IMonorepoDetection | null;
 }> {
   // Caso 1: el usuario forzó `--framework-search-root` o
-  // `mcp-vertex.config.json#frameworkSearchRoot`. El valor se valida
+  // `delendai.config.json#frameworkSearchRoot`. El valor se valida
   // abajo (no debe tener barras iniciales ni `..`); lo que llega de la
   // CLI ya pasó por `readFlag`, lo que llega del plugin ya pasó por
   // zod. Aquí se queda como viene.
