@@ -27,10 +27,12 @@ import type {
   IRouteScanner,
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
-import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
+import { collectTaggedTemplates } from "../typescript/tagged-template.js";
+import { collectEmbeddedSdl } from "./graphql-embedded.adapter.js";
 
 /** Paquetes que delatan un servidor GraphQL. */
 const GRAPHQL_PACKAGES = [
@@ -344,7 +346,24 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // operaciones. Ahora recorre además `.ts`/`.js`/`.tsx`/`.jsx`
     // y extrae los bloques `gql\`…\`` antes de aplicar el parser.
     const schemaFiles = await collectFiles(effectiveProjectRoot(match), isSchemaFile);
-    const sourceFiles = await collectFiles(effectiveProjectRoot(match), isSourceJsTsFile);
+
+    // a00015 S1+S2+S3: el scanner ahora delega la extracción
+    // embedded SDL en el AST TS (collectTaggedTemplates →
+    // collectEmbeddedSdl). Antes un regex sobre cada fichero
+    // (`extractEmbeddedSdl(text)`) matcheaba falsos positivos en
+    // comentarios (`// gql\`...\``) y strings (`"gql\`...\``) — ver
+    // propuesta a00015. El AST no se equivoca: un
+    // TaggedTemplateExpression solo aparece como tal cuando Babel
+    // reconoce la sintaxis real.
+    //
+    // Los SDL extraídos se devuelven como string[] en el orden
+    // top-down de los TaggedTemplateExpression: el scanner los
+    // pasa por `collectCustomScalars` y por `scanSchema` en ese
+    // mismo orden. `customScalars` debe poblarse antes de generar
+    // operaciones (segunda revisión del audit 2026-09-04 P1 #12).
+    const embeddedSdl: string[] = collectEmbeddedSdl(
+      await collectTaggedTemplates(effectiveProjectRoot(match)),
+    );
 
     // Audit segunda revisión #10 (custom scalars + ciclo de scan):
     // dos pasadas. La primera recoge todos los escalares
@@ -358,10 +377,8 @@ export class GraphQlRouteScanner implements IRouteScanner {
     for await (const { text } of readFilesInOrder(schemaFiles)) {
       for (const scalar of collectCustomScalars(text)) customScalars.add(scalar);
     }
-    for await (const { text } of readFilesInOrder(sourceFiles)) {
-      for (const sdl of extractEmbeddedSdl(text)) {
-        for (const scalar of collectCustomScalars(sdl)) customScalars.add(scalar);
-      }
+    for (const sdl of embeddedSdl) {
+      for (const scalar of collectCustomScalars(sdl)) customScalars.add(scalar);
     }
 
     const routes: ParsedRoute[] = [];
@@ -369,79 +386,28 @@ export class GraphQlRouteScanner implements IRouteScanner {
 
     for await (const { path, text } of readFilesInOrder(schemaFiles)) {
       const sourceFile = relative(rawProjectRoot(match), path);
-      const extracted = extractEmbeddedSdl(text);
-      for (const sdl of [text, ...extracted]) {
-        for (const op of scanSchema(
-          sdl,
-          sourceFile,
-          seen,
-          routes,
-          customScalars,
-        )) {
-          routes.push(op);
-        }
+      for (const op of scanSchema(
+        text,
+        sourceFile,
+        seen,
+        routes,
+        customScalars,
+      )) {
+        routes.push(op);
       }
     }
 
-    // Embedded SDL: extraer bloques `gql\`...\`` de fuentes TS/JS.
-    // El primer esquema `.graphql` que contenga `type Query` ya
+    // Embedded SDL: bloques `gql\`...\`` AST-derived de TS/JS. El
+    // primer esquema `.graphql` que contenga `type Query` ya
     // cuenta como servidor; este paso es complementario y solo añade
     // operaciones nuevas (el `seen` dedupe evita duplicados).
-    for await (const { path, text } of readFilesInOrder(sourceFiles)) {
-      const sourceFile = relative(rawProjectRoot(match), path);
-      for (const sdl of extractEmbeddedSdl(text)) {
-        for (const op of scanSchema(
-          sdl,
-          sourceFile,
-          seen,
-          routes,
-          customScalars,
-        )) {
-          routes.push(op);
-        }
+    for (const sdl of embeddedSdl) {
+      for (const op of scanSchema(sdl, "<embedded>", seen, routes, customScalars)) {
+        routes.push(op);
       }
     }
     return { routes: routes };
   }
-}
-
-/**
- * Extrae los bloques `gql\`…\`` y `graphql\`…\`` de un fichero TS/JS.
- *
- * Audit 2026-09-04 P1 #5. Soporta backticks balanceados (no permite
- * `${...}` interpolation en el interior, porque rompería la lógica de
- * llaves; pero si la tiene, extrae lo que pueda y deja el resto como
- * comentario vacío — comportamiento honesto).
- */
-export function extractEmbeddedSdl(source: string): string[] {
-  const out: string[] = [];
-  const re = /(?:gql|graphql)\s*`/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(source)) !== null) {
-    const start = m.index + m[0].length;
-    // Encuentra el backtick de cierre, contando llaves para tolerar
-    // `${...}` (que se reemplaza por literal vacío en el cuerpo).
-    let depth = 0;
-    let end = -1;
-    for (let i = start; i < source.length; i++) {
-      const ch = source[i];
-      if (ch === "{") depth++;
-      else if (ch === "}") depth = Math.max(0, depth - 1);
-      else if (ch === "`" && depth === 0) {
-        end = i;
-        break;
-      }
-    }
-    if (end === -1) continue;
-    const raw = source.slice(start, end);
-    // Quita las interpolaciones `${…}` reemplazándolas por literal
-    // vacío, que es lo que el parser espera (los tipos SDL no
-    // contienen interpolaciones de runtime).
-    const cleaned = raw.replace(/\$\{[\s\S]*?\}/g, "");
-    out.push(cleaned);
-    re.lastIndex = end + 1;
-  }
-  return out;
 }
 
 /**

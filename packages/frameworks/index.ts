@@ -36,6 +36,17 @@ export {
   registeredFrameworkIds,
   scannerBundleFor,
 } from "./framework.registry.js";
+
+// a00015 S1: `tagged-template.ts` expone la vista AST de los
+// `TaggedTemplateExpression` que el frontend TS ya parsea pero no
+// expone. Re-export aquí para que los adapters del paquete
+// `frameworks` (hoy el scanner GraphQL en S2) importen del barrel
+// de su capa en vez de conocer la ruta interna al módulo.
+export {
+  collectTaggedTemplates,
+  collectTaggedTemplatesFromSource,
+  type ITaggedTemplate,
+} from "./typescript/tagged-template.js";
 import type { IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
 import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
 import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanners.interface.js";
