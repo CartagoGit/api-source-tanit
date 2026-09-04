@@ -612,3 +612,47 @@ describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 });
+
+describe("NestJS scanner — global prefix desde searchRoot (audit 2026-09-04 P2 #3)", () => {
+  test("setGlobalPrefix en apps/api/src/main.ts se aplica con frameworkSearchRoot", async () => {
+    // En monorepos el bootstrap vive en el workspace (apps/api), no en
+    // la raíz. Antes el scanner buscaba solo en `match.projectRoot` y
+    // no encontraba el setGlobalPrefix, así que las rutas salían sin
+    // el prefijo.
+    const project = await createTempProject(
+      {
+        "package.json": JSON.stringify({
+          dependencies: { "@nestjs/core": "^10.0.0" },
+        }),
+        "src/app.controller.ts": `import { Controller, Get } from "@nestjs/common";
+@Controller("items")
+export class AppController {
+  @Get() list() { return []; }
+}
+`,
+        "src/main.ts": `import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  app.setGlobalPrefix("api/v1");
+  await app.listen(3000);
+}
+bootstrap();
+`,
+      },
+      "nestjs-monorepo-prefix-",
+    );
+
+    const ps = new NestJsProjectScanner();
+    const match: IProjectMatch = {
+      framework: "nestjs",
+      projectRoot: project.root,
+      artifacts: ["package.json", "src"],
+      frameworkSearchRoot: ".", // simula lo que produciría expandMonorepoDetection
+    };
+    const routes = (await new NestJsRouteScanner().scan(match)).routes;
+    expect(routes[0]?.uri).toBe("/api/v1/items");
+
+    await project.cleanup();
+  }, 15_000);
+});

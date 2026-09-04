@@ -169,10 +169,16 @@ export class NestJsRouteScanner implements IRouteScanner {
     // `app.setGlobalPrefix("api/v1")` en el bootstrap se aplica a TODOS
     // los controladores. Sin esto, un proyecto que lo use —lo normal en
     // NestJS— produce URIs sin el prefijo y ninguna request responde.
-    // El bootstrap se busca en `projectRoot` (no en `searchRoot`)
-    // porque `main.ts` rara vez se mueve a un subdir dentro del
-    // workspace de Nest.
-    const globalPrefix = await readGlobalPrefix(match.projectRoot);
+    //
+    // Audit 2026-09-04 P2 #3: probamos primero el `searchRoot` (donde
+    // vive el bootstrap en monorepos `apps/api`) y luego el
+    // `projectRoot` (estructura plana donde `main.ts` está en la raíz).
+    // Antes solo mirábamos `projectRoot`, así que un Nest en `apps/api`
+    // salía sin el prefijo.
+    const globalPrefix = await readGlobalPrefix(
+      searchRoot,
+      match.projectRoot,
+    );
     if (!globalPrefix) return { routes: out };
 
     return { routes: out.map((route) => ({
@@ -278,16 +284,32 @@ const GLOBAL_PREFIX_RE = /setGlobalPrefix\s*\(\s*["'`]([^"'`]+)["'`]/;
  * `setGlobalPrefix` se aplica a TODOS los controladores. Sin leerlo, un
  * proyecto que lo use —lo normal en NestJS— producía URIs sin el prefijo
  * y ninguna request respondía.
+ *
+ * Audit 2026-09-04 P2 #3 (Nest global prefix desde searchRoot): antes
+ * solo mirábamos `match.projectRoot`. En un monorepo con
+ * `frameworkSearchRoot: "apps/api"`, el `setGlobalPrefix` está en
+ * `apps/api/src/main.ts` y el scanner no lo encontraba: las rutas
+ * salían sin el prefijo global. Ahora probamos primero el searchRoot
+ * (donde `main.ts` vive en monorepos) y luego el projectRoot
+ * (estructura plana donde `main.ts` está en la raíz).
+ *
+ * `roots` es la lista ordenada de prueba; el primer match gana.
  */
-async function readGlobalPrefix(projectRoot: string): Promise<string | null> {
-  for (const candidate of ["src/main.ts", "src/main.js", "main.ts"]) {
-    const abs = join(projectRoot, candidate);
-    if (!existsSync(abs)) continue;
-    try {
-      const match = GLOBAL_PREFIX_RE.exec(stripJsComments(await readFile(abs, "utf8")));
-      if (match?.[1]) return match[1];
-    } catch {
-      continue;
+async function readGlobalPrefix(
+  ...roots: ReadonlyArray<string>
+): Promise<string | null> {
+  for (const projectRoot of roots) {
+    for (const candidate of ["src/main.ts", "src/main.js", "main.ts"]) {
+      const abs = join(projectRoot, candidate);
+      if (!existsSync(abs)) continue;
+      try {
+        const match = GLOBAL_PREFIX_RE.exec(
+          stripJsComments(await readFile(abs, "utf8")),
+        );
+        if (match?.[1]) return match[1];
+      } catch {
+        continue;
+      }
     }
   }
   return null;
