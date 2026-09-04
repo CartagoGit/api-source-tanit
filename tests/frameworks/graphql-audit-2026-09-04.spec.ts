@@ -17,6 +17,7 @@ import {
   collectCustomScalars,
   extractEmbeddedSdl,
   parseOperations,
+  GraphQlProjectScanner,
   GraphQlRouteScanner,
 } from "../../packages/frameworks/scanners/graphql.scanner";
 import {
@@ -297,5 +298,48 @@ export const typeDefs = gql\`
     const names = routes.map((r) => r.displayName).sort();
     expect(names).toContain("query health");
     expect(names).toContain("mutation ping");
+  });
+});
+
+describe("graphql scanner — false positive en detect() (audit 2nd-review #14)", () => {
+  test(".graphql con fragments pero SIN type Query/Mutation: score 0", async () => {
+    // Antes: emptyResult(0.5) — un frontend con solo fragments se
+    // clasificaba como servidor GraphQL. Ahora: emptyResult(0) —
+    // solo el manifest puntúa.
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ name: "frontend" }),
+      "fragments.graphql": `fragment UserFields on User {
+  id
+  name
+}
+`,
+    });
+    projects.push(project);
+
+    const score = (
+      await new GraphQlProjectScanner().detect(project.root)
+    ).score;
+    expect(score).toBe(0);
+
+    await project.cleanup();
+  });
+
+  test(".graphql con type Query: score 1 (camino feliz)", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({
+        dependencies: { graphql: "^16.0.0" },
+      }),
+      "schema.graphql": `type Query { me: User }
+type User { id: ID! }
+`,
+    });
+    projects.push(project);
+
+    const score = (
+      await new GraphQlProjectScanner().detect(project.root)
+    ).score;
+    expect(score).toBe(1);
+
+    await project.cleanup();
   });
 });

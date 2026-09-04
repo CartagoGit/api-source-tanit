@@ -132,6 +132,12 @@ export class GraphQlProjectScanner implements IProjectScanner {
         ? withEvidence(fromPackage, signals)
         : emptyResult(0);
     }
+    // Audit 2ª revisión #14: antes, si había archivos `.graphql`
+    // pero ninguno contenía `type Query/Mutation`, devolvíamos
+    // `emptyResult(0.5)`. Un proyecto frontend con solo fragments o
+    // tipos auxiliares acababa marcado como servidor GraphQL. Ahora
+    // **solo el manifest puntúa** cuando no hay `type Query`. Los
+    // archivos `.graphql` sueltos ya no son evidencia de servidor.
     for await (const entry of readFilesInOrder(schemas)) {
       const text = entry.text;
       if (/\btype\s+(Query|Mutation)\b/.test(text)) {
@@ -141,9 +147,12 @@ export class GraphQlProjectScanner implements IProjectScanner {
         ]);
       }
     }
+    // Sin Query/Mutation: si el manifest no puntúa, no es un
+    // servidor GraphQL (aunque haya archivos `.graphql`). Bajamos a
+    // 0 para no contaminar la detección.
     return signals.length > 0
-      ? withEvidence(Math.max(fromPackage, 0.5), signals)
-      : emptyResult(0.5);
+      ? withEvidence(fromPackage, signals)
+      : emptyResult(0);
   }
 
   async resolve(projectRoot: string): Promise<IProjectMatch> {
