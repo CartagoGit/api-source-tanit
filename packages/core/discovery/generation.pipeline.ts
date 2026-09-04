@@ -65,6 +65,8 @@ import type { IMonorepoDetection } from "../../contracts/interfaces/core/discove
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { toServiceGraph } from "./to-service-graph.helper.js";
 import { deriveServiceId } from "./group-by-service.helper.js";
+import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper.js";
+
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
  *
@@ -979,16 +981,7 @@ async function discoverSpecs(
         project,
         provenance,
         matches: usable.map((c) => c.match),
-        routesByService: new Map(
-          perScanner.map(({ serviceId, scannerSpecs }) => [
-            serviceId,
-            routes.filter(
-              (r) => scannerSpecs.some(
-                (s) => s.method === r.method && s.uri === r.uri,
-              ),
-            ),
-          ]),
-        ),
+        routesByService: accumulateRoutesByService(perScanner, routes),
         monorepoDetection: monorepoDetection ?? undefined,
       };
     }
