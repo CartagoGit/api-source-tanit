@@ -5,11 +5,23 @@ actual del frontmatter y, para `done`, también el `kind`.
 
 ## Ready
 
-Las propuestas nuevas se escriben directamente en `ready/`, sin una
-subcarpeta por kind. Directorio vivo: vacío (todas las propuestas
-abiertas están archivadas como `done/` o retiradas en `retired/`).
-Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran
-en este pase.
+Las propuestas nuevas se escriben directamente en `ready/`, agrupadas
+por `<kind>` cuando aplica (audits, fixes, chores, …). Las propuestas
+abiertas hoy son:
+
+| Id | Kind | Carpeta |
+|---|---|---|
+| `a00014` | `audit` | [`ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md`](ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md) |
+| `a00015` | `audit` | [`ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md`](ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md) |
+| `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
+| `x00022` | `fix` | [`ready/fixes/x00022-path-containment-relative-en-lugar-de-startswith.md`](ready/fixes/x00022-path-containment-relative-en-lugar-de-startswith.md) |
+| `x00023` | `fix` | [`ready/fixes/x00023-api-key-casing-en-countkeyusage.md`](ready/fixes/x00023-api-key-casing-en-countkeyusage.md) |
+| `x00024` | `fix` | [`ready/fixes/x00024-generatecollection-estricto-no-perder-servicios.md`](ready/fixes/x00024-generatecollection-estricto-no-perder-servicios.md) |
+| `x00025` | `fix` | [`ready/fixes/x00025-routesbyservice-acumular-en-lugar-de-sobrescribir.md`](ready/fixes/x00025-routesbyservice-acumular-en-lugar-de-sobrescribir.md) |
+| `c00004` | `chore` | [`ready/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config.md`](ready/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config.md) |
+
+Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran en
+este pase.
 
 ## Activas
 
