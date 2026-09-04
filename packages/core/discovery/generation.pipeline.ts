@@ -41,6 +41,11 @@ import { loadProject } from "./project-loader.service.js";
 
 import { resolveProjectContext } from "./project-context.service.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
+import {
+  buildServiceConfig,
+  pickAuth,
+  toIEndpointAuth,
+} from "./auth-scheme.helper.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
@@ -201,37 +206,64 @@ async function buildForService(
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
   const projectRoot = context.projectRoot;
-  // `service` se usa en S4 para filtrar specs y aplicar overrides por
-  // servicio. En S3 todavia no se aprovecha (la decision del S3 es
-  // mantener el camino single-service operativo y emitir una coleccion
-  // por servicio cuando hay multi). Por eso la anotacion
-  // `void service;` evita el TS6133 sin mentir sobre el uso futuro.
-  void service;
-  // Por ahora, single-service: usamos discovery.specs entero. S4
-  // filtra por service.endpoints cuando los overrides por servicio
-  // esten disponibles.
+  // S4: el descriptor ya se usa — no más `void service;`. Aplicamos
+  // los overrides per-service (baseUrl + auth) sobre el resultado de
+  // discovery. El trabajo se hace SIEMPRE sobre `localConfig`, una
+  // copia de `discovery.config`: mutar el original contaminaría la
+  // siguiente iteración del loop multi-service en `buildFor`. Es la
+  // diferencia entre "una colección por servicio" y "N colecciones
+  // con la misma baseUrl de la última iteración".
+  //
+  // Single-service path: `service.baseUrl === null` y `service.auth
+  // === undefined`, así que `buildServiceConfig(config, service)`
+  // produce una copia equivalente a la original (salvo el array de
+  // variables, que también se copia por valor). Los 21 ejemplos
+  // siguen pasando porque ese caso es el dominante.
+  //
+  // Spec filtering por `service.endpoints` queda para un slice
+  // posterior (cuando un override por servicio pueda cambiar qué
+  // endpoints entran); aquí todos los servicios ven los mismos
+  // `discovery.specs`. La aceptación de S4 es authScheme + baseUrl
+  // por servicio — el filtrado no se exige.
+  const localConfig = buildServiceConfig(discovery.config, service);
   const specs = [...discovery.specs];
   const inference = applyAgnosticInference(specs);
 
   // Variables de colección: se derivan las que falten, respetando las
-  // que el host ya declare.
-  const config = discovery.config;
-  config.variables = inferCollectionVariables(specs, config.variables ?? []);
-  if (options.collectionName) config.collectionName = options.collectionName;
+  // que el host ya declare (y el `baseUrl` que `buildServiceConfig`
+  // acaba de clavar por servicio).
+  localConfig.variables = inferCollectionVariables(specs, localConfig.variables ?? []);
+  if (options.collectionName) localConfig.collectionName = options.collectionName;
 
   // El esquema de auth se resuelve ANTES de construir: decide qué
   // cabeceras lleva cada petición, así que no se puede parchear después.
-  const authScheme = detectAuthScheme(specs, hasLoginEndpoint(specs));
-  const collection = buildCollection(specs, config, authScheme);
+  //
+  // S4: la auth se resuelve per-service. El detector por-espec
+  // (`detectAuthScheme`) corre sobre los specs del servicio; el
+  // override del descriptor (`service.auth`) gana si está definido,
+  // y `pickAuth` lo propaga sin colapsar el discriminante (revisión
+  // de auditoría #16: un `{ kind: "scheme", scheme: "bearer" }` del
+  // descriptor NUNCA termina como `{ kind: "none" }`). El resultado
+  // vuelve a `IDetectedAuthScheme` para que `buildCollection`,
+  // `applyAuthFlow` y `authVariablesFor` (todos consumidores de
+  // `IDetectedAuthScheme`) vean la forma que esperan.
+  const detectedFromSpecs = detectAuthScheme(specs, hasLoginEndpoint(specs));
+  const projectWideFallback = toIEndpointAuth(detectedFromSpecs);
+  const effectiveAuth = pickAuth(service, projectWideFallback);
+  const authScheme: IDetectedAuthScheme =
+    effectiveAuth !== undefined
+      ? authSchemeFromEndpointAuth(effectiveAuth, service.match.framework)
+      : detectedFromSpecs;
+  const collection = buildCollection(specs, localConfig, authScheme);
 
   // El flujo de auth es parte del pipeline, no del script: si viviera
   // solo en `generate.script.ts`, ni los tests ni el gate lo
   // ejercitarían, que es justo lo que pasaba.
   const tokenResponsePath =
-    config.tokenResponsePath ?? (await detectLaravelTokenPath(projectRoot));
+    localConfig.tokenResponsePath ?? (await detectLaravelTokenPath(projectRoot));
   const authFlow = applyAuthFlow(collection, {
     tokenResponsePath,
-    loginEndpointName: config.loginEndpointName,
+    loginEndpointName: localConfig.loginEndpointName,
   });
   // Las variables que hay que rellenar dependen del esquema: una API
   // key necesita `apiKey`, OAuth2 necesita `clientId` y `clientSecret`,
@@ -241,23 +273,23 @@ async function buildForService(
     ...authVariablesFor(authScheme),
   ];
   if (needed.length > 0) {
-    const known = new Set(config.variables.map((v) => v.key));
-    config.variables = [
-      ...config.variables,
+    const known = new Set(localConfig.variables.map((v) => v.key));
+    localConfig.variables = [
+      ...localConfig.variables,
       ...needed.filter((v) => {
         if (known.has(v.key)) return false;
         known.add(v.key);
         return true;
       }),
     ];
-    collection.variable = config.variables;
+    collection.variable = localConfig.variables;
   }
 
   return {
     collection,
     specs,
     routes: discovery.routes,
-    config,
+    config: localConfig,
     match: discovery.match,
     origin: discovery.origin,
     authFlow,
