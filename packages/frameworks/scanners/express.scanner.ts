@@ -42,9 +42,9 @@ import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.inte
 import { parseModule } from "../../core/language-frontends/typescript/index.js";
 import {
   collectMethodCallsFromSource,
-} from "../typescript/collect-method-calls.js";
-import { propagateConstants } from "../typescript/constant-propagation.js";
-import { toTSMethodCalls } from "../typescript/scanner-bridge.js";
+} from "../typescript/collect-method-calls.helper.js";
+import { propagateConstants } from "../typescript/constant-propagation.helper.js";
+import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 

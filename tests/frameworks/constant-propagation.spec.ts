@@ -14,8 +14,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { propagateConstants } from "../../packages/frameworks/typescript/constant-propagation";
-import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls";
+import { propagateConstants } from "../../packages/frameworks/typescript/constant-propagation.helper";
+import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 import type { IConstantBinding } from "../../packages/contracts/interfaces/core/language-ir.interface";
 
 describe("propagateConstants — caso básico de propagación", () => {

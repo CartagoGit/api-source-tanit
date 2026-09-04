@@ -46,7 +46,7 @@ export {
   collectTaggedTemplates,
   collectTaggedTemplatesFromSource,
   type ITaggedTemplate,
-} from "./typescript/tagged-template.js";
+} from "./typescript/tagged-template.helper.js";
 import type { IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
 import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
 import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanners.interface.js";

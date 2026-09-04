@@ -51,7 +51,7 @@
  * honesto en vez de tragárselo. Comportamiento por defecto alineado
  * con el scanner actual.
  */
-import type { ITaggedTemplate } from "../typescript/tagged-template.js";
+import type { ITaggedTemplate } from "../typescript/tagged-template.helper.js";
 
 /** Tags que el scanner reconoce como etiquetas de embedded SDL. */
 const DEFAULT_TAGS: ReadonlyArray<string> = ["gql", "graphql"];

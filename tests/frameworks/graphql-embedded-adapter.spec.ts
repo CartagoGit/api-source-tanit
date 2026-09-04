@@ -11,8 +11,8 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.adapter";
-import type { ITaggedTemplate } from "../../packages/frameworks/typescript/tagged-template";
+import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.scanner";
+import type { ITaggedTemplate } from "../../packages/frameworks/typescript/tagged-template.helper";
 
 /** Helper: crea un ITaggedTemplate mínimo con `raw` y `tag`. */
 function tpl(tag: string, raw: string): ITaggedTemplate {

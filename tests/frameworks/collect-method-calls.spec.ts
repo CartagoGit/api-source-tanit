@@ -17,7 +17,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls";
+import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 
 describe("collectMethodCallsFromSource — estilos del callee", () => {
   test("identifier: `app.get('/x')` se reconoce con receiverKind=identifier", () => {

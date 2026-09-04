@@ -21,8 +21,8 @@ import {
   collectAliases,
   collectReexports,
   resolveCallee,
-} from "../../packages/frameworks/typescript/symbol-resolver";
-import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls";
+} from "../../packages/frameworks/typescript/symbol-resolver.helper";
+import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 
 /** Path al directorio temporal compartido por los tests de disco. */
 let tmpRoot = "";

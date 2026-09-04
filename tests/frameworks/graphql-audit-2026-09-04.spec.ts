@@ -26,8 +26,8 @@ import {
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
 import {
   collectTaggedTemplatesFromSource,
-} from "../../packages/frameworks/typescript/tagged-template";
-import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.adapter";
+} from "../../packages/frameworks/typescript/tagged-template.helper";
+import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.scanner";
 
 const projects: ITempProject[] = [];
 
