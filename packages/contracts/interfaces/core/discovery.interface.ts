@@ -157,6 +157,23 @@ export interface IGenerationOptions {
    * a00012 S4.
    */
   readonly argv?: ReadonlyArray<string> | undefined;
+  /**
+   * Combinar todos los servicios de un monorepo en una sola
+   * coleccion. Default `false`: el pipeline emite una coleccion
+   * por servicio. Solo aplica a multi-service (a00013 S3); en
+   * proyectos planos se ignora.
+   *
+   * Cuando `true`, el `PipelineResult` siempre es
+   * `IGenerationResult` (no array). Cuando `false` o ausente y
+   * los `services` detectados son > 1, devuelve
+   * `IGenerationResult[]`. Un solo servicio detectado siempre
+   * devuelve `IGenerationResult` (legacy).
+   *
+   * El caller decide: el CLI pasa este flag segun
+   * `--combine-services`; el plugin MCP y la web lo pasan segun
+   * una opcion de la UI equivalente.
+   */
+  readonly combineServices?: boolean | undefined;
 }
 
 /**
