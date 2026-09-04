@@ -1,20 +1,19 @@
 /**
- * Interfaz de configuración del proyecto.
+ * Project configuration interface.
  *
- * Todo proyecto que use este paquete debe proporcionar un objeto
- * `ProjectConfig` con sus valores específicos (nombre, variables,
- * prefijos de rutas, zonas, etc.). El paquete en sí NO contiene
- * ningún valor de proyecto: solo esta interfaz y los servicios
- * que la consumen.
+ * Every project using this package must provide a `ProjectConfig`
+ * object with its own values (name, variables, route prefixes, zones,
+ * etc.). The package itself contains NO project values: only this
+ * interface and the services that consume it.
  *
- * Ejemplo mínimo:
+ * Minimal example:
  * ```ts
  * import type { ProjectConfig } from "./contracts/project-config.interface.js";
  *
  * export const config: ProjectConfig = {
- *   name: "mi-api",
- *   collectionName: "Mi API (Catálogo)",
- *   collectionDescription: "Colección Postman de Mi API.",
+ *   name: "my-api",
+ *   collectionName: "My API (Catalog)",
+ *   collectionDescription: "Postman collection for My API.",
  *   baseUrl: "http://localhost",
  *   variables: [
  *     { key: "baseUrl", value: "http://localhost", type: "string" },
@@ -23,121 +22,122 @@
  *   filePrefixes: {},
  *   zones: [],
  *   zoneOrder: [],
- *   defaultZone: "Otros",
+ *   defaultZone: "Other",
  *   authDescriptions: {},
  *   loginEndpointName: "Login",
  * };
  * ```
  *
- * `baseUrl` por defecto es el **origen** (`DEFAULT_BASE_URL`). El sufijo
- * `/api` solo aparece cuando una de las fuentes documentadas en
- * `BASE_PATH_SOURCES` lo aporta — ver `a00012 S4`.
+ * The default `baseUrl` is the **origin** (`DEFAULT_BASE_URL`). The
+ * `/api` suffix only appears when one of the sources documented in
+ * `BASE_PATH_SOURCES` contributes it -- see `a00012 S4`.
  */
 import type { PostmanVariable } from "./postman.interface.js";
 
 /**
- * Configuración completa que un proyecto debe proporcionar.
+ * Complete configuration a project must provide.
  */
 export interface ProjectConfig {
-  /** Nombre corto del proyecto (usado como basename del JSON de salida). */
+  /** Short project name (used as basename of the output JSON). */
   name: string;
 
-  /** Nombre visible de la colección en Postman (`info.name`). */
+  /** Display name of the collection in Postman (`info.name`). */
   collectionName: string;
 
   /**
-   * ID fijo de la colección en Postman (UUID). Opcional.
+   * Fixed collection ID in Postman (UUID). Optional.
    *
-   * Si no se declara, se deriva de forma determinista del nombre del
-   * proyecto, de modo que regenerar y re-importar ACTUALIZA la colección
-   * existente en lugar de crear una copia.
+   * If not declared, it is derived deterministically from the project
+   * name, so regenerating and re-importing UPDATES the existing
+   * collection instead of creating a copy.
    *
-   * Fíjalo a mano si renombras el proyecto o lo mueves de carpeta y
-   * quieres conservar la colección que ya tienes en Postman.
+   * Pin it manually if you rename the project, move it to a different
+   * folder and want to keep the collection you already have in Postman.
    */
   collectionId?: string;
 
-  /** Descripción de la colección (`info.description`). */
+  /** Collection description (`info.description`). */
   collectionDescription: string;
 
   /**
-   * URL base por defecto (origen puro; el sufijo `/api` solo se añade
-   * cuando una fuente explícita lo aporta — ver cabecera del fichero).
+   * Default base URL (pure origin; the `/api` suffix is only added
+   * when an explicit source contributes it -- see file header).
    */
   baseUrl: string;
 
-  /** Variables de colección Postman. */
+  /** Postman collection variables. */
   variables: PostmanVariable[];
 
   /**
-   * Mapa archivo de rutas → prefijos externos aplicados por su
-   * ServiceProvider. Si un archivo no está aquí, se asume `["api"]`.
+   * Map of routes file -> external prefixes applied by its
+   * ServiceProvider. If a file is not listed here, `["api"]` is assumed.
    *
-   * Ejemplo:
+   * Example:
    * ```ts
    * {
    *   "routes/api.php": [],
-   *   "routes/pedidos.php": ["api", "pedidos"],
+   *   "routes/orders.php": ["api", "orders"],
    * }
    * ```
    */
   filePrefixes: Record<string, string[]>;
 
   /**
-   * Prefijos de URI que definen zonas lógicas. Orden de prioridad:
-   * la primera coincidencia gana.
+   * URI prefixes that define logical zones. Priority order: the first
+   * match wins.
    *
-   * Ejemplo:
+   * Example:
    * ```ts
    * [
    *   ["login", "Auth"],
-   *   ["certificados", "Auth"],
-   *   ["productos", "Recursos"],
+   *   ["certificates", "Auth"],
+   *   ["products", "Resources"],
    * ]
    * ```
    */
   zones: ReadonlyArray<readonly [string, string]>;
 
-  /** Orden en que se imprimen las zonas en list/stats. */
+  /** Order in which zones are printed in list/stats. */
   zoneOrder: string[];
 
-  /** Zona por defecto cuando un endpoint no encaja con ningún prefijo. */
+  /** Default zone when an endpoint does not match any prefix. */
   defaultZone: string;
 
   /**
-   * Descripciones reutilizadas en el campo `description` de las
-   * requests. Clave libre (p. ej. "sanctumToken", "jwtToken", "externalApiKey").
+   * Reusable descriptions for the `description` field of requests.
+   * Free-form key (e.g. "sanctumToken", "jwtToken", "externalApiKey").
    */
   authDescriptions: Record<string, string>;
 
   /**
-   * Nombre del endpoint de login para el auto-token. Si no existe
-   * un endpoint con este nombre, no se aplica el script de auto-token.
+   * Name of the login endpoint for the auto-token script. If no
+   * endpoint with this name exists, the auto-token script is not
+   * applied.
    */
   loginEndpointName: string;
 
   /**
-   * Reglas especiales de agrupación por URI. Si una URI empieza con
-   * alguno de estos prefijos, se agrupa bajo la clave dada en lugar
-   * de usar el primer segmento.
+   * Special URI grouping rules. If a URI starts with one of these
+   * prefixes, it is grouped under the given key instead of using the
+   * first segment.
    *
-   * Ejemplo:
+   * Example:
    * ```ts
    * {
    *   "tol/tecdoc": "tol/tecdoc",
-   *   "proveedores-externos": "proveedores-externos",
+   *   "external-providers": "external-providers",
    * }
    * ```
    */
   uriGroupOverrides?: Record<string, string>;
 
   /**
-   * Environments adicionales a generar junto a la colección. Si está
-   * vacío o undefined, no se genera ningún environment. Cada `baseUrl`
-   * reemplaza el del config solo en ese environment.
+   * Additional environments to generate alongside the collection. If
+   * empty or undefined, no environment is generated. Each `baseUrl`
+   * replaces the config one only for that environment.
    *
-   * Para generar dev/staging/prod automáticamente, usa
-   * `defaultEnvironments(baseUrl)` de
+   * To generate dev/staging/prod automatically, use
+   * `defaultEnvironments(baseUrl)` from
    * `services/environment-builder.service.ts`.
    */
   environments?: ReadonlyArray<{
@@ -147,13 +147,14 @@ export interface ProjectConfig {
   }>;
 
   /**
-   * Dot-path donde viene el token en la respuesta del login:
+   * Dot-path where the token comes from in the login response:
    * `data.access_token` (Sanctum/Laravel Passport), `access_token`
-   * (tymon/jwt-auth), `token`…
+   * (tymon/jwt-auth), `token`...
    *
-   * Opcional. Si no se declara, el script generado prueba en ejecución
-   * los caminos habituales y usa el primero que traiga un string no
-   * vacío. Decláralo solo si tu API devuelve el token en un sitio raro.
+   * Optional. If not declared, the generated script tries the usual
+   * paths at runtime and uses the first one that returns a non-empty
+   * string. Only declare it if your API returns the token in an
+   * unusual location.
    */
   tokenResponsePath?: string;
 }

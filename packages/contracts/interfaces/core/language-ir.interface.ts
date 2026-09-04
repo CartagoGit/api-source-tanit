@@ -1,71 +1,70 @@
 /**
- * `ILanguageIR` — el *Language Intermediate Representation* que los
- * scanners TypeScript-flavored consumen.
+ * `ILanguageIR` — the *Language Intermediate Representation* that the
+ * TypeScript-flavored scanners consume.
  *
- * Hoy los 6 scanners TS (Express, NestJS, Fastify, Hono, Next.js, tRPC)
- * entienden solamente `app.get(...)` y `router.post(...)` — la forma
- * `Identifier + .method` que produce el frontend TS de
- * `packages/core/language-frontends/typescript`. Los proyectos reales
- * mezclan muchos más estilos:
+ * Today the 6 TS scanners (Express, NestJS, Fastify, Hono, Next.js, tRPC)
+ * only understand `app.get(...)` and `router.post(...)` — the
+ * `Identifier + .method` shape produced by the TS frontend at
+ * `packages/core/language-frontends/typescript`. Real projects mix
+ * many more styles:
  *
  *   - `this.router.get(...)` — `ThisExpression` + member.
  *   - `api.router.get(...)` — chained member.
  *   - `getRouter().get(...)` — `CallExpression` + member (factory).
- *   - `server["get"](...)` — computed member con string literal.
+ *   - `server["get"](...)` — computed member with string literal.
  *   - `router?.get(...)` — optional chaining.
  *   - `const r = app; r.get(...)` — alias.
  *   - `export { router } from "./router"` — reexport.
  *   - `const M = "get"; app[M](...)` — constant propagation.
  *
- * El frontend TS actual no recoge ninguna de estas variantes porque su
- * `TSMethodCall.callee` es solo `"ident.method"`. Migrar cada scanner
- * por su cuenta duplicaría seis veces la lógica de normalización.
+ * The current TS frontend does not collect any of these variants because
+ * its `TSMethodCall.callee` is only `"ident.method"`. Migrating each
+ * scanner separately would duplicate the normalization logic six times.
  *
- * `ILanguageIR` es la capa intermedia: los nuevos collectors
+ * `ILanguageIR` is the intermediate layer: the new collectors
  * (`collectMethodCalls`, `collectAliases`, `collectReexports`,
- * `propagateConstants`) producen este shape agnóstico, y los scanners
- * consumen ese shape en vez de mirar el AST de Babel directamente. El
- * frontend TS existente NO se reemplaza — convive, y los scanners
- * nuevos son un módulo aparte en `packages/frameworks/typescript/`.
+ * `propagateConstants`) produce this agnostic shape, and the scanners
+ * consume that shape instead of looking at the Babel AST directly. The
+ * existing TS frontend is NOT replaced — they coexist, and the new
+ * scanners live as a separate module in `packages/frameworks/typescript/`.
  *
- * Por qué **aquí** y no en `packages/frameworks/typescript/`:
- *   - El shape es independiente del lenguaje: cualquier collector de
- *     cualquier framework que quiera producir `IRouteCallExpression`
- *     debería poder hacerlo sin reescribir el contrato.
- *   - Los scanners (en `packages/frameworks/scanners/`) ya importan
- *     tipos de `contracts/interfaces/core/` por convención del repo;
- *     meter esto en `frameworks/` introduciría un nuevo eje de
- *     dependencia sin un beneficio claro.
+ * Why **here** and not in `packages/frameworks/typescript/`:
+ *   - The shape is language-independent: any collector from any
+ *     framework that wants to produce `IRouteCallExpression` should
+ *     be able to do so without rewriting the contract.
+ *   - The scanners (in `packages/frameworks/scanners/`) already import
+ *     types from `contracts/interfaces/core/` by repo convention;
+ *     putting this in `frameworks/` would introduce a new dependency
+ *     axis without a clear benefit.
  *
- * No introduce un barrel `packages/contracts/index.ts` — el README de
- * `contracts/` es explícito sobre no añadirlo. Los importadores usan
- * path relativo canónico.
+ * It does not introduce a barrel `packages/contracts/index.ts` — the
+ * `contracts/` README is explicit about not adding one. Importers use
+ * canonical relative paths.
  *
- * Forma parte de a00016 (Frontend TS multi-estilo — LanguageIR).
- * S1 deja solo el shape; S2-S5 montan los collectors y migran los
- * scanners que los consumen.
+ * Part of a00016 (Multi-style TS frontend — LanguageIR).
+ * S1 ships only the shape; S2-S5 build the collectors and migrate the
+ * scanners that consume them.
  */
 
 import type { TSLiteral } from "./language/typescript-frontend-literal.interface.js";
 
 /**
- * Cómo se accede al **receptor** de la llamada.
+ * How the **receiver** of the call is accessed.
  *
- * - `"identifier"` — `app.get`. El frontend TS ya cubre este caso.
- * - `"this"` — `this.router.get`. El receptor es `this` (clase).
- * - `"member"` — `api.router.get`. Cadena de propiedades.
- * - `"factory"` — `getRouter().get`. Una `CallExpression` precede
- *   al member: el método es propiedad del *return value* de la
- *   factory.
- * - `"computed"` — `server["get"]`. La propiedad es un string
- *   literal computado en lugar de un identifier.
- * - `"optional"` — `router?.get`. Encadenamiento opcional; el
- *   receptor es el miembro izquierdo del `?.`.
+ * - `"identifier"` — `app.get`. The TS frontend already covers this case.
+ * - `"this"` — `this.router.get`. The receiver is `this` (class).
+ * - `"member"` — `api.router.get`. Chain of properties.
+ * - `"factory"` — `getRouter().get`. A `CallExpression` precedes the
+ *   member: the method is a property of the factory's *return value*.
+ * - `"computed"` — `server["get"]`. The property is a computed string
+ *   literal instead of an identifier.
+ * - `"optional"` — `router?.get`. Optional chaining; the receiver is
+ *   the left-hand member of the `?.`.
  *
- * Esta enumeración es **del receptor**, no del método: el método va
- * aparte en `method` (o en `resolvedMethod` si la propagación de
- * constantes lo resolvió). Mantener las dos dimensiones separadas es
- * lo que permite que `app["get"]` se clasifique como
+ * This enumeration belongs to the **receiver**, not the method: the
+ * method lives separately in `method` (or in `resolvedMethod` if
+ * constant propagation resolved it). Keeping the two dimensions
+ * separate is what allows `app["get"]` to classify as
  * `receiverKind: "identifier"`, `method: ""`, `resolvedMethod: "get"`.
  */
 export type ReceiverKind =
@@ -77,9 +76,9 @@ export type ReceiverKind =
   | "optional";
 
 /**
- * Una `CallExpression` vista por el colector multi-estilo.
+ * A `CallExpression` as seen by the multi-style collector.
  *
- * Ejemplos y la tupla que producen:
+ * Examples and the tuple they produce:
  *
  *   - `app.get("/x")`             → receiverKind="identifier",
  *                                   method="get",
@@ -94,7 +93,7 @@ export type ReceiverKind =
  *                                   method="get",
  *                                   callee="getRouter().get".
  *   - `server["get"]("/x")`       → receiverKind="computed",
- *                                   method=""  (no es Identifier),
+ *                                   method=""  (not an Identifier),
  *                                   callee='server["get"]'.
  *   - `router?.get("/x")`         → receiverKind="optional",
  *                                   method="get",
@@ -103,71 +102,71 @@ export type ReceiverKind =
  *                                   method=""  (computed),
  *                                   resolvedMethod="get".
  *
- * `callee` es la cadena completa tal como aparecería en el código
- * (incluyendo el `?.` y los corchetes). Sirve para que los scanners
- * que hoy hacen `callee.split(".")` puedan seguir haciéndolo sin
- * cambiar, y para mensajes de error.
+ * `callee` is the full string as it would appear in code (including
+ * the `?.` and brackets). It lets scanners that today do
+ * `callee.split(".")` keep doing so unchanged, and serves for error
+ * messages.
  *
- * `args` son los argumentos de la llamada, ya desempacados por el
- * frontend TS (un `TSLiteral[]`). Los scanners que necesiten tipos
- * más ricos pueden hacer narrowing sobre `args[0].kind`.
+ * `args` are the call's arguments, already unpacked by the TS
+ * frontend (a `TSLiteral[]`). Scanners that need richer types can
+ * narrow on `args[0].kind`.
  *
- * `range` apunta a los offsets en bytes del nodo `CallExpression`
- * original. Los scanners pueden usarlo para reporting futuro.
+ * `range` points at the byte offsets of the original `CallExpression`
+ * node. Scanners can use it for future reporting.
  *
- * `resolvedMethod` lo rellena `propagateConstants` (S4) cuando la
- * propiedad era computed y se ha resuelto a un literal. Si
- * `method !== ""`, gana `method`; si `method === ""` y
- * `resolvedMethod !== undefined`, gana `resolvedMethod`. Un scanner
- * que sólo entiende HTTP methods haría `const m =
+ * `resolvedMethod` is filled in by `propagateConstants` (S4) when
+ * the property was computed and was resolved to a literal. If
+ * `method !== ""`, `method` wins; if `method === ""` and
+ * `resolvedMethod !== undefined`, `resolvedMethod` wins. A scanner
+ * that only understands HTTP methods would do `const m =
  * expr.method || expr.resolvedMethod || ""`.
  */
 export interface IRouteCallExpression {
-  /** Cadena completa del callee (incluye `?.`, corchetes, etc.). */
+  /** Full callee string (includes `?.`, brackets, etc.). */
   readonly callee: string;
-  /** Forma del receptor (no del método). */
+  /** Shape of the receiver (not of the method). */
   readonly receiverKind: ReceiverKind;
   /**
-   * El método HTTP cuando es un `Identifier` (`get`, `post`...).
-   * Vacío si la propiedad es un string literal computado
-   * (`server["get"]`) — en ese caso mirar `resolvedMethod`.
+   * The HTTP method when it is an `Identifier` (`get`, `post`...).
+   * Empty when the property is a computed string literal
+   * (`server["get"]`) — in that case look at `resolvedMethod`.
    */
   readonly method: string;
-  /** Argumentos de la llamada, en orden. */
+  /** Call arguments, in order. */
   readonly args: ReadonlyArray<TSLiteral>;
-  /** Rango en bytes sobre el archivo original. */
+  /** Byte range in the original file. */
   readonly range: {
     readonly file: string;
     readonly start: number;
     readonly end: number;
   };
   /**
-   * Si la propagación de constantes resolvió la propiedad, este es
-   * el valor literal (`"get"`, `"POST"`, ...). Sólo presente cuando
-   * la propiedad era computed y se resolvió.
+   * If constant propagation resolved the property, this is the literal
+   * value (`"get"`, `"POST"`, ...). Only present when the property
+   * was computed and was resolved.
    */
   readonly resolvedMethod?: string;
 }
 
 /**
- * Un `import` visto por el colector de aliases.
+ * An `import` as seen by the aliases collector.
  *
- * Cubre las tres formas que interesan a los scanners:
- *   - `import app from "express"` — alias de default.
- *   - `import { Router } from "express"` — alias de named.
- *   - `import * as Router from "express"` — alias de namespace.
- *   - `import { Router as R } from "express"` — alias renombrado.
+ * Covers the three forms that matter to scanners:
+ *   - `import app from "express"` — default alias.
+ *   - `import { Router } from "express"` — named alias.
+ *   - `import * as Router from "express"` — namespace alias.
+ *   - `import { Router as R } from "express"` — renamed alias.
  *
- * `name` es el **binding local** (lo que aparece en el resto del
- * archivo). El scanner que quiera resolver el origen usa `source`
- * para pedirle al siguiente paso que mire ese módulo.
+ * `name` is the **local binding** (what appears in the rest of the
+ * file). The scanner that wants to resolve the origin uses `source`
+ * to ask the next step to look at that module.
  */
 export interface IImportBinding {
-  /** Binding local con el que el resto del archivo se refiere. */
+  /** Local binding the rest of the file refers to. */
   readonly name: string;
-  /** Módulo del que se importa, tal como aparece en el source. */
+  /** Module imported from, as it appears in source. */
   readonly source: string;
-  /** Rango en bytes del specifier. */
+  /** Byte range of the specifier. */
   readonly range: {
     readonly file: string;
     readonly start: number;
@@ -176,23 +175,23 @@ export interface IImportBinding {
 }
 
 /**
- * Un `export ... from` visto por el colector de reexports.
+ * An `export ... from` as seen by the reexports collector.
  *
- * Cubre:
- *   - `export { router } from "./router"` — reexport de named.
- *   - `export * from "./router"` — reexport de namespace
- *     (en ese caso `name = "*"`).
+ * Covers:
+ *   - `export { router } from "./router"` — named reexport.
+ *   - `export * from "./router"` — namespace reexport
+ *     (in that case `name = "*"`).
  *
- * `from` es la ruta del módulo reexportado. Los scanners miran
- * este campo junto con `IImportBinding.source` para resolver
- * routers que viven en otro fichero.
+ * `from` is the path of the reexported module. Scanners look at this
+ * field together with `IImportBinding.source` to resolve routers that
+ * live in another file.
  */
 export interface IReexport {
-  /** Nombre del símbolo reexportado (o `"*"`). */
+  /** Name of the reexported symbol (or `"*"`). */
   readonly name: string;
-  /** Módulo del que se reexporta. */
+  /** Module reexported from. */
   readonly from: string;
-  /** Rango en bytes del nodo. */
+  /** Byte range of the node. */
   readonly range: {
     readonly file: string;
     readonly start: number;
@@ -201,26 +200,25 @@ export interface IReexport {
 }
 
 /**
- * Una constante literal (`const M = "get"`) vista por el colector
- * de propagación.
+ * A literal constant (`const M = "get"`) as seen by the propagation
+ * collector.
  *
- * Sólo entran aquí las constantes que se pueden **propagar con
- * certeza**: literales de string, number o boolean directos. Ni
- * concatenaciones (`"GET" + suffix`), ni template literals
- * (`` `get` ``), ni expresiones — esos quedan fuera del contrato
- * y se ignoran silenciosamente. El límite es a propósito: una
- * propagación aproximada generaría falsos positivos y rompería la
- * confianza de los scanners en el shape.
+ * Only constants that can be **propagated with certainty** enter here:
+ * direct string, number or boolean literals. No concatenations
+ * (`"GET" + suffix`), no template literals (`` `get` ``), no
+ * expressions — those stay out of the contract and are silently
+ * ignored. The limit is deliberate: an approximate propagation would
+ * generate false positives and break the scanners' trust in the shape.
  *
- * `name` es el binding local; el scanner que vea `app[M](...)`
- * mirará aquí para resolver `M` a su `value`.
+ * `name` is the local binding; the scanner that sees `app[M](...)`
+ * will look here to resolve `M` to its `value`.
  */
 export interface IConstantBinding {
-  /** Binding local (`M` en `const M = "get"`). */
+  /** Local binding (`M` in `const M = "get"`). */
   readonly name: string;
-  /** Valor literal — sólo string | number | boolean. */
+  /** Literal value — only string | number | boolean. */
   readonly value: string | number | boolean;
-  /** Rango en bytes del nodo. */
+  /** Byte range of the node. */
   readonly range: {
     readonly file: string;
     readonly start: number;

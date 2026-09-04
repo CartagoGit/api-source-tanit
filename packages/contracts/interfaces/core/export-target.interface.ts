@@ -1,42 +1,45 @@
 /**
- * El contrato de un formato de salida.
+ * The contract of an output format.
  *
- * El escaneo ya produce una representación intermedia —`EndpointSpec[]`
- * más la configuración del proyecto— que no sabe nada de Postman. Todo
- * lo que hace `collection-builder` es serializar eso a un formato
- * concreto. Un exportador es exactamente lo mismo para otro formato, y
- * por eso añadir uno **no toca el motor de escaneo**.
+ * The scan already produces an intermediate representation —an
+ * `EndpointSpec[]` plus the project configuration— that knows nothing
+ * about Postman. All `collection-builder` does is serialise that into
+ * a concrete format. An exporter does exactly the same for another
+ * format, and that is why adding one **does not touch the scan
+ * engine**.
  *
- * Un exportador devuelve una lista de artefactos, no una cadena. Bruno
- * no es un fichero: es un árbol de carpetas con un `.bru` por request, y
- * un contrato que devolviera `string` habría dejado fuera el único
- * formato del lote que es Git-friendly, que es justo su gracia.
+ * An exporter returns a list of artifacts, not a string. Bruno is not
+ * a single file: it is a folder tree with one `.bru` per request, and
+ * a contract that returned `string` would have left out the one
+ * format in the batch that is Git-friendly, which is precisely its
+ * point.
  */
 import type { EndpointSpec } from "./postman.interface.js";
 import type { ProjectConfig } from "./project-config.interface.js";
 
-/** Un fichero a escribir, con su ruta relativa al directorio de salida. */
+/** A file to write, with its path relative to the output directory. */
 export interface IExportArtifact {
-  /** Ruta relativa. Puede llevar carpetas: `mi-api/users/list.bru`. */
+  /** Relative path. It may include folders: `my-api/users/list.bru`. */
   readonly path: string;
   readonly content: string;
 }
 
-/** Todo lo que un exportador necesita saber del proyecto. */
+/** Everything an exporter needs to know about the project. */
 export interface IExportInput {
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly config: ProjectConfig;
   /**
-   * Esquema de autenticación ya detectado.
+   * Auth scheme, already detected.
    *
-   * Se pasa hecho en vez de dejar que cada exportador lo deduzca: cinco
-   * detecciones paralelas acabarían discrepando, y entonces el mismo
-   * proyecto diría bearer en Postman y nada en Insomnia.
+   * It is passed in precomputed so each exporter does not deduce it:
+   * five parallel detections would end up disagreeing, and then the
+   * same project would say "bearer" for Postman and "none" for
+   * Insomnia.
    */
   readonly auth: IExportAuth;
 }
 
-/** Lo que un exportador necesita del esquema de auth. */
+/** What an exporter needs from the auth scheme. */
 export interface IExportAuth {
   readonly type: "bearer" | "apikey" | "oauth2" | "none";
   readonly keyName?: string | undefined;
@@ -44,36 +47,36 @@ export interface IExportAuth {
 }
 
 /**
- * Un formato de salida.
+ * An output format.
  *
- * Implementarlo y registrarlo en `export-registry.service.ts` es todo lo
- * que hace falta para añadir un formato: el motor de escaneo no se toca,
- * porque lo que se serializa es la representación intermedia que ya
- * produce.
+ * Implementing it and registering it in `export-registry.service.ts`
+ * is all that is needed to add a format: the scan engine is not
+ * touched, because what gets serialised is the intermediate
+ * representation the scan already produces.
  */
 export interface IExportTarget {
-  /** Identificador para `--format`. En minúsculas, sin espacios. */
+  /** Identifier for `--format`. Lowercase, no spaces. */
   readonly format: string;
-  /** Una línea para la ayuda del CLI. */
+  /** One-line summary for the CLI help. */
   readonly summary: string;
   /**
-   * Serializa el proyecto a los ficheros de este formato.
+   * Serialises the project into the files of this format.
    *
-   * Es **síncrono y puro**: no toca el disco ni la red. Escribir es
-   * trabajo de quien llama, y así un exportador se prueba comparando
-   * cadenas en vez de montando un sistema de ficheros.
+   * It is **synchronous and pure**: it does not touch disk or the
+   * network. Writing is the caller's job, so an exporter can be
+   * tested by comparing strings rather than mounting a file system.
    */
   serialize(input: IExportInput): IExportArtifact[];
   /**
-   * Lo que este formato **no puede** representar de este proyecto.
+   * What this format **cannot** represent for this project.
    *
-   * No todo cabe en todos los formatos, y callarlo es lo peor que se
-   * puede hacer: OpenAPI identifica una operación por ruta + método, así
-   * que un proyecto GraphQL —cinco `POST /graphql` distintos— se queda
-   * en uno. Sin este aviso, el fichero sale con una operación de cinco y
-   * parece correcto.
+   * Not everything fits every format, and staying silent about it is
+   * the worst thing to do: OpenAPI identifies an operation by path
+   * + method, so a GraphQL project —five distinct `POST /graphql`—
+   * collapses to one. Without this warning the file ships with one
+   * operation for five and looks correct.
    *
-   * Opcional: un exportador que lo represente todo no lo implementa.
+   * Optional: an exporter that can represent everything omits it.
    */
   warnings?(input: IExportInput): string[];
 }

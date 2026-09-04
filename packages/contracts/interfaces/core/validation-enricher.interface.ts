@@ -1,28 +1,29 @@
 /**
- * Contrato del enricher agnóstico de validación (S5 / a00012).
+ * Contract of the project-agnostic validation enricher (S5 / a00012).
  *
- * Un `IValidationEnricher` recibe un `IEndpointSpec` y devuelve otro
- * `IEndpointSpec` con las modificaciones que su provider necesite.
+ * An `IValidationEnricher` receives an `IEndpointSpec` and returns
+ * another `IEndpointSpec` with whatever modifications its provider
+ * needs.
  *
- *   - `provider` es el discriminador: el registry
+ *   - `provider` is the discriminator: the registry
  *     (`packages/core/validation/validation-enricher.service.ts`)
- *     despacha por él, así que dos enrichers con el mismo `provider`
- *     chocan.
- *   - `enrich` es **puro**: no muta el input, devuelve uno nuevo. Eso
- *     permite componer varios enrichers en el futuro sin que un fallo
- *     en uno contamine al siguiente.
+ *     dispatches on it, so two enrichers sharing the same `provider`
+ *     collide.
+ *   - `enrich` is **pure**: it does not mutate the input, it returns
+ *     a new one. That allows composing several enrichers in the
+ *     future without a failure in one contaminating the next.
  *
- * El contrato es per-spec a propósito: la colección Postman mezcla
- * carpetas, requests, scripts y descripciones, y mover todo eso a un
- * `IEndpointSpec` obligaría a campos como `bodyVariants: PostmanItem[]`
- * que nadie pidió. Phase 1 (S5) deja los enrichers idempotentes; la
- * generación real de variantes sigue en
- * `enrichCatalogWithFormRequests`, que ahora es un wrapper que
- * despacha por provider.
+ * The contract is per-spec on purpose: the Postman collection mixes
+ * folders, requests, scripts and descriptions, and moving all of
+ * that into an `IEndpointSpec` would force fields such as
+ * `bodyVariants: PostmanItem[]` nobody asked for. Phase 1 (S5)
+ * keeps the enrichers idempotent; the actual variant generation
+ * stays in `enrichCatalogWithFormRequests`, which is now a wrapper
+ * that dispatches by provider.
  *
- * El interfaz vive en `contracts/` y no al lado del registry para
- * cumplir el invariante del repo: leer el tipo de un enricher no
- * puede costar importar el registry (que arrastra lógica de runtime).
+ * The interface lives in `contracts/` and not next to the registry
+ * to honour the repo's invariant: reading an enricher's type must
+ * never cost importing the registry (which drags in runtime logic).
  */
 import type { EndpointSpec } from "./postman.interface.js";
 import type { ValidationProvider } from "../../constants/core/validation-provider.constant.js";

@@ -83,209 +83,210 @@ export interface IProjectScanner {
   resolve(projectRoot: string): Promise<IProjectMatch>;
 }
 
-/** Lo que `IProjectScanner.detect` devuelve. */
+/** What `IProjectScanner.detect` returns. */
 export interface IProjectScannerResult {
-  /** Score 0-1. Si 0, el orquestador lo descarta. */
+  /** Score 0-1. If 0, the orchestrator discards it. */
   readonly score: number;
-  /** Las señales que subieron el score. */
+  /** The signals that raised the score. */
   readonly evidence: ReadonlyArray<IProjectDetectionEvidence>;
 }
 
-/** Una señal individual de detección, expuesta a través de la UI. */
+/** A single detection signal, surfaced through the UI. */
 export interface IProjectDetectionEvidence {
-  /** Qué vio el detector, en una línea legible. */
+  /** What the detector saw, in one human-readable line. */
   readonly signal: string;
-  /** Subida al score que aportó esta señal. */
+  /** Score bump contributed by this signal. */
   readonly weight: number;
-  /** Fichero del que se leyó la señal (relativo al projectRoot). */
+  /** File the signal was read from (relative to projectRoot). */
   readonly artifact?: string;
 }
 
-/** Ruta en formato neutro. Se transforma a EndpointSpec al final. */
+/** Route in neutral format. Transformed into EndpointSpec at the end. */
 export interface ParsedRoute {
   /**
-   * De qué scanner viene esta ruta.
+   * Which scanner produced this route.
    *
-   * Sin este campo, una ruta no podía decir quién la había producido, y
-   * el scanner de OpenAPI se inventó una propiedad escondida
-   * (`__params`) colada con `as any` para reconocer las suyas en un
-   * proyecto híbrido — donde `match.framework` es el del framework
-   * dominante, no el de cada ruta.
+   * Without this field, a route couldn't say who produced it, and the
+   * OpenAPI scanner invented a hidden property (`__params`) smuggled
+   * in with `as any` to recognise its own routes in a hybrid project
+   * — where `match.framework` is the dominant framework, not the
+   * one for each route.
    *
-   * Es opcional porque lo rellena el pipeline al recoger lo que devuelve
-   * cada scanner: obligar a los veintiún scanners a repetir su propio id
-   * en cada ruta sería pedirles que se acuerden de algo que el registro
-   * ya sabe.
+   * It is optional because the pipeline fills it in when collecting
+   * what each scanner returns: forcing all twenty-one scanners to
+   * repeat their own id on every route would be asking them to
+   * remember something the registry already knows.
    */
   framework?: FrameworkId;
-  /** Método HTTP en MAYÚSCULAS. */
+  /** HTTP method in UPPERCASE. */
   method: string;
-  /** URI completa resuelta con prefijos. SIN `api/` si el scanner ya lo aplicó. */
+  /** Full URI resolved with prefixes. WITHOUT `api/` if the scanner already applied it. */
   uri: string;
-  /** URI sin prefijos (la que puso el dev en `Route::get('...')`). */
+  /** URI without prefixes (the one the dev put in `Route::get('...')`). */
   rawUri: string;
-  /** Origen: archivo de rutas o nombre del spec (ej. "openapi.yaml#/paths/~1users"). */
+  /** Origin: routes file or spec name (e.g. "openapi.yaml#/paths/~1users"). */
   sourceFile: string;
-  /** 1-based line number en `sourceFile` (0 si no aplica). */
+  /** 1-based line number in `sourceFile` (0 if not applicable). */
   lineNumber: number;
-  /** Cadena de prefijos activos al declarar la ruta. */
+  /** Chain of prefixes active when declaring the route. */
   prefixChain: string[];
-  /** FQCN del controlador si se pudo resolver (ej. `App\Http\…`). */
+  /** FQCN of the controller if it could be resolved (e.g. `App\Http\…`). */
   controllerClass?: string;
-  /** Nombre del método del controlador (ej. `index`). */
+  /** Name of the controller method (e.g. `index`). */
   actionName?: string;
-  /** Nombre legible del endpoint (auto-derivado si no se da). */
+  /** Human-readable endpoint name (auto-derived if not given). */
   displayName?: string;
-  /** Tags / grupos semánticos (ej. OpenAPI tags). */
+  /** Tags / semantic groups (e.g. OpenAPI tags). */
   tags?: ReadonlyArray<string>;
   /**
-   * Cuerpo exacto de la petición, cuando el scanner lo conoce.
+   * Exact request body, when the scanner knows it.
    *
-   * Lo normal es que no: de un `POST /users` se sacan las **reglas** de
-   * validación y el ejemplo se construye a partir de ellas. Pero hay
-   * protocolos donde el cuerpo no es un conjunto de campos sino un
-   * documento concreto — la consulta de GraphQL es el caso — y
-   * descomponerla en campos para volver a montarla la estropearía.
+   * Usually it does not: from a `POST /users` we extract the
+   * **validation rules** and build the example from them. But there
+   * are protocols where the body is not a set of fields but a
+   * concrete document — the GraphQL query is the case — and
+   * breaking it into fields to reassemble it would ruin it.
    *
-   * Si viene, gana sobre lo que infiera el adapter.
+   * If present, it wins over what the adapter infers.
    */
   body?: unknown;
-  /** Descripción libre del endpoint (summary de OpenAPI, docstring, etc.). */
+  /** Free description of the endpoint (OpenAPI summary, docstring, etc.). */
   description?: string;  /**
-   * Override de auth declarado por el scanner para ESTA ruta.
+   * Auth override declared by the scanner for THIS route.
    *
-   * Audit 2ª revisión #17: sin este campo, los scanners no pueden
-   * declarar "este endpoint es público" / "usa apiKey" desde su
-   * contrato neutral. Solo lo que el adapter ya conoce (`body`,
-   * `fields`) sobrevivía; el auth tenía que venir de la heurística
-   * global del pipeline. Ahora, si un scanner detecta que una ruta
-   * específica rompe la convención del framework (p. ej. una ruta
-   * de login en un proyecto con bearer global), puede declarar el
-   * override aquí y el merger lo respeta.
+   * Audit 2nd review #17: without this field, scanners cannot declare
+   * "this endpoint is public" / "uses apiKey" from their neutral
+   * contract. Only what the adapter already knew (`body`, `fields`)
+   * survived; auth had to come from the pipeline's global heuristic.
+   * Now, if a scanner detects that a specific route breaks the
+   * framework convention (e.g. a login route in a project with global
+   * bearer), it can declare the override here and the merger
+   * respects it.
    */
   auth?: IEndpointAuth;}
 
 /**
- * Lo que devuelve `IRouteScanner.scan()`.
+ * What `IRouteScanner.scan()` returns.
  *
- * Antes los scanners guardaban en un `Map` de instancia los esquemas /
- * validators / structs que iban encontrando: dos invocaciones sobre el
- * mismo scanner contaminaban el resultado, y eso dejó bugs reales
- * (cerrados en a00010 S2). La forma honesta es que el estado **viva
- * en la salida de `scan()`** y se descarte al terminar la llamada —
- * si la siguiente necesita otra vez los datos, los recomputa.
+ * Before, scanners stored in an instance `Map` the schemas /
+ * validators / structs they found: two invocations on the same
+ * scanner contaminated the result, and that caused real bugs (fixed
+ * in a00010 S2). The honest shape is that the state **lives in the
+ * output of `scan()`** and is discarded when the call ends — if the
+ * next one needs the data again, it recomputes it.
  *
- * `routes` son las rutas en formato neutro. Los mapas auxiliares son
- * **opcionales y agnósticos del tipo**: cada scanner los puebla como
- * buenamente pueda, y solo los consume su propio provider en la misma
- * llamada. Un mapa vacío significa "este scanner no recogió nada
- * auxiliar"; `undefined` significa "no aplica a este framework".
+ * `routes` are the routes in neutral format. The auxiliary maps are
+ * **optional and type-agnostic**: each scanner fills them in however
+ * it can, and only its own provider consumes them in the same call.
+ * An empty map means "this scanner did not collect any auxiliary";
+ * `undefined` means "not applicable to this framework".
  *
- * El shape abierto (`schemas` como `Map<string, string>`, `validators`
- * y `structs` como `Map<string, I…Descriptor>`) viene de que los
- * cuatro frameworks tienen dialectos distintos: Fastify lleva el JSON
- * Schema dentro de la propia ruta, Hono monta el validador con
- * `zValidator(...)` y necesita saber en qué fichero está el esquema
- * zod, Fiber y Rust leen el body con `BodyParser` / `web::Json<T>` y
- * tienen que abrir el struct declarado en otro sitio. Echarlo todo a
- * un mismo `Map<string, string>` obligaría a duplicar el descriptor
- * dentro del string serializado.
+ * The open shape (`schemas` as `Map<string, string>`, `validators`
+ * and `structs` as `Map<string, I…Descriptor>`) comes from the four
+ * frameworks having different dialects: Fastify carries the JSON
+ * Schema inside the route itself, Hono mounts the validator with
+ * `zValidator(...)` and needs to know which file holds the zod
+ * schema, Fiber and Rust read the body with `BodyParser` /
+ * `web::Json<T>` and have to open the struct declared elsewhere.
+ * Throwing it all into a single `Map<string, string>` would force
+ * duplicating the descriptor inside the serialized string.
  */
 export interface IScanResult {
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**
-   * Mapa `${method} ${uri}` → descriptor auxiliar.
+   * Map `${method} ${uri}` → auxiliary descriptor.
    *
-   * Lo usa `FastifyRouteScanner` para guardar el JSON Schema declarado
-   * en la propia ruta. Los demás frameworks lo dejan `undefined`.
+   * Used by `FastifyRouteScanner` to store the JSON Schema declared
+   * on the route itself. Other frameworks leave it `undefined`.
    */
   readonly schemas?: ReadonlyMap<string, string>;
   /**
-   * Los descriptores del validador, indexados por `${method} ${uri}`.
+   * Validator descriptors, indexed by `${method} ${uri}`.
    *
-   * Solo `HonoRouteScanner` lo rellena: el nombre del esquema zod
-   * con el que `zValidator(...)` valida, más el fichero donde está
-   * declarado (es típicamente OTRO fichero).
+   * Only `HonoRouteScanner` fills it in: the name of the zod schema
+   * used by `zValidator(...)`, plus the file where it is declared
+   * (typically a different file).
    */
   readonly validators?: ReadonlyMap<string, IValidatorDescriptor>;
   /**
-   * Los structs que parsean el body en Go/Rust, indexados igual.
+   * The structs that parse the body in Go/Rust, indexed the same way.
    *
-   * Lo usan `FiberRouteScanner` y `RustRouteScanner`: el struct al que
-   * apunta `BodyParser` / `web::Json<T>`, más el fichero donde
-   * está declarado.
+   * Used by `FiberRouteScanner` and `RustRouteScanner`: the struct
+   * pointed to by `BodyParser` / `web::Json<T>`, plus the file where
+   * it is declared.
    */
   readonly structs?: ReadonlyMap<string, IStructDescriptor>;
   /**
-   * Errores no fatales encontrados durante el scan: ficheros que un
-   * parser de terceros no pudo procesar pero que no abortan el scan.
+   * Non-fatal errors found during the scan: files that a third-party
+   * parser couldn't process but that don't abort the scan.
    *
-   * Lo rellena `ExpressRouteScanner` desde `parseModule` del frontend
-   * TypeScript: un fichero con sintaxis inválida sale como `null` en el
-   * AST y deja aquí la razón, para que no desaparezca sin rastro.
+   * Filled in by `ExpressRouteScanner` from `parseModule` in the
+   * TypeScript frontend: a file with invalid syntax comes back as
+   * `null` in the AST and leaves the reason here, so it doesn't
+   * disappear without a trace.
    */
   readonly diagnostics?: ReadonlyArray<IParseDiagnostic>;
 }
 
 /**
- * Un problema de parseo no fatal: el fichero no se pudo procesar,
- * pero el scan continúa.
+ * A non-fatal parse problem: the file could not be processed, but
+ * the scan continues.
  *
- * Vive en este paquete (no en el del frontend) para que scanners de
- * cualquier lenguaje puedan reutilizarlo — el shape es agnóstico.
+ * Lives in this package (not in the frontend one) so scanners in any
+ * language can reuse it — the shape is agnostic.
  */
 export interface IParseDiagnostic {
-  /** Fichero que no se pudo procesar (tal como se pasó al parser). */
+  /** File that could not be processed (as passed to the parser). */
   readonly file: string;
   readonly severity: "error" | "warning";
-  /** Razón legible: el mensaje del parser, sin stack. */
+  /** Human-readable reason: the parser message, no stack. */
   readonly reason: string;
 }
 
 /**
- * Lo que Hono asocia a una ruta: nombre del esquema + ruta del
- * fichero donde está declarado.
+ * What Hono associates with a route: schema name + file path where
+ * it is declared.
  *
- * El nombre se queda solo para los mensajes de error; los campos se
- * leen parseando el `z.object({…})` que vive en `file`.
+ * The name stays only for error messages; the fields are read by
+ * parsing the `z.object({…})` that lives in `file`.
  */
 export interface IValidatorDescriptor {
   readonly name: string;
   readonly file: string;
 }
 
-/** Lo que Fiber y Rust asocian a una ruta: el struct que parsea el body. */
+/** What Fiber and Rust associate with a route: the struct that parses the body. */
 export interface IStructDescriptor {
   readonly name: string;
   readonly file: string;
 }
 
 /**
- * Ruta escaneada del proyecto host. */
+ * Route scanned from the host project. */
 export interface IRouteScanner {
   readonly framework: FrameworkId;
-  /** Matchea con IProjectScanner.framework. */
+  /** Matches with IProjectScanner.framework. */
   matches(match: IProjectMatch): boolean;
   /**
-   * Devuelve las rutas y los artefactos auxiliares en un objeto.
+   * Returns the routes and auxiliary artefacts in a single object.
    *
-   * El resultado **no se reutiliza entre llamadas**: cada scanner es
-   * stateless respecto a invocaciones anteriores, y los `Map` que
-   * pueda necesitar viven dentro de este método y se descartan al
-   * volver. Antes los cuatro scanners afectados por a00010 B-06
-   * guardaban esos `Map` como `private readonly`, y dos escaneos
-   * consecutivos compartían el resultado.
+   * The result **is not reused across calls**: each scanner is
+   * stateless with respect to previous invocations, and any `Map`
+   * it needs lives inside this method and is discarded on return.
+   * Before, the four scanners affected by a00010 B-06 stored those
+   * `Map`s as `private readonly`, and two consecutive scans shared
+   * the result.
    */
   scan(match: IProjectMatch): Promise<IScanResult>;
 }
 
-/** Especificación de validación de un parámetro (agnostic). */
+/** Validation specification of a parameter (agnostic). */
 export interface IValidationSpec {
-  /** Nombre del campo (en la key del body / query / path). */
+  /** Field name (the key in body / query / path). */
   fieldName: string;
   /** 'body' | 'query' | 'path' | 'header' | 'cookie'. */
   location: "body" | "query" | "path" | "header" | "cookie";
-  /** Tipo lógico. */
+  /** Logical type. */
   type:
     | "string"
     | "integer"
@@ -298,45 +299,45 @@ export interface IValidationSpec {
     | "file"
     | "enum"
     | "any";
-  /** ¿Es obligatorio? */
+  /** Is it required? */
   required: boolean;
-  /** Si type === 'enum', valores permitidos. */
+  /** If type === 'enum', allowed values. */
   enumValues?: ReadonlyArray<string>;
-  /** Formato semántico (email, uuid, url, ipv4…). */
+  /** Semantic format (email, uuid, url, ipv4…). */
   format?: string;
-  /** Tope de longitud (string) o cardinalidad (array). */
+  /** Length cap (string) or cardinality cap (array). */
   maxLength?: number;
-  /** Piso de longitud. */
+  /** Length floor. */
   minLength?: number;
-  /** Valor mínimo (number/date). */
+  /** Minimum value (number/date). */
   minimum?: number;
-  /** Valor máximo (number/date). */
+  /** Maximum value (number/date). */
   maximum?: number;
-  /** Patrón regex declarado por el framework. */
+  /** Regex pattern declared by the framework. */
   pattern?: string;
-  /** Descripción libre (de la docstring / schema). */
+  /** Free description (from the docstring / schema). */
   description?: string;
-  /** Ejemplo declarado por el framework. */
+  /** Example declared by the framework. */
   example?: unknown;
 }
 
-/** Especificación de validación para un endpoint concreto. */
+/** Validation specification for a specific endpoint. */
 export interface IEndpointValidation {
-  /** Endpoint al que aplica (clave method+uri normalizada). */
+  /** Endpoint it applies to (normalized method+uri key). */
   readonly endpointKey: string;
-  /** Reglas por location. */
+  /** Rules per location. */
   readonly fields: ReadonlyArray<IValidationSpec>;
 }
 
-/** Provider de ValidationSpec para un framework. */
+/** Provider of ValidationSpec for a framework. */
 export interface IValidationSpecProvider {
   readonly framework: FrameworkId;
   /**
-   * ¿Tiene specs de validación para este endpoint?
+   * Does it have validation specs for this endpoint?
    *
-   * `scanResult` es lo que acaba de devolver `IRouteScanner.scan()`
-   * para el mismo `match`. Los providers que no necesitan auxiliares
-   * (los dieciséis que NO son Fastify/Hono/Fiber/Rust) lo ignoran.
+   * `scanResult` is what `IRouteScanner.scan()` just returned for
+   * the same `match`. Providers that don't need auxiliaries (the
+   * sixteen that are NOT Fastify/Hono/Fiber/Rust) ignore it.
    */
   supports(
     route: ParsedRoute,
@@ -344,14 +345,14 @@ export interface IValidationSpecProvider {
     scanResult: IScanResult,
   ): Promise<boolean>;
   /**
-   * Resuelve los campos.
+   * Resolves the fields.
    *
-   * El contrato exige `scanResult` aunque la mayoría de providers no
-   * lo miren: así los cuatro que sí lo necesitan (Fastify, Hono,
-   * Fiber, Rust) leen directamente sus mapas del resultado del
-   * scanner, sin depender de estado oculto. Es lo que cerró a00010
-   * S2 — antes compartían una instancia del scanner con un `Map`
-   * mutable, y dos escaneos consecutivos se contaminaban.
+   * The contract requires `scanResult` even though most providers
+   * ignore it: that way the four that need it (Fastify, Hono,
+   * Fiber, Rust) read their maps straight from the scanner output,
+   * without depending on hidden state. This is what closed a00010
+   * S2 — before they shared a scanner instance with a mutable
+   * `Map`, and two consecutive scans contaminated each other.
    */
   resolve(
     route: ParsedRoute,
@@ -361,44 +362,45 @@ export interface IValidationSpecProvider {
 }
 
 /**
- * Un framework que ha reconocido el proyecto, con sus colaboradores.
+ * A framework that recognised the project, with its collaborators.
  *
- * Vive aquí —no en `discovery.interface.ts`— porque `IDiscoveryOrchestrator`
- * la devuelve y el contrato del orchestrator vive en esta casa: junto a
- * los scanners que producen el `evidence`, no junto al pipeline que los
- * consume. Tener dos declaraciones del mismo tipo en módulos distintos
- * es una grieta por la que se cuela la deriva; las interfaces se
- * fusionan en TS, pero el contrato conceptual deja de ser único.
+ * Lives here —not in `discovery.interface.ts`— because
+ * `IDiscoveryOrchestrator` returns it and the orchestrator contract
+ * lives here: alongside the scanners that produce the `evidence`,
+ * not next to the pipeline that consumes it. Having two
+ * declarations of the same type in different modules is a crack
+ * where drift creeps in; TypeScript merges the interfaces, but the
+ * conceptual contract stops being unique.
  */
 export interface IDetectedFramework {
   readonly match: IProjectMatch;
   readonly scanner: IRouteScanner | null;
   readonly validation: IValidationSpecProvider | null;
-  /** Confianza del detector, de 0 a 1. */
+  /** Detector confidence, from 0 to 1. */
   readonly score: number;
-  /** Las señales que motivaron la puntuación. */
+  /** The signals that motivated the score. */
   readonly evidence: ReadonlyArray<IProjectDetectionEvidence>;
 }
 
 /**
- * Punto de entrada principal: "dado un projectRoot, dame el scanner adecuado".
+ * Main entry point: "given a projectRoot, give me the right scanner".
  *
- * `forceFramework` recibe **un objeto nombrado** con `projectRoot` y
- * `framework`. Antes la firma era `(framework, projectRoot)` en la
- * interfaz y `(projectRoot, framework)` en la implementación —
- * incompatibles, pero `string` y `string` pasan por TypeScript sin
- * chistar. Un implementador externo perfectamente conforme con el
- * contrato público recibía los argumentos invertidos sin error de
- * tipo. El objeto nomado cierra el bug: la clave, no la posición,
- * decide el rol.
+ * `forceFramework` receives **a named object** with `projectRoot`
+ * and `framework`. Before, the signature was `(framework,
+ * projectRoot)` in the interface and `(projectRoot, framework)` in
+ * the implementation — incompatible, but `string` and `string` sail
+ * through TypeScript without complaint. An external implementer
+ * perfectly conforming to the public contract would receive the
+ * arguments swapped without any type error. The named object closes
+ * the bug: the key, not the position, decides the role.
  */
 export interface IDiscoveryOrchestrator {
-  /** Todos los que reconocen el proyecto, ordenados por confianza. */
+  /** Everyone who recognises the project, ordered by confidence. */
   detectAll(projectRoot: string): Promise<IDetectedFramework[]>;
-  /** Fuerza un framework concreto, saltándose la detección. */
+  /** Force a specific framework, skipping detection. */
   forceFramework(
     args: { projectRoot: string; framework: string },
   ): Promise<IDetectedFramework | null>;
-  /** Los identificadores que este catálogo sabe reconocer. */
+  /** The identifiers this catalogue knows how to recognise. */
   supportedFrameworks(): string[];
 }

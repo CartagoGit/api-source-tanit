@@ -1,189 +1,193 @@
 /**
- * Fusión de endpoints para proyectos híbridos.
+ * Endpoint fusion for hybrid projects.
  *
- * Un proyecto híbrido es uno donde la detección encuentra **dos o más**
- * frameworks a la vez —un repo con un Express heredado y un OpenAPI
- * nuevo, un monolito PHP con documentación FastAPI a su lado—. Cada
- * scanner contribuye una pieza: uno tiene la ruta, otro el body, otro
- * el auth, otro la descripción. Antes el `dedupeSpecs` del pipeline se
- * quedaba con el primero y descartaba el resto, así que la colección
- * finalizaba con solo la información del scanner ganador y perdía todo
- * lo demás en silencio.
+ * A hybrid project is one where detection finds **two or more**
+ * frameworks at once —a repo with legacy Express alongside a new
+ * OpenAPI, a PHP monolith with FastAPI documentation next to it—.
+ * Each scanner contributes a piece: one has the route, another the
+ * body, another the auth, another the description. Before, the
+ * pipeline's `dedupeSpecs` kept the first one and discarded the
+ * rest, so the collection ended up with only the winning scanner's
+ * information and silently lost everything else.
  *
- * Este contrato introduce la **fusión explícita**: dado N candidatos
- * para el mismo endpoint (identidad = method + uri normalizada), el
- * merger elige pieza a pieza cuál se queda y deja rastro de quién
- * aportó qué (`provenance`).
+ * This contract introduces **explicit fusion**: given N candidates
+ * for the same endpoint (identity = method + normalised uri), the
+ * merger picks piece by piece which one to keep and leaves a trace
+ * of who contributed what (`provenance`).
  *
- * No reemplaza al `dedupeSpecs` legacy: ese sigue siendo el primer corte
- * para identidades que NO colisionan (lo normal). El merger entra
- * cuando dos scanners SÍ declaran la misma operación y hay que
- * reconciliar.
+ * It does not replace the legacy `dedupeSpecs`: that is still the
+ * first cut for identities that do NOT collide (the common case).
+ * The merger kicks in when two scanners DO declare the same
+ * operation and reconciliation is needed.
  */
 import type { IDetectedAuthScheme } from "./discovery.interface.js";
 import type { IValidationSpec } from "./scanner.interface.js";
 import type { IEndpointField } from "./postman.interface.js";
 
 /**
- * Confianza por pieza — un número entre 0 y 1.
+ * Per-piece confidence — a number between 0 and 1.
  *
- * Viene del scanner (no del merger): el merger es agnóstico, solo
- * compara. La tabla implícita la mantiene el servicio concreto que
- * conoce los frameworks (`EndpointMerger`); los demás consumidores
- * pueden pasarle su propio `confidenceFor` para mantenerlo portable.
+ * It comes from the scanner (not the merger): the merger is
+ * agnostic, it only compares. The implicit table is kept by the
+ * concrete service that knows the frameworks (`EndpointMerger`);
+ * other consumers can pass their own `confidenceFor` to keep it
+ * portable.
  */
 export type Confidence = number;
 
 /**
- * De qué scanner vino cada pieza de un endpoint fusionado.
+ * Which scanner produced each piece of a fused endpoint.
  *
- * `route` es obligatorio porque el endpoint tiene que existir por algo.
- * El resto son opcionales: si el scanner A solo aporta la ruta y
- * ningún body, `body` queda `undefined` y el merger no tiene nada que
- * comparar (lo que significa que el ganador de body lo decide la
- * otra pieza del puzzle, no la ausencia).
+ * `route` is required because the endpoint has to exist for some
+ * reason. The rest are optional: if scanner A only contributes the
+ * route and no body, `body` stays `undefined` and the merger has
+ * nothing to compare (which means the body winner is decided by
+ * the other piece of the puzzle, not by the absence).
  *
- * `evidence` es el texto crudo que motivó la detección
- * (`detectAuthScheme` lo expone; los scanners lo rellenan). Va al
- * aviso del CLI: una detección automática que no se puede contrastar
- * es una que hay que creerse a ciegas.
+ * `evidence` is the raw text that motivated the detection
+ * (`detectAuthScheme` exposes it; scanners fill it in). It goes
+ * into the CLI warning: an automatic detection that cannot be
+ * cross-checked is one you have to take on faith.
  */
 export interface IEndpointProvenance {
-  /** Quién descubrió la ruta (method + uri). */
+  /** Who discovered the route (method + uri). */
   readonly route: { framework: string; confidence: Confidence };
-  /** Quién aportó el body / validación. */
+  /** Who contributed the body / validation. */
   readonly body?: { framework: string; confidence: Confidence };
-  /** Quién aportó el auth. */
+  /** Who contributed the auth. */
   readonly auth?: { framework: string; evidence: string };
-  /** Quién aportó la descripción. */
+  /** Who contributed the description. */
   readonly description?: { framework: string };
   /**
-   * Frameworks que declararon este endpoint pero **perdieron** la
-   * comparación pieza a pieza. Útil para la UI: «OpenAPI dijo esto,
-   * Fastify lo confirmó, pero ganó Fastify porque su schema era más
-   * detallado». Vacío en el caso de un solo candidato.
+   * Frameworks that declared this endpoint but **lost** the
+   * piece-by-piece comparison. Useful for the UI: "OpenAPI said
+   * this, Fastify confirmed it, but Fastify won because its schema
+   * was more detailed". Empty in the single-candidate case.
    */
   readonly contributors: ReadonlyArray<string>;
 }
 
 /**
- * Un endpoint fusionado, con su provenance por pieza.
+ * A fused endpoint, with its per-piece provenance.
  *
- * El merger opera sobre un grupo de candidatos y devuelve UNO de
- * estos. La pieza que sobrevive (body, auth, description) es la que
- * ganó la comparación; las demás se quedan solo en `provenance` para
- * no perder el rastro.
+ * The merger operates on a group of candidates and returns ONE of
+ * these. The piece that survives (body, auth, description) is the
+ * one that won the comparison; the others stay only in
+ * `provenance` so the trace is not lost.
  *
- * `fields` es la unión restrictiva de los campos de todos los
- * candidatos: si A dice `required: true` y B dice `required: false`,
- * gana `true`. Si A dice `integer` y B dice `string`, gana `integer`
- * (porque `integer` rechaza strings, no al revés).
+ * `fields` is the restrictive union of every candidate's fields:
+ * if A says `required: true` and B says `required: false`, `true`
+ * wins. If A says `integer` and B says `string`, `integer` wins
+ * (because `integer` rejects strings, not the other way around).
  *
- * `name` se preserva del candidato ganador — es parte de la
- * identidad (GraphQL/tRPC), no una pieza a fusionar.
+ * `name` is preserved from the winning candidate — it is part of
+ * the identity (GraphQL/tRPC), not a piece to fuse.
  *
- * `confidence` es la media ponderada de las piezas, con los pesos
- * `route 0.4 / body 0.3 / auth 0.2 / description 0.1`. Cuando una
- * pieza falta, su peso se redistribuye proporcionalmente entre las
- * presentes — un endpoint solo de ruta no tiene por qué salir con
- * 0.6 de confianza por no tener body.
+ * `confidence` is the weighted average of the pieces, with the
+ * weights `route 0.4 / body 0.3 / auth 0.2 / description 0.1`.
+ * When a piece is missing, its weight is redistributed
+ * proportionally among the present ones — a route-only endpoint
+ * shouldn't end up with 0.6 confidence just because it has no
+ * body.
  */
 export interface IMergedEndpoint {
   readonly method: string;
   readonly uri: string;
-  /** Nombre del endpoint (preservado del ganador). */
+  /** Endpoint name (preserved from the winner). */
   readonly name?: string;
-  /** La pieza de mayor confianza cuando hay varias. */
+  /** The highest-confidence piece when there are several. */
   readonly body?: unknown;
-  /** Campos declarados por algún scanner. */
+  /** Fields declared by some scanner. */
   readonly fields?: ReadonlyArray<IValidationSpec | IEndpointField>;
-  /** El auth de mayor confianza. */
+  /** The highest-confidence auth. */
   readonly authScheme?: IDetectedAuthScheme;
-  /** La descripción más larga. */
+  /** The longest description. */
   readonly description?: string;
-  /** Provenance explícita por pieza. */
+  /** Explicit per-piece provenance. */
   readonly provenance: IEndpointProvenance;
-  /** Confianza global del endpoint (0–1). */
+  /** Endpoint's overall confidence (0–1). */
   readonly confidence: Confidence;
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Helpers para que `IMergedEndpoint.fields` admita tanto los
-// `IValidationSpec` agnósticos de los scanners como los `IEndpointField`
-// que ya viajan en `EndpointSpec.fields` después del adapter.
+// Helpers so that `IMergedEndpoint.fields` accepts both the
+// agnostic `IValidationSpec` from scanners and the `IEndpointField`
+// values already carried in `EndpointSpec.fields` after the adapter.
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Lo que el merger espera en `fields` por candidato: la unión de los
- * dos shapes existentes. El adapter (`parsed-route-to-spec.adapter.ts`)
- * convierte `IValidationSpec → IEndpointField` al producir el spec;
-// el merger acepta ambos para que el pipeline no tenga que recordar
-// a qué lado de la frontera está. Son estructuralmente compatibles
-// en `fieldName`, `location`, `type`, `required`, `format`,
- * `enumValues`, `minimum`, `maximum`, `minLength`, `maxLength`.
+ * What the merger expects in `fields` per candidate: the union of
+ * the two existing shapes. The adapter (`parsed-route-to-spec.adapter.ts`)
+ * converts `IValidationSpec → IEndpointField` when producing the
+ * spec; the merger accepts both so the pipeline doesn't have to
+ * remember which side of the boundary it is on. They are
+ * structurally compatible on `fieldName`, `location`, `type`,
+ * `required`, `format`, `enumValues`, `minimum`, `maximum`,
+ * `minLength`, `maxLength`.
  */
 
 /**
- * Un candidato a endpoint: la contribución de UN scanner para UNA
- * identidad (method + uri).
+ * An endpoint candidate: ONE scanner's contribution for ONE identity
+ * (method + uri).
  *
- * El merger agrupa por identidad y compara los candidatos de cada
- * grupo. Los campos opcionales son los que no todos los scanners
- * aportan: un regex-based solo tiene la ruta; OpenAPI tiene el body
- * y el auth; Fastify tiene el schema.
+ * The merger groups by identity and compares the candidates in each
+ * group. The optional fields are the ones not every scanner
+ * contributes: a regex-based one only has the route; OpenAPI has
+ * the body and the auth; Fastify has the schema.
  *
- * `method`, `uri` y `name` son la **identidad** del candidato, no
- * piezas a fusionar: dos candidatos con misma identidad son
- * candidatos a fusionar. El merger los exige para poder producir un
- * `IMergedEndpoint` con identidad estable. `name` distingue el caso
- * GraphQL/tRPC donde hay **un** endpoint (`POST /graphql`) y lo que
- * diferencia una operación de otra es el nombre.
+ * `method`, `uri`, and `name` are the candidate's **identity**, not
+ * pieces to fuse: two candidates with the same identity are
+ * candidates to fuse. The merger requires them to produce an
+ * `IMergedEndpoint` with a stable identity. `name` distinguishes
+ * the GraphQL/tRPC case where there is **one** endpoint
+ * (`POST /graphql`) and what differentiates one operation from
+ * another is the name.
  */
 export interface IEndpointMergeCandidate {
   readonly framework: string;
-  /** Score del detector (0-1). Sirve como desempate. */
+  /** Detector score (0-1). Used as tiebreaker. */
   readonly scannerScore: Confidence;
-  /** Método HTTP (uppercased a la salida). */
+  /** HTTP method (uppercased on output). */
   readonly method: string;
-  /** URI normalizada Postman (`{{param}}`). */
+  /** Postman-normalised URI (`{{param}}`). */
   readonly uri: string;
-  /** Nombre del endpoint (clave para GraphQL/tRPC). */
+  /** Endpoint name (key for GraphQL/tRPC). */
   readonly name?: string;
   readonly body?: unknown;
   readonly fields?: ReadonlyArray<IValidationSpec | IEndpointField>;
   readonly authScheme?: IDetectedAuthScheme;
   readonly description?: string;
   /**
-   * Identidad del workspace / servicio al que pertenece este candidato.
+   * Identity of the workspace / service this candidate belongs to.
    *
-   * Audit 2ª revisión #3: en un monorepo con `apps/users-api` y
-   * `apps/payments-api`, dos `GET /health` de workspaces distintos
-   * no son la misma operación. El merger debe incluirlos en su
-   * clave de identidad (vía `endpointKey`) para NO fusionarlos.
+   * Audit 2nd review #3: in a monorepo with `apps/users-api` and
+   * `apps/payments-api`, two `GET /health` from different
+   * workspaces are not the same operation. The merger must include
+   * this in its identity key (via `endpointKey`) to NOT fuse them.
    *
-   * Cadena vacía = proyecto plano (sin workspaces). Es el default
-   * y mantiene la compatibilidad con callers no-monorepo.
+   * Empty string = flat project (no workspaces). This is the
+   * default and keeps compatibility with non-monorepo callers.
    */
   readonly serviceId?: string;
 }
 
 /**
- * El merger: dado N detecciones del mismo endpoint, devuelve uno.
+ * The merger: given N detections of the same endpoint, returns one.
  *
- * Es una interfaz a propósito: el `EndpointMerger` por defecto vive
- * en `packages/core`, pero un proyecto podría querer uno que aplique
- * reglas distintas (p. ej. priorizar siempre OpenAPI sin mirar el
- * resto). Pasarlo por abstracción permite inyectarlo desde los
- * tests sin levantar el `EndpointMerger` real.
+ * It is an interface on purpose: the default `EndpointMerger` lives
+ * in `packages/core`, but a project might want one that applies
+ * different rules (e.g. always prioritising OpenAPI without
+ * looking at the rest). Passing it as an abstraction lets the
+ * tests inject one without spinning up the real `EndpointMerger`.
  *
- * `merge()` devuelve un `IMergeResult` que combina el endpoint
- * fusionado con los **conflictos** que el merger resolvió
- * (intersección vacía de enums, formatos incompatibles, etc.).
- * `IMergedEndpoint` solo lleva el resultado; los avisos viajan
- * separados porque en el pipeline se agregan al `IMergeOutcome.warnings`
- * que también recoge los conflictos de auth — mezclar los dos en el
- * `IMergedEndpoint` haría cada endpoint responsable de su propia
- * auditoría, que es justo lo contrario de un pipeline.
+ * `merge()` returns an `IMergeResult` that combines the fused
+ * endpoint with the **conflicts** the merger resolved (empty enum
+ * intersection, incompatible formats, etc.). `IMergedEndpoint`
+ * only carries the result; the warnings travel separately because
+ * in the pipeline they are aggregated into `IMergeOutcome.warnings`,
+ * which also collects the auth conflicts — mixing both into
+ * `IMergedEndpoint` would make each endpoint responsible for its
+ * own audit, which is the opposite of a pipeline.
  */
 export interface IEndpointMerger {
   merge(
@@ -192,30 +196,30 @@ export interface IEndpointMerger {
 }
 
 /**
- * Salida de `IEndpointMerger.merge`: el endpoint fusionado y la lista
- * de conflictos que el merger **no pudo resolver por sí solo**.
+ * Output of `IEndpointMerger.merge`: the fused endpoint and the
+ * list of conflicts the merger **could not resolve on its own**.
  *
- * Cada conflicto es una línea legible apta para CLI/UI. El caller
- * decide dónde la mete (warnings del pipeline, log, popup). El merger
- * no la imprime: eso sería acoplar el dominio a `console.log`, que
- * ya mordió a los helpers de detección.
+ * Each conflict is a human-readable line suitable for CLI/UI. The
+ * caller decides where to put it (pipeline warnings, log, popup).
+ * The merger does not print it: that would couple the domain to
+ * `console.log`, which already bit the detection helpers.
  */
 export interface IMergeResult {
   readonly merged: IMergedEndpoint;
   /**
-   * Conflictos resueltos con aviso: intersección vacía de enums,
-   * formatos/patrones divergentes, type mismatch entre scanners, etc.
-   * Vacío en el camino feliz.
+   * Conflicts resolved with a warning: empty enum intersection,
+   * divergent formats/patterns, type mismatch between scanners,
+   * etc. Empty on the happy path.
    */
   readonly conflicts: ReadonlyArray<string>;
 }
 
 /**
- * Entrada plana del provenance por endpoint, para que
- * `IGenerationResult.provenance` no tenga que anidar objetos.
+ * Flat provenance entry per endpoint, so that
+ * `IGenerationResult.provenance` does not have to nest objects.
  *
- * Es lo que la UI / `summary` consume para enseñar «este endpoint
- * vino de Express con body de OpenAPI».
+ * This is what the UI / `summary` consumes to show "this endpoint
+ * came from Express with body from OpenAPI".
  */
 export interface IEndpointProvenanceEntry {
   readonly method: string;
@@ -225,11 +229,11 @@ export interface IEndpointProvenanceEntry {
 }
 
 /**
- * Pesos del confidence global.
+ * Weights of the global confidence.
  *
- * El total suma 1.0. Cuando una pieza falta, su peso se redistribuye
- * entre las presentes. Constantes para que el cálculo sea trazable
- * desde los tests.
+ * The total sums to 1.0. When a piece is missing, its weight is
+ * redistributed among the present ones. Constants so the
+ * calculation is traceable from the tests.
  */
 export const ENDPOINT_CONFIDENCE_WEIGHTS = {
   route: 0.4,
@@ -239,23 +243,23 @@ export const ENDPOINT_CONFIDENCE_WEIGHTS = {
 } as const;
 
 /**
- * Lo que produce `mergeEndpoints` cuando agrupa candidatos por
- * identidad y los fusiona. Es el resultado a nivel de pipeline.
+ * What `mergeEndpoints` produces when it groups candidates by
+ * identity and fuses them. The pipeline-level result.
  */
 export interface IMergeOutcome {
-  /** Endpoints fusionados, en el orden en que aparecieron los grupos. */
+  /** Fused endpoints, in the order their groups appeared. */
   readonly specs: ReadonlyArray<IMergedEndpoint>;
-  /** Provenance plana, indexable por `method + uri`. */
+  /** Flat provenance, indexable by `method + uri`. */
   readonly provenance: ReadonlyArray<IEndpointProvenanceEntry>;
-  /** Avisos que el merger no pudo resolver por sí solo. */
+  /** Warnings the merger could not resolve on its own. */
   readonly warnings: ReadonlyArray<string>;
 }
 
-/** Opciones del merger a nivel de pipeline. */
+/** Merger options at the pipeline level. */
 export interface IMergeEndpointsOptions {
   /**
-   * Tabla de confianza por framework. Útil para tests y para un
-   * consumidor que quiera su propia política.
+   * Per-framework confidence table. Useful for tests and for a
+   * consumer that wants its own policy.
    */
   readonly frameworkConfidence?: Readonly<Record<string, Confidence>>;
 }

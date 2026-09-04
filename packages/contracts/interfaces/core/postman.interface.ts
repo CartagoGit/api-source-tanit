@@ -1,6 +1,6 @@
 /**
- * Tipos del schema Postman v2.1.0.
- * Documentación oficial: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
+ * Postman schema v2.1.0 types.
+ * Official documentation: https://schema.getpostman.com/json/collection/v2.1.0/collection.json
  */
 import type { ISchemaGraph } from "./schema.interface.js";
 import type { IValidationSource } from "./validation-source.interface.js";
@@ -17,7 +17,7 @@ export interface PostmanUrl {
   }>;
 }
 
-/** Una cabecera HTTP tal como la guarda Postman. */
+/** An HTTP header as Postman stores it. */
 export interface PostmanHeader {
   key: string;
   value: string;
@@ -25,11 +25,12 @@ export interface PostmanHeader {
 }
 
 /**
- * El cuerpo de una petición.
+ * The body of a request.
  *
- * Este proyecto solo emite `raw` con JSON: es lo que se puede derivar de
- * unas reglas de validación. Los otros modos existen en el formato y se
- * declaran para poder leer una colección ajena sin perderlos.
+ * This project only emits `raw` with JSON: that is what can be derived
+ * from validation rules. The other modes exist in the format and are
+ * declared so we can read someone else's collection without losing
+ * them.
  */
 export interface PostmanBody {
   mode: "raw" | "formdata" | "urlencoded" | "file";
@@ -38,10 +39,10 @@ export interface PostmanBody {
 }
 
 /**
- * La petición de un item: qué se manda y a dónde.
+ * The request of an item: what is sent and where.
  *
- * `method` es `string` y no la unión de verbos porque aquí también se
- * leen colecciones que no ha escrito esta herramienta.
+ * `method` is `string` and not the verb union because we also read
+ * collections not written by this tool here.
  */
 export interface PostmanRequest {
   method: string;
@@ -52,11 +53,11 @@ export interface PostmanRequest {
 }
 
 /**
- * Un script que Postman ejecuta alrededor de la petición.
+ * A script that Postman runs around the request.
  *
- * `prerequest` corre antes de mandarla; `test`, después de recibir la
- * respuesta. `exec` es el script partido en líneas, que es como lo
- * guarda el formato.
+ * `prerequest` runs before sending it; `test`, after receiving the
+ * response. `exec` is the script split into lines, which is how the
+ * format stores it.
  */
 export interface PostmanEvent {
   listen: "test" | "prerequest";
@@ -64,11 +65,11 @@ export interface PostmanEvent {
 }
 
 /**
- * Un nodo del árbol de la colección.
+ * A node in the collection tree.
  *
- * Es carpeta **o** petición según qué campo traiga: con `item` es
- * carpeta y con `request` es petición. El formato no los separa en dos
- * tipos, así que aquí tampoco.
+ * It is folder **or** request depending on which field it carries:
+ * with `item` it is a folder, with `request` it is a request. The
+ * format does not separate them into two types, so we don't either.
  */
 export interface PostmanItem {
   name: string;
@@ -79,10 +80,10 @@ export interface PostmanItem {
 }
 
 /**
- * Una variable de colección o de entorno.
+ * A collection or environment variable.
  *
- * `type: "secret"` hace que Postman la oculte en la interfaz: es lo que
- * llevan el token y las credenciales.
+ * `type: "secret"` makes Postman hide it in the UI: that's what the
+ * token and credentials carry.
  */
 export interface PostmanVariable {
   key: string;
@@ -91,11 +92,11 @@ export interface PostmanVariable {
 }
 
 /**
- * Una colección Postman v2.1.0 completa.
+ * A complete Postman v2.1.0 collection.
  *
- * El `_postman_id` de `info` es lo que decide si reimportar **actualiza**
- * la colección o crea otra al lado, así que se deriva del proyecto y no
- * se sortea (p00014).
+ * The `_postman_id` of `info` is what decides whether reimporting
+ * **updates** the collection or creates a new one next to it, so it
+ * is derived from the project and not rolled (p00014).
  */
 export interface PostmanCollection {
   info: {
@@ -112,22 +113,22 @@ export interface PostmanCollection {
   item: PostmanItem[];
 }
 
-/** Endpoint declarado en build-collection.service.ts (catálogo). */
+/** Endpoint declared in build-collection.service.ts (catalogue). */
 export interface EndpointSpec {
   name: string;
   /**
-   * Método HTTP.
+   * HTTP method.
    *
-   * `HEAD`, `OPTIONS` y `TRACE` entran aquí porque los scanners los
-   * detectan y Postman los soporta. Sin ellos, un `method: ["GET",
-   * "HEAD"]` de Fastify, un `app.Options()` de Fiber o un `trace:` en
-   * un path de OpenAPI se escaneaban bien y desaparecían en el adapter
-   * sin decir nada.
+   * `HEAD`, `OPTIONS`, and `TRACE` enter here because scanners detect
+   * them and Postman supports them. Without them, a Fastify
+   * `method: ["GET", "HEAD"]`, a Fiber `app.Options()`, or a `trace:`
+   * on an OpenAPI path scanned fine and disappeared in the adapter
+   * without saying anything.
    *
-   * La lista runtime vive en `SUPPORTED_METHODS` (mismo paquete) y es
-   * la que el adapter consulta para decidir qué deja pasar: tener las
-   * dos en sync es la garantía de que añadir un verbo aquí surte
-   * efecto.
+   * The runtime list lives in `SUPPORTED_METHODS` (same package) and
+   * is what the adapter consults to decide what to let through:
+   * keeping both in sync is the guarantee that adding a verb here
+   * takes effect.
    */
   method:
     | "GET"
@@ -138,17 +139,17 @@ export interface EndpointSpec {
     | "HEAD"
     | "OPTIONS"
     | "TRACE";
-  /** URI relativa sin el prefijo `/api`. Empieza con `/`. */
+  /** Relative URI without the `/api` prefix. Starts with `/`. */
   uri: string;
   description?: string;
-  /** Objeto JSON literal para el body. Se serializa a JSON pretty. */
+  /** Literal JSON object for the body. Serialized to pretty JSON. */
   body?: unknown;
-  /** Query params opcionales. */
+  /** Optional query params. */
   query?: Array<{ key: string; value: string; description?: string }>;
   /**
-   * Headers personalizados opcionales (ej. `X-API-Key`).
-   * Los headers `Authorization` y `Accept` se añaden automáticamente
-   * en collection-builder; este array es ADICIONAL.
+   * Optional custom headers (e.g. `X-API-Key`).
+   * The `Authorization` and `Accept` headers are added automatically
+   * in collection-builder; this array is ADDITIONAL.
    */
   headers?: Array<{
     key: string;
@@ -156,106 +157,110 @@ export interface EndpointSpec {
     description?: string;
   }>;
   /**
-   * Carpeta explícita. Si está, se usa como nombre del folder en lugar
-   * del calculado automáticamente por `topGroupFor(uri)`. Útil para
-   * agrupar endpoints que viven en prefijos distintos bajo una misma
-   * carpeta lógica (p. ej. "ERP" contiene `erp/*` y `tol/tecdoc/*`).
+   * Explicit folder. If present, used as the folder name instead of
+   * the one computed automatically by `topGroupFor(uri)`. Useful for
+   * grouping endpoints that live under different prefixes under the
+   * same logical folder (e.g. "ERP" contains `erp/*` and
+   * `tol/tecdoc/*`).
    */
   folder?: string;
   /**
-   * Override por operación del esquema de auth de la colección.
+   * Per-operation override of the collection's auth scheme.
    *
-   * Antes el builder inyectaba `Authorization: Bearer {{token}}` en
-   * **cada** request cuando el esquema global era bearer —también
-   * en `/auth/login`, que es el endpoint que precisamente emite el
-   * token. Resultado: un 401 al primer Send, con la culpa apuntando a
-   * una request que en realidad es lo que rellena la variable.
+   * Before, the builder injected `Authorization: Bearer {{token}}`
+   * into **every** request when the global scheme was bearer —also
+   * in `/auth/login`, which is precisely the endpoint that emits
+   * the token. Result: a 401 on the first Send, with the blame
+   * pointing at a request that is actually what fills the
+   * variable.
    *
-   * Con este campo, un endpoint puede declararse público
-   * (`auth: { kind: "none" }`) y el builder omite la cabecera
-   * `Authorization` para él, sin tocar el esquema global. Pensado
-   * para login, /health, /register, /forgot-password y similares.
+   * With this field, an endpoint can declare itself public
+   * (`auth: { kind: "none" }`) and the builder omits the
+   * `Authorization` header for it, without touching the global
+   * scheme. Designed for login, /health, /register, /forgot-password
+   * and similar.
    *
-   * El discriminador `scheme` se reserva para overrides por esquema
-   * futuros (apiKey, oauth2) — hoy el único caso útil es `none`.
+   * The `scheme` discriminator is reserved for future scheme
+   * overrides (apiKey, oauth2) — today the only useful case is
+   * `none`.
    *
-   * S3.b (a00012). La regla vive en
+   * S3.b (a00012). The rule lives in
    * `packages/core/domain/collection-builder.service.ts` →
    * `defaultHeaders()`.
    */
   auth?: IEndpointAuth;
   /**
-   * Ruta relativa al proyecto del FormRequest asociado
-   * (p. ej. `app/Http/Requests/Usuarios/NuevoUsuarioRequest.php`).
-   * Si está, el enricher lo usa directamente en lugar de heurísticas.
+   * Project-relative path of the associated FormRequest
+   * (e.g. `app/Http/Requests/Usuarios/NuevoUsuarioRequest.php`).
+   * If present, the enricher uses it directly instead of heuristics.
    *
-   * @deprecated Usar `validationSource`. El campo string era una
-   * mezcla de **proveedor** y **path** del artefacto — el adapter lo
-   * escribía como `"laravel:app/Http/Requests/..."` aunque el nombre
-   * del framework era el dato de routing, no una propiedad del
-   * endpoint. Se conserva por compat con `enrichCatalogWithFormRequests`
-   * y con los tests que aún lo leen; los nuevos proveedores declaran
-   * su contrato en `IValidationSource`. S5 (a00012).
+   * @deprecated Use `validationSource`. The string field was a mix
+   * of **provider** and artefact **path** — the adapter wrote it as
+   * `"laravel:app/Http/Requests/..."` even though the framework
+   * name was the routing data, not an endpoint property. Kept for
+   * compat with `enrichCatalogWithFormRequests` and with the tests
+   * that still read it; new providers declare their contract in
+   * `IValidationSource`. S5 (a00012).
    */
   formRequest?: string;
   /**
-   * Fuente agnóstica de las reglas de validación del endpoint.
+   * Framework-agnostic source of the endpoint's validation rules.
    *
-   * Si está presente, el adapter ya ha decidido QUÉ enricher (no cuál
-   * framework) se encarga de procesarlo. El registry
+   * If present, the adapter has already decided WHICH enricher (not
+   * which framework) processes it. The registry
    * (`packages/core/validation/validation-enricher.service.ts`)
-   * despacha por `provider` y los frameworks que aún no tienen
-   * enricher pasan de largo.
+   * dispatches by `provider`, and frameworks without an enricher
+   * yet are skipped.
    *
-   * El adapter (S5) sólo lo asigna cuando el provider resuelto es
-   * `"laravel-form-request"`. Cualquier otro caso —Express, FastAPI,
-   * OpenAPI— deja el campo `undefined`, y eso es lo que cierra S5:
-   * `enrichCatalogWithFormRequests` ya no se llama para proyectos no
-   * Laravel. Migrar el resto de frameworks es follow-up de a00010 S6
-   * y siguientes.
+   * The adapter (S5) only assigns it when the resolved provider is
+   * `"laravel-form-request"`. Any other case —Express, FastAPI,
+   * OpenAPI— leaves the field `undefined`, and that closes S5:
+   * `enrichCatalogWithFormRequests` is no longer called for
+   * non-Laravel projects. Migrating the rest of the frameworks is
+   * a follow-up of a00010 S6 and beyond.
    *
-   * Se deja mutable (sin `readonly`) para encajar con el patrón del
-   * adapter: `parsed-route-to-spec.adapter.ts` construye el spec con
-   * los campos básicos y luego asigna el resto uno a uno. Los campos
-   * posteriores (`auth`, `schemaGraph`) son `readonly` porque los
-   * rellena el `collection-builder`, no el adapter.
+   * Kept mutable (no `readonly`) to fit the adapter pattern:
+   * `parsed-route-to-spec.adapter.ts` builds the spec with the
+   * basic fields and then assigns the rest one by one. Later
+   * fields (`auth`, `schemaGraph`) are `readonly` because the
+   * `collection-builder` fills them in, not the adapter.
    */
   validationSource?: IValidationSource;
   /**
-   * Reglas de validación resueltas para este endpoint.
+   * Resolved validation rules for this endpoint.
    *
-   * De aquí sale el `body` de ejemplo, pero también la tabla de campos
-   * que va en la descripción de la request: el ejemplo enseña **un**
-   * valor válido, y esto dice cuáles son válidos. Un `age: 30` no
-   * cuenta que el máximo son 120.
+   * The example `body` comes from here, but so does the field table
+   * that goes into the request description: the example shows **one**
+   * valid value, and this says which ones are valid. An `age: 30`
+   * doesn't tell you the max is 120.
    *
-   * Se guarda aparte del `body` porque un ejemplo no se puede
-   * des-ejemplificar: del JSON ya construido no hay forma de recuperar
-   * qué era obligatorio ni qué formato tenía cada campo.
+   * It is stored apart from `body` because an example cannot be
+   * de-exemplified: from the already-built JSON there is no way to
+   * recover what was required or what format each field had.
    *
-   * Se queda como fuente de verdad **plana** mientras los 21 scanners
-   * no se hayan migrado al grafo (a00010 S6 introduce el grafo y deja
-   * esta lista como fallback); ver `schemaGraph`.
+   * It stays as the flat source of truth while the 21 scanners have
+   * not been migrated to the graph (a00010 S6 introduces the graph
+   * and leaves this list as a fallback); see `schemaGraph`.
    */
   fields?: ReadonlyArray<IEndpointField>;
   /**
-   * Grafo de tipos del endpoint, si el scanner lo emite.
+   * Type graph of the endpoint, if the scanner emits it.
    *
-   * Cuando está, los exportadores que saben consumirlo (OpenAPI por
-   * ahora) prefieren el grafo sobre `fields`: el grafo expresa
-   * objetos anidados, arrays de objetos, uniones (`oneOf`/`anyOf`),
-   * referencias cruzadas y recursión, que la lista plana no puede
-   * representar — el OpenAPI exporter emitía `items: string` cuando el
-   * items real era un objeto, por ejemplo.
+   * When present, exporters that know how to consume it (OpenAPI
+   * for now) prefer the graph over `fields`: the graph expresses
+   * nested objects, arrays of objects, unions (`oneOf`/`anyOf`),
+   * cross-references and recursion, which the flat list cannot
+   * represent — the OpenAPI exporter used to emit `items: string`
+   * when the real items were an object, for example.
    *
-   * `root` apunta al nodo que describe el body de la request. Los
-   * demás nodos son accesibles por id desde el mapa `nodes`.
+   * `root` points to the node that describes the request body.
+   * The other nodes are accessible by id from the `nodes` map.
    *
-   * Es opcional a propósito: los 21 scanners actuales siguen emitiendo
-   * solo `fields`. Migrar cada uno queda como follow-up de a00010 S7
-   * (AST TypeScript) y siguientes. Mientras tanto, los exportadores
-   * que aún no consumen el grafo pueden llamar a `flatten-helper` para
-   * reconstruir la lista plana.
+   * It is optional on purpose: the 21 current scanners still emit
+   * only `fields`. Migrating each one is a follow-up of a00010 S7
+   * (TypeScript AST) and beyond. In the meantime, exporters that
+   * do not yet consume the graph can call `flatten-helper` to
+   * rebuild the flat list.
    *
    * @see ./schema.interface.ts
    */
@@ -263,18 +268,18 @@ export interface EndpointSpec {
 }
 
 /**
- * Override por operación del esquema de auth de la colección.
+ * Per-operation override of the collection's auth scheme.
  *
- * Es un union discriminado: el `kind` marca el caso. Solo se admite
- * `none` hoy —la cabecera `Authorization` no se inyecta—, pero la
- * forma está dimensionada para añadir `scheme: "bearer"|"apiKey"|...`
- * sin tener que cambiar el call site (a00012 S3.b).
+ * It is a discriminated union: the `kind` tags the case. Only `none`
+ * is accepted today —the `Authorization` header is not injected—,
+ * but the shape is sized to add `scheme: "bearer"|"apiKey"|...`
+ * without changing the call site (a00012 S3.b).
  */
 export type IEndpointAuth =
   | { readonly kind: "none" }
   | { readonly kind: "scheme"; readonly scheme: "bearer" | "apiKey" | "oauth2" };
 
-/** Una regla de validación, tal como se documenta en la colección. */
+/** A validation rule, as documented in the collection. */
 export interface IEndpointField {
   readonly fieldName: string;
   readonly location: "body" | "query" | "path" | "header" | "cookie";
@@ -288,14 +293,14 @@ export interface IEndpointField {
   readonly maxLength?: number | undefined;
 }
 
-/** Ruta descubierta en routes/*.php. */
+/** Route discovered in routes/*.php. */
 export interface DiscoveredRoute {
   method: string;
   uri: string;
 }
 
 /**
- * Environment Postman v2.1.0.
+ * Postman v2.1.0 environment.
  * https://learning.postman.com/docs/sending-requests/managing-environments/
  */
 export interface PostmanEnvironment {

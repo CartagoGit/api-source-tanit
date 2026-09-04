@@ -1,27 +1,28 @@
 /**
- * Multi-service graph: la unidad de descubrimiento tras el
- * `serviceId` introducido en a00010/x00013.
+ * Multi-service graph: the discovery unit behind the `serviceId`
+ * introduced in a00010/x00013.
  *
- * Hasta esta propuesta, un monorepo (`apps/users-api` +
- * `apps/payments-api`) terminaba en una sola colección con una sola
- * `baseUrl`, una sola auth global y un set de endpoints mezclado por
- * coincidencia de `METHOD+URI`. `serviceId` permite distinguir los
- * endpoints; este contrato eleva esa distinción a modelo de primera
- * clase para que el pipeline —no solo el merger— pueda respetarlo.
+ * Before this proposal, a monorepo (`apps/users-api` +
+ * `apps/payments-api`) ended up as a single collection with a single
+ * `baseUrl`, a single global auth, and a set of endpoints mixed by
+ * `METHOD+URI` coincidence. `serviceId` lets the endpoints be
+ * distinguished; this contract elevates that distinction to a
+ * first-class model so that the pipeline —not only the merger— can
+ * honour it.
  *
- * Por qué **aquí** y no al lado del orquestador: `IServiceDescriptor`
- * reusa `IProjectMatch`, `ParsedRoute` y `IEndpointAuth`, tres tipos
- * que ya viven en `contracts/`. Si esto viviera en `core/`,
- * cualquier consumidor del plugin MCP que quisiera importarlo
- * arrastraría el pipeline entero (lo que ya pasó con
- * `IProjectSummary`). `lint:contracts` lo exige.
+ * Why **here** and not next to the orchestrator: `IServiceDescriptor`
+ * reuses `IProjectMatch`, `ParsedRoute` and `IEndpointAuth`, three
+ * types that already live in `contracts/`. If this lived in `core/`,
+ * any MCP plugin consumer that wanted to import it would drag the
+ * whole pipeline along (the same thing already happened with
+ * `IProjectSummary`). `lint:contracts` enforces this.
  *
- * No introduce un barrel `packages/contracts/index.ts` — el README
- * de `contracts/` es explícito sobre no añadirlo. Los importadores
- * usan path relativo canónico.
+ * It does not introduce a `packages/contracts/index.ts` barrel —
+ * the `contracts/` README is explicit about not adding one.
+ * Importers use the canonical relative path.
  *
- * Forma parte de a00013 (Multi-service para monorepos). S1 deja solo
- * el shape; S2-S4 lo enchufan al pipeline.
+ * It is part of a00013 (Multi-service for monorepos). S1 only
+ * defines the shape; S2-S4 wire it into the pipeline.
  */
 
 import type { IProjectMatch, ParsedRoute } from "./scanner.interface.js";
@@ -29,121 +30,122 @@ import type { IEndpointAuth } from "./postman.interface.js";
 import type { IMonorepoDetection } from "./discovery.interface.js";
 
 /**
- * El descriptor de un servicio individual dentro de un proyecto
- * multi-service.
+ * The descriptor of an individual service inside a multi-service
+ * project.
  *
- * Tres bloques:
+ * Three blocks:
  *
- * 1. Identidad (de dónde sale) — `serviceId`, `match`, `evidence`.
- * 2. Configuración propia (la que anula la global del monorepo).
- * 3. Las rutas del servicio, en el formato neutro del pipeline.
+ * 1. Identity (where it comes from) — `serviceId`, `match`, `evidence`.
+ * 2. Its own configuration (the one that overrides the monorepo
+ *    global config).
+ * 3. The service's routes, in the pipeline's neutral format.
  *
- * Los tres bloques viven en el mismo objeto a propósito: cada
- * servicio tiene un solo `match`, una sola config y un solo set de
- * rutas. Separarlos reintroduciría el problema que esta propuesta
- * ataca — que `loadProject()` cargue una config y los scanners
- * terminen viendo otra.
+ * The three blocks live on the same object on purpose: each
+ * service has a single `match`, a single config, and a single set
+ * of routes. Splitting them apart would reintroduce the problem
+ * this proposal is fighting — `loadProject()` loading one config
+ * and the scanners ending up seeing another.
  *
- * `serviceId` se calcula por defecto a partir de
- * `match.frameworkSearchRoot` (a00010 ya lo introdujo así). Cuando
- * el caller quiera forzar uno explícito (p. ej. para mantener
- * identidad estable a través de renombrados de carpeta), puede
- * sobrescribirlo vía `IServiceDescriptor.serviceId`. Lo que el
- * helper nunca inventará son caracteres fuera de `[A-Za-z0-9_-]`,
- * porque el id aparece en nombres de colección y de environment
- * variables Postman.
+ * `serviceId` is computed by default from
+ * `match.frameworkSearchRoot` (a00010 already introduced it that
+ * way). When the caller wants to force an explicit one (e.g. to
+ * keep a stable identity across folder renames), they can
+ * override it via `IServiceDescriptor.serviceId`. What the helper
+ * will never invent are characters outside `[A-Za-z0-9_-]`,
+ * because the id shows up in collection names and Postman
+ * environment variables.
  */
 export interface IServiceDescriptor {
-  /** Identidad estable del servicio; usado como clave de merge y nombre. */
+  /** Stable identity of the service; used as the merge key and as the name. */
   readonly serviceId: string;
-  /** El match del framework resuelto para ESTE servicio. */
+  /** The resolved framework match for THIS service. */
   readonly match: IProjectMatch;
-  /** Las rutas detectadas para ESTE servicio, en formato neutro. */
+  /** The routes detected for THIS service, in the neutral format. */
   readonly endpoints: ReadonlyArray<ParsedRoute>;
   /**
-   * Override de `baseUrl` para este servicio (p. ej.
-   * `http://localhost:3001`). `null` cuando hereda la global del
-   * proyecto — el comportamiento legacy.
+   * `baseUrl` override for this service (e.g.
+   * `http://localhost:3001`). `null` when it inherits the project
+   * global — the legacy behaviour.
    */
   readonly baseUrl: string | null;
   /**
-   * Auth por servicio. Cuando es `undefined`, el servicio hereda la
-   * global; cuando es `{ kind: "none" }`, el servicio es público
-   * aunque el resto del proyecto lleve bearer.
+   * Per-service auth. When `undefined`, the service inherits the
+   * global one; when `{ kind: "none" }`, the service is public even
+   * if the rest of the project carries bearer.
    *
-   * Se modela como override (no como valor derivado) porque la
-   * detección por servicio puede discrepar de la del proyecto:
-   * `apps/catalog-api` puede venir con `apiKey` en cabecera y
-   * `apps/payment-api` con `bearer`.
+   * Modelled as an override (not as a derived value) because
+   * per-service detection can disagree with the project-level one:
+   * `apps/catalog-api` may come with `apiKey` in a header and
+   * `apps/payment-api` with `bearer`.
    */
   readonly auth: IEndpointAuth | undefined;
   /**
-   * Variables específicas del servicio. Vacío = hereda las globales;
-   * no vacío = añade (no reemplaza) variables al environment.
+   * Service-specific variables. Empty = inherit globals;
+   * non-empty = add (does not replace) variables to the environment.
    */
   readonly variables: ReadonlyArray<{ readonly key: string; readonly value: string }>;
 }
 
 /**
- * Los inputs del helper `groupByService`. Vive aquí por la misma razón
- * que `IServiceDescriptor`: el helper es genérico, pero sus inputs
- * son contratos compartidos entre cualquier llamante (CLI, plugin,
- * tests). Moverlos dentro de `core/` reintroduciría el bug que este
- * contrato ataca: que para tipar algo haya que arrastrar la
- * implementación.
+ * Inputs of the `groupByService` helper. It lives here for the
+ * same reason as `IServiceDescriptor`: the helper is generic, but
+ * its inputs are contracts shared across every caller (CLI, plugin,
+ * tests). Moving them inside `core/` would reintroduce the bug this
+ * contract is fighting: having to drag the implementation in just
+ * to type something.
  */
 export interface IGroupByServiceInput {
-  /** Cada match = un servicio distinto cuando hay varios. */
+  /** Each match = a distinct service when there are several. */
   readonly matches: ReadonlyArray<IProjectMatch>;
-  /** Las rutas detectadas **por match**, en el mismo orden. */
+  /** The routes detected **per match**, in the same order. */
   readonly routesByMatch: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>;
-  /** ¿El caller ya detectó monorepo? Default `false`. */
+  /** Did the caller already detect the monorepo? Default `false`. */
   readonly detectedMonorepo?: boolean | undefined;
-  /** Override de auth por servicio; opcional. */
+  /** Per-service auth override; optional. */
   readonly authByService?: ReadonlyMap<string, IEndpointAuth | undefined> | undefined;
-  /** Override de baseUrl por servicio; opcional. */
+  /** Per-service baseUrl override; optional. */
   readonly baseUrlByService?: ReadonlyMap<string, string | null> | undefined;
-  /** Variables extra por servicio (no reemplaza, añade). */
+  /** Extra variables per service (does not replace, adds). */
   readonly variablesByService?: ReadonlyMap<
     string,
     ReadonlyArray<{ readonly key: string; readonly value: string }>
   > | undefined;
-  /** ¿Combinar todos los servicios en una sola colección? */
+  /** Combine all services into a single collection? */
   readonly combined?: boolean | undefined;
 }
 
 /**
- * El grafo de servicios que sale del descubrimiento multi-service.
+ * The service graph that comes out of multi-service discovery.
  *
- * `combined` refleja la decisión del usuario, no del pipeline.
- * Cuando `combined === true`, el pipeline produce una única
- * colección fusionada (modo legacy / `--combine-services`). Cuando
- * `combined === false`, produce una colección por servicio.
+ * `combined` reflects the user's decision, not the pipeline's.
+ * When `combined === true`, the pipeline produces a single merged
+ * collection (legacy / `--combine-services` mode). When
+ * `combined === false`, it produces one collection per service.
  *
- * `services` siempre contiene al menos un servicio: un proyecto
- * de un solo servicio no es monorepo y por tanto produce
- * `services.length === 1` con `combined === false`. Esa invariante
- * la garantiza el helper `groupByService` (en `core/discovery/`),
- * no este contrato.
+ * `services` always contains at least one service: a single-service
+ * project is not a monorepo and therefore yields
+ * `services.length === 1` with `combined === false`. That invariant
+ * is guaranteed by the `groupByService` helper (in `core/discovery/`),
+ * not by this contract.
  */
 export interface IServiceGraph {
   readonly services: ReadonlyArray<IServiceDescriptor>;
-  /** ¿El usuario pidió combinar los servicios en una sola colección? */
+  /** Did the user ask to combine the services into a single collection? */
   readonly combined: boolean;
 }
 
 /**
- * Inputs del helper `toServiceGraph` (a00013 S2). Vive aquí por la
- * misma razón que `IGroupByServiceInput`: el helper es genérico, pero
- * sus inputs son contratos compartidos. Moverlos al lado del
- * helper reintroduce el bug que este contrato ataca (arrastrar la
- * implementación para tipar).
+ * Inputs of the `toServiceGraph` helper (a00013 S2). It lives here
+ * for the same reason as `IGroupByServiceInput`: the helper is
+ * generic, but its inputs are shared contracts. Moving them next
+ * to the helper reintroduces the bug this contract is fighting
+ * (dragging the implementation in just to type).
  *
- * `IMonorepoDetection` se reexporta desde este barrel porque S3/S4
- * lo van a poblar desde `detectMonorepo()`. Mantenerlo aquí
- * garantiza que un consumidor del grafo (CLI, plugin, exportador
- * alternativo) pueda construir un `IToServiceGraphInput` sin
- * importar `core/`.
+ * `IMonorepoDetection` is re-exported from this barrel because
+ * S3/S4 will populate it from `detectMonorepo()`. Keeping it here
+ * guarantees that a consumer of the graph (CLI, plugin, alternative
+ * exporter) can build an `IToServiceGraphInput` without importing
+ * `core/`.
  */
 export interface IToServiceGraphInput {
   readonly matches: ReadonlyArray<IProjectMatch>;

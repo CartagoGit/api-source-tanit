@@ -1,77 +1,81 @@
 /**
- * Las formas de dato que devuelven los helpers del núcleo.
+ * Data shapes returned by core helpers.
  *
- * Casi todos son **resultados discriminados** (`{ ok: true, … } | { ok:
- * false, reason }`), y esa forma es lo que se comparte: quien consume un
- * helper necesita declarar qué recibe sin importar el helper entero.
+ * Almost all of them are **discriminated results** (`{ ok: true, … } |
+ * { ok: false, reason }`), and that is the shape that is shared:
+ * whoever consumes a helper needs to declare what they receive without
+ * importing the entire helper.
  *
- * `CollectionRead` y `JsonRead` son el ejemplo de por qué existen. Los
- * dos distinguen «no se pudo» de «se pudo y salió esto», que era la
- * confusión concreta que tapaba errores: `JSON.parse("null")` devuelve
- * `null`, y un `catch` que también devuelve `null` hace que un fichero
- * corrupto y uno que legítimamente contiene `null` acaben iguales.
+ * `CollectionRead` and `JsonRead` are the example of why they exist.
+ * Both distinguish "could not" from "could and got this", which was
+ * the concrete confusion that hid bugs: `JSON.parse("null")` returns
+ * `null`, and a `catch` that also returns `null` makes a corrupt file
+ * and one that legitimately contains `null` end up looking identical.
  */
 
 import type { PostmanCollection } from "./postman.interface.js";
 
-/** Lo que devuelve intentar leer la colección. */
+/** What trying to read the collection returns. */
 export type CollectionRead =
   | { readonly ok: true; readonly collection: PostmanCollection }
   | { readonly ok: false; readonly reason: string; readonly nextAction: string };
 
 /**
- * Lo que devuelve intentar parsear JSON.
+ * What trying to parse JSON returns.
  *
- * Distingue «no se pudo» de «parseó a `null`», que se confundían:
- * `JSON.parse("null")` devuelve `null`, y un `catch` que también deja
- * `null` hace que un fichero corrupto y uno que legítimamente contiene
- * `null` acaben iguales. Solo uno de los dos merece un aviso.
+ * Distinguishes "could not" from "parsed to `null`", which used to be
+ * confused: `JSON.parse("null")` returns `null`, and a `catch` that
+ * also leaves `null` makes a corrupt file and one that legitimately
+ * contains `null` end up looking identical. Only one of the two
+ * deserves a warning.
  */
 export type JsonRead =
   | { readonly ok: true; readonly value: unknown }
   | { readonly ok: false; readonly reason: string };
 
-/** Semilla de la colección de un proyecto. */
+/** Identity seed of a project's collection. */
 export interface ICollectionIdentity {
-  /** ID fijado a mano por el host, si lo hay. Gana sobre todo lo demás. */
+  /** Host-supplied ID, if any. Wins over everything else. */
   readonly explicitId?: string | undefined;
-  /** Nombre de la colección tal como se verá en Postman. */
+  /** Collection name as it will appear in Postman. */
   readonly collectionName?: string | undefined;
-  /** Nombre corto del proyecto. */
+  /** Short name of the project. */
   readonly projectName?: string | undefined;
-  /** Framework detectado, para desempatar dos proyectos homónimos. */
+  /** Detected framework, used to break ties between two homonymous projects. */
   readonly framework?: string | undefined;
 }
 
-/** Un incumplimiento concreto, con su ruta dentro de la colección. */
+/** A concrete violation, with its path inside the collection. */
 export interface ICollectionIssue {
   readonly severity: "error" | "warning";
   readonly path: string;
   readonly message: string;
 }
 
-/** Ajustes opcionales del recorrido. */
+/** Optional traversal settings. */
 export interface ICollectFilesOptions {
   /**
-   * Si `false`, no se saltan `node_modules`, `.git`, `vendor`… Por
-   * defecto se saltan: escanear dependencias de terceros produce ruido
-   * (y en el caso del lint de tools, infracciones ajenas).
+   * If `false`, `node_modules`, `.git`, `vendor`… are NOT skipped. By
+   * default they are skipped: scanning third-party dependencies
+   * produces noise (and in the tools lint case, other people's
+   * violations).
    */
   readonly skipVendorDirs?: boolean;
 }
 
 /**
- * Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
+ * Parse third-party JSON without letting `any` leak into the rest of
+ * the program.
  *
- * Los scanners leen manifiestos y specs **de otra gente**: entrada no
- * controlada. El pa
+ * Scanners read manifests and specs **from other people**: untrusted
+ * input. The pa
 
-/** Por qué se rechaza una ruta, para poder decirlo. */
+/** Why a path is rejected, so it can be reported. */
 export type ContainmentResult =
   | { readonly ok: true; readonly resolved: string }
   | { readonly ok: false; readonly resolved: string; readonly reason: string };
 
-/** Una petición sacada de una colección ya construida, aplanada. */
+/** A request pulled out of an already-built collection, flattened. */
 export interface CollectionRequest {
   method: string;
   uri: string;
@@ -79,89 +83,90 @@ export interface CollectionRequest {
   folder: string;
 }
 
-/** Un fichero ya leído, con la ruta tal cual venía en la entrada. */
+/** An already-read file, with the path as it came in the input. */
 export interface IReadFile {
-  /** Ruta absoluta, tal cual venía en la entrada. */
+  /** Absolute path, as it came in the input. */
   readonly path: string;
   readonly text: string;
 }
 
-/** De dónde salió la raíz. */
+/** Where the root came from. */
 export type RootOrigin = "flag" | "env" | "cwd";
 
 /**
- * La raíz, y de dónde salió.
+ * The root, and where it came from.
  *
- * `origin` no es información de depuración: es lo que permite avisar
- * cuando la raíz se ha **adivinado**. Sin él, un comando no puede
- * distinguir «me han dicho que use este directorio» de «no me han dicho
- * nada y he cogido el actual», que es la diferencia entre escanear el
- * proyecto correcto y escanear lo que hubiera debajo del `cd` anterior.
+ * `origin` is not debug info: it is what makes it possible to warn when
+ * the root has been **guessed**. Without it, a command cannot
+ * distinguish "I was told to use this directory" from "I was told
+ * nothing and took the current one" — which is the difference between
+ * scanning the right project and scanning whatever was under the
+ * previous `cd`.
  */
 export interface IResolvedRoot {
   readonly root: string;
   readonly origin: RootOrigin;
-  /** `true` cuando la eligió alguien; `false` cuando se adivinó. */
+  /** `true` when someone chose it; `false` when it was guessed. */
   readonly explicit: boolean;
 }
 
-/** Lo inyectable, para poder probarlo sin tocar los globales. */
+/** What can be injected, so it can be tested without touching globals. */
 export interface IResolveRootOptions {
   readonly argv?: ReadonlyArray<string> | undefined;
   readonly env?: Readonly<Record<string, string | undefined>> | undefined;
   readonly cwd?: string | undefined;
 }
 
-/** Lo que hace falta para identificar una operación. */
+/** What is needed to identify an operation. */
 export interface IEndpointIdentity {
-  /** Método HTTP en mayúsculas. */
+  /** HTTP method, upper-cased. */
   readonly method: string;
-  /** URI, con o sin normalizar: aquí se normaliza igual. */
+  /** URI, normalized or not: it is normalized here anyway. */
   readonly uri: string;
   /**
-   * Nombre de la operación, cuando el protocolo lo necesita.
+   * Operation name, when the protocol needs it.
    *
-   * En REST sobra: `GET /users` ya es único. En RPC sobre POST es **lo
-   * único** que distingue una operación de otra, porque la URL es la
-   * misma para todas.
+   * In REST it is unnecessary: `GET /users` is already unique. In
+   * RPC-over-POST it is **the only** thing that distinguishes one
+   * operation from another, because the URL is the same for all.
    */
   readonly name?: string | undefined;
   /**
-   * Cuerpo exacto, como último recurso.
+   * Exact body, as a last resort.
    *
-   * Dos requests al mismo endpoint con el mismo nombre pero distinto
-   * cuerpo son dos variantes legítimas —el catálogo genera una por cada
-   * combinación de reglas— y no deben contarse como duplicadas.
+   * Two requests to the same endpoint with the same name but different
+   * body are two legitimate variants —the catalog emits one per rule
+   * combination— and must not be counted as duplicates.
    */
   readonly body?: string | undefined;
   /**
-   * Identidad del workspace / servicio al que pertenece la operación.
+   * Identity of the workspace / service the operation belongs to.
    *
-   * Audit 2ª revisión #3: en un monorepo con múltiples workspaces
-   * (apps/users-api, apps/payments-api), dos endpoints `GET /health`
-   * de servicios DISTINTOS no son la misma operación y no deben
-   * fusionarse en una sola. Antes, el merger agrupaba por
-   * METHOD + URI y podía colapsar ambos en un único endpoint.
-   * Ahora cada candidato lleva su `serviceId` (típicamente el
-   * `frameworkSearchRoot` del match, o "" para proyectos planos) y
-   * la clave de identidad incluye esa dimensión.
+   * Audit 2nd review #3: in a monorepo with multiple workspaces
+   * (apps/users-api, apps/payments-api), two `GET /health` endpoints
+   * from DISTINCT services are not the same operation and must not be
+   * merged into one. Previously the merger grouped by METHOD + URI and
+   * could collapse both into a single endpoint. Now each candidate
+   * carries its `serviceId` (typically the `frameworkSearchRoot` of
+   * the match, or "" for flat projects) and the identity key includes
+   * that dimension.
    *
-   * Vacío (`""`) significa "proyecto plano, no hay workspaces que
-   * separar". Mantener `""` como valor por defecto evita romper
-   * proyectos no-monorepo donde `serviceId` no aplica.
+   * Empty (`""`) means "flat project, no workspaces to separate".
+   * Keeping `""` as the default avoids breaking non-monorepo projects
+   * where `serviceId` does not apply.
    */
   readonly serviceId?: string;
 }
 
-/** Posición de una llamada balanceada: el `(` de apertura y su `)`. */
+/** Position of a balanced call: the opening `(` and its matching `)`. */
 export interface IBalancedCall {
-  /** Índice del `(` que abre la llamada. */
+  /** Index of the `(` that opens the call. */
   readonly callStart: number;
-  /** Índice del `)` que la cierra. */
+  /** Index of the `)` that closes it. */
   readonly callEnd: number;
 }
 
-/** Lo que el emisor de YAML sabe representar. */
+/** What the YAML emitter knows how to represent. */
 export type YamlValue =
   | string
   | number

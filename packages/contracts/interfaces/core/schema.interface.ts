@@ -1,53 +1,55 @@
 /**
- * El modelo intermedio (IR) de tipos: `SchemaGraph`.
+ * The intermediate type model (IR): `SchemaGraph`.
  *
- * Hasta ahora el IR era una **lista plana de campos** (`EndpointSpec.fields:
- * IEndpointField[]`). Eso sirve para describir reglas de validación sueltas,
- * pero no tipos anidados: un `address: { street, city }` se aplana a
- * `address.street` y `address.city`, los `enum` se pierden si no están
- * declarados como `enumValues`, y un `oneOf` o un `$ref` ni siquiera
- * existen como concepto.
+ * Until now the IR was a **flat field list** (`EndpointSpec.fields:
+ * IEndpointField[]`). That works for describing loose validation rules,
+ * but not nested types: an `address: { street, city }` flattens to
+ * `address.street` and `address.city`, `enum` values are lost unless
+ * declared as `enumValues`, and `oneOf` or `$ref` do not even exist
+ * as concepts.
  *
- * `SchemaGraph` introduce un nivel de indirección: los scanners pueden
- * declarar **un grafo de nodos** y referenciarse entre ellos. Los
- * exportadores que saben consumir el grafo (OpenAPI por ahora) producen
- * documentos fieles; los que aún trabajan con la lista plana tienen un
- * `flatten-helper` que se la reconstruye.
+ * `SchemaGraph` introduces a level of indirection: scanners can declare
+ * **a graph of nodes** and reference each other. Exporters that know
+ * how to consume the graph (OpenAPI for now) produce faithful
+ * documents; those that still work with the flat list have a
+ * `flatten-helper` that reconstructs it.
  *
- * ## Forma
+ * ## Shape
  *
- * El grafo es:
+ * The graph is:
  *
- *   - `nodes`: un `Map<SchemaNodeId, ISchemaNode>` con todos los nodos,
- *     accesibles por id estable.
- *   - `root`: el id del nodo raíz del que cuelga la request del endpoint.
+ *   - `nodes`: a `Map<SchemaNodeId, ISchemaNode>` with every node,
+ *     accessible by stable id.
+ *   - `root`: the id of the root node from which the endpoint's
+ *     request hangs.
  *
- * Cada nodo declara su `kind` (uno de los `SchemaNodeKind`). El resto de
- * campos son **opcionales según el kind**: un `scalar` lleva `scalarType`,
- * un `enum` lleva `enumValues`, un `object` lleva `children`, etc. Mezclar
- * campos irrelevantes para el kind no aporta información y queda fuera del
- * contrato — los helpers de este paquete solo rellenan los que aplican.
+ * Each node declares its `kind` (one of the `SchemaNodeKind` values).
+ * The remaining fields are **optional per kind**: a `scalar` carries
+ * `scalarType`, an `enum` carries `enumValues`, an `object` carries
+ * `children`, etc. Mixing fields irrelevant to the kind adds no
+ * information and stays out of the contract — the helpers in this
+ * package only fill in the ones that apply.
  *
- * ## Recursión y referencias
+ * ## Recursion and references
  *
- * La recursión se modela con un nodo `reference` cuyo `ref` apunta a otro
- * nodo **del mismo grafo**. La resolución es local primero: si el grafo
- * no contiene el destino, el nodo queda como `$ref` sin resolver y es
- * responsabilidad del exportador decidir qué hacer (los scanners que
- * detectan `OpenAPI`/`components/schemas` lo resolverán contra el
- * documento original; los demás emitirán el `$ref` literal). Network
- * opcional queda fuera del scope actual (a00010 S6).
+ * Recursion is modelled with a `reference` node whose `ref` points to
+ * another node **in the same graph**. Resolution is local first: if
+ * the graph does not contain the target, the node stays as an
+ * unresolved `$ref` and it is up to the exporter to decide what to do
+ * (scanners that detect `OpenAPI`/`components/schemas` will resolve
+ * it against the original document; the others emit the literal
+ * `$ref`). Network resolution is out of scope for now (a00010 S6).
  *
- * ## Por qué `ReadonlyMap` / `ReadonlyArray`
+ * ## Why `ReadonlyMap` / `ReadonlyArray`
  *
- * El grafo se construye una vez y se lee muchas. Marcarlo inmutable desde
- * el contrato evita que un exportador lo mutara por descuido, y le da al
- * compilador pie a optimizaciones.
+ * The graph is built once and read many times. Marking it immutable
+ * from the contract prevents an exporter from mutating it by mistake
+ * and gives the compiler room for optimizations.
  */
 
 import type { IEndpointField } from "./postman.interface.js";
 
-/** Tipos de nodo del grafo. */
+/** Node kinds in the graph. */
 export type SchemaNodeKind =
   | "scalar"
   | "enum"
@@ -60,10 +62,10 @@ export type SchemaNodeKind =
   | "literal"
   | "nullable";
 
-/** Localizador estable de un nodo dentro del grafo. */
+/** Stable locator of a node inside the graph. */
 export type SchemaNodeId = string;
 
-/** Restricciones aplicables a un nodo (no anulan el `kind`, lo decoran). */
+/** Constraints applicable to a node (don't override the `kind`, they decorate it). */
 export interface ISchemaConstraints {
   readonly format?: string;
   readonly minimum?: number;
@@ -74,49 +76,49 @@ export interface ISchemaConstraints {
 }
 
 /**
- * Un nodo del grafo.
+ * A node in the graph.
  *
- * El campo que aplica depende de `kind`:
+ * Which field applies depends on `kind`:
  *
  *   - `scalar`     → `scalarType`
  *   - `enum`       → `enumValues`
  *   - `literal`    → `literal`
  *   - `object`     → `children`
- *   - `array`      → `children` (un único item, `name` suele ser `items`)
- *   - `tuple`      → `children` (posicionales, `name` lleva el índice)
+ *   - `array`      → `children` (a single item, `name` is usually `items`)
+ *   - `tuple`      → `children` (positional, `name` carries the index)
  *   - `union`      → `alternatives`
  *   - `intersection` → `alternatives`
  *   - `reference`  → `ref`
  *   - `nullable`   → `inner`
  *
- * `constraints` es ortogonal al `kind`: lo admiten todos los nodos y se
- * traduce a las claves equivalentes en JSON Schema (`format`, `minimum`,
+ * `constraints` is orthogonal to `kind`: every node accepts it and it
+ * translates to the equivalent JSON Schema keys (`format`, `minimum`,
  * `pattern`, …).
  */
 export interface ISchemaNode {
   readonly id: SchemaNodeId;
   readonly kind: SchemaNodeKind;
-  /** Nombre lógico (ej. `User`, `UserCreate`). Si está, los exportadores lo registran como `$ref`. */
+  /** Logical name (e.g. `User`, `UserCreate`). When present, exporters register it as `$ref`. */
   readonly name?: string;
-  /** Tipo escalar — solo si `kind === 'scalar'`. */
+  /** Scalar type — only when `kind === 'scalar'`. */
   readonly scalarType?: "string" | "integer" | "number" | "boolean" | "date" | "datetime" | "file";
-  /** Valores permitidos — solo si `kind === 'enum'`. */
+  /** Allowed values — only when `kind === 'enum'`. */
   readonly enumValues?: ReadonlyArray<string>;
-  /** Valor literal — solo si `kind === 'literal'`. */
+  /** Literal value — only when `kind === 'literal'`. */
   readonly literal?: unknown;
-  /** Hijos (campos del objeto, items del array, etc.). */
+  /** Children (object fields, array items, etc.). */
   readonly children?: ReadonlyArray<ISchemaEdge>;
-  /** Id del nodo referenciado — solo si `kind === 'reference'`. */
+  /** Id of the referenced node — only when `kind === 'reference'`. */
   readonly ref?: SchemaNodeId;
-  /** Nodos alternativos — solo si `kind === 'union'` o `intersection'`. */
+  /** Alternative nodes — only when `kind === 'union'` or `intersection'`. */
   readonly alternatives?: ReadonlyArray<SchemaNodeId>;
-  /** Restricciones adicionales (format, min/max, pattern). */
+  /** Additional constraints (format, min/max, pattern). */
   readonly constraints?: ISchemaConstraints;
-  /** Nodo envuelto — solo si `kind === 'nullable'`. */
+  /** Wrapped node — only when `kind === 'nullable'`. */
   readonly inner?: SchemaNodeId;
 }
 
-/** Una arista con nombre: campo de objeto, item de array, etc. */
+/** A named edge: object field, array item, etc. */
 export interface ISchemaEdge {
   readonly name: string;
   readonly node: SchemaNodeId;
@@ -125,39 +127,40 @@ export interface ISchemaEdge {
 }
 
 /**
- * El grafo completo.
+ * The complete graph.
  *
- * Los ids son **estables por construcción**: una vez publicado un grafo,
- * dos llamadas que partan de las mismas specs producen el mismo mapa de
- * nodos. Eso permite que los exportadores cacheen resultados por
- * `SchemaNodeId` y que los diffs entre dos pasadas sean estables.
+ * The ids are **stable by construction**: once a graph is published,
+ * two calls starting from the same specs produce the same node map.
+ * That lets exporters cache results by `SchemaNodeId` and keeps diffs
+ * between two runs stable.
  *
- * `nodes` es un `ReadonlyMap` por velocidad dentro del proceso; para
- * cruzar la frontera de proceso (MCP, JSON, caché, UI), se serializa
- * con `toDTO()` — un `ReadonlyMap` no sobrevive `JSON.stringify`.
+ * `nodes` is a `ReadonlyMap` for speed within the process; to cross
+ * the process boundary (MCP, JSON, cache, UI), it is serialized with
+ * `toDTO()` — a `ReadonlyMap` does not survive `JSON.stringify`.
  */
 export interface ISchemaGraph {
   readonly nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>;
-  /** El id del nodo raíz del grafo. */
+  /** Id of the graph's root node. */
   readonly root: SchemaNodeId;
   /**
-   * Forma serializable del grafo para cruzar fronteras de proceso
-   * (MCP, JSON, caché, UI). Ver `ISchemaGraphDTO`. La conversión es
-   * estable: dos llamadas al mismo grafo producen el mismo DTO.
+   * Serializable form of the graph for crossing process boundaries
+   * (MCP, JSON, cache, UI). See `ISchemaGraphDTO`. The conversion is
+   * stable: two calls on the same graph produce the same DTO.
    */
   toDTO(): ISchemaGraphDTO;
 }
 
 /**
- * Forma plana y JSON-serializable de un `ISchemaGraph`.
+ * Flat, JSON-serializable form of an `ISchemaGraph`.
  *
- * `nodes` se almacena como `entries` (`Array<[id, node]>`) porque
- * `JSON.stringify(new Map(...))` devuelve `"{}"` y se pierde la
- * información. La frontera de proceso **exige** este DTO; dentro del
- * proceso, `ISchemaGraph` con su `ReadonlyMap` es la forma canónica.
+ * `nodes` is stored as `entries` (`Array<[id, node]>`) because
+ * `JSON.stringify(new Map(...))` returns `"{}"` and loses the
+ * information. The process boundary **requires** this DTO; within the
+ * process, `ISchemaGraph` with its `ReadonlyMap` is the canonical
+ * form.
  *
- * Orden: la primera entrada del array se mantiene estable para el
- * mismo grafo (los `SchemaNodeId` son únicos por construcción).
+ * Order: the first array entry is kept stable for the same graph
+ * (`SchemaNodeId` values are unique by construction).
  */
 export interface ISchemaGraphDTO {
   nodes: ReadonlyArray<readonly [SchemaNodeId, ISchemaNode]>;
@@ -165,13 +168,13 @@ export interface ISchemaGraphDTO {
 }
 
 /**
- * Cómo un endpoint usa un grafo de schemas.
+ * How an endpoint uses a schema graph.
  *
- * No se adjunta aún a `EndpointSpec` (a00010 S6 deja solo `schemaGraph`
- * opcional, con `root` como punto de partida). El tipo queda declarado
- * para los exportadores que necesiten más de un nodo por endpoint — el
- * caso obvio es OpenAPI, donde las responses también se describen: cada
- * código de estado se asocia a un nodo del grafo por id.
+ * Not yet attached to `EndpointSpec` (a00010 S6 only leaves
+ * `schemaGraph` optional, with `root` as the starting point). The
+ * type stays declared for exporters that need more than one node per
+ * endpoint — the obvious case is OpenAPI, where responses are also
+ * described: every status code is associated with a graph node by id.
  */
 export interface IOperationSchema {
   readonly request?: SchemaNodeId;
@@ -179,13 +182,14 @@ export interface IOperationSchema {
 }
 
 /**
- * Forma aplanada de un nodo, lista para exportarse a un formato que aún
- * no consume `SchemaGraph` (la colección Postman, por ejemplo).
+ * Flattened form of a node, ready to be exported to a format that
+ * does not yet consume `SchemaGraph` (the Postman collection, for
+ * instance).
  *
- * Es lo que devuelve `flatten-helper`: un walk desde la raíz que emite
- * un `IEndpointField` por cada nodo escalable. Los nodos `object` se
- * recorren recursivamente; las tuplas y uniones se aplanan con sufijos
- * en el nombre (`<campo>.0`, `<campo>.<alternativa>`).
+ * This is what `flatten-helper` returns: a walk from the root that
+ * emits one `IEndpointField` per scalable node. `object` nodes are
+ * traversed recursively; tuples and unions are flattened with
+ * suffixes in the name (`<field>.0`, `<field>.<alternative>`).
  */
 export interface IFlattenedField {
   readonly path: string;
@@ -195,36 +199,36 @@ export interface IFlattenedField {
 }
 
 export interface IBuildOptions {
-  /** Nombre lógico del nodo raíz. Si se omite, `"Root"`. */
+  /** Logical name of the root node. If omitted, `"Root"`. */
   readonly rootName?: string;
 }
 
-/** Tipo escalar que el contrato acepta como `scalarType`. */
+/** Scalar type the contract accepts as `scalarType`. */
 export type ScalarType = NonNullable<ISchemaNode["scalarType"]>;
 
-/** Opciones al construir un nodo `scalar` o `enum`. */
+/** Options when building a `scalar` or `enum` node. */
 export interface IScalarOptions {
-  /** Restricciones adicionales: format, min/max, pattern, etc. */
+  /** Additional constraints: format, min/max, pattern, etc. */
   readonly constraints?: ISchemaConstraints;
-  /** Nombre lógico (ej. `UserId`). Lo recogen los exportadores como `$ref`. */
+  /** Logical name (e.g. `UserId`). Exporters pick it up as `$ref`. */
   readonly name?: string;
 }
 
-/** Opciones comunes a los nodos compuestos (`union`/`intersection`/`object`/`array`). */
+/** Options common to composite nodes (`union`/`intersection`/`object`/`array`). */
 export interface ICompositeOptions {
-  /** Nombre lógico (ej. `UserOrError`). Lo usan los exportadores como `$ref`. */
+  /** Logical name (e.g. `UserOrError`). Exporters use it as `$ref`. */
   readonly name?: string;
-  /** Restricciones adicionales aplicables al nodo compuesto. */
+  /** Additional constraints applicable to the composite node. */
   readonly constraints?: ISchemaConstraints;
 }
 
-/** Opciones al construir un nodo `reference`. */
+/** Options when building a `reference` node. */
 export interface IReferenceOptions {
-  /** Nombre del nodo referencia (si lo tiene; los `$ref` nominales lo usan). */
+  /** Name of the reference node (when it has one; nominal `$ref`s use it). */
   readonly name?: string;
-  /** Descripción opcional del enlace. */
+  /** Optional description of the link. */
   readonly description?: string;
 }
 
-/** Opciones para los constructores de nodos compuestos (`object`/`array`/`tuple`). */
+/** Options for composite node builders (`object`/`array`/`tuple`). */
 export interface ICompositeNodeOptions extends ICompositeOptions {}

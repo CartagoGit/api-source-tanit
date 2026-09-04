@@ -1,37 +1,37 @@
 /**
- * Estrategia de descubrimiento de último recurso.
+ * Last-resort discovery strategy.
  *
- * Cuando ningún scanner reconoce el proyecto, el pipeline aún puede
- * intentar algo: hoy, una heurística sobre `routes/*.php` heredada de
- * cuando esto era una herramienta solo para Laravel.
+ * When no scanner recognizes the project, the pipeline can still try
+ * something: today, a heuristic over `routes/*.php` inherited from
+ * when this was a Laravel-only tool.
  *
- * Vive en el núcleo **como interfaz** por el mismo motivo que el
- * catálogo de scanners: el pipeline necesita poder llamar a un
- * fallback, pero no puede conocer cuál. Antes lo importaba directo
- * (`endpoint-discovery.service`, que parsea PHP), y eso metía Laravel
- * dentro del núcleo agnóstico por la puerta de atrás.
+ * Lives in core **as an interface** for the same reason as the scanner
+ * catalog: the pipeline needs to be able to call a fallback, but cannot
+ * know which one. Previously it imported it directly
+ * (`endpoint-discovery.service`, which parses PHP), and that snuck
+ * Laravel into the agnostic core through the back door.
  *
- * Quien compone la aplicación decide si inyecta un fallback y cuál. Sin
- * fallback, un proyecto no reconocido devuelve cero endpoints — que es
- * una respuesta honesta, no un error.
+ * Whoever composes the application decides whether to inject a fallback
+ * and which one. Without a fallback, an unrecognized project returns
+ * zero endpoints — which is an honest answer, not an error.
  */
 import type { EndpointSpec } from "./postman.interface.js";
 import type { ParsedRoute } from "./scanner.interface.js";
 import type { ProjectConfig } from "./project-config.interface.js";
 import type { IProjectContext } from "./project-context.interface.js";
 
-/** Lo que devuelve un intento de descubrimiento de último recurso. */
+/** Result of a last-resort discovery attempt. */
 export interface ILegacyDiscoveryResult {
   readonly specs: ReadonlyArray<EndpointSpec>;
   readonly routes: ReadonlyArray<ParsedRoute>;
-  /** Endpoints cuyas reglas de validación se resolvieron. */
+  /** Endpoints whose validation rules were resolved. */
   readonly withValidation: number;
   readonly withoutValidation: number;
 }
 
-/** Estrategia de descubrimiento para proyectos que ningún scanner reconoce. */
+/** Discovery strategy for projects that no scanner recognizes. */
 export interface ILegacyDiscovery {
-  /** Nombre para trazas y para el campo `origin` del resultado. */
+  /** Name for traces and for the `origin` field of the result. */
   readonly name: string;
   discover(
     config: ProjectConfig,

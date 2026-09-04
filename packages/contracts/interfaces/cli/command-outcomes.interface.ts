@@ -63,14 +63,13 @@ export interface ICheckOutcome {
 }
 
 /**
- * Lo que devuelve una generación: el código de salida y el informe.
+ * What a generation returns: the exit code and the report.
  *
- * El informe se construye **siempre**, no solo con `--json`. Antes solo
- * existía dentro de ese `if`, así que cualquier otro consumidor
- * —`apisrc ui`, un test, el plugin— tenía que volver a llamar al
- * pipeline o parsear la salida por pantalla. Las dos cosas son una
- * segunda implementación, y una segunda implementación se
- * desincroniza.
+ * The report is **always** built, not only with `--json`. Before it
+ * only existed inside that `if`, so any other consumer -- `apisrc ui`,
+ * a test, the plugin -- had to call the pipeline again or parse the
+ * screen output. Both are a second implementation, and a second
+ * implementation drifts.
  */
 export interface IGenerateOutcome {
   readonly code: number;

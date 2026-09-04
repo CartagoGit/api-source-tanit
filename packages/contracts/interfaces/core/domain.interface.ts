@@ -1,60 +1,61 @@
 /**
- * Lo que el dominio produce y consume: opciones y resultados.
+ * What the domain produces and consumes: options and results.
  *
- * Aquí viven las formas de dato de los servicios que construyen la
- * colección, hablan con la API de Postman o vigilan el proyecto. Ninguna
- * trae código: son lo que un consumidor necesita para declarar qué
- * recibe sin arrastrar el servicio que se lo da.
+ * The data shapes of the services that build the collection, talk to
+ * the Postman API, or watch the project live here. None of them carry
+ * code: they are what a consumer needs to declare what it receives
+ * without dragging in the service that provides it.
  *
- * `IProjectSummary` es el caso que motivó la sección entera. La interfaz
- * web lo importaba de `core/discovery/summary.service`, o sea que para
- * tipar un resumen se llevaba el pipeline completo por delante.
+ * `IProjectSummary` is the case that motivated this whole section. The
+ * web UI imported it from `core/discovery/summary.service`, meaning
+ * that to type a summary it pulled the whole pipeline along with it.
  */
 
 /**
- * Lo que el host puede declarar para ayudar a cablear la sesión.
+ * What the host can declare to help wire up the session.
  *
- * Las dos son **último recurso**, no configuración esperada: el flujo
- * detecta el login por método y URI, y el token probando los caminos
- * habituales de la respuesta en ejecución. Antes se exigía declarar el
- * camino del token, y el resultado fue que no se activaba en ninguno de
- * los once proyectos de ejemplo.
+ * Both fields are **last resort**, not expected configuration: the
+ * flow detects the login by method and URI, and the token by trying
+ * the usual response paths at runtime. Previously the token path had
+ * to be declared, and the result was that auth did not activate in
+ * any of the eleven example projects.
  */
 export interface IApplyAuthFlowOptions {
   /**
-   * Camino declarado por el host (`config.tokenResponsePath`). Si viene,
-   * es el único que se prueba; si no, se prueban los habituales.
+   * Path declared by the host (`config.tokenResponsePath`). When
+   * present it is the only one tried; otherwise the usual candidates
+   * are tried.
    */
   readonly tokenResponsePath?: string | undefined;
   /**
-   * Nombre exacto del endpoint de login declarado por el host. Solo se
-   * usa como último recurso, si la detección por URI no encuentra nada.
+   * Exact name of the login endpoint declared by the host. Only used
+   * as a last resort, if URI-based detection finds nothing.
    */
   readonly loginEndpointName?: string | undefined;
 }
 
-/** Definición de un entorno (agnóstica del proyecto). */
+/** Definition of an environment (project-agnostic). */
 export interface EnvironmentDef {
-  /** Nombre que verá el usuario en Postman. */
+  /** Name shown to the user in Postman. */
   name: string;
-  /** Color opcional en formato #RRGGBB. */
+  /** Optional color in `#RRGGBB` format. */
   color?: string;
-  /** Mapa clave → valor que SOBREESCRIBE las variables base. */
+  /** Key → value map that OVERRIDES the base variables. */
   overrides?: Record<string, string>;
 }
 
-/** El body inferido para un endpoint y con qué confianza se dedujo. */
+/** The body inferred for an endpoint and the confidence behind it. */
 export interface BodyInference {
-  /** Filename o heurística que produjo el body. */
+  /** Filename or heuristic that produced the body. */
   reason: string;
   body: Record<string, unknown>;
 }
 
 /**
- * Cuánto ha rellenado la inferencia agnóstica.
+ * How much the project-agnostic inference filled in.
  *
- * Lo imprime el CLI: es la forma de ver de un vistazo cuánto viene del
- * código y cuánto de una heurística.
+ * The CLI prints this: it is the way to see at a glance how much
+ * comes from the code and how much from a heuristic.
  */
 export interface InferApplyStats {
   bodiesAdded: number;
@@ -63,134 +64,134 @@ export interface InferApplyStats {
   skippedManual: number;
 }
 
-/** Environment de Postman, tal como lo emite `environment-builder`. */
+/** Postman environment, as emitted by `environment-builder`. */
 export interface IPostmanEnvironmentPayload {
   readonly id?: string;
   readonly name: string;
   readonly values: ReadonlyArray<Record<string, unknown>>;
 }
 
-/** Resultado de subir un artefacto. */
+/** Result of uploading an artifact. */
 export interface IPushResult {
-  /** `"created"` si no existía, `"updated"` si se sobrescribió. */
+  /** `"created"` if it did not exist, `"updated"` if it was overwritten. */
   readonly action: "created" | "updated";
-  /** UID que Postman asigna (`<userId>-<uuid>`). */
+  /** UID assigned by Postman (`<userId>-<uuid>`). */
   readonly uid: string;
   readonly name: string;
 }
 
-/** Opciones comunes de todas las llamadas. */
+/** Common options for all calls. */
 export interface IPostmanApiOptions {
   readonly apiKey: string;
-  /** Workspace destino. Si falta, va al workspace personal por defecto. */
+  /** Target workspace. If missing, falls back to the default personal workspace. */
   readonly workspaceId?: string | undefined;
-  /** Inyectable para poder testear sin red. */
+  /** Injectable so tests can run without the network. */
   readonly fetchImpl?: typeof fetch;
 }
 
-/** Qué vigilar, con cuánto rebote, y qué hacer cuando algo cambia. */
+/** What to watch, with how much debounce, and what to do when something changes. */
 export interface IWatchOptions {
-  /** Raíz del proyecto a vigilar. */
+  /** Root of the project to watch. */
   readonly root: string;
-  /** Milisegundos de espera tras el último cambio. */
+  /** Milliseconds to wait after the last change. */
   readonly debounceMs?: number;
-  /** Carpetas extra a ignorar, además de las de siempre. */
+  /** Extra directories to ignore, on top of the default ones. */
   readonly ignoreDirs?: ReadonlySet<string>;
-  /** Qué hacer cuando un lote de cambios se asienta. */
+  /** What to do when a batch of changes settles. */
   readonly onChange: (changed: readonly string[]) => void | Promise<void>;
 }
 
-/** Lo que devuelve `watchProject` para poder parar. */
+/** What `watchProject` returns so the watcher can be stopped. */
 export interface IWatchHandle {
   close(): void;
 }
 
-/** Lo que devuelve el parseo de `--format`. */
+/** What the parsing of `--format` returns. */
 export type IParsedFormats =
   | { readonly ok: true; readonly formats: string[] }
   | { readonly ok: false; readonly invalid: string[]; readonly valid: string[] };
 
 /**
- * Estado de salud de la documentación de un proyecto, en porcentajes.
+ * Documentation health of a project, in percentages.
  *
- * Cada campo es `0..100` (entero, redondeado) y responde "de cuántos
- * endpoints la colección va a llevar esta pieza". Son la señal de
- * FEAT-003: con ellos, un usuario ve en un vistazo si su API está bien
- * documentada **antes** de generar la colección, sin abrir un Postman
- * para contarlo a mano.
+ * Each field is `0..100` (integer, rounded) and answers "out of how
+ * many endpoints will the collection carry this piece?". They are
+ * the FEAT-003 signal: with them, a user sees at a glance whether
+ * the API is well documented **before** generating the collection,
+ * without opening Postman to count by hand.
  */
 export interface IProjectHealth {
-  /** % de endpoints cuyas reglas de validación se resolvieron. */
+  /** % of endpoints whose validation rules were resolved. */
   readonly withValidationPercent: number;
-  /** % de endpoints con body de ejemplo (reglas resueltas o inferido). */
+  /** % of endpoints with an example body (rules resolved or inferred). */
   readonly withBodySchemaPercent: number;
-  /** % de endpoints que llevan al menos un ejemplo de valor. */
+  /** % of endpoints that carry at least one example value. */
   readonly withExamplesPercent: number;
-  /** % de endpoints con descripción. */
+  /** % of endpoints with a description. */
   readonly withDescriptionPercent: number;
 }
 
-/** Resumen de un proyecto host para inspección rápida. */
+/** Summary of a host project for quick inspection. */
 export interface IProjectSummary {
-  /** Framework detectado. `"unknown"` si no lo reconoció ninguno. */
+  /** Detected framework. `"unknown"` if none was recognised. */
   framework: string;
   /**
-   * Todos los frameworks que reconocieron el proyecto.
+   * All frameworks that recognised the project.
    *
-   * Más de uno significa proyecto híbrido, y entonces `framework` es
-   * solo el de más confianza.
+   * More than one means a hybrid project, and in that case `framework`
+   * is just the one with the highest confidence.
    */
   frameworks: ReadonlyArray<string>;
-  /** Nombre del proyecto, del manifiesto de su ecosistema. */
+  /** Project name, from the ecosystem manifest. */
   projectName: string;
-  /** BaseUrl efectiva. */
+  /** Effective BaseUrl. */
   baseUrl: string;
   /**
-   * Endpoints que acabarían en la colección.
+   * Endpoints that will end up in the collection.
    *
-   * No es "rutas declaradas en el código": un `apiResource` de Laravel
-   * es una línea y siete endpoints, y lo que importa es el segundo
-   * número.
+   * Not "routes declared in code": a Laravel `apiResource` is one
+   * line but seven endpoints, and what matters is the second number.
    */
   routesInCode: number;
-  /** Endpoints cuyas reglas de validación se resolvieron. */
+  /** Endpoints whose validation rules were resolved. */
   withFormRequest: number;
-  /** Endpoints sin reglas: su body sale de la inferencia agnóstica. */
+  /** Endpoints without rules: their body comes from the project-agnostic inference. */
   withoutFormRequest: number;
-  /** Bodies auto-rellenados por la heurística agnóstica. */
+  /** Bodies auto-filled by the project-agnostic heuristic. */
   bodiesAdded: number;
-  /** Queries auto-rellenadas por la heurística agnóstica. */
+  /** Queries auto-filled by the project-agnostic heuristic. */
   queriesAdded: number;
-  /** Modo "zero-config" (no se encontró `config.constant.ts`). */
+  /** "zero-config" mode (no `config.constant.ts` was found). */
   zeroConfig: boolean;
-  /** Ruta al `config.constant.ts` cargado, o `"<zero-config>"`. */
+  /** Path to the loaded `config.constant.ts`, or `"<zero-config>"`. */
   configPath: string;
-  /** Endpoints definidos manualmente como override. */
+  /** Endpoints defined manually as an override. */
   manualEndpoints: number;
-  /** Variables de colección derivadas de las rutas. */
+  /** Collection variables derived from the routes. */
   inferredVariables: number;
-  /** `null` si el proyecto no expone un endpoint de login. */
+  /** `null` if the project does not expose a login endpoint. */
   auth: { readonly loginEndpoint: string } | null;
-  /** Avisos accionables: proyecto híbrido, nada reconocido… */
+  /** Actionable warnings: hybrid project, nothing recognised… */
   warnings: ReadonlyArray<string>;
   /**
-   * Las señales que motivaron la elección del framework.
+   * The signals that motivated the framework choice.
    *
-   * Cada elemento es una cosa que el detector vio y la subida exacta
-   * al score. La CLI los imprime bajo `¿Por qué ${framework}?`; el
-   * tool MCP los expone en `summary.evidence`; la UI los pinta como
-   * tarjetas con icono. Es lo que convierte "framework: express
-   * (0.9)" en "porque `package.json` declara express en deps".
+   * Each entry is something the detector saw and the exact score
+   * bump it produced. The CLI prints them under `Why ${framework}?`;
+   * the MCP tool exposes them in `summary.evidence`; the UI renders
+   * them as icon-bearing cards. They are what turns
+   * "framework: express (0.9)" into "because `package.json` lists
+   * express in deps".
    *
-   * Vacío si el detector aún no se ha enriquecido (la mayoría, hoy).
+   * Empty if the detector has not yet been enriched (most cases today).
    */
   evidence: ReadonlyArray<import("./scanner.interface.js").IProjectDetectionEvidence>;
   /**
-   * Salud de la documentación, en porcentajes `0..100`.
+   * Documentation health, in percentages `0..100`.
    *
-   * Se computa sobre los specs finales —los mismos que alimentan la
-   * colección—, así que lo que dice es lo que `generate` produce. Con
-   * cero endpoints, todos los porcentajes son `0`.
+   * Computed over the final specs —the same ones that feed the
+   * collection—, so what it says is what `generate` produces. With
+   * zero endpoints, every percentage is `0`.
    */
   health: IProjectHealth;
 }

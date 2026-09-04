@@ -199,21 +199,21 @@ export interface IMonorepoDetection {
    */
   readonly signal: string | null;
   /**
-   * Los subdirectorios del workspace, relativos a `projectRoot`, en
-   * formato POSIX y sin `..`. Vacío cuando no es monorepo o cuando los
-   * globs no resuelven a ningún directorio existente.
+   * The workspace subdirectories, relative to `projectRoot`, in POSIX
+   * format and without `..`. Empty when it is not a monorepo or when
+   * the globs resolve to no existing directory.
    */
   readonly workspaceDirs: ReadonlyArray<string>;
   /**
-   * Recomendación cuando hay **exactamente un** workspace. `null` en
-   * cualquier otro caso (no-monorepo, cero workspaces o varios). El
-   * orquestador pega este valor en `match.frameworkSearchRoot` solo
-   * si la persona no pasó `--framework-search-root`.
+   * Recommendation when there is **exactly one** workspace. `null` in
+   * any other case (not a monorepo, zero workspaces, or several). The
+   * orchestrator pastes this value into `match.frameworkSearchRoot`
+   * only if the caller did not pass `--framework-search-root`.
    */
   readonly frameworkSearchRoot: string | null;
 }
 
-/** Resultado completo del pipeline. */
+/** Full pipeline result. */
 export interface IGenerationResult {
   readonly collection: PostmanCollection;
   readonly specs: ReadonlyArray<EndpointSpec>;
@@ -221,46 +221,46 @@ export interface IGenerationResult {
   readonly config: ProjectConfig;
   readonly match: IProjectMatch | null;
   /**
-   * Identidad estable del servicio que produjo este resultado
-   * (derivada de `match.frameworkSearchRoot`).
+   * Stable identity of the service that produced this result
+   * (derived from `match.frameworkSearchRoot`).
    *
-   * Se introdujo en x00024 para que el branch multi-servicio de
-   * `generateCollection()` (singular) pueda construir el error
-   * `MultipleServicesWithoutCombineError` con los ids de los
-   * servicios detectados, en vez de descartar N-1 silenciosamente.
-   * Single-service también lo trae (es la identidad del único
-   * servicio: `"default"` o el frameworkSearchRoot derivado).
+   * Introduced in x00024 so that the multi-service branch of
+   * `generateCollection()` (singular) can build the
+   * `MultipleServicesWithoutCombineError` with the ids of the detected
+   * services, instead of silently dropping N-1. Single-service carries
+   * it too (the identity of the single service: `"default"` or the
+   * derived frameworkSearchRoot).
    */
   readonly serviceId?: string;
-  /** `"scanner"` si lo resolvió un scanner del registry; `"legacy"` si no. */
+  /** `"scanner"` if a registry scanner resolved it; `"legacy"` otherwise. */
   readonly origin: "scanner" | "legacy";
-  /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */
+  /** Wired-in session flow, or `null` if the project exposes no login. */
   readonly authFlow: IAuthFlow | null;
   /**
-   * Esquema de autenticación detectado, con su evidencia.
+   * Detected authentication scheme, with its evidence.
    *
-   * Se expone para que los exportadores a otros formatos no lo deduzcan
-   * cada uno por su cuenta: cinco detecciones paralelas acabarían
-   * discrepando, y el mismo proyecto diría bearer en Postman y nada en
+   * Exposed so that exporters to other formats do not each deduce it
+   * on their own: five parallel detections would end up disagreeing,
+   * and the same project would say bearer in Postman and nothing in
    * Insomnia.
    */
   readonly authScheme: IDetectedAuthScheme;
-  /** Contexto resuelto del proyecto. */
+  /** Resolved project context. */
   readonly context: IProjectContext;
   /**
-   * Avisos para la persona que ejecuta esto. No son errores: la
-   * colección se ha generado igual. Son las cosas que, de no decirse,
-   * dejan a alguien con una colección a la que le falta media API sin que
-   * lo sepa.
+   * Warnings for whoever runs this. Not errors: the collection has
+   * been generated anyway. These are the things that, if left unsaid,
+   * leave someone with a collection missing half the API without
+   * knowing it.
    */
   readonly warnings: ReadonlyArray<string>;
-  /** Todos los frameworks que reconocieron el proyecto, no solo el ganador. */
+  /** All frameworks that recognized the project, not just the winner. */
   readonly frameworks: ReadonlyArray<string>;
   /**
-   * De dónde salió la configuración.
+   * Where the configuration came from.
    *
-   * Lo necesita `summary` para decir si el proyecto trae config propia o
-   * va en zero-config.
+   * `summary` needs it to say whether the project brings its own
+   * config or runs zero-config.
    */
   readonly project: {
     readonly zeroConfig: boolean;
@@ -269,74 +269,75 @@ export interface IGenerationResult {
   };
   readonly metrics: IGenerationMetrics;
   /**
-   * Provenance por endpoint, cuando la detección fue híbrida
-   * (2+ frameworks). Cada entrada dice de qué scanner vino cada
-   * pieza del endpoint (ruta, body, auth, descripción).
+   * Per-endpoint provenance, when detection was hybrid (2+ frameworks).
+   * Each entry says which scanner contributed each piece of the
+   * endpoint (path, body, auth, description).
    *
-   * Es `undefined` cuando solo un scanner reconoció el proyecto:
-   * no hay nada que reconciliar y el `provenance` sería trivial
-   * (un solo contributor).
+   * `undefined` when only one scanner recognized the project: there is
+   * nothing to reconcile and `provenance` would be trivial (a single
+   * contributor).
    *
-   * Los campos de los `EndpointSpec` resultantes son los que ganó la
-   * comparación, no los del scanner que más rutas aportó: en un
-   * híbrido, OpenAPI puede tener la ruta y Fastify el body, y el
-   * spec fusionado lleva el body de Fastify con la provenance de
-   * ambos.
+   * The fields of the resulting `EndpointSpec`s are those that won the
+   * comparison, not those of the scanner that contributed the most
+   * routes: in a hybrid, OpenAPI may have the path and Fastify the
+   * body, and the merged spec carries Fastify's body with the
+   * provenance of both.
    */
   readonly provenance?: ReadonlyArray<IEndpointProvenanceEntry>;
 }
 
-/** La configuración del proyecto, ya resuelta, y de dónde ha salido. */
+/** The project's configuration, resolved, and where it came from. */
 export interface LoadedProject {
   config: ProjectConfig;
   manualEndpoints: EndpointSpec[];
   /**
-   * Importa tanto como el config: es la diferencia entre «no encontré tu
-   * fichero» y «lo encontré y dice esto», que es lo primero que hay que
-   * saber cuando la salida no es la esperada.
+   * Matters as much as the config itself: it is the difference between
+   * "I could not find your file" and "I found it and it says this" —
+   * which is the first thing to know when the output is not what you
+   * expected.
    */
   configPath: string;
   endpointsPath: string | null;
-  /** True si se generó un ProjectConfig zero-config (sin archivo host). */
+  /** True when a zero-config ProjectConfig was generated (no host file). */
   zeroConfig: boolean;
 }
 
-/** Entradas de las que se puede derivar el contexto de un proyecto. */
+/** Inputs from which a project's context can be derived. */
 export interface IResolveContextOptions {
-  /** Raíz del proyecto. Si falta, se deduce de `argv` o `env`. */
+  /** Project root. If missing, derived from `argv` or `env`. */
   readonly projectRoot?: string | undefined;
-  /** Directorio de salida. Si falta, el convencional del proyecto. */
+  /** Output directory. If missing, the project's conventional one. */
   readonly outputDir?: string | undefined;
-  /** `process.argv` inyectable, para poder testear sin tocar el global. */
+  /** Injectable `process.argv`, to test without touching the global. */
   readonly argv?: ReadonlyArray<string>;
-  /** `process.env` inyectable, por el mismo motivo. */
+  /** Injectable `process.env`, for the same reason. */
   readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
-/** Qué rutas fijar durante una sección con rutas propias. */
+/** Which paths to fix during a section with its own paths. */
 export interface IPathScope {
   readonly projectRoot?: string;
   readonly outputDir?: string;
 }
 
-/** Lo que sale de adaptar las rutas de un scanner al catálogo del núcleo. */
+/** What comes out of adapting a scanner's paths to core's catalog. */
 export interface AdapterResult {
   readonly specs: EndpointSpec[];
   readonly routes: ReadonlyArray<ParsedRoute>;
   /**
-   * Los contadores de con y sin reglas: la medida de cuánto se ha podido
-   * deducir del código frente a cuánto se ha inferido.
+   * The with-rules and without-rules counters: how much was deduced
+   * from the code versus how much had to be inferred.
    */
   readonly withFormRequest: number;
   readonly withoutFormRequest: number;
   /**
-   * Endpoints cuyo proveedor de validación **falló**.
+   * Endpoints whose validation provider **failed**.
    *
-   * No es lo mismo que «sin reglas», y confundirlos era el problema: un
-   * proveedor que lanza dejaba el endpoint exactamente igual que uno que
-   * legítimamente no tiene validación, así que un parser roto degradaba
-   * la colección entera sin que nadie lo notara. Lo único que cambiaba
-   * era un contador que nadie miraba.
+   * This is not the same as "no rules", and confusing the two was the
+   * problem: a throwing provider left the endpoint looking exactly like
+   * one that legitimately had no validation, so a broken parser would
+   * quietly degrade the whole collection. The only thing that changed
+   * was a counter nobody watched.
    */
   readonly validationFailures: ReadonlyArray<string>;
 }

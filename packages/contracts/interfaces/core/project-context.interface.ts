@@ -1,45 +1,47 @@
 /**
- * Contexto del proyecto que se está escaneando.
+ * Context of the project being scanned.
  *
- * Sustituye a la resolución implícita por el singleton retirado de
- * `paths.service` (r00010 S2, 2026-09-03), que se calculaba **una vez
- * por proceso** desde `POSTMAN_PROJECT_ROOT` o `--project-root`. Eso
- * valía para el CLI —un proceso por proyecto— pero:
+ * Replaces the implicit resolution by the singleton retired from
+ * `paths.service` (r00010 S2, 2026-09-03), which was computed **once
+ * per process** from `POSTMAN_PROJECT_ROOT` or `--project-root`. That
+ * worked for the CLI —one process per project— but:
  *
- *   - Un consumidor de vida larga (el servidor MCP) que analizase el
- *     proyecto A y luego el B recibía las rutas de A.
- *   - Obligaba a los tests a manosear `process.env` y a resetear la
- *     caché a mano antes de cada llamada.
- *   - Escondía la dependencia: `LaravelFormRequestValidationProvider`
- *     recibía `match.projectRoot` y aun así leía el singleton, con lo
- *     que sin la variable de entorno no resolvía ni un FormRequest.
+ *   - A long-lived consumer (the MCP server) that analyzed project A
+ *     and then project B received A's routes for both.
+ *   - It forced tests to mess with `process.env` and to reset the
+ *     cache manually before each call.
+ *   - It hid the dependency: `LaravelFormRequestValidationProvider`
+ *     received `match.projectRoot` and still read the singleton, so
+ *     without the environment variable it wouldn't resolve a single
+ *     FormRequest.
  *
- * Pasar el contexto explícito hace la dependencia visible en la firma y
- * el código reentrante sin trucos.
+ * Passing the context explicitly makes the dependency visible in the
+ * signature and the code reentrant without tricks.
  */
 
-/** Rutas resueltas de un proyecto host. */
+/** Resolved paths of a host project. */
 export interface IProjectContext {
-  /** Raíz absoluta del proyecto escaneado. */
+  /** Absolute root of the scanned project. */
   readonly projectRoot: string;
-  /** Raíz absoluta del paquete api-source-tanit. */
+  /** Absolute root of the api-source-tanit package. */
   readonly packageRoot: string;
-  /** Nombre corto del proyecto, para nombrar los artefactos. */
+  /** Short name of the project, used to name the artefacts. */
   readonly projectBasename: string;
-  /** Directorio donde se escriben los artefactos. */
+  /** Directory where the artefacts are written. */
   readonly outputDir: string;
 }
 
-/** Subdirectorios convencionales, derivados de la raíz. */
+/** Conventional subdirectories, derived from the root. */
 export interface IProjectDirs {
   /**
-   * `<raíz>/routes` — solo lo usa el descubrimiento heredado de
-   * Laravel. Un scanner moderno recibe el `projectRoot` y busca lo
-   * suyo; estos tres campos desaparecen cuando se retire ese camino.
+   * `<root>/routes` — only used by legacy Laravel discovery.
+   * A modern scanner receives the `projectRoot` and looks for its
+   * own artefacts; these three fields disappear when that path is
+   * retired.
    */
   readonly routes: string;
-  /** `<raíz>/app` — ídem, solo para el camino heredado. */
+  /** `<root>/app` — same, only for the legacy path. */
   readonly app: string;
-  /** `<raíz>/app/Http/Requests` — ídem, solo para el camino heredado. */
+  /** `<root>/app/Http/Requests` — same, only for the legacy path. */
   readonly requests: string;
 }
