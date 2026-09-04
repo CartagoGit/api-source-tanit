@@ -42,7 +42,7 @@
  * (a00010 S7 — slice AST TypeScript)
  */
 
-import { parse as babelParse } from "@babel/parser";
+import { parse as babelParse, type ParserPlugin } from "@babel/parser";
 
 import type {
   TSAssignment,
@@ -127,21 +127,44 @@ function asArray(value: unknown): ReadonlyArray<BabelNode> {
  * `(line, column)` ascendente, de modo que el contrato no dependa del
  * orden interno del walker (a00011 C-7 / B-rev-11).
  */
+/**
+ * Indica si el archivo es JSX/TSX.
+ *
+ * Audit 2026-09-04 P2 #7: el parser declaraba `isSourceJsTsFile` para
+ * `.tsx`/`.jsx`, pero el `babelParse` no activaba el plugin `jsx`. Un
+ * `.tsx` válido (Next.js, componentes) se rechazaba con syntax error
+ * y el scanner perdía el archivo entero. Ahora activamos `jsx` cuando
+ * el filename lo sugiere; `typescript` se mantiene para `.ts`/`.tsx`
+ * y los decoradores para los frameworks que los usan.
+ */
+function isJsxFile(filename: string): boolean {
+  return filename.endsWith(".tsx") || filename.endsWith(".jsx");
+}
+
 export function parse(source: string, filename: string): TSFile {
+  // Babel acepta strings o configuraciones tipadas (ParserPlugin es
+  // el alias de `PluginConfig` en las definiciones de tipos del
+  // paquete). Mantenemos el array como strings para no arrastrar
+  // ~2500 tipos de `@babel/types`.
+  const plugins: ParserPlugin[] = ["typescript", "decorators"];
+  // JSX solo cuando toca: activarlo en `.ts`/`.js` produce falsos
+  // positivos al encontrar `<` en comparaciones (`if (a < b)`).
+  if (isJsxFile(filename)) plugins.push("jsx");
   const ast = babelParse(source, {
     sourceType: "module",
     allowImportExportEverywhere: true,
-    // Tres plugins que cubren el código que los 6 scanners miran:
+    // Plugins que cubren el código que los scanners miran:
     //   - `typescript`: soporte TS nativo (TSTypeAnnotation,
     //     TSInterfaceDeclaration, generics).
     //   - `decorators`: NestJS usa `@Controller('/users')`,
-    //     `@Get(':id')`, etc. sobre métodos y clases. Sin este plugin
-    //     Babel rechaza los `@` como syntax error.
+    //     `@Get(':id')`, etc. sobre métodos y clases.
+    //   - `jsx`: solo se activa para `.tsx`/`.jsx`. Sin esto, Babel
+    //     rechaza sintaxis JSX como `<Foo />` con syntax error y el
+    //     scanner pierde el archivo.
     //   - `classProperties`: las propiedades de clase con valores
-    //     (e.g. `@Input() name!: string;` en NestJS) usan la
-    //     propuesta de class fields. Babel 8 ya lo trae integrado,
-    //     pero declararlo deja claro el subset soportado.
-    plugins: ["typescript", "decorators"],
+    //     usan la propuesta de class fields. Babel 8 ya lo trae
+    //     integrado, pero declararlo deja claro el subset soportado.
+    plugins: [...plugins],
     // Los scanners ya strippean comentarios antes (ver
     // `stripJsComments`); pero por si llega un archivo con
     // comentarios no stripped, dejamos que Babel los ignore.

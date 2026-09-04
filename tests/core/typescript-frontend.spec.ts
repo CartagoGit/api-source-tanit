@@ -385,3 +385,36 @@ describe("TypeScript frontend — parseModule con diagnostics (B-rev-13)", () =>
     expect(diagnostics).toHaveLength(0);
   });
 });
+describe("TypeScript frontend — JSX/TSX (audit 2026-09-04 P2 #7)", () => {
+  test("parse() acepta sintaxis JSX cuando filename termina en .tsx", () => {
+    // Antes el parser declaraba isSourceJsTsFile para .tsx pero
+    // babelParse no activaba el plugin `jsx`. El archivo se
+    // rechazaba con syntax error y el scanner perdía todo el
+    // contenido.
+    const file = parse(
+      `import React from "react";
+export const App = () => <div className="container">Hello</div>;
+`,
+      "app.tsx",
+    );
+    expect(file.imports).toHaveLength(1);
+    expect(file.imports[0]?.source).toBe("react");
+  });
+
+  test("parse() acepta sintaxis JSX en .jsx (sin TypeScript)", () => {
+    const file = parse(
+      `const App = () => <div>Hello</div>;`,
+      "app.jsx",
+    );
+    expect(file.symbols).toHaveLength(1);
+  });
+
+  test("parse() NO activa JSX en .ts (evita falsos positivos con <)", () => {
+    // Activar `jsx` globalmente haría que `if (a < b)` se intentase
+    // parsear como JSX. El plugin solo se aplica para .tsx/.jsx.
+    const file = parse(`if (a < b) { return true; }`, "logic.ts");
+    // No assertion dura aquí — basta con que parse no lance y la
+    // estructura sea la esperada.
+    expect(file).toBeDefined();
+  });
+});
