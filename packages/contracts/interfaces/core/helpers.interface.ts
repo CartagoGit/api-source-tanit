@@ -134,6 +134,23 @@ export interface IEndpointIdentity {
    * combinación de reglas— y no deben contarse como duplicadas.
    */
   readonly body?: string | undefined;
+  /**
+   * Identidad del workspace / servicio al que pertenece la operación.
+   *
+   * Audit 2ª revisión #3: en un monorepo con múltiples workspaces
+   * (apps/users-api, apps/payments-api), dos endpoints `GET /health`
+   * de servicios DISTINTOS no son la misma operación y no deben
+   * fusionarse en una sola. Antes, el merger agrupaba por
+   * METHOD + URI y podía colapsar ambos en un único endpoint.
+   * Ahora cada candidato lleva su `serviceId` (típicamente el
+   * `frameworkSearchRoot` del match, o "" para proyectos planos) y
+   * la clave de identidad incluye esa dimensión.
+   *
+   * Vacío (`""`) significa "proyecto plano, no hay workspaces que
+   * separar". Mantener `""` como valor por defecto evita romper
+   * proyectos no-monorepo donde `serviceId` no aplica.
+   */
+  readonly serviceId?: string;
 }
 
 /** Posición de una llamada balanceada: el `(` de apertura y su `)`. */

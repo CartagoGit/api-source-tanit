@@ -605,6 +605,14 @@ async function discoverSpecs(
       readonly framework: string;
       readonly scannerScore: number;
       readonly scannerSpecs: ReadonlyArray<EndpointSpec>;
+      /**
+       * Identidad del workspace / servicio del que vienen los specs.
+       * Audit 2ª revisión #3: en monorepos multi-workspace, dos
+       * endpoints `GET /health` de workspaces distintos NO deben
+       * fusionarse. El merger usa `serviceId` para mantener la
+       * separación. Cadena vacía = proyecto plano (no aplica).
+       */
+      readonly serviceId: string;
     }
     const perScanner: IPerScanner[] = [];
 
@@ -622,6 +630,7 @@ async function discoverSpecs(
         framework: candidate.match.framework,
         scannerScore: candidate.score,
         scannerSpecs: result.specs,
+        serviceId: candidate.match.frameworkSearchRoot ?? "",
       });
 
       // Un proveedor de validación que falla no aborta la generación
@@ -650,15 +659,16 @@ async function discoverSpecs(
       );
 
       // Fusión híbrida: cada scanner aporta sus specs con su framework.
-      // El merger agrupa por identidad (method + uri + name) y elige
-      // pieza a pieza (body, fields, auth, description) al de mayor
-      // confianza, dejando provenance de quién aportó qué. Antes
-      // hacía "first wins" sobre los specs ya mezclados, que perdía
-      // sin aviso la información del resto.
-      const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs }) =>
+      // El merger agrupa por identidad (method + uri + name +
+      // serviceId) y elige pieza a pieza (body, fields, auth,
+      // description) al de mayor confianza, dejando provenance de
+      // quién aportó qué. Antes hacía "first wins" sobre los specs
+      // ya mezclados, que perdía sin aviso la información del resto.
+      const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs, serviceId }) =>
         scannerSpecs.map((spec) => ({
           framework,
           scannerScore,
+          serviceId,
           method: spec.method,
           uri: spec.uri,
           ...(spec.name !== undefined && spec.name !== ""

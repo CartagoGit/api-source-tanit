@@ -60,7 +60,13 @@ import type { IEndpointIdentity } from "../../contracts/interfaces/core/helpers.
 export function endpointKey(identity: IEndpointIdentity): string {
   const method = identity.method.toUpperCase();
   const uri = normalizeForComparison(identity.uri);
-  let key = `${method} ${uri}`;
+  // Audit 2ª revisión #3: en monorepos, dos endpoints con misma
+  // METHOD+URI pero distinto `serviceId` (workspace) NO son la
+  // misma operación. Incluimos `serviceId` en la clave cuando
+  // está presente (un monorepo multi-workspace); los proyectos
+  // planos lo dejan vacío y siguen colisionando como antes.
+  const serviceId = identity.serviceId ?? "";
+  let key = `${serviceId}::${method} ${uri}`;
   if (identity.name !== undefined && identity.name !== "") {
     key += ` ${identity.name}`;
   }

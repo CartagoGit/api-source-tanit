@@ -668,10 +668,15 @@ function detectAuthConflict(
 function mergeKey(c: IEndpointMergeCandidate): string {
   const method = c.method.toUpperCase();
   const uri = normalizeForComparison(c.uri);
+  // Audit 2ª revisión #3: en monorepos multi-workspace, dos
+  // endpoints con la misma (method, uri) pero distinto `serviceId`
+  // NO son la misma operación. Incluimos `serviceId` (cadena
+  // vacía para proyectos planos) en la clave de merge.
+  const serviceId = c.serviceId ?? "";
   if (frameworkMultiplexesByName(c.framework)) {
-    return `${method} ${uri} ${c.name ?? ""}`;
+    return `${serviceId}::${method} ${uri} ${c.name ?? ""}`;
   }
-  return `${method} ${uri}`;
+  return `${serviceId}::${method} ${uri}`;
 }
 
 /** Agrupa candidatos por identidad contextual (REST o RPC). */

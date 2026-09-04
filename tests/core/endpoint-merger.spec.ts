@@ -1038,3 +1038,74 @@ describe("endpointSpecFromMerged — auth per-op (audit 2026-09-04 P1 #6)", () =
     expect(spec.auth).toEqual({ kind: "scheme", scheme: "apiKey" });
   });
 });
+
+describe("endpoint merger — serviceId separa workspaces (audit 2nd-review #3)", () => {
+  test("dos GET /health de workspaces distintos NO se fusionan", () => {
+    // Caso real del audit: monorepo con apps/users-api y
+    // apps/payments-api. Cada workspace expone su propio
+    // GET /health. Antes el merger los colapsaba en uno solo.
+    const { specs, warnings } = mergeEndpoints([
+      candidate({
+        framework: "express",
+        scannerScore: 0.8,
+        serviceId: "apps/users-api",
+        method: "GET",
+        uri: "/health",
+      }),
+      candidate({
+        framework: "express",
+        scannerScore: 0.8,
+        serviceId: "apps/payments-api",
+        method: "GET",
+        uri: "/health",
+      }),
+    ]);
+    expect(specs).toHaveLength(2);
+    expect(
+      warnings.some((w) => w.includes("were declared by more than one")),
+    ).toBe(false);
+  });
+
+  test("mismo serviceId SÍ fusiona (no regresión del comportamiento legacy)", () => {
+    const { specs } = mergeEndpoints([
+      candidate({
+        framework: "express",
+        scannerScore: 0.8,
+        serviceId: "apps/api",
+        method: "GET",
+        uri: "/users",
+        body: body("from-express"),
+      }),
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        serviceId: "apps/api",
+        method: "GET",
+        uri: "/users",
+        body: body("from-openapi"),
+      }),
+    ]);
+    // Mismo servicio: fusión híbrida. Un solo spec.
+    expect(specs).toHaveLength(1);
+  });
+
+  test("serviceId vacío se mantiene como cadena vacía en la clave (proyectos planos)", () => {
+    // Caso legacy: un proyecto plano sin workspaces debe seguir
+    // deduplicando por method+uri. serviceId no debe interferir.
+    const { specs } = mergeEndpoints([
+      candidate({
+        framework: "express",
+        scannerScore: 0.8,
+        method: "GET",
+        uri: "/users",
+      }),
+      candidate({
+        framework: "express",
+        scannerScore: 0.8,
+        method: "GET",
+        uri: "/users",
+      }),
+    ]);
+    expect(specs).toHaveLength(1);
+  });
+});

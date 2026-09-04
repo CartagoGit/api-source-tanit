@@ -153,6 +153,18 @@ export interface IEndpointMergeCandidate {
   readonly fields?: ReadonlyArray<IValidationSpec | IEndpointField>;
   readonly authScheme?: IDetectedAuthScheme;
   readonly description?: string;
+  /**
+   * Identidad del workspace / servicio al que pertenece este candidato.
+   *
+   * Audit 2ª revisión #3: en un monorepo con `apps/users-api` y
+   * `apps/payments-api`, dos `GET /health` de workspaces distintos
+   * no son la misma operación. El merger debe incluirlos en su
+   * clave de identidad (vía `endpointKey`) para NO fusionarlos.
+   *
+   * Cadena vacía = proyecto plano (sin workspaces). Es el default
+   * y mantiene la compatibilidad con callers no-monorepo.
+   */
+  readonly serviceId?: string;
 }
 
 /**
