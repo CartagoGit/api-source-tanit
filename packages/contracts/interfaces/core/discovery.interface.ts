@@ -218,6 +218,18 @@ export interface IGenerationResult {
   readonly routes: ReadonlyArray<ParsedRoute>;
   readonly config: ProjectConfig;
   readonly match: IProjectMatch | null;
+  /**
+   * Identidad estable del servicio que produjo este resultado
+   * (derivada de `match.frameworkSearchRoot`).
+   *
+   * Se introdujo en x00024 para que el branch multi-servicio de
+   * `generateCollection()` (singular) pueda construir el error
+   * `MultipleServicesWithoutCombineError` con los ids de los
+   * servicios detectados, en vez de descartar N-1 silenciosamente.
+   * Single-service también lo trae (es la identidad del único
+   * servicio: `"default"` o el frameworkSearchRoot derivado).
+   */
+  readonly serviceId?: string;
   /** `"scanner"` si lo resolvió un scanner del registry; `"legacy"` si no. */
   readonly origin: "scanner" | "legacy";
   /** Flujo de sesión cableado, o `null` si el proyecto no expone login. */

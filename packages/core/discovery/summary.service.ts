@@ -46,8 +46,18 @@ export async function summarizeProject(
   // La comprobación de existencia la hace el pipeline, que es quien
   // tiene que decidirlo: así los dos caminos fallan igual y con el
   // mismo mensaje.
+  //
+  // x00024: `generateCollection()` ahora lanza
+  // `MultipleServicesWithoutCombineError` cuando el caller no pide
+  // `--combine-services` y hay >1 servicio. `summarizeProject` solo
+  // quiere UNA colección resumen (un `IProjectSummary`), así que
+  // pasamos `combineServices: true` para preservar el comportamiento
+  // legacy: "summarize el primer servicio detectado". Si en el futuro
+  // la UI/CLI quiere resumir todos los servicios, ese slice migrará
+  // a `generateCollections` + un loop.
   const result = await generateCollection(resolve(projectRoot), {
     orchestrator,
+    combineServices: true,
     ...(legacyFallback ? { legacyFallback } : {}),
   });
 
