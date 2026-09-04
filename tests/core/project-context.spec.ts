@@ -150,6 +150,31 @@ describe("fromProjectRoot / toProjectRelative", () => {
   });
 });
 
+// x00022 — antes el chequeo era `startsWith(root)`, que matcheaba
+// falsamente `/home/u/api-secret` contra `/home/u/api`. La fórmula nueva
+// (relative() + guarda `..${sep}` / absoluto) cierra ese agujero.
+describe("toProjectRelative — path containment (x00022)", () => {
+  test("un hermano con prefijo común NO se considera dentro", () => {
+    expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api-secret/x.ts")).toBe(
+      "/home/u/api-secret/x.ts",
+    );
+  });
+
+  test("una ruta realmente dentro sí se recorta", () => {
+    expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api/sub/file.ts")).toBe(
+      "sub/file.ts",
+    );
+  });
+
+  test("la propia raíz se mapea a cadena vacía", () => {
+    expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api")).toBe("");
+  });
+
+  test("la raíz con trailing slash sigue mapeando a cadena vacía", () => {
+    expect(toProjectRelative(ctx("/home/u/api/"), "/home/u/api/")).toBe("");
+  });
+});
+
 describe("hasProjectDir", () => {
   test("detecta un subdirectorio existente", async () => {
     const project = await createTempProject({ "routes/api.php": "<?php" });
