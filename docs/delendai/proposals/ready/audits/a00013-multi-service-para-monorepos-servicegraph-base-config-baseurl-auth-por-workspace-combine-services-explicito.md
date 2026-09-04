@@ -9,6 +9,7 @@ date: 2026-09-04
 shippedIn:
   - d4a6d7c  # S1: ServiceGraph shape + groupByService
   - 32d4677  # S2: toServiceGraph helper adyacente + IToServiceGraphInput
+  - 2f68240  # S3: buildForService + --combine-services flag
 dependsOn:
   - a00012
 related:
@@ -113,6 +114,23 @@ que no representa a ninguno de los dos.
   - El input del helper `IGroupByServiceInput` **vive en `contracts/`** también (lint:contracts lo exige), no se introduce barrel `packages/contracts/index.ts` (lo prohíbe el README de contracts/).
   - `deriveServiceId(match)` derivado de `frameworkSearchRoot` (a00010), normalizado a `[A-Za-z0-9_-]`. Default = `framework@projectRoot`.
   - 13 tests cubren: id estable, un solo servicio, dos servicios con misma `METHOD+URI` no colisionan, `combined` default `false`, override de auth+baseUrl por servicio, errores coherentes.
+
+
+### S3 — `buildSpecsFromService()` en `pipeline` y `--combine-services`
+
+- **Status**: done (commit 2f68240)
+- **Files**:
+  - `packages/core/discovery/generation.pipeline.ts`
+  - `packages/cli/commands/generate.script.ts`
+  - `tests/cli/generate-monorepo-multi-service.spec.ts` (nuevo)
+- **Gate**: `bun run typecheck && bun run lint && bun run validate:examples && bun run test:core && bun run test:cli`
+- **Detalle**:
+  - Pipeline: `IDiscovery` ahora incluye `matches`, `routesByService`, `monorepoDetection`.
+  - `buildFor` consume `IServiceGraph`: single-service / `combineServices=true` emite `IGenerationResult`; multi-service / `combineServices=false` emite `IGenerationResult[]`.
+  - Camino zero-endpoints (matches.length === 0) sintetiza un servicio `default` para preservar el legacy (applyAgnosticInference + buildCollection + auth flow siguen corriendo).
+  - CLI: nuevo flag `--combine-services` (default false), propagado a `IGenerationOptions.combineServices`.
+  - 3 tests CLI verifican el parse del flag y el codigo de salida. Tests de end-to-end con orchestrator real se haran cuando exista `examples/example-monorepo`.
+  - Regresion cero: 961/961 core, 524/524 CLI, 21/21 examples, 491/491 e2e, 943/943 frameworks.
 
 ## acceptance
 
