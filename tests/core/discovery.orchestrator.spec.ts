@@ -225,3 +225,35 @@ describe("DiscoveryOrchestrator.forceFramework", () => {
     expect(result?.validation).toBeNull();
   });
 });
+
+describe("DiscoveryOrchestrator — detect()/resolve() aislados (audit 2026-09-04 P2 #4 #5)", () => {
+  test("detect() que lanza no tira abajo otros detectores", async () => {
+    // Antes este test no era necesario: detect() ya estaba
+    // protegido. Se incluye explícito para anclar el contrato.
+    const result = await orchestratorOf([
+      detector("explota", 0, { throws: true }),
+      detector("ok", 0.8),
+    ]).detectAll("/proyecto");
+    expect(result.map((r) => r.match.framework)).toEqual(["ok"]);
+  });
+
+  test("resolve() que lanza se aísla y no aborta el discovery", async () => {
+    // Antes un detector defectuoso en resolve() tumaba el discovery
+    // entero. Ahora ese detector cae con score 0 y los demás siguen.
+    const brokenDetector: IProjectScanner = {
+      framework: "broken-resolve",
+      detect: async () => ({ score: 0.7, evidence: [] }),
+      resolve: async () => {
+        throw new Error("resolve roto");
+      },
+    };
+    const result = await orchestratorOf([
+      brokenDetector,
+      detector("ok", 0.8),
+    ]).detectAll("/proyecto");
+    // broken-resolve NO aparece en la salida (score 0 implícito).
+    const names = result.map((r) => r.match.framework);
+    expect(names).not.toContain("broken-resolve");
+    expect(names).toContain("ok");
+  });
+});

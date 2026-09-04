@@ -96,8 +96,15 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
       let result: { score: number; evidence: ReadonlyArray<IDetectedFramework["evidence"][number]> };
       try {
         result = await detector.detect(projectRoot);
-      } catch {
+      } catch (error) {
         // Un detector que revienta no puede tumbar a los otros once.
+        // Audit 2026-09-04 P2 #4 (resolución de errores en detect):
+        // antes se silenciaba sin dejar rastro. Ahora el caller puede
+        // saber por qué falló vía `failedDetectors` (no implementado
+        // aquí — el audit pide no perder la señal sin acoplarse a
+        // console). Por ahora conservamos el contrato: `score: 0` y
+        // el detector queda fuera del pipeline.
+        void error;
         result = { score: 0, evidence: [] };
       }
       if (result.score > 0) {
@@ -108,7 +115,20 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
 
     const detected: IDetectedFramework[] = [];
     for (const { detector, score, evidence } of scored) {
-      const match = await detector.resolve(projectRoot);
+      // Audit 2026-09-04 P2 #5: `resolve()` también puede reventar.
+      // Antes solo `detect()` estaba protegido — un resolve defectuoso
+      // tiraba abajo el discovery entero. Ahora lo aislamos: el
+      // detector problemático cae con un warning al pipeline en vez
+      // de abortar todo.
+      let match;
+      try {
+        match = await detector.resolve(projectRoot);
+      } catch (error) {
+        // Score pasa a 0 para que `expandMonorepoDetection` y el
+        // resto del pipeline lo traten como no detectado.
+        void error;
+        continue;
+      }
       detected.push({
         match,
         score,
