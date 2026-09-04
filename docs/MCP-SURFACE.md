@@ -89,3 +89,23 @@ Lo que no vale es dejarlo sin decidir: un comando sin tool y sin
 explicación es indistinguible de un olvido, y eso es justo lo que pasaba
 con `check`, que llevaba desde el principio en el CLI sin que nadie
 supiera por qué no estaba expuesto.
+
+## `agent-orchestrator` (c00004)
+
+Este proyecto declara el plugin `agent-orchestrator` con un set mínimo
+de opciones para que `delendai_agent-orchestrator_dispatch` pueda correr
+sobre `FakeDispatchPort` (idempotente para tests/fixtures). La sección
+sirve para que el equipo sepa **qué** se está inyectando y **por qué**
+el fallback está bien mientras no exista un port real.
+
+> **c00004 (chore)**: con `allowFakeDispatchPort: true` en
+> `delendai.config.json#plugins["agent-orchestrator"].options`, el
+> dispatch corre con el `FakeDispatchPort` (idempotente para
+> tests/fixtures). Hasta que `@delendai/core` publique un
+> `BoundedAgentPort` real, este es el fallback soportado.
+
+La forma final del descriptor de port vive en `portFactory.kind` y se
+queda declarada aunque hoy se ignore: cuando el sibling repo
+`delendai` publique `BoundedAgentPort`, el host resolverá el descriptor
+por `kind: "in-process-subagent"` y este cambio en config será
+suficiente — sin tener que volver a tocar `delendai.config.json`.

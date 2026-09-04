@@ -242,6 +242,13 @@
               ]
             }
           }
+        },
+        "allowFakeDispatchPort": true,
+        "portFactory": {
+          "kind": "in-process-subagent",
+          "config": {
+            "maxConcurrency": 4
+          }
         }
       }
     },
