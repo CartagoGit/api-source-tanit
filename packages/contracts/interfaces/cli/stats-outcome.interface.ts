@@ -1,43 +1,43 @@
 /**
- * Lo que devuelven las estadísticas de una colección.
+ * What collection statistics return.
  *
- * Vive aquí y no dentro de `stats.script.ts` por lo mismo que
- * `IScanOutcome`: lo consumen el comando que lo produce y el tool MCP
- * que lo expone, y ninguno de los dos debería tener que importar al otro
- * para conocer la forma del dato.
+ * Lives here, not inside `stats.script.ts`, for the same reason as
+ * `IScanOutcome`: it is consumed by the command that produces it
+ * and the MCP tool that exposes it, and neither should have to
+ * import the other to know the shape of the data.
  *
- * Los desgloses tienen un invariante que el tipo no puede expresar y los
- * tests sí comprueban: `total` es la suma de `byMethod` y también la de
- * `zones`, y el `total` de cada zona es la suma de su `byFolder`. Un
- * desglose que no suma su propio total es la clase de dato con el que se
- * decide mal sin enterarse.
+ * The breakdowns have an invariant the type cannot express but the
+ * tests do check: `total` is the sum of `byMethod`, and also of
+ * `zones`; each zone's `total` is the sum of its `byFolder`. A
+ * breakdown whose sub-counts do not add up to its own total is the
+ * kind of number people make decisions on without knowing it.
  */
 
-/** Cuántas requests hay de un método HTTP. */
+/** How many requests there are for an HTTP method. */
 export interface IMethodCount {
   readonly method: string;
   readonly count: number;
 }
 
-/** Cuántas requests cuelgan de una carpeta de primer nivel. */
+/** How many requests hang off a top-level folder. */
 export interface IFolderCount {
   readonly folder: string;
   readonly count: number;
 }
 
-/** El desglose de una zona. Solo aparecen las que tienen algo dentro. */
+/** Breakdown of one zone. Only zones with content appear. */
 export interface IZoneStats {
   readonly zone: string;
   readonly total: number;
   readonly byFolder: ReadonlyArray<IFolderCount>;
 }
 
-/** El resultado completo de contar una colección. */
+/** Full result of counting a collection. */
 export interface IStatsOutcome {
   readonly code: number;
   readonly total: number;
-  /** De mayor a menor, igual que se imprime. */
+  /** Highest first, as printed. */
   readonly byMethod: ReadonlyArray<IMethodCount>;
-  /** En el orden de presentación que dicta la configuración de zonas. */
+  /** In the display order dictated by zone configuration. */
   readonly zones: ReadonlyArray<IZoneStats>;
 }

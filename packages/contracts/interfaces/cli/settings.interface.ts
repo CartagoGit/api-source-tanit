@@ -1,75 +1,76 @@
 /**
- * Lo que la interfaz recuerda entre aperturas.
+ * What the UI remembers between openings.
  *
- * Todo es opcional salvo la versión, y esa asimetría es deliberada: un
- * ajuste que falta tiene un valor por defecto razonable, así que un
- * fichero a medias sirve igual. Lo único que no puede faltar es saber
- * **qué forma tiene** ese fichero, porque de eso depende poder leerlo.
+ * Everything is optional except the version, and that asymmetry is
+ * deliberate: a missing setting has a reasonable default, so a
+ * half-written file still works. The only thing that cannot be
+ * missing is knowing **what shape that file has**, because reading
+ * it depends on it.
  *
- * ## Por qué hay versión
+ * ## Why there's a version
  *
- * El fichero lo escribe una versión del programa y lo lee otra, quizá
- * meses después. Sin un número, un campo que cambie de significado se
- * lee mal y en silencio — y el resultado es una interfaz que arranca
- * con ajustes que nadie eligió.
+ * The file is written by one version of the program and read by
+ * another, maybe months later. Without a number, a field whose
+ * meaning changes will be misread silently — and the result is a
+ * UI that starts up with settings nobody chose.
  */
 
 import type { ThemeMode } from "../../constants/cli/theme.constant.js";
 
-/** La versión del formato. Sube cuando un campo cambia de significado. */
+/** Format version. Bumps when a field changes meaning. */
 export const SETTINGS_VERSION = 1;
 
 /**
- * Con lo que se arranca cuando no hay nada guardado.
+ * What the program starts with when nothing is saved.
  *
- * Solo la versión: todo lo demás ausente significa «lo que decida el
- * sistema» —el idioma del navegador, el tema del escritorio—, que no es
- * lo mismo que un valor concreto. Fijar aquí `locale: "en"` haría que
- * quien tenga el equipo en japonés viera inglés sin haberlo pedido.
+ * Only the version: anything else missing means "whatever the
+ * system decided" — the browser's language, the desktop's theme —
+ * which is not the same as a concrete value. Hard-coding
+ * `locale: "en"` here would make a Japanese user see English
+ * without ever having asked for it.
  */
-/** Lo que se guarda de una sesión a la siguiente. */
+/** What is persisted from one session to the next. */
 export interface ISettings {
-  /** La versión con la que se escribió. */
+  /** Version this was written under. */
   readonly version: number;
   /**
-   * Código del idioma elegido a mano.
+   * Code of the language the user picked manually.
    *
-   * `undefined` significa «el del sistema», que no es lo mismo que un
-   * idioma concreto: si alguien cambia el idioma de su equipo, quiere
-   * que la interfaz le siga.
+   * `undefined` means "the system one", which is not the same as a
+   * concrete language: if someone switches their OS language,
+   * they want the UI to follow.
    */
   readonly locale?: string;
-  /** `system`, `light` o `dark`. */
+  /** `system`, `light`, or `dark`. */
   readonly theme?: ThemeMode;
-  /** El último proyecto que se miró, para no volver a escribir la ruta. */
+  /** Last project looked at, so the path doesn't have to be retyped. */
   readonly lastProjectRoot?: string;
-  /** La última carpeta de salida, si se eligió una distinta. */
+  /** Last output folder, if a different one was picked. */
   readonly lastOutputDir?: string;
-  /** Los formatos marcados la última vez. */
+  /** Formats checked off last time. */
   readonly lastFormats?: ReadonlyArray<string>;
   /**
-   * El framework forzado la última vez.
+   * Framework forced last time.
    *
-   * `undefined` es «detectar automáticamente». Recordar un framework
-   * forzado importa: quien lo tuvo que forzar una vez lo va a tener que
-   * forzar siempre en ese proyecto.
+   * `undefined` is "detect automatically". Remembering a forced
+   * framework matters: whoever had to force it once will keep
+   * having to force it on that project.
    */
   readonly lastFramework?: string;
 }
 
 export const DEFAULT_SETTINGS: ISettings = { version: SETTINGS_VERSION };
 
-/** Lo que se devuelve al leer los ajustes de disco. */
+/** Returned when reading settings from disk. */
 export interface ISettingsRead {
   readonly settings: ISettings;
   /**
-   * Por qué no se pudieron usar los guardados, si es que había.
+   * Why the saved settings could not be used, if any were found.
    *
-   * `null` cuando todo fue bien **o** cuando simplemente no había
-   * fichero —que es lo normal la primera vez y no es un problema—.
-   * Cuando hay motivo, la interfaz arranca con los valores por defecto
-   * y lo dice: unos ajustes que desaparecen sin explicación parecen un
-   * fallo del programa.
+   * `null` on success **or** when no file was found — which is
+   * normal on first run and not a problem. When there is a reason,
+   * the UI falls back to defaults and surfaces it: settings that
+   * disappear silently look like a program bug.
    */
   readonly problem: string | null;
 }

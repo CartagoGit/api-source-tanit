@@ -1,14 +1,15 @@
 /**
- * Lo que la interfaz —de terminal y web— necesita declarar.
+ * What the UI — terminal and web — needs to declare.
  *
- * `IUiDeps` es el que importa: la interfaz web recibe sus colaboradores
- * inyectados en vez de importarlos, y por eso sus rutas se pueden probar
- * enteras sin levantar un puerto. Declararlo aquí es lo que permite que
- * el doble de test y la implementación real se tipen contra lo mismo.
+ * `IUiDeps` is the one that matters: the web UI receives its
+ * collaborators injected instead of imported, which is why its
+ * routes can be tested end-to-end without opening a port.
+ * Declaring it here is what lets the test double and the real
+ * implementation both be typed against the same thing.
  *
- * Lo demás son las formas de la salida por terminal: columnas de tabla,
- * métricas del panel y la paleta. Nada de esto pinta nada; solo dice qué
- * forma tiene lo que se va a pintar.
+ * The rest are shapes for terminal output: table columns, panel
+ * metrics, the palette. None of these render anything; they only
+ * say what shape what will be rendered takes.
  */
 
 import type { IProjectSummary } from "../core/domain.interface.js";
@@ -21,40 +22,40 @@ import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";
 
 export interface IColumn {
   readonly header: string;
-  /** Alineación del contenido. Los números se leen mejor a la derecha. */
+  /** Content alignment. Right-aligned numbers read better. */
   readonly align?: "left" | "right";
   /**
-   * Ancho mínimo que conserva al recortar.
+   * Minimum width kept after truncation.
    *
-   * `GET` con dos caracteres no es un método; con seis, cualquiera lo es.
+   * "GET" at two characters is not a method; with six, anything is.
    */
   readonly min?: number;
 }
 
-/** Las métricas que se enseñan al terminar. */
+/** The metrics shown when generation finishes. */
 export interface IQualityMetrics {
   readonly framework: string;
   readonly requests: number;
   readonly folders: number;
-  /** Endpoints cuyas reglas se leyeron del código. */
+  /** Endpoints whose validation rules were read from source. */
   readonly withRules: number;
-  /** Endpoints de escritura, que son los que pueden llevar body. */
+  /** Write endpoints — the ones that can carry a body. */
   readonly writeEndpoints: number;
-  /** De esos, cuántos acabaron con body. */
+  /** Of those, how many ended up with a body. */
   readonly withBody: number;
-  /** Esquema de autenticación detectado, y por qué. */
+  /** Detected authentication scheme, and why. */
   readonly auth: { readonly type: string; readonly evidence: string };
   readonly warnings: ReadonlyArray<string>;
 }
 
-/** Los colores que se pueden pedir. Se derivan de la paleta. */
+/** The colors that can be requested. Derived from the palette. */
 export type ColorName = keyof typeof ANSI_CODES;
 
-/** Un pintor: colorea o no, según se haya decidido una vez al arrancar. */
+/** A painter: colors or not, depending on what's been decided at startup. */
 export interface IPainter {
   readonly enabled: boolean;
   paint(text: string, color: ColorName): string;
-  /** Varios estilos a la vez: `paint(t, "bold", "green")`. */
+  /** Multiple styles at once: `paint(t, "bold", "green")`. */
   style(text: string, ...colors: ColorName[]): string;
 }
 

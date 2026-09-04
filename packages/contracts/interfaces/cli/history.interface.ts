@@ -1,56 +1,59 @@
 /**
- * El historial de generaciones que ve el dashboard.
+ * The history of generations the dashboard shows.
  *
- * Es el registro mínimo de cada `generate`/`summary` que salió bien:
- * cuándo, dónde y qué. Sin él el dashboard no tiene qué enseñar; con
- * él, basta con abrir la interfaz para ver qué proyecto se generó
- * último, y desde cuándo no se toca uno que debería tocarse.
+ * It is the minimum record of each `generate` / `summary` that
+ * succeeded: when, where, and what. Without it the dashboard has
+ * nothing to show; with it, opening the UI is enough to see what
+ * project was generated last, and since when one that should have
+ * been regenerated has not been.
  *
- * ## Por qué JSONL y no un array JSON
+ * ## Why JSONL and not a JSON array
  *
- * Cada `generate` añade **una** línea al final. Con un JSON array, dos
- * generaciones concurrentes —la interfaz y un `watch`, por ejemplo—
- * competirían por leer-modificar-escribir el mismo fichero, y el que
- * perdiera tiraría los cambios del otro. JSONL permite append atómico
- * por líneas: o se ve la entrada entera o no se ve, y dos escrituras a
- * la vez no se pisan porque `writeFileAtomic` no entra en juego.
+ * Each `generate` appends **one** line at the end. With a JSON array,
+ * two concurrent generations — the UI and a `watch`, say — would
+ * compete to read-modify-write the same file, and the loser would
+ * drop the winner's changes. JSONL allows atomic line-level
+ * append: either the whole entry is visible or none of it is, and
+ * two writes at the same time do not clobber each other because
+ * `writeFileAtomic` doesn't enter the picture.
  *
- * Una línea corrupta se ignora y se dice — se ignora porque el fichero
- * lo escribió otro programa y una errata no puede tumbar la lectura;
- * se dice porque si alguien editó a mano y rompió algo, debe verlo.
+ * A corrupted line is silently ignored and loudly reported —
+ * ignored because the file was written by another program and a
+ * typo cannot bring the read down; reported because if someone
+ * edited by hand and broke something, they need to know.
  */
 
 import type { IProjectSummary } from "../core/domain.interface.js";
 
 /**
- * Una entrada del historial: una generación (o inspección) cerrada.
+ * One history entry: a generation (or inspection) that completed.
  *
- * Las claves son cortas porque esto se serializa a JSONL: cada byte
- * extra multiplica por N entradas. Los nombres largos viven en
- * `IProjectSummary` (que es el campo `summary`).
+ * The keys are short because this is serialized to JSONL: every
+ * extra byte multiplies by N entries. Long names live in
+ * `IProjectSummary` (the `summary` field).
  */
 export interface IHistoryEntry {
-  /** ISO 8601 con desplazamiento. Estable: ordenable lexicográficamente. */
+  /** ISO 8601 with offset. Stable: lexicographically sortable. */
   readonly timestamp: string;
-  /** `"generate"` o `"summary"` — qué terminó. */
+  /** `"generate"` or `"summary"` — what finished. */
   readonly kind: "generate" | "summary";
-  /** Raíz absoluta del proyecto del que se leyó. */
+  /** Absolute root of the project that was read. */
   readonly projectRoot: string;
-  /** Nombre del proyecto, para enseñar sin tener que leer la raíz. */
+  /** Project name, to show without re-reading the root. */
   readonly projectName: string;
-  /** Framework ganador, del que `generate` sacó la colección. */
+  /** Winning framework, from which `generate` produced the collection. */
   readonly framework: string;
-  /** Endpoints que produjo, o `0` para `summary`. */
+  /** Endpoints produced, or `0` for `summary`. */
   readonly endpoints: number;
-  /** Ruta de la colección escrita, o `null` si fue `summary`. */
+  /** Path of the written collection, or `null` for `summary`. */
   readonly collectionPath: string | null;
   /**
-   * El resumen entero, para que la UI pinte el detalle sin reescanear.
+   * The full summary, so the UI can render detail without rescanning.
    *
-   * Llevarlo aquí encarece cada entrada (es el grueso del JSONL) y es
-   * exactamente el precio que se paga por abrir el dashboard y no
-   * tener que volver al proyecto. Sin él, un dashboard histórico es un
-   * listado de marcos vacíos.
+   * Including it costs per entry (it's the bulk of the JSONL) and
+   * is exactly the price we pay for opening the dashboard and not
+   * having to revisit the project. Without it, a historical
+   * dashboard is a list of empty cards.
    */
   readonly summary: IProjectSummary;
 }

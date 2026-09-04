@@ -1,47 +1,48 @@
 /**
- * Lo que la interfaz necesita para hablar un idioma.
+ * What the UI needs to speak a language.
  *
- * Un catálogo es un mapa plano de clave a texto. Plano y no anidado a
- * propósito: `ajustes.idioma.titulo` como **clave literal** se busca en
- * un fichero con un `Ctrl+F`, mientras que un objeto anidado obliga a
- * recorrer tres niveles para saber si una clave existe — y eso es lo
- * que hace que las traducciones se queden a medias sin que nadie lo
- * note.
+ * A catalog is a flat key → text map. Flat and not nested by
+ * design: `settings.language.title` as a literal key is findable
+ * in a file with Ctrl+F, while a nested object forces three levels
+ * of traversal to know whether a key exists — which is why
+ * translations stay half-finished without anyone noticing.
  */
 
-/** Un catálogo de traducciones: clave → texto en ese idioma. */
+/** A translations catalog: key → text in that language. */
 export type ITranslations = Readonly<Record<string, string>>;
 
-/** Un idioma cargado y listo para usar. */
+/** A loaded, ready-to-use language. */
 export interface ILoadedLocale {
   readonly code: string;
-  /** Cómo se llama en su propio idioma, para el selector. */
+  /** How the language is called in its own language, for the picker. */
   readonly nativeName: string;
-  /** Se escribe de derecha a izquierda. */
+  /** Right-to-left writing. */
   readonly rtl: boolean;
   readonly translations: ITranslations;
   /**
-   * De dónde salió.
+   * Where it came from.
    *
-   * `bundled` viene dentro del programa; `external` lo dejó alguien en
-   * la carpeta de idiomas. La distinción no es informativa: un idioma
-   * externo con el mismo código que uno empaquetado **gana**, y quien
-   * lo puso tiene que poder confirmar que su fichero es el que manda.
+   * `bundled` ships inside the program; `external` was dropped in
+   * the languages folder by someone. The distinction is not
+   * informational: an external locale with the same code as a
+   * bundled one **wins**, and whoever dropped it there has to be
+   * able to confirm their file is the one in effect.
    */
   readonly origin: "bundled" | "external";
 }
 
-/** El catálogo entero, ya resuelto. */
+/** The full catalog, resolved. */
 export interface II18nCatalog {
-  /** Los idiomas disponibles, para pintar el selector. */
+  /** The available languages, for the picker. */
   readonly locales: ReadonlyArray<ILoadedLocale>;
   /**
-   * Los ficheros externos que **no** se pudieron cargar, con su motivo.
+   * External files that **could not** be loaded, with the reason.
    *
-   * Van aquí y no a un `throw`: un idioma roto que alguien dejó en su
-   * carpeta no puede impedir que la interfaz arranque. Pero tampoco
-   * puede desaparecer en silencio, porque entonces quien lo escribió no
-   * tiene forma de saber por qué su idioma no sale en la lista.
+   * They live here, not as a `throw`: a broken locale someone
+   * dropped in their folder must not prevent the UI from starting.
+   * But it must not disappear silently either, because then the
+   * author has no way to know why their language is missing from
+   * the list.
    */
   readonly rejected: ReadonlyArray<{ readonly file: string; readonly reason: string }>;
 }

@@ -1,33 +1,33 @@
 /**
- * Lo que devuelve preparar la configuración de un proyecto.
+ * What preparing a project's configuration returns.
  *
- * `init` **escribe dentro del proyecto anfitrión**, así que lo que
- * devuelve tiene que decir exactamente qué se ha tocado. Un agente que
- * lo invoque necesita poder enseñar las dos rutas y lo que se detectó,
- * porque el siguiente paso es que alguien edite esos ficheros a mano:
- * están llenos de `// TODO` a propósito.
+ * `init` **writes inside the host project**, so what it returns has
+ * to say exactly what was touched. An agent invoking it needs to
+ * be able to show the two paths and what was detected, because
+ * the next step is for someone to edit those files by hand: they
+ * are filled with `// TODO` markers on purpose.
  */
 
-/** El resultado completo de un `init`. */
+/** The full result of an `init`. */
 export interface IInitOutcome {
   readonly code: number;
-  /** Nombre deducido del manifiesto del ecosistema. */
+  /** Name deduced from the ecosystem manifest. */
   readonly projectName: string;
-  /** URL base sacada del `.env`, o la de por defecto. */
+  /** Base URL taken from `.env`, or the default. */
   readonly baseUrl: string;
   /**
-   * Guards de autenticación detectados en el middleware.
+   * Authentication guards detected in the middleware.
    *
-   * `["token"]` cuando no se reconoce ninguno: no es que no haya auth,
-   * es que no se ha podido deducir cuál.
+   * `["token"]` when none is recognized: not that there is no auth,
+   * but that no guard could be deduced.
    */
   readonly authGuards: ReadonlyArray<string>;
-  /** Ficheros de rutas encontrados, con el prefijo que se les aplica. */
+  /** Route files found, with the prefix that applies to them. */
   readonly routeFiles: ReadonlyArray<string>;
-  /** Ruta absoluta del `config.constant.ts` escrito. */
+  /** Absolute path of the written `config.constant.ts`. */
   readonly configPath: string | null;
-  /** Ruta absoluta del `endpoints.constant.ts` escrito. */
+  /** Absolute path of the written `endpoints.constant.ts`. */
   readonly endpointsPath: string | null;
-  /** Por qué no se pudo, y qué hacer. `null` cuando fue bien. */
+  /** Why it could not be done, and what to do. `null` on success. */
   readonly error: { readonly reason: string; readonly nextAction: string } | null;
 }

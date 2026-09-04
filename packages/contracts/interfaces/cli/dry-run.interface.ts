@@ -1,62 +1,65 @@
 /**
- * El ensayo: qué pasaría si se generara.
+ * The dry-run: what would happen if we generated.
  *
- * La forma de esta respuesta está pensada para una pantalla, no para un
- * log. Por eso `overwrites` es un número aparte y no algo que el
- * consumidor deba derivar contando: es **el** dato del ensayo —la
- * primera vez todo es nuevo, y a partir de la segunda lo interesante es
- * qué se pierde— y dejar que cada pantalla lo cuente por su cuenta es
- * cómo dos acaban diciendo cifras distintas de lo mismo.
+ * The shape of this response is built for a screen, not for a log.
+ * That is why `overwrites` is a separate number and not something
+ * the consumer must derive by counting: it **is** the dry-run's
+ * data — the first time everything is new, and from the second on
+ * the interesting thing is what would be lost — and letting each
+ * screen count on its own is how two end up reporting different
+ * numbers for the same thing.
  */
 
 import type { IGenerationResult } from "../core/discovery.interface.js";
 
-/** Un fichero que se escribiría. */
+/** A file that would be written. */
 export interface IPlannedFile {
-  /** Ruta absoluta, tal cual se escribiría. */
+  /** Absolute path, exactly as it would be written. */
   readonly path: string;
   /**
-   * Qué es.
+   * What it is.
    *
-   * `collection` es la de Postman; `export` es la misma API en otro
-   * formato; `environment` son las variables por entorno. Se distinguen
-   * porque no se pierden igual: sobrescribir un environment editado a
-   * mano borra credenciales que alguien puso.
+   * `collection` is the Postman one; `export` is the same API in
+   * another format; `environment` are the per-env variables. They
+   * are distinguished because they are not lost equally:
+   * overwriting an environment edited by hand wipes credentials
+   * someone typed in.
    */
   readonly kind: "collection" | "export" | "environment";
-  /** El formato del que sale. */
+  /** The format it comes out as. */
   readonly format: string;
-  /** Si ya hay un fichero ahí que se perdería. */
+  /** Whether there is already a file there that would be lost. */
   readonly overwrites: boolean;
 }
 
-/** Lo que hace falta para planificar sin escribir. */
+/** What is needed to plan without writing. */
 export interface IDryRunInput {
   readonly projectRoot: string;
-  /** Dónde iría la salida. Por defecto, la carpeta convencional. */
+  /** Where output would go. Defaults to the conventional folder. */
   readonly outputDir?: string | undefined;
-  /** Los formatos pedidos. Por defecto, solo Postman. */
+  /** Requested formats. Defaults to Postman only. */
   readonly formats?: ReadonlyArray<string> | undefined;
   /**
-   * El resultado del pipeline, **ya construido en memoria**.
+   * The pipeline result, **already built in memory**.
    *
-   * Se pasa hecho en vez de calcularlo aquí porque el ensayo no puede
-   * tener su propia forma de descubrir endpoints: sería una segunda
-   * implementación que acabaría diciendo una cosa mientras `generate`
-   * hace otra, que es el fallo que un ensayo viene a evitar.
+   * It is passed in built rather than computed here because the
+   * dry-run cannot have its own way of discovering endpoints: it
+   * would be a second implementation that would end up saying one
+   * thing while `generate` does another — which is the very bug a
+   * dry-run comes to prevent.
    */
   readonly result: IGenerationResult;
 }
 
-/** El plan completo, sin haber tocado el disco. */
+/** The full plan, without touching disk. */
 export interface IDryRunPlan {
   readonly ok: boolean;
-  /** Dónde iría todo. */
+  /** Where everything would go. */
   readonly outputDir: string;
-  /** El nombre del que salen los ficheros. */
+  /** The name files would be derived from. */
   readonly projectName: string;
   readonly framework: string | null;
-  /** Cuántas requests tendría la colección. */
+  /** How many requests the collection would have. */
   readonly requests: number;
   readonly files: ReadonlyArray<IPlannedFile>;
   /** Cuántos de esos ficheros ya existen. Es el dato que importa. */
