@@ -2,10 +2,15 @@
 id: a00015
 title: "GraphQL embedded SDL por AST TS (no regex sobre source crudo)"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - fcff35c  # S1: taggedTemplates shape en frontend TS + 8 tests
+  - 71b535c  # S2: adapter AST-based replaces regex
+  - 1e5c339  # S3: eliminar regex sobre source crudo
+  - 7080255  # merge into develop + push
 dependsOn:
   - a00012
 related:
