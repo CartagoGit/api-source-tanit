@@ -2,10 +2,19 @@
 id: b00001
 title: "rebrand Tanit — el proyecto pasa de export-to-postman a Tanit (API Source Discovery)"
 kind: breaking
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-04
+shippedIn:
+  - 25a111c  # S1: TS source code rename
+  - be7c3e7  # S2: plugin folder rename delendai_expostman -> delendai_tanit
+  - 04049f1  # S3: binaries + desktop + docker + CI
+  - abc6b91  # S4: root package.json -> api-source-tanit v1.0.0 + bun.lock
+  - dde37f1  # S5: docs + host pointers
+  - 66ca1e2  # S6: examples + output folder verification
+  - 6c3754e  # S7: proposals hygiene + AGENT-BOOTSTRAP archaeology note
+  - 151886f  # merge into develop + push + gh repo rename + topics
 ---
 
 # b00001 — rebrand Tanit — el proyecto pasa de export-to-postman a Tanit (API Source Discovery)
