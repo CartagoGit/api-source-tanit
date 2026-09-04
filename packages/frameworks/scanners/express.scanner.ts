@@ -40,6 +40,11 @@ import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.hel
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
 import { parseModule } from "../../core/language-frontends/typescript/index.js";
+import {
+  collectMethodCallsFromSource,
+} from "../typescript/collect-method-calls.js";
+import { propagateConstants } from "../typescript/constant-propagation.js";
+import { toTSMethodCalls } from "../typescript/scanner-bridge.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 
@@ -243,7 +248,17 @@ function parseModuleSafe(
   // (2) `app.use('/prefix', router)` y `app.use('/prefix')` —
   // el primero monta un router con prefijo; el segundo es
   // middleware puro (sin router al que prefijar).
-  for (const call of ast.methodCalls) {
+  //
+  // a00016 S5: `methodCalls` ya NO viene del frontend TS — viene del
+  // LanguageIR pipeline (S2 + S4). El frontend sólo aporta
+  // `assignments` y `decorators`. El bridge `toTSMethodCalls`
+  // convierte `IRouteCallExpression[]` al shape `TSMethodCall[]` que
+  // el resto de este scanner sigue consumiendo — sin tocar la
+  // lógica de extracción.
+  const irCalls = collectMethodCallsFromSource(raw, file, diagnostics);
+  const propagated = propagateConstants(irCalls, []);
+  const methodCalls = toTSMethodCalls(propagated, raw);
+  for (const call of methodCalls) {
     if (call.callee !== "app.use") continue;
     const prefixArg = call.args[0];
     const routerArg = call.args[1];
@@ -255,7 +270,7 @@ function parseModuleSafe(
   }
 
   // (3) Method calls que parecen declaraciones de ruta.
-  for (const call of ast.methodCalls) {
+  for (const call of methodCalls) {
     const [ident, method] = call.callee.split(".");
     if (!ident || !method) continue;
     if (!HTTP_METHODS.includes(method)) continue;
@@ -275,7 +290,7 @@ function parseModuleSafe(
   // Babel emite este shape como un `CallExpression` a
   // `<ident>.route(...)` con un ObjectExpression como argumento.
   // Buscamos directamente en `methodCalls` por el callee.
-  for (const call of ast.methodCalls) {
+  for (const call of methodCalls) {
     if (!call.callee.endsWith(".route")) continue;
     const obj = call.args[0];
     if (obj?.kind !== "object" || !obj.objectShape) continue;
