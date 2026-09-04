@@ -77,9 +77,19 @@ describe("effectiveProjectRoot", () => {
     );
   });
 
-  test("frameworkSearchRoot absoluto → verbatim (decisión del host)", () => {
-    const abs = "/srv/shared/openapi.yaml";
-    expect(effectiveProjectRoot(matchWith(abs))).toBe(abs);
+  test("frameworkSearchRoot absoluto → lanza (a00014 S4: el contrato dice 'never absolute')", () => {
+    expect(() =>
+      effectiveProjectRoot(matchWith("/srv/shared")),
+    ).toThrowError(/frameworkSearchRoot inválido[\s\S]*absoluta[\s\S]*relativa/);
+    expect(() =>
+      effectiveProjectRoot(matchWith("/etc")),
+    ).toThrowError(/frameworkSearchRoot inválido/);
+    // El caso de prefilio-trampa (x00022): '/tmp/mono-mala' empieza
+    // por '/tmp/mono' pero no está dentro. Como es absoluto, lo
+    // rechaza el guard de isAbsolute antes de la comparación.
+    expect(() =>
+      effectiveProjectRoot(matchWith("/tmp/mono-mala")),
+    ).toThrowError(/frameworkSearchRoot inválido/);
   });
 
   test("frameworkSearchRoot = '' → projectRoot (cadena vacía ≡ ausente)", () => {
@@ -125,9 +135,10 @@ describe("effectiveSearchRoot (alias de effectiveProjectRoot)", () => {
     );
   });
 
-  test("mismo comportamiento con valor absoluto: verbatim", () => {
-    const abs = "/srv/shared/openapi.yaml";
-    expect(effectiveSearchRoot(matchWith(abs))).toBe(abs);
+  test("mismo comportamiento con valor absoluto: lanza", () => {
+    expect(() => effectiveSearchRoot(matchWith("/srv/shared"))).toThrowError(
+      /frameworkSearchRoot inválido/,
+    );
   });
 
   test("mismo comportamiento con escape: lanza", () => {
