@@ -210,3 +210,47 @@ function flattenItems(
   }
   return out;
 }
+
+describe("monorepo + --framework (audit 2nd-review #5)", () => {
+  test("forceFramework + frameworkSearchRoot: respeta el force aunque el manifest no detecte", async () => {
+    // Caso del audit: el usuario fuerza --framework nestjs + --framework-search-root apps/api
+    // porque el manifest del workspace no permite autodetectarlo.
+    // Antes `expandMonorepoDetection` llamaba `detectAll(workspaceRoot)`
+    // y perdía el force.
+    const project = await createTempProject(
+      {
+        "package.json": JSON.stringify({
+          name: "monorepo-force",
+          private: true,
+          workspaces: ["apps/api"],
+        }),
+        // Sin @nestjs/core en ningún manifest — el force debe prevalecer.
+        "apps/api/package.json": JSON.stringify({
+          name: "@mono/api",
+          dependencies: { express: "^4.19.0" }, // NO nest
+        }),
+        "apps/api/src/app.controller.ts": `import { Controller, Get } from "@nestjs/common";
+@Controller("forced")
+export class AppController {
+  @Get() list() { return []; }
+}
+`,
+      },
+      "monorepo-force-framework-",
+    );
+    projects.push(project);
+
+    const result = await generateCollection(project.root, {
+      orchestrator: defaultOrchestrator(),
+      forceFramework: "nestjs",
+      frameworkSearchRoot: "apps/api",
+    });
+
+    // Debe haber al menos un endpoint nestjs en apps/api, aunque el
+    // manifest no declare @nestjs/core (eso es lo que el force
+    // significa: el usuario SABE que es Nest).
+    const items = flattenItems(result.collection.item ?? []);
+    const uris = items.map((i) => i.request?.url?.raw ?? "");
+    expect(uris.some((u) => u.includes("/forced"))).toBe(true);
+  });
+});

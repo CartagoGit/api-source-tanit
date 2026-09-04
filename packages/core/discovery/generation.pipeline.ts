@@ -237,7 +237,35 @@ async function expandMonorepoDetection(
   projectRoot: string,
   rootDetected: ReadonlyArray<IDetectedFramework>,
   userOverride: string | undefined,
+  forceFramework: string | undefined,
 ): Promise<ReadonlyArray<IDetectedFramework>> {
+  // Caso 0 (audit segunda revisión #5): `forceFramework` está
+  // activo. El usuario ha decidido explícitamente "este proyecto
+  // ES X", y `rootDetected` ya contiene ese framework (forzado vía
+  // `forcedDetection`). NO re-deteccionamos: el manifest del
+  // workspace podría no permitir autodetección, y el override del
+  // usuario es autoritativo. Solo reorientamos `projectRoot` si el
+  // usuario también pidió `frameworkSearchRoot`, para que los
+  // scanners lean del workspace correcto.
+  if (forceFramework && forceFramework.length > 0) {
+    if (userOverride && userOverride.length > 0) {
+      // Forzó framework + forzó workspace: propagamos ambos a cada
+      // match (típicamente uno solo, pero podría ser varios si el
+      // orquestador devolviera varios con la misma identidad).
+      return rootDetected.map((c) => ({
+        ...c,
+        match: {
+          ...c.match,
+          projectRoot,
+          frameworkSearchRoot: userOverride,
+        },
+      }));
+    }
+    // Forzó framework sin workspace: nada que expandir. Devolvemos
+    // el resultado de forcedDetection tal cual.
+    return rootDetected;
+  }
+
   // Caso 1: override del usuario. Escaneamos solo el workspace que
   // pidió. Pegamos `frameworkSearchRoot` al match (relativo a la raíz)
   // y dejamos `projectRoot` apuntando a la raíz: el contrato de los
@@ -445,12 +473,24 @@ async function discoverSpecs(
   // (vacía) por la del workspace. Sin override ni monorepo, devuelve
   // lo que la raíz detectó — el camino legacy.
   //
-  // Audit 2026-09-04 (hallazgo P1 #1).
+  // Audit 2026-09-04 (hallazgo P1 #1) + segunda revisión: cuando
+  // `forceFramework` está activo, la detección raíz ya contiene ese
+  // framework concreto. Expandirla hacia `detectAll(workspaceRoot)`
+  // perdería el force: el manifest del workspace podría no permitir
+  // detectarlo (caso típico: dependencias declaradas en otro sitio,
+  // manifest generado en build). `expandMonorepoDetection` recibe
+  // el `forceFramework` para respetar la decisión del usuario y
+  // reorientar el match existente en vez de re-detectar.
+  //
+  // Audit 2026-09-04 (segunda revisión #5): --framework + monorepo
+  // debe seguir forzando ese framework, no autodetectarlo en cada
+  // workspace.
   const expanded = await expandMonorepoDetection(
     options.orchestrator,
     context.projectRoot,
     rootDetected,
     options.frameworkSearchRoot,
+    options.forceFramework,
   );
   const { augmented: detected, detection: monorepoDetection } =
     await applyFrameworkSearchRoot(
