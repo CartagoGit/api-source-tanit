@@ -504,11 +504,32 @@ interface IAuthWinner {
  * caller añade un warning (no quiero que el merger pierda el
  * contexto de cuál fue el perdedor, pero tampoco quiero acoplarlo
  * a la lógica de warnings aquí).
+ *
+ * Audit 2026-09-04 P1 #6: un override per-op de tipo `none` gana
+ * siempre sobre cualquier auth global. Es la única asimetría: si un
+ * scanner declara explícitamente "este endpoint es público" (típico
+ * para `/auth/login`, `/health`, `/register`), la auth global del
+ * esquema (bearer, apikey) no debe imponerse — si no, el endpoint
+ * que emite el token acaba pidiendo el token, y la primera request
+ * devuelve 401. La confianza del framework no aplica aquí: la
+ * declaración explícita siempre es más fuerte que la herencia.
  */
 function pickAuth(
   sorted: ReadonlyArray<IEndpointMergeCandidate>,
   confidence: Readonly<Record<string, Confidence>>,
 ): IAuthWinner | null {
+  // Primera pasada: si algún scanner declaró "none" explícitamente,
+  // gana sobre cualquier otro auth.
+  for (const c of sorted) {
+    if (c.authScheme?.type === "none") {
+      return {
+        framework: c.framework,
+        authScheme: c.authScheme,
+        evidence: c.authScheme.evidence,
+      };
+    }
+  }
+  // Segunda pasada: el de mayor confianza por framework.
   let winner: IAuthWinner | null = null;
   let winnerConfidence = -1;
   for (const c of sorted) {

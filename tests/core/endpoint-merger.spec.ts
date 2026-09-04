@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   EndpointMerger,
+  endpointSpecFromMerged,
   mergeEndpoints,
 } from "../../packages/core/discovery/endpoint-merger.service";
 import type { IEndpointMergeCandidate } from "../../packages/contracts/interfaces/core/merge.interface";
@@ -930,5 +931,56 @@ describe("EndpointMerger — frameworkConfidence se respeta en sortCandidates (a
 
     expect(merged.provenance.body?.framework).toBe("openapi");
     expect(merged.body).toEqual(body("openapi"));
+  });
+});
+
+describe("endpointSpecFromMerged — auth per-op (audit 2026-09-04 P1 #6)", () => {
+  test("authScheme { type: 'none' } se traduce a EndpointSpec.auth { kind: 'none' }", () => {
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        authScheme: { type: "none", evidence: "per-op override (fastify)" },
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    expect(spec.auth).toEqual({ kind: "none" });
+  });
+
+  test("authScheme 'bearer' NO se traduce a EndpointSpec.auth (override implícito)", () => {
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        authScheme: BEARER,
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    // Sin override per-op → el campo `auth` queda ausente; la auth
+    // global la resuelve `detectAuthScheme` después del pipeline.
+    expect(spec.auth).toBeUndefined();
+  });
+
+  test("fusión híbrida con override 'none' preserva la marca pública", () => {
+    // OpenAPI declara /auth/login como bearer (esquema global);
+    // Fastify lo sobreescribe a none (es el endpoint que emite el
+    // token, no puede pedirlo). El merger debe quedarse con none.
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        authScheme: BEARER,
+      }),
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        authScheme: { type: "none", evidence: "per-op override (fastify)" },
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    expect(spec.auth).toEqual({ kind: "none" });
   });
 });
