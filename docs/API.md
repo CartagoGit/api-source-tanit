@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 162 símbolos en 57 módulos.
+> 165 símbolos en 58 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -57,6 +57,85 @@ con la misma forma que el `discoverEndpoints` legacy.
 ```ts
 export async function _peekSpec(projectRoot: string): Promise<string | null>
 ```
+
+### `packages/core/discovery/auth-scheme.helper.ts`
+
+per-service auth + baseUrl wiring — a00013 S4.
+
+#### `pickAuth`
+
+```ts
+export function pickAuth( service: IServiceDescriptor, fallback: IEndpointAuth | undefined, ): IEndpointAuth | undefined
+```
+
+Resuelve la auth de un servicio: override del descriptor si la trae
+(lo que el grafo plantó), o fallback heredado del proyecto.
+
+El retorno es exhaustivo por discriminante: si `service.auth` es
+`{ kind: "scheme", scheme: "bearer" }`, devuelve eso exactamente;
+no lo convierte a `{ kind: "none" }` ni a `{ kind: "scheme",
+scheme: "apiKey" }`. La función no sabe —ni necesita saber— qué
+hacer con cada variante: el contrato es "el primer argumento gana
+si está definido; si no, el segundo".
+
+Ambos argumentos son `IEndpointAuth | undefined`. Cuando los dos son
+`undefined`, devuelve `undefined`. Eso significa "no hay señal de
+auth para este servicio" y deja al pipeline decidir si el detector
+por-espec debe correr o si el caller ya pasó otro mecanismo.
+
+@param service El descriptor del servicio. `service.auth` puede ser
+  `undefined` (hereda del proyecto), `null` no es válido (`baseUrl`
+  es `string | null` pero `auth` es estrictamente `IEndpointAuth |
+  undefined`).
+@param fallback La auth heredada del proyecto. Típicamente el
+  resultado de `toIEndpointAuth(detectedFromSpecs)`. Puede ser
+  `undefined` cuando el proyecto tampoco tiene señal.
+
+#### `toIEndpointAuth`
+
+```ts
+export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth
+```
+
+Conversión exhaustiva `IDetectedAuthScheme` → `IEndpointAuth`, inversa
+semántica de `authSchemeFromEndpointAuth` en
+`generation.pipeline.ts`.
+
+Exportada por separado para que los tests de S4 cubran los cuatro
+casos del discriminante (`none`, `bearer`, `apiKey`, `oauth2`)
+sin tener que arrastrar un IDetectedAuthScheme de mentira por el
+pipeline.
+
+El switch es exhaustivo por tipo: si se añade una variante a
+`AuthSchemeType` sin mapearla aquí, TypeScript marca el switch como
+no-exhaustivo (TS7030 con `noImplicitReturns`). Es el mismo patrón
+que `authSchemeFromEndpointAuth` usa en dirección contraria.
+
+#### `buildServiceConfig`
+
+```ts
+export function buildServiceConfig( config: ProjectConfig, service: IServiceDescriptor, ): ProjectConfig
+```
+
+Aplica los overrides per-service a la `ProjectConfig` **sin mutar
+el original**. Devuelve una copia superficial con:
+  - `baseUrl`: el del servicio si lo declara y no es `null`,
+    si no el del proyecto. Eso es lo que `inferCollectionVariables`
+    y `buildCollection` consumen en `buildForService`.
+  - `variables`: copia del array, con la entrada `baseUrl`
+    sustituida por el valor efectivo para que la variable de
+    colección (`{{baseUrl}}`) refleje el override per-service.
+
+Pure: no toca `config`. Una llamada por iteración del loop
+multi-service en `buildFor` es independiente — la siguiente
+iteración recibe el `discovery.config` original, sin baseUrl
+contaminado por el servicio anterior (S4 acceptance #3: `buildForService`
+no muta `config.baseUrl` entre iteraciones).
+
+`@see` `IProjectContext` para el contexto raíz. Si en el futuro
+entran más overrides per-service (auth global, headers extra,
+prefijo de URI, etc.), este helper es el sitio natural para
+extenderlos.
 
 ### `packages/core/discovery/discovery.orchestrator.ts`
 
