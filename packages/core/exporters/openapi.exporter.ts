@@ -182,6 +182,18 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
     };
   }
 
+  // Audit 2026-09-04 P1 #7: auth:none por operación se respeta en el
+  // documento OpenAPI. El esquema global define `security` a nivel
+  // de documento (`document.security = [{ bearerAuth: [] }]`), pero
+  // OpenAPI permite sobrescribirlo por operación con `security: []`
+  // (array vacío) — eso significa "este endpoint es público, no
+  // requiere ningún esquema de seguridad". Sin este override, un
+  // `/auth/login` se exportaba con `Authorization: Bearer` y la
+  // primera request devolvía 401.
+  if (spec.auth?.kind === "none") {
+    operation["security"] = [];
+  }
+
   // Sin esquema: no se sabe qué devuelve. Ver la cabecera del fichero.
   operation["responses"] = {
     "200": { description: "OK" },

@@ -405,3 +405,40 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     expect(email["oneOf"]).toBeUndefined();
   });
 });
+describe("OpenAPI exporter — auth per-op override (audit 2026-09-04 P1 #7)", () => {
+  test("spec.auth = { kind: 'none' } emite security: [] a nivel de operación", () => {
+    const doc = buildOpenApiDocument(
+      baseInput([
+        spec("/api/login", "POST", { auth: { kind: "none" } }),
+        spec("/api/users", "GET"),
+      ]),
+    );
+
+    // El documento declara seguridad global `none` por el baseInput,
+    // así que el endpoint con auth: { kind: "none" } debe llevar
+    // `security: []` explícito (override por operación).
+    const paths = doc["paths"] as Record<string, Record<string, unknown>>;
+    const login = paths["/api/login"]?.["post"] as Record<string, unknown>;
+    expect(login["security"]).toEqual([]);
+
+    // El otro endpoint sin override debe respetar el esquema global
+    // (en este caso baseInput pone auth: { type: "none" } así que
+    // hereda eso; lo importante es que NO tiene `security: []`
+    // explícito por-op).
+    const users = paths["/api/users"]?.["get"] as Record<string, unknown>;
+    expect(users["security"]).toBeUndefined();
+  });
+
+  test("override per-op con auth { kind: 'none' } desactiva bearer global", () => {
+    // Caso real del audit: la colección tiene auth global bearer,
+    // pero /auth/login debe ser público.
+    const input: IExportInput = {
+      ...baseInput([spec("/auth/login", "POST", { auth: { kind: "none" } })]),
+      auth: { type: "bearer" },
+    };
+    const doc = buildOpenApiDocument(input);
+    const paths = doc["paths"] as Record<string, Record<string, unknown>>;
+    const login = paths["/auth/login"]?.["post"] as Record<string, unknown>;
+    expect(login["security"]).toEqual([]);
+  });
+});
