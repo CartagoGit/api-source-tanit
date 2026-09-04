@@ -11,7 +11,7 @@ recortado a lo justo para ejercitar el scanner.
 
 ## Qué detecta cada uno
 
-Medido con `./bin/expostman generate --project-root examples/<x> --json`:
+Medido con `./bin/apisrc generate --project-root examples/<x> --json`:
 
 | Carpeta | Framework | Requests | Carpetas | Login |
 | --- | --- | --: | --: | :-: |
@@ -90,10 +90,10 @@ hace de forma distinta.
 ## Probar uno
 
 ```sh
-./bin/expostman generate --project-root examples/example-laravel
+./bin/apisrc generate --project-root examples/example-laravel
 ```
 
-Escribe la colección y sus environments en `examples/example-laravel/export-to-postman/`.
+Escribe la colección y sus environments en `examples/example-laravel/tanit/`.
 Para la salida legible por máquina —la que consume el plugin— añade
 `--json`.
 

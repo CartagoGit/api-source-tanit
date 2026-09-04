@@ -1,7 +1,7 @@
 # Instalación y uso
 
 > **Estado de publicación.** El paquete **todavía no está en npm**, así
-> que `bun add -g export-to-postman` aún no funciona. Hasta que se
+> que `bun add -g api-source-tanit` aún no funciona. Hasta que se
 > publique, se instala **desde el repositorio** — ver
 > [Instalar hoy](#instalar-hoy-desde-el-repositorio). El resto del
 > documento describe los comandos definitivos; el único cambio tras
@@ -38,24 +38,24 @@ en npm. Cuando se publique, podrá sustituirse por la forma `bunx
 
 ```bash
 # Global
-bun add -g github:CartagoGit/export-to-postman
+bun add -g github:CartagoGit/api-source-tanit
 
 # O como dependencia de desarrollo de tu proyecto
-bun add -d github:CartagoGit/export-to-postman
+bun add -d github:CartagoGit/api-source-tanit
 ```
 
 También sirve clonar y empaquetar:
 
 ```bash
-git clone https://github.com/CartagoGit/export-to-postman
-cd export-to-postman && bun install
-npm pack                       # produce export-to-postman-0.1.0.tgz
+git clone https://github.com/CartagoGit/api-source-tanit
+cd api-source-tanit && bun install
+npm pack                       # produce api-source-tanit-1.0.0.tgz
 
 cd ~/proyectos/mi-api
-bun add -d /ruta/a/export-to-postman-0.1.0.tgz
+bun add -d /ruta/a/api-source-tanit-1.0.0.tgz
 ```
 
-En ambos casos queda disponible el binario `expostman` (y `export-to-postman` como alias).
+En ambos casos queda disponible el binario `apisrc`.
 
 ```bash
 curl -fsSL https://bun.sh/install | bash   # si no lo tienes
@@ -69,14 +69,14 @@ bun --version
 La opción cómoda si tocas varios proyectos.
 
 ```bash
-bun add -g export-to-postman
+bun add -g api-source-tanit
 ```
 
 Desde la raíz de tu API:
 
 ```bash
 cd ~/proyectos/mi-api
-expostman generate
+apisrc generate
 ```
 
 Salida:
@@ -86,7 +86,7 @@ Salida:
   · 9 rutas en código, 9 specs (con validación: 9, sin: 0).
 → Auth: login en "Crear Login" guarda el token automáticamente, refresh cableado.
 
-✔ Collection written to ~/proyectos/mi-api/export-to-postman/mi-api.postman_collection.json
+✔ Collection written to ~/proyectos/mi-api/tanit/mi-api.postman_collection.json
   · 9 requests en 3 carpetas (14.3 KB).
   · Environment "Local" → …/mi-api.local.postman_environment.json (5 vars)
 ```
@@ -103,14 +103,14 @@ mano.
 ### Proyectos con `package.json` (Node, NestJS, Next.js, Express…)
 
 ```bash
-bun add -d export-to-postman
+bun add -d api-source-tanit
 ```
 
 ```jsonc
 // package.json
 {
   "scripts": {
-    "postman": "expostman generate"
+    "postman": "apisrc generate"
   }
 }
 ```
@@ -128,7 +128,7 @@ No hace falta meter un `package.json` en tu repo. Se invoca con `bunx` y
 `--project-root`:
 
 ```bash
-bunx export-to-postman generate --project-root .
+bunx api-source-tanit generate --project-root .
 ```
 
 Y se deja escrito donde ya tengas tus tareas:
@@ -137,20 +137,20 @@ Y se deja escrito donde ya tengas tus tareas:
 # Makefile
 .PHONY: postman
 postman:
-	bunx export-to-postman generate --project-root .
+	bunx api-source-tanit generate --project-root .
 ```
 
 ```yaml
 # composer.json (Laravel/Symfony) — sección scripts
 "scripts": {
-    "postman": "bunx export-to-postman generate --project-root ."
+    "postman": "bunx api-source-tanit generate --project-root ."
 }
 ```
 
 ```toml
 # pyproject.toml con taskipy
 [tool.taskipy.tasks]
-postman = "bunx export-to-postman generate --project-root ."
+postman = "bunx api-source-tanit generate --project-root ."
 ```
 
 > **`--project-root` no es opcional aquí.** Sin él, el CLI escanea el
@@ -164,7 +164,7 @@ postman = "bunx export-to-postman generate --project-root ."
 Para probarlo antes de decidir:
 
 ```bash
-bunx export-to-postman generate --project-root .
+bunx api-source-tanit generate --project-root .
 ```
 
 ---
@@ -177,17 +177,11 @@ No necesita nada más.
 
 ```bash
 # Linux x64
-curl -L https://github.com/CartagoGit/export-to-postman/releases/latest/download/export-to-postman-linux-x64 \
-  -o /usr/local/bin/export-to-postman
-chmod +x /usr/local/bin/export-to-postman
+curl -L https://github.com/CartagoGit/api-source-tanit/releases/latest/download/api-source-tanit-linux-x64 \
+  -o /usr/local/bin/apisrc
+chmod +x /usr/local/bin/apisrc
 
-# El binario se llama `export-to-postman` al guardarlo; `expostman`
-# solo existe como alias cuando se instala vía `bun add` (el campo
-# `bin` de package.json crea ambos). Con la instalación manual,
-# llama al archivo por su nombre o crea un symlink:
-ln -s /usr/local/bin/export-to-postman /usr/local/bin/expostman   # opcional
-
-export-to-postman generate --project-root .
+apisrc generate --project-root .
 ```
 
 Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
@@ -211,8 +205,8 @@ Por orden de prioridad:
 
 1. `--output <ruta.json>` — ruta exacta del fichero.
 2. `--output-dir <carpeta>` — carpeta de destino.
-3. `POSTMAN_OUTPUT_DIR` — misma idea, por variable de entorno.
-4. Por defecto: **`<raíz del proyecto>/export-to-postman/`**.
+3. `TANIT_OUTPUT_DIR` — misma idea, por variable de entorno.
+4. Por defecto: **`<raíz del proyecto>/tanit/`**.
 
 Los nombres salen del nombre del proyecto, o de `--basename`:
 
@@ -221,7 +215,7 @@ Los nombres salen del nombre del proyecto, o de `--basename`:
 <basename>.<entorno>.postman_environment.json
 ```
 
-Conviene añadir `export-to-postman/` al `.gitignore` de tu proyecto, salvo que
+Conviene añadir `tanit/` al `.gitignore` de tu proyecto, salvo que
 quieras versionar la colección para revisarla en los PRs.
 
 ---
@@ -238,18 +232,18 @@ quieras versionar la colección para revisarla en los PRs.
 | `watch` | Regenera al guardar. Se queda vigilando el proyecto hasta que lo pares con Ctrl+C. |
 | `push` | Sube la colección **directamente** a tu workspace de Postman, sin pasar por el fichero. |
 | `ui` | Abre la interfaz gráfica en el navegador. Para quien no quiere aprenderse los flags. |
-| `history` | Lista las generaciones previas guardadas en `~/.expostman/history.jsonl` con `--limit N`, filtro por `--project`, salida `--json` y `--clear`. |
+| `history` | Lista las generaciones previas guardadas en `~/.tanit/history.jsonl` con `--limit N`, filtro por `--project`, salida `--json` y `--clear`. |
 
 ### `history` — ver qué se ha generado antes
 
 ```sh
-expostman history --limit 20
-expostman history --project <ruta> --json
-expostman history --clear
+apisrc history --limit 20
+apisrc history --project <ruta> --json
+apisrc history --clear
 ```
 
 ```sh
-expostman ui
+apisrc ui
 ```
 
 Levanta la interfaz en `localhost`, abre el navegador y ya está. Pides
@@ -277,7 +271,7 @@ y la interfaz viaja embebida en el propio ejecutable.
 ### `watch` — mientras desarrollas
 
 ```sh
-expostman watch --project-root .
+apisrc watch --project-root .
 ```
 
 Genera una vez y se queda mirando. Cada vez que guardas un fichero de
@@ -299,8 +293,8 @@ comprobar que la colección sigue saliendo, sin un proceso que no termina.
 ### `push` — sin pasar por el fichero
 
 ```sh
-export POSTMAN_API_KEY=pmak-...      # se crea en postman.co/settings/me/api-keys
-expostman push --project-root .
+export TANIT_API_KEY=pmak-...      # se crea en postman.co/settings/me/api-keys
+apisrc push --project-root .
 ```
 
 Escanea, construye la colección y la sube. Si ya existe una con el mismo
@@ -308,7 +302,7 @@ Escanea, construye la colección y la sube. Si ya existe una con el mismo
 
 | Flag | Qué controla |
 |---|---|
-| `--api-key <clave>` | La clave. Mejor por `POSTMAN_API_KEY`: un flag queda en el historial del shell. |
+| `--api-key <clave>` | La clave. Mejor por `TANIT_API_KEY`: un flag queda en el historial del shell. |
 | `--workspace <id>` | A qué workspace. Por defecto, el personal. |
 | `--no-environments` | Sube solo la colección. |
 | `--framework <id>` | Igual que en `generate`. |
@@ -316,7 +310,7 @@ Escanea, construye la colección y la sube. Si ya existe una con el mismo
 Antes de generar nada, para ver qué detectaría:
 
 ```bash
-expostman generate --project-root . --inspect
+apisrc generate --project-root . --inspect
 ```
 
 ---
@@ -325,13 +319,13 @@ expostman generate --project-root . --inspect
 
 | Flag | Variable | Por defecto | Qué controla |
 |---|---|---|---|
-| `--project-root <ruta>` | `POSTMAN_PROJECT_ROOT` | se busca subiendo desde el cwd | Qué proyecto se escanea |
-| `--output-dir <ruta>` | `POSTMAN_OUTPUT_DIR` | `<proyecto>/export-to-postman/` | Carpeta de salida |
+| `--project-root <ruta>` | `TANIT_PROJECT_ROOT` | se busca subiendo desde el cwd | Qué proyecto se escanea |
+| `--output-dir <ruta>` | `TANIT_OUTPUT_DIR` | `<proyecto>/tanit/` | Carpeta de salida |
 | `--framework <id>` | — | (autodetección) | Fuerza el framework cuando la detección no puede acertar |
 | `--allow-empty` | — | — | No falla si no se encuentra ningún endpoint |
 | `--output <fichero>` | — | — | Ruta exacta del `.json` |
-| `--basename <nombre>` | `POSTMAN_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
-| `--config <ruta>` | `POSTMAN_CONFIG` | autodetectado | `config.constant.ts` a usar |
+| `--basename <nombre>` | `TANIT_OUTPUT_BASENAME` | nombre del proyecto | Nombre base de los ficheros |
+| `--config <ruta>` | `TANIT_CONFIG` | autodetectado | `.tanitrc.json` o `config.constant.ts` a usar |
 | `--envs <a,b,c>` | — | Local, Dev, Staging, Producción | Qué environments generar |
 | `--format <a,b,c>` | — | `postman` | Formatos de salida (ver abajo) |
 | `--inspect` | — | — | Solo informa; no escribe |
@@ -347,7 +341,7 @@ Postman es el formato por defecto, pero no el único. `--format` acepta
 varios separados por coma:
 
 ```sh
-expostman generate --format postman,openapi
+apisrc generate --format postman,openapi
 ```
 
 | Formato | Sale | Para qué |
@@ -365,7 +359,7 @@ GraphQL exportado a OpenAPI avisa de qué operaciones se pierden, porque
 OpenAPI identifica una operación por ruta y método y GraphQL tiene un
 solo endpoint.
 
-`expostman --help` lista los formatos leyéndolos del registro, así que
+`apisrc --help` lista los formatos leyéndolos del registro, así que
 esa lista nunca se queda vieja.
 
 ---
@@ -373,10 +367,15 @@ esa lista nunca se queda vieja.
 ## Configuración opcional
 
 Sin configuración funciona. Cuando quieras control fino, crea un
-`config.constant.ts`:
+`config.constant.ts` en la raíz de tu proyecto:
 
-```bash
-export-to-postman init
+```ts
+// config.constant.ts — la raíz de tu API
+import type { ProjectConfig } from "api-source-tanit";
+
+export const config: ProjectConfig = {
+  // ...
+};
 ```
 
 Lo más útil que puedes poner:
@@ -417,7 +416,7 @@ El escaneo no encontró el proyecto. Comprueba en el bloque de rutas que
 imprime el comando que `projectRoot` apunta donde crees:
 
 ```bash
-expostman generate --project-root /ruta/absoluta/a/tu/api
+apisrc generate --project-root /ruta/absoluta/a/tu/api
 ```
 
 Si `projectRoot` está bien, mira en [FRAMEWORKS.md](FRAMEWORKS.md) qué
@@ -425,7 +424,7 @@ ficheros espera encontrar el scanner de tu framework.
 
 ### `No se pudo determinar la raíz del proyecto`
 
-Pasa `--project-root <ruta>` o define `POSTMAN_PROJECT_ROOT`.
+Pasa `--project-root <ruta>` o define `TANIT_PROJECT_ROOT`.
 
 ### Faltan endpoints
 
@@ -435,7 +434,7 @@ un bucle, o con el path en una variable) no se detectan: el análisis es
 estático. Para esos casos se declaran a mano en un
 `endpoints.constant.ts`, que se fusiona con lo autodetectado.
 
-### `command not found: export-to-postman`
+### `command not found: apisrc`
 
 La instalación global de Bun no está en el `PATH`:
 
@@ -451,40 +450,40 @@ está el motor —un binario cacheado, una instalación global, `bunx`,
 
 | Ecosistema | Comando |
 | --- | --- |
-| Shell (Linux, macOS) | `./bin/expostman generate --project-root .` |
-| Windows (PowerShell) | `.\bin\expostman.ps1 generate --project-root .` |
-| Python | `python bin/wrappers/expostman.py generate --project-root .` |
-| PHP / Composer | `php bin/wrappers/Expostman.php generate --project-root .` |
+| Shell (Linux, macOS) | `./bin/apisrc generate --project-root .` |
+| Windows (PowerShell) | `.\bin\apisrc.ps1 generate --project-root .` |
+| Python | `python bin/wrappers/apisrc.py generate --project-root .` |
+| PHP / Composer | `php bin/wrappers/Apisrc.php generate --project-root .` |
 
-El binario descargado se cachea en `~/.expostman/`. Se cambia con
-`EXPOSTMAN_HOME`.
+El binario descargado se cachea en `~/.tanit/`. Se cambia con
+`TANIT_HOME`.
 
 ### En tu fichero de build
 
 ```jsonc
 // package.json
-"scripts": { "postman": "expostman generate --project-root ." }
+"scripts": { "postman": "apisrc generate --project-root ." }
 ```
 
 ```jsonc
 // composer.json
-"scripts": { "postman": "php bin/wrappers/Expostman.php generate --project-root ." }
+"scripts": { "postman": "php bin/wrappers/Apisrc.php generate --project-root ." }
 ```
 
 ```makefile
 # Makefile
 postman:
-	./bin/expostman generate --project-root .
+	./bin/apisrc generate --project-root .
 ```
 
 ```go
 // Go
-//go:generate ../bin/expostman generate --project-root .
+//go:generate ../bin/apisrc generate --project-root .
 ```
 
 ```groovy
 // build.gradle
-task postman(type: Exec) { commandLine './bin/expostman', 'generate', '--project-root', '.' }
+task postman(type: Exec) { commandLine './bin/apisrc', 'generate', '--project-root', '.' }
 ```
 
 **Por qué son tan finos.** La versión anterior de esto reimplementaba el
@@ -507,7 +506,7 @@ puede** funcionar:
 En esos casos, díselo:
 
 ```sh
-expostman generate --project-root ./services/api --framework fastify
+apisrc generate --project-root ./services/api --framework fastify
 ```
 
 Un id que no exista falla al instante y lista los válidos. Los ids son

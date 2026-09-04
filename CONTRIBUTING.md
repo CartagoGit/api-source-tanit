@@ -1,4 +1,4 @@
-# Contributing to `export-to-postman`
+# Contributing to `api-source-tanit`
 
 > **Source of truth**: this file + [`docs/delendai/AGENT-BOOTSTRAP.md`](docs/delendai/AGENT-BOOTSTRAP.md)
 > + [`docs/NAMING.md`](docs/NAMING.md). Humans and LLMs committing to
@@ -123,7 +123,7 @@ executive summary:
 | `*.exporter.ts` | `packages/core/exporters/` | One `IExportTarget` per output format. |
 | `*.scanner.ts` | `packages/frameworks/` | One framework's route discovery. |
 | `*.script.ts` | `packages/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
-| `*.tool.ts` | `packages/plugins/delendai_expostman/src/lib/tools/` | One MCP tool per file. |
+| `*.tool.ts` | `packages/plugins/delendai_tanit/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 
 The old table named `contracts/`, `services/` and `helpers/` as
@@ -265,7 +265,7 @@ viejo hasta que un servidor no arranca y nadie sabe por qué.
 
 ### Dónde escribe la herramienta
 
-En `<proyecto escaneado>/export-to-postman/`. **Nunca** en `build/`: es
+En `<proyecto escaneado>/tanit/`. **Nunca** en `build/`: es
 la carpeta de salida por defecto de Gradle, de muchos proyectos de Go y
 de medio mundo de Makefiles, y su `clean` la borra entera. La constante
 es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
@@ -322,7 +322,7 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `packages/plugins/delendai_expostman/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `packages/plugins/delendai_tanit/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
 | Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
@@ -345,10 +345,10 @@ agent does **not** pick up additional permissions at runtime.
 | Agent | File | Tools |
 | --- | --- | --- |
 | `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, delendai/delendai_overview, delendai/delendai_agent_catalog, delendai/delendai_proposals_proposal_board, delendai/delendai_proposals_close_slice, delendai/delendai_memory_save` |
-| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_expostman_summary` |
-| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_expostman_generate, delendai/delendai_expostman_summary` |
-| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_expostman_validate` |
-| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_expostman_test` |
+| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_tanit_summary` |
+| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_generate, delendai/delendai_tanit_summary` |
+| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_tanit_validate` |
+| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_test` |
 
 When adding a new tool a lane needs, **add it to that agent's `tools:`
 list** — do **not** widen to `delendai/*`.
@@ -394,7 +394,7 @@ related:
 
 The 12 proposals already in `ready/` are the implementation roadmap.
 Each proposal owns its slices; each slice has its own gate. The
-orchestrator agent (`export-to-postman-orchestrator`) drives the
+orchestrator agent (`orchestrator`) drives the
 state machine.
 
 ---

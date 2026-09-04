@@ -543,7 +543,7 @@ eso **no puede** funcionar por bien escrito que esté el scanner:
 Para todos ellos, dilo tú:
 
 ```sh
-expostman generate --project-root ./services/api --framework fastify
+apisrc generate --project-root ./services/api --framework fastify
 ```
 
 Un id que no existe falla al instante y lista los válidos, en vez de

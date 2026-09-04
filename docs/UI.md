@@ -1,4 +1,4 @@
-# La interfaz (`expostman ui`)
+# La interfaz (`apisrc ui`)
 
 La herramienta sin terminal. Apuntas a la carpeta de tu API, ves lo que
 se detecta antes de escribir nada, y generas la colección. Aquí está
@@ -11,7 +11,7 @@ Si aún no has instalado la herramienta: [INSTALL.md](INSTALL.md).
 ## Arrancar
 
 ```bash
-expostman ui
+apisrc ui
 ```
 
 Se abre en tu navegador, en `localhost`. Escucha **solo en tu máquina**;
@@ -84,7 +84,7 @@ escribir nada a medias), y la generación usa el mismo camino que el CLI:
 
 ### Carpeta de salida
 
-Vacía por defecto: se escribe en `<proyecto>/export-to-postman/`. Si
+Vacía por defecto: se escribe en `<proyecto>/tanit/`. Si
 eliges otra carpeta —recoger varias colecciones en un sitio, por
 ejemplo— se acepta, y el resultado te dice **la ruta exacta** donde
 quedó la colección.
@@ -128,9 +128,9 @@ idioma y tu tema siguen ahí. Un fichero de ajustes dañado no impide
 abrir la herramienta: se avisa en la pantalla y se usan los valores por
 defecto.
 
-En Linux la carpeta es `~/.config/expostman/`, en macOS
-`~/Library/Application Support/expostman/` y en Windows
-`%APPDATA%\expostman\`. Ahí también viven los idiomas: puedes editar
+En Linux la carpeta es `~/.config/tanit/`, en macOS
+`~/Library/Application Support/tanit/` y en Windows
+`%APPDATA%\tanit\`. Ahí también viven los idiomas: puedes editar
 una traducción o añadir tu propio `<código>.json` y la interfaz lo
 cargará en el próximo arranque.
 

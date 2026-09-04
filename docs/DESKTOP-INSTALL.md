@@ -1,13 +1,13 @@
 # Instalar la aplicación de escritorio
 
-Export to Postman se puede usar de tres formas, y esta página cubre la
-tercera:
+Tanit (la aplicación de escritorio, antes «Export to Postman») se puede
+usar de tres formas, y esta página cubre la tercera:
 
 1. **Como CLI**, si ya tienes Bun o Node — ver [INSTALL.md](INSTALL.md).
 2. **Como binario suelto**, sin runtime — `bun run build:binary`.
 3. **Como aplicación de escritorio**, con su ventana y su icono. Aquí.
 
-La aplicación es la misma interfaz web que levanta `expostman ui`,
+La aplicación es la misma interfaz web que levanta `apisrc ui`,
 metida en una ventana nativa. Dentro lleva el binario del CLI, así que
 **no necesitas Bun ni Node instalados**.
 
@@ -20,11 +20,11 @@ Salen dos formatos y cubren cosas distintas.
 ### `.deb` — Debian, Ubuntu, Mint, Pop!\_OS…
 
 ```bash
-sudo apt install ./export-to-postman_0.1.0_amd64.deb
+sudo apt install ./tanit_1.0.0_amd64.deb
 ```
 
 Se integra con el gestor de paquetes: aparece en el menú de
-aplicaciones, y `sudo apt remove export-to-postman` lo quita entero.
+aplicaciones, y `sudo apt remove tanit` lo quita entero.
 
 Necesita las librerías de WebKit del sistema. En una instalación de
 escritorio normal ya están; si no:
@@ -36,8 +36,8 @@ sudo apt install libwebkit2gtk-4.1-0 libayatana-appindicator3-1
 ### `.AppImage` — cualquier distribución
 
 ```bash
-chmod +x Export-to-Postman_0.1.0_amd64.AppImage
-./Export-to-Postman_0.1.0_amd64.AppImage
+chmod +x Tanit_1.0.0_amd64.AppImage
+./Tanit_1.0.0_amd64.AppImage
 ```
 
 No se instala: es un fichero que se ejecuta. Útil en Fedora, Arch,
@@ -67,7 +67,7 @@ openSUSE o donde no haya `.deb`, y para probarlo sin tocar el sistema.
 > O, desde la terminal:
 >
 > ```bash
-> xattr -dr com.apple.quarantine /Applications/Export\ to\ Postman.app
+> xattr -dr com.apple.quarantine /Applications/Tanit.app
 > ```
 >
 > Firmarla requiere una cuenta de pago de Apple Developer. Mientras no
@@ -103,7 +103,7 @@ del proyecto.
 2. Pulsa **Inspeccionar**: no escribe nada, solo dice qué ha detectado.
 3. Si el framework y el número de endpoints cuadran, pulsa **Generar**.
 
-La colección aparece en `<tu-proyecto>/export-to-postman/`.
+La colección aparece en `<tu-proyecto>/tanit/`.
 
 Si «Inspeccionar» no reconoce el framework, mira
 [FRAMEWORKS.md](FRAMEWORKS.md) para ver qué busca cada scanner: casi
