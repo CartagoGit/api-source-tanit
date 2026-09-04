@@ -163,6 +163,23 @@ async function collectJsFiles(projectRoot: string): Promise<string[]> {
   );
 }
 
+/**
+ * Resuelve la raíz efectiva del scanner respetando `frameworkSearchRoot`.
+ *
+ * Audit 2ª revisión #4: Express no usaba `match.frameworkSearchRoot`,
+ * solo `match.projectRoot`. En un monorepo con dos apps Express
+ * (`apps/api`, `apps/admin`) y `--framework-search-root apps/api`,
+ * el scanner recorría la raíz entera del monorepo y contaminaba la
+ * colección con rutas de `apps/admin`. Esta función es el contrato
+ * único que `effectiveScanRoot` de `core/discovery/scan-root.helper.ts`
+ * ya define — todos los scanners deberían delegar en él.
+ */
+function expressSearchRoot(match: IProjectMatch): string {
+  return match.frameworkSearchRoot
+    ? join(match.projectRoot, match.frameworkSearchRoot)
+    : match.projectRoot;
+}
+
 interface ParsedModule {
   file: string;
   routes: Array<{ method: string; path: string; line: number; routerName?: string }>;
@@ -294,7 +311,7 @@ export class ExpressRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectJsFiles(match.projectRoot);
+    const files = await collectJsFiles(expressSearchRoot(match));
     const modules: ParsedModule[] = [];
     const diagnostics: Array<IParseDiagnostic> = [];
     // En paralelo con tope, entregados en el orden de entrada: la
@@ -326,8 +343,12 @@ export class ExpressRouteScanner implements IRouteScanner {
         const fullPath = (prefix + r.path)
           .replace(/\/+/g, "/")
           .replace(/\/+$/, "");
+        // `m.file` viene de `collectJsFiles(searchRoot)` así que es
+        // absoluta desde searchRoot (no desde match.projectRoot).
+        // Usamos `searchRoot` para derivar el `sourceFile` y que la
+        // ruta sea coherente con el workspace efectivo del scanner.
         const relFile = m.file
-          .replace(match.projectRoot, "")
+          .replace(expressSearchRoot(match), "")
           .replace(/^[\\/]/, "")
           .split(sep)
           .join("/");
@@ -409,7 +430,10 @@ async function findInlineSchema(
   match: IProjectMatch,
 ): Promise<IValidationSpec[]> {
   if (!route.sourceFile) return [];
-  const abs = join(match.projectRoot, route.sourceFile);
+  // Audit 2ª revisión #4: sourceFile es relativo a la raíz
+  // efectiva (searchRoot si hay frameworkSearchRoot), no a la
+  // raíz del match.
+  const abs = join(expressSearchRoot(match), route.sourceFile);
   let raw: string;
   try {
     raw = await readFile(abs, "utf8");

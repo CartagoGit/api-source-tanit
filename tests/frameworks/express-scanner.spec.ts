@@ -313,3 +313,53 @@ describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 });
+
+describe("Express scanner — frameworkSearchRoot (audit 2nd-review #4)", () => {
+  test("scan() respeta match.frameworkSearchRoot: solo lee del workspace indicado", async () => {
+    // Antes el scanner recorría `match.projectRoot` y, en monorepos,
+    // contaminaba la colección con rutas de otros workspaces.
+    const project = await createTempProject({
+      "package.json": JSON.stringify({
+        name: "monorepo",
+        private: true,
+        workspaces: ["apps/api", "apps/admin"],
+      }),
+      // apps/api: 1 endpoint
+      "apps/api/package.json": JSON.stringify({
+        name: "@mono/api",
+        dependencies: { express: "^4.19.0" },
+      }),
+      "apps/api/server.js": `const express = require("express");
+const app = express();
+app.get("/api-only", (_req, res) => res.json({}));
+`,
+      // apps/admin: 1 endpoint distinto
+      "apps/admin/package.json": JSON.stringify({
+        name: "@mono/admin",
+        dependencies: { express: "^4.19.0" },
+      }),
+      "apps/admin/server.js": `const express = require("express");
+const app = express();
+app.get("/admin-only", (_req, res) => res.json({}));
+`,
+    });
+
+    try {
+      const routes = (
+        await new ExpressRouteScanner().scan({
+          framework: "express",
+          projectRoot: project.root,
+          artifacts: ["apps/api/package.json"],
+          frameworkSearchRoot: "apps/api",
+        })
+      ).routes;
+      const uris = routes.map((r) => r.uri).sort();
+      expect(uris).toContain("/api-only");
+      // /admin-only NO debe aparecer porque el override limita el
+      // scan al workspace apps/api.
+      expect(uris).not.toContain("/admin-only");
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
