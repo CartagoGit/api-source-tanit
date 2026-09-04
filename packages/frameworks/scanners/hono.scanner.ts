@@ -137,14 +137,14 @@ export class HonoProjectScanner implements IProjectScanner {
       const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
         { signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" },
       ];
-      // f00011 S1: `wrangler.toml` en raíz identifica un proyecto
-      // desplegado en Cloudflare Workers — el caso de uso canónico de
-      // Hono. Antes solo se reconocía por la dependencia; ahora un
-      // worker sin `hono` declarado todavía (lo normal en proyectos
-      // muy nuevos) sale como hono por el manifiesto del runtime.
-      // 0.6 es el peso propuesto: alto, pero no tanto como la
-      // dependencia directa (1.0) — `wrangler.toml` también lo usan
-      // proyectos que no son hono.
+      // `wrangler.toml` se mantiene como BONUS de runtime cuando ya
+      // hay `hono` en deps: describe el despliegue típico de Hono
+      // (Cloudflare Workers) y matiza la evidencia. **No** es una
+      // señal de framework por sí mismo — un `wrangler.toml` sin
+      // hono es Cloudflare Workers, no Hono (audit 2026-09-04 P2
+      // #8: antes el detector sumaba 0.6 por wrangler.toml solo,
+      // clasificando proyectos itty-router / vanilla Workers como
+      // Hono en silencio).
       if (existsSync(join(projectRoot, "wrangler.toml"))) {
         evidence.push({
           signal: "wrangler.toml presente (runtime de borde)",
@@ -165,18 +165,13 @@ export class HonoProjectScanner implements IProjectScanner {
       const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
       return withEvidence(0.6 + lockBonus, evidence);
     }
-    // f00011 S1: `wrangler.toml` sin hono declarado. Caso raro (un
-    // worker que aún no incluye la dependencia), pero si está, sigue
-    // siendo la mejor pista disponible. 0.6 — el mismo peso que la
-    // rama de `@hono/*` plugins, porque ambas son señales indirectas.
-    if (existsSync(join(projectRoot, "wrangler.toml"))) {
-      const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
-        { signal: "wrangler.toml presente (runtime de borde)", weight: 0.6, artifact: "wrangler.toml" },
-        ...locks,
-      ];
-      const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
-      return withEvidence(0.6 + lockBonus, evidence);
-    }
+    // Audit 2026-09-04 P2 #8: `wrangler.toml` sin hono declarado
+    // ya NO clasifica como Hono. Antes sumaba 0.6, lo que provocaba
+    // falsos positivos: un worker con itty-router, vanilla Workers,
+    // Remix on Cloudflare, etc., acababa como Hono. Ahora se
+    // requiere dependencia hono (o `@hono/*`) para entrar al
+    // detector. `wrangler.toml` queda como evidencia solo cuando
+    // complementa una detección hono ya positiva.
     return emptyResult(0);
   }
 

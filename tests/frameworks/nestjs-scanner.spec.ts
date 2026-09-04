@@ -4,6 +4,7 @@ import {
   NestJsRouteScanner,
   NestJsClassValidatorProvider,
 } from "../../packages/frameworks/scanners/nestjs.scanner";
+import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import {
@@ -643,7 +644,6 @@ bootstrap();
       "nestjs-monorepo-prefix-",
     );
 
-    const ps = new NestJsProjectScanner();
     const match: IProjectMatch = {
       framework: "nestjs",
       projectRoot: project.root,

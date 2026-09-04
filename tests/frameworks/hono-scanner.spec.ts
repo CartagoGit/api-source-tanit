@@ -164,15 +164,17 @@ describe("Hono — detect() por wrangler.toml (f00011 S1)", () => {
     }
   });
 
-  test("detect() === 0.6 cuando solo hay wrangler.toml (sin hono declarado)", async () => {
+  test("detect() === 0 cuando solo hay wrangler.toml (sin hono declarado) — audit 2026-09-04 P2 #8", async () => {
+    // Antes este caso puntuaba 0.6 y clasificaba proyectos
+    // itty-router / vanilla Workers / Remix on Cloudflare como
+    // Hono. Ahora wrangler.toml solo NO es evidencia de framework;
+    // queda como bonus de runtime cuando ya hay `hono` declarado.
     const project = await createTempProject({
       "package.json": '{"name":"demo"}',
       "wrangler.toml": 'name = "demo"\nmain = "src/index.ts"\n',
     });
     try {
-      // Caso raro (un worker que aún no incluye la dependencia), pero
-      // es la mejor pista disponible y por eso puntúa 0.6.
-      expect((await new HonoProjectScanner().detect(project.root)).score).toBe(0.6);
+      expect((await new HonoProjectScanner().detect(project.root)).score).toBe(0);
     } finally {
       await project.cleanup();
     }
