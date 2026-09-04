@@ -53,21 +53,6 @@ que no representa a ninguno de los dos.
 
 ## Slices
 
-### S1 — \`ServiceGraph\` data shape en \`contracts/\`
-
-- **Status**: pending
-- **Files**:
-  - \`packages/contracts/interfaces/core/service-graph.interface.ts\` (nuevo)
-  - \`packages/contracts/index.ts\` (re-export)
-- **Gate**: \`bun run typecheck && bun run lint:contracts\`
-- **Detalle**:
-  - Tipo \`IServiceGraph { services: IServiceDescriptor[]; combined: boolean; }\`.
-  - \`IServiceDescriptor\` con \`id\`, \`workspaceRoot\`, \`framework\`,
-    \`scannerScore\`, \`endpoints: ParsedRoute[]\`, \`baseUrl\`, \`auth\`,
-    \`variables\`, \`evidence: IDetectionEvidence\`.
-  - Helper puro \`groupByService(project: ILoadedProject): IServiceGraph\`
-    en \`packages/core/discovery/group-by-service.helper.ts\`.
-
 ### S2 — Proyecto de un solo servicio sigue funcionando
 
 - **Status**: pending
