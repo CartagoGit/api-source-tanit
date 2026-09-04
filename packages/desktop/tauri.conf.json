@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Export to Postman",
-  "identifier": "dev.cartago.expostman",
+  "productName": "Tanit",
+  "identifier": "dev.cartago.tanit",
   "version": "0.1.0",
   "build": {
     "frontendDist": "./dist"
@@ -22,7 +22,7 @@
     "shortDescription": "Genera colecciones Postman desde el código de tu API",
     "longDescription": "Apunta a la carpeta de tu API y obtén una colección Postman v2.1.0 lista para importar. Detecta el framework automáticamente entre 21 soportados, sin anotaciones ni levantar el servidor.",
     "externalBin": [
-      "binaries/expostman"
+      "binaries/apisrc"
     ]
   }
 }

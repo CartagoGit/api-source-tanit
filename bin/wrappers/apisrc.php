@@ -1,11 +1,11 @@
 <?php
 /**
- * Lanzador de expostman para proyectos PHP.
+ * Lanzador de apisrc para proyectos PHP.
  *
  * Pensado para `composer.json > scripts`:
  *
  *   "scripts": {
- *     "postman": "php bin/wrappers/Expostman.php generate --project-root ."
+ *     "tanit": "php bin/wrappers/apisrc.php generate --project-root ."
  *   }
  *
  * Cero lógica de dominio: resuelve el lanzador y le pasa los
@@ -13,7 +13,7 @@
  */
 $repoRoot = dirname(__DIR__, 2);
 $isWindows = DIRECTORY_SEPARATOR === '\\';
-$launcher = $repoRoot . '/bin/' . ($isWindows ? 'expostman.ps1' : 'expostman');
+$launcher = $repoRoot . '/bin/' . ($isWindows ? 'apisrc.ps1' : 'apisrc');
 
 $args = array_slice($argv, 1);
 $parts = $isWindows

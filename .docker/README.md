@@ -40,7 +40,7 @@ que un sitio limpio no tiene.
   `/etc/profile` y reconstruye el `PATH` desde cero, así que `bun` no
   existía dentro aunque estuviera instalado.
 - **Dos tests dependían del nombre de la carpeta del checkout.**
-  Exigían que el directorio se llamara `export-to-postman`; el
+  Exigían que el directorio se llamara `api-source-tanit`; el
   contenedor monta en `/work`. Cualquiera que clone en otra carpeta
   tenía el mismo fallo.
 - **El test de permisos pasaba siempre como root.** `chmod 0555` no

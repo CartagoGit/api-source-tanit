@@ -26,7 +26,7 @@ jobs:
       # resolver el `file:` del plugin. Va **antes** de `setup-bun` y
       # `bun install`: el install lee `bun.lock`, que apunta a
       # `../../../../delendai/packages/core` desde
-      # `packages/plugins/delendai_expostman/`, y eso sólo existe si
+      # `packages/plugins/delendai_tanit/`, y eso sólo existe si
       # este step corrió antes.
       - name: Checkout delendai sibling
         uses: actions/checkout@v7

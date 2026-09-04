@@ -42,7 +42,7 @@
 # de verdad:
 #
 #   /                                      el paquete
-#   /packages/plugins/delendai_expostman el plugin, que se publica aparte
+#   /packages/plugins/delendai_tanit    el plugin, que se publica aparte
 #
 version: 2
 
@@ -65,7 +65,7 @@ updates:
   # El plugin de delendai es un paquete independiente con su propio
   # `package.json`, y ese sí se instala.
   - package-ecosystem: npm
-    directory: "/packages/plugins/delendai_expostman"
+    directory: "/packages/plugins/delendai_tanit"
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
