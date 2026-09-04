@@ -2,10 +2,17 @@
 id: a00016
 title: "Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop)"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - 3fd6cfd  # S1: ILanguageIR shape en contracts/
+  - 2a635bd  # S2: collectMethodCalls multi-style
+  - c6850e6  # S3: symbol-resolver aliases + reexports
+  - 25d755d  # S4: constant propagation
+  - 28e8bfc  # S5: bridge + express scanner migrates a LanguageIR
+  - 7f9ad90  # merge into develop + push
 dependsOn:
   - a00012
 related:
