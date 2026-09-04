@@ -110,15 +110,21 @@ function stringLiteralValue(node: BabelNode): string {
  * vacío (caso `computed` con string literal), donde la forma es
  * `prefix + '["' + resolvedMethod + '"]'`.
  *
- * `memberIsComputed` indica que la propiedad era un string literal
- * computado (`server["get"]`). El scanner que necesite propagar la
+ * `memberIsComputed` indica que la propiedad era computada (string
+ * literal o identifier). El scanner que necesite propagar la
  * constante lo mira; los demás pueden ignorarlo porque `method`
  * siempre queda vacío en ese caso (lo resuelve S4).
+ *
+ * `propertyIdentifier` es el nombre del identifier cuando la
+ * propiedad computada era un Identifier (`app[M]`). Lo usa el
+ * walker para reconstruir el `callee` textual como `"app[M]"`, que
+ * S4 (`propagateConstants`) inspecciona para resolver.
  */
 interface ICalleeShape {
   readonly prefix: string;
   readonly method: string;
   readonly memberIsComputed: boolean;
+  readonly propertyIdentifier: string;
   readonly receiverKind: ReceiverKind;
 }
 
@@ -154,6 +160,22 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         prefix: renderReceiver(object),
         method: stringLiteralValue(property),
         memberIsComputed: true,
+        propertyIdentifier: "",
+        receiverKind: "computed",
+      };
+    }
+
+    if (computed && property.type === "Identifier") {
+      // `app[M](...)` — propiedad computada con un identifier. El
+      // método queda vacío aquí; S4 (`propagateConstants`) lo
+      // resolverá si `M` es una constante literal. Si no, el
+      // scanner descarta la llamada.
+      const propName = identName(property);
+      return {
+        prefix: renderReceiver(object),
+        method: "",
+        memberIsComputed: true,
+        propertyIdentifier: propName,
         receiverKind: "computed",
       };
     }
@@ -165,6 +187,7 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         prefix: renderReceiver(object),
         method,
         memberIsComputed: false,
+        propertyIdentifier: "",
         // Contamos la profundidad del CALLEE entero: `app.get` es 1
         // nivel (identifier), `api.router.get` son 2 (member),
         // `this.router.get` son 2 con raíz `this` (this).
@@ -190,8 +213,22 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         prefix: renderReceiver(object),
         method: stringLiteralValue(property),
         memberIsComputed: true,
+        propertyIdentifier: "",
         // Opcional gana sobre computed porque el `?.` es lo más
         // distintivo del callee.
+        receiverKind: "optional",
+      };
+    }
+
+    if (computed && property.type === "Identifier") {
+      // `app?.[M](...)` — análogo al caso member computed. S4
+      // resuelve la constante.
+      const propName = identName(property);
+      return {
+        prefix: renderReceiver(object),
+        method: "",
+        memberIsComputed: true,
+        propertyIdentifier: propName,
         receiverKind: "optional",
       };
     }
@@ -203,6 +240,7 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         prefix: renderReceiver(object),
         method,
         memberIsComputed: false,
+        propertyIdentifier: "",
         receiverKind: "optional",
       };
     }
@@ -437,7 +475,9 @@ function walkBody(
         const end = typeof node.end === "number" ? node.end : start;
         const args = extractArgs(node);
         const calleeText = shape.memberIsComputed
-          ? `${shape.prefix}["${shape.method}"]`
+          ? shape.propertyIdentifier
+            ? `${shape.prefix}[${shape.propertyIdentifier}]`
+            : `${shape.prefix}["${shape.method}"]`
           : shape.method
             ? `${shape.prefix}.${shape.method}`
             : shape.prefix;
