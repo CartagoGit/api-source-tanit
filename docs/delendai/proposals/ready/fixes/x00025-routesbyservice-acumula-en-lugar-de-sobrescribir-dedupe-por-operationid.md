@@ -18,6 +18,28 @@ related:
 
 # x00025 — `routesByService` acumula + dedupe por `OperationId`
 
+> **Revisión 2026-09-05 (cierre reabierto — parcialmente satisfecho, NO done).**
+> Verificado contra el develop actual (`packages/core/discovery/accumulate-routes-by-service.helper.ts`):
+>
+> - ✅ **La acumulación sí está bien**: el `new Map(...)` que sobrescribía fue
+>   reemplazado por un merge intra-key + dedupe por tupla `(method, uri, sourceFile)`.
+>   Eso era lo que la primera revisión marcaba como P1 y está corregido.
+> - ❌ **El "OperationId" del título/Goal NO existe**: la asociación sigue siendo
+>   `scannerSpecs.some((s) => s.method === r.method && s.uri === r.uri)`, una
+>   reconstrucción por `method+uri`. En un monorepo con `apps/users GET /health` y
+>   `apps/orders GET /health`, cada scanner vuelve a ver **ambas** rutas → atribución
+>   cruzada. Éste es el corazón del Goal original ("sustituir el filtro method+uri por
+>   un OperationId estable"), y no está hecho.
+> - ❌ **Los slices siguen `pending`** y la `acceptance` exige `bun run validate` verde
+>   end-to-end — condición no demostrable mientras el CI esté rojo (i00002).
+>
+> **Decisión de backlog:** el trabajo de asociación por provenance se extrae a su
+> propia propuesta, **x00030** (más acotada y testeable). x00025 queda como el
+> predecesor parcial: su acumulación se conserva, pero su Goal de OperationId **se
+> delega** en x00030. No se cierra `done` hasta que (a) una implementación de
+> provenance esté demostrada (x00030) y (b) el fixture con dos servicios y la MISMA
+> `GET /health` esté en la suite, y (c) validate esté verde.
+
 ## Goal
 
 Sustituir la construcción `new Map(perScanner.map(...))` de

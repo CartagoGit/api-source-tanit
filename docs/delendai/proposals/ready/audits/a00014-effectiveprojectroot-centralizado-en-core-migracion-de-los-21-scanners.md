@@ -21,6 +21,27 @@ related:
 
 # a00014 — effectiveProjectRoot centralizado
 
+> **Revisión 2026-09-05 (cierre reabierto — este audit todavía NO cerrado).**
+> Hallazgo confirmado contra el código actual de develop (commit `7080255`…
+> `9374020`): `effectiveProjectRoot()` **sí** acepta rutas absolutas y las
+> devuelve verbatim:
+>
+> ```ts
+> // packages/core/discovery/effective-project-root.helper.ts
+> if (isAbsolute(requested)) return requested;
+> ```
+>
+> Esto contradice abiertamente el contrato de `IProjectMatch.frameworkSearchRoot`
+> (`packages/contracts/interfaces/core/scanner.interface.ts:54-57`):
+> *"…never absolute"*. Los tests actuales *declaran explícitamente* ese verbatim
+> como correcto, así que la prueba es cómplice de la contradicción. **Prohibido
+> cerrar a00014** con este comportamiento: un `frameworkSearchRoot` que apunte a
+> `/etc`, `C:\Windows` o `\\server\share` volvería a abrir la fuga de containment
+> que ya se cerró en x00022.
+>
+> Slices correctivos añadidos: **S4** (rechazar absolutos + primitiva de
+> contención común). **S5** corrige la contradicción del slice de test.
+
 ## Goal
 
 Crear una única primitiva effectiveProjectRoot(match) en
@@ -48,6 +69,10 @@ uniformemente:
   scan-root.helper.ts y ya está centralizada vía S1.b de a00012).
 - No introduce una API pública para usuarios externos.
 - No elimina match.frameworkSearchRoot del contrato, solo lo respeta.
+- **No acepta `frameworkSearchRoot` absolutos** (ver el blockquote de revisión de
+  2026-09-05 arriba). Si algún día se necesitan specs compartidos fuera del
+  proyecto, que tengan un campo propio y explícito (`externalArtifacts` /
+  `sharedSchemaRoots`), no una reinterpretación de `frameworkSearchRoot`.
 
 ## Slices
 
@@ -96,6 +121,39 @@ uniformemente:
   - Whitelist explícita solo en el helper.
   - Quien necesite projectRoot real debe llamar rawProjectRoot(match)
     que el gate también controla.
+
+### S4 — Rechazar absolutos + primitiva de contención única (CORRECTIVO — done, commit siguiente)
+
+- **Status**: done
+- **Files**:
+  - `packages/core/discovery/effective-project-root.helper.ts` (eliminar el
+    `if (isAbsolute) return requested`)
+  - `packages/core/helpers/path.helper.ts` (o donde viva ya el `toProjectRelative`
+    de x00022: reutilizar esa primitiva en lugar de reimplementar `startsWith`)
+  - `tests/core/effective-project-root.helper.spec.ts`
+- **Gate**: `bun run typecheck && bun run test:core`
+- **Detalle**:
+  - `frameworkSearchRoot` absoluto → **lanzar** error explícito (mismo patrón que
+    el error de `..`): no devolver verbatim. El contrato dice "only one segment,
+    never absolute".
+  - Reutilizar la primitiva de contención robusta ya existente
+    (`relative()` + comprobación de `..` + symlink-resolución — x00022): **no**
+    mantener dos algoritmos distintos de containment, que es lo que el helper hace
+    hoy (`resolved.startsWith(root + sep)`).
+  - Ajustar el error del `Error` para mencionar ambos modos de escape (`..`,
+    absoluto).
+
+### S5 — Actualizar tests de absoluta a rechazada (done)
+
+- **Status**: done
+- **Files**: `tests/core/effective-project-root.helper.spec.ts`
+- **Gate**: `bun run test:core`
+- **Detalle**:
+  - El test `frameworkSearchRoot = '/abs/path' → '/abs/path'` pasa a esperar
+    `toThrow()`.
+  - Nuevo: `'/etc'`, `'C:\\Windows'`, `'\\\\server\\share'` → toThrow.
+  - Nuevo (si aplica en el host): symlink fuera de `projectRoot` → toThrow
+    (paridad con el `toProjectRelative` de x00022).
 
 ## acceptance
 

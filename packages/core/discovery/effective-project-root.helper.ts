@@ -30,21 +30,27 @@
  *   mismo comportamiento que antes.
  *
  * - Si `frameworkSearchRoot` es absoluto (empieza por `/` en POSIX o
- *   por la letra de unidad en Windows), se devuelve **verbatim** —
- *   sin unirlo a `projectRoot`. Un manifest puede declarar
- *   legítimamente que el framework vive fuera de la raíz del
- *   proyecto (un spec OpenAPI compartido, por ejemplo) y eso es
- *   decisión del host, no del helper.
+ *   por la letra de unidad en Windows), **lanza**. El contrato de
+ *   `IProjectMatch.frameworkSearchRoot` lo declara "relative to
+ *   projectRoot and never absolute"; una implementación que aceptara
+ *   absolutos como los devolviera verbatim reabría exactamente la
+ *   fuga de contención que x00022 cerró (un manifest apuntando a
+ *   `/etc` o `\\server\share` dejaría de ser una rara excepción y
+ *   pasaria a ser la puerta trasera del helper). Si algún día se
+ *   necesitan artefactos compartidos fuera del proyecto, eso tiene
+ *   que ser un campo propio y explícito, no una reinterpretación de
+ *   `frameworkSearchRoot`. (a00014 S4)
  *
  * - En otro caso (relativo), se une `projectRoot` con
  *   `frameworkSearchRoot` mediante `path.resolve`, y se verifica que
- *   el resultado sigue dentro de `projectRoot` — un
- *   `frameworkSearchRoot` con `..` no debe poder escapar de
- *   `projectRoot`, ni siquiera cuando lo escribe un manifest del
- *   proyecto host. La verificación compara por segmento
- *   (`.startsWith(root + sep) || === root`), que es la forma correcta:
- *   un prefijo de cadena dejaría pasar `/tmp/raiz-mala` cuando la
- *   raíz es `/tmp/raiz`.
+ *   el resultado sigue dentro de `projectRoot`. La verificación usa
+ *   `relative()` más las guardas de prefijo `..${sep}` / `..` / ruta
+ *   absoluta — la MISMA fórmula canónica de contención que
+ *   `toProjectRelative` y `path-containment.helper` usan (x00022), en
+ *   lugar de `startsWith(root + sep)`: un prefijo de cadena dejaría
+ *   pasar `/tmp/raiz-mala` cuando la raíz es `/tmp/raiz`, y mantener
+ *   dos algoritmos distintos diciendo qué significa "estar dentro"
+ *   es la semilla de la próxima deriva (a00014 S4).
  *
  * - Si la verificación falla, **lanza** un `Error` con el framework,
  *   el `projectRoot` y el `frameworkSearchRoot` que la han
@@ -73,7 +79,7 @@
  * @see ../../../scripts/gates/lint-effective-project-root.script.ts
  *   para el gate que rechaza scanners incompatibles.
  */
-import { isAbsolute, resolve, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface.js";
 
@@ -134,15 +140,29 @@ function resolveProjectRoot(match: IProjectMatch): string {
   if (requested === undefined || requested === null || requested === "") {
     return root;
   }
-  // Absoluto: verbatim — un framework que vive fuera del projectRoot
-  // (típicamente un manifest que apunta a un spec global) es decisión
-  // del host, no del helper. La gate y el contrato siguen dejando
-  // eso en manos del orquestador.
+  // Absoluto: NO. El contrato (IProjectMatch.frameworkSearchRoot) lo
+  // declara "relative to projectRoot and never absolute"; devolverlo
+  // verbatim era la puerta trasera de contención que este helper acaba
+  // de cerrar. Rechazarlo con el mismo error explícito que el escape
+  // por `..`, para que el manifest culpable se vea.
   if (isAbsolute(requested)) {
-    return requested;
+    throw new Error(
+      `frameworkSearchRoot inválido para framework "${match.framework}": ` +
+        `"${requested}" es una ruta absoluta y el contrato la requiere ` +
+        `relativa a projectRoot ("${root}")`,
+    );
   }
   const resolved = resolve(root, requested);
-  const inside = resolved === root || resolved.startsWith(root + sep);
+  // Contención única: la MISMA fórmula pura que toProjectRelative
+  // (x00022), en lugar de comparar prefijos de cadena con
+  // startsWith(root + sep). Dos algoritmos distintos definiendo qué
+  // significa "dentro" son la semilla de la próxima deriva.
+  const rel = relative(root, resolved);
+  // rel === "" es el propio root (frameworkSearchRoot = "."), que sí
+  // está dentro. Lo que se sale empieza por "..", es exactamente
+  // ".." o viene absoluto (cruce de unidad en Windows).
+  const inside =
+    rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel));
   if (!inside) {
     throw new Error(
       `frameworkSearchRoot inválido para framework "${match.framework}": ` +

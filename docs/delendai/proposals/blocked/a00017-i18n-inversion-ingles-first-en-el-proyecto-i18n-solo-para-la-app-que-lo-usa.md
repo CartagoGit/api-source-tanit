@@ -6,7 +6,10 @@ status: blocked
 type: proposal
 track: api-source-tanit
 date: 2026-09-04
-dependsOn: []
+blockedReason: "Priorización: las revisiones de rama 2026-09-04/05 exigen cerrar antes CI (i00002) y multi-service (x00029/x00030/x00031). No traducir comentarios mientras los cimientos están abiertos. Retomar cuando validate.yml esté verde en Actions y x00029 S2 entre."
+dependsOn:
+  - i00002
+  - x00029
 related:
   - a00009
   - b00001

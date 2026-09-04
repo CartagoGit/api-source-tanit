@@ -30,3 +30,5 @@ packages/desktop/target/
 packages/**/*.js
 scripts/**/*.js
 tests/**/*.js
+# --- orquestador: mensajes de slice transitorios (c00005) ---
+.s*-msg.txt
