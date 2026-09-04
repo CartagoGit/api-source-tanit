@@ -197,19 +197,27 @@ function typeBody(source: string, typeName: string): string | null {
 
 /**
  * Recoge los escalares personalizados declarados en el esquema con la
- * directiva `scalar Nombre`. Audit 2026-09-04 P1 #4.
+ * directiva `scalar Nombre`. Audit 2026-09-04 P1 #4 + segunda revisión.
  *
- * Un `scalar DateTime` declarado por el proyecto debe ir al conjunto
- * de escalares —no admite selección de campos—, si no el cuerpo
- * generado pediría `now { __typename }` y la respuesta fallaría.
+ * Devuelve un Set NUEVO por invocación: el caller es el dueño del
+ * estado y decide cuándo se inicializa. Esto cumple el contrato
+ * `IScanResult` (el scanner no guarda estado entre invocaciones) y
+ * permite que `Promise.all([scan(A), scan(B)])` no contamine B con
+ * los escalares de A.
  */
-function collectCustomScalars(source: string): void {
+export function collectCustomScalars(source: string): Set<string> {
+  const out = new Set<string>();
   const cleaned = stripGraphQlComments(source);
-  const re = /^\s*scalar\s+(\w+)\s*$/gm;
+  // Reconoce `scalar X` y `scalar X @directive(...)` (audit
+  // segunda revisión #13). El bloque tras `scalar` puede llevar
+  // directivas antes del salto de línea; si las hay, no se
+  // contabiliza el nombre.
+  const re = /^\s*scalar\s+(\w+)(?:\s+@\w+[\s\S]*?)?$/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(cleaned)) !== null) {
-    if (m[1]) registerCustomScalar(m[1]);
+    if (m[1] && !BUILTIN_SCALARS.has(m[1])) out.add(m[1]);
   }
+  return out;
 }
 
 /**
@@ -224,11 +232,6 @@ export function parseOperations(
   kind: "query" | "mutation",
 ): IOperation[] {
   const clean = stripGraphQlComments(source);
-  // Antes de extraer operaciones, recogemos los escalares
-  // personalizados del esquema completo. Si no, `parseOperations`
-  // aislado por tipo no vería nunca las directivas `scalar X` que
-  // están fuera del bloque `type Query` / `type Mutation`.
-  collectCustomScalars(clean);
   const body = typeBody(clean, kind === "query" ? "Query" : "Mutation");
   if (body === null) return [];
 
@@ -258,7 +261,10 @@ export function parseOperations(
  * es lo que permite cambiarlos desde el panel de Postman sin editar la
  * consulta, y lo que hace que un `String!` no acabe sin comillas.
  */
-export function buildQueryDocument(op: IOperation): string {
+export function buildQueryDocument(
+  op: IOperation,
+  customScalars: ReadonlySet<string> = new Set<string>(),
+): string {
   const declaration =
     op.args.length > 0
       ? `(${op.args.map((a) => `$${a.name}: ${a.type}`).join(", ")})`
@@ -278,12 +284,17 @@ export function buildQueryDocument(op: IOperation): string {
   // se pide `__typename` — que existe en cualquier objeto y hace la
   // consulta válida.
   const bare = op.returns.replace(/[[\]!]/g, "");
-  const selection = isScalarType(bare) ? "" : " {\n    __typename\n  }";
+  const selection = isScalarType(bare, customScalars)
+    ? ""
+    : " {\n    __typename\n  }";
   return `${op.kind} ${op.name}${declaration} {\n  ${op.name}${call}${selection}\n}`;
 }
 
 /** Valor de ejemplo para una variable, por su tipo de GraphQL. */
-function exampleForType(type: string): unknown {
+function exampleForType(
+  type: string,
+  customScalars: ReadonlySet<string>,
+): unknown {
   const bare = type.replace(/[[\]!]/g, "");
   if (type.startsWith("[")) return [];
   switch (bare) {
@@ -304,7 +315,7 @@ function exampleForType(type: string): unknown {
       // `UUID`, `EmailAddress`). Si no, es un input type propio: un
       // objeto vacío es lo honesto, porque sus campos están en otra
       // parte del esquema y adivinarlos sería inventar.
-      return isScalarType(bare) ? "valor" : {};
+      return isScalarType(bare, customScalars) ? "valor" : {};
   }
 }
 
@@ -324,6 +335,25 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // y extrae los bloques `gql\`…\`` antes de aplicar el parser.
     const schemaFiles = await collectFiles(match.projectRoot, isSchemaFile);
     const sourceFiles = await collectFiles(match.projectRoot, isSourceJsTsFile);
+
+    // Audit segunda revisión #10 (custom scalars + ciclo de scan):
+    // dos pasadas. La primera recoge todos los escalares
+    // personalizados del proyecto entero (no solo del bloque
+    // `type Query`); la segunda genera las operaciones con ese Set
+    // como referencia. Esto cierra el bug "scalar DateTime en
+    // 99-scalars.graphql no se ve cuando se parsea 00-query.graphql
+    // primero". El Set es local a este `scan()` — nunca se comparte
+    // entre invocaciones (segunda revisión, P1).
+    const customScalars = new Set<string>();
+    for await (const { text } of readFilesInOrder(schemaFiles)) {
+      for (const scalar of collectCustomScalars(text)) customScalars.add(scalar);
+    }
+    for await (const { text } of readFilesInOrder(sourceFiles)) {
+      for (const sdl of extractEmbeddedSdl(text)) {
+        for (const scalar of collectCustomScalars(sdl)) customScalars.add(scalar);
+      }
+    }
+
     const routes: ParsedRoute[] = [];
     const seen = new Set<string>();
 
@@ -331,7 +361,13 @@ export class GraphQlRouteScanner implements IRouteScanner {
       const sourceFile = relative(match.projectRoot, path);
       const extracted = extractEmbeddedSdl(text);
       for (const sdl of [text, ...extracted]) {
-        for (const op of scanSchema(sdl, sourceFile, seen, routes)) {
+        for (const op of scanSchema(
+          sdl,
+          sourceFile,
+          seen,
+          routes,
+          customScalars,
+        )) {
           routes.push(op);
         }
       }
@@ -344,7 +380,13 @@ export class GraphQlRouteScanner implements IRouteScanner {
     for await (const { path, text } of readFilesInOrder(sourceFiles)) {
       const sourceFile = relative(match.projectRoot, path);
       for (const sdl of extractEmbeddedSdl(text)) {
-        for (const op of scanSchema(sdl, sourceFile, seen, routes)) {
+        for (const op of scanSchema(
+          sdl,
+          sourceFile,
+          seen,
+          routes,
+          customScalars,
+        )) {
           routes.push(op);
         }
       }
@@ -396,12 +438,19 @@ export function extractEmbeddedSdl(source: string): string[] {
  * Saca operaciones (Query/Mutation) de un texto SDL y las añade a
  * `routes` si no están en `seen`. Devuelve las añadidas para que el
  * caller encadene.
+ *
+ * `customScalars` lo aporta el caller (típicamente el `scan()` del
+ * scanner) tras una pasada previa sobre todo el SDL del proyecto —
+ * es lo que evita el bug de la segunda revisión #12 ("custom scalar
+ * en otro fichero no se ve si se procesa primero el fichero de
+ * operaciones").
  */
 function scanSchema(
   sdl: string,
   sourceFile: string,
   seen: Set<string>,
   _routes: ParsedRoute[],
+  customScalars: ReadonlySet<string>,
 ): ParsedRoute[] {
   const added: ParsedRoute[] = [];
   for (const kind of ["query", "mutation"] as const) {
@@ -411,7 +460,7 @@ function scanSchema(
       seen.add(seenKey);
 
       const variables = Object.fromEntries(
-        op.args.map((a) => [a.name, exampleForType(a.type)]),
+        op.args.map((a) => [a.name, exampleForType(a.type, customScalars)]),
       );
       const route: ParsedRoute = {
         method: "POST",
@@ -424,7 +473,7 @@ function scanSchema(
         description: `${op.kind} \`${op.name}\` → \`${op.returns}\``,
         tags: [op.kind === "query" ? "Queries" : "Mutations"],
         body: {
-          query: buildQueryDocument(op),
+          query: buildQueryDocument(op, customScalars),
           variables,
         },
       };
