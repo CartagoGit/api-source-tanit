@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - d4a6d7c  # S1: ServiceGraph shape + groupByService
 dependsOn:
   - a00012
 related:
