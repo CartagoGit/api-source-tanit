@@ -1,55 +1,54 @@
 /**
- * Constantes universales del paquete (agnósticas del proyecto).
+ * Package-wide constants (project-agnostic).
  *
- * Todo lo específico de un proyecto (variables, zonas, prefijos,
- * descripciones de auth) vive en `examples/<proyecto>/config.ts` y
- * se inyecta vía `ProjectConfig`.
+ * Everything project-specific (variables, folders, prefixes, auth
+ * descriptions) lives in `examples/<project>/config.ts` and is
+ * injected via `ProjectConfig`.
  */
 
-/** URL del schema Postman v2.1.0. */
+/** URL of the Postman v2.1.0 schema. */
 /**
- * La URL del esquema que declara la versión del formato.
+ * The schema URL that declares the format's version.
  *
- * Postman la usa para decidir cómo leer el fichero al importarlo; una
- * colección sin ella o con otra versión se interpreta distinto.
+ * Postman uses it to decide how to read the file on import; a
+ * collection without it, or with a different version, is interpreted
+ * differently.
  */
 export const POSTMAN_SCHEMA_URL =
   "https://schema.getpostman.com/json/collection/v2.1.0/collection.json";
 
-/** Tag que se añade al nombre de las variantes auto-generadas. */
+/** Tag appended to the names of auto-generated variants. */
 export const VARIANT_TAG = " (auto · FormRequest)";
 
 /**
- * Carpeta donde se escriben los artefactos, dentro del proyecto que se
- * escanea.
+ * Folder where the artefacts are written, inside the scanned project.
  *
- * Antes era `build/`, y eso hacía daño: `build/` es la salida por
- * defecto de Gradle, de Maven con ciertas configuraciones, de muchos
- * proyectos de Go y de la mitad de los Makefile del mundo. Escribir ahí
- * mezcla las colecciones con los artefactos de compilación de quien usa
- * la herramienta, en una carpeta que su `clean` borra entera.
+ * It used to be `build/`, which was dangerous: `build/` is the default
+ * output of Gradle, of Maven under certain configurations, of many
+ * Go projects, and of half the Makefiles in the world. Writing there
+ * mixed the collections with the user's build artefacts, in a folder
+ * their `clean` wipes whole.
  *
- * `tanit/` es el nombre del proyecto (Tanit — API Source Discovery):
- * brand-first, corto, sin colisión con `build/` ni `dist/` de los
- * frameworks que la herramienta escanea.
+ * `tanit/` is the project name (Tanit — API Source Discovery):
+ * brand-first, short, no collision with `build/` or `dist/` from the
+ * frameworks the tool scans.
  *
- * Se sobrescribe con `--output-dir` o `POSTMAN_OUTPUT_DIR`.
+ * Overridden by `--output-dir` or `POSTMAN_OUTPUT_DIR`.
  */
 export const OUTPUT_DIR_NAME = "tanit";
 
 /**
- * Métodos HTTP que se emiten a la colección.
+ * HTTP methods that the collection emits.
  *
- * Es la MISMA lista que el tipo `EndpointSpec["method"]`, y existe para
- * poder recorrerla en tiempo de ejecución. El adapter la usa para
- * filtrar: tenerla escrita a mano allí hacía que añadir un método al
- * tipo no sirviera de nada, y los `HEAD` que los scanners sí detectaban
- * desaparecían en silencio.
+ * This is the SAME list as `EndpointSpec["method"]` type, and exists so
+ * it can be iterated at runtime. The adapter uses it to filter: when
+ * it was hardcoded, adding a method to the type did nothing and the
+ * `HEAD` requests that scanners did detect silently disappeared.
  *
- * `TRACE` se añadió en a00012 S3.c porque el scanner de OpenAPI lo
- * reconocía (`paths./y.trace`) pero el adapter lo filtraba; los demás
- * frameworks no lo emiten, así que la entrada solo se materializa
- * cuando el spec lo trae.
+ * `TRACE` was added in a00012 S3.c because the OpenAPI scanner
+ * recognized it (`paths./y.trace`) but the adapter filtered it; the
+ * other frameworks do not emit it, so the entry only materializes
+ * when the spec brings one.
  */
 export const SUPPORTED_METHODS = [
   "GET",
@@ -64,12 +63,12 @@ export const SUPPORTED_METHODS = [
 
 
 /**
- * Nombre del ejecutable que se distribuye.
+ * Name of the executable that is distributed.
  *
- * Es el mismo que el `bin` del `package.json` y el que se escribe en la
- * terminal. Estaba escrito a mano en el script de compilación, y se
- * quedó en `postman-from-routes` —el nombre viejo— cuando el producto
- * pasó a llamarse así: los binarios de las releases salían con un nombre
- * que no existe en ninguna otra parte del proyecto.
+ * Same as the `bin` in `package.json` and the one typed at the
+ * terminal. It used to be hard-coded in the build script and stayed
+ * as `postman-from-routes` — the old name — when the product
+ * rebranded: release artefacts came out with a name that did not
+ * exist anywhere else in the project.
  */
 export const BIN_NAME = "apisrc" as const;

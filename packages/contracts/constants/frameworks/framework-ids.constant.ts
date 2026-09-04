@@ -1,37 +1,39 @@
 /**
- * Los frameworks que este proyecto sabe reconocer.
+ * Frameworks this project knows how to detect.
  *
- * Es **el catálogo**, y vive aquí y no dentro del registro por una razón
- * medida: `SUPPORTED_FRAMEWORKS` se derivaba de
- * `DEFAULT_REGISTRY.detectors`, así que leer la lista de nombres
- * obligaba a importar `framework.registry`, y con él **los veintiún
- * scanners** con sus parsers de PHP, Go, Java, Python y Rust detrás.
+ * This **is the catalog**, and it lives here (not inside the
+ * registry) for one measured reason: `SUPPORTED_FRAMEWORKS` used to
+ * be derived from `DEFAULT_REGISTRY.detectors`, so reading the
+ * list of names required importing `framework.registry`, and with
+ * it **all twenty-one scanners** with their PHP, Go, Java, Python
+ * and Rust parsers behind.
  *
- * El plugin MCP lo hacía solo para declarar un `z.enum` de nombres. Un
- * `import` de veinte kilobytes de expresiones regulares para escribir
- * una lista de strings.
+ * The MCP plugin did that just to declare a `z.enum` of names. A
+ * twenty-kilobyte `import` of regexes to write a list of strings.
  *
- * ## Por qué una lista literal y no una derivada
+ * ## Why a literal list, not a derived one
  *
- * Porque la dependencia va al revés: el catálogo es **dato**, y el
- * registro es quien lo cumple. Derivarlo del registro invierte eso y
- * obliga a arrastrar la implementación para conocer la interfaz.
+ * Because the dependency goes the other way: the catalog is
+ * **data**, and the registry is what fulfills it. Deriving it from
+ * the registry flips that and forces dragging the implementation
+ * to know the interface.
  *
- * El riesgo evidente es que las dos listas se separen — y es un riesgo
- * real, este repositorio ya lo pagó: `NON_LARAVEL_FRAMEWORKS` enumeraba
- * once de doce frameworks, Laravel no estaba, y `summary` se iba por un
- * camino distinto contando rutas declaradas en vez de endpoints.
+ * The obvious risk is that the two lists drift — and this
+ * repository already paid for that: `NON_LARAVEL_FRAMEWORKS`
+ * enumerated eleven of twelve frameworks, Laravel was missing, and
+ * `summary` went off on its own counting declared routes instead of
+ * endpoints.
  *
- * Por eso hay un test que compara esta lista con los detectores
- * registrados y falla si sobra o falta uno. La lista paralela no es
- * peligrosa; la lista paralela **que nadie compara** sí.
+ * Hence a test that compares this list against the registered
+ * detectors and fails if one is missing or extra. A parallel list is
+ * not dangerous; a parallel list **that nobody compares** is.
  */
 
 /**
- * Los identificadores, en orden alfabético.
+ * Identifiers, in alphabetical order.
  *
- * El orden importa poco funcionalmente, pero un orden estable hace que
- * añadir uno sea una línea de diff en vez de un bloque reordenado.
+ * Order matters little functionally, but a stable order makes
+ * adding one a one-line diff instead of a re-ordered block.
  */
 export const FRAMEWORK_IDS = [
   "aspnet",

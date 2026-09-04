@@ -1,40 +1,39 @@
 /**
- * Constantes del historial de generaciones.
+ * Constants of the generation history.
  *
- * Lo que aquí vive es invariante: nombre del fichero, permisos de la
- * carpeta, número de versión de cada entrada. Cambiarlo **mueve** el
- * historial —el fichero pasa a tener otro nombre, los lectores viejos
- * no entienden la versión nueva— y por eso son constantes y no
- * parámetros configurables: si alguien quiere su propia ruta, que use
- * otra carpeta.
+ * What lives here is invariant: filename, folder permissions, entry
+ * version number. Changing it **moves** the history — the file gets a
+ * new name, old readers do not understand the new version — which is
+ * why these are constants and not configurable parameters: if anyone
+ * wants a custom path, they should use a different folder.
  */
 
 /**
- * Permiso a usar cuando hace falta crear la carpeta del historial.
+ * Permission to use when the history folder needs to be created.
  *
- * `0o755` en Unix: el dueño puede escribir y los demás solo leer. Es lo
- * razonable para un log que solo escribe el programa que corre como
- * ese usuario, y que nadie más necesita modificar.
+ * `0o755` on Unix: the owner can write, everyone else can only read.
+ * It is reasonable for a log that only the running program (as that
+ * user) writes to, and nobody else needs to modify.
  */
 export const HISTORY_DIR_MODE = 0o755;
 
 /**
- * Versión de la forma de cada entrada del historial.
+ * Version of each history entry's shape.
  *
- * Sube si se cambia un campo o se reordena la serialización. El
- * número va en cada línea JSONL —es lo primero que un futuro parser
- * mira— y permite ignorar entradas antiguas si la forma cambia de
- * manera incompatible.
+ * Bumps when a field changes or serialization is reordered. The
+ * number is embedded in each JSONL line — it is the first thing any
+ * future parser looks at — and lets it ignore older entries when the
+ * shape changes incompatibly.
  */
 export const HISTORY_ENTRY_VERSION = 1;
 
 /**
- * Nombre del fichero de historial dentro del directorio del usuario.
+ * Name of the history file inside the user's directory.
  *
- * `.jsonl` y no `.json` a propósito: cada generación añade una línea,
- * y dos escrituras concurrentes —la interfaz y un `watch`, por
- * ejemplo— no deben competir por reescribir el fichero entero. JSONL
- * permite append atómico por líneas.
+ * `.jsonl` rather than `.json` by design: each generation appends one
+ * line, and two concurrent writes — the UI and a `watch`, say — must
+ * not race to rewrite the whole file. JSONL enables atomic line
+ * appends.
  */
 export const HISTORY_FILE_NAME = "history.jsonl";
 

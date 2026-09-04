@@ -1,18 +1,18 @@
 /**
- * Las plataformas de escritorio y qué instalador produce cada una.
+ * Desktop platforms and which installer each one produces.
  *
- * Vive en contratos porque lo comparten tres sitios que tienen que
- * coincidir: el script que empaqueta, el workflow que lo lanza en CI, y
- * la documentación de instalación. Que uno diga `.msi` y otro `.exe` es
- * cómo alguien acaba buscando un fichero que no existe.
+ * Lives in contracts because three places need to agree: the packaging
+ * script, the CI workflow that triggers it, and the installation docs.
+ * If one says `.msi` and another `.exe`, somebody ends up hunting for
+ * a file that does not exist.
  *
- * ## No se puede cruzar
+ * ## Cannot cross platforms
  *
- * Un `.dmg` no se construye desde Linux, ni un `.msi` desde macOS. Cada
- * instalador exige el SDK de su sistema y su firma, y Tauri enlaza
- * contra las librerías nativas de la máquina. Por eso los tres salen del
- * workflow, con una máquina por plataforma, y `desktop:build:<x>` en
- * local solo vale para la propia.
+ * A `.dmg` cannot be built from Linux, nor a `.msi` from macOS. Each
+ * installer requires its own platform SDK and signing key, and Tauri
+ * links against the machine's native libraries. That is why all three
+ * come out of the workflow, one runner per platform, and
+ * `desktop:build:<x>` locally only works on the matching machine.
  */
 
 /** Una plataforma de escritorio soportada. */

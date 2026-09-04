@@ -1,15 +1,15 @@
 /**
- * Los valores fijos de la salida por terminal.
+ * Fixed values for terminal output.
  *
- * La paleta vive aquí porque `ColorName` se deriva de ella: el tipo de
- * los colores válidos **es** la lista de códigos, así que separarlos
- * obligaría a mantener dos listas que se separan a la primera. Y con el
- * tipo en contratos, la constante tiene que estar al lado.
+ * The palette lives here because `ColorName` derives from it: the type
+ * of valid colors **is** the list of codes — splitting them would
+ * force two lists that drift apart on the first edit. With the type in
+ * contracts, the constant has to live next to it.
  */
 
 /**
- * Los códigos ANSI que se usan. Ni uno más: lo que no se usa, no se
- * declara.
+ * The ANSI codes actually used. Not one extra: what is not used is
+ * not declared.
  */
 export const ANSI_CODES = {
   reset: "\u001b[0m",
@@ -24,13 +24,13 @@ export const ANSI_CODES = {
   gray: "\u001b[90m",
 } as const;
 
-/** Ancho por defecto cuando la terminal no dice el suyo. */
+/** Default width when the terminal does not report one. */
 export const DEFAULT_TERMINAL_WIDTH = 80;
 
 /**
- * Puerto por defecto de la interfaz web.
+ * Default port for the web UI.
  *
- * Poco transitado a propósito, y el servidor busca otro si está ocupado:
- * fallar por un puerto ocupado es la peor primera impresión posible.
+ * Deliberately unmemorable, and the server picks another if busy:
+ * failing on a busy port is the worst possible first impression.
  */
 export const DEFAULT_UI_PORT = 4771;

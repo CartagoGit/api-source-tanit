@@ -1,29 +1,31 @@
 /**
- * Catálogo de proveedores de validación agnósticos.
+ * Catalog of framework-agnostic validation providers.
  *
- * Sustituye al antiguo flag implícito que vivía en
- * `EndpointSpec.formRequest`, donde el adapter mezclaba el **nombre del
- * framework** con el **path del artefacto** (`"laravel:app/Http/..."`).
- * El resultado era que cualquier framework podía terminar con un
- * `formRequest` que el enricher de Laravel era el único que entendía —
- * una dependencia cruzada silenciosa.
+ * Replaces the old implicit flag that lived in
+ * `EndpointSpec.formRequest`, where the adapter mixed the
+ * **framework name** with the **artifact path**
+ * (`"laravel:app/Http/..."`). The result was that any framework
+ * could end up with a `formRequest` that only Laravel's enricher
+ * understood — a silent cross-dependency.
  *
- * Aquí se listan los proveedores que el orquestador SABE enrutar a un
- * enricher concreto. La regla es:
+ * This lists the providers the orchestrator knows how to route to
+ * a specific enricher. The rule is:
  *
- *   1. Si un endpoint tiene `validationSource.provider === X`, el
- *      registry DEBE tener un enricher para X.
- *   2. Si no, el endpoint queda **sin enriquecer** (no es un error: es
- *      "este framework no aporta reglas" — lo que S5 quiere preservar).
+ *   1. If an endpoint has `validationSource.provider === X`, the
+ *      registry MUST have an enricher for X.
+ *   2. Otherwise, the endpoint stays **without enrichment** (not an
+ *      error: "this framework contributes no rules" — what S5 wants
+ *      preserved).
  *
- * "manual" representa el catálogo declarado a mano en
- * `endpoints.constant.ts`: el usuario pone las reglas, no hay enricher
- * automático. El adapter NUNCA debería asignar este provider — es solo
- * un valor válido para hosts que rellenan `validationSource` a mano.
+ * "manual" represents the catalog declared by hand in
+ * `endpoints.constant.ts`: the user provides the rules, there is no
+ * automatic enricher. The adapter should NEVER assign this provider —
+ * it is only a valid value for hosts that fill `validationSource` in
+ * by hand.
  *
- * S5 (a00012). El antiguo `formRequest: string` se mantiene en
- * `EndpointSpec` por compat, pero los nuevos proveedores declaran
- * su contrato a través de este catálogo.
+ * S5 (a00012). The old `formRequest: string` is kept in
+ * `EndpointSpec` for backwards compatibility, but new providers
+ * declare their contract through this catalog.
  */
 export const VALIDATION_PROVIDERS = [
   "zod",
@@ -35,5 +37,5 @@ export const VALIDATION_PROVIDERS = [
   "manual",
 ] as const;
 
-/** ID estable de un proveedor de validación. */
+/** Stable id of a validation provider. */
 export type ValidationProvider = (typeof VALIDATION_PROVIDERS)[number];

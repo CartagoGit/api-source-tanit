@@ -1,25 +1,25 @@
 /**
- * Las carpetas que `watch` no mira.
+ * Folders that `watch` ignores.
  *
- * Vigilar un árbol entero significa un descriptor por directorio y un
- * evento por cada fichero que toca cualquier proceso. `node_modules` es
- * el caso extremo: un `bun install` a medias dispara miles de eventos y
- * ninguno es un endpoint.
+ * Watching an entire tree means one descriptor per directory and
+ * one event per file touched by any process. `node_modules` is the
+ * extreme case: a half-done `bun install` fires thousands of events
+ * and none of them is an endpoint.
  *
- * Es contrato porque la lista la comparten quien vigila y quien recorre:
- * dos criterios distintos harían que un cambio se detectara y no se
- * escaneara, o al revés.
+ * This is a contract because the list is shared by whoever watches
+ * and whoever walks the tree: two different criteria would detect
+ * a change and skip the scan (or the reverse).
  */
 
 import { OUTPUT_DIR_NAME } from "./postman.constant.js";
 
 /**
- * Carpetas que nunca aportan rutas y sí mucho ruido.
+ * Folders that contribute zero routes and a lot of noise.
  *
- * `node_modules` es el caso extremo: un `bun install` a medias dispara
- * miles de eventos y ninguno es un endpoint.
+ * `node_modules` is the extreme case: a half-done `bun install`
+ * fires thousands of events and none is an endpoint.
  */
-/** Nombres de carpeta que no se vigilan ni se recorren. */
+/** Folder names that are neither watched nor walked. */
 export const IGNORED_DIRS: ReadonlySet<string> = new Set([
   OUTPUT_DIR_NAME,
   "node_modules",

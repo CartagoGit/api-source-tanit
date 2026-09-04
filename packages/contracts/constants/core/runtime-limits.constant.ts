@@ -1,37 +1,38 @@
 /**
- * Los números y nombres fijos que gobiernan la ejecución.
+ * The fixed numbers and names that govern execution.
  *
- * Cada uno lo lee más de un sitio, que es lo que los hace contrato y no
- * detalle interno: el que ajusta el valor y el que lo comprueba en un
- * test no pueden tener cada uno el suyo.
+ * Each one is read by more than one place, which is what makes them
+ * a contract and not an internal detail: the value adjuster and the
+ * test that checks it cannot each keep their own.
  */
 
 /**
- * Cuántos ficheros se leen a la vez al escanear.
+ * How many files are read in parallel when scanning.
  *
- * Ni uno (lento sin motivo) ni sin límite (un proyecto grande abre miles
- * de descriptores y el sistema empieza a rechazar). Dieciséis es el
- * punto medido donde deja de mejorar.
+ * Not one (pointlessly slow) and not unbounded (a large project opens
+ * thousands of descriptors and the OS starts refusing). Sixteen is
+ * the measured point past which it stops improving.
  */
 export const READ_CONCURRENCY = 16;
 
 /**
- * Cuánto espera `watch` antes de regenerar tras un cambio.
+ * How long `watch` waits before regenerating after a change.
  *
- * Un guardado en un editor produce varios eventos seguidos; sin espera,
- * la colección se regenera tres veces por cada Ctrl+S.
+ * A save in an editor fires several events in quick succession;
+ * without a debounce, the collection regenerates three times per
+ * Ctrl+S.
  */
 export const DEFAULT_DEBOUNCE_MS = 300;
 
 /**
- * Variable que acota dónde puede escribir la salida.
+ * Environment variable that constrains where the output can be written.
  *
- * Vacía cuando lo lanza una persona: `--output-dir /donde/quiera` es un
- * uso legítimo. La pone **el plugin MCP** al invocar el CLI, porque ahí
- * quien elige la ruta es un agente y un `../` escribiría fuera del
- * proyecto.
+ * Empty when a human invokes it: `--output-dir /wherever` is a legit
+ * use. **The MCP plugin** sets this when invoking the CLI, because
+ * there the path is chosen by an agent and a `../` would write
+ * outside the project.
  *
- * El nombre lo comparten quien la escribe (el plugin) y quien la lee
- * (`ensureOutputDir`), así que vive donde los dos lo ven.
+ * The name is shared by whoever writes it (the plugin) and whoever
+ * reads it (`ensureOutputDir`), so it lives where both can see it.
  */
 export const CONTAINMENT_ROOT_VAR = "POSTMAN_CONTAIN_ROOT";

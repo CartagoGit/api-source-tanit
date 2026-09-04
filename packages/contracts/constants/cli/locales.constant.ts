@@ -1,42 +1,42 @@
 /**
- * Los idiomas que trae la interfaz, y cómo se elige uno.
+ * Languages the UI ships with, and how one is chosen.
  *
- * Quince, por número de hablantes. No es una lista cerrada: se pueden
- * añadir más dejando un fichero en la carpeta de idiomas del usuario, y
- * eso es deliberado — un idioma nuevo no debería exigir tocar código ni
- * recompilar nada.
+ * Fifteen, by number of speakers. Not a closed list: more can be
+ * added by dropping a file in the user's languages folder, and that
+ * is intentional — adding a language must not require code changes or
+ * a recompile.
  *
- * ## Por qué el código y no el nombre
+ * ## Why the code, not the name
  *
- * El identificador es el código BCP 47 (`es`, `pt-BR`, `zh-Hans`),
- * porque es lo que dicen el navegador (`navigator.language`) y el
- * sistema (`LANG`). Guardar «Español» obligaría a traducir de vuelta en
- * cada arranque, y ahí es donde se pierden los acentos y las mayúsculas.
+ * The identifier is the BCP 47 code (`es`, `pt-BR`, `zh-Hans`),
+ * because that is what the browser (`navigator.language`) and the
+ * system (`LANG`) report. Storing "Spanish" would force a translation
+ * back at every startup, which is where accents and case go wrong.
  *
- * ## El nombre va en su propio idioma
+ * ## Name in its own language
  *
- * `nativeName` está en el idioma que nombra —«Français», no «Francés»—
- * porque quien busca su idioma en una lista no sabe cómo se dice el
- * suyo en el idioma que está viendo. Es la razón por la que todos los
- * selectores de idioma del mundo lo hacen así.
+ * `nativeName` is in the language it names — "Français", not "French"
+ * — because a person looking for their language in a list does not
+ * know how to say theirs in the language they are reading. Every
+ * language picker in the world does it this way for the same reason.
  */
 
-/** Un idioma que la interfaz sabe hablar. */
+/** A language the UI speaks. */
 export interface ILocale {
-  /** Código BCP 47. Es lo que dicen el navegador y el sistema. */
+  /** BCP 47 code. This is what the browser and the system report. */
   readonly code: string;
-  /** Cómo se llama el idioma **en ese idioma**. */
+  /** The language's name **in its own language**. */
   readonly nativeName: string;
-  /** Se escribe de derecha a izquierda. Cambia el `dir` del documento. */
+  /** Right-to-left writing. Changes the document's `dir` attribute. */
   readonly rtl?: boolean;
 }
 
 /**
- * El idioma al que se cae cuando no hay nada mejor.
+ * The language we fall back to when nothing better matches.
  *
- * Inglés, y no español, aunque la prosa interna del repositorio sea
- * española: lo que ve quien usa la herramienta es superficie de
- * producto, y ahí ya se decidió el inglés (`r00003`).
+ * English — not Spanish — even though the repository's internal prose
+ * was Spanish: what the end user of the tool sees is product surface,
+ * and English was already the decision there (`r00003`).
  */
 export const FALLBACK_LOCALE = "en";
 

@@ -1,43 +1,44 @@
 /**
- * Los modos de tema y las variables que cada uno define.
+ * Theme modes and the variables each one defines.
  *
- * Ni un color escrito a pelo en las reglas: **todo** apunta a una
- * variable, y cambiar de tema es cambiar los valores de esas variables.
- * Es lo que hace que añadir un tema sea escribir doce líneas en vez de
- * duplicar la hoja de estilos entera — y lo que impide que un tema nuevo
- * se olvide de la mitad de los elementos.
+ * Not a single color hard-coded in any rule: **everything** points to
+ * a variable, and switching themes is just changing those variables.
+ * That is what makes adding a theme a twelve-line change instead of
+ * duplicating the entire stylesheet — and what keeps a new theme from
+ * silently forgetting half the elements.
  *
- * ## Por qué variables CSS y no clases
+ * ## Why CSS variables and not classes
  *
- * Con clases (`.oscuro .boton { … }`) cada elemento necesita su regla
- * repetida por tema, así que un elemento nuevo se ve bien en el tema en
- * el que se escribió y roto en los otros. Con variables, un elemento
- * nuevo hereda el tema sin que nadie se acuerde de él.
+ * With classes (`.dark .button { … }`), every element needs its
+ * rule repeated per theme — a new element looks right in the theme
+ * it was written in and broken in the others. With variables, a new
+ * element inherits the theme without anyone having to remember it.
  *
- * ## Los tres modos, y por qué «sistema» es el de por defecto
+ * ## The three modes, and why "system" is the default
  *
- * Quien tiene el sistema en oscuro lo tiene por un motivo —de noche, o
- * porque le molesta la luz— y abrir una aplicación en blanco brillante
- * es exactamente lo que esa persona configuró para que no pasara.
- * `prefers-color-scheme` ya lo dice; ignorarlo sería preguntar algo que
- * ya está contestado.
+ * Somebody whose OS is in dark mode set it that way for a reason —
+ * it's night, or bright light hurts — and opening an app in
+ * brilliant white is exactly what they configured against.
+ * `prefers-color-scheme` already says so; ignoring it would be
+ * asking a question that's already been answered.
  */
 
-/** Los modos que se pueden elegir en ajustes. */
+/** The modes the user can pick in settings. */
 export const THEME_MODES = ["system", "light", "dark"] as const;
 
-/** Un modo de tema válido. */
+/** A valid theme mode. */
 export type ThemeMode = (typeof THEME_MODES)[number];
 
-/** El de por defecto: el que ya haya elegido la persona en su sistema. */
+/** The default: whatever the user picked in their system. */
 export const DEFAULT_THEME: ThemeMode = "system";
 
 /**
- * Los nombres de las variables, en un solo sitio.
+ * The variable names, in a single place.
  *
- * Se declaran aquí y no solo en el CSS para que un test pueda
- * comprobar que **los dos temas definen las mismas**. Un tema al que le
- * falte una variable no falla: hereda la del otro y se ve mal en un
+ * Declared here (not only in the CSS) so a test can verify that
+ * **both themes define the same variables**. A theme that's missing
+ * a variable does not error — it inherits from the other and ends
+ * up broken in one
  * sitio concreto, que es de los fallos más difíciles de encontrar
  * mirando código.
  */

@@ -1,30 +1,30 @@
 /**
- * Instancia por defecto del enricher para `provider: "laravel-form-request"`.
+ * Default instance of the enricher for `provider: "laravel-form-request"`.
  *
- * Phase 1 (S5 / a00012): el enricher es **idempotente** — devuelve el
- * `EndpointSpec` tal cual. La generación real de variantes de body y
- * query sigue viviendo en `enrichCatalogWithFormRequests`, una función
- * legacy de `packages/frameworks/laravel/catalog-enricher.service.ts`
- * que opera sobre la colección Postman completa y no sobre specs
- * individuales.
+ * Phase 1 (S5 / a00012): the enricher is **idempotent** — it returns
+ * the `EndpointSpec` as is. The actual generation of body and query
+ * variants still lives in `enrichCatalogWithFormRequests`, a legacy
+ * function in `packages/frameworks/laravel/catalog-enricher.service.ts`
+ * that operates on the whole Postman collection, not on individual
+ * specs.
  *
- * Mover esa lógica al enricher es follow-up explícito: el contrato
- * per-spec se completa cuando `IEndpointSpec` pueda llevar sus
- * variantes (siguiente fase del plan de estabilización). Hasta entonces,
- * registrar este enricher cumple dos cosas:
+ * Moving that logic into the enricher is an explicit follow-up: the
+ * per-spec contract is complete once `IEndpointSpec` can carry its
+ * variants (next phase of the stabilization plan). Until then,
+ * registering this enricher accomplishes two things:
  *
- *   1. Hace que `runValidationEnrichers` no devuelva `undefined` para
- *      specs de Laravel (el provider está cubierto).
- *   2. Permite que `generate` añada el side-effect import
+ *   1. It makes `runValidationEnrichers` not return `undefined` for
+ *      Laravel specs (the provider is covered).
+ *   2. It lets `generate` add the side-effect import
  *      (`registerValidationEnricher(LARAVEL_FORM_REQUEST_ENRICHER)`)
- *      sin que `core` tenga que saber de Laravel.
+ *      without `core` having to know about Laravel.
  *
- * El enricher vive aquí (en `contracts/constants/`) y NO al lado del
- * registry para que el invariante `lint:contracts` siga verde:
- * declarar el contrato y su instancia por defecto donde sólo hay
- * datos significa que `frameworks/laravel/catalog-enricher.service.ts`
- * puede importar `LARAVEL_FORM_REQUEST_ENRICHER` sin arrastrar el
- * registry a quien sólo quiere el nombre.
+ * The enricher lives here (in `contracts/constants/`) and NOT next to
+ * the registry so that the `lint:contracts` invariant stays green:
+ * declaring the contract and its default instance where there is
+ * only data means `frameworks/laravel/catalog-enricher.service.ts`
+ * can import `LARAVEL_FORM_REQUEST_ENRICHER` without dragging the
+ * registry along for whoever only wants the name.
  */
 import type { EndpointSpec } from "../../interfaces/core/postman.interface.js";
 import type { IValidationEnricher } from "../../interfaces/core/validation-enricher.interface.js";
