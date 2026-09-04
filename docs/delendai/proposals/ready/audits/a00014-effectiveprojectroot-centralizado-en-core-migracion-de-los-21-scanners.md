@@ -122,9 +122,9 @@ uniformemente:
   - Quien necesite projectRoot real debe llamar rawProjectRoot(match)
     que el gate también controla.
 
-### S4 — Rechazar absolutos + primitiva de contención única (CORRECTIVO — pendiente)
+### S4 — Rechazar absolutos + primitiva de contención única (CORRECTIVO — done, commit siguiente)
 
-- **Status**: pending
+- **Status**: done
 - **Files**:
   - `packages/core/discovery/effective-project-root.helper.ts` (eliminar el
     `if (isAbsolute) return requested`)
@@ -143,9 +143,9 @@ uniformemente:
   - Ajustar el error del `Error` para mencionar ambos modos de escape (`..`,
     absoluto).
 
-### S5 — Actualizar tests de absoluta a rechazada (pendiente, depende de S4)
+### S5 — Actualizar tests de absoluta a rechazada (done)
 
-- **Status**: pending
+- **Status**: done
 - **Files**: `tests/core/effective-project-root.helper.spec.ts`
 - **Gate**: `bun run test:core`
 - **Detalle**:
