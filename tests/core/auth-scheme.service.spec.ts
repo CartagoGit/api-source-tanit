@@ -215,3 +215,74 @@ describe("toPostmanAuth — formatos de bloque", () => {
     expect(toPostmanAuth({ type: "none", evidence: "" })).toBeNull();
   });
 });
+
+describe("countKeyUsage — API-key casing (x00023)", () => {
+  // x00023: el bug era que `header.set(h.key, …)` guardaba por el case
+  // original del primer header. `X-API-Key` y `x-api-key` en endpoints
+  // distintos acababan en dos entradas de 1 cada una y el umbral de 2
+  // no se alcanzaba. La fix acumula por clave canónica lowercase y
+  // preserva aparte el primer nombre original como `displayName`.
+
+  test("[X-API-Key, x-api-key] cuenta 2 bajo 'x-api-key' y conserva 'X-API-Key' como displayName", () => {
+    const detected = detectAuthScheme(
+      [
+        spec({ uri: "/a", headers: [header("X-API-Key")] }),
+        spec({ uri: "/b", headers: [header("x-api-key")] }),
+      ],
+      false,
+    );
+    expect(detected.type).toBe("apikey");
+    expect(detected.keyIn).toBe("header");
+    expect(detected.keyName).toBe("X-API-Key");
+    expect(detected.evidence).toContain("aparece en 2 endpoints");
+  });
+
+  test("[x-api-key, X-API-KEY, X-Api-Key] mergea en una sola entrada con count 3", () => {
+    const detected = detectAuthScheme(
+      [
+        spec({ uri: "/a", headers: [header("x-api-key")] }),
+        spec({ uri: "/b", headers: [header("X-API-KEY")] }),
+        spec({ uri: "/c", headers: [header("X-Api-Key")] }),
+      ],
+      false,
+    );
+    expect(detected.type).toBe("apikey");
+    expect(detected.keyIn).toBe("header");
+    // El primer nombre visto se queda como displayName.
+    expect(detected.keyName).toBe("x-api-key");
+    expect(detected.evidence).toContain("aparece en 3 endpoints");
+  });
+
+  test("regresión: dos endpoints con case mixto confirman API-key auth (antes daba 'none')", () => {
+    // Antes del fix, este escenario terminaba en dos entradas de 1
+    // (X-API-Key → 1, x-api-key → 1) y el detector concluía 'none'
+    // porque ninguna llegaba al umbral de 2.
+    const detected = detectAuthScheme(
+      [
+        spec({ uri: "/users", headers: [header("X-API-Key")] }),
+        spec({ uri: "/orders", headers: [header("x-api-key")] }),
+      ],
+      false,
+    );
+    expect(detected.type).toBe("apikey");
+    expect(detected.keyName).toBe("X-API-Key");
+    expect(detected.keyIn).toBe("header");
+  });
+
+  test("query: [api_key, API_KEY, Api_Key] mergea en una sola entrada con count 3", () => {
+    // Mismo patrón aplicado a query params: case mixto en distintos
+    // endpoints contaba como 1 cada uno y no llegaba al umbral.
+    const detected = detectAuthScheme(
+      [
+        spec({ uri: "/a", query: [{ key: "api_key", value: "" }] }),
+        spec({ uri: "/b", query: [{ key: "API_KEY", value: "" }] }),
+        spec({ uri: "/c", query: [{ key: "Api_Key", value: "" }] }),
+      ],
+      false,
+    );
+    expect(detected.type).toBe("apikey");
+    expect(detected.keyIn).toBe("query");
+    expect(detected.keyName).toBe("api_key");
+    expect(detected.evidence).toContain("aparece en 3 endpoints");
+  });
+});
