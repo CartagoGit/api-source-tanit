@@ -1,36 +1,37 @@
 /**
- * `TSFile` y compañía — el AST normalizado que el frontend TypeScript
- * produce, y sobre el que los 6 scanners JS/TS (Express, NestJS,
- * Fastify, Hono, Next.js, tRPC) escriben adaptadores semánticos.
+ * `TSFile` and friends — the normalized AST produced by the TypeScript
+ * frontend, on top of which the 6 JS/TS scanners (Express, NestJS,
+ * Fastify, Hono, Next.js, tRPC) write semantic adapters.
  *
- * Por qué existe: hasta ahora cada scanner mantenía sus propias regex
- * sobre el código fuente. La forma `app.METHOD(path, handler)` la
- * buscaba Express, `controller.METHOD(path)` la buscaba NestJS, y
- * `<ident>.<method>(<path>, ...)` la buscaba Fastify/Hono/tRPC. Tres
- * regex distintas para una misma idea, cada una con su forma de
- * romperse en multilínea, strings anidadas o `// comentarios`.
+ * Why it exists: until now each scanner maintained its own regexes
+ * over the source code. The `app.METHOD(path, handler)` shape was
+ * searched by Express, `controller.METHOD(path)` was searched by
+ * NestJS, and `<ident>.<method>(<path>, ...)` was searched by
+ * Fastify/Hono/tRPC. Three different regexes for the same idea, each
+ * with its own way of breaking across multiline, nested strings or
+ * `// comments`.
  *
- * El frontend resuelve eso: un único parser sintáctico (`@babel/parser`
- * con `plugins: ['typescript']`) produce este AST agnóstico, y los
- * scanners consultan los nodos — `methodCalls`, `decorators`,
- * `assignments` — en vez de regexar el texto.
+ * The frontend solves that: a single syntactic parser
+ * (`@babel/parser` with `plugins: ['typescript']`) produces this
+ * agnostic AST, and the scanners query the nodes — `methodCalls`,
+ * `decorators`, `assignments` — instead of regexing the text.
  *
- * La forma es deliberadamente **mínima**: contiene lo que los seis
- * adapters necesitan, no la totalidad del estandarizado ESTree.
- * Anidar `imports` en `symbols` o seguir referencias cruzadas se hace
- * después, en el adapter, con las herramientas del propio scanner.
+ * The shape is deliberately **minimal**: it contains what the six
+ * adapters need, not the entirety of the standardized ESTree.
+ * Nesting `imports` inside `symbols` or following cross-references
+ * happens later, in the adapter, using the scanner's own tools.
  *
- * @see ./parser.ts en `packages/core/language-frontends/typescript/`
- *   para la implementación.
+ * @see ./parser.ts in `packages/core/language-frontends/typescript/`
+ *   for the implementation.
  *
- * (a00010 S7 — slice AST TypeScript)
+ * (a00010 S7 — TypeScript AST slice)
  */
 
 import type { TSLiteral } from "./typescript-frontend-literal.interface.js";
 
 /**
- * Import del módulo: su fuente, los nombres que arrastra y los
- * bindings locales que recibe cada uno.
+ * Module import: its source, the names it carries and the local
+ * bindings each one receives.
  *
  * `import express from "express"` →
  * `{ source: "express", names: ["default"], bindings: [{ local:
@@ -39,32 +40,32 @@ import type { TSLiteral } from "./typescript-frontend-literal.interface.js";
  * `{ source: "express", names: ["Router"], bindings: [{ local:
  * "Router", imported: "Router", isDefault: false }] }`.
  *
- * `names` es **lo que se importa del módulo origen** (compat, se
- * deriva de `bindings`); el alias local vive en `bindings` — es lo
- * que necesita el futuro grafo de mounts cross-file para saber que
- * `R` en el código es `Router` de `express` (a00011 C-7 / B-rev-12).
+ * `names` is **what is imported from the source module** (compat, it
+ * is derived from `bindings`); the local alias lives in `bindings`
+ * — it is what the future cross-file mounts graph needs to know that
+ * `R` in code is `Router` from `express` (a00011 C-7 / B-rev-12).
  */
 export interface TSImportBinding {
-  /** Nombre que recibe el binding en el scope local del módulo. */
+  /** Name the binding receives in the module's local scope. */
   readonly local: string;
   /**
-   * Nombre exportado por el módulo origen: `"Router"` en
-   * `import { Router as R }`, `"default"` en un default import,
-   * `"*"` en un namespace import.
+   * Name exported by the source module: `"Router"` in
+   * `import { Router as R }`, `"default"` in a default import,
+   * `"*"` in a namespace import.
    */
   readonly imported: string;
-  /** `true` solo en `import x from "..."` (imported es "default"). */
+  /** `true` only in `import x from "..."` (imported is "default"). */
   readonly isDefault: boolean;
-  /** `true` solo en `import * as x from "..."` (imported es "*"). */
+  /** `true` only in `import * as x from "..."` (imported is "*"). */
   readonly isNamespace?: boolean;
 }
 
 export interface TSImport {
   readonly source: string;
-  /** Nombres tal cual aparecen entre llaves (compat). */
+  /** Names as they appear between braces (compat). */
   readonly names: ReadonlyArray<string>;
   /**
-   * Bindings locales: qué nombre local recibe cada importado.
+   * Local bindings: which local name each imported symbol receives.
    *
    * `import { Router as R } from "express"` →
    * `[{ local: "R", imported: "Router", isDefault: false }]`.
@@ -74,80 +75,80 @@ export interface TSImport {
    * `[{ local: "fs", imported: "*", isDefault: false,
    *    isNamespace: true }]`.
    *
-   * `names` se deriva de `bindings` (compat); el grafo de mounts
-   * cross-file consume `bindings`, no `names`.
+   * `names` is derived from `bindings` (compat); the cross-file
+   * mounts graph consumes `bindings`, not `names`.
    */
   readonly bindings: ReadonlyArray<TSImportBinding>;
 }
 
-/** Una declaración en el módulo: función, clase, variable o método. */
+/** A declaration in the module: function, class, variable or method. */
 export type TSSymbolKind = "function" | "class" | "variable" | "method";
 
 /**
- * Un símbolo declarado a nivel de módulo o dentro de una clase.
+ * A symbol declared at module level or inside a class.
  *
- * `kind: 'method'` aparece en `methods` de una `TSClass` (no en el
- * `symbols` de primer nivel — un método no es un símbolo del módulo).
- * La separación es lo que permite que el adapter decida si le interesa
- * un símbolo por estar en el scope global o por ser el método de un
- * controlador.
+ * `kind: 'method'` appears in `methods` of a `TSClass` (not in the
+ * top-level `symbols` — a method is not a module-level symbol). The
+ * separation is what lets the adapter decide whether it cares about
+ * a symbol because it lives in the global scope or because it is the
+ * method of a controller.
  */
 export interface TSSymbol {
   readonly name: string;
   readonly kind: TSSymbolKind;
-  /** ¿Está exportado del módulo / clase? */
+  /** Whether it is exported from the module / class. */
   readonly exported: boolean;
-  /** Línea 1-based donde aparece la declaración. */
+  /** 1-based line where the declaration appears. */
   readonly line: number;
 }
 
 /**
- * Una llamada a método que los scanners miran como si fuera una
- * declaración de ruta.
+ * A method call that scanners treat as if it were a route
+ * declaration.
  *
- * Es la primitiva compartida por los 6 scanners:
+ * It is the primitive shared by the 6 scanners:
  *
  *   - `app.get("/users", handler)` → `callee: "app.get"`.
  *   - `router.post("/users", handler)` → `callee: "router.post"`.
  *   - `controller.Get("users")` (NestJS) → `callee: "controller.Get"`.
- *   - `server.route({ method, path })` → no es un method call, lo
- *     maneja el adapter con un patrón dedicado.
+ *   - `server.route({ method, path })` → not a method call, the
+ *     adapter handles it with a dedicated pattern.
  *
- * `args` solo modela literales y referencias — un argumento puede ser
- * cualquier expresión JS, pero para los scanners lo que importa es:
+ * `args` only models literals and references — an argument can be
+ * any JS expression, but for scanners what matters is:
  *
- *   1. El path (string literal en `args[0]`).
- *   2. El handler (arrow function en `args[1]`, del que se extrae
- *      `bodyRange` para reentrar y leer el cuerpo).
+ *   1. The path (string literal at `args[0]`).
+ *   2. The handler (arrow function at `args[1]`, from which
+ *      `bodyRange` is extracted to re-enter and read the body).
  *
- * Si el primer argumento NO es un string literal, el adapter lo
- * descarta: una ruta sin literal no es una ruta declarable.
+ * If the first argument is NOT a string literal, the adapter
+ * discards it: a route without a literal is not a declarable route.
  */
 export interface TSMethodCall {
-  /** Receptor + método, en una sola string (`"app.get"`, `"router.post"`). */
+  /** Receiver + method, in a single string (`"app.get"`, `"router.post"`). */
   readonly callee: string;
-  /** Argumentos de la llamada, en orden. */
+  /** Arguments of the call, in order. */
   readonly args: ReadonlyArray<TSLiteral>;
-  /** Línea 1-based donde está la llamada. */
+  /** 1-based line where the call is. */
   readonly line: number;
-  /** Columna 0-based donde empieza la llamada. */
+  /** 0-based column where the call starts. */
   readonly column: number;
   /**
-   * Si la llamada tiene una arrow function como último argumento,
-   * este campo lleva el rango (offsets en bytes) del cuerpo. Los
-   * adapters lo usan para reentrar al cuerpo con `findInsideRange`.
+   * If the call has an arrow function as its last argument, this
+   * field carries the range (byte offsets) of the body. Adapters
+   * use it to re-enter the body with `findInsideRange`.
    */
   readonly bodyRange?: { readonly start: number; readonly end: number };
 }
 
 /**
- * Una asignación `nombre = valor` en el módulo.
+ * A `name = value` assignment in the module.
  *
- * Es la primitiva que captura `const app = express()`,
- * `const router = Router({ prefix: '/api' })` o
- * `const UsersController = class { ... }`. El adapter del framework
- * decide qué nombres le interesan (`app`, `router`, `Controller`…)
- * y qué valor tiene que tener para considerarlo relevante.
+ * It is the primitive that captures `const app = express()`,
+ * `const router = Router({ prefix: '/api' })` or
+ * `const UsersController = class { ... }`. The framework's adapter
+ * decides which names it cares about (`app`, `router`, `Controller`…)
+ * and what value they must hold to be considered relevant.
  */
 export interface TSAssignment {
   readonly name: string;
@@ -156,12 +157,12 @@ export interface TSAssignment {
 }
 
 /**
- * Un método declarado dentro de una clase. Los adapters de NestJS y
- * tRPC lo usan para encontrar `getX`, `createY`, etc.
+ * A method declared inside a class. The NestJS and tRPC adapters
+ * use it to find `getX`, `createY`, etc.
  *
- * `args` son los argumentos del decorador que lo etiqueta como
- * endpoint — `@Get('users')` lleva `args[0] = "users"`. Un método sin
- * decorador sigue siendo un símbolo, simplemente no es un endpoint.
+ * `args` are the arguments of the decorator that tags it as an
+ * endpoint — `@Get('users')` carries `args[0] = "users"`. A method
+ * without a decorator is still a symbol, it just is not an endpoint.
  */
 export interface TSClassMethod {
   readonly name: string;
@@ -171,13 +172,13 @@ export interface TSClassMethod {
 }
 
 /**
- * Una declaración de clase. Los adapters de NestJS y Next.js la usan
- * para detectar controladores: una clase con `@Controller('/api')`
- * es la raíz de un grupo de endpoints.
+ * A class declaration. The NestJS and Next.js adapters use it to
+ * detect controllers: a class with `@Controller('/api')` is the
+ * root of a group of endpoints.
  *
- * `methods` se mantiene separado del `symbols` del módulo para que el
- * adapter pueda decidir por separado "esta clase me interesa" y "estos
- * métodos de la clase me interesan".
+ * `methods` is kept separate from the module's `symbols` so the
+ * adapter can independently decide "this class interests me" and
+ * "these methods of the class interest me".
  */
 export interface TSClass {
   readonly name: string;
@@ -188,55 +189,56 @@ export interface TSClass {
 }
 
 /**
- * Un decorador sobre una clase o un método.
+ * A decorator on a class or method.
  *
  * `@Controller('/users')` → `{ name: "Controller", args: ["/users"] }`.
  * `@Get()` → `{ name: "Get", args: [] }`.
  *
- * Los adapters de NestJS lo usan directamente; el resto de scanners lo
- * ignora. Lo importante es que el nombre del decorador (sin el `@`)
- * sobrevive como `name` para que el adapter no tenga que re-parsear la
- * sintaxis del decorador.
+ * The NestJS adapters use it directly; the rest of scanners ignore
+ * it. The important part is that the decorator's name (without the
+ * `@`) survives as `name` so the adapter does not have to re-parse
+ * the decorator's syntax.
  */
 export interface TSDecorator {
   readonly name: string;
   readonly args: ReadonlyArray<TSLiteral>;
-  /** Nombre del símbolo decorado (clase o método). */
+  /** Name of the decorated symbol (class or method). */
   readonly target: string;
   readonly line: number;
 }
 
 /**
- * El AST normalizado de un archivo TS/JS. Es lo que devuelve
- * `parse(source, filename): TSFile`.
+ * The normalized AST of a TS/JS file. It is what
+ * `parse(source, filename): TSFile` returns.
  *
- * Las cinco colecciones son **independientes** — no hay punteros
- * cruzados entre ellas. Eso evita que un adapter que solo consume
- * `methodCalls` tenga que cargar el grafo entero, y le da al
- * compilador pie para emitir un `Record & Tuple` futuro si conviene.
+ * The five collections are **independent** — there are no cross
+ * pointers between them. That avoids forcing an adapter that only
+ * consumes `methodCalls` to load the entire graph, and gives the
+ * compiler room to emit a future `Record & Tuple` if it helps.
  *
- * El orden dentro de cada colección es el del archivo (top-down):
- * desde a00011 C-7 (B-rev-11) el parser lo garantiza ordenando cada
- * colección por `(line, column)` ascendente al cerrar el parse — es
- * determinista, independiente del orden del walker, y es el orden
- * natural para reportar errores o presentar al usuario.
+ * The order within each collection is the file's order (top-down):
+ * since a00011 C-7 (B-rev-11) the parser guarantees it by sorting
+ * each collection by `(line, column)` ascending when the parse
+ * closes — it is deterministic, independent of the walker's order,
+ * and is the natural order for reporting errors or showing to the
+ * user.
  */
 export interface TSFile {
   readonly imports: ReadonlyArray<TSImport>;
-  /** Símbolos declarados a nivel de módulo (no incluye métodos de clase). */
+  /** Symbols declared at module level (does not include class methods). */
   readonly symbols: ReadonlyArray<TSSymbol>;
-  /** Clases declaradas a nivel de módulo. */
+  /** Classes declared at module level. */
   readonly classes: ReadonlyArray<TSClass>;
-  /** Llamadas `<ident>.<method>(...)` que parecen declaraciones de ruta. */
+  /** `<ident>.<method>(...)` calls that look like route declarations. */
   readonly methodCalls: ReadonlyArray<TSMethodCall>;
-  /** Asignaciones `<ident> = <expr>`. */
+  /** `<ident> = <expr>` assignments. */
   readonly assignments: ReadonlyArray<TSAssignment>;
-  /** Decoradores sobre clases o métodos del módulo. */
+  /** Decorators on classes or methods in the module. */
   readonly decorators: ReadonlyArray<TSDecorator>;
   /**
-   * Nombre del archivo tal como se pasó a `parse()`. Se adjunta al AST
-   * para que los adapters puedan reportar errores y los scanners
-   * puedan enseñárselo al usuario sin tener que pasarlo aparte.
+   * File name as passed to `parse()`. Attached to the AST so that
+   * adapters can report errors and scanners can show it to the user
+   * without having to pass it separately.
    */
   readonly filename: string;
 }

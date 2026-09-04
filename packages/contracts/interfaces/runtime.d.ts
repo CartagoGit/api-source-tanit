@@ -1,12 +1,12 @@
 /**
- * Declaraciones de tipos mínimas para que `tsc --noEmit` no requiera
- * `@types/node` ni `bun-types` instalados.
+ * Minimal type declarations so `tsc --noEmit` does not require
+ * `@types/node` or `bun-types` to be installed.
  *
- * En tiempo de ejecución, **Bun** ya provee los módulos `node:fs/promises`,
- * `node:path`, etc. Este archivo solo satisface al compilador.
+ * At runtime, **Bun** already provides the `node:fs/promises`,
+ * `node:path`, etc. modules. This file only satisfies the compiler.
  *
- * Si en algún momento se quiere un typecheck más estricto o un IDE más
- * completo, basta con instalar `@types/node` y eliminar este archivo.
+ * If at some point we want stricter typechecking or a more complete IDE,
+ * just install `@types/node` and remove this file.
  */
 
 // --- node:fs/promises ----------------------------------------------------
@@ -15,9 +15,9 @@ declare module "node:fs/promises" {
     path: string,
     encoding: "utf8" | "utf-8",
   ): Promise<string>;
-  // El encoding es opcional en la API real (utf8 por defecto para
-  // strings); declararlo obligatorio hacía fallar el typecheck de
-  // cualquier `writeFile(path, data)`.
+  // The encoding is optional in the real API (utf8 by default for
+  // strings); making it mandatory broke the typecheck of any
+  // `writeFile(path, data)`.
   export function writeFile(
     path: string,
     data: string,
@@ -27,13 +27,13 @@ declare module "node:fs/promises" {
     path: string,
     options?: { recursive?: boolean },
   ): Promise<string | undefined>;
-  // El orden importa y estuvo al revés. TypeScript se queda con la
-  // **primera** sobrecarga que encaje, y `{ withFileTypes: true }` encaja
-  // con `withFileTypes?: boolean`, así que la llamada tipaba `string[]`
-  // aunque devolviera `Dirent[]`. El repo entero lo esquivaba a base de
-  // `as never` —doce sitios—, que apaga la comprobación de `entry.name`
-  // y `entry.isDirectory()` justo donde hace falta. La sobrecarga
-  // específica va primero.
+  // The order matters and was inverted. TypeScript keeps the
+  // **first** overload that fits, and `{ withFileTypes: true }` matches
+  // `withFileTypes?: boolean`, so the call was typed as `string[]`
+  // even though it returned `Dirent[]`. The whole repo worked around it
+  // with `as never` —twelve places—, which silences the `entry.name`
+  // and `entry.isDirectory()` checks exactly where they're needed. The
+  // specific overload goes first.
   export function readdir(
     path: string,
     options: { recursive?: boolean; withFileTypes: true },
@@ -50,9 +50,9 @@ declare module "node:fs/promises" {
     isSymbolicLink(): boolean;
   }
   /**
-   * Dentro del mismo sistema de ficheros es **atómico**: quien lea el
-   * destino ve el contenido de antes o el de después, nunca la mitad.
-   * Es lo que sostiene `atomic-write.helper`.
+   * Within the same filesystem it is **atomic**: a reader of the
+   * destination sees either the old or the new contents, never half.
+   * This is what `atomic-write.helper` relies on.
    */
   export function rename(from: string, to: string): Promise<void>;
   export function realpath(path: string): Promise<string>;
@@ -60,7 +60,7 @@ declare module "node:fs/promises" {
     isDirectory(): boolean;
     isFile(): boolean;
     size: number;
-    /** Bits de permisos, para comprobar el de ejecución. */
+    /** Permission bits, used to check the execute bit. */
     mode: number;
   }>;
   export function copyFile(src: string, dest: string): Promise<void>;
@@ -77,13 +77,12 @@ declare module "node:fs/promises" {
     options?: { recursive?: boolean; force?: boolean },
   ): Promise<void>;
   /**
-   * Append al final de un fichero existente (o lo crea si no existe).
+   * Append to the end of an existing file (or create it if missing).
    *
-   * En POSIX abre con `O_APPEND`, que es atómico por cada `write(2)`
-   * sobre ficheros del mismo sistema. Es lo que sostiene el
-   * `appendFileAtomic` que `history.service` usa para escribir
-   * `~/.tanit/history.jsonl` sin pisarse con un escritor
-   * concurrente.
+   * On POSIX it opens with `O_APPEND`, which is atomic per `write(2)`
+   * for files on the same filesystem. This is what supports the
+   * `appendFileAtomic` that `history.service` uses to write
+   * `~/.tanit/history.jsonl` without clobbering a concurrent writer.
    */
   export function appendFile(
     path: string,
@@ -109,8 +108,9 @@ declare module "node:path" {
   export function isAbsolute(p: string): boolean;
   export const sep: string;
   /**
-   * El separador de listas de rutas: `:` en POSIX, `;` en Windows. Lo
-   * usa `POSTMAN_CONTAIN_ROOT`, que lleva varias raíces en una variable.
+   * The list separator for paths: `:` on POSIX, `;` on Windows. Used
+   * by `POSTMAN_CONTAIN_ROOT`, which carries several roots in one
+   * variable.
    */
   export const delimiter: string;
 }
@@ -118,20 +118,21 @@ declare module "node:path" {
 // --- node:fs (sync) ------------------------------------------------------
 declare module "node:fs" {
   /**
-   * Lo que este repo usa de un vigilante de ficheros: cerrarlo.
+   * What this repo uses from a filesystem watcher: closing it.
    *
-   * No cerrarlo deja el proceso vivo para siempre, porque el event loop
-   * sigue teniendo trabajo pendiente.
+   * Not closing it keeps the process alive forever, because the event
+   * loop still has pending work.
    */
   export interface FSWatcher {
     close(): void;
   }
   /**
-   * `recursive` es obligatorio aquí a propósito.
+   * `recursive` is intentionally mandatory here.
    *
-   * Sin él, `fs.watch` mira **solo el primer nivel** de carpetas y no
-   * avisa de nada que pase dentro — que en un proyecto de API es
-   * absolutamente todo. Fallaría en silencio pareciendo que funciona.
+   * Without it, `fs.watch` watches **only the first level** of
+   * directories and does not report anything that happens inside —
+   * which in an API project is absolutely everything. It would fail
+   * silently while looking like it worked.
    */
   export function watch(
     path: string,
@@ -162,7 +163,7 @@ declare module "node:fs" {
     path: string,
     encoding: BufferEncoding,
   ): string;
-  // Mismo orden que en la versión asíncrona, y por el mismo motivo.
+  // Same order as in the async version, and for the same reason.
   export function readdirSync(
     path: string,
     options: { recursive?: boolean; withFileTypes: true },
@@ -182,7 +183,7 @@ declare module "node:fs" {
 
 // --- node:child_process --------------------------------------------------
 declare module "node:child_process" {
-  /** Stream de salida de un hijo, en lo que este repo usa de él. */
+  /** Output stream of a child, in what this repo uses of it. */
   export interface ChildStream {
     on(event: "data", listener: (chunk: Uint8Array) => void): ChildStream;
   }
@@ -215,11 +216,12 @@ declare module "node:child_process" {
     },
   ): ChildProcess;
   /**
-   * Lo que devuelve `spawnSync` cuando se le pasa un `encoding`.
+   * What `spawnSync` returns when given an `encoding`.
    *
-   * Va aparte porque sin `encoding` los streams son `Buffer`, y una
-   * declaración única obligaría a comprobar `typeof stdout === "string"`
-   * en cada uso aunque el `encoding` esté puesto tres líneas antes.
+   * It lives separately because without `encoding` the streams are
+   * `Buffer`, and a single declaration would force `typeof stdout ===
+   * "string"` checks at every use even though `encoding` is set three
+   * lines earlier.
    */
   export interface SpawnSyncStringResult {
     status: number | null;
@@ -229,21 +231,21 @@ declare module "node:child_process" {
     signal: string | null;
     error?: Error;
   }
-  /** Opciones comunes a las dos formas de `spawnSync`. */
+  /** Options common to both forms of `spawnSync`. */
   interface SpawnSyncOptions {
     stdio?: "inherit" | "pipe" | "ignore" | Array<"inherit" | "pipe" | "ignore">;
     cwd?: string;
     env?: Record<string, string | undefined>;
     timeout?: number;
     /**
-     * Tope de bytes capturados. El de por defecto es 1 MiB, y un
-     * `git log` de un repo con historia lo pasa de largo — a partir de
-     * ahí la salida se **trunca**, que es peor que fallar porque el
-     * resultado parece correcto.
+     * Cap on captured bytes. The default is 1 MiB, and a `git log`
+     * of a repo with history blows past it — past that point the
+     * output is **truncated**, which is worse than failing because
+     * the result looks correct.
      */
     maxBuffer?: number;
   }
-  // El overload con `encoding` va primero: es el más específico.
+  // The overload with `encoding` goes first: it is the most specific.
   export function spawnSync(
     command: string,
     args: string[],
@@ -268,28 +270,28 @@ declare module "node:crypto" {
   export function createHash(algorithm: string): IHash;
 }
 
-/** Subconjunto de `Buffer` que usa el paquete (UUID v5, lectura de bytes). */
+/** Subset of `Buffer` used by the package (UUID v5, byte reads). */
 declare const Buffer: {
   from(value: string, encoding?: string): BufferLike;
   from(value: IBufferLike): BufferLike;
 };
 declare type BufferLike = IBufferLike;
-/** Hash incremental de `node:crypto`. `update` encadena. */
+/** Incremental hash from `node:crypto`. `update` chains. */
 interface IHash {
   update(data: string | IBufferLike): IHash;
   digest(): IBufferLike;
   digest(encoding: string): string;
 }
 /**
- * Lo que este paquete usa de un `Buffer`.
+ * What this package uses from a `Buffer`.
  *
- * **Extiende `Uint8Array` porque un `Buffer` lo es.** La declaración
- * anterior describía la forma a mano —`length`, índice, `subarray`— sin
- * decir que fuera un `Uint8Array`, así que devolver uno donde se
- * esperaba el otro exigía un `as unknown as Uint8Array` en
- * `collection-identity.helper`. No era el código el que estaba mal: era
- * esta declaración la que se quedaba corta, y el casting tapaba la
- * diferencia en vez de arreglarla.
+ * **Extends `Uint8Array` because a `Buffer` is one.** The previous
+ * declaration described the shape by hand —`length`, index,
+ * `subarray`— without saying it was a `Uint8Array`, so returning one
+ * where the other was expected required an `as unknown as Uint8Array`
+ * in `collection-identity.helper`. The code wasn't wrong: this
+ * declaration fell short, and the cast hid the difference instead of
+ * fixing it.
  */
 interface IBufferLike extends Uint8Array {
   subarray(start?: number, end?: number): IBufferLike;
@@ -307,28 +309,28 @@ declare const process: {
   env: Record<string, string | undefined>;
   execPath: string;
   /**
-   * Id del proceso. Lo usa `atomic-write.helper` para nombrar su fichero
-   * temporal: dos procesos escribiendo la misma ruta a la vez no pueden
-   * compartir temporal, o el `rename` de uno se lleva lo del otro.
+   * Process id. Used by `atomic-write.helper` to name its temporary
+   * file: two processes writing the same path concurrently cannot
+   * share a temporary, or one's `rename` would clobber the other's.
    */
   pid: number;
   /**
-   * Id del usuario efectivo, en POSIX. No existe en Windows, de ahí el
-   * opcional.
+   * Effective user id, on POSIX. It does not exist on Windows,
+   * hence the optional.
    *
-   * Lo usa el test de permisos: como **root**, `chmod 0555` no impide
-   * escribir, así que el escenario que prueba no existe y el test
-   * pasaría siempre sin comprobar nada. Se vio corriendo el gate dentro
-   * de un contenedor.
+   * Used by the permissions test: as **root**, `chmod 0555` does not
+   * prevent writing, so the scenario being tested doesn't exist and
+   * the test would always pass without checking anything. This was
+   * spotted running the gate inside a container.
    */
   getuid?: () => number;
   platform: NodeJS.Platform;
-  /** Escritura sin salto de línea, para indicadores de progreso. */
+  /** Write without a trailing newline, for progress indicators. */
   stderr: { write(chunk: string): boolean };
   /**
-   * `isTTY` y `columns` son `undefined` cuando la salida está
-   * redirigida — y esa es justo la señal que hace falta: si nadie mira,
-   * no se pinta con color ni se ajusta a un ancho que no existe.
+   * `isTTY` and `columns` are `undefined` when output is redirected —
+   * and that is exactly the signal we need: if nobody is watching,
+   * don't paint with color or fit to a width that doesn't exist.
    */
   stdout: {
     write(chunk: string): boolean;
@@ -336,16 +338,17 @@ declare const process: {
     readonly columns?: number;
   };
   /**
-   * Señales del sistema, una sola vez.
+   * System signals, once.
    *
-   * Lo usa `watch` para cerrar el vigilante en el Ctrl+C: sin cerrarlo,
-   * el handle de `fs.watch` queda abierto y el proceso no termina.
+   * Used by `watch` to close the watcher on Ctrl+C: without closing
+   * it, the `fs.watch` handle stays open and the process never
+   * terminates.
    */
   once(event: "SIGINT" | "SIGTERM", listener: () => void): void;
   /**
-   * Igual que `once`, pero para lo que se escucha mientras el proceso
-   * vive. `ui:dev` lo necesita: cierra el servidor hijo al recibir la
-   * señal, y eso puede pasar en cualquier momento.
+   * Same as `once`, but for what is listened to while the process is
+   * alive. `ui:dev` needs it: it closes the child server on signal,
+   * and that can happen at any time.
    */
   on(event: "SIGINT" | "SIGTERM", listener: () => void): void;
 };
@@ -358,12 +361,12 @@ declare const console: {
 declare const __dirname: string;
 
 /**
- * Subconjunto de la API global de Bun que usan los scripts.
- * Se declara a mano por el mismo motivo que el resto: el proyecto no
- * depende de `@types/bun` ni de `@types/node`.
+ * Subset of Bun's global API used by the scripts.
+ * Declared by hand for the same reason as the rest: the project
+ * does not depend on `@types/bun` or `@types/node`.
  */
 declare const Bun: {
-  /** Stream de entrada estándar, usado por el asistente interactivo. */
+  /** Standard input stream, used by the interactive assistant. */
   readonly stdin: { stream(): AsyncIterable<Uint8Array> };
   spawn(
     command: string[],
@@ -378,26 +381,28 @@ declare const Bun: {
     readonly stderr: unknown;
     readonly exited: Promise<number>;
     /**
-     * Manda una señal al proceso hijo.
+     * Sends a signal to the child process.
      *
-     * Faltaba, y el hueco lo destapó `ui:dev`: sin esto, un script que
-     * lanza un servidor y lo reinicia no tiene forma de pararlo, y deja
-     * un proceso huérfano ocupando el puerto en cada guardado.
+     * It was missing, and the gap surfaced in `ui:dev`: without it,
+     * a script that launches a server and restarts it has no way to
+     * stop it, and leaves an orphan process holding the port on
+     * every save.
      */
     kill(signal?: "SIGTERM" | "SIGKILL" | "SIGINT"): void;
   };
   write(path: string, data: string): Promise<number>;
   file(path: string): { text(): Promise<string>; readonly size: number };
   /**
-   * Servidor HTTP del runtime, para `apisrc ui`.
+   * Runtime HTTP server, for `apisrc ui`.
    *
-   * Está en Bun desde siempre, así que la interfaz de escritorio no
-   * añade **ni una dependencia**: el binario compilado ya lo lleva
-   * dentro. Es lo que hizo descartar Electron, que son 150 MB por
-   * plataforma para envolver lo mismo.
+   * It has been in Bun forever, so the desktop interface adds **not
+   * a single dependency**: the compiled binary already carries it
+   * inside. That is what made us discard Electron, which is 150 MB
+   * per platform to wrap the same thing.
    *
-   * `hostname` se declara porque importa: esto lee el código fuente de
-   * quien lo usa y no tiene por qué ser alcanzable desde la red.
+   * `hostname` is declared because it matters: this reads the source
+   * code of whoever uses it and does not have to be reachable from
+   * the network.
    */
   serve(options: {
     port: number;
@@ -406,29 +411,29 @@ declare const Bun: {
   }): { readonly port: number; stop(closeActiveConnections?: boolean): void };
 };
 
-/** Lo que este repo usa de una petición entrante. */
+/** What this repo uses from an incoming request. */
 interface IServerRequest {
   readonly url: string;
   readonly method: string;
   /**
-   * Las cabeceras.
+   * The headers.
    *
-   * Faltaban, y el hueco lo destapó cerrar el CSRF de la interfaz: sin
-   * ellas no hay forma de mirar el `Origin` ni un testigo, o sea que el
-   * servidor no podía distinguir su propia página de cualquier web que
-   * le hiciera un POST desde el navegador de quien lo ejecuta.
+   * They were missing, and the gap surfaced when closing the UI's
+   * CSRF: without them there is no way to read the `Origin` or a
+   * token, so the server could not distinguish its own page from any
+   * web making a POST from the user's browser.
    */
   readonly headers: { get(name: string): string | null };
   text(): Promise<string>;
 }
 
-/** La respuesta del estándar web, en lo que se usa de ella. */
+/** The response from the web standard, in what is used of it. */
 declare const Response: {
   /**
-   * `body` acepta `unknown` porque también se usa para leer los streams
-   * de `Bun.spawn` (`new Response(proc.stdout).text()`), que no son
-   * cadenas. Estrechar el tipo a `string` rompía los dos scripts que ya
-   * lo hacían así.
+   * `body` accepts `unknown` because it is also used to read streams
+   * from `Bun.spawn` (`new Response(proc.stdout).text()`), which are
+   * not strings. Narrowing the type to `string` broke the two scripts
+   * that already did this.
    */
   new (
     body?: unknown,
@@ -437,7 +442,7 @@ declare const Response: {
   json(data: unknown, init?: { status?: number }): IFetchResponse;
 };
 
-/** `Response` del estándar fetch, usado para leer los streams de Bun.spawn. */
+/** `Response` from the fetch standard, used to read Bun.spawn streams. */
 interface IFetchResponse {
   readonly ok: boolean;
   readonly status: number;
@@ -446,7 +451,7 @@ interface IFetchResponse {
 }
 declare type FetchResponse = IFetchResponse;
 
-/** `fetch` del estándar web, disponible en Bun y en Node >= 18. */
+/** `fetch` from the web standard, available in Bun and Node >= 18. */
 declare function fetch(
   url: string,
   init?: {
@@ -456,11 +461,11 @@ declare function fetch(
   },
 ): Promise<IFetchResponse>;
 
-/** Decodificador de bytes a texto, para leer stdin. */
+/** Byte-to-text decoder, for reading stdin. */
 declare class TextDecoder {
   /**
-   * `stream: true` mantiene el estado entre trozos, para no partir un
-   * carácter multibyte que caiga a caballo de dos `data` del proceso.
+   * `stream: true` keeps state across chunks, so a multibyte
+   * character that straddles two `data` events is not split.
    */
   decode(input?: Uint8Array, options?: { stream?: boolean }): string;
 }
@@ -474,24 +479,24 @@ declare const URL: {
   };
 };
 
-// `import.meta` en ESM estándar solo expone `url`. Bun lo extiende con
-// `dir` (directorio del archivo actual). Lo declaramos para que tsc lo
-// acepte sin instalar bun-types.
+// `import.meta` in standard ESM only exposes `url`. Bun extends it
+// with `dir` (directory of the current file). We declare it here so
+// tsc accepts it without installing bun-types.
 interface ImportMeta {
   url: string;
   dir: string;
-  /** Bun/Node: true si este módulo es el punto de entrada del proceso. */
+  /** Bun/Node: true if this module is the entry point of the process. */
   main: boolean;
 }
 
-// --- timers globales -----------------------------------------------------
+// --- Global timers ------------------------------------------------------
 //
-// Estaban sin declarar y el proyecto raíz no se enteraba porque
-// `vitest.config.ts` arrastraba los tipos de vitest, que a su vez traen
-// los de node. En cuanto cada sección pasó a tipar por su cuenta,
-// `setTimeout` dejó de existir en `core` y en `frameworks`. Un tipado
-// que solo funciona por lo que otro fichero arrastra de refilón no es
-// un tipado.
+// They were undeclared and the root project didn't notice because
+// `vitest.config.ts` dragged vitest types along, which in turn bring
+// node's. As soon as each section started typing on its own,
+// `setTimeout` ceased to exist in `core` and `frameworks`. A typing
+// that only works because another file drags it along by the sleeve
+// is not a typing.
 declare function setTimeout(
   handler: () => void,
   timeout?: number,

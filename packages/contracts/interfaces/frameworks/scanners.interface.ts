@@ -1,15 +1,15 @@
 /**
- * Lo que declaran los scanners y los parsers de cada framework.
+ * What scanners and parsers declare per framework.
  *
- * Aquí no hay nada de un framework concreto: son las **formas** con las
- * que cada uno describe lo que encuentra —los campos de un esquema Zod,
- * las reglas de un FormRequest de Laravel, un procedimiento de tRPC— y
- * las opciones con las que se le puede ajustar.
+ * There is nothing framework-specific here: these are the **shapes**
+ * each one uses to describe what it finds —the fields of a Zod
+ * schema, the rules of a Laravel FormRequest, a tRPC procedure— and
+ * the options it can be tuned with.
  *
- * Viven fuera de `packages/frameworks/` porque quien las consume no
- * debería cargar el scanner que las produce. Es el mismo motivo por el
- * que el catálogo de nombres salió del registro: leer una interfaz no
- * puede costar veinte kilobytes de expresiones regulares.
+ * They live outside `packages/frameworks/` because consumers should
+ * not have to load the scanner that produces them. It is the same
+ * reason the naming catalogue was extracted from the registry:
+ * reading an interface must not cost twenty kilobytes of regex.
  */
 
 import type { IGenerationOptions } from "../core/discovery.interface.js";
@@ -21,35 +21,35 @@ import type {
   ParsedRoute as NeutralParsedRoute,
 } from "../core/scanner.interface.js";
 
-/** Lo que se puede ajustar sin tocar el catálogo. */
+/** What can be tuned without touching the catalogue. */
 export type IGenerateOptions = Omit<IGenerationOptions, "orchestrator">;
 
-/** Trío de colaboradores de un framework, o `null` si no está soportado. */
+/** Triad of framework collaborators, or `null` if not supported. */
 export interface IScannerBundle {
   readonly projectScanner: IProjectScanner;
   readonly routeScanner: IRouteScanner;
   readonly validationProvider: IValidationSpecProvider | null;
 }
 
-/** Un modelo Pydantic localizado en el fuente. */
+/** A Pydantic model located in the source. */
 export interface IPydanticModel {
   readonly className: string;
-  /** Nombre del campo → anotación de tipo tal cual aparece. */
+  /** Field name → type annotation as it appears. */
   readonly fields: ReadonlyMap<string, string>;
-  /** Línea (0-based) donde arranca la clase. */
+  /** Line (0-based) where the class starts. */
   readonly line: number;
 }
 
-/** Un schema Marshmallow localizado en el fuente. */
+/** A Marshmallow schema located in the source. */
 export interface IMarshmallowSchema {
   readonly className: string;
-  /** Nombre del campo → expresión `fields.X(...)` completa. */
+  /** Field name → full `fields.X(...)` expression. */
   readonly fields: ReadonlyMap<string, string>;
-  /** Línea (0-based) donde arranca la clase. */
+  /** Line (0-based) where the class starts. */
   readonly line: number;
 }
 
-/** Campo zod ya parseado, antes de convertirse en `IValidationSpec`. */
+/** Zod field already parsed, before becoming an `IValidationSpec`. */
 export interface IZodField {
   readonly name: string;
   readonly type: IValidationSpec["type"];
@@ -57,23 +57,24 @@ export interface IZodField {
   readonly format?: string;
   readonly enumValues?: ReadonlyArray<string>;
   /**
-   * El argumento de `.min()`, **sin interpretar**.
+   * The argument of `.min()`, **uninterpreted**.
    *
-   * En zod, `.min()` es el mismo método con dos significados según el
-   * tipo base: `z.string().min(2)` son dos caracteres y
-   * `z.number().min(2)` es el valor dos. Se guarda crudo aquí y lo
-   * clasifica `zodFieldToSpec`, que es quien conoce el tipo.
+   * In zod, `.min()` is the same method with two meanings depending
+   * on the base type: `z.string().min(2)` is two characters and
+   * `z.number().min(2)` is the value two. We store it raw here and
+   * `zodFieldToSpec` classifies it, since it knows the type.
    *
-   * Antes iba directo a `minLength`, así que un `z.number().min(0).max(120)`
-   * producía un campo numérico con `minLength: 0` y `maxLength: 120` —
-   * restricciones que no significan nada sobre un número, y que las
-   * herramientas que leen el JSON Schema ignoran. La cota se perdía.
+   * Previously it went straight to `minLength`, so a
+   * `z.number().min(0).max(120)` produced a numeric field with
+   * `minLength: 0` and `maxLength: 120` — constraints that mean
+   * nothing about a number, and that JSON Schema consumers ignore.
+   * The bound was lost.
    */
   readonly min?: number;
   readonly max?: number;
 }
 
-/** Campo Joi ya parseado, antes de convertirse en `IValidationSpec`. */
+/** Joi field already parsed, before becoming an `IValidationSpec`. */
 export interface IJoiField {
   readonly name: string;
   readonly type: IValidationSpec["type"];
@@ -85,46 +86,47 @@ export interface IJoiField {
 }
 
 export interface OpenApiScannerOptions {
-  /** Path explícito al spec. Si se da, ignora OPENAPI_CANDIDATES. */
+  /** Explicit path to the spec. If given, ignores OPENAPI_CANDIDATES. */
   readonly specPath?: string;
-  /** Base path a prepender a todas las URIs (ej. "/api/v2"). */
+  /** Base path to prepend to all URIs (e.g. "/api/v2"). */
   readonly basePath?: string;
 }
 
-/** Un procedimiento con su ruta completa dentro del router. */
+/** A procedure with its full path inside the router. */
 export interface ITrpcProcedure {
-  /** `users.list`, con los routers anidados separados por punto. */
+  /** `users.list`, with nested routers separated by dots. */
   readonly path: string;
   readonly kind: "query" | "mutation" | "subscription";
 }
 
 export interface LaravelScannerOptions {
-  /** Mapa archivo → prefijos. Si null, autodetecta del RouteServiceProvider. */
+  /** file → prefixes map. If null, autodetects from RouteServiceProvider. */
   readonly filePrefixes?: Record<string, string[]>;
 }
 
 /**
- * Re-export del tipo neutro para no romper imports existentes.
- * `route-parser.service.ts` se mantiene como IMPLEMENTACIÓN Laravel
- * del contrato `IRouteScanner` (ver `services/scanners/laravel.scanner.ts`).
+ * Re-export of the neutral type to avoid breaking existing imports.
+ * `route-parser.service.ts` stays as the Laravel IMPLEMENTATION of
+ * the `IRouteScanner` contract (see
+ * `services/scanners/laravel.scanner.ts`).
  */
 export type ParsedRoute = NeutralParsedRoute;
 
 export interface FormRequestRules {
-  /** Ruta al FormRequest parseado (relativa al repo). */
+  /** Path to the parsed FormRequest (relative to the repo). */
   sourceFile: string;
-  /** Nombre de la clase FormRequest. */
+  /** Name of the FormRequest class. */
   className: string;
-  /** Reglas extraídas como `campo → [reglas...]`. */
+  /** Rules extracted as `field → [rules...]`. */
   rules: Record<string, string[]>;
-  /** Reglas que no se pudieron procesar (se mantienen literales). */
+  /** Rules that could not be processed (kept as literals). */
   unknown: Array<{ field: string; rule: string }>;
-  /** Si el método rules() devolvía `[]` o era dinámico. */
+  /** Whether the rules() method returned `[]` or was dynamic. */
   isEmpty: boolean;
 }
 
 export interface BodyVariant {
-  /** Nombre visible en Postman (p. ej. "Mínimo", "Completo"). */
+  /** Visible name in Postman (e.g. "Minimal", "Full"). */
   name: string;
   body: Record<string, unknown>;
 }
