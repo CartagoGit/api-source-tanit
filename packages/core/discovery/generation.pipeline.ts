@@ -65,6 +65,100 @@ import type { IMonorepoDetection } from "../../contracts/interfaces/core/discove
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { toServiceGraph } from "./to-service-graph.helper.js";
 import { deriveServiceId } from "./group-by-service.helper.js";
+/**
+ * Descubre los endpoints de un proyecto y construye su colección.
+ *
+ * `projectRoot` manda, y llega **como argumento** hasta abajo: el
+ * contexto se resuelve una vez aquí y viaja explícito por el pipeline,
+ * el loader y los scanners.
+ *
+ * Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
+ * de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
+ * precio de una cola: dos llamadas concurrentes se pisaban el estado,
+ * así que había que serializarlas. Dos análisis a la vez tardaban lo que
+ * la suma.
+ *
+ * Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
+ * frameworks distintos con `Promise.all` y comprueba que ninguno se
+ * cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+ */
+
+/**
+ * Lanzada por `generateCollection()` cuando el proyecto tiene varios
+ * servicios pero el caller NO pidió `--combine-services` (ni
+ * `IGenerationOptions.combineServices === true`).
+ *
+ * ## Por qué existe
+ *
+ * Hasta x00024, el contrato en singular documentaba "una sola
+ * colección" pero el branch multi-servicio hacía `return result[0]` y
+ * descartaba el resto **silenciosamente**. Eso convertía
+ * `await generateCollection(monorepoRoot)` en una llamada que pierde
+ * servicios sin avisar, exactamente el tipo de bug que un caller
+ * jamás detecta en CI. La API plural `generateCollections()` ya
+ * devolvía el array completo.
+ *
+ * ## Cuándo se lanza
+ *
+ * `generateCollection()` invoca `buildFor` y observa tres formas:
+ *
+ *   - **Single-service** (un solo match, monorepo de un workspace o
+ *     proyecto plano): `result` es un único `IGenerationResult`. Sin
+ *     throw.
+ *   - **Multi-service + `combineServices: true`**: el caller pidió
+ *     fusionar; `buildFor` ya devuelve un único `IGenerationResult`
+ *     combinado. Sin throw.
+ *   - **Multi-service + `combineServices: false/undefined`**: aquí se
+ *     lanza esta excepción.
+ *
+ * El contrato legacy (single-service) sigue funcionando exactamente
+ * igual que antes — esto solo añade un caso nuevo.
+ *
+ * ## Forma del error
+ *
+ * Lleva los datos que la CLI necesita para dar un mensaje útil sin
+ * tener que parsear el texto del `super()`:
+ *
+ *   - `serviceCount`: el número de servicios detectados.
+ *   - `serviceIds`: los ids derivados (de `match.frameworkSearchRoot`
+ *     vía `deriveServiceId`); vacío si ninguno tenía id resoluble.
+ *
+ * El mensaje incluye la sugerencia ("use --combine-services or
+ * generateCollections()") para que un usuario que vea el error en
+ * crudo sepa qué hacer.
+ *
+ * Vive en este mismo `.pipeline.ts` (no en `packages/core/errors/`)
+ * porque la regla `lint:naming` de `packages/core/` solo admite los
+ * sufijos `.service`, `.pipeline`, `.orchestrator`, `.adapter` y
+ * `.helper`. Un error class no encaja en ninguno, así que se queda
+ * donde se lanza — el mismo patrón que `PostmanApiError` en
+ * `domain/postman-api.service.ts`.
+ */
+export class MultipleServicesWithoutCombineError extends Error {
+  /** Cuántos servicios se detectaron. */
+  readonly serviceCount: number;
+  /** Los `serviceId` de los servicios detectados (puede estar vacío). */
+  readonly serviceIds: ReadonlyArray<string>;
+
+  constructor(
+    serviceCount: number,
+    serviceIds: ReadonlyArray<string>,
+  ) {
+    const ids =
+      serviceIds.length > 0
+        ? ` (${serviceIds.join(", ")})`
+        : "";
+    super(
+      `Detected ${serviceCount} services${ids} but ` +
+        `--combine-services was not requested. ` +
+        `Use 'generateCollections()' for the array, or pass --combine-services ` +
+        `to merge into a single collection.`,
+    );
+    this.name = "MultipleServicesWithoutCombineError";
+    this.serviceCount = serviceCount;
+    this.serviceIds = serviceIds;
+  }
+}
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
@@ -103,10 +197,19 @@ export async function generateCollection(
   // Legacy single-collection contract: si buildFor devuelve un
   // solo IGenerationResult (combineServices=true o un solo
   // servicio), lo devolvemos tal cual. Si devuelve array, el
-  // caller NO ha pedido combinar, asi que elegimos el primer
-  // servicio. Los callers que necesiten el array explicito usan
-  // `generateCollections`.
+  // caller NO ha pedido combinar — antes elegíamos el primer
+  // servicio silenciosamente (x00024 audit P1 #2: perdíamos N-1
+  // servicios sin avisar). Ahora lanzamos un error explícito con
+  // los serviceIds detectados para que la CLI lo traduzca a un
+  // exit code accionable. Los callers que necesiten el array
+  // explícito siguen usando `generateCollections`.
   if (Array.isArray(result)) {
+    if (result.length > 1 && options.combineServices !== true) {
+      const serviceIds = result
+        .map((r) => r.serviceId ?? "<unknown>")
+        .filter((id): id is string => id !== "<unknown>");
+      throw new MultipleServicesWithoutCombineError(result.length, serviceIds);
+    }
     const first: IGenerationResult = result[0] as IGenerationResult;
     return first;
   }
@@ -291,6 +394,12 @@ async function buildForService(
     routes: discovery.routes,
     config: localConfig,
     match: discovery.match,
+    // x00024: propagamos el serviceId del descriptor para que el branch
+    // multi-servicio de `generateCollection()` pueda informar qué
+    // servicios detectó al construir el error. Single-service lo trae
+    // también (es la identidad del servicio: "default" o el
+    // frameworkSearchRoot derivado).
+    serviceId: service.serviceId,
     origin: discovery.origin,
     authFlow,
     authScheme,

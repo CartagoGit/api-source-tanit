@@ -46,6 +46,7 @@ import type { IGenerationResult } from "../../contracts/interfaces/core/discover
 import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
+import { MultipleServicesWithoutCombineError } from "../../core/discovery/generation.pipeline.js";
 
 /**
  * Descubre endpoints y construye la colección usando el pipeline
@@ -553,6 +554,21 @@ if (import.meta.main) {
   try {
     process.exit(await main());
   } catch (error) {
+    // x00024: el pipeline ahora lanza este error cuando hay >1 servicio
+    // y el caller no pidió --combine-services. Lo traducimos a exit
+    // 64 (EX_USAGE) con un mensaje accionable: scripts de CI detectan
+    // el caso sin parsear texto, y la persona que lo lee en pantalla
+    // ve qué servicios se detectaron y cómo resolverlo.
+    if (error instanceof MultipleServicesWithoutCombineError) {
+      console.error(`\n✗ ${error.message}`);
+      if (error.serviceIds.length > 0) {
+        console.error(`\n  Detected services:`);
+        for (const id of error.serviceIds) console.error(`    - ${id}`);
+      }
+      console.error(`\n  Re-run with --combine-services to merge them into one collection,`);
+      console.error(`  or omit --combine-services to emit one collection per service.`);
+      process.exit(64); // EX_USAGE
+    }
     console.error(`\n✗ ${explainWriteError(error)}`);
     process.exit(1);
   }

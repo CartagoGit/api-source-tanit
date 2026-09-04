@@ -85,6 +85,12 @@ app.get("/pages", (_req, res) => res.json([]));
 
     const result = await generateCollection(project.root, {
       orchestrator: defaultOrchestrator(),
+      // x00024: multi-service sin --combine-services ahora lanza
+      // `MultipleServicesWithoutCombineError`. Este test verifica la
+      // EXPANSIÓN del discovery, no la política de "una colección por
+      // servicio", así que pedimos la combinación legacy (un único
+      // `IGenerationResult` con endpoints de ambos workspaces).
+      combineServices: true,
     });
 
     // La verificación fuerte: ambos frameworks están en `result.collection`
