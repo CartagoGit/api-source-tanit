@@ -15,6 +15,7 @@
  */
 import type { IUiDeps, IUiResponse } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { ISettings } from "../../contracts/interfaces/cli/settings.interface.js";
+import { THEME_MODES } from "../../contracts/constants/cli/theme.constant.js";
 
 const ok = (body: unknown): IUiResponse => ({ status: 200, body });
 
@@ -123,6 +124,21 @@ export async function handleUiRequest(
       const salida = texto(body, "lastOutputDir");
       const framework = texto(body, "lastFramework");
       const formatos = lista(body, "lastFormats");
+
+      // Audit 2026-09-04 P3 #21 (settings validation on write): antes
+      // el `theme` se casteaba a `ISettings["theme"]` sin validar;
+      // un POST con theme="banana" se guardaba OK y solo se
+      // saneaba en el siguiente read, con el efecto "guardado
+      // exitoso → reinicio → ajuste desaparecido". Validamos el
+      // write igual que valida el read: si no está en THEME_MODES,
+      // 400 inmediato, sin escribir nada a disco.
+      if (theme && !THEME_MODES.includes(theme as ISettings["theme"] & string)) {
+        return fail(
+          400,
+          `theme "${theme}" no es válido.`,
+          `Valores admitidos: ${THEME_MODES.join(", ")}.`,
+        );
+      }
 
       // Se construye de una vez y no campo a campo: los ajustes son
       // `readonly`, y eso es a propósito — un objeto que se muta a

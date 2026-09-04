@@ -448,7 +448,7 @@ describe("OpenAPI exporter — cookie params (audit 2026-09-04 P2 #9)", () => {
     const doc = buildOpenApiDocument(
       baseInput([
         spec("/api/me", "GET", {
-          fields: [{ fieldName: "session", location: "cookie", required: true }],
+          fields: [{ fieldName: "session", location: "cookie", required: true, type: "string" }],
         }),
       ]),
     );
