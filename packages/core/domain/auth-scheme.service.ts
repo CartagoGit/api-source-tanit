@@ -59,23 +59,46 @@ const OAUTH_AUTHORIZE_RE = /\/oauth2?\/authorize\/?$/i;
  */
 const MIN_ENDPOINTS_FOR_API_KEY = 2;
 
-function countKeyUsage(
-  specs: ReadonlyArray<EndpointSpec>,
-): { header: Map<string, number>; query: Map<string, number> } {
+/**
+ * Cuenta cuántas veces aparece cada cabecera / query param que parece
+ * una clave de API.
+ *
+ * Acumula bajo la clave **canónica** (lowercase) para que `X-API-Key`
+ * y `x-api-key` en endpoints distintos cuenten como 2, no como dos
+ * entradas de 1 cada una que no llegan al umbral.
+ *
+ * `headerDisplay` / `queryDisplay` guardan, por clave canónica, el
+ * primer nombre original visto: ese es el que se muestra al usuario
+ * y el que va al bloque `auth.key` de Postman.
+ */
+function countKeyUsage(specs: ReadonlyArray<EndpointSpec>): {
+  header: Map<string, number>;
+  headerDisplay: Map<string, string>;
+  query: Map<string, number>;
+  queryDisplay: Map<string, string>;
+} {
   const header = new Map<string, number>();
+  const headerDisplay = new Map<string, string>();
   const query = new Map<string, number>();
+  const queryDisplay = new Map<string, string>();
 
   for (const spec of specs) {
     for (const h of spec.headers ?? []) {
       const key = h.key.toLowerCase();
-      if (API_KEY_HEADERS.has(key)) header.set(h.key, (header.get(h.key) ?? 0) + 1);
+      if (API_KEY_HEADERS.has(key)) {
+        header.set(key, (header.get(key) ?? 0) + 1);
+        if (!headerDisplay.has(key)) headerDisplay.set(key, h.key);
+      }
     }
     for (const q of spec.query ?? []) {
       const key = q.key.toLowerCase();
-      if (API_KEY_QUERY.has(key)) query.set(q.key, (query.get(q.key) ?? 0) + 1);
+      if (API_KEY_QUERY.has(key)) {
+        query.set(key, (query.get(key) ?? 0) + 1);
+        if (!queryDisplay.has(key)) queryDisplay.set(key, q.key);
+      }
     }
   }
-  return { header, query };
+  return { header, headerDisplay, query, queryDisplay };
 }
 
 /** El nombre más repetido, y cuántas veces. */
@@ -99,24 +122,26 @@ export function detectAuthScheme(
 ): IDetectedAuthScheme {
   // 1. Clave de API. Va primero porque es la señal más concreta: un
   //    nombre de cabecera concreto repetido en varios sitios.
-  const { header, query } = countKeyUsage(specs);
+  const { header, headerDisplay, query, queryDisplay } = countKeyUsage(specs);
   const topHeader = topEntry(header);
   const topQuery = topEntry(query);
 
   if (topHeader && topHeader.count >= MIN_ENDPOINTS_FOR_API_KEY) {
+    const displayName = headerDisplay.get(topHeader.name) ?? topHeader.name;
     return {
       type: "apikey",
-      keyName: topHeader.name,
+      keyName: displayName,
       keyIn: "header",
-      evidence: `la cabecera \`${topHeader.name}\` aparece en ${topHeader.count} endpoints`,
+      evidence: `la cabecera \`${displayName}\` aparece en ${topHeader.count} endpoints`,
     };
   }
   if (topQuery && topQuery.count >= MIN_ENDPOINTS_FOR_API_KEY) {
+    const displayName = queryDisplay.get(topQuery.name) ?? topQuery.name;
     return {
       type: "apikey",
-      keyName: topQuery.name,
+      keyName: displayName,
       keyIn: "query",
-      evidence: `el parámetro \`${topQuery.name}\` aparece en ${topQuery.count} endpoints`,
+      evidence: `el parámetro \`${displayName}\` aparece en ${topQuery.count} endpoints`,
     };
   }
 
