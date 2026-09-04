@@ -127,17 +127,23 @@ de vuelta a `EndpointSpec` para que el pipeline siga operando con
 la forma que ya consumen el resto de servicios.
 
 Copia los campos que el merger decide: identidad (method, uri,
-name) y las piezas que ganó (body, fields, description).
+name) y las piezas que ganó (body, fields, description, auth).
 
-Audit 2026-09-04 P1 #6 — propagación end-to-end del auth per-op:
-cuando el merger identifica que el endpoint debe ser público
-(`authScheme.type === "none"`), se traduce al override por
-operación `auth: { kind: "none" }` para que el builder de la
-colección omita la cabecera `Authorization` global. Antes el
-`authScheme` se descartaba aquí y `detectAuthScheme` recalculaba la
-auth solo a nivel colección: un endpoint declarado público por el
-scanner (login, /health) acababa con `Authorization: Bearer` por
-la borda.
+Audit 2026-09-04 P1 #6 + segunda revisión #16 #17: el override
+por operación del esquema de auth debe sobrevivir al merger.
+`spec.auth` se mapea al `authScheme` del candidato (en
+generation.pipeline.ts) y el merger propaga el ganador a este
+punto. La conversión de vuelta cubre **todas** las ramas del
+union `IEndpointAuth`:
+
+  - `type: "none"` → `auth: { kind: "none" }` (override público).
+  - `type: "bearer"` → `auth: { kind: "scheme", scheme: "bearer" }`.
+  - `type: "apikey"` → `auth: { kind: "scheme", scheme: "apiKey" }`.
+  - `type: "oauth2"` → `auth: { kind: "scheme", scheme: "oauth2" }`.
+
+Antes solo la rama `none` se traducía; un override per-op
+`bearer`/`apiKey`/`oauth2` se descartaba y `detectAuthScheme`
+recalculaba la auth a nivel colección — perdiendo el override.
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
