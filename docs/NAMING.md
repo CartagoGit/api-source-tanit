@@ -119,7 +119,7 @@ grep -rn "<nombre-viejo>" --include="*.ts" --include="*.json" --include="*.md" .
 
 The rebrand from `export-to-postman` → Tanit / `api-source-tanit` /
 `apisrc` / `delendai_tanit` / `tanit/` was decided on 2026-09-04 and
-implemented as [`b00001`](delendai/proposals/ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md)
+implemented as [`b00001`](delendai/proposals/done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md)
 (slices S1–S7). The full rename table and the rationale are in that
 proposal.
 

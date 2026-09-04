@@ -9,18 +9,18 @@ Lo que el `exports` del `package.json` deja importar desde fuera del
 paquete. Todo lo demás es interno y puede cambiar sin aviso.
 
 ```ts
-import { generateWithAllFrameworks } from "api-source-tanit/frameworks";
-import { buildCollection } from "api-source-tanit/core/domain/collection-builder.service";
+import { generateWithAllFrameworks } from "export-to-postman/frameworks";
+import { buildCollection } from "export-to-postman/core/domain/collection-builder.service";
 ```
 
 Si lo que buscas es la herramienta de línea de comandos y no la
-librería, `apisrc --help` lista los comandos y las banderas.
+librería, `expostman --help` lista los comandos y las banderas.
 
-> 165 símbolos en 58 módulos.
+> 171 símbolos en 61 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
-Adapter universal: `ParsedRoute` (neutro) → `EndpointSpec` (Postman).
+Universal adapter: `ParsedRoute` (neutral) → `EndpointSpec` (Postman).
 
 #### `toPostmanUri`
 
@@ -28,7 +28,7 @@ Adapter universal: `ParsedRoute` (neutro) → `EndpointSpec` (Postman).
 export function toPostmanUri(laravelUri: string): string
 ```
 
-prefix aplicado desde el scanner; aquí solo normalizamos el formato
+with the prefix applied from the scanner; here we only normalize the
 
 #### `deriveName`
 
@@ -36,11 +36,11 @@ prefix aplicado desde el scanner; aquí solo normalizamos el formato
 export function deriveName(route: ParsedRoute): string
 ```
 
-Deriva un nombre legible a partir del método HTTP + URI.
+Derives a readable name from the HTTP method + URI.
 
-Se exporta para poder probarla sola: es una función pura de la ruta, y
-lo contrario obligaría a montar un scanner entero para comprobar cómo
-queda un nombre.
+It is exported so it can be tested on its own: it is a pure function
+of the route, and the alternative would force assembling an entire
+scanner to check what a name looks like.
 
 #### `buildSpecsFromScanner`
 
@@ -48,15 +48,43 @@ queda un nombre.
 export async function buildSpecsFromScanner( scanner: IRouteScanner, match: IProjectMatch, validation: IValidationSpecProvider | null, ): Promise<AdapterResult>
 ```
 
-Construye `EndpointSpec[]` a partir de un `IRouteScanner` y, si
-se da, su `IValidationSpecProvider`. Devuelve un `AdapterResult`
-con la misma forma que el `discoverEndpoints` legacy.
+Builds `EndpointSpec[]` from an `IRouteScanner` and, if given, its
+`IValidationSpecProvider`. Returns an `AdapterResult` with the same
+shape as the legacy `discoverEndpoints`.
 
 #### `_peekSpec`
 
 ```ts
 export async function _peekSpec(projectRoot: string): Promise<string | null>
 ```
+
+### `packages/core/discovery/accumulate-routes-by-service.helper.ts`
+
+Accumulates `routesByService` from the per-scanner slice the pipeline has produced. x00025.
+
+#### `accumulateRoutesByService`
+
+```ts
+export function accumulateRoutesByService( perScanner: ReadonlyArray<
+```
+
+Accumulates and deduplicates routes by `serviceId`.
+
+Order is stable: for each scanner entry, we concatenate `existing`
+(what previous scanners with the same `serviceId` already
+contributed) followed by `scannerRoutes` (what this scanner
+emitted). The first occurrence of each `(method, uri, sourceFile)`
+tuple wins.
+
+The `perScanner` parameter takes only the two fields the helper
+needs (`serviceId`, `scannerRoutes`) so it does not couple to
+`IPerScanner` (which also carries `framework`, `scannerScore`,
+`scannerSpecs`). The shape is declared inline because the gate
+`lint:contracts` requires types to live in `contracts/` — making
+the helper importable for typing alone would defeat that.
+
+@param perScanner What the pipeline collected per scanner.
+@returns          Map `serviceId` -> deduplicated union of routes.
 
 ### `packages/core/discovery/auth-scheme.helper.ts`
 
@@ -154,6 +182,58 @@ queda con el primero: un repo con un Express heredado y rutas nuevas de
 Next.js casa con dos, y quedarse con uno devolvía un tercio de los
 endpoints sin decir nada.
 
+### `packages/core/discovery/effective-project-root.helper.ts`
+
+Raíz efectiva del proyecto — a00014 S1.
+
+#### `effectiveProjectRoot`
+
+```ts
+export function effectiveProjectRoot(match: IProjectMatch): string
+```
+
+La raíz efectiva del proyecto, honrando `frameworkSearchRoot`.
+
+- Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
+  con proyectos planos y con los tests que no rellenan el campo).
+- Con `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, siempre que el resultado siga dentro de
+  `projectRoot`.
+
+Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
+`projectRoot` (típicamente porque contiene `..` o es absoluto).
+
+#### `effectiveSearchRoot`
+
+```ts
+export function effectiveSearchRoot(match: IProjectMatch): string
+```
+
+Alias de `effectiveProjectRoot` con el nombre que ya usaban Hono,
+NestJS y Next.js en sus helpers inline. Si un scanner está
+migrando del helper local al central, puede seguir llamando a su
+función favorita sin un cambio extra.
+
+El comportamiento es idéntico al de `effectiveProjectRoot`: misma
+resolución, misma guarda, mismo error. Sólo cambia el nombre para
+no romper call sites existentes.
+
+#### `rawProjectRoot`
+
+```ts
+export function rawProjectRoot(match: IProjectMatch): string
+```
+
+La raíz real del proyecto, sin tocar.
+
+Devuelve `match.projectRoot` tal cual. Existe para que un scanner
+que necesita la raíz del usuario — el `projectRoot:` del
+`IProjectMatch` que devuelve al orquestador, o un `join` con un
+`route.sourceFile` ya relativo a `projectRoot` — pase por un
+helper en vez de leer `match.projectRoot` directamente. Así el
+gate `lint:effective-project-root` puede controlar todas las
+referencias a `match.projectRoot` en una sola lista blanca.
+
 ### `packages/core/discovery/endpoint-merger.service.ts`
 
 `EndpointMerger`: el reconciliador de endpoints para proyectos híbridos.
@@ -224,9 +304,92 @@ Antes solo la rama `none` se traducía; un override per-op
 `bearer`/`apiKey`/`oauth2` se descartaba y `detectAuthScheme`
 recalculaba la auth a nivel colección — perdiendo el override.
 
+### `packages/core/discovery/filter-specs-for-service.helper.ts`
+
+Filters the global `discovery.specs` down to the specs that belong to a single `IServiceDescriptor`. x00028.
+
+#### `filterSpecsForService`
+
+```ts
+export function filterSpecsForService( discoverySpecs: ReadonlyArray<EndpointSpec>, service: IServiceDescriptor, ): EndpointSpec[]
+```
+
+Returns the subset of `discovery.specs` whose `(method, uri)`
+matches a route in `service.endpoints`. When the service has no
+endpoints, returns `discovery.specs` unchanged (legacy / single
+service path).
+
+The returned type is `EndpointSpec[]` (not `ReadonlyArray`)
+because downstream helpers — `applyAgnosticInference`,
+`inferCollectionVariables`, `detectAuthScheme`,
+`hasLoginEndpoint` — mutate the specs in place (e.g.
+`applyAgnosticInference` writes `body` and `description`). The
+legacy code path `[...discovery.specs]` was already a fresh
+mutable copy for that reason; we preserve that contract.
+
+@param discoverySpecs The global catalog produced by `discoverSpecs()`.
+@param service        The descriptor for one service in the graph.
+@returns              Specs that belong to this service.
+
 ### `packages/core/discovery/generation.pipeline.ts`
 
 Pipeline de generación: `projectRoot` → `PostmanCollection`.
+
+#### `MultipleServicesWithoutCombineError`
+
+```ts
+export class MultipleServicesWithoutCombineError extends Error
+```
+
+Lanzada por `generateCollection()` cuando el proyecto tiene varios
+servicios pero el caller NO pidió `--combine-services` (ni
+`IGenerationOptions.combineServices === true`).
+
+## Por qué existe
+
+Hasta x00024, el contrato en singular documentaba "una sola
+colección" pero el branch multi-servicio hacía `return result[0]` y
+descartaba el resto **silenciosamente**. Eso convertía
+`await generateCollection(monorepoRoot)` en una llamada que pierde
+servicios sin avisar, exactamente el tipo de bug que un caller
+jamás detecta en CI. La API plural `generateCollections()` ya
+devolvía el array completo.
+
+## Cuándo se lanza
+
+`generateCollection()` invoca `buildFor` y observa tres formas:
+
+  - **Single-service** (un solo match, monorepo de un workspace o
+    proyecto plano): `result` es un único `IGenerationResult`. Sin
+    throw.
+  - **Multi-service + `combineServices: true`**: el caller pidió
+    fusionar; `buildFor` ya devuelve un único `IGenerationResult`
+    combinado. Sin throw.
+  - **Multi-service + `combineServices: false/undefined`**: aquí se
+    lanza esta excepción.
+
+El contrato legacy (single-service) sigue funcionando exactamente
+igual que antes — esto solo añade un caso nuevo.
+
+## Forma del error
+
+Lleva los datos que la CLI necesita para dar un mensaje útil sin
+tener que parsear el texto del `super()`:
+
+  - `serviceCount`: el número de servicios detectados.
+  - `serviceIds`: los ids derivados (de `match.frameworkSearchRoot`
+    vía `deriveServiceId`); vacío si ninguno tenía id resoluble.
+
+El mensaje incluye la sugerencia ("use --combine-services or
+generateCollections()") para que un usuario que vea el error en
+crudo sepa qué hacer.
+
+Vive en este mismo `.pipeline.ts` (no en `packages/core/errors/`)
+porque la regla `lint:naming` de `packages/core/` solo admite los
+sufijos `.service`, `.pipeline`, `.orchestrator`, `.adapter` y
+`.helper`. Un error class no encaja en ninguno, así que se queda
+donde se lanza — el mismo patrón que `PostmanApiError` en
+`domain/postman-api.service.ts`.
 
 #### `generateCollection`
 
@@ -404,7 +567,7 @@ export function resolveProjectContext( options: IResolveContextOptions =
 Construye el contexto de un proyecto.
 
 Prioridad de la raíz: parámetro explícito → `--project-root` en argv →
-`TANIT_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
+`POSTMAN_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
 continuar con una raíz adivinada produce colecciones vacías sin decir
 por qué (fue exactamente el bug del CLI con `--project-root`).
 
@@ -425,6 +588,19 @@ export function fromProjectRoot(context: IProjectContext, relPath: string): stri
 ```ts
 export function toProjectRelative(context: IProjectContext, absPath: string): string
 ```
+
+Ruta relativa al proyecto, en formato POSIX.
+
+Antes se hacía `normalized.startsWith(context.projectRoot)`, pero
+`startsWith` no entiende de fronteras de segmento: `/home/u/api-secret`
+matchea falsamente `/home/u/api` (x00022, audit 2026-09-04). Ahora se
+usa la misma fórmula canónica que
+`packages/core/helpers/path-containment.helper.ts`: `relative()` más
+la guarda de prefijo `..${sep}` / absoluto.
+
+Si `absPath` es exactamente la raíz del proyecto, se devuelve la
+cadena vacía para preservar la idempotencia `fromProjectRoot ∘
+toProjectRelative`.
 
 #### `hasProjectDir`
 
@@ -491,7 +667,7 @@ Resuelve la ruta del módulo de configuración del host.
 
 Orden:
   1. `--config <path>` (CLI)
-  2. `TANIT_CONFIG` (env)
+  2. `POSTMAN_CONFIG` (env)
   3. `${projectRoot}/resources/postman/examples/...` o `${projectRoot}/examples/...`
   4. Si nada → devuelve sentinel "__zero__" para que loadProject use
      buildZeroConfig().
@@ -646,7 +822,7 @@ Materializa una lista de globs de workspaces en directorios reales.
 
 ### `packages/core/domain/auth-flow.service.ts`
 
-Flujo de autenticación de la colección.
+Authentication flow for the collection.
 
 #### `hasLoginEndpoint`
 
@@ -654,16 +830,16 @@ Flujo de autenticación de la colección.
 export function hasLoginEndpoint( specs: ReadonlyArray<
 ```
 
-Si el proyecto expone un endpoint de sesión, mirando los specs.
+If the project exposes a session endpoint, based on the specs.
 
-`detectAuthFlow` responde a lo mismo pero sobre la **colección ya
-construida**, y hay quien necesita saberlo antes de construirla: el
-esquema de autenticación decide qué cabeceras lleva cada petición, así
-que no se puede resolver después.
+`detectAuthFlow` answers the same question but for the **already-built
+collection**, and some callers need to know before building it: the
+authentication scheme determines which headers each request carries, so it
+cannot be resolved afterward.
 
-Comparte los patrones con `detectAuthFlow` a propósito. Dos listas de
-rutas de login se desincronizan, y entonces la colección diría que hay
-bearer mientras el flujo no cablea ningún token, o al revés.
+It intentionally shares patterns with `detectAuthFlow`. If two lists of
+login routes drift, the collection could say there is bearer while the flow
+wires no token, or the other way around.
 
 #### `detectAuthFlow`
 
@@ -671,8 +847,8 @@ bearer mientras el flujo no cablea ningún token, o al revés.
 export function detectAuthFlow(collection: PostmanCollection): IAuthFlow | null
 ```
 
-Localiza los endpoints de login, refresh y logout en la colección.
-Devuelve `null` si el proyecto no tiene ninguno.
+Locates the login, refresh, and logout endpoints in the collection.
+Returns `null` if the project has none.
 
 #### `applyAuthFlow`
 
@@ -680,14 +856,14 @@ Devuelve `null` si el proyecto no tiene ninguno.
 export function applyAuthFlow( collection: PostmanCollection, options: IApplyAuthFlowOptions =
 ```
 
-Cablea el flujo de autenticación sobre una colección ya construida:
+Wires the authentication flow onto an already-built collection:
 
-  - Login y refresh guardan el token al responder 2xx.
-  - El body del login referencia `{{authUsername}}` / `{{authPassword}}`.
-  - Logout limpia el token.
-  - Se documenta el flujo en la descripción del login.
+  - Login and refresh save the token when they respond with 2xx.
+  - The login body references `{{authUsername}}` / `{{authPassword}}`.
+  - Logout clears the token.
+  - The flow is documented in the login description.
 
-Devuelve el flujo aplicado, o `null` si la colección no tiene auth.
+Returns the applied flow, or `null` if the collection has no auth.
 
 #### `authEnvironmentVariables`
 
@@ -695,8 +871,8 @@ Devuelve el flujo aplicado, o `null` si la colección no tiene auth.
 export function authEnvironmentVariables(): Array<
 ```
 
-Variables que el environment necesita para el flujo de auth.
-Se añaden solo si la colección tiene login.
+Variables the environment needs for the auth flow.
+They are added only if the collection has login.
 
 #### `warnMissingCredentials`
 
@@ -704,14 +880,14 @@ Se añaden solo si la colección tiene login.
 export function warnMissingCredentials( warning: Omit<IMissingCredentialsWarning, "kind">, ): void
 ```
 
-Emite un aviso estructurado cuando el login body no expone
-credenciales reconocibles. La función es exportada para tests y para
-que un llamador pueda redirigirla si necesita otro sink.
+Emits a structured warning when the login body does not expose recognizable
+credentials. The function is exported for tests and so a caller can
+redirect it if another sink is needed.
 
-El tipo del aviso vive en
-`packages/contracts/interfaces/cli/auth-warning.interface.ts`:
-definirlo aquí arrastraría a importar este servicio para tiparlo,
-y eso es justamente lo que `lint:contracts` prohíbe.
+The warning type lives in
+`packages/contracts/interfaces/cli/auth-warning.interface.ts`; defining it
+here would pull this service in just to type it, which is exactly what
+`lint:contracts` prohibits.
 
 #### `detectLaravelTokenPath`
 
@@ -719,14 +895,14 @@ y eso es justamente lo que `lint:contracts` prohíbe.
 export async function detectLaravelTokenPath(root: string): Promise<string | undefined>
 ```
 
-Detecta heurísticamente el dot-path del token en el AuthController de
-un proyecto Laravel.
-Mira los archivos `app/Http/Controllers/*Auth*Controller.php` y busca
-patrones de respuesta. Si no encuentra nada, devuelve undefined.
+Heuristically detects the token dot-path in a Laravel project's
+AuthController. It inspects the files
+`app/Http/Controllers/*Auth*Controller.php` and searches for response
+patterns. If it finds nothing, it returns undefined.
 
 ### `packages/core/domain/auth-scheme.service.ts`
 
-Qué esquema de autenticación usa la API, deducido de sus endpoints.
+What authentication scheme the API uses, inferred from its endpoints.
 
 #### `detectAuthScheme`
 
@@ -734,10 +910,10 @@ Qué esquema de autenticación usa la API, deducido de sus endpoints.
 export function detectAuthScheme( specs: ReadonlyArray<EndpointSpec>, hasLoginFlow: boolean, ): IDetectedAuthScheme
 ```
 
-Deduce el esquema de autenticación de la API.
+Infers the API's authentication scheme.
 
-`hasLoginFlow` lo pasa el pipeline: es si el proyecto expone un
-endpoint de sesión que el flujo de auth ha reconocido y cableado.
+`hasLoginFlow` is passed by the pipeline: it is whether the project exposes
+a session endpoint that the auth flow has recognized and wired in.
 
 #### `toPostmanAuth`
 
@@ -745,13 +921,12 @@ endpoint de sesión que el flujo de auth ha reconocido y cableado.
 export function toPostmanAuth(scheme: IDetectedAuthScheme): IPostmanAuth | null
 ```
 
-Traduce el esquema detectado al bloque `auth` de Postman.
+Translates the detected scheme to the Postman `auth` block.
 
-Devuelve `null` para `none`: una colección **sin** bloque `auth` es
-distinta de una con uno vacío. Con bloque, Postman manda una cabecera
-`Authorization` con un valor sin resolver en cada petición, y la API
-contesta 401 por un motivo que no tiene nada que ver con lo que se
-estaba probando.
+Returns `null` for `none`: a collection **without** an `auth` block is
+different from one with an empty block. With a block, Postman sends an
+`Authorization` header with an unresolved value on every request, and the
+API returns 401 for a reason unrelated to what was being tested.
 
 #### `authVariablesFor`
 
@@ -759,30 +934,30 @@ estaba probando.
 export function authVariablesFor( scheme: IDetectedAuthScheme, ): Array<
 ```
 
-Las variables de entorno que hace falta rellenar para ese esquema.
+Environment variables that need to be filled in for this scheme.
 
-Van vacías y marcadas como secreto: el valor lo pone quien usa la
-colección, y no debe acabar en un fichero versionado.
+They are empty and marked as secrets: the person using the collection
+supplies the value, and it must not end up in a versioned file.
 
 ### `packages/core/domain/collection-builder.service.ts`
 
-Genera una colección Postman v2.1.0 a partir de un catálogo de `EndpointSpec` agrupando los endpoints en carpetas automáticamente.
+Builds a Postman v2.1.0 collection from an `EndpointSpec` catalog, grouping the endpoints into folders automatically.
 
 #### `buildCollection`
 
 ```ts
-export function buildCollection( specs: EndpointSpec[], config: ProjectConfig, /** * Esquema de autenticación de la API. * * Si no se pasa, se deduce de los propios endpoints. El parámetro * existe para que el pipeline —que es quien sabe si hay flujo de
+export function buildCollection( specs: EndpointSpec[], config: ProjectConfig, /** * API authentication scheme. * * If not passed, it is inferred from the endpoints themselves. The * parameter exists so the pipeline -- which is the only one who
 ```
 
-Construye la colección Postman a partir del catálogo de endpoints
-y la configuración del proyecto.
+Builds the Postman collection from the endpoint catalog and the
+project configuration.
 
-@param specs Catálogo de endpoints del proyecto.
-@param config Configuración del proyecto (nombre, variables, zonas…).
+@param specs Endpoint catalog of the project.
+@param config Project configuration (name, variables, zones...).
 
 ### `packages/core/domain/endpoint-merge.service.ts`
 
-Fusión de los endpoints descubiertos con los overrides manuales del host.
+Merge of discovered endpoints with the host's manual overrides.
 
 #### `mergeWithManual`
 
@@ -790,16 +965,16 @@ Fusión de los endpoints descubiertos con los overrides manuales del host.
 export function mergeWithManual( auto: EndpointSpec[], manual: EndpointSpec[], ): EndpointSpec[]
 ```
 
-Fusiona specs auto-descubiertos con un catálogo manual opcional.
-El manual gana en method+uri normalizado (name, body, folder, description).
+Merges auto-discovered specs with an optional manual catalog.
+The manual spec wins on normalized method+URI (name, body, folder, description).
 
-Exportado porque los overrides manuales no son una cosa de Laravel:
-cualquier proyecto puede declarar un `endpoints.constant.ts` para
-corregir o ampliar lo que el scanner deduce.
+Exported because manual overrides are not a Laravel-specific concern:
+any project can declare an `endpoints.constant.ts` to correct or extend
+what the scanner infers.
 
 ### `packages/core/domain/environment-builder.service.ts`
 
-Genera environments Postman v2.1.0 agnósticos.
+Generates agnostic Postman v2.1.0 environments.
 
 #### `buildEnvironment`
 
@@ -807,15 +982,15 @@ Genera environments Postman v2.1.0 agnósticos.
 export function buildEnvironment( name: string, variables: PostmanVariable[], overrides: Record<string, string> =
 ```
 
-Construye UN environment.
+Builds ONE environment.
 
-@param name         Nombre del environment (ej. "Dev" o "Mi App · dev").
-@param variables    Variables fusionadas (config + base + path).
-@param overrides    Mapa que SOBREESCRIBE valores finales (ej. baseUrl).
-@param color        Color de la etiqueta en Postman.
-@param collectionId Id de la colección a la que pertenece; entra en la
-                    semilla del id del environment para que dos
-                    proyectos con un entorno "Local" no colisionen.
+@param name         Environment name (e.g. "Dev" or "My App · dev").
+@param variables    Merged variables (config + base + path).
+@param overrides    Map that OVERWRITES final values (e.g. baseUrl).
+@param color        Tag color in Postman.
+@param collectionId ID of the collection it belongs to; included in the
+                    environment ID seed so two projects with a "Local"
+                    environment do not collide.
 
 #### `buildEnvironments`
 
@@ -823,8 +998,8 @@ Construye UN environment.
 export function buildEnvironments( specs: EndpointSpec[], configVariables: PostmanVariable[], envs: EnvironmentDef[], collectionId = "", ): PostmanEnvironment[]
 ```
 
-Construye múltiples environments aplicando cada `overrides` al set
-base de variables.
+Builds multiple environments by applying each set of `overrides` to the
+base set of variables.
 
 #### `defaultEnvironments`
 
@@ -834,7 +1009,7 @@ export function defaultEnvironments( baseUrl: string, ): EnvironmentDef[]
 
 ### `packages/core/domain/param-inferrer.service.ts`
 
-Inferencia agnóstica de path params, query params y body para endpoints SIN FormRequest asociado.
+Agnostic inference of path params, query params, and body for endpoints WITHOUT an associated FormRequest.
 
 #### `extractPathParams`
 
@@ -854,10 +1029,10 @@ export function exampleForPathParam(name: string): string
 export function exampleForQueryField(name: string): string
 ```
 
-Un valor de ejemplo plausible para un parámetro de query, por su nombre.
+A plausible example value for a query parameter, based on its name.
 
-`page` da un número y `search` da texto. Es heurística pura: sirve para
-que la request se pueda lanzar sin editarla, no para acertar.
+`page` gives a number and `search` gives text. It is pure heuristics: it
+makes the request runnable without editing it; it does not aim to be exact.
 
 #### `inferBodyForSpec`
 
@@ -865,16 +1040,16 @@ que la request se pueda lanzar sin editarla, no para acertar.
 export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null
 ```
 
-Intenta producir un body útil para un endpoint sin FormRequest usando
-heurísticas REST-agnósticas:
+Attempts to produce a useful body for an endpoint without a FormRequest using
+REST-agnostic heuristics:
 
-  - action POST sin path params (p. ej. `/usuarios/despersonar`): `{}`.
-  - action POST con path param (p. ej. `/productos/{{id}}/reindexa`):
-    añade campo `force: true` si el segmento final sugiere "reindex",
+  - POST action without path params (e.g. `/usuarios/despersonar`): `{}`.
+  - POST action with a path param (e.g. `/productos/{{id}}/reindexa`):
+    adds a `force: true` field if the final segment suggests "reindex",
     "cancel", "force", etc.
-  - PUT/PATCH siempre lleva al menos un campo booleano/flag agnóstico.
+  - PUT/PATCH always includes at least one agnostic boolean/flag field.
 
-Devuelve `null` si no encuentra una heurística segura.
+Returns `null` if it cannot find a safe heuristic.
 
 #### `inferQueryForSpec`
 
@@ -882,14 +1057,14 @@ Devuelve `null` si no encuentra una heurística segura.
 export function inferQueryForSpec(spec: EndpointSpec): Array<
 ```
 
-Genera query params por defecto para un endpoint GET sin FormRequest.
+Generates default query params for a GET endpoint without a FormRequest.
 
-- Si la URI tiene path params que sugieran un único recurso (show),
-  añade solo `with=all` para forzar relaciones.
-- Si parece un listado/index (URI sin `{`, último segmento es plural
-  común o no es un verbo), añade paginación + búsqueda.
+- If the URI has path params that suggest a single resource (show), adds
+  only `with=all` to force relationships.
+- If it looks like a list/index (URI without `{`, last segment is a
+  common plural or not a verb), adds pagination + search.
 
-Conservador: si no encaja con nada, devuelve `[]`.
+Conservative: if it matches nothing, returns `[]`.
 
 #### `inferCollectionVariables`
 
@@ -897,15 +1072,15 @@ Conservador: si no encaja con nada, devuelve `[]`.
 export function inferCollectionVariables( specs: EndpointSpec[], configVariables: Array<
 ```
 
-Construye un set de variables `{{...}}` a partir de un catálogo de
-`EndpointSpec`. Se usa como fallback cuando el `ProjectConfig` no trae
-ninguna lista de variables.
+Builds a set of `{{...}}` variables from an `EndpointSpec` catalog.
+It is used as a fallback when `ProjectConfig` does not provide a variable
+list.
 
-Reglas agnósticas:
-  - `baseUrl`, `token` siempre se incluyen.
-  - Cualquier `{{algo}}` que aparezca en URIs se incluye si NO estaba
-    ya presente en `configVariables`.
-  - El valor por defecto se infiere con `exampleForPathParam()`.
+Agnostic rules:
+  - `baseUrl`, `token` are always included.
+  - Any `{{something}}` appearing in URIs is included if it was NOT
+    already present in `configVariables`.
+  - The default value is inferred with `exampleForPathParam()`.
 
 #### `applyAgnosticInference`
 
@@ -913,9 +1088,9 @@ Reglas agnósticas:
 export function applyAgnosticInference( specs: EndpointSpec[], options:
 ```
 
-Enriquece los specs que NO tienen FormRequest con body y query
-inferidos de forma agnóstica. NO toca los specs que ya tienen FR
-ni los que ya traen body/query manual.
+Enriches specs WITHOUT a FormRequest with inferred body and query in an
+agnostic way. It does NOT touch specs that already have FR or manually
+supplied body/query.
 
 #### `_internals`
 
@@ -923,13 +1098,13 @@ ni los que ya traen body/query manual.
 export const _internals =
 ```
 
-Piezas internas expuestas **solo** para sus tests.
+Internal pieces exposed **only** for their tests.
 
-El guion bajo es la señal: no forman parte del contrato del módulo.
+The underscore is the signal: they are not part of the module contract.
 
 ### `packages/core/domain/postman-api.service.ts`
 
-Cliente de la API pública de Postman.
+Client for the public Postman API.
 
 #### `PostmanApiError`
 
@@ -943,8 +1118,8 @@ export class PostmanApiError extends Error
 export async function pushCollection( collection: PostmanCollection, options: IPostmanApiOptions, ): Promise<IPushResult>
 ```
 
-Sube la colección: la actualiza si ya existe una con el mismo
-`_postman_id`, y si no la crea.
+Uploads the collection: updates it if one with the same `_postman_id`
+already exists; otherwise, creates it.
 
 #### `pushEnvironment`
 
@@ -960,7 +1135,7 @@ export async function verifyApiKey( options: IPostmanApiOptions, ): Promise<
 
 ### `packages/core/domain/project-health.service.ts`
 
-Salud de la documentación de un proyecto: porcentajes por categoría.
+Health of a project's documentation: percentages by category.
 
 #### `computeProjectHealth`
 
@@ -968,23 +1143,22 @@ Salud de la documentación de un proyecto: porcentajes por categoría.
 export function computeProjectHealth( specs: ReadonlyArray<EndpointSpec>, ): IProjectHealth
 ```
 
-Computa la salud del proyecto a partir de los specs finales.
+Computes the project's health from the final specs.
 
-Con cero endpoints, todos los porcentajes son `0`: no hay nada que
-documentar y un `NaN` o un 100 sin rutas serían las dos mentiras
-posibles. Con rutas, cada porcentaje es el cociente de endpoints que
-llevan la pieza, redondeado a entero para que el CLI y el tool MCP
-lo muestren tal cual.
+With zero endpoints, all percentages are `0`: there is nothing to
+document, and a `NaN` or a 100 without routes would be the two possible
+lies. With routes, each percentage is the quotient of endpoints that
+include the piece, rounded to an integer so the CLI and MCP tool display
+it as-is.
 
-El body cuenta si el spec lleva uno —de reglas resueltas o de la
-inferencia agnóstica, que ya corrió antes de aquí—. Los ejemplos
-cuentan cuando el body lleva algún valor o hay params con valor;
-son las dos vías por las que la colección enseña **un** valor válido
-al usuario.
+The body counts if the spec carries one—from resolved rules or from
+agnostic inference, which has already run before this point. Examples
+count when the body has a value or params have a value; these are the two
+ways the collection teaches the user **one** valid value.
 
 ### `packages/core/domain/request-doc.service.ts`
 
-La descripción de una request: qué acepta el endpoint, en una tabla.
+Description of a request: what the endpoint accepts, in a table.
 
 #### `buildRequestDescription`
 
@@ -992,13 +1166,13 @@ La descripción de una request: qué acepta el endpoint, en una tabla.
 export function buildRequestDescription( base: string | undefined, fields: ReadonlyArray<IEndpointField> | undefined, ): string
 ```
 
-Construye la descripción en Markdown, que es lo que Postman renderiza
-en el panel de documentación de la request.
+Builds the Markdown description that Postman renders in the
+request's documentation panel.
 
-`base` es lo que ya traía la request (el nombre del handler, o el
-`summary` de un spec OpenAPI). Se conserva arriba: es lo que alguien
-escribió a propósito, y pisarlo con una tabla generada sería cambiar
-información por presentación.
+`base` is what the request already contained (the handler name, or the
+`summary` of an OpenAPI spec). It is kept at the top: it is something
+someone intentionally wrote, and replacing it with a generated table
+would trade information for presentation.
 
 ### `packages/core/domain/test-script.service.ts`
 
@@ -1025,7 +1199,7 @@ ser del flujo de auth.
 
 ### `packages/core/domain/watcher.service.ts`
 
-Vigilar el proyecto y avisar cuando algo cambia.
+Watches the project and reports when something changes.
 
 #### `shouldIgnore`
 
@@ -1033,11 +1207,11 @@ Vigilar el proyecto y avisar cuando algo cambia.
 export function shouldIgnore( relativePath: string, extraIgnored: ReadonlySet<string> = new Set(), ): boolean
 ```
 
-Si una ruta relativa debe ignorarse.
+Whether a relative path should be ignored.
 
-Pura y exportada a propósito: es la pieza que evita el bucle
-infinito, y una pieza así tiene que poder probarse sin montar un
-sistema de ficheros.
+Pure and exported intentionally: this is the piece that prevents the
+infinite loop, and a piece like that must be testable without mounting a
+filesystem.
 
 #### `createDebouncer`
 
@@ -1045,11 +1219,11 @@ sistema de ficheros.
 export function createDebouncer( ms: number, fn: (batch: readonly string[]) => void, ):
 ```
 
-Agrupa llamadas seguidas en una sola, `ms` después de la última.
+Batches consecutive calls into one, `ms` after the last one.
 
-Devuelve también un `cancel` para poder cerrar sin dejar un timer
-suelto: sin él, el proceso no termina al hacer Ctrl+C porque el event
-loop sigue teniendo trabajo pendiente.
+It also returns a `cancel` function so it can close without leaving a
+timer running: otherwise the process does not terminate on Ctrl+C because
+the event loop still has pending work.
 
 #### `watchProject`
 
@@ -1057,20 +1231,20 @@ loop sigue teniendo trabajo pendiente.
 export function watchProject(options: IWatchOptions): IWatchHandle
 ```
 
-Vigila `root` y llama a `onChange` con las rutas que han cambiado.
+Watches `root` and calls `onChange` with the changed paths.
 
-Usa `fs.watch` recursivo, sin sondeo. Si el sistema operativo no lo
-soporta —`recursive` no está en todos los BSD— lanza con un mensaje
-que lo dice, en vez de quedarse mirando solo el primer nivel y no
-enterarse de nada.
+It uses recursive `fs.watch` without polling. If the operating system does
+not support it —`recursive` is not available on all BSDs— it throws a message
+explaining that instead of watching only the first level and missing
+everything.
 
-Nunca hay dos `onChange` a la vez: si llega un cambio mientras se está
-regenerando, se encola y se ejecuta después. Dos generaciones
-simultáneas escribirían el mismo fichero a la vez.
+There are never two `onChange` calls at once: if a change arrives while
+regeneration is running, it is queued and runs afterward. Two simultaneous
+generations would write the same file at the same time.
 
 ### `packages/core/exporters/bruno.exporter.ts`
 
-Exportador a Bruno.
+Bruno exporter.
 
 #### `BrunoExporter`
 
@@ -1080,7 +1254,7 @@ export class BrunoExporter implements IExportTarget
 
 ### `packages/core/exporters/export-registry.service.ts`
 
-El catálogo de formatos de salida.
+The catalog of output formats.
 
 #### `registeredFormats`
 
@@ -1088,11 +1262,12 @@ El catálogo de formatos de salida.
 export function registeredFormats(): string[]
 ```
 
-Los formatos que este registro produce de verdad.
+The formats this registry actually produces.
 
-No es el catálogo —el catálogo es `EXPORT_FORMATS`, en contratos— sino
-**lo que el registro cumple**. Un test compara los dos: una lista
-paralela no es peligrosa, una lista paralela que nadie compara sí.
+It is not the catalog — the catalog is `EXPORT_FORMATS`, in
+contracts — but **what the registry delivers**. A test compares the
+two: a parallel list is not dangerous, an uncompared parallel list
+is.
 
 #### `describeFormats`
 
@@ -1112,12 +1287,13 @@ export function exporterFor(format: string): IExportTarget | null
 export function parseFormats(raw: string | null | undefined): IParsedFormats
 ```
 
-Interpreta `--format a,b,c`.
+Interprets `--format a,b,c`.
 
-Falla **antes** de escanear si algún formato no existe, y lista los
-válidos. Descubrir un nombre mal escrito al final —tras recorrer el
-proyecto y sin haber escrito el fichero que se pedía— no dice nada de
-lo que ha pasado. Es la misma decisión que en `--framework`.
+It fails **before** scanning if any format does not exist, and lists
+the valid ones. Discovering a misspelled name at the end — after
+walking the project and without having written the requested file
+— says nothing about what happened. It is the same decision as in
+`--framework`.
 
 #### `exportTo`
 
@@ -1125,9 +1301,9 @@ lo que ha pasado. Es la misma decisión que en `--framework`.
 export function exportTo( formats: ReadonlyArray<string>, input: IExportInput, ): IExportArtifact[]
 ```
 
-Serializa el proyecto a todos los formatos pedidos.
+Serializes the project to all requested formats.
 
-`postman` se salta: lo escribe el pipeline por su cuenta.
+`postman` is skipped: the pipeline writes it on its own.
 
 #### `exportWarnings`
 
@@ -1135,15 +1311,15 @@ Serializa el proyecto a todos los formatos pedidos.
 export function exportWarnings( formats: ReadonlyArray<string>, input: IExportInput, ): string[]
 ```
 
-Lo que los formatos pedidos **no pueden** representar.
+What the requested formats **cannot** represent.
 
-Se devuelve aparte de los artefactos porque no impide generarlos: el
-fichero sale igual, solo que incompleto, y quien lo pidió tiene que
-saberlo.
+Returned separately from the artifacts because it does not prevent
+generating them: the file comes out the same, just incomplete, and
+whoever requested it must know.
 
 ### `packages/core/exporters/har.exporter.ts`
 
-Exportadores a HAR 1.2 y a cURL.
+Exporters to HAR 1.2 and to cURL.
 
 #### `HarExporter`
 
@@ -1159,7 +1335,7 @@ export class CurlExporter implements IExportTarget
 
 ### `packages/core/exporters/insomnia.exporter.ts`
 
-Exportador a Insomnia v4.
+Insomnia v4 exporter.
 
 #### `InsomniaExporter`
 
@@ -1272,7 +1448,7 @@ y eso lo maneja la lectura tratándolo como línea corrupta.
 
 ### `packages/core/helpers/collection-file.helper.ts`
 
-Leer la colección del disco, o explicar por qué no se puede.
+Read the collection from disk, or explain why it cannot be.
 
 #### `readCollection`
 
@@ -1280,12 +1456,13 @@ Leer la colección del disco, o explicar por qué no se puede.
 export async function readCollection(path: string): Promise<CollectionRead>
 ```
 
-Lee y parsea la colección.
+Reads and parses the collection.
 
-Distingue los tres fallos que importan, porque cada uno tiene una
-salida distinta: que no exista (falta generar), que no se pueda leer
-(permisos) y que no sea JSON válido (se escribió a medias, que es lo
-que `atomic-write.helper` existe para evitar).
+Distinguishes the three failures that matter, because each has a
+different output: that it does not exist (need to generate), that it
+cannot be read (permissions), and that it is not valid JSON (it was
+written halfway, which is what `atomic-write.helper` exists to
+prevent).
 
 #### `explainReadFailure`
 
@@ -1293,9 +1470,9 @@ que `atomic-write.helper` existe para evitar).
 export function explainReadFailure( failure: Extract<CollectionRead,
 ```
 
-Imprime el fallo en el formato del resto del CLI y devuelve 1, para
-que un comando pueda hacer `return explain(result)` sin repetir el
-bloque de `console.error` en cada uno.
+Prints the failure in the same format as the rest of the CLI and
+returns 1, so a command can do `return explain(result)` without
+repeating the `console.error` block in each one.
 
 ### `packages/core/helpers/collection-identity.helper.ts`
 
@@ -1333,7 +1510,7 @@ export function environmentIdFor(collectionId: string, environmentName: string):
 
 ### `packages/core/helpers/collection-invariants.helper.ts`
 
-Invariantes que debe cumplir una colección para que Postman la importe y sea usable.
+Invariants a collection must satisfy for Postman to import it and be usable.
 
 #### `checkCollectionInvariants`
 
@@ -1341,8 +1518,8 @@ Invariantes que debe cumplir una colección para que Postman la importe y sea us
 export function checkCollectionInvariants( collection: PostmanCollection, ): ICollectionIssue[]
 ```
 
-Comprueba todas las invariantes y devuelve los incumplimientos.
-Lista vacía = la colección es correcta.
+Checks all invariants and returns the violations. Empty list = the
+collection is correct.
 
 #### `collectionErrors`
 
@@ -1384,7 +1561,7 @@ export function isSourceJsTsFile(name: string): boolean
 
 ### `packages/core/helpers/module-path.helper.ts`
 
-Directorio del módulo actual, de forma portable.
+Directory of the current module, in a portable way.
 
 #### `moduleDir`
 
@@ -1398,18 +1575,17 @@ export function moduleDir(importMetaUrl: string): string
 export function repoRoot(importMetaUrl: string): string
 ```
 
-Raíz del repo/paquete: sube desde el módulo hasta dar con el
+Repo/package root: walks up from the module until it finds a
 `package.json`.
 
-Antes cada script contaba sus propios `".."` hasta la raíz. Eso
-funciona hasta que el fichero cambia de carpeta, y entonces
-`PACKAGE_ROOT` apunta a otro sitio **sin fallar**: el script
-simplemente no encuentra nada y dice "no se encontró ninguna
-propuesta". Pasó con cuatro gates a la vez al reorganizar en
-`packages/`.
+Before, each script counted its own `".."` to the root. That works
+until the file moves to a different folder, and then `PACKAGE_ROOT`
+points elsewhere **without failing**: the script simply does not find
+anything and says "no proposals found". It happened with four gates
+at once when reorganizing into `packages/`.
 
-Contar niveles es acoplar un fichero a su profundidad en el árbol.
-Buscar el marcador no.
+Counting levels is coupling a file to its depth in the tree.
+Looking for the marker is not.
 
 #### `findRepoRoot`
 
@@ -1417,18 +1593,17 @@ Buscar el marcador no.
 export function findRepoRoot(importMetaUrl: string): string | null
 ```
 
-Como `repoRoot()`, pero devuelve `null` en vez de lanzar.
+Like `repoRoot()`, but returns `null` instead of throwing.
 
-Lo necesita el código de **producción**: dentro del binario compilado
-los módulos viven en un sistema de ficheros virtual (`/$bunfs/root/`)
-donde no hay ningún `package.json`, así que no hay raíz que
-encontrar. Lanzar allí tumba el binario entero al arrancar — pasó al
-introducir este helper, y el test del binario sin runtime fue lo que
-lo cazó.
+Production code needs this: inside the compiled binary the modules
+live in a virtual file system (`/$bunfs/root/`) where there is no
+`package.json`, so there is no root to find. Throwing there crashes
+the whole binary at startup — it happened when this helper was
+introduced, and the binary-without-runtime test was what caught it.
 
-Regla: los gates y los tests usan `repoRoot()`, que lanza porque un
-fallo ahí es un fallo del repo. El código que acaba dentro del
-binario usa esta y tiene un plan B.
+Rule: gates and tests use `repoRoot()`, which throws because a
+failure there is a repo failure. Code that ends up inside the binary
+uses this one and has a plan B.
 
 ### `packages/core/helpers/parse-json.helper.ts`
 
@@ -1487,7 +1662,7 @@ detectaba o no según cuál preguntara.
 
 ### `packages/core/helpers/path-containment.helper.ts`
 
-¿Esta ruta se sale de donde debería escribir?
+Does this path escape where it's supposed to write?
 
 #### `ensureInside`
 
@@ -1495,11 +1670,11 @@ detectaba o no según cuál preguntara.
 export async function ensureInside( root: string, target: string, ): Promise<ContainmentResult>
 ```
 
-¿`target` está dentro de `root`?
+Is `target` inside `root`?
 
-La propia raíz cuenta como dentro. Devuelve la ruta ya resuelta para
-que quien llame use esa y no la original: comprobar una y escribir en
-otra es como se saltan estas comprobaciones.
+The root itself counts as inside. Returns the already-resolved path
+so the caller uses that and not the original: checking one and
+writing in another is how these checks get bypassed.
 
 #### `ensureInsideAny`
 
@@ -1507,17 +1682,17 @@ otra es como se saltan estas comprobaciones.
 export async function ensureInsideAny( roots: ReadonlyArray<string>, target: string, ): Promise<ContainmentResult>
 ```
 
-¿`target` está dentro de **alguna** de las raíces?
+Is `target` inside **any** of the roots?
 
-Varias, y no una, porque una sola no describe el uso legítimo. Un
-agente puede pedir "genera para el proyecto X y deja la salida en mi
-carpeta de trabajo", y esas son dos ubicaciones distintas y las dos
-razonables. Con una sola raíz eso se rechazaba, y un guardián que
-bloquea el uso normal se acaba quitando.
+Several, not just one, because a single one does not describe the
+legitimate use. An agent may ask "generate for project X and leave
+the output in my working folder", and those are two distinct and
+both reasonable locations. With a single root that was rejected, and
+a guard that blocks normal use eventually gets removed.
 
-Lo que sí queda fuera es el resto del disco: la salida va con el
-proyecto, dentro del workspace, o en un temporal — no al `$HOME` de
-nadie porque un `../` se coló en un argumento.
+What does stay out is the rest of the disk: the output goes with the
+project, inside the workspace, or in a temp dir — not to anyone's
+`$HOME` because a `../` slipped into an argument.
 
 ### `packages/core/helpers/postman.helper.ts`
 
@@ -1552,7 +1727,7 @@ export function countItems(collection: PostmanCollection):
 
 ### `packages/core/helpers/read-files.helper.ts`
 
-Leer muchos ficheros sin leerlos de uno en uno.
+Read many files without reading them one at a time.
 
 #### `readAllFiles`
 
@@ -1560,15 +1735,15 @@ Leer muchos ficheros sin leerlos de uno en uno.
 export async function readAllFiles( paths: ReadonlyArray<string>, limit: number = READ_CONCURRENCY, ): Promise<IReadFile[]>
 ```
 
-Lo mismo, pero en un array.
+Same, but into an array.
 
-Para quien necesite la lista entera de todas formas (un `Map` de
-módulo → contenido, por ejemplo). Si solo se va a recorrer una vez,
-usa el generador: gasta memoria acotada en vez de toda.
+For those who need the whole list anyway (a `Map` of module → content,
+for example). If it is only going to be walked once, use the generator:
+it spends bounded memory instead of all of it.
 
 ### `packages/core/helpers/regex.helper.ts`
 
-Regex compartidos usados sin pisarse.
+Shared regexes used without stepping on each other.
 
 #### `ownRegex`
 
@@ -1576,14 +1751,15 @@ Regex compartidos usados sin pisarse.
 export function ownRegex(shared: RegExp): RegExp
 ```
 
-Una copia propia de un regex compartido.
+An own copy of a shared regex.
 
-Nace con `lastIndex` a cero y nadie más la toca, así que se puede usar
-con `exec` sin coordinarse con el resto del proceso.
+It starts with `lastIndex` at zero and nobody else touches it, so it
+can be used with `exec` without coordinating with the rest of the
+process.
 
 ### `packages/core/helpers/resolve-root.helper.ts`
 
-De dónde sale la raíz del proyecto, una sola vez.
+Where the project root comes from, in one place.
 
 #### `resolveRoot`
 
@@ -1591,12 +1767,12 @@ De dónde sale la raíz del proyecto, una sola vez.
 export function resolveRoot(options: IResolveRootOptions =
 ```
 
-La raíz del proyecto: `--project-root`, luego `TANIT_PROJECT_ROOT`,
-y como último recurso el directorio actual.
+The project root: `--project-root`, then `POSTMAN_PROJECT_ROOT`, and
+as a last resort the current directory.
 
-El orden es el que ya tenían dos de los tres comandos, así que no
-cambia el comportamiento de nadie — solo lo hace igual en todos y
-añade de dónde vino.
+The order is the one two of the three commands already had, so it
+changes nobody's behavior — it just makes it consistent across all
+of them and adds where it came from.
 
 #### `guessedRootNotice`
 
@@ -1604,15 +1780,15 @@ añade de dónde vino.
 export function guessedRootNotice(resolved: IResolvedRoot): string
 ```
 
-El aviso de que la raíz se ha adivinado, o cadena vacía.
+The notice that the root has been guessed, or an empty string.
 
-Se devuelve en vez de imprimirse para que quien llama decida dónde va
-—`console.log`, un informe JSON, la interfaz gráfica— y para que se
-pueda probar sin capturar la salida.
+Returned instead of printed so the caller decides where it goes —
+`console.log`, a JSON report, the GUI — and so it can be tested
+without capturing output.
 
 ### `packages/core/helpers/route-identity.helper.ts`
 
-Qué hace que dos endpoints sean el mismo endpoint.
+What makes two endpoints the same endpoint.
 
 #### `endpointKey`
 
@@ -1620,12 +1796,12 @@ Qué hace que dos endpoints sean el mismo endpoint.
 export function endpointKey(identity: IEndpointIdentity): string
 ```
 
-La clave de una operación. Misma operación, misma clave.
+The key of an operation. Same operation, same key.
 
-La URI se normaliza siempre, para que `/api/users` y `api/users` no
-se cuenten como dos. El nombre y el cuerpo solo entran cuando están:
-añadirlos vacíos haría que una ruta con nombre y la misma sin él
-dejaran de coincidir, que es lo contrario de lo que se busca.
+The URI is always normalized, so `/api/users` and `api/users` are not
+counted as two. The name and body only enter when present: adding
+them empty would make a route with a name and the same one without
+it stop matching, which is the opposite of what we want.
 
 #### `describeEndpoint`
 
@@ -1633,11 +1809,11 @@ dejaran de coincidir, que es lo contrario de lo que se busca.
 export function describeEndpoint(identity: IEndpointIdentity): string
 ```
 
-Cómo se llama una operación cuando hay que enseñársela a alguien.
+How an operation is called when it has to be shown to someone.
 
-`POST /graphql` repetido tres veces no dice nada: hace falta el
-nombre para saber cuál falta. Esto es lo que convierte una lista de
-tres líneas idénticas en una lista útil.
+`POST /graphql` repeated three times says nothing: the name is needed
+to know which one is missing. This is what turns a list of three
+identical lines into a useful list.
 
 #### `needsNameToDisambiguate`
 
@@ -1645,17 +1821,17 @@ tres líneas idénticas en una lista útil.
 export function needsNameToDisambiguate( routes: ReadonlyArray<IEndpointIdentity>, ): boolean
 ```
 
-¿Este protocolo distingue operaciones por el nombre?
+Does this protocol distinguish operations by name?
 
-No es una lista de frameworks: es una propiedad de las rutas que
-llegan. Si varias comparten método y URI, el nombre es lo único que
-queda — y da igual que sea GraphQL, tRPC o un JSON-RPC escrito a
-mano. Preguntarlo así evita una lista que haya que mantener cada vez
-que se soporte un framework nuevo.
+It is not a list of frameworks: it is a property of the routes that
+arrive. If several share method and URI, the name is the only thing
+left — and it does not matter whether it is GraphQL, tRPC, or a
+hand-written JSON-RPC. Asking this way avoids a list that has to be
+maintained every time a new framework is supported.
 
 ### `packages/core/helpers/source-scan.helper.ts`
 
-Primitivas de escaneo de código fuente compartidas por los scanners.
+Source-code scanning primitives shared by the scanners.
 
 #### `stripJsComments`
 
@@ -1663,10 +1839,10 @@ Primitivas de escaneo de código fuente compartidas por los scanners.
 export function stripJsComments(src: string): string
 ```
 
-Elimina comentarios de bloque y de línea de un fuente JS/TS.
+Strips block and line comments from a JS/TS source.
 
-El `//` se descarta solo si no viene precedido de `:`, para no partir
-las URLs (`https://…`) que aparecen en literales de string.
+The `//` is dropped only if it is not preceded by `:`, to avoid
+breaking URLs (`https://…`) that appear in string literals.
 
 #### `findClosingParen`
 
@@ -1674,8 +1850,8 @@ las URLs (`https://…`) que aparecen en literales de string.
 export function findClosingParen(text: string, openIndex: number): number
 ```
 
-Encuentra el `)` que cierra el `(` situado en `openIndex`, respetando
-anidamiento. Devuelve `-1` si el paréntesis nunca se cierra.
+Finds the `)` that closes the `(` located at `openIndex`, respecting
+nesting. Returns `-1` if the parenthesis is never closed.
 
 #### `findAllBalanced`
 
@@ -1683,12 +1859,13 @@ anidamiento. Devuelve `-1` si el paréntesis nunca se cierra.
 export function findAllBalanced(text: string, pattern: RegExp): IBalancedCall[]
 ```
 
-Todas las ocurrencias de `pattern` en `text`, cada una con la posición
-balanceada de su llamada.
+All occurrences of `pattern` in `text`, each with the balanced
+position of its call.
 
-`pattern` debe describir el prefijo de una llamada (ej. `/z\.object\s*\(/`);
-el `(` se busca a partir del inicio del match. La regex se re-crea
-siempre con flag `g`, así que da igual cómo la declare quien llama.
+`pattern` must describe the prefix of a call (e.g.
+`/z\.object\s*\(/`); the `(` is searched from the start of the match.
+The regex is always re-created with the `g` flag, so it does not
+matter how the caller declared it.
 
 #### `findNearestBalanced`
 
@@ -1696,9 +1873,9 @@ siempre con flag `g`, así que da igual cómo la declare quien llama.
 export function findNearestBalanced( text: string, pattern: RegExp, nearLine: number, ): IBalancedCall | null
 ```
 
-De todas las llamadas que casan `pattern`, la más cercana (en número de
-líneas) a `nearLine`. Sirve para asociar un schema al handler que lo
-usa cuando un mismo archivo declara varios.
+Of all calls that match `pattern`, the closest (by line count) to
+`nearLine`. Used to associate a schema with the handler that uses it
+when a single file declares several.
 
 #### `countLinesBefore`
 
@@ -1712,11 +1889,11 @@ export function countLinesBefore(text: string, index: number): number
 export function splitTopLevel(body: string): string[]
 ```
 
-Parte el interior de un object literal por comas de primer nivel.
+Splits the inside of an object literal by top-level commas.
 
-Ignora las comas dentro de strings (`'`, `"`, backtick, con escapes) y
-dentro de `()`, `{}` o `[]` anidados. La profundidad arranca en 1
-porque el texto recibido incluye las llaves exteriores del objeto.
+Ignores commas inside strings (`'`, `"`, backtick, with escapes) and
+inside nested `()`, `{}` or `[]`. The depth starts at 1 because the
+received text includes the outer braces of the object.
 
 #### `unwrapObjectLiteralItem`
 
@@ -1724,8 +1901,8 @@ porque el texto recibido incluye las llaves exteriores del objeto.
 export function unwrapObjectLiteralItem(item: string): string
 ```
 
-Quita las llaves exteriores y el espacio sobrante de un item devuelto
-por `splitTopLevel` (el primero arrastra el `{`, el último el `}`).
+Removes the outer braces and trailing whitespace from an item
+returned by `splitTopLevel` (the first drags the `{`, the last the `}`).
 
 #### `maskStringLiterals`
 
@@ -1733,26 +1910,26 @@ por `splitTopLevel` (el primero arrastra el `{`, el último el `}`).
 export function maskStringLiterals(src: string): string
 ```
 
-Sustituye el **contenido** de las cadenas por espacios, conservando
-las comillas y la longitud total.
+Replaces the **contents** of strings with spaces, keeping the quotes
+and the total length.
 
-Sirve para responder a una pregunta que los scanners hacen todo el
-rato sin saberlo: *¿esta llamada está de verdad en el código, o está
-dentro de una cadena?* Un fichero con
+Used to answer a question the scanners ask all the time without
+knowing it: *is this call actually in the code, or is it inside a
+string?* A file with
 
-    const ayuda = 'usa router.get("/x") para registrar';
+    const help = 'use router.get("/x") to register';
 
-producía un endpoint `GET /x` que no existe. El texto de una cadena no
-es código, pero para un regex se lee igual.
+produced a `GET /x` endpoint that does not exist. The text of a
+string is not code, but for a regex it reads the same.
 
-La longitud se conserva a propósito: así los desplazamientos de la
-máscara valen sobre el fuente original, y se puede buscar en la
-máscara y leer en el original. Sin eso habría que mantener un mapa de
-posiciones, que es la clase de cosa que se desincroniza.
+Length is preserved on purpose: this way the offsets on the mask are
+valid on the original source, and we can search on the mask and read
+from the original. Without that we'd need to maintain a position
+map, which is the kind of thing that desyncs.
 
-Cubre comillas simples, dobles y plantillas. Dentro de una plantilla,
-lo que va en `${…}` **sí** es código y se conserva: es donde viven las
-interpolaciones que otros lints tienen que ver.
+Covers single quotes, double quotes, and templates. Inside a
+template, what goes in `${…}` **is** code and is preserved: that is
+where the interpolations live that other lints need to see.
 
 #### `findOutsideStrings`
 
@@ -1760,25 +1937,25 @@ interpolaciones que otros lints tienen que ver.
 export function findOutsideStrings( src: string, pattern: RegExp, ): Array<
 ```
 
-Las apariciones de `pattern` que están **fuera** de cualquier cadena.
+The occurrences of `pattern` that are **outside** any string.
 
-El truco tiene dos mitades y las dos hacen falta:
+The trick has two halves and both are needed:
 
-  1. Se **busca** sobre la máscara, donde el contenido de las cadenas
-     son espacios. Así una llamada escrita dentro de un texto —
-     `'usa router.get("/x")'`— no aparece.
-  2. Se **lee** del fuente original, en la misma posición. La máscara
-     conserva la longitud justo para esto: el path de una ruta de
-     verdad ES una cadena, así que en la máscara viene en blanco y
-     leerlo de ahí daría rutas vacías.
+  1. We **search** on the mask, where the contents of the strings
+     are spaces. So a call written inside a text —
+     `'use router.get("/x")'`— does not appear.
+  2. We **read** from the original source, at the same position. The
+     mask preserves length exactly for this: the path of a real
+     route IS a string, so on the mask it comes out blank and
+     reading it from there would give empty paths.
 
-Saltarse la segunda mitad es fácil y el fallo es silencioso: los
-grupos capturados salen llenos de espacios y las rutas se descartan
-una a una sin que nada avise.
+Skipping the second half is easy and the failure is silent: the
+captured groups come out full of spaces and the paths are discarded
+one by one without anything saying so.
 
 ### `packages/core/helpers/uri.helper.ts`
 
-Helpers para normalizar URIs antes de comparar.
+Helpers to normalize URIs before comparing.
 
 #### `normalizeForComparison`
 
@@ -1786,23 +1963,22 @@ Helpers para normalizar URIs antes de comparar.
 export function normalizeForComparison(uri: string): string
 ```
 
-Helpers para normalizar URIs antes de comparar.
+Helpers to normalize URIs before comparing.
 
-Las URIs tienen cinco formas que deben coincidir:
-  - Laravel: `{cliente}` o `{cliente:codigo}`
+URIs have five forms that must match:
+  - Laravel: `{client}` or `{client:code}`
   - Express: `:clientId`
-  - FastAPI: `{client_id}` (mismo formato que Laravel)
+  - FastAPI: `{client_id}` (same format as Laravel)
   - Django:  `<id>`, `<int:id>`, `<str:slug>`, `<uuid:token>`
-  - Postman: `{{clienteId}}`
+  - Postman: `{{clientId}}`
 
-`normalizeForComparison` reduce cualquier token parametrizado a `:p`
-(mismo marcador, sin importar el nombre). Esto es suficiente para la
-gran mayoría de casos. La excepción son endpoints que se diferencian
-solo por el nombre del parámetro y por una regex `where()` en Laravel
-(p. ej. `/busqueda/{historico}` vs `/busqueda/{matricula}`); estos
-se documentan en el catálogo con nombres distintos y el script de
-generación los reporta como requests separadas aunque normalicen
-igual.
+`normalizeForComparison` reduces any parameterized token to `:p`
+(same marker regardless of name). This is enough for the vast
+majority of cases. The exception are endpoints that differ only by
+parameter name and by a `where()` regex in Laravel (e.g.
+`/search/{historic}` vs `/search/{plate}`); these are documented in
+the catalog with different names and the generation script reports
+them as separate requests even though they normalize the same.
 
 #### `stripApiPrefix`
 
@@ -1816,18 +1992,18 @@ export function stripApiPrefix(uri: string): string
 export function joinRoutePath(...segments: string[]): string
 ```
 
-Une los segmentos de una ruta (prefijo de clase/grupo + path del
-método) en una URI normalizada.
+Joins the segments of a path (class/group prefix + method path) into
+a normalized URI.
 
-La barra final se conserva **solo si el último segmento no vacío la
-declaraba**. Esa distinción importa:
+The trailing slash is preserved **only if the last non-empty segment
+declared it**. That distinction matters:
 
-  - Django: `path("<int:id>/", …)` la trae a propósito. Con
-    `APPEND_SLASH = True` (el defecto), llamar sin ella devuelve un
-    301 y un POST pierde el body en la redirección.
-  - NestJS, Spring Boot, ASP.NET y Flask: `@Controller("orders")` +
-    `@Get()` concatenaba `"orders" + "/" + ""` y producía `orders/`.
-    Ahí la barra es un artefacto, no una decisión.
+  - Django: `path("<int:id>/", …)` brings it on purpose. With
+    `APPEND_SLASH = True` (the default), calling without it returns
+    a 301 and a POST loses its body on the redirect.
+  - NestJS, Spring Boot, ASP.NET and Flask: `@Controller("orders")` +
+    `@Get()` concatenated `"orders" + "/" + ""` and produced `orders/`.
+    There the slash is an artifact, not a decision.
 
 #### `topGroupFor`
 
@@ -1835,20 +2011,20 @@ declaraba**. Esa distinción importa:
 export function topGroupFor( uri: string, uriGroupOverrides: Record<string, string> =
 ```
 
-Devuelve el grupo top-level lógico de una URI (primer segmento
-significativo). Por ejemplo:
+Returns the logical top-level group of a URI (first meaningful
+segment). For example:
 
-  "api/clientes"             → "clientes"
-  "api/clientes/{cliente}"   → "clientes"
-  "api/erp/productos"        → "erp"
-  "api/pedidos/historial"    → "pedidos"
-  "alive" / "login"          → "login" / "alive"
+  "api/customers"             → "customers"
+  "api/customers/{customer}"  → "customers"
+  "api/erp/products"          → "erp"
+  "api/orders/history"        → "orders"
+  "alive" / "login"           → "login" / "alive"
 
-Si la URI empieza por `api/`, lo salta. Los casos especiales se
-configuran vía `uriGroupOverrides` (p. ej. `{ "tol/tecdoc": "tol/tecdoc" }`).
+If the URI starts with `api/`, it is skipped. Special cases are
+configured via `uriGroupOverrides` (e.g. `{ "tol/tecdoc": "tol/tecdoc" }`).
 
-@param uri URI a analizar.
-@param uriGroupOverrides Mapa prefijo → clave de grupo (del `ProjectConfig`).
+@param uri URI to analyze.
+@param uriGroupOverrides Map of prefix → group key (from `ProjectConfig`).
 
 #### `prettyGroupName`
 
@@ -1856,14 +2032,14 @@ configuran vía `uriGroupOverrides` (p. ej. `{ "tol/tecdoc": "tol/tecdoc" }`).
 export function prettyGroupName(topGroup: string): string
 ```
 
-El nombre legible de una carpeta a partir de su clave.
+The human-readable name of a folder from its key.
 
-`erp-productos` pasa a `Erp Productos`. Solo afecta a lo que se lee en
-Postman: la clave sigue siendo la que agrupa.
+`erp-products` becomes `Erp Products`. Only affects what is read in
+Postman: the key is still the one that groups.
 
 ### `packages/core/helpers/yaml.helper.ts`
 
-Serializador a YAML para datos planos.
+YAML serializer for flat data.
 
 #### `toYaml`
 
@@ -1873,7 +2049,7 @@ export function toYaml(value: YamlValue): string
 
 ### `packages/core/helpers/zone.helper.ts`
 
-Helpers de zonas lógicas.
+Logical-zone helpers.
 
 #### `zoneForUri`
 
@@ -1881,8 +2057,8 @@ Helpers de zonas lógicas.
 export function zoneForUri(uri: string, config: ProjectConfig): string
 ```
 
-Calcula la zona lógica a partir de la URI del endpoint y la
-configuración del proyecto.
+Computes the logical zone from the endpoint URI and the project
+configuration.
 
 #### `zonesToDisplay`
 
@@ -1890,27 +2066,27 @@ configuración del proyecto.
 export function zonesToDisplay( present: Iterable<string>, config: Pick<ProjectConfig, "zoneOrder" | "defaultZone">, ): string[]
 ```
 
-El orden en que se enseñan las zonas que **tienen contenido**.
+The order in which zones that **have content** are shown.
 
-`zoneOrder` es la preferencia de quien configura el proyecto, no la
-lista de zonas que existen. Y en zero-config —que es el caso normal,
-el de los 21 ejemplos— viene **vacía**, con todos los endpoints
-cayendo en `defaultZone`.
+`zoneOrder` is the preference of whoever configures the project, not
+the list of zones that exist. And in zero-config — the normal case,
+the 21 examples — it comes **empty**, with all endpoints falling into
+`defaultZone`.
 
-`list` y `stats` recorrían `zoneOrder` directamente para imprimir, así
-que en zero-config no imprimían **nada**: `list` decía "9 endpoints en
-la colección, agrupados por zona:" y a continuación dejaba la pantalla
-en blanco. No era un fallo de GraphQL ni de un framework concreto —
-pasaba en los veintiuno, y el comando entero no servía para nada.
+`list` and `stats` used to walk `zoneOrder` directly to print, so in
+zero-config they printed **nothing**: `list` said "9 endpoints in the
+collection, grouped by zone:" and then left the screen blank. It was
+not a GraphQL failure or a specific framework's — it happened in all
+twenty-one, and the entire command served no purpose.
 
-Aquí se devuelven las zonas presentes de verdad: primero las que
-`zoneOrder` nombra, en su orden, y después el resto ordenadas
-alfabéticamente para que dos ejecuciones den lo mismo. Se omiten las
-vacías, que es lo que hacía bien el código anterior.
+Here we return the zones actually present: first those that
+`zoneOrder` names, in their order, then the rest sorted
+alphabetically so two runs produce the same. Empty zones are omitted,
+which is what the previous code did right.
 
 ### `packages/core/language-frontends/typescript/typescript.parser.ts`
 
-`parse(source, filename): TSFile` — el frontend TypeScript.
+`parse(source, filename): TSFile` — the TypeScript frontend.
 
 #### `parse`
 
@@ -1918,25 +2094,25 @@ vacías, que es lo que hacía bien el código anterior.
 export function parse(source: string, filename: string): TSFile
 ```
 
-Parsea `source` (código TS/JS) y devuelve el AST normalizado.
+Parses `source` (TS/JS code) and returns the normalized AST.
 
-`filename` se adjunta al AST para que los adapters puedan
-reportar errores y los scanners enseñárselo al usuario. No se usa
-internamente — Babel lo acepta pero aquí no nos interesa.
+`filename` is attached to the AST so adapters can report errors and
+scanners can show it to the user. It is not used internally — Babel
+accepts it but we do not care here.
 
-Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
-callers que quieren degradar sin ruido usan `parseModule` con un
-array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+If Babel cannot parse the file, throws `SyntaxError`. Callers that
+want to degrade silently use `parseModule` with an
+`IParseDiagnostic` array (a00011 C-7 / B-rev-13).
 
-El orden dentro de cada colección de `TSFile` es top-down respecto
-al archivo: al final del parse cada colección se ordena por
-`(line, column)` ascendente, de modo que el contrato no dependa del
-orden interno del walker (a00011 C-7 / B-rev-11).
+The order within each `TSFile` collection is top-down with respect
+to the file: at the end of the parse each collection is sorted by
+`(line, column)` ascending, so the contract does not depend on the
+internal order of the walker (a00011 C-7 / B-rev-11).
 
-Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
-`filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
-sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
-componentes Next.js / React.
+Audit 2026-09-04 P2 #7: the `jsx` plugin is activated when
+`filename` ends in `.tsx`/`.jsx`. Without this, Babel rejected JSX
+syntax (`<Foo />`) with a syntax error and the scanner lost
+Next.js / React components.
 
 #### `parseModule`
 
@@ -1944,17 +2120,17 @@ componentes Next.js / React.
 export function parseModule( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): TSFile | null
 ```
 
-Variante no lanzadora de `parse`: si Babel rechaza el archivo,
-devuelve `null` y registra la razón en `diagnostics` (si el array
-vino) en vez de tragar el error en silencio.
+Non-throwing variant of `parse`: if Babel rejects the file, returns
+`null` and records the reason in `diagnostics` (if the array came
+in) instead of swallowing the error silently.
 
-El scanner sigue funcionando — un fichero con sintaxis inválida no
-aborta el scan — pero el fallo queda visible para quien quiera
-reportarlo (hoy: `IScanResult.diagnostics`).
+The scanner keeps working — a file with invalid syntax does not
+abort the scan — but the failure stays visible to whoever wants to
+report it (today: `IScanResult.diagnostics`).
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 
-Construir un `SchemaGraph` desde `IValidationSpec[]`.
+Build a `SchemaGraph` from `IValidationSpec[]`.
 
 #### `createObjectNode`
 
@@ -1962,11 +2138,11 @@ Construir un `SchemaGraph` desde `IValidationSpec[]`.
 export function createObjectNode( id: SchemaNodeId, children: ReadonlyArray<ISchemaEdge>, options: ICompositeOptions =
 ```
 
-Construye un nodo `object` con los hijos dados.
+Builds an `object` node with the given children.
 
-`children` se copia: mutar el array del caller después no afecta al
-nodo. El id lo pasa el caller (típicamente, el builder) para evitar
-colisiones en grafos en construcción.
+`children` is copied: mutating the caller's array afterwards does
+not affect the node. The id is provided by the caller (typically the
+builder) to avoid collisions in graphs under construction.
 
 #### `createArrayNode`
 
@@ -1974,12 +2150,12 @@ colisiones en grafos en construcción.
 export function createArrayNode( id: SchemaNodeId, itemId: SchemaNodeId, options: ICompositeOptions =
 ```
 
-Construye un nodo `array` cuyo único hijo es `itemId`.
+Builds an `array` node whose only child is `itemId`.
 
-El item va en un `ISchemaEdge` con `name: "items"` y `required: true`
-— un array sin item no es un array, y un item opcional en un array
-no existe en JSON Schema (el `items` siempre aplica a todos los
-elementos).
+The item lives in an `ISchemaEdge` with `name: "items"` and
+`required: true` — an array without an item is not an array, and an
+optional item in an array does not exist in JSON Schema (`items`
+always applies to every element).
 
 #### `SchemaGraphBuilder`
 
@@ -1987,12 +2163,12 @@ elementos).
 export class SchemaGraphBuilder
 ```
 
-Builder de `SchemaGraph`.
+`SchemaGraph` builder.
 
-Mantiene un contador local de ids y un mapa de nodos. Cada `add*`
-devuelve el id del nodo creado, así el caller puede encadenar
-referencias sin tener que inventar ids. El builder es **monouso**:
-tras `build()`, no admite más `add*`.
+Keeps a local id counter and a node map. Each `add*` returns the id
+of the created node, so the caller can chain references without
+inventing ids. The builder is **single-use**: after `build()`, it
+accepts no more `add*`.
 
 #### `buildSchemaGraph`
 
@@ -2000,16 +2176,16 @@ tras `build()`, no admite más `add*`.
 export function buildSchemaGraph( specs: ReadonlyArray<IValidationSpec>, options: IBuildOptions =
 ```
 
-Construye un `SchemaGraph` mínimo a partir de `IValidationSpec[]`.
+Builds a minimum `SchemaGraph` from `IValidationSpec[]`.
 
-El nodo raíz es un `object` con un hijo por spec. Cada spec se
-traduce con `SchemaGraphBuilder.addFromSpec`. El grafo resultante
-sirve para los exportadores que saben leerlo y, con `flatten-helper`,
-para los que no.
+The root node is an `object` with one child per spec. Each spec is
+translated with `SchemaGraphBuilder.addFromSpec`. The resulting graph
+serves exporters that know how to read it and, with `flatten-helper`,
+those that do not.
 
 ### `packages/core/schema/flatten.helper.ts`
 
-Aplanar un `SchemaGraph` a la lista plana `IEndpointField[]`.
+Flatten a `SchemaGraph` into the flat `IEndpointField[]` list.
 
 #### `flatten`
 
@@ -2017,9 +2193,9 @@ Aplanar un `SchemaGraph` a la lista plana `IEndpointField[]`.
 export function flatten( graph: ISchemaGraph, location: TFieldLocation = "body", ): IEndpointField[]
 ```
 
-Aplana el grafo a partir de su raíz.
+Flattens the graph starting from its root.
 
-Atajo para `flattenFrom(graph, graph.root, "body")`.
+Shortcut for `flattenFrom(graph, graph.root, "body")`.
 
 #### `flattenFrom`
 
@@ -2027,19 +2203,19 @@ Atajo para `flattenFrom(graph, graph.root, "body")`.
 export function flattenFrom( graph: ISchemaGraph, rootId: SchemaNodeId, location: TFieldLocation, ): IEndpointField[]
 ```
 
-Aplana un subgrafo empezando por un nodo concreto.
+Flattens a subgraph starting at a specific node.
 
-`rootId` debe estar en `graph.nodes`. Si no lo está, devuelve `[]`:
-el grafo no contiene la raíz, así que tampoco tiene qué aplanar.
+`rootId` must be in `graph.nodes`. If it is not, returns `[]`: the
+graph does not contain the root, so there is nothing to flatten.
 
-`location` es la ubicación que se les pone a los campos emitidos.
-Un mismo grafo puede aplanarse una vez con `body` y otra con `query`
-si al caller le interesa (no es el caso hoy, pero la función lo
-admite sin coste).
+`location` is the location assigned to the emitted fields. The same
+graph can be flattened once with `body` and once with `query` if the
+caller cares (not the case today, but the function accepts it without
+cost).
 
 ### `packages/core/schema/reference.helper.ts`
 
-Nodos de referencia y resolución de `$ref` en el `SchemaGraph`.
+Reference nodes and `$ref` resolution in the `SchemaGraph`.
 
 #### `createReferenceNode`
 
@@ -2047,14 +2223,14 @@ Nodos de referencia y resolución de `$ref` en el `SchemaGraph`.
 export function createReferenceNode( ref: SchemaNodeId, id: SchemaNodeId, options: IReferenceOptions =
 ```
 
-Construye un nodo `reference`.
+Builds a `reference` node.
 
-El id del nodo referencia (`ref`) debe existir en el grafo destino.
-Comprobarlo al construir costaría O(n) en cada nodo y se vuelve
-frágil en grafos en construcción: el builder suele añadir el
-destino **después** del `reference` y la verificación temprana
-fallaría. La invariante se valida al cierre (`resolveReference` o
-en `flatten-helper`), no en cada `add`.
+The id referenced by the node (`ref`) must exist in the target graph.
+Checking it at build time would be O(n) per node and would become
+brittle on graphs under construction: the builder usually adds the
+target **after** the `reference`, so early verification would fail.
+The invariant is validated at closure (`resolveReference` or in
+`flatten-helper`), not on every `add`.
 
 #### `resolveReference`
 
@@ -2062,11 +2238,11 @@ en `flatten-helper`), no en cada `add`.
 export function resolveReference( graph: ISchemaGraph, ref: SchemaNodeId, ): ISchemaNode | undefined
 ```
 
-Resuelve un `$ref` local.
+Resolves a local `$ref`.
 
-Si el grafo contiene el destino, devuelve el nodo. Si no, devuelve
-`undefined`: el caller decide si tratarlo como error (validación
-estricta) o emitir el `$ref` literal (exportador laxo).
+If the graph contains the target, returns the node. Otherwise returns
+`undefined`: the caller decides whether to treat it as an error
+(strict validation) or to emit the literal `$ref` (lax exporter).
 
 #### `deriveLocalRefName`
 
@@ -2074,19 +2250,19 @@ estricta) o emitir el `$ref` literal (exportador laxo).
 export function deriveLocalRefName( node: ISchemaNode, fallback: (node: ISchemaNode) => string = (n) => n.id, ): string
 ```
 
-Deriva un nombre estable para usar como `$ref` nominal.
+Derives a stable name to use as a nominal `$ref`.
 
-Si el nodo tiene `name`, se usa tal cual: es el nombre lógico que el
-scanner puso y el que cabe esperar en el documento destino. Si no,
-se cae al id: menos bonito, pero garantiza que dos llamadas con el
-mismo input produzcan el mismo nombre.
+If the node has a `name`, it is used as-is: it is the logical name
+the scanner set and the one expected in the target document.
+Otherwise, it falls back to the id: less pretty, but it guarantees
+two calls with the same input produce the same name.
 
-Exportadores que prefieran no inventar nombres para nodos anónimos
-deberían chequear `node.name !== undefined` antes de llamar aquí.
+Exporters that prefer not to invent names for anonymous nodes should
+check `node.name !== undefined` before calling here.
 
 ### `packages/core/schema/scalar.helper.ts`
 
-Constructores de nodos escalares del `SchemaGraph`.
+Scalar node constructors for the `SchemaGraph`.
 
 #### `createScalarNode`
 
@@ -2094,11 +2270,11 @@ Constructores de nodos escalares del `SchemaGraph`.
 export function createScalarNode( scalarType: ScalarType, id: SchemaNodeId, options: IScalarOptions =
 ```
 
-Construye un nodo `scalar`.
+Builds a `scalar` node.
 
-El id lo pasa el caller: normalmente viene del `SchemaGraphBuilder`,
-que mantiene el registro único de nodos. Pasar ids externos al
-builder produciría colisiones silenciosas.
+The id is provided by the caller: usually it comes from the
+`SchemaGraphBuilder`, which keeps the single registry of nodes.
+Passing ids from outside the builder would cause silent collisions.
 
 #### `createEnumNode`
 
@@ -2106,12 +2282,12 @@ builder produciría colisiones silenciosas.
 export function createEnumNode( values: ReadonlyArray<string>, id: SchemaNodeId, options: IScalarOptions =
 ```
 
-Construye un nodo `enum`.
+Builds an `enum` node.
 
-`values` no se valida aquí: el caller sabe lo que está declarando, y
-una lista vacía es un caso real (un `enum` declarado en el código
-que el scanner no ha sabido poblar). Lo que sí se congela es la
-referencia: un `enum` no debería mutar tras construirse.
+`values` is not validated here: the caller knows what they are
+declaring, and an empty list is a real case (an `enum` declared in
+code that the scanner did not populate). What is frozen is the
+reference: an `enum` should not mutate after being built.
 
 #### `createLiteralNode`
 
@@ -2119,12 +2295,12 @@ referencia: un `enum` no debería mutar tras construirse.
 export function createLiteralNode( literal: unknown, id: SchemaNodeId, ): ISchemaNode
 ```
 
-Construye un nodo `literal`.
+Builds a `literal` node.
 
-`literal` es `unknown` porque admite cualquier valor JSON primitivo:
-un `42`, un `"foo"`, un `true`, un `null`. Lo que el exportador hace
-con él depende del formato destino: JSON Schema lo pinta como
-`{ const: <valor> }`.
+`literal` is `unknown` because it accepts any JSON primitive value:
+a `42`, a `"foo"`, a `true`, a `null`. What the exporter does with it
+depends on the target format: JSON Schema renders it as
+`{ const: <value> }`.
 
 #### `constraintsFromValidationSpec`
 
@@ -2132,21 +2308,21 @@ con él depende del formato destino: JSON Schema lo pinta como
 export function constraintsFromValidationSpec( spec: IValidationSpec, ): ISchemaConstraints | undefined
 ```
 
-Traduce las restricciones de un `IValidationSpec` a `ISchemaConstraints`.
+Translates the constraints of an `IValidationSpec` to `ISchemaConstraints`.
 
-Las restricciones viven **fuera del nodo**: un nodo `scalar` lleva su
-tipo (`string`, `integer`…) y este objeto lleva los adornos
-(`format`, `minimum`, `pattern`…). Separarlas deja claro que son
-ortogonales y que `flatten-helper` puede tratar los constraints como
-metadato sin tener que recorrerse el grafo.
+Constraints live **outside the node**: a `scalar` node carries its
+type (`string`, `integer`…) and this object carries the adornments
+(`format`, `minimum`, `pattern`…). Separating them makes clear that
+they are orthogonal, and that `flatten-helper` can treat constraints
+as metadata without walking the graph.
 
-Devuelve `undefined` si no hay ninguna restricción: el `ISchemaNode`
-distingue entre "no tiene constraints" y "tiene constraints vacíos",
-y aquí respetamos esa distinción.
+Returns `undefined` if there are no constraints: `ISchemaNode`
+distinguishes between "has no constraints" and "has empty
+constraints", and we respect that distinction here.
 
 ### `packages/core/schema/serialize.helper.ts`
 
-Serialización del `SchemaGraph` para fronteras de proceso.
+Serialization of the `SchemaGraph` for process boundaries.
 
 #### `createSchemaGraph`
 
@@ -2154,15 +2330,15 @@ Serialización del `SchemaGraph` para fronteras de proceso.
 export function createSchemaGraph( nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>, root: SchemaNodeId, ): ISchemaGraph
 ```
 
-Construye un `ISchemaGraph` a partir de un `Map` y un id raíz.
+Builds an `ISchemaGraph` from a `Map` and a root id.
 
-Devuelve un objeto con `toDTO()` enlazado al mapa. Es la única
-forma válida de satisfacer el interface desde código externo: los
-literales `{ nodes: map, root }` ya no compilan porque al interface
-le falta `toDTO`.
+Returns an object with `toDTO()` bound to the map. This is the only
+valid way to satisfy the interface from external code: literals of
+the form `{ nodes: map, root }` no longer compile because the
+interface requires `toDTO`.
 
-Si necesitas un grafo desde un DTO, usa `fromDTO(dto)` (que a su
-vez delega aquí).
+If you need a graph from a DTO, use `fromDTO(dto)` (which in turn
+delegates here).
 
 #### `toDTO`
 
@@ -2170,16 +2346,16 @@ vez delega aquí).
 export function toDTO(graph: ISchemaGraph): ISchemaGraphDTO
 ```
 
-Convierte un `ISchemaGraph` a su DTO JSON-serializable.
+Converts an `ISchemaGraph` to its JSON-serializable DTO.
 
-Implementa el método `toDTO()` del interface y, además, está
-exportada como función libre. Los dos caminos producen el mismo
-resultado: `graph.toDTO() === toDTO(graph)` para cualquier grafo.
+Implements the interface's `toDTO()` method and is also exported as
+a free function. Both paths produce the same result:
+`graph.toDTO() === toDTO(graph)` for any graph.
 
-El array `nodes` sale en el orden de iteración del `Map` subyacente
-(orden de inserción). Eso garantiza que dos llamadas sobre el mismo
-grafo producen el mismo DTO, y que `fromDTO(toDTO(graph))` recupera
-el mismo grafo por igualdad de contenido.
+The `nodes` array comes out in the underlying `Map`'s iteration
+order (insertion order). That guarantees two calls on the same
+graph produce the same DTO, and `fromDTO(toDTO(graph))` recovers
+the same graph by content equality.
 
 #### `fromDTO`
 
@@ -2187,13 +2363,13 @@ el mismo grafo por igualdad de contenido.
 export function fromDTO(dto: ISchemaGraphDTO): ISchemaGraph
 ```
 
-Reconstruye un `ISchemaGraph` desde un DTO.
+Rebuilds an `ISchemaGraph` from a DTO.
 
-Crea un nuevo `Map` con las entradas del DTO y lo envuelve con
-`createSchemaGraph` (que añade `toDTO`). Útil en la frontera
-contraria: si el grafo viene como JSON desde MCP, caché o un
-snapshot persistido, esta función lo devuelve en la forma in-memory
-con la que trabajan los exportadores.
+Creates a new `Map` from the DTO entries and wraps it with
+`createSchemaGraph` (which adds `toDTO`). Useful on the opposite
+boundary: if the graph comes as JSON from MCP, cache, or a persisted
+snapshot, this function returns it in the in-memory form exporters
+work with.
 
 #### `sortByLocation`
 
@@ -2201,21 +2377,21 @@ con la que trabajan los exportadores.
 export function sortByLocation(graph: ISchemaGraph): ISchemaGraph
 ```
 
-Devuelve una copia del grafo con los nodos en orden estable.
+Returns a copy of the graph with nodes in stable order.
 
-Hoy: la copia mantiene el orden de iteración del `Map` original
-(que es el orden de inserción), así que el resultado es estable
-para el mismo grafo de entrada.
+Today: the copy keeps the iteration order of the original `Map`
+(insertion order), so the result is stable for the same input
+graph.
 
-Mañana: cuando `ISchemaNode` lleve `location?: { line, column }`,
-esta función ordena por `(line, column, id)` — el mismo orden en
-que aparecen en el fichero fuente. Los AST frontend
-(`a00010 S7`) producen ese orden top-down; este helper lo
-preserva al cruzar la frontera JSON.
+Tomorrow: when `ISchemaNode` carries `location?: { line, column }`,
+this function sorts by `(line, column, id)` — the same order in
+which they appear in the source file. The AST frontend
+(`a00010 S7`) produces that top-down order; this helper preserves
+it when crossing the JSON boundary.
 
 ### `packages/core/schema/union.helper.ts`
 
-Nodos de unión e intersección para el `SchemaGraph`.
+Union and intersection nodes for the `SchemaGraph`.
 
 #### `createUnionNode`
 
@@ -2223,12 +2399,12 @@ Nodos de unión e intersección para el `SchemaGraph`.
 export function createUnionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
 ```
 
-Construye un nodo `union` (`oneOf`).
+Builds a `union` node (`oneOf`).
 
-`alternatives` puede tener un solo elemento: `oneOf` con un único
-candidato es legal y se aplana al candidato. No lo aplanamos aquí:
-si el caller lo quiere plano, lo construye plano. El helper solo
-respeta el shape que le llega.
+`alternatives` may have a single element: `oneOf` with a single
+candidate is legal and flattens to that candidate. We do not flatten
+it here: if the caller wants it flat, they build it flat. The helper
+only respects the shape it receives.
 
 #### `createIntersectionNode`
 
@@ -2236,15 +2412,16 @@ respeta el shape que le llega.
 export function createIntersectionNode( alternatives: ReadonlyArray<SchemaNodeId>, id: SchemaNodeId, options: ICompositeOptions =
 ```
 
-Construye un nodo `intersection` (`allOf`).
+Builds an `intersection` node (`allOf`).
 
-Vacío: un `allOf` sin candidatos equivale a `true` en JSON Schema,
-que es un caso patológico. El caller decide si pasa lista vacía
-(el helper la respeta sin error) o si la rechaza antes de llamar.
+Empty: an `allOf` without candidates equals `true` in JSON Schema,
+which is a pathological case. The caller decides whether to pass an
+empty list (the helper respects it without error) or reject it before
+calling.
 
 ### `packages/core/validation/validation-enricher.service.ts`
 
-Registry de enriquecedores de validación agnósticos.
+Registry of framework-agnostic validation enrichers.
 
 #### `registerValidationEnricher`
 
@@ -2252,13 +2429,14 @@ Registry de enriquecedores de validación agnósticos.
 export function registerValidationEnricher(e: IValidationEnricher): void
 ```
 
-Registra (o reemplaza) un enricher para su provider.
+Registers (or replaces) an enricher for its provider.
 
-Idempotente: registrar dos veces el mismo provider deja al segundo
-como activo. El contrato dice "un enricher por provider", así que
-los dobles registros son un error de programación — pero el registry
-no se queja porque un test que registra un stub y luego el real
-(o al revés) sigue siendo útil mientras los dos se comporten igual.
+Idempotent: registering the same provider twice leaves the second
+one active. The contract says "one enricher per provider", so
+double registrations are a programming error — but the registry
+does not complain because a test that registers a stub and then the
+real one (or vice versa) is still useful as long as they behave the
+same.
 
 #### `getValidationEnricher`
 
@@ -2272,16 +2450,18 @@ export function getValidationEnricher( p: ValidationProvider, ): IValidationEnri
 export function runValidationEnrichers(spec: EndpointSpec): EndpointSpec
 ```
 
-Ejecuta el enricher registrado para el `provider` del spec.
+Runs the enricher registered for the spec's `provider`.
 
-  - Sin `validationSource` → no hay nada que enriquecer; devuelve el spec igual.
-  - Con `validationSource` pero sin enricher registrado → no es un
-    error: significa que ese framework aún no migró. El spec vuelve igual.
-  - Con enricher registrado → devuelve `enricher.enrich(spec)`.
+  - No `validationSource` → nothing to enrich; returns the spec unchanged.
+  - With `validationSource` but no registered enricher → not an
+    error: it means that framework has not migrated yet. The spec
+    comes back unchanged.
+  - With a registered enricher → returns `enricher.enrich(spec)`.
 
-La función es pura y síncrona. Phase 1 sólo necesita esto; mover el
-I/O a los enrichers será follow-up de la siguiente fase (cada
-provider ya carga sus reglas cuando construye el spec, en el adapter).
+The function is pure and synchronous. Phase 1 only needs this;
+moving I/O into the enrichers is follow-up for the next phase (each
+provider already loads its rules when building the spec, in the
+adapter).
 
 #### `_resetValidationEnrichersForTests`
 

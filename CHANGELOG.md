@@ -17,7 +17,7 @@ Brand rename (track: `export-to-postman` → `api-source-tanit`). Full list:
 - Sidecar binary: `apisrc-<target-triple>` (CLI bin), wrapping the app **Tanit**.
 - Postman `creator.name`: `"tanit"`; Insomnia `__export_source`: `"tanit"`.
 
-Proposals historical (`p00001`–`p00043`, `x00001`–`x00025`, `a00001`–`a00016`, etc.) keep `track: export-to-postman` as archaeology — links to the old name in markdown are stable. See [`b00001`](docs/delendai/proposals/ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md).
+Proposals historical (`p00001`–`p00043`, `x00001`–`x00025`, `a00001`–`a00016`, etc.) keep `track: export-to-postman` as archaeology — links to the old name in markdown are stable. See [`b00001`](docs/delendai/proposals/done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md).
 
 ## Sin publicar — 2026-08-07
 
