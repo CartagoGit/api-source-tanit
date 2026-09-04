@@ -2,7 +2,7 @@
 id: x00025
 title: "routesByService acumula en lugar de sobrescribir + dedupe por OperationId"
 kind: fix
-status: done
+status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04

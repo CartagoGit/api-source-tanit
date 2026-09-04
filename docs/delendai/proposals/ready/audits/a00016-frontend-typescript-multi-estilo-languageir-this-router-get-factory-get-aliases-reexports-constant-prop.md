@@ -2,7 +2,7 @@
 id: a00016
 title: "Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop)"
 kind: audit
-status: done
+status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04

@@ -2,7 +2,7 @@
 id: a00015
 title: "GraphQL embedded SDL por AST TS (no regex sobre source crudo)"
 kind: audit
-status: done
+status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04

@@ -2,7 +2,7 @@
 id: a00014
 title: "effectiveProjectRoot centralizado en core + migración de los 21 scanners"
 kind: audit
-status: done
+status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04
