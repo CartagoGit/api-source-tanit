@@ -28,6 +28,7 @@ import type {
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 
@@ -342,8 +343,8 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // tiene ningún `.graphql` en disco, el scanner devolvía 0
     // operaciones. Ahora recorre además `.ts`/`.js`/`.tsx`/`.jsx`
     // y extrae los bloques `gql\`…\`` antes de aplicar el parser.
-    const schemaFiles = await collectFiles(match.projectRoot, isSchemaFile);
-    const sourceFiles = await collectFiles(match.projectRoot, isSourceJsTsFile);
+    const schemaFiles = await collectFiles(effectiveProjectRoot(match), isSchemaFile);
+    const sourceFiles = await collectFiles(effectiveProjectRoot(match), isSourceJsTsFile);
 
     // Audit segunda revisión #10 (custom scalars + ciclo de scan):
     // dos pasadas. La primera recoge todos los escalares
@@ -367,7 +368,7 @@ export class GraphQlRouteScanner implements IRouteScanner {
     const seen = new Set<string>();
 
     for await (const { path, text } of readFilesInOrder(schemaFiles)) {
-      const sourceFile = relative(match.projectRoot, path);
+      const sourceFile = relative(rawProjectRoot(match), path);
       const extracted = extractEmbeddedSdl(text);
       for (const sdl of [text, ...extracted]) {
         for (const op of scanSchema(
@@ -387,7 +388,7 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // cuenta como servidor; este paso es complementario y solo añade
     // operaciones nuevas (el `seen` dedupe evita duplicados).
     for await (const { path, text } of readFilesInOrder(sourceFiles)) {
-      const sourceFile = relative(match.projectRoot, path);
+      const sourceFile = relative(rawProjectRoot(match), path);
       for (const sdl of extractEmbeddedSdl(text)) {
         for (const op of scanSchema(
           sdl,

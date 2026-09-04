@@ -28,7 +28,7 @@ import { join, relative } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
-import { effectiveScanRoot } from "../../core/discovery/scan-root.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IEndpointValidation,
   IProjectMatch,
@@ -115,11 +115,12 @@ export class RustRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    // a00012 S1.b: la raíz efectiva respeta `frameworkSearchRoot` para
-    // monorepos. Antes era `match.projectRoot` directo, lo que en un
-    // monorepo hacía que `collectFiles` caminase el árbol del
-    // workspace entero en lugar del subdirectorio del framework.
-    const files = await collectFiles(effectiveScanRoot(match), isRustSourceFile);
+    // a00012 S1.b / a00014 S2: la raíz efectiva respeta
+    // `frameworkSearchRoot` para monorepos. Antes era
+    // `match.projectRoot` directo, lo que en un monorepo hacía que
+    // `collectFiles` caminase el árbol del workspace entero en lugar
+    // del subdirectorio del framework.
+    const files = await collectFiles(effectiveProjectRoot(match), isRustSourceFile);
     const routes: ParsedRoute[] = [];
     // `structs` vive aquí, no como `private readonly` de instancia: si
     // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
@@ -131,7 +132,7 @@ export class RustRouteScanner implements IRouteScanner {
     // entrada: la colección tiene que salir igual cada vez.
     for await (const { path: file, text: source } of readFilesInOrder(files)) {
 
-      const sourceFile = relative(match.projectRoot, file);
+      const sourceFile = relative(rawProjectRoot(match), file);
       const prefix = scopePrefixOf(source);
 
       for (const route of parseAttributeRoutes(source, prefix, sourceFile)) {

@@ -24,6 +24,7 @@ import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -122,7 +123,7 @@ export class SpringBootRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     // a00010 / B-05: escanear AMBAS raíces canónicas — Java y Kotlin.
     // Un proyecto Kotlin estándar vive en `src/main/kotlin/`; antes se
     // ignoraba entero porque `scan()` solo entraba por `java`.
@@ -358,7 +359,7 @@ export class SpringBootBeanValidationProvider implements IValidationSpecProvider
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
-    const abs = join(match.projectRoot, route.sourceFile);
+    const abs = join(rawProjectRoot(match), route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");
@@ -372,7 +373,7 @@ export class SpringBootBeanValidationProvider implements IValidationSpecProvider
     let fields = parseJavaDto(raw, dtoType);
     if (fields.length === 0) {
       // Fallback: buscar el DTO en otros archivos Java.
-      fields = await findDtoInProject(match.projectRoot, dtoType, route.uri);
+      fields = await findDtoInProject(effectiveProjectRoot(match), dtoType, route.uri);
     }
     if (fields.length === 0) return { endpointKey, fields: [] };
     return { endpointKey, fields };

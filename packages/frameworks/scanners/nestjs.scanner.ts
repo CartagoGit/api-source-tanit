@@ -23,6 +23,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { declaredDependencies, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { join } from "node:path";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -68,11 +69,15 @@ async function isNestJsProject(projectRoot: string): Promise<boolean> {
  * homónima en `nextjs.scanner.ts`: cada scanner tiene su propia
  * implementación porque cada uno necesita un search root distinto —
  * aquí solo `src/`; en nextjs, `app/` y `pages/`. f00011 S1.
+ *
+ * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
+ * `packages/core/discovery/effective-project-root.helper.ts`, que es
+ * la primitiva única que usan los 21 scanners. El helper local se
+ * conserva como no-op histórico para no romper call sites externos,
+ * pero el scanner ya no la usa.
  */
 function nestjsEffectiveSearchRoot(match: IProjectMatch): string {
-  return match.frameworkSearchRoot
-    ? join(match.projectRoot, match.frameworkSearchRoot)
-    : match.projectRoot;
+  return effectiveProjectRoot(match);
 }
 
 /**
@@ -177,7 +182,7 @@ export class NestJsRouteScanner implements IRouteScanner {
     // salía sin el prefijo.
     const globalPrefix = await readGlobalPrefix(
       searchRoot,
-      match.projectRoot,
+      rawProjectRoot(match),
     );
     if (!globalPrefix) return { routes: out };
 
@@ -367,7 +372,7 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile || !route.description) return { endpointKey, fields: [] };
-    const abs = join(match.projectRoot, route.sourceFile);
+    const abs = join(rawProjectRoot(match), route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");

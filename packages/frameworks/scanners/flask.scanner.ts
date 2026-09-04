@@ -23,6 +23,7 @@ import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
 import { marshmallowSchemaToSpecs, parseMarshmallowSchemas } from "../parsers/marshmallow-schema.helper.js";
 import { parsePydanticModels, pydanticModelToSpecs } from "../parsers/pydantic-schema.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { join } from "node:path";
 import type {
   IProjectMatch,
@@ -116,7 +117,7 @@ export class FlaskRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     // 1) app.py + src/*.py + views.py.
     for (const entry of ["app.py", "views.py", "main.py"]) {
       const abs = join(projectRoot, entry);
@@ -340,10 +341,10 @@ export class FlaskValidationProvider implements IValidationSpecProvider {
       return { endpointKey, fields: [] };
     }
 
-    const schemas = await collectFlaskSchemas(match.projectRoot);
+    const schemas = await collectFlaskSchemas(effectiveProjectRoot(match));
     if (schemas.size === 0) return { endpointKey, fields: [] };
 
-    const handlerBody = await readHandlerBody(route, match.projectRoot);
+    const handlerBody = await readHandlerBody(route, rawProjectRoot(match));
     const chosen =
       pickSchemaByReference(handlerBody, schemas) ?? pickSchemaByConvention(route, schemas);
 

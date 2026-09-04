@@ -23,6 +23,7 @@ import { join, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { collectFilesFrom } from "../../core/helpers/fs-walk.helper.js";
 import { parsePydanticModels, pydanticFieldToSpec } from "../parsers/pydantic-schema.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -120,7 +121,7 @@ export class FastApiRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectPyFiles(match.projectRoot);
+    const files = await collectPyFiles(effectiveProjectRoot(match));
     const routerPrefixes = new Map<string, string>();
     const out: ParsedRoute[] = [];
 
@@ -156,7 +157,7 @@ export class FastApiRouteScanner implements IRouteScanner {
           }
           const fullPath = (prefix + path).replace(/\/+/g, "/");
           const relFile = file
-            .replace(match.projectRoot, "")
+            .replace(rawProjectRoot(match), "")
             .replace(/^[\\/]/, "")
             .split(sep)
             .join("/");
@@ -218,7 +219,7 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
     _scanResult: IScanResult,
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
-    const files = await collectPyFiles(match.projectRoot);
+    const files = await collectPyFiles(effectiveProjectRoot(match));
     const models: Map<string, ModelInfo> = new Map();
 
     // 1) Recoger todos los BaseModel del proyecto.

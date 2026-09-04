@@ -32,6 +32,7 @@ import type {
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { countLinesBefore, findNearestBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
@@ -52,26 +53,6 @@ async function isNextJsProject(projectRoot: string): Promise<boolean> {
   // las miraban y otros no.
   const deps = declaredDependencies(parsed.value);
   return typeof deps.next === "string";
-}
-
-/**
- * Devuelve la raíz efectiva donde este scanner mira sus señales.
- *
- * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
- * tras detectar monorepo), se une con `projectRoot`. En monorepos el
- * `package.json` raíz es el del workspace y el `next.config.*` vive en
- * `apps/web/` — sin este salto, el detector miraba donde no tocaba y el
- * scan salía vacío. Si el campo está ausente, se devuelve `projectRoot`
- * sin modificar (compatibilidad con los proyectos planos).
- *
- * Función pura: vive aquí en vez de en `core/helpers/` para no abrir
- * un módulo nuevo por una sola función. La usan los tres scanners que
- * tocan f00011 S1.
- */
-function effectiveSearchRoot(match: IProjectMatch): string {
-  return match.frameworkSearchRoot
-    ? join(match.projectRoot, match.frameworkSearchRoot)
-    : match.projectRoot;
 }
 
 /**
@@ -252,7 +233,7 @@ export class NextJsRouteScanner implements IRouteScanner {
     // (ej. `"apps/web"`) y el scanner mira ahí en vez de en la raíz.
     // Sin esto, un proyecto Next.js dentro de `apps/web/` salía con
     // cero rutas porque `app/` y `pages/` viven en el subdir.
-    const projectRoot = effectiveSearchRoot(match);
+    const projectRoot = effectiveProjectRoot(match);
     // 1) App Router.
     for (const base of ["app", join("src", "app")]) {
       const dir = join(projectRoot, base);
@@ -429,7 +410,7 @@ export class NextJsZodProvider implements IValidationSpecProvider {  readonly fr
 
     let raw: string;
     try {
-      raw = await readFile(join(match.projectRoot, route.sourceFile), "utf8");
+      raw = await readFile(join(rawProjectRoot(match), route.sourceFile), "utf8");
     } catch {
       return { endpointKey, fields: [] };
     }

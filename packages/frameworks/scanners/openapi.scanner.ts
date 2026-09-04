@@ -28,6 +28,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { isRecord, parseJson, readArray, readObject, readString } from "../../core/helpers/parse-json.helper.js";
+import { rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 /** Buscar OpenAPI en las localizaciones más comunes. */
@@ -448,7 +449,7 @@ export class OpenApiRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const specRel = this.opts.specPath ?? match.artifacts[0];
     if (!specRel) return { routes: [] };
-    const absPath = resolve(match.projectRoot, specRel);
+    const absPath = resolve(rawProjectRoot(match), specRel);
     let raw: string;
     try {
       raw = await readFile(absPath, "utf8");
@@ -630,7 +631,7 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
   ): Promise<Awaited<ReturnType<IValidationSpecProvider["resolve"]>>> {
     const specRel = this.getSpecPath(match);
     if (!specRel) return { endpointKey: keyOf(route), fields: [] };
-    const absPath = resolve(match.projectRoot, specRel);
+    const absPath = resolve(rawProjectRoot(match), specRel);
     let raw: string;
     try {
       raw = await readFile(absPath, "utf8");

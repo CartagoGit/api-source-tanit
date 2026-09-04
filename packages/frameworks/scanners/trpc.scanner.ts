@@ -28,6 +28,7 @@ import type {
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFilesFrom, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
@@ -252,7 +253,7 @@ export class TrpcRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const files = await collectFilesFrom(
-      ["src", "server", "app", ""].map((d) => (d ? join(match.projectRoot, d) : match.projectRoot)),
+      ["src", "server", "app", ""].map((d) => (d ? join(effectiveProjectRoot(match), d) : effectiveProjectRoot(match))),
       isSourceJsTsFile,
     );
 
@@ -262,7 +263,7 @@ export class TrpcRouteScanner implements IRouteScanner {
     for await (const { path, text: raw } of readFilesInOrder(files)) {
       if (!/@trpc\/server|\brouter\s*\(/.test(raw)) continue;
       const source = stripJsComments(raw);
-      const sourceFile = relative(match.projectRoot, path);
+      const sourceFile = relative(rawProjectRoot(match), path);
 
       const namedRouters = findNamedRouters(source);
       // Una raíz no es "el router sin nombre" — `appRouter` también
