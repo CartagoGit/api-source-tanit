@@ -8,6 +8,7 @@ track: export-to-postman
 date: 2026-09-04
 shippedIn:
   - d4a6d7c  # S1: ServiceGraph shape + groupByService
+  - 32d4677  # S2: toServiceGraph helper adyacente + IToServiceGraphInput
 dependsOn:
   - a00012
 related:
