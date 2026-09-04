@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `export-to-postman` sin argumentos → asistente interactivo.
+ * `apisrc` sin argumentos → asistente interactivo.
  *
  * Para quien no quiere memorizar flags: pregunta la carpeta del
  * proyecto, enseña lo que ha detectado ANTES de escribir nada, y deja
@@ -31,7 +31,7 @@ import { DEFAULT_EXPORT_FORMAT } from "../contracts/constants/core/export-format
  *
  * Un chunk **no es una línea**. Escribiendo a mano coinciden —cada Enter
  * manda lo suyo— pero por una tubería llegan todas juntas en el primer
- * chunk. Esto hacía que `printf "ruta\nn\n" | expostman -i` metiera las
+ * chunk. Esto hacía que `printf "ruta\nn\n" | apisrc -i` metiera las
  * dos respuestas en la primera pregunta: la ruta salía como
  * `ruta\nn` y el asistente decía que la carpeta no existe.
  *
@@ -121,7 +121,7 @@ async function choose(question: string, choices: ReadonlyArray<string>): Promise
 
 const BANNER = `
 ┌──────────────────────────────────────────────────────────┐
-│  export-to-postman — Postman collections from your API  │
+│  apisrc — Postman collections from your API  │
 └──────────────────────────────────────────────────────────┘
 
 Supported frameworks: ${FRAMEWORK_IDS.length}

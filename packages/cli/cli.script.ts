@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * CLI de `@export-to-postman/cli`.
+ * CLI de `@api-source-tanit/cli`.
  *
  * Los comandos se **importan y ejecutan en proceso**. Antes se
  * spawneaba `bun run <script>` resolviendo la ruta del script desde la
@@ -113,11 +113,11 @@ function wrap(text: string, width: number, indent: string): string {
   return lines.join("\n");
 }
 
-const HELP_TEMPLATE = `expostman — Export to Postman (generate Postman collections from your API's source)
+const HELP_TEMPLATE = `apisrc — Tanit (generate Postman collections from your API's source)
 
 USAGE
-  expostman                  Interactive wizard (no flags needed)
-  expostman <command> [flags]
+  apisrc                  Interactive wizard (no flags needed)
+  apisrc <command> [flags]
 
 COMMANDS
 ${Object.entries(COMMANDS)
@@ -126,7 +126,7 @@ ${Object.entries(COMMANDS)
 
 COMMON FLAGS
   --project-root <path>   Project to scan. Defaults to the current folder.
-  --output-dir <path>     Where to write. Defaults to <project>/export-to-postman.
+  --output-dir <path>     Where to write. Defaults to <project>/tanit.
   --output <file>         Exact path of the collection file.
   --basename <name>       Base name for the generated files.
   --config <path>         ProjectConfig file. Auto-detected when omitted.
@@ -157,21 +157,21 @@ ENVIRONMENT VARIABLES
   POSTMAN_API_KEY         Same as --api-key.
 
 EXAMPLES
-  expostman                                  Interactive mode
-  expostman generate                         Scan the current folder
-  expostman generate --project-root ../api   Scan another folder
-  expostman generate --inspect               Preview, write nothing
-  expostman push --api-key pmak-...          Upload to Postman
-  expostman list                             See what was detected
-  expostman generate --framework fastify     Scan as Fastify, no detection
-  expostman watch                            Regenerate on every save
-  expostman generate --format postman,openapi  Postman + an OpenAPI spec
+  apisrc                                  Interactive mode
+  apisrc generate                         Scan the current folder
+  apisrc generate --project-root ../api   Scan another folder
+  apisrc generate --inspect               Preview, write nothing
+  apisrc push --api-key pmak-...          Upload to Postman
+  apisrc list                             See what was detected
+  apisrc generate --framework fastify     Scan as Fastify, no detection
+  apisrc watch                            Regenerate on every save
+  apisrc generate --format postman,openapi  Postman + an OpenAPI spec
 
 %FORMATS%
 
 %FRAMEWORKS%
 
-Docs: https://github.com/CartagoGit/export-to-postman#readme
+Docs: https://github.com/CartagoGit/api-source-tanit#readme
 `;
 
 /**

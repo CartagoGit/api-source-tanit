@@ -18,7 +18,7 @@
 # Porque el ciclo es editar-y-probar. Un `COPY` obligaría a reconstruir
 # la imagen por cada carácter que se toca.
 
-name: expostman
+name: tanit
 
 # `bash -c`, nunca `bash -lc`.
 #
@@ -32,7 +32,7 @@ x-toolchain: &toolchain
     context: ..
     dockerfile: .docker/Dockerfile
     target: toolchain
-  image: expostman/toolchain:local
+  image: tanit/toolchain:local
   working_dir: /work
   volumes:
     - ..:/work
@@ -46,7 +46,7 @@ x-toolchain: &toolchain
     # el directorio está vacío. El síntoma es un typecheck que falla
     # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
     # tiene nada que ver con los tipos.
-    - plugin_node_modules:/work/packages/plugins/delendai_expostman/node_modules
+    - plugin_node_modules:/work/packages/plugins/delendai_tanit/node_modules
     - cargo_registry:/usr/local/cargo/registry
     # Fuera del árbol del repo, a propósito.
     #
@@ -120,7 +120,7 @@ services:
     #
     # En un corredor de CI el AppImage sí sale, y ahí se produce.
     environment:
-      EXPOSTMAN_BUNDLES: deb
+      TANIT_BUNDLES: deb
       CARGO_TARGET_DIR: /cargo-target
       NO_COLOR: "1"
       CI: "true"
@@ -142,7 +142,7 @@ services:
       context: ..
       dockerfile: .docker/Dockerfile
       target: runtime
-    image: expostman/runtime:local
+    image: tanit/runtime:local
     command: ["--help"]
 
 volumes:

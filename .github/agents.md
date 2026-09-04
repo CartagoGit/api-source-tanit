@@ -1,4 +1,4 @@
-# agents.md — `export-to-postman`
+# agents.md — `api-source-tanit`
 
 Una página para orientarse antes de tocar nada. Las reglas vinculantes
 viven en [`docs/delendai/AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md);
@@ -10,14 +10,14 @@ esto es el mapa.
 
 Genera colecciones de Postman v2.1.0 desde el **código** de una API, sin
 anotaciones ni servidor levantado. La lista de frameworks sale del
-registro (`SUPPORTED_FRAMEWORKS`) y la imprime `expostman --help`: no se
+registro (`SUPPORTED_FRAMEWORKS`) y la imprime `apisrc --help`: no se
 escribe aquí porque una copia se queda vieja en cuanto se añade uno.
 
 Además de REST cubre dos protocolos sin rutas visibles: **GraphQL** (una
 request por operación del esquema, con la consulta escrita) y **tRPC**
 (la traducción a HTTP que nadie se sabe de memoria).
 
-Se distribuye de tres formas: paquete npm (`export-to-postman`),
+Se distribuye de tres formas: paquete npm (`api-source-tanit`),
 binario autocontenido por plataforma, y plugin de delendai.
 
 ---
@@ -79,7 +79,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 | Parsear una librería de validación nueva | `packages/frameworks/parsers/<lib>-schema.helper.ts` |
 | Añadir un comando al CLI | `packages/cli/commands/<nombre>.script.ts` + entrada en `packages/cli/cli.script.ts` |
 | Añadir un formato de salida | `packages/core/exporters/<fmt>.exporter.ts` + registrarlo |
-| Añadir un tool MCP | `packages/plugins/delendai_expostman/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un tool MCP | `packages/plugins/delendai_tanit/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -104,9 +104,9 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 ## Tools del plugin MCP
 
-Namespace `expostman` (el host los registra como
-`delendai_expostman_<tool>`), declarados en
-[`packages/plugins/delendai_expostman/src/index.ts`](../packages/plugins/delendai_expostman/src/index.ts):
+Namespace `tanit` (el host los registra como
+`delendai_tanit_<tool>`), declarados en
+[`packages/plugins/delendai_tanit/src/index.ts`](../packages/plugins/delendai_tanit/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|

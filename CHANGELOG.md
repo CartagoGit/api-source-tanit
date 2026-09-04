@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.0.0 (2026-09-04) — Renamed to Tanit
+
+Brand rename (track: `export-to-postman` → `api-source-tanit`). Full list:
+
+- Brand: "Export to Postman" → **Tanit**, tagline "API Source Discovery".
+- npm package: `api-source-tanit` (no scope).
+- Repository: `github.com/CartagoGit/api-source-tanit`.
+- CLI bin: `apisrc` (was `expostman`).
+- Plugin: `delendai_tanit`; qualified tools: `delendai_tanit_*`.
+- Output dir: `tanit/` (was `export-to-postman/`).
+- Config dirs: `~/.config/tanit/`, `~/.tanit/` (was `…/expostman/`, `~/.expostman/`).
+- Project dotfile: `.tanitrc.json` (was `.expostmanrc.json`).
+- Env vars: `TANIT_*` (was `EXPOSTMAN_*`).
+- Tauri app: **Tanit** (`productName`), identifier `dev.cartago.tanit`.
+- Sidecar binary: `apisrc-<target-triple>` (CLI bin), wrapping the app **Tanit**.
+- Postman `creator.name`: `"tanit"`; Insomnia `__export_source`: `"tanit"`.
+
+Proposals historical (`p00001`–`p00043`, `x00001`–`x00025`, `a00001`–`a00016`, etc.) keep `track: export-to-postman` as archaeology — links to the old name in markdown are stable. See [`b00001`](docs/delendai/proposals/ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md).
+
 ## Sin publicar — 2026-08-07
 
 ### Novedades

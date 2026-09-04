@@ -4,7 +4,7 @@
  * `AGENT-BOOTSTRAP.md#L62` copia por referencia el invariante universal
  * §6 —"Every public tool declares an `outputSchema`"— y §3.2 lo repite.
  * **Ninguno de los cuatro lo declaraba.** Un agente que llamaba a
- * `delendai_expostman_generate` recibía una salida sin contrato: no
+ * `delendai_tanit_generate` recibía una salida sin contrato: no
  * podía validar la respuesta ni saber qué campos existen sin ejecutarla
  * y mirar lo que salía.
  *
@@ -50,7 +50,7 @@ import { describe, expect, test } from "vitest";
  * la realidad que no.
  */
 const contratos = await import(
-  "../../packages/plugins/delendai_expostman/src/lib/contracts/plugin.interface"
+  "../../packages/plugins/delendai_tanit/src/lib/contracts/plugin.interface"
 ).catch(() => null);
 
 const PLUGIN_DEPS = contratos !== null;

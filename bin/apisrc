@@ -1,0 +1,83 @@
+#!/usr/bin/env sh
+# apisrc — lanzador POSIX.
+#
+# NO tiene lógica de dominio: resuelve dónde está el motor y le pasa los
+# argumentos tal cual. Si algún día este fichero empieza a parsear rutas
+# o a entender de frameworks, está mal.
+#
+# El error que evita: la versión anterior de esto (`runtime/`, retirada
+# en p00021) reimplementaba el generador en Node, Python y PHP. Las tres
+# copias divergieron del original y ninguna tenía tests.
+#
+# Orden de resolución, de más cercano a más lejano:
+#   0. La fuente del repo, si este lanzador está dentro de un checkout
+#   1. Un binario ya cacheado en ~/.apisrc/
+#   2. `apisrc` en el PATH (instalación global de npm/bun)
+#   3. `bunx` / `npx` contra el paquete publicado
+#   4. Descargar el binario de la release que toque
+set -eu
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+# 0. Dentro del propio repositorio: usar la fuente, no la red.
+#    Sin esto, alguien que clona el repo y ejecuta `./bin/apisrc`
+#    acaba en un 404 de npm — el paquete aún no está publicado — cuando
+#    tenía el CLI a dos carpetas de distancia.
+LOCAL_CLI="$HERE/../packages/cli/cli.script.ts"
+if [ -f "$LOCAL_CLI" ] && command -v bun >/dev/null 2>&1; then
+  exec bun "$LOCAL_CLI" "$@"
+fi
+
+CACHE_DIR="${APISRC_HOME:-$HOME/.apisrc}"
+CACHED="$CACHE_DIR/apisrc"
+REPO="CartagoGit/api-source-tanit"
+
+# 1. Binario cacheado.
+if [ -x "$CACHED" ]; then
+  exec "$CACHED" "$@"
+fi
+
+# 2. Instalado en el PATH. Se comprueba que no seamos nosotros mismos,
+#    o entraríamos en un bucle infinito.
+INSTALLED="$(command -v apisrc 2>/dev/null || true)"
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+if [ -n "$INSTALLED" ] && [ "$INSTALLED" != "$SELF" ]; then
+  exec "$INSTALLED" "$@"
+fi
+
+# 3. Gestores de paquetes de JS, si los hay.
+if command -v bunx >/dev/null 2>&1; then
+  exec bunx --bun api-source-tanit "$@"
+fi
+if command -v npx >/dev/null 2>&1; then
+  exec npx --yes api-source-tanit "$@"
+fi
+
+# 4. Último recurso: descargar el binario de la release.
+case "$(uname -s)" in
+  Linux)  OS="linux" ;;
+  Darwin) OS="darwin" ;;
+  *) echo "apisrc: sistema no soportado: $(uname -s)" >&2; exit 1 ;;
+esac
+case "$(uname -m)" in
+  x86_64|amd64) ARCH="x64" ;;
+  arm64|aarch64) ARCH="arm64" ;;
+  *) echo "apisrc: arquitectura no soportada: $(uname -m)" >&2; exit 1 ;;
+esac
+
+ASSET="apisrc-$OS-$ARCH"
+URL="https://github.com/$REPO/releases/latest/download/$ASSET"
+
+echo "apisrc: no encontrado; descargando $ASSET…" >&2
+mkdir -p "$CACHE_DIR"
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "$URL" -o "$CACHED"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "$CACHED" "$URL"
+else
+  echo "apisrc: hace falta curl o wget para descargar el binario." >&2
+  echo "  O instálalo con: npm i -g api-source-tanit" >&2
+  exit 1
+fi
+chmod +x "$CACHED"
+exec "$CACHED" "$@"

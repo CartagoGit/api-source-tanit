@@ -1,51 +1,55 @@
 # Nombres
 
 Un sitio con todos los nombres del proyecto y qué manda sobre cuál.
-Existe porque había tres a la vez —`postman-from-routes`,
+Existía porque había tres a la vez —`postman-from-routes`,
 `postman-exporter`, `export-to-postman`— y ninguno decía cuál era el
-bueno.
+bueno. La decisión de marca actual (Tanit / `api-source-tanit`) cierra
+esa puerta: el nombre ya describe la categoría completa del producto
+(API Source Discovery) y no una sola función.
 
 ## Lo decidido
 
 | Qué | Nombre | Dónde vive |
 | --- | --- | --- |
-| Producto / repositorio | `export-to-postman` | nombre del repo, `package.json` |
-| Bin canónico | **`expostman`** | `package.json` → `bin` |
-| Bin alias | `export-to-postman` | `package.json` → `bin`, mismo destino |
-| Plugin de delendai | `expostman` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin (interno) | `delendai-plugin-expostman` | `packages/plugins/delendai_expostman/package.json` — `"private": true`, NO se publica |
-| Tools MCP | `delendai_expostman_<tool>` | los construye el host |
-| Carpeta de salida | `export-to-postman/` | `OUTPUT_DIR_NAME` |
-| Prefijo de env vars | `POSTMAN_` | `POSTMAN_PROJECT_ROOT`, `POSTMAN_OUTPUT_DIR`… |
+| Producto / repositorio | `api-source-tanit` | nombre del repo, `package.json` |
+| Bin canónico | **`apisrc`** | `package.json` → `bin` |
+| Plugin de delendai | `tanit` | `src/index.ts` → `plugin.name` |
+| Paquete del plugin (interno) | `delendai-plugin-tanit` | `packages/plugins/delendai_tanit/package.json` — `"private": true`, NO se publica |
+| Tools MCP | `delendai_tanit_<tool>` | los construye el host |
+| Carpeta de salida | `tanit/` | `OUTPUT_DIR_NAME` |
+| Prefijo de env vars | `TANIT_` | `TANIT_PROJECT_ROOT`, `TANIT_OUTPUT_DIR`… |
 
-## Por qué `expostman` para el bin
+## Por qué `apisrc` para el bin
 
 `export-to-postman` son 17 caracteres. Un bin así fricciona en scripts,
-Makefiles, CI y sobre todo al decirlo en voz alta. `expostman` son 9,
-se lee igual ("export postman") y no choca con nada del PATH habitual.
+Makefiles, CI y sobre todo al decirlo en voz alta. La transición pasó
+por `expostman` (9 ch) — ver [p00025](delendai/proposals/done/feats/p00025-nombre-corto-producto-y-bin.md) —
+y llegó a `apisrc` (6 ch), que describe la categoría (API source) sin
+anclar el producto a un solo exportador.
 
-El largo se mantiene **como alias**, apuntando al mismo entrypoint. No
-cuesta nada y evita romper cualquier script que ya lo use.
-
-## Por qué el plugin se llama `expostman` y no `export-to-postman`
+## Por qué el plugin se llama `tanit` y no `api-source-tanit`
 
 Los tools MCP se registran como `<host>_<plugin>_<tool>`. Con el nombre
 largo salían así:
 
 ```
-delendai_export-to-postman_generate
+delendai_api-source-tanit_generate
 ```
 
-39 caracteres para invocar una herramienta desde un agente. Con el corto:
+30 caracteres para invocar una herramienta desde un agente. Con el
+corto:
 
 ```
-delendai_expostman_generate
+delendai_tanit_generate
 ```
 
 El prefijo `delendai_` ya dice de qué host es; el nombre del plugin no
-necesita repetir la frase entera.
+necesita repetir la frase entera. El cambio desde `expostman` a `tanit`
+se hizo porque **Tanit ya no describe un exportador a Postman**: la
+categoría incluye Insomnia, OpenAPI, HAR y otros, así que el nombre del
+plugin debe ser la marca del producto, no la del bin histórico.
 
-## Por qué el plugin vive en `packages/plugins/delendai_expostman/`
+## Por qué el plugin vive en `packages/plugins/delendai_tanit/`
 
 La carpeta dice **para qué host** es el plugin, no qué hace — eso ya lo
 dice el proyecto entero. Si algún día hay un plugin para otro host, su
@@ -110,3 +114,17 @@ grep -rn "<nombre-viejo>" --include="*.ts" --include="*.json" --include="*.md" .
   --exclude-dir=node_modules --exclude-dir=dist \
   | grep -v "proposals/\(done\|retired\|blocked\)/"
 ```
+
+## Tanit decision (2026-09-04)
+
+The rebrand from `export-to-postman` → Tanit / `api-source-tanit` /
+`apisrc` / `delendai_tanit` / `tanit/` was decided on 2026-09-04 and
+implemented as [`b00001`](delendai/proposals/ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md)
+(slices S1–S7). The full rename table and the rationale are in that
+proposal.
+
+This decision supersedes [`p00025`](delendai/proposals/done/feats/p00025-nombre-corto-producto-y-bin.md),
+which introduced `expostman` as a short bin alias but kept the project
+name anchored to "Postman". `p00025` stays in the archive (`done/`) as
+the archaeology of how the short bin was first chosen — the rename to
+Tanit is the next step, not a contradiction.

@@ -63,7 +63,7 @@ jobs:
       - name: Empaquetar
         run: bun run desktop:build
         env:
-          EXPOSTMAN_BUNDLES: ${{ matrix.bundles }}
+          TANIT_BUNDLES: ${{ matrix.bundles }}
 
       - name: Adjuntar a la release
         if: github.event_name == 'release'

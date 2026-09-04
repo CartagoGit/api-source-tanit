@@ -46,7 +46,7 @@ export async function readCollection(path: string): Promise<CollectionRead> {
         reason: `No collection at '${path}'.`,
         nextAction:
           "Generate it first:\n" +
-          "  export-to-postman generate --project-root <your-project>\n" +
+          "  apisrc generate --project-root <your-project>\n" +
           "If it lives elsewhere, say so with `--output-dir`.",
       };
     }
@@ -65,7 +65,7 @@ export async function readCollection(path: string): Promise<CollectionRead> {
       reason: `'${path}' exists but is not valid JSON: ${(error as Error).message}`,
       nextAction:
         "That usually means it was written halfway. Generate it again:\n" +
-        "  export-to-postman generate --project-root <your-project>",
+        "  apisrc generate --project-root <your-project>",
     };
   }
 }

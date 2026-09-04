@@ -22,7 +22,7 @@
 export interface IProjectContext {
   /** Raíz absoluta del proyecto escaneado. */
   readonly projectRoot: string;
-  /** Raíz absoluta del paquete export-to-postman. */
+  /** Raíz absoluta del paquete api-source-tanit. */
   readonly packageRoot: string;
   /** Nombre corto del proyecto, para nombrar los artefactos. */
   readonly projectBasename: string;

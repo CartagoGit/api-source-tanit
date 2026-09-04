@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `expostman watch` — regenera la colección al guardar.
+ * `apisrc watch` — regenera la colección al guardar.
  *
  * Genera una vez y se queda mirando. Cada vez que algo cambia bajo la
  * raíz del proyecto, vuelve a generar y dice qué ha cambiado respecto de
@@ -11,9 +11,9 @@
  * no pararía nunca. Vive en `watcher.service.ts`, con sus tests.
  *
  * Uso:
- *   expostman watch --project-root ./mi-api
- *   expostman watch --project-root ./mi-api --once   # una pasada y sale
- *   expostman watch --format postman,openapi         # regenera los dos
+ *   apisrc watch --project-root ./mi-api
+ *   apisrc watch --project-root ./mi-api --once   # una pasada y sale
+ *   apisrc watch --format postman,openapi         # regenera los dos
  */
 import { dirname, join, relative } from "node:path";
 import { mkdir } from "node:fs/promises";

@@ -2,7 +2,7 @@
  * El historial de generaciones: append y lectura.
  *
  * Cada vez que `generate` o `summary` termina bien, deja una línea en
- * `~/.expostman/history.jsonl`. La interfaz la lee al abrir el
+ * `~/.tanit/history.jsonl`. La interfaz la lee al abrir el
  * dashboard, y el comando `history` la imprime entera o filtrada.
  *
  * ## Por qué append y no reescritura del fichero

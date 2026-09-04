@@ -5,7 +5,7 @@ node_modules/
 # como el proyecto a proposito — `build/` es de Gradle, de Go y de medio
 # mundo, y escribir ahi mezclaba nuestra salida con la de quien usa la
 # herramienta.
-export-to-postman/
+tanit/
 build/
 
 *.log

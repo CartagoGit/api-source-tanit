@@ -1,6 +1,6 @@
 ---
 name: implementation-runner
-description: Bounded subagent for @export-to-postman/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
+description: Bounded subagent for @api-source-tanit/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
 ---
 
 # Implementation Runner (delendai)

@@ -29,12 +29,13 @@ export const VARIANT_TAG = " (auto · FormRequest)";
  * mezcla las colecciones con los artefactos de compilación de quien usa
  * la herramienta, en una carpeta que su `clean` borra entera.
  *
- * `export-to-postman/` es el nombre del proyecto: nadie tiene una
- * carpeta así, y si la tiene, es la nuestra.
+ * `tanit/` es el nombre del proyecto (Tanit — API Source Discovery):
+ * brand-first, corto, sin colisión con `build/` ni `dist/` de los
+ * frameworks que la herramienta escanea.
  *
  * Se sobrescribe con `--output-dir` o `POSTMAN_OUTPUT_DIR`.
  */
-export const OUTPUT_DIR_NAME = "export-to-postman";
+export const OUTPUT_DIR_NAME = "tanit";
 
 /**
  * Métodos HTTP que se emiten a la colección.
@@ -71,4 +72,4 @@ export const SUPPORTED_METHODS = [
  * pasó a llamarse así: los binarios de las releases salían con un nombre
  * que no existe en ninguna otra parte del proyecto.
  */
-export const BIN_NAME = "expostman" as const;
+export const BIN_NAME = "apisrc" as const;

@@ -113,7 +113,7 @@ COPY . /work
 # El CLI no importa el plugin, así que su compilación no lo necesita.
 RUN bun install || true \
     && bun build --compile --target=bun-linux-x64 packages/cli/cli.script.ts \
-         --outfile /out/expostman
+         --outfile /out/apisrc
 
 # --- Etapa 3: solo el binario ------------------------------------------------
 # Para probar el ejecutable en una máquina **sin** Bun ni Node, que es
@@ -124,9 +124,9 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /out/expostman /usr/local/bin/expostman
+COPY --from=builder /out/apisrc /usr/local/bin/apisrc
 
 # Nada de Bun ni de Node aquí a propósito: si el binario los necesitara,
 # este contenedor lo diría en el primer intento.
-ENTRYPOINT ["expostman"]
+ENTRYPOINT ["apisrc"]
 CMD ["--help"]

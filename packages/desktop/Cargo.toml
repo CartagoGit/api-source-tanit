@@ -1,20 +1,20 @@
 # La ventana nativa. Nada más.
 #
 # No hay lógica de producto aquí y no debe haberla: la interfaz es la
-# misma que sirve `expostman ui`, y el pipeline es el mismo binario. Esta
+# misma que sirve `apisrc ui`, y el pipeline es el mismo binario. Esta
 # capa solo abre una ventana y la apunta a `localhost`.
 #
 # Si algún día esto crece, algo se ha duplicado.
 [package]
-name = "expostman-desktop"
+name = "tanit-desktop"
 version = "0.1.0"
 edition = "2021"
-description = "Ventana nativa para Export to Postman"
+description = "Ventana nativa para Tanit"
 license = "MIT"
 # El binario de la app no puede llamarse igual que el sidecar
-# `expostman`, o Tauri se lía al empaquetar.
+# `apisrc`, o Tauri se lía al empaquetar.
 [[bin]]
-name = "expostman-desktop"
+name = "tanit-desktop"
 path = "src/main.rs"
 
 [build-dependencies]

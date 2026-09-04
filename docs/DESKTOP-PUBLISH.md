@@ -112,7 +112,7 @@ se lo descarga.
 ## Cuando algo falla
 
 **El workflow produce un instalador vacío.** Casi siempre es que el
-sidecar no llegó: Tauri busca `binaries/expostman-<target-triple>` y sin
+sidecar no llegó: Tauri busca `binaries/apisrc-<target-triple>` y sin
 ese sufijo falla con un «no such file» que apunta a una ruta que sí
 existe. `desktop:build` lo compila y lo coloca en el mismo paso
 justamente por eso.
@@ -127,3 +127,17 @@ dependencias de Tauri la sube cada pocos meses y el error aparece como
 un fallo de una dependencia transitiva, sin mencionar a Tauri. La
 versión está fijada en `.docker/Dockerfile` con el historial de por qué
 se subió cada vez.
+
+---
+
+## Sidecar naming
+
+`Tanit` (the desktop app, `productName`) embeds `apisrc-<target-triple>` (the CLI
+binary, renamed from `expostman-<...>`). The naming asymmetry is by design:
+
+- **App brand**: Tanit (user-facing).
+- **Sidecar binary**: `apisrc-<target-triple>` (matches the CLI bin name we publish to npm).
+
+When you build the Tauri bundle, the sidecar must be a renamed copy of the CLI
+binary available at `bin/apisrc` (not `bin/tanit-*`). See `tauri.conf.json`
+under `bundle.externalBin` for the exact pattern.

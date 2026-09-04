@@ -1,4 +1,4 @@
-# Copilot / agent instructions — `@export-to-postman/core`
+# Copilot / agent instructions — `@api-source-tanit/core`
 
 > **Project bootstrap:** [`docs/delendai/AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place project

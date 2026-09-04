@@ -7,7 +7,7 @@
  *   1. Todo `bun run <script>` cita un script que existe en el
  *      `package.json`.
  *   2. Toda ruta de fichero que se menciona existe en el repo.
- *   3. Todo `expostman <comando>` es un comando que el CLI conoce.
+ *   3. Todo `apisrc <comando>` es un comando que el CLI conoce.
  *   4. Todo enlace relativo apunta a algo que existe.
  *   5. Los números que la prosa afirma coinciden con la realidad.
  *   6. Cada framework del registro tiene su sección en `FRAMEWORKS.md`.
@@ -42,7 +42,7 @@ const DOC_ROOTS = ["docs", "examples", "."] as const;
  * Las propuestas quedan fuera enteras.
  *
  * Una propuesta describe lo que **todavía no existe**: `p00040` pide un
- * `bun run docs:build` y `p00035` un `expostman ui`, y que no estén en
+ * `bun run docs:build` y `p00035` un `apisrc ui`, y que no estén en
  * el `package.json` es precisamente su motivo de ser. Exigirles que
  * citen solo cosas existentes obligaría a llenarlas de exenciones y
  * convertiría el lint en ruido. Las cerradas, además, describen el
@@ -330,12 +330,12 @@ async function checkSnippet(
     }
   }
 
-  for (const match of snippet.matchAll(/\bexpostman ([a-z][\w-]*)/g)) {
+  for (const match of snippet.matchAll(/\bapisrc ([a-z][\w-]*)/g)) {
     const command = match[1]!;
     if (!known.commands.has(command)) {
       problems.push({
         ...where,
-        detail: `\`expostman ${command}\` no es un comando del CLI`,
+        detail: `\`apisrc ${command}\` no es un comando del CLI`,
       });
     }
   }
@@ -344,7 +344,7 @@ async function checkSnippet(
 /**
  * Las filas de tabla que documentan un comando: `| \`check\` | … |`.
  *
- * Se mira aparte de `expostman <cmd>` porque una tabla no repite el
+ * Se mira aparte de `apisrc <cmd>` porque una tabla no repite el
  * nombre del binario en cada fila, y ese hueco dejó pasar una entrada
  * muerta: `enrich` siguió documentado en `docs/INSTALL.md` después de
  * retirarse del CLI. Documentar un comando que no existe manda a
@@ -448,12 +448,12 @@ async function checkCommandsDocumented(
   }
   const all = texts.join("\n");
   for (const command of commands) {
-    if (all.includes(`expostman ${command}`)) continue;
+    if (all.includes(`apisrc ${command}`)) continue;
     problems.push({
       file: "docs/INSTALL.md",
       line: 0,
       detail:
-        `\`expostman ${command}\` existe en el CLI y no se menciona en la ` +
+        `\`apisrc ${command}\` existe en el CLI y no se menciona en la ` +
         "documentación de usuario. Un comando que solo está en el código no lo usa nadie.",
     });
   }

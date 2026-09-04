@@ -57,7 +57,7 @@ describe("WELL_KNOWN_PATHS", () => {
 
 describe("REPO_ROOT", () => {
   // La búsqueda exige package.json Y delendai.config.json juntos: con
-  // solo el primero pararía en `packages/plugins/delendai_expostman`, que
+  // solo el primero pararía en `packages/plugins/delendai_tanit`, que
   // también tiene el suyo.
   test("es la raíz de verdad, no la de un paquete de dentro", () => {
     expect(existsSync(join(REPO_ROOT, "package.json"))).toBe(true);
@@ -107,7 +107,7 @@ describe("rutas parametrizadas", () => {
   });
 
   test("pluginDir compone bajo plugins/", () => {
-    expect(pluginDir("delendai_expostman")).toBe(DELENDAI_PLUGIN_DIR);
+    expect(pluginDir("delendai_tanit")).toBe(DELENDAI_PLUGIN_DIR);
   });
 
   test("las propuestas están donde dice el registro", () => {

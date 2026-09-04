@@ -62,7 +62,7 @@ export function buildTestScript(spec: EndpointSpec): PostmanEvent {
   const mightHaveBody = codes.some((c) => !NO_BODY_CODES.includes(c));
 
   const exec: string[] = [
-    `// Generado por export-to-postman. Se puede editar: no se`,
+    `// Generado por Tanit. Se puede editar: no se`,
     `// sobreescribe al regenerar si cambias el nombre del test.`,
     `pm.test("Status is a success for ${spec.method}", function () {`,
     `    pm.expect([${list}]).to.include(pm.response.code);`,

@@ -293,7 +293,7 @@ export async function buildZeroConfig(
  *      los adapters de scanner; este helper recibe el resultado.
  *   2. framework (Laravel/Express/...): `filePrefixes` lo trae.
  *   3. config explícito (`delendai.config.json#basePath`,
- *      `.expostmanrc.json#basePath`) — futuro; ver S4.
+ *      `.tanitrc.json#basePath`) — futuro; ver S4.
  *   4. OpenAPI `servers[]` — futuro; ver S4.
  *   5. variable de entorno `POSTMAN_BASE_PATH` — implementada aquí.
  *

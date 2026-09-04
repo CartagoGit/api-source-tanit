@@ -3,7 +3,7 @@
  *
  * Es la parte que casi siempre se ship rota: se escriben secuencias ANSI
  * a pelo y la salida se ve como `[32m✔[0m` en cuanto alguien
- * hace `expostman list > salida.txt`, la mete en un pipe, o la lee un
+ * hace `apisrc list > salida.txt`, la mete en un pipe, o la lee un
  * runner de CI. El color es una ayuda para quien mira; cuando nadie
  * mira, estorba.
  *

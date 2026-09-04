@@ -15,7 +15,7 @@
  *
  * @example
  * ```sh
- * export-to-postman generate --project-root ./mi-api --json | jq .collectionPath
+ * apisrc generate --project-root ./mi-api --json | jq .collectionPath
  * ```
  */
 

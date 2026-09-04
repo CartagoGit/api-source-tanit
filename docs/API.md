@@ -9,12 +9,12 @@ Lo que el `exports` del `package.json` deja importar desde fuera del
 paquete. Todo lo demás es interno y puede cambiar sin aviso.
 
 ```ts
-import { generateWithAllFrameworks } from "export-to-postman/frameworks";
-import { buildCollection } from "export-to-postman/core/domain/collection-builder.service";
+import { generateWithAllFrameworks } from "api-source-tanit/frameworks";
+import { buildCollection } from "api-source-tanit/core/domain/collection-builder.service";
 ```
 
 Si lo que buscas es la herramienta de línea de comandos y no la
-librería, `expostman --help` lista los comandos y las banderas.
+librería, `apisrc --help` lista los comandos y las banderas.
 
 > 165 símbolos en 58 módulos.
 
@@ -404,7 +404,7 @@ export function resolveProjectContext( options: IResolveContextOptions =
 Construye el contexto de un proyecto.
 
 Prioridad de la raíz: parámetro explícito → `--project-root` en argv →
-`POSTMAN_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
+`TANIT_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
 continuar con una raíz adivinada produce colecciones vacías sin decir
 por qué (fue exactamente el bug del CLI con `--project-root`).
 
@@ -491,7 +491,7 @@ Resuelve la ruta del módulo de configuración del host.
 
 Orden:
   1. `--config <path>` (CLI)
-  2. `POSTMAN_CONFIG` (env)
+  2. `TANIT_CONFIG` (env)
   3. `${projectRoot}/resources/postman/examples/...` o `${projectRoot}/examples/...`
   4. Si nada → devuelve sentinel "__zero__" para que loadProject use
      buildZeroConfig().
@@ -1591,7 +1591,7 @@ De dónde sale la raíz del proyecto, una sola vez.
 export function resolveRoot(options: IResolveRootOptions =
 ```
 
-La raíz del proyecto: `--project-root`, luego `POSTMAN_PROJECT_ROOT`,
+La raíz del proyecto: `--project-root`, luego `TANIT_PROJECT_ROOT`,
 y como último recurso el directorio actual.
 
 El orden es el que ya tenían dos de los tres comandos, así que no

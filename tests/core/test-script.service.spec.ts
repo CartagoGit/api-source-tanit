@@ -63,7 +63,7 @@ describe("forma del evento", () => {
   });
 
   test("avisa de que está generado, para que nadie lo dé por escrito a mano", () => {
-    expect(scriptOf("GET")).toContain("export-to-postman");
+    expect(scriptOf("GET")).toContain("Tanit");
   });
 });
 

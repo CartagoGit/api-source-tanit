@@ -1,8 +1,8 @@
-//! La ventana nativa de Export to Postman.
+//! La ventana nativa de Tanit.
 //!
 //! Su único trabajo es **arrancar el sidecar y apuntar la ventana a
 //! donde escuche**. Nada de lógica de producto: la interfaz es la misma
-//! que sirve `expostman ui`, y el pipeline es el mismo binario que usa
+//! que sirve `apisrc ui`, y el pipeline es el mismo binario que usa
 //! la terminal.
 //!
 //! Esto es lo que hace que la propuesta `f00001` no fuera trabajo
@@ -36,7 +36,7 @@ const ARRANQUE_MAX: Duration = Duration::from_secs(5);
 /// hay motivo para provocarlo desde aquí.
 struct Sidecar(Mutex<Option<Child>>);
 
-/// Arranca `expostman ui` y devuelve la URL que imprime.
+/// Arranca `apisrc ui` y devuelve la URL que imprime.
 ///
 /// Se lee la URL de su salida en vez de asumir un puerto: el servidor
 /// busca uno libre si el suyo está ocupado, así que dar por hecho el
@@ -110,11 +110,11 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .manage(Sidecar(Mutex::new(None)))
         .setup(|app| {
-            // El sidecar es el binario `expostman` que Tauri empaqueta
+            // El sidecar es el binario `apisrc` que Tauri empaqueta
             // dentro: una sola fuente de verdad para el pipeline, no dos.
             let ruta = app
                 .path()
-                .resolve("expostman", tauri::path::BaseDirectory::Resource)?;
+                .resolve("apisrc", tauri::path::BaseDirectory::Resource)?;
 
             let (hijo, url) = arrancar_sidecar(&ruta).map_err(|e| {
                 // Un fallo aquí deja la app inservible, así que se dice
@@ -129,7 +129,7 @@ fn main() {
                 "principal",
                 WebviewUrl::External(url.parse().map_err(std::io::Error::other)?),
             )
-            .title("Export to Postman")
+            .title("Tanit")
             .inner_size(980.0, 760.0)
             .build()?;
 

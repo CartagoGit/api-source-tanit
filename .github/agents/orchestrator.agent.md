@@ -4,7 +4,7 @@ display-name: Orchestrator (delendai)
 icon: $(tools)
 model: MiniMax M3 (minimax)
 description: |
-    Root orchestrator for @export-to-postman/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server.
+    Root orchestrator for @api-source-tanit/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server.
 user-invocable: true
 ---
 

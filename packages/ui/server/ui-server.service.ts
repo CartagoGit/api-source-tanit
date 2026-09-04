@@ -1,5 +1,5 @@
 /**
- * El transporte de `expostman ui`: puerto, seguridad y apagado.
+ * El transporte de `apisrc ui`: puerto, seguridad y apagado.
  *
  * Sobre `Bun.serve`, que **ya está en el runtime que el binario lleva
  * dentro**. Eso es lo que hace que la interfaz no añada ni una
@@ -129,7 +129,7 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
               { status: 403 },
             );
           }
-          if (request.headers.get("x-expostman-token") !== testigo) {
+          if (request.headers.get("x-tanit-token") !== testigo) {
             return Response.json(
               {
                 ok: false,

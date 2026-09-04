@@ -71,7 +71,7 @@
         "roots": [
           "docs/delendai",
           "README.md",
-          "packages/plugins/delendai_expostman/README.md"
+          "packages/plugins/delendai_tanit/README.md"
         ],
         "extensions": [
           "md",
@@ -301,8 +301,8 @@
     "prompt-eval": {
       "options": {}
     },
-    "expostman": {
-      "path": "packages/plugins/delendai_expostman/src/index.ts",
+    "tanit": {
+      "path": "packages/plugins/delendai_tanit/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}",
         "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts"

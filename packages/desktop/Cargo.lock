@@ -738,7 +738,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "expostman-desktop"
+name = "tanit-desktop"
 version = "0.1.0"
 dependencies = [
  "tauri",

@@ -1,4 +1,4 @@
-# AGENTS.md — working in `@export-to-postman/core`
+# AGENTS.md — working in `@api-source-tanit/core`
 
 > **Project bootstrap:** [`docs/delendai/AGENT-BOOTSTRAP.md`](docs/delendai/AGENT-BOOTSTRAP.md).
 > Read that file once per session — it is the **only** place project

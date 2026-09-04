@@ -6,7 +6,7 @@
  * tenga tanto cuidado es otro, y es el que importa aquí.
  *
  * **La herramienta escribe DENTRO de lo que vigila.** La colección va a
- * `<proyecto>/export-to-postman/`, que cuelga de la misma raíz que se
+ * `<proyecto>/tanit/`, que cuelga de la misma raíz que se
  * está observando. Un watcher ingenuo ve su propia escritura, regenera,
  * vuelve a escribir, se ve otra vez — y no para. Es un bucle infinito
  * que se come el disco y la CPU, exactamente la forma del que se llevó

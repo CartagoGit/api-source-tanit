@@ -150,7 +150,7 @@ export class InsomniaExporter implements IExportTarget {
     const document = {
       _type: "export",
       __export_format: 4,
-      __export_source: "export-to-postman",
+      __export_source: "tanit",
       resources,
     };
     return [

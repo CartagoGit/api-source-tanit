@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `expostman ui` — la herramienta sin terminal.
+ * `apisrc ui` — la herramienta sin terminal.
  *
  * Levanta la interfaz en `localhost` y abre el navegador. Existe porque
  * la herramienta solo vivía en la línea de comandos, y eso deja fuera a
@@ -15,9 +15,9 @@
  * Una segunda implementación es una que se desincroniza.
  *
  * Uso:
- *   expostman ui
- *   expostman ui --port 5000
- *   expostman ui --no-open      # no abre el navegador, solo dice la URL
+ *   apisrc ui
+ *   apisrc ui --port 5000
+ *   apisrc ui --no-open      # no abre el navegador, solo dice la URL
  */
 import { stat } from "node:fs/promises";
 
@@ -126,7 +126,7 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
       const { code, report } = await runGenerate(argv, context);
       if (code !== 0 || !report) {
         throw new Error(
-          "Generation did not finish. Check the terminal where you started `expostman ui`.",
+          "Generation did not finish. Check the terminal where you started `apisrc ui`.",
         );
       }
       return {

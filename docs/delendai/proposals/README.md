@@ -1,4 +1,15 @@
-# Propuestas de `export-to-postman`
+# Propuestas de `api-source-tanit`
+
+> ## Nota 2026-09-04 — rebrand a Tanit
+>
+> El proyecto pasó de `export-to-postman` a **Tanit** (ver
+> [b00001](ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md)).
+> Las propuestas históricas (`p00001`–`p00043`, `x00001`–`x00025`,
+> `a00001`–`a00016`, etc.) **conservan** `track: export-to-postman` como
+> arqueología: renombrar su `track` rompería URLs inmutables del repo
+> sin aportar nada legible. Sólo cambian los `track:` de las propuestas
+> **nuevas**, que pasan a `track: api-source-tanit`. Esta nota se añadió
+> como parte del slice S7 de `b00001`.
 
 Misma disposición que el repositorio `delendai`, que es de donde sale
 la convención. **La carpeta tiene que coincidir con el `status` del

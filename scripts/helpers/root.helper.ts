@@ -108,10 +108,10 @@ export function pluginDir(host: string): string {
  * El plugin de delendai.
  *
  * La carpeta se llama como el prefijo con el que el host registra sus
- * tools (`delendai_expostman_generate`), así que leyendo el árbol se
+ * tools (`delendai_tanit_generate`), así que leyendo el árbol se
  * sabe de qué host es y qué producto expone.
  */
-export const DELENDAI_PLUGIN_DIR = pluginDir("delendai_expostman");
+export const DELENDAI_PLUGIN_DIR = pluginDir("delendai_tanit");
 
 // ---------------------------------------------------------------------------
 // Tooling del repo

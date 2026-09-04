@@ -10,10 +10,10 @@ abrir una terminal: [UI.md](UI.md), la interfaz gráfica.
 
 ## Lo que vas a importar
 
-`generate` deja esto en `export-to-postman/`:
+`generate` deja esto en `tanit/`:
 
 ```
-export-to-postman/
+tanit/
 ├── mi-api.postman_collection.json          ← LA COLECCIÓN (los endpoints)
 ├── mi-api.local.postman_environment.json   ← ENVIRONMENT (baseUrl, credenciales, token)
 ├── mi-api.dev.postman_environment.json
@@ -210,7 +210,7 @@ Edítalo antes de enviar.
 Cuando cambies endpoints en tu API:
 
 ```bash
-expostman generate
+apisrc generate
 ```
 
 Y vuelve a importar el `.postman_collection.json`. Postman detecta que ya

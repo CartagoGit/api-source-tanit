@@ -2,7 +2,7 @@
  * SHA pin al que se fija el checkout de `CartagoGit/delendai` en CI.
  *
  * El plugin
- * ([`packages/plugins/delendai_expostman`](../../../plugins/delendai_expostman/))
+ * ([`packages/plugins/delendai_tanit`](../../../plugins/delendai_tanit/))
  * declara `@delendai/core` como dependencia `file:` contra
  * `../../../../delendai/packages/core`. En local eso resuelve contra el
  * checkout hermano del desarrollador; en CI el runner sólo hace checkout

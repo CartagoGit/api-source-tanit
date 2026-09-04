@@ -65,7 +65,7 @@ export interface ICheckOutcome {
  *
  * El informe se construye **siempre**, no solo con `--json`. Antes solo
  * existía dentro de ese `if`, así que cualquier otro consumidor
- * —`expostman ui`, un test, el plugin— tenía que volver a llamar al
+ * —`apisrc ui`, un test, el plugin— tenía que volver a llamar al
  * pipeline o parsear la salida por pantalla. Las dos cosas son una
  * segunda implementación, y una segunda implementación se
  * desincroniza.
