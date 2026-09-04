@@ -1,0 +1,14 @@
+feat(graphql): a00015/S1 taggedTemplates shape en frontend TS
+
+- packages/frameworks/typescript/tagged-template.ts: ITaggedTemplate
+  + collectTaggedTemplates(projectRoot) using @babel/parser (mismo
+  parser que el frontend TS existente, sin vendor nuevo). Devuelve
+  templates con {tag, raw, range, importBinding, sourceFile}.
+- packages/frameworks/index.ts: re-exporta collectTaggedTemplates
+  e ITaggedTemplate desde el barrel de frameworks.
+- tests/frameworks/tagged-template.spec.ts: 7 tests cubren positivo
+  real, negativo (comentario), negativo (string literal), negativo
+  (block comment), multi-uso (5 gql`...`), tag binding vs
+  MemberExpression (Foo.graphql`...`) y degradable (syntax error).
+
+a00015 S1/3.
