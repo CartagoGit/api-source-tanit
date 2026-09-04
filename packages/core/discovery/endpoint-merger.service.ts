@@ -289,12 +289,18 @@ export function candidatesFromSpecs(
  * de vuelta a `EndpointSpec` para que el pipeline siga operando con
  * la forma que ya consumen el resto de servicios.
  *
- * Solo copia los campos que el merger decide: identidad (method,
- * uri, name) y las piezas que ganó (body, fields, description).
- * El `authScheme` del `IMergedEndpoint` **no** se copia al
- * `EndpointSpec`: la auth se resuelve globalmente en
- * `detectAuthScheme` después del pipeline, y el de cada endpoint
- * sería ruido (todos los endpoints de un proyecto comparten auth).
+ * Copia los campos que el merger decide: identidad (method, uri,
+ * name) y las piezas que ganó (body, fields, description).
+ *
+ * Audit 2026-09-04 P1 #6 — propagación end-to-end del auth per-op:
+ * cuando el merger identifica que el endpoint debe ser público
+ * (`authScheme.type === "none"`), se traduce al override por
+ * operación `auth: { kind: "none" }` para que el builder de la
+ * colección omita la cabecera `Authorization` global. Antes el
+ * `authScheme` se descartaba aquí y `detectAuthScheme` recalculaba la
+ * auth solo a nivel colección: un endpoint declarado público por el
+ * scanner (login, /health) acababa con `Authorization: Bearer` por
+ * la borda.
  */
 export function endpointSpecFromMerged(m: IMergedEndpoint): {
   name: string;
@@ -305,6 +311,8 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
     IValidationSpec | import("../../contracts/interfaces/core/postman.interface.js").IEndpointField
   >;
   description?: string;
+  /** Override per-op derivado del merger. Solo presente si aplica. */
+  auth?: import("../../contracts/interfaces/core/postman.interface.js").IEndpointAuth;
 } {
   return {
     name: m.name ?? "",
@@ -313,6 +321,7 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
     ...(m.body !== undefined ? { body: m.body } : {}),
     ...(m.fields !== undefined ? { fields: m.fields } : {}),
     ...(m.description !== undefined ? { description: m.description } : {}),
+    ...(m.authScheme?.type === "none" ? { auth: { kind: "none" as const } } : {}),
   };
 }
 

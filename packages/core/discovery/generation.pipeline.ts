@@ -571,6 +571,24 @@ async function discoverSpecs(
           ...(spec.description !== undefined
             ? { description: spec.description }
             : {}),
+          // Audit 2026-09-04 P1 #6: el override por operación del
+          // esquema de auth (`spec.auth`) debe sobrevivir a la
+          // fusión. Antes el merger solo veía `body / fields /
+          // description` y se perdía `auth: { kind: "none" }` para
+          // /auth/login — el endpoint fusionado salía con la auth
+          // global aunque el scanner ya había pedido explícitamente
+          // "público". Lo propagamos como `authScheme: { type: "none",
+          // evidence: "per-op override" }` para que el merger pueda
+          // compararlo pieza a pieza; un scanner que pide "none"
+          // siempre debe ganar sobre la auth global heredada.
+          ...(spec.auth !== undefined
+            ? {
+                authScheme: {
+                  type: "none" as const,
+                  evidence: `per-op override (${framework})`,
+                },
+              }
+            : {}),
         })),
       );
 
