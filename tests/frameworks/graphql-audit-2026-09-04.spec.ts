@@ -15,7 +15,6 @@ import { afterEach, describe, expect, test } from "vitest";
 import {
   buildQueryDocument,
   collectCustomScalars,
-  extractEmbeddedSdl,
   parseOperations,
   GraphQlProjectScanner,
   GraphQlRouteScanner,
@@ -25,6 +24,10 @@ import {
   type ITempProject,
 } from "../helpers/scanner-fixture";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
+import {
+  collectTaggedTemplatesFromSource,
+} from "../../packages/frameworks/typescript/tagged-template";
+import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.adapter";
 
 const projects: ITempProject[] = [];
 
@@ -261,7 +264,9 @@ const schema = gql\`
   }
 \`;
 `;
-    const blocks = extractEmbeddedSdl(source);
+    const blocks = collectEmbeddedSdl(
+      collectTaggedTemplatesFromSource(source, "schema.ts"),
+    );
     expect(blocks).toHaveLength(1);
     expect(blocks[0]).toContain("type Query");
     expect(blocks[0]).toContain("type User");
