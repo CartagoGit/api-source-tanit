@@ -126,16 +126,15 @@ function asArray(value: unknown): ReadonlyArray<BabelNode> {
  * al archivo: al final del parse cada colección se ordena por
  * `(line, column)` ascendente, de modo que el contrato no dependa del
  * orden interno del walker (a00011 C-7 / B-rev-11).
+ *
+ * Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
+ * `filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
+ * sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
+ * componentes Next.js / React.
  */
+
 /**
  * Indica si el archivo es JSX/TSX.
- *
- * Audit 2026-09-04 P2 #7: el parser declaraba `isSourceJsTsFile` para
- * `.tsx`/`.jsx`, pero el `babelParse` no activaba el plugin `jsx`. Un
- * `.tsx` válido (Next.js, componentes) se rechazaba con syntax error
- * y el scanner perdía el archivo entero. Ahora activamos `jsx` cuando
- * el filename lo sugiere; `typescript` se mantiene para `.ts`/`.tsx`
- * y los decoradores para los frameworks que los usan.
  */
 function isJsxFile(filename: string): boolean {
   return filename.endsWith(".tsx") || filename.endsWith(".jsx");
