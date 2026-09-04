@@ -1176,7 +1176,7 @@ would trade information for presentation.
 
 ### `packages/core/domain/test-script.service.ts`
 
-Las aserciones que lleva cada request de la colección.
+Assertions carried by each request in the collection.
 
 #### `buildTestScript`
 
@@ -1190,12 +1190,12 @@ export function buildTestScript(spec: EndpointSpec): PostmanEvent
 export function appendTestScript( existing: ReadonlyArray<PostmanEvent> | undefined, spec: EndpointSpec, ): PostmanEvent[]
 ```
 
-Añade las aserciones a un item sin pisar lo que ya tuviera.
+Adds assertions to an item without overwriting anything it already had.
 
-El endpoint de login ya trae su script de guardar el token, y el de
-logout el de borrarlo. Sustituir el array entero se los llevaría por
-delante y la colección dejaría de autenticar sola — que es la razón de
-ser del flujo de auth.
+The login endpoint already has a script that saves the token, and the logout
+endpoint has one that deletes it. Replacing the entire array would remove
+them and the collection would stop authenticating itself—which is the reason
+the auth flow exists.
 
 ### `packages/core/domain/watcher.service.ts`
 
