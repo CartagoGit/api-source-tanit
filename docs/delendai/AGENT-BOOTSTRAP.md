@@ -79,17 +79,17 @@ universal rule it replaces, so the divergence is auditable.
 
 ### 3.1 Plugin tool naming — **project override** of universal §6 "no hardcoded ids"
 
-The 4 plugin tools in `packages/plugins/delendai_expostman/src/lib/tools/`
+The 4 plugin tools in `packages/plugins/delendai_tanit/src/lib/tools/`
 register themselves as `` `${ctx.namespacePrefix}_${TOOL_ID}` ``, where
 `namespacePrefix` comes from the host and `TOOL_ID` is the short,
 stable id declared at the top of each `*.tool.ts`:
 
 | Tool id (short, in `id:`) | Qualified name on the MCP surface |
 | --- | --- |
-| `generate` | `delendai_expostman_generate` |
-| `validate` | `delendai_expostman_validate` |
-| `summary` | `delendai_expostman_summary` |
-| `test` | `delendai_expostman_test` |
+| `generate` | `delendai_tanit_generate` |
+| `validate` | `delendai_tanit_validate` |
+| `summary` | `delendai_tanit_summary` |
+| `test` | `delendai_tanit_test` |
 
 Hardcoding these four qualified names here is **permitted** because they
 are the **public MCP surface** the host dispatches on. Other tool ids
@@ -168,7 +168,7 @@ a pointer.
 | `packages/core/exporters/` | `*.exporter.ts` | `packages/core/exporters/openapi.exporter.ts` |
 | `packages/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `packages/frameworks/scanners/express.scanner.ts` |
 | `packages/cli/commands/` | `*.script.ts` | `packages/cli/commands/generate.script.ts` |
-| `packages/plugins/*/src/lib/tools/` | `*.tool.ts` | `packages/plugins/delendai_expostman/src/lib/tools/generate.tool.ts` |
+| `packages/plugins/*/src/lib/tools/` | `*.tool.ts` | `packages/plugins/delendai_tanit/src/lib/tools/generate.tool.ts` |
 | `docs/delendai/proposals/ready/` | `<kind><NNNNN>-<slug>.md` directamente en `ready/` | `x00001-contratos-de-la-superficie-mcp.md` |
 
 The full table, derived from what `lint:naming` enforces, lives in
@@ -203,7 +203,7 @@ being needed. See [`packages/contracts/README.md`](../../packages/contracts/READ
 Plugin options live at
 `delendai.config.json#plugins.export-to-postman.options` and are
 parsed by `ExportToPostmanOptionsSchema` in
-`packages/plugins/delendai_expostman/src/lib/contracts/plugin.interface.ts`.
+`packages/plugins/delendai_tanit/src/lib/contracts/plugin.interface.ts`.
 
 A new field:
 
@@ -270,7 +270,7 @@ Equivalencias:
   `/home/<user>/_packages/...`.
 - `.vscode/mcp.json` lo genera `bun run lint:mcp` a partir del
   anterior y queda en este repo (es `.gitignore`d).
-- El plugin `packages/plugins/delendai_expostman/package.json`
+- El plugin `packages/plugins/delendai_tanit/package.json`
   declara `"@delendai/core": "file:../../../../delendai/packages/core"`.
   El plugin es `"private": true`, no viaja en el tarball público y
   por tanto **no rompe la distribución** del CLI aunque el `file:`
@@ -285,7 +285,7 @@ publique** (es la reactivación futura de `p00007`):
 
 1. `npm view @delendai/core version` deja de devolver 404.
 2. Cambiar el `file:` por `^<versión>` en
-   `packages/plugins/delendai_expostman/package.json`.
+   `packages/plugins/delendai_tanit/package.json`.
 3. `bun install` regenera el lockfile.
 4. Sustituir `.mcp.json` por la forma published.
 5. Archivar la propuesta reabierta como `done`.
@@ -389,7 +389,7 @@ The universal bootstrap §5 DoD applies. Project-specific additions:
 
 - Universal bootstrap (vendored):
   [`UNIVERSAL-AGENT-BOOTSTRAP.md`](UNIVERSAL-AGENT-BOOTSTRAP.md).
-- Plugin source: [`../../packages/plugins/delendai_expostman/`](../../packages/plugins/delendai_expostman/).
+- Plugin source: [`../../packages/plugins/delendai_tanit/`](../../packages/plugins/delendai_tanit/).
 - Proposals queue: [`proposals/`](proposals/).
 - Live catalog: call `delendai_overview` / `delendai_agent_catalog`
   — do not link generated host-hint files from another repo.

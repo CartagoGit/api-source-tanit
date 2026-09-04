@@ -92,6 +92,21 @@ export interface OpenApiScannerOptions {
   readonly basePath?: string;
 }
 
+/**
+ * Options for collecting SDL embedded in tagged templates
+ * (graphql-embedded scanner). The shape lives here, in
+ * `contracts/`, so consumers can type the call site without
+ * dragging the implementation; the helper itself imports it.
+ *
+ * The list of accepted tags is the only knob today. Future
+ * options (interpolation resolution, etc.) belong here too,
+ * not as a second parameter to `collectEmbeddedSdl`.
+ */
+export interface ICollectEmbeddedSdlOptions {
+  /** Tags accepted as embedded SDL. Default: `["gql", "graphql"]`. */
+  readonly tags?: ReadonlyArray<string>;
+}
+
 /** A procedure with its full path inside the router. */
 export interface ITrpcProcedure {
   /** `users.list`, with nested routers separated by dots. */

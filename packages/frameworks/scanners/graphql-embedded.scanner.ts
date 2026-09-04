@@ -56,11 +56,10 @@ import type { ITaggedTemplate } from "../typescript/tagged-template.helper.js";
 /** Tags que el scanner reconoce como etiquetas de embedded SDL. */
 const DEFAULT_TAGS: ReadonlyArray<string> = ["gql", "graphql"];
 
-/** Opciones del adapter. */
-export interface ICollectEmbeddedSdlOptions {
-  /** Lista de tags que se aceptan como embedded SDL. */
-  readonly tags?: ReadonlyArray<string>;
-}
+/** Opciones del adapter — el contrato vive en `contracts/`. */
+import type { ICollectEmbeddedSdlOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
+
+export type { ICollectEmbeddedSdlOptions };
 
 /**
  * Devuelve los strings SDL extraídos de `templates` cuyo tag está
