@@ -59,9 +59,24 @@ import { deriveServiceId, groupByService } from "./group-by-service.helper.js";
  * S3/S4 lo rellenen sin tener que cambiar el contrato.
  */
 export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph {
-  const routesByMatch = new Map<string, ReadonlyArray<ParsedRoute>>();
+  // x00025 S1: antes `routesByMatch.set(serviceId, routes)` sobrescribia
+  // si el caller metia dos entradas con la misma `serviceId` en
+  // `input.routesByService`. La pipeline ya no produce eso (el helper
+  // `accumulateRoutesByService` deduplica), pero este helper es la
+  // frontera entre el pipeline y el IServiceGraph y queremos que el
+  // contrato sea localmente correcto: union + dedupe aqui tambien.
+  const routesByMatch = new Map<string, ParsedRoute[]>();
   for (const [serviceId, routes] of input.routesByService) {
-    routesByMatch.set(serviceId, routes);
+    const existing = routesByMatch.get(serviceId) ?? [];
+    const seen = new Set<string>();
+    const merged: ParsedRoute[] = [];
+    for (const r of [...existing, ...routes]) {
+      const key = `${r.method}|${r.uri}|${r.sourceFile}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+    routesByMatch.set(serviceId, merged);
   }
   for (const match of input.matches) {
     const serviceId = deriveServiceId(match);
