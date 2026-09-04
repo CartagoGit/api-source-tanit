@@ -50,36 +50,21 @@ const DEFAULT_ENDPOINT = "/graphql";
 const BUILTIN_SCALARS = new Set(["String", "Int", "Float", "Boolean", "ID"]);
 
 /**
- * Escalares personalizados del esquema (audit 2026-09-04 P1 #4).
+ * Devuelve true si el tipo (sin `[`, `]`, `!`) es escalar.
  *
- * El parser los recoge de las directivas `scalar X` del esquema; un
- * `DateTime!` declarado por el usuario debe ir al conjunto de
- * escalares, no al conjunto de objetos, porque tampoco admite
- * selección de campos. Si no, el cuerpo generado pediría
- * `now { __typename }` sobre un escalar.
+ * Audit 2026-09-04 (segunda revisión): el `customScalars` que tenía
+ * antes era un Set a nivel de módulo. Dos scans consecutivos
+ * (especialmente en `Promise.all` con proyectos distintos)
+ * contaminaban sus escalares: el segundo proyecto heredaba los
+ * `scalar X` del primero. El contrato `IScanResult` exige
+ * explícitamente que el scanner no guarde estado entre invocaciones
+ * (es lo que justifica que el `scan()` reciba `match` por argumento
+ * y devuelva rutas por valor). Ahora `customScalars` es **local a
+ * cada `scan()`** y se pasa por argumento a las funciones puras.
  */
-const customScalars = new Set<string>();
-
-/** Registra un escalar personalizado declarado con `scalar X`. */
-function registerCustomScalar(name: string): void {
-  if (!BUILTIN_SCALARS.has(name)) customScalars.add(name);
-}
-
-/** Devuelve true si el tipo (sin `[`, `]`, `!`) es escalar. */
-function isScalarType(type: string): boolean {
+function isScalarType(type: string, customScalars: ReadonlySet<string>): boolean {
   const bare = type.replace(/[[\]!]/g, "");
   return BUILTIN_SCALARS.has(bare) || customScalars.has(bare);
-}
-
-/**
- * Limpia el registro de escalares personalizados.
- *
- * Solo se usa en tests; el scanner real los va acumulando durante el
- * scan de un proyecto, lo que en un proceso de larga vida filtraría
- * memoria. En el pipeline real cada `scan()` cubre un solo esquema.
- */
-export function _resetCustomScalars(): void {
-  customScalars.clear();
 }
 
 /** Ficheros de esquema. */
