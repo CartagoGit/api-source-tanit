@@ -208,6 +208,65 @@ async function forcedDetection(
  * f00011 S3. La detección vive en `monorepo-detector.helper.ts`; este
  * wrapper es lo único que el pipeline invoca.
  */
+/**
+ * En monorepos multi-workspace, expande la detección contra cada
+ * workspace candidato. Ver `discoverSpecs()` para el contexto.
+ *
+ * Decisión de diseño: **solo** se expande cuando
+ *   - la raíz es un monorepo detectado,
+ *   - hay `>= 2` workspaces materializados,
+ *   - no hay `frameworkSearchRoot` (override o auto con un único
+ *     workspace).
+ *
+ * Con un único workspace, `applyFrameworkSearchRoot` ya lo resuelve
+ * con el helper de monorepo: expandir aquí duplicaría trabajo.
+ * Con override del usuario, esa indicación es autoritativa: expandir
+ * ignoraría su intención.
+ *
+ * Los `match` resultantes llevan `frameworkSearchRoot` pegado, así
+ * el resto del pipeline (scanners, validación, exporter) consume el
+ * mismo contrato que ya tenía para el caso single-workspace.
+ *
+ * Audit 2026-09-04 (hallazgo P1 #1).
+ */
+async function expandMonorepoDetection(
+  orchestrator: IGenerationOptions["orchestrator"],
+  projectRoot: string,
+  rootDetected: ReadonlyArray<IDetectedFramework>,
+  userOverride: string | undefined,
+): Promise<ReadonlyArray<IDetectedFramework>> {
+  if (userOverride && userOverride.length > 0) return rootDetected;
+  const detection = await detectMonorepo(projectRoot);
+  if (
+    !detection.isMonorepo ||
+    detection.workspaceDirs.length < 2
+  ) {
+    return rootDetected;
+  }
+  const merged: IDetectedFramework[] = [...rootDetected];
+  // Dedup por (framework, frameworkSearchRoot) para no repetir la
+  // misma pareja si dos workspaces tienen el mismo framework. La
+  // clave compuesta es lo que el merger ya entiende para agrupar.
+  const seen = new Set<string>(
+    rootDetected.map(
+      (d) => `${d.match.framework}@${d.match.frameworkSearchRoot ?? ""}`,
+    ),
+  );
+  for (const workspace of detection.workspaceDirs) {
+    // Evita re-escanear la raíz si aparece como workspace (raro,
+    // pero los globs pueden incluir ".").
+    if (workspace === "" || workspace === ".") continue;
+    const perWorkspace = await orchestrator.detectAll(projectRoot);
+    for (const candidate of perWorkspace) {
+      const key = `${candidate.match.framework}@${workspace}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(augmentMatch(candidate, workspace));
+    }
+  }
+  return merged;
+}
+
 async function applyFrameworkSearchRoot(
   detected: ReadonlyArray<IDetectedFramework>,
   projectRoot: string,
@@ -319,16 +378,38 @@ async function discoverSpecs(
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
-  const rawDetected = options.forceFramework
+  // Detección base contra la raíz (path rápido: un único framework en
+  // la raíz del proyecto — los 21 ejemplos caen aquí).
+  const rootDetected = options.forceFramework
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
-  // f00011 S3: aplica `--framework-search-root` (override) o la
-  // auto-detección de monorepo. Es **el** sitio donde se pega al
-  // `match.frameworkSearchRoot`; los scanners ya lo leen (S1) y los
-  // tests de los scanners ya lo cubren (tests/frameworks).
+
+  // En monorepos con **varios** workspaces materializados, la
+  // detección contra la raíz suele fallar: NestJS en `apps/api` no
+  // aparece porque su `package.json` no está en la raíz. Antes el
+  // helper devolvía `frameworkSearchRoot: null` y el usuario tenía
+  // que pasar `--framework-search-root` manualmente, o se quedaba con
+  // 0 endpoints en silencio.
+  //
+  // Cuando pasa eso y no hay override explícito, **expandimos** la
+  // detección: corremos `detectAll` contra cada workspace candidato
+  // y agregamos los resultados, etiquetando cada `match` con su
+  // `frameworkSearchRoot` correspondiente. Es la pieza que faltaba
+  // para que un monorepo "Nest + Next" se autodetecte sin
+  // configuración.
+  //
+  // Audit 2026-09-04 (hallazgo P1 #1). El fix respeta el contrato
+  // previo: si hay un único workspace, no cambia nada; si hay cero,
+  // tampoco; si hay override, no se aplica.
+  const expanded = await expandMonorepoDetection(
+    options.orchestrator,
+    context.projectRoot,
+    rootDetected,
+    options.frameworkSearchRoot,
+  );
   const { augmented: detected, detection: monorepoDetection } =
     await applyFrameworkSearchRoot(
-      rawDetected,
+      expanded,
       context.projectRoot,
       options.frameworkSearchRoot,
     );
