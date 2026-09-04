@@ -13,7 +13,11 @@ dependsOn:
 related:
   - a00009
   - b00001
+last-transition-id: cb906d1d-c5f1-4e25-8a1a-400a896b8b98
+last-correlation-id: cb906d1d-c5f1-4e25-8a1a-400a896b8b98
+last-transition-from: ready
 ---
+blocked-by: [a00017]
 
 # a00017 — inversión i18n
 

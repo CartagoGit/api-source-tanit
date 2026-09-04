@@ -1,30 +1,30 @@
 /**
- * Construir un `SchemaGraph` desde `IValidationSpec[]`.
+ * Build a `SchemaGraph` from `IValidationSpec[]`.
  *
- * Hasta ahora la fuente de verdad para el body era una lista plana de
- * `IValidationSpec`. Con `SchemaGraph` en escena, la lista plana sigue
- * llegando de los scanners que aún no migraron al grafo, pero se
- * **convierte** al grafo en este punto. Los exportadores que saben
- * consumir el grafo ven tipos anidados; los demás pueden aplanarlo
- * con `flatten-helper` y seguir como antes.
+ * Until now the source of truth for the body was a flat list of
+ * `IValidationSpec`. With `SchemaGraph` in play, the flat list still
+ * comes from scanners that have not migrated to the graph yet, but it
+ * is **converted** to the graph here. Exporters that know how to
+ * consume the graph see nested types; others can flatten it with
+ * `flatten-helper` and proceed as before.
  *
- * ## Lo mínimo, por diseño
+ * ## Minimum, by design
  *
- * El `SchemaGraph` "mínimo" no es un grafo completo: es una traducción
- * 1-a-1 de las specs a nodos, con la raíz como `object` y cada spec
- * como hijo. Esto es deliberado —los scanners aún no producen tipos
- * anidados, y reconstruir un grafo rico a partir de `address.street`
- * sería una adivinación. Cuando un scanner migre a SchemaGraph nativo
- * (a00010 S7 y siguientes), el grafo que produce puede pasar sin tocar
- * por este builder, o puede saltárselo si ya viene con nodos
- * referenciados.
+ * The "minimum" `SchemaGraph` is not a complete graph: it is a 1-to-1
+ * translation of specs to nodes, with the root as an `object` and each
+ * spec as a child. This is deliberate — scanners do not yet produce
+ * nested types, and reconstructing a rich graph from `address.street`
+ * would be guesswork. When a scanner migrates to native SchemaGraph
+ * (a00010 S7 and following), the graph it produces can pass through
+ * this builder untouched, or skip it if it already comes with
+ * referenced nodes.
  *
- * ## Determinismo
+ * ## Determinism
  *
- * `buildSchemaGraph(specs, rootName)` produce el mismo grafo para el
- * mismo input, en el mismo orden de inserción. Los ids se asignan con
- * un contador local, no global: dos llamadas al mismo tiempo no se
- * interfieren, y el resultado es cacheable por igualdad de input.
+ * `buildSchemaGraph(specs, rootName)` produces the same graph for the
+ * same input, in the same insertion order. Ids are assigned with a
+ * local counter, not a global one: two simultaneous calls do not
+ * interfere, and the result is cacheable by input equality.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
@@ -43,11 +43,11 @@ import {
 } from "./scalar.helper.js";
 
 /**
- * Construye un nodo `object` con los hijos dados.
+ * Builds an `object` node with the given children.
  *
- * `children` se copia: mutar el array del caller después no afecta al
- * nodo. El id lo pasa el caller (típicamente, el builder) para evitar
- * colisiones en grafos en construcción.
+ * `children` is copied: mutating the caller's array afterwards does
+ * not affect the node. The id is provided by the caller (typically the
+ * builder) to avoid collisions in graphs under construction.
  */
 export function createObjectNode(
   id: SchemaNodeId,
@@ -65,12 +65,12 @@ export function createObjectNode(
 }
 
 /**
- * Construye un nodo `array` cuyo único hijo es `itemId`.
+ * Builds an `array` node whose only child is `itemId`.
  *
- * El item va en un `ISchemaEdge` con `name: "items"` y `required: true`
- * — un array sin item no es un array, y un item opcional en un array
- * no existe en JSON Schema (el `items` siempre aplica a todos los
- * elementos).
+ * The item lives in an `ISchemaEdge` with `name: "items"` and
+ * `required: true` — an array without an item is not an array, and an
+ * optional item in an array does not exist in JSON Schema (`items`
+ * always applies to every element).
  */
 export function createArrayNode(
   id: SchemaNodeId,
@@ -88,12 +88,12 @@ export function createArrayNode(
 }
 
 /**
- * Builder de `SchemaGraph`.
+ * `SchemaGraph` builder.
  *
- * Mantiene un contador local de ids y un mapa de nodos. Cada `add*`
- * devuelve el id del nodo creado, así el caller puede encadenar
- * referencias sin tener que inventar ids. El builder es **monouso**:
- * tras `build()`, no admite más `add*`.
+ * Keeps a local id counter and a node map. Each `add*` returns the id
+ * of the created node, so the caller can chain references without
+ * inventing ids. The builder is **single-use**: after `build()`, it
+ * accepts no more `add*`.
  */
 export class SchemaGraphBuilder {
   private readonly map = new Map<SchemaNodeId, ISchemaNode>();
@@ -107,21 +107,21 @@ export class SchemaGraphBuilder {
     return id;
   }
 
-  /** Garantiza que el builder sigue abierto. */
+  /** Ensures the builder is still open. */
   private checkOpen(): void {
     if (this.sealed) {
       throw new Error(
-        "SchemaGraphBuilder.build() ya se llamó: el builder es monouso.",
+        "SchemaGraphBuilder.build() was already called: the builder is single-use.",
       );
     }
   }
 
-  /** Añade un nodo ya construido al grafo y devuelve su id. */
+  /** Adds an already-built node to the graph and returns its id. */
   add(node: ISchemaNode): SchemaNodeId {
     this.checkOpen();
     if (this.map.has(node.id)) {
       throw new Error(
-        `SchemaGraphBuilder: id duplicado "${node.id}". los ids deben ser únicos.`,
+        `SchemaGraphBuilder: duplicate id "${node.id}". ids must be unique.`,
       );
     }
     this.map.set(node.id, node);
@@ -129,10 +129,10 @@ export class SchemaGraphBuilder {
   }
 
   /**
-   * Construye un `object` con los hijos dados y devuelve su id.
+   * Builds an `object` with the given children and returns its id.
    *
-   * `children` se copia: el array del caller puede mutarse después sin
-   * que el nodo del grafo se entere.
+   * `children` is copied: the caller's array may mutate afterwards
+   * without the graph node noticing.
    */
   addObject(
     name: string | undefined,
@@ -153,8 +153,8 @@ export class SchemaGraphBuilder {
   }
 
   /**
-   * Construye un `array` cuyo único hijo es `itemId`. Devuelve el id
-   * del array, no del item.
+   * Builds an `array` whose only child is `itemId`. Returns the id of
+   * the array, not the item.
    */
   addArray(itemId: SchemaNodeId, name?: string, options: ICompositeOptions = {}): SchemaNodeId {
     this.checkOpen();
@@ -171,52 +171,54 @@ export class SchemaGraphBuilder {
   }
 
   /**
-   * Cierra el grafo y devuelve la estructura inmutable.
+   * Closes the graph and returns the immutable structure.
    *
-   * `rootId` debe existir en el mapa (lo creó un `add*` anterior). Si
-   * no, lanza: un grafo sin raíz no es grafo, y `buildOpenApiDocument`
-   * con un root que no existe daría un documento roto.
+   * `rootId` must exist in the map (it was created by a previous
+   * `add*`). Otherwise it throws: a graph without a root is not a graph,
+   * and `buildOpenApiDocument` with a non-existent root would produce a
+   * broken document.
    */
   build(rootId: SchemaNodeId): ISchemaGraph {
     this.checkOpen();
     if (!this.map.has(rootId)) {
       throw new Error(
-        `SchemaGraphBuilder.build(): rootId "${rootId}" no está en el mapa.`,
+        `SchemaGraphBuilder.build(): rootId "${rootId}" is not in the map.`,
       );
     }
     this.sealed = true;
-    // Envolvemos con `createSchemaGraph` para que el grafo resultante
-    // satisfaga el contrato `ISchemaGraph.toDTO()`. Sin esto, el
-    // interface exige un método que el literal `{ nodes, root }` no
-    // tiene, y los consumidores (MCP, UI, caché) no podrían
-    // serializarlo.
+    // We wrap with `createSchemaGraph` so the resulting graph satisfies
+    // the `ISchemaGraph.toDTO()` contract. Without this, the interface
+    // requires a method that the literal `{ nodes, root }` does not
+    // have, and consumers (MCP, UI, cache) could not serialize it.
     return createSchemaGraph(this.map, rootId);
   }
 
   /**
-   * Traduce una `IValidationSpec` a uno o dos nodos del grafo y
-   * devuelve el id del principal.
+   * Translates an `IValidationSpec` into one or two graph nodes and
+   * returns the id of the main one.
    *
-   * Razón de vivir como método: la implementación llama a `newId`,
-   * que es privado del builder. Moverlo aquí mantiene la encapsulación
-   * y deja el `buildSchemaGraph` como un orquestador de tres líneas.
+   * Reason to live as a method: the implementation calls `newId`,
+   * which is private to the builder. Keeping it here preserves
+   * encapsulation and leaves `buildSchemaGraph` as a three-line
+   * orchestrator.
    *
-   * ## Tipos compuestos
+   * ## Composite types
    *
-   * `array` se traduce a `kind: 'array'` con un `items` que es **un
-   * escalar `string`** —el equivalente al `items: string` que emitía el
-   * OpenAPI exporter antes. Razón: la spec plana no sabe qué tipo tiene
-   * el item, y reconstruirlo de `array.of` o `items.type` (que no
-   * existen en `IValidationSpec`) sería inventar. Un scanner que migre
-   * a SchemaGraph nativo puede saltarse este helper y construir el
-   * `array` con el item real.
+   * `array` translates to `kind: 'array'` with an `items` that is
+   * **a `string` scalar** — the equivalent of the `items: string` the
+   * OpenAPI exporter used to emit. Reason: the flat spec does not know
+   * the item type, and reconstructing it from `array.of` or
+   * `items.type` (which do not exist in `IValidationSpec`) would be
+   * invention. A scanner migrating to native SchemaGraph can skip
+   * this helper and build the `array` with the real item.
    *
-   * `object` se traduce a `kind: 'object'` sin hijos. La spec plana no
-   * transporta sub-campos: una spec con `type: 'object'` y nombre
-   * `address` no dice qué hay dentro de `address`. Mismo argumento.
+   * `object` translates to `kind: 'object'` without children. The flat
+   * spec does not carry sub-fields: a spec with `type: 'object'` and
+   * name `address` does not say what is inside `address`. Same
+   * argument.
    *
-   * `any` se traduce a `kind: 'scalar'` sin `scalarType`: es el
-   * "cualquier cosa" del contrato, y JSON Schema lo pinta como `{}`
+   * `any` translates to `kind: 'scalar'` without `scalarType`: it is
+   * the "anything" of the contract, and JSON Schema renders it as `{}`
    * (matches all).
    */
   addFromSpec(spec: IValidationSpec): SchemaNodeId {
@@ -245,8 +247,8 @@ export class SchemaGraphBuilder {
         return this.add(node);
       }
       case "array": {
-        // El item por defecto es un `string` opaco: la spec plana no
-        // transporta el tipo del item.
+        // Default item is an opaque `string`: the flat spec does not
+        // carry the item type.
         const itemId = this.add(createScalarNode("string", this.newId("scalar")));
         return this.addArray(itemId, spec.fieldName);
       }
@@ -262,12 +264,12 @@ export class SchemaGraphBuilder {
 }
 
 /**
- * Construye un `SchemaGraph` mínimo a partir de `IValidationSpec[]`.
+ * Builds a minimum `SchemaGraph` from `IValidationSpec[]`.
  *
- * El nodo raíz es un `object` con un hijo por spec. Cada spec se
- * traduce con `SchemaGraphBuilder.addFromSpec`. El grafo resultante
- * sirve para los exportadores que saben leerlo y, con `flatten-helper`,
- * para los que no.
+ * The root node is an `object` with one child per spec. Each spec is
+ * translated with `SchemaGraphBuilder.addFromSpec`. The resulting graph
+ * serves exporters that know how to read it and, with `flatten-helper`,
+ * those that do not.
  */
 export function buildSchemaGraph(
   specs: ReadonlyArray<IValidationSpec>,
@@ -276,17 +278,17 @@ export function buildSchemaGraph(
   const builder = new SchemaGraphBuilder();
   const rootName = options.rootName ?? "Root";
 
-  // Pasada 1: crear todos los nodos hoja. Si una spec es `array`, crea
-  // dos nodos (el `array` y el `items` interno). Necesitamos los ids
-  // antes de poder añadirlos como hijos del root, pero el builder ya
-  // devuelve los ids al insertar, así que es lineal: primero nodos
-  // independientes, luego se enchufan al root.
+  // Pass 1: create all leaf nodes. If a spec is `array`, it creates two
+  // nodes (the `array` and the internal `items`). We need the ids
+  // before we can add them as children of the root, but the builder
+  // already returns the ids when inserting, so this is linear: first
+  // independent nodes, then plug them into the root.
   const specIds = new Map<IValidationSpec, SchemaNodeId>();
   for (const spec of specs) {
     specIds.set(spec, builder.addFromSpec(spec));
   }
 
-  // Pasada 2: crear el root y los hijos.
+  // Pass 2: create the root and the children.
   const children: ISchemaEdge[] = [];
   for (const spec of specs) {
     const nodeId = specIds.get(spec);

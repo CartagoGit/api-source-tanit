@@ -1,17 +1,17 @@
 /**
- * Exportador a Bruno.
+ * Bruno exporter.
  *
- * Bruno es el único del lote que **no es un fichero**: es un árbol de
- * carpetas con un `.bru` por request, en un formato de texto propio
- * pensado para que un diff de Git se lea. Esa es su razón de ser, y por
- * eso el contrato de exportación devuelve una lista de artefactos y no
- * una cadena.
+ * Bruno is the only one in the batch that is **not a file**: it is a
+ * tree of folders with one `.bru` per request, in its own text format
+ * meant to be readable in a Git diff. That is its reason for being,
+ * and that is why the export contract returns a list of artifacts
+ * rather than a string.
  *
- * El formato `.bru` es sensible a la forma: bloques `nombre { … }` con
- * dos espacios de sangría y `clave: valor` dentro. No lleva comillas ni
- * escapes, así que un valor con salto de línea rompería el bloque —
- * salvo en `body:json`, que es el único que admite texto libre entre
- * llaves.
+ * The `.bru` format is whitespace-sensitive: blocks of `name { … }`
+ * with two-space indentation and `key: value` inside. No quotes or
+ * escapes, so a value with a line break would break the block — except
+ * for `body:json`, which is the only one that allows free text
+ * between braces.
  */
 import type {
   IExportArtifact,
@@ -22,10 +22,10 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import { topGroupFor } from "../helpers/uri.helper.js";
 
 /**
- * Convierte un nombre en algo que vale como nombre de fichero.
+ * Converts a name into something that works as a file name.
  *
- * Bruno usa el nombre del `.bru` en la interfaz, así que conviene que
- * siga siendo legible; pero una `/` o un `:` lo romperían en Windows.
+ * Bruno uses the `.bru` name in the interface, so it should stay
+ * readable; but a `/` or `:` would break it on Windows.
  */
 function toFileName(name: string): string {
   const clean = name
@@ -37,13 +37,13 @@ function toFileName(name: string): string {
   return clean || "request";
 }
 
-/** Un bloque `nombre { … }` con sus líneas ya sangradas. */
+/** A `name { … }` block with its lines already indented. */
 function block(name: string, lines: ReadonlyArray<string>): string {
   if (lines.length === 0) return "";
   return `${name} {\n${lines.map((l) => `  ${l}`).join("\n")}\n}\n`;
 }
 
-/** El tipo de auth de Bruno para el bloque del método. */
+/** Bruno auth type for the method block. */
 function authMode(auth: IExportInput["auth"]): string {
   switch (auth.type) {
     case "bearer":
@@ -97,8 +97,8 @@ function toBru(spec: EndpointSpec, seq: number, input: IExportInput): string {
   }
 
   if (spec.body !== undefined) {
-    // `body:json` es el único bloque que admite texto libre: el JSON va
-    // tal cual, sangrado dos espacios como el resto.
+    // `body:json` is the only block that allows free text: the JSON
+    // goes in as-is, indented two spaces like the rest.
     const json = JSON.stringify(spec.body, null, 2)
       .split("\n")
       .map((l) => `  ${l}`)
@@ -113,7 +113,7 @@ function toBru(spec: EndpointSpec, seq: number, input: IExportInput): string {
   return parts.filter(Boolean).join("\n");
 }
 
-/** Serializa el catálogo al árbol de ficheros `.bru` de Bruno. */
+/** Serializes the catalog to Bruno's `.bru` file tree. */
 export class BrunoExporter implements IExportTarget {
   readonly format = "bruno";
   readonly summary = "Bruno (.bru) — Git-friendly folders, no cloud";
@@ -123,8 +123,8 @@ export class BrunoExporter implements IExportTarget {
     const root = `${config.name}.bruno`;
     const artifacts: IExportArtifact[] = [];
 
-    // `bruno.json` es lo que hace que Bruno reconozca la carpeta como
-    // una colección. Sin él, el árbol de `.bru` no se abre.
+    // `bruno.json` is what makes Bruno recognize the folder as a
+    // collection. Without it, the `.bru` tree does not open.
     artifacts.push({
       path: `${root}/bruno.json`,
       content:
@@ -140,7 +140,7 @@ export class BrunoExporter implements IExportTarget {
         ) + "\n",
     });
 
-    // Las variables van en un entorno, igual que en los otros formatos.
+    // Variables go in an environment, just like in the other formats.
     const vars = [
       `baseUrl: ${config.baseUrl}`,
       ...config.variables.map((v) => `${v.key}: ${v.value}`),
@@ -151,8 +151,8 @@ export class BrunoExporter implements IExportTarget {
     });
 
     const overrides = config.uriGroupOverrides ?? {};
-    // Bruno numera las requests **dentro de su carpeta**, no globalmente:
-    // dos `seq: 1` en carpetas distintas es lo correcto.
+    // Bruno numbers the requests **within their folder**, not globally:
+    // two `seq: 1` in different folders is correct.
     const seqByFolder = new Map<string, number>();
     const usedPaths = new Set<string>();
 
@@ -161,8 +161,9 @@ export class BrunoExporter implements IExportTarget {
       const seq = (seqByFolder.get(folder) ?? 0) + 1;
       seqByFolder.set(folder, seq);
 
-      // Dos endpoints pueden llamarse igual (`Get Users` de `/users` y de
-      // `/users/{{id}}`). Sin desambiguar, el segundo pisaría al primero.
+      // Two endpoints can have the same name (`Get Users` from
+      // `/users` and from `/users/{{id}}`). Without disambiguation,
+      // the second would overwrite the first.
       let base = toFileName(`${spec.method}-${spec.name}`);
       let path = `${root}/${folder}/${base}.bru`;
       let n = 2;

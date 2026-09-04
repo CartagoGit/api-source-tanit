@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-fiber (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-fiber.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "d6a31434-ffa8-5da4-b5fe-5753df24c484"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

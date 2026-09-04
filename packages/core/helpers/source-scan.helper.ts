@@ -1,36 +1,37 @@
 /**
- * Primitivas de escaneo de código fuente compartidas por los scanners.
+ * Source-code scanning primitives shared by the scanners.
  *
- * Todos los scanners que leen código (Express, Next.js, NestJS…) necesitan
- * las mismas tres operaciones sobre texto plano:
+ * All scanners that read code (Express, Next.js, NestJS…) need the
+ * same three operations on plain text:
  *
- *   1. Quitar comentarios antes de aplicar regex, para que un endpoint
- *      comentado no aparezca en la colección.
- *   2. Localizar una llamada `foo(` y encontrar su `)` de cierre
- *      respetando anidamiento (`findAllBalanced`, `findNearestBalanced`).
- *   3. Partir el interior de un object literal por comas de primer nivel
- *      sin romper strings ni objetos anidados (`splitTopLevel`).
+ *   1. Strip comments before applying regex, so a commented-out
+ *      endpoint does not appear in the collection.
+ *   2. Locate a `foo(` call and find its closing `)` respecting
+ *      nesting (`findAllBalanced`, `findNearestBalanced`).
+ *   3. Split the inside of an object literal by top-level commas
+ *      without breaking strings or nested objects (`splitTopLevel`).
  *
- * Vivían duplicadas en `express.scanner.ts` y `nextjs.scanner.ts`. La
- * copia de Next.js iteraba con `regex.exec()` sobre una regex **sin flag
- * `g`**, de modo que `lastIndex` nunca avanzaba y el bucle no terminaba
- * nunca. Centralizarlas aquí elimina el bug y la divergencia.
+ * They used to live duplicated in `express.scanner.ts` and
+ * `nextjs.scanner.ts`. The Next.js copy iterated with `regex.exec()`
+ * over a regex **without the `g` flag**, so `lastIndex` never advanced
+ * and the loop never terminated. Centralizing them here removes the
+ * bug and the divergence.
  */
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * Elimina comentarios de bloque y de línea de un fuente JS/TS.
+ * Strips block and line comments from a JS/TS source.
  *
- * El `//` se descarta solo si no viene precedido de `:`, para no partir
- * las URLs (`https://…`) que aparecen en literales de string.
+ * The `//` is dropped only if it is not preceded by `:`, to avoid
+ * breaking URLs (`https://…`) that appear in string literals.
  */
 export function stripJsComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
 /**
- * Encuentra el `)` que cierra el `(` situado en `openIndex`, respetando
- * anidamiento. Devuelve `-1` si el paréntesis nunca se cierra.
+ * Finds the `)` that closes the `(` located at `openIndex`, respecting
+ * nesting. Returns `-1` if the parenthesis is never closed.
  */
 export function findClosingParen(text: string, openIndex: number): number {
   let depth = 0;
@@ -46,35 +47,36 @@ export function findClosingParen(text: string, openIndex: number): number {
 }
 
 /**
- * Todas las ocurrencias de `pattern` en `text`, cada una con la posición
- * balanceada de su llamada.
+ * All occurrences of `pattern` in `text`, each with the balanced
+ * position of its call.
  *
- * `pattern` debe describir el prefijo de una llamada (ej. `/z\.object\s*\(/`);
- * el `(` se busca a partir del inicio del match. La regex se re-crea
- * siempre con flag `g`, así que da igual cómo la declare quien llama.
+ * `pattern` must describe the prefix of a call (e.g.
+ * `/z\.object\s*\(/`); the `(` is searched from the start of the match.
+ * The regex is always re-created with the `g` flag, so it does not
+ * matter how the caller declared it.
  */
 export function findAllBalanced(text: string, pattern: RegExp): IBalancedCall[] {
   const out: IBalancedCall[] = [];
   const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
-  // El **inicio** de la llamada se busca sobre la máscara: así una
-  // escrita dentro de un texto —`'usa app.get("/x")'`— no cuenta como
-  // una llamada. Los índices valen sobre el original porque la máscara
-  // conserva la longitud, y el contenido se sigue leyendo de `text`,
-  // donde los argumentos son los de verdad.
+  // The **start** of the call is searched on the mask: this way one
+  // written inside a text —`'usa app.get("/x")'`— does not count as a
+  // call. The indices are valid on the original because the mask
+  // preserves length, and the content is still read from `text`, where
+  // the arguments are the real ones.
   //
-  // Afectaba a Hono, Fastify y a los parsers de zod y Joi: cualquier
-  // ejemplo en un comentario de cadena o en un texto de ayuda producía
-  // un endpoint que no existe en ninguna parte.
+  // It affected Hono, Fastify, and the zod and Joi parsers: any example
+  // in a string comment or in a help text produced an endpoint that
+  // exists nowhere.
   const masked = maskStringLiterals(text);
   let m: RegExpExecArray | null;
   while ((m = re.exec(masked)) !== null) {
-    // Una regex que puede casar vacío colgaría el bucle: forzamos avance.
+    // A regex that can match empty would hang the loop: force advance.
     if (m[0].length === 0) re.lastIndex++;
     const callStart = masked.indexOf("(", m.index);
     if (callStart === -1) continue;
-    // El paréntesis de cierre se busca en el ORIGINAL: un `)` dentro de
-    // una cadena no cierra nada, y en la máscara ese carácter ya no
-    // está.
+    // The closing parenthesis is searched in the ORIGINAL: a `)` inside
+    // a string does not close anything, and on the mask that character
+    // is no longer there.
     const callEnd = findClosingParen(text, callStart);
     if (callEnd === -1) continue;
     out.push({ callStart, callEnd });
@@ -83,9 +85,9 @@ export function findAllBalanced(text: string, pattern: RegExp): IBalancedCall[] 
 }
 
 /**
- * De todas las llamadas que casan `pattern`, la más cercana (en número de
- * líneas) a `nearLine`. Sirve para asociar un schema al handler que lo
- * usa cuando un mismo archivo declara varios.
+ * Of all calls that match `pattern`, the closest (by line count) to
+ * `nearLine`. Used to associate a schema with the handler that uses it
+ * when a single file declares several.
  */
 export function findNearestBalanced(
   text: string,
@@ -105,7 +107,7 @@ export function findNearestBalanced(
   return best;
 }
 
-/** Índice de línea (0-based) del carácter en `index`. */
+/** 0-based line index of the character at `index`. */
 export function countLinesBefore(text: string, index: number): number {
   let lines = 0;
   for (let i = 0; i < index && i < text.length; i++) {
@@ -115,21 +117,21 @@ export function countLinesBefore(text: string, index: number): number {
 }
 
 /**
- * Parte el interior de un object literal por comas de primer nivel.
+ * Splits the inside of an object literal by top-level commas.
  *
- * Ignora las comas dentro de strings (`'`, `"`, backtick, con escapes) y
- * dentro de `()`, `{}` o `[]` anidados. La profundidad arranca en 1
- * porque el texto recibido incluye las llaves exteriores del objeto.
+ * Ignores commas inside strings (`'`, `"`, backtick, with escapes) and
+ * inside nested `()`, `{}` or `[]`. The depth starts at 1 because the
+ * received text includes the outer braces of the object.
  */
 export function splitTopLevel(body: string): string[] {
   const out: string[] = [];
-  // La profundidad a la que una coma separa dos items del MISMO nivel.
+  // The depth at which a comma separates two items at the SAME level.
   //
-  // Depende de si quien llama incluye las llaves exteriores o no. Antes
-  // estaba fijada a 1, o sea que solo funcionaba pasándolas — y sin
-  // decirlo en ningún sitio. Pasar el cuerpo desnudo devolvía **un solo
-  // item** con todo dentro, en silencio: el scanner de Hono se pasó así
-  // un rato, extrayendo un campo de cuatro.
+  // Depends on whether the caller includes the outer braces or not.
+  // Before it was fixed at 1, meaning it only worked when passing them
+  // — without saying so anywhere. Passing the bare body returned **a
+  // single item** with everything inside, in silence: the Hono scanner
+  // spent a while like that, extracting one field out of four.
   const trimmed = body.trim();
   const wrapped =
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
@@ -186,8 +188,8 @@ export function splitTopLevel(body: string): string[] {
 }
 
 /**
- * Quita las llaves exteriores y el espacio sobrante de un item devuelto
- * por `splitTopLevel` (el primero arrastra el `{`, el último el `}`).
+ * Removes the outer braces and trailing whitespace from an item
+ * returned by `splitTopLevel` (the first drags the `{`, the last the `}`).
  */
 export function unwrapObjectLiteralItem(item: string): string {
   return item
@@ -197,26 +199,26 @@ export function unwrapObjectLiteralItem(item: string): string {
 }
 
 /**
- * Sustituye el **contenido** de las cadenas por espacios, conservando
- * las comillas y la longitud total.
+ * Replaces the **contents** of strings with spaces, keeping the quotes
+ * and the total length.
  *
- * Sirve para responder a una pregunta que los scanners hacen todo el
- * rato sin saberlo: *¿esta llamada está de verdad en el código, o está
- * dentro de una cadena?* Un fichero con
+ * Used to answer a question the scanners ask all the time without
+ * knowing it: *is this call actually in the code, or is it inside a
+ * string?* A file with
  *
- *     const ayuda = 'usa router.get("/x") para registrar';
+ *     const help = 'use router.get("/x") to register';
  *
- * producía un endpoint `GET /x` que no existe. El texto de una cadena no
- * es código, pero para un regex se lee igual.
+ * produced a `GET /x` endpoint that does not exist. The text of a
+ * string is not code, but for a regex it reads the same.
  *
- * La longitud se conserva a propósito: así los desplazamientos de la
- * máscara valen sobre el fuente original, y se puede buscar en la
- * máscara y leer en el original. Sin eso habría que mantener un mapa de
- * posiciones, que es la clase de cosa que se desincroniza.
+ * Length is preserved on purpose: this way the offsets on the mask are
+ * valid on the original source, and we can search on the mask and read
+ * from the original. Without that we'd need to maintain a position
+ * map, which is the kind of thing that desyncs.
  *
- * Cubre comillas simples, dobles y plantillas. Dentro de una plantilla,
- * lo que va en `${…}` **sí** es código y se conserva: es donde viven las
- * interpolaciones que otros lints tienen que ver.
+ * Covers single quotes, double quotes, and templates. Inside a
+ * template, what goes in `${…}` **is** code and is preserved: that is
+ * where the interpolations live that other lints need to see.
  */
 export function maskStringLiterals(src: string): string {
   const out = src.split("");
@@ -234,14 +236,14 @@ export function maskStringLiterals(src: string): string {
     while (j < src.length) {
       const c = src[j];
       if (c === "\\") {
-        // Un escape se lleva por delante el siguiente carácter, sea cual
-        // sea: sin esto, un `"\\""` cierra donde no debe.
+        // An escape takes the next character along with it, whatever it
+        // is: without this, a `"\\""` would close where it should not.
         out[j] = " ";
         if (j + 1 < src.length) out[j + 1] = " ";
         j += 2;
         continue;
       }
-      // `${` dentro de una plantilla abre código de verdad.
+      // `${` inside a template opens real code.
       if (quote === "`" && c === "$" && src[j + 1] === "{") {
         depth++;
         j += 2;
@@ -253,9 +255,9 @@ export function maskStringLiterals(src: string): string {
         continue;
       }
       if (c === quote) break;
-      // Un salto de línea cierra una cadena de comillas simples o
-      // dobles: si sigue abierta es que no era una cadena, y enmascarar
-      // hasta el final del fichero se cargaría el resto del código.
+      // A newline closes a single- or double-quoted string: if it's
+      // still open, it was not a string, and masking until the end of
+      // the file would eat the rest of the code.
       if (c === "\n" && quote !== "`") break;
       out[j] = " ";
       j++;
@@ -266,21 +268,21 @@ export function maskStringLiterals(src: string): string {
 }
 
 /**
- * Las apariciones de `pattern` que están **fuera** de cualquier cadena.
+ * The occurrences of `pattern` that are **outside** any string.
  *
- * El truco tiene dos mitades y las dos hacen falta:
+ * The trick has two halves and both are needed:
  *
- *   1. Se **busca** sobre la máscara, donde el contenido de las cadenas
- *      son espacios. Así una llamada escrita dentro de un texto —
- *      `'usa router.get("/x")'`— no aparece.
- *   2. Se **lee** del fuente original, en la misma posición. La máscara
- *      conserva la longitud justo para esto: el path de una ruta de
- *      verdad ES una cadena, así que en la máscara viene en blanco y
- *      leerlo de ahí daría rutas vacías.
+ *   1. We **search** on the mask, where the contents of the strings
+ *      are spaces. So a call written inside a text —
+ *      `'use router.get("/x")'`— does not appear.
+ *   2. We **read** from the original source, at the same position. The
+ *      mask preserves length exactly for this: the path of a real
+ *      route IS a string, so on the mask it comes out blank and
+ *      reading it from there would give empty paths.
  *
- * Saltarse la segunda mitad es fácil y el fallo es silencioso: los
- * grupos capturados salen llenos de espacios y las rutas se descartan
- * una a una sin que nada avise.
+ * Skipping the second half is easy and the failure is silent: the
+ * captured groups come out full of spaces and the paths are discarded
+ * one by one without anything saying so.
  */
 export function findOutsideStrings(
   src: string,
@@ -288,12 +290,12 @@ export function findOutsideStrings(
 ): Array<{ index: number; match: RegExpExecArray }> {
   const clean = stripJsComments(src);
   const masked = maskStringLiterals(clean);
-  // Copias propias: mover el `lastIndex` del regex que nos pasan
-  // rompería el bucle de quien llama (ver `lint:regex-state`).
+  // Own copies: moving the `lastIndex` of the regex we were passed
+  // would break the loop of whoever called us (see `lint:regex-state`).
   const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
   const finder = new RegExp(pattern.source, flags);
-  // `y` (sticky) ancla la lectura exactamente donde la máscara encontró
-  // la llamada, sin volver a buscar.
+  // `y` (sticky) anchors the read exactly where the mask found the
+  // call, without searching again.
   const reader = new RegExp(pattern.source, `${pattern.flags.replace(/[gy]/g, "")}y`);
 
   const out: Array<{ index: number; match: RegExpExecArray }> = [];

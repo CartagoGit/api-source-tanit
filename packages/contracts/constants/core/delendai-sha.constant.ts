@@ -30,4 +30,4 @@
  * is published to npm, the `file:` path is replaced by `^<version>` and
  * this SHA becomes a no-op (see `p00007`, archived in `done/chores/`).
  */
-export const DELENDAI_SHA = "f86e0ee9ee79f2dc82e294bb0030547b1639dbc1";
+export const DELENDAI_SHA = "916238276ddde5480914ce08ec571e70585606ce";

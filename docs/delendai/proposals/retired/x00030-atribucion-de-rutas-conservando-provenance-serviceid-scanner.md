@@ -2,7 +2,7 @@
 id: x00030
 title: "Atribución de rutas por provenance (serviceId/scanner) desde el origen, no reconstruida por method+uri"
 kind: fix
-status: ready
+status: retired
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
@@ -103,3 +103,13 @@ involuntariamente el caso usando rutas distintas por servicio.
 3. `bun run validate` verde (con i00002 cerrado).
 4. x00025 marcada como dependiente: su invariante pasa a estar demostrada
    por construcción (provenance), no por reconstrucción heurística.
+
+---
+
+> **Retirada 2026-09-05 tras el merge de `origin/develop`**: x00025 fué actualizado
+> por `a2956e8` con un helper (`accumulateRoutesByService` en
+> `packages/core/discovery/accumulate-routes-by-service.helper.ts`) que toma rutas por
+> scanner (`scannerRoutes`) y dedupe por `(method, uri, sourceFile)`. La motivación
+> original de x00030 (no volver a atribuir por method+uri global) quedó cubierta ahí.
+> El slice "dos servicios con GET /health idénticos" sigue abierto en a00013 S1 y
+> puede retomarse como test adversarial contra x00025.

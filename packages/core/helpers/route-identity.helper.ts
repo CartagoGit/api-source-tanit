@@ -1,70 +1,70 @@
 /**
- * Qué hace que dos endpoints sean el mismo endpoint.
+ * What makes two endpoints the same endpoint.
  *
- * Esta pregunta se respondía en tres sitios, de tres formas distintas:
+ * This question was answered in three places, in three different ways:
  *
- * | Dónde | Fórmula |
+ * | Where | Formula |
  * |---|---|
- * | `dedupeSpecs` del pipeline | `` `${method} ${uri} ${name}` `` |
- * | Invariantes de la colección | `` `${method} ${raw}` `` (+ body) |
- * | `check` (`diff.script.ts`) | `` `${method} ${normalizado}` `` (+ name) |
+ * | Pipeline's `dedupeSpecs` | `` `${method} ${uri} ${name}` `` |
+ * | Collection invariants | `` `${method} ${raw}` `` (+ body) |
+ * | `check` (`diff.script.ts`) | `` `${method} ${normalized}` `` (+ name) |
  *
- * Y el mismo fallo mordió **cuatro veces**, siempre por dar por hecho
- * que la URL identifica la operación. Eso vale en REST y no vale en
- * GraphQL ni en tRPC, donde hay **un** endpoint —`POST /graphql`— y lo
- * que distingue una consulta de otra es el nombre:
+ * And the same bug bit **four times**, always for assuming that the URL
+ * identifies the operation. That holds in REST and not in GraphQL or
+ * tRPC, where there is **one** endpoint — `POST /graphql` — and what
+ * distinguishes one query from another is the name:
  *
- *   1. `dedupeSpecs` hacía que un esquema entero produjera una request.
- *   2. Los invariantes avisaban de las otras cuatro como duplicadas.
- *   3. `check` contaba 1 ruta de 5, así que no detectaba deriva ninguna:
- *      si cuatro operaciones desaparecían del código seguía diciendo
- *      1 contra 1 y dando el visto bueno.
- *   4. El scanner de OpenAPI se inventó `__params`, colado por `as any`,
- *      porque una ruta no tenía forma de decir de qué scanner venía.
+ *   1. `dedupeSpecs` made a whole schema produce a single request.
+ *   2. The invariants warned about the other four as duplicates.
+ *   3. `check` counted 1 path of 5, so it did not detect any drift:
+ *      if four operations disappeared from the code, it still said
+ *      1 against 1 and gave the green light.
+ *   4. The OpenAPI scanner invented `__params`, leaked through `as any`,
+ *      because a path had no way of saying which scanner it came from.
  *
- * Las tres primeras se parchearon una a una. Tres apariciones del mismo
- * error no son tres despistes: son una pieza que falta. Esta es la
- * pieza.
+ * The first three were patched one by one. Three appearances of the
+ * same bug are not three slip-ups: they are a missing piece. This is
+ * the piece.
  *
- * ## Dónde NO se usa, y por qué
+ * ## Where it is NOT used, and why
  *
- * En el chequeo de duplicados de `collection-invariants.helper.ts`. No
- * es un olvido: es que pregunta **otra cosa**.
+ * In the duplicate check of `collection-invariants.helper.ts`. It is
+ * not an oversight: it asks **another question**.
  *
- * Aquí se compara el código con la colección, y para eso hay que
- * normalizar —`/users/{id}` en el código y `/users/{{userId}}` en la
- * colección son el mismo endpoint—. Los invariantes comparan la
- * colección consigo misma, donde la normalización no aporta nada y
- * **quita**: colapsa el nombre del parámetro a `:p`, así que
- * `/busqueda/{{historico}}` y `/busqueda/{{matricula}}` —dos endpoints
- * distintos que Laravel separa con un `where()`, y que `uri.helper`
- * documenta como el caso límite conocido— pasarían a avisar como
- * duplicados.
+ * Here we compare the code with the collection, and for that we need
+ * to normalize — `/users/{id}` in code and `/users/{{userId}}` in the
+ * collection are the same endpoint. The invariants compare the
+ * collection with itself, where the normalization brings nothing and
+ * actually **subtracts**: it collapses the parameter name to `:p`, so
+ * `/search/{{historic}}` and `/search/{{plate}}` — two distinct
+ * endpoints that Laravel separates with a `where()`, and that
+ * `uri.helper` documents as the known edge case — would warn as
+ * duplicates.
  *
- * Un aviso falso en un invariante es peor que no tenerlo, porque el
- * siguiente que lo vea acusar sin motivo deja de leerlos. Meter las dos
- * preguntas en una función para que el recuento de duplicación bajara
- * habría sido la abstracción equivocada.
+ * A false warning in an invariant is worse than not having one,
+ * because the next person who sees it, accusing without cause, stops
+ * reading them. Putting both questions in one function so the
+ * duplicate count would go down would have been the wrong abstraction.
  */
 import { normalizeForComparison } from "./uri.helper.js";
 import type { IEndpointIdentity } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * La clave de una operación. Misma operación, misma clave.
+ * The key of an operation. Same operation, same key.
  *
- * La URI se normaliza siempre, para que `/api/users` y `api/users` no
- * se cuenten como dos. El nombre y el cuerpo solo entran cuando están:
- * añadirlos vacíos haría que una ruta con nombre y la misma sin él
- * dejaran de coincidir, que es lo contrario de lo que se busca.
+ * The URI is always normalized, so `/api/users` and `api/users` are not
+ * counted as two. The name and body only enter when present: adding
+ * them empty would make a route with a name and the same one without
+ * it stop matching, which is the opposite of what we want.
  */
 export function endpointKey(identity: IEndpointIdentity): string {
   const method = identity.method.toUpperCase();
   const uri = normalizeForComparison(identity.uri);
-  // Audit 2ª revisión #3: en monorepos, dos endpoints con misma
-  // METHOD+URI pero distinto `serviceId` (workspace) NO son la
-  // misma operación. Incluimos `serviceId` en la clave cuando
-  // está presente (un monorepo multi-workspace); los proyectos
-  // planos lo dejan vacío y siguen colisionando como antes.
+  // Audit 2nd review #3: in monorepos, two endpoints with the same
+  // METHOD+URI but different `serviceId` (workspace) are NOT the same
+  // operation. We include `serviceId` in the key when present (a
+  // multi-workspace monorepo); flat projects leave it empty and keep
+  // colliding as before.
   const serviceId = identity.serviceId ?? "";
   let key = `${serviceId}::${method} ${uri}`;
   if (identity.name !== undefined && identity.name !== "") {
@@ -77,11 +77,11 @@ export function endpointKey(identity: IEndpointIdentity): string {
 }
 
 /**
- * Cómo se llama una operación cuando hay que enseñársela a alguien.
+ * How an operation is called when it has to be shown to someone.
  *
- * `POST /graphql` repetido tres veces no dice nada: hace falta el
- * nombre para saber cuál falta. Esto es lo que convierte una lista de
- * tres líneas idénticas en una lista útil.
+ * `POST /graphql` repeated three times says nothing: the name is needed
+ * to know which one is missing. This is what turns a list of three
+ * identical lines into a useful list.
  */
 export function describeEndpoint(identity: IEndpointIdentity): string {
   const base = `${identity.method.toUpperCase()} ${identity.uri}`;
@@ -91,13 +91,13 @@ export function describeEndpoint(identity: IEndpointIdentity): string {
 }
 
 /**
- * ¿Este protocolo distingue operaciones por el nombre?
+ * Does this protocol distinguish operations by name?
  *
- * No es una lista de frameworks: es una propiedad de las rutas que
- * llegan. Si varias comparten método y URI, el nombre es lo único que
- * queda — y da igual que sea GraphQL, tRPC o un JSON-RPC escrito a
- * mano. Preguntarlo así evita una lista que haya que mantener cada vez
- * que se soporte un framework nuevo.
+ * It is not a list of frameworks: it is a property of the routes that
+ * arrive. If several share method and URI, the name is the only thing
+ * left — and it does not matter whether it is GraphQL, tRPC, or a
+ * hand-written JSON-RPC. Asking this way avoids a list that has to be
+ * maintained every time a new framework is supported.
  */
 export function needsNameToDisambiguate(
   routes: ReadonlyArray<IEndpointIdentity>,

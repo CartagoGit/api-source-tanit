@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-fastapi (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-fastapi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "18fadeea-3996-5e4c-a165-de824d8174d0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

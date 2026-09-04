@@ -1,35 +1,33 @@
 /**
- * Aplanar un `SchemaGraph` a la lista plana `IEndpointField[]`.
+ * Flatten a `SchemaGraph` into the flat `IEndpointField[]` list.
  *
- * Los exportadores que aún no saben consumir el grafo (la colección
- * Postman, por ejemplo) necesitan una lista de campos por endpoint.
- * Hasta ahora esa lista salía de `IValidationSpec[]` por scanner; con
- * `SchemaGraph` en escena, la fuente es el grafo y el aplanado es este
- * helper.
+ * Exporters that cannot yet consume the graph (the Postman collection,
+ * for example) need a field list per endpoint. Until now that list
+ * came from `IValidationSpec[]` per scanner; with `SchemaGraph` in
+ * play, the source is the graph and the flattening is this helper.
  *
- * ## Lo que **no** es
+ * ## What it is **not**
  *
- * No es una traducción fiel: el grafo puede expresar cosas que la lista
- * plana no tiene (objetos anidados como tipo, tuplas, uniones). El
- * flatten emite lo que cabe —un campo por cada escalar accesible— y
- * resigna lo demás. Su propósito es **no romper** los exportadores
- * legacy mientras los scanners migran al grafo, no ser la fuente de
- * verdad.
+ * It is not a faithful translation: the graph can express things the
+ * flat list cannot (nested objects as a type, tuples, unions). The
+ * flatten emits what fits —one field per reachable scalar— and gives
+ * up the rest. Its purpose is to **not break** legacy exporters while
+ * scanners migrate to the graph, not to be the source of truth.
  *
- * ## Forma del resultado
+ * ## Shape of the result
  *
- * El array resultante tiene la misma forma que `EndpointSpec.fields`:
- * cada elemento es `IEndpointField` con `fieldName`, `type` y
- * `required`. Los nodos compuestos (`object`, `array`, `union`,
- * `intersection`) se **recorren** y producen varios `IEndpointField`.
- * Los nodos `reference` se **siguen** y se aplana lo que apuntan.
- * Los nodos `literal` y `nullable` se **emiten como string**, que es
- * el tipo más cercano en la lista plana.
+ * The resulting array has the same shape as `EndpointSpec.fields`:
+ * each element is `IEndpointField` with `fieldName`, `type`, and
+ * `required`. Composite nodes (`object`, `array`, `union`,
+ * `intersection`) are **walked** and produce several `IEndpointField`.
+ * `reference` nodes are **followed** and what they point to is
+ * flattened. `literal` and `nullable` nodes are **emitted as string**,
+ * which is the closest type in the flat list.
  *
- * Ciclos en `reference` se cortan: si un nodo referencia a un nodo que
- * ya estamos visitando, emitimos un solo campo escalar `string` con
- * `required: false` y seguimos. Sin eso, un modelo recursivo
- * (`User.parent: User`) agotaría la pila.
+ * Cycles in `reference` are cut: if a node references a node we are
+ * already visiting, we emit a single scalar `string` field with
+ * `required: false` and keep going. Without that, a recursive model
+ * (`User.parent: User`) would exhaust the stack.
  */
 import type { IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
 import type {
@@ -40,13 +38,13 @@ import type {
 } from "../../contracts/interfaces/core/schema.interface.js";
 import { resolveReference } from "./reference.helper.js";
 
-/** Localización por defecto del aplanado (los `IEndpointField` la piden). */
+/** Default location for the flattening (`IEndpointField` requires it). */
 type TFieldLocation = IEndpointField["location"];
 
 /**
- * Aplana el grafo a partir de su raíz.
+ * Flattens the graph starting from its root.
  *
- * Atajo para `flattenFrom(graph, graph.root, "body")`.
+ * Shortcut for `flattenFrom(graph, graph.root, "body")`.
  */
 export function flatten(
   graph: ISchemaGraph,
@@ -56,15 +54,15 @@ export function flatten(
 }
 
 /**
- * Aplana un subgrafo empezando por un nodo concreto.
+ * Flattens a subgraph starting at a specific node.
  *
- * `rootId` debe estar en `graph.nodes`. Si no lo está, devuelve `[]`:
- * el grafo no contiene la raíz, así que tampoco tiene qué aplanar.
+ * `rootId` must be in `graph.nodes`. If it is not, returns `[]`: the
+ * graph does not contain the root, so there is nothing to flatten.
  *
- * `location` es la ubicación que se les pone a los campos emitidos.
- * Un mismo grafo puede aplanarse una vez con `body` y otra con `query`
- * si al caller le interesa (no es el caso hoy, pero la función lo
- * admite sin coste).
+ * `location` is the location assigned to the emitted fields. The same
+ * graph can be flattened once with `body` and once with `query` if the
+ * caller cares (not the case today, but the function accepts it without
+ * cost).
  */
 export function flattenFrom(
   graph: ISchemaGraph,
@@ -82,9 +80,9 @@ function visit(
   visiting: Set<SchemaNodeId>,
 ): IEndpointField[] {
   if (visiting.has(nodeId)) {
-    // Ciclo: cortamos con un campo string opaco. La información
-    // completa se queda en el grafo, donde el exportador que sabe leerlo
-    // puede detectarla.
+    // Cycle: we cut with an opaque string field. The full information
+    // stays in the graph, where the exporter that knows how to read it
+    // can detect it.
     return [stringField("<cycle>", location, false)];
   }
   const node = graph.nodes.get(nodeId);
@@ -109,7 +107,7 @@ function visitNode(
     case "enum":
       return [enumField(node, location)];
     case "literal":
-      // La lista plana no tiene literal; caemos a `string`.
+      // The flat list has no literal; we fall back to `string`.
       return [stringField(node.name ?? "<literal>", location, false)];
     case "object":
       return (node.children ?? []).flatMap((edge) =>
@@ -131,16 +129,16 @@ function visitNode(
           },
         ];
       }
-      // Aplanamos el item con prefijo `items.<field>` para no chocar
-      // con los campos del padre si los hubiera.
+      // We flatten the item with the `items.<field>` prefix so it does
+      // not clash with parent fields if any.
       return visit(graph, itemEdge.node, location, visiting).map((f) => ({
         ...f,
         fieldName: `items.${f.fieldName}`,
       }));
     }
     case "tuple":
-      // Las tuplas tienen cardinalidad fija; aquí perdemos el índice y
-      // emitimos todos los elementos como `array` con prefijo posicional.
+      // Tuples have fixed cardinality; here we lose the index and emit
+      // all elements as `array` with positional prefix.
       return (node.children ?? []).flatMap((edge) =>
         visit(graph, edge.node, location, visiting).map((f) => ({
           ...f,
@@ -159,9 +157,9 @@ function visitNode(
     }
     case "nullable":
       if (!node.inner) return [];
-      // La nulabilidad se aplana: el campo ya era opcional en la lista
-      // plana (no había forma de exigirlo). Lo propagamos como no
-      // requerido y dejamos que el caller lo afine.
+      // Nullability is flattened: the field was already optional in the
+      // flat list (there was no way to require it). We propagate it as
+      // not required and let the caller refine it.
       return visit(graph, node.inner, location, visiting).map((f) => ({
         ...f,
         required: false,

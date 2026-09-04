@@ -1,21 +1,21 @@
 /**
- * Nodos de referencia y resolución de `$ref` en el `SchemaGraph`.
+ * Reference nodes and `$ref` resolution in the `SchemaGraph`.
  *
- * Una referencia es un nodo con `kind: 'reference'` y `ref` apuntando
- * al id de otro nodo del mismo grafo. Permite:
+ * A reference is a node with `kind: 'reference'` and `ref` pointing
+ * to the id of another node in the same graph. It enables:
  *
- *   - **Recursión**: un nodo `User` con campo `parent: $ref User`.
- *   - **Reuso**: un mismo tipo `SchemaNodeId` citado desde dos lugares.
- *   - **Forward references**: declarar un nodo antes de tener todos sus
- *     campos y resolverlo al cerrar el grafo.
+ *   - **Recursion**: a `User` node with field `parent: $ref User`.
+ *   - **Reuse**: the same `SchemaNodeId` cited from two places.
+ *   - **Forward references**: declaring a node before having all its
+ *     fields and resolving it when the graph closes.
  *
- * La resolución es **local primero**: si el grafo contiene el destino,
- * el nodo se puede sustituir por su árbol completo o por un `$ref`
- * nominal (`#/components/schemas/<name>`). Si no lo contiene, el
- * destino queda como un id externo y el exportador decide qué hacer
- * (los scanners que detectan OpenAPI lo resuelven contra el documento
- * original; los demás lo emiten literal). Network fetch queda fuera del
- * scope actual (a00010 S6 lo deja como follow-up).
+ * Resolution is **local-first**: if the graph contains the target, the
+ * node can be replaced by its full tree or by a nominal `$ref`
+ * (`#/components/schemas/<name>`). If not, the target stays as an
+ * external id and the exporter decides what to do (scanners that
+ * detect OpenAPI resolve it against the original document; others emit
+ * it literally). Network fetch is out of scope today (a00010 S6 leaves
+ * it as follow-up).
  */
 import type {
   IReferenceOptions,
@@ -25,14 +25,14 @@ import type {
 } from "../../contracts/interfaces/core/schema.interface.js";
 
 /**
- * Construye un nodo `reference`.
+ * Builds a `reference` node.
  *
- * El id del nodo referencia (`ref`) debe existir en el grafo destino.
- * Comprobarlo al construir costaría O(n) en cada nodo y se vuelve
- * frágil en grafos en construcción: el builder suele añadir el
- * destino **después** del `reference` y la verificación temprana
- * fallaría. La invariante se valida al cierre (`resolveReference` o
- * en `flatten-helper`), no en cada `add`.
+ * The id referenced by the node (`ref`) must exist in the target graph.
+ * Checking it at build time would be O(n) per node and would become
+ * brittle on graphs under construction: the builder usually adds the
+ * target **after** the `reference`, so early verification would fail.
+ * The invariant is validated at closure (`resolveReference` or in
+ * `flatten-helper`), not on every `add`.
  */
 export function createReferenceNode(
   ref: SchemaNodeId,
@@ -48,11 +48,11 @@ export function createReferenceNode(
 }
 
 /**
- * Resuelve un `$ref` local.
+ * Resolves a local `$ref`.
  *
- * Si el grafo contiene el destino, devuelve el nodo. Si no, devuelve
- * `undefined`: el caller decide si tratarlo como error (validación
- * estricta) o emitir el `$ref` literal (exportador laxo).
+ * If the graph contains the target, returns the node. Otherwise returns
+ * `undefined`: the caller decides whether to treat it as an error
+ * (strict validation) or to emit the literal `$ref` (lax exporter).
  */
 export function resolveReference(
   graph: ISchemaGraph,
@@ -62,15 +62,15 @@ export function resolveReference(
 }
 
 /**
- * Deriva un nombre estable para usar como `$ref` nominal.
+ * Derives a stable name to use as a nominal `$ref`.
  *
- * Si el nodo tiene `name`, se usa tal cual: es el nombre lógico que el
- * scanner puso y el que cabe esperar en el documento destino. Si no,
- * se cae al id: menos bonito, pero garantiza que dos llamadas con el
- * mismo input produzcan el mismo nombre.
+ * If the node has a `name`, it is used as-is: it is the logical name
+ * the scanner set and the one expected in the target document.
+ * Otherwise, it falls back to the id: less pretty, but it guarantees
+ * two calls with the same input produce the same name.
  *
- * Exportadores que prefieran no inventar nombres para nodos anónimos
- * deberían chequear `node.name !== undefined` antes de llamar aquí.
+ * Exporters that prefer not to invent names for anonymous nodes should
+ * check `node.name !== undefined` before calling here.
  */
 export function deriveLocalRefName(
   node: ISchemaNode,

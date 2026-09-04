@@ -1,0 +1,710 @@
+{
+  "info": {
+    "name": "laravel-api (Postman)",
+    "description": "Colección Postman generada automáticamente para laravel-api.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "475d94fe-0d80-5200-9872-4b30c53dd1e6"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "",
+      "item": [
+        {
+          "name": "Login Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CANDIDATE_PATHS = [",
+                  "  \"access_token\",\n  \"token\",\n  \"accessToken\",\n  \"data.access_token\",\n  \"data.token\",\n  \"data.accessToken\",\n  \"jwt\",\n  \"id_token\",",
+                  "];",
+                  "",
+                  "function readPath(source, path) {",
+                  "  return path.split('.').reduce(function (acc, key) {",
+                  "    return acc === null || acc === undefined ? undefined : acc[key];",
+                  "  }, source);",
+                  "}",
+                  "",
+                  "pm.test('Login returns a token', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "",
+                  "  let body;",
+                  "  try {",
+                  "    body = pm.response.json();",
+                  "  } catch (err) {",
+                  "    throw new Error('Response is not JSON: ' + pm.response.text().slice(0, 200));",
+                  "  }",
+                  "",
+                  "  let token;",
+                  "  for (const path of CANDIDATE_PATHS) {",
+                  "    const value = readPath(body, path);",
+                  "    if (typeof value === 'string' && value.length > 0) {",
+                  "      token = value;",
+                  "      break;",
+                  "    }",
+                  "  }",
+                  "",
+                  "  if (!token) {",
+                  "    throw new Error(",
+                  "      'Token not found in the response. Paths tried: ' +",
+                  "        CANDIDATE_PATHS.join(', ') +",
+                  "        '. Declare yours in config.tokenResponsePath.'",
+                  "    );",
+                  "  }",
+                  "",
+                  "  // El environment persiste entre sesiones; las collection",
+                  "  // variables solo mientras la colección esté abierta.",
+                  "  if (pm.environment.name) {",
+                  "    pm.environment.set('token', token);",
+                  "  } else {",
+                  "    pm.collectionVariables.set('token', token);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "Authentication in three steps:\n\n1. Fill in `authUsername` and `authPassword` in the active environment.\n2. Send this request.\n3. The token is stored in `token` automatically and every other endpoint uses it.\n\nThe token is written to the environment, so it survives closing Postman.",
+          "item": [
+            {
+              "name": "Login Login (base)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Auto · LoginRequest",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{authUsername}}\",\n  \"password\": \"{{authPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Variantes (auto · LoginRequest)",
+              "item": [
+                {
+                  "name": "Variante: Mínimo (solo required) (auto · FormRequest)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/auth/login",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "login"
+                      ]
+                    },
+                    "description": "Auto · LoginRequest\n\n**Variante auto-generada**: Mínimo (solo required).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"sample_password\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "description": "Generada automáticamente desde LoginRequest."
+                }
+              ],
+              "description": "Variantes auto-generadas desde `LoginRequest`."
+            }
+          ]
+        },
+        {
+          "name": "Refresh Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CANDIDATE_PATHS = [",
+                  "  \"access_token\",\n  \"token\",\n  \"accessToken\",\n  \"data.access_token\",\n  \"data.token\",\n  \"data.accessToken\",\n  \"jwt\",\n  \"id_token\",",
+                  "];",
+                  "",
+                  "function readPath(source, path) {",
+                  "  return path.split('.').reduce(function (acc, key) {",
+                  "    return acc === null || acc === undefined ? undefined : acc[key];",
+                  "  }, source);",
+                  "}",
+                  "",
+                  "pm.test('Login returns a token', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "",
+                  "  let body;",
+                  "  try {",
+                  "    body = pm.response.json();",
+                  "  } catch (err) {",
+                  "    throw new Error('Response is not JSON: ' + pm.response.text().slice(0, 200));",
+                  "  }",
+                  "",
+                  "  let token;",
+                  "  for (const path of CANDIDATE_PATHS) {",
+                  "    const value = readPath(body, path);",
+                  "    if (typeof value === 'string' && value.length > 0) {",
+                  "      token = value;",
+                  "      break;",
+                  "    }",
+                  "  }",
+                  "",
+                  "  if (!token) {",
+                  "    throw new Error(",
+                  "      'Token not found in the response. Paths tried: ' +",
+                  "        CANDIDATE_PATHS.join(', ') +",
+                  "        '. Declare yours in config.tokenResponsePath.'",
+                  "    );",
+                  "  }",
+                  "",
+                  "  // El environment persiste entre sesiones; las collection",
+                  "  // variables solo mientras la colección esté abierta.",
+                  "  if (pm.environment.name) {",
+                  "    pm.environment.set('token', token);",
+                  "  } else {",
+                  "    pm.collectionVariables.set('token', token);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "item": [
+            {
+              "name": "Refresh Refresh (base)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "auth",
+                    "refresh"
+                  ]
+                },
+                "description": "Auto · RefreshTokenRequest",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"sample_refresh_token\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Variantes (auto · RefreshTokenRequest)",
+              "item": [
+                {
+                  "name": "Variante: Mínimo (solo required) (auto · FormRequest)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/auth/refresh",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "auth",
+                        "refresh"
+                      ]
+                    },
+                    "description": "Auto · RefreshTokenRequest\n\n**Variante auto-generada**: Mínimo (solo required).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"sample_refresh_token\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "description": "Generada automáticamente desde RefreshTokenRequest."
+                }
+              ],
+              "description": "Variantes auto-generadas desde `RefreshTokenRequest`."
+            }
+          ]
+        },
+        {
+          "name": "Cerrar sesión Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Logout clears the token', function () {",
+                  "  pm.environment.set('token', '');",
+                  "  pm.collectionVariables.set('token', '');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "description": "",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for GET\", function () {",
+                  "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "",
+      "item": [
+        {
+          "name": "Update Address Address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for PUT\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "item": [
+            {
+              "name": "Update Address Address (base)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/users/{{id}}/address",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "users",
+                    "{{id}}",
+                    "address"
+                  ]
+                },
+                "description": "Auto · UpdateAddressRequest",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"street\": \"sample_street\",\n  \"city\": \"sample_city\",\n  \"zip\": \"sample_zip\",\n  \"country\": \"sample_country\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "name": "Variantes (auto · UpdateAddressRequest)",
+              "item": [
+                {
+                  "name": "Variante: Mínimo (solo required) (auto · FormRequest)",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json",
+                        "type": "text"
+                      },
+                      {
+                        "key": "Accept",
+                        "value": "application/json",
+                        "type": "text"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/users/{{id}}/address",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "users",
+                        "{{id}}",
+                        "address"
+                      ]
+                    },
+                    "description": "Auto · UpdateAddressRequest\n\n**Variante auto-generada**: Mínimo (solo required).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"street\": \"sample_street\",\n  \"city\": \"sample_city\",\n  \"zip\": \"sample_zip\",\n  \"country\": \"sample_country\"\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    }
+                  },
+                  "description": "Generada automáticamente desde UpdateAddressRequest."
+                }
+              ],
+              "description": "Variantes auto-generadas desde `UpdateAddressRequest`."
+            }
+          ]
+        },
+        {
+          "name": "User Orders Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{id}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{id}}",
+                "orders"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for GET\", function () {",
+                  "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "",
+      "item": [
+        {
+          "name": "Cancel Cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{id}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{id}}",
+                "cancel"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

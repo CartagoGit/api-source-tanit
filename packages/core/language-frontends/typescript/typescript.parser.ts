@@ -1,45 +1,44 @@
 /**
- * `parse(source, filename): TSFile` — el frontend TypeScript.
+ * `parse(source, filename): TSFile` — the TypeScript frontend.
  *
- * Consume código fuente JS/TS y devuelve un AST normalizado
- * (`TSFile`) sobre el que los 6 scanners JS/TS (Express, NestJS,
- * Fastify, Hono, Next.js, tRPC) escriben adaptadores semánticos.
+ * Consumes JS/TS source code and returns a normalized AST (`TSFile`)
+ * on which the 6 JS/TS scanners (Express, NestJS, Fastify, Hono,
+ * Next.js, tRPC) write semantic adapters.
  *
- * ## Por qué `@babel/parser`
+ * ## Why `@babel/parser`
  *
- * Soporta TypeScript como first-class (`plugins: ['typescript']`),
- * ya vivía en el lockfile como dep transitiva de `magicast`, y la
- * forma del AST es ESTree — el mismo árbol canónico que usan
- * ESLint, Prettier y casi todo el ecosistema JS. Arrastra ~100KB
- * y no requiere type-checking (no necesitamos tipos: solo
- * reconocemos la forma del código).
+ * It supports TypeScript first-class (`plugins: ['typescript']`), was
+ * already in the lockfile as a transitive dep of `magicast`, and the
+ * AST shape is ESTree — the same canonical tree that ESLint, Prettier,
+ * and almost the whole JS ecosystem use. It drags ~100KB and does not
+ * require type-checking (we do not need types: we only recognize the
+ * shape of the code).
  *
- * Las alternativas que se consideraron (a00010 S7):
+ * The alternatives considered (a00010 S7):
  *
- *   - `typescript` compiler API: 50MB, hace type-checking que no
- *     necesitamos, y el AST tiene tipos genéricos más feos de
- *     consumir.
- *   - `@typescript-eslint/parser`: arrastra
- *     `@typescript-eslint/types` + `typescript-estree`, doble
- *     transformación sobre el AST de TS que aquí no aporta.
- *   - `acorn`: sin soporte TS nativo (habría que añadir
- *     `acorn-typescript` encima, otra dep).
+ *   - `typescript` compiler API: 50MB, does type-checking we do not
+ *     need, and the AST has uglier generic types to consume.
+ *   - `@typescript-eslint/parser`: drags `@typescript-eslint/types`
+ *     + `typescript-estree`, a double transformation over the TS AST
+ *     that brings nothing here.
+ *   - `acorn`: no native TS support (would need `acorn-typescript`
+ *     on top, another dep).
  *
- * ## Lo que el parser VE y lo que DEVUELVE
+ * ## What the parser SEES and what it RETURNS
  *
- * Babel produce ESTree completo; este módulo se queda con cinco
- * categorías — imports, símbolos, clases, method calls, assignments
- * — y descarta el resto. La forma `TSFile` es deliberadamente
- * plana (sin referencias cruzadas entre las cinco colecciones)
- * porque los scanners la recorren linealmente.
+ * Babel produces full ESTree; this module keeps five categories —
+ * imports, symbols, classes, method calls, assignments — and discards
+ * the rest. The `TSFile` shape is deliberately flat (no cross
+ * references between the five collections) because scanners walk it
+ * linearly.
  *
- * ## Lo que NO hace
+ * ## What it does NOT do
  *
- * No resuelve tipos (`<T>`), no sigue imports (`import type` no se
- * distingue de `import`), no ejecuta el código. Es un parser
- * sintáctico, no semántico.
+ * It does not resolve types (`<T>`), does not follow imports
+ * (`import type` is not distinguished from `import`), does not
+ * execute the code. It is a syntactic parser, not a semantic one.
  *
- * (a00010 S7 — slice AST TypeScript)
+ * (a00010 S7 — TypeScript AST slice)
  */
 
 import { parse as babelParse, type ParserPlugin } from "@babel/parser";
@@ -66,21 +65,22 @@ import type { IParseDiagnostic } from "../../../contracts/interfaces/core/scanne
 // ---------------------------------------------------------------------------
 
 /**
- * Babel ESTree node — la forma mínima que necesitamos reconocer.
+ * Babel ESTree node — the minimum shape we need to recognize.
  *
- * Es un tipo permisivo (`{ readonly type: string; [key: string]:
- * unknown }`): solo escribimos los campos que visitamos, y todo lo
- * demás queda como `unknown` para que TS no proteste con `Property
- * 'X' does not exist on type 'BabelNode'` cuando Babel añade un
- * campo que no nos interesa.
+ * It is a permissive type (`{ readonly type: string; [key: string]:
+ * unknown }`): we only write the fields we visit, and everything else
+ * stays as `unknown` so TS does not complain with `Property 'X' does
+ * not exist on type 'BabelNode'` when Babel adds a field we do not
+ * care about.
  *
- * El motivo de no importar `@babel/types` directamente es pragmático:
- *   - `@babel/types` arrastra ~2500 tipos (`Node`, `NodeChild`...) que
- *     ralentizan el `tsc` y llenan de imports que este módulo no usa.
- *   - El coste de no tenerlos tipados es nulo: este parser **lee** el
- *     árbol, no lo construye. Si una propiedad falta o cambia, el
- *     `undefined`/`null` que sale se traduce a `kind: "unknown"` en
- *     `TSLiteral` y los adapters lo descartan sin ruido.
+ * The reason we do not import `@babel/types` directly is pragmatic:
+ *   - `@babel/types` drags ~2500 types (`Node`, `NodeChild`...) that
+ *     slow down `tsc` and fill imports this module does not use.
+ *   - The cost of not having them typed is zero: this parser **reads**
+ *     the tree, it does not build it. If a property is missing or
+ *     changes, the `undefined`/`null` that comes out becomes
+ *     `kind: "unknown"` in `TSLiteral` and the adapters discard it
+ *     silently.
  */
 interface BabelNode {
   readonly type: string;
@@ -92,17 +92,17 @@ interface BabelNode {
   readonly [key: string]: unknown;
 }
 
-/** Trata un `unknown` (que viene del AST) como BabelNode. */
+/** Treats an `unknown` (from the AST) as a BabelNode. */
 function asBabelNode(value: unknown): BabelNode {
   return value as BabelNode;
 }
 
-/** Lee una propiedad del nodo AST devolviendo `unknown`. */
+/** Reads a property of the AST node returning `unknown`. */
 function get(node: BabelNode, key: string): unknown {
   return node[key];
 }
 
-/** Cast seguro de un array de unknowns a array de BabelNodes. */
+/** Safe cast from an unknown array to a BabelNode array. */
 function asArray(value: unknown): ReadonlyArray<BabelNode> {
   return Array.isArray(value) ? (value as ReadonlyArray<BabelNode>) : [];
 }
@@ -112,82 +112,82 @@ function asArray(value: unknown): ReadonlyArray<BabelNode> {
 // ---------------------------------------------------------------------------
 
 /**
- * Parsea `source` (código TS/JS) y devuelve el AST normalizado.
+ * Parses `source` (TS/JS code) and returns the normalized AST.
  *
- * `filename` se adjunta al AST para que los adapters puedan
- * reportar errores y los scanners enseñárselo al usuario. No se usa
- * internamente — Babel lo acepta pero aquí no nos interesa.
+ * `filename` is attached to the AST so adapters can report errors and
+ * scanners can show it to the user. It is not used internally — Babel
+ * accepts it but we do not care here.
  *
- * Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
- * callers que quieren degradar sin ruido usan `parseModule` con un
- * array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+ * If Babel cannot parse the file, throws `SyntaxError`. Callers that
+ * want to degrade silently use `parseModule` with an
+ * `IParseDiagnostic` array (a00011 C-7 / B-rev-13).
  *
- * El orden dentro de cada colección de `TSFile` es top-down respecto
- * al archivo: al final del parse cada colección se ordena por
- * `(line, column)` ascendente, de modo que el contrato no dependa del
- * orden interno del walker (a00011 C-7 / B-rev-11).
+ * The order within each `TSFile` collection is top-down with respect
+ * to the file: at the end of the parse each collection is sorted by
+ * `(line, column)` ascending, so the contract does not depend on the
+ * internal order of the walker (a00011 C-7 / B-rev-11).
  *
- * Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
- * `filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
- * sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
- * componentes Next.js / React.
+ * Audit 2026-09-04 P2 #7: the `jsx` plugin is activated when
+ * `filename` ends in `.tsx`/`.jsx`. Without this, Babel rejected JSX
+ * syntax (`<Foo />`) with a syntax error and the scanner lost
+ * Next.js / React components.
  */
 
 /**
- * Indica si el archivo es JSX/TSX.
+ * Whether the file is JSX/TSX.
  */
 function isJsxFile(filename: string): boolean {
   return filename.endsWith(".tsx") || filename.endsWith(".jsx");
 }
 
 /**
- * Parsea `source` (código TS/JS) y devuelve el AST normalizado.
+ * Parses `source` (TS/JS code) and returns the normalized AST.
  *
- * `filename` se adjunta al AST para que los adapters puedan
- * reportar errores y los scanners enseñárselo al usuario. No se usa
- * internamente — Babel lo acepta pero aquí no nos interesa.
+ * `filename` is attached to the AST so adapters can report errors and
+ * scanners can show it to the user. It is not used internally — Babel
+ * accepts it but we do not care here.
  *
- * Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
- * callers que quieren degradar sin ruido usan `parseModule` con un
- * array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+ * If Babel cannot parse the file, throws `SyntaxError`. Callers that
+ * want to degrade silently use `parseModule` with an
+ * `IParseDiagnostic` array (a00011 C-7 / B-rev-13).
  *
- * El orden dentro de cada colección de `TSFile` es top-down respecto
- * al archivo: al final del parse cada colección se ordena por
- * `(line, column)` ascendente, de modo que el contrato no dependa del
- * orden interno del walker (a00011 C-7 / B-rev-11).
+ * The order within each `TSFile` collection is top-down with respect
+ * to the file: at the end of the parse each collection is sorted by
+ * `(line, column)` ascending, so the contract does not depend on the
+ * internal order of the walker (a00011 C-7 / B-rev-11).
  *
- * Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
- * `filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
- * sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
- * componentes Next.js / React.
+ * Audit 2026-09-04 P2 #7: the `jsx` plugin is activated when
+ * `filename` ends in `.tsx`/`.jsx`. Without this, Babel rejected JSX
+ * syntax (`<Foo />`) with a syntax error and the scanner lost
+ * Next.js / React components.
  */
 export function parse(source: string, filename: string): TSFile {
-  // Babel acepta strings o configuraciones tipadas (ParserPlugin es
-  // el alias de `PluginConfig` en las definiciones de tipos del
-  // paquete). Mantenemos el array como strings para no arrastrar
-  // ~2500 tipos de `@babel/types`.
+  // Babel accepts strings or typed configurations (ParserPlugin is the
+  // alias of `PluginConfig` in the package's type definitions). We
+  // keep the array as strings to avoid dragging ~2500 types from
+  // `@babel/types`.
   const plugins: ParserPlugin[] = ["typescript", "decorators"];
-  // JSX solo cuando toca: activarlo en `.ts`/`.js` produce falsos
-  // positivos al encontrar `<` en comparaciones (`if (a < b)`).
+  // JSX only when appropriate: enabling it on `.ts`/`.js` produces
+  // false positives when finding `<` in comparisons (`if (a < b)`).
   if (isJsxFile(filename)) plugins.push("jsx");
   const ast = babelParse(source, {
     sourceType: "module",
     allowImportExportEverywhere: true,
-    // Plugins que cubren el código que los scanners miran:
-    //   - `typescript`: soporte TS nativo (TSTypeAnnotation,
+    // Plugins covering the code the scanners look at:
+    //   - `typescript`: native TS support (TSTypeAnnotation,
     //     TSInterfaceDeclaration, generics).
-    //   - `decorators`: NestJS usa `@Controller('/users')`,
-    //     `@Get(':id')`, etc. sobre métodos y clases.
-    //   - `jsx`: solo se activa para `.tsx`/`.jsx`. Sin esto, Babel
-    //     rechaza sintaxis JSX como `<Foo />` con syntax error y el
-    //     scanner pierde el archivo.
-    //   - `classProperties`: las propiedades de clase con valores
-    //     usan la propuesta de class fields. Babel 8 ya lo trae
-    //     integrado, pero declararlo deja claro el subset soportado.
+    //   - `decorators`: NestJS uses `@Controller('/users')`,
+    //     `@Get(':id')`, etc. on methods and classes.
+    //   - `jsx`: only enabled for `.tsx`/`.jsx`. Without this, Babel
+    //     rejects JSX syntax like `<Foo />` with a syntax error and
+    //     the scanner loses the file.
+    //   - `classProperties`: class properties with values use the
+    //     class fields proposal. Babel 8 already ships it built-in,
+    //     but declaring it makes clear the supported subset.
     plugins: [...plugins],
-    // Los scanners ya strippean comentarios antes (ver
-    // `stripJsComments`); pero por si llega un archivo con
-    // comentarios no stripped, dejamos que Babel los ignore.
+    // Scanners already strip comments beforehand (see
+    // `stripJsComments`); but in case a file arrives with comments
+    // not stripped, we let Babel ignore them.
     errorRecovery: true,
   });
 
@@ -208,29 +208,29 @@ export function parse(source: string, filename: string): TSFile {
 // Top-down ordering (a00011 C-7 / B-rev-11)
 // ---------------------------------------------------------------------------
 
-/** Posición (línea, columna) de cualquier nodo ordenable del AST. */
+/** Position (line, column) of any orderable AST node. */
 interface IPositioned {
   readonly line: number;
   readonly column?: number;
 }
 
 /**
- * Ordena cada colección del `TSFile` por posición ascendente.
+ * Sorts each collection of the `TSFile` by ascending position.
  *
- * La comparación es `(line, column)`: mismo criterio con el que un
- * lector humano recorre el archivo. `Array.prototype.sort` es estable
- * (spec ES2019), así que los empates conservan el orden de emisión.
+ * The comparison is `(line, column)`: the same criterion a human
+ * reader uses when walking the file. `Array.prototype.sort` is stable
+ * (ES2019 spec), so ties preserve emission order.
  *
- * Las colecciones sin `column` (`symbols`, `assignments`, `decorators`,
- * `classes`) comparan por `line` sola — el `?? 0` de `column` solo
- * desempata cuando ambas líneas son iguales, que es exactamente el
- * caso en que hace falta.
+ * Collections without `column` (`symbols`, `assignments`, `decorators`,
+ * `classes`) compare by `line` alone — the `?? 0` on `column` only
+ * breaks ties when both lines are equal, which is exactly the case
+ * where it is needed.
  */
 function sortTopDown(file: TSFile): TSFile {
   const byPosition = (a: IPositioned, b: IPositioned): number =>
     a.line - b.line || (a.column ?? 0) - (b.column ?? 0);
   return {
-    imports: [...file.imports], // ya salen en orden de declaración; copia por uniformidad
+    imports: [...file.imports], // already in declaration order; copy for uniformity
     symbols: [...file.symbols].sort(byPosition),
     classes: [...file.classes].sort(byPosition),
     methodCalls: [...file.methodCalls].sort(byPosition),
@@ -245,14 +245,14 @@ function sortTopDown(file: TSFile): TSFile {
 // ---------------------------------------------------------------------------
 
 /**
- * Extrae el binding local de un specifier de import.
+ * Extracts the local binding of an import specifier.
  *
  * `import x from "m"` → `{ local: "x", imported: "default", ... }`.
  * `import * as ns from "m"` → `{ local: "ns", imported: "*", ... }`.
  * `import { A as B } from "m"` → `{ local: "B", imported: "A", ... }`.
  *
- * Devuelve `null` para specifiers sin nombre reconocible (no debería
- * pasar con Babel, pero el cast permisivo del AST lo permite).
+ * Returns `null` for specifiers without a recognizable name (should
+ * not happen with Babel, but the permissive AST cast allows it).
  */
 function bindingFromSpecifier(spec: BabelNode): TSImportBinding | null {
   if (spec.type === "ImportDefaultSpecifier") {
@@ -291,8 +291,8 @@ function collectImports(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSImport>
       const binding = bindingFromSpecifier(spec);
       if (binding) bindings.push(binding);
     }
-    // `names` se deriva de `bindings` para compat con los scanners
-    // que ya lo consumen (a00011 C-7 / B-rev-12).
+    // `names` is derived from `bindings` for compat with the scanners
+    // that already consume it (a00011 C-7 / B-rev-12).
     const names = bindings.map((b) => b.imported);
     out.push({ source, names, bindings });
   }
@@ -359,9 +359,9 @@ function collectClasses(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSClass> 
     if (node.type === "ClassDeclaration") {
       classNode = node;
     } else if (node.type === "ExportNamedDeclaration") {
-      // `export { foo }` deja `declaration: null`; `export class Foo`
-      // lo deja con `declaration` siendo la ClassDeclaration. Hay que
-      // distinguir los dos casos o peta con `null.type`.
+      // `export { foo }` leaves `declaration: null`; `export class Foo`
+      // leaves it with `declaration` being the ClassDeclaration. We must
+      // distinguish the two cases or it crashes with `null.type`.
       const inner = get(node, "declaration");
       if (inner && typeof inner === "object" && "type" in inner) {
         const innerNode = asBabelNode(inner);
@@ -418,21 +418,20 @@ function collectClassMethods(classNode: BabelNode): ReadonlyArray<TSClassMethod>
 // ---------------------------------------------------------------------------
 
 /**
- * Las llamadas a método que parecen declaraciones de ruta.
+ * Method calls that look like route declarations.
  *
- * Reconoce las cinco formas que viven en los proyectos reales:
+ * Recognizes the five shapes that live in real projects:
  *
  *   - `app.get("/x", h)` → callee `"app.get"`.
  *   - `router.post("/x", h)` → callee `"router.post"`.
  *   - `controller.Get("x")` (NestJS) → callee `"controller.Get"`.
- *   - `server.route({ method, path })` → se queda fuera: el adapter
- *     lo maneja con un caso dedicado (es un object literal, no un
- *     method call directo).
+ *   - `server.route({ method, path })` → left out: the adapter handles
+ *     it with a dedicated case (it is an object literal, not a direct
+ *     method call).
  *
- * `bodyRange` se rellena solo cuando el último argumento es una
- * arrow function — los adapters lo usan para reentrar al cuerpo
- * con sus propias regexes (buscar `Schema.parse(...)`, parsear
- * `req.body`, etc.).
+ * `bodyRange` is only filled when the last argument is an arrow
+ * function — adapters use it to re-enter the body with their own
+ * regexes (looking for `Schema.parse(...)`, parsing `req.body`, etc.).
  */
 function collectMethodCalls(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSMethodCall> {
   const out: TSMethodCall[] = [];
@@ -454,10 +453,9 @@ function collectMethodCalls(body: ReadonlyArray<BabelNode>): ReadonlyArray<TSMet
       const arg = args[i];
       if (!arg) continue;
       const lit = literalFromNode(arg);
-      // Si el último argumento es una arrow function, capturamos el
-      // rango del cuerpo. Babel pone el `body` en el nodo arrow
-      // directamente (BlockStatement para `{ ... }` o expresión para
-      // `=> x`).
+      // If the last argument is an arrow function, we capture the body
+      // range. Babel puts the `body` directly on the arrow node
+      // (BlockStatement for `{ ... }` or expression for `=> x`).
       if (i === args.length - 1 && arg.type === "ArrowFunctionExpression") {
         const arrowBody = asBabelNode(get(arg, "body"));
         const start = arrowBody.start;
@@ -577,24 +575,23 @@ function collectDecoratorsFor(
 // ---------------------------------------------------------------------------
 
 /**
- * Convierte un nodo Babel en un `TSLiteral` normalizado.
+ * Converts a Babel node into a normalized `TSLiteral`.
  *
- * Reconoce:
+ * Recognizes:
  *   - `StringLiteral`, `NumericLiteral`, `BooleanLiteral`, `NullLiteral`.
  *   - `Identifier` → kind "identifier".
- *   - `ObjectExpression` → kind "object" con `objectShape`.
- *   - `ArrayExpression` → kind "array" con `arrayItems`.
- *   - `ArrowFunctionExpression` → kind "arrow" con `bodyRange`.
- *   - `CallExpression` con un único argumento literal:
- *     desciende al argumento. Es lo que hace que
- *     `const router = Router({ prefix: '/api/v1' })` exponga el
- *     `objectShape` del prefix en lugar de quedar como call
- *     opaco — los adapters de Express lo necesitan para detectar
- *     `Router({ prefix })`.
+ *   - `ObjectExpression` → kind "object" with `objectShape`.
+ *   - `ArrayExpression` → kind "array" with `arrayItems`.
+ *   - `ArrowFunctionExpression` → kind "arrow" with `bodyRange`.
+ *   - `CallExpression` with a single literal argument: descends into
+ *     the argument. This is what makes
+ *     `const router = Router({ prefix: '/api/v1' })` expose the
+ *     `objectShape` of the prefix instead of staying as an opaque
+ *     call — Express adapters need it to detect `Router({ prefix })`.
  *
- * Todo lo demás se representa como `kind: "unknown"`. Los adapters
- * saben que un unknown no es una ruta, un path o un body — es
- * `new Foo(...)`, una llamada con varios argumentos, etc.
+ * Everything else is represented as `kind: "unknown"`. Adapters know
+ * an unknown is not a route, path, or body — it is `new Foo(...)`, a
+ * call with multiple arguments, etc.
  */
 function literalFromNode(node: BabelNode): TSLiteral {
   switch (node.type) {
@@ -639,11 +636,11 @@ function literalFromNode(node: BabelNode): TSLiteral {
       return { kind: "arrow" };
     }
     case "CallExpression": {
-      // Wrapper transparente: `Router({ prefix })`,
-      // `express()`, `middleware([...])`. Si la llamada tiene un
-      // único argumento que es un literal reconocible, lo
-      // exponemos directamente — es lo que hace falta para detectar
-      // prefixes y bodies en los scanners.
+      // Transparent wrapper: `Router({ prefix })`,
+      // `express()`, `middleware([...])`. If the call has a single
+      // argument that is a recognizable literal, we expose it
+      // directly — that is what scanners need for prefixes and
+      // bodies.
       const args = asArray(get(node, "arguments"));
       if (args.length === 1) {
         const inner = args[0];
@@ -664,13 +661,13 @@ function literalFromNode(node: BabelNode): TSLiteral {
 // ---------------------------------------------------------------------------
 
 /**
- * Recorre el árbol de Babel en profundidad y llama a `visit` en cada
- * nodo. Es una DFS sin pruning: visita TODO, incluidos los nodos
- * dentro de arrays y objects.
+ * Walks the Babel tree depth-first and calls `visit` on each node.
+ * It is a DFS without pruning: it visits EVERYTHING, including nodes
+ * inside arrays and objects.
  *
- * Los `visit` callbacks son los que filtran (deciden si el nodo les
- * interesa). Mantener el walker tonto le deja a los collectores
- * componer lo que necesiten sin tener que pensar en el recorrido.
+ * `visit` callbacks are what filter (decide whether the node interests
+ * them). Keeping the walker dumb lets collectors compose what they
+ * need without thinking about the traversal.
  */
 function walk(body: ReadonlyArray<BabelNode>, visit: (node: BabelNode) => void): void {
   const stack: BabelNode[] = [...body];
@@ -678,14 +675,14 @@ function walk(body: ReadonlyArray<BabelNode>, visit: (node: BabelNode) => void):
     const node = stack.pop();
     if (!node) continue;
     visit(node);
-    // Hijos que Babel anida y que queremos visitar también. Los
-    // campos `key/value` de object property y `body` de bloques los
-    // cubrimos genéricamente leyendo el AST como árbol de unknowns.
+    // Children Babel nests and that we also want to visit. The
+    // `key/value` fields of object properties and `body` of blocks
+    // are covered generically by reading the AST as a tree of unknowns.
     for (const child of collectChildren(node)) stack.push(child);
   }
 }
 
-/** Hijos directos del nodo, en el orden en que aparecen en el AST. */
+/** Direct children of the node, in the order they appear in the AST. */
 function collectChildren(node: BabelNode): ReadonlyArray<BabelNode> {
   const children: BabelNode[] = [];
   for (const value of Object.values(node)) {
@@ -707,13 +704,13 @@ function collectChildren(node: BabelNode): ReadonlyArray<BabelNode> {
 // ---------------------------------------------------------------------------
 
 /**
- * Variante no lanzadora de `parse`: si Babel rechaza el archivo,
- * devuelve `null` y registra la razón en `diagnostics` (si el array
- * vino) en vez de tragar el error en silencio.
+ * Non-throwing variant of `parse`: if Babel rejects the file, returns
+ * `null` and records the reason in `diagnostics` (if the array came
+ * in) instead of swallowing the error silently.
  *
- * El scanner sigue funcionando — un fichero con sintaxis inválida no
- * aborta el scan — pero el fallo queda visible para quien quiera
- * reportarlo (hoy: `IScanResult.diagnostics`).
+ * The scanner keeps working — a file with invalid syntax does not
+ * abort the scan — but the failure stays visible to whoever wants to
+ * report it (today: `IScanResult.diagnostics`).
  */
 export function parseModule(
   source: string,

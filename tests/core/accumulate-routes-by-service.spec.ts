@@ -1,21 +1,28 @@
 /**
- * Tests del helper `accumulateRoutesByService` (x00025 S1).
+ * Tests for the helper `accumulateRoutesByService` (x00025 S1).
  *
- * Tres casos del proposal:
- *  1. Dos scanners con el mismo `serviceId` -> union de rutas, no
- *     solo las del ultimo.
- *  2. Mismo scanner emitiendo la misma ruta dos veces -> dedupe a
- *     una sola entrada.
- *  3. Hibrido Express + GraphQL bajo el mismo `serviceId` -> ambas
- *     colecciones presentes en el array resultante.
+ * Five cases the proposal covers:
+ *  1. Two scanners with the same `serviceId` -> union of routes, not
+ *     just the ones from the last scanner.
+ *  2. Same scanner emitting the same route twice -> dedupe to a single
+ *     entry.
+ *  3. Hybrid Express + GraphQL under the same `serviceId` -> both
+ *     frameworks present in the resulting array.
+ *  4. Two different `serviceId`s with the same `(method, uri)` (e.g.
+ *     `GET /health` in `apps/users` and `apps/orders`) -> each key
+ *     gets **only** the route its own scanner emitted. This is the
+ *     original bug x00025 was opened for; before the fix, the
+ *     `(method, uri)`-based filter attributed both routes to both
+ *     serviceIds, mixing the collections.
+ *  5. Two scanners with different `serviceId`s whose routes do not
+ *     collide -> each key keeps its own routes, no cross-talk.
  *
- * El helper es puro: no toca disco, no lee `process.*`. Asi que el
- * test no necesita bootstrap, solo construir las fixtures a mano.
+ * The helper is pure: no disk, no `process.*`. The test needs no
+ * bootstrap, only hand-built fixtures.
  */
 import { describe, expect, it } from "vitest";
 
 import { accumulateRoutesByService } from "../../packages/core/discovery/accumulate-routes-by-service.helper.js";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface.js";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 
 function route(
@@ -35,45 +42,47 @@ function route(
   };
 }
 
-function spec(method: "GET" | "POST", uri: string): EndpointSpec {
-  return { method, uri, name: `${method} ${uri}` };
-}
-
 describe("accumulateRoutesByService (x00025)", () => {
   it("dos scanners con el mismo serviceId acumulan (no sobrescriben)", () => {
-    const routes: ParsedRoute[] = [
-      route("GET", "/users", "src/users.routes.ts", "express"),
-      route("POST", "/graphql", "src/graphql.routes.ts", "graphql"),
-    ];
+    // Two scanners share `serviceId: "apps_api"`. Each contributed
+    // a route that the other did not. The merged array must contain
+    // both, in insertion order.
     const perScanner = [
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/users")] },
-      { serviceId: "apps_api", scannerSpecs: [spec("POST", "/graphql")] },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("GET", "/users", "src/users.routes.ts", "express")],
+      },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("POST", "/graphql", "src/graphql/server.ts", "graphql")],
+      },
     ];
 
-    const out = accumulateRoutesByService(perScanner, routes);
+    const out = accumulateRoutesByService(perScanner);
 
     const merged = out.get("apps_api") ?? [];
     expect(merged).toHaveLength(2);
-    const uris = merged.map((r) => r.uri).sort();
-    expect(uris).toEqual(["/graphql", "/users"]);
+    const uris = merged.map((r) => r.uri);
+    expect(uris).toEqual(["/users", "/graphql"]);
   });
 
   it("dedupe: misma tupla (method, uri, sourceFile) dos veces -> una entrada", () => {
-    // Mismo scanner emitiendo la misma ruta dos veces via el mismo
-    // `scannerSpecs`. Antes del fix esto era imposible porque cada
-    // scanner se llamaba una vez, pero con dos scanners que ambos
-    // reconocen la misma operacion (caso real: OpenAPI + framework
-    // detector sobre el mismo endpoint) la duplicacion aparecia.
-    const routes: ParsedRoute[] = [
-      route("GET", "/health", "openapi.yaml"),
-      route("GET", "/health", "openapi.yaml"),
-    ];
+    // Real case: two scanners that both recognise the same operation
+    // (e.g. OpenAPI + framework detector on the same endpoint) each
+    // emit a `ParsedRoute` for `GET /health`. The merged array must
+    // contain one entry, not two.
     const perScanner = [
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/health")] },
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/health")] },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("GET", "/health", "openapi.yaml", "openapi")],
+      },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("GET", "/health", "openapi.yaml", "openapi")],
+      },
     ];
 
-    const out = accumulateRoutesByService(perScanner, routes);
+    const out = accumulateRoutesByService(perScanner);
 
     const merged = out.get("apps_api") ?? [];
     expect(merged).toHaveLength(1);
@@ -82,69 +91,114 @@ describe("accumulateRoutesByService (x00025)", () => {
   });
 
   it("hibrido Express + GraphQL: ambas colecciones presentes bajo mismo serviceId", () => {
-    // Caso que cerro x00025: Express y GraphQL bajo el mismo
-    // `frameworkSearchRoot` (apps/api) producen dos scanners con
-    // `serviceId: "apps_api"`. Antes el segundo scanner sobrescribia
-    // las rutas del primero.
-    const routes: ParsedRoute[] = [
-      route("GET", "/users", "src/routes/users.ts", "express"),
-      route("POST", "/orders", "src/routes/orders.ts", "express"),
-      route("POST", "/graphql", "src/graphql/server.ts", "graphql"),
-    ];
+    // Case that originally closed x00025: Express and GraphQL under
+    // the same `frameworkSearchRoot` (apps/api) produce two scanners
+    // with `serviceId: "apps_api"`. Before the fix the second
+    // scanner overwrote the first scanner's routes via `new Map`.
     const perScanner = [
       {
         serviceId: "apps_api",
-        scannerSpecs: [
-          spec("GET", "/users"),
-          spec("POST", "/orders"),
+        scannerRoutes: [
+          route("GET", "/users", "src/routes/users.ts", "express"),
+          route("POST", "/orders", "src/routes/orders.ts", "express"),
         ],
       },
-      { serviceId: "apps_api", scannerSpecs: [spec("POST", "/graphql")] },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("POST", "/graphql", "src/graphql/server.ts", "graphql")],
+      },
     ];
 
-    const out = accumulateRoutesByService(perScanner, routes);
+    const out = accumulateRoutesByService(perScanner);
 
     const merged = out.get("apps_api") ?? [];
     expect(merged).toHaveLength(3);
-    const byMethod = new Map(merged.map((r) => [`${r.method} ${r.uri}`, r.framework]));
+    const byMethod = new Map(
+      merged.map((r) => [`${r.method} ${r.uri}`, r.framework] as const),
+    );
     expect(byMethod.get("GET /users")).toBe("express");
     expect(byMethod.get("POST /orders")).toBe("express");
     expect(byMethod.get("POST /graphql")).toBe("graphql");
   });
 
-  it("serviceIds distintos se mantienen separados", () => {
-    // Cada scanner tiene sus propios `scannerSpecs` (no solapados),
-    // asi que cada serviceId recibe solo las rutas que su scanner vio.
-    // Sin accumulation por key, esto siempre funciono; el test
-    // documenta que la fix de x00025 no lo rompe.
-    const routes: ParsedRoute[] = [
-      route("GET", "/health", "src/a.ts", "express"),
-      route("POST", "/login", "src/b.ts", "nestjs"),
-    ];
+  it("dos serviceIds distintos con el mismo (method, uri): NO se mezclan (bug original x00025)", () => {
+    // The bug x00025 was opened for: `apps/users` and `apps/orders`
+    // each define `GET /health` from their own scanner. Before the
+    // fix, `routes.filter(r => scannerSpecs.some(s => s.method ===
+    // r.method && s.uri === r.uri))` matched the cross-service route
+    // too, so both `apps_users` and `apps_orders` ended up with both
+    // routes -- the collections were mixed.
+    //
+    // After the fix, each scanner brings its own `scannerRoutes`,
+    // so attribution is identity-free: `apps_users` keeps only its
+    // `health.ts`, `apps_orders` keeps only its `health.ts`.
     const perScanner = [
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/health")] },
-      { serviceId: "apps_web", scannerSpecs: [spec("POST", "/login")] },
+      {
+        serviceId: "apps_users",
+        scannerRoutes: [route("GET", "/health", "apps/users/src/health.ts", "express")],
+      },
+      {
+        serviceId: "apps_orders",
+        scannerRoutes: [route("GET", "/health", "apps/orders/src/health.ts", "express")],
+      },
     ];
 
-    const out = accumulateRoutesByService(perScanner, routes);
+    const out = accumulateRoutesByService(perScanner);
+
+    const usersRoutes = out.get("apps_users") ?? [];
+    const ordersRoutes = out.get("apps_orders") ?? [];
+
+    // Each service has exactly one route, its own.
+    expect(usersRoutes).toHaveLength(1);
+    expect(ordersRoutes).toHaveLength(1);
+    expect(usersRoutes[0]?.sourceFile).toBe("apps/users/src/health.ts");
+    expect(ordersRoutes[0]?.sourceFile).toBe("apps/orders/src/health.ts");
+
+    // And they are NOT the same object reference -- they came from
+    // different scanners (cheap belt-and-suspenders against a
+    // regression where both keys share an array by mistake).
+    expect(usersRoutes[0]).not.toBe(ordersRoutes[0]);
+  });
+
+  it("serviceIds distintos con specs disjuntos se mantienen separados", () => {
+    // Documents that the x00025 fix does not regress the basic
+    // multi-service case: scanners that emit different routes into
+    // different serviceIds stay cleanly separated.
+    const perScanner = [
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("GET", "/health", "src/a.ts", "express")],
+      },
+      {
+        serviceId: "apps_web",
+        scannerRoutes: [route("POST", "/login", "src/b.ts", "nestjs")],
+      },
+    ];
+
+    const out = accumulateRoutesByService(perScanner);
 
     expect(out.get("apps_api")?.[0]?.sourceFile).toBe("src/a.ts");
     expect(out.get("apps_web")?.[0]?.sourceFile).toBe("src/b.ts");
   });
 
-  it("scanner sin specs coincidentes no aporta rutas", () => {
-    // Un scanner puede estar en `perScanner` pero no reconocer ninguna
-    // ruta (todos los specs tienen method/uri que no existen en
-    // `routes`). El serviceId aparece con array vacio, no se ignora.
-    const routes: ParsedRoute[] = [route("GET", "/users", "src/users.ts")];
+  it("scanner sin rutas no aporta nada pero el serviceId queda presente", () => {
+    // A scanner can appear in `perScanner` while contributing no
+    // routes (e.g. detect() matched but the source had no
+    // operations). The `serviceId` stays in the map with an empty
+    // array, not removed -- downstream code may rely on the key being
+    // present even when empty.
     const perScanner = [
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/users")] },
-      { serviceId: "apps_api", scannerSpecs: [spec("GET", "/missing")] },
+      {
+        serviceId: "apps_api",
+        scannerRoutes: [route("GET", "/users", "src/users.ts")],
+      },
+      { serviceId: "apps_empty", scannerRoutes: [] },
     ];
 
-    const out = accumulateRoutesByService(perScanner, routes);
+    const out = accumulateRoutesByService(perScanner);
 
     expect(out.get("apps_api")).toHaveLength(1);
     expect(out.get("apps_api")?.[0]?.uri).toBe("/users");
+    expect(out.get("apps_empty")).toEqual([]);
   });
 });

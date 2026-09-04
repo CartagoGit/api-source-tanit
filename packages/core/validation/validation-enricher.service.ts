@@ -1,64 +1,66 @@
 /**
- * Registry de enriquecedores de validación agnósticos.
+ * Registry of framework-agnostic validation enrichers.
  *
- * Sustituye la llamada global a `enrichCatalogWithFormRequests` (Laravel
- * only) por un dispatcher por `ValidationProvider`. La migración a
- * S5 (a00012) tiene dos reglas:
+ * Replaces the global call to `enrichCatalogWithFormRequests` (Laravel
+ * only) with a per-`ValidationProvider` dispatcher. The S5 migration
+ * (a00012) has two rules:
  *
- *   1. El adapter sólo escribe `spec.validationSource.provider` cuando
- *      el provider es uno registrado. Hoy eso es exclusivamente
- *      `"laravel-form-request"`; mañana también `"zod"`, `"joi"`, ...
- *   2. Cada provider tiene UN enricher. Se registra en el bootstrap
- *      de `generate` (side-effect import) y queda disponible para
+ *   1. The adapter only writes `spec.validationSource.provider` when
+ *      the provider is registered. Today that is exclusively
+ *      `"laravel-form-request"`; tomorrow also `"zod"`, `"joi"`, ...
+ *   2. Each provider has ONE enricher. It is registered in the
+ *      `generate` bootstrap (side-effect import) and made available to
  *      `runValidationEnrichers`.
  *
- * El enricher opera por **spec**, no por colección. La razón es
- * estructural: la colección Postman mezcla carpetas, requests, scripts
- * y descripciones, y mover todo eso al nivel de un EndpointSpec
- * obligaría a un campo `bodyVariants: PostmanItem[]` que nadie pidió.
- * En Phase 1 los enrichers son idempotentes —devuelven el spec igual—
- * y la generación real de variantes sigue viviendo en
- * `enrichCatalogWithFormRequests`, que ahora es un wrapper que
- * despacha por provider. Mover la lógica completa al enricher es
- * follow-up explícito.
+ * The enricher operates per **spec**, not per collection. The reason
+ * is structural: the Postman collection mixes folders, requests,
+ * scripts, and descriptions, and moving all of that to the
+ * EndpointSpec level would require a `bodyVariants: PostmanItem[]`
+ * field that nobody asked for. In Phase 1 enrichers are idempotent
+ * — they return the spec unchanged — and the actual variant
+ * generation still lives in `enrichCatalogWithFormRequests`, which is
+ * now a wrapper that dispatches by provider. Moving the full logic to
+ * the enricher is an explicit follow-up.
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
 import type { IValidationEnricher } from "../../contracts/interfaces/core/validation-enricher.interface.js";
 
 /**
- * Contrato de un enricher.
+ * Enricher contract.
  *
- * `provider` es el discriminador del registry; `enrich` toma un spec y
- * devuelve un spec. Inmutable: el enricher no muta el input, devuelve
- * uno nuevo si necesita cambios. Esa es la condición para que el
- * registry pueda componerse y para que un fallo en un enricher no
- * contamine al siguiente.
+ * `provider` is the registry discriminator; `enrich` takes a spec and
+ * returns a spec. Immutable: the enricher does not mutate the input,
+ * it returns a new one if changes are needed. That is the condition
+ * for the registry to be composable and for a failure in one enricher
+ * not to contaminate the next.
  *
- * La declaración vive en `packages/contracts/interfaces/core/validation-enricher.interface.ts`
- * para cumplir el invariante `lint:contracts`: el tipo debe ser legible
- * sin importar este módulo (que arrastra el Map runtime).
+ * The declaration lives in
+ * `packages/contracts/interfaces/core/validation-enricher.interface.ts`
+ * to satisfy the `lint:contracts` invariant: the type must be
+ * readable without importing this module (which drags the runtime Map).
  */
-// Re-export para no romper a quien importaba `IValidationEnricher`
-// desde aquí. Los imports nuevos deberían ir a contracts/.
+// Re-export so we don't break anyone who imported `IValidationEnricher`
+// from here. New imports should go to contracts/.
 export type { IValidationEnricher };
 
 const registry = new Map<ValidationProvider, IValidationEnricher>();
 
 /**
- * Registra (o reemplaza) un enricher para su provider.
+ * Registers (or replaces) an enricher for its provider.
  *
- * Idempotente: registrar dos veces el mismo provider deja al segundo
- * como activo. El contrato dice "un enricher por provider", así que
- * los dobles registros son un error de programación — pero el registry
- * no se queja porque un test que registra un stub y luego el real
- * (o al revés) sigue siendo útil mientras los dos se comporten igual.
+ * Idempotent: registering the same provider twice leaves the second
+ * one active. The contract says "one enricher per provider", so
+ * double registrations are a programming error — but the registry
+ * does not complain because a test that registers a stub and then the
+ * real one (or vice versa) is still useful as long as they behave the
+ * same.
  */
 export function registerValidationEnricher(e: IValidationEnricher): void {
   registry.set(e.provider, e);
 }
 
-/** Devuelve el enricher registrado, o `undefined` si no hay. */
+/** Returns the registered enricher, or `undefined` if none. */
 export function getValidationEnricher(
   p: ValidationProvider,
 ): IValidationEnricher | undefined {
@@ -66,16 +68,18 @@ export function getValidationEnricher(
 }
 
 /**
- * Ejecuta el enricher registrado para el `provider` del spec.
+ * Runs the enricher registered for the spec's `provider`.
  *
- *   - Sin `validationSource` → no hay nada que enriquecer; devuelve el spec igual.
- *   - Con `validationSource` pero sin enricher registrado → no es un
- *     error: significa que ese framework aún no migró. El spec vuelve igual.
- *   - Con enricher registrado → devuelve `enricher.enrich(spec)`.
+ *   - No `validationSource` → nothing to enrich; returns the spec unchanged.
+ *   - With `validationSource` but no registered enricher → not an
+ *     error: it means that framework has not migrated yet. The spec
+ *     comes back unchanged.
+ *   - With a registered enricher → returns `enricher.enrich(spec)`.
  *
- * La función es pura y síncrona. Phase 1 sólo necesita esto; mover el
- * I/O a los enrichers será follow-up de la siguiente fase (cada
- * provider ya carga sus reglas cuando construye el spec, en el adapter).
+ * The function is pure and synchronous. Phase 1 only needs this;
+ * moving I/O into the enrichers is follow-up for the next phase (each
+ * provider already loads its rules when building the spec, in the
+ * adapter).
  */
 export function runValidationEnrichers(spec: EndpointSpec): EndpointSpec {
   const vs = spec.validationSource;
@@ -85,7 +89,7 @@ export function runValidationEnrichers(spec: EndpointSpec): EndpointSpec {
   return e.enrich(spec);
 }
 
-/** Sólo para tests: vacía el registry. No usar en código de producto. */
+/** Only for tests: empties the registry. Do not use in production code. */
 export function _resetValidationEnrichersForTests(): void {
   registry.clear();
 }

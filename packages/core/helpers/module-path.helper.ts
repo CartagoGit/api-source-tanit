@@ -1,16 +1,16 @@
 /**
- * Directorio del módulo actual, de forma portable.
+ * Directory of the current module, in a portable way.
  *
- * `import.meta.dir` solo existe en Bun. El paquete declara
- * `engines.node >= 20` y los tests corren bajo vitest, así que usarlo
- * dejaba a ambos con `undefined` — y `resolve(undefined, "..")` no
- * falla con un mensaje útil, sino con un `TypeError` sobre `paths[0]`
- * a 3 capas de distancia del sitio real.
+ * `import.meta.dir` only exists in Bun. The package declares
+ * `engines.node >= 20` and the tests run under vitest, so using it
+ * left both with `undefined` — and `resolve(undefined, "..")` does not
+ * fail with a useful message, it fails with a `TypeError` on `paths[0]`
+ * 3 layers away from the actual site.
  *
- * `import.meta.url` sí es estándar de ESM y funciona en Bun, en Node y
- * bajo vitest. `fileURLToPath` es lo que la convierte en una ruta de
- * sistema válida también en Windows (donde `new URL(...).pathname`
- * devolvería `/C:/…`).
+ * `import.meta.url` is an ESM standard and works in Bun, in Node, and
+ * under vitest. `fileURLToPath` is what turns it into a valid system
+ * path also on Windows (where `new URL(...).pathname` would return
+ * `/C:/…`).
  *
  * @example
  * const PACKAGE_ROOT = resolve(moduleDir(import.meta.url), "..");
@@ -19,46 +19,44 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Carpeta que contiene el módulo cuyo `import.meta.url` se pasa. */
+/** Folder containing the module whose `import.meta.url` is passed. */
 export function moduleDir(importMetaUrl: string): string {
   return dirname(fileURLToPath(importMetaUrl));
 }
 
 /**
- * Raíz del repo/paquete: sube desde el módulo hasta dar con el
+ * Repo/package root: walks up from the module until it finds a
  * `package.json`.
  *
- * Antes cada script contaba sus propios `".."` hasta la raíz. Eso
- * funciona hasta que el fichero cambia de carpeta, y entonces
- * `PACKAGE_ROOT` apunta a otro sitio **sin fallar**: el script
- * simplemente no encuentra nada y dice "no se encontró ninguna
- * propuesta". Pasó con cuatro gates a la vez al reorganizar en
- * `packages/`.
+ * Before, each script counted its own `".."` to the root. That works
+ * until the file moves to a different folder, and then `PACKAGE_ROOT`
+ * points elsewhere **without failing**: the script simply does not find
+ * anything and says "no proposals found". It happened with four gates
+ * at once when reorganizing into `packages/`.
  *
- * Contar niveles es acoplar un fichero a su profundidad en el árbol.
- * Buscar el marcador no.
+ * Counting levels is coupling a file to its depth in the tree.
+ * Looking for the marker is not.
  */
 export function repoRoot(importMetaUrl: string): string {
   const found = findRepoRoot(importMetaUrl);
   if (found) return found;
   throw new Error(
-    `No se encontró un package.json subiendo desde ${moduleDir(importMetaUrl)}`,
+    `No package.json found walking up from ${moduleDir(importMetaUrl)}`,
   );
 }
 
 /**
- * Como `repoRoot()`, pero devuelve `null` en vez de lanzar.
+ * Like `repoRoot()`, but returns `null` instead of throwing.
  *
- * Lo necesita el código de **producción**: dentro del binario compilado
- * los módulos viven en un sistema de ficheros virtual (`/$bunfs/root/`)
- * donde no hay ningún `package.json`, así que no hay raíz que
- * encontrar. Lanzar allí tumba el binario entero al arrancar — pasó al
- * introducir este helper, y el test del binario sin runtime fue lo que
- * lo cazó.
+ * Production code needs this: inside the compiled binary the modules
+ * live in a virtual file system (`/$bunfs/root/`) where there is no
+ * `package.json`, so there is no root to find. Throwing there crashes
+ * the whole binary at startup — it happened when this helper was
+ * introduced, and the binary-without-runtime test was what caught it.
  *
- * Regla: los gates y los tests usan `repoRoot()`, que lanza porque un
- * fallo ahí es un fallo del repo. El código que acaba dentro del
- * binario usa esta y tiene un plan B.
+ * Rule: gates and tests use `repoRoot()`, which throws because a
+ * failure there is a repo failure. Code that ends up inside the binary
+ * uses this one and has a plan B.
  */
 export function findRepoRoot(importMetaUrl: string): string | null {
   let dir = moduleDir(importMetaUrl);

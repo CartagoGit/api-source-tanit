@@ -1,9 +1,9 @@
 /**
- * Acumulacion de `routesByService` desde la lista de scanners que el
- * pipeline ha corrido. x00025.
+ * Accumulates `routesByService` from the per-scanner slice the pipeline
+ * has produced. x00025.
  *
- * Por que existe
- * - Antes, `generation.pipeline.ts` construia el mapa asi:
+ * Why it exists
+ * - Before this helper, `generation.pipeline.ts` built the map like:
  *
  *     routesByService: new Map(
  *       perScanner.map(({ serviceId, scannerSpecs }) => [
@@ -12,72 +12,84 @@
  *       ]),
  *     );
  *
- *   El `new Map([...])` con la misma `serviceId` duplicada **sobrescribe**
- *   la entrada del primer scanner. Caso real: proyecto hibrido
- *   Express + GraphQL bajo el mismo `frameworkSearchRoot` -> las rutas
- *   del primer scanner se pierden silenciosamente y la coleccion sale
- *   incompleta.
- * - Ademas, dos scanners pueden emitir la **misma** ruta (la vieron
- *   ambos); sin dedupe, la misma `ParsedRoute` aparece dos veces en
- *   el array final.
+ *   Two distinct problems hidden in that line:
  *
- * Contrato
- * - Devuelve un `Map<serviceId, ParsedRoute[]>` con **union** de todas
- *   las rutas de los scanners que comparten `serviceId`, **deduplicadas**
- *   por tupla `(method, uri, sourceFile)` (los tres campos que
- *   identifican una operacion de forma estable; el `name` no porque
- *   se deriva).
- * - El caller pasa `perScanner` con la forma minima que necesita este
- *   helper (`{ serviceId, scannerSpecs }`) para no acoplarse a la
- *   `IPerScanner` interna de `generation.pipeline.ts`. Si en el futuro
- *   `IPerScanner` crece, este helper no se entera.
- * - Pure: no toca disco, no lee `process.*`, no muta los argumentos.
+ *   1. `new Map([...])` with the same `serviceId` twice **overwrites**
+ *      the first entry. Real case: hybrid Express + GraphQL under the
+ *      same `frameworkSearchRoot` → the first scanner's routes are
+ *      silently dropped and the collection comes out incomplete.
+ *
+ *   2. The `routes.filter(...)` clause uses `(method, uri)` as the
+ *      identity of a route. That identity is **not stable across
+ *      services**: two services that happen to expose `GET /health`
+ *      (very common — liveness probes, ingress controllers, sidecar
+ *      patterns) both match the predicate, and the helper attributes
+ *      the cross-service route to whichever key it reaches first.
+ *      Real case: monorepo with `apps/users` and `apps/orders`,
+ *      each defining `GET /health` from its own scanner → both keys
+ *      end up with both routes, mixing the two collections.
+ *
+ * The fix
+ * - Pass the routes per scanner (`scannerRoutes`) instead of asking
+ *   the helper to re-derive attribution from a global routes array.
+ *   Each scanner already knows which routes it emitted; no
+ *   `(method, uri)` re-attribution is needed.
+ * - For the dedupe, the stable identity is `(method, uri, sourceFile)`:
+ *   the same scanner emits the same route twice if the input file
+ *   repeats the operation; different scanners may emit routes that
+ *   collide on `(method, uri)` but never on `sourceFile`. We keep
+ *   the first occurrence (stable order).
+ *
+ * Contract
+ * - Returns a `Map<serviceId, ParsedRoute[]>` with the **union** of
+ *   the routes from all the scanners that share `serviceId`,
+ *   **deduplicated** by `(method, uri, sourceFile)`.
+ * - The caller passes `perScanner` with the minimum shape this helper
+ *   needs (`{ serviceId, scannerRoutes }`); no coupling to the
+ *   internal `IPerScanner` type of `generation.pipeline.ts`. If that
+ *   type grows later, this helper does not need to change.
+ * - Pure: no disk, no `process.*`, no mutation of arguments.
  *
  * Test surface
- * - `tests/core/accumulate-routes-by-service.spec.ts` cubre los tres
- *   casos del proposal x00025 S1: dos scanners mismo serviceId, dedupe
- *   intra-key, e hibrido Express + GraphQL.
+ * - `tests/core/accumulate-routes-by-service.spec.ts` covers the
+ *   five cases of x00025 S1: two scanners same `serviceId`,
+ *   dedupe intra-key, hybrid Express + GraphQL, two services same
+ *   `(method, uri)` (the original bug), and scanner with no
+ *   matching routes.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
- * Acumula y deduplica rutas por `serviceId`.
+ * Accumulates and deduplicates routes by `serviceId`.
  *
- * Orden estable: para cada scanner se concatena `existing` (lo ya
- * acumulado de scanners anteriores con el mismo serviceId) seguido de
- * `fresh` (las rutas que este scanner vio, filtradas por sus
- * `scannerSpecs`). La primera vez que aparece una tupla
- * `(method, uri, sourceFile)` gana.
+ * Order is stable: for each scanner entry, we concatenate `existing`
+ * (what previous scanners with the same `serviceId` already
+ * contributed) followed by `scannerRoutes` (what this scanner
+ * emitted). The first occurrence of each `(method, uri, sourceFile)`
+ * tuple wins.
  *
- * El parametro `perScanner` toma solo los dos campos que el helper
- * necesita (`serviceId`, `scannerSpecs`) para no acoplarse al
- * `IPerScanner` interno de `generation.pipeline.ts` (que tiene
- * `framework`, `scannerScore`, etc.). La forma se declara inline en
- * lugar de exportar un `interface` desde `core/discovery/` — el gate
- * `lint:contracts` exige que los tipos vivan en `contracts/` para no
- * obligar a los consumidores a importar la funcion solo para tipar.
+ * The `perScanner` parameter takes only the two fields the helper
+ * needs (`serviceId`, `scannerRoutes`) so it does not couple to
+ * `IPerScanner` (which also carries `framework`, `scannerScore`,
+ * `scannerSpecs`). The shape is declared inline because the gate
+ * `lint:contracts` requires types to live in `contracts/` — making
+ * the helper importable for typing alone would defeat that.
  *
- * @param perScanner Lo que el pipeline recoge por scanner.
- * @param routes     Todas las rutas que el pipeline ha producido.
- * @returns          Mapa `serviceId` -> union deduplicada de rutas.
+ * @param perScanner What the pipeline collected per scanner.
+ * @returns          Map `serviceId` -> deduplicated union of routes.
  */
 export function accumulateRoutesByService(
   perScanner: ReadonlyArray<{
     readonly serviceId: string;
-    readonly scannerSpecs: ReadonlyArray<EndpointSpec>;
+    readonly scannerRoutes: ReadonlyArray<ParsedRoute>;
   }>,
-  routes: ReadonlyArray<ParsedRoute>,
 ): Map<string, ParsedRoute[]> {
   const out = new Map<string, ParsedRoute[]>();
-  for (const { serviceId, scannerSpecs } of perScanner) {
+  for (const { serviceId, scannerRoutes } of perScanner) {
     const existing = out.get(serviceId) ?? [];
-    const fresh = routes.filter((r) =>
-      scannerSpecs.some((s) => s.method === r.method && s.uri === r.uri),
-    );
     const seen = new Set<string>();
     const merged: ParsedRoute[] = [];
-    for (const r of [...existing, ...fresh]) {
+    for (const r of [...existing, ...scannerRoutes]) {
       const key = `${r.method}|${r.uri}|${r.sourceFile}`;
       if (seen.has(key)) continue;
       seen.add(key);

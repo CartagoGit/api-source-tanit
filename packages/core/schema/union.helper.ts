@@ -1,23 +1,23 @@
 /**
- * Nodos de unión e intersección para el `SchemaGraph`.
+ * Union and intersection nodes for the `SchemaGraph`.
  *
- * Dos tipos de nodo modelan combinaciones:
+ * Two node kinds model combinations:
  *
- *   - `union`        → `oneOf` en JSON Schema: el valor debe satisfacer
- *                       **alguno** de los nodos alternativos.
- *   - `intersection` → `allOf` en JSON Schema: el valor debe satisfacer
- *                       **todos** los nodos.
+ *   - `union`        → `oneOf` in JSON Schema: the value must satisfy
+ *                       **any** of the alternative nodes.
+ *   - `intersection` → `allOf` in JSON Schema: the value must satisfy
+ *                       **all** of the nodes.
  *
- * `anyOf` no tiene nodo propio: es semánticamente un `union` sin la
- * garantía de exclusividad que aporta OpenAPI con `oneOf`. Si el
- * scanner necesita marcar esa diferencia, lo hace poniendo el nombre en
- * el nodo (`name: 'anyOf'`) — el helper no lo distingue porque
- * estructuralmente son el mismo nodo.
+ * `anyOf` has no node of its own: it is semantically a `union` without
+ * the exclusivity guarantee that OpenAPI's `oneOf` provides. If the
+ * scanner needs to mark that difference, it does so by putting the name
+ * on the node (`name: 'anyOf'`) — the helper does not distinguish them
+ * because structurally they are the same node.
  *
- * Las alternativas se guardan como **ids**, no como nodos: tener
- * referencias al grafo aquí obligaría a propagar el `ISchemaGraph` por
- * cada builder y clonarlo al copiar un nodo, que es exactamente la
- * indirección que el grafo vino a evitar.
+ * Alternatives are stored as **ids**, not as nodes: keeping references
+ * to the graph here would force propagating `ISchemaGraph` through every
+ * builder and cloning it when copying a node, which is exactly the
+ * indirection the graph came to avoid.
  */
 import type {
   ICompositeOptions,
@@ -26,12 +26,12 @@ import type {
 } from "../../contracts/interfaces/core/schema.interface.js";
 
 /**
- * Construye un nodo `union` (`oneOf`).
+ * Builds a `union` node (`oneOf`).
  *
- * `alternatives` puede tener un solo elemento: `oneOf` con un único
- * candidato es legal y se aplana al candidato. No lo aplanamos aquí:
- * si el caller lo quiere plano, lo construye plano. El helper solo
- * respeta el shape que le llega.
+ * `alternatives` may have a single element: `oneOf` with a single
+ * candidate is legal and flattens to that candidate. We do not flatten
+ * it here: if the caller wants it flat, they build it flat. The helper
+ * only respects the shape it receives.
  */
 export function createUnionNode(
   alternatives: ReadonlyArray<SchemaNodeId>,
@@ -48,11 +48,12 @@ export function createUnionNode(
 }
 
 /**
- * Construye un nodo `intersection` (`allOf`).
+ * Builds an `intersection` node (`allOf`).
  *
- * Vacío: un `allOf` sin candidatos equivale a `true` en JSON Schema,
- * que es un caso patológico. El caller decide si pasa lista vacía
- * (el helper la respeta sin error) o si la rechaza antes de llamar.
+ * Empty: an `allOf` without candidates equals `true` in JSON Schema,
+ * which is a pathological case. The caller decides whether to pass an
+ * empty list (the helper respects it without error) or reject it before
+ * calling.
  */
 export function createIntersectionNode(
   alternatives: ReadonlyArray<SchemaNodeId>,

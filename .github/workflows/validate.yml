@@ -14,7 +14,7 @@ on:
 # (`DELENDAI_SHA`) y se refleja aquí en `env` para que el workflow y
 # el código se revisen en el mismo commit (slice S0 de `a00012`).
 env:
-  DELENDAI_SHA: f86e0ee9ee79f2dc82e294bb0030547b1639dbc1
+  DELENDAI_SHA: 916238276ddde5480914ce08ec571e70585606ce
 
 jobs:
   validate:

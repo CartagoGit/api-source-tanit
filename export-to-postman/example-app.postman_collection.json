@@ -1,0 +1,412 @@
+{
+  "info": {
+    "name": "Example App (Postman)",
+    "description": "Colección Postman generada automáticamente para example-app.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "501ef79f-d468-525f-ba8d-10ea0970c27b"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Queries",
+      "description": "",
+      "item": [
+        {
+          "name": "query users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "query `users` → `[User!]!`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query users($page: Int, $search: String) {\\n  users(page: $page, search: $search) {\\n    __typename\\n  }\\n}\",\n  \"variables\": {\n    \"page\": 1,\n    \"search\": \"texto\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "query user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "query `user` → `User`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query user($id: ID!) {\\n  user(id: $id) {\\n    __typename\\n  }\\n}\",\n  \"variables\": {\n    \"id\": \"1\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "query orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "query `orders` → `[Order!]!`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query orders {\\n  orders {\\n    __typename\\n  }\\n}\",\n  \"variables\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "query ping",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "query `ping` → `String!`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"query ping {\\n  ping\\n}\",\n  \"variables\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mutations",
+      "description": "",
+      "item": [
+        {
+          "name": "mutation createUser",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "mutation `createUser` → `User!`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation createUser($name: String!, $email: String!) {\\n  createUser(name: $name, email: $email) {\\n    __typename\\n  }\\n}\",\n  \"variables\": {\n    \"name\": \"texto\",\n    \"email\": \"texto\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "mutation deleteUser",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/graphql",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "graphql"
+              ]
+            },
+            "description": "mutation `deleteUser` → `Boolean!`",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"mutation deleteUser($id: ID!) {\\n  deleteUser(id: $id)\\n}\",\n  \"variables\": {\n    \"id\": \"1\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

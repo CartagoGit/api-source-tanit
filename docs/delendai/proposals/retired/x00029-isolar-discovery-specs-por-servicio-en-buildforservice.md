@@ -2,7 +2,7 @@
 id: x00029
 title: "Aislar discovery.specs por servicio en buildForService (mayor bug funcional multi-service)"
 kind: fix
-status: ready
+status: retired
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
@@ -89,3 +89,11 @@ funcional grave que no avanza:
    adicional: i00002 debe estar cerrado antes de poder demostrar esto).
 4. El comentario `const specs = [...discovery.specs]` desaparece (o pasa a
    ser una rama explícita solo-legacy con su `TODO` eliminado).
+
+---
+
+> **Retirada 2026-09-05 tras el merge de `origin/develop`**: equivalente funcional
+> ya cubierta por **x00028** (misma acceptance, misma firma de código con commit
+> `a5ed0a4` ya en la rama). Queda registrada como referencia cruzada para
+> auditoría: el contenido de x00029 era idéntico en objetivo (aislar `discovery.specs`
+> por servicio en `buildForService`), sin decisiones divergentes.

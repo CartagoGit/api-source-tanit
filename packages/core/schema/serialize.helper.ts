@@ -1,55 +1,54 @@
 /**
- * Serialización del `SchemaGraph` para fronteras de proceso.
+ * Serialization of the `SchemaGraph` for process boundaries.
  *
- * El grafo vive como `ReadonlyMap` para velocidad dentro del proceso,
- * pero `JSON.stringify(new Map(...))` devuelve `"{}"` — la información
- * se pierde. Cuando el grafo cruza una frontera (MCP, JSON, caché, UI),
- * hay que pasarlo por un DTO que **sí** es JSON-serializable.
+ * The graph lives as `ReadonlyMap` for in-process speed, but
+ * `JSON.stringify(new Map(...))` returns `"{}"` — the information is
+ * lost. When the graph crosses a boundary (MCP, JSON, cache, UI),
+ * it must go through a DTO that **is** JSON-serializable.
  *
- * Este helper exporta:
+ * This helper exports:
  *
- *   - `createSchemaGraph(nodes, root)`: fábrica que devuelve un
- *     `ISchemaGraph` con `toDTO()` enlazado al mapa. Es la forma
- *     recomendada de construir un grafo (los builders de
- *     `build-schema-graph.helper.ts` la usan internamente).
- *   - `toDTO(graph)`: convierte cualquier `ISchemaGraph` a un
- *     `ISchemaGraphDTO`. Es la implementación del método `toDTO()`
- *     del interface y, al mismo tiempo, una función libre para los
- *     consumidores que prefieran no llamar al método.
- *   - `fromDTO(dto)`: reconstruye un `ISchemaGraph` desde un DTO. El
- *     grafo resultante incluye `toDTO()` (vía `createSchemaGraph`).
- *   - `sortByLocation(graph)`: ordena los nodos por ubicación cuando
- *     esa información esté disponible; ver nota más abajo.
+ *   - `createSchemaGraph(nodes, root)`: factory that returns an
+ *     `ISchemaGraph` with `toDTO()` bound to the map. This is the
+ *     recommended way to build a graph (the builders in
+ *     `build-schema-graph.helper.ts` use it internally).
+ *   - `toDTO(graph)`: converts any `ISchemaGraph` to an
+ *     `ISchemaGraphDTO`. It implements the interface's `toDTO()`
+ *     method and is also exposed as a free function for consumers
+ *     that prefer not to call the method.
+ *   - `fromDTO(dto)`: rebuilds an `ISchemaGraph` from a DTO. The
+ *     resulting graph includes `toDTO()` (via `createSchemaGraph`).
+ *   - `sortByLocation(graph)`: sorts nodes by location when that
+ *     information is available; see note below.
  *
- * ## Determinismo
+ * ## Determinism
  *
- * `toDTO(graph)` produce el mismo array de `entries` cada vez, en el
- * orden de iteración del `Map` subyacente. La iteración de un `Map` en
- * JS sigue el orden de inserción, así que el DTO es estable para el
- * mismo grafo y reproducible por igualdad de contenido.
+ * `toDTO(graph)` produces the same array of `entries` each time, in
+ * the iteration order of the underlying `Map`. JS `Map` iteration
+ * follows insertion order, so the DTO is stable for the same graph
+ * and reproducible by content equality.
  *
- * ## Por qué `entries` y no `Record<string, ISchemaNode>`
+ * ## Why `entries` and not `Record<string, ISchemaNode>`
  *
- * `Record<string, ISchemaNode>` también es JSON-serializable, pero un
- * array de `[id, node]` preserva la información de orden (importante
- * para diffs estables entre dos pasadas) y no obliga a que los ids
- * sean claves de objeto válidas (un `SchemaNodeId` puede contener `:`
- * u otros caracteres que JS trataría bien, pero la convención aquí
- * es libre — el contrato no la restringe).
+ * `Record<string, ISchemaNode>` is also JSON-serializable, but an
+ * array of `[id, node]` preserves ordering (important for stable
+ * diffs between two passes) and does not require ids to be valid
+ * object keys (a `SchemaNodeId` may contain `:` or other characters
+ * that JS would handle fine, but the convention here is loose — the
+ * contract does not restrict it).
  *
- * ## `sortByLocation` — sin metadatos de ubicación por ahora
+ * ## `sortByLocation` — no location metadata for now
  *
- * El contrato `ISchemaNode` actual no lleva `line`/`column`. La razón
- * de existir del helper es preparar el terreno para cuando los
- * scanners AST (`a00010 S7`) emitan nodos con su origen en el fuente
- * — el orden top-down del fichero debe sobrevivir la serialización.
+ * The current `ISchemaNode` contract has no `line`/`column`. The
+ * reason this helper exists is to prepare the ground for when AST
+ * scanners (`a00010 S7`) emit nodes with their source origin — the
+ * top-down order of the file must survive serialization.
  *
- * Hasta entonces, `sortByLocation` devuelve una copia del grafo con
- * los nodos en el orden de iteración del `Map`. Si en el futuro
- * `ISchemaNode` añade `readonly location?: { line: number; column:
- * number }`, este helper pasa a ordenar por `(line, column, id)` y
- * los DTOs de dos pasadas sobre el mismo fuente serán idénticos byte
- * a byte.
+ * Until then, `sortByLocation` returns a copy of the graph with nodes
+ * in `Map` iteration order. If `ISchemaNode` later adds
+ * `readonly location?: { line: number; column: number }`, this helper
+ * sorts by `(line, column, id)` and DTOs from two passes over the
+ * same source will be byte-for-byte identical.
  */
 
 import type {
@@ -60,15 +59,15 @@ import type {
 } from "../../contracts/interfaces/core/schema.interface.js";
 
 /**
- * Construye un `ISchemaGraph` a partir de un `Map` y un id raíz.
+ * Builds an `ISchemaGraph` from a `Map` and a root id.
  *
- * Devuelve un objeto con `toDTO()` enlazado al mapa. Es la única
- * forma válida de satisfacer el interface desde código externo: los
- * literales `{ nodes: map, root }` ya no compilan porque al interface
- * le falta `toDTO`.
+ * Returns an object with `toDTO()` bound to the map. This is the only
+ * valid way to satisfy the interface from external code: literals of
+ * the form `{ nodes: map, root }` no longer compile because the
+ * interface requires `toDTO`.
  *
- * Si necesitas un grafo desde un DTO, usa `fromDTO(dto)` (que a su
- * vez delega aquí).
+ * If you need a graph from a DTO, use `fromDTO(dto)` (which in turn
+ * delegates here).
  */
 export function createSchemaGraph(
   nodes: ReadonlyMap<SchemaNodeId, ISchemaNode>,
@@ -84,16 +83,16 @@ export function createSchemaGraph(
 }
 
 /**
- * Convierte un `ISchemaGraph` a su DTO JSON-serializable.
+ * Converts an `ISchemaGraph` to its JSON-serializable DTO.
  *
- * Implementa el método `toDTO()` del interface y, además, está
- * exportada como función libre. Los dos caminos producen el mismo
- * resultado: `graph.toDTO() === toDTO(graph)` para cualquier grafo.
+ * Implements the interface's `toDTO()` method and is also exported as
+ * a free function. Both paths produce the same result:
+ * `graph.toDTO() === toDTO(graph)` for any graph.
  *
- * El array `nodes` sale en el orden de iteración del `Map` subyacente
- * (orden de inserción). Eso garantiza que dos llamadas sobre el mismo
- * grafo producen el mismo DTO, y que `fromDTO(toDTO(graph))` recupera
- * el mismo grafo por igualdad de contenido.
+ * The `nodes` array comes out in the underlying `Map`'s iteration
+ * order (insertion order). That guarantees two calls on the same
+ * graph produce the same DTO, and `fromDTO(toDTO(graph))` recovers
+ * the same graph by content equality.
  */
 export function toDTO(graph: ISchemaGraph): ISchemaGraphDTO {
   return {
@@ -103,34 +102,34 @@ export function toDTO(graph: ISchemaGraph): ISchemaGraphDTO {
 }
 
 /**
- * Reconstruye un `ISchemaGraph` desde un DTO.
+ * Rebuilds an `ISchemaGraph` from a DTO.
  *
- * Crea un nuevo `Map` con las entradas del DTO y lo envuelve con
- * `createSchemaGraph` (que añade `toDTO`). Útil en la frontera
- * contraria: si el grafo viene como JSON desde MCP, caché o un
- * snapshot persistido, esta función lo devuelve en la forma in-memory
- * con la que trabajan los exportadores.
+ * Creates a new `Map` from the DTO entries and wraps it with
+ * `createSchemaGraph` (which adds `toDTO`). Useful on the opposite
+ * boundary: if the graph comes as JSON from MCP, cache, or a persisted
+ * snapshot, this function returns it in the in-memory form exporters
+ * work with.
  */
 export function fromDTO(dto: ISchemaGraphDTO): ISchemaGraph {
   return createSchemaGraph(new Map(dto.nodes), dto.root);
 }
 
 /**
- * Devuelve una copia del grafo con los nodos en orden estable.
+ * Returns a copy of the graph with nodes in stable order.
  *
- * Hoy: la copia mantiene el orden de iteración del `Map` original
- * (que es el orden de inserción), así que el resultado es estable
- * para el mismo grafo de entrada.
+ * Today: the copy keeps the iteration order of the original `Map`
+ * (insertion order), so the result is stable for the same input
+ * graph.
  *
- * Mañana: cuando `ISchemaNode` lleve `location?: { line, column }`,
- * esta función ordena por `(line, column, id)` — el mismo orden en
- * que aparecen en el fichero fuente. Los AST frontend
- * (`a00010 S7`) producen ese orden top-down; este helper lo
- * preserva al cruzar la frontera JSON.
+ * Tomorrow: when `ISchemaNode` carries `location?: { line, column }`,
+ * this function sorts by `(line, column, id)` — the same order in
+ * which they appear in the source file. The AST frontend
+ * (`a00010 S7`) produces that top-down order; this helper preserves
+ * it when crossing the JSON boundary.
  */
 export function sortByLocation(graph: ISchemaGraph): ISchemaGraph {
-  // El interface actual no tiene `location`. Iteramos el mapa en su
-  // orden (que ya es estable) y devolvemos un grafo nuevo. Cuando
-  // `ISchemaNode` extienda, este es el punto a tocar.
+  // The current interface has no `location`. We iterate the map in its
+  // (already stable) order and return a new graph. When `ISchemaNode`
+  // is extended, this is the place to touch.
   return createSchemaGraph(new Map(graph.nodes), graph.root);
 }

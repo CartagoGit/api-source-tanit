@@ -1,47 +1,49 @@
 /**
- * Regex compartidos usados sin pisarse.
+ * Shared regexes used without stepping on each other.
  *
- * Un regex con bandera `g` guarda su posición en `lastIndex`. Si vive a
- * nivel de módulo —que es lo normal, para no recompilarlo en cada
- * llamada— esa posición la comparte **todo el que lo use**.
+ * A regex with the `g` flag stores its position in `lastIndex`. If it
+ * lives at module scope — which is the norm, to avoid recompiling it
+ * on every call — that position is shared by **everyone using it**.
  *
- * `lint:regex-state` ya prohibía asignarle una posición arbitraria,
- * porque eso cuelga el bucle de quien llamó. Pero permitía
- * `RE.lastIndex = 0`, que parecía inofensivo: deja el estado en un punto
- * conocido en vez de heredarlo.
+ * `lint:regex-state` already forbade assigning an arbitrary position
+ * to it, because that hangs the loop of whoever called it. But it
+ * allowed `RE.lastIndex = 0`, which seemed harmless: it leaves the
+ * state at a known point instead of inheriting it.
  *
- * No lo es en cuanto hay dos análisis a la vez. El bucle
+ * It is not, as soon as there are two analyses at once. The loop
  *
  *     RE.lastIndex = 0;
  *     while ((m = RE.exec(line)) !== null) { await algo(); }
  *
- * cede el control en cada `await`. Si otra ejecución entra ahí y hace su
- * propio `RE.lastIndex = 0`, el bucle de la primera vuelve al principio
- * de la línea y repite rutas.
+ * yields at every `await`. If another execution gets in and does its
+ * own `RE.lastIndex = 0`, the first loop jumps back to the start of the
+ * line and repeats paths.
  *
- * Se midió sobre el fixture de Django: dos `generateCollection`
- * concurrentes sobre el **mismo** proyecto devolvían 19 y 18 rutas. La
- * de más se fusionaba luego por método + URI, así que la colección salía
- * bien y solo mentía el contador —y un aviso decía que el endpoint
- * estaba «declarado por más de un framework» cuando solo había uno—.
+ * Measured on the Django fixture: two concurrent `generateCollection`
+ * over the **same** project returned 19 and 18 paths. The extra one
+ * later got merged by method + URI, so the collection came out right
+ * and only the counter lied — and a warning said the endpoint was
+ * "declared by more than one framework" when there was only one.
  *
- * Hasta ahora nadie lo veía porque el pipeline serializaba las llamadas
- * con una cola global. Al quitarla (r00005 S2), quedó a la vista.
+ * Until now nobody saw it because the pipeline serialized the calls
+ * with a global queue. After removing it (r00005 S2), it became
+ * visible.
  *
- * ## Qué usar
+ * ## What to use
  *
- * - Para recorrer todas las coincidencias: `texto.matchAll(RE)`. No toca
- *   el `lastIndex` del original — se lleva su propia copia—, así que es
- *   seguro sin ayuda de nadie.
- * - Para un `exec` suelto con grupos: `ownRegex(RE)`, que es lo que
- *   `matchAll` hace por dentro.
+ * - To walk all matches: `text.matchAll(RE)`. It does not touch the
+ *   `lastIndex` of the original — it takes its own copy — so it is
+ *   safe without help from anyone.
+ * - For a single `exec` with groups: `ownRegex(RE)`, which is what
+ *   `matchAll` does internally.
  */
 
 /**
- * Una copia propia de un regex compartido.
+ * An own copy of a shared regex.
  *
- * Nace con `lastIndex` a cero y nadie más la toca, así que se puede usar
- * con `exec` sin coordinarse con el resto del proceso.
+ * It starts with `lastIndex` at zero and nobody else touches it, so it
+ * can be used with `exec` without coordinating with the rest of the
+ * process.
  */
 export function ownRegex(shared: RegExp): RegExp {
   return new RegExp(shared.source, shared.flags);

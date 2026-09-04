@@ -1,11 +1,11 @@
 /**
- * El catálogo de formatos de salida.
+ * The catalog of output formats.
  *
- * Un formato nuevo se añade aquí y aparece solo en `--format`, en la
- * ayuda del CLI y en los mensajes de error. Es la misma regla que con
- * los scanners: **ninguna lista paralela**. Un `enum` de formatos escrito
- * a mano se queda viejo el día que se añade el sexto, y rechazaría como
- * inválido algo que sí existe.
+ * A new format is added here and shows up on its own in `--format`, in
+ * the CLI help, and in error messages. Same rule as with scanners:
+ * **no parallel lists**. A handwritten `enum` of formats goes stale the
+ * day the sixth is added, and would reject as invalid something that
+ * actually exists.
  */
 import type {
   IExportArtifact,
@@ -20,10 +20,10 @@ import type { IParsedFormats } from "../../contracts/interfaces/core/domain.inte
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
 /**
- * El formato por defecto.
+ * The default format.
  *
- * Sale del catálogo de contratos, no de aquí: leer la lista de nombres
- * no puede costar cargar los cinco exportadores.
+ * It comes from the contracts catalog, not from here: reading the list
+ * of names cannot cost loading the five exporters.
  */
 const DEFAULT_FORMAT = DEFAULT_EXPORT_FORMAT;
 
@@ -36,17 +36,18 @@ const TARGETS: ReadonlyArray<IExportTarget> = [
 ];
 
 /**
- * Los formatos que este registro produce de verdad.
+ * The formats this registry actually produces.
  *
- * No es el catálogo —el catálogo es `EXPORT_FORMATS`, en contratos— sino
- * **lo que el registro cumple**. Un test compara los dos: una lista
- * paralela no es peligrosa, una lista paralela que nadie compara sí.
+ * It is not the catalog — the catalog is `EXPORT_FORMATS`, in
+ * contracts — but **what the registry delivers**. A test compares the
+ * two: a parallel list is not dangerous, an uncompared parallel list
+ * is.
  */
 export function registeredFormats(): string[] {
   return [DEFAULT_FORMAT, ...TARGETS.map((t) => t.format)];
 }
 
-/** Una línea por formato, para la ayuda. */
+/** One line per format, for the help. */
 export function describeFormats(): Array<{ format: string; summary: string }> {
   return [
     { format: DEFAULT_FORMAT, summary: "Postman v2.1.0 (default)" },
@@ -54,18 +55,19 @@ export function describeFormats(): Array<{ format: string; summary: string }> {
   ];
 }
 
-/** El exportador de un formato, o `null` si `postman`/desconocido. */
+/** The exporter for a format, or `null` if `postman`/unknown. */
 export function exporterFor(format: string): IExportTarget | null {
   return TARGETS.find((t) => t.format === format.toLowerCase().trim()) ?? null;
 }
 
 /**
- * Interpreta `--format a,b,c`.
+ * Interprets `--format a,b,c`.
  *
- * Falla **antes** de escanear si algún formato no existe, y lista los
- * válidos. Descubrir un nombre mal escrito al final —tras recorrer el
- * proyecto y sin haber escrito el fichero que se pedía— no dice nada de
- * lo que ha pasado. Es la misma decisión que en `--framework`.
+ * It fails **before** scanning if any format does not exist, and lists
+ * the valid ones. Discovering a misspelled name at the end — after
+ * walking the project and without having written the requested file
+ * — says nothing about what happened. It is the same decision as in
+ * `--framework`.
  */
 export function parseFormats(raw: string | null | undefined): IParsedFormats {
   if (!raw || !raw.trim()) return { ok: true, formats: [DEFAULT_FORMAT] };
@@ -78,14 +80,14 @@ export function parseFormats(raw: string | null | undefined): IParsedFormats {
   const invalid = requested.filter((f) => !valid.includes(f));
   if (invalid.length > 0) return { ok: false, invalid, valid };
 
-  // Se quitan los repetidos conservando el orden que pidió quien llama.
+  // Duplicates are removed preserving the order requested by the caller.
   return { ok: true, formats: [...new Set(requested)] };
 }
 
 /**
- * Serializa el proyecto a todos los formatos pedidos.
+ * Serializes the project to all requested formats.
  *
- * `postman` se salta: lo escribe el pipeline por su cuenta.
+ * `postman` is skipped: the pipeline writes it on its own.
  */
 export function exportTo(
   formats: ReadonlyArray<string>,
@@ -101,11 +103,11 @@ export function exportTo(
 }
 
 /**
- * Lo que los formatos pedidos **no pueden** representar.
+ * What the requested formats **cannot** represent.
  *
- * Se devuelve aparte de los artefactos porque no impide generarlos: el
- * fichero sale igual, solo que incompleto, y quien lo pidió tiene que
- * saberlo.
+ * Returned separately from the artifacts because it does not prevent
+ * generating them: the file comes out the same, just incomplete, and
+ * whoever requested it must know.
  */
 export function exportWarnings(
   formats: ReadonlyArray<string>,

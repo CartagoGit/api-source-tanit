@@ -1,20 +1,20 @@
 /**
- * Constructores de nodos escalares del `SchemaGraph`.
+ * Scalar node constructors for the `SchemaGraph`.
  *
- * Tres tipos de nodo entran en este fichero:
+ * Three node kinds live in this file:
  *
- *   - `scalar` — un valor primitivo (`string`, `integer`, …).
- *   - `enum`   — un valor de un conjunto finito y declarado.
- *   - `literal` — un valor constante, declarado por su valor.
+ *   - `scalar`  — a primitive value (`string`, `integer`, …).
+ *   - `enum`    — a value from a finite, declared set.
+ *   - `literal` — a constant value, declared by its value.
  *
- * Son los nodos "hoja": no tienen hijos ni referencias. El resto del
- * grafo (`object`, `array`, `union`, …) se construye en
- * `build-schema-graph.helper.ts` con un builder, porque necesitan
- * registrar ids y mantener un mapa de nodos en construcción.
+ * These are the "leaf" nodes: they have no children or references. The
+ * rest of the graph (`object`, `array`, `union`, …) is built in
+ * `build-schema-graph.helper.ts` with a builder, because they need to
+ * register ids and keep a map of nodes under construction.
  *
- * Las funciones son **puras**: dado el mismo input devuelven el mismo
- * nodo. Eso permite que el builder ensaye ids candidatos antes de
- * fijarlos, y que los tests comparen grafos por igualdad estructural.
+ * The functions are **pure**: given the same input they return the same
+ * node. That lets the builder try candidate ids before committing them,
+ * and lets tests compare graphs by structural equality.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
@@ -25,15 +25,15 @@ import type {
   SchemaNodeId,
 } from "../../contracts/interfaces/core/schema.interface.js";
 
-/** Tipo escalar que el contrato acepta como `scalarType`. */
+/** Scalar type the contract accepts as `scalarType`. */
 export type { ScalarType };
 
 /**
- * Construye un nodo `scalar`.
+ * Builds a `scalar` node.
  *
- * El id lo pasa el caller: normalmente viene del `SchemaGraphBuilder`,
- * que mantiene el registro único de nodos. Pasar ids externos al
- * builder produciría colisiones silenciosas.
+ * The id is provided by the caller: usually it comes from the
+ * `SchemaGraphBuilder`, which keeps the single registry of nodes.
+ * Passing ids from outside the builder would cause silent collisions.
  */
 export function createScalarNode(
   scalarType: ScalarType,
@@ -50,12 +50,12 @@ export function createScalarNode(
 }
 
 /**
- * Construye un nodo `enum`.
+ * Builds an `enum` node.
  *
- * `values` no se valida aquí: el caller sabe lo que está declarando, y
- * una lista vacía es un caso real (un `enum` declarado en el código
- * que el scanner no ha sabido poblar). Lo que sí se congela es la
- * referencia: un `enum` no debería mutar tras construirse.
+ * `values` is not validated here: the caller knows what they are
+ * declaring, and an empty list is a real case (an `enum` declared in
+ * code that the scanner did not populate). What is frozen is the
+ * reference: an `enum` should not mutate after being built.
  */
 export function createEnumNode(
   values: ReadonlyArray<string>,
@@ -72,12 +72,12 @@ export function createEnumNode(
 }
 
 /**
- * Construye un nodo `literal`.
+ * Builds a `literal` node.
  *
- * `literal` es `unknown` porque admite cualquier valor JSON primitivo:
- * un `42`, un `"foo"`, un `true`, un `null`. Lo que el exportador hace
- * con él depende del formato destino: JSON Schema lo pinta como
- * `{ const: <valor> }`.
+ * `literal` is `unknown` because it accepts any JSON primitive value:
+ * a `42`, a `"foo"`, a `true`, a `null`. What the exporter does with it
+ * depends on the target format: JSON Schema renders it as
+ * `{ const: <value> }`.
  */
 export function createLiteralNode(
   literal: unknown,
@@ -87,17 +87,17 @@ export function createLiteralNode(
 }
 
 /**
- * Traduce las restricciones de un `IValidationSpec` a `ISchemaConstraints`.
+ * Translates the constraints of an `IValidationSpec` to `ISchemaConstraints`.
  *
- * Las restricciones viven **fuera del nodo**: un nodo `scalar` lleva su
- * tipo (`string`, `integer`…) y este objeto lleva los adornos
- * (`format`, `minimum`, `pattern`…). Separarlas deja claro que son
- * ortogonales y que `flatten-helper` puede tratar los constraints como
- * metadato sin tener que recorrerse el grafo.
+ * Constraints live **outside the node**: a `scalar` node carries its
+ * type (`string`, `integer`…) and this object carries the adornments
+ * (`format`, `minimum`, `pattern`…). Separating them makes clear that
+ * they are orthogonal, and that `flatten-helper` can treat constraints
+ * as metadata without walking the graph.
  *
- * Devuelve `undefined` si no hay ninguna restricción: el `ISchemaNode`
- * distingue entre "no tiene constraints" y "tiene constraints vacíos",
- * y aquí respetamos esa distinción.
+ * Returns `undefined` if there are no constraints: `ISchemaNode`
+ * distinguishes between "has no constraints" and "has empty
+ * constraints", and we respect that distinction here.
  */
 export function constraintsFromValidationSpec(
   spec: IValidationSpec,

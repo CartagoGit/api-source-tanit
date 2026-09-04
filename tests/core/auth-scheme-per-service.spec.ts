@@ -35,6 +35,10 @@ import type { IServiceDescriptor } from "../../packages/contracts/interfaces/cor
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 import { generateCollections } from "../../packages/core/discovery/generation.pipeline";
 import { defaultOrchestrator } from "../../packages/frameworks/framework.registry";
+import {
+  createTempProject,
+  type ITempProject,
+} from "../helpers/scanner-fixture";
 
 /** Construye un IServiceDescriptor mínimo para tests unitarios. */
 function descriptor(
@@ -276,11 +280,13 @@ async function writeFiles(root: string, files: Record<string, string>): Promise<
 }
 
 let work = "";
+let projects: ITempProject[] = [];
 beforeAll(async () => {
   work = await mkdtemp(join(tmpdir(), "a00013-s4-"));
 }, 30_000);
 
 afterAll(async () => {
+  for (const p of projects) await p.cleanup();
   if (work) await rm(work, { recursive: true, force: true });
 });
 
@@ -368,5 +374,147 @@ app.listen(3000);
     if (resultsVars.length >= 2) {
       expect(resultsVars[0]).not.toBe(resultsVars[1]);
     }
+  }, 30_000);
+});
+
+// ───────────────────────────────────────────────────────────────────
+// x00028 — multi-service spec isolation.
+//
+// Bug original: `buildForService` consumía `discovery.specs` (el
+// catálogo global fusionado por el merger). En un monorepo con dos
+// servicios que exponen `GET /health` cada uno (típico: liveness
+// probes, ingress controllers, sidecar patterns), ambos servicios
+// veían ambos endpoints en su colección.
+//
+// Después del fix: `filterSpecsForService(discovery.specs, service)`
+// recorta el catálogo a los specs cuyo `(method, uri)` está en
+// `service.endpoints`. Cada servicio ve solo lo suyo. Este test
+// reproduce el escenario y verifica el invariante: dos servicios
+// con `GET /health` cada uno producen dos colecciones, cada una con
+// su propio `GET /health` apuntado al `baseUrl` correcto.
+// ───────────────────────────────────────────────────────────────────
+
+describe("x00028 — multi-service spec isolation", () => {
+  test("dos servicios con mismo GET /health: cada colección ve solo su propio /health", async () => {
+    // Express + NestJS in two workspaces of the same monorepo, each
+    // exposing `GET /health` (liveness) plus one service-specific
+    // route. Without the fix, both collections would contain
+    // *both* /health requests and *both* /users + /orders. With
+    // the fix, each collection contains only its own slice.
+    const project = await createTempProject(
+      {
+        "package.json": JSON.stringify({
+          name: "monorepo-x00028",
+          private: true,
+          workspaces: ["apps/*"],
+        }),
+        // apps/api (NestJS) — has its own /health and /widgets.
+        "apps/api/package.json": JSON.stringify({
+          name: "@x28/api",
+          dependencies: { "@nestjs/core": "^10.0.0" },
+        }),
+        "apps/api/src/app.controller.ts":
+          'import { Controller, Get } from "@nestjs/common";\n' +
+          '@Controller("api")\n' +
+          "export class AppController {\n" +
+          '  @Get("health") health() { return { ok: true }; }\n' +
+          '  @Get("widgets") list() { return []; }\n' +
+          "}\n",
+        // apps/web (Express) — has its own /health and /pages.
+        "apps/web/package.json": JSON.stringify({
+          name: "@x28/web",
+          dependencies: { express: "^4.19.0" },
+        }),
+        "apps/web/server.js":
+          'import express from "express";\n' +
+          "const app = express();\n" +
+          'app.get("/health", (_req, res) => res.json({ ok: true }));\n' +
+          'app.get("/pages", (_req, res) => res.json([]));\n' +
+          "app.listen(3000);\n",
+      },
+      "postman-fixture-x00028-",
+    );
+    projects.push(project);
+
+    const results = await generateCollections(project.root, {
+      orchestrator: defaultOrchestrator(),
+      combineServices: false,
+    });
+
+    // Two services detected -> two collections. If detection
+    // collapses them into one, the test fails loudly instead of
+    // producing a false positive on the spec-isolation assertions.
+    expect(results.length).toBe(2);
+
+    // Flatten the collection tree (folders can contain items).
+    // Each entry is a request item paired with the index of the
+    // collection it belongs to. The flattening walks both top-level
+    // items and `item.item[]` so folder grouping doesn't hide
+    // anything.
+    type FlatItem = { ci: number; name: string; rawPath: string };
+    function flatten(idx: number): FlatItem[] {
+      const out: FlatItem[] = [];
+      const visit = (
+        items: ReadonlyArray<{
+          name: string;
+          item?: ReadonlyArray<unknown>;
+          request?: { url: { path: string[] | string } };
+        }>,
+      ): void => {
+        for (const it of items) {
+          if (it.request) {
+            const p = it.request.url.path;
+            out.push({
+              ci: idx,
+              name: it.name,
+              rawPath: Array.isArray(p) ? p.join("/") : String(p),
+            });
+          }
+          if (it.item)
+            visit(
+              it.item as ReadonlyArray<{
+                name: string;
+                item?: ReadonlyArray<unknown>;
+                request?: { url: { path: string[] | string } };
+              }>,
+            );
+        }
+      };
+      visit(results[idx]!.collection.item);
+      return out;
+    }
+    const all: FlatItem[] = results.flatMap((_r, i) => flatten(i));
+
+    // Each service exposes /health, so we expect exactly TWO
+    // /health requests — one per collection. Before the fix,
+    // `buildForService` consumed the global `discovery.specs`
+    // (already merged by the merger); in a monorepo with two
+    // /healths the merger had already deduped them by
+    // `(method, uri)` into ONE spec, which then got returned to
+    // BOTH services via `[...discovery.specs]`. So the bug
+    // manifested as a single /health being shared by both
+    // collections — visible here as `healthItems.length === 2`
+    // and the two items belonging to distinct collections.
+    const healthItems = all.filter((a) => /health/i.test(a.rawPath));
+    expect(healthItems).toHaveLength(2);
+    const healthCollections = new Set(healthItems.map((a) => a.ci));
+    expect(healthCollections.size).toBe(2);
+
+    // Service-specific routes do NOT cross: the apps/api collection
+    // does not contain /pages, and the apps/web collection does
+    // not contain /widgets. Before the fix, the global catalog
+    // had /widgets (from apps/api) and /pages (from apps/web),
+    // and BOTH collections received BOTH routes.
+    const apiCi = healthItems[0]!.ci;
+    const webCi = healthItems[1]!.ci;
+    expect(apiCi).not.toBe(webCi);
+
+    // The /widgets request belongs ONLY to apps/api (not apps/web).
+    const widgetsItems = all.filter((a) => /widgets/i.test(a.rawPath));
+    expect(widgetsItems.every((w) => w.ci === apiCi)).toBe(true);
+
+    // The /pages request belongs ONLY to apps/web (not apps/api).
+    const pagesItems = all.filter((a) => /pages/i.test(a.rawPath));
+    expect(pagesItems.every((p) => p.ci === webCi)).toBe(true);
   }, 30_000);
 });

@@ -1,16 +1,16 @@
 /**
- * Barrel del frontend TypeScript.
+ * TypeScript frontend barrel.
  *
- * Los scanners importan de aquí:
+ * Scanners import from here:
  *
  *   import { parse } from "../../core/language-frontends/typescript";
  *
- * en vez de apuntar a `parser.ts` directamente. Si mañana hay que
- * exponer también `parseAst` (variante que consume un AST Babel ya
- * construido, útil para tests de adapters), se añade al barrel sin
- * tocar los call sites.
+ * instead of pointing at `parser.ts` directly. If we ever need to also
+ * expose `parseAst` (a variant that consumes an already-built Babel
+ * AST, useful for adapter tests), it is added to the barrel without
+ * touching call sites.
  *
- * (a00010 S7 — slice AST TypeScript)
+ * (a00010 S7 — TypeScript AST slice)
  */
 
 export { parse, parseModule } from "./typescript.parser.js";

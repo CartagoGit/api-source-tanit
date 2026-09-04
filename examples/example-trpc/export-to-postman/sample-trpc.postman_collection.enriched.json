@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-trpc (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-trpc.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "17b5b248-ee28-5900-8ac8-f1e35da30f6c"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

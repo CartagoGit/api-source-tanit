@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "demo (Postman)",
+    "description": "Colección Postman generada automáticamente para demo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "38c31277-ed0b-5a4c-9478-e9f9bfe2fde3"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

@@ -1,10 +1,10 @@
 /**
- * Leer la colección del disco, o explicar por qué no se puede.
+ * Read the collection from disk, or explain why it cannot be.
  *
- * Cuatro comandos —`list`, `stats`, `check` y `validate`— empiezan
- * leyendo el mismo fichero, y cada uno lo hacía a su manera. `list` y
- * `stats` no lo hacían de ninguna: llamaban a `readFile` directamente, y
- * sin colección en disco la persona veía esto:
+ * Four commands — `list`, `stats`, `check` and `validate` — start by
+ * reading the same file, and each did it in its own way. `list` and
+ * `stats` didn't do it in any: they called `readFile` directly, and
+ * without a collection on disk the person saw this:
  *
  * ```
  * 20 |   const raw = await readFile(COLLECTION_PATH, "utf8");
@@ -14,12 +14,13 @@
  *  syscall: "open"
  * ```
  *
- * Cinco líneas de volcado, el código fuente del comando por encima, y
- * ni una palabra sobre qué hacer — cuando la respuesta es siempre la
- * misma: ejecutar `generate` primero.
+ * Five lines of stack trace, the command's source code above, and not
+ * a word about what to do — when the answer is always the same: run
+ * `generate` first.
  *
- * Un error que no dice la salida deja a quien lo lee igual de atascado
- * que si no dijera nada, y encima parece que la herramienta se ha roto.
+ * An error that does not say the next step leaves the reader as stuck
+ * as if it said nothing, and on top of it looks like the tool is
+ * broken.
  */
 import { readFile } from "node:fs/promises";
 
@@ -27,12 +28,13 @@ import type { PostmanCollection } from "../../contracts/interfaces/core/postman.
 import type { CollectionRead } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * Lee y parsea la colección.
+ * Reads and parses the collection.
  *
- * Distingue los tres fallos que importan, porque cada uno tiene una
- * salida distinta: que no exista (falta generar), que no se pueda leer
- * (permisos) y que no sea JSON válido (se escribió a medias, que es lo
- * que `atomic-write.helper` existe para evitar).
+ * Distinguishes the three failures that matter, because each has a
+ * different output: that it does not exist (need to generate), that it
+ * cannot be read (permissions), and that it is not valid JSON (it was
+ * written halfway, which is what `atomic-write.helper` exists to
+ * prevent).
  */
 export async function readCollection(path: string): Promise<CollectionRead> {
   let raw: string;
@@ -71,9 +73,9 @@ export async function readCollection(path: string): Promise<CollectionRead> {
 }
 
 /**
- * Imprime el fallo en el formato del resto del CLI y devuelve 1, para
- * que un comando pueda hacer `return explain(result)` sin repetir el
- * bloque de `console.error` en cada uno.
+ * Prints the failure in the same format as the rest of the CLI and
+ * returns 1, so a command can do `return explain(result)` without
+ * repeating the `console.error` block in each one.
  */
 export function explainReadFailure(
   failure: Extract<CollectionRead, { ok: false }>,
