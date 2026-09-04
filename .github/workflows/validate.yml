@@ -14,7 +14,7 @@ on:
 # (`DELENDAI_SHA`) y se refleja aquí en `env` para que el workflow y
 # el código se revisen en el mismo commit (slice S0 de `a00012`).
 env:
-  DELENDAI_SHA: f86e0ee9ee79f2dc82e294bb0030547b1639dbc1
+  DELENDAI_SHA: 916238276ddde5480914ce08ec571e70585606ce
 
 jobs:
   validate:
@@ -28,12 +28,18 @@ jobs:
       # `../../../../delendai/packages/core` desde
       # `packages/plugins/delendai_tanit/`, y eso sólo existe si
       # este step corrió antes.
-      - name: Checkout delendai sibling
-        uses: actions/checkout@v7
-        with:
-          repository: CartagoGit/delendai
-          path: ../delendai
-          ref: ${{ env.DELENDAI_SHA }}
+      #
+      # `actions/checkout` NO sirve aquí: exige que `path` esté dentro
+      # del workspace del runner, y el hermano vive en `../delendai`
+      # (fuera). Un `run: git clone` no tiene esa restricción — el
+      # script puede escribir en cualquier ruta del disco del runner. El
+      # URL es público (https, sin token): solo lectura de un commit
+      # pinneado en DELENDAI_SHA. i00002.
+      - name: Materialize delendai sibling
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/CartagoGit/DelendAI "${GITHUB_WORKSPACE}/../delendai"
+          git -C "${GITHUB_WORKSPACE}/../delendai" checkout "${DELENDAI_SHA}"
 
       - uses: oven-sh/setup-bun@v2
         with:
