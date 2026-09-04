@@ -27,7 +27,7 @@ import type {
   IRouteScanner,
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
-import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
+import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 
@@ -48,6 +48,39 @@ const DEFAULT_ENDPOINT = "/graphql";
 
 /** Escalares de serie. No admiten selección de campos. */
 const BUILTIN_SCALARS = new Set(["String", "Int", "Float", "Boolean", "ID"]);
+
+/**
+ * Escalares personalizados del esquema (audit 2026-09-04 P1 #4).
+ *
+ * El parser los recoge de las directivas `scalar X` del esquema; un
+ * `DateTime!` declarado por el usuario debe ir al conjunto de
+ * escalares, no al conjunto de objetos, porque tampoco admite
+ * selección de campos. Si no, el cuerpo generado pediría
+ * `now { __typename }` sobre un escalar.
+ */
+const customScalars = new Set<string>();
+
+/** Registra un escalar personalizado declarado con `scalar X`. */
+function registerCustomScalar(name: string): void {
+  if (!BUILTIN_SCALARS.has(name)) customScalars.add(name);
+}
+
+/** Devuelve true si el tipo (sin `[`, `]`, `!`) es escalar. */
+function isScalarType(type: string): boolean {
+  const bare = type.replace(/[[\]!]/g, "");
+  return BUILTIN_SCALARS.has(bare) || customScalars.has(bare);
+}
+
+/**
+ * Limpia el registro de escalares personalizados.
+ *
+ * Solo se usa en tests; el scanner real los va acumulando durante el
+ * scan de un proyecto, lo que en un proceso de larga vida filtraría
+ * memoria. En el pipeline real cada `scan()` cubre un solo esquema.
+ */
+export function _resetCustomScalars(): void {
+  customScalars.clear();
+}
 
 /** Ficheros de esquema. */
 function isSchemaFile(name: string): boolean {
@@ -178,6 +211,23 @@ function typeBody(source: string, typeName: string): string | null {
 }
 
 /**
+ * Recoge los escalares personalizados declarados en el esquema con la
+ * directiva `scalar Nombre`. Audit 2026-09-04 P1 #4.
+ *
+ * Un `scalar DateTime` declarado por el proyecto debe ir al conjunto
+ * de escalares —no admite selección de campos—, si no el cuerpo
+ * generado pediría `now { __typename }` y la respuesta fallaría.
+ */
+function collectCustomScalars(source: string): void {
+  const cleaned = stripGraphQlComments(source);
+  const re = /^\s*scalar\s+(\w+)\s*$/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(cleaned)) !== null) {
+    if (m[1]) registerCustomScalar(m[1]);
+  }
+}
+
+/**
  * Los campos de un bloque de tipo.
  *
  * Un campo es `nombre(args): Tipo`. Los argumentos pueden traer valores
@@ -189,6 +239,11 @@ export function parseOperations(
   kind: "query" | "mutation",
 ): IOperation[] {
   const clean = stripGraphQlComments(source);
+  // Antes de extraer operaciones, recogemos los escalares
+  // personalizados del esquema completo. Si no, `parseOperations`
+  // aislado por tipo no vería nunca las directivas `scalar X` que
+  // están fuera del bloque `type Query` / `type Mutation`.
+  collectCustomScalars(clean);
   const body = typeBody(clean, kind === "query" ? "Query" : "Mutation");
   if (body === null) return [];
 
@@ -238,7 +293,7 @@ export function buildQueryDocument(op: IOperation): string {
   // se pide `__typename` — que existe en cualquier objeto y hace la
   // consulta válida.
   const bare = op.returns.replace(/[[\]!]/g, "");
-  const selection = BUILTIN_SCALARS.has(bare) ? "" : " {\n    __typename\n  }";
+  const selection = isScalarType(bare) ? "" : " {\n    __typename\n  }";
   return `${op.kind} ${op.name}${declaration} {\n  ${op.name}${call}${selection}\n}`;
 }
 
@@ -258,10 +313,13 @@ function exampleForType(type: string): unknown {
     case "String":
       return "texto";
     default:
-      // Un tipo de entrada propio: un objeto vacío es lo honesto, porque
-      // sus campos están en otra parte del esquema y adivinarlos sería
-      // inventar.
-      return {};
+      // Audit 2026-09-04 P1 #4: si es un escalar personalizado
+      // declarado por el esquema, devolvemos un string placeholder
+      // (los escalares custom suelen serializar como string: `DateTime`,
+      // `UUID`, `EmailAddress`). Si no, es un input type propio: un
+      // objeto vacío es lo honesto, porque sus campos están en otra
+      // parte del esquema y adivinarlos sería inventar.
+      return isScalarType(bare) ? "valor" : {};
   }
 }
 
@@ -273,45 +331,123 @@ export class GraphQlRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectFiles(match.projectRoot, isSchemaFile);
+    // Audit 2026-09-04 P1 #5 (embedded SDL): antes el scanner solo
+    // miraba `.graphql`/`.gql`, pero un proyecto server-side puede
+    // declarar el esquema inline con `gql\`...\``. Si el servidor no
+    // tiene ningún `.graphql` en disco, el scanner devolvía 0
+    // operaciones. Ahora recorre además `.ts`/`.js`/`.tsx`/`.jsx`
+    // y extrae los bloques `gql\`…\`` antes de aplicar el parser.
+    const schemaFiles = await collectFiles(match.projectRoot, isSchemaFile);
+    const sourceFiles = await collectFiles(match.projectRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
     const seen = new Set<string>();
 
-    for await (const { path, text } of readFilesInOrder(files)) {
+    for await (const { path, text } of readFilesInOrder(schemaFiles)) {
       const sourceFile = relative(match.projectRoot, path);
-      for (const kind of ["query", "mutation"] as const) {
-        for (const op of parseOperations(text, kind)) {
-          // Un esquema partido en varios ficheros puede repetir el tipo
-          // `Query` con `extend type`: la operación es la misma.
-          if (seen.has(op.name)) continue;
-          seen.add(op.name);
+      const extracted = extractEmbeddedSdl(text);
+      for (const sdl of [text, ...extracted]) {
+        for (const op of scanSchema(sdl, sourceFile, seen, routes)) {
+          routes.push(op);
+        }
+      }
+    }
 
-          const variables = Object.fromEntries(
-            op.args.map((a) => [a.name, exampleForType(a.type)]),
-          );
-          routes.push({
-            // GraphQL va **siempre** por POST, también las consultas: el
-            // GET existe pero casi nadie lo habilita, y una colección que
-            // no funciona al primer Send no sirve.
-            method: "POST",
-            uri: DEFAULT_ENDPOINT,
-            rawUri: DEFAULT_ENDPOINT,
-            sourceFile,
-            lineNumber: 1,
-            prefixChain: [],
-            displayName: `${op.kind} ${op.name}`,
-            description: `${op.kind} \`${op.name}\` → \`${op.returns}\``,
-            // La carpeta separa consultas de mutaciones, que es la
-            // división que importa: unas leen y otras escriben.
-            tags: [op.kind === "query" ? "Queries" : "Mutations"],
-            body: {
-              query: buildQueryDocument(op),
-              variables,
-            },
-          });
+    // Embedded SDL: extraer bloques `gql\`...\`` de fuentes TS/JS.
+    // El primer esquema `.graphql` que contenga `type Query` ya
+    // cuenta como servidor; este paso es complementario y solo añade
+    // operaciones nuevas (el `seen` dedupe evita duplicados).
+    for await (const { path, text } of readFilesInOrder(sourceFiles)) {
+      const sourceFile = relative(match.projectRoot, path);
+      for (const sdl of extractEmbeddedSdl(text)) {
+        for (const op of scanSchema(sdl, sourceFile, seen, routes)) {
+          routes.push(op);
         }
       }
     }
     return { routes: routes };
   }
 }
+
+/**
+ * Extrae los bloques `gql\`…\`` y `graphql\`…\`` de un fichero TS/JS.
+ *
+ * Audit 2026-09-04 P1 #5. Soporta backticks balanceados (no permite
+ * `${...}` interpolation en el interior, porque rompería la lógica de
+ * llaves; pero si la tiene, extrae lo que pueda y deja el resto como
+ * comentario vacío — comportamiento honesto).
+ */
+export function extractEmbeddedSdl(source: string): string[] {
+  const out: string[] = [];
+  const re = /(?:gql|graphql)\s*`/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) {
+    const start = m.index + m[0].length;
+    // Encuentra el backtick de cierre, contando llaves para tolerar
+    // `${...}` (que se reemplaza por literal vacío en el cuerpo).
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < source.length; i++) {
+      const ch = source[i];
+      if (ch === "{") depth++;
+      else if (ch === "}") depth = Math.max(0, depth - 1);
+      else if (ch === "`" && depth === 0) {
+        end = i;
+        break;
+      }
+    }
+    if (end === -1) continue;
+    const raw = source.slice(start, end);
+    // Quita las interpolaciones `${…}` reemplazándolas por literal
+    // vacío, que es lo que el parser espera (los tipos SDL no
+    // contienen interpolaciones de runtime).
+    const cleaned = raw.replace(/\$\{[\s\S]*?\}/g, "");
+    out.push(cleaned);
+    re.lastIndex = end + 1;
+  }
+  return out;
+}
+
+/**
+ * Saca operaciones (Query/Mutation) de un texto SDL y las añade a
+ * `routes` si no están en `seen`. Devuelve las añadidas para que el
+ * caller encadene.
+ */
+function scanSchema(
+  sdl: string,
+  sourceFile: string,
+  seen: Set<string>,
+  _routes: ParsedRoute[],
+): ParsedRoute[] {
+  const added: ParsedRoute[] = [];
+  for (const kind of ["query", "mutation"] as const) {
+    for (const op of parseOperations(sdl, kind)) {
+      const seenKey = `${op.kind}:${op.name}`;
+      if (seen.has(seenKey)) continue;
+      seen.add(seenKey);
+
+      const variables = Object.fromEntries(
+        op.args.map((a) => [a.name, exampleForType(a.type)]),
+      );
+      const route: ParsedRoute = {
+        method: "POST",
+        uri: DEFAULT_ENDPOINT,
+        rawUri: DEFAULT_ENDPOINT,
+        sourceFile,
+        lineNumber: 1,
+        prefixChain: [],
+        displayName: `${op.kind} ${op.name}`,
+        description: `${op.kind} \`${op.name}\` → \`${op.returns}\``,
+        tags: [op.kind === "query" ? "Queries" : "Mutations"],
+        body: {
+          query: buildQueryDocument(op),
+          variables,
+        },
+      };
+      added.push(route);
+    }
+  }
+  return added;
+}
+
+// `scanSchema` se mantiene como helper local (no se exporta) — solo
+// lo usa el `scan()` del propio scanner.
