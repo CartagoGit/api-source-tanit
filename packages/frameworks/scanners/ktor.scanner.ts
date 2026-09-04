@@ -31,6 +31,7 @@ import { join, relative } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -93,14 +94,14 @@ export class KtorRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await collectFiles(match.projectRoot, isKotlinSourceFile);
+    const files = await collectFiles(effectiveProjectRoot(match), isKotlinSourceFile);
     const routes: ParsedRoute[] = [];
 
     // Lectura en paralelo con tope, entregada en el orden de
     // entrada: la colección tiene que salir igual cada vez.
     for await (const { path: file, text: source } of readFilesInOrder(files)) {
       if (!/\brouting\s*\{|\broute\s*\(/.test(source)) continue;
-      routes.push(...parseKotlinRouting(source, relative(match.projectRoot, file)));
+      routes.push(...parseKotlinRouting(source, relative(rawProjectRoot(match), file)));
     }
 
     return { routes: dedupe(routes) };

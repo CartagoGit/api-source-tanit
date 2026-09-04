@@ -23,6 +23,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -107,7 +108,7 @@ export class GinRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     // 1) main.go (si está en raíz).
     const main = join(projectRoot, "main.go");
     if (existsSync(main)) {
@@ -261,7 +262,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
-    const abs = join(match.projectRoot, route.sourceFile);
+    const abs = join(rawProjectRoot(match), route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");
@@ -271,7 +272,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
     let fields = parseGoStructs(raw, route.uri);
     if (fields.length === 0) {
       // Fallback: buscar structs en otros archivos .go del proyecto.
-      const files = await findAllGoFiles(match.projectRoot);
+      const files = await findAllGoFiles(effectiveProjectRoot(match));
       // Filtrar archivos cuyo nombre sugiere relevancia al URI.
       const uriWords = (route.uri ?? "")
         .split("/")

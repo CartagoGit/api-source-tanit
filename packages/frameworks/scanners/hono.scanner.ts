@@ -25,6 +25,7 @@ import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { findAllBalanced, findOutsideStrings, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type {
   IEndpointValidation,
@@ -94,11 +95,15 @@ function honoDeps(pkg: Record<string, unknown> | null): Record<string, string> {
  * Renombrada local (`honoEffectiveSearchRoot`) por la misma razón que
  * en `nestjs.scanner.ts`: cada scanner tiene su propia implementación
  * porque cada uno necesita un search root distinto. f00011 S1.
+ *
+ * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
+ * `packages/core/discovery/effective-project-root.helper.ts`, que es
+ * la primitiva única que usan los 21 scanners. El helper local se
+ * conserva como no-op histórico para no romper call sites externos,
+ * pero el scanner ya no la usa.
  */
 function honoEffectiveSearchRoot(match: IProjectMatch): string {
-  return match.frameworkSearchRoot
-    ? join(match.projectRoot, match.frameworkSearchRoot)
-    : match.projectRoot;
+  return effectiveProjectRoot(match);
 }
 
 /**
@@ -218,7 +223,7 @@ export class HonoRouteScanner implements IRouteScanner {
       if (!/\bhono\b|new Hono\(/i.test(raw)) continue;
 
       const source = stripJsComments(raw);
-      const sourceFile = relative(match.projectRoot, file);
+      const sourceFile = relative(rawProjectRoot(match), file);
       const prefix = mountPrefixOf(source);
 
       // `findOutsideStrings` en vez de `matchAll`: una llamada escrita

@@ -4,6 +4,7 @@ import { emptyResult, withEvidence } from "./detect-result.helper";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { join } from "node:path";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -93,7 +94,7 @@ export class AspNetRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     // Buscar *.cs recursivamente.
     await walkCs(projectRoot, projectRoot, out);
     return { routes: out };
@@ -347,7 +348,7 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
     if (route.method === "GET" || route.method === "DELETE") {
       return { endpointKey, fields: [] };
     }
-    const abs = join(match.projectRoot, route.sourceFile);
+    const abs = join(rawProjectRoot(match), route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");
@@ -359,7 +360,7 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
 
     let fields = parseCsDto(raw, dtoType);
     if (fields.length === 0) {
-      fields = await findDtoInProject(match.projectRoot, dtoType, route.uri);
+      fields = await findDtoInProject(effectiveProjectRoot(match), dtoType, route.uri);
     }
     return { endpointKey, fields };
   }

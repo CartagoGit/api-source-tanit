@@ -29,6 +29,7 @@ import { join } from "node:path";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -115,7 +116,7 @@ export class DjangoRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     const processed = new Set<string>(); // rutas absolutas ya procesadas.
     // 1) urls.py raíz. Buscar tanto en root como en sub-app típico
     //    (`app/urls.py`, `config/urls.py`, `src/urls.py`, etc.).
@@ -512,7 +513,7 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
-    const abs = join(match.projectRoot, route.sourceFile);
+    const abs = join(rawProjectRoot(match), route.sourceFile);
     const dir = abs.substring(0, abs.lastIndexOf("/"));
     // 1) Encontrar el viewName para este URI leyendo el urls.py.
     //    Pasamos también el prefixChain para desambiguar.

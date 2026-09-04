@@ -29,6 +29,7 @@ import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -116,7 +117,7 @@ export class SymfonyRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    const projectRoot = match.projectRoot;
+    const projectRoot = effectiveProjectRoot(match);
     // 1) YAML routes (config/routes.yaml + config/routes/*.yaml).
     const topRoute = join(projectRoot, "config", "routes.yaml");
     if (existsSync(topRoute)) {
@@ -520,9 +521,9 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
     const controllerPath = route.controllerClass
-      ? await findControllerFile(match.projectRoot, route.controllerClass)
+      ? await findControllerFile(effectiveProjectRoot(match), route.controllerClass)
       : null;
-    const abs = controllerPath ?? join(match.projectRoot, route.sourceFile);
+    const abs = controllerPath ?? join(rawProjectRoot(match), route.sourceFile);
     let raw: string;
     try {
       raw = await readFile(abs, "utf8");

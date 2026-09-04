@@ -26,6 +26,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -110,7 +111,7 @@ export class RailsRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const source = await readRoutesFile(match.projectRoot);
+    const source = await readRoutesFile(effectiveProjectRoot(match));
     if (!source) return { routes: [] };
     return { routes: parseRoutesFile(source, "config/routes.rb") };
   }

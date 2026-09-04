@@ -20,6 +20,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type {
   IProjectMatch,
   IProjectScanner,
@@ -91,7 +92,7 @@ export class PhoenixRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const router = await findRouter(match.projectRoot);
+    const router = await findRouter(effectiveProjectRoot(match));
     if (!router) return { routes: [] };
 
     let source: string;
@@ -100,7 +101,7 @@ export class PhoenixRouteScanner implements IRouteScanner {
     } catch {
       return { routes: [] };
     }
-    const sourceFile = router.slice(match.projectRoot.length + 1);
+    const sourceFile = router.slice(rawProjectRoot(match).length + 1);
     return { routes: parseRouter(source, sourceFile) };
   }
 }

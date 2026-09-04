@@ -41,6 +41,7 @@ import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.hel
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
 import { parseModule } from "../../core/language-frontends/typescript/index.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
+import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 
 /**
  * Frameworks de Node que este scanner cubre por parecido con Express.
@@ -173,11 +174,15 @@ async function collectJsFiles(projectRoot: string): Promise<string[]> {
  * colección con rutas de `apps/admin`. Esta función es el contrato
  * único que `effectiveScanRoot` de `core/discovery/scan-root.helper.ts`
  * ya define — todos los scanners deberían delegar en él.
+ *
+ * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
+ * `packages/core/discovery/effective-project-root.helper.ts`, que es
+ * la primitiva única que usan los 21 scanners. El helper local se
+ * conserva como no-op histórico para no romper call sites externos,
+ * pero el scanner ya no la usa.
  */
 function expressSearchRoot(match: IProjectMatch): string {
-  return match.frameworkSearchRoot
-    ? join(match.projectRoot, match.frameworkSearchRoot)
-    : match.projectRoot;
+  return effectiveProjectRoot(match);
 }
 
 interface ParsedModule {
@@ -348,7 +353,7 @@ export class ExpressRouteScanner implements IRouteScanner {
         // Usamos `searchRoot` para derivar el `sourceFile` y que la
         // ruta sea coherente con el workspace efectivo del scanner.
         const relFile = m.file
-          .replace(expressSearchRoot(match), "")
+          .replace(rawProjectRoot(match), "")
           .replace(/^[\\/]/, "")
           .split(sep)
           .join("/");
