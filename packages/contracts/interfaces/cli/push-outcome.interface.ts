@@ -48,8 +48,8 @@ export interface IPushOutcome {
   readonly requests: number;
   /** The collection, or `null` if it never reached Postman. */
   readonly collection: IPushedArtifact | null;
-  /** Un elemento por entorno subido. Vacío con `--no-environments`. */
+  /** One entry per uploaded environment. Empty with `--no-environments`. */
   readonly environments: ReadonlyArray<IPushedArtifact>;
-  /** `null` cuando todo fue bien. */
+  /** `null` on success. */
   readonly error: IPushFailure | null;
 }

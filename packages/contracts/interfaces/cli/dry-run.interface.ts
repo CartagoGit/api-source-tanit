@@ -62,10 +62,10 @@ export interface IDryRunPlan {
   /** How many requests the collection would have. */
   readonly requests: number;
   readonly files: ReadonlyArray<IPlannedFile>;
-  /** Cuántos de esos ficheros ya existen. Es el dato que importa. */
+  /** How many of those files already exist. That's the data point. */
   readonly overwrites: number;
-  /** Lo que el pipeline avisaría al generar de verdad. */
+  /** What the pipeline would warn about when actually generating. */
   readonly warnings: ReadonlyArray<string>;
-  /** Por qué el plan no es válido. `undefined` cuando lo es. */
+  /** Why the plan is not valid. `undefined` when it is. */
   readonly reason?: string;
 }

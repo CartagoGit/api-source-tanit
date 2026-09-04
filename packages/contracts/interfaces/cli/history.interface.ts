@@ -59,55 +59,56 @@ export interface IHistoryEntry {
 }
 
 /**
- * Lo que se le pasa al servicio cuando algo termina bien.
+ * What is passed to the service when something finishes.
  *
- * Separa el `kind` del resto porque `summary` no genera colección: el
- * resto de campos se rellena igual pero `collectionPath` queda en
- * `null` y `endpoints` lleva el conteo del resumen (que ya no es la
- * colección).
+ * Splitting `kind` from the rest of the input is necessary because
+ * `summary` does not produce a collection: the other fields are
+ * filled the same way but `collectionPath` stays `null` and
+ * `endpoints` carries the summary count (which is no longer the
+ * collection).
  */
 export interface IHistoryEntryInput {
   readonly kind: "generate" | "summary";
   readonly projectRoot: string;
   readonly summary: IProjectSummary;
-  /** Solo si `kind === "generate"`. */
+  /** Only when `kind === "generate"`. */
   readonly collectionPath?: string | null;
 }
 
 /**
- * Cómo se lee el historial en la UI.
+ * How the UI reads the history.
  *
- * No se devuelve el fichero entero: un proyecto que se genera cada vez
- * que cambia un fichero acaba con miles de entradas, y la UI solo
- * enseña las últimas N.
+ * The full file is not returned: a project regenerated on every
+ * file change accumulates thousands of entries, and the UI only
+ * shows the latest N.
  */
 export interface IHistoryReadOptions {
-  /** Cuántas devolver, empezando por la más reciente. */
+  /** How many to return, starting with the most recent. */
   readonly limit?: number;
-  /** Filtrar por proyecto exacto (raíz). `undefined` = todos. */
+  /** Filter by exact project (root). `undefined` = all. */
   readonly projectRoot?: string;
 }
 
-/** Resultado de leer el historial. */
+/** Result of reading the history. */
 export interface IHistoryReadResult {
   readonly ok: true;
-  /** Entradas, de más reciente a más antigua, ya limitadas. */
+  /** Entries, newest first, already limited. */
   readonly entries: ReadonlyArray<IHistoryEntry>;
-  /** Líneas que había en el fichero y no se pudieron parsear. */
+  /** Lines that couldn't be parsed. */
   readonly rejected: ReadonlyArray<{ readonly line: number; readonly reason: string }>;
-  /** Total de líneas válidas, antes de aplicar `limit`. */
+  /** Total valid lines, before applying `limit`. */
   readonly totalEntries: number;
 }
 
 /**
- * Resultado de `appendHistory`.
+ * Result of `appendHistory`.
  *
- * Los errores no se lanzan: `summary.script.ts` y `generate.script.ts`
- * llaman a esta función en su camino feliz, y un fallo de escritura
- * del historial no debe tumbar una generación que ya escribió su
- * colección. Se devuelve `{ ok: false, reason }` y quien llamó decide
- * si lo dice o se lo calla (en el CLI, lo segundo; en la UI, lo
- * primero, porque el usuario sí está mirando).
+ * Errors are not thrown: `summary.script.ts` and `generate.script.ts`
+ * call this function on their happy path, and a write failure
+ * to the history must not bring down a generation that already
+ * wrote its collection. Return `{ ok: false, reason }` and let
+ * the caller decide whether to surface it (CLI: no; UI: yes —
+ * because the user IS looking).
  */
 export interface IHistoryAppendResult {
   readonly ok: boolean;
@@ -115,16 +116,16 @@ export interface IHistoryAppendResult {
   readonly reason?: string;
 }
 
-/** Lo que devuelve `runHistory`: código de salida y texto para stdout. */
+/** What `runHistory` returns: exit code and text for stdout. */
 export interface IHistoryOutcome {
   readonly code: 0 | 1;
   readonly output: string;
 }
 
-/** Argumentos opcionales de `runHistory`, en un solo objeto. */
+/** Optional arguments to `runHistory`, in a single object. */
 export interface IRunHistoryOptions {
-  /** Ruta absoluta al fichero de historial. Si falta, se calcula con `historyPath()`. */
+  /** Absolute path to the history file. Falls back to `historyPath()`. */
   readonly historyPath?: string;
-  /** HOME a usar para resolver `historyPath()`. Solo si no se pasa `historyPath`. */
+  /** HOME to resolve `historyPath()`. Only if `historyPath` is not given. */
   readonly home?: string;
 }

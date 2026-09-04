@@ -1,21 +1,23 @@
 /**
- * Lo que devuelve cada comando del CLI, en datos.
+ * What each CLI command returns, as data.
  *
- * Cada comando expone un `run*()` que devuelve su `Outcome` y un `main()`
- * que lo pinta. Esa separación existe porque **el plugin MCP necesita los
- * datos**: parsear la tabla que imprime el CLI con expresiones regulares
- * se rompe el día que cambia una columna, y ese hack ya se pagó aquí.
+ * Each command exposes a `run*()` that returns its `Outcome` and
+ * a `main()` that prints it. That split exists because **the MCP
+ * plugin needs the data**: regex-parsing the CLI's table output
+ * breaks the day a column changes, and that hack had already been
+ * paid for here.
  *
- * Los `Outcome` viven en contratos y no dentro de cada script por lo
- * mismo: los consumen dos mundos que no deberían conocerse —el comando
- * que los produce y el tool que los expone—, y con el tipo pegado al
- * script el plugin tenía que importar el comando entero, con su registro
- * de scanners detrás, solo para saber la forma del dato.
+ * The `Outcome`s live in contracts, not inside each script, for
+ * the same reason: two worlds that should not know each other
+ * consume them — the command that produces them and the tool
+ * that exposes them — and with the type glued to the script the
+ * plugin had to import the whole command, with its scanner
+ * registry behind, just to know the shape of the data.
  */
 
 import type { IGenerateReport } from "../core/generate-report.interface.js";
 
-/** Un endpoint de la colección, en datos. */
+/** A collection endpoint, as data. */
 export interface IListedEndpoint {
   readonly method: string;
   readonly uri: string;
@@ -24,13 +26,13 @@ export interface IListedEndpoint {
   readonly zone: string;
 }
 
-/** Lo que devuelve listar: código de salida y los endpoints. */
+/** What `list` returns: exit code and the endpoints. */
 export interface IListOutcome {
   readonly code: number;
   readonly endpoints: ReadonlyArray<IListedEndpoint>;
 }
 
-/** Un endpoint que está en un lado y no en el otro. */
+/** An endpoint that exists on one side and not the other. */
 export interface IDriftedEndpoint {
   readonly method: string;
   readonly uri: string;
@@ -38,13 +40,13 @@ export interface IDriftedEndpoint {
 }
 
 /**
- * La deriva entre el código y la colección, en datos.
+ * Drift between source and collection, as data.
  *
- * Se devuelve además de imprimirse porque el CLI no es el único
- * consumidor: el tool `check` del plugin necesita **los endpoints**, no
- * la tabla. Parsear la salida por pantalla con regex es lo que se hacía
- * antes en otro tool del plugin, y se rompe el día que cambia una
- * columna.
+ * Returned in addition to being printed because the CLI is not
+ * the only consumer: the plugin's `check` tool needs **the
+ * endpoints**, not the table. Parsing the screen output with
+ * regex is what another plugin tool used to do, and it broke
+ * the day a column changed.
  */
 export interface ICheckReport {
   readonly inSync: boolean;
@@ -54,7 +56,7 @@ export interface ICheckReport {
   readonly missingInSource: ReadonlyArray<IDriftedEndpoint>;
 }
 
-/** Lo que devuelve comprobar: código de salida e informe. */
+/** What `check` returns: exit code and report. */
 export interface ICheckOutcome {
   readonly code: number;
   readonly report: ICheckReport | null;

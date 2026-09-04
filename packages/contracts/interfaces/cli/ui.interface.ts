@@ -59,42 +59,43 @@ export interface IPainter {
   style(text: string, ...colors: ColorName[]): string;
 }
 
-/** Lo que la interfaz necesita del resto del programa. */
+/** What the UI needs from the rest of the program. */
 export interface IUiDeps {
   /**
-   * Los idiomas disponibles, ya cargados.
+   * Available languages, already loaded.
    *
-   * Se inyecta en vez de importarse por lo mismo que el resto: la
-   * interfaz no decide de dónde salen —empaquetados, de la carpeta de
-   * quien la usa, o los dos— y así el test puede darle los suyos.
+   * Injected rather than imported for the same reason as the rest:
+   * the UI does not decide where they come from — bundled, the
+   * user's folder, or both — and tests can give it their own.
    */
   readonly locales: () => II18nCatalog;
-  /** Los ajustes guardados, o los de por defecto la primera vez. */
+  /** Saved settings, or defaults the first time. */
   readonly readSettings: () => Promise<ISettingsRead>;
   /**
-   * Cambia unos cuantos y devuelve el resultado.
+   * Change a few fields and return the result.
    *
-   * Se guarda **campo a campo** y no el objeto entero: la interfaz
-   * escribe al tocar cada control, y mandar el objeto completo haría
-   * que dos pestañas se pisaran lo que la otra acaba de cambiar.
+   * Saved **field by field** rather than the whole object: the UI
+   * writes on every control touch, and sending the whole object
+   * would mean two tabs clobber each other's last write.
    */
   readonly patchSettings: (
     cambios: Partial<Omit<ISettings, "version">>,
   ) => Promise<ISettings>;
   /**
-   * Lista las carpetas de una ruta, para elegir explorando.
+   * List folders of a path, for picker-browse.
    *
-   * Devuelve nombres de directorio y nada más: un endpoint que
-   * devolviera contenido sería un lector de ficheros arbitrario.
+   * Returns directory names and nothing else: an endpoint that
+   * returned content would be an arbitrary file reader.
    */
   readonly browse: (path?: string) => Promise<IBrowseListing>;
   /**
-   * Qué pasaría si se generara, sin generar.
+   * What would happen if we generated, without generating.
    *
-   * Llama al pipeline —que construye en memoria— y planifica desde su
-   * resultado. Predecir los nombres a mano sería una segunda
-   * implementación que acabaría diciendo una cosa mientras `generate`
-   * hace otra, que es el fallo que un ensayo viene a evitar.
+   * Invokes the pipeline — which builds in memory — and plans
+   * from its result. Predicting filenames by hand would be a
+   * second implementation that would eventually drift from
+   * `generate`, which is the very bug a dry-run is supposed to
+   * prevent.
    */
   readonly dryRun: (params: {
     readonly projectRoot: string;
@@ -102,62 +103,65 @@ export interface IUiDeps {
     readonly formats?: ReadonlyArray<string> | undefined;
     readonly framework?: string | undefined;
     /**
-     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     * Framework subdirectory within the project. f00011 S3.
      *
-     * Si la UI lo conoce (un campo en el formulario que la persona
-     * rellena), se pasa al pipeline; si no, el orquestador decide por
-     * monorepo. El valor se valida en `generation.pipeline.ts`.
+     * If the UI knows it (a form field the user fills), it is
+     * passed to the pipeline; otherwise the orchestrator decides
+     * via monorepo detection. The value is validated in
+     * `generation.pipeline.ts`.
      */
     readonly frameworkSearchRoot?: string | undefined;
   }) => Promise<IDryRunPlan>;
-  /** Resume un proyecto sin escribir nada. Es lo que hace `summary`. */
+  /** Inspect a project without writing. What `summary` does. */
   readonly summarize: (projectRoot: string) => Promise<IProjectSummary>;
-  /** Genera la colección. Es lo que hace `generate`. */
+  /** Generate the collection. What `generate` does. */
   readonly generate: (params: {
     readonly projectRoot: string;
     readonly outputDir?: string | undefined;
     readonly formats?: ReadonlyArray<string> | undefined;
     /**
-     * Framework forzado, del catálogo (`frameworks()`).
+     * Forced framework, from the catalog (`frameworks()`).
      *
-     * Aceptarlo aquí y no una segunda vía es lo que mantiene **una sola
-     * ruta** de generación: el valor viaja hasta el `--framework` que ya
-     * entiende el CLI, que se salta la autodetección. En un monorepo o
-     * con una dependencia con alias, la detección no puede acertar
-     * siempre; esta es la salida para esa persona.
+     * Accepting it here — not in a separate channel — is what
+     * keeps **a single** generation path: the value travels to
+     * the `--framework` flag the CLI already understands, which
+     * skips autodetection. In a monorepo or with an aliased
+     * dependency, detection cannot always succeed; this is the
+     * workaround.
      */
     readonly framework?: string | undefined;
     /**
-     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     * Framework subdirectory within the project. f00011 S3.
      *
-     * Mismo contrato que `dryRun`: si la UI lo conoce, viaja hasta el
-     * `--framework-search-root` del CLI; si no, el orquestador decide.
+     * Same contract as `dryRun`: if the UI knows it, it travels
+     * to the CLI's `--framework-search-root`; if not, the
+     * orchestrator decides.
      */
     readonly frameworkSearchRoot?: string | undefined;
   }) => Promise<IUiGenerateResult>;
   /**
-   * El historial de generaciones, ya limitado y ordenado.
+   * The generation history, already limited and ordered.
    *
-   * Se inyecta —en vez de llamarse directamente a `readHistory()` desde
-   * la ruta— por la misma razón que el resto de colaboradores: poder
-   * probar `handleUiRequest` con dobles, sin tocar el disco. La UI
-   * pide aquí lo que va a enseñar en el dashboard; un `limit`
-   * arbitrario no se manda desde la página para que el servidor
-   * decida cuánto cargar.
+   * Injected — rather than calling `readHistory()` directly from
+   * the route — for the same reason as the rest of the
+   * collaborators: testing `handleUiRequest` with doubles
+   * without touching disk. The UI asks here for what the
+   * dashboard will show; an arbitrary `limit` is not sent from
+   * the page so the server decides how much to load.
    */
   readonly history: (params: {
     readonly limit?: number | undefined;
     readonly projectRoot?: string | undefined;
   }) => Promise<IHistoryReadResult>;
-  /** Los formatos de salida que existen, del registro. */
+  /** Output formats that exist, from the registry. */
   readonly formats: () => ReadonlyArray<string>;
-  /** Los frameworks soportados, del registro. */
+  /** Supported frameworks, from the registry. */
   readonly frameworks: () => ReadonlyArray<string>;
-  /** ¿Existe este directorio? Inyectado para poder probarlo. */
+  /** Does this directory exist? Injected to be testable. */
   readonly exists: (path: string) => Promise<boolean>;
 }
 
-/** Lo que devuelve generar, en lo que la interfaz enseña. */
+/** What generate returns, as the UI displays it. */
 export interface IUiGenerateResult {
   readonly collectionPath: string | null;
   readonly requests: number;
@@ -166,23 +170,23 @@ export interface IUiGenerateResult {
   readonly warnings: ReadonlyArray<string>;
 }
 
-/** Una respuesta ya resuelta: estado y cuerpo, sin envoltorio HTTP. */
+/** A response already resolved: status and body, no HTTP envelope. */
 export interface IUiResponse {
   readonly status: number;
   readonly body: unknown;
 }
 
-/** Un servidor levantado. */
+/** A started server. */
 export interface IUiServer {
   readonly url: string;
   readonly port: number;
   stop(): void;
 }
 
-/** Lo que hace falta para levantarlo. */
+/** What is needed to start the server. */
 export interface IUiServerOptions {
   readonly deps: IUiDeps;
-  /** El HTML de la interfaz, ya embebido: el binario no lee ficheros. */
+  /** The UI HTML, already embedded: the binary does not read files. */
   readonly html: string;
   readonly port?: number | undefined;
 }

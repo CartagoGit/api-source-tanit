@@ -40,6 +40,6 @@ export interface IBrowseListing {
    * prose to decide that is what breaks when it's translated.
    */
   readonly truncated: boolean;
-  /** Por qué falló, o por qué se cortó. `undefined` cuando todo fue bien. */
+  /** Why it failed, or why it was truncated. `undefined` on success. */
   readonly reason?: string;
 }
