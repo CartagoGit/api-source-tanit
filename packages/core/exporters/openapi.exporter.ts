@@ -107,7 +107,19 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
     });
   }
   for (const field of fields) {
-    if (field.location !== "query" && field.location !== "header") continue;
+    // Audit 2026-09-04 P2 #9 (cookies en OpenAPI): el contrato de
+    // validación admite `cookie` desde Laravel/Fastify, pero el
+    // exporter solo propagaba `query` y `header`. OpenAPI 3.x
+    // incluye `in: cookie` como parámetro válido (3.0 §4.7.7,
+    // 3.1 §4.8.7) y el exporter debe reflejarlo. Los `path` ya
+    // salen arriba con `pathParamsOf`.
+    if (
+      field.location !== "query" &&
+      field.location !== "header" &&
+      field.location !== "cookie"
+    ) {
+      continue;
+    }
     parameters.push({
       name: field.fieldName,
       in: field.location,

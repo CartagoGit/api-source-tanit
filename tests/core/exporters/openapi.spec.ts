@@ -442,3 +442,25 @@ describe("OpenAPI exporter — auth per-op override (audit 2026-09-04 P1 #7)", (
     expect(login["security"]).toEqual([]);
   });
 });
+
+describe("OpenAPI exporter — cookie params (audit 2026-09-04 P2 #9)", () => {
+  test("spec.fields con location='cookie' emite in: cookie", () => {
+    const doc = buildOpenApiDocument(
+      baseInput([
+        spec("/api/me", "GET", {
+          fields: [{ fieldName: "session", location: "cookie", required: true }],
+        }),
+      ]),
+    );
+    const paths = doc["paths"] as Record<string, Record<string, unknown>>;
+    const op = paths["/api/me"]?.["get"] as Record<string, unknown>;
+    const parameters = op["parameters"] as Array<Record<string, unknown>>;
+    const cookie = parameters.find((p) => p["in"] === "cookie");
+    expect(cookie).toEqual({
+      name: "session",
+      in: "cookie",
+      required: true,
+      schema: expect.any(Object),
+    });
+  });
+});
