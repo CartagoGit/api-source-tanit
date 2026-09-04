@@ -2,7 +2,7 @@
 id: a00016
 title: "Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop)"
 kind: audit
-status: done
+status: ready
 type: proposal
 track: export-to-postman
 date: 2026-09-04
@@ -21,6 +21,31 @@ related:
 ---
 
 # a00016 — Frontend TS multi-estilo
+
+> **Revisión 2026-09-05 (cierre reabierto — INTEGRACIÓN pendiente, no DONE).**
+> El LanguageIR está bien planteado y sus primitives y tests unitarios son buenos.
+> Pero el scanner real **vuelve a descartar** lo que el IR reconoce: verificado
+> contra `packages/frameworks/scanners/express.scanner.ts` en develop actual.
+> El patrón `primitive ✅ / unit ✅ / integration ❌` se repite, y la propuesta NO
+> está terminada mientras el flujo E2E no demuestre los 6 estilos. **No cerrar
+> `done`** sin el slice S6 (matriz E2E). Correcciones de detalle: S1.7 y S3 (contrato
+> de `IImportBinding` y `method` para computed) documentadas abajo.
+>
+> Evidencia:
+> ```ts
+> // express.scanner.ts:259
+> const propagated = propagateConstants(irCalls, []); // bindings SIEMPRE vacío
+> // express.scanner.ts:274
+> const [ident, method] = call.callee.split(".");     // método semántico por string
+> ```
+> - `this.router.get` → IR reconoce `callee="this.router.get"`, pero `split(".")`
+>   hace `method="router"` ∉ HTTP_METHODS → la ruta se descarta E2E.
+> - `api.router.get` → mismo fallo (método no es "get", es "router").
+> - `server["get"]` → `split(".")` no halla "." → `method=undefined` → descartado.
+> - `const M="get"; app[M](...)` → imposible: `propagateConstants` recibe `[]`.
+> - `IImportBinding` no guarda `importedName`: `import { Router as R }` resuelve
+>   `R→R`, no `R→Router`; el comentario de canonicalización no es realizable con
+>   el modelo de datos actual.
 
 ## Goal
 
@@ -104,6 +129,44 @@ todos los scanners TS consumen.
   collectJsFiles + Identifier. Los ejemplos example-express,
   example-nestjs, example-hono, example-trpc, etc., siguen
   detectando los mismos endpoints + los nuevos estilos.
+
+### S6 — Integración real: scanners consumen `method`/`resolvedMethod` del IR (CORRECTIVO — bloquea el cierre)
+
+- **Status**: pending
+- **Files**:
+  - `packages/frameworks/scanners/express.scanner.ts`
+  - `packages/frameworks/typescript/symbol-resolver.ts` (matriz → ParsedRoute)
+  - `tests/fixtures/` + specs E2E por scanner
+- **Gate**: `bun run test:frameworks && bun run validate:examples` + matriz E2E abajo
+- **Detalle**:
+  - **Eliminar `call.callee.split(".")` como mecanismo semántico** (líneas
+    `express.scanner.ts:274` y `symbol-resolver.ts:521`). El split es la causa
+    de que `this.router.get`, `api.router.get`, `server["get"]`, `router?.get`,
+    `getRouter().get` se reconozcan en el IR y se pierdan al construir la ruta.
+  - Los scanners deben consumir directamente `IRouteCallExpression.method` y
+    (cuando haya constante) `.resolvedMethod`, más `receiverKind`; nada de
+    reconstruir el identificador separando por ".".
+  - **Constant bindings reales**: construir los `IConstantBinding` del fichero y
+    pasárselos a `propagateConstants(calls, bindings)` — hoy `[]` (`:259`) hace
+    el estilo "const M = 'get'" inalcanzable E2E. (El unit test pasa solo porque
+    fabrica `bindings` a mano.)
+  - **`buildLanguageIR(source)`** que en una sola pasada AST produzca
+    `{ calls, imports, reexports, aliases, constants }` — hoy cada collector
+    (calls/aliases/reexports/constants) vuelve a leer+parsear el fichero, con lo
+    que un proyecto TS grande puede parsearse 4×. Un archivo → un parse.
+  - **S6.a contrato**: `IImportBinding { localName, importedName, source }`
+    (hoy sólo `name`+`source`; `import { Router as R }` resuelve `R→R` no `R→Router`).
+    Alinear el JSDoc: para `server["get"]` decided entre `method=""` (doc actual)
+    o `method="get"` (test actual); contrato, implementación y tests deben decir
+    lo mismo.
+  - **Matriz E2E obligatoria** (fuente → endpoint final, NO comprobar el IR):
+    `app.get("/a")`→GET /a · `this.router.get("/b")`→GET /b ·
+    `api.router.get("/c")`→GET /c · `getRouter().get("/d")`→GET /d ·
+    `server["get"]("/e")`→GET /e · `router?.get("/f")`→GET /f ·
+    `const r=app; r.get("/g")`→GET /g · `const M="get"; app[M]("/h")`→GET /h.
+  - **Empezar por migrar NestJS** (hoy sigue con `split(".")`; sólo Express
+    consume el IR vía bridge). La aceptación original pedía los 6 scanners.
+
 
 ## acceptance
 
