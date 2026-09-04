@@ -140,6 +140,27 @@ function isJsxFile(filename: string): boolean {
   return filename.endsWith(".tsx") || filename.endsWith(".jsx");
 }
 
+/**
+ * Parsea `source` (código TS/JS) y devuelve el AST normalizado.
+ *
+ * `filename` se adjunta al AST para que los adapters puedan
+ * reportar errores y los scanners enseñárselo al usuario. No se usa
+ * internamente — Babel lo acepta pero aquí no nos interesa.
+ *
+ * Si Babel no puede parsear el archivo, lanza `SyntaxError`. Los
+ * callers que quieren degradar sin ruido usan `parseModule` con un
+ * array de `IParseDiagnostic` (a00011 C-7 / B-rev-13).
+ *
+ * El orden dentro de cada colección de `TSFile` es top-down respecto
+ * al archivo: al final del parse cada colección se ordena por
+ * `(line, column)` ascendente, de modo que el contrato no dependa del
+ * orden interno del walker (a00011 C-7 / B-rev-11).
+ *
+ * Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
+ * `filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
+ * sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
+ * componentes Next.js / React.
+ */
 export function parse(source: string, filename: string): TSFile {
   // Babel acepta strings o configuraciones tipadas (ParserPlugin es
   // el alias de `PluginConfig` en las definiciones de tipos del

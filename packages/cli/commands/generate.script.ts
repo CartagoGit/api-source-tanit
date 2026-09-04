@@ -243,6 +243,16 @@ export async function runGenerate(
         `  · Search root:    ${pipeline.match.frameworkSearchRoot}` +
           (frameworkSearchRoot ? " (--framework-search-root)" : " (auto-detected)"),
       );
+    } else if (frameworkSearchRoot) {
+      // Audit 2026-09-04 (monorepo expansion): con override, si el
+      // workspace no contiene framework (caso típico: typo del
+      // usuario, subdir que no existe), el match queda sin
+      // frameworkSearchRoot y se omite el renglón. Pero el usuario
+      // SÍ pasó el flag y merece verlo en `--inspect`. Lo
+      // imprimimos siempre que el flag esté presente.
+      console.log(
+        `  · Search root:    ${frameworkSearchRoot} (--framework-search-root, no framework matched)`,
+      );
     }
     console.log(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
     console.log(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);

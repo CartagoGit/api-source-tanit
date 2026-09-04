@@ -126,12 +126,18 @@ Inversa de `candidatesFromSpecs`: convierte un `IMergedEndpoint`
 de vuelta a `EndpointSpec` para que el pipeline siga operando con
 la forma que ya consumen el resto de servicios.
 
-Solo copia los campos que el merger decide: identidad (method,
-uri, name) y las piezas que ganó (body, fields, description).
-El `authScheme` del `IMergedEndpoint` **no** se copia al
-`EndpointSpec`: la auth se resuelve globalmente en
-`detectAuthScheme` después del pipeline, y el de cada endpoint
-sería ruido (todos los endpoints de un proyecto comparten auth).
+Copia los campos que el merger decide: identidad (method, uri,
+name) y las piezas que ganó (body, fields, description).
+
+Audit 2026-09-04 P1 #6 — propagación end-to-end del auth per-op:
+cuando el merger identifica que el endpoint debe ser público
+(`authScheme.type === "none"`), se traduce al override por
+operación `auth: { kind: "none" }` para que el builder de la
+colección omita la cabecera `Authorization` global. Antes el
+`authScheme` se descartaba aquí y `detectAuthScheme` recalculaba la
+auth solo a nivel colección: un endpoint declarado público por el
+scanner (login, /health) acababa con `Authorization: Bearer` por
+la borda.
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
@@ -1753,6 +1759,11 @@ El orden dentro de cada colección de `TSFile` es top-down respecto
 al archivo: al final del parse cada colección se ordena por
 `(line, column)` ascendente, de modo que el contrato no dependa del
 orden interno del walker (a00011 C-7 / B-rev-11).
+
+Audit 2026-09-04 P2 #7: el plugin `jsx` se activa cuando
+`filename` termina en `.tsx`/`.jsx`. Sin esto, Babel rechazaba la
+sintaxis JSX (`<Foo />`) con syntax error y el scanner perdía
+componentes Next.js / React.
 
 #### `parseModule`
 
