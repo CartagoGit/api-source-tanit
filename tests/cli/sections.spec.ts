@@ -87,7 +87,7 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
     ["packages/core/adapters/parsed-route-to-spec.adapter.ts", "core"],
     ["packages/cli/commands/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
-    ["packages/plugins/delendai_expostman/src/index.ts", "plugin"],
+    ["packages/plugins/delendai_tanit/src/index.ts", "plugin"],
   ])("%s → %s", (file, expected) => {
     expect(bestSectionFor(file)?.name).toBe(expected);
   });

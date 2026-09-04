@@ -9,7 +9,7 @@
  * exports del área pública, no la superficie MCP.
  *
  * La diferencia no es formal. Un agente que llama a
- * `delendai_expostman_generate` y recibe una salida sin esquema no
+ * `delendai_tanit_generate` y recibe una salida sin esquema no
  * puede validar la respuesta ni saber qué campos existen sin ejecutarla
  * y mirar lo que sale. Y esta es la superficie **pública** del proyecto
  * hacia otros agentes, que es donde un contrato importa más, no menos.
@@ -37,7 +37,7 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
 /** Dónde viven los tools del plugin. */
 const TOOLS_DIR = join(
   REPO_ROOT,
-  "packages/plugins/delendai_expostman/src/lib/tools",
+  "packages/plugins/delendai_tanit/src/lib/tools",
 );
 
 interface IProblem {
