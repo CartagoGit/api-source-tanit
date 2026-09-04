@@ -49,10 +49,10 @@ También sirve clonar y empaquetar:
 ```bash
 git clone https://github.com/CartagoGit/export-to-postman
 cd export-to-postman && bun install
-npm pack                       # produce export-to-postman-cli-0.1.0.tgz
+npm pack                       # produce export-to-postman-0.1.0.tgz
 
 cd ~/proyectos/mi-api
-bun add -d /ruta/a/export-to-postman-cli-0.1.0.tgz
+bun add -d /ruta/a/export-to-postman-0.1.0.tgz
 ```
 
 En ambos casos queda disponible el binario `expostman` (y `export-to-postman` como alias).
@@ -181,7 +181,13 @@ curl -L https://github.com/CartagoGit/export-to-postman/releases/latest/download
   -o /usr/local/bin/export-to-postman
 chmod +x /usr/local/bin/export-to-postman
 
-expostman generate --project-root .
+# El binario se llama `export-to-postman` al guardarlo; `expostman`
+# solo existe como alias cuando se instala vía `bun add` (el campo
+# `bin` de package.json crea ambos). Con la instalación manual,
+# llama al archivo por su nombre o crea un symlink:
+ln -s /usr/local/bin/export-to-postman /usr/local/bin/expostman   # opcional
+
+export-to-postman generate --project-root .
 ```
 
 Disponibles: `linux-x64`, `linux-arm64`, `darwin-arm64` y
