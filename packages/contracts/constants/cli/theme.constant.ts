@@ -33,14 +33,19 @@ export type ThemeMode = (typeof THEME_MODES)[number];
 export const DEFAULT_THEME: ThemeMode = "system";
 
 /**
- * The variable names, in a single place.
+ * The CSS custom-property names, in a single place.
  *
  * Declared here (not only in the CSS) so a test can verify that
  * **both themes define the same variables**. A theme that's missing
  * a variable does not error — it inherits from the other and ends
- * up broken in one
- * sitio concreto, que es de los fallos más difíciles de encontrar
- * mirando código.
+ * up broken in one specific spot — the kind of bug that is hardest
+ * to find by reading code.
+ *
+ * The literal names are kept in their original Spanish because they
+ * are CSS identifiers consumed by `theme.constant.ts` and the inline
+ * HTML in `index.html.constant.ts`. Renaming them would require a
+ * coordinated rewrite of the CSS variables themselves; the proper
+ * place for that is a future theming proposal (out of scope here).
  */
 export const THEME_VARIABLES = [
   "--fondo",

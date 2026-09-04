@@ -41,11 +41,10 @@ export interface ILocale {
 export const FALLBACK_LOCALE = "en";
 
 /**
- * Los quince, en orden de hablantes.
+ * The fifteen, ordered by number of speakers.
  *
- * El orden importa poco funcionalmente, pero uno estable hace que
- * añadir un idioma sea una línea de diff en vez de un bloque
- * reordenado.
+ * Order barely matters functionally, but a stable order makes
+ * adding a language a one-line diff instead of a reordered block.
  */
 export const BUNDLED_LOCALES: ReadonlyArray<ILocale> = [
   { code: "en", nativeName: "English" },

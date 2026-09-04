@@ -15,23 +15,23 @@
  * `desktop:build:<x>` locally only works on the matching machine.
  */
 
-/** Una plataforma de escritorio soportada. */
+/** A supported desktop platform. */
 export interface IDesktopPlatform {
-  /** Identificador corto, el que va en el nombre del script. */
+  /** Short identifier, the one used in the script name. */
   readonly id: "linux" | "mac" | "windows";
-  /** Cómo se llama para una persona. */
+  /** Human-readable name. */
   readonly label: string;
-  /** El valor de `process.platform` que le corresponde. */
+  /** The matching `process.platform` value. */
   readonly platform: string;
   /**
-   * Los formatos que produce Tauri ahí.
+   * Formats Tauri produces there.
    *
-   * Linux lleva dos porque cubren cosas distintas: el `.deb` se integra
-   * con el gestor de paquetes de Debian y derivadas, y el `.AppImage`
-   * corre en cualquier distribución sin instalar nada.
+   * Linux gets two because they cover distinct things: `.deb`
+   * integrates with Debian and derived package managers, and
+   * `.AppImage` runs on any distro without installing anything.
    */
   readonly bundles: ReadonlyArray<string>;
-  /** El corredor de GitHub Actions que la construye. */
+  /** The GitHub Actions runner that builds it. */
   readonly runner: string;
 }
 

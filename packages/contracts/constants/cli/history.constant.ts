@@ -38,11 +38,12 @@ export const HISTORY_ENTRY_VERSION = 1;
 export const HISTORY_FILE_NAME = "history.jsonl";
 
 /**
- * Nombre de la carpeta del historial, oculta en Unix.
+ * Name of the history folder, hidden on Unix.
  *
- * Separada de la carpeta de configuración (que es `apisrc`, sin
- * punto, y vive bajo `~/.config/` o similar) porque su propósito es
- * otro: la primera guarda ajustes e idiomas que el usuario modifica a
- * mano; la segunda guarda el log que la herramienta escribe sola.
+ * Kept separate from the config folder (which is `tanit`, without
+ * the leading dot, and lives under `~/.config/` or similar) because
+ * their purposes differ: the first stores settings and languages
+ * the user edits by hand; the second is the log the tool writes
+ * on its own.
  */
 export const HISTORY_DIR_NAME = ".tanit";
