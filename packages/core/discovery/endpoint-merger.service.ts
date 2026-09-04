@@ -290,17 +290,23 @@ export function candidatesFromSpecs(
  * la forma que ya consumen el resto de servicios.
  *
  * Copia los campos que el merger decide: identidad (method, uri,
- * name) y las piezas que ganó (body, fields, description).
+ * name) y las piezas que ganó (body, fields, description, auth).
  *
- * Audit 2026-09-04 P1 #6 — propagación end-to-end del auth per-op:
- * cuando el merger identifica que el endpoint debe ser público
- * (`authScheme.type === "none"`), se traduce al override por
- * operación `auth: { kind: "none" }` para que el builder de la
- * colección omita la cabecera `Authorization` global. Antes el
- * `authScheme` se descartaba aquí y `detectAuthScheme` recalculaba la
- * auth solo a nivel colección: un endpoint declarado público por el
- * scanner (login, /health) acababa con `Authorization: Bearer` por
- * la borda.
+ * Audit 2026-09-04 P1 #6 + segunda revisión #16 #17: el override
+ * por operación del esquema de auth debe sobrevivir al merger.
+ * `spec.auth` se mapea al `authScheme` del candidato (en
+ * generation.pipeline.ts) y el merger propaga el ganador a este
+ * punto. La conversión de vuelta cubre **todas** las ramas del
+ * union `IEndpointAuth`:
+ *
+ *   - `type: "none"` → `auth: { kind: "none" }` (override público).
+ *   - `type: "bearer"` → `auth: { kind: "scheme", scheme: "bearer" }`.
+ *   - `type: "apikey"` → `auth: { kind: "scheme", scheme: "apiKey" }`.
+ *   - `type: "oauth2"` → `auth: { kind: "scheme", scheme: "oauth2" }`.
+ *
+ * Antes solo la rama `none` se traducía; un override per-op
+ * `bearer`/`apiKey`/`oauth2` se descartaba y `detectAuthScheme`
+ * recalculaba la auth a nivel colección — perdiendo el override.
  */
 export function endpointSpecFromMerged(m: IMergedEndpoint): {
   name: string;
@@ -321,8 +327,29 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
     ...(m.body !== undefined ? { body: m.body } : {}),
     ...(m.fields !== undefined ? { fields: m.fields } : {}),
     ...(m.description !== undefined ? { description: m.description } : {}),
-    ...(m.authScheme?.type === "none" ? { auth: { kind: "none" as const } } : {}),
+    ...(m.authScheme ? { auth: authFromAuthScheme(m.authScheme) } : {}),
   };
+}
+
+/**
+ * Traduce `IDetectedAuthScheme` (lo que el merger conoce) al union
+ * `IEndpointAuth` (lo que el builder + exporter consumen). Esta función
+ * es la inversa semántica de `authSchemeFromEndpointAuth` en
+ * generation.pipeline.ts — ambas deben mantenerse en sync.
+ */
+function authFromAuthScheme(
+  scheme: NonNullable<import("../../contracts/interfaces/core/discovery.interface.js").IDetectedAuthScheme>,
+): import("../../contracts/interfaces/core/postman.interface.js").IEndpointAuth {
+  switch (scheme.type) {
+    case "none":
+      return { kind: "none" };
+    case "bearer":
+      return { kind: "scheme", scheme: "bearer" };
+    case "apikey":
+      return { kind: "scheme", scheme: "apiKey" };
+    case "oauth2":
+      return { kind: "scheme", scheme: "oauth2" };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -499,33 +526,62 @@ interface IAuthWinner {
 }
 
 /**
+ * Reconoce si un `authScheme` viene de un override explícito por
+ * operación (generado por `authSchemeFromEndpointAuth` en
+ * generation.pipeline.ts) o de la auth global del framework.
+ *
+ * Audit 2ª revisión #18: un override EXPLICITO por operación debe
+ * tener precedencia semántica sobre la auth global del esquema, sin
+ * importar el `type` ni la confianza del framework. Si el usuario o
+ * el scanner dijo "este endpoint ES público / usa apiKey / usa oauth2",
+ * la auth heredada del esquema no debe imponerse. El contrato no
+ * expone un campo `scope` para no romper la forma estable
+ * `IDetectedAuthScheme`; usamos la evidencia como heurística, que
+ * es generada únicamente por el helper que hace la traducción
+ * pipeline → merger, así que es fiable.
+ */
+function isExplicitOverride(scheme: IDetectedAuthScheme | undefined): boolean {
+  if (!scheme) return false;
+  return scheme.evidence.includes("per-op override");
+}
+
+/**
  * Elige el auth de mayor confianza. Si dos candidatos discrepan
  * en `type` (bearer vs apikey), se devuelve el ganador y el
  * caller añade un warning (no quiero que el merger pierda el
  * contexto de cuál fue el perdedor, pero tampoco quiero acoplarlo
  * a la lógica de warnings aquí).
  *
- * Audit 2026-09-04 P1 #6: un override per-op de tipo `none` gana
- * siempre sobre cualquier auth global. Es la única asimetría: si un
- * scanner declara explícitamente "este endpoint es público" (típico
- * para `/auth/login`, `/health`, `/register`), la auth global del
- * esquema (bearer, apikey) no debe imponerse — si no, el endpoint
- * que emite el token acaba pidiendo el token, y la primera request
- * devuelve 401. La confianza del framework no aplica aquí: la
- * declaración explícita siempre es más fuerte que la herencia.
+ * Audit 2026-09-04 P1 #6 + 2ª revisión #18: un override EXPLÍCITO
+ * por operación gana siempre sobre la auth global del esquema,
+ * sin importar el `type`. Si un scanner declara "este endpoint es
+ * público" (típico para `/auth/login`, `/health`) o "este endpoint
+ * usa apiKey" (típico para `/internal/stats` con X-API-Key), la
+ * auth global del esquema (bearer) no debe imponerse. Sin esta
+ * regla, el endpoint que emite el token acaba pidiendo el token, y
+ * la primera request devuelve 401.
+ *
+ * La regla se implementa en dos pasadas:
+ *   1. Cualquier override explícito gana.
+ *   2. Si no hay overrides, gana el de mayor confianza por framework.
+ *
+ * Si hay múltiples overrides (varios scanners declararon cosas
+ * distintas para el mismo endpoint), gana el primero en orden de
+ * llegada — coherente con el resto del merger.
  */
 function pickAuth(
   sorted: ReadonlyArray<IEndpointMergeCandidate>,
   confidence: Readonly<Record<string, Confidence>>,
 ): IAuthWinner | null {
-  // Primera pasada: si algún scanner declaró "none" explícitamente,
-  // gana sobre cualquier otro auth.
+  // Primera pasada: cualquier override EXPLÍCITO por operación gana
+  // sobre la auth heredada del esquema.
   for (const c of sorted) {
-    if (c.authScheme?.type === "none") {
+    const scheme = c.authScheme;
+    if (scheme && isExplicitOverride(scheme)) {
       return {
         framework: c.framework,
-        authScheme: c.authScheme,
-        evidence: c.authScheme.evidence,
+        authScheme: scheme,
+        evidence: scheme.evidence,
       };
     }
   }

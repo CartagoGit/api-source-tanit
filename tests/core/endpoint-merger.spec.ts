@@ -948,7 +948,11 @@ describe("endpointSpecFromMerged — auth per-op (audit 2026-09-04 P1 #6)", () =
     expect(spec.auth).toEqual({ kind: "none" });
   });
 
-  test("authScheme 'bearer' NO se traduce a EndpointSpec.auth (override implícito)", () => {
+  test("authScheme 'bearer' se traduce a EndpointSpec.auth scheme:bearer (override per-op)", () => {
+    // Audit 2ª revisión #17: ahora TODAS las ramas del union se
+    // traducen, no solo `none`. Un override per-op de bearer debe
+    // sobrevivir al merger y al EndpointSpec resultante — antes se
+    // descartaba y el builder usaba la auth global.
     const merger = new EndpointMerger();
     const { merged } = merger.merge([
       candidate({
@@ -958,9 +962,33 @@ describe("endpointSpecFromMerged — auth per-op (audit 2026-09-04 P1 #6)", () =
       }),
     ]);
     const spec = endpointSpecFromMerged(merged);
-    // Sin override per-op → el campo `auth` queda ausente; la auth
-    // global la resuelve `detectAuthScheme` después del pipeline.
-    expect(spec.auth).toBeUndefined();
+    expect(spec.auth).toEqual({ kind: "scheme", scheme: "bearer" });
+  });
+
+  test("authScheme 'apikey' se traduce a scheme:apiKey", () => {
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        authScheme: APIKEY,
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    expect(spec.auth).toEqual({ kind: "scheme", scheme: "apiKey" });
+  });
+
+  test("authScheme 'oauth2' se traduce a scheme:oauth2", () => {
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        authScheme: { type: "oauth2", evidence: "OAuth2 flow" },
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    expect(spec.auth).toEqual({ kind: "scheme", scheme: "oauth2" });
   });
 
   test("fusión híbrida con override 'none' preserva la marca pública", () => {
@@ -982,5 +1010,31 @@ describe("endpointSpecFromMerged — auth per-op (audit 2026-09-04 P1 #6)", () =
     ]);
     const spec = endpointSpecFromMerged(merged);
     expect(spec.auth).toEqual({ kind: "none" });
+  });
+
+  test("authScheme per-op scheme:bearer gana a bearer global de mayor confianza", () => {
+    // Audit 2ª revisión #18: un override EXPLICITO por operación
+    // debe tener precedencia semántica, no "framework con mayor
+    // confianza". Aquí fastify (0.85) sobreescribe bearer→apiKey
+    // y debe ganar aunque openapi (0.95) trae bearer.
+    const merger = new EndpointMerger();
+    const { merged } = merger.merge([
+      candidate({
+        framework: "openapi",
+        scannerScore: 0.95,
+        authScheme: BEARER,
+      }),
+      candidate({
+        framework: "fastify",
+        scannerScore: 0.85,
+        authScheme: {
+          type: "apikey",
+          keyIn: "header",
+          evidence: "per-op override (fastify, apiKey)",
+        },
+      }),
+    ]);
+    const spec = endpointSpecFromMerged(merged);
+    expect(spec.auth).toEqual({ kind: "scheme", scheme: "apiKey" });
   });
 });

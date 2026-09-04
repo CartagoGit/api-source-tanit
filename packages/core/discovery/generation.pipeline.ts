@@ -44,6 +44,7 @@ import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type {
+  IDetectedAuthScheme,
   IGenerationOptions,
   IGenerationResult,
 } from "../../contracts/interfaces/core/discovery.interface.js";
@@ -382,6 +383,60 @@ async function applyFrameworkSearchRoot(
     augmented: detected.map((d) => augmentMatch(d, detection.frameworkSearchRoot!)),
     detection,
   };
+}
+
+/**
+ * Convierte el override de auth por operación (`spec.auth`) en un
+ * `IDetectedAuthScheme` que el merger pueda comparar pieza a pieza.
+ *
+ * Audit 2ª revisión #16: el contrato `IEndpointAuth` tiene un
+ * discriminante `kind: "none" | "scheme"` y `scheme: "bearer" |
+ * "apiKey" | "oauth2"` como sub-discriminante. La conversión debe
+ * respetar TODAS las ramas; si no, una expresión
+ * `{ kind: "scheme", scheme: "apiKey" }` colapsaría a
+ * `type: "none"` (público), que es exactamente el bug opuesto al
+ * que arregló la primera auditoría.
+ *
+ * Cada rama lleva además una `evidence` trazable al framework de
+ * origen: el merger la expone en el aviso CLI para que el usuario
+ * pueda auditar por qué un endpoint se considera público / bearer /
+ * apiKey / oauth2.
+ */
+function authSchemeFromEndpointAuth(
+  auth: IEndpointAuth,
+  framework: string,
+): IDetectedAuthScheme {
+  switch (auth.kind) {
+    case "none":
+      return {
+        type: "none",
+        evidence: `per-op override (${framework}, public)`,
+      };
+    case "scheme": {
+      // Mapea sub-discriminante del contrato al `type` que el
+      // merger ya entiende. Si en el futuro aparece
+      // `scheme: "basic"` u otro, este switch lo enumera
+      // explícitamente — nunca inventar un `type` por defecto.
+      switch (auth.scheme) {
+        case "bearer":
+          return {
+            type: "bearer",
+            evidence: `per-op override (${framework}, bearer)`,
+          };
+        case "apiKey":
+          return {
+            type: "apikey",
+            keyIn: "header",
+            evidence: `per-op override (${framework}, apiKey header)`,
+          };
+        case "oauth2":
+          return {
+            type: "oauth2",
+            evidence: `per-op override (${framework}, oauth2)`,
+          };
+      }
+    }
+  }
 }
 
 /**
