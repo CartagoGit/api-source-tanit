@@ -1,25 +1,24 @@
 /**
- * Vigilar el proyecto y avisar cuando algo cambia.
+ * Watches the project and reports when something changes.
  *
- * El motivo de que esto exista es de flujo: quien añade un endpoint no
- * quiere acordarse de regenerar la colección. Pero el motivo de que
- * tenga tanto cuidado es otro, y es el que importa aquí.
+ * The reason this exists is workflow-related: someone adding an endpoint
+ * should not have to remember to regenerate the collection. The reason it is
+ * so careful, however, is different—and it is the important one here.
  *
- * **La herramienta escribe DENTRO de lo que vigila.** La colección va a
- * `<proyecto>/tanit/`, que cuelga de la misma raíz que se
- * está observando. Un watcher ingenuo ve su propia escritura, regenera,
- * vuelve a escribir, se ve otra vez — y no para. Es un bucle infinito
- * que se come el disco y la CPU, exactamente la forma del que se llevó
- * por delante una sesión entera de WSL en este mismo repo.
+ * **The tool writes INSIDE what it watches.** The collection goes to
+ * `<project>/tanit/`, which hangs from the same root being watched. A naive
+ * watcher sees its own write, regenerates, writes again, sees itself again—
+ * and never stops. It is an infinite loop that consumes disk and CPU, exactly
+ * the kind that took down an entire WSL session in this repo.
  *
- * Por eso la carpeta de salida se ignora **siempre**, no por
- * configuración, y por eso `shouldIgnore` es una función pura con sus
- * tests: es la pieza de la que depende que esto no se cuelgue.
+ * That is why the output folder is ignored **always**, not by configuration,
+ * and why `shouldIgnore` is a pure function with tests: it is the piece this
+ * relies on to avoid hanging.
  *
- * El otro cuidado es el rebote. Guardar un fichero en un editor puede
- * disparar varios eventos (escritura, renombrado del temporal, cambio de
- * atributos), y un `Ctrl+S` repetido dispara más. Sin agrupar, cada uno
- * lanzaría un escaneo completo del proyecto.
+ * The other safeguard is debouncing. Saving a file in an editor can trigger
+ * multiple events (write, temporary-file rename, attribute change), and a
+ * repeated `Ctrl+S` triggers more. Without batching, each would launch a
+ * full project scan.
  */
 import { watch, type FSWatcher } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
@@ -28,15 +27,15 @@ import type { IWatchHandle, IWatchOptions } from "../../contracts/interfaces/cor
 import { DEFAULT_DEBOUNCE_MS } from "../../contracts/constants/core/runtime-limits.constant.js";
 import { IGNORED_DIRS } from "../../contracts/constants/core/watch.constant.js";
 
-/** Ficheros que cambian solos y no son código: temporales de editor. */
+/** Files that change on their own and are not code: editor temporaries. */
 const IGNORED_FILE_RE = /(^\.|~$|\.swp$|\.swx$|\.tmp$|^\d+$)/;
 
 /**
- * Si una ruta relativa debe ignorarse.
+ * Whether a relative path should be ignored.
  *
- * Pura y exportada a propósito: es la pieza que evita el bucle
- * infinito, y una pieza así tiene que poder probarse sin montar un
- * sistema de ficheros.
+ * Pure and exported intentionally: this is the piece that prevents the
+ * infinite loop, and a piece like that must be testable without mounting a
+ * filesystem.
  */
 export function shouldIgnore(
   relativePath: string,
@@ -49,17 +48,17 @@ export function shouldIgnore(
     if (extraIgnored.has(segment)) return true;
   }
   const fileName = segments[segments.length - 1] ?? "";
-  // Un fichero sin punto puede ser una carpeta; solo se filtran los que
-  // parecen temporales.
+  // A file without a dot can be a folder; only files that look like
+  // temporaries are filtered out.
   return IGNORED_FILE_RE.test(fileName);
 }
 
 /**
- * Agrupa llamadas seguidas en una sola, `ms` después de la última.
+ * Batches consecutive calls into one, `ms` after the last one.
  *
- * Devuelve también un `cancel` para poder cerrar sin dejar un timer
- * suelto: sin él, el proceso no termina al hacer Ctrl+C porque el event
- * loop sigue teniendo trabajo pendiente.
+ * It also returns a `cancel` function so it can close without leaving a
+ * timer running: otherwise the process does not terminate on Ctrl+C because
+ * the event loop still has pending work.
  */
 export function createDebouncer(
   ms: number,
@@ -91,16 +90,16 @@ export function createDebouncer(
 }
 
 /**
- * Vigila `root` y llama a `onChange` con las rutas que han cambiado.
+ * Watches `root` and calls `onChange` with the changed paths.
  *
- * Usa `fs.watch` recursivo, sin sondeo. Si el sistema operativo no lo
- * soporta —`recursive` no está en todos los BSD— lanza con un mensaje
- * que lo dice, en vez de quedarse mirando solo el primer nivel y no
- * enterarse de nada.
+ * It uses recursive `fs.watch` without polling. If the operating system does
+ * not support it —`recursive` is not available on all BSDs— it throws a message
+ * explaining that instead of watching only the first level and missing
+ * everything.
  *
- * Nunca hay dos `onChange` a la vez: si llega un cambio mientras se está
- * regenerando, se encola y se ejecuta después. Dos generaciones
- * simultáneas escribirían el mismo fichero a la vez.
+ * There are never two `onChange` calls at once: if a change arrives while
+ * regeneration is running, it is queued and runs afterward. Two simultaneous
+ * generations would write the same file at the same time.
  */
 export function watchProject(options: IWatchOptions): IWatchHandle {
   const { root, onChange } = options;
@@ -112,8 +111,8 @@ export function watchProject(options: IWatchOptions): IWatchHandle {
 
   async function run(batch: readonly string[]): Promise<void> {
     if (running) {
-      // Se acumula en vez de perderse: quien guardó mientras se
-      // regeneraba espera que su cambio también entre.
+      // It accumulates instead of being lost: someone saving while
+      // regeneration is running can expect their change to be included.
       queued = [...(queued ?? []), ...batch];
       return;
     }
@@ -135,14 +134,15 @@ export function watchProject(options: IWatchOptions): IWatchHandle {
     watcher = watch(root, { recursive: true }, (_event, fileName) => {
       if (!fileName) return;
       const raw = fileName.toString();
-      // `fs.watch` da la ruta **relativa** a la carpeta vigilada en Linux
-      // y Windows, y absoluta en algunos casos de macOS. Hay que
-      // distinguirlas: pasar una ruta ya relativa por `relative()` la
-      // resuelve contra el cwd y sale un `../../../..` que no es nada.
+      // `fs.watch` gives the **relative** path to the watched folder on Linux
+      // and Windows, and an absolute path in some macOS cases. We need to
+      // distinguish them: passing an already relative path through `relative()`
+      // resolves it against the cwd and produces a `../../../..` path that means
+      // nothing.
       //
-      // No es teórico: con el cwd en `/tmp/...` el resultado contenía un
-      // segmento `tmp`, que está en la lista de ignorados, así que el
-      // watcher descartaba **todos** los cambios y parecía no funcionar.
+      // This is not theoretical: with the cwd in `/tmp/...`, the result
+      // contained a `tmp` segment, which is in the ignored list, so the watcher
+      // discarded **all** changes and appeared broken.
       const candidate = (isAbsolute(raw) ? relative(root, raw) : raw)
         .split(sep)
         .join("/");

@@ -1,34 +1,35 @@
 /**
- * Resolución de rutas de salida a partir de un `IProjectContext` explícito.
+ * Output path resolution from an explicit `IProjectContext`.
  *
- * Sustituye a las funciones del singleton retirado de `paths.service`
+ * Replaces the functions from the retired `paths.service` singleton
  * (r00010 S2, 2026-09-03) — `outputDir`, `outputCollectionPath`,
- * `outputEnvironmentPath`, `describeDiscoveredPaths`—. Aquí todas
- * reciben el contexto como argumento: no leen globales, no cachean
- * nada, y dos llamadas en el mismo proceso con contextos distintos no
- * se pisan.
+ * `outputEnvironmentPath`, and `describeDiscoveredPaths`. All of them now
+ * receive the context as an argument: they do not read globals, cache
+ * anything, or overwrite each other when the same process handles different
+ * contexts.
  *
- * Este helper no comparte estado con el singleton (retirado) y es la
- * única ruta de salida para los siete comandos del CLI migrados.
+ * This helper shares no state with the retired singleton and is the only
+ * output route for the seven migrated CLI commands.
  *
- * Precedencia del directorio de salida (mismas reglas que
- * `outputDir(context?)` antes, sin el caché):
+ * Output directory precedence (the same rules as the former
+ * `outputDir(context?)`, without the cache):
  *
- *   1. CLI `--output-dir <path>` en argv.
- *   2. CLI `--output <file>` en argv → dirname del fichero.
+ *   1. CLI `--output-dir <path>` in argv.
+ *   2. CLI `--output <file>` in argv → the file's directory.
  *   3. Env `POSTMAN_OUTPUT_DIR`.
- *   4. `context.outputDir` — lo que `resolveProjectContext` ya resolvió.
+ *   4. `context.outputDir` — the value already resolved by
+ *      `resolveProjectContext`.
  *
- * El helper es **puro en sus argumentos**. `process.argv` y `process.env`
- * solo se leen como valores por defecto de los parámetros; el que llama
- * puede inyectar otros para testear sin tocar globales. Hay dos globales
- * que se siguen leyendo de `process.env` directamente (y no como
- * parámetro) porque cambiarlo está fuera de este slice:
+ * The helper is **pure with respect to its arguments**. `process.argv` and
+ * `process.env` are read only as parameter defaults; the caller can inject
+ * different values for tests without mutating globals. Two globals are still
+ * read directly from `process.env` rather than as parameters because moving
+ * them is outside this slice:
  *
  *   - `POSTMAN_OUTPUT_BASENAME` → `outputBasename`.
- *   - `POSTMAN_CONTAIN_ROOT` → la guarda de contención en `ensureDir`.
+ *   - `POSTMAN_CONTAIN_ROOT` → the containment guard in `ensureDir`.
  *
- * Mover ambos a argumento es trivial; ver `// TODO r00011+` abajo.
+ * Moving either one to an argument is trivial; see `// TODO r00011+` below.
  */
 import { existsSync } from "node:fs";
 import { delimiter, dirname, join, resolve } from "node:path";
@@ -37,21 +38,20 @@ import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-lim
 import { projectDirs } from "./project-context.service.js";
 
 /**
- * Directorio donde se escriben los artefactos, con la misma precedencia
- * que tenía `outputDir(context?)` antes.
+ * Directory where artifacts are written, using the same precedence as the
+ * former `outputDir(context?)`.
  *
- * Aceptar `argv` y `env` como parámetros —en lugar de leer
- * `process.argv` y `process.env`— es lo que permite testear la
- * precedencia sin tocar el proceso. Los valores por defecto siguen
- * siendo los globales para que los call sites existentes no cambien.
+ * Accepting `argv` and `env` as parameters instead of reading `process.argv`
+ * and `process.env` makes it possible to test precedence without mutating
+ * the process. Default values remain global so existing call sites do not
+ * change.
  *
- * `context` es opcional a propósito: cuando un comando se lanza sin
- * contexto de proyecto (la rama `catch` de `validate-json`, que corre
- * solo con el JSON ya generado), el helper cae a la resolución por
- * `argv` / `env`. Mantener esa puerta abierta es el comportamiento
- * histórico y no introduce un singleton: el helper sigue siendo puro
- * respecto a sus argumentos, y solo lee los globales cuando no le
- * pasan contexto.
+ * `context` is intentionally optional: when a command runs without a project
+ * context (the `validate-json` `catch` branch, which runs with only the
+ * generated JSON), the helper falls back to `argv` / `env` resolution.
+ * Keeping this entry point preserves historical behavior without introducing
+ * a singleton: the helper remains pure with respect to its arguments and only
+ * reads globals when no context is supplied.
  */
 export function resolveOutputDir(
   context: IProjectContext | undefined,
@@ -59,18 +59,18 @@ export function resolveOutputDir(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   // 1. CLI `--output-dir <path>`.
-  //    Se distingue "no está" de "está con valor vacío": `argv[i + 1]`
-  //    existe pero no es un valor (empieza por `--`) se ignora, igual
-  //    que hace `readFlag` para no comerse el flag siguiente.
+  //    Distinguish "missing" from "present with an empty value": if
+  //    `argv[i + 1]` exists but is not a value (it starts with `--`), ignore
+  //    it, as `readFlag` does so it does not consume the next flag.
   const outputDirIdx = argv.indexOf("--output-dir");
   if (outputDirIdx !== -1) {
     const value = argv[outputDirIdx + 1];
     if (value !== undefined && !value.startsWith("--")) return resolve(value);
   }
 
-  // 2. CLI `--output <file>` → su directorio padre.
-  //    "Escribe este fichero exacto": la ruta es lo que el usuario
-  //    escribió, así que la carpeta de salida es su `dirname`.
+  // 2. CLI `--output <file>` → its parent directory.
+  //    "Write this exact file": the path is what the user wrote, so the
+  //    output directory is its `dirname`.
   const outputIdx = argv.indexOf("--output");
   if (outputIdx !== -1) {
     const value = argv[outputIdx + 1];
@@ -83,16 +83,16 @@ export function resolveOutputDir(
   const envDir = env["POSTMAN_OUTPUT_DIR"];
   if (envDir) return resolve(envDir);
 
-  // 4. Si hay contexto, lo que ya resolvió `resolveProjectContext`
-  //    cuando se construyó: ese resuelve `--output-dir` y
-  //    `POSTMAN_OUTPUT_DIR` también, así que aquí solo llegamos si no
-  //    estaba ninguno y el contexto se quedó con su valor por defecto.
+  // 4. If there is a context, use what `resolveProjectContext` already
+  //    resolved when creating it: it also resolves `--output-dir` and
+  //    `POSTMAN_OUTPUT_DIR`, so this branch is reached only when neither was
+  //    present and the context kept its default value.
   if (context) return context.outputDir;
 
-  // 5. Sin contexto y sin flags no podemos deducir la carpeta de salida
-  //    —el helper ya probó CLI, `--output` y env— así que fallamos con
-  //    un mensaje accionable. Antes esto caía a `process.cwd()`, que la
-  //    regla universal §6 prohíbe en engines.
+  // 5. Without a context or flags, we cannot infer the output directory
+  //    —the helper has already checked the CLI, `--output`, and env— so fail
+  //    with an actionable message. This previously fell back to
+  //    `process.cwd()`, which universal rule §6 prohibits in engines.
   throw new Error(
     "No se pudo determinar la carpeta de salida. " +
       "Pasa `--output-dir <ruta>` y/o `--project-root <ruta>`, o define " +
@@ -101,20 +101,20 @@ export function resolveOutputDir(
 }
 
 /**
- * Nombre base del JSON de salida (sin la extensión).
+ * Base name of the output JSON (without the extension).
  *
- * Prioridad: `POSTMAN_OUTPUT_BASENAME` en `process.env` → `projectName`
- * → `context.projectBasename`.
+ * Priority: `POSTMAN_OUTPUT_BASENAME` in `process.env` → `projectName` →
+ * `context.projectBasename`.
  *
- * `POSTMAN_OUTPUT_BASENAME` se lee del entorno **del proceso** a
- * propósito: es un override global del proyecto, no un argumento del
- * comando. Parametrizarlo no aporta nada porque nadie lo inyecta desde
- * fuera del CLI, y `generate.script.ts` lo reescribe justo antes de
- * llamar (cuando se pasa `--basename`). Moverlo a argumento entra en
- * r00011+ si alguien lo necesita para testeo fino.
+ * `POSTMAN_OUTPUT_BASENAME` is intentionally read from the **process**
+ * environment: it is a project-wide override, not a command argument.
+ * Parameterizing it adds nothing because no caller injects it outside the CLI,
+ * and `generate.script.ts` rewrites it immediately before calling this helper
+ * (when `--basename` is passed). Moving it to an argument belongs in r00011+
+ * if anyone needs finer-grained test control.
  *
- * TODO r00011+: aceptar `env` opcional si hace falta para tests sin
- * mutar `process.env`.
+ * TODO r00011+: accept optional `env` for tests that cannot mutate
+ * `process.env`.
  */
 function outputBasename(
   context: IProjectContext | undefined,
@@ -131,13 +131,12 @@ function outputBasename(
 }
 
 /**
- * Garantiza que el directorio existe, con la guarda de contención del
- * plugin MCP.
+ * Ensures the directory exists with the MCP plugin's containment guard.
  *
- * La contención la sigue poniendo el plugin al lanzar (`POSTMAN_CONTAIN_ROOT`).
- * Moverla a argumento del helper es trivial — un parámetro más que
- * defaulta a `process.env[CONTAINMENT_ROOT_VAR]`— pero el comportamiento
- * externo no cambia, así que también queda para r00011+.
+ * The plugin still sets the containment root at launch
+ * (`POSTMAN_CONTAIN_ROOT`). Moving it to a helper argument is trivial — one
+ * extra parameter that defaults to `process.env[CONTAINMENT_ROOT_VAR]`— but
+ * external behavior does not change, so this also remains for r00011+.
  */
 async function ensureOutputDir(
   context: IProjectContext | undefined,
@@ -153,9 +152,9 @@ async function ensureOutputDir(
     const roots = contain.split(delimiter).filter((r) => r.length > 0);
     const check = await ensureInsideAny(roots, dir);
     if (!check.ok) {
-      // Se comprueba justo antes de crear, no al leer el flag: entre una
-      // cosa y la otra `resolveOutputDir()` aplica cuatro reglas de
-      // precedencia, y validar la de entrada dejaría fuera las otras.
+      // Check immediately before creating the directory, not when reading
+      // the flag: `resolveOutputDir()` applies four precedence rules in
+      // between, and validating only the input would exclude the others.
       throw new Error(
         `La carpeta de salida se sale de las raíces permitidas.\n` +
           `  · ${check.reason}\n` +
@@ -190,12 +189,11 @@ export async function outputCollectionPath(
 }
 
 /**
- * Ruta absoluta al environment Postman para un entorno dado.
+ * Absolute path to the Postman environment for a given environment.
  *
- * El nombre del environment se slugifica igual que antes: NFD →
- * quitar diacríticos → kebab-case → trim de guiones. Quien necesita el
- * comportamiento original lo hace pasando el `projectName` ya
- * normalizado.
+ * The environment name is slugified as before: NFD → remove diacritics →
+ * kebab-case → trim hyphens. Callers that need the original behavior should
+ * pass an already-normalized `projectName`.
  */
 export async function outputEnvironmentPath(
   context: IProjectContext | undefined,
@@ -216,17 +214,17 @@ export async function outputEnvironmentPath(
 }
 
 /**
- * La traza que el CLI imprime antes de escanear, en texto.
+ * The trace the CLI prints before scanning, as text.
  *
- * Sin nombre de proyecto dice `<nombre-del-proyecto>` en lugar de
- * inventarse uno: la traza existe para descartar que se esté mirando
- * la carpeta equivocada, y mentir ahí la hace peor que no decir nada.
+ * Without a project name it displays `<nombre-del-proyecto>` instead of
+ * inventing one: the trace is meant to rule out scanning the wrong folder,
+ * and lying there is worse than saying nothing.
  *
- * Las carpetas `routes` y `requests` que aparecen son **del proyecto
- * que se escanea**, derivadas con `projectDirs(context)`. Esa parte es
- * la heurística heredada del camino Laravel; un scanner moderno
- * resuelve sus propias rutas, pero la traza del CLI las sigue
- * mostrando porque a una persona le sirve ver si existen.
+ * The `routes` and `requests` directories shown belong to the scanned
+ * project and are derived with `projectDirs(context)`. This is a heuristic
+ * inherited from the Laravel path; modern scanners resolve their own paths,
+ * but the CLI trace still displays them because seeing whether they exist is
+ * useful.
  */
 export function describeDiscoveredPaths(
   context: IProjectContext,
@@ -248,6 +246,6 @@ export function describeDiscoveredPaths(
   ].join("\n");
 }
 
-// Sin la rama `(not found)`: con contexto explícito `projectRoot` siempre
-// existe, y mostrar `(not found)` cuando no había raíz era un síntoma
-// del singleton que ya no puede aparecer.
+// Without the `(not found)` branch: with an explicit context, `projectRoot`
+// always exists, and showing `(not found)` when there was no root was a
+// symptom of the retired singleton that can no longer occur.

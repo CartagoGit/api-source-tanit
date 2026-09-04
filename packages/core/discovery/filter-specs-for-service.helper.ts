@@ -69,17 +69,31 @@
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import { normalizeForComparison } from "../helpers/uri.helper.js";
 
 /**
  * The set of stable identities `(method, uri)` for the routes of one
  * service. Pre-computed once per call so each spec is matched in O(1).
+ *
+ * The identity MUST be computed through `normalizeForComparison`, not
+ * on the raw string. `ParsedRoute.uri` and `EndpointSpec.uri` travel in
+ * different formats — the scanner emits the framework's raw syntax
+ * (`/users/:id`) and the adapter converts it to Postman form
+ * (`/users/{{id}}`) — so comparing raw strings silently drops every
+ * parameterized route from the filtered catalog (regression found the
+ * same day x00028 shipped: the express example lost `GET/PUT/DELETE
+ * /users/:id` and the CLI aborted with "3 in the routes but NOT in the
+ * collection"). Normalizing both sides collapses `:id`, `{id}` and
+ * `{{id}}` to the same `:p` marker, which is exactly the endpoint
+ * identity the rest of the pipeline already agrees on (mergeKey,
+ * endpointKey).
  */
 function endpointIdentitySet(
   endpoints: ReadonlyArray<ParsedRoute>,
 ): Set<string> {
   const set = new Set<string>();
   for (const route of endpoints) {
-    set.add(`${route.method}|${route.uri}`);
+    set.add(`${route.method}|${normalizeForComparison(route.uri)}`);
   }
   return set;
 }
@@ -121,7 +135,10 @@ export function filterSpecsForService(
   const allowed = endpointIdentitySet(service.endpoints);
   const filtered: EndpointSpec[] = [];
   for (const spec of discoverySpecs) {
-    if (allowed.has(`${spec.method}|${spec.uri}`)) {
+    // Same normalization as `endpointIdentitySet`: the spec side
+    // carries Postman form (`{{id}}`), the route side carries raw
+    // framework form (`:id`). Both collapse to `:p` here.
+    if (allowed.has(`${spec.method}|${normalizeForComparison(spec.uri)}`)) {
       filtered.push(spec);
     }
   }

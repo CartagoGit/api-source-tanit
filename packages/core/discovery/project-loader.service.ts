@@ -1,27 +1,28 @@
 /**
- * Carga la configuración del proyecto host de forma agnóstica.
+ * Loads the host project's configuration in a framework-agnostic way.
  *
- * Resolución de `ProjectConfig` (orden de prioridad):
+ * `ProjectConfig` resolution (priority order):
  *   1. CLI `--config <path>`
  *   2. Env `POSTMAN_CONFIG`
- *   3. `${projectRoot}/resources/postman/examples/<proyecto>/config.constant.ts`
- *      (busca `<proyecto>` derivando de `composer.json` o basename del projectRoot)
- *   4. `${projectRoot}/examples/<proyecto>/config.constant.ts`
- *   5. **Zero-config**: genera un `ProjectConfig` mínimo viable en memoria
- *      con autodetección de:
- *        - `name` (composer.json → nombre del paquete; fallback basename)
- *        - `baseUrl` (`.env` → `APP_URL`; `DEFAULT_BASE_URL` por defecto;
- *          `/api` solo cuando Laravel + RouteServiceProvider lo declara o
- *          `POSTMAN_BASE_PATH` lo aporta — `a00012 S4`)
- *        - `filePrefixes` (RouteServiceProvider → regex sobre mapXxxRoutes)
- *        - `loginEndpointName` (heurística: primera ruta POST sin auth)
+ *   3. `${projectRoot}/resources/postman/examples/<project>/config.constant.ts`
+ *      (searches for `<project>` derived from `composer.json` or the projectRoot
+ *      basename)
+ *   4. `${projectRoot}/examples/<project>/config.constant.ts`
+ *   5. **Zero-config**: generates a minimal viable `ProjectConfig` in memory
+ *      with autodetection of:
+ *        - `name` (`composer.json` → package name; basename fallback)
+ *        - `baseUrl` (`.env` → `APP_URL`; defaults to `DEFAULT_BASE_URL`;
+ *          `/api` only when Laravel + RouteServiceProvider declares it or
+ *          `POSTMAN_BASE_PATH` supplies it — `a00012 S4`)
+ *        - `filePrefixes` (RouteServiceProvider → regex over mapXxxRoutes)
+ *        - `loginEndpointName` (heuristic: first POST route without auth)
  *        - `tokenResponsePath` (JWT → "access_token", Sanctum → "data.token")
  *
- * Overrides manuales de endpoints (opcionales):
- *   - Mismo directorio que el config: `endpoints.constant.ts`
+ * Optional manual endpoint overrides:
+ *   - In the same directory as the config: `endpoints.constant.ts`
  *
- * Los scripts del core NO importan `examples/<proyecto>` directamente.
- * El paquete busca el config en el proyecto host o genera uno zero-config.
+ * Core scripts do NOT import `examples/<project>` directly. The package
+ * searches the host project for the config or generates a zero-config.
  */
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
@@ -83,12 +84,12 @@ async function listDirs(p: string): Promise<string[]> {
 }
 
 /**
- * Devuelve el nombre del proyecto host.
+ * Returns the host project name.
  *
- * La lectura de manifiestos vive en `project-name.service`: aquí solo
- * se resuelve la raíz. Antes esta función miraba únicamente
- * `composer.json`, con lo que Laravel se llamaba como su paquete y los
- * otros once frameworks como su carpeta.
+ * Manifest reading lives in `project-name.service`: this function only
+ * resolves the root. Previously it looked only at `composer.json`, so Laravel
+ * was named after its package while the other eleven frameworks were named
+ * after their directories.
  */
 export async function detectProjectName(
   context: IProjectContext,
@@ -97,12 +98,12 @@ export async function detectProjectName(
 }
 
 /**
- * Busca config del host en el proyecto (no en el paquete):
- *   - ${projectRoot}/resources/postman/examples/<proyecto>/config.constant.ts
- *   - ${projectRoot}/examples/<proyecto>/config.constant.ts
+ * Searches the project, not the package, for the host config:
+ *   - ${projectRoot}/resources/postman/examples/<project>/config.constant.ts
+ *   - ${projectRoot}/examples/<project>/config.constant.ts
  *
- * Si el nombre del directorio no coincide con `detectProjectName()`, busca
- * cualquier `examples/<*>/config.constant.ts` disponible.
+ * If the directory name does not match `detectProjectName()`, search for any
+ * available `examples/<*>/config.constant.ts`.
  */
 async function findHostConfig(
   context: IProjectContext,
@@ -118,7 +119,7 @@ async function findHostConfig(
     if (existsSync(p)) return p;
   }
 
-  // Fallback: cualquier examples/<*>/config.constant.ts del proyecto.
+  // Fallback: any examples/<*>/config.constant.ts in the project.
   for (const base of [
     join(root, "resources", "postman", "examples"),
     join(root, "examples"),
@@ -135,10 +136,10 @@ async function findHostConfig(
 }
 
 /**
- * Lee `RouteServiceProvider.php` para extraer el mapa
- * `archivo → prefijos` desde los métodos `mapXxxRoutes()`.
+ * Reads `RouteServiceProvider.php` to extract the
+ * `file → prefixes` map from the `mapXxxRoutes()` methods.
  *
- * Ejemplo Laravel:
+ * Laravel example:
  *   protected function mapExternalApiRoutes(): void {
  *     Route::prefix('api/externo')
  *       ->group(base_path('routes/externo.php'));
@@ -192,14 +193,14 @@ export async function detectFilePrefixes(
 }
 
 /**
- * Genera un ProjectConfig mínimo viable sin archivo del host.
- * Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
+ * Generates a minimal viable ProjectConfig without a host file, allowing the
+ * package to work out of the box in any project.
  *
- * `baseUrl` por defecto es el origen (`DEFAULT_BASE_URL`). El sufijo
- * `/api` **no** se añade automáticamente: solo aparece cuando una de
- * las fuentes documentadas en `BASE_PATH_SOURCES` lo aporta. Esto
- * cierra el bug que producía `http://localhost/api/users` en proyectos
- * Express/Flask/Gin/FastAPI sin prefijo global (a00012 H-P2e, S4).
+ * The default `baseUrl` is the origin (`DEFAULT_BASE_URL`). The `/api` suffix
+ * is **not** added automatically; it appears only when one of the sources
+ * documented in `BASE_PATH_SOURCES` supplies it. This closes the bug that
+ * produced `http://localhost/api/users` in Express, Flask, Gin, and FastAPI
+ * projects without a global prefix (a00012 H-P2e, S4).
  */
 export async function buildZeroConfig(
   context: IProjectContext,
@@ -208,9 +209,9 @@ export async function buildZeroConfig(
   const name = await detectProjectName(context);
   let baseUrl: string = DEFAULT_BASE_URL;
 
-  // APP_URL del `.env` se respeta tal cual: quien lo declara sabe lo
-  // que hace. Antes se le pegaba `/api` automáticamente, lo que rompía
-  // proyectos no-Laravel y proyectos Laravel que ya lo traían.
+  // Respect `APP_URL` from `.env` exactly as declared: whoever declares it
+  // knows what they are doing. Previously `/api` was appended automatically,
+  // breaking non-Laravel projects and Laravel projects that already included it.
   if (root) {
     for (const envFile of [".env", ".env.example"]) {
       try {
@@ -228,12 +229,12 @@ export async function buildZeroConfig(
 
   const filePrefixes = await detectFilePrefixes(context);
 
-  // Las rutas de Laravel cuyo RouteServiceProvider **no** mapea
-  // reciben `["api"]` como prefijo lógico (la ruta se imprimirá como
-  // `/api/<resto>` en la colección). Esto NO toca la `baseUrl`: el
-  // sufijo en `baseUrl` solo aparece cuando el RouteServiceProvider
-  // declara explícitamente el prefijo o el `POSTMAN_BASE_PATH` lo
-  // aporta — ver `applyBasePathSources()`.
+  // Laravel routes that the RouteServiceProvider does **not** map receive
+  // `["api"]` as their logical prefix (the route is printed as
+  // `/api/<resto>` in the collection). This does NOT change `baseUrl`: the
+  // suffix in `baseUrl` appears only when RouteServiceProvider explicitly
+  // declares the prefix or `POSTMAN_BASE_PATH` supplies it — see
+  // `applyBasePathSources()`.
   if (root) {
     try {
       const routesDir = join(root, "routes");
@@ -284,21 +285,21 @@ export async function buildZeroConfig(
 }
 
 /**
- * Aplica las fuentes de `basePath` que la propuesta `a00012 S4`
- * acepta para añadir un sufijo a la `baseUrl` por defecto.
+ * Applies the `basePath` sources accepted by proposal `a00012 S4` to append a
+ * suffix to the default `baseUrl`.
  *
- * Las cinco fuentes documentadas son:
- *   1. ruta explícita (un `routePrefix` matcheado por un scanner) — se
- *      materializa en `filePrefixes` por el `detectFilePrefixes` y por
- *      los adapters de scanner; este helper recibe el resultado.
- *   2. framework (Laravel/Express/...): `filePrefixes` lo trae.
- *   3. config explícito (`delendai.config.json#basePath`,
- *      `.tanitrc.json#basePath`) — futuro; ver S4.
- *   4. OpenAPI `servers[]` — futuro; ver S4.
- *   5. variable de entorno `POSTMAN_BASE_PATH` — implementada aquí.
+ * The five documented sources are:
+ *   1. An explicit path (a `routePrefix` matched by a scanner), materialized
+ *      in `filePrefixes` by `detectFilePrefixes` and the scanner adapters; this
+ *      helper receives the result.
+ *   2. Framework (Laravel/Express/...): `filePrefixes` provides it.
+ *   3. Explicit config (`delendai.config.json#basePath`,
+ *      `.tanitrc.json#basePath`) — future; see S4.
+ *   4. OpenAPI `servers[]` — future; see S4.
+ *   5. The `POSTMAN_BASE_PATH` environment variable — implemented here.
  *
- * Devuelve la `baseUrl` con el sufijo pegado **una sola vez**: si ya
- * termina en el mismo segmento, no lo duplica.
+ * Returns the `baseUrl` with the suffix appended **once**: if it already ends
+ * with the same segment, do not duplicate it.
  */
 function applyBasePathSources(
   baseUrl: string,
@@ -308,10 +309,9 @@ function applyBasePathSources(
   if (envPath && envPath.length > 0) {
     return appendBasePath(baseUrl, envPath);
   }
-  // Si el primer prefijo de filePrefixes tiene un único segmento (caso
-  // típico Laravel: `["api"]`), lo usamos. Esto cubre la fuente (2):
-  // el framework ya recogió el prefijo y no hace falta volver a
-  // pedirlo al usuario.
+  // If the first prefix in filePrefixes has one segment (the typical Laravel
+  // case: `["api"]`), use it. This covers source (2): the framework has
+  // already captured the prefix, so the user should not be asked for it again.
   const firstPrefix = firstSingleSegmentPrefix(filePrefixes);
   if (firstPrefix) {
     return appendBasePath(baseUrl, firstPrefix);
@@ -320,8 +320,8 @@ function applyBasePathSources(
 }
 
 /**
- * Suma un segmento de path a la `baseUrl`, evitando duplicarlo cuando
- * ya está presente.
+ * Appends a path segment to `baseUrl` without duplicating it when already
+ * present.
  *
  * `appendBasePath("http://localhost", "api")` → `"http://localhost/api"`.
  * `appendBasePath("http://localhost/api", "api")` → `"http://localhost/api"`.
@@ -330,9 +330,9 @@ function applyBasePathSources(
 function appendBasePath(baseUrl: string, segment: string): string {
   const clean = segment.replace(/^\/+/, "").replace(/\/+$/, "");
   if (clean.length === 0) return baseUrl;
-  // Comprobación barata: si la URL ya termina en `/<clean>` (o en su
-  // forma con slash final), no se duplica. No es un parseo estricto
-  // porque no queremos arrastrar `URL` aquí; basta con el sufijo.
+  // Cheap check: if the URL already ends with `/<clean>` (or with a trailing
+  // slash), do not duplicate it. This is not strict parsing because we do not
+  // want to pull `URL` in here; the suffix is sufficient.
   if (baseUrl === `${baseUrl.replace(/\/$/, "")}/${clean}`) return baseUrl;
   if (new RegExp(`/${escapeRegExp(clean)}/?$`).test(baseUrl)) return baseUrl;
   const trimmed = baseUrl.replace(/\/+$/, "");
@@ -344,14 +344,14 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * Devuelve el primer prefijo de `filePrefixes` que tiene un único
- * segmento (caso Laravel `["api"]`). `null` si no hay ninguno.
+ * Returns the first single-segment prefix in `filePrefixes` (the Laravel
+ * `["api"]` case), or `null` if none exists.
  *
- * Usado por `applyBasePathSources` para detectar la fuente "framework
- * routePrefix" sin asumir que TODOS los archivos Laravel tienen el
- * mismo prefijo — `detectFilePrefixes` solo llena los que el
- * RouteServiceProvider mapea, así que `null` aquí significa "el
- * usuario no pidió prefijo o el framework no recogió nada".
+ * Used by `applyBasePathSources` to detect the "framework routePrefix" source
+ * without assuming that ALL Laravel files share the same prefix —
+ * `detectFilePrefixes` only populates the files mapped by RouteServiceProvider,
+ * so `null` here means "the user requested no prefix or the framework found
+ * none".
  */
 function firstSingleSegmentPrefix(
   filePrefixes: Record<string, ReadonlyArray<string>>,
@@ -363,13 +363,13 @@ function firstSingleSegmentPrefix(
 }
 
 /**
- * Resuelve la ruta del módulo de configuración del host.
+ * Resolves the host configuration module path.
  *
- * Orden:
+ * Order:
  *   1. `--config <path>` (CLI)
  *   2. `POSTMAN_CONFIG` (env)
- *   3. `${projectRoot}/resources/postman/examples/...` o `${projectRoot}/examples/...`
- *   4. Si nada → devuelve sentinel "__zero__" para que loadProject use
+ *   3. `${projectRoot}/resources/postman/examples/...` or `${projectRoot}/examples/...`
+ *   4. If nothing matches, return the "__zero__" sentinel so loadProject uses
  *      buildZeroConfig().
  */
 export async function resolveConfigPath(
@@ -383,8 +383,8 @@ export async function resolveConfigPath(
   const env = process.env.POSTMAN_CONFIG?.trim();
   if (env) return resolveMaybeRelative(env, root);
 
-  // LEGACY: ejemplos dentro del propio paquete (solo para compatibilidad
-  // con este repo). NO se usa en proyectos externos.
+  // LEGACY: examples inside the package itself (for compatibility with this
+  // repository only). It is NOT used in external projects.
   const forced = process.env.POSTMAN_EXAMPLE?.trim();
   if (forced) {
     const legacy = join(context.packageRoot, "examples", forced, "config.constant.ts");
@@ -398,15 +398,15 @@ export async function resolveConfigPath(
 }
 
 /**
- * Carga config + overrides manuales del proyecto host.
+ * Loads the host config and manual overrides.
  *
- * Si no encuentra ningún archivo de config, genera un zero-config en
- * memoria con autodetección de prefijo + baseUrl + nombre.
+ * If no config file is found, generate a zero-config in memory with
+ * autodetection of the prefix, baseUrl, and name.
  */
 /**
- * El contexto es obligatorio para que el loader sea seguro en procesos
- * de vida larga y no vuelva a leer la raíz cacheada del singleton
- * retirado de `paths.service` en r00010 S2 (2026-09-03).
+ * The context is mandatory so the loader is safe in long-lived processes and
+ * does not reread the cached root from the `paths.service` singleton retired
+ * in r00010 S2 (2026-09-03).
  */
 export async function loadProject(
   argv: ReadonlyArray<string> = [],
@@ -458,10 +458,10 @@ export async function loadProject(
 
 // Internal helpers re-exported for tests.
 /**
- * Piezas internas expuestas **solo** para sus tests.
+ * Internal pieces exposed **only** for their tests.
  *
- * El guion bajo es la señal: no forman parte del contrato del módulo y
- * pueden cambiar sin aviso.
+ * The underscore is the signal: they are not part of the module contract and
+ * may change without notice.
  */
 export const _internal = {
   extractConfig,

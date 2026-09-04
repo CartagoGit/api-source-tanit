@@ -1,100 +1,94 @@
 /**
- * Raíz efectiva de escaneo de un scanner — a00012 S1.b.
+ * Effective scan root for a scanner — a00012 S1.b.
  *
- * Antes de este helper, cada scanner decidía por su cuenta dónde leer
- * sus fuentes. Tres de ellos (`fastify.scanner.ts`, `fiber.scanner.ts`,
- * `rust.scanner.ts`) pasaban `match.projectRoot` directamente al
- * `collectFiles(...)`, ignorando `match.frameworkSearchRoot`: en un
- * monorepo el scanner caminaba el árbol del workspace entero en vez
- * del subdirectorio del framework, y se devolvían rutas vacías o
- * contaminadas con las de otros paquetes.
+ * Before this helper, each scanner decided on its own where to read its
+ * sources. Three of them (`fastify.scanner.ts`, `fiber.scanner.ts`,
+ * `rust.scanner.ts`) passed `match.projectRoot` directly to
+ * `collectFiles(...)`, ignoring `match.frameworkSearchRoot`: in a
+ * monorepo, the scanner walked the entire workspace tree instead of the
+ * framework subdirectory, returning empty paths or paths contaminated by
+ * other packages.
  *
- * Hono, NestJS y Next.js ya resolvían esto inline con un
+ * Hono, NestJS, and Next.js already resolved this inline with their own
  * `honoEffectiveSearchRoot` / `nestjsEffectiveSearchRoot` /
- * `effectiveSearchRoot` propio. Este helper los **centraliza** y
- * añade la verificación de contención que les faltaba: un
- * `frameworkSearchRoot` con `..` no debe poder escapar de
- * `projectRoot`, ni siquiera cuando lo escribe un manifest del
- * proyecto host.
+ * `effectiveSearchRoot`. This helper **centralizes** them and adds the
+ * missing containment check: a `frameworkSearchRoot` containing `..`
+ * must not be able to escape `projectRoot`, not even when written by a
+ * manifest in the host project.
  *
- * ## Contrato
+ * ## Contract
  *
- * - `effectiveScanRoot(match)` y `safeScanRoot(match)` son alias de
- *   la misma función. La segunda expone el nombre para callers que
- *   quieren dejar explícito que el helper puede lanzar si el
- *   `frameworkSearchRoot` apunta fuera de `projectRoot`; ambas
- *   comparten implementación porque la seguridad de contención no es
- *   opcional.
+ * - `effectiveScanRoot(match)` and `safeScanRoot(match)` are aliases of
+ *   the same function. The latter exposes a name for callers that want to
+ *   make it explicit that the helper can throw when `frameworkSearchRoot`
+ *   points outside `projectRoot`; both share an implementation because
+ *   containment security is not optional.
  *
- * - Si `match.frameworkSearchRoot` es `undefined`, `null` o la
- *   cadena vacía, se devuelve `match.projectRoot` **sin modificar**
- *   (no se llama a `path.resolve`, no se hace ninguna operación).
- *   Los proyectos planos que no rellenan `frameworkSearchRoot`
- *   tienen el mismo comportamiento que antes.
+ * - If `match.frameworkSearchRoot` is `undefined`, `null`, or the empty
+ *   string, return `match.projectRoot` **unchanged** (do not call
+ *   `path.resolve` or perform any other operation). Flat projects that do
+ *   not populate `frameworkSearchRoot` behave exactly as before.
  *
- * - En otro caso, se une `projectRoot` con `frameworkSearchRoot`
- *   mediante `path.resolve`, y se verifica que el resultado sigue
- *   dentro de `projectRoot`. La verificación compara por segmento:
- *   `.startsWith(root + sep) || === root`, que es la forma correcta
- *   (un prefijo de cadena dejaría pasar `/tmp/raiz-mala` cuando la
- *   raíz es `/tmp/raiz`).
+ * - Otherwise, join `projectRoot` with `frameworkSearchRoot` using
+ *   `path.resolve`, then verify that the result remains within
+ *   `projectRoot`. The check compares path segments with
+ *   `.startsWith(root + sep) || === root`, which is the correct approach
+ *   (a string prefix would allow `/tmp/bad-root` when the root is
+ *   `/tmp/root`).
  *
- * - Si la verificación falla, **lanza** un `Error` con el framework,
- *   el `projectRoot` y el `frameworkSearchRoot` que la han
- *   provocado. No silencia. No devuelve la raíz sin más. Un scanner
- *   que ignora la verificación de contención es el mismo bug que
- *   estamos cerrando, sólo que más callado.
+ * - If the check fails, **throw** an `Error` containing the framework,
+ *   `projectRoot`, and `frameworkSearchRoot` that caused it. Do not hide
+ *   the failure or return the root unchecked. A scanner that ignores the
+ *   containment check has the same bug we are closing, only quieter.
  *
- * ## Por qué es puro
+ * ## Why it is pure
  *
- * El helper no lee `process.cwd()`, no toca el sistema de archivos y
- * no tiene estado. Es una función determinista sobre sus argumentos,
- * igual que `effectiveSearchRoot` en `nextjs.scanner.ts`. Eso permite
- * que el contrato se pruebe sin fixtures en
- * `tests/frameworks/scan-root-contract.spec.ts` y que el lint
- * universal de `no process.cwd / process.env` no le diga nada.
+ * The helper does not read `process.cwd()`, touch the file system, or
+ * hold state. It is a deterministic function of its arguments, just like
+ * `effectiveSearchRoot` in `nextjs.scanner.ts`. This allows the contract
+ * to be tested without fixtures in
+ * `tests/frameworks/scan-root-contract.spec.ts` and keeps the universal
+ * `no process.cwd / process.env` lint rule silent.
  */
 import { resolve, sep } from "node:path";
 
 import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
- * La raíz donde un scanner debe mirar sus fuentes.
+ * The root where a scanner should search for its sources.
  *
- * - Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
- *   con proyectos planos y con los tests que no rellenan el campo).
- * - Con `frameworkSearchRoot` → `path.resolve(projectRoot,
- *   frameworkSearchRoot)`, siempre que el resultado siga dentro de
- *   `projectRoot`.
+ * - Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+ *   with flat projects and tests that do not populate the field).
+ * - With `frameworkSearchRoot` → `path.resolve(projectRoot,
+ *   frameworkSearchRoot)`, provided the result remains within `projectRoot`.
  *
- * Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
- * `projectRoot` (típicamente porque contiene `..` o es absoluto).
+ * Throws a clear `Error` if `frameworkSearchRoot` points outside
+ * `projectRoot` (for example, because it contains `..` or is absolute).
  */
 export function effectiveScanRoot(match: IProjectMatch): string {
   return resolveScanRoot(match);
 }
 
 /**
- * Alias de `effectiveScanRoot` con un nombre que enfatiza que el
- * helper **puede lanzar** cuando la ruta de búsqueda escapa de la
- * raíz del proyecto. Útil cuando el llamante quiere dejar explícito
- * que está haciendo una verificación de contención (por ejemplo, en
- * pipelines de varios pasos donde conviene que el `try`/`catch`
- * quede claro).
+ * Alias for `effectiveScanRoot` with a name that emphasizes that the
+ * helper **can throw** when the search path escapes the project root.
+ * Useful when the caller wants to make the containment check explicit
+ * (for example, in multi-step pipelines where the `try`/`catch` should be
+ * clear).
  *
- * El comportamiento es idéntico al de `effectiveScanRoot`: misma
- * resolución, misma guarda, mismo error. Sólo cambia el nombre para
- * que el código que la usa pueda expresar su intención.
+ * The behavior is identical to `effectiveScanRoot`: the same resolution,
+ * guard, and error. Only the name changes so code using it can express its
+ * intent.
  */
 export function safeScanRoot(match: IProjectMatch): string {
   return resolveScanRoot(match);
 }
 
 /**
- * Implementación única de las dos exportaciones públicas. No se
- * exporta a propósito: añadir una tercera función de idéntico
- * comportamiento diluiría el contrato. Si algún futuro caller
- * necesita otra variante, que se abra sobre esta misma lógica.
+ * Single implementation for both public exports. It is intentionally not
+ * exported: adding a third function with identical behavior would dilute
+ * the contract. If a future caller needs another variant, it should build
+ * on this logic.
  */
 function resolveScanRoot(match: IProjectMatch): string {
   const root = match.projectRoot;

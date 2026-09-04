@@ -1,21 +1,20 @@
 /**
- * Fusión de los endpoints descubiertos con los overrides manuales del
- * host.
+ * Merge of discovered endpoints with the host's manual overrides.
  *
- * Vivía dentro del descubrimiento de Laravel, pero no tiene nada de
- * Laravel: compara `method + uri` normalizando los parámetros de ruta y
- * deja ganar al manual campo a campo. Vale igual para lo que devuelva
- * cualquier scanner, y por eso es del núcleo.
+ * It used to live inside Laravel discovery, but it is not specific to
+ * Laravel: it compares `method + uri` while normalizing path parameters and
+ * lets the manual spec win field by field. It works the same way regardless
+ * of which scanner returns the data, so it belongs in core.
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 /**
- * Fusiona specs auto-descubiertos con un catálogo manual opcional.
- * El manual gana en method+uri normalizado (name, body, folder, description).
+ * Merges auto-discovered specs with an optional manual catalog.
+ * The manual spec wins on normalized method+URI (name, body, folder, description).
  *
- * Exportado porque los overrides manuales no son una cosa de Laravel:
- * cualquier proyecto puede declarar un `endpoints.constant.ts` para
- * corregir o ampliar lo que el scanner deduce.
+ * Exported because manual overrides are not a Laravel-specific concern:
+ * any project can declare an `endpoints.constant.ts` to correct or extend
+ * what the scanner infers.
  */
 export function mergeWithManual(
   auto: EndpointSpec[],
@@ -31,8 +30,8 @@ export function mergeWithManual(
     const k = keyOf(a);
     const m = manualMap.get(k);
     if (m) {
-      // El manual gana en name/body/folder/description, pero NO borra
-      // formRequest auto-detectado si el override no lo trae.
+      // The manual spec wins for name/body/folder/description, but it does NOT
+      // remove auto-detected formRequest if the override does not include it.
       out.push({
         ...a,
         ...m,
@@ -47,7 +46,7 @@ export function mergeWithManual(
       out.push(a);
     }
   }
-  // Manual-only (p. ej. endpoints de testing no parseados igual)
+  // Manual-only entries (for example, testing endpoints parsed differently)
   for (const m of manual) {
     const k = keyOf(m);
     if (!used.has(k)) out.push(m);

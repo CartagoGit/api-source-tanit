@@ -56,8 +56,11 @@ async function launcherFiles(): Promise<string[]> {
 describe("los lanzadores son finos", () => {
   test("hay un lanzador POSIX y uno de Windows", async () => {
     const names = await readdir(BIN_DIR);
-    expect(names).toContain("expostman");
-    expect(names).toContain("expostman.ps1");
+    // El nombre canónico vive en `BIN_NAME` (contratos) y lo pinza el
+    // test de abajo contra el `bin` del package.json; aquí solo se
+    // comprueba que los dos lanzadores existen con ese nombre.
+    expect(names).toContain("apisrc");
+    expect(names).toContain("apisrc.ps1");
   });
 
   test("ninguno pasa de 100 líneas", async () => {
@@ -85,20 +88,20 @@ describe("los lanzadores son finos", () => {
   });
 
   test("el lanzador POSIX es ejecutable", async () => {
-    const mode = (await stat(join(BIN_DIR, "expostman"))).mode;
+    const mode = (await stat(join(BIN_DIR, "apisrc"))).mode;
     // eslint-disable-next-line no-bitwise
     expect(mode & 0o111).toBeGreaterThan(0);
   });
 
   test("el lanzador POSIX es sintácticamente válido", async () => {
-    const result = await runProcess("sh", ["-n", join(BIN_DIR, "expostman")]);
+    const result = await runProcess("sh", ["-n", join(BIN_DIR, "apisrc")]);
     expect(result.code, result.output).toBe(0);
   });
 
   // `py_compile` escribiría un `__pycache__/` dentro de `wrappers/`.
   // `compile()` hace la misma comprobación sin dejar rastro.
   test("el wrapper de Python es sintácticamente válido", async () => {
-    const path = join(WRAPPERS_DIR, "expostman.py");
+    const path = join(WRAPPERS_DIR, "apisrc.py");
     const result = await runProcess("python3", [
       "-c",
       `compile(open(${JSON.stringify(path)}).read(), ${JSON.stringify(path)}, "exec")`,
@@ -109,7 +112,7 @@ describe("los lanzadores son finos", () => {
   test("todos apuntan al mismo nombre canónico", async () => {
     for (const file of await launcherFiles()) {
       const source = await readFile(file, "utf8");
-      expect(source, file).toMatch(/expostman/);
+      expect(source, file).toMatch(/apisrc/);
       // El nombre viejo no puede quedar en un lanzador nuevo.
       expect(source, file).not.toMatch(/postman-from-routes/);
     }

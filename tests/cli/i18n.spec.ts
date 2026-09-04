@@ -350,23 +350,23 @@ describe("un idioma roto no tumba la interfaz, pero se dice", () => {
 describe("la carpeta de configuración de cada sistema", () => {
   test("Linux respeta XDG_CONFIG_HOME cuando está", () => {
     expect(userConfigDir({ XDG_CONFIG_HOME: "/xdg" }, "linux", "/home/x")).toBe(
-      "/xdg/expostman",
+      "/xdg/tanit",
     );
   });
 
   test("Linux cae a ~/.config cuando no", () => {
-    expect(userConfigDir({}, "linux", "/home/x")).toBe("/home/x/.config/expostman");
+    expect(userConfigDir({}, "linux", "/home/x")).toBe("/home/x/.config/tanit");
   });
 
   test("macOS usa Application Support", () => {
     expect(userConfigDir({}, "darwin", "/Users/x")).toBe(
-      "/Users/x/Library/Application Support/expostman",
+      "/Users/x/Library/Application Support/tanit",
     );
   });
 
   test("Windows usa APPDATA", () => {
     expect(userConfigDir({ APPDATA: "C:\\Users\\x\\AppData\\Roaming" }, "win32", "C:\\Users\\x")).toContain(
-      "expostman",
+      "tanit",
     );
   });
 

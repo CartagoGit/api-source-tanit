@@ -1,38 +1,37 @@
 /**
- * Las aserciones que lleva cada request de la colección.
+ * Assertions carried by each request in the collection.
  *
- * Una colección que solo trae URLs y métodos deja todo el trabajo de
- * comprobar a quien la importa: le da al Send, mira la respuesta y
- * decide con los ojos. El objetivo aquí es que la colección **sepa** qué
- * es una respuesta buena para cada endpoint, y lo diga sola.
+ * A collection that only brings URLs and methods leaves all checking work to
+ * the person importing it: they hit Send, inspect the response, and decide
+ * with their eyes. The goal here is for the collection to **know** what a good
+ * response is for each endpoint and report it itself.
  *
- * La regla que gobierna este fichero: **no se afirma nada que no se
- * sepa**. Es la misma que en `auth-scheme.service.ts`, y por el mismo
- * motivo — una aserción falsa es peor que ninguna, porque falla en rojo
- * y manda a alguien a investigar un problema que no existe.
+ * The rule governing this file is: **do not assert anything that is not
+ * known**. It is the same as in `auth-scheme.service.ts`, for the same reason—
+ * a false assertion is worse than none, because it fails visibly and sends
+ * someone to investigate a problem that does not exist.
  *
- * En concreto:
+ * Specifically:
  *
- *   - El código esperado sale de la **semántica del método**, no de un
- *     200 fijo. Un `POST` que crea contesta 201, un `DELETE` contesta
- *     204 sin cuerpo, y exigirles 200 a los dos daría rojo en una API
- *     perfectamente correcta. Se acepta el rango que la especificación
- *     considera correcto para ese verbo.
- *   - El cuerpo solo se comprueba **si tiene que haberlo**. Un 204 no
- *     trae JSON, y `pm.response.json()` sobre un cuerpo vacío lanza.
- *   - No se comprueba la **forma** de la respuesta. Este proyecto escanea
- *     lo que la API **recibe**; lo que devuelve no lo sabe, y afirmar que
- *     un `GET /users` devuelve un array sería adivinar.
+ *   - The expected status comes from the **method's semantics**, not a fixed
+ *     200. A `POST` that creates responds 201, a `DELETE` responds 204 without
+ *     a body, and requiring 200 from both would fail in a perfectly valid API.
+ *     The range considered correct for that verb is accepted.
+ *   - The body is checked **only when it is expected**. A 204 has no JSON,
+ *     and `pm.response.json()` on an empty body throws.
+ *   - The **shape** of the response is not checked. This project scans what
+ *     the API **receives**; it does not know what it returns, and asserting
+ *     that `GET /users` returns an array would be guessing.
  */
 import type { EndpointSpec, PostmanEvent } from "../../contracts/interfaces/core/postman.interface.js";
 
 /**
- * Códigos que son un éxito según el verbo.
+ * Status codes that count as a success for the verb.
  *
- * No es un 200 para todo: `POST` normalmente crea (201), `DELETE` suele
- * contestar sin cuerpo (204), y muchas APIs aceptan trabajo asíncrono
- * con 202. Se admite el conjunto razonable para cada uno en vez de
- * obligar a la API a parecerse a una idea concreta.
+ * It is not 200 for everything: `POST` normally creates (201), `DELETE` often
+ * responds without a body (204), and many APIs accept asynchronous work with
+ * 202. We allow a reasonable set for each verb instead of forcing the API to
+ * resemble one specific idea.
  */
 const SUCCESS_CODES: Readonly<Record<string, ReadonlyArray<number>>> = {
   GET: [200, 204, 206],
@@ -44,18 +43,18 @@ const SUCCESS_CODES: Readonly<Record<string, ReadonlyArray<number>>> = {
   OPTIONS: [200, 204],
 };
 
-/** Códigos que no traen cuerpo, así que no se le pide JSON. */
+/** Status codes with no response body, so JSON is not requested. */
 const NO_BODY_CODES = [204, 205, 304];
 
 /**
- * Cuánto puede tardar una respuesta antes de que merezca una mirada.
+ * How long a response may take before it deserves attention.
  *
- * Es un aviso, no un contrato: 2 segundos es holgado para una API local
- * o de staging, que es donde se ejecuta una colección de Postman.
+ * It is a warning, not a contract: 2 seconds is generous for a local or
+ * staging API, where a Postman collection is run.
  */
 const SLOW_RESPONSE_MS = 2000;
 
-/** Las aserciones de un endpoint, listas para el campo `event`. */
+/** Assertions for an endpoint, ready for the `event` field. */
 export function buildTestScript(spec: EndpointSpec): PostmanEvent {
   const codes = SUCCESS_CODES[spec.method] ?? [200];
   const list = codes.join(", ");
@@ -89,12 +88,12 @@ export function buildTestScript(spec: EndpointSpec): PostmanEvent {
 }
 
 /**
- * Añade las aserciones a un item sin pisar lo que ya tuviera.
+ * Adds assertions to an item without overwriting anything it already had.
  *
- * El endpoint de login ya trae su script de guardar el token, y el de
- * logout el de borrarlo. Sustituir el array entero se los llevaría por
- * delante y la colección dejaría de autenticar sola — que es la razón de
- * ser del flujo de auth.
+ * The login endpoint already has a script that saves the token, and the logout
+ * endpoint has one that deletes it. Replacing the entire array would remove
+ * them and the collection would stop authenticating itself—which is the reason
+ * the auth flow exists.
  */
 export function appendTestScript(
   existing: ReadonlyArray<PostmanEvent> | undefined,

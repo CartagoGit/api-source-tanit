@@ -1,13 +1,13 @@
 /**
- * Resolución explícita del contexto de un proyecto.
+ * Explicit project context resolution.
  *
- * Es la alternativa sin estado al singleton retirado de `paths.service`
- * (r00010 S2, 2026-09-03), que cacheaba la raíz una vez por proceso.
- * Aquí cada llamada devuelve un objeto nuevo, así que dos proyectos
- * analizados a la vez no se pisan.
+ * This is the stateless alternative to the retired `paths.service` singleton
+ * (r00010 S2, 2026-09-03), which cached the root once per process. Each call
+ * returns a new object, so two projects analyzed concurrently do not overwrite
+ * each other.
  *
- * Ver p00017 para el recorrido completo: la fachada con estado cayó
- * definitivamente en r00010 y este es el único resolutor que queda.
+ * See p00017 for the full walkthrough: the stateful facade was definitively
+ * removed in r00010, and this is the only resolver left.
  */
 import { existsSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -20,19 +20,19 @@ import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant
 import { readFlag } from "../helpers/argv.helper.js";
 import type { IResolveContextOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
-// `findRepoRoot` y no `repoRoot`: este módulo acaba DENTRO del binario
-// compilado, donde los ficheros viven en `/$bunfs/root/` y no hay
-// ningún `package.json` que encontrar. Allí el plan B es la carpeta del
-// propio módulo, que es lo que había antes de que existiera el helper.
+// `findRepoRoot`, not `repoRoot`: this module ends up INSIDE the compiled
+// binary, where files live in `/$bunfs/root/` and there is no `package.json`
+// to find. Plan B there is the module's own directory, which is what existed
+// before the helper was created.
 const PACKAGE_ROOT = findRepoRoot(import.meta.url) ?? moduleDir(import.meta.url);
 
 /**
- * Construye el contexto de un proyecto.
+ * Builds a project context.
  *
- * Prioridad de la raíz: parámetro explícito → `--project-root` en argv →
- * `POSTMAN_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
- * continuar con una raíz adivinada produce colecciones vacías sin decir
- * por qué (fue exactamente el bug del CLI con `--project-root`).
+ * Root priority: explicit parameter → `--project-root` in argv →
+ * `POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+ * with a guessed root produces empty collections without explaining why (this
+ * was exactly the CLI bug with `--project-root`).
  */
 export function resolveProjectContext(
   options: IResolveContextOptions = {},
@@ -68,7 +68,7 @@ export function resolveProjectContext(
   };
 }
 
-/** Subdirectorios convencionales del proyecto. */
+/** Conventional project subdirectories. */
 export function projectDirs(context: IProjectContext): IProjectDirs {
   return {
     routes: join(context.projectRoot, "routes"),
@@ -77,24 +77,23 @@ export function projectDirs(context: IProjectContext): IProjectDirs {
   };
 }
 
-/** Ruta absoluta a partir de una relativa al proyecto. */
+/** Absolute path from a project-relative path. */
 export function fromProjectRoot(context: IProjectContext, relPath: string): string {
   return join(context.projectRoot, relPath);
 }
 
 /**
- * Ruta relativa al proyecto, en formato POSIX.
+ * Path relative to the project, in POSIX format.
  *
- * Antes se hacía `normalized.startsWith(context.projectRoot)`, pero
- * `startsWith` no entiende de fronteras de segmento: `/home/u/api-secret`
- * matchea falsamente `/home/u/api` (x00022, audit 2026-09-04). Ahora se
- * usa la misma fórmula canónica que
- * `packages/core/helpers/path-containment.helper.ts`: `relative()` más
- * la guarda de prefijo `..${sep}` / absoluto.
+ * Previously this used `normalized.startsWith(context.projectRoot)`, but
+ * `startsWith` does not understand segment boundaries: `/home/u/api-secret`
+ * falsely matches `/home/u/api` (x00022, audit 2026-09-04). It now uses the
+ * same canonical formula as
+ * `packages/core/helpers/path-containment.helper.ts`: `relative()` plus the
+ * `..${sep}` / absolute prefix guard.
  *
- * Si `absPath` es exactamente la raíz del proyecto, se devuelve la
- * cadena vacía para preservar la idempotencia `fromProjectRoot ∘
- * toProjectRelative`.
+ * If `absPath` is exactly the project root, return the empty string to
+ * preserve the idempotence of `fromProjectRoot ∘ toProjectRelative`.
  */
 export function toProjectRelative(context: IProjectContext, absPath: string): string {
   const normalized = resolve(absPath);
@@ -106,7 +105,7 @@ export function toProjectRelative(context: IProjectContext, absPath: string): st
   return rel.split(sep).join("/");
 }
 
-/** ¿Existe este subdirectorio del proyecto? */
+/** Does this project subdirectory exist? */
 export function hasProjectDir(context: IProjectContext, relPath: string): boolean {
   return existsSync(join(context.projectRoot, relPath));
 }

@@ -1,37 +1,36 @@
 /**
- * Qué esquema de autenticación usa la API, deducido de sus endpoints.
+ * What authentication scheme the API uses, inferred from its endpoints.
  *
- * La colección salía **siempre** con `auth: { type: "bearer" }`. Da
- * igual lo que hiciera la API: una que autentica con `X-API-Key` recibía
- * un bloque bearer con un `{{token}}` que nadie rellena nunca, y una que
- * no tiene autenticación **ninguna** también. Quien importa la colección
- * se encuentra con una configuración que no es la suya y no tiene forma
- * de saber si es que la herramienta lo detectó mal o es que su API va
- * así.
+ * The collection **always** used to come out with `auth: { type: "bearer" }`. It
+ * did not matter what the API did: one authenticating with `X-API-Key` received
+ * a bearer block with a `{{token}}` nobody ever filled in, and one with
+ * **no** authentication did too. Whoever imports the collection finds a
+ * configuration that is not theirs and cannot tell whether the tool detected
+ * it incorrectly or their API is actually like that.
  *
- * Esto es del núcleo, así que no puede mirar middlewares de Laravel ni
- * decoradores de NestJS: deduce del **resultado** del escaneo, que es lo
- * único agnóstico que hay. Las señales, de más a menos fiable:
+ * This is core, so it cannot inspect Laravel middleware or NestJS decorators:
+ * it infers from the **result** of the scan, which is the only agnostic
+ * information available. The signals, from most to least reliable:
  *
- *   1. Una cabecera o query param con pinta de clave de API repetida en
- *      varios endpoints → API key.
- *   2. Un endpoint `/oauth/token` o `/oauth/authorize` → OAuth2.
- *   3. Un endpoint de login que devuelve un token → bearer.
- *   4. Nada de lo anterior → **ninguno**, y se dice.
+ *   1. A header or query parameter that looks like an API key and is repeated
+ *      across several endpoints → API key.
+ *   2. An `/oauth/token` or `/oauth/authorize` endpoint → OAuth2.
+ *   3. A login endpoint that returns a token → bearer.
+ *   4. None of the above → **none**, and it is stated.
  *
- * Cuando no hay señal, no se inventa: la colección sale sin bloque
- * `auth`, que es la respuesta honesta y además la que hace que Postman
- * no mande una cabecera `Authorization` vacía en cada petición.
+ * When there is no signal, it is not invented: the collection is emitted
+ * without an `auth` block, which is the honest answer and also prevents
+ * Postman from sending an empty `Authorization` header on every request.
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IDetectedAuthScheme, IPostmanAuth } from "../../contracts/interfaces/core/discovery.interface.js";
 import { AUTH_API_KEY_VARIABLE, AUTH_CLIENT_ID_VARIABLE, AUTH_CLIENT_SECRET_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 
 /**
- * Cabeceras que son una clave de API.
+ * Headers that are an API key.
  *
- * `Authorization` NO está: esa es el bearer, y confundirlas haría que
- * una API con login normal saliera configurada como API key.
+ * `Authorization` is not included: that is bearer, and confusing them would
+ * make an API with normal login appear configured as an API key.
  */
 const API_KEY_HEADERS = new Set([
   "x-api-key",
@@ -43,33 +42,33 @@ const API_KEY_HEADERS = new Set([
   "x-access-token",
 ]);
 
-/** Query params que son una clave de API. */
+/** Query parameters that are an API key. */
 const API_KEY_QUERY = new Set(["api_key", "apikey", "api-key", "access_token", "token"]);
 
-/** Rutas del flujo OAuth2, tal como las publica casi todo el mundo. */
+/** Routes in the OAuth2 flow, as published by most systems. */
 const OAUTH_TOKEN_RE = /\/oauth2?\/token\/?$/i;
 const OAUTH_AUTHORIZE_RE = /\/oauth2?\/authorize\/?$/i;
 
 /**
- * Cuántos endpoints tienen que compartir una cabecera para que cuente
- * como el esquema de la API.
+ * How many endpoints must share a header for it to count as the API's
+ * authentication scheme.
  *
- * Uno solo no basta: puede ser un endpoint suelto que hable con un
- * tercero. Con dos ya es una convención del proyecto.
+ * One is not enough: it may be an isolated endpoint talking to a third party.
+ * With two, it is already a project convention.
  */
 const MIN_ENDPOINTS_FOR_API_KEY = 2;
 
 /**
- * Cuenta cuántas veces aparece cada cabecera / query param que parece
- * una clave de API.
+ * Counts how many times each header or query parameter that looks like an API
+ * key appears.
  *
- * Acumula bajo la clave **canónica** (lowercase) para que `X-API-Key`
- * y `x-api-key` en endpoints distintos cuenten como 2, no como dos
- * entradas de 1 cada una que no llegan al umbral.
+ * It accumulates under the **canonical** key (lowercase) so `X-API-Key` and
+ * `x-api-key` on different endpoints count as 2, not as two entries of 1
+ * each that never reach the threshold.
  *
- * `headerDisplay` / `queryDisplay` guardan, por clave canónica, el
- * primer nombre original visto: ese es el que se muestra al usuario
- * y el que va al bloque `auth.key` de Postman.
+ * `headerDisplay` / `queryDisplay` keep, for each canonical key, the first
+ * original name seen: that is the one shown to the user and used in the
+ * Postman `auth.key` block.
  */
 function countKeyUsage(specs: ReadonlyArray<EndpointSpec>): {
   header: Map<string, number>;
@@ -101,7 +100,7 @@ function countKeyUsage(specs: ReadonlyArray<EndpointSpec>): {
   return { header, headerDisplay, query, queryDisplay };
 }
 
-/** El nombre más repetido, y cuántas veces. */
+/** The most frequent name, and how many times it appears. */
 function topEntry(counts: Map<string, number>): { name: string; count: number } | null {
   let best: { name: string; count: number } | null = null;
   for (const [name, count] of counts) {
@@ -111,17 +110,17 @@ function topEntry(counts: Map<string, number>): { name: string; count: number } 
 }
 
 /**
- * Deduce el esquema de autenticación de la API.
+ * Infers the API's authentication scheme.
  *
- * `hasLoginFlow` lo pasa el pipeline: es si el proyecto expone un
- * endpoint de sesión que el flujo de auth ha reconocido y cableado.
+ * `hasLoginFlow` is passed by the pipeline: it is whether the project exposes
+ * a session endpoint that the auth flow has recognized and wired in.
  */
 export function detectAuthScheme(
   specs: ReadonlyArray<EndpointSpec>,
   hasLoginFlow: boolean,
 ): IDetectedAuthScheme {
-  // 1. Clave de API. Va primero porque es la señal más concreta: un
-  //    nombre de cabecera concreto repetido en varios sitios.
+  // 1. API key. It comes first because it is the most concrete signal: a
+  //    specific header name repeated in several places.
   const { header, headerDisplay, query, queryDisplay } = countKeyUsage(specs);
   const topHeader = topEntry(header);
   const topQuery = topEntry(query);
@@ -145,7 +144,7 @@ export function detectAuthScheme(
     };
   }
 
-  // 2. OAuth2: sus endpoints tienen rutas muy reconocibles.
+  // 2. OAuth2: its endpoints have very recognizable paths.
   const tokenUrl = specs.find((s) => OAUTH_TOKEN_RE.test(s.uri))?.uri;
   const authorizeUrl = specs.find((s) => OAUTH_AUTHORIZE_RE.test(s.uri))?.uri;
   if (tokenUrl) {
@@ -157,7 +156,7 @@ export function detectAuthScheme(
     };
   }
 
-  // 3. Bearer: hay login y devuelve un token que el flujo ya guarda.
+  // 3. Bearer: there is login and it returns a token that the flow already stores.
   if (hasLoginFlow) {
     return {
       type: "bearer",
@@ -165,7 +164,7 @@ export function detectAuthScheme(
     };
   }
 
-  // 4. Nada. Y se dice, en vez de poner un bearer que no existe.
+  // 4. None. It is stated instead of adding a bearer that does not exist.
   return {
     type: "none",
     evidence: "no se ha encontrado ninguna señal de autenticación",
@@ -173,13 +172,12 @@ export function detectAuthScheme(
 }
 
 /**
- * Traduce el esquema detectado al bloque `auth` de Postman.
+ * Translates the detected scheme to the Postman `auth` block.
  *
- * Devuelve `null` para `none`: una colección **sin** bloque `auth` es
- * distinta de una con uno vacío. Con bloque, Postman manda una cabecera
- * `Authorization` con un valor sin resolver en cada petición, y la API
- * contesta 401 por un motivo que no tiene nada que ver con lo que se
- * estaba probando.
+ * Returns `null` for `none`: a collection **without** an `auth` block is
+ * different from one with an empty block. With a block, Postman sends an
+ * `Authorization` header with an unresolved value on every request, and the
+ * API returns 401 for a reason unrelated to what was being tested.
  */
 export function toPostmanAuth(scheme: IDetectedAuthScheme): IPostmanAuth | null {
   switch (scheme.type) {
@@ -219,10 +217,10 @@ export function toPostmanAuth(scheme: IDetectedAuthScheme): IPostmanAuth | null 
 }
 
 /**
- * Las variables de entorno que hace falta rellenar para ese esquema.
+ * Environment variables that need to be filled in for this scheme.
  *
- * Van vacías y marcadas como secreto: el valor lo pone quien usa la
- * colección, y no debe acabar en un fichero versionado.
+ * They are empty and marked as secrets: the person using the collection
+ * supplies the value, and it must not end up in a versioned file.
  */
 export function authVariablesFor(
   scheme: IDetectedAuthScheme,
@@ -235,8 +233,8 @@ export function authVariablesFor(
         { key: AUTH_CLIENT_ID_VARIABLE, value: "", type: "secret" },
         { key: AUTH_CLIENT_SECRET_VARIABLE, value: "", type: "secret" },
       ];
-    // El bearer ya las trae del flujo de login (`authUsername`,
-    // `authPassword`, `token`), y `none` no necesita ninguna.
+    // Bearer already gets them from the login flow (`authUsername`,
+    // `authPassword`, `token`), and `none` needs none.
     case "bearer":
     case "none":
       return [];

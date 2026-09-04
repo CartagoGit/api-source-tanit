@@ -1,20 +1,20 @@
 /**
- * Genera environments Postman v2.1.0 agnósticos.
+ * Generates agnostic Postman v2.1.0 environments.
  *
- * Un environment contiene las variables (baseUrl, token, etc.) que las
- * requests de la colección referencian con `{{x}}`. Sin un environment
- * importado, el usuario tiene que crear las variables a mano.
+ * An environment contains the variables (baseUrl, token, etc.) that the
+ * collection's requests reference with `{{x}}`. Without an imported
+ * environment, the user has to create the variables manually.
  *
- * Detecta automáticamente:
- *   - Variables `{{x}}` en todas las URIs de los specs.
- *   - Variables definidas en `ProjectConfig.variables` (ganan).
- *   - baseUrl/token base si no están ya en el config.
+ * Automatically detects:
+ *   - `{{x}}` variables in all spec URIs.
+ *   - Variables defined in `ProjectConfig.variables` (they win).
+ *   - Default baseUrl/token if they are not already in the config.
  *
- * Multi-entorno (dev/staging/prod):
- *   - `--envs dev,staging,prod` genera un environment por nombre.
- *   - Cada uno solo difiere en `baseUrl`.
- *   - Los `baseUrl` se autodetectan de `.env`, `.env.example`, `APP_ENV`
- *     o de la convención `<dominio>.local/<dominio>/<subdominio>`.
+ * Multi-environment (dev/staging/prod):
+ *   - `--envs dev,staging,prod` generates one environment per name.
+ *   - Each differs only in `baseUrl`.
+ *   - `baseUrl` values are auto-detected from `.env`, `.env.example`,
+ *     `APP_ENV`, or the `<domain>.local/<domain>/<subdomain>` convention.
  */
 import { environmentIdFor } from "../helpers/collection-identity.helper.js";
 import type {
@@ -25,14 +25,14 @@ import type {
 import type { EnvironmentDef } from "../../contracts/interfaces/core/domain.interface.js";
 import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
-/** Variables base que Postman necesita SIEMPRE. */
+/** Base variables that Postman ALWAYS needs. */
 const BASE_VARIABLES: PostmanVariable[] = [
   { key: "baseUrl", value: DEFAULT_BASE_URL, type: "string" },
   { key: "token", value: "", type: "string" },
 ];
 
 
-/** Extrae los path params (`{{x}}`) de todas las URIs del catálogo. */
+/** Extracts path params (`{{x}}`) from all URIs in the catalog. */
 function inferPathVariables(specs: EndpointSpec[]): PostmanVariable[] {
   const seen = new Set<string>();
   for (const spec of specs) {
@@ -54,8 +54,8 @@ function inferPathVariables(specs: EndpointSpec[]): PostmanVariable[] {
   return out;
 }
 
-/** Fusiona variables del config + base + path params (config gana, pero
- * si el config tiene `value=""` se rellena con el ejemplo inferido). */
+/** Merges config, base, and path variables (config wins, but if the
+ * config has `value=""`, it is filled with the inferred example). */
 function mergeVariables(
   configVariables: PostmanVariable[],
   inferred: PostmanVariable[],
@@ -67,8 +67,8 @@ function mergeVariables(
   }
   for (const v of configVariables) {
     const existing = merged.get(v.key);
-    // Si el config tiene valor vacío y hay ejemplo inferido, usamos el
-    // ejemplo. Si el config tiene valor explícito (no vacío), gana.
+    // If the config has an empty value and an inferred example exists, use the
+    // example. If the config has an explicit (non-empty) value, it wins.
     if (existing && v.value === "" && existing.value !== "") {
       merged.set(v.key, { ...v, value: existing.value });
     } else {
@@ -79,15 +79,15 @@ function mergeVariables(
 }
 
 /**
- * Construye UN environment.
+ * Builds ONE environment.
  *
- * @param name         Nombre del environment (ej. "Dev" o "Mi App · dev").
- * @param variables    Variables fusionadas (config + base + path).
- * @param overrides    Mapa que SOBREESCRIBE valores finales (ej. baseUrl).
- * @param color        Color de la etiqueta en Postman.
- * @param collectionId Id de la colección a la que pertenece; entra en la
- *                     semilla del id del environment para que dos
- *                     proyectos con un entorno "Local" no colisionen.
+ * @param name         Environment name (e.g. "Dev" or "My App · dev").
+ * @param variables    Merged variables (config + base + path).
+ * @param overrides    Map that OVERWRITES final values (e.g. baseUrl).
+ * @param color        Tag color in Postman.
+ * @param collectionId ID of the collection it belongs to; included in the
+ *                     environment ID seed so two projects with a "Local"
+ *                     environment do not collide.
  */
 export function buildEnvironment(
   name: string,
@@ -106,9 +106,9 @@ export function buildEnvironment(
         : ("default" as const),
   }));
 
-  // Mismo motivo que en la colección: un id aleatorio hace que cada
-  // import cree un environment nuevo en lugar de actualizar el que ya
-  // está (p00014). Se deriva del nombre del entorno + el de la colección.
+  // Same reason as in the collection: a random ID makes every import create
+  // a new environment instead of updating the existing one (p00014). It is
+  // derived from the environment name and the collection name.
   const environmentId = environmentIdFor(collectionId, name);
   const env: PostmanEnvironment = {
     id: environmentId,
@@ -122,8 +122,8 @@ export function buildEnvironment(
 }
 
 /**
- * Construye múltiples environments aplicando cada `overrides` al set
- * base de variables.
+ * Builds multiple environments by applying each set of `overrides` to the
+ * base set of variables.
  */
 export function buildEnvironments(
   specs: EndpointSpec[],
@@ -139,7 +139,7 @@ export function buildEnvironments(
   );
 }
 
-/** Detecta automáticamente entornos dev/staging/prod desde el config. */
+/** Automatically detects dev/staging/prod environments from the config. */
 export function defaultEnvironments(
   baseUrl: string,
 ): EnvironmentDef[] {

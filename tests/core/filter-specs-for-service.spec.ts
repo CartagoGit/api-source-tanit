@@ -153,6 +153,41 @@ describe("filterSpecsForService (x00028)", () => {
     expect(out.map((s) => s.uri)).toEqual(["/z", "/a", "/m"]);
   });
 
+  it("parameterized routes survive: route `:id` (raw) matches spec `{{id}}` (Postman)", () => {
+    // Regression caught the same day x00028 shipped: the identity set
+    // was built from the RAW uri strings, but `ParsedRoute.uri` and
+    // `EndpointSpec.uri` travel in different formats — the scanner
+    // emits the framework syntax (`/users/:id`) and the adapter
+    // converts to Postman form (`/users/{{id}}`). Comparing raw
+    // strings dropped every parameterized route from the filtered
+    // catalog: the express example lost `GET/PUT/DELETE /users/:id`
+    // and the CLI aborted with "3 in the routes but NOT in the
+    // collection". The identity must be normalized on BOTH sides
+    // (`:id`, `{id}` and `{{id}}` all collapse to `:p`).
+    const catalog: EndpointSpec[] = [
+      spec("GET", "/api/users"),
+      spec("GET", "/api/users/{{id}}"),
+      spec("PUT", "/api/users/{{id}}"),
+      spec("DELETE", "/api/users/{{id}}"),
+    ];
+    const svc = service("default", [
+      route("GET", "/api/users"),
+      route("GET", "/api/users/:id"),
+      route("PUT", "/api/users/:id"),
+      route("DELETE", "/api/users/:id"),
+    ]);
+
+    const out = filterSpecsForService(catalog, svc);
+
+    expect(out).toHaveLength(4);
+    expect(out.map((s) => s.uri)).toEqual([
+      "/api/users",
+      "/api/users/{{id}}",
+      "/api/users/{{id}}",
+      "/api/users/{{id}}",
+    ]);
+  });
+
   it("specs with name/body overrides survive filtering (no accidental strip)", () => {
     // The filter is on `(method, uri)` only. Specs that came back
     // from the merger with `name`, `body`, `fields` or `auth`

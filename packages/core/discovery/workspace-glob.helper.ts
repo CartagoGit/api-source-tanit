@@ -1,67 +1,61 @@
 /**
- * Resolver de globs de workspaces — a00012 S1.a.
+ * Workspace glob resolver — a00012 S1.a.
  *
- * Helper **puro** (sin estado de instancia, sin `process.cwd()`): toma
- * los globs que salen del parser de `package.json`, `turbo.json`,
- * `lerna.json` o `pnpm-workspace.yaml` y los convierte en las
- * carpetas reales bajo `projectRoot`.
+ * A **pure** helper (no instance state, no `process.cwd()`) that takes the
+ * globs produced by the `package.json`, `turbo.json`, `lerna.json`, or
+ * `pnpm-workspace.yaml` parsers and resolves them to actual directories under
+ * `projectRoot`.
  *
- * ## Por qué hace falta
+ * ## Why it is needed
  *
- * La versión anterior (`resolveWorkspaceDirs`, dentro de
- * `monorepo-detector.helper.ts`) partía el glob por el primer `*` y
- * devolvía el prefijo: `apps/*` → `apps`, no `apps/api` ni
- * `apps/web`. Eso significaba que el orquestador recibía el
- * contenedor y tenía que re-enumerar dentro, perdiendo precisión
- * cuando el prefijo era un wildcard con muchos hijos y
- * `frameworkSearchRoot` nunca podía inferirse correctamente.
+ * The previous version (`resolveWorkspaceDirs`, inside
+ * `monorepo-detector.helper.ts`) split the glob at the first `*` and returned
+ * only the prefix: `apps/*` → `apps`, not `apps/api` or `apps/web`. The
+ * orchestrator therefore received the container and had to enumerate its
+ * children again, losing precision when the wildcard prefix had many
+ * children and `frameworkSearchRoot` could not be inferred reliably.
  *
- * ## Comportamiento
+ * ## Behavior
  *
- * - **Sin meta-caracteres** (`*`, `?`, `**`, `{...}`): se trata como
- *   literal. Se mira `statSync` y se devuelve el path relativo POSIX
- *   si existe dentro de `projectRoot`.
- * - **Con `*` o `?` pero sin `**`**: enumera los descendientes
- *   directos del prefijo (`apps/*` → hijos de `apps`) y filtra con un
- *   regex que convierte `*` → `[^/]*`, `?` → `[^/]` y `**` → `.*`.
- *   Solo directorios.
- * - **Con `**`**: enumera recursivamente los descendientes del
- *   prefijo.
- * - **Exclusiones (`!apps/test`)**: se quitan del resultado final.
- *   Si una inclusión y una exclusión matchean el mismo path, la
- *   exclusión gana. Las exclusiones se resuelven por el mismo camino
- *   que las inclusiones (también pueden ser globs).
- * - **Normalización**: rechaza absolutos, vacíos y escapes fuera de
- *   `projectRoot` antes de tocar el disco. Los resultados siempre
- *   son POSIX relativo, sin `./`, sin absolutos, sin `..`.
- * - **Determinismo**: los paths se ordenan lexicográficamente y se
- *   deduplican. Dos invocaciones idénticas producen el mismo output
- *   en el mismo orden.
- * - **I/O silenciosa**: si un prefijo no es un directorio (no
- *   existe, es archivo, falta permiso), se ignora en silencio y se
- *   continúa.
+ * - **No metacharacters** (`*`, `?`, `**`, `{...}`): treat the value as a
+ *   literal. Call `statSync` and return the POSIX-relative path if it exists
+ *   within `projectRoot`.
+ * - **With `*` or `?` but no `**`**: enumerate the direct descendants of
+ *   the prefix (`apps/*` → children of `apps`) and filter with a regex that
+ *   converts `*` → `[^/]*`, `?` → `[^/]`, and `**` → `.*`. Directories only.
+ * - **With `**`**: recursively enumerate descendants of the prefix.
+ * - **Exclusions (`!apps/test`)**: remove these from the final result. If
+ *   an inclusion and an exclusion match the same path, the exclusion wins.
+ *   Exclusions use the same resolution path as inclusions and may also be
+ *   globs.
+ * - **Normalization**: reject absolute, empty, and escaping values outside
+ *   `projectRoot` before touching the file system. Results are always
+ *   POSIX-relative, without `./`, absolute components, or `..`.
+ * - **Determinism**: sort paths lexicographically and deduplicate them. Two
+ *   identical invocations produce the same output in the same order.
+ * - **Quiet I/O**: silently ignore a prefix that is not a directory (it does
+ *   not exist, is a file, or permissions are missing) and continue.
  *
- * ## Sin dependencias externas
+ * ## No external dependencies
  *
- * El proyecto no requiere npm packages para este resolver; `@types/node`
- * no está en `dependencies` y `bun-types` no aporta matchers POSIX.
- * El recorrido se hace con `node:fs` síncrono (es boot-time / una vez
- * por escaneo, no hot path) y el matching es un regex ASCII construido
- * a mano.
+ * The project needs no npm package for this resolver; `@types/node` is not
+ * in `dependencies`, and `bun-types` provides no POSIX matchers. Traversal
+ * uses synchronous `node:fs` I/O (boot-time, once per scan, not a hot path),
+ * and matching uses a hand-built ASCII regex.
  */
 import { readdirSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, sep } from "node:path";
 
 /**
- * Materializa una lista de globs de workspaces en directorios reales.
+ * Materializes a list of workspace globs into real directories.
  *
- * @param projectRoot Raíz absoluta del proyecto (los callers ya la
- *   absolutizaron fuera de este helper).
- * @param globs Globs en formato POSIX relativo, posiblemente
- *   prefijados con `!` para excluirlos.
- * @returns Directorios existentes bajo `projectRoot`, en formato
- *   POSIX relativo, ordenados lexicográficamente y deduplicados.
- *   Una ruta raíz inválida devuelve `[]`.
+ * @param projectRoot Absolute project root (callers have already converted
+ *   it to an absolute path outside this helper).
+ * @param globs Relative POSIX globs, optionally prefixed with `!` to mark
+ *   exclusions.
+ * @returns Existing directories under `projectRoot` in POSIX-relative form,
+ *   sorted lexicographically and deduplicated. An invalid root path returns
+ *   `[]`.
  */
 export async function resolveWorkspaceGlobs(
   projectRoot: string,
@@ -80,8 +74,8 @@ export async function resolveWorkspaceGlobs(
     const stripped = isExclusion ? trimmed.slice(1).trim() : trimmed;
     if (stripped.length === 0) continue;
 
-    // Normalizamos siempre: el parser ya normaliza, pero este helper
-    // también rechaza absolutos y escapes como contrato público.
+    // Always normalize: the parser already normalizes, but this helper also
+    // rejects absolute paths and escapes as part of its public contract.
     const normalized = normalizePosixRelative(stripped);
     if (!normalized) continue;
 
@@ -99,8 +93,8 @@ export async function resolveWorkspaceGlobs(
 }
 
 /**
- * Resuelve un único glob ya normalizado a sus directorios reales.
- * Es la bifurcación entre literales y patrones.
+ * Resolves one already-normalized glob to its real directories. This is the
+ * branch between literals and patterns.
  */
 function resolveSingleGlob(
   projectRoot: string,
@@ -110,7 +104,7 @@ function resolveSingleGlob(
   return resolvePattern(projectRoot, glob);
 }
 
-/** Literal: `existsSync` y POSIX relativo. */
+/** Literal: `existsSync` and POSIX-relative. */
 function resolveLiteral(
   projectRoot: string,
   relPath: string,
@@ -130,13 +124,12 @@ function resolveLiteral(
 }
 
 /**
- * Patrón: enumera el prefijo y filtra con regex.
+ * Pattern: enumerate the prefix and filter with a regex.
  *
- * El "prefijo" es todo lo anterior al primer meta-carácter
- * (`*`, `?`, `{`). Si el prefijo no existe o no es directorio, se
- * devuelve `[]` sin error. El `**` controla la profundidad: si está
- * presente, se enumeran todos los descendientes; si no, solo los
- * hijos directos.
+ * The "prefix" is everything before the first metacharacter
+ * (`*`, `?`, `{`). If the prefix does not exist or is not a directory,
+ * return `[]` without an error. `**` controls depth: when present, enumerate
+ * all descendants; otherwise enumerate only direct children.
  */
 function resolvePattern(
   projectRoot: string,
@@ -172,16 +165,16 @@ function resolvePattern(
   return out;
 }
 
-/** Prefijo de un glob (todo lo anterior al primer meta-carácter). */
+/** Glob prefix (everything before the first metacharacter). */
 function globPrefix(glob: string): string {
   const match = /^([^*?{]*)/.exec(glob);
   const prefix = match?.[1] ?? "";
-  // Quitar un `/` final para que `join` no introduzca un separador
-  // vacío cuando el prefijo es exactamente el directorio padre.
+  // Remove a trailing `/` so `join` does not introduce an empty separator
+  // when the prefix is exactly the parent directory.
   return prefix.replace(/\/$/, "");
 }
 
-/** ¿Este glob tiene meta-caracteres que requieren expansión? */
+/** Does this glob have metacharacters that require expansion? */
 function hasMeta(glob: string): boolean {
   return /[*?{]/.test(glob);
 }
@@ -223,17 +216,16 @@ function enumerateRecursive(rootDir: string): string[] {
 }
 
 /**
- * Convierte un glob POSIX relativo en un regex anclado.
+ * Converts a POSIX-relative glob into an anchored regex.
  *
- * Reglas (todas ASCII):
- *  - `**` → `.*` (matchea `/` también)
- *  - `*` → `[^/]*` (no matchea `/`)
- *  - `?` → `[^/]` (un solo carácter, no `/`)
- *  - Otros caracteres regex (`.+(){}|^$[]\`) se escapan.
+ * Rules (all ASCII):
+ *  - `**` → `.*` (also matches `/`)
+ *  - `*` → `[^/]*` (does not match `/`)
+ *  - `?` → `[^/]` (one character, not `/`)
+ *  - Other regex characters (`.+(){}|^$[]\`) are escaped.
  *
- * No soportamos `{a,b}` (brace expansion) más allá de escapar las
- * llaves: los configs reales de workspaces no las usan dentro de la
- * parte dinámica.
+ * We do not support `{a,b}` brace expansion beyond escaping the braces: real
+ * workspace configs do not use braces within the dynamic part.
  */
 function globToRegExp(glob: string): RegExp {
   let pattern = "^";
@@ -270,19 +262,19 @@ function globToRegExp(glob: string): RegExp {
 }
 
 /**
- * Normaliza un glob/ruta a formato POSIX relativo, rechazando
- * escapes y absolutos. Si la entrada colapsa a algo que escapa de
- * la raíz (`..` al principio) o a vacío, se devuelve `null`.
+ * Normalizes a glob or path to POSIX-relative form, rejecting escapes and
+ * absolute paths. If the input collapses to a value that escapes the root
+ * (a leading `..`) or to an empty value, return `null`.
  *
- * Acepta:
+ * Accepts:
  *  - `apps/api`
- *  - `./apps/api` (se quita el `./`)
+ *  - `./apps/api` (removes `./`)
  *  - `apps/../api` → `api`
  *
- * Rechaza:
- *  - `` (vacío) y `.`
+ * Rejects:
+ *  - `` (empty) and `.`
  *  - `/abs/path`
- *  - `apps/../../etc` (escapa)
+ *  - `apps/../../etc` (escapes)
  */
 function normalizePosixRelative(value: string): string | null {
   let cleaned = value.trim().replace(/\\/g, "/");
@@ -310,18 +302,18 @@ function normalizePosixRelative(value: string): string | null {
   return out.join("/");
 }
 
-/** Convierte un path absoluto en su forma POSIX relativa a `projectRoot`. */
+/** Converts an absolute path to its POSIX-relative form from `projectRoot`. */
 function toPosixRelative(projectRoot: string, absolute: string): string {
   const rel = relative(projectRoot, absolute);
   return rel.split(sep).join("/");
 }
 
 /**
- * ¿Este path relativo cae dentro de `projectRoot` sin escapar?
+ * Does this relative path fall within `projectRoot` without escaping?
  *
- * Se considera "dentro" un path no vacío, no absoluto, sin `..` y
- * distinto de `.`. La normalización ya colapsa `..` previos; si
- * aparece un `..` en el resultado, significa que escapó.
+ * A path is considered "inside" when it is non-empty, not absolute, has no
+ * `..`, and is not `.`. Normalization has already collapsed prior `..`; if a
+ * `..` appears in the result, the path escaped.
  */
 function isInsideProjectRoot(relPath: string): boolean {
   if (relPath.length === 0 || relPath === ".") return false;

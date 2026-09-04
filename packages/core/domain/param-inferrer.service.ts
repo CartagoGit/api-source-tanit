@@ -1,20 +1,20 @@
 /**
- * Inferencia agnóstica de path params, query params y body para endpoints
- * SIN FormRequest asociado.
+ * Agnostic inference of path params, query params, and body for endpoints
+ * WITHOUT an associated FormRequest.
  *
- * El paquete no depende de ningún proyecto Laravel concreto: las
- * heurísticas son **morfológicas** (forma de la URI, método HTTP, convenciones
- * REST) y se aplican a CUALQUIER proyecto.
+ * The package does not depend on any specific Laravel project: the
+ * heuristics are **morphological** (URI shape, HTTP method, REST conventions)
+ * and apply to ANY project.
  *
- * Las decisiones que toma son conservadoras y, si la heurística no es
- * segura, simplemente no añade nada. Postman seguirá siendo útil, solo
- * perderemos ejemplos automáticos para esos casos.
+ * The decisions it makes are conservative; if a heuristic is not
+ * safe, it simply adds nothing. Postman remains useful; we only lose
+ * automatic examples for those cases.
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { BodyInference, InferApplyStats } from "../../contracts/interfaces/core/domain.interface.js";
 import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
-/** Path params detectados en una URI ya normalizada a Postman (`{{x}}`). */
+/** Path params detected in a URI already normalized for Postman (`{{x}}`). */
 export function extractPathParams(uri: string): string[] {
   return [...uri.matchAll(/\{\{([^}]+)\}\}/g)]
     .map((m) => m[1])
@@ -22,10 +22,10 @@ export function extractPathParams(uri: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Sugerencias de valor para path params (agnóstico del proyecto).
+// Value suggestions for path params (project-agnostic).
 // ---------------------------------------------------------------------------
 
-/** Patrones del nombre → ejemplo plausible (camel/snake/kebab-case). */
+/** Name patterns → plausible example (camel/snake/kebab-case). */
 const PATH_PARAM_HINTS: Array<{ re: RegExp; value: string }> = [
   { re: /(^|_)id($|_)/i, value: "1" },
   { re: /(^|_)codigo($|_)/i, value: "CODIGO001" },
@@ -39,7 +39,7 @@ const PATH_PARAM_HINTS: Array<{ re: RegExp; value: string }> = [
   { re: /uuid/i, value: "00000000-0000-0000-0000-000000000001" },
 ];
 
-/** Si el nombre parece un identificador puro (sin semántica), usa "1". */
+/** If the name looks like a pure identifier (with no semantics), use "1". */
 export function exampleForPathParam(name: string): string {
   for (const hint of PATH_PARAM_HINTS) {
     if (hint.re.test(name)) return hint.value;
@@ -48,7 +48,7 @@ export function exampleForPathParam(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Sugerencias de query params (heurística REST-agnóstica).
+// Query parameter suggestions (REST-agnostic heuristics).
 // ---------------------------------------------------------------------------
 
 const COMMON_QUERY_FIELDS = [
@@ -103,10 +103,10 @@ const QUERY_FIELD_HINTS: Array<{ re: RegExp; value: string }> = [
 ];
 
 /**
- * Un valor de ejemplo plausible para un parámetro de query, por su nombre.
+ * A plausible example value for a query parameter, based on its name.
  *
- * `page` da un número y `search` da texto. Es heurística pura: sirve para
- * que la request se pueda lanzar sin editarla, no para acertar.
+ * `page` gives a number and `search` gives text. It is pure heuristics: it
+ * makes the request runnable without editing it; it does not aim to be exact.
  */
 export function exampleForQueryField(name: string): string {
   for (const h of QUERY_FIELD_HINTS) if (h.re.test(name)) return h.value;
@@ -114,7 +114,7 @@ export function exampleForQueryField(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Sugerencias de body (POST/PUT/PATCH sin FormRequest).
+// Body suggestions (POST/PUT/PATCH without a FormRequest).
 // ---------------------------------------------------------------------------
 
 const ARRAY_HINT_FIELDS = new Set([
@@ -146,11 +146,11 @@ function exampleForBodyField(name: string, hint?: string): unknown {
   if (hint) {
     if (/^id$|^codigo$/.test(hint.toLowerCase())) return "1";
   }
-  // `lname` ya está en minúsculas, así que los sufijos camelCase
-  // (`Id`, `Codigo`) solo pueden casarse contra el nombre ORIGINAL.
-  // Compararlos contra `lname` era compararlos contra una cadena que
-  // no contiene mayúsculas: rama muerta y `DepartamentoId` caía al
-  // fallback genérico en vez de al ejemplo del sufijo.
+  // `lname` is already lowercase, so camelCase suffixes (`Id`, `Codigo`)
+  // can only match against the ORIGINAL name. Comparing them against `lname`
+  // was comparing them against a string with no uppercase letters: a dead
+  // end, and `DepartamentoId` fell back generically instead of using the
+  // suffix example.
   if (lname.endsWith("_id") || name.endsWith("Id")) return "1";
   if (lname.endsWith("_codigo") || name.endsWith("Codigo")) return "COD001";
   if (lname === "email") return "user@example.com";
@@ -178,16 +178,16 @@ function exampleForBodyField(name: string, hint?: string): unknown {
 }
 
 /**
- * Intenta producir un body útil para un endpoint sin FormRequest usando
- * heurísticas REST-agnósticas:
+ * Attempts to produce a useful body for an endpoint without a FormRequest using
+ * REST-agnostic heuristics:
  *
- *   - action POST sin path params (p. ej. `/usuarios/despersonar`): `{}`.
- *   - action POST con path param (p. ej. `/productos/{{id}}/reindexa`):
- *     añade campo `force: true` si el segmento final sugiere "reindex",
+ *   - POST action without path params (e.g. `/usuarios/despersonar`): `{}`.
+ *   - POST action with a path param (e.g. `/productos/{{id}}/reindexa`):
+ *     adds a `force: true` field if the final segment suggests "reindex",
  *     "cancel", "force", etc.
- *   - PUT/PATCH siempre lleva al menos un campo booleano/flag agnóstico.
+ *   - PUT/PATCH always includes at least one agnostic boolean/flag field.
  *
- * Devuelve `null` si no encuentra una heurística segura.
+ * Returns `null` if it cannot find a safe heuristic.
  */
 export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null {
   const method = spec.method.toUpperCase();
@@ -196,7 +196,7 @@ export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null {
   const segs = spec.uri.split("/").filter(Boolean);
   const last = segs[segs.length - 1] ?? "";
 
-  // Acciones explícitas sobre un id → body ligero contextual al verbo.
+  // Explicit actions on an id → lightweight body contextual to the verb.
   const actionMatch = last.match(
     /(cancel|reindex|reindexa|reactivate|reactivar|restore|restaurar|approve|aprobar|reject|rechazar|disable|enable|resend|reenviar|purge|flush|reset|refresh|sincronizar|importar|exportar|ejecutar|force|publish|publicar)/i,
   );
@@ -207,16 +207,16 @@ export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null {
     };
   }
 
-  // POST /despersonar, /logout → no necesita body.
+  // POST /despersonar, /logout → no body needed.
   if (last === "despersonar" || last === "logout" || last === "desactivar") {
     return { reason: `Acción sin body esperado`, body: {} };
   }
 
-  // POST/PUT genérico → body con campos basados en el resource del path.
-  // Solo si el penúltimo segmento parece un id (no aporta info).
+  // Generic POST/PUT → body with fields based on the path's resource.
+  // Only if the penultimate segment looks like an id (it adds no information).
   const resource = segs.length >= 2 ? (segs[segs.length - 2] ?? "") : "";
   const body: Record<string, unknown> = {};
-  // Body mínimo agnóstico con dos campos genéricos del recurso.
+  // Minimal agnostic body with two generic resource fields.
   if (resource) {
     body["force"] = false;
     body["notes"] = `${method} operation on ${resource}`;
@@ -225,14 +225,14 @@ export function inferBodyForSpec(spec: EndpointSpec): BodyInference | null {
 }
 
 /**
- * Genera query params por defecto para un endpoint GET sin FormRequest.
+ * Generates default query params for a GET endpoint without a FormRequest.
  *
- * - Si la URI tiene path params que sugieran un único recurso (show),
- *   añade solo `with=all` para forzar relaciones.
- * - Si parece un listado/index (URI sin `{`, último segmento es plural
- *   común o no es un verbo), añade paginación + búsqueda.
+ * - If the URI has path params that suggest a single resource (show), adds
+ *   only `with=all` to force relationships.
+ * - If it looks like a list/index (URI without `{`, last segment is a
+ *   common plural or not a verb), adds pagination + search.
  *
- * Conservador: si no encaja con nada, devuelve `[]`.
+ * Conservative: if it matches nothing, returns `[]`.
  */
 export function inferQueryForSpec(spec: EndpointSpec): Array<{
   key: string;
@@ -244,14 +244,14 @@ export function inferQueryForSpec(spec: EndpointSpec): Array<{
   const last = segs[segs.length - 1] ?? "";
   const hasPathParam = extractPathParams(spec.uri).length > 0;
 
-  // show/get: solo un id en URI → añade `include` opcional.
+  // show/get: only one id in the URI → adds optional `include`.
   if (hasPathParam) {
     return [
       { key: "include", value: "all", description: "Relaciones a incluir" },
     ];
   }
 
-  // Colección sin paginación obvia: añadimos `pagina` e `items_por_pagina`.
+  // Collection without obvious pagination: add `pagina` and `items_por_pagina`.
   const skipPagination = /alive|auth-test|historial|blacklist|codigos|log|pdf|csv|excel/.test(
     last.toLowerCase(),
   );
@@ -268,19 +268,19 @@ export function inferQueryForSpec(spec: EndpointSpec): Array<{
 }
 
 // ---------------------------------------------------------------------------
-// Descubrimiento de variables de colección
+// Collection variable discovery
 // ---------------------------------------------------------------------------
 
 /**
- * Construye un set de variables `{{...}}` a partir de un catálogo de
- * `EndpointSpec`. Se usa como fallback cuando el `ProjectConfig` no trae
- * ninguna lista de variables.
+ * Builds a set of `{{...}}` variables from an `EndpointSpec` catalog.
+ * It is used as a fallback when `ProjectConfig` does not provide a variable
+ * list.
  *
- * Reglas agnósticas:
- *   - `baseUrl`, `token` siempre se incluyen.
- *   - Cualquier `{{algo}}` que aparezca en URIs se incluye si NO estaba
- *     ya presente en `configVariables`.
- *   - El valor por defecto se infiere con `exampleForPathParam()`.
+ * Agnostic rules:
+ *   - `baseUrl`, `token` are always included.
+ *   - Any `{{something}}` appearing in URIs is included if it was NOT
+ *     already present in `configVariables`.
+ *   - The default value is inferred with `exampleForPathParam()`.
  */
 export function inferCollectionVariables(
   specs: EndpointSpec[],
@@ -288,9 +288,9 @@ export function inferCollectionVariables(
 ): Array<{ key: string; value: string; type: string }> {
   const out = new Map<string, { value: string; type: string }>();
 
-  // Lo que el host declara manda, incluidos sus valores: sobrescribirlos
-  // con "" tiraba a la basura el `baseUrl` de producción que el proyecto
-  // hubiera configurado.
+  // The host's declarations take precedence, including their values: overwriting
+  // them with "" discarded the production `baseUrl` the project had
+  // configured.
   for (const v of configVariables) {
     out.set(v.key, { value: v.value ?? "", type: v.type ?? "string" });
   }
@@ -310,18 +310,18 @@ export function inferCollectionVariables(
 }
 
 // ---------------------------------------------------------------------------
-// Application al catálogo
+// Applying to the catalog
 // ---------------------------------------------------------------------------
 
 /**
- * Enriquece los specs que NO tienen FormRequest con body y query
- * inferidos de forma agnóstica. NO toca los specs que ya tienen FR
- * ni los que ya traen body/query manual.
+ * Enriches specs WITHOUT a FormRequest with inferred body and query in an
+ * agnostic way. It does NOT touch specs that already have FR or manually
+ * supplied body/query.
  */
 export function applyAgnosticInference(
   specs: EndpointSpec[],
   options: {
-    /** Forzar inferencia aunque haya FR resuelto. */
+    /** Force inference even when a resolved FR exists. */
     overrideExisting?: boolean;
   } = {},
 ): InferApplyStats {
@@ -349,10 +349,10 @@ export function applyAgnosticInference(
       stats.skippedManual += 1;
     }
 
-    // Un `query: []` y la propiedad ausente son la misma cosa: "sin
-    // query". Un array vacío es truthy, así que el guardián original
-    // (`!s.query`) dejaba fuera de la heurística a la mayoría de los
-    // specs, que llegan con `[]` desde el adapter.
+    // A `query: []` and the missing property are the same thing: "without
+    // query". An empty array is truthy, so the original guard (`!s.query`)
+    // left most specs out of the heuristic, since they arrive with `[]` from
+    // the adapter.
     if (!s.query || s.query.length === 0) {
       const q = inferQueryForSpec(s);
       if (q.length > 0) {
@@ -364,11 +364,11 @@ export function applyAgnosticInference(
   return stats;
 }
 
-// Re-export para que el package.json (CLI) pueda usar el helper.
+// Re-export so package.json (CLI) can use the helper.
 /**
- * Piezas internas expuestas **solo** para sus tests.
+ * Internal pieces exposed **only** for their tests.
  *
- * El guion bajo es la señal: no forman parte del contrato del módulo.
+ * The underscore is the signal: they are not part of the module contract.
  */
 export const _internals = {
   PATH_PARAM_HINTS,
