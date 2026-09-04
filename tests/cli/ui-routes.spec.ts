@@ -14,6 +14,7 @@
 import { describe, expect, test } from "vitest";
 
 import { handleUiRequest } from "../../packages/ui/server/ui-routes.service";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface";
 import type { IUiDeps } from "../../packages/contracts/interfaces/cli/ui.interface";
 
@@ -478,7 +479,10 @@ describe("/api/generate", () => {
   test("el destino por defecto, dentro del proyecto, no genera aviso", async () => {
     const r = await handleUiRequest(
       "/api/generate",
-      { projectRoot: "/x", outputDir: "/x/export-to-postman" },
+      // La carpeta convencional es la constante del proyecto
+      // (`OUTPUT_DIR_NAME`); hardcodear el nombre aquí es lo que
+      // rompió este test en el rebrand b00001.
+      { projectRoot: "/x", outputDir: `/x/${OUTPUT_DIR_NAME}` },
       deps(),
     );
     expect(r.status).toBe(200);

@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 
 import { planDryRun } from "../../packages/ui/server/dry-run.service";
 import { generateWithAllFrameworks } from "../../packages/frameworks/index";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
@@ -50,7 +51,7 @@ describe("qué dice el ensayo", () => {
 
   test("por defecto va a la carpeta convencional", () => {
     const plan = planDryRun({ projectRoot: proyecto, result: resultado });
-    expect(plan.outputDir).toBe(join(proyecto, "export-to-postman"));
+    expect(plan.outputDir).toBe(join(proyecto, OUTPUT_DIR_NAME));
   });
 
   test("y respeta la que se le pida", () => {
@@ -107,7 +108,7 @@ describe("lo que de verdad asusta: sobrescribir", () => {
   test("un fichero que ya está sale marcado, y contado", async () => {
     const conAlgo = join(work, "con-algo");
     await copyExampleClean(exampleDir("express"), conAlgo);
-    const salida = join(conAlgo, "export-to-postman");
+    const salida = join(conAlgo, OUTPUT_DIR_NAME);
     await rm(salida, { recursive: true, force: true });
     await mkdtemp(join(tmpdir(), "x-"));
     const { mkdir } = await import("node:fs/promises");
@@ -146,7 +147,7 @@ describe("y sobre todo: acierta", () => {
   test("lo que el ensayo anuncia es lo que `generate` escribe", async () => {
     const real = join(work, "de-verdad");
     await copyExampleClean(exampleDir("express"), real);
-    await rm(join(real, "export-to-postman"), { recursive: true, force: true });
+    await rm(join(real, OUTPUT_DIR_NAME), { recursive: true, force: true });
 
     const plan = planDryRun({
       projectRoot: real,
@@ -162,7 +163,7 @@ describe("y sobre todo: acierta", () => {
       "postman,openapi",
     ]);
 
-    const enDisco = (await readdir(join(real, "export-to-postman"))).sort();
+    const enDisco = (await readdir(join(real, OUTPUT_DIR_NAME))).sort();
     const anunciados = plan.files
       .map((f) => f.path.split("/").pop()!)
       .sort();

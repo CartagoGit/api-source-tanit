@@ -1,25 +1,24 @@
 /**
- * `DiscoveryOrchestrator` — punto de entrada único del discovery
- * framework-agnostic.
+ * `DiscoveryOrchestrator` — the single entry point for framework-agnostic
+ * discovery.
  *
- * Acepta una lista de `IProjectScanner` (cada uno cubre un framework),
- * los evalúa contra el `projectRoot` y los ordena por score.
- * Si hay empate, el orden de la lista manda.
+ * Accepts a list of `IProjectScanner` instances (each covering a framework),
+ * evaluates them against `projectRoot`, and orders them by score. Ties retain
+ * list order.
  *
- * `detectAll()` devuelve **todos** los que puntúan, no solo el primero.
- * Importa para los proyectos híbridos: un repo con un Express heredado
- * y rutas nuevas de Next.js casa con dos, y quedarse con uno devolvía 1
- * de 3 endpoints sin decir nada. Los 12 ejemplos puros casan con
- * exactamente un detector, así que mirar el resto no cambia nada para
- * ellos.
+ * `detectAll()` returns **all** scanners that score, not only the first. This
+ * matters for hybrid projects: a repo with legacy Express routes and new
+ * Next.js routes matches both, and choosing one silently returned one of three
+ * endpoints. Each of the 12 pure examples matches exactly one detector, so
+ * checking the others does not change their result.
  *
- * Una vez resuelto el `IProjectMatch`, busca un `IRouteScanner` cuyo
- * `framework === match.framework` y un `IValidationSpecProvider` igual.
- * Si no hay scanner concreto, fallback a `OpenApiRouteScanner` (cubre
- * cualquier API documentada con OpenAPI).
+ * After resolving an `IProjectMatch`, it finds an `IRouteScanner` whose
+ * `framework === match.framework` and the corresponding
+ * `IValidationSpecProvider`. If no concrete scanner exists, it falls back to
+ * `OpenApiRouteScanner` (which covers any API documented with OpenAPI).
  *
- * El `summary` tool del plugin MCP consume `detectProject()` para
- * evitar tener que generar artefactos para responder "¿qué ves?".
+ * The MCP plugin's `summary` tool consumes `detectProject()` to avoid
+ * generating artifacts when answering "what do you see?".
  */
 import type {
   IDetectedFramework,
@@ -34,35 +33,35 @@ import type {
 } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
- * Decide qué framework es el proyecto y con qué colaboradores se escanea.
+ * Decides which framework the project uses and which collaborators scan it.
  *
- * Puntúa todos los detectores del registro y ordena por confianza. No se
- * queda con el primero: un repo con un Express heredado y rutas nuevas de
- * Next.js casa con dos, y quedarse con uno devolvía un tercio de los
- * endpoints sin decir nada.
+ * Scores every detector in the registry and orders them by confidence. It
+ * does not keep only the first: a repo with legacy Express routes and new
+ * Next.js routes matches both, and choosing one silently returned one third
+ * of the endpoints.
  */
 export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
   constructor(private readonly registry: DiscoveryRegistry) {}
 
   /**
-   * Todos los frameworks que reconocen el proyecto, de más a menos
-   * seguro. Vacío si no lo reconoce ninguno.
+   * All frameworks that recognize the project, from most to least confident.
+   * Empty if none recognizes it.
    */
   /**
-   * El framework indicado, saltándose la puntuación.
+   * The requested framework, bypassing scoring.
    *
-   * Lo usa quien SABE de qué es su API y no puede esperar a que la
-   * detección acierte: un monorepo cuyo manifiesto está en la raíz, una
-   * dependencia con alias, un manifiesto que se genera en el build.
+   * Used by callers that know their API and cannot wait for detection to be
+   * correct: a monorepo whose manifest is at the root, an aliased dependency,
+   * or a manifest generated at build time.
    *
-   * Devuelve `null` si ese id no está registrado, para que quien llama
-   * pueda fallar con un mensaje útil en vez de escanear en vano.
+   * Returns `null` if that id is not registered, so the caller can fail with a
+   * useful message instead of scanning in vain.
    *
-   * La firma recibe un objeto nomado `{ projectRoot, framework }` —
-   * la antigua `(projectRoot, framework)` y la del contrato público
-   * `(framework, projectRoot)` eran incompatibles pero ambas `string`,
-   * y TypeScript no marcaba el intercambio. El objeto nomado cierra
-   * el bug: la clave, no la posición, decide el rol.
+   * The signature receives a named `{ projectRoot, framework }` object. The
+   * former `(projectRoot, framework)` signature and the public contract's
+   * `(framework, projectRoot)` signature were incompatible, but both were
+   * strings, so TypeScript did not catch them being exchanged. The named object
+   * fixes the bug: the key, not the position, determines the role.
    */
   async forceFramework(
     args: { projectRoot: string; framework: string },
@@ -85,7 +84,7 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     };
   }
 
-  /** Los ids que este registro sabe escanear. */
+  /** The ids this registry can scan. */
   supportedFrameworks(): string[] {
     return this.registry.detectors.map((detector) => detector.framework);
   }
@@ -97,13 +96,12 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
       try {
         result = await detector.detect(projectRoot);
       } catch (error) {
-        // Un detector que revienta no puede tumbar a los otros once.
-        // Audit 2026-09-04 P2 #4 (resolución de errores en detect):
-        // antes se silenciaba sin dejar rastro. Ahora el caller puede
-        // saber por qué falló vía `failedDetectors` (no implementado
-        // aquí — el audit pide no perder la señal sin acoplarse a
-        // console). Por ahora conservamos el contrato: `score: 0` y
-        // el detector queda fuera del pipeline.
+        // A crashing detector must not take down the other eleven. Audit
+        // 2026-09-04 P2 #4 (detect error resolution): this used to be silently
+        // swallowed without a trace. The caller can now learn why it failed
+        // through `failedDetectors` (not implemented here—the audit requires
+        // preserving the signal without coupling to console). For now, preserve
+        // the contract: `score: 0` and remove the detector from the pipeline.
         void error;
         result = { score: 0, evidence: [] };
       }
@@ -115,17 +113,16 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
 
     const detected: IDetectedFramework[] = [];
     for (const { detector, score, evidence } of scored) {
-      // Audit 2026-09-04 P2 #5: `resolve()` también puede reventar.
-      // Antes solo `detect()` estaba protegido — un resolve defectuoso
-      // tiraba abajo el discovery entero. Ahora lo aislamos: el
-      // detector problemático cae con un warning al pipeline en vez
-      // de abortar todo.
+      // Audit 2026-09-04 P2 #5: `resolve()` can also crash. Previously only
+      // `detect()` was protected—a defective resolve took down the entire
+      // discovery. Isolate it now: the problematic detector falls to the
+      // pipeline with a warning instead of aborting everything.
       let match;
       try {
         match = await detector.resolve(projectRoot);
       } catch (error) {
-        // Score pasa a 0 para que `expandMonorepoDetection` y el
-        // resto del pipeline lo traten como no detectado.
+        // Reset the score to 0 so `expandMonorepoDetection` and the rest of
+        // the pipeline treat it as undetected.
         void error;
         continue;
       }
@@ -142,7 +139,7 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     return detected;
   }
 
-  /** El framework más probable. Atajo sobre `detectAll()`. */
+  /** The most likely framework. Shortcut over `detectAll()`. */
   async detectProject(projectRoot: string): Promise<{
     match: IProjectMatch | null;
     scanner: IRouteScanner | null;

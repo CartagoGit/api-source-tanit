@@ -26,6 +26,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { copyExampleClean } from "../helpers/fixtures";
 
 /** Un puerto poco transitado, y el servidor busca otro si está ocupado. */
@@ -81,13 +82,13 @@ async function post(
   const token = await testigo();
   const res = await fetch(`${BASE}${ruta}`, {
     method: "POST",
-    headers: { "x-expostman-token": token },
+    headers: { "x-tanit-token": token },
     ...(cuerpo === undefined
       ? {}
       : {
           headers: {
             "content-type": "application/json",
-            "x-expostman-token": token,
+            "x-tanit-token": token,
           },
           body: JSON.stringify(cuerpo),
         }),
@@ -101,7 +102,10 @@ describe("la página", () => {
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("<!doctype html>");
-    expect(html).toContain("Export to Postman");
+    // El título del producto (b00001 S5: rebrand Tanit). El test no
+    // debe depender del idioma del `<h1>` (va con data-i18n), así que
+    // mira el `<title>`, que es único en la página.
+    expect(html).toContain("<title>Tanit</title>");
   });
 
   test("declara idioma, para los lectores de pantalla", async () => {
@@ -120,7 +124,7 @@ describe("la página", () => {
   test("lo que no es la página ni la API da 404", async () => {
     // Con testigo: sin él saldría un 403 y el 404 quedaría sin probar.
     const res = await fetch(`${BASE}/otra-cosa`, {
-      headers: { "x-expostman-token": await testigo() },
+      headers: { "x-tanit-token": await testigo() },
     });
     expect(res.status).toBe(404);
   });
@@ -213,7 +217,7 @@ describe("la API", () => {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-expostman-token": await testigo(),
+        "x-tanit-token": await testigo(),
       },
       body: "{esto no es json",
     });
@@ -230,7 +234,7 @@ describe("la API", () => {
 
   test("inspeccionar no escribe nada", async () => {
     await post("/api/inspect", { projectRoot: proyecto });
-    await expect(readdir(join(proyecto, "export-to-postman"))).rejects.toThrow();
+    await expect(readdir(join(proyecto, OUTPUT_DIR_NAME))).rejects.toThrow();
   });
 
   test("una carpeta que no existe da 404 con salida", async () => {
@@ -252,7 +256,7 @@ describe("la API", () => {
     expect(result.requests).toBeGreaterThan(0);
 
     // Y está de verdad en el disco, donde dice.
-    const salida = await readdir(join(proyecto, "export-to-postman"));
+    const salida = await readdir(join(proyecto, OUTPUT_DIR_NAME));
     expect(salida.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 

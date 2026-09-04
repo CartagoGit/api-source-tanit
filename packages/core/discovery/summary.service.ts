@@ -1,22 +1,22 @@
 /**
- * `summary` — qué ve la herramienta en un proyecto, sin escribir nada.
+ * `summary` — what the tool sees in a project, without writing anything.
  *
- * Lo consumen el comando `summary` del CLI y el tool `summary` del
- * plugin, y su contrato con quien lo llama es: **esto es lo que vas a
- * obtener si ejecutas `generate`**. Un resumen que no anticipe la
- * generación no sirve para decidir nada.
+ * The CLI `summary` command and the plugin's `summary` tool consume this
+ * service. Its contract with callers is: **this is what you will get if you
+ * run `generate`**. A summary that does not preview generation is useless for
+ * making decisions.
  *
- * Por eso corre exactamente el mismo pipeline que `generate` y se limita
- * a proyectar su resultado. No construye artefactos en disco: la
- * colección se arma en memoria y se tira.
+ * It therefore runs the exact same pipeline as `generate` and only projects
+ * its result. It does not build artifacts on disk: the collection is assembled
+ * in memory and discarded.
  *
- * Antes tenía **su propio** camino de descubrimiento, con una lista a
- * mano llamada `NON_LARAVEL_FRAMEWORKS` que enumeraba once de los doce
- * frameworks. Laravel no estaba, así que se iba por una heurística
- * distinta y contaba las rutas **declaradas** en vez de las que acaban
- * en la colección: para el ejemplo de Laravel decía 7 donde `generate`
- * produce 18. Y al ser una lista paralela, un framework nuevo tampoco
- * habría entrado — habría caído al camino viejo sin que nada lo dijera.
+ * Previously it had **its own** discovery path, with a hand-maintained list
+ * named `NON_LARAVEL_FRAMEWORKS` that enumerated eleven of the twelve
+ * frameworks. Laravel was absent, so it followed a different heuristic and
+ * counted **declared** routes rather than routes that end up in the
+ * collection: the Laravel example reported 7 while `generate` produced 18.
+ * Because this was a parallel list, a new framework would not have entered it
+ * either; it would have fallen back to the old path without any signal.
  */
 import { resolve } from "node:path";
 
@@ -27,34 +27,31 @@ import { computeProjectHealth } from "../domain/project-health.service.js";
 import type { IProjectSummary } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
- * Inspecciona `projectRoot` y devuelve un resumen sin escribir archivos.
+ * Inspects `projectRoot` and returns a summary without writing files.
  *
- * Lanza si el directorio no existe. Si no reconoce el proyecto,
- * devuelve un resumen con cero endpoints y el aviso correspondiente —
- * que es una respuesta honesta, no un error.
+ * Throws if the directory does not exist. If it does not recognize the
+ * project, returns a summary with zero endpoints and the corresponding
+ * warning—an honest response rather than an error.
  *
- * El catálogo de frameworks y el fallback se inyectan, igual que en el
- * pipeline: este servicio es del núcleo y no puede conocer los scanners
- * concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
- * en `packages/frameworks/`.
+ * The framework catalog and fallback are injected, as in the pipeline: this
+ * is a core service and cannot know the concrete scanners. For the complete
+ * catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
  */
 export async function summarizeProject(
   projectRoot: string,
   orchestrator: DiscoveryOrchestrator,
   legacyFallback?: ILegacyDiscovery,
 ): Promise<IProjectSummary> {
-  // La comprobación de existencia la hace el pipeline, que es quien
-  // tiene que decidirlo: así los dos caminos fallan igual y con el
-  // mismo mensaje.
+  // The pipeline performs the existence check because it owns that decision:
+  // both paths therefore fail the same way with the same message.
   //
-  // x00024: `generateCollection()` ahora lanza
-  // `MultipleServicesWithoutCombineError` cuando el caller no pide
-  // `--combine-services` y hay >1 servicio. `summarizeProject` solo
-  // quiere UNA colección resumen (un `IProjectSummary`), así que
-  // pasamos `combineServices: true` para preservar el comportamiento
-  // legacy: "summarize el primer servicio detectado". Si en el futuro
-  // la UI/CLI quiere resumir todos los servicios, ese slice migrará
-  // a `generateCollections` + un loop.
+  // x00024: `generateCollection()` now throws
+  // `MultipleServicesWithoutCombineError` when the caller does not request
+  // `--combine-services` and there is >1 service. `summarizeProject` only
+  // wants ONE summary collection (an `IProjectSummary`), so pass
+  // `combineServices: true` to preserve the legacy behavior: "summarize the
+  // first detected service." If the UI/CLI ever needs to summarize all
+  // services, that slice will migrate to `generateCollections` plus a loop.
   const result = await generateCollection(resolve(projectRoot), {
     orchestrator,
     combineServices: true,
@@ -88,9 +85,9 @@ export async function summarizeProject(
           .find((f) => f.match.framework === result.match!.framework)
           ?.evidence ?? []
       : [],
-    // Sobre `result.specs`, no sobre los contadores del adapter: los
-    // specs ya llevan dentro la inferencia agnóstica y el merge de
-    // overrides, que es justo lo que `generate` escribiría.
+    // Use `result.specs`, not adapter counters: the specs already contain the
+    // framework-agnostic inference and override merge that `generate` would
+    // write.
     health: computeProjectHealth(result.specs),
   };
 }

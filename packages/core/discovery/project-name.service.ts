@@ -1,35 +1,34 @@
 /**
- * Nombre del proyecto, leído del manifiesto de su ecosistema.
+ * Project name, read from its ecosystem manifest.
  *
- * Esto vivía dentro de `project-loader` y miraba **solo**
- * `composer.json`. O sea: un proyecto Laravel se llamaba como su
- * paquete y los otros once se llamaban como su carpeta, sin que nada lo
- * dijera. Es el mismo sesgo que tenía el resto del paquete cuando esto
- * era una herramienta solo para Laravel.
+ * This logic used to live inside `project-loader` and looked **only** at
+ * `composer.json`. A Laravel project was therefore named after its package,
+ * while the other eleven were named after their directories, with no explicit
+ * rule. This was the same bias the rest of the package had when it was a
+ * Laravel-only tool.
  *
- * El nombre no es cosmético: entra en el `_postman_id` determinista, que
- * es lo que hace que reimportar el mismo proyecto **actualice** su
- * colección en Postman en vez de añadir una copia. Dos proyectos
- * distintos tienen que dar nombres distintos, y el mismo proyecto tiene
- * que dar siempre el mismo.
+ * The name is not cosmetic: it feeds the deterministic `_postman_id`, which
+ * makes reimporting the same project **update** its Postman collection instead
+ * of adding a copy. Different projects must have different names, and the
+ * same project must always produce the same name.
  *
- * Orden: primer manifiesto que exista y declare un nombre; si ninguno,
- * el nombre de la carpeta. La lista está ordenada de más específico a
- * menos, para que un repo con `pom.xml` y `package.json` (Spring Boot
- * con un front al lado) se identifique por el backend.
+ * Order: the first manifest that exists and declares a name; otherwise, the
+ * directory name. The list runs from most specific to least specific so a repo
+ * with both `pom.xml` and `package.json` (Spring Boot with a frontend alongside
+ * it) is identified by its backend.
  */
 import { readFile, readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-/** Cómo se saca el nombre de un manifiesto concreto. */
+/** How to extract a name from a specific manifest. */
 interface IManifest {
-  /** Fichero a buscar en la raíz del proyecto. */
+  /** File to search for at the project root. */
   readonly file: string;
-  /** Devuelve el nombre declarado, o `null` si el fichero no lo trae. */
+  /** Returns the declared name, or `null` if the file does not contain one. */
   readonly extract: (text: string) => string | null;
 }
 
-/** Se queda con el último segmento de `vendor/paquete` o `@scope/pkg`. */
+/** Takes the last segment of `vendor/package` or `@scope/pkg`. */
 function lastSegment(value: string): string | null {
   const parts = value.split("/").filter(Boolean);
   const last = parts[parts.length - 1];
@@ -42,15 +41,14 @@ function fromJsonName(text: string): string | null {
 }
 
 const MANIFESTS: readonly IManifest[] = [
-  // PHP — Laravel, Symfony.
+  // PHP — Laravel and Symfony.
   { file: "composer.json", extract: fromJsonName },
-  // Java — Spring Boot con Maven.
+  // Java — Spring Boot with Maven.
   {
     file: "pom.xml",
-    // El primer `<artifactId>` de un pom suele estar dentro de
-    // `<parent>`, y es el del BOM del que se hereda
-    // (`spring-boot-starter-parent`), no el del proyecto. Se quita ese
-    // bloque antes de buscar.
+    // The first `<artifactId>` in a pom usually belongs to the inherited
+    // `<parent>` BOM (`spring-boot-starter-parent`), not to the project. Remove
+    // that block before searching.
     extract: (text) => {
       const withoutParent = text.replace(/<parent>[\s\S]*?<\/parent>/g, "");
       return /<artifactId>\s*([^<\s]+)\s*<\/artifactId>/.exec(withoutParent)?.[1] ?? null;
@@ -78,7 +76,7 @@ const MANIFESTS: readonly IManifest[] = [
     file: "Cargo.toml",
     extract: (text) => /^\s*name\s*=\s*["']([^"']+)["']/m.exec(text)?.[1] ?? null,
   },
-  // Python — PEP 621 y Poetry.
+  // Python — PEP 621 and Poetry.
   {
     file: "pyproject.toml",
     extract: (text) => /^\s*name\s*=\s*["']([^"']+)["']/m.exec(text)?.[1] ?? null,
@@ -88,10 +86,10 @@ const MANIFESTS: readonly IManifest[] = [
 ];
 
 /**
- * Nombre del proyecto en `projectRoot`.
+ * Project name in `projectRoot`.
  *
- * Nunca lanza: si no hay manifiesto legible, cae al nombre de la
- * carpeta, que siempre existe.
+ * Never throws: if no readable manifest exists, fall back to the directory
+ * name, which always exists.
  */
 export async function detectProjectNameIn(projectRoot: string): Promise<string> {
   for (const manifest of MANIFESTS) {
@@ -100,13 +98,13 @@ export async function detectProjectNameIn(projectRoot: string): Promise<string> 
       const name = manifest.extract(text)?.trim();
       if (name) return name;
     } catch {
-      // El manifiesto no existe o no se puede leer: se prueba el
-      // siguiente. No es un error, es lo normal en 7 de cada 8.
+      // The manifest is missing or unreadable: try the next one. This is not
+      // an error; it is normal for seven of the eight cases.
     }
   }
 
-  // .NET no declara el nombre dentro del `.csproj`: es el propio nombre
-  // del fichero.
+  // .NET does not declare the name inside `.csproj`; the file name is the
+  // project name.
   const csproj = await findCsproj(projectRoot);
   if (csproj) return csproj.replace(/\.csproj$/i, "");
 

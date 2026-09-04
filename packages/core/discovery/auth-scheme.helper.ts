@@ -1,39 +1,36 @@
 /**
- * per-service auth + baseUrl wiring — a00013 S4.
+ * Per-service auth and baseUrl wiring — a00013 S4.
  *
- * El discriminante `IEndpointAuth` (`{ kind: "none" } | { kind: "scheme",
- * scheme: "bearer" | "apiKey" | "oauth2" }`) es exhaustivo por tipos:
- * TypeScript rechaza cualquier asignación que no encaje con una de las
- * dos ramas. Una conversión descuidada `{ kind: "scheme", scheme: "bearer" }
- * → { kind: "none" }` (lo que la primera auditoría del 2026-09-04
- * documentó como el "bug opuesto") se evita **por construcción** aquí:
- * los helpers se limitan a devolver los objetos que recibieron, sin
- * reescribir el `kind`. Si alguien añade un atajo que colapsa
- * ramas, el discriminante deja de proteger y esta capa pierde su
- * única línea de defensa.
+ * The `IEndpointAuth` discriminant (`{ kind: "none" } | { kind: "scheme",
+ * scheme: "bearer" | "apiKey" | "oauth2" }`) is exhaustive by type:
+ * TypeScript rejects any assignment that does not fit one of its two branches.
+ * A careless `{ kind: "scheme", scheme: "bearer" }` →
+ * `{ kind: "none" }` conversion (documented as the "opposite bug" by the first
+ * 2026-09-04 audit) is avoided **by construction** here: these helpers simply
+ * return the objects they receive without rewriting `kind`. If someone adds a
+ * shortcut that collapses branches, the discriminant stops protecting the
+ * contract and this layer loses its only line of defense.
  *
- * Por qué existe como módulo aparte del merger / pipeline:
- *  - merger-side ya tiene un `authFromAuthScheme` privado
- *    (`endpoint-merger.service.ts:347`) que convierte
- *    `IDetectedAuthScheme → IEndpointAuth`. Es lo inverso semántico de
- *    `authSchemeFromEndpointAuth` en `generation.pipeline.ts`. DRY
- *    entre las tres conversiones es trabajo de un slice posterior; en
- *    S4 solo necesitamos el path de per-service (que entra por
- *    `service.auth` y necesita `pickAuth`).
- *  - pipeline-side necesita un pequeño "adapter" `IDetectedAuthScheme
- *    → IEndpointAuth` para alimentar a `pickAuth` con un fallback
- *    "project-wide". Lo exportamos aquí (no como
- *    `authFromAuthScheme` para no chocar con el nombre del merger) y
- *    vive en este módulo porque quien prueba S4 quiere ver ambos
- *    sentidos en un solo sitio.
+ * Why this is a separate module from the merger and pipeline:
+ *  - The merger side already has a private `authFromAuthScheme`
+ *    (`endpoint-merger.service.ts:347`) that converts
+ *    `IDetectedAuthScheme → IEndpointAuth`. It is the semantic inverse of
+ *    `authSchemeFromEndpointAuth` in `generation.pipeline.ts`. DRY across all
+ *    three conversions belongs to a later slice; S4 only needs the per-service
+ *    path, which enters through `service.auth` and requires `pickAuth`.
+ *  - The pipeline side needs a small `IDetectedAuthScheme → IEndpointAuth`
+ *    adapter to feed `pickAuth` with a project-wide fallback. Export it here
+ *    rather than as `authFromAuthScheme` to avoid colliding with the merger's
+ *    name, and keep it in this module because S4's tests need both directions
+ *    in one place.
  *
- * Pure. No I/O. No `process.cwd()`. No muta nada.
+ * Pure: no I/O, no `process.cwd()`, no mutation.
  *
- * @see ./generation.pipeline.ts para el call site (`buildForService`).
- * @see ./group-by-service.helper.ts para la fuente del
- *   `IServiceDescriptor` que estos helpers reciben.
- * @see ../../contracts/interfaces/core/postman.interface.ts para la
- *   forma de `IEndpointAuth`.
+ * @see ./generation.pipeline.ts for the `buildForService` call site.
+ * @see ./group-by-service.helper.ts for the `IServiceDescriptor` source passed
+ *   to these helpers.
+ * @see ../../contracts/interfaces/core/postman.interface.ts for the
+ *   `IEndpointAuth` shape.
  */
 
 import type { IEndpointAuth } from "../../contracts/interfaces/core/postman.interface.js";
@@ -42,28 +39,27 @@ import type { ProjectConfig } from "../../contracts/interfaces/core/project-conf
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
 
 /**
- * Resuelve la auth de un servicio: override del descriptor si la trae
- * (lo que el grafo plantó), o fallback heredado del proyecto.
+ * Resolves service auth: the descriptor's override when present (as placed by
+ * the graph), or the inherited project fallback.
  *
- * El retorno es exhaustivo por discriminante: si `service.auth` es
- * `{ kind: "scheme", scheme: "bearer" }`, devuelve eso exactamente;
- * no lo convierte a `{ kind: "none" }` ni a `{ kind: "scheme",
- * scheme: "apiKey" }`. La función no sabe —ni necesita saber— qué
- * hacer con cada variante: el contrato es "el primer argumento gana
- * si está definido; si no, el segundo".
+ * The return value preserves the discriminant: if `service.auth` is
+ * `{ kind: "scheme", scheme: "bearer" }`, return it exactly; do not convert it
+ * to `{ kind: "none" }` or `{ kind: "scheme", scheme: "apiKey" }`. The
+ * function does not know—and does not need to know—how to handle each variant.
+ * Its contract is "the first argument wins when defined; otherwise, the
+ * second".
  *
- * Ambos argumentos son `IEndpointAuth | undefined`. Cuando los dos son
- * `undefined`, devuelve `undefined`. Eso significa "no hay señal de
- * auth para este servicio" y deja al pipeline decidir si el detector
- * por-espec debe correr o si el caller ya pasó otro mecanismo.
+ * Both arguments are `IEndpointAuth | undefined`. When both are `undefined`,
+ * return `undefined`. This means there is no auth signal for the service and
+ * lets the pipeline decide whether the per-spec detector should run or the
+ * caller already supplied another mechanism.
  *
- * @param service El descriptor del servicio. `service.auth` puede ser
- *   `undefined` (hereda del proyecto), `null` no es válido (`baseUrl`
- *   es `string | null` pero `auth` es estrictamente `IEndpointAuth |
- *   undefined`).
- * @param fallback La auth heredada del proyecto. Típicamente el
- *   resultado de `toIEndpointAuth(detectedFromSpecs)`. Puede ser
- *   `undefined` cuando el proyecto tampoco tiene señal.
+ * @param service The service descriptor. `service.auth` may be `undefined`
+ *   (inherits from the project); `null` is invalid (`baseUrl` is `string | null`,
+ *   but `auth` is strictly `IEndpointAuth | undefined`).
+ * @param fallback The auth inherited from the project, typically the result of
+ *   `toIEndpointAuth(detectedFromSpecs)`. It may be `undefined` when the project
+ *   has no auth signal either.
  */
 export function pickAuth(
   service: IServiceDescriptor,
@@ -74,19 +70,17 @@ export function pickAuth(
 }
 
 /**
- * Conversión exhaustiva `IDetectedAuthScheme` → `IEndpointAuth`, inversa
- * semántica de `authSchemeFromEndpointAuth` en
- * `generation.pipeline.ts`.
+ * Exhaustive `IDetectedAuthScheme` → `IEndpointAuth` conversion, semantically
+ * inverse to `authSchemeFromEndpointAuth` in `generation.pipeline.ts`.
  *
- * Exportada por separado para que los tests de S4 cubran los cuatro
- * casos del discriminante (`none`, `bearer`, `apiKey`, `oauth2`)
- * sin tener que arrastrar un IDetectedAuthScheme de mentira por el
- * pipeline.
+ * Exported separately so S4 tests can cover all four discriminant cases
+ * (`none`, `bearer`, `apiKey`, `oauth2`) without threading a fake
+ * IDetectedAuthScheme through the pipeline.
  *
- * El switch es exhaustivo por tipo: si se añade una variante a
- * `AuthSchemeType` sin mapearla aquí, TypeScript marca el switch como
- * no-exhaustivo (TS7030 con `noImplicitReturns`). Es el mismo patrón
- * que `authSchemeFromEndpointAuth` usa en dirección contraria.
+ * The switch is exhaustive by type: if a variant is added to `AuthSchemeType`
+ * without being mapped here, TypeScript marks the switch as non-exhaustive
+ * (TS7030 with `noImplicitReturns`). `authSchemeFromEndpointAuth` uses the
+ * same pattern in the opposite direction.
  */
 export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth {
   switch (detected.type) {
@@ -102,25 +96,24 @@ export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth {
 }
 
 /**
- * Aplica los overrides per-service a la `ProjectConfig` **sin mutar
- * el original**. Devuelve una copia superficial con:
- *   - `baseUrl`: el del servicio si lo declara y no es `null`,
- *     si no el del proyecto. Eso es lo que `inferCollectionVariables`
- *     y `buildCollection` consumen en `buildForService`.
- *   - `variables`: copia del array, con la entrada `baseUrl`
- *     sustituida por el valor efectivo para que la variable de
- *     colección (`{{baseUrl}}`) refleje el override per-service.
+ * Applies per-service overrides to `ProjectConfig` **without mutating the
+ * original**. Returns a shallow copy with:
+ *   - `baseUrl`: the service's value when declared and non-null; otherwise,
+ *     the project's value. This is what `inferCollectionVariables` and
+ *     `buildCollection` consume in `buildForService`.
+ *   - `variables`: an array copy whose `baseUrl` entry is replaced with the
+ *     effective value so the collection variable (`{{baseUrl}}`) reflects the
+ *     per-service override.
  *
- * Pure: no toca `config`. Una llamada por iteración del loop
- * multi-service en `buildFor` es independiente — la siguiente
- * iteración recibe el `discovery.config` original, sin baseUrl
- * contaminado por el servicio anterior (S4 acceptance #3: `buildForService`
- * no muta `config.baseUrl` entre iteraciones).
+ * Pure: does not touch `config`. Each iteration of the multi-service loop in
+ * `buildFor` is independent—the next iteration receives the original
+ * `discovery.config` with no baseUrl contaminated by the previous service
+ * (S4 acceptance #3: `buildForService` does not mutate `config.baseUrl`
+ * between iterations).
  *
- * `@see` `IProjectContext` para el contexto raíz. Si en el futuro
- * entran más overrides per-service (auth global, headers extra,
- * prefijo de URI, etc.), este helper es el sitio natural para
- * extenderlos.
+ * @see `IProjectContext` for the root context. If more per-service overrides are
+ * added in the future (global auth, extra headers, URI prefixes, etc.), this
+ * helper is the natural place to extend them.
  */
 export function buildServiceConfig(
   config: ProjectConfig,

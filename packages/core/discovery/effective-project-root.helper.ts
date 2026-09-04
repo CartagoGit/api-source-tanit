@@ -1,138 +1,127 @@
 /**
- * Raíz efectiva del proyecto — a00014 S1.
+ * Effective project root — a00014 S1.
  *
- * El helper centraliza lo que Express, Hono, NestJS y Next.js ya hacían
- * inline con `expressSearchRoot` / `honoEffectiveSearchRoot` /
- * `nestjsEffectiveSearchRoot` / `nextjsEffectiveSearchRoot`: resolver
- * la raíz donde un scanner debe mirar sus fuentes a partir de
- * `match.frameworkSearchRoot`, y devolver `match.projectRoot` cuando
- * ese campo está ausente.
+ * This helper centralizes what Express, Hono, NestJS, and Next.js already did
+ * inline with `expressSearchRoot` / `honoEffectiveSearchRoot` /
+ * `nestjsEffectiveSearchRoot` / `nextjsEffectiveSearchRoot`: resolve the root
+ * where a scanner should search for its sources from
+ * `match.frameworkSearchRoot`, and return `match.projectRoot` when that field
+ * is absent.
  *
- * La diferencia con los inline es que **ningún scanner puede ignorar
- * `frameworkSearchRoot` por accidente**: en un monorepo el scanner
- * caminaba el árbol del workspace entero en lugar del subdirectorio
- * del framework, y se devolvían rutas vacías o contaminadas con las
- * de otros paquetes. Con este helper, los 21 scanners consumen la
- * misma primitiva, y el gate `lint:effective-project-root` rechaza
- * cualquier scanner que siga leyendo `match.projectRoot` directamente.
+ * Unlike the inline implementations, **no scanner can accidentally ignore
+ * `frameworkSearchRoot`**. In a monorepo, the scanner previously walked the
+ * entire workspace tree instead of the framework subdirectory, returning empty
+ * paths or paths contaminated by other packages. With this helper, all 21
+ * scanners use the same primitive, and the `lint:effective-project-root` gate
+ * rejects any scanner that still reads `match.projectRoot` directly.
  *
- * ## Contrato
+ * ## Contract
  *
- * - `effectiveProjectRoot(match)` y `effectiveSearchRoot(match)`
- *   son alias de la misma función. La segunda expone el nombre para
- *   callers que ya estaban usando `effectiveSearchRoot` en su scanner
- *   (Hono, NestJS, Next.js); comparten implementación porque la
- *   semántica es una sola.
+ * - `effectiveProjectRoot(match)` and `effectiveSearchRoot(match)` are aliases
+ *   of the same function. The latter exposes the name already used by scanner
+ *   callers (Hono, NestJS, and Next.js); they share an implementation because
+ *   their semantics are one and the same.
  *
- * - Si `match.frameworkSearchRoot` es `undefined`, `null` o la cadena
- *   vacía, se devuelve `match.projectRoot` **sin modificar**. Los
- *   proyectos planos que no rellenan `frameworkSearchRoot` tienen el
- *   mismo comportamiento que antes.
+ * - If `match.frameworkSearchRoot` is `undefined`, `null`, or the empty string,
+ *   return `match.projectRoot` **unchanged**. Flat projects that do not
+ *   populate `frameworkSearchRoot` behave exactly as before.
  *
- * - Si `frameworkSearchRoot` es absoluto (empieza por `/` en POSIX o
- *   por la letra de unidad en Windows), **lanza**. El contrato de
- *   `IProjectMatch.frameworkSearchRoot` lo declara "relative to
- *   projectRoot and never absolute"; una implementación que aceptara
- *   absolutos como los devolviera verbatim reabría exactamente la
- *   fuga de contención que x00022 cerró (un manifest apuntando a
- *   `/etc` o `\\server\share` dejaría de ser una rara excepción y
- *   pasaria a ser la puerta trasera del helper). Si algún día se
- *   necesitan artefactos compartidos fuera del proyecto, eso tiene
- *   que ser un campo propio y explícito, no una reinterpretación de
+ * - If `frameworkSearchRoot` is absolute (starts with `/` on POSIX or a drive
+ *   letter on Windows), **throw**. The `IProjectMatch.frameworkSearchRoot`
+ *   contract declares it "relative to projectRoot and never absolute"; an
+ *   implementation that accepted and returned absolute paths verbatim would
+ *   reopen the containment leak closed by x00022 (a manifest pointing to
+ *   `/etc` or `\\server\share` would stop being a rare exception and become the
+ *   helper's backdoor). If shared artifacts outside the project are ever
+ *   needed, that must be a separate explicit field, not a reinterpretation of
  *   `frameworkSearchRoot`. (a00014 S4)
  *
- * - En otro caso (relativo), se une `projectRoot` con
- *   `frameworkSearchRoot` mediante `path.resolve`, y se verifica que
- *   el resultado sigue dentro de `projectRoot`. La verificación usa
- *   `relative()` más las guardas de prefijo `..${sep}` / `..` / ruta
- *   absoluta — la MISMA fórmula canónica de contención que
- *   `toProjectRelative` y `path-containment.helper` usan (x00022), en
- *   lugar de `startsWith(root + sep)`: un prefijo de cadena dejaría
- *   pasar `/tmp/raiz-mala` cuando la raíz es `/tmp/raiz`, y mantener
- *   dos algoritmos distintos diciendo qué significa "estar dentro"
- *   es la semilla de la próxima deriva (a00014 S4).
+ * - Otherwise (relative), join `projectRoot` with `frameworkSearchRoot` using
+ *   `path.resolve`, and verify that the result remains within `projectRoot`.
+ *   The check uses `relative()` plus the `..${sep}` / `..` / absolute-path
+ *   prefix guards—the SAME canonical containment formula used by
+ *   `toProjectRelative` and `path-containment.helper` (x00022)—instead of
+ *   `startsWith(root + sep)`: a string prefix would allow `/tmp/bad-root` when
+ *   the root is `/tmp/root`, and maintaining two algorithms that define
+ *   "inside" differently is the seed of the next drift (a00014 S4).
  *
- * - Si la verificación falla, **lanza** un `Error` con el framework,
- *   el `projectRoot` y el `frameworkSearchRoot` que la han
- *   provocado. No silencia. No devuelve la raíz sin más. Un scanner
- *   que ignora la verificación de contención es el mismo bug que
- *   estamos cerrando, sólo que más callado.
+ * - If the check fails, **throw** an `Error` containing the framework,
+ *   `projectRoot`, and `frameworkSearchRoot` that caused it. Do not hide the
+ *   failure or return the root unchecked. A scanner that ignores the
+ *   containment check has the same bug we are closing, only quieter.
  *
- * - `rawProjectRoot(match)` devuelve `match.projectRoot` **tal cual**.
- *   Existe porque hay sitios donde el scanner necesita la raíz del
- *   usuario — el `projectRoot:` que devuelve al construir un
- *   `IProjectMatch`, o el `join` con un `route.sourceFile` ya
- *   relativo a `projectRoot` — y la gate quiere que esos sitios
- *   pasen por aquí en vez de leer `match.projectRoot` directamente.
+ * - `rawProjectRoot(match)` returns `match.projectRoot` **as provided**. It
+ *   exists for places where a scanner needs the user's root—the `projectRoot:`
+ *   returned when building an `IProjectMatch`, or a `join` with a
+ *   `route.sourceFile` already relative to `projectRoot`—and the gate requires
+ *   those sites to go through this helper instead of reading
+ *   `match.projectRoot` directly.
  *
- * ## Por qué es puro
+ * ## Why it is pure
  *
- * El helper no lee `process.cwd()`, no toca el sistema de archivos y
- * no tiene estado. Es una función determinista sobre sus argumentos.
- * Eso permite que el contrato se pruebe sin fixtures en
- * `tests/core/effective-project-root.helper.spec.ts` y que el lint
- * universal de `no process.cwd / process.env` no le diga nada.
+ * The helper does not read `process.cwd()`, touch the file system, or hold
+ * state. It is a deterministic function of its arguments. This allows the
+ * contract to be tested without fixtures in
+ * `tests/core/effective-project-root.helper.spec.ts` and keeps the universal
+ * `no process.cwd / process.env` lint rule silent.
  *
- * @see ./scan-root.helper.ts para `effectiveScanRoot`, que es el
- *   espejo de este helper orientado al caso "raíz del filesystem que
- *   se va a leer" en lugar de "raíz que el scanner reporta".
- * @see ../../../scripts/gates/lint-effective-project-root.script.ts
- *   para el gate que rechaza scanners incompatibles.
+ * @see ./scan-root.helper.ts for `effectiveScanRoot`, the mirror of this helper
+ *   for the "filesystem root to read" case rather than the "root reported by
+ *   the scanner" case.
+ * @see ../../../scripts/gates/lint-effective-project-root.script.ts for the
+ *   gate that rejects incompatible scanners.
  */
 import { isAbsolute, relative, resolve, sep } from "node:path";
 
 import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
- * La raíz efectiva del proyecto, honrando `frameworkSearchRoot`.
+ * Effective project root, honoring `frameworkSearchRoot`.
  *
- * - Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
- *   con proyectos planos y con los tests que no rellenan el campo).
- * - Con `frameworkSearchRoot` → `path.resolve(projectRoot,
- *   frameworkSearchRoot)`, siempre que el resultado siga dentro de
- *   `projectRoot`.
+ * - Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+ *   with flat projects and tests that do not populate the field).
+ * - With `frameworkSearchRoot` → `path.resolve(projectRoot,
+ *   frameworkSearchRoot)`, provided the result remains within `projectRoot`.
  *
- * Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
- * `projectRoot` (típicamente porque contiene `..` o es absoluto).
+ * Throws a clear `Error` if `frameworkSearchRoot` points outside `projectRoot`
+ *   (for example, because it contains `..` or is absolute).
  */
 export function effectiveProjectRoot(match: IProjectMatch): string {
   return resolveProjectRoot(match);
 }
 
 /**
- * Alias de `effectiveProjectRoot` con el nombre que ya usaban Hono,
- * NestJS y Next.js en sus helpers inline. Si un scanner está
- * migrando del helper local al central, puede seguir llamando a su
- * función favorita sin un cambio extra.
+ * Alias for `effectiveProjectRoot` with the name Hono, NestJS, and Next.js
+ * already used in their inline helpers. A scanner migrating from a local helper
+ * to the central one can keep calling its preferred function without another
+ * change.
  *
- * El comportamiento es idéntico al de `effectiveProjectRoot`: misma
- * resolución, misma guarda, mismo error. Sólo cambia el nombre para
- * no romper call sites existentes.
+ * The behavior is identical to `effectiveProjectRoot`: the same resolution,
+ * guard, and error. Only the name changes to preserve existing call sites.
  */
 export function effectiveSearchRoot(match: IProjectMatch): string {
   return resolveProjectRoot(match);
 }
 
 /**
- * La raíz real del proyecto, sin tocar.
+ * The actual project root, unchanged.
  *
- * Devuelve `match.projectRoot` tal cual. Existe para que un scanner
- * que necesita la raíz del usuario — el `projectRoot:` del
- * `IProjectMatch` que devuelve al orquestador, o un `join` con un
- * `route.sourceFile` ya relativo a `projectRoot` — pase por un
- * helper en vez de leer `match.projectRoot` directamente. Así el
- * gate `lint:effective-project-root` puede controlar todas las
- * referencias a `match.projectRoot` en una sola lista blanca.
+ * Returns `match.projectRoot` as provided. This lets a scanner that needs the
+ * user's root—the `projectRoot:` of the `IProjectMatch` returned to the
+ * orchestrator, or a `join` with a `route.sourceFile` already relative to
+ * `projectRoot`—go through a helper instead of reading `match.projectRoot`
+ * directly. The `lint:effective-project-root` gate can then control all
+ * references to `match.projectRoot` through one allowlist.
  */
 export function rawProjectRoot(match: IProjectMatch): string {
   return match.projectRoot;
 }
 
 /**
- * Implementación única de las dos exportaciones con guarda. No se
- * exporta a propósito: añadir una tercera función de idéntico
- * comportamiento diluiría el contrato. Si algún futuro caller
- * necesita otra variante, que se abra sobre esta misma lógica.
+ * Single implementation for both guarded exports. It is intentionally not
+ * exported: adding a third function with identical behavior would dilute the
+ * contract. If a future caller needs another variant, it should build on
+ * this logic.
  */
 function resolveProjectRoot(match: IProjectMatch): string {
   const root = match.projectRoot;
@@ -140,11 +129,11 @@ function resolveProjectRoot(match: IProjectMatch): string {
   if (requested === undefined || requested === null || requested === "") {
     return root;
   }
-  // Absoluto: NO. El contrato (IProjectMatch.frameworkSearchRoot) lo
-  // declara "relative to projectRoot and never absolute"; devolverlo
-  // verbatim era la puerta trasera de contención que este helper acaba
-  // de cerrar. Rechazarlo con el mismo error explícito que el escape
-  // por `..`, para que el manifest culpable se vea.
+  // Absolute: NO. The contract (`IProjectMatch.frameworkSearchRoot`) declares
+  // it "relative to projectRoot and never absolute"; returning it verbatim was
+  // the containment backdoor this helper just closed. Reject it with the same
+  // explicit error used for an escape through `..`, so the offending manifest
+  // remains visible.
   if (isAbsolute(requested)) {
     throw new Error(
       `frameworkSearchRoot inválido para framework "${match.framework}": ` +
@@ -153,14 +142,14 @@ function resolveProjectRoot(match: IProjectMatch): string {
     );
   }
   const resolved = resolve(root, requested);
-  // Contención única: la MISMA fórmula pura que toProjectRelative
-  // (x00022), en lugar de comparar prefijos de cadena con
-  // startsWith(root + sep). Dos algoritmos distintos definiendo qué
-  // significa "dentro" son la semilla de la próxima deriva.
+  // Single containment check: the SAME pure formula as toProjectRelative
+  // (x00022), rather than comparing string prefixes with
+  // startsWith(root + sep). Two algorithms defining "inside" differently are
+  // the seed of the next drift.
   const rel = relative(root, resolved);
-  // rel === "" es el propio root (frameworkSearchRoot = "."), que sí
-  // está dentro. Lo que se sale empieza por "..", es exactamente
-  // ".." o viene absoluto (cruce de unidad en Windows).
+  // rel === "" is the root itself (`frameworkSearchRoot = "."`), which is
+  // inside. Anything escaping starts with "..", is exactly "..", or is
+  // absolute (a Windows drive crossing).
   const inside =
     rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel));
   if (!inside) {

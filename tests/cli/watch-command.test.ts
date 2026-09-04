@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
 
@@ -57,7 +58,7 @@ describe("watch --once", () => {
   test("lo que escribe es una colección válida", { timeout: 120_000 }, async () => {
     const root = await proyecto("once-valida");
     await watch(["--project-root", root, "--once"]);
-    const dir = join(root, "export-to-postman");
+    const dir = join(root, OUTPUT_DIR_NAME);
     const fichero = (await readdir(dir)).find((f) => f.endsWith(".postman_collection.json"));
     const doc = JSON.parse(await readFile(join(dir, fichero ?? ""), "utf8")) as {
       info?: { schema?: string };
@@ -77,7 +78,7 @@ describe("watch --once", () => {
       "postman,openapi",
     ]);
     expect(code, output).toBe(0);
-    const salida = await readdir(join(root, "export-to-postman"));
+    const salida = await readdir(join(root, OUTPUT_DIR_NAME));
     expect(salida.some((f) => f.endsWith(".openapi.yaml"))).toBe(true);
   });
 });
@@ -131,7 +132,7 @@ describe("watch rechaza lo que no puede hacer", () => {
     ]);
     expect(code).toBe(1);
     // Y no ha dejado una carpeta de salida a medias.
-    await expect(readdir(join(root, "export-to-postman"))).rejects.toThrow();
+    await expect(readdir(join(root, OUTPUT_DIR_NAME))).rejects.toThrow();
     expect(output).not.toMatch(/at <anonymous>/);
   });
 });

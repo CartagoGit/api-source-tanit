@@ -1,43 +1,39 @@
 /**
  * toServiceGraph - a00013 S2.
  *
- * Ensambla un IServiceGraph a partir del resultado de discoverSpecs
- * SIN tocar el flujo del pipeline. Hoy el merger ya distingue por
- * serviceId (a00010); este helper formaliza esa identidad en un
- * IServiceGraph reutilizable y deja la puerta abierta a S3 y S4
- * (consumo real desde buildFor y desde la CLI).
+ * Builds an IServiceGraph from discoverSpecs' result WITHOUT changing the
+ * pipeline flow. The merger already distinguishes serviceId (a00010); this
+ * helper formalizes that identity in a reusable IServiceGraph and leaves the
+ * door open for S3 and S4 (actual consumption from buildFor and the CLI).
  *
- * Por que existe sin que buildFor lo consuma todavia
- * - S2 es deliberadamente adyacente: anade el adaptador, lo prueba
- * y lo deja listo. S3 lo conectara a buildFor y añadira el flag
- * --combine-services en la CLI; S4 lo conectara al discriminante
- * de auth por servicio.
- * - Si S2 metiera el wiring de golpe, S3 y S4 tocarian los mismos
- * archivos en tres slices consecutivos, y el conflicto entre S2
- * y S3 ya estaba marcado por el propio parser de propuestas como
- * disjointness warning (los tres slices quieren generation.pipeline.ts).
- * - El helper es puro: no lee del filesystem, no toca process.cwd(),
- * no lee process.argv. Su unica dependencia del estado del pipeline
- * es el IDiscovery que recibe como argumento.
+ * Why it exists before buildFor consumes it:
+ * - S2 is deliberately adjacent: add the adapter, test it, and leave it ready.
+ *   S3 will connect it to buildFor and add the --combine-services CLI flag; S4
+ *   will connect it to per-service auth discrimination.
+ * - If S2 included all wiring at once, S3 and S4 would touch the same files
+ *   in three consecutive slices. The proposal parser had already flagged the
+ *   S2/S3 conflict as a disjointness warning (all three slices target
+ *   generation.pipeline.ts).
+ * - The helper is pure: it does not read the file system, touch process.cwd(),
+ *   or read process.argv. Its only dependency on pipeline state is the
+ *   IDiscovery passed as an argument.
  *
- * Contrato
- * - Proyecto plano (cero workspaces detectados): un unico servicio
- * con serviceId derivado del match.frameworkSearchRoot (cae a
- * framework@projectRoot si esta ausente). combined === false.
- * Es el camino del 100% de los ejemplos de examples/example-asterix/.
- * - Monorepo multi-workspace (>= 2 matches): un servicio por match.
- * combined === false por defecto. El caller decide si pasa
- * combined: true (futuro --combine-services).
- * - Monorepo sin workspaces enumerados: grafo vacio (no se
- * inventa un servicio). Mismo comportamiento que groupByService
- * con detectedMonorepo: true.
+ * Contract:
+ * - Flat project (zero detected workspaces): one service whose serviceId is
+ *   derived from match.frameworkSearchRoot (falling back to
+ *   framework@projectRoot when absent). combined === false. This is the path
+ *   used by 100% of the examples in examples/example-asterix/.
+ * - Multi-workspace monorepo (>= 2 matches): one service per match. combined
+ *   defaults to === false. The caller decides whether to pass combined: true
+ *   (the future --combine-services behavior).
+ * - Monorepo with no enumerated workspaces: an empty graph; do not invent a
+ *   service. This matches groupByService with detectedMonorepo: true.
  *
- * Estado
- * El baseUrl y auth por servicio aun no se derivan desde
- * ProjectConfig - eso es trabajo de S3/S4, que necesitaran mover
- * la carga de config al descriptor del servicio. Por ahora son
- * null/undefined respectivamente: el caller que quiera override
- * los rellena antes de consumir el grafo.
+ * State:
+ * baseUrl and per-service auth are not yet derived from ProjectConfig—that is
+ * S3/S4 work, which will need to move config loading into the service
+ * descriptor. They are currently null/undefined respectively, so a caller that
+ * needs an override can populate them before consuming the graph.
  */
 
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
@@ -50,21 +46,20 @@ import type {
 import { deriveServiceId, groupByService } from "./group-by-service.helper.js";
 
 /**
- * Forma el IServiceGraph desde el estado actual del discovery.
+ * Builds the IServiceGraph from the current discovery state.
  *
- * El helper no infiere nada que no venga en el input. Si el caller
- * aun no popula routesByService/authByService/etc., devuelve un
- * grafo con la identidad de cada servicio y arrays vacios - que es
- * exactamente lo que S2 quiere: el shape del grafo listo para que
- * S3/S4 lo rellenen sin tener que cambiar el contrato.
+ * The helper does not infer anything absent from the input. If the caller has
+ * not yet populated routesByService/authByService/etc., return a graph with each
+ * service's identity and empty arrays—the exact shape S2 needs so S3/S4 can
+ * populate it without changing the contract.
  */
 export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph {
-  // x00025 S1: antes `routesByMatch.set(serviceId, routes)` sobrescribia
-  // si el caller metia dos entradas con la misma `serviceId` en
-  // `input.routesByService`. La pipeline ya no produce eso (el helper
-  // `accumulateRoutesByService` deduplica), pero este helper es la
-  // frontera entre el pipeline y el IServiceGraph y queremos que el
-  // contrato sea localmente correcto: union + dedupe aqui tambien.
+  // x00025 S1: previously `routesByMatch.set(serviceId, routes)` overwrote
+  // entries when the caller supplied two values with the same `serviceId` in
+  // `input.routesByService`. The pipeline no longer produces that (the
+  // `accumulateRoutesByService` helper deduplicates), but this helper is the
+  // boundary between the pipeline and IServiceGraph, and we want the contract
+  // to be correct locally too: union + dedupe here as well.
   const routesByMatch = new Map<string, ParsedRoute[]>();
   for (const [serviceId, routes] of input.routesByService) {
     const existing = routesByMatch.get(serviceId) ?? [];
@@ -95,14 +90,13 @@ export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph {
 }
 
 /**
- * Variante de toServiceGraph que aplica los overrides del caller
- * sobre cada descriptor despues de haberlos calculado. Util cuando
- * el caller quiere producir un IServiceGraph decorado sin tener
- * que re-implementar la propagacion de auth/baseUrl/variables.
+ * Variant of toServiceGraph that applies the caller's overrides to each
+ * descriptor after calculation. Useful when the caller wants to produce a
+ * decorated IServiceGraph without reimplementing auth/baseUrl/variable
+ * propagation.
  *
- * Por ahora vive aqui mismo porque solo se usa desde S2 y los
- * tests; si S3 o S4 lo necesitan mas, se promociona a helper
- * independiente.
+ * It lives here for now because only S2 and its tests use it; if S3 or S4 need
+ * it more broadly, promote it to an independent helper.
  */
 export function decorateServices(
   graph: IServiceGraph,

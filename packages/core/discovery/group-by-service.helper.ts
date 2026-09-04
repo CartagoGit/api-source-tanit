@@ -1,49 +1,44 @@
 /**
  * `groupByService` — a00013 S1.
  *
- * Convierte el resultado del descubrimiento en un `IServiceGraph`
- * donde cada servicio lleva su propio `match`, sus `endpoints`, su
- * `baseUrl` y su `auth` (override). Hasta esta propuesta, el pipeline
- * cargaba **una** `ProjectConfig` y mezclaba las `ParsedRoute` de
- * todos los workspaces en un único array; el merger las identificaba
- * por `serviceId` (introducido en a00010), pero `baseUrl`, `auth` y
- * `variables` seguían siendo globales. Aquí modelamos la unidad
- * natural: un servicio = un `match` + una config + una lista de
- * rutas.
+ * Converts the discovery result into an `IServiceGraph` where each service has
+ * its own `match`, `endpoints`, `baseUrl`, and `auth` override. Before this
+ * proposal, the pipeline loaded **one** `ProjectConfig` and mixed
+ * `ParsedRoute` objects from all workspaces into a single array. The merger
+ * identified them by `serviceId` (introduced in a00010), but `baseUrl`,
+ * `auth`, and `variables` remained global. This models the natural unit: one
+ * service = one `match` + one config + one list of routes.
  *
- * ## Contrato
+ * ## Contract
  *
- * - El helper es **puro**: no lee del sistema de archivos, no toca
- *   `process.cwd()`, no hace red. `lint:no-process-cwd` /
- *   `lint:no-instance-mutable-maps-in-scanners` no le dicen nada.
- * - `serviceId` se deriva, por defecto, de `match.frameworkSearchRoot`
- *   (a00010). Si no hay `frameworkSearchRoot`, cae a
- *   `match.framework + "@" + projectRoot`. Esa cascada garantiza
- *   que **dos workspaces con la misma carpeta pero distinto
- *   framework no colisionan** — caso real: `apps/payments-api/` con
- *   dos frameworks en subcarpetas separadas. La normalización a
- *   `[A-Za-z0-9_-]` evita que un id inválido escape a nombres de
- *   colección Postman.
- * - `detectedMonorepo === false` produce un grafo con `length === 1`
- *   y `combined === false`. La invariante "todo grafo tiene al
- *   menos un servicio" **se valida con un test** explícito, no se
- *   deja solo al consumidor.
- * - El parámetro `combined` del caller es **opcional**. Default
- *   `false` = una colección por servicio (modelo nuevo). Cuando el
- *   caller quiera el comportamiento legacy, pasa `true`
- *   (`--combine-services` en la CLI).
- * - El helper no muta la `ParsedRoute[]` que recibe. Los escaneos
- *   son stateless entre invocaciones (a00010 B-06), y este helper
- *   preserva esa invariante.
+ * - The helper is **pure**: it does not read the file system, touch
+ *   `process.cwd()`, or make network requests. `lint:no-process-cwd` and
+ *   `lint:no-instance-mutable-maps-in-scanners` have nothing to report.
+ * - `serviceId` is derived by default from `match.frameworkSearchRoot`
+ *   (a00010). When `frameworkSearchRoot` is absent, fall back to
+ *   `match.framework + "@" + projectRoot`. This cascade ensures that **two
+ *   workspaces with the same directory but different frameworks do not
+ *   collide**—for example, `apps/payments-api/` containing two frameworks in
+ *   separate subdirectories. Normalization to `[A-Za-z0-9_-]` prevents an
+ *   invalid id from leaking into Postman collection names.
+ * - `detectedMonorepo === false` produces a graph with `length === 1` and
+ *   `combined === false`. The invariant that every graph has at least one
+ *   service is **validated by an explicit test**, not left to the consumer.
+ * - The caller's `combined` parameter is **optional**. It defaults to `false`,
+ *   meaning one collection per service (the new model). Callers that need the
+ *   legacy behavior pass `true` (`--combine-services` in the CLI).
+ * - The helper does not mutate the `ParsedRoute[]` it receives. Scans are
+ *   stateless between invocations (a00010 B-06), and this helper preserves
+ *   that invariant.
  *
- * ## Por qué existe
+ * ## Why it exists
  *
- * El `IServiceGraph` se introduce junto con este helper; en a00013
- * S2-S4 el `generation.pipeline.ts` y `loadProject()` migrarán a
- * consumir esta forma. Mientras tanto, el helper se usa solo desde
- * los tests del S1 — no es un dead-on-arrival.
+ * `IServiceGraph` is introduced alongside this helper; in a00013 S2-S4,
+ * `generation.pipeline.ts` and `loadProject()` will migrate to consume this
+ * shape. Until then, only the S1 tests use the helper—it is not dead on
+ * arrival.
  *
- * @see ./service-graph.interface.ts para la forma del grafo.
+ * @see ./service-graph.interface.ts for the graph shape.
  */
 
 import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface.js";
@@ -53,13 +48,13 @@ import type {
   IServiceGraph,
 } from "../../contracts/interfaces/core/service-graph.interface.js";
 
-/** Caracteres permitidos en un `serviceId` que vaya a un nombre Postman. */
+/** Characters allowed in a `serviceId` used in a Postman name. */
 const SERVICE_ID_SAFE = /[^A-Za-z0-9_-]/g;
 
 /**
- * Normaliza el id: recorta caracteres no permitidos y reemplaza
- * secuencias de subrayados por un solo guion. Vacío después de
- * normalizar → `"default"`.
+ * Normalizes the id by trimming disallowed characters and replacing
+ * underscore sequences with one hyphen. Empty after normalization →
+ * `"default"`.
  */
 function normalizeServiceId(raw: string): string {
   const trimmed = raw.replace(SERVICE_ID_SAFE, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
@@ -67,14 +62,13 @@ function normalizeServiceId(raw: string): string {
 }
 
 /**
- * Deriva el id estable de un match. Dos matches con el mismo
- * `frameworkSearchRoot` producen el mismo id.
+ * Derives a stable id from a match. Two matches with the same
+ * `frameworkSearchRoot` produce the same id.
  *
- * - Si hay `frameworkSearchRoot`, se usa como base del id (que es
- *   exactamente la regla que introdujo a00010).
- * - Si no, cae a `<framework>@<projectRoot>` para evitar
- *   colisiones entre un servicio single-framework en dos raíces
- *   distintas.
+ * - When `frameworkSearchRoot` exists, use it as the id base, exactly as
+ *   introduced by a00010.
+ * - Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
+ *   between single-framework services in different roots.
  */
 export function deriveServiceId(match: IProjectMatch): string {
   const base =
@@ -85,17 +79,15 @@ export function deriveServiceId(match: IProjectMatch): string {
 }
 
 /**
- * Forma un `IServiceGraph` a partir de los matches y rutas del
- * discovery.
+ * Builds an `IServiceGraph` from discovery matches and routes.
  *
- * Lanza `Error` si:
- * - Falta una entrada en `routesByMatch` para un match.
- * - `matches` está vacío y `detectedMonorepo === false` (un
- *   proyecto que no es monorepo **debe** tener al menos un match,
- *   si no el caller no entendió los contratos). El caller puede
- *   silenciar este chequeo pasando `detectedMonorepo === true` con
- *   un array vacío — es el caso "monorepo declarado pero sin
- *   workspaces enumerados".
+ * Throws `Error` if:
+ * - A `routesByMatch` entry is missing for a match.
+ * - `matches` is empty and `detectedMonorepo === false` (a non-monorepo
+ *   project **must** have at least one match; otherwise the caller did not
+ *   understand the contracts). The caller can bypass this check by passing
+ *   `detectedMonorepo === true` with an empty array—the "declared monorepo
+ *   with no enumerated workspaces" case.
  */
 export function groupByService(input: IGroupByServiceInput): IServiceGraph {
   const combined = input.combined ?? false;
