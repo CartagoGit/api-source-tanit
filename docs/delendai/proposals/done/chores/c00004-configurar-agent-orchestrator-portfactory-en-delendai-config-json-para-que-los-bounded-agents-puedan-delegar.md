@@ -2,10 +2,12 @@
 id: c00004
 title: "Configurar agent-orchestrator portFactory en delendai.config.json para que los bounded agents puedan delegar"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - 07fe602  # chore(mcp): c00004 configurar agent-orchestrator portFactory + allowFakeDispatchPort
 dependsOn: []
 related:
   - q00007

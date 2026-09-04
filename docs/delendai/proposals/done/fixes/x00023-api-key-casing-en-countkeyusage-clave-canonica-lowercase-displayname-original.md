@@ -2,10 +2,12 @@
 id: x00023
 title: "API key casing en countKeyUsage — clave canónica lowercase + displayName original"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - 3f6b533  # fix(core): x00023 API key casing en countKeyUsage — clave canónica lowercase + displayName
 dependsOn: []
 related:
   - a00009

@@ -2,10 +2,12 @@
 id: x00024
 title: "generateCollection() estricto — error explícito cuando hay >1 servicio y no se pidió combinar"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - ea904d4  # fix(core+cli): x00024 generateCollection() estricto — error explícito multi-service
 dependsOn:
   - a00013
 related:

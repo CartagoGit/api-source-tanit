@@ -14,11 +14,7 @@ abiertas hoy son:
 | `a00014` | `audit` | [`ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md`](ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md) |
 | `a00015` | `audit` | [`ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md`](ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md) |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
-| `x00022` | `fix` | [`ready/fixes/x00022-path-containment-relative-en-lugar-de-startswith.md`](ready/fixes/x00022-path-containment-relative-en-lugar-de-startswith.md) |
-| `x00023` | `fix` | [`ready/fixes/x00023-api-key-casing-en-countkeyusage.md`](ready/fixes/x00023-api-key-casing-en-countkeyusage.md) |
-| `x00024` | `fix` | [`ready/fixes/x00024-generatecollection-estricto-no-perder-servicios.md`](ready/fixes/x00024-generatecollection-estricto-no-perder-servicios.md) |
-| `x00025` | `fix` | [`ready/fixes/x00025-routesbyservice-acumular-en-lugar-de-sobrescribir.md`](ready/fixes/x00025-routesbyservice-acumular-en-lugar-de-sobrescribir.md) |
-| `c00004` | `chore` | [`ready/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config.md`](ready/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config.md) |
+| `b00001` | `breaking` | [`ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md`](ready/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md) |
 
 Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran en
 este pase.
@@ -51,12 +47,11 @@ Las referencias entre propuestas deben usar el id (`a00005`, `r00008`, etc.)
 y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
-`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `a00013`, `c00002`,
+`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `a00013`, `c00002`, `c00003`, `c00004`,
 `f00010`, `f00011`,
 `p00007`,
 `r00008`, `r00010`,
-`x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`,
-`c00003`; están archivadas bajo sus carpetas canónicas:
+`x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`, `x00022`, `x00023`, `x00024`, `x00025`; están archivadas bajo sus carpetas canónicas:
 
 | Id | Kind | Ruta |
 |---|---|---|
@@ -78,6 +73,11 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `r00008` | `refactor` | [`done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md`](done/refactors/r00008-contexto-explicito-en-los-lectores-residuales-del-singleton.md) |
 | `r00010` | `refactor` | [`done/refactors/r00010-eliminar-el-singleton-de-paths-service.md`](done/refactors/r00010-eliminar-el-singleton-de-paths-service.md) |
 | `x00008` | `fix` | [`done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md`](done/fixes/x00008-corregir-bugs-silenciosos-de-scanners-y-rutas-de-salida.md) |
+| `x00022` | `fix` | [`done/fixes/x00022-path-containment-correcto-en-toprojectrelative-relative-en-lugar-de-startswith.md`](done/fixes/x00022-path-containment-correcto-en-toprojectrelative-relative-en-lugar-de-startswith.md) |
+| `x00023` | `fix` | [`done/fixes/x00023-api-key-casing-en-countkeyusage-clave-canonica-lowercase-displayname-original.md`](done/fixes/x00023-api-key-casing-en-countkeyusage-clave-canonica-lowercase-displayname-original.md) |
+| `x00024` | `fix` | [`done/fixes/x00024-generatecollection-estricto-error-explicito-cuando-hay-1-servicio-y-no-se-pidio-combinar.md`](done/fixes/x00024-generatecollection-estricto-error-explicito-cuando-hay-1-servicio-y-no-se-pidio-combinar.md) |
+| `x00025` | `fix` | [`done/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md`](done/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md) |
+| `c00004` | `chore` | [`done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-puedan-delegar.md`](done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-puedan-delegar.md) |
 
 Los informes crudos de auditoría, distintos de las propuestas `kind: audit`,
 viven en [`../../audits/`](../../audits/), con nombres fechados y estables.

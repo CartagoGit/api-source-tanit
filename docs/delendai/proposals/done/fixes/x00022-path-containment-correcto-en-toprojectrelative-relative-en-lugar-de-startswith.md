@@ -2,10 +2,12 @@
 id: x00022
 title: "path containment correcto en toProjectRelative — relative() en lugar de startsWith()"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - cc134ce  # fix(core): x00022 path containment correcto — relative() en lugar de startsWith()
 dependsOn: []
 related:
   - a00009

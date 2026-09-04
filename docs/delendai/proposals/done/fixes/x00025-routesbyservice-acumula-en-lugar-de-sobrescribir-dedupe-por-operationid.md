@@ -2,10 +2,13 @@
 id: x00025
 title: "routesByService acumula en lugar de sobrescribir + dedupe por OperationId"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
+shippedIn:
+  - c6bfb3d  # fix(core): x00025 routesByService acumula + dedupe intra-key
+  - a1d3f0a  # merge: x00025 routesByService acumula + dedupe (resuelve conflicto con x00024 en generation.pipeline.ts)
 dependsOn:
   - a00013
 related:
