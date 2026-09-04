@@ -69,7 +69,7 @@ async function runPipeline(
 
   // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
   // con `cwd` = raíz del paquete, así que un path relativo apunta al
-  // propio export-to-postman y el escaneo sale vacío. `projectRoot()`
+  // propio api-source-tanit y el escaneo sale vacío. `projectRoot()`
   // resuelve el flag `--project-root` y `POSTMAN_PROJECT_ROOT`.
   // Con contexto inyectado (ui, tests, tools) el singleton ni se mira:
   // r00008 S2 — el argv del proceso no es el de la petición.

@@ -22,15 +22,15 @@
  *
  * | Sistema | Carpeta |
  * |---|---|
- * | Linux | `$XDG_CONFIG_HOME/expostman` o `~/.config/expostman` |
- * | macOS | `~/Library/Application Support/expostman` |
- * | Windows | `%APPDATA%\expostman` |
+ * | Linux | `$XDG_CONFIG_HOME/tanit` o `~/.config/tanit` |
+ * | macOS | `~/Library/Application Support/tanit` |
+ * | Windows | `%APPDATA%\apisrc` |
  */
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 /** El nombre de la carpeta, igual en los tres sistemas. */
-const CARPETA = "expostman";
+const CARPETA = "tanit";
 
 /**
  * La carpeta de configuración de quien usa la aplicación.

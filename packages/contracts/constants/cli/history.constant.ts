@@ -41,9 +41,9 @@ export const HISTORY_FILE_NAME = "history.jsonl";
 /**
  * Nombre de la carpeta del historial, oculta en Unix.
  *
- * Separada de la carpeta de configuración (que es `expostman`, sin
+ * Separada de la carpeta de configuración (que es `apisrc`, sin
  * punto, y vive bajo `~/.config/` o similar) porque su propósito es
  * otro: la primera guarda ajustes e idiomas que el usuario modifica a
  * mano; la segunda guarda el log que la herramienta escribe sola.
  */
-export const HISTORY_DIR_NAME = ".expostman";
+export const HISTORY_DIR_NAME = ".tanit";

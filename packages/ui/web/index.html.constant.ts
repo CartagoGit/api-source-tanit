@@ -23,7 +23,7 @@ export const UI_HTML = String.raw`<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Export to Postman</title>
+<title>Tanit</title>
 <style>
   /*
    * El tema, en variables y con los mismos nombres que la hoja de
@@ -279,7 +279,7 @@ export const UI_HTML = String.raw`<!doctype html>
 <main>
   <div class="cabecera">
     <div>
-      <h1 data-i18n="app.title">Export to Postman</h1>
+      <h1 data-i18n="app.title">Tanit</h1>
       <p class="sub">Apunta a la carpeta de tu API y mira lo detectado antes de escribir nada.</p>
     </div>
     <button type="button" id="ajustes" class="tuerca" aria-haspopup="dialog" data-i18n-attr="aria-label:nav.settings" title="Ajustes" aria-label="Ajustes">&#9881;</button>
@@ -571,7 +571,7 @@ export const UI_HTML = String.raw`<!doctype html>
   function pide(ruta, cuerpo) {
     return fetch(ruta, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-expostman-token": TESTIGO },
+      headers: { "content-type": "application/json", "x-tanit-token": TESTIGO },
       body: JSON.stringify(cuerpo || {})
     }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
   }
@@ -731,7 +731,7 @@ export const UI_HTML = String.raw`<!doctype html>
 
   fetch("/api/capabilities", {
     method: "POST",
-    headers: { "x-expostman-token": TESTIGO }
+    headers: { "x-tanit-token": TESTIGO }
   })
     .then(function (r) { return r.json(); })
     .then(function (j) {

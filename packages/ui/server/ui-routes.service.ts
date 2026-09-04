@@ -318,7 +318,7 @@ export async function handleUiRequest(
        * cuando la carpeta elegida no es la de dentro del proyecto.
        */
       const avisoDestino =
-        outputDir && outputDir !== `${projectRoot}/export-to-postman`
+        outputDir && outputDir !== `${projectRoot}/tanit`
           ? `The output was written outside the project: ${result.collectionPath ?? outputDir}.`
           : undefined;
 

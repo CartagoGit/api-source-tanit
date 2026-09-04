@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `export-to-postman init` — bootstrap del proyecto host.
+ * `apisrc init` — bootstrap del proyecto host.
  *
  * Escanea un proyecto Laravel y genera automáticamente:
  *   - `examples/<proyecto>/config.constant.ts`
@@ -66,7 +66,7 @@ export async function runInit(
   //   1. ruta explícita (routePrefix matcheado por un scanner),
   //   2. framework (Laravel/Express/... → prefix del router),
   //   3. config explícito (`delendai.config.json#basePath`,
-  //      `.expostmanrc.json#basePath`),
+  //      `.tanitrc.json#basePath`),
   //   4. OpenAPI `servers[]`,
   //   5. variable de entorno `POSTMAN_BASE_PATH`.
   //
@@ -144,7 +144,7 @@ export async function runInit(
   const configPath = join(dest, "config.constant.ts");
   const configBody = `/**
  * Configuración del proyecto \`${projectName}\` generada por
- * \`export-to-postman init\`.
+ * \`apisrc init\`.
  *
  * Edita los valores marcados con \`// TODO\` para personalizarlos.
  */
@@ -241,7 +241,7 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
   // proyecto de quien usa la herramienta: en su terminal no existe. El
   // asistente está para quien no se sabe los flags, así que terminar
   // con un comando que no puede ejecutar es dejarlo peor que antes.
-  console.log("  export-to-postman generate   # build the Postman collection");
+  console.log("  apisrc generate   # build the Postman collection");
   return {
     code: 0,
     projectName,

@@ -3,9 +3,9 @@
  *
  * Es una carpeta **distinta** de la de configuración, y a propósito:
  *
- *   - `~/.config/expostman/` guarda ajustes e idiomas: cosas que quien
+ *   - `~/.config/tanit/` guarda ajustes e idiomas: cosas que quien
  *     usa la aplicación modifica a mano, en su carpeta personal.
- *   - `~/.expostman/` guarda `history.jsonl`: el registro que la
+ *   - `~/.tanit/` guarda `history.jsonl`: el registro que la
  *     herramienta escribe **por sí sola**, sin que nadie lo pida.
  *
  * Mezclar ambas carpetas haría que editar un ajuste o añadir un idioma
@@ -47,7 +47,7 @@ export function userHistoryDir(
   // —sería el sitio canónico de datos de aplicación— porque añadir un
   // carpeta nueva que difiera entre máquinas según esa variable es
   // exactamente el tipo de sorpresa que un historial automático no
-  // debería traer. `.expostman/` dentro de `homedir` es predecible.
+  // debería traer. `.apisrc/` dentro de `homedir` es predecible.
   if (platform === "win32") {
     return join(env["APPDATA"] ?? join(home, "AppData", "Roaming"), HISTORY_DIR_NAME);
   }

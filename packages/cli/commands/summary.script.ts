@@ -11,7 +11,7 @@
  *
  * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` o cwd.
  * Default format: `text` (salida humana). `json` vuelca IProjectSummary.
- * `--no-history` desactiva el append a `~/.expostman/history.jsonl`,
+ * `--no-history` desactiva el append a `~/.tanit/history.jsonl`,
  * para tests y para quien no quiera historial.
  */
 
@@ -91,7 +91,7 @@ export async function main(): Promise<number> {
     } else {
       console.log(asText(summary));
     }
-    // f00010 S4: dejar huella de la inspección en `~/.expostman/
+    // f00010 S4: dejar huella de la inspección en `~/.tanit/
     // history.jsonl`. El append es **best-effort**: si falla (disco
     // lleno, permisos), `summary` ya imprimió su resultado y la huella
     // que no se pudo escribir no es motivo para devolver código 1.

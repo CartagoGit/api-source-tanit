@@ -13,7 +13,7 @@
  *
  * Uso:
  *   bun scripts/history.script.ts [--limit N] [--project <raíz>] [--json] [--clear]
- *   expostman history [--limit N] [--project <raíz>] [--json] [--clear]
+ *   apisrc history [--limit N] [--project <raíz>] [--json] [--clear]
  */
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import {
@@ -57,7 +57,7 @@ function asText(
   home: string,
 ): string {
   if (entries.length === 0) {
-    const donde = `${home}/.expostman/history.jsonl`;
+    const donde = `${home}/.tanit/history.jsonl`;
     if (totalEntries === 0) {
       return `No history yet. The first successful generate or summary will appear here.\n  · ${donde}`;
     }
@@ -90,7 +90,7 @@ function asText(
  * su defecto, `options.home`. Sin ninguna, delega en `historyPath()`
  * (que usa `process.env.HOME` por convención). Esto último es lo que
  * hace `main()` para producción; los tests pasan siempre una ruta
- * concreta para no escribir en `~/.expostman/` de quien corre la
+ * concreta para no escribir en `~/.tanit/` de quien corre la
  * suite.
  */
 export async function runHistory(

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * `export-to-postman push` — sube la colección directamente a Postman.
+ * `apisrc push` — sube la colección directamente a Postman.
  *
  * Evita el paso manual de Import: genera y publica en el workspace del
  * usuario mediante la API pública de Postman. Como el `_postman_id` es
@@ -52,8 +52,8 @@ export async function runPush(
   const apiKey = readFlag(argv, "--api-key") ?? process.env["POSTMAN_API_KEY"] ?? "";
   if (!apiKey) {
     console.error("Missing Postman API key.\n");
-    console.error("  export-to-postman push --api-key <key>");
-    console.error("  POSTMAN_API_KEY=<key> export-to-postman push\n");
+    console.error("  apisrc push --api-key <key>");
+    console.error("  POSTMAN_API_KEY=<key> apisrc push\n");
     console.error("Create one at https://postman.co/settings/me/api-keys");
     return sinSubir(1, {
       reason: "No Postman API key was given.",
@@ -100,7 +100,7 @@ export async function runPush(
   const requestCount = countRequests(result.collection.item as IItem[]);
   if (requestCount === 0) {
     console.error("No endpoints were found, nothing to push.");
-    console.error("Run `export-to-postman generate --inspect` to see what was detected.");
+    console.error("Run `apisrc generate --inspect` to see what was detected.");
     return {
       ...sinSubir(1, {
         reason: "No endpoints were found, there is nothing to push.",
