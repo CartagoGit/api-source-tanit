@@ -239,11 +239,13 @@ async function expandMonorepoDetection(
   userOverride: string | undefined,
 ): Promise<ReadonlyArray<IDetectedFramework>> {
   // Caso 1: override del usuario. Escaneamos solo el workspace que
-  // pidió. Devolvemos los `match` con `projectRoot` y
-  // `frameworkSearchRoot` ya apuntando al workspace, para que
-  // `applyFrameworkSearchRoot` (que más tarde solo añade
-  // `frameworkSearchRoot` cuando NO está) no duplique el segmento
-  // y produzca `apps/api/apps/api`.
+  // pidió. Pegamos `frameworkSearchRoot` al match (relativo a la raíz)
+  // y dejamos `projectRoot` apuntando a la raíz: el contrato de los
+  // scanners (a00012 S1.b) es que hacen `resolve(projectRoot,
+  // frameworkSearchRoot)` para llegar al workspace. Si
+  // `projectRoot` ya fuera el workspace, `resolve(workspace,
+  // workspace) = workspace/workspace` y los scanners no encuentran
+  // sus fuentes.
   if (userOverride && userOverride.length > 0) {
     const workspaceRoot = join(projectRoot, userOverride);
     const perWorkspace = await orchestrator.detectAll(workspaceRoot);
@@ -251,7 +253,7 @@ async function expandMonorepoDetection(
       ...c,
       match: {
         ...c.match,
-        projectRoot: workspaceRoot,
+        projectRoot,
         frameworkSearchRoot: userOverride,
       },
     }));
@@ -271,23 +273,28 @@ async function expandMonorepoDetection(
     ),
   );
 
+  // Helper: reorienta un match al workspace. Mismo contrato que
+  // override — `projectRoot` queda como la raíz del monorepo y
+  // `frameworkSearchRoot` es el segmento a aplicar.
+  const reorient = (
+    c: IDetectedFramework,
+    workspace: string,
+  ): IDetectedFramework => ({
+    ...c,
+    match: {
+      ...c.match,
+      projectRoot,
+      frameworkSearchRoot: workspace,
+    },
+  });
+
   // Caso 3: single-workspace. La raíz sola no detecta nada; la
-  // reemplazamos por la del workspace. Igual que en override, fijamos
-  // `frameworkSearchRoot` aquí para que `applyFrameworkSearchRoot` lo
-  // respete (su rama de auto-fill ya está en `null` para multi-workspace,
-  // pero single-workspace sí lo rellenaría).
+  // reemplazamos por la del workspace.
   if (detection.workspaceDirs.length === 1) {
     const workspace = detection.workspaceDirs[0]!;
     const workspaceRoot = join(projectRoot, workspace);
     const perWorkspace = await orchestrator.detectAll(workspaceRoot);
-    return perWorkspace.map((c) => ({
-      ...c,
-      match: {
-        ...c.match,
-        projectRoot: workspaceRoot,
-        frameworkSearchRoot: workspace,
-      },
-    }));
+    return perWorkspace.map((c) => reorient(c, workspace));
   }
 
   // Caso 2: multi-workspace. Agregamos a lo que la raíz ya detectó,
@@ -298,18 +305,11 @@ async function expandMonorepoDetection(
     const workspaceRoot = join(projectRoot, workspace);
     const perWorkspace = await orchestrator.detectAll(workspaceRoot);
     for (const candidate of perWorkspace) {
-      const candidateRewritten: IDetectedFramework = {
-        ...candidate,
-        match: {
-          ...candidate.match,
-          projectRoot: workspaceRoot,
-          frameworkSearchRoot: workspace,
-        },
-      };
-      const key = `${candidateRewritten.match.framework}@${workspace}`;
+      const rewritten = reorient(candidate, workspace);
+      const key = `${rewritten.match.framework}@${workspace}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      merged.push(candidateRewritten);
+      merged.push(rewritten);
     }
   }
   return merged;
@@ -357,12 +357,6 @@ async function applyFrameworkSearchRoot(
  * Construye un `IDetectedFramework` con el `frameworkSearchRoot` pegado
  * al `match`. Se preserva el resto (score, evidence, scanner,
  * validation) por spread.
- *
- * Si el `match` ya trae `frameworkSearchRoot` (caso
- * `expandMonorepoDetection`: cuando ya hemos reorientado la
- * detección contra un workspace), se respeta y no se duplica — eso
- * convertiría `apps/api` en `apps/api/apps/api` por el join
- * posterior de los scanners.
  */
 function augmentMatch(
   detected: IDetectedFramework,
@@ -375,9 +369,7 @@ function augmentMatch(
     ...(detected.match.version !== undefined
       ? { version: detected.match.version }
       : {}),
-    ...(detected.match.frameworkSearchRoot === undefined
-      ? { frameworkSearchRoot }
-      : {}),
+    frameworkSearchRoot,
   };
   return {
     match,
