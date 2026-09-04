@@ -21,8 +21,8 @@ bun.lockb
 dist/
 
 # El sidecar que Tauri empaqueta: se compila en cada build y pesa 90 MB.
-projects/desktop/binaries/
-projects/desktop/target/
+packages/desktop/binaries/
+packages/desktop/target/
 
 # TypeScript emite `.js` al verificar tipos de algunas secciones o al
 # ejecutar build:binary. Sólo los fuentes (.ts) y los assets de tests

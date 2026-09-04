@@ -112,7 +112,7 @@ COPY . /work
 # `|| true` por el `file:` del plugin que apunta fuera del repo (p00007).
 # El CLI no importa el plugin, así que su compilación no lo necesita.
 RUN bun install || true \
-    && bun build --compile --target=bun-linux-x64 projects/cli/cli.script.ts \
+    && bun build --compile --target=bun-linux-x64 packages/cli/cli.script.ts \
          --outfile /out/expostman
 
 # --- Etapa 3: solo el binario ------------------------------------------------

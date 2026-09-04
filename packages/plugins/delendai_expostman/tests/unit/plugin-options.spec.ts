@@ -7,7 +7,7 @@
  *  - `frameworkSearchRoot` es opcional (la config puede omitirlo).
  *  - Cuando se da, es una cadena no vacía.
  *  - Los campos que ya existían (`defaultProjectRoot`, `cliScript`,
- *    `mcpVertexBunBin`) siguen funcionando como antes: no se rompió
+ *    `delendaiBunBin`) siguen funcionando como antes: no se rompió
  *    nada al añadir el campo.
  *  - Un campo desconocido se rechaza (la schema es `.strict()`) y el
  *    error señala el nombre del campo.
@@ -72,9 +72,9 @@ describe("ExportToPostmanOptionsSchema — campos previos", () => {
     expect(parsed.success).toBe(true);
   });
 
-  test("mcpVertexBunBin sigue funcionando", () => {
+  test("delendaiBunBin sigue funcionando", () => {
     const parsed = ExportToPostmanOptionsSchema.safeParse({
-      mcpVertexBunBin: "/usr/local/bin/bun",
+      delendaiBunBin: "/usr/local/bin/bun",
     });
     expect(parsed.success).toBe(true);
   });

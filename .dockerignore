@@ -17,7 +17,7 @@ dist
 build
 **/dist
 **/build
-projects/desktop/target
+packages/desktop/target
 
 # Lo que generan los ejemplos al ejercitarlos. Ver `.gitignore`.
 export-to-postman

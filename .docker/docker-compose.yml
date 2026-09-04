@@ -46,11 +46,11 @@ x-toolchain: &toolchain
     # el directorio está vacío. El síntoma es un typecheck que falla
     # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
     # tiene nada que ver con los tipos.
-    - plugin_node_modules:/work/projects/plugins/delendai_expostman/node_modules
+    - plugin_node_modules:/work/packages/plugins/delendai_expostman/node_modules
     - cargo_registry:/usr/local/cargo/registry
     # Fuera del árbol del repo, a propósito.
     #
-    # Montarlo en `projects/desktop/target` hacía que Docker creara ese
+    # Montarlo en `packages/desktop/target` hacía que Docker creara ese
     # directorio **como root** dentro del working tree, y a partir de ahí
     # `mkdir` desde la máquina fallaba con «Permission denied» en un
     # sitio que git ni siquiera rastrea. `CARGO_TARGET_DIR` lo lleva

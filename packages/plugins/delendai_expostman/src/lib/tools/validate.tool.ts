@@ -80,7 +80,7 @@ export function buildValidateToolRegistration(
             cwd: workspaceRoot,
             ctx: {
               cwd: workspaceRoot,
-              bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+              bunBin: ctx.options["delendaiBunBin"] as string | undefined,
             },
           });
           // Mutable aquí y `readonly` en el contrato de salida: la anotación

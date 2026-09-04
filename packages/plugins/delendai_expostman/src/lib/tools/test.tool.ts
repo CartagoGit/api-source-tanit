@@ -216,7 +216,7 @@ export function buildTestToolRegistration(
               timeoutMs: 60_000,
               ctx: {
                 cwd: workspaceRoot,
-                bunBin: ctx.options["mcpVertexBunBin"] as string | undefined,
+                bunBin: ctx.options["delendaiBunBin"] as string | undefined,
               },
             });
             const detail = r.ok
