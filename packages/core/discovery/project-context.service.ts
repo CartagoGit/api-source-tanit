@@ -10,7 +10,7 @@
  * definitivamente en r00010 y este es el único resolutor que queda.
  */
 import { existsSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import type {
   IProjectContext,
   IProjectDirs,
@@ -82,11 +82,28 @@ export function fromProjectRoot(context: IProjectContext, relPath: string): stri
   return join(context.projectRoot, relPath);
 }
 
-/** Ruta relativa al proyecto, en formato POSIX. */
+/**
+ * Ruta relativa al proyecto, en formato POSIX.
+ *
+ * Antes se hacía `normalized.startsWith(context.projectRoot)`, pero
+ * `startsWith` no entiende de fronteras de segmento: `/home/u/api-secret`
+ * matchea falsamente `/home/u/api` (x00022, audit 2026-09-04). Ahora se
+ * usa la misma fórmula canónica que
+ * `packages/core/helpers/path-containment.helper.ts`: `relative()` más
+ * la guarda de prefijo `..${sep}` / absoluto.
+ *
+ * Si `absPath` es exactamente la raíz del proyecto, se devuelve la
+ * cadena vacía para preservar la idempotencia `fromProjectRoot ∘
+ * toProjectRelative`.
+ */
 export function toProjectRelative(context: IProjectContext, absPath: string): string {
   const normalized = resolve(absPath);
-  if (!normalized.startsWith(context.projectRoot)) return normalized;
-  return normalized.slice(context.projectRoot.length + 1).split(sep).join("/");
+  if (normalized === context.projectRoot) return "";
+  const rel = relative(context.projectRoot, normalized);
+  const inside =
+    !rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel);
+  if (!inside) return normalized;
+  return rel.split(sep).join("/");
 }
 
 /** ¿Existe este subdirectorio del proyecto? */
