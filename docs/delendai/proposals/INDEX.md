@@ -39,7 +39,7 @@ Las referencias entre propuestas deben usar el id (`a00005`, `r00008`, etc.)
 y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
-`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `c00002`,
+`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `a00013`, `c00002`,
 `f00010`, `f00011`,
 `p00007`,
 `r00008`, `r00010`,
@@ -58,6 +58,7 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `a00010` | `audit` | [`done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md`](done/audits/a00010-plan-consolidado-auditoria-exhaustiva-2026-09-03.md) |
 | `a00011` | `audit` | [`done/audits/a00011-plan-correcciones-revision-a00010.md`](done/audits/a00011-plan-correcciones-revision-a00010.md) |
 | `a00012` | `audit` | [`done/audits/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md`](done/audits/a00012-plan-de-estabilizacion-y-arquitectura-2026-09-04.md) |
+| `a00013` | `audit` | [`done/audits/a00013-multi-service-para-monorepos-servicegraph-base-config-baseurl-auth-por-workspace-combine-services-explicito.md`](done/audits/a00013-multi-service-para-monorepos-servicegraph-base-config-baseurl-auth-por-workspace-combine-services-explicito.md) |
 | `c00002` | `chore` | [`done/chores/c00002-release-automatizada-de-npm-desde-ci.md`](done/chores/c00002-release-automatizada-de-npm-desde-ci.md) |
 | `p00007` | `chore` | [`done/chores/p00007-consumir-delendai-core-publicado.md`](done/chores/p00007-consumir-delendai-core-publicado.md) |
 | `f00010` | `feat` | [`done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md`](done/feats/f00010-mejorar-experiencia-de-deteccion-de-framework.md) |

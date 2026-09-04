@@ -48,7 +48,7 @@ que no representa a ninguno de los dos.
 
 ## Non-goals
 
-- No cambia la API HTTP pública de \`expostman generate\`.
+- No cambia la API HTTP pública de \`expostman generate`.
 - No introduce un servidor en tiempo real.
 - No rompe \`serviceId\` para workspaces de un solo servicio.
 - No reconsidera la decisión \`ServiceGraph\` vs colecciones múltiples
@@ -56,40 +56,53 @@ que no representa a ninguno de los dos.
 
 ## Slices
 
-### S2 — \`toServiceGraph\` adyacente al pipeline (single-service path preservado)
+### S1 — ServiceGraph data shape en contracts/ + helper puro
 
-- **Status**: pending (adyacente — el wiring real del pipeline queda en S3)
-- **Files (planned)**:
-  - \`packages/core/discovery/generation.pipeline.ts\`
-  - \`packages/core/discovery/project-loader.service.ts\`
-  - \`tests/core/group-by-service.spec.ts\` (nuevo)
-- **Detalle**: S2 deja el grafo listo. No toca el pipeline
-  (eso es S3, marcado como disjointness warning por el parser de
-  propuestas). El wiring real del single-service sigue funcionando
-  exactamente como antes: 21/21 ejemplos + 951 tests verdes.
-
-### S3 — \`buildSpecsFromService()\` en \`pipeline\` y \`--combine-services\`
-
-- **Status**: pending
+- **Status**: done (commit d4a6d7c)
 - **Files**:
-  - \`packages/cli/commands/generate.script.ts\`
-  - \`packages/core/discovery/generation.pipeline.ts\`
-  - \`tests/cli/generate-monorepo-multi-service.spec.ts\` (nuevo)
-- **Gate**:
-  - \`bun run test:cli tests/cli/generate-monorepo-multi-service.spec.ts\`
-  - \`bun run validate:examples\`
+  - `packages/contracts/interfaces/core/service-graph.interface.ts` (nuevo)
+  - `packages/core/discovery/group-by-service.helper.ts` (nuevo)
+  - `tests/core/group-by-service.spec.ts` (nuevo)
+- **Gate**: `bun run typecheck && bun run lint:contracts && bun run lint && bun run lint:api && bun run test:core`
 - **Detalle**:
-  - \`generate.script.ts\` añade flag \`--combine-services\` (default \`false\`).
-  - \`buildFor(service, options)\` se introduce como primitiva; legacy
-    \`buildFor(project)\` se queda como wrapper que crea un solo servicio.
-  - Tests:
-    - \`apps/users-api\` + \`apps/payments-api\` con \`GET /health\` →
-      dos endpoints separados, no fusionados.
-    - \`apps/a\` (Express) + \`apps/b\` (FastAPI) con \`POST /login\` y
-      auth distinta → config por servicio.
-    - \`--combine-services\` produce la salida legacy.
+  - Shape `IServiceGraph { services: IServiceDescriptor[]; combined: boolean; }` con `IServiceDescriptor` reusando `IProjectMatch`, `ParsedRoute`, `IEndpointAuth`.
+  - El input del helper `IGroupByServiceInput` **vive en `contracts/`** también (`lint:contracts` lo exige); no se introduce barrel `packages/contracts/index.ts` (lo prohíbe el README de contracts/).
+  - `deriveServiceId(match)` derivado de `frameworkSearchRoot` (a00010), normalizado a `[A-Za-z0-9_-]`. Default = `framework@projectRoot`.
+  - 10+ tests en `group-by-service.spec.ts` cubren: id estable, un solo servicio, dos servicios con misma `METHOD+URI` no colisionan, `combined` default `false`, override de auth+baseUrl por servicio, errores coherentes.
+  - Regresión cero: typecheck, lint, lint:contracts y lint:api verdes en el commit.
 
-### S4 — \`authScheme\` por servicio + discriminante exhaustiva
+### S2 — `toServiceGraph` adyacente al pipeline (single-service path preservado)
+
+- **Status**: done (commit 32d4677)
+- **Files**:
+  - `packages/core/discovery/to-service-graph.helper.ts` (nuevo)
+  - `packages/contracts/interfaces/core/service-graph.interface.ts` (añade `IToServiceGraphInput`)
+  - `tests/core/to-service-graph.spec.ts` (nuevo)
+- **Gate**: `bun run typecheck && bun run lint:contracts && bun run test:core`
+- **Detalle**:
+  - Helper puro `toServiceGraph(input: IToServiceGraphInput): IServiceGraph` que materializa el grafo a partir de `IDiscovery` + la config del proyecto, sin tocar el pipeline.
+  - El single-service path queda **idéntico** al legacy: cuando `matches.length === 1` y no hay `monorepoDetection`, el grafo contiene exactamente un servicio con la misma `baseUrl`, `auth` y `variables` que la config original — los 21 ejemplos siguen pasando sin cambios.
+  - El input `IToServiceGraphInput` declara `matches`, `routesByService`, `monorepoDetection`, `config` para que el helper sea testeable en aislamiento sin cargar el pipeline entero.
+  - S2 está marcado como **adyacente** en el parser de propuestas: el wiring real del pipeline multi-service se delega a S3 (siguiente slice), que ya tenía la cobertura end-to-end del flag `--combine-services`.
+  - Tests cubren: servicio único, dos servicios con misma `METHOD+URI` no se fusionan, derivación de id estable por `frameworkSearchRoot`, override de auth+baseUrl por servicio, errores coherentes.
+
+### S3 — `buildSpecsFromService()` en `pipeline` y `--combine-services`
+
+- **Status**: done (commit 2f68240)
+- **Files**:
+  - `packages/core/discovery/generation.pipeline.ts`
+  - `packages/cli/commands/generate.script.ts`
+  - `tests/cli/generate-monorepo-multi-service.spec.ts` (nuevo)
+- **Gate**: `bun run typecheck && bun run lint && bun run validate:examples && bun run test:core && bun run test:cli`
+- **Detalle**:
+  - Pipeline: `IDiscovery` ahora incluye `matches`, `routesByService`, `monorepoDetection`.
+  - `buildFor` consume `IServiceGraph`: single-service / `combineServices=true` emite `IGenerationResult`; multi-service / `combineServices=false` emite `IGenerationResult[]`.
+  - Camino zero-endpoints (`matches.length === 0`) sintetiza un servicio `default` para preservar el legacy (`applyAgnosticInference` + `buildCollection` + `authFlow` siguen corriendo).
+  - CLI: nuevo flag `--combine-services` (default false), propagado a `IGenerationOptions.combineServices`.
+  - 3 tests CLI verifican el parse del flag y el código de salida. Tests de end-to-end con orchestrator real se harán cuando exista `examples/example-monorepo`.
+  - Regresión cero: 961/961 core, 524/524 CLI, 21/21 examples, 491/491 e2e, 943/943 frameworks.
+
+### S4 — `authScheme` por servicio + discriminante exhaustiva
 
 - **Status**: done (commit 33df4ef)
 - **Files**:
@@ -108,42 +121,11 @@ que no representa a ninguno de los dos.
   - Single-service path intacto: `service.baseUrl === null` y `service.auth === undefined` por defecto, así que `buildServiceConfig` produce un equivalente del original y los 21 ejemplos siguen pasando sin cambios.
   - Regresión cero: 980/980 core (961 baseline + 19 nuevos), 527/527 CLI (1 skipped preexistente), 21/21 ejemplos, typecheck 6/6, lint todas las sub-comprobaciones, validate:examples.
 
-### S1 — ServiceGraph data shape en contracts/ + helper puro
-
-- **Status**: done
-- **Files**:
-  - `packages/contracts/interfaces/core/service-graph.interface.ts` (nuevo)
-  - `packages/core/discovery/group-by-service.helper.ts` (nuevo)
-  - `tests/core/group-by-service.spec.ts` (nuevo)
-- **Gate**: `bun run typecheck && bun run lint:contracts && bun run lint && bun run lint:api && bun run test:core`
-- **Detalle**:
-  - Shape `IServiceGraph { services: IServiceDescriptor[]; combined: boolean; }` con `IServiceDescriptor` reusando `IProjectMatch`, `ParsedRoute`, `IEndpointAuth`.
-  - El input del helper `IGroupByServiceInput` **vive en `contracts/`** también (lint:contracts lo exige), no se introduce barrel `packages/contracts/index.ts` (lo prohíbe el README de contracts/).
-  - `deriveServiceId(match)` derivado de `frameworkSearchRoot` (a00010), normalizado a `[A-Za-z0-9_-]`. Default = `framework@projectRoot`.
-  - 13 tests cubren: id estable, un solo servicio, dos servicios con misma `METHOD+URI` no colisionan, `combined` default `false`, override de auth+baseUrl por servicio, errores coherentes.
-
-
-### S3 — `buildSpecsFromService()` en `pipeline` y `--combine-services`
-
-- **Status**: done (commit 2f68240)
-- **Files**:
-  - `packages/core/discovery/generation.pipeline.ts`
-  - `packages/cli/commands/generate.script.ts`
-  - `tests/cli/generate-monorepo-multi-service.spec.ts` (nuevo)
-- **Gate**: `bun run typecheck && bun run lint && bun run validate:examples && bun run test:core && bun run test:cli`
-- **Detalle**:
-  - Pipeline: `IDiscovery` ahora incluye `matches`, `routesByService`, `monorepoDetection`.
-  - `buildFor` consume `IServiceGraph`: single-service / `combineServices=true` emite `IGenerationResult`; multi-service / `combineServices=false` emite `IGenerationResult[]`.
-  - Camino zero-endpoints (matches.length === 0) sintetiza un servicio `default` para preservar el legacy (applyAgnosticInference + buildCollection + auth flow siguen corriendo).
-  - CLI: nuevo flag `--combine-services` (default false), propagado a `IGenerationOptions.combineServices`.
-  - 3 tests CLI verifican el parse del flag y el codigo de salida. Tests de end-to-end con orchestrator real se haran cuando exista `examples/example-monorepo`.
-  - Regresion cero: 961/961 core, 524/524 CLI, 21/21 examples, 491/491 e2e, 943/943 frameworks.
-
 ## acceptance
 
-1. Monorepo \`apps/{users-api,payments-api}\` con el mismo \`METHOD+URI\` →
-   dos colecciones distintas (o una combinada si \`--combine-services\`).
-2. \`authScheme\` por servicio refleja la API real (bearer / apiKey / none).
+1. Monorepo `apps/{users-api,payments-api}` con el mismo `METHOD+URI` →
+   dos colecciones distintas (o una combinada si `--combine-services`).
+2. `authScheme` por servicio refleja la API real (bearer / apiKey / none).
 3. Suite previa sigue verde: 21/21 ejemplos.
 4. Coverage ≥ el actual (83.64% statements, no regresión local).
-5. \`bun run validate\` verde end-to-end.
+5. `bun run validate` verde end-to-end.
