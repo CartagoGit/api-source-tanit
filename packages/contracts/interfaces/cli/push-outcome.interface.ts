@@ -1,52 +1,52 @@
 /**
- * Lo que devuelve subir la colección a Postman.
+ * What pushing the collection to Postman returns.
  *
- * Aquí hay una regla que no está en los otros `Outcome`: **la clave de
- * API no aparece**. Ni el valor, ni una versión enmascarada, ni el
- * nombre de la variable de la que salió.
+ * There is one rule here that is not in the other `Outcome`s: **the
+ * API key does not appear**. Neither the value, nor a masked
+ * version, nor the variable name it came from.
  *
- * No es celo abstracto. `push` es el único comando que maneja un
- * secreto, y es justo el que un agente va a invocar por su cuenta: lo
- * que devuelva acaba en un historial de conversación, en un log del
- * host, o repetido de vuelta por el modelo. Un `detail` de la API de
- * Postman que incluyera la petición completa filtraría la clave sin que
- * nadie lo hubiera decidido.
+ * This is not abstract caution. `push` is the only command that
+ * handles a secret, and it is exactly the one an agent will invoke
+ * by itself: whatever it returns ends up in a conversation
+ * history, in a host log, or echoed back by the model. A Postman
+ * API `detail` carrying the full request would leak the key
+ * without anyone having decided to.
  *
- * Por eso el error viaja como `{ reason, nextAction }` redactados aquí,
- * y no como el cuerpo crudo de la respuesta.
+ * Hence the error travels as a redacted `{ reason, nextAction }`
+ * defined here, not as the raw response body.
  */
 
-/** Un artefacto que ha llegado a Postman. */
+/** An artefact that reached Postman. */
 export interface IPushedArtifact {
-  /** `"created"` si no existía, `"updated"` si se sobrescribió. */
+  /** `"created"` if new, `"updated"` if it replaced an existing one. */
   readonly action: "created" | "updated";
-  /** UID que asigna Postman (`<userId>-<uuid>`). */
+  /** UID assigned by Postman (`<userId>-<uuid>`). */
   readonly uid: string;
   readonly name: string;
 }
 
-/** Por qué no se pudo subir, y qué hacer. */
+/** Why the upload could not happen, and what to do. */
 export interface IPushFailure {
   readonly reason: string;
   readonly nextAction: string;
 }
 
-/** El resultado completo de un `push`. */
+/** The full result of a `push`. */
 export interface IPushOutcome {
   readonly code: number;
   /**
-   * Usuario de Postman con el que se ha autenticado.
+   * Postman user the upload was authenticated as.
    *
-   * Solo el nombre visible. Es lo que permite a quien lo lee darse
-   * cuenta de que ha subido al workspace equivocado, que es el error
-   * caro de este comando.
+   * Visible name only. This is what lets the reader realize they
+   * uploaded to the wrong workspace — the costly error of this
+   * command.
    */
   readonly user: string | null;
-  /** `null` si no se reconoció ningún framework. */
+  /** `null` if no framework was recognized. */
   readonly framework: string | null;
-  /** Requests que se han subido. */
+  /** Number of requests uploaded. */
   readonly requests: number;
-  /** La colección, o `null` si no se llegó a subir. */
+  /** The collection, or `null` if it never reached Postman. */
   readonly collection: IPushedArtifact | null;
   /** Un elemento por entorno subido. Vacío con `--no-environments`. */
   readonly environments: ReadonlyArray<IPushedArtifact>;

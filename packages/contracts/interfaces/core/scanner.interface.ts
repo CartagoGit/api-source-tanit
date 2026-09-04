@@ -1,79 +1,85 @@
 /**
- * Contratos framework-agnostic para discovery y validación.
+ * Framework-agnostic contracts for discovery and validation.
  *
- * El paquete `api-source-tanit` produce colecciones Postman v2.1.0
- * independientemente del framework del proyecto host. Para admitir
- * Laravel, Symfony, Slim, Express, FastAPI, OpenAPI-3, etc. sin
- * reescribir el orquestador, todo el "input parsing" se hace a
- * través de tres interfaces:
+ * The `api-source-tanit` package produces Postman v2.1.0 collections
+ * regardless of the host project's framework. To support Laravel,
+ * Symfony, Slim, Express, FastAPI, OpenAPI-3, etc. without rewriting
+ * the orchestrator, all input parsing goes through three
+ * interfaces:
  *
- *   - `IProjectScanner` — describe CÓMO se descubre el proyecto (qué
- *     archivos existen, qué framework es).
- *   - `IRouteScanner` — extrae rutas (method+uri) en un formato neutro.
- *   - `IValidationSpecProvider` — resuelve una ruta a `IValidationSpec`
- *     (reglas de campos) si el framework las define.
+ *   - `IProjectScanner` — describes HOW the project is discovered
+ *     (which files exist, which framework it is).
+ *   - `IRouteScanner` — extracts routes (method+uri) in a neutral
+ *     shape.
+ *   - `IValidationSpecProvider` — resolves a route to
+ *     `IValidationSpec` (field rules) if the framework defines them.
  *
- * Cada `IRouteScanner` y `IValidationSpecProvider` se asocia a un
- * `framework id` (ej. `"laravel"`, `"openapi"`). `discoverProject()`
- * corre todos los `IRouteScanner` registrados y se queda con el primero
- * que `detect()` (forward/declarative matcher).
+ * Each `IRouteScanner` and `IValidationSpecProvider` is associated
+ * with a `framework id` (e.g. `"laravel"`, `"openapi"`).
+ * `discoverProject()` runs every registered `IRouteScanner` and keeps
+ * the first one whose `detect()` (forward/declarative matcher)
+ * signals a positive match.
  *
- * El shape de `ParsedRoute` está pensado para ser 1-1 traducible a
- * `EndpointSpec` (URI ya normalizada a Postman `{{x}}`).
+ * The `ParsedRoute` shape is designed to be 1-1 translatable to
+ * `EndpointSpec` (URI already normalized to Postman `{{x}}`).
  *
- * @see ./postman.interface.ts para los tipos Postman v2.1.0.
+ * @see ./postman.interface.ts for the Postman v2.1.0 types.
  */
 
 import type { IEndpointAuth } from "./postman.interface.js";
 
-/** ID estable del framework. Se usa como clave en config. */
+/** Stable framework id. Used as a key in config. */
 export type FrameworkId = "laravel" | "openapi" | "express" | "fastapi" | "symfony" | string;
 
-/** Resultado del sniffing inicial. */
+/** Result of the initial sniffing. */
 export interface IProjectMatch {
-  /** ID del framework (sluggable, kebab-case). */
+  /** Framework id (slugged, kebab-case). */
   readonly framework: FrameworkId;
-  /** Versión reportada por el manifest (composer.json version, etc.). */
+  /** Version reported by the manifest (composer.json version, etc.). */
   readonly version?: string;
-  /** Raíz del proyecto resuelta. */
+  /** Resolved project root. */
   readonly projectRoot: string;
   /**
-   * Subdirectorio del proyecto donde vive el framework, **relativo** a
-   * `projectRoot`. Útil en monorepos (`apps/web`, `packages/api`,
-   * `services/orders`) donde el manifiesto raíz no es el del framework.
+   * Subdirectory where the framework lives, **relative** to
+   * `projectRoot`. Useful in monorepos (`apps/web`, `packages/api`,
+   * `services/orders`) where the root manifest is not the
+   * framework's.
    *
-   * Lo calcula el HOST (CLI/MCP) tras detectar monorepo y se lo pasa al
-   * scanner vía este campo. Si está ausente, los scanners miran la
-   * raíz. **Nunca** se concatena con `process.cwd()` ni se acepta
-   * absoluto: la raíz es siempre `projectRoot` y este campo solo añade
-   * un segmento, igual que `--framework-search-root` en el CLI.
+   * The host (CLI/MCP) computes it after detecting the monorepo and
+   * passes it to the scanner through this field. If absent, scanners
+   * look at the root. **It is never** concatenated with
+   * `process.cwd()` and never absolute: the root is always
+   * `projectRoot` and this field only adds one segment, exactly like
+   * `--framework-search-root` in the CLI.
    *
-   * Añadido en f00011 S1. La detección del propio monorepo (turbo.json,
-   * `package.json#workspaces`, ...) vive en el orquestador y queda fuera
-   * del contrato del scanner: este campo es el resultado, no el método.
+   * Added in f00011 S1. The monorepo detection itself (turbo.json,
+   * `package.json#workspaces`, ...) lives in the orchestrator and
+   * stays out of the scanner contract: this field is the result, not
+   * the method.
    */
   readonly frameworkSearchRoot?: string;
-  /** Rutas de artefactos extra relevantes (composer.json, openapi.yaml...). */
+  /** Paths of relevant extra artefacts (composer.json, openapi.yaml...). */
   readonly artifacts: ReadonlyArray<string>;
 }
 
 /**
- * Detector declarativo: ¿este scanner sabe trabajar con este proyecto?
+ * Declarative detector: does this scanner know how to handle this
+ * project?
  *
- * `detect()` devuelve `{ score, evidence }` para que la UI pueda
- * enseñar **por qué** se eligió un framework, no solo cuál. Cada
- * scanner anota cada señal que vio y el delta exacto al score;
- * la colección se pinta en `summary` y en la UI.
+ * `detect()` returns `{ score, evidence }` so the UI can show **why**
+ * a framework was chosen, not just which one. Each scanner annotates
+ * each signal it saw and the exact score delta; the collection gets
+ * painted in `summary` and in the UI.
  */
 export interface IProjectScanner {
   readonly framework: FrameworkId;
   /**
-   * Score (0-1) que indica la confianza, más la lista de señales que
-   * motivaron la puntuación. Si score=0, evidence se ignora y no se
-   * intenta.
+   * Confidence score (0-1), plus the signals that motivated the
+   * score. If score=0, evidence is ignored and the scanner is not
+   * tried.
    */
   detect(projectRoot: string): Promise<IProjectScannerResult>;
-  /** Construye el IProjectMatch final. Llamado solo si detect > 0. */
+  /** Builds the final IProjectMatch. Called only if detect > 0. */
   resolve(projectRoot: string): Promise<IProjectMatch>;
 }
 

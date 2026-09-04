@@ -1,43 +1,43 @@
 /**
- * Navegar carpetas desde la interfaz.
+ * Browse folders from the UI.
  *
- * Lo que viaja son **nombres de directorio**, nunca contenido de
- * ficheros. No es una simplificación: un endpoint que devolviera
- * contenido sería un lector de ficheros arbitrario corriendo en la
- * máquina de alguien, y da igual que escuche solo en `127.0.0.1` — esta
- * misma interfaz ya tuvo un CSRF por dar por bueno ese razonamiento.
+ * What travels are **directory names**, never file contents. It is
+ * not a simplification: an endpoint that returned content would be
+ * an arbitrary file reader running on someone's machine, and it
+ * does not matter that it only listens on `127.0.0.1` — this same
+ * UI already had a CSRF because that reasoning felt safe.
  */
 
-/** Una carpeta de la lista. */
+/** A folder in the listing. */
 export interface IBrowseEntry {
-  /** El nombre a secas, para pintar. */
+  /** Plain name, for display. */
   readonly name: string;
-  /** La ruta absoluta, que es lo que se elige. */
+  /** Absolute path, which is what's selected. */
   readonly path: string;
   /**
-   * Si se puede entrar.
+   * Whether it can be entered.
    *
-   * Una carpeta sin permiso, o un enlace roto, sale marcada en vez de
-   * desaparecer: verla y no poder entrar se entiende; que no aparezca
-   * parece que el explorador está fallando.
+   * A permission-denied folder, or a broken link, shows up flagged
+   * instead of disappearing: seeing it and not being able to enter
+   * is intelligible; its absence looks like a broken browser.
    */
   readonly readable: boolean;
 }
 
-/** Lo que devuelve listar una carpeta. */
+/** The result of listing a folder. */
 export interface IBrowseListing {
   readonly ok: boolean;
-  /** La carpeta que se ha listado, ya resuelta a absoluta. */
+  /** The folder that was listed, already resolved to absolute. */
   readonly path: string;
-  /** La de encima, o `null` si esto ya es la raíz. */
+  /** The parent, or `null` if this is the root. */
   readonly parent: string | null;
   readonly entries: ReadonlyArray<IBrowseEntry>;
   /**
-   * Si la lista se ha cortado.
+   * Whether the listing was truncated.
    *
-   * Va aparte del motivo porque es una condición, no un mensaje: la
-   * interfaz necesita saberlo para enseñar un aviso, y leer prosa para
-   * decidir eso es lo que hace que se rompa al traducirla.
+   * Lives apart from the reason because it's a condition, not a
+   * message: the UI needs to know it to show a notice, and reading
+   * prose to decide that is what breaks when it's translated.
    */
   readonly truncated: boolean;
   /** Por qué falló, o por qué se cortó. `undefined` cuando todo fue bien. */

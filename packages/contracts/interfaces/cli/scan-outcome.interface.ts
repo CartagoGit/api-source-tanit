@@ -1,43 +1,46 @@
 /**
- * Lo que devuelve escanear un proyecto: el veredicto del discovery.
+ * What scanning a project returns: the discovery verdict.
  *
- * Vive aquí y no dentro de `scan.script.ts` porque lo consumen dos
- * mundos que no deberían conocerse: el comando que lo produce y el tool
- * MCP que lo expone. Con el tipo pegado al script, el plugin tenía que
- * importar el comando entero —con su registro de scanners detrás— solo
- * para saber la forma del dato.
+ * Lives here, not inside `scan.script.ts`, because two worlds that
+ * should not know each other consume it: the command that produces
+ * it and the MCP tool that exposes it. With the type glued to the
+ * script, the plugin had to import the whole command — with its
+ * scanner registry behind — just to know the shape of the data.
  *
- * Es el paso **anterior** a `IProjectSummary`: esto es lo que el
- * discovery ve en crudo, aquello es el proyecto ya interpretado. Cuando
- * las dos cifras no cuadran, la diferencia está justo en medio.
+ * This is the step **before** `IProjectSummary`: this is what
+ * discovery sees raw, that is the project already interpreted.
+ * When the two numbers don't line up, the difference is exactly in
+ * the middle.
  */
 
-/** Una ruta descubierta por el scanner, antes de convertirse en request. */
+/** A route discovered by the scanner, before becoming a request. */
 export interface IScannedRoute {
   readonly method: string;
   readonly uri: string;
   readonly tags: ReadonlyArray<string>;
-  /** `null` cuando el framework no aporta descripción para esa ruta. */
+  /** `null` when the framework provides no description for this route. */
   readonly description: string | null;
 }
 
-/** El resultado completo de un escaneo. */
+/** The full result of a scan. */
 export interface IScanOutcome {
   readonly code: number;
-  /** La raíz que se acabó escaneando, ya resuelta. */
+  /** The root that ended up being scanned, already resolved. */
   readonly root: string;
-  /** `null` si no se reconoció ningún framework. */
+  /** `null` if no framework was recognized. */
   readonly framework: string | null;
   /**
-   * Los ficheros que delataron al framework: `package.json`, `server.js`…
+   * The files that gave the framework away: `package.json`,
+   * `server.js`...
    *
-   * Es el «por qué» de la detección. Sin ellos, un framework mal
-   * detectado es indistinguible de uno bien detectado.
+   * This is the "why" of the detection. Without them, a
+   * misdetected framework is indistinguishable from a correctly
+   * detected one.
    */
   readonly artifacts: ReadonlyArray<string>;
-  /** Nombre de la clase que recorre las rutas, o `null` si no hay. */
+  /** Name of the class that walks the routes, or `null` if none. */
   readonly scanner: string | null;
-  /** Nombre del proveedor de reglas de validación, o `null`. */
+  /** Name of the validation-rules provider, or `null`. */
   readonly validation: string | null;
   readonly routes: ReadonlyArray<IScannedRoute>;
 }
