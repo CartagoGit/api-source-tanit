@@ -26,6 +26,7 @@
 
 import type { IProjectMatch, ParsedRoute } from "./scanner.interface.js";
 import type { IEndpointAuth } from "./postman.interface.js";
+import type { IMonorepoDetection } from "./discovery.interface.js";
 
 /**
  * El descriptor de un servicio individual dentro de un proyecto
@@ -129,4 +130,26 @@ export interface IServiceGraph {
   readonly services: ReadonlyArray<IServiceDescriptor>;
   /** ¿El usuario pidió combinar los servicios en una sola colección? */
   readonly combined: boolean;
+}
+
+/**
+ * Inputs del helper `toServiceGraph` (a00013 S2). Vive aquí por la
+ * misma razón que `IGroupByServiceInput`: el helper es genérico, pero
+ * sus inputs son contratos compartidos. Moverlos al lado del
+ * helper reintroduce el bug que este contrato ataca (arrastrar la
+ * implementación para tipar).
+ *
+ * `IMonorepoDetection` se reexporta desde este barrel porque S3/S4
+ * lo van a poblar desde `detectMonorepo()`. Mantenerlo aquí
+ * garantiza que un consumidor del grafo (CLI, plugin, exportador
+ * alternativo) pueda construir un `IToServiceGraphInput` sin
+ * importar `core/`.
+ */
+export interface IToServiceGraphInput {
+  readonly matches: ReadonlyArray<IProjectMatch>;
+  readonly routesByService: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>;
+  readonly monorepoDetection?: IMonorepoDetection | undefined;
+  readonly combined?: boolean | undefined;
+  readonly authByService?: ReadonlyMap<string, IEndpointAuth | undefined> | undefined;
+  readonly baseUrlByService?: ReadonlyMap<string, string | null> | undefined;
 }

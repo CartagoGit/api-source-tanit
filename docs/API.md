@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 159 símbolos en 56 módulos.
+> 161 símbolos en 57 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -493,6 +493,39 @@ El catálogo de frameworks y el fallback se inyectan, igual que en el
 pipeline: este servicio es del núcleo y no puede conocer los scanners
 concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
 en `packages/frameworks/`.
+
+### `packages/core/discovery/to-service-graph.helper.ts`
+
+toServiceGraph - a00013 S2.
+
+#### `toServiceGraph`
+
+```ts
+export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph
+```
+
+Forma el IServiceGraph desde el estado actual del discovery.
+
+El helper no infiere nada que no venga en el input. Si el caller
+aun no popula routesByService/authByService/etc., devuelve un
+grafo con la identidad de cada servicio y arrays vacios - que es
+exactamente lo que S2 quiere: el shape del grafo listo para que
+S3/S4 lo rellenen sin tener que cambiar el contrato.
+
+#### `decorateServices`
+
+```ts
+export function decorateServices( graph: IServiceGraph, overrides:
+```
+
+Variante de toServiceGraph que aplica los overrides del caller
+sobre cada descriptor despues de haberlos calculado. Util cuando
+el caller quiere producir un IServiceGraph decorado sin tener
+que re-implementar la propagacion de auth/baseUrl/variables.
+
+Por ahora vive aqui mismo porque solo se usa desde S2 y los
+tests; si S3 o S4 lo necesitan mas, se promociona a helper
+independiente.
 
 ### `packages/core/discovery/workspace-glob.helper.ts`
 

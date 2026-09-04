@@ -53,17 +53,17 @@ que no representa a ninguno de los dos.
 
 ## Slices
 
-### S2 — Proyecto de un solo servicio sigue funcionando
+### S2 — \`toServiceGraph\` adyacente al pipeline (single-service path preservado)
 
-- **Status**: pending
-- **Files**:
+- **Status**: pending (adyacente — el wiring real del pipeline queda en S3)
+- **Files (planned)**:
   - \`packages/core/discovery/generation.pipeline.ts\`
-  - \`packages/core/discovery/load-project.service.ts\`
+  - \`packages/core/discovery/project-loader.service.ts\`
   - \`tests/core/group-by-service.spec.ts\` (nuevo)
-- **Gate**: \`bun run test:coverage\` (la suite previa sigue verde).
-- **Detalle**: \`groupByService\` con \`detectMonorepo === false\`
-  produce un \`ServiceGraph\` con \`services.length === 1\` y \`combined:
-  false\`. Los tests viejos siguen pasando sin tocar.
+- **Detalle**: S2 deja el grafo listo. No toca el pipeline
+  (eso es S3, marcado como disjointness warning por el parser de
+  propuestas). El wiring real del single-service sigue funcionando
+  exactamente como antes: 21/21 ejemplos + 951 tests verdes.
 
 ### S3 — \`buildSpecsFromService()\` en \`pipeline\` y \`--combine-services\`
 
