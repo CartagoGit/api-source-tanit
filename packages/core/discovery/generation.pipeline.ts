@@ -57,6 +57,9 @@ import {
   detectMonorepo,
 } from "./monorepo-detector.helper.js";
 import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import { toServiceGraph } from "./to-service-graph.helper.js";
+import { deriveServiceId } from "./group-by-service.helper.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
@@ -91,17 +94,122 @@ export async function generateCollection(
   }
 
   const context = resolveProjectContext({ projectRoot });
-  return buildFor(context, options);
+  const result = await buildFor(context, options);
+  // Legacy single-collection contract: si buildFor devuelve un
+  // solo IGenerationResult (combineServices=true o un solo
+  // servicio), lo devolvemos tal cual. Si devuelve array, el
+  // caller NO ha pedido combinar, asi que elegimos el primer
+  // servicio. Los callers que necesiten el array explicito usan
+  // `generateCollections`.
+  if (Array.isArray(result)) {
+    const first: IGenerationResult = result[0] as IGenerationResult;
+    return first;
+  }
+  return result as IGenerationResult;
+}
+
+/**
+ * Variante multi-service de `generateCollection`. Devuelve TODAS
+ * las colecciones, una por servicio, en el orden de descubrimiento.
+ *
+ * - Sin flag `--combine-services` y con N>1 servicios: array de N
+ *   colecciones (cada una con `collectionName` derivado del
+ *   serviceId).
+ * - Con flag `--combine-services` o N===1: array de longitud 1
+ *   (la coleccion legacy).
+ *
+ * El CLI genera un fichero por entrada; el plugin MCP y la web
+ * exponen el array tal cual.
+ */
+export async function generateCollections(
+  projectRoot: string,
+  options: IGenerationOptions,
+): Promise<ReadonlyArray<IGenerationResult>> {
+  if (!existsSync(projectRoot)) {
+    throw new Error(
+      `El projectRoot no existe: ${projectRoot}\n` +
+        "Comprueba la ruta que le pasas a `--project-root`.",
+    );
+  }
+  const context = resolveProjectContext({ projectRoot });
+  const result = await buildFor(context, options);
+  if (Array.isArray(result)) {
+    return result.slice() as ReadonlyArray<IGenerationResult>;
+  }
+  return [result as IGenerationResult];
 }
 
 async function buildFor(
   context: IProjectContext,
   options: IGenerationOptions,
-): Promise<IGenerationResult> {
-  const projectRoot = context.projectRoot;
+): Promise<IGenerationResult | ReadonlyArray<IGenerationResult>> {
   const discovery = await discoverSpecs(context, options);
 
-  // Inferencia agnóstica de body/query para lo que no traiga reglas.
+  // Camino legacy: cero matches (ningun scanner reconocio el proyecto,
+  // ni legacy fallback). Sintetizamos un unico servicio con match null
+  // para que `buildForService` corra el camino legacy completo
+  // (`applyAgnosticInference` + `buildCollection` + auth flow). Si lo
+  // saltaramos, los callers que esperan esos campos poblados (p. ej.
+  // summary) verian valores vacios sin saber por que.
+  if (discovery.matches.length === 0) {
+    const synthetic: IProjectMatch = {
+      framework: "unknown",
+      projectRoot: context.projectRoot,
+      artifacts: [],
+    };
+    return buildForService(
+      { ...discovery, matches: [synthetic] },
+      {
+        serviceId: "default",
+        match: synthetic,
+        endpoints: discovery.routes,
+        baseUrl: null,
+        auth: undefined,
+        variables: [],
+      },
+      context,
+      options,
+    );
+  }
+
+  // a00013 S3: calculamos el ServiceGraph. En un proyecto plano
+  // produce length=1 (legacy path); en multi-service con
+  // combineServices=false, produce N servicios que emitimos como
+  // colecciones separadas.
+  const combined = options.combineServices === true;
+  const graph = toServiceGraph({
+    matches: discovery.matches,
+    routesByService: discovery.routesByService,
+    monorepoDetection: discovery.monorepoDetection,
+    combined,
+  });
+
+  if (graph.services.length === 1 || combined) {
+    return buildForService(discovery, graph.services[0]!, context, options);
+  }
+  const out: IGenerationResult[] = [];
+  for (const service of graph.services) {
+    out.push(await buildForService(discovery, service, context, options));
+  }
+  return out;
+}
+
+async function buildForService(
+  discovery: IDiscovery,
+  service: IServiceDescriptor,
+  context: IProjectContext,
+  options: IGenerationOptions,
+): Promise<IGenerationResult> {
+  const projectRoot = context.projectRoot;
+  // `service` se usa en S4 para filtrar specs y aplicar overrides por
+  // servicio. En S3 todavia no se aprovecha (la decision del S3 es
+  // mantener el camino single-service operativo y emitir una coleccion
+  // por servicio cuando hay multi). Por eso la anotacion
+  // `void service;` evita el TS6133 sin mentir sobre el uso futuro.
+  void service;
+  // Por ahora, single-service: usamos discovery.specs entero. S4
+  // filtra por service.endpoints cuando los overrides por servicio
+  // esten disponibles.
   const specs = [...discovery.specs];
   const inference = applyAgnosticInference(specs);
 
@@ -499,6 +607,12 @@ interface IDiscovery {
   readonly project: IGenerationResult["project"];
   /** Provenance por endpoint, presente solo cuando la detección fue híbrida. */
   readonly provenance?: ReadonlyArray<IEndpointProvenanceEntry>;
+  /** Matches que sobrevivieron al filtro `scanner !== null`. a00013 S3. */
+  readonly matches: ReadonlyArray<IProjectMatch>;
+  /** Rutas agrupadas por serviceId (a00013 S3, alimenta a `toServiceGraph`). */
+  readonly routesByService: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>;
+  /** Resultado de `detectMonorepo`; `undefined` para proyectos planos. */
+  readonly monorepoDetection: IMonorepoDetection | undefined;
 }
 
 /**
@@ -723,6 +837,18 @@ async function discoverSpecs(
         frameworks: usable.map((c) => c.match.framework),
         project,
         provenance,
+        matches: usable.map((c) => c.match),
+        routesByService: new Map(
+          perScanner.map(({ serviceId, scannerSpecs }) => [
+            serviceId,
+            routes.filter(
+              (r) => scannerSpecs.some(
+                (s) => s.method === r.method && s.uri === r.uri,
+              ),
+            ),
+          ]),
+        ),
+        monorepoDetection: monorepoDetection ?? undefined,
       };
     }
 
@@ -745,6 +871,11 @@ async function discoverSpecs(
       warnings,
       frameworks: usable.map((c) => c.match.framework),
       project,
+      matches: usable.map((c) => c.match),
+      routesByService: new Map([
+        [deriveServiceId(usable[0]!.match), routes],
+      ]),
+      monorepoDetection: monorepoDetection ?? undefined,
     };
   }
 
@@ -766,6 +897,9 @@ async function discoverSpecs(
           "Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.",
       ],
       frameworks: [],
+      matches: [],
+      routesByService: new Map(),
+      monorepoDetection: undefined,
     };
   }
 
@@ -791,6 +925,9 @@ async function discoverSpecs(
           ]
         : [],
     frameworks: [],
+    matches: [],
+    routesByService: new Map(),
+    monorepoDetection: undefined,
   };
 }
 

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 161 símbolos en 57 módulos.
+> 162 símbolos en 57 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -170,6 +170,24 @@ la suma.
 Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
 frameworks distintos con `Promise.all` y comprueba que ninguno se
 cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+
+#### `generateCollections`
+
+```ts
+export async function generateCollections( projectRoot: string, options: IGenerationOptions, ): Promise<ReadonlyArray<IGenerationResult>>
+```
+
+Variante multi-service de `generateCollection`. Devuelve TODAS
+las colecciones, una por servicio, en el orden de descubrimiento.
+
+- Sin flag `--combine-services` y con N>1 servicios: array de N
+  colecciones (cada una con `collectionName` derivado del
+  serviceId).
+- Con flag `--combine-services` o N===1: array de longitud 1
+  (la coleccion legacy).
+
+El CLI genera un fichero por entrada; el plugin MCP y la web
+exponen el array tal cual.
 
 ### `packages/core/discovery/group-by-service.helper.ts`
 

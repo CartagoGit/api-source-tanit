@@ -61,6 +61,7 @@ async function runPipeline(
   forceFramework: string | null,
   context: IProjectContext,
   frameworkSearchRoot: string | null,
+  combineServices: boolean,
 ): Promise<IGenerationResult> {
   console.log("→ Resolved paths:");
   console.log(describeDiscoveredPaths(context));
@@ -76,6 +77,7 @@ async function runPipeline(
     ...(basename ? { collectionName: basename } : {}),
     ...(forceFramework ? { forceFramework } : {}),
     ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
+    ...(combineServices ? { combineServices: true } : {}),
   });
 
   console.log(
@@ -188,6 +190,12 @@ export async function runGenerate(
   const frameworkSearchRoot =
     searchRootIdx !== -1 ? (args[searchRootIdx + 1] ?? null) : null;
 
+  // a00013 S3: `--combine-services` fusiona los servicios de un monorepo
+  // en una sola coleccion (modo legacy). Default false: una coleccion
+  // por servicio. Para proyectos planos (un solo servicio) el flag se
+  // ignora.
+  const combineServicesFlag = args.includes("--combine-services");
+
   // `--format a,b,c`. Se valida ANTES de escanear: un nombre mal escrito
   // descubierto al final, tras recorrer el proyecto y sin haber escrito
   // el fichero que se pedía, no dice nada de lo que ha pasado.
@@ -213,6 +221,7 @@ export async function runGenerate(
     frameworkFlag,
     resolvedContext,
     frameworkSearchRoot,
+    combineServicesFlag,
   );
   const discoveredSpecs = pipeline.specs;
 
