@@ -10,6 +10,7 @@ shippedIn:
   - d4a6d7c  # S1: ServiceGraph shape + groupByService
   - 32d4677  # S2: toServiceGraph helper adyacente + IToServiceGraphInput
   - 2f68240  # S3: buildForService + --combine-services flag
+  - 33df4ef  # S4: authScheme per-service + pickAuth helper
 dependsOn:
   - a00012
 related:
@@ -90,16 +91,22 @@ que no representa a ninguno de los dos.
 
 ### S4 — \`authScheme\` por servicio + discriminante exhaustiva
 
-- **Status**: pending
+- **Status**: done (commit 33df4ef)
 - **Files**:
-  - \`packages/core/discovery/auth-scheme.helper.ts\`
-  - \`packages/core/discovery/generation.pipeline.ts\`
-  - \`tests/core/auth-scheme-per-service.spec.ts\` (nuevo)
-- **Gate**: \`bun run typecheck && bun run test:core\`
-- **Detalle**: el discriminante \`IEndpointAuth\` (\`none | scheme
-  { bearer|apiKey|oauth2 }\`) se respeta por servicio; \`pickAuth()\`
-  devuelve \`IServiceDescriptor.auth\` (no un global). El adapter
-  OpenAPI y Postman consume el descriptor.
+  - `packages/core/discovery/auth-scheme.helper.ts` (nuevo)
+  - `packages/core/discovery/generation.pipeline.ts`
+  - `tests/core/auth-scheme-per-service.spec.ts` (nuevo)
+  - `docs/API.md`
+- **Gate**: `bun run typecheck && bun run lint && bun run test:core && bun run test:cli && bun run validate:examples`
+- **Detalle**:
+  - `pickAuth(service, fallback): IEndpointAuth | undefined` resuelve el override del descriptor o el fallback del proyecto **sin colapsar el discriminante**: si `service.auth` es `{ kind: "scheme", scheme: "bearer" }`, devuelve eso exactamente; el `kind` siempre se preserva por construcción.
+  - `toIEndpointAuth(detected): IEndpointAuth` mapea exhaustivamente `IDetectedAuthScheme` (bearer/apikey/oauth2/none) → `IEndpointAuth`. Switch exhaustivo: si se añade un `type` al union sin mapearlo, TypeScript marca el switch como no-exhaustivo.
+  - `buildServiceConfig(config, service): ProjectConfig` devuelve una copia superficial con `service.baseUrl` aplicado + `variables` copiado con la entrada `{{baseUrl}}` sincronizada. Es la primitiva que garantiza "no se muta `discovery.config` entre iteraciones del loop multi-service".
+  - `buildForService` consume los tres: `localConfig = buildServiceConfig(...)` para no mutar; `pickAuth(service, toIEndpointAuth(detectedFromSpecs))` para aplicar override per-service; `authSchemeFromEndpointAuth(effective, service.match.framework)` para volver a `IDetectedAuthScheme` y alimentar `buildCollection` / `applyAuthFlow` / `authVariablesFor`.
+  - `void service;` eliminado: el descriptor ya se usa.
+  - 19 tests nuevos: 9 para `pickAuth` (preservación de discriminante para las 4 variantes de `IEndpointAuth`, determinismo), 4 para `toIEndpointAuth`, 5 para `buildServiceConfig` (incluye la no-mutación), 1 integración `generateCollections` multi-service que verifica que cada iteración ve un `config.baseUrl` estable y `config` propio (no comparte referencia con `discovery.config`).
+  - Single-service path intacto: `service.baseUrl === null` y `service.auth === undefined` por defecto, así que `buildServiceConfig` produce un equivalente del original y los 21 ejemplos siguen pasando sin cambios.
+  - Regresión cero: 980/980 core (961 baseline + 19 nuevos), 527/527 CLI (1 skipped preexistente), 21/21 ejemplos, typecheck 6/6, lint todas las sub-comprobaciones, validate:examples.
 
 ### S1 — ServiceGraph data shape en contracts/ + helper puro
 
