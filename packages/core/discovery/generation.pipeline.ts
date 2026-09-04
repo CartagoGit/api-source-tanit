@@ -20,7 +20,10 @@
  * escritura a disco quedan fuera a propósito: son responsabilidad del
  * script, no del pipeline.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type {
+  EndpointSpec,
+  IEndpointAuth,
+} from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type {
@@ -617,17 +620,14 @@ async function discoverSpecs(
           // description` y se perdía `auth: { kind: "none" }` para
           // /auth/login — el endpoint fusionado salía con la auth
           // global aunque el scanner ya había pedido explícitamente
-          // "público". Lo propagamos como `authScheme: { type: "none",
-          // evidence: "per-op override" }` para que el merger pueda
-          // compararlo pieza a pieza; un scanner que pide "none"
-          // siempre debe ganar sobre la auth global heredada.
+          // "público". Audit 2ª revisión #16: el mapeo debe ser
+          // EXHAUSTIVO por discriminante — antes todo `spec.auth`
+          // colapsaba a `type: "none"`, lo que significaba que un
+          // futuro `{ kind: "scheme", scheme: "apiKey" }` quedaría
+          // como endpoint público. Ahora cada rama del union se
+          // traduce a su `authScheme` correspondiente.
           ...(spec.auth !== undefined
-            ? {
-                authScheme: {
-                  type: "none" as const,
-                  evidence: `per-op override (${framework})`,
-                },
-              }
+            ? { authScheme: authSchemeFromEndpointAuth(spec.auth, framework) }
             : {}),
         })),
       );
