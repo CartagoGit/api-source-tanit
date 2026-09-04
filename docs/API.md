@@ -88,7 +88,7 @@ the helper importable for typing alone would defeat that.
 
 ### `packages/core/discovery/auth-scheme.helper.ts`
 
-per-service auth + baseUrl wiring — a00013 S4.
+Per-service auth and baseUrl wiring — a00013 S4.
 
 #### `pickAuth`
 
@@ -96,28 +96,27 @@ per-service auth + baseUrl wiring — a00013 S4.
 export function pickAuth( service: IServiceDescriptor, fallback: IEndpointAuth | undefined, ): IEndpointAuth | undefined
 ```
 
-Resuelve la auth de un servicio: override del descriptor si la trae
-(lo que el grafo plantó), o fallback heredado del proyecto.
+Resolves service auth: the descriptor's override when present (as placed by
+the graph), or the inherited project fallback.
 
-El retorno es exhaustivo por discriminante: si `service.auth` es
-`{ kind: "scheme", scheme: "bearer" }`, devuelve eso exactamente;
-no lo convierte a `{ kind: "none" }` ni a `{ kind: "scheme",
-scheme: "apiKey" }`. La función no sabe —ni necesita saber— qué
-hacer con cada variante: el contrato es "el primer argumento gana
-si está definido; si no, el segundo".
+The return value preserves the discriminant: if `service.auth` is
+`{ kind: "scheme", scheme: "bearer" }`, return it exactly; do not convert it
+to `{ kind: "none" }` or `{ kind: "scheme", scheme: "apiKey" }`. The
+function does not know—and does not need to know—how to handle each variant.
+Its contract is "the first argument wins when defined; otherwise, the
+second".
 
-Ambos argumentos son `IEndpointAuth | undefined`. Cuando los dos son
-`undefined`, devuelve `undefined`. Eso significa "no hay señal de
-auth para este servicio" y deja al pipeline decidir si el detector
-por-espec debe correr o si el caller ya pasó otro mecanismo.
+Both arguments are `IEndpointAuth | undefined`. When both are `undefined`,
+return `undefined`. This means there is no auth signal for the service and
+lets the pipeline decide whether the per-spec detector should run or the
+caller already supplied another mechanism.
 
-@param service El descriptor del servicio. `service.auth` puede ser
-  `undefined` (hereda del proyecto), `null` no es válido (`baseUrl`
-  es `string | null` pero `auth` es estrictamente `IEndpointAuth |
-  undefined`).
-@param fallback La auth heredada del proyecto. Típicamente el
-  resultado de `toIEndpointAuth(detectedFromSpecs)`. Puede ser
-  `undefined` cuando el proyecto tampoco tiene señal.
+@param service The service descriptor. `service.auth` may be `undefined`
+  (inherits from the project); `null` is invalid (`baseUrl` is `string | null`,
+  but `auth` is strictly `IEndpointAuth | undefined`).
+@param fallback The auth inherited from the project, typically the result of
+  `toIEndpointAuth(detectedFromSpecs)`. It may be `undefined` when the project
+  has no auth signal either.
 
 #### `toIEndpointAuth`
 
@@ -125,19 +124,17 @@ por-espec debe correr o si el caller ya pasó otro mecanismo.
 export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth
 ```
 
-Conversión exhaustiva `IDetectedAuthScheme` → `IEndpointAuth`, inversa
-semántica de `authSchemeFromEndpointAuth` en
-`generation.pipeline.ts`.
+Exhaustive `IDetectedAuthScheme` → `IEndpointAuth` conversion, semantically
+inverse to `authSchemeFromEndpointAuth` in `generation.pipeline.ts`.
 
-Exportada por separado para que los tests de S4 cubran los cuatro
-casos del discriminante (`none`, `bearer`, `apiKey`, `oauth2`)
-sin tener que arrastrar un IDetectedAuthScheme de mentira por el
-pipeline.
+Exported separately so S4 tests can cover all four discriminant cases
+(`none`, `bearer`, `apiKey`, `oauth2`) without threading a fake
+IDetectedAuthScheme through the pipeline.
 
-El switch es exhaustivo por tipo: si se añade una variante a
-`AuthSchemeType` sin mapearla aquí, TypeScript marca el switch como
-no-exhaustivo (TS7030 con `noImplicitReturns`). Es el mismo patrón
-que `authSchemeFromEndpointAuth` usa en dirección contraria.
+The switch is exhaustive by type: if a variant is added to `AuthSchemeType`
+without being mapped here, TypeScript marks the switch as non-exhaustive
+(TS7030 with `noImplicitReturns`). `authSchemeFromEndpointAuth` uses the
+same pattern in the opposite direction.
 
 #### `buildServiceConfig`
 
@@ -145,29 +142,28 @@ que `authSchemeFromEndpointAuth` usa en dirección contraria.
 export function buildServiceConfig( config: ProjectConfig, service: IServiceDescriptor, ): ProjectConfig
 ```
 
-Aplica los overrides per-service a la `ProjectConfig` **sin mutar
-el original**. Devuelve una copia superficial con:
-  - `baseUrl`: el del servicio si lo declara y no es `null`,
-    si no el del proyecto. Eso es lo que `inferCollectionVariables`
-    y `buildCollection` consumen en `buildForService`.
-  - `variables`: copia del array, con la entrada `baseUrl`
-    sustituida por el valor efectivo para que la variable de
-    colección (`{{baseUrl}}`) refleje el override per-service.
+Applies per-service overrides to `ProjectConfig` **without mutating the
+original**. Returns a shallow copy with:
+  - `baseUrl`: the service's value when declared and non-null; otherwise,
+    the project's value. This is what `inferCollectionVariables` and
+    `buildCollection` consume in `buildForService`.
+  - `variables`: an array copy whose `baseUrl` entry is replaced with the
+    effective value so the collection variable (`{{baseUrl}}`) reflects the
+    per-service override.
 
-Pure: no toca `config`. Una llamada por iteración del loop
-multi-service en `buildFor` es independiente — la siguiente
-iteración recibe el `discovery.config` original, sin baseUrl
-contaminado por el servicio anterior (S4 acceptance #3: `buildForService`
-no muta `config.baseUrl` entre iteraciones).
+Pure: does not touch `config`. Each iteration of the multi-service loop in
+`buildFor` is independent—the next iteration receives the original
+`discovery.config` with no baseUrl contaminated by the previous service
+(S4 acceptance #3: `buildForService` does not mutate `config.baseUrl`
+between iterations).
 
-`@see` `IProjectContext` para el contexto raíz. Si en el futuro
-entran más overrides per-service (auth global, headers extra,
-prefijo de URI, etc.), este helper es el sitio natural para
-extenderlos.
+@see `IProjectContext` for the root context. If more per-service overrides are
+added in the future (global auth, extra headers, URI prefixes, etc.), this
+helper is the natural place to extend them.
 
 ### `packages/core/discovery/discovery.orchestrator.ts`
 
-`DiscoveryOrchestrator` — punto de entrada único del discovery framework-agnostic.
+`DiscoveryOrchestrator` — the single entry point for framework-agnostic discovery.
 
 #### `DiscoveryOrchestrator`
 
@@ -175,16 +171,16 @@ extenderlos.
 export class DiscoveryOrchestrator implements IDiscoveryOrchestrator
 ```
 
-Decide qué framework es el proyecto y con qué colaboradores se escanea.
+Decides which framework the project uses and which collaborators scan it.
 
-Puntúa todos los detectores del registro y ordena por confianza. No se
-queda con el primero: un repo con un Express heredado y rutas nuevas de
-Next.js casa con dos, y quedarse con uno devolvía un tercio de los
-endpoints sin decir nada.
+Scores every detector in the registry and orders them by confidence. It
+does not keep only the first: a repo with legacy Express routes and new
+Next.js routes matches both, and choosing one silently returned one third
+of the endpoints.
 
 ### `packages/core/discovery/effective-project-root.helper.ts`
 
-Raíz efectiva del proyecto — a00014 S1.
+Effective project root — a00014 S1.
 
 #### `effectiveProjectRoot`
 
@@ -192,16 +188,15 @@ Raíz efectiva del proyecto — a00014 S1.
 export function effectiveProjectRoot(match: IProjectMatch): string
 ```
 
-La raíz efectiva del proyecto, honrando `frameworkSearchRoot`.
+Effective project root, honoring `frameworkSearchRoot`.
 
-- Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
-  con proyectos planos y con los tests que no rellenan el campo).
-- Con `frameworkSearchRoot` → `path.resolve(projectRoot,
-  frameworkSearchRoot)`, siempre que el resultado siga dentro de
-  `projectRoot`.
+- Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+  with flat projects and tests that do not populate the field).
+- With `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, provided the result remains within `projectRoot`.
 
-Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
-`projectRoot` (típicamente porque contiene `..` o es absoluto).
+Throws a clear `Error` if `frameworkSearchRoot` points outside `projectRoot`
+  (for example, because it contains `..` or is absolute).
 
 #### `effectiveSearchRoot`
 
@@ -209,14 +204,13 @@ Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
 export function effectiveSearchRoot(match: IProjectMatch): string
 ```
 
-Alias de `effectiveProjectRoot` con el nombre que ya usaban Hono,
-NestJS y Next.js en sus helpers inline. Si un scanner está
-migrando del helper local al central, puede seguir llamando a su
-función favorita sin un cambio extra.
+Alias for `effectiveProjectRoot` with the name Hono, NestJS, and Next.js
+already used in their inline helpers. A scanner migrating from a local helper
+to the central one can keep calling its preferred function without another
+change.
 
-El comportamiento es idéntico al de `effectiveProjectRoot`: misma
-resolución, misma guarda, mismo error. Sólo cambia el nombre para
-no romper call sites existentes.
+The behavior is identical to `effectiveProjectRoot`: the same resolution,
+guard, and error. Only the name changes to preserve existing call sites.
 
 #### `rawProjectRoot`
 
@@ -224,19 +218,18 @@ no romper call sites existentes.
 export function rawProjectRoot(match: IProjectMatch): string
 ```
 
-La raíz real del proyecto, sin tocar.
+The actual project root, unchanged.
 
-Devuelve `match.projectRoot` tal cual. Existe para que un scanner
-que necesita la raíz del usuario — el `projectRoot:` del
-`IProjectMatch` que devuelve al orquestador, o un `join` con un
-`route.sourceFile` ya relativo a `projectRoot` — pase por un
-helper en vez de leer `match.projectRoot` directamente. Así el
-gate `lint:effective-project-root` puede controlar todas las
-referencias a `match.projectRoot` en una sola lista blanca.
+Returns `match.projectRoot` as provided. This lets a scanner that needs the
+user's root—the `projectRoot:` of the `IProjectMatch` returned to the
+orchestrator, or a `join` with a `route.sourceFile` already relative to
+`projectRoot`—go through a helper instead of reading `match.projectRoot`
+directly. The `lint:effective-project-root` gate can then control all
+references to `match.projectRoot` through one allowlist.
 
 ### `packages/core/discovery/endpoint-merger.service.ts`
 
-`EndpointMerger`: el reconciliador de endpoints para proyectos híbridos.
+`EndpointMerger`: the endpoint reconciler for hybrid projects.
 
 #### `EndpointMerger`
 
@@ -244,9 +237,9 @@ referencias a `match.projectRoot` en una sola lista blanca.
 export class EndpointMerger implements IEndpointMerger
 ```
 
-Implementación por defecto del `IEndpointMerger`. Stateless: el
-estado vive en `merge()` (los candidatos), no en la instancia.
-Reutilizable entre llamadas concurrentes.
+Default `IEndpointMerger` implementation. Stateless: state lives in
+`merge()` (the candidates), not in the instance. Reusable across concurrent
+calls.
 
 #### `mergeEndpoints`
 
@@ -281,28 +274,27 @@ hace `discoverSpecs` cuando itera sobre los `usable`).
 export function endpointSpecFromMerged(m: IMergedEndpoint):
 ```
 
-Inversa de `candidatesFromSpecs`: convierte un `IMergedEndpoint`
-de vuelta a `EndpointSpec` para que el pipeline siga operando con
-la forma que ya consumen el resto de servicios.
+Inverse of `candidatesFromSpecs`: converts an `IMergedEndpoint` back to
+`EndpointSpec` so the pipeline continues using the shape consumed by the
+other services.
 
-Copia los campos que el merger decide: identidad (method, uri,
-name) y las piezas que ganó (body, fields, description, auth).
+Copies the fields selected by the merger: identity (method, uri, name) and
+the winning pieces (body, fields, description, auth).
 
-Audit 2026-09-04 P1 #6 + segunda revisión #16 #17: el override
-por operación del esquema de auth debe sobrevivir al merger.
-`spec.auth` se mapea al `authScheme` del candidato (en
-generation.pipeline.ts) y el merger propaga el ganador a este
-punto. La conversión de vuelta cubre **todas** las ramas del
-union `IEndpointAuth`:
+Audit 2026-09-04 P1 #6 + second review #16 #17: the per-operation auth
+scheme override must survive the merger. `spec.auth` maps to the candidate's
+`authScheme` in generation.pipeline.ts, and the merger carries the winner
+back here. The reverse conversion covers **all** branches of the
+`IEndpointAuth` union:
 
-  - `type: "none"` → `auth: { kind: "none" }` (override público).
+  - `type: "none"` → `auth: { kind: "none" }` (public override).
   - `type: "bearer"` → `auth: { kind: "scheme", scheme: "bearer" }`.
   - `type: "apikey"` → `auth: { kind: "scheme", scheme: "apiKey" }`.
   - `type: "oauth2"` → `auth: { kind: "scheme", scheme: "oauth2" }`.
 
-Antes solo la rama `none` se traducía; un override per-op
-`bearer`/`apiKey`/`oauth2` se descartaba y `detectAuthScheme`
-recalculaba la auth a nivel colección — perdiendo el override.
+Previously only the `none` branch was translated. A per-op
+`bearer`/`apiKey`/`oauth2` override was discarded, and `detectAuthScheme`
+recalculated auth at collection level—losing the override.
 
 ### `packages/core/discovery/filter-specs-for-service.helper.ts`
 
@@ -441,14 +433,13 @@ exponen el array tal cual.
 export function deriveServiceId(match: IProjectMatch): string
 ```
 
-Deriva el id estable de un match. Dos matches con el mismo
-`frameworkSearchRoot` producen el mismo id.
+Derives a stable id from a match. Two matches with the same
+`frameworkSearchRoot` produce the same id.
 
-- Si hay `frameworkSearchRoot`, se usa como base del id (que es
-  exactamente la regla que introdujo a00010).
-- Si no, cae a `<framework>@<projectRoot>` para evitar
-  colisiones entre un servicio single-framework en dos raíces
-  distintas.
+- When `frameworkSearchRoot` exists, use it as the id base, exactly as
+  introduced by a00010.
+- Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
+  between single-framework services in different roots.
 
 #### `groupByService`
 
@@ -456,21 +447,19 @@ Deriva el id estable de un match. Dos matches con el mismo
 export function groupByService(input: IGroupByServiceInput): IServiceGraph
 ```
 
-Forma un `IServiceGraph` a partir de los matches y rutas del
-discovery.
+Builds an `IServiceGraph` from discovery matches and routes.
 
-Lanza `Error` si:
-- Falta una entrada en `routesByMatch` para un match.
-- `matches` está vacío y `detectedMonorepo === false` (un
-  proyecto que no es monorepo **debe** tener al menos un match,
-  si no el caller no entendió los contratos). El caller puede
-  silenciar este chequeo pasando `detectedMonorepo === true` con
-  un array vacío — es el caso "monorepo declarado pero sin
-  workspaces enumerados".
+Throws `Error` if:
+- A `routesByMatch` entry is missing for a match.
+- `matches` is empty and `detectedMonorepo === false` (a non-monorepo
+  project **must** have at least one match; otherwise the caller did not
+  understand the contracts). The caller can bypass this check by passing
+  `detectedMonorepo === true` with an empty array—the "declared monorepo
+  with no enumerated workspaces" case.
 
 ### `packages/core/discovery/monorepo-detector.helper.ts`
 
-Detección de monorepo workspace — f00011 S3.
+Monorepo workspace detection — f00011 S3.
 
 #### `detectMonorepo`
 
@@ -478,16 +467,16 @@ Detección de monorepo workspace — f00011 S3.
 export async function detectMonorepo( projectRoot: string, ): Promise<IMonorepoDetection>
 ```
 
-Punto de entrada: devuelve la detección para una raíz de proyecto.
+Entry point: returns the detection result for a project root.
 
-`projectRoot` debe ser absoluto (los scanners y el pipeline ya lo
-absolutizaron antes). Si llega relativo, se devuelve "no es monorepo"
-con `null` por todas partes — el orquestador no debería tener que
-adivinar cuál es la raíz.
+`projectRoot` must be absolute (scanners and the pipeline have already
+converted it). If a relative path is supplied, return "not a monorepo" with
+`null` everywhere—the orchestrator should not have to guess which root is
+meant.
 
 ### `packages/core/discovery/output-paths.helper.ts`
 
-Resolución de rutas de salida a partir de un `IProjectContext` explícito.
+Output path resolution from an explicit `IProjectContext`.
 
 #### `resolveOutputDir`
 
@@ -495,21 +484,20 @@ Resolución de rutas de salida a partir de un `IProjectContext` explícito.
 export function resolveOutputDir( context: IProjectContext | undefined, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): string
 ```
 
-Directorio donde se escriben los artefactos, con la misma precedencia
-que tenía `outputDir(context?)` antes.
+Directory where artifacts are written, using the same precedence as the
+former `outputDir(context?)`.
 
-Aceptar `argv` y `env` como parámetros —en lugar de leer
-`process.argv` y `process.env`— es lo que permite testear la
-precedencia sin tocar el proceso. Los valores por defecto siguen
-siendo los globales para que los call sites existentes no cambien.
+Accepting `argv` and `env` as parameters instead of reading `process.argv`
+and `process.env` makes it possible to test precedence without mutating
+the process. Default values remain global so existing call sites do not
+change.
 
-`context` es opcional a propósito: cuando un comando se lanza sin
-contexto de proyecto (la rama `catch` de `validate-json`, que corre
-solo con el JSON ya generado), el helper cae a la resolución por
-`argv` / `env`. Mantener esa puerta abierta es el comportamiento
-histórico y no introduce un singleton: el helper sigue siendo puro
-respecto a sus argumentos, y solo lee los globales cuando no le
-pasan contexto.
+`context` is intentionally optional: when a command runs without a project
+context (the `validate-json` `catch` branch, which runs with only the
+generated JSON), the helper falls back to `argv` / `env` resolution.
+Keeping this entry point preserves historical behavior without introducing
+a singleton: the helper remains pure with respect to its arguments and only
+reads globals when no context is supplied.
 
 #### `outputCollectionPath`
 
@@ -529,12 +517,11 @@ proceso. Por defecto son los globales.
 export async function outputEnvironmentPath( context: IProjectContext | undefined, envName: string, projectName?: string, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): Promise<string>
 ```
 
-Ruta absoluta al environment Postman para un entorno dado.
+Absolute path to the Postman environment for a given environment.
 
-El nombre del environment se slugifica igual que antes: NFD →
-quitar diacríticos → kebab-case → trim de guiones. Quien necesita el
-comportamiento original lo hace pasando el `projectName` ya
-normalizado.
+The environment name is slugified as before: NFD → remove diacritics →
+kebab-case → trim hyphens. Callers that need the original behavior should
+pass an already-normalized `projectName`.
 
 #### `describeDiscoveredPaths`
 
@@ -542,21 +529,21 @@ normalizado.
 export function describeDiscoveredPaths( context: IProjectContext, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): string
 ```
 
-La traza que el CLI imprime antes de escanear, en texto.
+The trace the CLI prints before scanning, as text.
 
-Sin nombre de proyecto dice `<nombre-del-proyecto>` en lugar de
-inventarse uno: la traza existe para descartar que se esté mirando
-la carpeta equivocada, y mentir ahí la hace peor que no decir nada.
+Without a project name it displays `<nombre-del-proyecto>` instead of
+inventing one: the trace is meant to rule out scanning the wrong folder,
+and lying there is worse than saying nothing.
 
-Las carpetas `routes` y `requests` que aparecen son **del proyecto
-que se escanea**, derivadas con `projectDirs(context)`. Esa parte es
-la heurística heredada del camino Laravel; un scanner moderno
-resuelve sus propias rutas, pero la traza del CLI las sigue
-mostrando porque a una persona le sirve ver si existen.
+The `routes` and `requests` directories shown belong to the scanned
+project and are derived with `projectDirs(context)`. This is a heuristic
+inherited from the Laravel path; modern scanners resolve their own paths,
+but the CLI trace still displays them because seeing whether they exist is
+useful.
 
 ### `packages/core/discovery/project-context.service.ts`
 
-Resolución explícita del contexto de un proyecto.
+Explicit project context resolution.
 
 #### `resolveProjectContext`
 
@@ -564,12 +551,12 @@ Resolución explícita del contexto de un proyecto.
 export function resolveProjectContext( options: IResolveContextOptions =
 ```
 
-Construye el contexto de un proyecto.
+Builds a project context.
 
-Prioridad de la raíz: parámetro explícito → `--project-root` en argv →
-`POSTMAN_PROJECT_ROOT` en env. Lanza si no hay ninguna, porque
-continuar con una raíz adivinada produce colecciones vacías sin decir
-por qué (fue exactamente el bug del CLI con `--project-root`).
+Root priority: explicit parameter → `--project-root` in argv →
+`POSTMAN_PROJECT_ROOT` in env. Throws if none is present because continuing
+with a guessed root produces empty collections without explaining why (this
+was exactly the CLI bug with `--project-root`).
 
 #### `projectDirs`
 
@@ -589,18 +576,17 @@ export function fromProjectRoot(context: IProjectContext, relPath: string): stri
 export function toProjectRelative(context: IProjectContext, absPath: string): string
 ```
 
-Ruta relativa al proyecto, en formato POSIX.
+Path relative to the project, in POSIX format.
 
-Antes se hacía `normalized.startsWith(context.projectRoot)`, pero
-`startsWith` no entiende de fronteras de segmento: `/home/u/api-secret`
-matchea falsamente `/home/u/api` (x00022, audit 2026-09-04). Ahora se
-usa la misma fórmula canónica que
-`packages/core/helpers/path-containment.helper.ts`: `relative()` más
-la guarda de prefijo `..${sep}` / absoluto.
+Previously this used `normalized.startsWith(context.projectRoot)`, but
+`startsWith` does not understand segment boundaries: `/home/u/api-secret`
+falsely matches `/home/u/api` (x00022, audit 2026-09-04). It now uses the
+same canonical formula as
+`packages/core/helpers/path-containment.helper.ts`: `relative()` plus the
+`..${sep}` / absolute prefix guard.
 
-Si `absPath` es exactamente la raíz del proyecto, se devuelve la
-cadena vacía para preservar la idempotencia `fromProjectRoot ∘
-toProjectRelative`.
+If `absPath` is exactly the project root, return the empty string to
+preserve the idempotence of `fromProjectRoot ∘ toProjectRelative`.
 
 #### `hasProjectDir`
 
@@ -610,7 +596,7 @@ export function hasProjectDir(context: IProjectContext, relPath: string): boolea
 
 ### `packages/core/discovery/project-loader.service.ts`
 
-Carga la configuración del proyecto host de forma agnóstica.
+Loads the host project's configuration in a framework-agnostic way.
 
 #### `detectProjectName`
 
@@ -618,12 +604,12 @@ Carga la configuración del proyecto host de forma agnóstica.
 export async function detectProjectName( context: IProjectContext, ): Promise<string>
 ```
 
-Devuelve el nombre del proyecto host.
+Returns the host project name.
 
-La lectura de manifiestos vive en `project-name.service`: aquí solo
-se resuelve la raíz. Antes esta función miraba únicamente
-`composer.json`, con lo que Laravel se llamaba como su paquete y los
-otros once frameworks como su carpeta.
+Manifest reading lives in `project-name.service`: this function only
+resolves the root. Previously it looked only at `composer.json`, so Laravel
+was named after its package while the other eleven frameworks were named
+after their directories.
 
 #### `detectFilePrefixes`
 
@@ -631,10 +617,10 @@ otros once frameworks como su carpeta.
 export async function detectFilePrefixes( context: IProjectContext, ): Promise<Record<string, string[]>>
 ```
 
-Lee `RouteServiceProvider.php` para extraer el mapa
-`archivo → prefijos` desde los métodos `mapXxxRoutes()`.
+Reads `RouteServiceProvider.php` to extract the
+`file → prefixes` map from the `mapXxxRoutes()` methods.
 
-Ejemplo Laravel:
+Laravel example:
   protected function mapExternalApiRoutes(): void {
     Route::prefix('api/externo')
       ->group(base_path('routes/externo.php'));
@@ -648,14 +634,14 @@ Ejemplo Laravel:
 export async function buildZeroConfig( context: IProjectContext, ): Promise<ProjectConfig>
 ```
 
-Genera un ProjectConfig mínimo viable sin archivo del host.
-Útil para que el paquete funcione "out-of-the-box" en cualquier proyecto.
+Generates a minimal viable ProjectConfig without a host file, allowing the
+package to work out of the box in any project.
 
-`baseUrl` por defecto es el origen (`DEFAULT_BASE_URL`). El sufijo
-`/api` **no** se añade automáticamente: solo aparece cuando una de
-las fuentes documentadas en `BASE_PATH_SOURCES` lo aporta. Esto
-cierra el bug que producía `http://localhost/api/users` en proyectos
-Express/Flask/Gin/FastAPI sin prefijo global (a00012 H-P2e, S4).
+The default `baseUrl` is the origin (`DEFAULT_BASE_URL`). The `/api` suffix
+is **not** added automatically; it appears only when one of the sources
+documented in `BASE_PATH_SOURCES` supplies it. This closes the bug that
+produced `http://localhost/api/users` in Express, Flask, Gin, and FastAPI
+projects without a global prefix (a00012 H-P2e, S4).
 
 #### `resolveConfigPath`
 
@@ -663,13 +649,13 @@ Express/Flask/Gin/FastAPI sin prefijo global (a00012 H-P2e, S4).
 export async function resolveConfigPath( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<string>
 ```
 
-Resuelve la ruta del módulo de configuración del host.
+Resolves the host configuration module path.
 
-Orden:
+Order:
   1. `--config <path>` (CLI)
   2. `POSTMAN_CONFIG` (env)
-  3. `${projectRoot}/resources/postman/examples/...` o `${projectRoot}/examples/...`
-  4. Si nada → devuelve sentinel "__zero__" para que loadProject use
+  3. `${projectRoot}/resources/postman/examples/...` or `${projectRoot}/examples/...`
+  4. If nothing matches, return the "__zero__" sentinel so loadProject uses
      buildZeroConfig().
 
 #### `loadProject`
@@ -678,9 +664,9 @@ Orden:
 export async function loadProject( argv: ReadonlyArray<string> = [], context: IProjectContext, ): Promise<LoadedProject>
 ```
 
-El contexto es obligatorio para que el loader sea seguro en procesos
-de vida larga y no vuelva a leer la raíz cacheada del singleton
-retirado de `paths.service` en r00010 S2 (2026-09-03).
+The context is mandatory so the loader is safe in long-lived processes and
+does not reread the cached root from the `paths.service` singleton retired
+in r00010 S2 (2026-09-03).
 
 #### `_internal`
 
@@ -688,14 +674,14 @@ retirado de `paths.service` en r00010 S2 (2026-09-03).
 export const _internal =
 ```
 
-Piezas internas expuestas **solo** para sus tests.
+Internal pieces exposed **only** for their tests.
 
-El guion bajo es la señal: no forman parte del contrato del módulo y
-pueden cambiar sin aviso.
+The underscore is the signal: they are not part of the module contract and
+may change without notice.
 
 ### `packages/core/discovery/project-name.service.ts`
 
-Nombre del proyecto, leído del manifiesto de su ecosistema.
+Project name, read from its ecosystem manifest.
 
 #### `detectProjectNameIn`
 
@@ -703,14 +689,14 @@ Nombre del proyecto, leído del manifiesto de su ecosistema.
 export async function detectProjectNameIn(projectRoot: string): Promise<string>
 ```
 
-Nombre del proyecto en `projectRoot`.
+Project name in `projectRoot`.
 
-Nunca lanza: si no hay manifiesto legible, cae al nombre de la
-carpeta, que siempre existe.
+Never throws: if no readable manifest exists, fall back to the directory
+name, which always exists.
 
 ### `packages/core/discovery/scan-root.helper.ts`
 
-Raíz efectiva de escaneo de un scanner — a00012 S1.b.
+Effective scan root for a scanner — a00012 S1.b.
 
 #### `effectiveScanRoot`
 
@@ -718,16 +704,15 @@ Raíz efectiva de escaneo de un scanner — a00012 S1.b.
 export function effectiveScanRoot(match: IProjectMatch): string
 ```
 
-La raíz donde un scanner debe mirar sus fuentes.
+The root where a scanner should search for its sources.
 
-- Sin `frameworkSearchRoot` → `match.projectRoot` (compatibilidad
-  con proyectos planos y con los tests que no rellenan el campo).
-- Con `frameworkSearchRoot` → `path.resolve(projectRoot,
-  frameworkSearchRoot)`, siempre que el resultado siga dentro de
-  `projectRoot`.
+- Without `frameworkSearchRoot` → `match.projectRoot` (for compatibility
+  with flat projects and tests that do not populate the field).
+- With `frameworkSearchRoot` → `path.resolve(projectRoot,
+  frameworkSearchRoot)`, provided the result remains within `projectRoot`.
 
-Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
-`projectRoot` (típicamente porque contiene `..` o es absoluto).
+Throws a clear `Error` if `frameworkSearchRoot` points outside
+`projectRoot` (for example, because it contains `..` or is absolute).
 
 #### `safeScanRoot`
 
@@ -735,20 +720,19 @@ Lanza un `Error` claro si `frameworkSearchRoot` apunta fuera de
 export function safeScanRoot(match: IProjectMatch): string
 ```
 
-Alias de `effectiveScanRoot` con un nombre que enfatiza que el
-helper **puede lanzar** cuando la ruta de búsqueda escapa de la
-raíz del proyecto. Útil cuando el llamante quiere dejar explícito
-que está haciendo una verificación de contención (por ejemplo, en
-pipelines de varios pasos donde conviene que el `try`/`catch`
-quede claro).
+Alias for `effectiveScanRoot` with a name that emphasizes that the
+helper **can throw** when the search path escapes the project root.
+Useful when the caller wants to make the containment check explicit
+(for example, in multi-step pipelines where the `try`/`catch` should be
+clear).
 
-El comportamiento es idéntico al de `effectiveScanRoot`: misma
-resolución, misma guarda, mismo error. Sólo cambia el nombre para
-que el código que la usa pueda expresar su intención.
+The behavior is identical to `effectiveScanRoot`: the same resolution,
+guard, and error. Only the name changes so code using it can express its
+intent.
 
 ### `packages/core/discovery/summary.service.ts`
 
-`summary` — qué ve la herramienta en un proyecto, sin escribir nada.
+`summary` — what the tool sees in a project, without writing anything.
 
 #### `summarizeProject`
 
@@ -756,16 +740,15 @@ que el código que la usa pueda expresar su intención.
 export async function summarizeProject( projectRoot: string, orchestrator: DiscoveryOrchestrator, legacyFallback?: ILegacyDiscovery, ): Promise<IProjectSummary>
 ```
 
-Inspecciona `projectRoot` y devuelve un resumen sin escribir archivos.
+Inspects `projectRoot` and returns a summary without writing files.
 
-Lanza si el directorio no existe. Si no reconoce el proyecto,
-devuelve un resumen con cero endpoints y el aviso correspondiente —
-que es una respuesta honesta, no un error.
+Throws if the directory does not exist. If it does not recognize the
+project, returns a summary with zero endpoints and the corresponding
+warning—an honest response rather than an error.
 
-El catálogo de frameworks y el fallback se inyectan, igual que en el
-pipeline: este servicio es del núcleo y no puede conocer los scanners
-concretos. Para el catálogo completo hay `summarizeWithAllFrameworks()`
-en `packages/frameworks/`.
+The framework catalog and fallback are injected, as in the pipeline: this
+is a core service and cannot know the concrete scanners. For the complete
+catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
 
 ### `packages/core/discovery/to-service-graph.helper.ts`
 
@@ -777,13 +760,12 @@ toServiceGraph - a00013 S2.
 export function toServiceGraph(input: IToServiceGraphInput): IServiceGraph
 ```
 
-Forma el IServiceGraph desde el estado actual del discovery.
+Builds the IServiceGraph from the current discovery state.
 
-El helper no infiere nada que no venga en el input. Si el caller
-aun no popula routesByService/authByService/etc., devuelve un
-grafo con la identidad de cada servicio y arrays vacios - que es
-exactamente lo que S2 quiere: el shape del grafo listo para que
-S3/S4 lo rellenen sin tener que cambiar el contrato.
+The helper does not infer anything absent from the input. If the caller has
+not yet populated routesByService/authByService/etc., return a graph with each
+service's identity and empty arrays—the exact shape S2 needs so S3/S4 can
+populate it without changing the contract.
 
 #### `decorateServices`
 
@@ -791,18 +773,17 @@ S3/S4 lo rellenen sin tener que cambiar el contrato.
 export function decorateServices( graph: IServiceGraph, overrides:
 ```
 
-Variante de toServiceGraph que aplica los overrides del caller
-sobre cada descriptor despues de haberlos calculado. Util cuando
-el caller quiere producir un IServiceGraph decorado sin tener
-que re-implementar la propagacion de auth/baseUrl/variables.
+Variant of toServiceGraph that applies the caller's overrides to each
+descriptor after calculation. Useful when the caller wants to produce a
+decorated IServiceGraph without reimplementing auth/baseUrl/variable
+propagation.
 
-Por ahora vive aqui mismo porque solo se usa desde S2 y los
-tests; si S3 o S4 lo necesitan mas, se promociona a helper
-independiente.
+It lives here for now because only S2 and its tests use it; if S3 or S4 need
+it more broadly, promote it to an independent helper.
 
 ### `packages/core/discovery/workspace-glob.helper.ts`
 
-Resolver de globs de workspaces — a00012 S1.a.
+Workspace glob resolver — a00012 S1.a.
 
 #### `resolveWorkspaceGlobs`
 
@@ -810,15 +791,15 @@ Resolver de globs de workspaces — a00012 S1.a.
 export async function resolveWorkspaceGlobs( projectRoot: string, globs: ReadonlyArray<string>, ): Promise<ReadonlyArray<string>>
 ```
 
-Materializa una lista de globs de workspaces en directorios reales.
+Materializes a list of workspace globs into real directories.
 
-@param projectRoot Raíz absoluta del proyecto (los callers ya la
-  absolutizaron fuera de este helper).
-@param globs Globs en formato POSIX relativo, posiblemente
-  prefijados con `!` para excluirlos.
-@returns Directorios existentes bajo `projectRoot`, en formato
-  POSIX relativo, ordenados lexicográficamente y deduplicados.
-  Una ruta raíz inválida devuelve `[]`.
+@param projectRoot Absolute project root (callers have already converted
+  it to an absolute path outside this helper).
+@param globs Relative POSIX globs, optionally prefixed with `!` to mark
+  exclusions.
+@returns Existing directories under `projectRoot` in POSIX-relative form,
+  sorted lexicographically and deduplicated. An invalid root path returns
+  `[]`.
 
 ### `packages/core/domain/auth-flow.service.ts`
 

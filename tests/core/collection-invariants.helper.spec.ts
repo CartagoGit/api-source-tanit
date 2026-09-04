@@ -49,7 +49,7 @@ describe("errores de .info", () => {
     delete (c.info as { _postman_id?: string })._postman_id;
     const issue = collectionErrors(c).find((i) => i.path === "$.info._postman_id");
     expect(issue).toBeDefined();
-    expect(issue?.message).toContain("colección nueva");
+    expect(issue?.message).toContain("new collection");
   });
 
   test("colección sin items es aviso", () => {
@@ -61,40 +61,40 @@ describe("errores de .info", () => {
 describe("errores de items", () => {
   test("request sin método", () => {
     const bad = brokenRequest("roto", "method");
-    expect(messagesOf(collection({ item: [bad] }))).toContain("request sin method");
+    expect(messagesOf(collection({ item: [bad] }))).toContain("request without method");
   });
 
   test("request sin url.raw", () => {
     const bad = brokenRequest("roto", "url");
-    expect(messagesOf(collection({ item: [bad] }))).toContain("request sin url.raw");
+    expect(messagesOf(collection({ item: [bad] }))).toContain("request without url.raw");
   });
 
   test("request sin array de headers", () => {
     const bad = brokenRequest("roto", "header");
-    expect(messagesOf(collection({ item: [bad] }))).toContain("request sin array de headers");
+    expect(messagesOf(collection({ item: [bad] }))).toContain("request without headers array");
   });
 
   test("item que no es ni carpeta ni request", () => {
     const bad = brokenRequest("raro", "request");
-    expect(messagesOf(collection({ item: [bad] }))).toContain("no es carpeta ni request");
+    expect(messagesOf(collection({ item: [bad] }))).toContain("neither folder nor request");
   });
 
   test("item sin nombre", () => {
     const bad = request("", "GET", "{{baseUrl}}/x");
-    expect(messagesOf(collection({ item: [bad] }))).toContain("item sin nombre");
+    expect(messagesOf(collection({ item: [bad] }))).toContain("item without name");
   });
 
   test("carpeta vacía es aviso", () => {
     const vacia = folder("Users");
     const issues = checkCollectionInvariants(collection({ item: [vacia] }));
-    expect(issues.some((i) => i.severity === "warning" && i.message === "carpeta vacía")).toBe(
+    expect(issues.some((i) => i.severity === "warning" && i.message === "empty folder")).toBe(
       true,
     );
   });
 
   test("recorre carpetas anidadas", () => {
     const nested = folder("Users", [folder("v1", [request("", "GET", "{{baseUrl}}/x")])]);
-    expect(messagesOf(collection({ item: [nested] }))).toContain("item sin nombre");
+    expect(messagesOf(collection({ item: [nested] }))).toContain("item without name");
   });
 });
 
@@ -181,14 +181,14 @@ describe("errores de .info — casos extremos", () => {
     const c = collection();
     Reflect.deleteProperty(c, "info");
     const issues = checkCollectionInvariants(c);
-    expect(issues.some((i) => i.message === "falta .info")).toBe(true);
+    expect(issues.some((i) => i.message === "missing .info")).toBe(true);
   });
 
   test("item que no es un array produce error", () => {
     const c = collection();
     Reflect.set(c, "item", "no-array");
     const issues = checkCollectionInvariants(c);
-    expect(issues.some((i) => i.message === "no es un array")).toBe(true);
+    expect(issues.some((i) => i.message === "not an array")).toBe(true);
   });
 });
 
@@ -198,7 +198,7 @@ describe("URL con doble barra", () => {
       item: [request("Raro", "GET", "{{baseUrl}}//users")],
     });
     const issues = checkCollectionInvariants(c);
-    const issue = issues.find((i) => i.message.includes("doble barra"));
+    const issue = issues.find((i) => i.message.includes("double slash"));
     expect(issue).toBeDefined();
     expect(issue?.severity).toBe("warning");
   });

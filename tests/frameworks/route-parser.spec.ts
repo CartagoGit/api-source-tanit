@@ -53,8 +53,8 @@ Route::get('/c', [Foo::class,'c']);`;
       );
     });
 
-    test("URI vacía → (raíz)", () => {
-      expect(topGroupFor("")).toBe("(raíz)");
+    test("URI vacía → (root)", () => {
+      expect(topGroupFor("")).toBe("(root)");
     });
 
     test("URI que no es api → primer segmento", () => {
@@ -76,12 +76,12 @@ Route::get('/c', [Foo::class,'c']);`;
       expect(prettyGroupName("tol/tecdoc")).toBe("Tol/Tecdoc");
     });
 
-    test("(raíz) → Raíz", () => {
-      expect(prettyGroupName("(raíz)")).toBe("Raíz");
+    test("(root) → Root", () => {
+      expect(prettyGroupName("(root)")).toBe("Root");
     });
 
-    test("string vacío → Raíz", () => {
-      expect(prettyGroupName("")).toBe("Raíz");
+    test("string vacío → Root", () => {
+      expect(prettyGroupName("")).toBe("Root");
     });
   });
 });
