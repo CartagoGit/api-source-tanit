@@ -1,22 +1,23 @@
 /**
- * Invariantes que debe cumplir una colección para que Postman la importe
- * y sea usable.
+ * Invariants a collection must satisfy for Postman to import it and
+ * be usable.
  *
- * Vivían solo en `tests/helpers/compare-json.ts`, así que el gate del
- * proyecto no podía comprobarlas sobre una colección generada de verdad.
- * Al estar aquí las usan por igual los tests y `scripts/validate.script.ts`.
+ * They used to live only in `tests/helpers/compare-json.ts`, so the
+ * project's gate could not check them on a real generated collection.
+ * Being here they are used equally by the tests and
+ * `scripts/validate.script.ts`.
  *
- * La lista distingue dos niveles:
- *   - `error`   — Postman falla al importar, o la request no se puede
- *                 lanzar (falta el método, la url, el schema…).
- *   - `warning` — se importa pero el usuario se encuentra algo roto
- *                 (una `{{variable}}` que nadie define, una carpeta
- *                 vacía, dos requests idénticas).
+ * The list distinguishes two levels:
+ *   - `error`   — Postman fails to import, or the request cannot be
+ *                 sent (missing method, url, schema…).
+ *   - `warning` — it imports but the user finds something broken
+ *                 (a `{{variable}}` nobody defines, an empty folder,
+ *                 two identical requests).
  */
 import type { PostmanCollection, PostmanItem } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ICollectionIssue } from "../../contracts/interfaces/core/helpers.interface.js";
 
-/** Variables que Postman resuelve por su cuenta; no exigimos declararlas. */
+/** Variables Postman resolves on its own; we do not require them declared. */
 const POSTMAN_BUILTIN_VARIABLES = new Set([
   "$guid",
   "$timestamp",
@@ -26,8 +27,8 @@ const POSTMAN_BUILTIN_VARIABLES = new Set([
 ]);
 
 /**
- * Comprueba todas las invariantes y devuelve los incumplimientos.
- * Lista vacía = la colección es correcta.
+ * Checks all invariants and returns the violations. Empty list = the
+ * collection is correct.
  */
 export function checkCollectionInvariants(
   collection: PostmanCollection,
@@ -40,76 +41,76 @@ export function checkCollectionInvariants(
   return issues;
 }
 
-/** Solo los `error`. Útil para decidir el exit code de un gate. */
+/** Only the `error`s. Useful to decide the exit code of a gate. */
 export function collectionErrors(collection: PostmanCollection): ICollectionIssue[] {
   return checkCollectionInvariants(collection).filter((i) => i.severity === "error");
 }
 
 // ---------------------------------------------------------------------------
-// Bloques de comprobación
+// Check blocks
 // ---------------------------------------------------------------------------
 
 function checkInfo(collection: PostmanCollection, issues: ICollectionIssue[]): void {
   const info = collection.info;
   if (!info) {
-    issues.push({ severity: "error", path: "$", message: "falta .info" });
+    issues.push({ severity: "error", path: "$", message: "missing .info" });
     return;
   }
   if (!info.schema?.includes("2.1.0")) {
     issues.push({
       severity: "error",
       path: "$.info.schema",
-      message: `debe ser Postman v2.1.0 (llega: ${info.schema ?? "undefined"})`,
+      message: `must be Postman v2.1.0 (arrives: ${info.schema ?? "undefined"})`,
     });
   }
   if (!info.name?.trim()) {
-    issues.push({ severity: "error", path: "$.info.name", message: "vacío" });
+    issues.push({ severity: "error", path: "$.info.name", message: "empty" });
   }
-  // Sin `_postman_id` Postman inventa uno nuevo en cada import, así que
-  // re-importar duplica la colección en lugar de actualizarla.
+  // Without `_postman_id` Postman invents a new one on every import,
+  // so re-importing duplicates the collection instead of updating it.
   if (!info._postman_id?.trim()) {
     issues.push({
       severity: "error",
       path: "$.info._postman_id",
-      message: "ausente: cada import crearía una colección nueva",
+      message: "missing: each import would create a new collection",
     });
   }
   if (!Array.isArray(collection.item)) {
-    issues.push({ severity: "error", path: "$.item", message: "no es un array" });
+    issues.push({ severity: "error", path: "$.item", message: "not an array" });
   } else if (collection.item.length === 0) {
-    issues.push({ severity: "warning", path: "$.item", message: "colección vacía" });
+    issues.push({ severity: "warning", path: "$.item", message: "empty collection" });
   }
 }
 
 function checkItems(collection: PostmanCollection, issues: ICollectionIssue[]): void {
   const walk = (items: ReadonlyArray<PostmanItem>, path: string): void => {
     for (const item of items) {
-      const here = `${path}/${item.name ?? "(sin nombre)"}`;
+      const here = `${path}/${item.name ?? "(unnamed)"}`;
       if (!item.name?.trim()) {
-        issues.push({ severity: "error", path: here, message: "item sin nombre" });
+        issues.push({ severity: "error", path: here, message: "item without name" });
       }
       if (item.item) {
         if (item.item.length === 0) {
-          issues.push({ severity: "warning", path: here, message: "carpeta vacía" });
+          issues.push({ severity: "warning", path: here, message: "empty folder" });
         }
         walk(item.item, here);
         continue;
       }
       if (!item.request) {
-        issues.push({ severity: "error", path: here, message: "no es carpeta ni request" });
+        issues.push({ severity: "error", path: here, message: "neither folder nor request" });
         continue;
       }
       if (!item.request.method) {
-        issues.push({ severity: "error", path: here, message: "request sin method" });
+        issues.push({ severity: "error", path: here, message: "request without method" });
       }
       const raw = item.request.url?.raw;
       if (!raw) {
-        issues.push({ severity: "error", path: here, message: "request sin url.raw" });
+        issues.push({ severity: "error", path: here, message: "request without url.raw" });
       } else if (/\/\/(?!.*:)/.test(raw.replace(/^[a-z]+:\/\//, ""))) {
-        issues.push({ severity: "warning", path: here, message: `url con doble barra: ${raw}` });
+        issues.push({ severity: "warning", path: here, message: `url with double slash: ${raw}` });
       }
       if (!Array.isArray(item.request.header)) {
-        issues.push({ severity: "error", path: here, message: "request sin array de headers" });
+        issues.push({ severity: "error", path: here, message: "request without headers array" });
       }
     }
   };
@@ -117,19 +118,19 @@ function checkItems(collection: PostmanCollection, issues: ICollectionIssue[]): 
 }
 
 /**
- * Dos requests con el mismo método y la misma URL.
+ * Two requests with the same method and the same URL.
  *
- * En REST eso es un descuido: la URL identifica la operación, así que
- * dos iguales son la misma pedida dos veces.
+ * In REST that is an oversight: the URL identifies the operation, so
+ * two equal ones are the same request sent twice.
  *
- * En **RPC sobre POST** no. GraphQL tiene un solo endpoint —`/graphql`—
- * y lo que distingue una operación de otra es el cuerpo: un esquema de
- * veinte consultas produce veinte requests a la misma URL, y las veinte
- * son correctas. Avisar de eso sería marcar como sospechoso justo lo que
- * el protocolo obliga a hacer.
+ * In **RPC over POST** it is not. GraphQL has a single endpoint —
+ * `/graphql` — and what distinguishes one operation from another is the
+ * body: a schema with twenty queries produces twenty requests to the
+ * same URL, and all twenty are correct. Warning about that would be
+ * flagging as suspicious exactly what the protocol requires.
  *
- * Se comparan también los cuerpos: si método, URL **y** cuerpo coinciden,
- * entonces sí es la misma petición repetida.
+ * Bodies are also compared: if method, URL **and** body match, then it
+ * really is the same request repeated.
  */
 function checkDuplicates(collection: PostmanCollection, issues: ICollectionIssue[]): void {
   const seen = new Map<string, string>();
@@ -166,13 +167,13 @@ function checkVariables(collection: PostmanCollection, issues: ICollectionIssue[
     issues.push({
       severity: "warning",
       path,
-      message: `{{${name}}} no está declarada en las variables de la colección`,
+      message: `{{${name}}} is not declared in the collection's variables`,
     });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Recorrido
+// Walking
 // ---------------------------------------------------------------------------
 
 interface IFlatRequest {
@@ -180,21 +181,21 @@ interface IFlatRequest {
   readonly key: string;
   readonly raw: string;
   /**
-   * El cuerpo, para distinguir dos peticiones a la misma URL.
+   * The body, to distinguish two requests to the same URL.
    *
-   * `undefined` cuando no lleva: en REST la URL basta.
+   * `undefined` when there is none: in REST the URL suffices.
    */
   readonly body?: string | undefined;
 }
 
-/** Aplana la colección a la lista de sus requests. */
+/** Flattens the collection into the list of its requests. */
 function* eachRequest(collection: PostmanCollection): Generator<IFlatRequest> {
   function* walk(
     items: ReadonlyArray<PostmanItem>,
     path: string,
   ): Generator<IFlatRequest> {
     for (const item of items) {
-      const here = `${path}/${item.name ?? "(sin nombre)"}`;
+      const here = `${path}/${item.name ?? "(unnamed)"}`;
       if (item.item) {
         yield* walk(item.item, here);
         continue;

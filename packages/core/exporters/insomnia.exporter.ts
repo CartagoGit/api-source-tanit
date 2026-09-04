@@ -1,16 +1,16 @@
 /**
- * Exportador a Insomnia v4.
+ * Insomnia v4 exporter.
  *
- * Insomnia no tiene árbol: su fichero de exportación es una **lista
- * plana** de recursos donde la jerarquía se expresa con `parentId`. Un
- * workspace, unos `request_group` que cuelgan de él, y las requests que
- * cuelgan de los grupos.
+ * Insomnia has no tree: its export file is a **flat list** of
+ * resources where the hierarchy is expressed with `parentId`. A
+ * workspace, some `request_group` hanging off it, and the requests
+ * hanging off the groups.
  *
- * Los ids tienen que ser **estables entre generaciones**. Insomnia usa
- * el `_id` para decidir si una importación actualiza un recurso o crea
- * otro; con ids aleatorios, reimportar duplicaría la colección entera
- * cada vez. Es el mismo problema que el `_postman_id` de Postman, y se
- * resuelve igual: derivándolos del contenido.
+ * The ids must be **stable across generations**. Insomnia uses `_id`
+ * to decide whether an import updates a resource or creates a new one;
+ * with random ids, reimporting would duplicate the whole collection
+ * every time. It is the same problem as Postman's `_postman_id`, and
+ * it is solved the same way: by deriving them from content.
  */
 import type {
   IExportArtifact,
@@ -21,10 +21,10 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import { topGroupFor, prettyGroupName } from "../helpers/uri.helper.js";
 
 /**
- * Id estable a partir de una semilla.
+ * Stable id from a seed.
  *
- * No hace falta que sea criptográfico: hace falta que sea el mismo para
- * la misma entrada y distinto para entradas distintas.
+ * It does not need to be cryptographic: it needs to be the same for
+ * the same input and different for different inputs.
  */
 function stableId(prefix: string, seed: string): string {
   let hash = 2166136261;
@@ -35,7 +35,7 @@ function stableId(prefix: string, seed: string): string {
   return `${prefix}_${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
-/** `{{x}}` de Postman es también la sintaxis de Insomnia. No se toca. */
+/** `{{x}}` in Postman is also Insomnia's syntax. It is left untouched. */
 function authHeaders(auth: IExportInput["auth"]): Array<{ name: string; value: string }> {
   if (auth.type === "apikey" && auth.keyIn === "header") {
     return [{ name: auth.keyName ?? "X-API-Key", value: "{{ apiKey }}" }];
@@ -84,13 +84,13 @@ function toRequest(
       input.auth.type === "bearer"
         ? { type: "bearer", token: "{{ token }}" }
         : {},
-    // Insomnia ordena por `metaSortKey` ascendente. Sin él, el orden lo
-    // decide la importación y cambia entre ejecuciones.
+    // Insomnia sorts by `metaSortKey` ascending. Without it, the order is
+    // decided by the import and changes between runs.
     metaSortKey: index,
   };
 }
 
-/** Serializa el catálogo al formato de exportación v4 de Insomnia. */
+/** Serializes the catalog to Insomnia's v4 export format. */
 export class InsomniaExporter implements IExportTarget {
   readonly format = "insomnia";
   readonly summary = "Insomnia v4 (JSON) — the open-source alternative";
@@ -113,8 +113,8 @@ export class InsomniaExporter implements IExportTarget {
         _type: "environment",
         parentId: workspaceId,
         name: "Base Environment",
-        // Las variables de la colección van al entorno base: es donde
-        // Insomnia las busca al resolver `{{ baseUrl }}`.
+        // The collection's variables go to the base environment: that is where
+        // Insomnia looks when resolving `{{ baseUrl }}`.
         data: Object.fromEntries([
           ["baseUrl", config.baseUrl],
           ...config.variables.map((v) => [v.key, v.value]),
@@ -122,9 +122,9 @@ export class InsomniaExporter implements IExportTarget {
       },
     ];
 
-    // Un grupo por carpeta, con la misma agrupación que la colección de
-    // Postman: dos formatos del mismo proyecto tienen que enseñar la
-    // misma estructura.
+    // One group per folder, with the same grouping as the Postman
+    // collection: two formats of the same project must show the same
+    // structure.
     const overrides = config.uriGroupOverrides ?? {};
     const groups = new Map<string, string>();
     for (const spec of specs) {

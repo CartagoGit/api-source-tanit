@@ -1,22 +1,22 @@
 /**
- * Exportadores a HAR 1.2 y a cURL.
+ * Exporters to HAR 1.2 and to cURL.
  *
- * Los dos comparten la misma idea —una petición HTTP concreta, sin
- * envoltorio de herramienta— así que comparten fichero.
+ * Both share the same idea — a concrete HTTP request, with no tool
+ * wrapper — so they share a file.
  *
- * **HAR es un formato de registro, no de plantilla.** Un `.har` de
- * verdad recoge peticiones que ya ocurrieron, con sus respuestas y sus
- * tiempos. Aquí no hay respuestas: nunca se ha ejecutado nada. La
- * especificación exige el objeto `response` en cada entrada, así que se
- * emite el que HAR define para "no se capturó respuesta" — `status: 0`,
- * cuerpo vacío, tamaños a -1. Es la convención del formato para
- * exactamente este caso, y es preferible a inventarse un 200 con un
- * cuerpo que nadie ha visto.
+ * **HAR is a log format, not a template.** A real `.har` collects
+ * requests that already happened, with their responses and their
+ * timings. There are no responses here: nothing has ever been
+ * executed. The spec requires the `response` on every entry, so we
+ * emit the one HAR defines for "no response was captured" —
+ * `status: 0`, empty body, sizes at -1. It is the format's
+ * convention for exactly this case, and is preferable to inventing a
+ * 200 with a body nobody has seen.
  *
- * Las variables se dejan **sin resolver** (`{{baseUrl}}`) a propósito.
- * Sustituirlas por el valor de la config produciría un fichero que
- * apunta a un entorno concreto, y quien importa un HAR en las DevTools
- * suele querer editarlo antes de lanzarlo.
+ * Variables are intentionally left **unresolved** (`{{baseUrl}}`).
+ * Substituting them with the config value would produce a file that
+ * points to a specific environment, and whoever imports a HAR into
+ * the DevTools usually wants to edit it before running it.
  */
 import type {
   IExportArtifact,
@@ -25,7 +25,7 @@ import type {
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
-/** Las cabeceras que lleva una petición, según el esquema de auth. */
+/** Headers carried by a request, per the auth scheme. */
 function headersFor(
   spec: EndpointSpec,
   auth: IExportInput["auth"],
@@ -46,7 +46,7 @@ function headersFor(
   return headers;
 }
 
-/** Serializa el catálogo a un registro HAR 1.2 sin respuestas. */
+/** Serializes the catalog to a HAR 1.2 log without responses. */
 export class HarExporter implements IExportTarget {
   readonly format = "har";
   readonly summary = "HAR 1.2 (JSON) — DevTools and replay tools";
@@ -62,8 +62,8 @@ export class HarExporter implements IExportTarget {
       }));
       return {
         startedDateTime: "1970-01-01T00:00:00.000Z",
-        // -1 es lo que HAR usa para "no medido". Poner un 0 diría que
-        // tardó cero, que es una afirmación distinta.
+        // -1 is what HAR uses for "not measured". A 0 would say it took
+        // zero, which is a different statement.
         time: -1,
         request: {
           method: spec.method,
@@ -83,7 +83,7 @@ export class HarExporter implements IExportTarget {
           headersSize: -1,
           bodySize: -1,
         },
-        // La entrada sin respuesta que define el formato. Ver la cabecera.
+        // The no-response entry defined by the format. See the header.
         response: {
           status: 0,
           statusText: "",
@@ -117,14 +117,14 @@ export class HarExporter implements IExportTarget {
   }
 }
 
-/** Escapa un valor para meterlo entre comillas simples en sh. */
+/** Escapes a value to wrap it in single quotes in sh. */
 function shellQuote(value: string): string {
-  // En sh no hay escapes dentro de comillas simples: hay que cerrarlas,
-  // meter una comilla escapada y volver a abrirlas.
+  // In sh there are no escapes inside single quotes: you must close
+  // them, insert an escaped quote, and reopen them.
   return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-/** Serializa el catálogo a un script de shell con un cURL por endpoint. */
+/** Serializes the catalog to a shell script with one cURL per endpoint. */
 export class CurlExporter implements IExportTarget {
   readonly format = "curl";
   readonly summary = "Shell script with one cURL per endpoint";
@@ -146,8 +146,8 @@ export class CurlExporter implements IExportTarget {
     lines.push("");
 
     for (const spec of specs) {
-      // Las variables de Postman pasan a variables de shell: un
-      // `{{id}}` en la URL no lo entiende curl.
+      // Postman variables become shell variables: a `{{id}}` in the URL
+      // is not understood by curl.
       const uri = spec.uri.replace(/\{\{([^}]+)\}\}/g, (_, name: string) => `\${${name}}`);
       lines.push(`# ${spec.method} ${spec.name}`);
 

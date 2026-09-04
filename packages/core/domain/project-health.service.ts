@@ -1,34 +1,32 @@
 /**
- * Salud de la documentación de un proyecto: porcentajes por categoría.
+ * Health of a project's documentation: percentages by category.
  *
- * La pregunta que responde no es "¿cuántos endpoints hay?" —eso ya lo
- * dicen `routesInCode` y compañía— sino "¿cómo están de bien documentados?"
- * Un resumen que no la contesta obliga a quien inspecciona a contar a
- * mano cuántas rutas llevan body o descripción.
+ * The question it answers is not "how many endpoints are there?" —the
+ * `routesInCode` and company already say that— but "how well documented
+ * are they?" A summary that does not answer it forces the person inspecting
+ * the project to manually count how many routes include a body or description.
  *
- * Es una función **pura**: consume los specs finales del pipeline —los
- * mismos que alimentan la colección— y devuelve porcentajes. Nada de
- * disco, nada de heurísticas nuevas: cada categoría se mide sobre una
- * pieza que el spec ya lleva, así que lo que dice el health es lo que
- * `generate` produce.
+ * It is a **pure** function: it consumes the pipeline's final specs—the
+ * same ones that feed the collection—and returns percentages. No disk I/O,
+ * no new heuristics: each category is measured against a piece already
+ * carried by the spec, so what the health says is what `generate` produces.
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IProjectHealth } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**
- * Computa la salud del proyecto a partir de los specs finales.
+ * Computes the project's health from the final specs.
  *
- * Con cero endpoints, todos los porcentajes son `0`: no hay nada que
- * documentar y un `NaN` o un 100 sin rutas serían las dos mentiras
- * posibles. Con rutas, cada porcentaje es el cociente de endpoints que
- * llevan la pieza, redondeado a entero para que el CLI y el tool MCP
- * lo muestren tal cual.
+ * With zero endpoints, all percentages are `0`: there is nothing to
+ * document, and a `NaN` or a 100 without routes would be the two possible
+ * lies. With routes, each percentage is the quotient of endpoints that
+ * include the piece, rounded to an integer so the CLI and MCP tool display
+ * it as-is.
  *
- * El body cuenta si el spec lleva uno —de reglas resueltas o de la
- * inferencia agnóstica, que ya corrió antes de aquí—. Los ejemplos
- * cuentan cuando el body lleva algún valor o hay params con valor;
- * son las dos vías por las que la colección enseña **un** valor válido
- * al usuario.
+ * The body counts if the spec carries one—from resolved rules or from
+ * agnostic inference, which has already run before this point. Examples
+ * count when the body has a value or params have a value; these are the two
+ * ways the collection teaches the user **one** valid value.
  */
 export function computeProjectHealth(
   specs: ReadonlyArray<EndpointSpec>,
@@ -57,12 +55,12 @@ export function computeProjectHealth(
 }
 
 /**
- * El body "cuenta" cuando trae contenido real.
+ * The body "counts" when it contains real content.
  *
- * Un `body: {}` vacío llega de las reglas cuyo ejemplo no pudo
- * construirse; contarlo como documentado sería inflar la nota con un
- * hueco. El objeto vacío también es el `body` por defecto de los specs
- * manuales sin overrides, así que la exclusión cubre los dos.
+ * An empty `body: {}` comes from rules whose example could not be
+ * built; counting it as documented would inflate the score with a
+ * gap. The empty object is also the default `body` for manual specs
+ * without overrides, so the exclusion covers both.
  */
 function hasBodyContent(spec: EndpointSpec): boolean {
   return (
@@ -74,11 +72,11 @@ function hasBodyContent(spec: EndpointSpec): boolean {
 }
 
 /**
- * Hay ejemplos cuando el body lleva algún valor o algún param lo lleva.
+ * There are examples when the body contains a value or a param has one.
  *
- * Son las dos vías por las que la colección enseña **un** valor válido:
- * el body de ejemplo para lo que se manda, y query/headers con valor
- * para lo que viaja en la URL o en cabeceras.
+ * These are the two ways the collection teaches the user **one** valid value:
+ * the example body for what is sent, and query/headers with values
+ * for what travels in the URL or headers.
  */
 function hasExampleValues(spec: EndpointSpec): boolean {
   if (hasBodyContent(spec)) return true;
@@ -90,7 +88,7 @@ function hasText(text: string | undefined): boolean {
   return text != null && text.trim() !== "";
 }
 
-/** Cociente en porcentaje entero, redondeado. `0..100` garantizado. */
+/** Integer percentage, rounded. `0..100` guaranteed. */
 function percent(part: number, total: number): number {
   return Math.round((part / total) * 100);
 }

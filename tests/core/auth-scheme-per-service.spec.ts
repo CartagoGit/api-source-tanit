@@ -441,33 +441,80 @@ describe("x00028 — multi-service spec isolation", () => {
       combineServices: false,
     });
 
-    // Two services detected → two collections. If detection collapses
-    // them into one, the test fails loudly instead of producing a
-    // false positive on the spec-isolation assertion below.
+    // Two services detected -> two collections. If detection
+    // collapses them into one, the test fails loudly instead of
+    // producing a false positive on the spec-isolation assertions.
     expect(results.length).toBe(2);
 
-    // Each service should have at most ONE /health request — its own.
-    // Before the fix, both services saw both /healths (the bug).
-    const allItems = results.flatMap((r) => r.collection.item);
-    const healthItems = allItems.filter((item) =>
-      item.name?.toLowerCase().includes("health") === true ||
-      item.request.url.path.join("/").toLowerCase().includes("health"),
-    );
+    // Flatten the collection tree (folders can contain items).
+    // Each entry is a request item paired with the index of the
+    // collection it belongs to. The flattening walks both top-level
+    // items and `item.item[]` so folder grouping doesn't hide
+    // anything.
+    type FlatItem = { ci: number; name: string; rawPath: string };
+    function flatten(idx: number): FlatItem[] {
+      const out: FlatItem[] = [];
+      const visit = (
+        items: ReadonlyArray<{
+          name: string;
+          item?: ReadonlyArray<unknown>;
+          request?: { url: { path: string[] | string } };
+        }>,
+      ): void => {
+        for (const it of items) {
+          if (it.request) {
+            const p = it.request.url.path;
+            out.push({
+              ci: idx,
+              name: it.name,
+              rawPath: Array.isArray(p) ? p.join("/") : String(p),
+            });
+          }
+          if (it.item)
+            visit(
+              it.item as ReadonlyArray<{
+                name: string;
+                item?: ReadonlyArray<unknown>;
+                request?: { url: { path: string[] | string } };
+              }>,
+            );
+        }
+      };
+      visit(results[idx]!.collection.item);
+      return out;
+    }
+    const all: FlatItem[] = results.flatMap((_r, i) => flatten(i));
+
+    // Each service exposes /health, so we expect exactly TWO
+    // /health requests — one per collection. Before the fix,
+    // `buildForService` consumed the global `discovery.specs`
+    // (already merged by the merger); in a monorepo with two
+    // /healths the merger had already deduped them by
+    // `(method, uri)` into ONE spec, which then got returned to
+    // BOTH services via `[...discovery.specs]`. So the bug
+    // manifested as a single /health being shared by both
+    // collections — visible here as `healthItems.length === 2`
+    // and the two items belonging to distinct collections.
+    const healthItems = all.filter((a) => /health/i.test(a.rawPath));
     expect(healthItems).toHaveLength(2);
+    const healthCollections = new Set(healthItems.map((a) => a.ci));
+    expect(healthCollections.size).toBe(2);
 
-    // Each /health belongs to a different collection — verify the
-    // collections are distinct objects (no shared array reference
-    // between services).
-    const healthCollections = healthItems.map((item) =>
-      results.findIndex((r) => r.collection.item.includes(item)),
-    );
-    expect(new Set(healthCollections).size).toBe(2);
+    // Service-specific routes do NOT cross: the apps/api collection
+    // does not contain /pages, and the apps/web collection does
+    // not contain /widgets. Before the fix, the global catalog
+    // had /widgets (from apps/api) and /pages (from apps/web),
+    // and BOTH collections received BOTH routes.
+    const apiCi = healthItems[0]!.ci;
+    const webCi = healthItems[1]!.ci;
+    expect(apiCi).not.toBe(webCi);
 
-    // Widgets and pages must NOT cross services. `widgets` belongs
-    // only to apps/api; `pages` only to apps/web. Before the fix,
-    // both collections would have included both.
-    const allItemNames = allItems.map((item) => item.name).sort();
-    expect(allItemNames.filter((n) => n?.includes("widgets"))).toHaveLength(1);
-    expect(allItemNames.filter((n) => n?.includes("pages"))).toHaveLength(1);
+    // The /widgets request belongs ONLY to apps/api (not apps/web).
+    const widgetsItems = all.filter((a) => /widgets/i.test(a.rawPath));
+    expect(widgetsItems.every((w) => w.ci === apiCi)).toBe(true);
+
+    // The /pages request belongs ONLY to apps/web (not apps/api).
+    const pagesItems = all.filter((a) => /pages/i.test(a.rawPath));
+    expect(pagesItems.every((p) => p.ci === webCi)).toBe(true);
   }, 30_000);
 });

@@ -1,35 +1,37 @@
 /**
- * ¿Esta ruta se sale de donde debería escribir?
+ * Does this path escape where it's supposed to write?
  *
- * `--output-dir` y `POSTMAN_OUTPUT_DIR` se aceptaban tal cual, sin
- * comprobar nada. En un CLI que ejecuta una persona sobre su propia
- * máquina eso es razonable: si alguien escribe `--output-dir /tmp/x`, es
- * porque quiere escribir ahí.
+ * `--output-dir` and `POSTMAN_OUTPUT_DIR` were accepted as-is, without
+ * any check. On a CLI that a person runs on their own machine that is
+ * reasonable: if someone writes `--output-dir /tmp/x`, it is because
+ * they want to write there.
  *
- * Pero el plugin MCP **spawnea este mismo CLI** con argumentos que vienen
- * de un agente, y ahí quien elige la ruta ya no es necesariamente la
- * persona. Una ruta con `../` escribe fuera del proyecto.
+ * But the MCP plugin **spawns this same CLI** with arguments coming
+ * from an agent, and there whoever picks the path is no longer
+ * necessarily the person. A path with `../` writes outside the
+ * project.
  *
- * Dos detalles que hacen que esto funcione de verdad:
+ * Two details that make this actually work:
  *
- *   1. **Se resuelven los enlaces simbólicos antes de comparar.** Sin
- *      eso, un enlace dentro de la raíz apuntando fuera pasa la
- *      comprobación y escribe donde le da la gana.
- *   2. **Se compara por segmentos, no por prefijo de cadena.**
- *      `/a/raiz-mala` empieza por `/a/raiz` y no está dentro de ella.
- *      Es el fallo clásico de esta comprobación.
+ *   1. **Symlinks are resolved before comparing.** Without that, a link
+ *      inside the root pointing outside passes the check and writes
+ *      wherever it pleases.
+ *   2. **Comparison is by segments, not by string prefix.**
+ *      `/a/bad-root` starts with `/a/root` and is not inside it. It is
+ *      the classic failure of this check.
  */
 import { realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { ContainmentResult } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * El ancestro existente más cercano.
+ * The nearest existing ancestor.
  *
- * Hace falta porque la ruta de salida **normalmente no existe todavía**
- * —se va a crear— y `realpath` sobre algo que no existe falla. Se sube
- * hasta encontrar algo real, se resuelven ahí los enlaces, y se vuelve a
- * bajar. Así un enlace en mitad del camino tampoco se escapa.
+ * Needed because the output path **normally does not exist yet** — it
+ * will be created — and `realpath` on something that doesn't exist
+ * fails. Walk up until something real is found, resolve the links
+ * there, and walk back down. This way a link in the middle of the path
+ * cannot escape either.
  */
 async function realpathOfNearestExisting(target: string): Promise<string> {
   let current = resolve(target);
@@ -40,7 +42,7 @@ async function realpathOfNearestExisting(target: string): Promise<string> {
       return pending.length > 0 ? resolve(real, ...pending.reverse()) : real;
     } catch {
       const parent = resolve(current, "..");
-      // Se llegó a la raíz del sistema sin encontrar nada existente.
+      // Got to the system root without finding anything existing.
       if (parent === current) return resolve(target);
       pending.push(current.slice(parent.length + 1));
       current = parent;
@@ -49,11 +51,11 @@ async function realpathOfNearestExisting(target: string): Promise<string> {
 }
 
 /**
- * ¿`target` está dentro de `root`?
+ * Is `target` inside `root`?
  *
- * La propia raíz cuenta como dentro. Devuelve la ruta ya resuelta para
- * que quien llame use esa y no la original: comprobar una y escribir en
- * otra es como se saltan estas comprobaciones.
+ * The root itself counts as inside. Returns the already-resolved path
+ * so the caller uses that and not the original: checking one and
+ * writing in another is how these checks get bypassed.
  */
 export async function ensureInside(
   root: string,
@@ -63,41 +65,41 @@ export async function ensureInside(
 }
 
 /**
- * ¿`target` está dentro de **alguna** de las raíces?
+ * Is `target` inside **any** of the roots?
  *
- * Varias, y no una, porque una sola no describe el uso legítimo. Un
- * agente puede pedir "genera para el proyecto X y deja la salida en mi
- * carpeta de trabajo", y esas son dos ubicaciones distintas y las dos
- * razonables. Con una sola raíz eso se rechazaba, y un guardián que
- * bloquea el uso normal se acaba quitando.
+ * Several, not just one, because a single one does not describe the
+ * legitimate use. An agent may ask "generate for project X and leave
+ * the output in my working folder", and those are two distinct and
+ * both reasonable locations. With a single root that was rejected, and
+ * a guard that blocks normal use eventually gets removed.
  *
- * Lo que sí queda fuera es el resto del disco: la salida va con el
- * proyecto, dentro del workspace, o en un temporal — no al `$HOME` de
- * nadie porque un `../` se coló en un argumento.
+ * What does stay out is the rest of the disk: the output goes with the
+ * project, inside the workspace, or in a temp dir — not to anyone's
+ * `$HOME` because a `../` slipped into an argument.
  */
 export async function ensureInsideAny(
   roots: ReadonlyArray<string>,
   target: string,
 ): Promise<ContainmentResult> {
-  const primera = roots[0] ?? ".";
+  const first = roots[0] ?? ".";
   const realTarget = await realpathOfNearestExisting(
-    isAbsolute(target) ? target : resolve(primera, target),
+    isAbsolute(target) ? target : resolve(first, target),
   );
 
-  const reales: string[] = [];
+  const resolvedRoots: string[] = [];
   for (const root of roots) {
     const realRoot = await realpathOfNearestExisting(root);
-    reales.push(realRoot);
+    resolvedRoots.push(realRoot);
     const rel = relative(realRoot, realTarget);
-    // Vacío = es la propia raíz. Con `..` al principio, o absoluto, se sale.
-    const dentro =
+    // Empty = it is the root itself. With `..` at the start, or absolute, it escapes.
+    const inside =
       rel === "" || (!rel.startsWith(`..${sep}`) && rel !== ".." && !isAbsolute(rel));
-    if (dentro) return { ok: true, resolved: realTarget };
+    if (inside) return { ok: true, resolved: realTarget };
   }
 
   return {
     ok: false,
     resolved: realTarget,
-    reason: `'${realTarget}' queda fuera de ${reales.map((r) => `'${r}'`).join(", ")}`,
+    reason: `'${realTarget}' is outside ${resolvedRoots.map((r) => `'${r}'`).join(", ")}`,
   };
 }

@@ -1,14 +1,14 @@
 /**
- * Helpers de zonas lógicas.
+ * Logical-zone helpers.
  *
- * Las zonas se definen en `ProjectConfig.zones` y se usan en
- * `list` / `stats` para agrupar endpoints por área funcional.
+ * Zones are defined in `ProjectConfig.zones` and used in `list` /
+ * `stats` to group endpoints by functional area.
  */
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 
 /**
- * Calcula la zona lógica a partir de la URI del endpoint y la
- * configuración del proyecto.
+ * Computes the logical zone from the endpoint URI and the project
+ * configuration.
  */
 export function zoneForUri(uri: string, config: ProjectConfig): string {
   let u = uri;
@@ -24,23 +24,23 @@ export function zoneForUri(uri: string, config: ProjectConfig): string {
 }
 
 /**
- * El orden en que se enseñan las zonas que **tienen contenido**.
+ * The order in which zones that **have content** are shown.
  *
- * `zoneOrder` es la preferencia de quien configura el proyecto, no la
- * lista de zonas que existen. Y en zero-config —que es el caso normal,
- * el de los 21 ejemplos— viene **vacía**, con todos los endpoints
- * cayendo en `defaultZone`.
+ * `zoneOrder` is the preference of whoever configures the project, not
+ * the list of zones that exist. And in zero-config — the normal case,
+ * the 21 examples — it comes **empty**, with all endpoints falling into
+ * `defaultZone`.
  *
- * `list` y `stats` recorrían `zoneOrder` directamente para imprimir, así
- * que en zero-config no imprimían **nada**: `list` decía "9 endpoints en
- * la colección, agrupados por zona:" y a continuación dejaba la pantalla
- * en blanco. No era un fallo de GraphQL ni de un framework concreto —
- * pasaba en los veintiuno, y el comando entero no servía para nada.
+ * `list` and `stats` used to walk `zoneOrder` directly to print, so in
+ * zero-config they printed **nothing**: `list` said "9 endpoints in the
+ * collection, grouped by zone:" and then left the screen blank. It was
+ * not a GraphQL failure or a specific framework's — it happened in all
+ * twenty-one, and the entire command served no purpose.
  *
- * Aquí se devuelven las zonas presentes de verdad: primero las que
- * `zoneOrder` nombra, en su orden, y después el resto ordenadas
- * alfabéticamente para que dos ejecuciones den lo mismo. Se omiten las
- * vacías, que es lo que hacía bien el código anterior.
+ * Here we return the zones actually present: first those that
+ * `zoneOrder` names, in their order, then the rest sorted
+ * alphabetically so two runs produce the same. Empty zones are omitted,
+ * which is what the previous code did right.
  */
 export function zonesToDisplay(
   present: Iterable<string>,

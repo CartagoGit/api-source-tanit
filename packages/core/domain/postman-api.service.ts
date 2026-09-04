@@ -1,18 +1,18 @@
 /**
- * Cliente de la API pública de Postman.
+ * Client for the public Postman API.
  *
- * Permite subir la colección directamente al workspace del usuario en
- * lugar de generar un fichero que hay que importar a mano. Es lo más
- * cerca de un "auto-import" que se puede hacer: la aplicación de
- * escritorio no expone ninguna API local documentada, pero
- * `api.getpostman.com` sí lo está y es la vía oficial.
+ * It can upload the collection directly to the user's workspace instead
+ * of generating a file that must be imported manually. It is the closest
+ * thing to an "auto-import" that can be done: the desktop application does
+ * not expose any documented local API, but `api.getpostman.com` does, and
+ * that is the official route.
  *
- * Como `info._postman_id` es determinista por proyecto (p00014), un
- * segundo `push` **actualiza** la colección que ya existe en vez de
- * crear otra.
+ * Because `info._postman_id` is deterministic per project (p00014), a
+ * second `push` **updates** the existing collection instead of creating
+ * another one.
  *
- * La API key se pasa por `--api-key` o `POSTMAN_API_KEY`, y nunca se
- * escribe en disco ni se imprime.
+ * The API key is passed via `--api-key` or `POSTMAN_API_KEY`, and is never
+ * written to disk or printed.
  *
  * @see https://learning.postman.com/docs/developer/postman-api/intro-api/
  */
@@ -21,7 +21,7 @@ import type { IPostmanApiOptions, IPostmanEnvironmentPayload, IPushResult } from
 
 const API_BASE = "https://api.getpostman.com";
 
-/** Un error de la API con el detalle que devolvió Postman. */
+/** An API error with the detail returned by Postman. */
 export class PostmanApiError extends Error {
   constructor(
     message: string,
@@ -34,8 +34,8 @@ export class PostmanApiError extends Error {
 }
 
 /**
- * Sube la colección: la actualiza si ya existe una con el mismo
- * `_postman_id`, y si no la crea.
+ * Uploads the collection: updates it if one with the same `_postman_id`
+ * already exists; otherwise, creates it.
  */
 export async function pushCollection(
   collection: PostmanCollection,
@@ -69,7 +69,7 @@ export async function pushCollection(
   };
 }
 
-/** Sube un environment, con la misma semántica de crear-o-actualizar. */
+/** Uploads an environment, with the same create-or-update semantics. */
 export async function pushEnvironment(
   environment: IPostmanEnvironmentPayload,
   options: IPostmanApiOptions,
@@ -99,7 +99,7 @@ export async function pushEnvironment(
   };
 }
 
-/** Comprueba que la API key es válida. Devuelve el usuario asociado. */
+/** Verifies that the API key is valid. Returns the associated user. */
 export async function verifyApiKey(
   options: IPostmanApiOptions,
 ): Promise<{ id: number; username: string }> {
@@ -114,7 +114,7 @@ export async function verifyApiKey(
 }
 
 // ---------------------------------------------------------------------------
-// Internos
+// Internal
 // ---------------------------------------------------------------------------
 
 interface IRemoteItem {
@@ -124,11 +124,11 @@ interface IRemoteItem {
 }
 
 /**
- * Busca una colección remota por su `_postman_id`.
+ * Finds a remote collection by its `_postman_id`.
  *
- * Postman conserva el `id` original de la colección importada, así que
- * comparar por ahí es lo que hace que un `push` repetido actualice en
- * lugar de duplicar.
+ * Postman retains the original `id` of the imported collection, so
+ * comparing against it is what makes a repeated `push` update instead
+ * of duplicating it.
  */
 async function findCollectionByPostmanId(
   postmanId: string,
@@ -168,11 +168,11 @@ async function request<T = unknown>(path: string, config: IRequestOptions): Prom
         .join("&")}`
     : "";
 
-  // El tipo se deriva de `doFetch` en vez de nombrar el global
-  // `FetchResponse`. Ese global lo declara `runtime.d.ts`, el sustituto
-  // a mano de `@types/node` que usa este repo; el plugin compila con los
-  // tipos reales y no lo tiene, así que nombrarlo rompía su typecheck en
-  // cuanto el plugin importó este módulo.
+  // The type is derived from `doFetch` instead of naming the global
+  // `FetchResponse`. That global is declared by `runtime.d.ts`, the hand-written
+  // replacement for `@types/node` used by this repo; the plugin compiles with
+  // real types and does not have it, so naming it broke its typecheck as soon
+  // as the plugin imported this module.
   let response: Awaited<ReturnType<typeof doFetch>>;
   try {
     response = await doFetch(`${API_BASE}${path}${query}`, {
@@ -199,7 +199,7 @@ async function request<T = unknown>(path: string, config: IRequestOptions): Prom
   return (await response.json()) as T;
 }
 
-/** Traduce el código HTTP a algo accionable. */
+/** Translates the HTTP status code into something actionable. */
 function explainStatus(status: number): string {
   if (status === 401) return "Invalid Postman API key (401).";
   if (status === 403) return "The API key does not have access to that workspace (403).";

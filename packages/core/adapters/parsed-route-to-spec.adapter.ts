@@ -1,9 +1,9 @@
 /**
- * Adapter universal: `ParsedRoute` (neutro) → `EndpointSpec` (Postman).
+ * Universal adapter: `ParsedRoute` (neutral) → `EndpointSpec` (Postman).
  *
- * Acepta una `IRouteScanner` (cualquier framework) y un
- * `IValidationSpecProvider` opcional, y devuelve la misma forma
- * que `endpoint-discovery.service.ts > discoverEndpoints()`:
+ * Accepts an `IRouteScanner` (any framework) and an optional
+ * `IValidationSpecProvider`, and returns the same shape as
+ * `endpoint-discovery.service.ts > discoverEndpoints()`:
  *
  *   {
  *     specs: EndpointSpec[],
@@ -12,22 +12,22 @@
  *     withoutFormRequest: number,
  *   }
  *
- * Lo que este adapter NO hace (deliberadamente):
- *   - No asigna `folder` automáticamente (lo calcula collection-builder).
- *   - No infiere body/query heurísticos (eso es `param-inferrer.service.ts`
- *     y se aplica aparte en el script `generate`).
- *   - No enriquece con variantes (eso es `catalog-enricher.service.ts`).
+ * What this adapter does NOT do (deliberately):
+ *   - Does not assign `folder` automatically (collection-builder does that).
+ *   - Does not infer heuristic body/query (that is `param-inferrer.service.ts`
+ *     and is applied separately in the `generate` script).
+ *   - Does not enrich with variants (that is `catalog-enricher.service.ts`).
  *
- * El `formRequest` del `EndpointSpec` se setea al FQCN (o path) que el
- * `IValidationSpecProvider` haya resuelto, como string identificador.
- * El enricher lo usará para cargar reglas adicionales.
+ * The `formRequest` of `EndpointSpec` is set to the FQCN (or path)
+ * the `IValidationSpecProvider` resolved, as an identifier string. The
+ * enricher will use it to load additional rules.
  *
- * **S5 (a00012)** — además del campo heredado `formRequest: string`,
- * el adapter ahora escribe `validationSource` con el **provider**
- * resuelto. Por ahora sólo hay un provider que sepamos enrutar
- * (`"laravel-form-request"`); los demás frameworks dejan el campo
- * `undefined` y su `validation.resolve()` se ignora, que es lo que
- * cierra la invariante "un proyecto Express NUNCA entra por
+ * **S5 (a00012)** — in addition to the inherited `formRequest: string`
+ * field, the adapter now writes `validationSource` with the resolved
+ * **provider**. For now there is only one provider we know how to
+ * route (`"laravel-form-request"`); other frameworks leave the field
+ * `undefined` and their `validation.resolve()` is ignored, which is
+ * what closes the invariant "an Express project NEVER enters
  * `enrichCatalogWithFormRequests`".
  */
 import { readFile } from "node:fs/promises";
@@ -46,67 +46,67 @@ import type {
 import type { AdapterResult } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /**
- * Traduce los parámetros de ruta al formato de Postman: `{{x}}`.
+ * Translates route parameters to the Postman format: `{{x}}`.
  *
- * Solo eso. Va aparte de `toPostmanUri` porque también se aplica a los
- * **nombres** de las requests, y un nombre no es una ruta: no lleva
- * barra inicial ni se le colapsan las barras.
+ * Just that. It lives apart from `toPostmanUri` because it also applies
+ * to the **names** of the requests, and a name is not a path: it has
+ * no leading slash and its slashes are not collapsed.
  */
 function toPostmanParams(text: string): string {
   let u = text;
-  // Paso 1: `<int:id>`, `<str:slug>`, `<id>` (Django) → `{{id}}`.
-  //         DEBE ir antes que `:param` para evitar que `<int:id>` se
-  //         rompa en `<int{{id}}>` (porque `:id` matchearía `:param`).
+  // Step 1: `<int:id>`, `<str:slug>`, `<id>` (Django) → `{{id}}`.
+  //          MUST come before `:param` to prevent `<int:id>` from
+  //          breaking into `<int{{id}}>` (because `:id` would match `:param`).
   u = u.replace(/<[a-zA-Z_][\w]*:([a-zA-Z_][\w]*)>/g, "{{$1}}");
   u = u.replace(/<([a-zA-Z_][\w]*)>/g, "{{$1}}");
-  // Paso 2: `:param` (Express) → `{{param}}`.
+  // Step 2: `:param` (Express) → `{{param}}`.
   u = u.replace(/:([a-zA-Z_][\w]*)/g, "{{$1}}");
-  // Paso 3: `{param}` (Laravel) → `{{param}}`. Lookbehind negativo para
-  // NO matchear si el `{` va precedido de otro `{` (eso es `{{param}}`).
+  // Step 3: `{param}` (Laravel) → `{{param}}`. Negative lookbehind to
+  // NOT match if the `{` is preceded by another `{` (that is `{{param}}`).
   return u.replace(/(?<!\{)\{([a-zA-Z_][\w]*)\}(?!\})/g, "{{$1}}");
 }
 
-/** Convierte `{x}` o `:x` (Express) a `{{x}}`. La URI ya viene con
- * prefix aplicado desde el scanner; aquí solo normalizamos el formato
- * canónico Postman (`{{param}}` y `/` inicial). */
+/** Converts `{x}` or `:x` (Express) to `{{x}}`. The URI already comes
+ * with the prefix applied from the scanner; here we only normalize the
+ * canonical Postman format (`{{param}}` and leading `/`). */
 export function toPostmanUri(laravelUri: string): string {
   let u = toPostmanParams(laravelUri.trim());
-  // Nota: NO quitamos prefijos `api/vN/` automáticamente. El prefix real
-  // del backend depende del framework:
-  //   - Laravel: RouteServiceProvider quita `api/` → collection va sin él.
-  //   - ASP.NET, Spring Boot, Gin, NestJS: el prefix es real → se conserva.
-  // El scanner debe emitir la URI TAL COMO debe aparecer en Postman.
+  // Note: we do NOT strip `api/vN/` prefixes automatically. The real
+  // backend prefix depends on the framework:
+  //   - Laravel: RouteServiceProvider strips `api/` → collection goes without it.
+  //   - ASP.NET, Spring Boot, Gin, NestJS: the prefix is real → kept.
+  // The scanner must emit the URI exactly as it should appear in Postman.
   if (!u.startsWith("/")) u = "/" + u;
   u = u.replace(/\/+/g, "/");
-  // La barra final se CONSERVA: en Django (`APPEND_SLASH = True`, que es
-  // el defecto) `/users` redirige 301 a `/users/`, y un POST pierde el
-  // body en la redirección. Es responsabilidad del scanner emitir la URI
-  // tal como debe llamarse.
+  // The trailing slash is KEPT: in Django (`APPEND_SLASH = True`, the
+  // default) `/users` redirects 301 to `/users/`, and a POST loses the
+  // body in the redirect. It is the scanner's responsibility to emit
+  // the URI exactly as it should be called.
   return u;
 }
 
 /**
- * Deriva un nombre legible a partir del método HTTP + URI.
+ * Derives a readable name from the HTTP method + URI.
  *
- * Se exporta para poder probarla sola: es una función pura de la ruta, y
- * lo contrario obligaría a montar un scanner entero para comprobar cómo
- * queda un nombre.
+ * It is exported so it can be tested on its own: it is a pure function
+ * of the route, and the alternative would force assembling an entire
+ * scanner to check what a name looks like.
  */
 export function deriveName(route: ParsedRoute): string {
-  // Un nombre NO es una ruta. Esto pasaba por `toPostmanUri`, que le
-  // pegaba una barra delante a todo lo que no la llevara: el scanner de
-  // Next.js emitía `POST /orders` y en Postman salía `/POST /orders`, y
-  // el de FastAPI emitía `create_user` y salía `/create_user`. Afectaba
-  // a los seis scanners que ponen `displayName`.
+  // A name is NOT a path. This used to go through `toPostmanUri`, which
+  // prepended a slash to anything that did not have one: the Next.js
+  // scanner emitted `POST /orders` and Postman got `/POST /orders`, and
+  // the FastAPI one emitted `create_user` and it came out as
+  // `/create_user`. It affected all six scanners that set `displayName`.
   //
-  // Lo que sí hay que traducir son los parámetros, porque un nombre como
-  // `GET /users/:id` tiene que leerse igual que su URI.
+  // What still needs translating are parameters, because a name like
+  // `GET /users/:id` must read the same as its URI.
   if (route.displayName) return toPostmanParams(route.displayName.trim());
-  // Normalizar la URI para displayName (e.g. `<int:id>` → `{{id}}`,
+  // Normalize the URI for the displayName (e.g. `<int:id>` → `{{id}}`,
   // `:id` → `{{id}}`).
   const uri = toPostmanUri(route.uri);
-  // El nombre acaba en la UI de Postman, así que va en inglés: lo usa
-  // gente de cualquier país.
+  // The name ends up in the Postman UI, so it goes in English: people
+  // from any country use it.
   const segs = uri
     .split("/")
     .filter((s) => s && !s.startsWith("{{"));
@@ -132,7 +132,7 @@ export function deriveName(route: ParsedRoute): string {
 function exampleValueForField(spec: IValidationSpec): unknown {
   const { fieldName, type, enumValues, format, location } = spec;
   if (enumValues && enumValues.length > 0) return enumValues[0];
-  // Headers comunes: placeholders útiles.
+  // Common headers: useful placeholders.
   if (location === "header") {
     const low = fieldName.toLowerCase();
     if (low === "authorization" || low.endsWith("-token")) return "{{token}}";
@@ -184,16 +184,17 @@ function specToEndpointArgs(
 }
 
 /**
- * Resuelve qué `ValidationProvider` agnóstico corresponde a un framework.
+ * Resolves which framework-agnostic `ValidationProvider` corresponds
+ * to a framework.
  *
- * S5 (a00012): por ahora sólo Laravel tiene un enricher registrado
- * (`LARAVEL_FORM_REQUEST_ENRICHER`). El resto de frameworks deja el
- * `validationSource` del endpoint en `undefined`, y eso es lo que
- * garantiza que `enrichCatalogWithFormRequests` (que sólo entiende
- * FormRequests) no se les aplique por accidente.
+ * S5 (a00012): for now only Laravel has a registered enricher
+ * (`LARAVEL_FORM_REQUEST_ENRICHER`). The other frameworks leave the
+ * endpoint's `validationSource` as `undefined`, and that is what
+ * guarantees `enrichCatalogWithFormRequests` (which only understands
+ * FormRequests) is not applied to them by accident.
  *
- * Función pura: vivir aquí, no en runtime, para que añadir un provider
- * nuevo sea un cambio aislado al lado del adapter que lo emite.
+ * Pure function: lives here, not in runtime, so adding a new provider
+ * is an isolated change next to the adapter that emits it.
  */
 function laravelFormRequestProvider(
   framework: string,
@@ -202,25 +203,27 @@ function laravelFormRequestProvider(
 }
 
 /**
- * Construye `EndpointSpec[]` a partir de un `IRouteScanner` y, si
- * se da, su `IValidationSpecProvider`. Devuelve un `AdapterResult`
- * con la misma forma que el `discoverEndpoints` legacy.
+ * Builds `EndpointSpec[]` from an `IRouteScanner` and, if given, its
+ * `IValidationSpecProvider`. Returns an `AdapterResult` with the same
+ * shape as the legacy `discoverEndpoints`.
  */
 export async function buildSpecsFromScanner(
   scanner: IRouteScanner,
   match: IProjectMatch,
   validation: IValidationSpecProvider | null,
 ): Promise<AdapterResult> {
-  // El `framework` lo pone aquí quien recoge, no cada scanner: el
-  // registro ya sabe cuál es, y pedirle a los veintiún scanners que
-  // repitan su propio id en cada ruta sería pedirles que se acuerden de
-  // algo que ya está escrito. Antes no estaba, y el de OpenAPI se
-  // inventó `__params` con `as any` para reconocer las suyas.
+  // The `framework` is set here by whoever collects, not by each
+  // scanner: the registry already knows which one it is, and asking
+  // the twenty-one scanners to repeat their own id on every route
+  // would be asking them to remember something that is already
+  // written. It was not there before, and the OpenAPI one invented
+  // `__params` with `as any` to recognize its own.
   //
-  // `scanResult` se conserva entero: además de las rutas lleva los
-  // mapas auxiliares que el scanner recogió (schemas, validators,
-  // structs), y se pasa al provider para que su lectura no dependa de
-  // estado mutable en el scanner (a00010 S2).
+  // `scanResult` is preserved entirely: in addition to the routes it
+  // carries the auxiliary maps the scanner collected (schemas,
+  // validators, structs), and it is passed to the provider so its
+  // reading does not depend on mutable state in the scanner
+  // (a00010 S2).
   const scanResult: IScanResult = await scanner.scan(match);
   const routes = scanResult.routes.map((route) => ({
     framework: scanner.framework,
@@ -232,9 +235,9 @@ export async function buildSpecsFromScanner(
   let withoutFormRequest = 0;
 
   for (const route of routes) {
-    // Se descartan los métodos que Postman no sabe representar. La
-    // lista sale del propio contrato para que añadir uno allí no exija
-    // acordarse de esta línea: era lo que hacía desaparecer los HEAD.
+    // Methods that Postman cannot represent are dropped. The list comes
+    // from the contract itself, so adding one there does not require
+    // remembering this line: it was what made HEADs disappear.
     const m = route.method.toUpperCase();
     if (!(SUPPORTED_METHODS as readonly string[]).includes(m)) continue;
 
@@ -245,26 +248,27 @@ export async function buildSpecsFromScanner(
       uri: postmanUri,
     };
     if (route.description) spec.description = route.description;
-    // Un cuerpo que el scanner ya conoce gana sobre cualquier inferencia:
-    // la consulta de GraphQL es un documento, no unos campos sueltos, y
-    // descomponerla para volver a montarla solo puede estropearla.
+    // A body the scanner already knows wins over any inference: the
+    // GraphQL query is a document, not loose fields, and decomposing
+    // it just to reassemble it can only break it.
     if (route.body !== undefined) spec.body = route.body;
     if (route.tags && route.tags.length > 0) {
       spec.folder = route.tags[0];
     }
-    // Audit 2ª revisión #17: el override de auth por operación se
-    // propaga al `EndpointSpec` para que el merger pueda respetarlo.
-    // Antes el adapter ignoraba `route.auth` (que no existía en el
-    // contrato), así que toda auth por ruta tenía que venir de la
-    // heurística global. Ahora los scanners que necesiten marcar un
-    // endpoint como público / apiKey / oauth2 lo declaran en la
-    // ruta y el adapter lo lleva al spec sin transformaciones.
+    // Audit 2nd review #17: the per-operation auth override propagates
+    // to the `EndpointSpec` so the merger can respect it. Previously
+    // the adapter ignored `route.auth` (which did not exist in the
+    // contract), so all per-route auth had to come from the global
+    // heuristic. Now scanners that need to mark an endpoint as public
+    // / apiKey / oauth2 declare it on the route and the adapter
+    // carries it to the spec without transformations.
     if (route.auth !== undefined) spec.auth = route.auth;
 
-    // Los parámetros de path NO van en `spec.query`: eso se convierte en
-    // query string, y `/users/{{id}}?id=1` no es lo que declara la ruta.
-    // Se resuelven como variables de colección (`inferCollectionVariables`),
-    // que es lo que hace que `{{id}}` tenga valor en Postman.
+    // Path parameters do NOT go in `spec.query`: that becomes a query
+    // string, and `/users/{{id}}?id=1` is not what the route declares.
+    // They are resolved as collection variables
+    // (`inferCollectionVariables`), which is what makes `{{id}}` have
+    // a value in Postman.
 
     // Validation rules
     if (validation) {
@@ -272,14 +276,15 @@ export async function buildSpecsFromScanner(
       try {
         rules = await validation.resolve(route, match, scanResult);
       } catch (error) {
-        // Se anota en vez de tragarse. Un proveedor que lanza dejaba el
-        // endpoint indistinguible de uno sin validación, así que un
-        // parser roto —un cambio de sintaxis en el framework, un
-        // fichero que ya no se lee— degradaba la colección en silencio.
+        // Recorded instead of swallowed. A provider that threw left
+        // the endpoint indistinguishable from one without validation,
+        // so a broken parser — a syntax change in the framework, a
+        // file that is no longer read — silently degraded the
+        // collection.
         //
-        // No se propaga: un endpoint sin reglas sigue siendo una
-        // colección válida, y abortar la generación entera por un
-        // parser sería peor. Pero tiene que decirse.
+        // Not propagated: an endpoint without rules is still a valid
+        // collection, and aborting the entire generation for a broken
+        // parser would be worse. But it must be reported.
         validationFailures.push(
           `${route.method.toUpperCase()} ${route.uri}: ${
             error instanceof Error ? error.message : String(error)
@@ -288,40 +293,42 @@ export async function buildSpecsFromScanner(
         rules = null;
       }
       if (rules && rules.fields.length > 0) {
-        // Identificador del provider que el enricher usará para
-        // cargar reglas adicionales. Se mantiene `formRequest`
-        // (string legacy) por compat con `enrichCatalogWithFormRequests`
-        // y con los tests que aún lo leen; el contrato nuevo vive en
-        // `validationSource` y es agnóstico del framework.
+        // Identifier of the provider the enricher will use to load
+        // additional rules. `formRequest` (legacy string) is kept for
+        // compat with `enrichCatalogWithFormRequests` and with tests
+        // that still read it; the new contract lives in
+        // `validationSource` and is framework-agnostic.
         const formRequestRef = `${match.framework}:${rules.endpointKey}`;
         spec.formRequest = formRequestRef;
-        // S5: sólo escribimos `validationSource` para providers que
-        // tienen enricher registrado. Hoy eso es exclusivamente
-        // `"laravel-form-request"`; el resto deja el campo `undefined`
-        // y se ahorra un pase inútil por el enricher equivocado.
+        // S5: we only write `validationSource` for providers that have
+        // a registered enricher. Today that is exclusively
+        // `"laravel-form-request"`; the rest leaves the field
+        // `undefined` and saves an unnecessary pass through the wrong
+        // enricher.
         const provider = laravelFormRequestProvider(match.framework);
         if (provider) {
           spec.validationSource = { provider, reference: formRequestRef };
         }
-        // Las reglas viajan con el spec, no solo su resultado. Del `body`
-        // de ejemplo ya construido no hay forma de recuperar qué era
-        // obligatorio ni qué formato tenía cada campo, y eso es
-        // exactamente lo que hay que documentar en la request.
+        // The rules travel with the spec, not only their result.
+        // From the example body already built there is no way to
+        // recover what was required or what format each field had,
+        // and that is exactly what must be documented in the request.
         withFormRequest += 1;
         const bodyFields = rules.fields.filter((f) => f.location === "body");
         const queryFields = rules.fields.filter((f) => f.location === "query");
         const headerFields = rules.fields.filter((f) => f.location === "header");
-        // Un `GET`, `DELETE`, `HEAD` u `OPTIONS` no lleva cuerpo, así que
-        // sus reglas de body no pueden ser suyas: son las del vecino.
+        // A `GET`, `DELETE`, `HEAD` or `OPTIONS` has no body, so its
+        // body rules cannot be its own: they belong to a neighbor.
         //
-        // Los providers que buscan "el esquema más cercano" cuando el
-        // handler no referencia ninguno se lo cuelgan a cualquiera — el
-        // `GET /users` del ejemplo de Express acababa con los campos del
-        // `POST /orders`. Mientras esas reglas solo alimentaban el body
-        // de ejemplo no se veía, porque el body ya se saltaba estos
-        // métodos; en cuanto empezaron a documentarse (p00031) y a salir
-        // en el OpenAPI (p00032), el documento describía un GET con
-        // cuerpo, que no existe.
+        // Providers that look for "the nearest schema" when the
+        // handler does not reference one attach it to anyone — the
+        // `GET /users` in the Express example ended up with the
+        // fields of `POST /orders`. While those rules only fed the
+        // example body it did not show, because the body was already
+        // skipped for these methods; once they started being
+        // documented (p00031) and showing up in the OpenAPI (p00032),
+        // the document described a GET with a body, which does not
+        // exist.
         const takesBody = m === "POST" || m === "PUT" || m === "PATCH";
         const applicable = takesBody
           ? rules.fields
@@ -335,32 +342,34 @@ export async function buildSpecsFromScanner(
             body[f.fieldName] = exampleValueForField(f);
           }
 
-          // Si NINGÚN campo es obligatorio, el body salía vacío y el
-          // endpoint quedaba sin ejemplo. Y es justo el caso de los
-          // `update`: un `UpdateUserRequest` declara todo con
-          // `sometimes` porque se puede mandar solo lo que cambia. Un
-          // PUT sin body es un ejemplo que no sirve para nada, que es
-          // exactamente lo que esta herramienta viene a evitar.
+          // If NO field is required, the body came out empty and the
+          // endpoint was left without an example. And that is exactly
+          // the case for `update` requests: an `UpdateUserRequest`
+          // declares everything as `sometimes` because you can send
+          // only what changes. A PUT with no body is an example that
+          // serves no purpose, which is exactly what this tool comes
+          // to avoid.
           //
-          // Cuando no hay obligatorios se emiten los opcionales: son lo
-          // que el endpoint acepta, y quien importe la colección los ve
-          // y borra lo que no quiera mandar.
+          // When there are no required fields, we emit the optional
+          // ones: they are what the endpoint accepts, and whoever
+          // imports the collection sees them and deletes what they do
+          // not want to send.
           if (Object.keys(body).length === 0) {
             for (const f of bodyFields) body[f.fieldName] = exampleValueForField(f);
           }
 
           if (Object.keys(body).length > 0) spec.body = body;
         }
-        // query: solo reglas con `location === "query"`.
+        // query: only rules with `location === "query"`.
         //
-        // Las reglas con `location === "path"` NO se concatenan a
-        // `spec.query`: los path params son una cosa conceptualmente
-        // distinta, y mezclarlos producía `GET /users/{{id}}?id=1` —
-        // el mismo parámetro declarado dos veces. El audit a00010
-        // (B-01) lo cazó sobre HEAD; las reglas con `location: "path"`
-        // siguen viajando en `spec.fields` y el exporter OpenAPI las
-        // pinta como `parameters` con `in: path` desde
-        // `pathParamsOf(spec.uri)`, así que la fidelidad no se pierde.
+        // Rules with `location === "path"` are NOT concatenated into
+        // `spec.query`: path params are a conceptually different
+        // thing, and mixing them produced `GET /users/{{id}}?id=1` —
+        // the same parameter declared twice. The a00010 audit (B-01)
+        // caught it on HEAD; rules with `location: "path"` keep
+        // traveling in `spec.fields` and the OpenAPI exporter renders
+        // them as `parameters` with `in: path` from
+        // `pathParamsOf(spec.uri)`, so fidelity is not lost.
         const queryFromRules = queryFields.map(specToEndpointArgs);
         if (queryFromRules.length > 0) {
           const existing = spec.query ?? [];
@@ -370,7 +379,7 @@ export async function buildSpecsFromScanner(
           }
           spec.query = existing;
         }
-        // Headers personalizados (X-API-Key, Authorization no-tokens, etc.)
+        // Custom headers (X-API-Key, non-token Authorization, etc.)
         if (headerFields.length > 0) {
           spec.headers = headerFields.map((f) => ({
             key: f.fieldName,
@@ -389,7 +398,7 @@ export async function buildSpecsFromScanner(
   return { specs, routes, withFormRequest, withoutFormRequest, validationFailures };
 }
 
-/** Helper: lee el primer byte de un spec OpenAPI para validación (no usado). */
+/** Helper: reads the first byte of an OpenAPI spec for validation (unused). */
 export async function _peekSpec(projectRoot: string): Promise<string | null> {
   for (const rel of [
     "openapi.json",

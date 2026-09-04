@@ -18,6 +18,25 @@ abiertas hoy son:
 | `a00014` | `audit` | [`ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md`](ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md) |
 | `a00015` | `audit` | [`ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md`](ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md) |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
+<<<<<<< HEAD
+=======
+| `x00025` | `fix` | [`ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md`](ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md) |
+| `x00029` | `fix` | [`ready/fixes/x00029-isolar-discovery-specs-por-servicio-en-buildforservice.md`](ready/fixes/x00029-isolar-discovery-specs-por-servicio-en-buildforservice.md) |
+| `x00030` | `fix` | [`ready/fixes/x00030-atribucion-de-rutas-conservando-provenance-serviceid-scanner.md`](ready/fixes/x00030-atribucion-de-rutas-conservando-provenance-serviceid-scanner.md) |
+| `x00031` | `fix` | [`ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md`](ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md) |
+| `x00032` | `fix` | [`ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md`](ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md) |
+| `i00002` | `infra` | [`ready/infras/i00002-desbloquear-ci-checkout-delendai-fuera-del-workspace-del-runner.md`](ready/infras/i00002-desbloquear-ci-checkout-delendai-fuera-del-workspace-del-runner.md) |
+| `c00005` | `chore` | [`ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md`](ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md) |
+
+## Bloqueadas
+
+`status: blocked` vive en `blocked/`, con `blockedReason` en el frontmatter
+que explica qué lo destraba:
+
+| Id | Kind | Carpeta | Razón |
+|---|---|---|---|
+| `a00017` | `audit` | [`blocked/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](blocked/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) | Priorización: i00002 (CI) y el bloque multi-service (x00029/x00030/x00031) cerrados antes. |
+>>>>>>> agent/copilot-review-fixes
 
 Las nuevas detecciones de lenguaje y los FEAT/REF aún no entran en
 este pase.
@@ -59,11 +78,15 @@ Las referencias entre propuestas deben usar el id (`a00005`, `r00008`, etc.)
 y no un nombre de fichero mutable.
 
 Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`,
-`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `a00013`, `c00002`, `c00003`, `c00004`,
+`a00007`, `a00008`, `a00009`, `a00010`, `a00011`, `a00012`, `a00013`, `b00001`, `c00002`, `c00003`, `c00004`,
 `f00010`, `f00011`,
 `p00007`,
 `r00008`, `r00010`,
+<<<<<<< HEAD
 `x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`, `x00022`, `x00023`, `x00024`; están archivadas bajo sus carpetas canónicas. (Nota: `a00014`/`a00015`/`a00016`/`b00001`/`c00004`/`x00025` fueron reabiertos en la revisión 2026-09-05 por cierres prematuros — ver `ready/` y el motivo de cada transición.)
+=======
+`x00008`, `x00012`, `x00013`, `x00014`, `x00020`, `x00021`, `x00022`, `x00023`, `x00024`; están archivadas bajo sus carpetas canónicas:
+>>>>>>> agent/copilot-review-fixes
 
 | Id | Kind | Ruta |
 |---|---|---|
@@ -88,7 +111,12 @@ Las propuestas cerradas recientemente son `a00003`, `a00004`, `a00005`, `a00006`
 | `x00022` | `fix` | [`done/fixes/x00022-path-containment-correcto-en-toprojectrelative-relative-en-lugar-de-startswith.md`](done/fixes/x00022-path-containment-correcto-en-toprojectrelative-relative-en-lugar-de-startswith.md) |
 | `x00023` | `fix` | [`done/fixes/x00023-api-key-casing-en-countkeyusage-clave-canonica-lowercase-displayname-original.md`](done/fixes/x00023-api-key-casing-en-countkeyusage-clave-canonica-lowercase-displayname-original.md) |
 | `x00024` | `fix` | [`done/fixes/x00024-generatecollection-estricto-error-explicito-cuando-hay-1-servicio-y-no-se-pidio-combinar.md`](done/fixes/x00024-generatecollection-estricto-error-explicito-cuando-hay-1-servicio-y-no-se-pidio-combinar.md) |
+<<<<<<< HEAD
 | `c00004` | `chore` | [`done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-puedan-delegar.md`](done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-pueden-delegar.md) |
+=======
+| `b00001` | `breaking` | [`done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md`](done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md) |
+| `c00004` | `chore` | [`done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-puedan-delegar.md`](done/chores/c00004-configurar-agent-orchestrator-portfactory-en-delendai-config-json-para-que-los-bounded-agents-puedan-delegar.md) |
+>>>>>>> agent/copilot-review-fixes
 
 Los informes crudos de auditoría, distintos de las propuestas `kind: audit`,
 viven en [`../../audits/`](../../audits/), con nombres fechados y estables.

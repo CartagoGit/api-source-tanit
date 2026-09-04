@@ -1,20 +1,20 @@
 /**
- * La descripción de una request: qué acepta el endpoint, en una tabla.
+ * Description of a request: what the endpoint accepts, in a table.
  *
- * El body de ejemplo enseña **un** valor válido. Eso no es lo mismo que
- * decir cuáles son válidos: un `"age": 30` no cuenta que el máximo son
- * 120, ni que el campo es opcional, ni que `role` solo admite tres
- * valores. Toda esa información **ya se ha extraído** del código fuente
- * para poder construir el ejemplo, y se estaba tirando.
+ * The example body shows **one** valid value. That is not the same as
+ * saying which values are valid: a `"age": 30` does not show that the maximum
+ * is 120, that the field is optional, or that `role` accepts only three
+ * values. All of that information **has already been extracted** from the
+ * source code to build the example, and it was being discarded.
  *
- * Lo que se documenta es lo que el endpoint **recibe**, que es lo que
- * este proyecto escanea. Lo que devuelve no se sabe, y por eso no hay
- * respuestas de ejemplo: ver la nota de p00031 sobre por qué inventarlas
- * habría sido peor que no tenerlas.
+ * What is documented is what the endpoint **receives**, which is what this
+ * project scans. What it returns is unknown, so there are no example
+ * responses: see the p00031 note on why inventing them would have been worse
+ * than having none.
  */
 import type { IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
 
-/** Los sitios donde puede ir un parámetro, y cómo llamarlos. */
+/** The locations where a parameter can go, and what to call them. */
 const LOCATION_TITLES: Readonly<Record<string, string>> = {
   body: "Body",
   query: "Query",
@@ -23,10 +23,10 @@ const LOCATION_TITLES: Readonly<Record<string, string>> = {
   cookie: "Cookies",
 };
 
-/** El orden en que se presentan: de lo más a lo menos habitual. */
+/** The order in which they are presented: from most to least common. */
 const LOCATION_ORDER = ["body", "query", "path", "header", "cookie"] as const;
 
-/** Las restricciones de un campo, en una celda. */
+/** The constraints on a field, in a cell. */
 function constraintsOf(field: IEndpointField): string {
   const parts: string[] = [];
   if (field.format) parts.push(`formato \`${field.format}\``);
@@ -41,13 +41,13 @@ function constraintsOf(field: IEndpointField): string {
 }
 
 /**
- * Construye la descripción en Markdown, que es lo que Postman renderiza
- * en el panel de documentación de la request.
+ * Builds the Markdown description that Postman renders in the
+ * request's documentation panel.
  *
- * `base` es lo que ya traía la request (el nombre del handler, o el
- * `summary` de un spec OpenAPI). Se conserva arriba: es lo que alguien
- * escribió a propósito, y pisarlo con una tabla generada sería cambiar
- * información por presentación.
+ * `base` is what the request already contained (the handler name, or the
+ * `summary` of an OpenAPI spec). It is kept at the top: it is something
+ * someone intentionally wrote, and replacing it with a generated table
+ * would trade information for presentation.
  */
 export function buildRequestDescription(
   base: string | undefined,
@@ -77,9 +77,8 @@ export function buildRequestDescription(
   }
   if (sections.length === 0) return head;
 
-  // La nota del final no es decorativa: sin ella, quien lee la tabla no
-  // sabe si la escribió una persona (y puede estar vieja) o si sale del
-  // código de ahora mismo.
+  // The note at the end is not decorative: without it, the reader cannot tell
+  // whether a person wrote it (and it may be stale) or whether it came from the current code.
   return [
     head,
     "",

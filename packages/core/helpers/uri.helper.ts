@@ -1,26 +1,25 @@
 /**
- * Helpers para normalizar URIs antes de comparar.
+ * Helpers to normalize URIs before comparing.
  *
- * Las URIs tienen cinco formas que deben coincidir:
- *   - Laravel: `{cliente}` o `{cliente:codigo}`
+ * URIs have five forms that must match:
+ *   - Laravel: `{client}` or `{client:code}`
  *   - Express: `:clientId`
- *   - FastAPI: `{client_id}` (mismo formato que Laravel)
+ *   - FastAPI: `{client_id}` (same format as Laravel)
  *   - Django:  `<id>`, `<int:id>`, `<str:slug>`, `<uuid:token>`
- *   - Postman: `{{clienteId}}`
+ *   - Postman: `{{clientId}}`
  *
- * `normalizeForComparison` reduce cualquier token parametrizado a `:p`
- * (mismo marcador, sin importar el nombre). Esto es suficiente para la
- * gran mayoría de casos. La excepción son endpoints que se diferencian
- * solo por el nombre del parámetro y por una regex `where()` en Laravel
- * (p. ej. `/busqueda/{historico}` vs `/busqueda/{matricula}`); estos
- * se documentan en el catálogo con nombres distintos y el script de
- * generación los reporta como requests separadas aunque normalicen
- * igual.
+ * `normalizeForComparison` reduces any parameterized token to `:p`
+ * (same marker regardless of name). This is enough for the vast
+ * majority of cases. The exception are endpoints that differ only by
+ * parameter name and by a `where()` regex in Laravel (e.g.
+ * `/search/{historic}` vs `/search/{plate}`); these are documented in
+ * the catalog with different names and the generation script reports
+ * them as separate requests even though they normalize the same.
  */
 export function normalizeForComparison(uri: string): string {
   return uri
-    .replace(/\{\{[^}]+\}\}/g, ":p") // {{algo}} → :p
-    .replace(/\{[^}]+\}/g, ":p") // {algo} o {algo:regex} → :p
+    .replace(/\{\{[^}]+\}\}/g, ":p") // {{something}} → :p
+    .replace(/\{[^}]+\}/g, ":p") // {something} or {something:regex} → :p
     .replace(/<[a-zA-Z_][\w]*:[a-zA-Z_][\w]*>/g, ":p") // <int:id> → :p
     .replace(/<[a-zA-Z_][\w]*>/g, ":p") // <id> → :p
     .replace(/:[a-zA-Z_][\w]*/g, ":p") // :id (Express) → :p
@@ -29,27 +28,27 @@ export function normalizeForComparison(uri: string): string {
     .replace(/^\//, "");
 }
 
-/** Quita el prefijo `api/` que añade RouteServiceProvider. */
+/** Strips the `api/` prefix added by RouteServiceProvider. */
 export function stripApiPrefix(uri: string): string {
   return uri.startsWith("api/") ? uri.slice(4) : uri;
 }
 /**
- * Une los segmentos de una ruta (prefijo de clase/grupo + path del
- * método) en una URI normalizada.
+ * Joins the segments of a path (class/group prefix + method path) into
+ * a normalized URI.
  *
- * La barra final se conserva **solo si el último segmento no vacío la
- * declaraba**. Esa distinción importa:
+ * The trailing slash is preserved **only if the last non-empty segment
+ * declared it**. That distinction matters:
  *
- *   - Django: `path("<int:id>/", …)` la trae a propósito. Con
- *     `APPEND_SLASH = True` (el defecto), llamar sin ella devuelve un
- *     301 y un POST pierde el body en la redirección.
- *   - NestJS, Spring Boot, ASP.NET y Flask: `@Controller("orders")` +
- *     `@Get()` concatenaba `"orders" + "/" + ""` y producía `orders/`.
- *     Ahí la barra es un artefacto, no una decisión.
+ *   - Django: `path("<int:id>/", …)` brings it on purpose. With
+ *     `APPEND_SLASH = True` (the default), calling without it returns
+ *     a 301 and a POST loses its body on the redirect.
+ *   - NestJS, Spring Boot, ASP.NET and Flask: `@Controller("orders")` +
+ *     `@Get()` concatenated `"orders" + "/" + ""` and produced `orders/`.
+ *     There the slash is an artifact, not a decision.
  */
 export function joinRoutePath(...segments: string[]): string {
-  // Un `"/"` suelto como primer segmento significa "la ruta es
-  // absoluta"; no aporta contenido pero sí decide la barra inicial.
+  // A lone `"/"` as the first segment means "the path is absolute"; it
+  // brings no content but does decide the leading slash.
   const absolute = segments[0] === "/" || (segments[0]?.startsWith("/") ?? false);
   const meaningful = segments.filter((s) => s !== "" && s !== "/");
   if (meaningful.length === 0) return "/";
@@ -66,43 +65,43 @@ export function joinRoutePath(...segments: string[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Agrupación de endpoints en carpetas
+// Grouping endpoints into folders
 //
-// Vivían en el parser de rutas de Laravel, pero solo miran la URI: el
-// primer segmento significativo se convierte en el nombre de carpeta.
-// Eso vale igual para Gin o para FastAPI, así que son del núcleo.
+// Used to live in the Laravel route parser, but they only look at the URI:
+// the first meaningful segment becomes the folder name. That holds the
+// same for Gin or FastAPI, so they belong to the core.
 // ---------------------------------------------------------------------------
 
 /**
- * Devuelve el grupo top-level lógico de una URI (primer segmento
- * significativo). Por ejemplo:
+ * Returns the logical top-level group of a URI (first meaningful
+ * segment). For example:
  *
- *   "api/clientes"             → "clientes"
- *   "api/clientes/{cliente}"   → "clientes"
- *   "api/erp/productos"        → "erp"
- *   "api/pedidos/historial"    → "pedidos"
- *   "alive" / "login"          → "login" / "alive"
+ *   "api/customers"             → "customers"
+ *   "api/customers/{customer}"  → "customers"
+ *   "api/erp/products"          → "erp"
+ *   "api/orders/history"        → "orders"
+ *   "alive" / "login"           → "login" / "alive"
  *
- * Si la URI empieza por `api/`, lo salta. Los casos especiales se
- * configuran vía `uriGroupOverrides` (p. ej. `{ "tol/tecdoc": "tol/tecdoc" }`).
+ * If the URI starts with `api/`, it is skipped. Special cases are
+ * configured via `uriGroupOverrides` (e.g. `{ "tol/tecdoc": "tol/tecdoc" }`).
  *
- * @param uri URI a analizar.
- * @param uriGroupOverrides Mapa prefijo → clave de grupo (del `ProjectConfig`).
+ * @param uri URI to analyze.
+ * @param uriGroupOverrides Map of prefix → group key (from `ProjectConfig`).
  */
 export function topGroupFor(
   uri: string,
   uriGroupOverrides: Record<string, string> = {},
 ): string {
   let u = uri;
-  // Quito `/api/` o `api/` del inicio (Laravel añade `api/` por defecto
-  // en `RouteServiceProvider::mapApiRoutes()`, pero la URI puede llegar
-  // con o sin slash inicial).
+  // Strip leading `/api/` or `api/` (Laravel adds `api/` by default in
+  // `RouteServiceProvider::mapApiRoutes()`, but the URI may arrive with
+  // or without a leading slash).
   if (u.startsWith("/api/")) u = u.slice(5);
   else if (u.startsWith("api/")) u = u.slice(4);
   u = u.replace(/^\/+/, "");
-  if (!u) return "(raíz)";
+  if (!u) return "(root)";
 
-  // Aplicar overrides configurables (orden: más largos primero).
+  // Apply configurable overrides (order: longest first).
   const sorted = Object.keys(uriGroupOverrides).sort(
     (a, b) => b.length - a.length,
   );
@@ -113,20 +112,20 @@ export function topGroupFor(
   }
 
   const segs = u.split("/").filter(Boolean);
-  return segs[0] ?? "(raíz)";
+  return segs[0] ?? "(root)";
 }
 /**
- * Nombre legible a partir del topGroup: capitalizado, separadores con
- * espacio. El separador `/` se conserva como separador visual (más
- * claro para casos como `tol/tecdoc`); `-` y `_` se sustituyen por
- * espacio.
+ * Human-readable name from a topGroup: capitalized, separators turned
+ * into spaces. The `/` separator is preserved as a visual separator
+ * (clearer for cases like `tol/tecdoc`); `-` and `_` are replaced by
+ * spaces.
  *
- * Ejemplos:
- *   "pedidos"           → "Pedidos"
- *   "usuarios-activos"  → "Usuarios Activos"
- *   "tol/tecdoc"        → "Tol/Tecdoc"
+ * Examples:
+ *   "orders"           → "Orders"
+ *   "active-users"     → "Active Users"
+ *   "tol/tecdoc"       → "Tol/Tecdoc"
  */
-/** `mis-pedidos` → `Mis Pedidos`. */
+/** `my-orders` → `My Orders`. */
 function prettySegment(seg: string): string {
   return seg
     .split(/[-_]/)
@@ -136,15 +135,15 @@ function prettySegment(seg: string): string {
 }
 
 /**
- * El nombre legible de una carpeta a partir de su clave.
+ * The human-readable name of a folder from its key.
  *
- * `erp-productos` pasa a `Erp Productos`. Solo afecta a lo que se lee en
- * Postman: la clave sigue siendo la que agrupa.
+ * `erp-products` becomes `Erp Products`. Only affects what is read in
+ * Postman: the key is still the one that groups.
  */
 export function prettyGroupName(topGroup: string): string {
-  if (!topGroup || topGroup === "(raíz)") return "Raíz";
-  // Si tiene '/', lo procesamos segmento a segmento para preservar la
-  // barra como separador.
+  if (!topGroup || topGroup === "(root)") return "Root";
+  // If it has '/', process segment by segment to keep the slash as a
+  // separator.
   if (topGroup.includes("/")) {
     return topGroup
       .split("/")
