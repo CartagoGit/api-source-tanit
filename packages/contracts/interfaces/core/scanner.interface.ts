@@ -24,6 +24,8 @@
  * @see ./postman.interface.ts para los tipos Postman v2.1.0.
  */
 
+import type { IEndpointAuth } from "./postman.interface.js";
+
 /** ID estable del framework. Se usa como clave en config. */
 export type FrameworkId = "laravel" | "openapi" | "express" | "fastapi" | "symfony" | string;
 
@@ -143,8 +145,19 @@ export interface ParsedRoute {
    */
   body?: unknown;
   /** Descripción libre del endpoint (summary de OpenAPI, docstring, etc.). */
-  description?: string;
-}
+  description?: string;  /**
+   * Override de auth declarado por el scanner para ESTA ruta.
+   *
+   * Audit 2ª revisión #17: sin este campo, los scanners no pueden
+   * declarar "este endpoint es público" / "usa apiKey" desde su
+   * contrato neutral. Solo lo que el adapter ya conoce (`body`,
+   * `fields`) sobrevivía; el auth tenía que venir de la heurística
+   * global del pipeline. Ahora, si un scanner detecta que una ruta
+   * específica rompe la convención del framework (p. ej. una ruta
+   * de login en un proyecto con bearer global), puede declarar el
+   * override aquí y el merger lo respeta.
+   */
+  auth?: IEndpointAuth;}
 
 /**
  * Lo que devuelve `IRouteScanner.scan()`.

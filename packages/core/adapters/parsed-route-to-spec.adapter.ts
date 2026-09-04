@@ -252,6 +252,14 @@ export async function buildSpecsFromScanner(
     if (route.tags && route.tags.length > 0) {
       spec.folder = route.tags[0];
     }
+    // Audit 2ª revisión #17: el override de auth por operación se
+    // propaga al `EndpointSpec` para que el merger pueda respetarlo.
+    // Antes el adapter ignoraba `route.auth` (que no existía en el
+    // contrato), así que toda auth por ruta tenía que venir de la
+    // heurística global. Ahora los scanners que necesiten marcar un
+    // endpoint como público / apiKey / oauth2 lo declaran en la
+    // ruta y el adapter lo lleva al spec sin transformaciones.
+    if (route.auth !== undefined) spec.auth = route.auth;
 
     // Los parámetros de path NO van en `spec.query`: eso se convierte en
     // query string, y `/users/{{id}}?id=1` no es lo que declara la ruta.
