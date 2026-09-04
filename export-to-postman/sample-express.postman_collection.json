@@ -1,0 +1,742 @@
+{
+  "info": {
+    "name": "sample-express (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-express.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "8843c959-3c50-528b-8a27-afcc54d96baa"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "authUsername",
+      "value": "",
+      "type": "secret"
+    },
+    {
+      "key": "authPassword",
+      "value": "",
+      "type": "secret"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `email` | string | sí | formato `email` |\n| `password` | string | sí | mín. 8 car. |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{authUsername}}\",\n  \"password\": \"{{authPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CANDIDATE_PATHS = [",
+                  "  \"access_token\",\n  \"token\",\n  \"accessToken\",\n  \"data.access_token\",\n  \"data.token\",\n  \"data.accessToken\",\n  \"jwt\",\n  \"id_token\",",
+                  "];",
+                  "",
+                  "function readPath(source, path) {",
+                  "  return path.split('.').reduce(function (acc, key) {",
+                  "    return acc === null || acc === undefined ? undefined : acc[key];",
+                  "  }, source);",
+                  "}",
+                  "",
+                  "pm.test('Login returns a token', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "",
+                  "  let body;",
+                  "  try {",
+                  "    body = pm.response.json();",
+                  "  } catch (err) {",
+                  "    throw new Error('Response is not JSON: ' + pm.response.text().slice(0, 200));",
+                  "  }",
+                  "",
+                  "  let token;",
+                  "  for (const path of CANDIDATE_PATHS) {",
+                  "    const value = readPath(body, path);",
+                  "    if (typeof value === 'string' && value.length > 0) {",
+                  "      token = value;",
+                  "      break;",
+                  "    }",
+                  "  }",
+                  "",
+                  "  if (!token) {",
+                  "    throw new Error(",
+                  "      'Token not found in the response. Paths tried: ' +",
+                  "        CANDIDATE_PATHS.join(', ') +",
+                  "        '. Declare yours in config.tokenResponsePath.'",
+                  "    );",
+                  "  }",
+                  "",
+                  "  // El environment persiste entre sesiones; las collection",
+                  "  // variables solo mientras la colección esté abierta.",
+                  "  if (pm.environment.name) {",
+                  "    pm.environment.set('token', token);",
+                  "  } else {",
+                  "    pm.collectionVariables.set('token', token);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "description": "Authentication in three steps:\n\n1. Fill in `authUsername` and `authPassword` in the active environment.\n2. Send this request.\n3. The token is stored in `token` automatically and every other endpoint uses it.\n\nThe token is written to the environment, so it survives closing Postman."
+        },
+        {
+          "name": "Create Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `refresh_token` | string | sí | mín. 32 car. |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"sample_refresh_token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const CANDIDATE_PATHS = [",
+                  "  \"access_token\",\n  \"token\",\n  \"accessToken\",\n  \"data.access_token\",\n  \"data.token\",\n  \"data.accessToken\",\n  \"jwt\",\n  \"id_token\",",
+                  "];",
+                  "",
+                  "function readPath(source, path) {",
+                  "  return path.split('.').reduce(function (acc, key) {",
+                  "    return acc === null || acc === undefined ? undefined : acc[key];",
+                  "  }, source);",
+                  "}",
+                  "",
+                  "pm.test('Login returns a token', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "",
+                  "  let body;",
+                  "  try {",
+                  "    body = pm.response.json();",
+                  "  } catch (err) {",
+                  "    throw new Error('Response is not JSON: ' + pm.response.text().slice(0, 200));",
+                  "  }",
+                  "",
+                  "  let token;",
+                  "  for (const path of CANDIDATE_PATHS) {",
+                  "    const value = readPath(body, path);",
+                  "    if (typeof value === 'string' && value.length > 0) {",
+                  "      token = value;",
+                  "      break;",
+                  "    }",
+                  "  }",
+                  "",
+                  "  if (!token) {",
+                  "    throw new Error(",
+                  "      'Token not found in the response. Paths tried: ' +",
+                  "        CANDIDATE_PATHS.join(', ') +",
+                  "        '. Declare yours in config.tokenResponsePath.'",
+                  "    );",
+                  "  }",
+                  "",
+                  "  // El environment persiste entre sesiones; las collection",
+                  "  // variables solo mientras la colección esté abierta.",
+                  "  if (pm.environment.name) {",
+                  "    pm.environment.set('token', token);",
+                  "  } else {",
+                  "    pm.collectionVariables.set('token', token);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "",
+      "item": [
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for GET\", function () {",
+                  "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `name` | string | sí | mín. 1 car., máx. 100 car. |\n| `email` | string | sí | formato `email` |\n| `age` | number | no | ≥ 0, ≤ 120 |\n| `role` | enum | sí | uno de: `admin`, `user`, `guest` |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"sample_name\",\n  \"email\": \"user@example.com\",\n  \"role\": \"admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for GET\", function () {",
+                  "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Users",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{id}}"
+              ]
+            },
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `name` | string | no | mín. 1 car., máx. 100 car. |\n| `age` | number | no | ≥ 0, ≤ 120 |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"sample_name\",\n  \"age\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for PUT\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Users",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{id}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for DELETE\", function () {",
+                  "    pm.expect([200, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Orders",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `customer_name` | string | sí | mín. 1 car. |\n| `customer_email` | string | sí | formato `email` |\n| `amount` | number | sí | — |\n| `items` | array | sí | — |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"sample_customer_name\",\n  \"customer_email\": \"user@example.com\",\n  \"amount\": 1,\n  \"items\": [\n    1\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for POST\", function () {",
+                  "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "orders"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// sobreescribe al regenerar si cambias el nombre del test.",
+                  "pm.test(\"Status is a success for GET\", function () {",
+                  "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"Responds in under 2000 ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});",
+                  "",
+                  "// Un 204 no trae cuerpo, así que pedirle JSON lanzaría.",
+                  "pm.test(\"Body is valid JSON when there is one\", function () {",
+                  "    if ([204, 205, 304].includes(pm.response.code)) return;",
+                  "    if (!(pm.response.headers.get(\"Content-Type\") || \"\").includes(\"json\")) return;",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

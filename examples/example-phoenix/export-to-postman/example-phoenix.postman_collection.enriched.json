@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "example-phoenix (Postman)",
+    "description": "Colección Postman generada automáticamente para example-phoenix.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "1dced63a-1c9f-5ca8-a342-c8b6272b3fea"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

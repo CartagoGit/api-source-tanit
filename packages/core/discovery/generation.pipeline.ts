@@ -66,6 +66,7 @@ import type { IServiceDescriptor } from "../../contracts/interfaces/core/service
 import { toServiceGraph } from "./to-service-graph.helper.js";
 import { deriveServiceId } from "./group-by-service.helper.js";
 import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper.js";
+import { filterSpecsForService } from "./filter-specs-for-service.helper.js";
 
 /**
  * Descubre los endpoints de un proyecto y construye su colección.
@@ -331,7 +332,14 @@ async function buildForService(
   // `discovery.specs`. La aceptación de S4 es authScheme + baseUrl
   // por servicio — el filtrado no se exige.
   const localConfig = buildServiceConfig(discovery.config, service);
-  const specs = [...discovery.specs];
+  // x00028 S1: filter the global catalog down to the specs that
+  // belong to THIS service. `discovery.specs` is a merged cross-
+  // service catalog; `IServiceDescriptor.endpoints` is the per-
+  // service route list, populated correctly by `accumulateRoutesBy
+  // Service` (x00025) and grouped by `toServiceGraph`. Before this
+  // line every service saw the same global catalog and produced
+  // collections that crossed `baseUrl`, `auth` and routes.
+  const specs = filterSpecsForService(discovery.specs, service);
   const inference = applyAgnosticInference(specs);
 
   // Variables de colección: se derivan las que falten, respetando las
@@ -870,6 +878,14 @@ async function discoverSpecs(
        * separación. Cadena vacía = proyecto plano (no aplica).
        */
       readonly serviceId: string;
+      /**
+       * Routes this scanner actually emitted. x00025 S1: the helper
+       * `accumulateRoutesByService` no longer re-derives attribution
+       * from the global `routes` array using `(method, uri)` —
+       * that identity is not stable across services. Each scanner
+       * owns its own slices, so we pass them directly.
+       */
+      readonly scannerRoutes: ReadonlyArray<ParsedRoute>;
     }
     const perScanner: IPerScanner[] = [];
 
@@ -888,6 +904,7 @@ async function discoverSpecs(
         scannerScore: candidate.score,
         scannerSpecs: result.specs,
         serviceId: candidate.match.frameworkSearchRoot ?? "",
+        scannerRoutes: result.routes,
       });
 
       // Un proveedor de validación que falla no aborta la generación
@@ -981,7 +998,20 @@ async function discoverSpecs(
         project,
         provenance,
         matches: usable.map((c) => c.match),
-        routesByService: accumulateRoutesByService(perScanner, routes),
+        routesByService: accumulateRoutesByService(
+          perScanner.map(({ serviceId, scannerSpecs }) => {
+            // Los `scannerSpecs` son `EndpointSpec` (post-process) y el
+            // helper espera `ParsedRoute` (pre-process). Reconstruimos
+            // las routes que cada scanner aportó mirando qué routes
+            // globales matchean con los specs de ese scanner.
+            const scannerRoutes = routes.filter((r) =>
+              scannerSpecs.some(
+                (s) => s.method === r.method && s.uri === r.uri,
+              ),
+            );
+            return { serviceId, scannerRoutes };
+          }),
+        ),
         monorepoDetection: monorepoDetection ?? undefined,
       };
     }

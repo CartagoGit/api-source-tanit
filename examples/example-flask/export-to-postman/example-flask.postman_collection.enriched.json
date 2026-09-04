@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "example-flask (Postman)",
+    "description": "Colección Postman generada automáticamente para example-flask.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "4def5737-c203-58ba-9fa6-6b3a82044838"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

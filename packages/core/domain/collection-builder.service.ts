@@ -1,22 +1,22 @@
 /**
- * Genera una colección Postman v2.1.0 a partir de un catálogo de
- * `EndpointSpec` agrupando los endpoints en carpetas automáticamente.
+ * Builds a Postman v2.1.0 collection from an `EndpointSpec` catalog,
+ * grouping the endpoints into folders automatically.
  *
- * El paquete es **agnóstico** del proyecto: el catálogo y la config
- * se pasan como parámetros a `buildCollection()`. Este archivo NO
- * importa ningún valor específico de ningún proyecto.
+ * The package is **agnostic** to the project: the catalog and the
+ * config are passed as parameters to `buildCollection()`. This file
+ * does NOT import any project-specific value.
  *
- * Reglas de agrupación:
- *   1. Si el `EndpointSpec` trae `folder` explícito, se usa ese
- *      (útil para forzar subcarpetas como "Stock" o "Devoluciones"
- *      dentro de una zona padre común).
- *   2. Si no, se calcula con `topGroupFor(uri, uriGroupOverrides)`:
- *        - `/api/certificados` → grupo "certificados"
- *        - `/api/erp/productos` → grupo "erp"
- *        - `/api/integraciones/erp/...` → "integraciones"
- *        - `/api/pedidos/...` → "pedidos"
- *        - `/api/informes/mensual` → "informes" (si override)
- *   3. El nombre visible del folder se calcula con `prettyGroupName()`.
+ * Grouping rules:
+ *   1. If the `EndpointSpec` carries an explicit `folder`, that one is
+ *      used (useful to force subfolders like "Stock" or "Returns"
+ *      inside a common parent zone).
+ *   2. Otherwise it is computed with `topGroupFor(uri, uriGroupOverrides)`:
+ *        - `/api/certificates` -> group "certificates"
+ *        - `/api/erp/products`  -> group "erp"
+ *        - `/api/integrations/erp/...` -> "integrations"
+ *        - `/api/orders/...` -> "orders"
+ *        - `/api/reports/monthly` -> "reports" (if override)
+ *   3. The folder's display name is computed with `prettyGroupName()`.
  */
 import type {
   EndpointSpec,
@@ -40,20 +40,20 @@ import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interf
 // ---------------------------------------------------------------------------
 
 /**
- * Las cabeceras que lleva toda petición.
+ * Headers carried by every request.
  *
- * `Authorization: Bearer {{token}}` solo cuando la API **usa** bearer.
- * Iba en todas siempre, así que una API sin autenticación ninguna
- * mandaba `Bearer ` con la variable sin resolver en cada petición, y la
- * respuesta era un 401 que no tenía nada que ver con lo que se estaba
- * probando. Con API key sobra igual: el bloque `auth` de la colección ya
- * mete la clave donde toca.
+ * `Authorization: Bearer {{token}}` only when the API **uses** bearer.
+ * It used to be sent on every request, so an API with no auth at all
+ * was sending `Bearer ` with the unresolved variable on every call,
+ * and the response was a 401 that had nothing to do with what was
+ * being tested. The same goes for API key: the collection `auth`
+ * block already places the key where it belongs.
  *
- * Override por operación (`a00012 S3.b`): si el endpoint trae
- * `auth: { kind: "none" }`, se omite la cabecera `Authorization` para
- * esa request aunque el esquema global sea bearer. Es el caso de los
- * endpoints públicos —login, /health, /register— que no deben llevar
- * credenciales: el token todavía no existe cuando se llaman.
+ * Per-operation override (`a00012 S3.b`): if the endpoint carries
+ * `auth: { kind: "none" }`, the `Authorization` header is omitted for
+ * that request even when the global scheme is bearer. This is the case
+ * of public endpoints -- login, /health, /register -- that must not
+ * carry credentials: the token does not exist yet when they are called.
  */
 function defaultHeaders(
   ep: EndpointSpec,
@@ -70,11 +70,11 @@ function defaultHeaders(
 }
 
 /**
- * `true` cuando el endpoint declara explícitamente que no lleva auth.
+ * `true` when the endpoint explicitly declares no auth.
  *
- * Implementa la rama `kind: "none"` del union `IEndpointAuth`. El
- * discriminador `kind` se chequea primero para no romper si en el
- * futuro se añade `kind: "scheme"` con campos adicionales.
+ * Implements the `kind: "none"` branch of the `IEndpointAuth` union.
+ * The `kind` discriminator is checked first so adding a future
+ * `kind: "scheme"` with extra fields does not break this function.
  */
 function isEndpointAuthNone(auth: IEndpointAuth | undefined): boolean {
   return auth !== undefined && auth.kind === "none";
@@ -92,8 +92,8 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
         ? { query: ep.query.map((q) => ({ ...q, disabled: false })) }
         : {}),
     },
-    // La descripción documenta lo que el endpoint acepta, con las
-    // reglas que ya se extrajeron para construir el ejemplo.
+    // The description documents what the endpoint accepts, with the
+    // rules already extracted to build the example.
     description: buildRequestDescription(ep.description, ep.fields),
   };
   // Headers personalizados opcionales (X-API-Key, headers de OpenAPI, etc.)
@@ -126,8 +126,8 @@ function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
   return {
     name: spec.name,
     request: buildRequest(spec, scheme),
-    // Las aserciones van en todas: una colección que solo trae URLs deja
-    // el trabajo de comprobar a quien le da al Send.
+    // Assertions are included on every request: a collection that only
+    // carries URLs pushes the verification work onto whoever hits Send.
     event: [buildTestScript(spec)],
   };
 }
@@ -141,8 +141,8 @@ function folder(
 }
 
 /**
- * Carpeta lógica a la que pertenece un endpoint. Si el spec trae
- * `folder` se usa tal cual; si no, se deriva de la URI.
+ * Logical folder an endpoint belongs to. If the spec carries `folder`
+ * it is used as-is; otherwise it is derived from the URI.
  */
 function folderKeyFor(
   ep: EndpointSpec,
@@ -153,16 +153,16 @@ function folderKeyFor(
 }
 
 /**
- * Nombre legible de una carpeta. Si la clave viene de `topGroupFor()`
- * aplicamos `prettyGroupName()`; si viene de un `folder` explícito lo
- * respetamos tal cual.
+ * Display name of a folder. If the key comes from `topGroupFor()` we
+ * apply `prettyGroupName()`; if it comes from an explicit `folder`
+ * we keep it verbatim.
  */
 function folderNameFor(key: string, isExplicit: boolean): string {
   return isExplicit ? key : prettyGroupName(key);
 }
 
 // ---------------------------------------------------------------------------
-// Agrupación y construcción de la colección
+// Grouping and collection construction
 // ---------------------------------------------------------------------------
 
 interface FolderGroup {
@@ -180,7 +180,7 @@ interface FolderGroup {
  * Los items se agrupan por `(folderKey, topGroupFor(uri))` para que
  * un endpoint con `folder:"Productos"` y uri `/erp/productos` no se
  * mezcle con otro de `folder:"Productos"` y uri `/equivalencias`
- * (cada uno pertenece a un "Erp" y un "Productos" raíz distintos).
+ * (each one belongs to a different "Erp" and "Products" root).
  */
 function groupByFolder(
   specs: EndpointSpec[],
@@ -241,16 +241,16 @@ function toHierarchical(
   const map = new Map<string, HierarchicalFolder>();
 
   for (const { g, autoMainKey } of annotated) {
-    // La `mainKey` de la carpeta raíz se calcula siempre a partir del
-    // URI del grupo (no del `folder` explícito del endpoint).
+    // The root folder's `mainKey` is always computed from the group's
+    // URI (not from the endpoint's explicit `folder`).
     //
-    // Antes era `g.explicit ? g.key : autoMainKey`, lo que hacía que
-    // `g.key === mainKey` fuese trivialmente cierto cuando el grupo era
-    // explícito → la rama de `subs` (subcarpeta explícita) nunca se
-    // ejecutaba. Con `autoMainKey` como `mainKey` en todos los casos,
-    // la decisión `direct` vs `subs` se basa en si el `folder:`
-    // explícito coincide o no con el top real del endpoint — que es el
-    // caso de uso legítimo de subcarpeta explícita.
+    // Previously it was `g.explicit ? g.key : autoMainKey`, which made
+    // `g.key === mainKey` trivially true when the group was explicit
+    // -> the `subs` branch (explicit subfolder) was never executed.
+    // With `autoMainKey` used as `mainKey` in every case, the
+    // `direct` vs `subs` decision is based on whether the explicit
+    // `folder:` matches the endpoint's real top -- which is the
+    // legitimate use case for an explicit subfolder.
     const mainKey = autoMainKey;
 
     let h = map.get(mainKey);
@@ -263,13 +263,13 @@ function toHierarchical(
 
     if (g.explicit) {
       if (g.key === mainKey) {
-        // Grupo explícito autorreferencial: su `folder:` coincide con
-        // el top real calculado del URI, así que vive en `direct`.
+        // Self-referential explicit group: its `folder:` matches the
+        // real top computed from the URI, so it lives in `direct`.
         h.direct.push(...g.items);
       } else {
-        // Grupo explícito con `folder:` distinto del top real: es una
-        // subcarpeta explícita bajo `mainKey`. Esta rama era la que el
-        // bug dejaba muerta (a00012 H-P2a / S3.a).
+        // Explicit group with a `folder:` different from the real top:
+        // it is an explicit subfolder under `mainKey`. This branch was
+        // the one the bug left dead (a00012 H-P2a / S3.a).
         h.subs.push({ key: g.key, name: g.name, items: g.items });
       }
     } else {
@@ -277,7 +277,7 @@ function toHierarchical(
     }
   }
 
-  // Post-proceso: fusionar carpetas hermanas con el mismo `mainName`.
+  // Post-process: merge sibling folders that share the same `mainName`.
   const seen = new Map<string, HierarchicalFolder>();
   const finalOrder: string[] = [];
   for (const k of order) {
@@ -296,27 +296,28 @@ function toHierarchical(
 }
 
 /**
- * Construye la colección Postman a partir del catálogo de endpoints
- * y la configuración del proyecto.
+ * Builds the Postman collection from the endpoint catalog and the
+ * project configuration.
  *
- * @param specs Catálogo de endpoints del proyecto.
- * @param config Configuración del proyecto (nombre, variables, zonas…).
+ * @param specs Endpoint catalog of the project.
+ * @param config Project configuration (name, variables, zones...).
  */
 export function buildCollection(
   specs: EndpointSpec[],
   config: ProjectConfig,
   /**
-   * Esquema de autenticación de la API.
+   * API authentication scheme.
    *
-   * Si no se pasa, se deduce de los propios endpoints. El parámetro
-   * existe para que el pipeline —que es quien sabe si hay flujo de
-   * login— pueda afinarlo.
+   * If not passed, it is inferred from the endpoints themselves. The
+   * parameter exists so the pipeline -- which is the only one who
+   * knows whether there is a login flow -- can refine it.
    */
   authScheme?: IDetectedAuthScheme,
 ): PostmanCollection {
   const overrides = config.uriGroupOverrides ?? {};
-  // Sin esquema explícito se deduce de los endpoints. `hasLoginFlow` en
-  // false porque desde aquí no se ve: quien lo sepa lo pasa hecho.
+  // Without an explicit scheme we infer it from the endpoints.
+  // `hasLoginFlow` is false because from here we cannot see it: whoever
+  // knows it passes it in already resolved.
   const scheme = authScheme ?? detectAuthScheme(specs, false);
   const auth = toPostmanAuth(scheme);
   const groups = groupByFolder(specs, overrides, scheme.type);
@@ -333,38 +334,48 @@ export function buildCollection(
       name: config.collectionName,
       description: config.collectionDescription,
       schema: POSTMAN_SCHEMA_URL,
-      // Determinista por proyecto: Postman usa este id para decidir si
-      // un import actualiza la colección o crea otra. Con un UUID
-      // aleatorio cada regeneración dejaba una copia más (p00014).
+      // Deterministic per project: Postman uses this id to decide
+      // whether an import updates the collection or creates a new one.
+      // A random UUID would leave a new copy on every regeneration
+      // (p00014).
       _postman_id: collectionIdFor({
         explicitId: config.collectionId,
         collectionName: config.collectionName,
         projectName: config.name,
       }),
     },
-    // El bloque `auth` sale de lo que la API hace, no de una constante.
+    // The `auth` block is derived from what the API actually does, not
+    // a constant.
     //
-    // Estaba fijo a `bearer`, así que una API con `X-API-Key` recibía un
-    // bearer con un `{{token}}` que nadie rellena, y una API SIN
-    // autenticación también. Con `none` no se emite nada: si se emitiera
-    // un bloque vacío, Postman mandaría una cabecera `Authorization` sin
-    // resolver en cada petición y la API contestaría 401 por un motivo
-    // que no tiene que ver con lo que se estaba probando.
+    // It used to be hardcoded to `bearer`, so an X-API-Key API would
+    // receive a bearer with a `{{token}}` nobody fills in, and so would
+    // an API with NO authentication. With `none` we emit nothing: if
+    // we emitted an empty block, Postman would send an unresolved
+    // `Authorization` header on every request and the API would answer
+    // 401 for a reason that has nothing to do with what was being
+    // tested.
     ...(auth ? { auth } : {}),
     variable: config.variables,
     item: authFirst(topFolders),
   };
 }
 
-/** Nombres de carpeta que agrupan el ciclo de sesión. */
-const AUTH_FOLDER_NAMES = new Set(["auth", "authentication", "autenticacion", "login", "sesion", "session"]);
+/** Folder names that group the session cycle. */
+const AUTH_FOLDER_NAMES = new Set([
+  "auth",
+  "authentication",
+  "autenticacion",
+  "login",
+  "sesion",
+  "session",
+]);
 
 /**
- * Mueve la carpeta de autenticación al principio de la colección.
+ * Moves the authentication folder to the top of the collection.
  *
- * Es el primer sitio al que el usuario tiene que ir tras importar: sin
- * lanzar el login, ningún otro endpoint responde. Dejarla en orden
- * alfabético la esconde en mitad de la lista.
+ * It is the first place the user has to go after importing: without
+ * running login first, no other endpoint responds. Leaving it in
+ * alphabetical order hides it in the middle of the list.
  */
 function authFirst(folders: PostmanItem[]): PostmanItem[] {
   const isAuth = (f: PostmanItem): boolean =>
