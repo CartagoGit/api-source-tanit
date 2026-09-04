@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 157 símbolos en 55 módulos.
+> 159 símbolos en 56 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -170,6 +170,43 @@ la suma.
 Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
 frameworks distintos con `Promise.all` y comprueba que ninguno se
 cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+
+### `packages/core/discovery/group-by-service.helper.ts`
+
+`groupByService` — a00013 S1.
+
+#### `deriveServiceId`
+
+```ts
+export function deriveServiceId(match: IProjectMatch): string
+```
+
+Deriva el id estable de un match. Dos matches con el mismo
+`frameworkSearchRoot` producen el mismo id.
+
+- Si hay `frameworkSearchRoot`, se usa como base del id (que es
+  exactamente la regla que introdujo a00010).
+- Si no, cae a `<framework>@<projectRoot>` para evitar
+  colisiones entre un servicio single-framework en dos raíces
+  distintas.
+
+#### `groupByService`
+
+```ts
+export function groupByService(input: IGroupByServiceInput): IServiceGraph
+```
+
+Forma un `IServiceGraph` a partir de los matches y rutas del
+discovery.
+
+Lanza `Error` si:
+- Falta una entrada en `routesByMatch` para un match.
+- `matches` está vacío y `detectedMonorepo === false` (un
+  proyecto que no es monorepo **debe** tener al menos un match,
+  si no el caller no entendió los contratos). El caller puede
+  silenciar este chequeo pasando `detectedMonorepo === true` con
+  un array vacío — es el caso "monorepo declarado pero sin
+  workspaces enumerados".
 
 ### `packages/core/discovery/monorepo-detector.helper.ts`
 
