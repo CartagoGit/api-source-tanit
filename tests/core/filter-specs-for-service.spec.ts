@@ -23,7 +23,11 @@ import type { IServiceDescriptor } from "../../packages/contracts/interfaces/cor
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 
-function spec(method: "GET" | "POST", uri: string, extras: Partial<EndpointSpec> = {}): EndpointSpec {
+function spec(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  uri: string,
+  extras: Partial<EndpointSpec> = {},
+): EndpointSpec {
   return { method, uri, name: `${method} ${uri}`, ...extras };
 }
 

@@ -75,7 +75,9 @@ describe("init", () => {
   test("el siguiente paso que sugiere se puede ejecutar de verdad", { timeout: 120_000 }, async () => {
     const root = await proyecto("siguiente-paso");
     const { output } = await run("init", ["--project-root", root]);
-    expect(output).toContain("export-to-postman generate");
+    // El comando sugerido usa el nombre canónico (`BIN_NAME`); si el
+    // binario se renombra, este test avisa junto con el de lanzadores.
+    expect(output).toContain("apisrc generate");
     // `bun run build` es un script de este repo, no del proyecto ajeno.
     expect(output).not.toContain("bun run build");
   });

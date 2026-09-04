@@ -13,27 +13,27 @@ heurísticamente.
 
 | Framework | Rutas del fixture | Con validación |
 |---|---:|---:|
-| [OpenAPI](#openapi--swagger) | 12 | 22 |
-| [FastAPI](#fastapi) | 10 | 14 |
-| [Rails](#rails) | 10 | 0 |
-| [ASP.NET Core](#aspnet-core) | 9 | 7 |
-| [Django](#django--drf) | 8 | 16 |
-| [Express](#express--koa--hapi) | 8 | 13 |
-| [Flask](#flask) | 8 | 7 |
-| [Gin](#gin) | 8 | 8 |
-| [Laravel](#laravel) | 8 | 8 |
-| [Next.js](#nextjs) | 8 | 11 |
-| [Symfony](#symfony) | 8 | 7 |
-| [NestJS](#nestjs) | 7 | 10 |
-| [Phoenix](#phoenix) | 7 | 0 |
-| [Fastify](#fastify) | 6 | 4 |
-| [Hono](#hono) | 6 | 3 |
-| [Spring Boot](#spring-boot) | 6 | 11 |
+| [OpenAPI](#openapi--swagger) | 23 | 22 |
+| [FastAPI](#fastapi) | 19 | 14 |
+| [Laravel](#laravel) | 19 | 8 |
+| [Django](#django--drf) | 18 | 16 |
+| [ASP.NET Core](#aspnet-core) | 17 | 7 |
+| [Rails](#rails) | 15 | 0 |
+| [Express](#express--koa--hapi) | 14 | 13 |
+| [Flask](#flask) | 14 | 7 |
+| [Gin](#gin) | 14 | 8 |
+| [Next.js](#nextjs) | 14 | 11 |
+| [Symfony](#symfony) | 14 | 7 |
+| [NestJS](#nestjs) | 13 | 10 |
+| [Phoenix](#phoenix) | 12 | 0 |
+| [Spring Boot](#spring-boot) | 11 | 11 |
+| [Fastify](#fastify) | 9 | 4 |
+| [Hono](#hono) | 9 | 3 |
+| [Fiber](#fiber) | 7 | 2 |
+| [Ktor](#ktor) | 7 | 0 |
+| [Rust](#rust-actix-web--rocket) | 7 | 2 |
 | [tRPC](#trpc) | 6 | 0 |
 | [GraphQL](#graphql) | 5 | 0 |
-| [Fiber](#fiber) | 4 | 2 |
-| [Ktor](#ktor) | 4 | 0 |
-| [Rust](#rust-actix-web--rocket) | 4 | 2 |
 
 _Generado por `bun run docs:frameworks` ejecutando cada scanner contra_
 _su fixture. 21 frameworks._

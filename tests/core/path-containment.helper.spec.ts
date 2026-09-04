@@ -75,7 +75,10 @@ describe("lo que está fuera", () => {
   test("dice dónde se iba, no solo que no", async () => {
     const r = await ensureInside(raiz, join(raiz, "..", "fuera"));
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toContain("fuera de");
+    // La salida del CLI habla inglés (lint:output-language); el
+    // `reason` viaja dentro del mensaje de `generate`, así que su
+    // idioma es el mismo que el del resto de la superficie.
+    if (!r.ok) expect(r.reason).toContain("is outside");
   });
 
   /**

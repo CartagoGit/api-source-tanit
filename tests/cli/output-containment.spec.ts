@@ -68,7 +68,11 @@ describe("con contención — quien la elige es un agente", () => {
       ["--project-root", proyecto, "--output-dir", join(base, "fuera")],
       conRaiz(proyecto),
     );
-    expect(r.output).toMatch(/fuera de/);
+    // El gate lint:output-language obliga a la superficie en inglés,
+    // y el `reason` del helper de contención ya la trae en inglés
+    // ("is outside"); lo que el CLI añade alrededor se pinza aquí.
+    expect(r.output).toMatch(/is outside/);
+    expect(r.output).toContain("POSTMAN_CONTAIN_ROOT");
     expect(r.output).toContain("POSTMAN_CONTAIN_ROOT");
     expect(r.output).not.toMatch(/at <anonymous>/);
   });

@@ -100,10 +100,10 @@ export async function ensureInsideAny(
   return {
     ok: false,
     resolved: realTarget,
-    // El texto lo leen dos personas distintas: quien lanzó el CLI a
-    // mano (el mensaje de `generate` lo incrusta) y quien depura el
-    // plugin. Español, como el resto de mensajes de contención del
-    // output — "fuera de" es lo que los tests pinzan.
-    reason: `La ruta '${realTarget}' queda fuera de ${resolvedRoots.map((r) => `'${r}'`).join(", ")}`,
+    // The CLI output surface speaks English (README, `--help`, the
+    // published package — lint:output-language enforces it). The
+    // Spanish wording lives one layer up, in `generate`'s containment
+    // message that embeds this reason.
+    reason: `'${realTarget}' is outside ${resolvedRoots.map((r) => `'${r}'`).join(", ")}`,
   };
 }
