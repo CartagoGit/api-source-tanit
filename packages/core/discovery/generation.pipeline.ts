@@ -39,6 +39,7 @@ import { loadProject } from "./project-loader.service.js";
 import { resolveProjectContext } from "./project-context.service.js";
 import { mergeWithManual } from "../domain/endpoint-merge.service.js";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type {
   IGenerationOptions,
   IGenerationResult,
@@ -209,23 +210,25 @@ async function forcedDetection(
  * wrapper es lo único que el pipeline invoca.
  */
 /**
- * En monorepos multi-workspace, expande la detección contra cada
- * workspace candidato. Ver `discoverSpecs()` para el contexto.
+ * Reorienta la detección cuando la raíz no es donde vive el framework.
+ * Ver `discoverSpecs()` para el contexto completo.
  *
- * Decisión de diseño: **solo** se expande cuando
- *   - la raíz es un monorepo detectado,
- *   - hay `>= 2` workspaces materializados,
- *   - no hay `frameworkSearchRoot` (override o auto con un único
- *     workspace).
+ * Tres casos:
+ *   1. **Override del usuario** (`--framework-search-root=apps/api`):
+ *      escanea SOLO ese workspace y descarta lo que la raíz hubiera
+ *      detectado (la raíz de un monorepo rara vez tiene frameworks).
+ *      Devuelve los `match` ya con `frameworkSearchRoot` pegado, para
+ *      que `applyFrameworkSearchRoot` no duplique el segmento.
+ *   2. **Auto multi-workspace**: agrega los resultados de cada
+ *      workspace a los de la raíz (deduplicados por
+ *      framework + workspace). Cada `match` lleva su `frameworkSearchRoot`
+ *      propio — `applyFrameworkSearchRoot` no actúa cuando ya está
+ *      definido (su `frameworkSearchRoot` interno es `null`).
+ *   3. **Auto single-workspace**: reemplaza la detección raíz (vacía)
+ *      por la del workspace, porque la raíz solo orquesta.
  *
- * Con un único workspace, `applyFrameworkSearchRoot` ya lo resuelve
- * con el helper de monorepo: expandir aquí duplicaría trabajo.
- * Con override del usuario, esa indicación es autoritativa: expandir
- * ignoraría su intención.
- *
- * Los `match` resultantes llevan `frameworkSearchRoot` pegado, así
- * el resto del pipeline (scanners, validación, exporter) consume el
- * mismo contrato que ya tenía para el caso single-workspace.
+ * Sin monorepo y sin override: devuelve lo que la raíz detectó — el
+ * camino legacy intacto.
  *
  * Audit 2026-09-04 (hallazgo P1 #1).
  */
@@ -235,33 +238,78 @@ async function expandMonorepoDetection(
   rootDetected: ReadonlyArray<IDetectedFramework>,
   userOverride: string | undefined,
 ): Promise<ReadonlyArray<IDetectedFramework>> {
-  if (userOverride && userOverride.length > 0) return rootDetected;
+  // Caso 1: override del usuario. Escaneamos solo el workspace que
+  // pidió. Devolvemos los `match` con `projectRoot` y
+  // `frameworkSearchRoot` ya apuntando al workspace, para que
+  // `applyFrameworkSearchRoot` (que más tarde solo añade
+  // `frameworkSearchRoot` cuando NO está) no duplique el segmento
+  // y produzca `apps/api/apps/api`.
+  if (userOverride && userOverride.length > 0) {
+    const workspaceRoot = join(projectRoot, userOverride);
+    const perWorkspace = await orchestrator.detectAll(workspaceRoot);
+    return perWorkspace.map((c) => ({
+      ...c,
+      match: {
+        ...c.match,
+        projectRoot: workspaceRoot,
+        frameworkSearchRoot: userOverride,
+      },
+    }));
+  }
+
+  // Detección de monorepo. Si no hay, devolvemos lo de la raíz.
   const detection = await detectMonorepo(projectRoot);
-  if (
-    !detection.isMonorepo ||
-    detection.workspaceDirs.length < 2
-  ) {
+  if (!detection.isMonorepo || detection.workspaceDirs.length === 0) {
     return rootDetected;
   }
-  const merged: IDetectedFramework[] = [...rootDetected];
+
   // Dedup por (framework, frameworkSearchRoot) para no repetir la
-  // misma pareja si dos workspaces tienen el mismo framework. La
-  // clave compuesta es lo que el merger ya entiende para agrupar.
+  // misma pareja si dos workspaces exponen el mismo framework.
   const seen = new Set<string>(
     rootDetected.map(
       (d) => `${d.match.framework}@${d.match.frameworkSearchRoot ?? ""}`,
     ),
   );
+
+  // Caso 3: single-workspace. La raíz sola no detecta nada; la
+  // reemplazamos por la del workspace. Igual que en override, fijamos
+  // `frameworkSearchRoot` aquí para que `applyFrameworkSearchRoot` lo
+  // respete (su rama de auto-fill ya está en `null` para multi-workspace,
+  // pero single-workspace sí lo rellenaría).
+  if (detection.workspaceDirs.length === 1) {
+    const workspace = detection.workspaceDirs[0]!;
+    const workspaceRoot = join(projectRoot, workspace);
+    const perWorkspace = await orchestrator.detectAll(workspaceRoot);
+    return perWorkspace.map((c) => ({
+      ...c,
+      match: {
+        ...c.match,
+        projectRoot: workspaceRoot,
+        frameworkSearchRoot: workspace,
+      },
+    }));
+  }
+
+  // Caso 2: multi-workspace. Agregamos a lo que la raíz ya detectó,
+  // fijando `frameworkSearchRoot` por entrada.
+  const merged: IDetectedFramework[] = [...rootDetected];
   for (const workspace of detection.workspaceDirs) {
-    // Evita re-escanear la raíz si aparece como workspace (raro,
-    // pero los globs pueden incluir ".").
     if (workspace === "" || workspace === ".") continue;
-    const perWorkspace = await orchestrator.detectAll(projectRoot);
+    const workspaceRoot = join(projectRoot, workspace);
+    const perWorkspace = await orchestrator.detectAll(workspaceRoot);
     for (const candidate of perWorkspace) {
-      const key = `${candidate.match.framework}@${workspace}`;
+      const candidateRewritten: IDetectedFramework = {
+        ...candidate,
+        match: {
+          ...candidate.match,
+          projectRoot: workspaceRoot,
+          frameworkSearchRoot: workspace,
+        },
+      };
+      const key = `${candidateRewritten.match.framework}@${workspace}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      merged.push(augmentMatch(candidate, workspace));
+      merged.push(candidateRewritten);
     }
   }
   return merged;
@@ -309,6 +357,12 @@ async function applyFrameworkSearchRoot(
  * Construye un `IDetectedFramework` con el `frameworkSearchRoot` pegado
  * al `match`. Se preserva el resto (score, evidence, scanner,
  * validation) por spread.
+ *
+ * Si el `match` ya trae `frameworkSearchRoot` (caso
+ * `expandMonorepoDetection`: cuando ya hemos reorientado la
+ * detección contra un workspace), se respeta y no se duplica — eso
+ * convertiría `apps/api` en `apps/api/apps/api` por el join
+ * posterior de los scanners.
  */
 function augmentMatch(
   detected: IDetectedFramework,
@@ -321,7 +375,9 @@ function augmentMatch(
     ...(detected.match.version !== undefined
       ? { version: detected.match.version }
       : {}),
-    frameworkSearchRoot,
+    ...(detected.match.frameworkSearchRoot === undefined
+      ? { frameworkSearchRoot }
+      : {}),
   };
   return {
     match,
@@ -384,23 +440,20 @@ async function discoverSpecs(
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
 
-  // En monorepos con **varios** workspaces materializados, la
-  // detección contra la raíz suele fallar: NestJS en `apps/api` no
-  // aparece porque su `package.json` no está en la raíz. Antes el
-  // helper devolvía `frameworkSearchRoot: null` y el usuario tenía
-  // que pasar `--framework-search-root` manualmente, o se quedaba con
-  // 0 endpoints en silencio.
+  // En monorepos (incluso single-workspace) y cuando el usuario
+  // fuerza `--framework-search-root`, la detección raíz suele
+  // devolver vacío: la raíz del monorepo solo orquesta, no contiene
+  // los frameworks. Antes el helper devolvía `frameworkSearchRoot:
+  // null` y el pipeline se quedaba con 0 endpoints en silencio.
   //
-  // Cuando pasa eso y no hay override explícito, **expandimos** la
-  // detección: corremos `detectAll` contra cada workspace candidato
-  // y agregamos los resultados, etiquetando cada `match` con su
-  // `frameworkSearchRoot` correspondiente. Es la pieza que faltaba
-  // para que un monorepo "Nest + Next" se autodetecte sin
-  // configuración.
+  // `expandMonorepoDetection` reescribe la detección cuando
+  // corresponde: para override escanea SOLO el workspace que el
+  // usuario pidió; para auto-detección multi-workspace escanea cada
+  // workspace y agrega; para single-workspace reemplaza la raíz
+  // (vacía) por la del workspace. Sin override ni monorepo, devuelve
+  // lo que la raíz detectó — el camino legacy.
   //
-  // Audit 2026-09-04 (hallazgo P1 #1). El fix respeta el contrato
-  // previo: si hay un único workspace, no cambia nada; si hay cero,
-  // tampoco; si hay override, no se aplica.
+  // Audit 2026-09-04 (hallazgo P1 #1).
   const expanded = await expandMonorepoDetection(
     options.orchestrator,
     context.projectRoot,
