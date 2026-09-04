@@ -62,73 +62,55 @@ export async function detectMonorepo(
   }
 
   // Audit 2ª revisión #6: separar dos conceptos:
-  //   - "es monorepo": presencia de turbo.json / pnpm-workspace.yaml /
-  //     lerna.json / package.json#workspaces.
+  //   - "es monorepo" + `signal`: presencia de turbo.json /
+  //     pnpm-workspace.yaml / lerna.json (en ese orden). El signal es
+  //     lo que la UI enseña para diagnosticar.
   //   - "estos son los paquetes": workspaces enumerados por la fuente
-  //     primaria, con fallback a otras fuentes si la primaria está
-  //     vacía.
+  //     de mayor prioridad, con fallback a package.json#workspaces
+  //     si la prioritaria está vacía (caso Turborepo puro).
   //
   // Antes `turbo.json` corto-circuitaba la búsqueda de workspaces:
-  // si el archivo existía pero no declaraba workspaces (caso típico:
-  // Turborepo donde los workspaces viven en package.json), la
-  // detección devolvía `isMonorepo=true, workspaceDirs=[]` y nunca
-  // llegaba a package.json#workspaces.
-  //
-  // Nuevo algoritmo:
-  //   1. Busca las fuentes en orden de prioridad: turbo > pnpm > lerna.
-  //   2. La primera fuente que EXISTA Y TENGA workspaces es la
-  //      ganadora: sus workspaces son los del proyecto. Esto
-  //      preserva el contrato histórico (un turbo.json con
-  //      workspaces definidos NO se mezcla con package.json).
-  //   3. Si la fuente prioritaria existe pero NO tiene workspaces
-  //      (caso Turborepo puro donde workspaces viven en package.json),
-  //      caemos a package.json#workspaces como fallback universal.
-  //   4. Si ninguna fuente aporta workspaces, pero hay un archivo
-  //      de señal presente, devolvemos `isMonorepo=true,
-  //      workspaceDirs=[]` (presencia sin materialización).
+  // si el archivo existía pero no declaraba workspaces, la detección
+  // devolvía `isMonorepo=true, workspaceDirs=[]` y nunca llegaba a
+  // package.json. Ahora se cae al fallback preservando el signal.
 
   const hasTurbo = existsSync(join(projectRoot, "turbo.json"));
   const hasPnpm = existsSync(join(projectRoot, "pnpm-workspace.yaml"));
   const hasLerna = existsSync(join(projectRoot, "lerna.json"));
 
-  // Lee la fuente prioritaria que tenga workspaces; cae a
-  // package.json si la prioritaria está vacía.
+  // Signal: el primer archivo de señal presente, en orden de
+  // prioridad. Esto es lo que la UI muestra y lo que el caller usa
+  // para entender "qué tipo de monorepo es".
+  const signal =
+    hasTurbo ? "turbo.json"
+    : hasPnpm ? "pnpm-workspace.yaml"
+    : hasLerna ? "lerna.json"
+    : null;
+
+  // Lee workspaces de la fuente prioritaria (turbo > pnpm > lerna).
+  // Solo los workspaces de esa fuente se usan — coherente con el
+  // contrato histórico "primer signal gana sus workspaces".
   let primaryGlobs: ReadonlyArray<string> = [];
-  let primarySignal: string | null = null;
   if (hasTurbo) {
     primaryGlobs = await readJsonWorkspaces(join(projectRoot, "turbo.json"));
-    primarySignal = "turbo.json";
   } else if (hasPnpm) {
     primaryGlobs = await readPnpmWorkspaces(join(projectRoot, "pnpm-workspace.yaml"));
-    primarySignal = "pnpm-workspace.yaml";
   } else if (hasLerna) {
     primaryGlobs = await readJsonWorkspaces(join(projectRoot, "lerna.json"));
-    primarySignal = "lerna.json";
   }
 
-  // Fallback: si la fuente prioritaria está vacía, probar
-  // package.json#workspaces. Esto cubre Turborepo donde los
-  // workspaces viven en el package.json raíz.
-  if (primaryGlobs.length === 0) {
+  // Fallback: la fuente prioritaria existe pero NO tiene workspaces
+  // (caso Turborepo puro). Caemos a package.json#workspaces
+  // universal, pero el signal sigue siendo el del archivo presente.
+  if (primaryGlobs.length === 0 && signal !== null) {
     const pkgGlobs = existsSync(join(projectRoot, "package.json"))
       ? await readPackageJsonWorkspaces(join(projectRoot, "package.json"))
       : [];
     if (pkgGlobs.length > 0) {
-      primaryGlobs = pkgGlobs;
-      primarySignal = "package.json#workspaces";
+      return finalize(signal, pkgGlobs, projectRoot);
     }
-  }
-
-  // Caso A: workspaces encontrados. Finaliza con la fuente que los
-  // aportó.
-  if (primaryGlobs.length > 0 && primarySignal !== null) {
-    return finalize(primarySignal, primaryGlobs, projectRoot);
-  }
-
-  // Caso B: hay archivo de señal pero ninguna fuente aporta
-  // workspaces. Mantenemos isMonorepo=true con workspaceDirs=[].
-  if (hasTurbo || hasPnpm || hasLerna) {
-    const signal = hasTurbo ? "turbo.json" : hasPnpm ? "pnpm-workspace.yaml" : "lerna.json";
+    // Hay señal pero nadie aporta workspaces: presencia sin
+    // materialización.
     return {
       isMonorepo: true,
       signal,
@@ -137,9 +119,13 @@ export async function detectMonorepo(
     };
   }
 
-  // Caso C: tampoco hay archivo de señal. Probamos package.json como
-  // última oportunidad (proyecto npm/yarn workspaces sin archivo
-  // dedicado).
+  if (primaryGlobs.length > 0 && signal !== null) {
+    return finalize(signal, primaryGlobs, projectRoot);
+  }
+
+  // Caso C: tampoco hay archivo de señal dedicado. Probamos
+  // package.json como única oportunidad (proyecto npm/yarn
+  // workspaces sin turbo/pnpm/lerna).
   if (existsSync(join(projectRoot, "package.json"))) {
     const pkgGlobs = await readPackageJsonWorkspaces(join(projectRoot, "package.json"));
     if (pkgGlobs.length > 0) {

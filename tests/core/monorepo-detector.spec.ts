@@ -270,3 +270,46 @@ describe("detectMonorepo — entradas inválidas", () => {
     expect(result.isMonorepo).toBe(false);
   });
 });
+describe("detectMonorepo — turbo.json sin workspaces + package.json (audit 2nd-review #6)", () => {
+  test("turbo.json presente pero SIN workspaces: cae a package.json#workspaces", async () => {
+    // Caso real del audit: un proyecto Turborepo donde el
+    // `turbo.json` solo contiene tasks (no `workspaces`) y la
+    // lista real de paquetes vive en `package.json#workspaces`.
+    // Antes el detector devolvía `isMonorepo=true, workspaceDirs=[]`
+    // y nunca llegaba a package.json.
+    await writeJson("turbo.json", {
+      pipeline: { build: { outputs: ["dist/**"] } },
+      tasks: { build: "tsc" },
+    });
+    await writeJson("package.json", {
+      name: "monorepo",
+      private: true,
+      workspaces: ["apps/api"], // workspace único y directo
+    });
+    await makeDir("apps/api");
+
+    const result = await detectMonorepo(root);
+    // turbo.json marca presencia y aporta signal.
+    expect(result.isMonorepo).toBe(true);
+    expect(result.signal).toBe("turbo.json");
+    // Los workspaces vienen del package.json (fallback) y se
+    // materializan correctamente.
+    expect(result.workspaceDirs).toEqual(["apps/api"]);
+    // Único workspace → frameworkSearchRoot se rellena.
+    expect(result.frameworkSearchRoot).toBe("apps/api");
+  });
+
+  test("turbo.json CON workspaces: gana solo turbo.json (no combina con package.json)", async () => {
+    // Caso histórico: cuando turbo.json define workspaces, esos son
+    // los del proyecto, no se mezclan con package.json. El test
+    // previo verifica este contrato.
+    await writeJson("turbo.json", { workspaces: ["apps/api"] });
+    await writeJson("package.json", { workspaces: ["packages/*"] });
+    await makeDir("apps/api");
+    await makeDir("packages/auth");
+
+    const result = await detectMonorepo(root);
+    expect(result.signal).toBe("turbo.json");
+    expect(result.frameworkSearchRoot).toBe("apps/api");
+  });
+});
