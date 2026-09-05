@@ -128,3 +128,34 @@ describe("collectTaggedTemplatesFromSource — degrade-safe", () => {
     expect(Array.isArray(diagnostics)).toBe(true);
   });
 });
+// a00015 S4: las interpolaciones del template no se pierden: el frontend
+// coloca un sentinel determinista en su sitio y marca hasInterpolation.
+describe("collectTaggedTemplatesFromSource - interpolaciones (a00015 S4)", () => {
+  test("un ${...} produce un sentinel y hasInterpolation true", () => {
+    const source = ["const shared = \x27\x27;", "const t = gql\`type Query { foo: String } \${shared}\`;"].join("\n");
+    const found = collectTaggedTemplatesFromSource(source, "schema.ts");
+    expect(found).toHaveLength(1);
+    const t = found[0];
+    if (!t) throw new Error("template no reconocido");
+    expect(t.raw).toContain("type Query");
+    expect(t.raw).toContain("foo: String");
+    expect(t.raw).toContain("__TANIT_INTERP_0__");
+    expect(t.hasInterpolation).toBe(true);
+  });
+
+  test("dos interpolaciones producen dos sentinels ordenados", () => {
+    const source = ["const a = \x27\x27;", "const b = \x27\x27;", "const t = gql\`type \${a} { x: \${b} }\`;"].join("\n");
+    const found = collectTaggedTemplatesFromSource(source, "schema.ts");
+    expect(found).toHaveLength(1);
+    const rawOf: string = found[0]?.raw ?? "";
+    expect(rawOf).toContain("__TANIT_INTERP_0__");
+    expect(rawOf.indexOf("__TANIT_INTERP_0__")).toBeLessThan(rawOf.indexOf("__TANIT_INTERP_1__"));
+    expect(found[0]?.hasInterpolation).toBe(true);
+  });
+
+  test("sin interpolaciones: raw sin sentinel y hasInterpolation ausente", () => {
+    const found = collectTaggedTemplatesFromSource("const t = gql\`type Query { bar: Int }\`;", "schema.ts");
+    expect(found[0]?.raw).not.toContain("__TANIT_INTERP_");
+    expect(found[0]?.hasInterpolation).toBeUndefined();
+  });
+});

@@ -12,6 +12,7 @@
 import { describe, expect, test } from "vitest";
 
 import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.scanner";
+import type { IParseDiagnostic } from "../../packages/contracts/interfaces/core/scanner.interface";
 import type { ITaggedTemplate } from "../../packages/frameworks/typescript/tagged-template.helper";
 
 /** Helper: builds a minimal ITaggedTemplate with `raw` and `tag`. */
@@ -105,5 +106,34 @@ describe("collectEmbeddedSdl — order and multi-use", () => {
 
   test("empty input → []", () => {
     expect(collectEmbeddedSdl([])).toEqual([]);
+  });
+});
+// a00015 S4: un template con interpolaciones lleva hasInterpolation y el
+// adapter lo omite + deja un warning en diagnostics (no se traga un SDL
+// incompleto, ni pierde el ${...} en silencio).
+describe("collectEmbeddedSdl - interpolaciones (a00015 S4)", () => {
+  function tplInterp(tag: string, raw: string): ITaggedTemplate {
+    return { tag, raw, range: { start: 0, end: raw.length }, sourceFile: "test.ts", hasInterpolation: true };
+  }
+
+  test("template con interpolacion se omite del SDL", () => {
+    const out = collectEmbeddedSdl([tplInterp("gql", "type Query { a: String } __TANIT_INTERP_0__")]);
+    expect(out).toEqual([]);
+  });
+
+  test("template con interpolacion deja warning en diagnostics", () => {
+    const diagnostics: IParseDiagnostic[] = [];
+    collectEmbeddedSdl([tplInterp("gql", "x __TANIT_INTERP_0__")], { diagnostics });
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.severity).toBe("warning");
+    expect(diagnostics[0]?.reason).toMatch(/interpolaci/i);
+    expect(diagnostics[0]?.file).toBe("test.ts");
+  });
+
+  test("template sin interpolacion se incluye, sin diagnostic", () => {
+    const diagnostics: IParseDiagnostic[] = [];
+    const out = collectEmbeddedSdl([tpl("gql", "type Q { a: String }")], { diagnostics });
+    expect(out).toEqual(["type Q { a: String }"]);
+    expect(diagnostics).toHaveLength(0);
   });
 });
