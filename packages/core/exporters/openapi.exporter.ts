@@ -1,25 +1,25 @@
 /**
- * Exportador a OpenAPI 3.1.0.
+ * Exporter to OpenAPI 3.1.0.
  *
- * Es el formato del lote que más lejos llega: de un OpenAPI salen SDKs,
- * configuración de gateway y documentación, y lo importan Swagger Editor,
- * Insomnia, Postman y casi cualquier cosa.
+ * It is the bulk format that reaches the farthest: from an OpenAPI you
+ * get SDKs, gateway configuration and documentation, and Swagger Editor,
+ * Insomnia, Postman, and almost anything import it.
  *
- * **Se emite YAML**, que es como se publica un OpenAPI casi siempre.
+ * **YAML is emitted**, which is how an OpenAPI is published almost always.
  *
- * Esto se hizo primero en JSON, por miedo a las reglas de escalares de
- * YAML: un `descripción: sí` sin comillas es un booleano, y un fallo así
- * corrompe el documento en silencio. La forma segura resultó ser
- * trivial —citar **toda** cadena— y vive en `yaml.helper.ts` con sus
- * tests, incluidos los valores que rompen un documento sin avisar. Con
- * eso el riesgo desaparece y no hay motivo para dar el formato que no se
- * pedía.
+ * This was first done in JSON, out of fear of the scalar rules of YAML:
+ * an unquoted `description: yes` is a boolean, and such a failure silently
+ * corrupts the document. The safe shape turned out to be trivial — quote
+ * **every** string — and lives in `yaml.helper.ts` with its tests,
+ * including values that break a document without warning. With that, the
+ * risk disappears and there is no reason to give a format that wasn't
+ * asked for.
  *
- * Lo que **no** lleva es la parte de respuestas. Este proyecto escana lo
- * que la API **recibe**; lo que devuelve no está en ninguna señal que se
- * lea. Se emite un `200` con descripción y sin esquema, que es lo que
- * OpenAPI exige como mínimo, en vez de inventarse una forma de respuesta
- * que nadie ha comprobado.
+ * What it **doesn't** carry is the responses part. This project scans
+ * what the API **receives**; what it returns is not in any signal that
+ * gets read. A `200` is emitted with a description and without a schema,
+ * which is the minimum OpenAPI requires, instead of inventing a
+ * response shape that nobody has verified.
  */
 import type {
   IExportArtifact,
@@ -35,19 +35,19 @@ import type {
 import { toYaml } from "../helpers/yaml.helper.js";
 import type { YamlValue } from "../../contracts/interfaces/core/helpers.interface.js";
 
-/** `{{id}}` de Postman → `{id}` de OpenAPI. */
+/** `{{id}}` from Postman → `{id}` from OpenAPI. */
 function toOpenApiPath(uri: string): string {
   return uri.replace(/\{\{([^}]+)\}\}/g, "{$1}");
 }
 
-/** Los nombres de parámetro que lleva una ruta. */
+/** The parameter names that a route carries. */
 function pathParamsOf(uri: string): string[] {
   return [...uri.matchAll(/\{\{([^}]+)\}\}/g)]
     .map((m) => m[1])
     .filter((n): n is string => n !== undefined);
 }
 
-/** Tipo interno → tipo de JSON Schema. */
+/** Internal type → JSON Schema type. */
 function toSchemaType(type: string): string {
   switch (type) {
     case "integer":
@@ -60,14 +60,14 @@ function toSchemaType(type: string): string {
       return "array";
     case "object":
       return "object";
-    // `enum` y `date` son cadenas con restricciones, no tipos de JSON
-    // Schema: el formato y los valores van aparte.
+    // `enum` and `date` are restricted strings, not JSON Schema types:
+    // the format and the values go separately.
     default:
       return "string";
   }
 }
 
-/** El esquema de un campo, con sus restricciones. */
+/** The schema of a field, with its constraints. */
 function fieldSchema(field: IEndpointField): Record<string, unknown> {
   const schema: Record<string, unknown> = { type: toSchemaType(field.type) };
   if (field.format) schema["format"] = field.format;
@@ -93,9 +93,9 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
   };
   if (spec.description) operation["description"] = spec.description;
 
-  // Parámetros: los de la ruta salen de la propia URI (siempre
-  // obligatorios, lo dice la especificación), y los de query y cabecera
-  // de las reglas de validación.
+  // Parameters: path ones come from the URI itself (always required,
+  // the spec says so), and query and header ones from the validation
+  // rules.
   const parameters: Array<Record<string, unknown>> = [];
   for (const name of pathParamsOf(spec.uri)) {
     const declared = fields.find((f) => f.location === "path" && f.fieldName === name);
@@ -107,12 +107,12 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
     });
   }
   for (const field of fields) {
-    // Audit 2026-09-04 P2 #9 (cookies en OpenAPI): el contrato de
-    // validación admite `cookie` desde Laravel/Fastify, pero el
-    // exporter solo propagaba `query` y `header`. OpenAPI 3.x
-    // incluye `in: cookie` como parámetro válido (3.0 §4.7.7,
-    // 3.1 §4.8.7) y el exporter debe reflejarlo. Los `path` ya
-    // salen arriba con `pathParamsOf`.
+    // Audit 2026-09-04 P2 #9 (cookies in OpenAPI): the validation
+    // contract admits `cookie` from Laravel/Fastify, but the
+    // exporter only propagated `query` and `header`. OpenAPI 3.x
+    // includes `in: cookie` as a valid parameter (3.0 §4.7.7,
+    // 3.1 §4.8.7) and the exporter must reflect it. `path` ones
+    // already come out above with `pathParamsOf`.
     if (
       field.location !== "query" &&
       field.location !== "header" &&
@@ -127,8 +127,8 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
       schema: fieldSchema(field),
     });
   }
-  // Cabeceras declaradas que no vienen de una regla (las de un spec
-  // OpenAPI original, por ejemplo).
+  // Declared headers that don't come from a rule (those from an original
+  // OpenAPI spec, for example).
   for (const header of spec.headers ?? []) {
     if (parameters.some((p) => p["name"] === header.key && p["in"] === "header")) continue;
     parameters.push({
@@ -143,16 +143,16 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
 
   const bodyFields = fields.filter((f) => f.location === "body");
   if (spec.schemaGraph) {
-    // Camino rico: si el scanner declaró un `SchemaGraph`, lo usamos
-    // para el body. Es lo que permite anidar objetos, representar
-    // arrays de objetos y uniones — la lista plana `fields` no puede.
+    // Rich path: if the scanner declared a `SchemaGraph`, we use it for
+    // the body. That is what allows nesting objects, representing arrays
+    // of objects and unions — the flat `fields` list cannot.
     const { schema, components } = emitSchemaGraph(
       spec.schemaGraph,
       spec.schemaGraph.root,
     );
-    // Acumulamos los `components` declarados por este endpoint; el
-    // llamador los mezcla con los de los demás y los mueve bajo
-    // `components.schemas` antes de cerrar el documento.
+    // We accumulate the `components` declared by this endpoint; the
+    // caller mixes them with the others and moves them under
+    // `components.schemas` before closing the document.
     for (const [name, body] of Object.entries(components)) {
       state.components[name] = body;
     }
@@ -186,27 +186,27 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
       },
     };
   } else if (spec.body !== undefined) {
-    // Hay ejemplo pero no reglas: se emite el ejemplo sin esquema, que es
-    // más honesto que deducir tipos de un JSON de muestra.
+    // There is an example but no rules: the example is emitted without
+    // a schema, which is more honest than inferring types from a sample
+    // JSON.
     operation["requestBody"] = {
       required: false,
       content: { "application/json": { example: spec.body } },
     };
   }
 
-  // Audit 2026-09-04 P1 #7: auth:none por operación se respeta en el
-  // documento OpenAPI. El esquema global define `security` a nivel
-  // de documento (`document.security = [{ bearerAuth: [] }]`), pero
-  // OpenAPI permite sobrescribirlo por operación con `security: []`
-  // (array vacío) — eso significa "este endpoint es público, no
-  // requiere ningún esquema de seguridad". Sin este override, un
-  // `/auth/login` se exportaba con `Authorization: Bearer` y la
-  // primera request devolvía 401.
+  // Audit 2026-09-04 P1 #7: auth:none per operation is respected in the
+  // OpenAPI document. The global scheme defines `security` at document
+  // level (`document.security = [{ bearerAuth: [] }]`), but OpenAPI
+  // allows overriding per operation with `security: []` (empty array) —
+  // that means "this endpoint is public, requires no security scheme".
+  // Without this override, `/auth/login` was exported with
+  // `Authorization: Bearer` and the first request returned 401.
   if (spec.auth?.kind === "none") {
     operation["security"] = [];
   }
 
-  // Sin esquema: no se sabe qué devuelve. Ver la cabecera del fichero.
+  // No schema: we don't know what it returns. See the file header.
   operation["responses"] = {
     "200": { description: "OK" },
   };
@@ -214,40 +214,39 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
 }
 
 /**
- * Estado mutable que atraviesa todos los `buildOperation`.
+ * Mutable state that runs through all `buildOperation`.
  *
- * Hoy solo lleva `components` (los `$ref` que el `SchemaGraph` declara);
- * mañana podría llevar, p. ej., un `visited` global si dos endpoints
- * comparten un nodo por id y queremos deduplicarlo.
+ * Today it only carries `components` (the `$ref`s that `SchemaGraph`
+ * declares); tomorrow it could carry, e.g., a global `visited` if two
+ * endpoints share a node by id and we want to deduplicate it.
  */
 interface IBuildState {
   /**
-   * Acumulador de `components` por endpoint. Cada endpoint que tenga
-   * un `SchemaGraph` con nodos nombrados añade entradas aquí; al
-   * cerrar el documento se mueven bajo `components.schemas` (la forma
-   * que OpenAPI espera) y se mezclan con `securitySchemes`.
+   * Accumulator of `components` per endpoint. Each endpoint that has a
+   * `SchemaGraph` with named nodes adds entries here; when closing the
+   * document they are moved under `components.schemas` (the shape that
+   * OpenAPI expects) and mixed with `securitySchemes`.
    */
   readonly components: Record<string, Record<string, unknown>>;
 }
 
 /**
- * Traduce un `SchemaGraph` a un esquema JSON Schema válido en OpenAPI 3.1.
+ * Translates a `SchemaGraph` to a valid JSON Schema in OpenAPI 3.1.
  *
- * El emisor hace dos pasadas:
+ * The emitter does two passes:
  *
- *   1. Pre-registra todos los nodos con `name` como entradas vacías en
- *      `components`, para que las referencias adelantadas (`A → B`
- *      donde `B` se declara después) resuelvan en el documento final.
- *   2. Emite cada nodo nombrado y luego el root. Los `$ref` se
- *      resuelven contra `components` por `name`; los nodos sin nombre
- *      se inlinean.
+ *   1. Pre-register all nodes with `name` as empty entries in
+ *      `components`, so that forward references (`A → B` where `B` is
+ *      declared later) resolve in the final document.
+ *   2. Emit each named node and then the root. `$ref`s are resolved
+ *      against `components` by `name`; nodes without name are inlined.
  *
- * Los ciclos sin nombre (p. ej. una `union` cuyo `alternative` es
- * directamente el propio nodo) se cortan devolviendo `{}`: no hay forma
- * de $ref-enciar a un nodo anónimo y emitirlo en línea reentraría
- * infinitamente. `{}` en JSON Schema significa "matches anything", que
- * es lo más cercano a "esta parte del grafo es recursiva y la
- * renunciamos a pintarla".
+ * Cycles without name (e.g., a `union` whose `alternative` is directly
+ * the node itself) are cut by returning `{}`: there is no way to
+ * `$ref` an anonymous node, and emitting it inline would re-enter
+ * infinitely. `{}` in JSON Schema means "matches anything", which is
+ * the closest thing to "this part of the graph is recursive and we
+ * give up drawing it".
  */
 function emitSchemaGraph(
   graph: ISchemaGraph,
@@ -257,14 +256,14 @@ function emitSchemaGraph(
   const visiting = new Set<SchemaNodeId>();
   const state = { components, visiting };
 
-  // Pasada 1: placeholders. Hacen que las refs a nodos nombrados
-  // resuelvan aunque todavía no hemos emitido el cuerpo del nodo.
+  // Pass 1: placeholders. They make refs to named nodes resolve even
+  // though we have not yet emitted the body of the node.
   for (const [, node] of graph.nodes) {
     if (node.name && !(node.name in components)) {
       components[node.name] = {};
     }
   }
-  // Pasada 2: emitir cada nodo nombrado sobre el placeholder.
+  // Pass 2: emit each named node over the placeholder.
   for (const [, node] of graph.nodes) {
     if (!node.name) continue;
     visiting.add(node.id);
@@ -275,32 +274,33 @@ function emitSchemaGraph(
     }
   }
 
-  // Pasada 3: el root. Se inlinea **siempre**: el `requestBody` del
-  // endpoint lleva la forma del body, no un puntero a un componente
-  // (un `$ref`根部 serviría si quisiéramos reusar la raíz desde varios
-  // endpoints, pero un body por endpoint es lo normal y un `$ref`
-  // aquí solo añadiría ruido). Los hijos con `name` siguen yendo a
-  // `components.schemas` y se referencian desde dentro.
+  // Pass 3: the root. It is **always** inlined: the endpoint's
+  // `requestBody` carries the body shape, not a pointer to a component
+  // (a root `$ref` would serve if we wanted to reuse the root from
+  // several endpoints, but a body per endpoint is the norm and a
+  // `$ref` here would only add noise). Children with `name` keep
+  // going to `components.schemas` and are referenced from within.
   //
-  // NO añadimos `rootId` a `visiting` antes de emitir: el guard de
-  // ciclos al inicio de `emitSchemaNode` miraría la presencia y, al
-  // ser el root anónimo, saldría con `{}`. La detección de ciclos solo
-  // tiene que activarse cuando **re-entramos** en un nodo dentro de la
-  // recursión, no al arrancar la primera llamada.
+  // We DO NOT add `rootId` to `visiting` before emitting: the cycle
+  // guard at the start of `emitSchemaNode` would check the presence
+  // and, since the root is anonymous, would exit with `{}`. Cycle
+  // detection only has to activate when we **re-enter** a node within
+  // the recursion, not when starting the first call.
   const root = graph.nodes.get(rootId);
   if (!root) return { schema: {}, components };
   const schema = emitSchemaNode(graph, root, state);
   return { schema, components };
 }
 
-/** Despacha por `kind` para emitir el nodo como JSON Schema. */
+/** Dispatches by `kind` to emit the node as JSON Schema. */
 function emitSchemaNode(
   graph: ISchemaGraph,
   node: ISchemaNode,
   state: { components: Record<string, Record<string, unknown>>; visiting: Set<SchemaNodeId> },
 ): Record<string, unknown> {
-  // Corte de ciclo para nodos sin nombre: sin un nombre al que $ref,
-  // inlinearlo reentraría. `{}` (matches all) es la salida más honesta.
+  // Cycle cut for nodes without name: without a name to $ref to,
+  // inlining it would re-enter. `{}` (matches all) is the most honest
+  // output.
   if (state.visiting.has(node.id) && !node.name) return {};
 
   switch (node.kind) {
@@ -337,20 +337,20 @@ function emitSchemaNode(
       return emitSchemaNode(graph, target, state);
     }
     case "nullable": {
-      // OpenAPI 3.1 usa JSON Schema 2020-12: `nullable: true` está
-      // deprecado. La nulabilidad se modela con `type: [T, "null"]`
-      // cuando el inner tiene un `type` escalar (string/number/etc.,
-      // incluido object y array — JSON Schema 2020-12 acepta arrays
-      // de tipos para todas las clases), o `oneOf: [T, { type: "null" }]`
-      // cuando no lo tiene (unions, references con `$ref`). Si el
-      // `inner` falta (grafo incompleto), emitimos `{ type: "null" }`
-      // — el fallback vive dentro de `emitNullable`.
+      // OpenAPI 3.1 uses JSON Schema 2020-12: `nullable: true` is
+      // deprecated. Nullability is modeled with `type: [T, "null"]`
+      // when the inner has a scalar `type` (string/number/etc.,
+      // including object and array — JSON Schema 2020-12 accepts
+      // arrays of types for all classes), or `oneOf: [T, { type: "null" }]`
+      // when it does not have one (unions, references with `$ref`).
+      // If the `inner` is missing (incomplete graph), we emit
+      // `{ type: "null" }` — the fallback lives inside `emitNullable`.
       return emitNullable(graph, node, state);
     }
   }
 }
 
-/** Resuelve un id y emite su nodo. Helper para no repetir `graph.nodes.get`. */
+/** Resolves an id and emits its node. Helper to avoid repeating `graph.nodes.get`. */
 function emitFromId(
   graph: ISchemaGraph,
   id: SchemaNodeId,
@@ -362,17 +362,17 @@ function emitFromId(
 }
 
 /**
- * Decide cómo emitir un nodo en posición de **hijo** (campo de objeto,
- * item de array, etc.).
+ * Decides how to emit a node in **child** position (object field, array
+ * item, etc.).
  *
- * Distinto del root, que siempre se inlinea: el body del endpoint
- * lleva la forma del body, no un puntero a un componente. Aquí, en
- * cambio, lo normal es que el hijo sea un tipo reusado y se prefiera
- * `$ref` a inline (reuso es lo que hace `components` valioso).
+ * Different from the root, which is always inlined: the endpoint's body
+ * carries the body shape, not a pointer to a component. Here, on the
+ * other hand, the child is normally a reused type and `$ref` is
+ * preferred over inline (reuse is what makes `components` valuable).
  *
- * Las referencias son el caso especial: si el hijo es un nodo
- * `reference`, miramos el **target** para decidir. Si el target tiene
- * nombre, `$ref`; si no, lo inlineamos.
+ * References are the special case: if the child is a `reference` node,
+ * we look at the **target** to decide. If the target has a name,
+ * `$ref`; otherwise, we inline it.
  */
 function emitChild(
   graph: ISchemaGraph,
@@ -393,7 +393,7 @@ function emitChild(
   return emitSchemaNode(graph, node, state);
 }
 
-/** Emite un `object` como `{ type: "object", properties, required }`. */
+/** Emits an `object` as `{ type: "object", properties, required }`. */
 function emitObjectSchema(
   graph: ISchemaGraph,
   node: ISchemaNode,
@@ -412,7 +412,7 @@ function emitObjectSchema(
   return out;
 }
 
-/** Emite un `array` como `{ type: "array", items }`. */
+/** Emits an `array` as `{ type: "array", items }`. */
 function emitArraySchema(
   graph: ISchemaGraph,
   node: ISchemaNode,
@@ -426,7 +426,7 @@ function emitArraySchema(
   return { type: "array", items };
 }
 
-/** Emite una `tuple` como `{ type: "array", prefixItems }` (OpenAPI 3.1 = JSON Schema 2020-12). */
+/** Emits a `tuple` as `{ type: "array", prefixItems }` (OpenAPI 3.1 = JSON Schema 2020-12). */
 function emitTupleSchema(
   graph: ISchemaGraph,
   node: ISchemaNode,
@@ -442,7 +442,7 @@ function emitTupleSchema(
   return { type: "array", prefixItems };
 }
 
-/** Emite un `scalar` con sus constraints como `{ type, format, minimum, ... }`. */
+/** Emits a `scalar` with its constraints as `{ type, format, minimum, ... }`. */
 function emitScalarSchema(node: ISchemaNode): Record<string, unknown> {
   const out: Record<string, unknown> = { type: node.scalarType ?? "string" };
   const c = node.constraints;
@@ -457,22 +457,22 @@ function emitScalarSchema(node: ISchemaNode): Record<string, unknown> {
 }
 
 /**
- * Emite un nodo `nullable` como composición válida en OpenAPI 3.1.
+ * Emits a `nullable` node as a valid composition in OpenAPI 3.1.
  *
- * OpenAPI 3.1 adopta JSON Schema 2020-12 y elimina `nullable: true`.
- * La nulabilidad se modela así:
+ * OpenAPI 3.1 adopts JSON Schema 2020-12 and removes `nullable: true`.
+ * Nullability is modeled like this:
  *
- *   - **Escalares** (`scalar`/`enum`/`literal`): `type: [T, "null"]`
- *     — la forma más compacta y fiel a la intención.
- *   - **Compuestos** (`object`/`array`/`union`/`intersection`):
- *     `oneOf: [{...inner}, { type: "null" }]` — aquí el `type` no
- *     admite array, así que pasamos por composición.
- *   - **References**: el `$ref` también puede envolverse en
- *     `oneOf: [{$ref}, { type: "null" }]`; el formato 3.1 lo permite.
+ *   - **Scalars** (`scalar`/`enum`/`literal`): `type: [T, "null"]` —
+ *     the most compact shape, faithful to the intent.
+ *   - **Compounds** (`object`/`array`/`union`/`intersection`):
+ *     `oneOf: [{...inner}, { type: "null" }]` — here the `type` does
+ *     not accept an array, so we go through composition.
+ *   - **References**: the `$ref` can also be wrapped in
+ *     `oneOf: [{$ref}, { type: "null" }]`; the 3.1 format allows it.
  *
- * Si el inner no resuelve a nada (grafo incompleto), devolvemos
- * `{ type: "null" }`: "esto puede ser null, nada más" es lo más
- * honesto que podemos decir sin inventar.
+ * If the inner doesn't resolve to anything (incomplete graph), we
+ * return `{ type: "null" }`: "this may be null, nothing more" is the
+ * most honest thing we can say without making it up.
  */
 function emitNullable(
   graph: ISchemaGraph,
@@ -480,26 +480,26 @@ function emitNullable(
   state: { components: Record<string, Record<string, unknown>>; visiting: Set<SchemaNodeId> },
 ): Record<string, unknown> {
   const inner = node.inner ? emitFromId(graph, node.inner, state) : {};
-  // Si el inner no resuelve a nada (grafo incompleto), caemos a
-  // `{ type: "null" }`: "esto puede ser null, nada más" es lo más
-  // honesto que podemos decir sin inventar.
+  // If the inner doesn't resolve to anything (incomplete graph), we
+  // fall back to `{ type: "null" }`: "this may be null, nothing more"
+  // is the most honest thing we can say without making it up.
   if (Object.keys(inner).length === 0) {
     return { type: "null" };
   }
-  // Si el inner tiene un `type` escalar (string, number, object,
-  // array, …), la nulabilidad va como `type: [T, "null"]`. JSON
-  // Schema 2020-12 (y por tanto OpenAPI 3.1) admite esto para
-  // cualquier `type`, no solo los escalares en sentido estricto.
+  // If the inner has a scalar `type` (string, number, object,
+  // array, …), nullability goes as `type: [T, "null"]`. JSON Schema
+  // 2020-12 (and therefore OpenAPI 3.1) allows this for any `type`,
+  // not only strict-sense scalars.
   const innerType = inner["type"];
   if (typeof innerType === "string") {
     return { ...inner, type: [innerType, "null"] };
   }
-  // El inner no tiene `type` propio (es un `oneOf`/`allOf`/`$ref`):
-  // pasamos a composición explícita.
+  // The inner has no own `type` (it's a `oneOf`/`allOf`/`$ref`): we
+  // move to explicit composition.
   return { oneOf: [inner, { type: "null" }] };
 }
 
-/** El bloque `securitySchemes`, derivado de lo ya detectado. */
+/** The `securitySchemes` block, derived from what was already detected. */
 function buildSecurity(auth: IExportInput["auth"]): {
   schemes: Record<string, unknown>;
   requirement: Array<Record<string, string[]>>;
@@ -537,31 +537,32 @@ function buildSecurity(auth: IExportInput["auth"]): {
 }
 
 /**
- * El documento OpenAPI como objeto, antes de serializarlo.
+ * The OpenAPI document as an object, before serializing it.
  *
- * Se exporta para poder comprobar su **estructura** con aserciones
- * precisas en vez de buscando subcadenas en un YAML. Que el YAML sea
- * correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
+ * It is exported so its **structure** can be checked with precise
+ * assertions instead of scanning for substrings in a YAML. That the
+ * YAML itself is correct is another problem, and `yaml.helper.spec.ts`
+ * covers it.
  */
 export function buildOpenApiDocument(input: IExportInput): Record<string, unknown> {
   const { specs, config, auth } = input;
 
-    // `components` se rellena sobre la marcha con los `$ref` que los
-    // endpoints declaran en su `SchemaGraph`. Si nadie declara nada,
-    // queda vacío y `document.components` no aparece — preserva el
-    // comportamiento previo, donde `components` solo existía si había
-    // `securitySchemes`.
+    // `components` is filled on the fly with the `$ref`s that the
+    // endpoints declare in their `SchemaGraph`. If nobody declares
+    // anything, it stays empty and `document.components` doesn't appear
+    // — preserves the previous behavior, where `components` only
+    // existed when there were `securitySchemes`.
     const state: IBuildState = { components: {} };
 
-    // Un `path` de OpenAPI agrupa sus métodos: `/users` con `get` y
-    // `post` es UNA entrada con dos operaciones, no dos entradas.
+    // An OpenAPI `path` groups its methods: `/users` with `get` and
+    // `post` is ONE entry with two operations, not two entries.
     const paths: Record<string, Record<string, unknown>> = {};
     for (const spec of specs) {
       const path = toOpenApiPath(spec.uri);
       const bucket = paths[path] ?? (paths[path] = {});
-      // La **primera** gana, para que coincida con lo que dice el aviso.
-      // Con `=` a secas ganaba la última, y el aviso mentía sobre cuál
-      // se había conservado.
+      // The **first** wins, so it matches what the warning says. With
+      // plain `=` the last won, and the warning lied about which one
+      // had been kept.
       const verb = spec.method.toLowerCase();
       if (!(verb in bucket)) bucket[verb] = buildOperation(spec, state);
     }
@@ -571,10 +572,11 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
       state.components["securitySchemes"] = security.schemes;
     }
 
-    // OpenAPI 3.1 separa `components.schemas` (los tipos reutilizables
-    // declarados por el `SchemaGraph`) de `components.securitySchemes`
-    // (el bloque de auth). Si hay `components` acumulados, los movemos
-    // bajo `schemas` y dejamos `securitySchemes` a nivel de `components`.
+    // OpenAPI 3.1 separates `components.schemas` (the reusable types
+    // declared by `SchemaGraph`) from `components.securitySchemes`
+    // (the auth block). If there are accumulated `components`, we move
+    // them under `schemas` and leave `securitySchemes` at the
+    // `components` level.
     const document: Record<string, unknown> = {
       openapi: "3.1.0",
       info: {
@@ -603,18 +605,18 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
   return document;
 }
 
-/** Serializa el catálogo a un documento OpenAPI 3.1.0 en YAML. */
+/** Serializes the catalog to an OpenAPI 3.1.0 document in YAML. */
 export class OpenApiExporter implements IExportTarget {
   readonly format = "openapi";
   readonly summary = "OpenAPI 3.1.0 (YAML) — SDKs, gateways, Swagger Editor";
 
   /**
-   * Operaciones que se pierden por la forma del formato.
+   * Operations that get lost due to the shape of the format.
    *
-   * OpenAPI indexa por ruta + método, así que dos endpoints que
-   * comparten los dos son **el mismo** para el documento. En REST no
-   * pasa; en RPC sobre POST —GraphQL, tRPC con un solo endpoint— es la
-   * norma.
+   * OpenAPI indexes by route + method, so two endpoints that share both
+   * are **the same** for the document. It doesn't happen in REST; in
+   * RPC over POST —GraphQL, tRPC with a single endpoint— it is the
+   * norm.
    */
   warnings(input: IExportInput): string[] {
     const byKey = new Map<string, string[]>();

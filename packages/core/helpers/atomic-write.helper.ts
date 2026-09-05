@@ -1,40 +1,42 @@
 /**
- * Escribir un fichero entero, o no escribirlo.
+ * Write a whole file, or don't write it at all.
  *
- * `writeFile` sobre una ruta que ya existe **trunca primero y escribe
- * después**. Entre esos dos momentos el fichero está a medias, y si el
- * proceso muere ahí —Ctrl-C, OOM, la batería— lo que queda no es una
- * colección incompleta: es un JSON truncado, que Postman no abre.
+ * `writeFile` on a path that already exists **truncates first and
+ * writes after**. Between those two moments the file is half-written,
+ * and if the process dies there —Ctrl-C, OOM, the battery— what
+ * remains is not an incomplete collection: it's a truncated JSON, which
+ * Postman won't open.
  *
- * El caso serio es `watch`. Reescribe la colección en cada cambio del
- * proyecto, y el flujo que documenta el README es tenerla importada en
- * Postman mientras se programa. Cada guardado era una ventana para leer
- * un JSON a medio escribir, y el producto entero de esta herramienta es
- * ese fichero.
+ * The serious case is `watch`. It rewrites the collection on every
+ * project change, and the flow the README documents is having it
+ * imported in Postman while you code. Every save was a window for
+ * reading a half-written JSON, and the whole product of this tool is
+ * that file.
  *
- * La solución es vieja y conocida: escribir en un temporal y renombrar.
- * `rename` dentro del mismo sistema de ficheros es atómico — quien lea
- * la ruta ve el contenido de antes o el de después, nunca la mitad.
+ * The solution is old and well-known: write to a temp file and rename.
+ * `rename` within the same filesystem is atomic — whoever reads the
+ * path sees the previous content or the new one, never half of it.
  *
- * Dos detalles que no son opcionales:
+ * Two details that aren't optional:
  *
- *   1. **El temporal va en el directorio de destino**, no en `/tmp`.
- *      Un `rename` entre sistemas de ficheros distintos no existe: el
- *      sistema devuelve `EXDEV` y hay que copiar, que es justo lo que
- *      se quería evitar. Y `/tmp` es otro sistema de ficheros más veces
- *      de las que parece.
- *   2. **El temporal se borra si algo falla**, para no dejar basura al
- *      lado de la colección con un nombre que nadie reconoce.
+ *   1. **The temp file goes in the destination directory**, not in
+ *      `/tmp`. A `rename` between different filesystems doesn't exist:
+ *      the system returns `EXDEV` and you have to copy, which is
+ *      exactly what you wanted to avoid. And `/tmp` is another
+ *      filesystem more often than it seems.
+ *   2. **The temp file is deleted if anything fails**, so as not to
+ *      leave trash next to the collection under a name nobody
+ *      recognizes.
  */
 import { appendFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 /**
- * Sufijo del temporal.
+ * Suffix of the temp file.
  *
- * Lleva el pid y un contador para que dos escrituras a la vez sobre la
- * misma ruta no se pisen el temporal la una a la otra. No es un caso
- * que se haya visto, pero el coste de evitarlo es una plantilla.
+ * It carries the pid and a counter so that two concurrent writes to the
+ * same path don't step on each other's temp file. It's not a case we've
+ * seen, but the cost of avoiding it is one template literal.
  */
 let secuencia = 0;
 function rutaTemporal(destino: string): string {
@@ -44,10 +46,10 @@ function rutaTemporal(destino: string): string {
 }
 
 /**
- * Escribe `contenido` en `destino` de forma atómica.
+ * Writes `contenido` to `destino` atomically.
  *
- * Crea el directorio si hace falta. Si algo falla, `destino` se queda
- * exactamente como estaba y no queda ningún temporal por el medio.
+ * Creates the directory if needed. If anything fails, `destino` stays
+ * exactly as it was and no temp file is left behind.
  */
 export async function writeFileAtomic(
   destino: string,
@@ -61,21 +63,22 @@ export async function writeFileAtomic(
     await writeFile(temporal, contenido, "utf8");
     await rename(temporal, destino);
   } catch (error) {
-    // El temporal solo estorba. Si tampoco se puede borrar, el error que
-    // se propaga es el de la escritura, que es el que explica lo que
-    // pasó — no el del borrado, que es una consecuencia.
+    // The temp file is just in the way. If it can't be deleted either,
+    // the error that propagates is the write error, which is the one
+    // that explains what happened — not the delete error, which is a
+    // consequence.
     await rm(temporal, { force: true }).catch(() => undefined);
     throw error;
   }
 }
 
 /**
- * Lo mismo, para JSON.
+ * Same, for JSON.
  *
- * Serializa **antes** de tocar el disco: si el objeto tiene un ciclo o
- * un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
- * Serializar mientras se escribe es como se acaba con un fichero a
- * medias sin que el proceso llegue a morirse.
+ * Serializes **before** touching the disk: if the object has a cycle
+ * or a `BigInt`, `JSON.stringify` throws and no file has been opened.
+ * Serializing while writing is how you end up with a half-written file
+ * without the process even crashing.
  */
 export async function writeJsonAtomic(
   destino: string,
@@ -87,29 +90,29 @@ export async function writeJsonAtomic(
 }
 
 /**
- * Append atómico de `contenido` al final de `destino`.
+ * Atomic append of `contenido` to the end of `destino`.
  *
- * Se diferencia de `writeFileAtomic` en lo que protege:
+ * It differs from `writeFileAtomic` in what it protects:
  *
- *   - `writeFileAtomic` escribe el fichero **entero**: un `rename`
- *     dentro del mismo sistema de ficheros es atómico, pero el fichero
- *     se trunca antes del rename. Es lo que se quiere para una
- *     colección de Postman, donde el lector necesita la versión
- *     completa o nada.
+ *   - `writeFileAtomic` writes the **whole** file: a `rename` within
+ *     the same filesystem is atomic, but the file is truncated before
+ *     the rename. That's what you want for a Postman collection, where
+ *     the reader needs the complete version or nothing.
  *
- *   - `appendFileAtomic` añade `contenido` al final: usa `appendFile`,
- *     que abre el destino con `O_APPEND`. En POSIX eso es atómico
- *     por cada `write(2)`: dos procesos que escriben a la vez no se
- *     pisan —sus bytes van al final en algún orden, pero ninguno se
- *     pierde a medias—. Es lo que se quiere para un log en JSONL:
- *     cada línea es una entrada, y leer las últimas N líneas debe ser
- *     seguro aunque haya otra escritura en curso.
+ *   - `appendFileAtomic` appends `contenido` to the end: it uses
+ *     `appendFile`, which opens the destination with `O_APPEND`. On
+ *     POSIX that's atomic per `write(2)`: two processes writing at
+ *     once don't step on each other —their bytes end up at the end in
+ *     some order, but none is lost half-written—. That's what you want
+ *     for a JSONL log: each line is one entry, and reading the last N
+ *     lines must be safe even if another write is in progress.
  *
- * Si el fichero no existe, lo crea (mkdir recursivo del directorio,
- * igual que `writeFileAtomic`). Si la escritura falla, no deja
- * contenido parcial visible: `appendFile` no trunca antes de escribir,
- * así que un fallo a mitad de línea se ve como un prefijo sin newline,
- * y eso lo maneja la lectura tratándolo como línea corrupta.
+ * If the file doesn't exist, it creates it (recursive mkdir on the
+ * directory, same as `writeFileAtomic`). If the write fails, it
+ * doesn't leave partial content visible: `appendFile` doesn't truncate
+ * before writing, so a failure halfway through a line shows up as a
+ * prefix without a newline, and that's handled by the reader as a
+ * corrupted line.
  */
 export async function appendFileAtomic(
   destino: string,

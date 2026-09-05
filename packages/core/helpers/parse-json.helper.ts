@@ -1,29 +1,28 @@
 /**
- * Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
+ * Parse third-party JSON without `any` leaking into the rest of the program.
  *
- * Los scanners leen manifiestos y specs **de otra gente**: entrada no
- * controlada. El patrón que había era siempre el mismo —
- * `let parsed: any; try { parsed = JSON.parse(raw) } catch {}` — y a
- * partir de ahí `any` viajaba por medio scanner sin que el compilador
- * pudiera decir nada.
+ * The scanners read manifests and specs **written by someone else**:
+ * uncontrolled input. The pattern that was there was always the same —
+ * `let parsed: any; try { parsed = JSON.parse(raw) } catch {}` — and
+ * from there `any` traveled through half the scanner without the compiler
+ * being able to say anything.
  *
- * No es teórico: `__params` entró exactamente por un punto donde el tipo
- * dejaba de describir lo que circulaba.
+ * It's not theoretical: `__params` entered exactly through a point where
+ * the type stopped describing what was circulating.
  *
- * `unknown` obliga a preguntar antes de usar, que es justo lo que hay
- * que hacer con un fichero que ha escrito otro. Los predicados de abajo
- * son las preguntas que los scanners repetían a mano, cada uno a su
- * manera.
+ * `unknown` forces you to ask before using, which is exactly what you
+ * have to do with a file written by someone else. The predicates below
+ * are the questions the scanners kept asking by hand, each in its own way.
  */
 import type { JsonRead } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * Parsea, distinguiendo "no se pudo" de "parseó a `null`".
+ * Parse, distinguishing "couldn't parse" from "parsed to `null`".
  *
- * Los dos casos se confundían: `JSON.parse("null")` devuelve `null`, y
- * un `catch` que también deja `null` hace que un fichero corrupto y uno
- * que legítimamente contiene `null` acaben iguales. Solo uno de los dos
- * merece un aviso.
+ * The two cases got confused: `JSON.parse("null")` returns `null`, and a
+ * `catch` that also leaves `null` makes a corrupt file and one that
+ * legitimately contains `null` end up identical. Only one of them
+ * deserves a warning.
  */
 export function parseJson(raw: string): JsonRead {
   try {
@@ -33,12 +32,12 @@ export function parseJson(raw: string): JsonRead {
   }
 }
 
-/** ¿Es un objeto con claves, y no `null` ni un array? */
+/** Is it an object with keys, and not `null` or an array? */
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** El valor de una clave, si es un objeto. */
+/** The value of a key, if it's an object. */
 export function readObject(
   value: unknown,
   key: string,
@@ -48,14 +47,14 @@ export function readObject(
   return isRecord(found) ? found : undefined;
 }
 
-/** El valor de una clave, si es una cadena no vacía. */
+/** The value of a key, if it's a non-empty string. */
 export function readString(value: unknown, key: string): string | undefined {
   if (!isRecord(value)) return undefined;
   const found = value[key];
   return typeof found === "string" && found.length > 0 ? found : undefined;
 }
 
-/** El valor de una clave, si es un array. */
+/** The value of a key, if it's an array. */
 export function readArray(value: unknown, key: string): unknown[] | undefined {
   if (!isRecord(value)) return undefined;
   const found = value[key];
@@ -63,13 +62,13 @@ export function readArray(value: unknown, key: string): unknown[] | undefined {
 }
 
 /**
- * Las dependencias declaradas en un `package.json`, fundidas.
+ * The dependencies declared in a `package.json`, merged.
  *
- * `dependencies` y `devDependencies` juntas, porque la pregunta que los
- * scanners hacen es «¿este proyecto usa X?» y un framework en
- * `devDependencies` sigue siendo el framework del proyecto. Unos
- * scanners las miraban y otros no, así que el mismo proyecto se
- * detectaba o no según cuál preguntara.
+ * `dependencies` and `devDependencies` together, because the question
+ * the scanners ask is "does this project use X?" and a framework in
+ * `devDependencies` is still the project's framework. Some scanners
+ * looked at them and others didn't, so the same project was detected or
+ * not depending on which one was asking.
  */
 export function declaredDependencies(pkg: unknown): Record<string, string> {
   const out: Record<string, string> = {};

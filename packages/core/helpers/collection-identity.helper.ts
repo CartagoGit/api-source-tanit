@@ -1,36 +1,36 @@
 /**
- * Identidad estable de los artefactos Postman.
+ * Stable identity of Postman artifacts.
  *
- * Postman usa `info._postman_id` para decidir si un import **actualiza**
- * una colección existente o **crea otra nueva**. El builder llamaba a
- * `crypto.randomUUID()` en cada ejecución, así que regenerar y volver a
- * importar dejaba una colección más en el workspace cada vez. Lo mismo
- * con los environments.
+ * Postman uses `info._postman_id` to decide whether an import
+ * **updates** an existing collection or **creates a new one**. The
+ * builder was calling `crypto.randomUUID()` on every run, so
+ * regenerating and re-importing left one more collection in the
+ * workspace each time. Same with environments.
  *
- * Aquí el ID se deriva de la identidad del proyecto mediante UUID v5
- * (RFC 4122 §4.3): misma semilla → mismo UUID, siempre. Dos proyectos
- * distintos nunca colisionan porque la semilla incluye su nombre.
+ * Here the ID is derived from the project's identity using UUID v5
+ * (RFC 4122 §4.3): same seed → same UUID, always. Two different
+ * projects never collide because the seed includes the project name.
  *
- * Se implementa a mano (SHA-1 + ajuste de bits) para no añadir una
- * dependencia por 30 líneas.
+ * Implemented by hand (SHA-1 + bit adjustment) to avoid adding a
+ * dependency for 30 lines.
  */
 import { createHash } from "node:crypto";
 import type { ICollectionIdentity } from "../../contracts/interfaces/core/helpers.interface.js";
 
 /**
- * Namespace propio del paquete, generado una vez y fijado aquí.
+ * Package's own namespace, generated once and pinned here.
  *
- * No cambiar: cambiarlo desplaza TODOS los IDs y haría que la siguiente
- * importación duplicase cada colección ya existente en Postman.
+ * Do not change: changing it shifts ALL IDs and would cause the next
+ * import to duplicate every collection that already exists in Postman.
  */
 const POSTMAN_EXPORTER_NAMESPACE = "6f9b1d3e-4c2a-5e8f-9a7b-1c3d5e7f9a2b";
 
 /**
- * UUID v5 determinista a partir de una semilla.
+ * Deterministic UUID v5 from a seed.
  *
- * @param seed Texto que identifica al artefacto (nombre del proyecto,
- *             nombre del entorno…). Se normaliza para que diferencias de
- *             mayúsculas o espacios no produzcan IDs distintos.
+ * @param seed Text that identifies the artifact (project name,
+ *             environment name…). Normalized so that differences in
+ *             casing or whitespace don't produce different IDs.
  */
 export function stableUuid(seed: string): string {
   const normalized = normalizeSeed(seed);
@@ -39,8 +39,8 @@ export function stableUuid(seed: string): string {
   hash.update(Buffer.from(normalized, "utf8"));
   const bytes = hash.digest();
 
-  // RFC 4122: versión 5 en el nibble alto del byte 6, variante 10x en
-  // los dos bits altos del byte 8.
+  // RFC 4122: version 5 in the high nibble of byte 6, variant 10x in
+  // the two high bits of byte 8.
   const out = Buffer.from(bytes.subarray(0, 16));
   out[6] = ((out[6] ?? 0) & 0x0f) | 0x50;
   out[8] = ((out[8] ?? 0) & 0x3f) | 0x80;
@@ -56,11 +56,11 @@ export function stableUuid(seed: string): string {
 }
 
 /**
- * ID de la colección de un proyecto.
+ * ID of a project's collection.
  *
- * Si el host declara `collectionId`, se respeta tal cual: es la vía para
- * conservar la colección en Postman aunque se renombre o se mueva el
- * proyecto de carpeta.
+ * If the host declares `collectionId`, it's honored as-is: it's the
+ * way to keep the collection in Postman even if the project is renamed
+ * or moved between folders.
  */
 export function collectionIdFor(identity: ICollectionIdentity): string {
   const explicit = identity.explicitId?.trim();
@@ -70,19 +70,19 @@ export function collectionIdFor(identity: ICollectionIdentity): string {
     .map((p) => p?.trim())
     .filter((p): p is string => Boolean(p));
 
-  // Sin ninguna pista usable, una semilla fija sigue siendo mejor que un
-  // UUID aleatorio: al menos re-importar no duplica.
+  // Without any usable hint, a fixed seed is still better than a
+  // random UUID: at least re-importing doesn't duplicate.
   return stableUuid(parts.length > 0 ? `collection:${parts.join("|")}` : "collection:unnamed");
 }
 
-/** ID de un environment, derivado del de su colección y del nombre del entorno. */
+/** ID of an environment, derived from its collection's ID and the environment name. */
 export function environmentIdFor(collectionId: string, environmentName: string): string {
   return stableUuid(`environment:${collectionId}|${environmentName}`);
 }
 
 /**
- * Normaliza la semilla: minúsculas, sin acentos, espacios colapsados.
- * Así "Mi API" y "mi  api" no producen dos colecciones distintas.
+ * Normalize the seed: lowercase, no accents, whitespace collapsed. So
+ * "Mi API" and "mi  api" don't produce two different collections.
  */
 function normalizeSeed(seed: string): string {
   return seed
@@ -94,12 +94,12 @@ function normalizeSeed(seed: string): string {
 }
 
 /**
- * Convierte un UUID canónico a sus 16 bytes.
+ * Convert a canonical UUID to its 16 bytes.
  *
- * El tipo de retorno se anota como `Uint8Array` y no como el
- * `BufferLike` ambient de este paquete: el plugin de delendai importa
- * este helper y se tipa con `@types/node`, donde ese nombre no existe.
- * `Uint8Array` es estándar y ambos mundos lo entienden.
+ * The return type is annotated as `Uint8Array` and not as this
+ * package's ambient `BufferLike`: the delendai plugin imports this
+ * helper and is typed with `@types/node`, where that name doesn't
+ * exist. `Uint8Array` is standard and both worlds understand it.
  */
 function uuidToBytes(uuid: string): Uint8Array {
   return Buffer.from(uuid.replace(/-/g, ""), "hex");

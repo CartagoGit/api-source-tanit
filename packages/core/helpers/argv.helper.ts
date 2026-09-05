@@ -1,40 +1,40 @@
 /**
- * Leer un flag de la línea de comandos, una sola vez.
+ * Read a flag from the command line, once.
  *
- * Esta función de seis líneas estaba copiada **cuatro veces**, y las
- * copias no coincidían:
+ * This six-line function was copied **four times**, and the copies
+ * didn't match:
  *
- * | Dónde | Devuelve | Nombre |
+ * | Where | Returns | Name |
  * |---|---|---|
  * | `project-loader.service` | `string \| null` | `readFlag` |
  * | `project-context.service` | `string \| undefined` | `readFlag` |
  * | `push.script` | `string \| null` | `readFlag` |
- * | `init.script` | `string \| null` | `flag(name, argv)` — argumentos al revés |
+ * | `init.script` | `string \| null` | `flag(name, argv)` — arguments reversed |
  *
- * Dos de ellas viven en el núcleo y discrepan en cómo dicen "no está".
- * Eso no rompe el compilador y se manifiesta más tarde: quien lea una y
- * escriba `flag === undefined` acierta en una y falla en las otras tres,
- * porque `null === undefined` es `false`. Y la cuarta, además, tiene los
- * argumentos en el orden contrario, así que copiar una llamada de un
- * fichero a otro compila y hace otra cosa.
+ * Two of them live in the core and disagree on how to say "not there".
+ * That doesn't break the compiler and shows up later: whoever reads one
+ * and writes `flag === undefined` is right in one and wrong in the
+ * other three, because `null === undefined` is `false`. And the fourth
+ * one also has the arguments in the opposite order, so copying a call
+ * from one file to another compiles and does something else.
  *
- * ## Por qué `undefined` y no `null`
+ * ## Why `undefined` and not `null`
  *
- * Porque es lo que ya devuelve indexar un array fuera de rango, que es
- * de donde sale el valor. Con `noUncheckedIndexedAccess` activo,
- * `argv[i + 1]` **ya** es `string | undefined`: devolver `null` obliga a
- * convertir, y esa conversión es justo donde se pierde la diferencia.
- * Además `?? ` funciona igual con los dos, así que el sitio de llamada
- * no cambia.
+ * Because that's what indexing an array out of range already returns,
+ * which is where the value comes from. With `noUncheckedIndexedAccess`
+ * on, `argv[i + 1]` **is** already `string | undefined`: returning
+ * `null` forces a conversion, and that conversion is exactly where the
+ * difference gets lost. Plus `?? ` works the same with both, so the
+ * call site doesn't change.
  */
 
 /**
- * El valor de `--flag valor`, o `undefined` si no está.
+ * The value of `--flag value`, or `undefined` if not present.
  *
- * Acepta también `--flag=valor`, que es como lo escribe la mitad de la
- * gente y como lo generan casi todos los scripts. Antes solo funcionaba
- * la forma con espacio y la otra se ignoraba en silencio: el flag
- * parecía no estar.
+ * Also accepts `--flag=value`, which is how half the people write it
+ * and how almost every script generates it. Before, only the
+ * space-separated form worked and the other one was silently ignored:
+ * the flag looked like it wasn't there.
  */
 export function readFlag(
   argv: ReadonlyArray<string>,
@@ -43,8 +43,8 @@ export function readFlag(
   const index = argv.indexOf(name);
   if (index !== -1) {
     const value = argv[index + 1];
-    // `--output-dir --json` no es un valor: es el flag siguiente. Sin
-    // esto, `--output-dir` sin valor se llevaba `--json` por delante.
+    // `--output-dir --json` is not a value: it's the next flag.
+    // Without this, `--output-dir` without a value takes `--json` with it.
     return value !== undefined && !value.startsWith("--") ? value : undefined;
   }
   const prefijo = `${name}=`;
@@ -52,7 +52,7 @@ export function readFlag(
   return pegado?.slice(prefijo.length);
 }
 
-/** ¿Está el flag, con valor o sin él? */
+/** Is the flag present, with or without a value? */
 export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean {
   return argv.includes(name) || argv.some((arg) => arg.startsWith(`${name}=`));
 }

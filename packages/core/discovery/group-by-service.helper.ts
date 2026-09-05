@@ -101,22 +101,62 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
   }
 
   const services: IServiceDescriptor[] = [];
+  const byId = new Map<string, IServiceDescriptor>();
+  // Flat hybrid project: several frameworks over the SAME root (no
+  // monorepo, no `frameworkSearchRoot`). They are ONE service with
+  // several capabilities, not N services — the legacy
+  // `generateCollection()` contract must keep returning one
+  // collection for them. Keyed by projectRoot in that case; keyed by
+  // the derived id otherwise (workspaces keep their per-service
+  // split).
+  const flatHybrid =
+    input.detectedMonorepo === false &&
+    input.matches.every(
+      (m) => m.frameworkSearchRoot === undefined || m.frameworkSearchRoot === "",
+    );
+  const serviceKeyOf = (match: IProjectMatch): string =>
+    flatHybrid ? normalizeServiceId(match.projectRoot) : deriveServiceId(match);
   for (const match of input.matches) {
-    const serviceId = deriveServiceId(match);
+    const serviceId = serviceKeyOf(match);
+    // In the flat-hybrid case the per-framework entries of
+    // `routesByMatch` live under their derived ids, so this lookup
+    // misses by design: the routes arrive via the merge below, from
+    // every framework of the same root.
     const routes = input.routesByMatch.get(serviceId) ?? [];
-    if (!input.routesByMatch.has(serviceId)) {
+    if (!flatHybrid && !input.routesByMatch.has(serviceId)) {
       throw new Error(
         `groupByService is missing routes for service '${serviceId}' (framework=${match.framework})`,
       );
     }
-    services.push({
+    const existing = byId.get(serviceId);
+    if (existing) {
+      // Second (or later) match of the same service: merge its routes
+      // in, deduplicating by `(method, uri, sourceFile)` — the same
+      // identity `accumulateRoutesByService` uses.
+      existing.endpoints = [
+        ...existing.endpoints,
+        ...routes.filter(
+          (r) =>
+            !existing.endpoints.some(
+              (e) =>
+                e.method === r.method &&
+                e.uri === r.uri &&
+                e.sourceFile === r.sourceFile,
+            ),
+        ),
+      ];
+      continue;
+    }
+    const descriptor: IServiceDescriptor = {
       serviceId,
       match,
       endpoints: routes,
       baseUrl: input.baseUrlByService?.get(serviceId) ?? null,
       auth: input.authByService?.get(serviceId) ?? undefined,
       variables: input.variablesByService?.get(serviceId) ?? [],
-    });
+    };
+    byId.set(serviceId, descriptor);
+    services.push(descriptor);
   }
   return { services, combined };
 }

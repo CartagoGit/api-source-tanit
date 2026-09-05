@@ -1,32 +1,32 @@
 /**
- * Recorrido recursivo de directorios para los scanners.
+ * Recursive directory walk for the scanners.
  *
- * Cuatro scanners repetían la misma llamada a `readdir` con un cast para
- * saltarse los tipos de `Dirent`. Ese cast silencia errores reales, así
- * que el recorrido vive aquí una sola vez y con tipos honestos.
+ * Four scanners repeated the same `readdir` call with a cast to skip
+ * the types of `Dirent`. That cast silences real errors, so the walk
+ * lives here, only once, with honest types.
  *
- * El recorrido es **manual**, carpeta a carpeta, y no un
- * `readdir(root, { recursive: true })`. La diferencia importa: la
- * versión recursiva es una única llamada, así que en cuanto algo de
- * dentro falla —un bucle de enlaces simbólicos, una subcarpeta sin
- * permiso— se pierde el recorrido **entero**, incluido lo que ya había
- * encontrado. Medido: un proyecto de Express con un `src/self -> .`
- * devolvía 0 ficheros teniendo el `server.js` al lado, y la colección
- * salía vacía sin decir por qué.
+ * The walk is **manual**, folder by folder, and not a
+ * `readdir(root, { recursive: true })`. The difference matters: the
+ * recursive version is a single call, so as soon as something inside
+ * fails —a symlink loop, a subfolder without permission— the **entire**
+ * walk is lost, including what had already been found. Measured: an
+ * Express project with a `src/self -> .` returned 0 files even though
+ * `server.js` was right there, and the collection came out empty
+ * without saying why.
  *
- * Y los bucles no son raros: Capistrano despliega con un `current ->
- * .`, los monorepos enlazan paquetes entre sí, y `node_modules/.bin`
- * está lleno de enlaces.
+ * And loops aren't rare: Capistrano deploys with a `current -> .`,
+ * monorepos link packages to each other, and `node_modules/.bin` is
+ * full of links.
  *
- * Recorriendo a mano, un directorio problemático solo se pierde a sí
- * mismo. Y se lleva un registro de las rutas reales ya visitadas, que es
- * lo que corta los ciclos.
+ * Walking by hand, a problematic directory only loses itself. And it
+ * keeps a record of the real paths already visited, which is what cuts
+ * the cycles.
  */
 import { readdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import type { ICollectFilesOptions } from "../../contracts/interfaces/core/helpers.interface.js";
 
-/** Entrada de directorio. */
+/** Directory entry. */
 interface IDirentLike {
   readonly name: string;
   isFile(): boolean;
@@ -34,7 +34,7 @@ interface IDirentLike {
   isSymbolicLink(): boolean;
 }
 
-/** Directorios que nunca contienen código del proyecto escaneado. */
+/** Directories that never contain scanned project code. */
 const ALWAYS_SKIPPED = new Set([
   "node_modules",
   ".git",
@@ -48,19 +48,19 @@ const ALWAYS_SKIPPED = new Set([
 ]);
 
 /**
- * Profundidad máxima. Un proyecto real no anida 40 niveles de código;
- * si se llega aquí es que algo va mal, y es preferible parar a recorrer
- * el disco entero.
+ * Maximum depth. A real project doesn't nest code 40 levels deep; if we
+ * get here, something is wrong, and it's better to stop than walk the
+ * whole disk.
  */
 const MAX_DEPTH = 40;
 
 /**
- * Rutas absolutas de todos los ficheros bajo `root` (recursivo) cuyo
- * nombre pasa el filtro.
+ * Absolute paths of all files under `root` (recursive) whose name
+ * passes the filter.
  *
- * Nunca lanza. Un directorio ilegible o un ciclo de enlaces se saltan y
- * el resto del árbol se recorre igual — que es lo que esta función
- * prometía y no cumplía.
+ * Never throws. An unreadable directory or a link cycle are skipped and
+ * the rest of the tree is still walked — which is what this function
+ * promised and didn't deliver.
  */
 export async function collectFiles(
   root: string,
@@ -69,14 +69,14 @@ export async function collectFiles(
 ): Promise<string[]> {
   const skipVendor = options.skipVendorDirs !== false;
   const out: string[] = [];
-  /** Rutas reales ya visitadas: es lo que corta los ciclos. */
+  /** Real paths already visited: this is what cuts the cycles. */
   const visited = new Set<string>();
 
   async function walk(dir: string, depth: number): Promise<void> {
     if (depth > MAX_DEPTH) return;
 
-    // `realpath` resuelve los enlaces: dos rutas distintas que apuntan
-    // al mismo sitio se visitan una sola vez.
+    // `realpath` resolves links: two different paths pointing to the
+    // same place are visited only once.
     let real: string;
     try {
       real = await realpath(dir);
@@ -90,8 +90,8 @@ export async function collectFiles(
     try {
       entries = await readdir(dir, { withFileTypes: true });
     } catch {
-      // Sin permiso, o desapareció mientras recorríamos. Se pierde esta
-      // carpeta y solo esta.
+      // No permission, or it disappeared while we were walking. We lose
+      // this folder and only this one.
       return;
     }
 
@@ -109,10 +109,9 @@ export async function collectFiles(
         continue;
       }
 
-      // Un enlace simbólico no es ni fichero ni directorio para
-      // `Dirent`: hay que resolverlo. Los proyectos enlazan código con
-      // más frecuencia de la que parece, y saltárselos dejaba fuera
-      // ficheros que sí cuentan.
+      // A symbolic link is neither a file nor a directory for `Dirent`:
+      // we have to resolve it. Projects link code more often than it
+      // seems, and skipping them left out files that do count.
       if (entry.isSymbolicLink()) {
         try {
           const target = await realpath(full);
@@ -128,7 +127,7 @@ export async function collectFiles(
             out.push(full);
           }
         } catch {
-          // Enlace roto: se ignora.
+          // Broken link: ignored.
         }
       }
     }
@@ -139,8 +138,8 @@ export async function collectFiles(
 }
 
 /**
- * Igual que `collectFiles` sobre varias raíces, sin repetidos y
- * saltándose las que no existen.
+ * Same as `collectFiles` over multiple roots, without duplicates and
+ * skipping those that don't exist.
  */
 export async function collectFilesFrom(
   roots: ReadonlyArray<string>,
@@ -154,7 +153,7 @@ export async function collectFilesFrom(
   return [...seen];
 }
 
-/** Filtro reutilizable: ficheros de código fuente JS/TS, sin tests ni .d.ts. */
+/** Reusable filter: JS/TS source code files, without tests or .d.ts. */
 export function isSourceJsTsFile(name: string): boolean {
   if (!/\.(ts|js|mjs|cjs|tsx|jsx)$/.test(name)) return false;
   if (name.endsWith(".d.ts")) return false;

@@ -1,8 +1,8 @@
 /**
- * Helpers reutilizables para recorrer y analizar colecciones Postman.
+ * Reusable helpers for walking and analyzing Postman collections.
  *
- * Centraliza la lógica duplicada de pathToSegments / walk / count
- * que antes vivía en cada script.
+ * Centralizes the duplicated pathToSegments / walk / count logic that
+ * used to live in each script.
  */
 import type {
   PostmanCollection,
@@ -11,7 +11,7 @@ import type {
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { CollectionRequest } from "../../contracts/interfaces/core/helpers.interface.js";
 
-/** Extrae los segmentos de path de una URL raw de Postman. */
+/** Extract the path segments from a raw Postman URL. */
 export function pathToSegments(rawUrl: string): string[] {
   return rawUrl
     .replace(/\{\{baseUrl\}\}/, "")
@@ -20,14 +20,14 @@ export function pathToSegments(rawUrl: string): string[] {
     .filter(Boolean);
 }
 
-/** URI relativa (sin baseUrl) a partir de una URL raw. */
+/** Relative URI (without baseUrl) from a raw URL. */
 export function uriFromRaw(rawUrl: string): string {
   return pathToSegments(rawUrl).join("/");
 }
 
 /**
- * Recorre la colección y devuelve todos los requests planos.
- * Si `folder` se pasa, se usa como prefijo del path de carpetas.
+ * Walk the collection and return all flat requests.
+ * If `folder` is passed, it's used as the prefix of the folder path.
  */
 export function walkCollection(
   collection: PostmanCollection,
@@ -53,7 +53,7 @@ export function walkCollection(
   return out;
 }
 
-/** Cuenta requests y carpetas de una colección. */
+/** Count requests and folders of a collection. */
 export function countItems(collection: PostmanCollection): {
   requests: number;
   folders: number;

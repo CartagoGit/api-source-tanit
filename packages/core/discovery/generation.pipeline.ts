@@ -1,24 +1,24 @@
 /**
- * Pipeline de generación: `projectRoot` → `PostmanCollection`.
+ * Generation pipeline: `projectRoot` -> `PostmanCollection`.
  *
- * Es el único sitio donde se decide el orden de los pasos:
+ * This is the only place where the order of steps is decided:
  *
- *   1. Detectar el framework (con el catálogo que le inyecten).
- *   2. Escanear rutas y resolver reglas de validación.
- *   3. Fusionar los overrides manuales del host.
- *   4. Inferir bodies y query params para lo que no tenga reglas.
- *   5. Derivar las variables de colección que falten.
- *   6. Construir la colección Postman.
+ *   1. Detect the framework (with the catalog injected into it).
+ *   2. Scan routes and resolve validation rules.
+ *   3. Merge the host's manual overrides.
+ *   4. Infer bodies and query params for what has no rules.
+ *   5. Derive the missing collection variables.
+ *   6. Build the Postman collection.
  *
- * Existía copiado en tres sitios —`scripts/generate.script.ts`,
- * `tests/helpers/run-scanner.ts` y el gate de validación— y las tres
- * copias ya divergían: la del gate se saltaba el merge de variables del
- * host, con lo que las `{{pathParam}}` se quedaban sin declarar. Un gate
- * que ejecuta un pipeline distinto al del CLI no valida nada.
+ * It used to be copy-pasted in three places -- `scripts/generate.script.ts`,
+ * `tests/helpers/run-scanner.ts`, and the validation gate -- and the
+ * three copies had already diverged: the gate's copy skipped the host
+ * variable merge, so `{{pathParam}}` ended up undeclared. A gate that
+ * runs a pipeline different from the CLI's validates nothing.
  *
- * El paso de enriquecido con variantes (`catalog-enricher`) y la
- * escritura a disco quedan fuera a propósito: son responsabilidad del
- * script, no del pipeline.
+ * The variant-enrichment step (`catalog-enricher`) and the disk write
+ * are deliberately out of scope: they belong to the script, not the
+ * pipeline.
  */
 import type {
   EndpointSpec,
@@ -69,78 +69,77 @@ import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper
 import { filterSpecsForService } from "./filter-specs-for-service.helper.js";
 
 /**
- * Descubre los endpoints de un proyecto y construye su colección.
+ * Discovers the endpoints of a project and builds its collection.
  *
- * `projectRoot` manda, y llega **como argumento** hasta abajo: el
- * contexto se resuelve una vez aquí y viaja explícito por el pipeline,
- * el loader y los scanners.
+ * `projectRoot` is the source of truth, and it travels **as an
+ * argument** all the way down: the context is resolved once here and
+ * flows explicitly through the pipeline, the loader, and the scanners.
  *
- * Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
- * de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
- * precio de una cola: dos llamadas concurrentes se pisaban el estado,
- * así que había que serializarlas. Dos análisis a la vez tardaban lo que
- * la suma.
+ * Before, this was wrapped in `withProjectRoot()`, which set global
+ * environment variables, executed, and restored them. It worked, but at
+ * the cost of a queue: two concurrent calls clobbered each other's
+ * state, so they had to be serialized. Two analyses at a time took as
+ * long as their sum.
  *
- * Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
- * frameworks distintos con `Promise.all` y comprueba que ninguno se
- * cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+ * No more. `tests/e2e/concurrent-projects.test.ts` generates two
+ * projects of different frameworks with `Promise.all` and verifies that
+ * they do not collide: not in endpoints, not in name, not in the
+ * context root.
  */
 
 /**
- * Lanzada por `generateCollection()` cuando el proyecto tiene varios
- * servicios pero el caller NO pidió `--combine-services` (ni
+ * Thrown by `generateCollection()` when the project has several
+ * services but the caller did NOT request `--combine-services` (nor
  * `IGenerationOptions.combineServices === true`).
  *
- * ## Por qué existe
+ * ## Why it exists
  *
- * Hasta x00024, el contrato en singular documentaba "una sola
- * colección" pero el branch multi-servicio hacía `return result[0]` y
- * descartaba el resto **silenciosamente**. Eso convertía
- * `await generateCollection(monorepoRoot)` en una llamada que pierde
- * servicios sin avisar, exactamente el tipo de bug que un caller
- * jamás detecta en CI. La API plural `generateCollections()` ya
- * devolvía el array completo.
+ * Until x00024, the singular contract documented "a single collection"
+ * but the multi-service branch did `return result[0]` and silently
+ * discarded the rest. That turned `await generateCollection(monorepoRoot)`
+ * into a call that loses services without warning -- exactly the kind
+ * of bug a caller never catches in CI. The plural API
+ * `generateCollections()` was already returning the full array.
  *
- * ## Cuándo se lanza
+ * ## When it is thrown
  *
- * `generateCollection()` invoca `buildFor` y observa tres formas:
+ * `generateCollection()` calls `buildFor` and observes three shapes:
  *
- *   - **Single-service** (un solo match, monorepo de un workspace o
- *     proyecto plano): `result` es un único `IGenerationResult`. Sin
+ *   - **Single-service** (a single match, single-workspace monorepo,
+ *     or flat project): `result` is a single `IGenerationResult`. No
  *     throw.
- *   - **Multi-service + `combineServices: true`**: el caller pidió
- *     fusionar; `buildFor` ya devuelve un único `IGenerationResult`
- *     combinado. Sin throw.
- *   - **Multi-service + `combineServices: false/undefined`**: aquí se
- *     lanza esta excepción.
+ *   - **Multi-service + `combineServices: true`**: the caller asked to
+ *     fuse; `buildFor` already returns a single combined
+ *     `IGenerationResult`. No throw.
+ *   - **Multi-service + `combineServices: false/undefined`**: this is
+ *     the case where this exception is thrown.
  *
- * El contrato legacy (single-service) sigue funcionando exactamente
- * igual que antes — esto solo añade un caso nuevo.
+ * The legacy contract (single-service) keeps working exactly as
+ * before -- this only adds a new case.
  *
- * ## Forma del error
+ * ## Shape of the error
  *
- * Lleva los datos que la CLI necesita para dar un mensaje útil sin
- * tener que parsear el texto del `super()`:
+ * It carries the data the CLI needs to print a useful message without
+ * having to parse the text of `super()`:
  *
- *   - `serviceCount`: el número de servicios detectados.
- *   - `serviceIds`: los ids derivados (de `match.frameworkSearchRoot`
- *     vía `deriveServiceId`); vacío si ninguno tenía id resoluble.
+ *   - `serviceCount`: the number of services detected.
+ *   - `serviceIds`: the derived ids (from `match.frameworkSearchRoot`
+ *     via `deriveServiceId`); empty if none had a resolvable id.
  *
- * El mensaje incluye la sugerencia ("use --combine-services or
- * generateCollections()") para que un usuario que vea el error en
- * crudo sepa qué hacer.
+ * The message includes the suggestion ("use --combine-services or
+ * generateCollections()") so that a user who sees the error in raw
+ * form knows what to do.
  *
- * Vive en este mismo `.pipeline.ts` (no en `packages/core/errors/`)
- * porque la regla `lint:naming` de `packages/core/` solo admite los
- * sufijos `.service`, `.pipeline`, `.orchestrator`, `.adapter` y
- * `.helper`. Un error class no encaja en ninguno, así que se queda
- * donde se lanza — el mismo patrón que `PostmanApiError` en
- * `domain/postman-api.service.ts`.
+ * It lives in this same `.pipeline.ts` (not in `packages/core/errors/`)
+ * because `lint:naming` for `packages/core/` only allows the suffixes
+ * `.service`, `.pipeline`, `.orchestrator`, `.adapter`, and `.helper`.
+ * An error class fits none, so it stays where it is thrown -- the same
+ * pattern as `PostmanApiError` in `domain/postman-api.service.ts`.
  */
 export class MultipleServicesWithoutCombineError extends Error {
-  /** Cuántos servicios se detectaron. */
+  /** Number of services detected. */
   readonly serviceCount: number;
-  /** Los `serviceId` de los servicios detectados (puede estar vacío). */
+  /** The `serviceId`s of the detected services (may be empty). */
   readonly serviceIds: ReadonlyArray<string>;
 
   constructor(
@@ -164,48 +163,49 @@ export class MultipleServicesWithoutCombineError extends Error {
 }
 
 /**
- * Descubre los endpoints de un proyecto y construye su colección.
+ * Discovers the endpoints of a project and builds its collection.
  *
- * `projectRoot` manda, y llega **como argumento** hasta abajo: el
- * contexto se resuelve una vez aquí y viaja explícito por el pipeline,
- * el loader y los scanners.
+ * `projectRoot` is the source of truth, and it travels **as an
+ * argument** all the way down: the context is resolved once here and
+ * the loader and the scanners.
  *
- * Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
- * de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
- * precio de una cola: dos llamadas concurrentes se pisaban el estado,
- * así que había que serializarlas. Dos análisis a la vez tardaban lo que
- * la suma.
+ * Before, this was wrapped in `withProjectRoot()`, which set global
+ * environment variables, executed, and restored them. It worked, but at
+ * the cost of a queue: two concurrent calls clobbered each other's
+ * state, so they had to be serialized. Two analyses at a time took as
+ * long as their sum.
  *
- * Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
- * frameworks distintos con `Promise.all` y comprueba que ninguno se
- * cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+ * No more. `tests/e2e/concurrent-projects.test.ts` generates two
+ * projects of different frameworks with `Promise.all` and verifies that
+ * they do not collide: not in endpoints, not in name, not in the
+ * context root.
  */
 export async function generateCollection(
   projectRoot: string,
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
-  // Una raíz que no existe es un error de quien llama, no un proyecto
-  // vacío. Sin esto, un `--project-root` con una errata devolvía una
-  // colección de cero endpoints sin decir por qué — y `summary` sí
-  // lanzaba, así que además los dos caminos no se parecían.
+  // A non-existent root is a caller error, not an empty project.
+  // Without this, a `--project-root` with a typo returned a
+  // zero-endpoint collection without saying why -- and `summary` did
+  // throw, so the two paths disagreed.
   if (!existsSync(projectRoot)) {
     throw new Error(
-      `El projectRoot no existe: ${projectRoot}\n` +
-        "Comprueba la ruta que le pasas a `--project-root`.",
+      `The projectRoot does not exist: ${projectRoot}\n` +
+        "Check the path you pass to `--project-root`.",
     );
   }
 
   const context = resolveProjectContext({ projectRoot });
   const result = await buildFor(context, options);
-  // Legacy single-collection contract: si buildFor devuelve un
-  // solo IGenerationResult (combineServices=true o un solo
-  // servicio), lo devolvemos tal cual. Si devuelve array, el
-  // caller NO ha pedido combinar — antes elegíamos el primer
-  // servicio silenciosamente (x00024 audit P1 #2: perdíamos N-1
-  // servicios sin avisar). Ahora lanzamos un error explícito con
-  // los serviceIds detectados para que la CLI lo traduzca a un
-  // exit code accionable. Los callers que necesiten el array
-  // explícito siguen usando `generateCollections`.
+  // Legacy single-collection contract: if buildFor returns a single
+  // IGenerationResult (combineServices=true or a single service), we
+  // return it as-is. If it returns an array, the caller has NOT
+  // requested combine -- previously we silently picked the first
+  // service (x00024 audit P1 #2: we lost N-1 services without
+  // warning). Now we throw an explicit error with the detected
+  // serviceIds so the CLI can translate it into an actionable exit
+  // code. Callers that need the explicit array still use
+  // `generateCollections`.
   if (Array.isArray(result)) {
     if (result.length > 1 && options.combineServices !== true) {
       const serviceIds = result
@@ -220,17 +220,17 @@ export async function generateCollection(
 }
 
 /**
- * Variante multi-service de `generateCollection`. Devuelve TODAS
- * las colecciones, una por servicio, en el orden de descubrimiento.
+ * Multi-service variant of `generateCollection`. Returns ALL the
+ * collections, one per service, in discovery order.
  *
- * - Sin flag `--combine-services` y con N>1 servicios: array de N
- *   colecciones (cada una con `collectionName` derivado del
+ * - Without `--combine-services` and with N>1 services: an array of
+ *   N collections (each with `collectionName` derived from the
  *   serviceId).
- * - Con flag `--combine-services` o N===1: array de longitud 1
- *   (la coleccion legacy).
+ * - With `--combine-services` or N===1: an array of length 1 (the
+ *   legacy collection).
  *
- * El CLI genera un fichero por entrada; el plugin MCP y la web
- * exponen el array tal cual.
+ * The CLI writes one file per entry; the MCP plugin and the web UI
+ * expose the array as-is.
  */
 export async function generateCollections(
   projectRoot: string,
@@ -238,8 +238,8 @@ export async function generateCollections(
 ): Promise<ReadonlyArray<IGenerationResult>> {
   if (!existsSync(projectRoot)) {
     throw new Error(
-      `El projectRoot no existe: ${projectRoot}\n` +
-        "Comprueba la ruta que le pasas a `--project-root`.",
+      `The projectRoot does not exist: ${projectRoot}\n` +
+        "Check the path you pass to `--project-root`.",
     );
   }
   const context = resolveProjectContext({ projectRoot });
@@ -256,12 +256,12 @@ async function buildFor(
 ): Promise<IGenerationResult | ReadonlyArray<IGenerationResult>> {
   const discovery = await discoverSpecs(context, options);
 
-  // Camino legacy: cero matches (ningun scanner reconocio el proyecto,
-  // ni legacy fallback). Sintetizamos un unico servicio con match null
-  // para que `buildForService` corra el camino legacy completo
-  // (`applyAgnosticInference` + `buildCollection` + auth flow). Si lo
-  // saltaramos, los callers que esperan esos campos poblados (p. ej.
-  // summary) verian valores vacios sin saber por que.
+  // Legacy path: zero matches (no scanner recognized the project, and
+  // no legacy fallback either). We synthesize a single service with
+  // null match so that `buildForService` runs the full legacy path
+  // (`applyAgnosticInference` + `buildCollection` + auth flow). If
+  // we skipped it, callers that expect those fields populated (e.g.
+  // summary) would see empty values without knowing why.
   if (discovery.matches.length === 0) {
     const synthetic: IProjectMatch = {
       framework: "unknown",
@@ -283,10 +283,10 @@ async function buildFor(
     );
   }
 
-  // a00013 S3: calculamos el ServiceGraph. En un proyecto plano
-  // produce length=1 (legacy path); en multi-service con
-  // combineServices=false, produce N servicios que emitimos como
-  // colecciones separadas.
+  // a00013 S3: we compute the ServiceGraph. In a flat project it
+  // produces length=1 (legacy path); in multi-service with
+  // combineServices=false, it produces N services that we emit as
+  // separate collections.
   const combined = options.combineServices === true;
   const graph = toServiceGraph({
     matches: discovery.matches,
@@ -312,25 +312,26 @@ async function buildForService(
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {
   const projectRoot = context.projectRoot;
-  // S4: el descriptor ya se usa — no más `void service;`. Aplicamos
-  // los overrides per-service (baseUrl + auth) sobre el resultado de
-  // discovery. El trabajo se hace SIEMPRE sobre `localConfig`, una
-  // copia de `discovery.config`: mutar el original contaminaría la
-  // siguiente iteración del loop multi-service en `buildFor`. Es la
-  // diferencia entre "una colección por servicio" y "N colecciones
-  // con la misma baseUrl de la última iteración".
+  // S4: the descriptor is now used -- no more `void service;`. We
+  // apply the per-service overrides (baseUrl + auth) on top of the
+  // discovery result. The work is ALWAYS done over `localConfig`, a
+  // copy of `discovery.config`: mutating the original would
+  // contaminate the next iteration of the multi-service loop in
+  // `buildFor`. It is the difference between "one collection per
+  // service" and "N collections with the same baseUrl from the last
+  // iteration".
   //
-  // Single-service path: `service.baseUrl === null` y `service.auth
-  // === undefined`, así que `buildServiceConfig(config, service)`
-  // produce una copia equivalente a la original (salvo el array de
-  // variables, que también se copia por valor). Los 21 ejemplos
-  // siguen pasando porque ese caso es el dominante.
+  // Single-service path: `service.baseUrl === null` and
+  // `service.auth === undefined`, so `buildServiceConfig(config,
+  // service)` produces a copy equivalent to the original (except
+  // for the variables array, which is also copied by value). The 21
+  // examples keep passing because that case is the dominant one.
   //
-  // Spec filtering por `service.endpoints` queda para un slice
-  // posterior (cuando un override por servicio pueda cambiar qué
-  // endpoints entran); aquí todos los servicios ven los mismos
-  // `discovery.specs`. La aceptación de S4 es authScheme + baseUrl
-  // por servicio — el filtrado no se exige.
+  // Spec filtering by `service.endpoints` is left for a later slice
+  // (when a per-service override may change which endpoints enter);
+  // here every service sees the same `discovery.specs`. The S4
+  // acceptance is authScheme + baseUrl per service -- filtering is
+  // not required.
   const localConfig = buildServiceConfig(discovery.config, service);
   // x00028 S1: filter the global catalog down to the specs that
   // belong to THIS service. `discovery.specs` is a merged cross-
@@ -342,24 +343,24 @@ async function buildForService(
   const specs = filterSpecsForService(discovery.specs, service);
   const inference = applyAgnosticInference(specs);
 
-  // Variables de colección: se derivan las que falten, respetando las
-  // que el host ya declare (y el `baseUrl` que `buildServiceConfig`
-  // acaba de clavar por servicio).
+  // Collection variables: derive the missing ones, respecting the ones
+  // the host already declared (and the `baseUrl` that
+  // `buildServiceConfig` just pinned per service).
   localConfig.variables = inferCollectionVariables(specs, localConfig.variables ?? []);
   if (options.collectionName) localConfig.collectionName = options.collectionName;
 
-  // El esquema de auth se resuelve ANTES de construir: decide qué
-  // cabeceras lleva cada petición, así que no se puede parchear después.
+  // The auth scheme is resolved BEFORE building: it decides which
+  // headers each request carries, so it cannot be patched afterwards.
   //
-  // S4: la auth se resuelve per-service. El detector por-espec
-  // (`detectAuthScheme`) corre sobre los specs del servicio; el
-  // override del descriptor (`service.auth`) gana si está definido,
-  // y `pickAuth` lo propaga sin colapsar el discriminante (revisión
-  // de auditoría #16: un `{ kind: "scheme", scheme: "bearer" }` del
-  // descriptor NUNCA termina como `{ kind: "none" }`). El resultado
-  // vuelve a `IDetectedAuthScheme` para que `buildCollection`,
-  // `applyAuthFlow` y `authVariablesFor` (todos consumidores de
-  // `IDetectedAuthScheme`) vean la forma que esperan.
+  // S4: auth is resolved per service. The per-spec detector
+  // (`detectAuthScheme`) runs on the service's specs; the
+  // descriptor's override (`service.auth`) wins if defined, and
+  // `pickAuth` propagates it without collapsing the discriminator
+  // (audit review #16: a `{ kind: "scheme", scheme: "bearer" }` from
+  // the descriptor NEVER ends up as `{ kind: "none" }`). The result
+  // is converted back to `IDetectedAuthScheme` so that
+  // `buildCollection`, `applyAuthFlow` and `authVariablesFor` (all
+  // consumers of `IDetectedAuthScheme`) see the shape they expect.
   const detectedFromSpecs = detectAuthScheme(specs, hasLoginEndpoint(specs));
   const projectWideFallback = toIEndpointAuth(detectedFromSpecs);
   const effectiveAuth = pickAuth(service, projectWideFallback);
@@ -369,18 +370,18 @@ async function buildForService(
       : detectedFromSpecs;
   const collection = buildCollection(specs, localConfig, authScheme);
 
-  // El flujo de auth es parte del pipeline, no del script: si viviera
-  // solo en `generate.script.ts`, ni los tests ni el gate lo
-  // ejercitarían, que es justo lo que pasaba.
+  // The auth flow is part of the pipeline, not the script: if it
+  // lived only in `generate.script.ts`, neither the tests nor the
+  // gate would exercise it, which is exactly what was happening.
   const tokenResponsePath =
     localConfig.tokenResponsePath ?? (await detectLaravelTokenPath(projectRoot));
   const authFlow = applyAuthFlow(collection, {
     tokenResponsePath,
     loginEndpointName: localConfig.loginEndpointName,
   });
-  // Las variables que hay que rellenar dependen del esquema: una API
-  // key necesita `apiKey`, OAuth2 necesita `clientId` y `clientSecret`,
-  // y el bearer las credenciales del login.
+  // The variables to be filled depend on the scheme: an API key
+  // needs `apiKey`, OAuth2 needs `clientId` and `clientSecret`, and
+  // bearer needs the login credentials.
   const needed = [
     ...(authFlow ? authEnvironmentVariables() : []),
     ...authVariablesFor(authScheme),
@@ -404,11 +405,11 @@ async function buildForService(
     routes: discovery.routes,
     config: localConfig,
     match: discovery.match,
-    // x00024: propagamos el serviceId del descriptor para que el branch
-    // multi-servicio de `generateCollection()` pueda informar qué
-    // servicios detectó al construir el error. Single-service lo trae
-    // también (es la identidad del servicio: "default" o el
-    // frameworkSearchRoot derivado).
+    // x00024: we propagate the descriptor's serviceId so the multi-
+    // service branch of `generateCollection()` can report which
+    // services it detected when constructing the error. Single-
+    // service also carries it (the service identity: "default" or
+    // the derived frameworkSearchRoot).
     serviceId: service.serviceId,
     origin: discovery.origin,
     authFlow,
@@ -430,11 +431,11 @@ async function buildForService(
 }
 
 /**
- * Resuelve el framework forzado, o falla diciendo cuáles hay.
+ * Resolves the forced framework, or fails saying which ones exist.
  *
- * Falla **antes** de escanear: un id mal escrito que se descubre al
- * final, después de recorrer el proyecto y con cero endpoints, no dice
- * nada de lo que ha pasado.
+ * Fails **before** scanning: a bad id that is discovered at the end,
+ * after walking the project and with zero endpoints, says nothing
+ * about what happened.
  */
 async function forcedDetection(
   options: IGenerationOptions,
@@ -447,53 +448,55 @@ async function forcedDetection(
   if (!forced) {
     const supported = options.orchestrator.supportedFrameworks().sort().join(", ");
     throw new Error(
-      `No hay ningún scanner para "${options.forceFramework}".\n` +
-        `  Frameworks disponibles: ${supported}`,
+      `No scanner for "${options.forceFramework}".\n` +
+        `  Available frameworks: ${supported}`,
     );
   }
   return [forced];
 }
 
 /**
- * Resuelve el `frameworkSearchRoot` y lo pega a cada match detectado.
+ * Resolves the `frameworkSearchRoot` and attaches it to every detected
+ * match.
  *
- * La prioridad está documentada en `IGenerationOptions.frameworkSearchRoot`:
- * el override del usuario gana sobre la auto-detección de monorepo, y
- * la auto-detección solo se aplica cuando hay **exactamente un**
- * workspace. Con varios, no rellena nada: el orquestador prefiere
- * quedarse quieto a equivocarse.
+ * The priority is documented in `IGenerationOptions.frameworkSearchRoot`:
+ * the user's override wins over monorepo auto-detection, and auto-
+ * detection only applies when there is **exactly one** workspace. With
+ * several, it fills in nothing: the orchestrator prefers to stay put
+ * over guessing wrong.
  *
- * Devuelve una copia del array de entrada con los `match` reasignados.
- * `IProjectMatch` es `readonly`; lo que se devuelve es un objeto
- * nuevo con `frameworkSearchRoot` añadido cuando toca. Los campos
- * restantes se preservan por spread, así que el resto del pipeline no
- * tiene que saber que hubo augmentación.
+ * Returns a copy of the input array with the `match`es reassigned.
+ * `IProjectMatch` is `readonly`; what is returned is a new object with
+ * `frameworkSearchRoot` added when needed. The remaining fields are
+ * preserved by spread, so the rest of the pipeline does not have to
+ * know that augmentation happened.
  *
- * f00011 S3. La detección vive en `monorepo-detector.helper.ts`; este
- * wrapper es lo único que el pipeline invoca.
+ * f00011 S3. Detection lives in `monorepo-detector.helper.ts`; this
+ * wrapper is the only thing the pipeline calls.
  */
 /**
- * Reorienta la detección cuando la raíz no es donde vive el framework.
- * Ver `discoverSpecs()` para el contexto completo.
+ * Reorients detection when the root is not where the framework lives.
+ * See `discoverSpecs()` for the full context.
  *
- * Tres casos:
- *   1. **Override del usuario** (`--framework-search-root=apps/api`):
- *      escanea SOLO ese workspace y descarta lo que la raíz hubiera
- *      detectado (la raíz de un monorepo rara vez tiene frameworks).
- *      Devuelve los `match` ya con `frameworkSearchRoot` pegado, para
- *      que `applyFrameworkSearchRoot` no duplique el segmento.
- *   2. **Auto multi-workspace**: agrega los resultados de cada
- *      workspace a los de la raíz (deduplicados por
- *      framework + workspace). Cada `match` lleva su `frameworkSearchRoot`
- *      propio — `applyFrameworkSearchRoot` no actúa cuando ya está
- *      definido (su `frameworkSearchRoot` interno es `null`).
- *   3. **Auto single-workspace**: reemplaza la detección raíz (vacía)
- *      por la del workspace, porque la raíz solo orquesta.
+ * Three cases:
+ *   1. **User override** (`--framework-search-root=apps/api`):
+ *      scans ONLY that workspace and discards what the root would
+ *      have detected (a monorepo's root rarely holds frameworks).
+ *      Returns the `match`es already with `frameworkSearchRoot`
+ *      attached, so `applyFrameworkSearchRoot` does not duplicate the
+ *      segment.
+ *   2. **Auto multi-workspace**: appends each workspace's results to
+ *      the root's (deduplicated by framework + workspace). Every
+ *      `match` carries its own `frameworkSearchRoot` --
+ *      `applyFrameworkSearchRoot` is a no-op when one is already set
+ *      (its internal `frameworkSearchRoot` is `null`).
+ *   3. **Auto single-workspace**: replaces the (empty) root detection
+ *      with the workspace's, because the root only orchestrates.
  *
- * Sin monorepo y sin override: devuelve lo que la raíz detectó — el
- * camino legacy intacto.
+ * Without monorepo and without override: returns what the root
+ * detected -- the legacy path intact.
  *
- * Audit 2026-09-04 (hallazgo P1 #1).
+ * Audit 2026-09-04 (finding P1 #1).
  */
 async function expandMonorepoDetection(
   orchestrator: IGenerationOptions["orchestrator"],
@@ -502,19 +505,19 @@ async function expandMonorepoDetection(
   userOverride: string | undefined,
   forceFramework: string | undefined,
 ): Promise<ReadonlyArray<IDetectedFramework>> {
-  // Caso 0 (audit segunda revisión #5): `forceFramework` está
-  // activo. El usuario ha decidido explícitamente "este proyecto
-  // ES X", y `rootDetected` ya contiene ese framework (forzado vía
-  // `forcedDetection`). NO re-deteccionamos: el manifest del
-  // workspace podría no permitir autodetección, y el override del
-  // usuario es autoritativo. Solo reorientamos `projectRoot` si el
-  // usuario también pidió `frameworkSearchRoot`, para que los
-  // scanners lean del workspace correcto.
+  // Case 0 (audit second review #5): `forceFramework` is active.
+  // The user has explicitly decided "this project IS X", and
+  // `rootDetected` already contains that framework (forced via
+  // `forcedDetection`). We do NOT re-detect: the workspace's manifest
+  // might not allow auto-detection, and the user's override is
+  // authoritative. We only reorient `projectRoot` if the user also
+  // asked for `frameworkSearchRoot`, so scanners read from the right
+  // workspace.
   if (forceFramework && forceFramework.length > 0) {
     if (userOverride && userOverride.length > 0) {
-      // Forzó framework + forzó workspace: propagamos ambos a cada
-      // match (típicamente uno solo, pero podría ser varios si el
-      // orquestador devolviera varios con la misma identidad).
+      // Forced framework + forced workspace: we propagate both to
+      // every match (typically one, but could be several if the
+      // orchestrator returned several with the same identity).
       return rootDetected.map((c) => ({
         ...c,
         match: {
@@ -524,19 +527,19 @@ async function expandMonorepoDetection(
         },
       }));
     }
-    // Forzó framework sin workspace: nada que expandir. Devolvemos
-    // el resultado de forcedDetection tal cual.
+    // Forced framework without workspace: nothing to expand. We
+    // return the `forcedDetection` result as-is.
     return rootDetected;
   }
 
   // Caso 1: override del usuario. Escaneamos solo el workspace que
-  // pidió. Pegamos `frameworkSearchRoot` al match (relativo a la raíz)
-  // y dejamos `projectRoot` apuntando a la raíz: el contrato de los
+  // expected. We attach `frameworkSearchRoot` to the match (relative
+  // to the root) and leave `projectRoot` pointing at the root: the
   // scanners (a00012 S1.b) es que hacen `resolve(projectRoot,
   // frameworkSearchRoot)` para llegar al workspace. Si
-  // `projectRoot` ya fuera el workspace, `resolve(workspace,
-  // workspace) = workspace/workspace` y los scanners no encuentran
-  // sus fuentes.
+  // `projectRoot` were already the workspace, `resolve(workspace,
+  // workspace) = workspace/workspace` and scanners would not find
+  // their sources.
   if (userOverride && userOverride.length > 0) {
     const workspaceRoot = join(projectRoot, userOverride);
     const perWorkspace = await orchestrator.detectAll(workspaceRoot);
@@ -550,23 +553,23 @@ async function expandMonorepoDetection(
     }));
   }
 
-  // Detección de monorepo. Si no hay, devolvemos lo de la raíz.
+  // Monorepo detection. If there is none, return what the root had.
   const detection = await detectMonorepo(projectRoot);
   if (!detection.isMonorepo || detection.workspaceDirs.length === 0) {
     return rootDetected;
   }
 
-  // Dedup por (framework, frameworkSearchRoot) para no repetir la
-  // misma pareja si dos workspaces exponen el mismo framework.
+  // Dedup by (framework, frameworkSearchRoot) so we do not repeat the
+  // same pair if two workspaces expose the same framework.
   const seen = new Set<string>(
     rootDetected.map(
       (d) => `${d.match.framework}@${d.match.frameworkSearchRoot ?? ""}`,
     ),
   );
 
-  // Helper: reorienta un match al workspace. Mismo contrato que
-  // override — `projectRoot` queda como la raíz del monorepo y
-  // `frameworkSearchRoot` es el segmento a aplicar.
+  // Helper: reorients a match to the workspace. Same contract as
+  // override -- `projectRoot` stays as the monorepo root and
+  // `frameworkSearchRoot` is the segment to apply.
   const reorient = (
     c: IDetectedFramework,
     workspace: string,
@@ -579,8 +582,8 @@ async function expandMonorepoDetection(
     },
   });
 
-  // Caso 3: single-workspace. La raíz sola no detecta nada; la
-  // reemplazamos por la del workspace.
+  // Case 3: single-workspace. The root alone detects nothing; we
+  // replace it with the workspace's detection.
   if (detection.workspaceDirs.length === 1) {
     const workspace = detection.workspaceDirs[0]!;
     const workspaceRoot = join(projectRoot, workspace);
@@ -588,8 +591,8 @@ async function expandMonorepoDetection(
     return perWorkspace.map((c) => reorient(c, workspace));
   }
 
-  // Caso 2: multi-workspace. Agregamos a lo que la raíz ya detectó,
-  // fijando `frameworkSearchRoot` por entrada.
+  // Case 2: multi-workspace. We append to what the root already
+  // detected, pinning `frameworkSearchRoot` per entry.
   const merged: IDetectedFramework[] = [...rootDetected];
   for (const workspace of detection.workspaceDirs) {
     if (workspace === "" || workspace === ".") continue;
@@ -614,16 +617,16 @@ async function applyFrameworkSearchRoot(
   readonly augmented: ReadonlyArray<IDetectedFramework>;
   readonly detection: IMonorepoDetection | null;
 }> {
-  // Caso 1: el usuario forzó `--framework-search-root` o
-  // `delendai.config.json#frameworkSearchRoot`. El valor se valida
-  // abajo (no debe tener barras iniciales ni `..`); lo que llega de la
-  // CLI ya pasó por `readFlag`, lo que llega del plugin ya pasó por
-  // zod. Aquí se queda como viene.
+  // Case 1: the user forced `--framework-search-root` or
+  // `delendai.config.json#frameworkSearchRoot`. The value is validated
+  // below (no leading slashes, no `..`); what arrives from the CLI has
+  // already gone through `readFlag`, what arrives from the plugin has
+  // already gone through zod. Here we keep it as it comes.
   if (userOverride && userOverride.length > 0) {
     if (!isSafeRelativeSubdir(userOverride)) {
       throw new Error(
-        `--framework-search-root debe ser un subdirectorio relativo a projectRoot ` +
-          `(sin "/" inicial, sin ".."). Recibido: "${userOverride}"`,
+        `--framework-search-root must be a subdirectory relative to projectRoot ` +
+          `(no leading "/", no ".."). Received: "${userOverride}"`,
       );
     }
     return {
@@ -632,8 +635,8 @@ async function applyFrameworkSearchRoot(
     };
   }
 
-  // Caso 2: auto-detección por monorepo. Si la raíz no es un monorepo,
-  // o lo es pero tiene varios workspaces, no se hace nada.
+  // Case 2: auto-detection by monorepo. If the root is not a
+  // monorepo, or it is but has multiple workspaces, we do nothing.
   const detection = await detectMonorepo(projectRoot);
   if (!detection.frameworkSearchRoot) {
     return { augmented: detected, detection };
@@ -645,21 +648,20 @@ async function applyFrameworkSearchRoot(
 }
 
 /**
- * Convierte el override de auth por operación (`spec.auth`) en un
- * `IDetectedAuthScheme` que el merger pueda comparar pieza a pieza.
+ * Converts the per-operation auth override (`spec.auth`) into an
+ * `IDetectedAuthScheme` that the merger can compare piece by piece.
  *
- * Audit 2ª revisión #16: el contrato `IEndpointAuth` tiene un
- * discriminante `kind: "none" | "scheme"` y `scheme: "bearer" |
- * "apiKey" | "oauth2"` como sub-discriminante. La conversión debe
- * respetar TODAS las ramas; si no, una expresión
- * `{ kind: "scheme", scheme: "apiKey" }` colapsaría a
- * `type: "none"` (público), que es exactamente el bug opuesto al
- * que arregló la primera auditoría.
+ * Audit 2nd review #16: the `IEndpointAuth` contract has a
+ * `kind: "none" | "scheme"` discriminator and `scheme: "bearer" |
+ * "apiKey" | "oauth2"` as a sub-discriminator. The conversion must
+ * respect ALL branches; otherwise an expression
+ * `{ kind: "scheme", scheme: "apiKey" }` would collapse to
+ * `type: "none"` (public), which is exactly the bug opposite to the
+ * one the first audit fixed.
  *
- * Cada rama lleva además una `evidence` trazable al framework de
- * origen: el merger la expone en el aviso CLI para que el usuario
- * pueda auditar por qué un endpoint se considera público / bearer /
- * apiKey / oauth2.
+ * Each branch also carries an `evidence` traceable to the source
+ * framework: the merger exposes it in the CLI warning so the user can
+ * audit why an endpoint is considered public / bearer / apiKey / oauth2.
  */
 function authSchemeFromEndpointAuth(
   auth: IEndpointAuth,
@@ -672,10 +674,10 @@ function authSchemeFromEndpointAuth(
         evidence: `per-op override (${framework}, public)`,
       };
     case "scheme": {
-      // Mapea sub-discriminante del contrato al `type` que el
-      // merger ya entiende. Si en el futuro aparece
-      // `scheme: "basic"` u otro, este switch lo enumera
-      // explícitamente — nunca inventar un `type` por defecto.
+      // Maps the contract's sub-discriminator to the `type` the
+      // merger already understands. If `scheme: "basic"` or another
+      // appears in the future, this switch enumerates it explicitly
+      // -- never invent a default `type`.
       switch (auth.scheme) {
         case "bearer":
           return {
@@ -699,9 +701,9 @@ function authSchemeFromEndpointAuth(
 }
 
 /**
- * Construye un `IDetectedFramework` con el `frameworkSearchRoot` pegado
- * al `match`. Se preserva el resto (score, evidence, scanner,
- * validation) por spread.
+ * Builds an `IDetectedFramework` with the `frameworkSearchRoot`
+ * attached to the `match`. The rest (score, evidence, scanner,
+ * validation) is preserved by spread.
  */
 function augmentMatch(
   detected: IDetectedFramework,
@@ -726,15 +728,16 @@ function augmentMatch(
 }
 
 /**
- * ¿Es un segmento relativo seguro para usar como `frameworkSearchRoot`?
+ * Is it a safe relative segment to use as `frameworkSearchRoot`?
  *
- * Las dos trampas que evita:
- *  - Absoluto (`/etc/passwd`, `C:\…`): nunca se acepta; la raíz la
- *    fija el orquestador y este campo solo añade un segmento.
- *  - Escape (`..`, `apps/../../etc`): si el usuario lo escribe y nadie
- *    lo para, un scanner puede acabar leyendo fuera del proyecto. Los
- *    scanners ya hacen `join(match.projectRoot, match.frameworkSearchRoot)`,
- *    y `path.join` colapsa los `..`, así que la única defensa está aquí.
+ * The two traps it avoids:
+ *  - Absolute (`/etc/passwd`, `C:\...`): never accepted; the root is
+ *    pinned by the orchestrator and this field only adds a segment.
+ *  - Escape (`..`, `apps/../../etc`): if the user types it and nobody
+ *    stops it, a scanner may end up reading outside the project.
+ *    Scanners already do
+ *    `join(match.projectRoot, match.frameworkSearchRoot)`, and
+ *    `path.join` collapses `..`, so the only defense is here.
  */
 function isSafeRelativeSubdir(value: string): boolean {
   if (value.length === 0) return false;
@@ -753,60 +756,62 @@ interface IDiscovery {
   readonly withValidation: number;
   readonly withoutValidation: number;
   readonly warnings: ReadonlyArray<string>;
-  /** Todos los frameworks que reconocieron el proyecto. */
+  /** All frameworks that recognized the project. */
   readonly frameworks: ReadonlyArray<string>;
   readonly project: IGenerationResult["project"];
-  /** Provenance por endpoint, presente solo cuando la detección fue híbrida. */
+  /** Provenance per endpoint, present only when detection was hybrid. */
   readonly provenance?: ReadonlyArray<IEndpointProvenanceEntry>;
-  /** Matches que sobrevivieron al filtro `scanner !== null`. a00013 S3. */
+  /** Matches that survived the `scanner !== null` filter. a00013 S3. */
   readonly matches: ReadonlyArray<IProjectMatch>;
-  /** Rutas agrupadas por serviceId (a00013 S3, alimenta a `toServiceGraph`). */
+  /** Routes grouped by serviceId (a00013 S3, feeds `toServiceGraph`). */
   readonly routesByService: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>;
-  /** Resultado de `detectMonorepo`; `undefined` para proyectos planos. */
+  /** Result of `detectMonorepo`; `undefined` for flat projects. */
   readonly monorepoDetection: IMonorepoDetection | undefined;
 }
 
 /**
- * Paso 1-3: detección, escaneo y merge de overrides.
+ * Step 1-3: detection, scanning and override merge.
  *
- * Todos los frameworks pasan por su scanner, Laravel incluido. El camino
- * legacy solo entra cuando el orchestrator no reconoce el proyecto, y es
- * una heurística zero-config sobre `routes/`.
+ * Every framework goes through its scanner, Laravel included. The
+ * legacy path only kicks in when the orchestrator does not recognize
+ * the project, and is a zero-config heuristic over `routes/`.
  */
 async function discoverSpecs(
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IDiscovery> {
-  // Detección base contra la raíz (path rápido: un único framework en
-  // la raíz del proyecto — los 21 ejemplos caen aquí).
+  // Base detection against the root (fast path: a single framework at
+  // the project root -- the 21 examples fall here).
   const rootDetected = options.forceFramework
     ? await forcedDetection(options, context.projectRoot)
     : await options.orchestrator.detectAll(context.projectRoot);
 
-  // En monorepos (incluso single-workspace) y cuando el usuario
-  // fuerza `--framework-search-root`, la detección raíz suele
-  // devolver vacío: la raíz del monorepo solo orquesta, no contiene
-  // los frameworks. Antes el helper devolvía `frameworkSearchRoot:
-  // null` y el pipeline se quedaba con 0 endpoints en silencio.
+  // In monorepos (even single-workspace) and when the user forces
+  // `--framework-search-root`, the root detection usually returns
+  // empty: the monorepo root only orchestrates, it does not contain
+  // the frameworks. Previously the helper returned
+  // `frameworkSearchRoot: null` and the pipeline silently ended with
+  // 0 endpoints.
   //
-  // `expandMonorepoDetection` reescribe la detección cuando
-  // corresponde: para override escanea SOLO el workspace que el
-  // usuario pidió; para auto-detección multi-workspace escanea cada
-  // workspace y agrega; para single-workspace reemplaza la raíz
-  // (vacía) por la del workspace. Sin override ni monorepo, devuelve
-  // lo que la raíz detectó — el camino legacy.
+  // `expandMonorepoDetection` rewrites detection when appropriate:
+  // for override it scans ONLY the workspace the user asked for; for
+  // auto-detection multi-workspace it scans each workspace and
+  // appends; for single-workspace it replaces the (empty) root with
+  // the workspace's. Without override or monorepo, it returns what
+  // the root detected -- the legacy path.
   //
-  // Audit 2026-09-04 (hallazgo P1 #1) + segunda revisión: cuando
-  // `forceFramework` está activo, la detección raíz ya contiene ese
-  // framework concreto. Expandirla hacia `detectAll(workspaceRoot)`
-  // perdería el force: el manifest del workspace podría no permitir
-  // detectarlo (caso típico: dependencias declaradas en otro sitio,
-  // manifest generado en build). `expandMonorepoDetection` recibe
-  // el `forceFramework` para respetar la decisión del usuario y
-  // reorientar el match existente en vez de re-detectar.
+  // Audit 2026-09-04 (finding P1 #1) + second review: when
+  // `forceFramework` is active, the root detection already contains
+  // that specific framework. Expanding it toward
+  // `detectAll(workspaceRoot)` would lose the force: the workspace's
+  // manifest might not allow detection (typical case: dependencies
+  // declared elsewhere, manifest generated at build time).
+  // `expandMonorepoDetection` receives `forceFramework` to respect the
+  // user's decision and reorient the existing match instead of
+  // re-detecting.
   //
-  // Audit 2026-09-04 (segunda revisión #5): --framework + monorepo
-  // debe seguir forzando ese framework, no autodetectarlo en cada
+  // Audit 2026-09-04 (second review #5): --framework + monorepo
+  // must keep forcing that framework, not auto-detect it in each
   // workspace.
   const expanded = await expandMonorepoDetection(
     options.orchestrator,
@@ -821,16 +826,16 @@ async function discoverSpecs(
       context.projectRoot,
       options.frameworkSearchRoot,
     );
-  // Con `context`: el loader deja de preguntarle al singleton qué
-  // proyecto es este. Era el único sitio del pipeline que aún lo hacía,
-  // y el motivo de que la llamada entera tuviera que ir envuelta.
+  // With `context`: the loader stops asking the singleton which
+  // project this is. It was the only place in the pipeline that
+  // still did that, and the reason the whole call had to be wrapped.
   //
-  // `argv` se pasa **explícito y vacío** por defecto: el core no lee
-  // `process.argv` en runtime. Quien invoca el pipeline (CLI, plugin
-  // MCP, UI web, tests) decide qué pasar. Si se omite, `loadProject`
-  // trata la ausencia como "ningún flag `--config`" — comportamiento
-  // documentado en `a00012 S4` y verificado por
-  // `tests/core/process-argv-free.spec.ts`.
+  // `argv` is passed **explicitly and empty** by default: the core
+  // does not read `process.argv` at runtime. Whoever invokes the
+  // pipeline (CLI, MCP plugin, web UI, tests) decides what to pass.
+  // If it is omitted, `loadProject` treats the absence as "no
+  // `--config` flag" -- behavior documented in `a00012 S4` and
+  // verified by `tests/core/process-argv-free.spec.ts`.
   const { config, manualEndpoints, configPath, zeroConfig } = await loadProject(
     options.argv ?? [],
     context,
@@ -838,10 +843,10 @@ async function discoverSpecs(
   const project = { zeroConfig, configPath, manualEndpoints: manualEndpoints.length };
   const usable = detected.filter((candidate) => candidate.scanner !== null);
 
-  // Si la raíz era un monorepo y la auto-detección eligió el único
-  // workspace, se avisa. La idea es que un usuario que lanza el CLI
-  // sin saber qué es `frameworkSearchRoot` vea por qué el escaneo se
-  // concentró en `apps/api` y no en la raíz.
+  // If the root was a monorepo and auto-detection chose the only
+  // workspace, we warn. The idea is that a user who runs the CLI
+  // without knowing what `frameworkSearchRoot` is sees why the scan
+  // concentrated on `apps/api` instead of the root.
   const warnings: string[] = [];
   if (
     monorepoDetection?.frameworkSearchRoot &&
@@ -855,27 +860,26 @@ async function discoverSpecs(
   }
 
   if (usable.length > 0) {
-    // Se escanean TODOS los que reconocen el proyecto, no solo el
-    // primero. Un repo con un Express heredado y rutas nuevas de
-    // Next.js casa con dos, y quedarse con el ganador devolvía 1 de 3
-    // endpoints en silencio. Los proyectos de un solo framework —los
-    // 12 ejemplos— casan con un único detector, así que para ellos
-    // esto no cambia nada.
+    // We scan ALL the ones that recognize the project, not just the
+    // first. A repo with a legacy Express and new Next.js routes
+    // matches two, and keeping the winner silently returned 1 of 3
+    // endpoints. Single-framework projects -- the 12 examples --
+    // match a single detector, so for them this changes nothing.
     const specs: EndpointSpec[] = [];
     const routes: ParsedRoute[] = [];
     let withValidation = 0;
     let withoutValidation = 0;
-    /** Lo que devuelve cada scanner, con su framework y score, para el merger. */
+    /** What each scanner returns, with its framework and score, for the merger. */
     interface IPerScanner {
       readonly framework: string;
       readonly scannerScore: number;
       readonly scannerSpecs: ReadonlyArray<EndpointSpec>;
       /**
-       * Identidad del workspace / servicio del que vienen los specs.
-       * Audit 2ª revisión #3: en monorepos multi-workspace, dos
-       * endpoints `GET /health` de workspaces distintos NO deben
-       * fusionarse. El merger usa `serviceId` para mantener la
-       * separación. Cadena vacía = proyecto plano (no aplica).
+       * Identity of the workspace / service the specs come from.
+       * Audit 2nd review #3: in multi-workspace monorepos, two
+       * `GET /health` endpoints from different workspaces must NOT
+       * be fused. The merger uses `serviceId` to keep them apart.
+       * Empty string = flat project (not applicable).
        */
       readonly serviceId: string;
       /**
@@ -903,15 +907,24 @@ async function discoverSpecs(
         framework: candidate.match.framework,
         scannerScore: candidate.score,
         scannerSpecs: result.specs,
-        serviceId: candidate.match.frameworkSearchRoot ?? "",
+        // MUST go through `deriveServiceId`, not the raw
+        // `frameworkSearchRoot`: `toServiceGraph` looks routes up by
+        // the NORMALIZED id (`apps/api` → `apps_api`), so raw keys
+        // silently missed every lookup and every descriptor ended up
+        // with empty `endpoints` — which made `filterSpecsForService`
+        // fall back to the full global catalog (x00028's isolation
+        // became a no-op for real monorepos; the x00028 test fixture
+        // only passed because its temp path carried no `/`).
+        serviceId: deriveServiceId(candidate.match),
         scannerRoutes: result.routes,
       });
 
-      // Un proveedor de validación que falla no aborta la generación
-      // —un endpoint sin reglas sigue siendo una colección válida— pero
-      // tampoco puede pasar en silencio: era indistinguible de un
-      // endpoint que legítimamente no valida nada, y así un parser roto
-      // degradaba la colección entera sin que nadie lo notase.
+      // A failing validation provider does NOT abort the generation
+      // -- an endpoint without rules is still a valid collection --
+      // but it cannot pass silently either: it was indistinguishable
+      // from an endpoint that legitimately has no validation, and
+      // that way a broken parser degraded the entire collection
+      // without anyone noticing.
       if (result.validationFailures.length > 0) {
         warnings.push(
           `${result.validationFailures.length} endpoint(s) of ` +
@@ -927,17 +940,18 @@ async function discoverSpecs(
     if (usable.length > 1) {
       const names = usable.map((c) => `${c.match.framework} (${c.score})`).join(", ");
       warnings.push(
-        `El proyecto encaja con ${usable.length} frameworks: ${names}. ` +
-          "Se han escaneado todos y se han fusionado los endpoints. " +
-          "Si alguno sobra, acota el escaneo con `--project-root` a la carpeta que toque.",
+        `The project matches ${usable.length} frameworks: ${names}. ` +
+          "All of them have been scanned and the endpoints fused. " +
+          "If any one is extraneous, narrow the scan with `--project-root` to the right folder.",
       );
 
-      // Fusión híbrida: cada scanner aporta sus specs con su framework.
-      // El merger agrupa por identidad (method + uri + name +
-      // serviceId) y elige pieza a pieza (body, fields, auth,
-      // description) al de mayor confianza, dejando provenance de
-      // quién aportó qué. Antes hacía "first wins" sobre los specs
-      // ya mezclados, que perdía sin aviso la información del resto.
+      // Hybrid merge: each scanner contributes its specs with its
+      // framework. The merger groups by identity (method + uri +
+      // name + serviceId) and chooses piece by piece (body, fields,
+      // auth, description) the most trustworthy one, leaving
+      // provenance of who contributed what. Previously it did "first
+      // wins" on the already-mixed specs, which silently lost the
+      // info from the rest.
       const candidates = perScanner.flatMap(({ framework, scannerScore, scannerSpecs, serviceId }) =>
         scannerSpecs.map((spec) => ({
           framework,
@@ -953,18 +967,18 @@ async function discoverSpecs(
           ...(spec.description !== undefined
             ? { description: spec.description }
             : {}),
-          // Audit 2026-09-04 P1 #6: el override por operación del
-          // esquema de auth (`spec.auth`) debe sobrevivir a la
-          // fusión. Antes el merger solo veía `body / fields /
-          // description` y se perdía `auth: { kind: "none" }` para
-          // /auth/login — el endpoint fusionado salía con la auth
-          // global aunque el scanner ya había pedido explícitamente
-          // "público". Audit 2ª revisión #16: el mapeo debe ser
-          // EXHAUSTIVO por discriminante — antes todo `spec.auth`
-          // colapsaba a `type: "none"`, lo que significaba que un
-          // futuro `{ kind: "scheme", scheme: "apiKey" }` quedaría
-          // como endpoint público. Ahora cada rama del union se
-          // traduce a su `authScheme` correspondiente.
+          // Audit 2026-09-04 P1 #6: the per-operation auth scheme
+          // override (`spec.auth`) must survive the merge.
+          // Previously the merger only saw `body / fields /
+          // description` and lost `auth: { kind: "none" }` for
+          // /auth/login -- the merged endpoint came out with the
+          // global auth even though the scanner had explicitly
+          // asked for "public". Audit 2nd review #16: the mapping
+          // must be EXHAUSTIVE per discriminator -- before, every
+          // `spec.auth` collapsed to `type: "none"`, which meant
+          // that a future `{ kind: "scheme", scheme: "apiKey" }`
+          // would land as a public endpoint. Now every union branch
+          // maps to its corresponding `authScheme`.
           ...(spec.auth !== undefined
             ? { authScheme: authSchemeFromEndpointAuth(spec.auth, framework) }
             : {}),
@@ -979,9 +993,9 @@ async function discoverSpecs(
       const collisions = specs.length - merged.length;
       if (collisions > 0) {
         warnings.push(
-          `${collisions} endpoint(s) estaban declarados por más de un ` +
-            "framework y se han fusionado pieza a pieza " +
-            "(route + body + auth + description) con provenance.",
+          `${collisions} endpoint(s) were declared by more than one ` +
+            "framework and have been fused piece by piece " +
+            "(route + body + auth + description) with provenance.",
         );
       }
 
@@ -1000,10 +1014,10 @@ async function discoverSpecs(
         matches: usable.map((c) => c.match),
         routesByService: accumulateRoutesByService(
           perScanner.map(({ serviceId, scannerSpecs }) => {
-            // Los `scannerSpecs` son `EndpointSpec` (post-process) y el
-            // helper espera `ParsedRoute` (pre-process). Reconstruimos
-            // las routes que cada scanner aportó mirando qué routes
-            // globales matchean con los specs de ese scanner.
+            // `scannerSpecs` are `EndpointSpec` (post-process) and the
+            // helper expects `ParsedRoute` (pre-process). We rebuild
+            // the routes each scanner contributed by looking at which
+            // global routes match that scanner's specs.
             const scannerRoutes = routes.filter((r) =>
               scannerSpecs.some(
                 (s) => s.method === r.method && s.uri === r.uri,
@@ -1019,8 +1033,8 @@ async function discoverSpecs(
     const merged = dedupeSpecs(specs);
     if (merged.length < specs.length) {
       warnings.push(
-        `${specs.length - merged.length} endpoint(s) estaban declarados por más de un ` +
-          "framework y se han fusionado por método + URI.",
+        `${specs.length - merged.length} endpoint(s) were declared by more than one ` +
+          "framework and have been fused by method + URI.",
       );
     }
 
@@ -1044,8 +1058,9 @@ async function discoverSpecs(
   }
 
   if (!options.legacyFallback) {
-    // Sin fallback y sin scanner que lo reconozca: cero endpoints. Es
-    // preferible a inventarse una heurística que devuelva ruido.
+    // Without fallback and without a scanner that recognizes it: zero
+    // endpoints. It is preferable to inventing a heuristic that
+    // returns noise.
     return {
       specs: [...manualEndpoints],
       routes: [],
@@ -1056,9 +1071,9 @@ async function discoverSpecs(
       withoutValidation: 0,
       project,
       warnings: [
-        "Ningún scanner ha reconocido este proyecto y no se ha inyectado " +
-          "ninguna estrategia de último recurso: la colección sale vacía. " +
-          "Mira docs/FRAMEWORKS.md para ver qué busca cada scanner.",
+        "No scanner recognized this project and no legacy fallback " +
+          "was injected: the collection comes out empty. " +
+          "See docs/FRAMEWORKS.md for what each scanner looks for.",
       ],
       frameworks: [],
       matches: [],
@@ -1084,8 +1099,8 @@ async function discoverSpecs(
     warnings:
       legacy.routes.length === 0
         ? [
-            "Ningún scanner ha reconocido el proyecto y la heurística de " +
-              "último recurso tampoco ha encontrado rutas.",
+            "No scanner recognized the project and the legacy fallback " +
+              "heuristic did not find any routes either.",
           ]
         : [],
     frameworks: [],
@@ -1096,20 +1111,22 @@ async function discoverSpecs(
 }
 
 /**
- * Quita endpoints repetidos.
+ * Removes duplicate endpoints.
  *
- * En un proyecto híbrido dos frameworks pueden declarar la misma ruta
- * (un proxy de Next.js delante de un Express, por ejemplo). Gana el
- * primero, que viene del detector con más confianza.
+ * In a hybrid project two frameworks can declare the same route (a
+ * Next.js proxy in front of an Express, for example). The first one
+ * wins, which comes from the most confident detector.
  *
- * La clave incluye el **nombre**, no solo método y URI. Con REST bastan
- * los dos primeros porque la URL identifica la operación; con GraphQL no
- * hay más que **un** endpoint —`POST /graphql`— y lo que distingue una
- * consulta de otra es el cuerpo. Deduplicando solo por método y URI, un
- * esquema de veinte operaciones producía **una** request.
+ * The key includes the **name**, not just method and URI. With REST
+ * the two are enough because the URL identifies the operation; with
+ * GraphQL there is only **one** endpoint -- `POST /graphql` -- and
+ * what distinguishes one query from another is the body. Deduplicating
+ * by method + URI alone, a twenty-operation schema produced **one**
+ * request.
  *
- * Lo mismo vale para cualquier RPC sobre POST, que es una forma de API
- * bastante más común que el caso híbrido para el que se escribió esto.
+ * The same is true for any RPC-over-POST, which is a much more
+ * common API shape than the hybrid case this was originally written
+ * for.
  */
 function dedupeSpecs(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
   const seen = new Set<string>();
