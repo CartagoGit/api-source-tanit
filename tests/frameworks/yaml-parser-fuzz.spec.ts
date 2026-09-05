@@ -131,9 +131,9 @@ describe("invariants: hold for any input", () => {
 
 describe("detection: what it cannot read, it says so", () => {
   test.for([
-    ["anchors", "responses: &comun\n  '200': {}", "anclas"],
-    ["alias", "responses: *comun", "alias"],
-    ["merge keys", "<<: *base", "fusión"],
+    ["anchors", "responses: &shared\n  '200': {}", "anchors"],
+    ["alias", "responses: *shared", "alias"],
+    ["merge keys", "<<: *base", "merge keys"],
   ] as const)("warns about %s", ([, src, esperado]) => {
     const encontrado = unsupportedYamlFeatures(src);
     expect(encontrado.length).toBeGreaterThan(0);

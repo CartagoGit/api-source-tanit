@@ -2,10 +2,13 @@
 id: x00033
 title: "lint:naming en rojo: los frontends TS de a00015/a00016 viven en frameworks/typescript/ fuera de la regla"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
+shippedIn:
+  - 2b227ee  # frontends renombrados *.helper.ts + contrato movido a contracts/
+  - 7aa395b  # FRAMEWORKS regenerado tras el rename
 dependsOn: []
 related:
   - a00015
@@ -64,7 +67,7 @@ falló: se cerró a00014/15/16 marcando `done` mientras `bun run validate`
 
 ### S1 — Decidir destino (elección documentada)
 
-- **Status**: pending
+- **Status**: done
 - **Files**: esta propuesta + `scripts/gates/lint-naming.script.ts`
 - **Gate**: revisión de propuestas
 - **Detalle**: dos caminos, elegir uno:
@@ -88,7 +91,7 @@ falló: se cerró a00014/15/16 marcando `done` mientras `bun run validate`
 
 ### S2 — Ejecutar el movimiento (depende de S1; tras la decisión)
 
-- **Status**: pending
+- **Status**: done (ejecutado en 2b227ee: *.helper.ts + contrato movido a `contracts/`)
 - **Files**: `git mv` de `packages/frameworks/typescript/*` → destino elegido
   + reexport + import rewrite + specs.
 - **Gate**: `bun run validate`

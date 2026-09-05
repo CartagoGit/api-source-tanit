@@ -2,7 +2,7 @@
 id: a00014
 title: "effectiveProjectRoot centralizado en core + migración de los 21 scanners"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
@@ -11,6 +11,7 @@ shippedIn:
   - 6a539e3  # S2: migrar 20 scanners a effectiveProjectRoot(match)
   - 070836c  # S3: lint:effective-project-root gate
   - f0a3aa5  # merge into develop + push
+  - 0269a94  # S4+S5: absolutos -> error + contención relative() canónica (cierre 2026-09-05)
 dependsOn:
   - a00012
 related:
@@ -78,7 +79,7 @@ uniformemente:
 
 ### S1 — Helper único effectiveProjectRoot
 
-- **Status**: pending
+- **Status**: done (helper + 21/21 specs del contrato en verde)
 - **Files**:
   - packages/core/discovery/effective-project-root.helper.ts (nuevo)
   - packages/core/discovery/effective-project-root.helper.spec.ts (nuevo)
@@ -96,7 +97,7 @@ uniformemente:
 
 ### S2 — Migración de los 21 scanners
 
-- **Status**: pending
+- **Status**: done (19 scanners consumen effectiveProjectRoot; el gate lo fuerza)
 - **Files**: cada packages/frameworks/**/*.scanner.ts que use
   match.projectRoot para source-file walk.
 - **Gate**: bun run test:frameworks && bun run test:coverage
@@ -112,7 +113,7 @@ uniformemente:
 
 ### S3 — Gate que rechaza scanners incompatibles
 
-- **Status**: pending
+- **Status**: done (scripts/gates/lint-effective-project-root.script.ts, integrado en lint)
 - **Files**: scripts/gates/lint-effective-project-root.script.ts (nuevo).
 - **Gate**: entra en bun run lint.
 - **Detalle**:

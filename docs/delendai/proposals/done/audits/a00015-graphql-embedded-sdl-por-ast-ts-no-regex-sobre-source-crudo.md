@@ -2,7 +2,7 @@
 id: a00015
 title: "GraphQL embedded SDL por AST TS (no regex sobre source crudo)"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-04
@@ -11,6 +11,8 @@ shippedIn:
   - 71b535c  # S2: adapter AST-based replaces regex
   - 1e5c339  # S3: eliminar regex sobre source crudo
   - 7080255  # merge into develop + push
+  - 3f7e972  # S4: centinela de interpolación en frontend + contrato (hasInterpolation)
+  - ed0f230  # S4: scanner omite templates interpolados + warning (6 tests adversariales)
 dependsOn:
   - a00012
 related:
@@ -77,7 +79,7 @@ segundo parser.
 
 ### S1 — taggedTemplates shape en el frontend TS
 
-- **Status**: pending
+- **Status**: done (`ITaggedTemplate` en contracts + `collectTaggedTemplatesFromSource`)
 - **Files**:
   - packages/frameworks/typescript/tagged-template.ts (nuevo)
   - packages/frameworks/index.ts (re-export)
@@ -88,7 +90,7 @@ segundo parser.
 
 ### S2 — Adapter en scanner GraphQL
 
-- **Status**: pending
+- **Status**: done
 - **Files**:
   - packages/frameworks/scanners/graphql.scanner.ts
   - packages/frameworks/scanners/graphql-embedded.adapter.ts (nuevo)
@@ -103,7 +105,7 @@ segundo parser.
 
 ### S3 — Quitar el regex textual
 
-- **Status**: pending
+- **Status**: done
 - **Files**: packages/frameworks/scanners/graphql.scanner.ts.
 - **Gate**: bun run lint:regex-state
 - **Detalle**: el regex de búsqueda textual deja de existir; el

@@ -17,17 +17,13 @@ por `<kind>` cuando aplica (audits, fixes, chores, …).
 
 | Id | Kind | Carpeta |
 |---|---|---|
-| `a00014` | `audit` | [`ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md`](ready/audits/a00014-effectiveprojectroot-centralizado-en-core-migracion-de-los-21-scanners.md) |
-| `a00015` | `audit` | [`ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md`](ready/audits/a00015-graphql-embedded-sdl-por-ast-ts-no-regex-sobre-source-crudo.md) |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
 | `c00005` | `chore` | [`ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md`](ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md) |
-| `i00002` | `infra` | [`ready/infras/i00002-desbloquear-ci-checkout-delendai-fuera-del-workspace-del-runner.md`](ready/infras/i00002-desbloquear-ci-checkout-delendai-fuera-del-workspace-del-runner.md) |
 | `x00025` | `fix` | [`ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md`](ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md) |
 | `x00027` | `fix` | [`ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md`](ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md) |
 | `x00028` | `fix` | [`ready/fixes/x00028-multi-service-spec-isolation-buildforservice-aisla-specs-por-service-endpoints.md`](ready/fixes/x00028-multi-service-spec-isolation-buildforservice-aisla-specs-por-service-endpoints.md) |
 | `x00031` | `fix` | [`ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md`](ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md) |
 | `x00032` | `fix` | [`ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md`](ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md) |
-| `x00033` | `fix` | [`ready/fixes/x00033-lint-naming-en-rojo-frontends-ts-de-a00015-a00016-fuera-de-la-regla.md`](ready/fixes/x00033-lint-naming-en-rojo-frontends-ts-de-a00015-a00016-fuera-de-la-regla.md) |
 | `x00035` | `fix` | [`ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md`](ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md) |
 | `x00036` | `fix` | [`ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md`](ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md) |
 | `x00037` | `fix` | [`ready/fixes/x00037-i18n-completeness-gate-bloquea-locales-placeholder-de-ingles.md`](ready/fixes/x00037-i18n-completeness-gate-bloquea-locales-placeholder-de-ingles.md) |
