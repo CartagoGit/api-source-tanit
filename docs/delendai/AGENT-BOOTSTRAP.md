@@ -360,6 +360,36 @@ export-to-postman-specific:
   `status: ready`; the orchestrator transitions them via the proposals
   plugin tools. Closed proposals are archived in `done/<kind>/`.
 
+### 4.1 i18n completeness — x00037
+
+Locale files in `packages/ui/i18n/locales/` MUST declare their
+completion status in `_meta._completeness`. Three values:
+
+- `"reference"` — the source-of-truth locale (`en.json`). Exactly
+  one. The UI loader is free to use it as the fallback.
+- `"complete"` — translated, distinct from `en.json`. Passes
+  `bun run lint:i18n-completeness` by having at least one value
+  different from the reference on a common key.
+- `"experimental"` — placeholder, awaiting translation. **Required**
+  for every locale whose content is currently byte-identical to the
+  reference; without it the gate fails CI.
+
+The gate (`scripts/gates/lint-i18n-completeness.script.ts`) compares
+each locale against the reference using Jaccard-over-keys and
+value-overlap on common keys. Placeholders are detected at 100%
+value overlap and must carry `_completeness: "experimental"`. The
+selector's future work is to honour `_completeness === "experimental"`
+and hide the locale until translated; that is a UI concern tracked
+separately.
+
+Adding a new locale: pick the status that matches the actual
+content. Adding a translation: change `_completeness` from
+`"experimental"` to `"complete"`. There is no `"in_progress"`
+because the gate does not measure partial coverage; partial
+translations count as `"experimental"` until they're distinct enough
+to fail the value-overlap test, at which point they should be
+marked `"complete"`.
+
 ## 5. Definition of done — local deltas
 
 The universal bootstrap §5 DoD applies. Project-specific additions:

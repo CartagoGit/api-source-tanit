@@ -21,7 +21,6 @@ por `<kind>` cuando aplica (audits, fixes, chores, …).
 | `c00005` | `chore` | [`ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md`](ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md) |
 | `x00025` | `fix` | [`ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md`](ready/fixes/x00025-routesbyservice-acumula-en-lugar-de-sobrescribir-dedupe-por-operationid.md) |
 | `x00027` | `fix` | [`ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md`](ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md) |
-| `x00028` | `fix` | [`ready/fixes/x00028-multi-service-spec-isolation-buildforservice-aisla-specs-por-service-endpoints.md`](ready/fixes/x00028-multi-service-spec-isolation-buildforservice-aisla-specs-por-service-endpoints.md) |
 | `x00031` | `fix` | [`ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md`](ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md) |
 | `x00032` | `fix` | [`ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md`](ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md) |
 | `x00035` | `fix` | [`ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md`](ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md) |
