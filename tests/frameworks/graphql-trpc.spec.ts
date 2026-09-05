@@ -384,3 +384,83 @@ describe("GraphQL — lockfiles as runtime bonuses (f00011 S4)", () => {
     }
   });
 });
+
+describe("GraphQL — bun.lock (texto, Bun ≥ 1.2) detection (x00035)", () => {
+  // x00035 S2: idempotente con express.spec — ver rationale allí.
+  test("bun.lock (text) adds evidence with weight 0.15", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+      "bun.lock": "",
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lock");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("when both bun.lock and bun.lockb exist, bun.lock wins and bun.lockb is ignored", async () => {
+    const { GraphQlProjectScanner } = await import(
+      "../../packages/frameworks/scanners/graphql.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { graphql: "^16.0.0" } }),
+      "bun.lock": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new GraphQlProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "bun.lock")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
+describe("tRPC — bun.lock (texto, Bun ≥ 1.2) detection (x00035)", () => {
+  // x00035 S2: idempotente con express.spec — ver rationale allí.
+  test("bun.lock (text) adds evidence with weight 0.15", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+      "bun.lock": "",
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lock");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("when both bun.lock and bun.lockb exist, bun.lock wins and bun.lockb is ignored", async () => {
+    const { TrpcProjectScanner } = await import(
+      "../../packages/frameworks/scanners/trpc.scanner"
+    );
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { "@trpc/server": "^10.0.0" } }),
+      "bun.lock": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new TrpcProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "bun.lock")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

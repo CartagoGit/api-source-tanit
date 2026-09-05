@@ -315,6 +315,45 @@ describe("Express — lockfiles as runtime bonuses (f00011 S4)", () => {
   });
 });
 
+describe("Express — bun.lock (texto, Bun ≥ 1.2) detection (x00035)", () => {
+  // x00035 S2: Bun ≥ 1.2 emite `bun.lock` (texto) en lugar del binario
+  // `bun.lockb` que se usaba hasta Bun < 1.2. Los scanners ya aceptan
+  // ambos formatos; lo que faltaba era cobertura de test para el caso
+  // moderno (solo `bun.lock`) y para el caso degenerado (ambos
+  // ficheros presentes, donde `bun.lock` gana).
+  test("bun.lock (text) adds evidence with weight 0.15", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "bun.lock": "",
+    });
+    try {
+      const result = await new ExpressProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lock");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+      // El lockfile binario legacy NO debe aparecer si solo hay texto.
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("when both bun.lock and bun.lockb exist, bun.lock wins and bun.lockb is ignored", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "bun.lock": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new ExpressProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "bun.lock")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
 describe("Express scanner — frameworkSearchRoot (audit 2nd review #4)", () => {
   test("scan() respects match.frameworkSearchRoot: only reads from the given workspace", async () => {
     // Previously the scanner walked `match.projectRoot` and, in

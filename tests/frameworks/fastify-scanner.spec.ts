@@ -255,3 +255,37 @@ describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 });
+
+describe("Fastify — bun.lock (texto, Bun ≥ 1.2) detection (x00035)", () => {
+  // x00035 S2: idempotente con express.spec — ver rationale allí.
+  test("bun.lock (text) adds evidence with weight 0.15", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+      "bun.lock": "",
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      const bun = result.evidence.find((e) => e.artifact === "bun.lock");
+      expect(bun).toBeDefined();
+      expect(bun?.weight).toBe(0.15);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("when both bun.lock and bun.lockb exist, bun.lock wins and bun.lockb is ignored", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
+      "bun.lock": "",
+      "bun.lockb": "",
+    });
+    try {
+      const result = await new FastifyProjectScanner().detect(project.root);
+      expect(result.evidence.some((e) => e.artifact === "bun.lock")).toBe(true);
+      expect(result.evidence.some((e) => e.artifact === "bun.lockb")).toBe(false);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
