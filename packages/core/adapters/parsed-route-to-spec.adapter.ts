@@ -35,6 +35,7 @@ import { join } from "node:path";
 import { SUPPORTED_METHODS } from "../../contracts/constants/core/postman.constant.js";
 import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import { deriveServiceId } from "../discovery/group-by-service.helper.js";
 import type {
   IProjectMatch,
   IRouteScanner,
@@ -243,6 +244,10 @@ export async function buildSpecsFromScanner(
 
     const postmanUri = toPostmanUri(route.uri);
     const spec: EndpointSpec = {
+      // x00028 S3: stamp the workspace on each spec so cross-service
+      // dedupe and per-service filtering can distinguish two specs
+      // that share `(method, uri)` but live in different workspaces.
+      serviceId: deriveServiceId(match),
       name: deriveName(route),
       method: m as EndpointSpec["method"],
       uri: postmanUri,

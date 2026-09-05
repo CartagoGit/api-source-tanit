@@ -1,0 +1,9 @@
+{
+  "name": "multi-service-isolation",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/users",
+    "apps/orders"
+  ]
+}

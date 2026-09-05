@@ -236,4 +236,55 @@ describe("filterSpecsForService (x00028)", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.uri).toBe("/real");
   });
+
+  it("x00028 S3: when two services share (method, uri), the spec's serviceId wins (one per service, no crossing)", () => {
+    // Production scenario (post-fix): the merger stamps every spec
+    // with `serviceId` via `deriveServiceId(match)`. Two workspaces
+    // emitting `GET /health` end up with TWO specs in the catalog,
+    // each tagged with its own `serviceId`. The filter MUST route
+    // each spec to its own service descriptor; otherwise the
+    // multi-service isolation that x00028 is built on collapses.
+    const catalog: EndpointSpec[] = [
+      spec("GET", "/users", { serviceId: "apps_users" }),
+      spec("GET", "/health", { serviceId: "apps_users" }),
+      spec("GET", "/health", { serviceId: "apps_orders" }),
+      spec("GET", "/orders", { serviceId: "apps_orders" }),
+    ];
+    const users = service("apps_users", [
+      route("GET", "/users"),
+      route("GET", "/health"),
+    ]);
+    const orders = service("apps_orders", [
+      route("GET", "/orders"),
+      route("GET", "/health"),
+    ]);
+
+    const usersOut = filterSpecsForService(catalog, users);
+    const ordersOut = filterSpecsForService(catalog, orders);
+
+    expect(usersOut).toHaveLength(2);
+    expect(usersOut.every((s) => s.serviceId === "apps_users")).toBe(true);
+    expect(ordersOut).toHaveLength(2);
+    expect(ordersOut.every((s) => s.serviceId === "apps_orders")).toBe(true);
+  });
+
+  it("x00028 S3: a spec without serviceId is still routed by (method, uri) — handles un-stamped callers", () => {
+    // Belt-and-braces contract: when the descriptor HAS a serviceId
+    // but the catalog spec DOES NOT (e.g. legacy data, a hand-crafted
+    // test fixture, or an adapter that hasn't been migrated), the
+    // (method, uri) match still wins. Treating the missing field as
+    // `""` keeps the legacy single-workspace behaviour without
+    // silently including orphan specs that happen to share
+    // (method, uri) with this service.
+    const catalog: EndpointSpec[] = [
+      spec("GET", "/health"), // no serviceId — legacy shape
+      spec("GET", "/only-orders", { serviceId: "apps_orders" }),
+    ];
+    const users = service("apps_users", [route("GET", "/health")]);
+
+    const out = filterSpecsForService(catalog, users);
+
+    expect(out).toHaveLength(1);
+    expect(out[0]?.uri).toBe("/health");
+  });
 });

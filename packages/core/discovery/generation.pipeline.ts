@@ -323,7 +323,17 @@ async function buildFor(
     }
     const first = graph.services[0]!;
     const mergedService: IServiceDescriptor = {
-      serviceId: first.serviceId,
+      // x00028 S3: the combined service is a synthetic descriptor
+      // whose `endpoints` is the union of every contributing
+      // service. It does NOT have a workspace identity of its own
+      // — the filter helper treats `serviceId === ""` as "legacy /
+      // flat project" and trusts the `(method, uri)` match alone,
+      // which is what we want here (the filter must accept specs
+      // from ALL services in the combined collection). Using
+      // `first.serviceId` would let the filter reject every spec
+      // that came from a sibling service: `spec.serviceId ===
+      // first.serviceId` would fail for every other service.
+      serviceId: "",
       match: first.match,
       // x00031 S1: propagate the hybrid metadata from the first service
       // (which is the only one with the merged endpoints anyway).

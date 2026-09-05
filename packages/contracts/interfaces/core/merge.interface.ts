@@ -93,6 +93,23 @@ export interface IEndpointProvenance {
 export interface IMergedEndpoint {
   readonly method: string;
   readonly uri: string;
+  /**
+   * Identity of the workspace this merged endpoint belongs to.
+   *
+   * x00028 S3: in multi-workspace monorepos, two `GET /health`
+   * endpoints from different workspaces are not the same
+   * operation, even when they share `(method, uri)`. The merger
+   * already uses `serviceId` as part of `mergeKey` to keep them
+   * apart; this field propagates the same identity downstream so
+   * `filterSpecsForService` can route each spec to the right
+   * service descriptor.
+   *
+   * Empty/missing = flat project (no workspaces, the legacy
+   * single-service path). `endpointSpecFromMerged` falls back to
+   * an empty string in that case so the equality check in the
+   * filter (`spec.serviceId === service.serviceId`) holds.
+   */
+  readonly serviceId?: string;
   /** Endpoint name (preserved from the winner). */
   readonly name?: string;
   /** The highest-confidence piece when there are several. */

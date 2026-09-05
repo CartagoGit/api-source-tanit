@@ -115,6 +115,25 @@ export interface PostmanCollection {
 
 /** Endpoint declared in build-collection.service.ts (catalogue). */
 export interface EndpointSpec {
+  /**
+   * `serviceId` of the workspace this spec was emitted from.
+   *
+   * x00028 S3: needed so the cross-service dedupe (and the per-service
+   * spec filter) doesn't conflate two endpoints from different
+   * workspaces that happen to share `(method, uri)`. Without it,
+   * `apps/users` and `apps/orders` both emitting `GET /health` would
+   * dedupe each other out of the global catalog, and then each
+   * service's collection would lose its own `/health` (or both
+   * would see both, depending on the order of operations).
+   *
+   * Set by `buildSpecsFromScanner` using `deriveServiceId(match)`;
+   * downstream consumers (filter, merger, dedupe) read it via
+   * `endpointKey`.
+   *
+   * Empty/missing = flat project (legacy single-service case). The
+   * key keeps colliding so the original behaviour is preserved.
+   */
+  serviceId?: string;
   name: string;
   /**
    * HTTP method.

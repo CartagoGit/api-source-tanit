@@ -153,6 +153,16 @@ export class EndpointMerger implements IEndpointMerger {
     const name = pickName(sorted);
     const winningRoute = pickRoute(sorted);
 
+    // x00028 S3: the merger groups candidates by `(serviceId, method,
+    // uri)` (see `mergeKey` below). All candidates in one group
+    // share the same `serviceId` — otherwise they would not have
+    // landed in the same bucket. We take the first one's value as
+    // the authoritative one (empty string for flat projects) and
+    // stamp it on the merged endpoint so downstream consumers
+    // (`filterSpecsForService`, the dedupe, the spec catalog)
+    // see the workspace identity the adapter gave each spec.
+    const serviceId = sorted[0]!.serviceId ?? "";
+
     const bodyWinner = pickBody(sorted, this.confidence);
     const {
       fields: fieldsWinner,
@@ -186,6 +196,7 @@ export class EndpointMerger implements IEndpointMerger {
     const merged: IMergedEndpoint = {
       method,
       uri,
+      ...(serviceId ? { serviceId } : {}),
       ...(name ? { name } : {}),
       ...(bodyWinner?.body !== undefined ? { body: bodyWinner.body } : {}),
       ...(fieldsWinner ? { fields: fieldsWinner } : {}),
@@ -312,6 +323,18 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
   name: string;
   method: import("../../contracts/interfaces/core/postman.interface.js").EndpointSpec["method"];
   uri: string;
+  /**
+   * x00028 S3: the merged endpoint carries the workspace identity
+   * (or empty string for flat projects) so downstream consumers
+   * (`filterSpecsForService`, the dedupe key in
+   * `endpoint-merger.service > mergeKey`) can route each spec to
+   * the right service descriptor. Without this, the merger would
+   * strip the stamp the adapter put on each spec and the filter
+   * helper would see `serviceId === undefined` for every spec,
+   * falling back to the legacy full-catalog behaviour — which is
+   * exactly what x00028 set out to fix.
+   */
+  serviceId?: string;
   body?: unknown;
   fields?: ReadonlyArray<
     IValidationSpec | import("../../contracts/interfaces/core/postman.interface.js").IEndpointField
@@ -324,6 +347,7 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
     name: m.name ?? "",
     method: m.method as import("../../contracts/interfaces/core/postman.interface.js").EndpointSpec["method"],
     uri: m.uri,
+    ...(m.serviceId !== undefined ? { serviceId: m.serviceId } : {}),
     ...(m.body !== undefined ? { body: m.body } : {}),
     ...(m.fields !== undefined ? { fields: m.fields } : {}),
     ...(m.description !== undefined ? { description: m.description } : {}),

@@ -133,13 +133,37 @@ export function filterSpecsForService(
     return [...discoverySpecs];
   }
   const allowed = endpointIdentitySet(service.endpoints);
+  // x00028 S3: when two services share `(method, uri)` (e.g. both
+  // expose `GET /health`), the filter must also require that the
+  // spec carries THIS service's `serviceId`. Without this constraint,
+  // each service would inherit the other's specs and the dedupe at
+  // downstream layers would have already thrown away the duplication
+  // that gives the collection its single-source-of-truth feel.
+  //
+  // Normalize `undefined` to `""` on BOTH sides: the descriptor may
+  // arrive without a `serviceId` (legacy callers, hand-crafted test
+  // fixtures) and the spec may be one that pre-dates x00028 S3's
+  // adapter stamping. Treating either side as "no workspace
+  // identity" lets the (method, uri) match stand on its own in
+  // those cases, which is exactly what the flat-project path needs.
+  // Real monorepo data always stamps both ends, so the equality
+  // branch is what runs there.
+  const serviceId = service.serviceId ?? "";
   const filtered: EndpointSpec[] = [];
   for (const spec of discoverySpecs) {
     // Same normalization as `endpointIdentitySet`: the spec side
     // carries Postman form (`{{id}}`), the route side carries raw
     // framework form (`:id`). Both collapse to `:p` here.
     if (allowed.has(`${spec.method}|${normalizeForComparison(spec.uri)}`)) {
-      filtered.push(spec);
+      const specServiceId = spec.serviceId ?? "";
+      // Belt-and-braces: even if `(method, uri)` collides with a
+      // sibling service, we only keep the spec if it actually belongs
+      // to THIS service. In flat projects both `service.serviceId`
+      // and `spec.serviceId` are empty, so the equality holds and
+      // the legacy behaviour is preserved.
+      if (serviceId === "" || specServiceId === "" || specServiceId === serviceId) {
+        filtered.push(spec);
+      }
     }
   }
   return filtered;
