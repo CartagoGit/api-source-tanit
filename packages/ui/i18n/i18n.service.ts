@@ -69,7 +69,16 @@ import zhHans from "./locales/zh-Hans.json" with { type: "json" };
  * mismo, que es lo que impide que añadir un fichero y olvidarse de esta
  * línea pase desapercibido.
  */
-const EMPAQUETADOS: Readonly<Record<string, ITranslations>> = {
+/**
+ * Los catálogos empaquetados CRUDOS, por código. Son el objeto JSON tal
+ * cual, con la clave `_meta` (x00037) que anida `_completeness`. Por eso
+ * se guardan como `Record<string, unknown>` y no como `ITranslations`:
+ * `_meta` es un objeto, no un texto, y `ITranslations` es un mapa plano
+ * de texto. `_meta` viaja hasta el seed (que lo vuelca a disco para que
+ * el gate `lint:i18n-completeness` lo lea) pero NO hasta el catálogo de
+ * traducción, que se filtra con `soloTextos`.
+ */
+const EMPAQUETADOS_CRUDOS: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {
   ar,
   bn,
   de,
@@ -87,8 +96,17 @@ const EMPAQUETADOS: Readonly<Record<string, ITranslations>> = {
   "zh-Hans": zhHans,
 };
 
+/** Deja solo las claves cuyo valor es texto; descarta `_meta` y compañía. */
+function soloTextos(catalogo: Readonly<Record<string, unknown>>): ITranslations {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(catalogo)) {
+    if (typeof value === "string") out[key] = value;
+  }
+  return out;
+}
+
 /** El catálogo de inglés, al que cae todo lo que falte. */
-const BASE: ITranslations = en;
+const BASE: ITranslations = soloTextos(EMPAQUETADOS_CRUDOS["en"] ?? {});
 
 /** Rellena con inglés lo que el idioma no traiga. */
 function conRespaldo(traducciones: ITranslations): ITranslations {
@@ -196,10 +214,12 @@ async function leerExternos(
  */
 export async function seedLocales(carpeta: string): Promise<void> {
   await mkdir(carpeta, { recursive: true });
-  for (const [code, traducciones] of Object.entries(EMPAQUETADOS)) {
+  for (const [code, crudo] of Object.entries(EMPAQUETADOS_CRUDOS)) {
     const destino = join(carpeta, `${code}.json`);
     if (existsSync(destino)) continue;
-    await writeFileAtomic(destino, `${JSON.stringify(traducciones, null, 2)}\n`);
+    // Se vuelca el objeto crudo, con `_meta`, para que el fichero en
+    // disco siga teniendo la anotación de completitud que el gate lee.
+    await writeFileAtomic(destino, `${JSON.stringify(crudo, null, 2)}\n`);
   }
 }
 
@@ -214,7 +234,7 @@ export async function loadLocales(externalDir?: string): Promise<II18nCatalog> {
     code: l.code,
     nativeName: l.nativeName,
     rtl: l.rtl ?? false,
-    translations: conRespaldo(EMPAQUETADOS[l.code] ?? {}),
+    translations: conRespaldo(soloTextos(EMPAQUETADOS_CRUDOS[l.code] ?? {})),
     origin: "bundled" as const,
   }));
 
