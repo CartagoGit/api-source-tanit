@@ -132,7 +132,16 @@ todos los scanners TS consumen.
 
 ### S6 — Integración real: scanners consumen `method`/`resolvedMethod` del IR (CORRECTIVO — bloquea el cierre)
 
-- **Status**: pending
+- **Status**: pending (PARCIALMENTE hecho — el split se cerró vía x00038/de45d02; quedan bindings reales, single-parse y S6.a)
+- **Progreso 2026-09-05**: el primer bullet (eliminar `callee.split(".")` de
+  `express.scanner.ts`) está HECHO con la propuesta hermana **x00038** (bridge
+  puebla `receiver`/`method`/`receiverKind`, el scanner los consume, y el gate
+  `lint:no-call-callee-split` lo fija). Los 6 multi-estilos con verbo literal ya
+  llegan a `ParsedRoute`. SIGUEN ABIERTOS en este slice: los `IConstantBinding`
+  reales (el estilo `const M="get"; app[M]`, que hoy pasa `propagateConstants(irCalls, [])`),
+  `buildLanguageIR` en un solo parse, y S6.a (`IImportBinding.importedName`).
+  Por eso a00016 NO se da por cerrada: faltaría uno de los siete patrones y el
+  single-parse.
 - **Files**:
   - `packages/frameworks/scanners/express.scanner.ts`
   - `packages/frameworks/typescript/symbol-resolver.ts` (matriz → ParsedRoute)
