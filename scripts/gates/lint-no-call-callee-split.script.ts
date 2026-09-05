@@ -63,7 +63,7 @@ async function collect(dir: string, out: string[] = []): Promise<string[]> {
   return out;
 }
 
-async function main(): Promise<number> {
+export async function main(): Promise<number> {
   const files = await collect(join(REPO_ROOT, WATCHED_DIR));
   const problems: string[] = [];
   for (const file of files) {
