@@ -27,7 +27,6 @@ por `<kind>` cuando aplica (audits, fixes, chores, …).
 | `x00035` | `fix` | [`ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md`](ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md) |
 | `x00036` | `fix` | [`ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md`](ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md) |
 | `x00037` | `fix` | [`ready/fixes/x00037-i18n-completeness-gate-bloquea-locales-placeholder-de-ingles.md`](ready/fixes/x00037-i18n-completeness-gate-bloquea-locales-placeholder-de-ingles.md) |
-| `x00038` | `fix` | [`ready/fixes/x00038-express-bridge-structured-call-ir-eliminar-call-callee-split.md`](ready/fixes/x00038-express-bridge-structured-call-ir-eliminar-call-callee-split.md) |
 
 ## Bloqueadas
 
