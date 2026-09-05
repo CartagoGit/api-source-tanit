@@ -66,7 +66,7 @@ jobs:
       # instalan. En local la resuelve el node_modules del propio
       # delendai; en CI el checkout limpio no la tiene. Enlazamos la que
       # acaba de instalar el `bun install` del hermano (mismo lockfile).
-      - name: Link jsonc-parser into the file: package store
+      - name: "Link jsonc-parser into the file: package store"
         run: |
           STORE_DIR="node_modules/.bun/@delendai+core@file+..+delendai+packages+core+1a2e9f62db74697b/node_modules"
           ln -sfn "${GITHUB_WORKSPACE}/../delendai/node_modules/jsonc-parser" "${STORE_DIR}/jsonc-parser"
