@@ -8,25 +8,36 @@
  * revés — y entonces `ready/` deja de ser una lista fiable de qué queda
  * por hacer.
  *
- * Comprueba cinco cosas:
+ * Comprueba las invariantes de x00032 (cierre coherente):
  *   1. El `status` es uno de los estados válidos.
  *   2. La carpeta corresponde a ese estado.
  *   3. Dentro de `done/`, la subcarpeta corresponde al `kind`.
  *   4. Los `id` no se repiten y coinciden con el prefijo del fichero.
  *   5. El esqueleto de carpetas existe entero y cada una tiene `.gitkeep`.
- *
- * La quinta es la que mantiene el árbol estable: git no versiona
- * directorios, así que en cuanto la última propuesta de un estado se
- * mueve a otro, la carpeta desaparece del repo y el siguiente que
- * quiera usar ese estado se encuentra sin sitio donde dejarla. El
- * `.gitkeep` la ancla.
+ *   6. (x00032 S1) Una propuesta `status: done` cuyo `kind` no sea
+ *      `audit` NO puede tener slices con `**Status**: pending`,
+ *      `in-progress` o `blocked` en su cuerpo. El cierre se demuestra
+ *      en el cuerpo, no en el frontmatter. Las auditorías se saltan
+ *      esta regla porque sus slices son recomendaciones aspiracionales
+ *      que abren OTROS `kind: fix|chore|feat` — no trabajo de la propia
+ *      auditoría.
+ *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shippedIn:`
+ *      con al menos un SHA. Y cada SHA debe ser alcanzable en git
+ *      (`git cat-file -e <sha>` responde 0). Un SHA falso es peor que
+ *      no tener SHA, porque miente sobre la auditoría de evidencias.
+ *   8. (x00032 S1) El `INDEX.md` no lista propuestas `done` en la
+ *      sección "Ready"; toda propuesta `ready` aparece en su tabla.
  *
  * Uso:
  *   bun run lint:proposals
  */
 import { readdir, readFile, stat } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { basename, join, relative, } from "node:path";
 import { PROPOSALS_DIR, REPO_ROOT } from "../helpers/root.helper.js";
+
+const execFileAsync = promisify(execFile);
 
 /** Estados válidos y su carpeta. Coinciden 1:1 por diseño. */
 const STATES = [
@@ -82,11 +93,74 @@ interface IProposal {
   readonly id: string;
   readonly status: string;
   readonly kind: string;
+  /** Texto completo del fichero (frontmatter + cuerpo). */
+  readonly body: string;
+  /** Texto tras el segundo `---` (sólo cuerpo). */
+  readonly bodyAfter: string;
+  /** Bloque de frontmatter (entre los dos `---`). */
+  readonly frontmatter: string;
 }
 
 function readField(frontmatter: string, name: string): string {
   const match = new RegExp(`^${name}:\\s*(.+)$`, "m").exec(frontmatter);
   return match?.[1]?.trim().replace(/^["']|["']$/g, "") ?? "";
+}
+
+/**
+ * Parsea el frontmatter YAML-like y devuelve los `shippedIn: [...]` SHAs.
+ *
+ * Acepta dos formas (lo que aparece en el repo):
+ *
+ *   shippedIn:
+ *     - cc134ce  # comentario
+ *     - 3f6b533
+ *
+ *   shippedIn: [cc134ce, 3f6b533]
+ *
+ * Si el campo no existe o está vacío, devuelve `[]`.
+ */
+function parseShippedIn(body: string): string[] {
+  const block = body.match(/^shippedIn:\s*\n((?:\s*-\s*\S+\s*(?:#.*)?\s*\n?)+)/m);
+  if (block && block[1] !== undefined) {
+    const out: string[] = [];
+    for (const line of block[1].split("\n")) {
+      const sha = line.match(/-\s*([0-9a-f]{7,40})\b/i)?.[1];
+      if (sha) out.push(sha);
+    }
+    return out;
+  }
+  const inline = body.match(/^shippedIn:\s*\[([^\]]+)\]/m);
+  if (inline) {
+    return (inline[1] ?? "")
+      .split(",")
+      .map((s) => s.trim().match(/([0-9a-f]{7,40})/i)?.[1] ?? "")
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/**
+ * Busca las marcas `**Status**: <value>` en el cuerpo de la propuesta.
+ *
+ * Solo cuenta las que estén bajo una sección `## Slices` (x00032 S1).
+ * Devuelve la lista de estados que aparecen.
+ */
+function parseSliceStatuses(bodyAfter: string): string[] {
+  const slicesIdx = bodyAfter.indexOf("\n## Slices");
+  if (slicesIdx < 0) return [];
+  const afterSlices = bodyAfter.slice(slicesIdx);
+  // El siguiente `## ` que no sea "Slices" cierra la sección.
+  const nextSection = afterSlices.search(/\n## [^S\n]|\n## S[^l]|\n## Sl[^i]/);
+  const end = nextSection > 0 ? nextSection : afterSlices.length;
+  const block = afterSlices.slice(0, end);
+  const re = /\*\*Status\*\*:\s*([A-Za-z_-]+)/g;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block)) !== null) {
+    const v = m[1];
+    if (v !== undefined) out.push(v.toLowerCase());
+  }
+  return out;
 }
 
 async function collectProposals(dir: string): Promise<IProposal[]> {
@@ -111,12 +185,17 @@ async function collectProposals(dir: string): Promise<IProposal[]> {
     ) continue;
 
     const text = await readFile(full, "utf8");
-    const frontmatter = text.startsWith("---") ? (text.split("---")[1] ?? "") : "";
+    const parts = text.split("---");
+    const frontmatter = text.startsWith("---") ? (parts[1] ?? "") : "";
+    const bodyAfter = text.startsWith("---") ? parts.slice(2).join("---") : text;
     out.push({
       path: full,
       id: readField(frontmatter, "id"),
       status: readField(frontmatter, "status"),
       kind: readField(frontmatter, "kind"),
+      body: text,
+      bodyAfter,
+      frontmatter,
     });
   }
   return out;
@@ -171,7 +250,80 @@ async function checkSkeleton(): Promise<string[]> {
   return problems;
 }
 
-async function main(): Promise<number> {
+/**
+ * Comprueba que un SHA es alcanzable en git. Devuelve true si
+ * `git cat-file -e <sha>` responde 0.
+ */
+async function isReachableSha(sha: string): Promise<boolean> {
+  try {
+    await execFileAsync("git", ["cat-file", "-e", sha], { cwd: REPO_ROOT });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * x00032 S2 (regla 5): INDEX.md no debe listar propuestas `done` en
+ * la tabla "Ready", y toda propuesta `ready`/`blocked` debe aparecer
+ * en su tabla correspondiente. Verifica contra el filesystem; el
+ * regenerado automático es un slice posterior (S2.2).
+ *
+ * Solo miramos dentro de las filas de tabla markdown (líneas que
+ * empiezan por `|`). Una mención en prosa — por ejemplo una nota
+ * histórica al pie — no cuenta como "listada".
+ */
+async function checkIndexSync(proposals: ReadonlyArray<IProposal>): Promise<string[]> {
+  const problems: string[] = [];
+  const indexPath = join(PROPOSALS_DIR, "INDEX.md");
+  if (!(await exists(indexPath, "file"))) {
+    return [`INDEX.md falta en ${relative(REPO_ROOT, PROPOSALS_DIR)}/`];
+  }
+  const indexText = await readFile(indexPath, "utf8");
+
+  // Cada propuesta se referencia en INDEX.md por su id en una línea
+  // tipo "| `id` | ...". Buscamos SOLO dentro de filas de tabla.
+  const indexIds = new Set<string>();
+  for (const line of indexText.split("\n")) {
+    if (!line.trimStart().startsWith("|")) continue;
+    const m = line.match(/`([a-zA-Z]\d{5})`/);
+    if (m && m[1]) indexIds.add(m[1]);
+  }
+
+  const proposalsByStatus = new Map<string, IProposal[]>();
+  for (const p of proposals) {
+    const list = proposalsByStatus.get(p.status) ?? [];
+    list.push(p);
+    proposalsByStatus.set(p.status, list);
+  }
+
+  // 1) Listadas en una tabla de INDEX.md pero ya están `done`.
+  const doneIds = new Set(
+    (proposalsByStatus.get("done") ?? []).map((p) => p.id).filter(Boolean),
+  );
+  for (const id of doneIds) {
+    if (indexIds.has(id)) {
+      problems.push(
+        `INDEX.md lista \`${id}\` en una tabla pero su frontmatter está en status: done`,
+      );
+    }
+  }
+
+  // 2) Listadas como `ready`/`blocked` pero NO aparecen en INDEX.md.
+  for (const status of ["ready", "blocked"] as const) {
+    for (const p of proposalsByStatus.get(status) ?? []) {
+      if (p.id && !indexIds.has(p.id)) {
+        problems.push(
+          `${relative(REPO_ROOT, p.path)}: status "${status}" pero \`${p.id}\` no aparece en INDEX.md`,
+        );
+      }
+    }
+  }
+
+  return problems;
+}
+
+export async function main(): Promise<number> {
   const proposals = await collectProposals(PROPOSALS_DIR);
   if (proposals.length === 0) {
     console.error("lint:proposals — no se encontró ninguna propuesta");
@@ -212,7 +364,39 @@ async function main(): Promise<number> {
         `${rel}: status "${proposal.status}" pero vive en ${actual || "(raíz)"}/ — debería estar en ${expected}/`,
       );
     }
+
+    // ── x00032 S1 — coherencia frontmatter ↔ cuerpo ──────────────────
+    if (proposal.status === "done" && proposal.kind !== "audit") {
+      // Regla 1: ningún slice `pending`/`in-progress`/`blocked` en el cuerpo.
+      const OPEN = ["pending", "in-progress", "blocked"];
+      const sliceStatuses = parseSliceStatuses(proposal.bodyAfter);
+      const offending = sliceStatuses.filter((s) => OPEN.includes(s));
+      if (offending.length > 0) {
+        problems.push(
+          `${rel}: status "done" pero ${offending.length} slice(s) en el cuerpo siguen en ` +
+            `[${offending.join(", ")}] — x00032 S1 (regla 1)`,
+        );
+      }
+
+      // Regla 2: `shippedIn` no vacío y SHAs alcanzables.
+      const shas = parseShippedIn(proposal.body);
+      if (shas.length === 0) {
+        problems.push(
+          `${rel}: status "done" pero \`shippedIn:\` está vacío — x00032 S1 (regla 2)`,
+        );
+      } else {
+        for (const sha of shas) {
+          if (!(await isReachableSha(sha))) {
+            problems.push(
+              `${rel}: shippedIn lista \`${sha}\` que no es alcanzable en git — x00032 S1 (regla 2)`,
+            );
+          }
+        }
+      }
+    }
   }
+
+  problems.push(...(await checkIndexSync(proposals)));
 
   if (problems.length > 0) {
     console.error(`lint:proposals — ${problems.length} problema(s):\n`);
@@ -228,7 +412,8 @@ async function main(): Promise<number> {
     .join(", ");
   console.log(
     `lint:proposals — ${proposals.length} propuestas, sin drift (${summary})` +
-      ` · esqueleto de ${canonicalFolders().length} carpetas anclado con .gitkeep`,
+      ` · esqueleto de ${canonicalFolders().length} carpetas anclado con .gitkeep` +
+      ` · x00032 S1: frontmatter↔cuerpo coherente, INDEX sincronizado`,
   );
   return 0;
 }

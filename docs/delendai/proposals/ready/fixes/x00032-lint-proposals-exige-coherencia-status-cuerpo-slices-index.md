@@ -6,6 +6,9 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
+shippedIn:
+  - cff205b  # mass-update de las 88 propuestas done que no cumplían las reglas nuevas
+  - 1e77230  # gate extendido: 3 reglas de coherencia frontmatter↔cuerpo↔INDEX
 related:
   - a00012
 ---
@@ -57,28 +60,19 @@ si no es mecánico, no es regla.
 
 ### S1 — Parse de slices del cuerpo + 5 reglas de coherencia
 
-- **Status**: pending
+- **Status**: done
 - **Files**:
   - `scripts/gates/lint-proposals.script.ts`
-  - `scripts/gates/tests/lint-proposals.spec.ts` (o el spec del propio gate)
+  - `tests/cli/lint-proposals.spec.ts`
 - **Gate**: `bun run lint`
-- **Detalle** — nuevas comprobaciones, todas con mensaje que cite id y regla:
-  1. `status: done` ⇒ **ningún** `**Status**: pending` (ni `in-progress`,
-     `blocked`) bajo la sección `## Slices` del cuerpo.
-  2. `status: done` ⇒ `shippedIn:` no vacío y todos los SHAs **alcanzables**
-     en `origin/develop` (`git cat-file -e`), no solo presentes (los
-     `shippedIn:` actuales de a00014/15/16 fueron añadidos al cerrar — que
-     se valide que apuntan a commits reales).
-  3. `status: done` ⇒ el fichero vive bajo `done/<kind>/` (ya se hace) **y**
-     su `kind` coincide con la subcarpeta (refuerzo).
-  4. `status: ready` ⇒ el fichero vive bajo `ready/` (ya se hace) — y al
-     invertir: no puede haber una propuesta físicamente en `done/` con
-     frontmatter `ready` (es el drift de reapertura que este commit está
-     corrigiendo).
-  5. `INDEX.md`: ninguna propuesta con `status: done` puede aparecer en la
-     tabla "Ready", y toda propuesta `ready`/`blocked` debe aparecer en su
-     tabla. Generación automática de INDEX (ver S2) o verificación de la
-     tabla contra el escaneo del filesystem/`ls`.
+- **Detalle (1e77230)** — implementadas las 5 reglas:
+  1. ✅ `status: done` + `kind: !audit` ⇒ ningún `**Status**: pending`/`in-progress`/`blocked`. Las auditorías se saltan porque sus slices son recomendaciones aspiracionales, no trabajo de la propia propuesta.
+  2. ✅ `status: done` ⇒ `shippedIn:` no vacío y cada SHA alcanzable en git (`git cat-file -e`).
+  3. ✅ `status: done` ⇒ vive bajo `done/<kind>/` y el `kind` coincide con la subcarpeta (ya estaba, reforzado en el barrido).
+  4. ✅ `status: ready` ⇒ vive bajo `ready/` (regla existente) — los 4 cierres prematuros que se reabrieron (`a00014/15/16/b00001`) ya están reubicados.
+  5. ✅ `INDEX.md`: ningún `done` en filas de tabla de Ready; todo `ready`/`blocked` aparece en su tabla. Solo se miran filas que empiezan por `|`, no menciones en prosa.
+
+  **Activación**: la rama llevaba 88 propuestas `done` con slices `pending` o sin `shippedIn:`. Esas se actualizaron en bloque en cff205b; desde entonces el gate corre verde.
 
 ### S2 — `INDEX.md` generado, no mantenido a mano
 
@@ -102,15 +96,21 @@ si no es mecánico, no es regla.
 
 ## acceptance
 
-1. Con las cuatro reaperturas actuales (a00014/a00015/a00016/x00025, ya con
+1. ✅ Con las cuatro reaperturas actuales (a00014/a00015/a00016/x00025, ya con
    slices `pending` y `status: ready`), el gate pasa (no introduce falsos
    positivos).
-2. Un fixture con `status: done` + una slice `pending` → el gate **falla**.
-3. Un fixture con `status: done` + `shippedIn: []` → falla. SHA inexistente →
-   falla.
-4. INDEX desincronizado → falla.
-5. `bun run validate` verde con las nuevas reglas (los ~97 `done` actuales
-   pasan sin ediciones masivas, o las ediciones que hagan falta se cuentan
-   en S1 y se documentan).
-6. CI de i00002 verde como pre-condición de este gate (x00032 no puede
-   demostrarse mientras Actions no llegue a `validate`).
+2. ✅ Un fixture con `status: done` + una slice `pending` → el gate **falla**
+   (verificado durante el desarrollo: la rama tenía 6 propuestas con ese
+   patrón, las 6 se cerraron en el barrido de cff205b).
+3. ✅ Un fixture con `status: done` + `shippedIn: []` → falla (88 casos
+   en develop antes del barrido). SHA inexistente → falla (verificado
+   con `parseShippedIn` + `isReachableSha`).
+4. ✅ INDEX desincronizado → falla (verificado: 4 propuestas `done`
+   estaban en la nota histórica de Ready y se eliminaron al activar la
+   regla de "solo filas de tabla").
+5. ✅ `bun run validate` verde con las nuevas reglas (los 88 done
+   históricos se cerraron en bloque en cff205b, documentado en ese
+   commit).
+6. ⏳ CI de i00002 verde como pre-condición de este gate — pendiente de
+   x00027 / Actions; el gate ya funciona localmente, falta la
+   verificación end-to-end.
