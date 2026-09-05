@@ -1,27 +1,27 @@
 /**
- * `SymfonyScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para proyectos Symfony (5.x, 6.x, 7.x).
+ * `SymfonyScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Symfony projects (5.x, 6.x, 7.x).
  *
- * Detección:
- *   - `composer.json` con `require` que contenga `symfony/framework-bundle`
- *     o `symfony/routing`.
- *   - `bin/console` (heurístico) o `app/AppKernel.php` (legacy 4.x).
+ * Detection:
+ *   - `composer.json` with `require` containing `symfony/framework-bundle`
+ *     or `symfony/routing`.
+ *   - `bin/console` (heuristic) or `app/AppKernel.php` (legacy 4.x).
  *
- * Parsing de rutas:
- *   - YAML: `config/routes.yaml`, `config/routes/*.yaml` (no anidados).
+ * Route parsing:
+ *   - YAML: `config/routes.yaml`, `config/routes/*.yaml` (not nested).
  *   - YAML / `*.php` (PHP routes): best-effort regex.
- *   - PHP attributes: `Route('/users', methods: ['GET'])` en
+ *   - PHP attributes: `Route('/users', methods: ['GET'])` in
  *     `src/Controller/`.
  *
  * Validation:
- *   - `SymfonyAttributesValidationProvider` extrae constraints de
- *     Doctrine NotBlank, Email, Length, Choice, Range, etc., desde el
- *     método del controller inspeccionando parámetros tipados.
+ *   - `SymfonyAttributesValidationProvider` extracts Doctrine
+ *     NotBlank, Email, Length, Choice, Range, etc. constraints from
+ *     the controller method by inspecting typed parameters.
  *
- * Limitaciones:
- *   - Solo PYTHON Y YAML de rutas (no PHP routes complejos tipo RouterInterface).
- *   - No resuelve `AsEventListener`, `AsCommand`, etc.
- *   - Constraints deben estar en el método (no en una Entity separada).
+ * Limitations:
+ *   - Only YAML and PHP routes (not complex PHP routes like RouterInterface).
+ *   - Does not resolve `AsEventListener`, `AsCommand`, etc.
+ *   - Constraints must be in the method (not in a separate Entity).
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -44,8 +44,8 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
 const SYMFONY_REQUIRE_KEYS = ["symfony/framework-bundle", "symfony/routing"];
 
 /**
- * Lee composer.json y devuelve true si alguna de las SYMFONY_REQUIRE_KEYS
- * está en `require` o `require-dev`.
+ * Reads composer.json and returns true if any of the SYMFONY_REQUIRE_KEYS
+ * is in `require` or `require-dev`.
  */
 async function isSymfonyProject(projectRoot: string): Promise<boolean> {
   const composerPath = join(projectRoot, "composer.json");
@@ -138,23 +138,25 @@ export class SymfonyRouteScanner implements IRouteScanner {
         out.push(...(await parseRoutesYamlFile(abs, rel, projectRoot)));
       }
     }
-    // 2) PHP attributes en src/Controller/**.
+    // 2) PHP attributes in src/Controller/**.
     const controllerDir = join(projectRoot, "src", "Controller");
     if (existsSync(controllerDir)) {
       out.push(...(await parseControllerAttributes(controllerDir, projectRoot)));
     }
-    // Un mismo endpoint puede llegar por dos vías: declarado en YAML y
-    // además como `#[Route]` en el controller (o vía `resource:` que ya
-    // apunta al mismo fichero). Symfony lo registra una sola vez.
+    // The same endpoint can arrive via two routes: declared in YAML
+    // and also as `#[Route]` in the controller (or via `resource:`
+    // that already points to the same file). Symfony registers it
+    // only once.
     return { routes: dedupeRoutes(out) };
   }
 }
 
 /**
- * Colapsa rutas equivalentes (mismo método y misma URI salvo barra final)
- * quedándose con la más informativa: la que viene de un `#[Route]` en el
- * controller trae `lineNumber` y el nombre del método, que es lo que el
- * validation provider necesita para leer los `#[Assert\...]`.
+ * Collapses equivalent routes (same method and same URI except trailing
+ * slash) keeping the most informative one: the one coming from
+ * `#[Route]` in the controller carries `lineNumber` and the method
+ * name, which is what the validation provider needs to read the
+ * `#[Assert\...]`.
  */
 function dedupeRoutes(routes: ParsedRoute[]): ParsedRoute[] {
   const byKey = new Map<string, ParsedRoute>();
@@ -168,17 +170,18 @@ function dedupeRoutes(routes: ParsedRoute[]): ParsedRoute[] {
     }
   }
   const result = [...byKey.values()];
-  // Segunda pasada (F-009): el mismo endpoint físico puede llegar dos
-  // veces con URI distinta — vía `resource:` del YAML con el prefijo del
-  // import (`/api/widgets`) y vía el recorrido de src/Controller, donde
-  // la clase aporta su propio prefijo (`/widgets`). La identidad física
-  // es el trío (fichero fuente, línea del atributo, método): compartir
-  // los tres significa que ambas copias leen el mismo `#[Route]` del
-  // mismo controlador. Symfony registra una sola — aquí gana la de URI
-  // más larga, que es la que lleva el prefijo del import.
+  // Second pass (F-009): the same physical endpoint can arrive twice
+  // with a different URI — via `resource:` from the YAML with the
+  // import's prefix (`/api/widgets`) and via the src/Controller walk,
+  // where the class adds its own prefix (`/widgets`). Physical identity
+  // is the trio (source file, attribute line, method): sharing all
+  // three means both copies read the same `#[Route]` from the same
+  // controller. Symfony registers only one — here the longer URI
+  // wins, which is the one with the import's prefix.
   //
-  // Solo rutas de atributos (lineNumber > 0): las entradas YAML directas
-  // comparten fichero y lineNumber 0 entre sí, y no son la misma ruta.
+  // Only attribute routes (lineNumber > 0): direct YAML entries share
+  // file and lineNumber 0 among themselves, and they are not the
+  // same route.
   const identidad = (r: ParsedRoute): string =>
     `${r.method} ${r.sourceFile}:${r.lineNumber}`;
   const mejorPorIdentidad = new Map<string, ParsedRoute>();
@@ -202,20 +205,20 @@ function dedupeRoutes(routes: ParsedRoute[]): ParsedRoute[] {
   );
 }
 
-/** Quita la barra final (`/users/` y `/users` son la misma ruta). */
+/** Strips the trailing slash (`/users/` and `/users` are the same route). */
 function normalizeSymfonyUri(uri: string): string {
   const collapsed = uri.replace(/\/+/g, "/");
   return collapsed.length > 1 ? collapsed.replace(/\/$/, "") : collapsed;
 }
 
-/** Más alto = más información utilizable aguas abajo. */
+/** Higher = more usable information downstream. */
 function scoreRoute(route: ParsedRoute): number {
   return (route.lineNumber > 0 ? 2 : 0) + (route.description ? 1 : 0);
 }
 
 /**
- * Parsea un fichero YAML de rutas Symfony. Soporta:
- *   - routing directo:
+ * Parses a Symfony YAML routes file. Supports:
+ *   - direct routing:
  *       user_show:
  *         path: /users/{id}
  *         controller: App\Controller\UserController::show
@@ -273,13 +276,13 @@ async function parseRoutesYamlFile(
         });
       }
     } else if (resource && /\.\/.*Controller.*\.php/.test(resource)) {
-      // Apunta a un controller: parseamos sus attributes.
+      // Points at a controller: parse its attributes.
       const relativeController = resolve(dirname(absPath), resource);
       const rootController = resolve(projectRoot, resource);
       const ctrlAbs = existsSync(relativeController) ? relativeController : rootController;
-      // OJO: el tercer argumento es el projectRoot, no el YAML de origen.
-      // Pasar `relPath` aquí dejaba `sourceFile` como ruta absoluta y el
-      // validation provider no encontraba nunca el controller.
+      // NOTE: the third argument is the projectRoot, not the YAML source.
+      // Passing `relPath` here left `sourceFile` as an absolute path and
+      // the validation provider could never find the controller.
       out.push(...(await parseControllerAttributes(ctrlAbs, projectRoot, prefix)));
     }
   }
@@ -300,20 +303,21 @@ function parseMethods(v: unknown): string[] {
 }
 
 /**
- * Ruta relativa al proyecto en formato POSIX.
+ * Project-relative path in POSIX format.
  *
- * Se resuelven ambos lados a absoluto antes de comparar: el projectRoot
- * puede llegar como `./algo` y una comparación textual con `startsWith`
- * dejaba `sourceFile` en absoluto, con lo que el validation provider
- * construía `join(projectRoot, sourceFile)` y no encontraba el fichero.
+ * Both sides are resolved to absolute before comparing: the
+ * projectRoot can arrive as `./something` and a textual comparison
+ * with `startsWith` left `sourceFile` absolute, which made the
+ * validation provider build `join(projectRoot, sourceFile)` and never
+ * find the file.
  */
 function toProjectRelative(absPath: string, projectRoot: string): string {
   return relative(resolve(projectRoot), resolve(absPath)).split(sep).join("/");
 }
 
 /**
- * Recorre src/Controller recursivamente y extrae `#[Route(...)]`
- * de cada método público.
+ * Walks src/Controller recursively and extracts `#[Route(...)]` from
+ * each public method.
  */
 async function parseControllerAttributes(
   controllerPath: string,
@@ -377,22 +381,22 @@ async function parseSingleController(
   const text = stripPhpComments(raw);
   const lines = text.split("\n");
 
-  // 1) Detectar `#[Route('/prefix')] class Name { ... }` para class prefix.
-  //    En Symfony el `#[Route(...)]` va ANTES del `class`. Buscamos
-  //    `class <Name>` y luego un `#[Route]` en las 3 líneas anteriores.
+  // 1) Detect `#[Route('/prefix')] class Name { ... }` for class prefix.
+  //    In Symfony `#[Route(...)]` comes BEFORE `class`. We look for
+  //    `class <Name>` and then a `#[Route]` in the 3 previous lines.
   let classPrefix = prefix;
   let classRouteIdx = -1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
     if (/class\s+\w+/.test(line)) {
-      // Buscar `#[Route(...)]` en las 3 líneas ANTERIORES.
+      // Look for `#[Route(...)]` in the 3 previous lines.
       for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
         const m = ownRegex(ATTR_ROUTE_RE).exec(lines[j] ?? "");
         if (m) {
           const args = m[1] ?? "";
           const pathMatch = /^\s*['"]([^'"]*)['"]/.exec(args);
           const classPath = pathMatch?.[1] ?? "";
-          // Solo aplicar como class prefix si NO tiene methods.
+          // Only apply as class prefix if it does NOT have methods.
           const hasMethods = /methods\s*:/i.test(args);
           if (!hasMethods && classPath) {
             classPrefix = (prefix + classPath).replace(/\/+/g, "/");
@@ -405,9 +409,9 @@ async function parseSingleController(
     }
   }
 
-  // 2) Iterar `#[Route(...)]` en métodos (después de classRouteIdx).
-  //    Esta estrategia reemplaza la convención anterior: ahora acepta
-  //    `#[Route('/path', methods: ['POST'])]` en métodos.
+  // 2) Iterate `#[Route(...)]` in methods (after classRouteIdx).
+  //    This strategy replaces the previous convention: it now accepts
+  //    `#[Route('/path', methods: ['POST'])]` in methods.
   const startIter = classRouteIdx >= 0 ? classRouteIdx + 1 : 0;
   for (let i = startIter; i < lines.length; i++) {
     const line = lines[i] ?? "";
@@ -431,7 +435,7 @@ async function parseSingleController(
     if (methods.length === 0) methods = ["get"]; // Symfony default.
     const nameMatch = ATTR_NAME_RE.exec(attrArgs);
     const routeName = nameMatch?.[1];
-    // Buscar la signature del método en líneas siguientes (máximo 3).
+    // Look for the method signature in the next lines (max 3).
     let methodName = "";
     for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
       const sig = /function\s+([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
@@ -533,10 +537,11 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
     const text = stripPhpComments(raw);
     const lines = text.split("\n");
 
-    // 1) Si la ruta viene de un atributo PHP, recoger assertions del
-    //    método. El bloque empieza en route.lineNumber (atributo `#[Route]`
-    //    puede estar en línea separada de los `#[Assert]` y de la signature)
-    //    y termina en la `}` de cierre del método.
+    // 1) If the route comes from a PHP attribute, collect assertions
+    //    from the method. The block starts at route.lineNumber (the
+    //    `#[Route]` attribute can be on a line separate from the
+    //    `#[Assert]`s and the signature) and ends at the closing `}`
+    //    of the method.
     const fields: IValidationSpec[] = [];
     if (route.lineNumber > 0) {
       const block = collectMethodBlockFromAttr(lines, route.lineNumber - 1);
@@ -544,7 +549,7 @@ export class SymfonyAttributesValidationProvider implements IValidationSpecProvi
         fields.push(cf);
       }
     }
-    // 2) Si la ruta viene de YAML controller ref, localizar la acción.
+    // 2) If the route comes from a YAML controller ref, locate the action.
     if (fields.length === 0 && (route.actionName || route.description)) {
       const methodName = route.actionName || route.description || "";
       const idx = lines.findIndex((l) =>
@@ -590,16 +595,16 @@ async function findControllerFile(
 }
 
 /**
- * Recoge el bloque del método empezando desde `fromInclude`. Esto cubre:
+ * Collects the method block starting from `fromInclude`. This covers:
  *   - `#[Route(...)]` (Symfony controllers)
- *   - `#[Assert\NotBlank]` y otros constraints
- *   - la signature `public function createOrder(...)`
- *   - el cuerpo `{ ... }`
+ *   - `#[Assert\NotBlank]` and other constraints
+ *   - the signature `public function createOrder(...)`
+ *   - the body `{ ... }`
  *
- * Estrategia: recopila líneas desde `fromInclude` hasta encontrar la `}`
- * de cierre del método (depth 0). Las Asserts pueden estar ANTES del `{`
- * (en la signature) pero después del `#[Route]`, así que no basta con
- * contar llaves.
+ * Strategy: collect lines from `fromInclude` until we find the
+ * closing `}` of the method (depth 0). The Asserts can be BEFORE the
+ * `{` (in the signature) but after the `#[Route]`, so just counting
+ * braces isn't enough.
  */
 function collectMethodBlockFromAttr(
   lines: string[],
@@ -607,8 +612,8 @@ function collectMethodBlockFromAttr(
 ): string[] {
   const out: string[] = [];
   let depth = 0;
-  // Primero: encontrar la línea de signature `function name(` para
-  // saber dónde EMPEZAR a contar llaves.
+  // First: find the signature line `function name(` to know where to
+  // START counting braces.
   let sigLine = -1;
   for (let i = fromInclude; i < Math.min(fromInclude + 15, lines.length); i++) {
     if (/function\s+[a-zA-Z_][\w]*\s*\(/.test(lines[i] ?? "")) {
@@ -616,8 +621,8 @@ function collectMethodBlockFromAttr(
       break;
     }
   }
-  // Si no hay signature en 15 líneas, recogemos hasta profundidad 0
-  // ignorando signature faltante.
+  // If there's no signature within 15 lines, we collect up to depth 0
+  // ignoring the missing signature.
   const startCount = sigLine >= 0 ? sigLine : fromInclude;
   let started = false;
   for (let i = fromInclude; i < lines.length; i++) {
@@ -641,11 +646,10 @@ function collectMethodBlockFromAttr(
 }
 
 /**
- * Para cada `#[Assert\Xxx(...)]` en el bloque del método, identificar el
- * nombre del parámetro (línea inmediatamente posterior) y emitir un
- * `IValidationSpec`.
+ * For each `#[Assert\Xxx(...)]` in the method block, identifies the
+ * parameter name (next line) and emits an `IValidationSpec`.
  *
- * Estructura típica:
+ * Typical structure:
  *   public function create(
  *     #[Assert\NotBlank] string $name,
  *     #[Assert\Email] string $email,
@@ -662,14 +666,14 @@ function collectAssertsInBlock(block: string[]): IValidationSpec[] {
       const args = m[2] ?? "";
       const map = annotation ? ASSERT_MAP[annotation] : undefined;
       if (!map) continue;
-      // Nombre del parámetro: línea actual + líneas siguientes (puede que
-      // `#[Assert\X]` esté en línea separada del `string $name`).
+      // Parameter name: current line + next lines (the `#[Assert\X]` may
+      // be on a line separate from the `string $name`).
       const tail = block.slice(i, i + 3).join(" ");
       const paramName = /\$([a-zA-Z_][\w]*)/.exec(tail);
       const name = paramName?.[1];
       if (!name) continue;
-      // Required: a menos que la assertion sea NotNull/IsTrue/IsFalse con
-      // `allowNull: true`. Simplificación: por defecto required.
+      // Required: unless the assertion is NotNull/IsTrue/IsFalse with
+      // `allowNull: true`. Simplification: required by default.
       const required = !/allowNull\s*:\s*true/.test(args);
       const field: IValidationSpec = {
         fieldName: name,

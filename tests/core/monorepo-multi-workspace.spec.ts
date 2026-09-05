@@ -1,29 +1,28 @@
 /**
- * Detección expandida en monorepos multi-workspace — audit 2026-09-04 P1 #1.
+ * Expanded detection in multi-workspace monorepos — audit 2026-09-04 P1 #1.
  *
- * Antes, `discoverSpecs()` corría `detectAll(projectRoot)` **una sola
- * vez** contra la raíz. En un monorepo con varios workspaces
- * materializados (`apps/api`, `apps/web`, `packages/auth`),
- * `frameworkSearchRoot` quedaba en `null` (porque hay varios) y los
- * scanners miraban la raíz del repo, no el workspace donde vive cada
- * framework.
+ * Previously, `discoverSpecs()` ran `detectAll(projectRoot)` **once**
+ * against the root. In a monorepo with several materialized
+ * workspaces (`apps/api`, `apps/web`, `packages/auth`),
+ * `frameworkSearchRoot` stayed `null` (because there are several) and
+ * the scanners looked at the repo root, not the workspace where each
+ * framework lives.
  *
- * Resultado: NestJS en `apps/api` no se detectaba, porque su
- * `package.json` está en `apps/api`, no en la raíz. La colección salía
- * vacía sin aviso.
+ * Result: NestJS in `apps/api` was not detected, because its
+ * `package.json` is at `apps/api`, not at the root. The collection
+ * came out empty without warning.
  *
- * El fix (`expandMonorepoDetection` en `generation.pipeline.ts`)
- * mantiene la detección raíz para casos simples, y **expande** la
- * detección contra cada workspace cuando hay ≥2 y no hay override.
+ * The fix (`expandMonorepoDetection` in `generation.pipeline.ts`)
+ * keeps root detection for simple cases, and **expands** detection
+ * against each workspace when there are ≥2 and no override.
  *
- * Este test verifica:
- *   1. Un monorepo `apps/api` (Nest) + `apps/web` (Express) genera
- *      specs de ambos, cada uno con su `frameworkSearchRoot` correcto.
- *   2. El comportamiento monorepo single-workspace no cambia: la
- *      detección ampliada no se dispara (la auto-fill del helper
- *      basta).
- *   3. El override `--framework-search-root` sigue siendo autoritativo:
- *      con override, NO se expande.
+ * This test verifies:
+ *   1. A monorepo `apps/api` (Nest) + `apps/web` (Express) generates
+ *      specs for both, each with its correct `frameworkSearchRoot`.
+ *   2. Single-workspace monorepo behavior does not change: expanded
+ *      detection does not fire (the helper's auto-fill is enough).
+ *   3. The `--framework-search-root` override stays authoritative:
+ *      with an override, it does NOT expand.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -49,8 +48,8 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-describe("monorepo multi-workspace: detección expandida (audit P1 #1)", () => {
-  test("NestJS en apps/api + Express en apps/web → detecta ambos", async () => {
+describe("multi-workspace monorepo: expanded detection (audit P1 #1)", () => {
+  test("NestJS in apps/api + Express in apps/web → detects both", async () => {
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -85,36 +84,38 @@ app.get("/pages", (_req, res) => res.json([]));
 
     const result = await generateCollection(project.root, {
       orchestrator: defaultOrchestrator(),
-      // x00024: multi-service sin --combine-services ahora lanza
-      // `MultipleServicesWithoutCombineError`. Este test verifica la
-      // EXPANSIÓN del discovery, no la política de "una colección por
-      // servicio", así que pedimos la combinación legacy (un único
-      // `IGenerationResult` con endpoints de ambos workspaces).
+      // x00024: multi-service without --combine-services now throws
+      // `MultipleServicesWithoutCombineError`. This test verifies the
+      // EXPANSION of discovery, not the "one collection per service"
+      // policy, so we request the legacy combination (a single
+      // `IGenerationResult` with endpoints from both workspaces).
       combineServices: true,
     });
 
-    // La verificación fuerte: ambos frameworks están en `result.collection`
-    // con al menos un endpoint cada uno. Sin la expansión, los endpoints
-    // de NestJS no aparecerían porque la raíz del monorepo no tiene
-    // `src/app.controller.ts` ni `@nestjs/core` en su package.json raíz.
+    // The strong verification: both frameworks are in
+    // `result.collection` with at least one endpoint each. Without the
+    // expansion, NestJS endpoints would not appear because the
+    // monorepo root has no `src/app.controller.ts` and no
+    // `@nestjs/core` in its root package.json.
     const items = flattenItems(result.collection.item ?? []);
     const uris = items.map((i) => i.request?.url?.raw ?? "");
 
     expect(
       uris.some((u) => u.includes("/widgets")),
-      `Esperaba al menos un endpoint /widgets de NestJS, encontré: ${JSON.stringify(uris)}`,
+      `Expected at least one /widgets endpoint from NestJS, found: ${JSON.stringify(uris)}`,
     ).toBe(true);
     expect(
       uris.some((u) => u.includes("/pages")),
-      `Esperaba al menos un endpoint /pages de Express, encontré: ${JSON.stringify(uris)}`,
+      `Expected at least one /pages endpoint from Express, found: ${JSON.stringify(uris)}`,
     ).toBe(true);
     expect(items.length).toBeGreaterThanOrEqual(2);
   }, 30_000);
 
-  test("monorepo con un único workspace: comportamiento legacy (sin expansión)", async () => {
-    // Si solo hay UN workspace materializado, el camino legacy (auto-fill
-    // de frameworkSearchRoot por monorepo-detector) sigue siendo válido.
-    // `expandMonorepoDetection` no debe duplicar ni romper nada.
+  test("monorepo with a single workspace: legacy behavior (no expansion)", async () => {
+    // If there is only ONE materialized workspace, the legacy path
+    // (auto-fill of frameworkSearchRoot by monorepo-detector) is still
+    // valid. `expandMonorepoDetection` must not duplicate or break
+    // anything.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -144,7 +145,7 @@ export class AppController {
     const items = flattenItems(result.collection.item ?? []);
     const uris = items.map((i) => i.request?.url?.raw ?? "");
     expect(uris.some((u) => u.includes("/items"))).toBe(true);
-    // La advertencia del monorepo single-workspace sí debe estar.
+    // The single-workspace monorepo warning must still be present.
     expect(
       result.warnings.some((w) =>
         w.includes("Monorepo detectado") && w.includes("apps/api"),
@@ -152,10 +153,10 @@ export class AppController {
     ).toBe(true);
   }, 30_000);
 
-  test("override --framework-search-root sigue siendo autoritativo (no se expande)", async () => {
-    // Si el usuario pasa `frameworkSearchRoot` explícito, la detección
-    // ampliada no debe dispararse. Solo se escanea el workspace que el
-    // usuario pidió, sin inventar candidatos adicionales.
+  test("override --framework-search-root stays authoritative (no expansion)", async () => {
+    // If the user passes an explicit `frameworkSearchRoot`, expanded
+    // detection must not fire. Only the workspace the user asked for
+    // is scanned, without inventing additional candidates.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -193,13 +194,13 @@ app.get("/beta", (_req, res) => res.json([]));
 
     const items = flattenItems(result.collection.item ?? []);
     const uris = items.map((i) => i.request?.url?.raw ?? "");
-    // Override a apps/api → solo Nest. /beta (Express) NO debe aparecer.
+    // Override to apps/api → only Nest. /beta (Express) must NOT appear.
     expect(uris.some((u) => u.includes("/alpha"))).toBe(true);
     expect(uris.some((u) => u.includes("/beta"))).toBe(false);
   }, 30_000);
 });
 
-/** Aplana el árbol de items de Postman (puede ser anidado por folders). */
+/** Flattens the Postman items tree (can be nested by folders). */
 function flattenItems(
   items: ReadonlyArray<{ item?: ReadonlyArray<unknown>; request?: { url?: { raw?: string } } }>,
 ): Array<{ request?: { url?: { raw?: string } } }> {
@@ -218,11 +219,11 @@ function flattenItems(
 }
 
 describe("monorepo + --framework (audit 2nd-review #5)", () => {
-  test("forceFramework + frameworkSearchRoot: respeta el force aunque el manifest no detecte", async () => {
-    // Caso del audit: el usuario fuerza --framework nestjs + --framework-search-root apps/api
-    // porque el manifest del workspace no permite autodetectarlo.
-    // Antes `expandMonorepoDetection` llamaba `detectAll(workspaceRoot)`
-    // y perdía el force.
+  test("forceFramework + frameworkSearchRoot: respects the force even when the manifest does not detect", async () => {
+    // Audit case: the user forces --framework nestjs + --framework-search-root apps/api
+    // because the workspace manifest does not allow autodetect.
+    // Previously `expandMonorepoDetection` called `detectAll(workspaceRoot)`
+    // and lost the force.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -230,10 +231,10 @@ describe("monorepo + --framework (audit 2nd-review #5)", () => {
           private: true,
           workspaces: ["apps/api"],
         }),
-        // Sin @nestjs/core en ningún manifest — el force debe prevalecer.
+        // Without @nestjs/core in any manifest — the force must prevail.
         "apps/api/package.json": JSON.stringify({
           name: "@mono/api",
-          dependencies: { express: "^4.19.0" }, // NO nest
+          dependencies: { express: "^4.19.0" }, // NOT nest
         }),
         "apps/api/src/app.controller.ts": `import { Controller, Get } from "@nestjs/common";
 @Controller("forced")
@@ -252,9 +253,9 @@ export class AppController {
       frameworkSearchRoot: "apps/api",
     });
 
-    // Debe haber al menos un endpoint nestjs en apps/api, aunque el
-    // manifest no declare @nestjs/core (eso es lo que el force
-    // significa: el usuario SABE que es Nest).
+    // There must be at least one nestjs endpoint in apps/api, even
+    // though the manifest does not declare @nestjs/core (that is what
+    // the force means: the user KNOWS it is Nest).
     const items = flattenItems(result.collection.item ?? []);
     const uris = items.map((i) => i.request?.url?.raw ?? "");
     expect(uris.some((u) => u.includes("/forced"))).toBe(true);

@@ -1,11 +1,11 @@
 /**
- * Ramas de fallback y error del inferidor agnóstico.
+ * Fallback and error branches of the agnostic inferrer.
  *
- * El spec principal (`param-inferrer.spec.ts`) recorre el camino feliz
- * de cada heurística; este cubre las decisiones que solo se toman con
- * entradas raras: nombres de campo de cada familia del diccionario,
- * URIs vacías o de un solo segmento, variables ya declaradas por el
- * host y specs con FormRequest frente a `overrideExisting`.
+ * The main spec (`param-inferrer.spec.ts`) walks the happy path of
+ * each heuristic; this one covers decisions that only happen with
+ * rare inputs: field names of each dictionary family, empty or
+ * single-segment URIs, variables already declared by the host, and
+ * specs with FormRequest versus `overrideExisting`.
  */
 import { describe, expect, test } from "vitest";
 
@@ -21,7 +21,7 @@ import {
 } from "../../packages/core/domain/param-inferrer.service";
 import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
 
-/** Helper para construir un EndpointSpec mínimo en tests. */
+/** Helper to build a minimal EndpointSpec in tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {
   return {
     method: "GET",
@@ -34,54 +34,54 @@ function spec(partial: Partial<EndpointSpec>): EndpointSpec {
   } as EndpointSpec;
 }
 
-describe("exampleForPathParam — cada familia del diccionario", () => {
-  test("matrícula da una matrícula plausible", () => {
+describe("exampleForPathParam — each family of the dictionary", () => {
+  test("license plate gives a plausible plate", () => {
     expect(exampleForPathParam("matricula")).toBe("1234ABC");
     expect(exampleForPathParam("n_matricula")).toBe("1234ABC");
   });
 
-  test("n_* y cantidad dan números", () => {
+  test("n_* and quantity yield numbers", () => {
     expect(exampleForPathParam("n_pedidos")).toBe("10");
     expect(exampleForPathParam("cantidad")).toBe("10");
   });
 
-  test("precio da un decimal", () => {
+  test("price gives a decimal", () => {
     expect(exampleForPathParam("precio_unitario")).toBe("19.99");
   });
 
-  test("url* da una URL aunque el nombre siga siendo raro", () => {
+  test("url* gives a URL even when the name is still odd", () => {
     expect(exampleForPathParam("url_callback")).toBe("https://example.com");
   });
 
-  test("el primer patrón que casa manda: codigo_ golpea antes que url", () => {
-    // `codigo_proveedor` ya lo documenta el spec principal; aquí la
-    // otra colisión del diccionario: `url` va después de `codigo`.
+  test("the first matching pattern wins: codigo_ hits before url", () => {
+    // `codigo_proveedor` is already documented in the main spec; here
+    // the other dictionary collision: `url` comes after `codigo`.
     expect(exampleForPathParam("codigo_url")).toBe("CODIGO001");
   });
 });
 
-describe("exampleForQueryField — cada pista del diccionario", () => {
-  test("busquedas y texto libre", () => {
+describe("exampleForQueryField — each dictionary hint", () => {
+  test("searches and free text", () => {
     expect(exampleForQueryField("q")).toBe("ejemplo");
     expect(exampleForQueryField("search")).toBe("ejemplo");
     expect(exampleForQueryField("busqueda")).toBe("ejemplo");
     expect(exampleForQueryField("query")).toBe("ejemplo");
   });
 
-  test("identificadores y códigos", () => {
+  test("identifiers and codes", () => {
     expect(exampleForQueryField("id")).toBe("1");
     expect(exampleForQueryField("codigo")).toBe("COD001");
     expect(exampleForQueryField("cif")).toBe("COD001");
     expect(exampleForQueryField("nif")).toBe("COD001");
   });
 
-  test("nombres y correos", () => {
+  test("names and emails", () => {
     expect(exampleForQueryField("nombre")).toBe("Nombre de prueba");
     expect(exampleForQueryField("razon_social")).toBe("Nombre de prueba");
     expect(exampleForQueryField("email")).toBe("user@example.com");
   });
 
-  test("paginación y orden", () => {
+  test("pagination and ordering", () => {
     expect(exampleForQueryField("page")).toBe("1");
     expect(exampleForQueryField("pagina")).toBe("1");
     expect(exampleForQueryField("per_page")).toBe("10");
@@ -94,7 +94,7 @@ describe("exampleForQueryField — cada pista del diccionario", () => {
     expect(exampleForQueryField("order")).toBe("asc");
   });
 
-  test("estado, relaciones, idioma y fechas", () => {
+  test("status, relations, language and dates", () => {
     expect(exampleForQueryField("status")).toBe("active");
     expect(exampleForQueryField("estado")).toBe("active");
     expect(exampleForQueryField("activo")).toBe("true");
@@ -112,40 +112,40 @@ describe("exampleForQueryField — cada pista del diccionario", () => {
   });
 });
 
-describe("exampleForBodyField — familia por familia (vía _internals)", () => {
+describe("exampleForBodyField — family by family (via _internals)", () => {
   const ejemplo = (name: string, hint?: string) =>
     _internals.exampleForBodyField(name, hint);
 
-  test("el hint de id/codigo pisa al resto de heurísticas", () => {
+  test("the id/codigo hint overrides every other heuristic", () => {
     expect(ejemplo(" DepartamentoId ", "id")).toBe("1");
     expect(ejemplo("linea", "codigo")).toBe("1");
-    // Hint sin semántica de id: cae a las heurísticas por nombre.
+    // Hint without id semantics: falls back to name heuristics.
     expect(ejemplo("otra_cosa", "denominacion")).toBe("sample_otra_cosa");
   });
 
-  test("sufijos de identificador sin hint", () => {
+  test("identifier suffixes without a hint", () => {
     expect(ejemplo("usuario_id")).toBe("1");
     expect(ejemplo("producto_codigo")).toBe("COD001");
-    // Las variantes camelCase de los sufijos también casan: el
-    // sufijo con mayúscula se compara contra el nombre ORIGINAL, no
-    // contra la copia en minúsculas (donde nunca podía encajar).
+    // camelCase variants of the suffixes also match: the suffix with
+    // uppercase is compared against the ORIGINAL name, not against
+    // the lowercase copy (where it could never fit).
     expect(ejemplo("DepartamentoId")).toBe("1");
     expect(ejemplo("departamentoId")).toBe("1");
     expect(ejemplo("DepartamentoCodigo")).toBe("COD001");
-    // Un nombre que termina en "id" minúscula por pura morfología no
-    // es un identificador: solo el sufijo exacto (`_id` / `Id`) activa
-    // la heurística.
+    // A name ending in lowercase "id" by pure morphology is not an
+    // identifier: only the exact suffix (`_id` / `Id`) triggers the
+    // heuristic.
     expect(ejemplo("madrid")).toBe("sample_madrid");
   });
 
-  test("campos de contacto y credenciales", () => {
+  test("contact and credential fields", () => {
     expect(ejemplo("email")).toBe("user@example.com");
     expect(ejemplo("password")).toBe("********");
     expect(ejemplo("pass")).toBe("********");
     expect(ejemplo("contrasena")).toBe("********");
   });
 
-  test("textos genéricos", () => {
+  test("generic texts", () => {
     expect(ejemplo("name")).toBe("Nombre de prueba");
     expect(ejemplo("nombre")).toBe("Nombre de prueba");
     expect(ejemplo("description")).toBe("Descripción de ejemplo");
@@ -154,7 +154,7 @@ describe("exampleForBodyField — familia por familia (vía _internals)", () => 
     expect(ejemplo("notas")).toBe("Notas");
   });
 
-  test("URLs, fechas y cantidades", () => {
+  test("URLs, dates and amounts", () => {
     expect(ejemplo("url")).toBe("https://example.com");
     expect(ejemplo("webhook_url")).toBe("https://example.com");
     expect(ejemplo("date")).toBe("2024-01-15");
@@ -168,7 +168,7 @@ describe("exampleForBodyField — familia por familia (vía _internals)", () => 
     expect(ejemplo("cantidad")).toBe(1);
   });
 
-  test("booleanos por diccionario y por prefijo", () => {
+  test("booleans by dictionary and by prefix", () => {
     expect(ejemplo("visible")).toBe(true);
     expect(ejemplo("publico")).toBe(true);
     expect(ejemplo("default")).toBe(true);
@@ -181,7 +181,7 @@ describe("exampleForBodyField — familia por familia (vía _internals)", () => 
     expect(ejemplo("has_stock")).toBe(true);
   });
 
-  test("arrays por diccionario y fallback de texto", () => {
+  test("arrays by dictionary and text fallback", () => {
     expect(ejemplo("tags")).toEqual([1]);
     expect(ejemplo("categorias")).toEqual([1]);
     expect(ejemplo("categories")).toEqual([1]);
@@ -194,15 +194,15 @@ describe("exampleForBodyField — familia por familia (vía _internals)", () => 
   });
 });
 
-describe("inferBodyForSpec — ramas de forma de la URI", () => {
-  test("POST de un solo segmento con verbo de acción → body ligero", () => {
-    // Sin path params delante: la acción vive sola en `last`.
+describe("inferBodyForSpec — URI-shape branches", () => {
+  test("POST with a single action-verb segment → light body", () => {
+    // Without path params up front: the action lives alone in `last`.
     const resultado = inferBodyForSpec(spec({ method: "POST", uri: "/reset" }));
     expect(resultado?.body).toEqual({ force: true });
     expect(resultado?.reason).toContain("reset");
   });
 
-  test("cada alternativa del regex de acciones se recorre con su verbo", () => {
+  test("each alternative of the action regex is walked with its verb", () => {
     for (const [uri, verbo] of [
       ["/tareas/{{id}}/ejecutar", "ejecutar"],
       ["/informes/mensual/publicar", "publicar"],
@@ -214,7 +214,7 @@ describe("inferBodyForSpec — ramas de forma de la URI", () => {
     }
   });
 
-  test("la familia 'sin body esperado' incluye desactivar", () => {
+  test("the 'no expected body' family includes desactivar", () => {
     const resultado = inferBodyForSpec(
       spec({ method: "POST", uri: "/sesion/desactivar" }),
     );
@@ -222,42 +222,42 @@ describe("inferBodyForSpec — ramas de forma de la URI", () => {
     expect(resultado?.reason).toContain("sin body");
   });
 
-  test("URI raíz: sin segmentos no revienta y da body genérico vacío", () => {
+  test("root URI: no segments does not crash and yields an empty generic body", () => {
     const resultado = inferBodyForSpec(spec({ method: "POST", uri: "/" }));
     expect(resultado).not.toBeNull();
     expect(resultado?.body).toEqual({});
     expect(resultado?.reason).toContain("POST");
   });
 
-  test("URI de un solo segmento: no hay resource del que hablar", () => {
+  test("single-segment URI: there is no resource to talk about", () => {
     const resultado = inferBodyForSpec(
       spec({ method: "POST", uri: "/productos" }),
     );
     expect(resultado?.body).toEqual({});
   });
 
-  test("PUT de un solo segmento también cae al genérico vacío", () => {
+  test("single-segment PUT also falls to the empty generic body", () => {
     expect(inferBodyForSpec(spec({ method: "PUT", uri: "/ajustes" }))?.body).toEqual({});
   });
 
-  test("HEAD y OPTIONS no llevan body", () => {
+  test("HEAD and OPTIONS do not carry a body", () => {
     expect(inferBodyForSpec(spec({ method: "HEAD", uri: "/x" }))).toBeNull();
     expect(inferBodyForSpec(spec({ method: "OPTIONS", uri: "/x" }))).toBeNull();
   });
 });
 
-describe("inferQueryForSpec — ramas de forma de la URI", () => {
-  test("URI raíz: sin último segmento cae a la paginación estándar", () => {
+describe("inferQueryForSpec — URI-shape branches", () => {
+  test("root URI: without a last segment falls back to standard pagination", () => {
     const claves = inferQueryForSpec(spec({ method: "GET", uri: "/" })).map(
       (q) => q.key,
     );
     expect(claves).toEqual(["pagina", "items_por_pagina", "q"]);
   });
 
-  test("la lista de 'sin paginación' recorre sus alternativas", () => {
-    // La lista vive en un regex sobre el ÚLTIMO segmento: `csv` por
-    // `/exportar/csv` (el verbo `exportar` está antes) y `historial`
-    // por sí solo. `alarmas` no está en la lista y cae al estándar.
+  test("the 'no pagination' list walks its alternatives", () => {
+    // The list lives in a regex over the LAST segment: `csv` for
+    // `/exportar/csv` (the verb `exportar` is before) and `historial`
+    // on its own. `alarmas` is not in the list and falls to the default.
     const casos: Array<[string, ReadonlyArray<string>]> = [
       ["/exportar/csv", ["q"]],
       ["/pedidos/historial", ["q"]],
@@ -275,44 +275,44 @@ describe("inferQueryForSpec — ramas de forma de la URI", () => {
     }
   });
 
-  test("POST no genera query aunque tenga path params", () => {
+  test("POST does not generate query even with path params", () => {
     expect(
       inferQueryForSpec(spec({ method: "POST", uri: "/users/{{id}}" })),
     ).toEqual([]);
   });
 });
 
-describe("inferCollectionVariables — host y descubiertas conviven", () => {
-  test("base mínima sin nada exterior", () => {
-    // a00012 S4: la baseUrl por defecto es el origen puro
-    // (`DEFAULT_BASE_URL` = "http://localhost"). El `/api` ya no se
-    // añade automáticamente; lo aporta una fuente explícita cuando
-    // exista.
+describe("inferCollectionVariables — host and discovered coexist", () => {
+  test("minimal base with no external input", () => {
+    // a00012 S4: the default baseUrl is the bare origin
+    // (`DEFAULT_BASE_URL` = "http://localhost"). The `/api` is no
+    // longer added automatically; it is contributed by an explicit
+    // source when one exists.
     expect(inferCollectionVariables([])).toEqual([
       { key: "baseUrl", value: "http://localhost", type: "string" },
       { key: "token", value: "", type: "string" },
     ]);
   });
 
-  test("el valor declarado por el host se respeta, también el tipo", () => {
+  test("the value declared by the host is respected, including the type", () => {
     const variables = inferCollectionVariables([], [
       { key: "baseUrl", value: "https://produccion.dev/api" },
-      { key: "token", value: "predefinido", type: "secret" },
+      { key: "token", value: "predefined", type: "secret" },
     ]);
     const porClave = new Map(variables.map((v) => [v.key, v]));
     expect(porClave.get("baseUrl")?.value).toBe("https://produccion.dev/api");
-    expect(porClave.get("token")?.value).toBe("predefinido");
+    expect(porClave.get("token")?.value).toBe("predefined");
     expect(porClave.get("token")?.type).toBe("secret");
   });
 
-  test("variable sin valor ni tipo prueba los valores por defecto", () => {
+  test("a variable with neither value nor type falls back to defaults", () => {
     const variables = inferCollectionVariables([], [
       { key: "token", value: undefined, type: undefined },
     ]);
     expect(variables).toContainEqual({ key: "token", value: "", type: "string" });
   });
 
-  test("los path params de los specs se descubren con su ejemplo", () => {
+  test("path params from specs are discovered with their example", () => {
     const variables = inferCollectionVariables(
       [spec({ method: "GET", uri: "/clientes/{{codigo}}" })],
     );
@@ -323,17 +323,17 @@ describe("inferCollectionVariables — host y descubiertas conviven", () => {
     });
   });
 
-  test("una variable ya declarada no se pisa con el ejemplo inferido", () => {
+  test("a variable already declared is not overwritten with the inferred example", () => {
     const variables = inferCollectionVariables(
       [spec({ method: "GET", uri: "/clientes/{{codigo}}" })],
-      [{ key: "codigo", value: "FIJADO" }],
+      [{ key: "codigo", value: "FIXED" }],
     );
     expect(variables.filter((v) => v.key === "codigo")).toEqual([
-      { key: "codigo", value: "FIJADO", type: "string" },
+      { key: "codigo", value: "FIXED", type: "string" },
     ]);
   });
 
-  test("varios specs y varios params: se descubren todos una vez", () => {
+  test("several specs and several params: all are discovered exactly once", () => {
     const variables = inferCollectionVariables([
       spec({ method: "GET", uri: "/users/{{id}}" }),
       spec({ method: "GET", uri: "/users/{{id}}/posts/{{postId}}" }),
@@ -345,8 +345,8 @@ describe("inferCollectionVariables — host y descubiertas conviven", () => {
   });
 });
 
-describe("applyAgnosticInference — quién se toca y quién no", () => {
-  test("catálogo mixto: cada spec recibe lo que le falta", () => {
+describe("applyAgnosticInference — who gets touched and who does not", () => {
+  test("mixed catalog: each spec receives what it lacks", () => {
     const sinNada = spec({ method: "POST", uri: "/productos" });
     const conFR = spec({
       method: "POST",
@@ -377,51 +377,52 @@ describe("applyAgnosticInference — quién se toca y quién no", () => {
       getConQuery,
     ]);
 
-    // El POST no recibe query (`inferQueryForSpec` es GET-only) y el
-    // GET `sinQuery` recibe la suya: por eso 1.
+    // The POST receives no query (`inferQueryForSpec` is GET-only) and
+    // the GET `sinQuery` receives its query: that is why 1.
     expect(stats).toEqual({
       bodiesAdded: 1,
       queriesAdded: 1,
       variableInferred: 0,
       skippedManual: 1,
     });
-    // El POST desnudo recibe el body genérico: `/productos` tiene un
-    // solo segmento, así que no hay `resource` y el body sale vacío.
+    // The bare POST receives the generic body: `/productos` has a
+    // single segment, so there is no `resource` and the body comes
+    // out empty.
     expect(sinNada.body).toEqual({});
     expect(sinNada.description).toContain("Body inferido: Genérico para POST.");
-    // El que tiene FormRequest no se toca sin override (su `body` venía
-    // `null` del helper y sigue así).
+    // The one with FormRequest is not touched without override (its
+    // `body` came `null` from the helper and stays that way).
     expect(conFR.body).toBeNull();
     expect(conFR.description).toBeUndefined();
-    // El manual conserva su body y cuenta como saltado.
+    // The manual one keeps its body and counts as skipped.
     expect(manual.body).toEqual({ a: 1 });
     expect(manual.description).toBeUndefined();
-    // El GET desnudo lleva su query estándar.
+    // The bare GET carries its standard query.
     expect(getSinQuery.query?.map((q) => q.key)).toEqual([
       "pagina",
       "items_por_pagina",
       "q",
     ]);
-    // El GET con query manual la conserva.
+    // The GET with a manual query keeps it.
     expect(getConQuery.query).toEqual([{ key: "page", value: "3" }]);
   });
 
-  test("descripción previa: la anotación se acumula, no se pisa", () => {
+  test("previous description: the annotation is accumulated, not overwritten", () => {
     const s = spec({
       method: "POST",
       uri: "/productos",
-      description: "Crea un producto",
+      description: "Creates a product",
     });
     applyAgnosticInference([s]);
-    expect(s.description).toContain("Crea un producto");
+    expect(s.description).toContain("Creates a product");
     expect(s.description).toContain("Body inferido: Genérico para POST.");
   });
 
-  test("un query:[] y la propiedad ausente reciben la misma heurística", () => {
-    // Un array vacío ES "sin query": el guardián lo trata igual que
-    // la propiedad ausente, así que el GET recibe la heurística
-    // estándar en los dos casos. Solo una query no vacía (manual)
-    // se conserva tal cual.
+  test("query:[] and the missing property receive the same heuristic", () => {
+    // An empty array IS "no query": the guard treats it the same as
+    // the missing property, so the GET receives the standard
+    // heuristic in both cases. Only a non-empty (manual) query is
+    // preserved as-is.
     const vacio = spec({ method: "GET", uri: "/items", query: [] });
     const ausente = spec({ method: "GET", uri: "/items", query: undefined });
     const stats = applyAgnosticInference([vacio, ausente]);
@@ -434,7 +435,7 @@ describe("applyAgnosticInference — quién se toca y quién no", () => {
     expect(ausente.query).toEqual(vacio.query);
   });
 
-  test("con overrideExisting, un FormRequest también recibe la heurística", () => {
+  test("with overrideExisting, a FormRequest also receives the heuristic", () => {
     const s = spec({
       method: "POST",
       uri: "/tareas/{{id}}/reindexar",
@@ -442,15 +443,15 @@ describe("applyAgnosticInference — quién se toca y quién no", () => {
     });
     const stats = applyAgnosticInference([s], { overrideExisting: true });
     expect(stats.bodiesAdded).toBe(1);
-    // La heurística de acción da el body liger0 `force: true`.
+    // The action heuristic yields the light body `force: true`.
     expect(s.body).toEqual({ force: true });
   });
 
-  test("un PUT sin body ni query recibe las dos cosas", () => {
+  test("a PUT with no body and no query receives both", () => {
     const s = spec({ method: "PUT", uri: "/ajustes/generales" });
     const stats = applyAgnosticInference([s]);
     expect(stats.bodiesAdded).toBe(1);
-    // GET-only: el PUT no recibe query heurística.
+    // GET-only: PUT does not receive a heuristic query.
     expect(stats.queriesAdded).toBe(0);
     expect(s.body).toEqual({
       force: false,
@@ -459,18 +460,18 @@ describe("applyAgnosticInference — quién se toca y quién no", () => {
   });
 });
 
-// extractPathParams ya está en el spec principal; aquí solo la línea
-// del filtro defensivo que comparten los recorridos anteriores.
+// extractPathParams is already in the main spec; here only the
+// defensive-filter line that the previous runs share.
 describe("extractPathParams", () => {
-  test("un solo param guarda su nombre", () => {
+  test("a single param keeps its name", () => {
     expect(extractPathParams("/clientes/{{codigo}}")).toEqual(["codigo"]);
   });
 });
 
-// El diccionario interno se expone para los tests; se comprueba que
-// siga exportándose para quien lo use como oráculo.
+// The internal dictionary is exposed for the tests; we assert it
+// keeps being exported for whoever uses it as an oracle.
 describe("_internals", () => {
-  test("sigue exponiendo los diccionarios y el ayudante de body", () => {
+  test("keeps exposing the dictionaries and the body helper", () => {
     expect(_internals.ARRAY_HINT_FIELDS.size).toBeGreaterThan(0);
     expect(_internals.BOOLEAN_HINT_FIELDS.has("visible")).toBe(true);
     expect(_internals.COMMON_QUERY_FIELDS).toContain("per_page");

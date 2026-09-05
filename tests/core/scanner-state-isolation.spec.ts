@@ -1,29 +1,28 @@
 /**
- * State isolation entre llamadas a `scan()`.
+ * State isolation between `scan()` calls.
  *
- * El bug que cerró a00010 S2: cuatro scanners (Fastify, Hono, Fiber,
- * Rust) guardaban en un `Map<routeKey, T>` a nivel de **instancia** lo
- * que el escaneo iba encontrando — el JSON Schema de Fastify, el
- * nombre del esquema zod de Hono, el struct que parsea el body en
- * Fiber y Rust. La siguiente llamada al `scan()` de la misma
- * instancia leía ese `Map` por delante y mezclaba su contenido con
- * el del escaneo nuevo.
+ * The bug a00010 S2 closed: four scanners (Fastify, Hono, Fiber, Rust)
+ * stored in an instance-level `Map<routeKey, T>` what scanning was
+ * finding — the Fastify JSON Schema, the Hono zod schema name, the
+ * body-parsing struct in Fiber and Rust. The next call to `scan()`
+ * on the same instance read that `Map` first and mixed its contents
+ * with the new scan.
  *
- * El bug no es teórico: dos escaneos sobre el mismo proyecto (o
- * sobre dos proyectos del mismo framework) veían los schemas /
- * validators / structs del otro, y una ruta "sin schema" podía
- * salir con las reglas del vecino.
+ * The bug is not theoretical: two scans over the same project (or
+ * over two projects of the same framework) saw the other's schemas /
+ * validators / structs, and a "schema-less" route could come out
+ * with the neighbour's rules.
  *
- * El contrato nuevo (`IScanResult`) cierra eso por construcción: el
- * estado vive en la salida de `scan()`, no en la instancia. Lo que
- * fija este test es que la promesa **se cumple**: dos escaneos
- * consecutivos sobre el mismo scanner no contaminan al segundo con
- * datos del primero, ni viceversa.
+ * The new contract (`IScanResult`) closes that by construction: the
+ * state lives in the `scan()` output, not in the instance. What this
+ * test pins is that the promise **holds**: two consecutive scans on
+ * the same scanner do not contaminate the second with data from the
+ * first, nor vice versa.
  *
- * Se prueba con los cuatro frameworks afectados y contra dos
- * fixtures distintos para descartar también el caso "el segundo
- * escaneo hereda las claves del primero aunque el archivo no las
- * tenga".
+ * It is tested with the four affected frameworks and against two
+ * different fixtures to also rule out the case where "the second scan
+ * inherits the keys of the first even though the file does not have
+ * them".
  */
 import { describe, expect, test } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
@@ -35,7 +34,7 @@ import { HonoProjectScanner, HonoRouteScanner, HonoZodValidatorProvider } from "
 import { FiberProjectScanner, FiberRouteScanner, FiberValidateTagProvider } from "../../packages/frameworks/scanners/fiber.scanner";
 import { RustProjectScanner, RustRouteScanner, RustValidatorProvider } from "../../packages/frameworks/scanners/rust.scanner";
 
-/** Crea un proyecto con un solo archivo. */
+/** Creates a project with a single file. */
 async function makeProject(files: Record<string, string>, tag: string): Promise<{
   root: string;
   cleanup(): Promise<void>;
@@ -52,8 +51,8 @@ async function makeProject(files: Record<string, string>, tag: string): Promise<
   };
 }
 
-describe("estado mutable entre llamadas — a00010 S2", () => {
-  test("Fastify: dos escaneos sobre el mismo scanner no comparten schemas", async () => {
+describe("mutable state between calls — a00010 S2", () => {
+  test("Fastify: two scans over the same scanner do not share schemas", async () => {
     const a = await makeProject(
       {
         "package.json": '{"name":"a","dependencies":{"fastify":"^4.0.0"}}',
@@ -88,12 +87,12 @@ export default app;`,
       const userA = resultA.routes.find((r) => r.method === "POST" && r.uri === "/users");
       expect(userA).toBeDefined();
 
-      // Primera request: resuelve con el schema de A (campo `onlyOnA`).
+      // First request: resolves with A's schema (field `onlyOnA`).
       expect(await provider.supports(userA!, matchA, resultA)).toBe(true);
       const fieldsA = (await provider.resolve(userA!, matchA, resultA)).fields;
       expect(fieldsA.map((f) => f.fieldName)).toContain("onlyOnA");
 
-      // Mismo scanner, ahora sobre B: no debe llevar el campo de A.
+      // Same scanner, now on B: must not carry A's field.
       const resultB = await scanner.scan(matchB);
       const itemB = resultB.routes.find((r) => r.method === "GET" && r.uri === "/items");
       expect(itemB).toBeDefined();
@@ -104,7 +103,7 @@ export default app;`,
     }
   });
 
-  test("Hono: dos escaneos sobre el mismo scanner no comparten validators", async () => {
+  test("Hono: two scans over the same scanner do not share validators", async () => {
     const a = await makeProject(
       {
         "package.json": '{"name":"a","type":"module","dependencies":{"hono":"^4.0.0","@hono/zod-validator":"^0.4.0","zod":"^3.23.0"}}',
@@ -151,7 +150,7 @@ export default app;`,
     }
   });
 
-  test("Fiber: el bodyStruct de un escaneo no contamina al siguiente", async () => {
+  test("Fiber: the bodyStruct of one scan does not contaminate the next", async () => {
     const a = await makeProject(
       {
         "go.mod": "module a\n\ngo 1.22\n\nrequire github.com/gofiber/fiber/v2 v2.52.0\n",
@@ -195,19 +194,19 @@ func main() {
       const resultA = await scanner.scan(matchA);
       const postA = resultA.routes.find((r) => r.method === "POST");
       expect(postA).toBeDefined();
-      // Primer escaneo reconoce el body struct de A.
+      // First scan recognizes A's body struct.
       expect(await provider.supports(postA!, matchA, resultA)).toBe(true);
       const structA = resultA.structs?.get("POST /a");
       expect(structA?.name).toBe("ACreateRequest");
 
-      // Mismo scanner, ahora sobre B: el mapa de structs no arrastra el
-      // nombre de A. La ruta `/b` no lleva schema (no llama a
-      // BodyParser) y por tanto `supports()` devuelve `false`.
+      // Same scanner, now on B: the structs map does not drag A's
+      // name. The `/b` route carries no schema (no BodyParser call)
+      // and therefore `supports()` returns `false`.
       const resultB = await scanner.scan(matchB);
       const getB = resultB.routes.find((r) => r.method === "GET");
       expect(getB).toBeDefined();
       expect(await provider.supports(getB!, matchB, resultB)).toBe(false);
-      // Y el `IScanResult.structs` del segundo escaneo está vacío.
+      // And the second scan's `IScanResult.structs` is empty.
       expect(resultB.structs?.size ?? 0).toBe(0);
     } finally {
       await a.cleanup();
@@ -215,7 +214,7 @@ func main() {
     }
   });
 
-  test("Rust: el bodyStruct de un escaneo no contamina al siguiente", async () => {
+  test("Rust: the bodyStruct of one scan does not contaminate the next", async () => {
     const a = await makeProject(
       {
         "Cargo.toml": '[package]\nname="a"\n\n[dependencies]\nactix-web="4"\n',
@@ -267,12 +266,12 @@ async fn main() { HttpServer::new(|| App::new().service(ping)).bind("0.0.0.0:0")
     }
   });
 
-  test("la misma instancia del scanner reutilizada cien veces da el mismo resultado", async () => {
-    // Llamar `scan()` muchas veces seguidas es el camino de un test
-    // paramétrico o de un servidor que escanea en cada request.
-    // Antes del cierre de a00010 S2 las primeras invocaciones
-    // contaminaban a las últimas y `routes.length` variaba entre
-    // ejecuciones. Ahora el resultado es estable.
+  test("the same scanner instance reused one hundred times yields the same result", async () => {
+    // Calling `scan()` many times in a row is the path of a
+    // parametric test or of a server that scans on every request.
+    // Before a00010 S2 was closed, the first invocations contaminated
+    // the last ones and `routes.length` varied across runs. Now the
+    // result is stable.
     const project = await makeProject(
       {
         "package.json": '{"name":"x","dependencies":{"fastify":"^4.0.0"}}',
@@ -296,8 +295,8 @@ export default app;`,
           .sort()
           .join(",");
         fingerprints.add(fp);
-        // Y en cada llamada, `schemas` está poblado solo si lo está en
-        // los fuentes: nunca arrastrado de un scan previo.
+        // And in every call, `schemas` is populated only if it is so
+        // in the sources: never dragged from a previous scan.
         expect(result.schemas?.has("POST /users")).toBe(true);
       }
       expect(fingerprints.size).toBe(1);

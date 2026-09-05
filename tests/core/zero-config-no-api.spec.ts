@@ -1,32 +1,32 @@
 /**
- * Zero-config sin `/api` global cuando ningún framework lo declara.
+ * Zero-config without a global `/api` when no framework declares it.
  *
- * Antes del a00012 S4, la `baseUrl` por defecto era `http://localhost/api`
- * y se pegaba `/api` automáticamente al `APP_URL` cuando se leía del
- * `.env`. Un proyecto Express/Flask/Gin/FastAPI sin prefijo global
- * terminaba con todas sus URIs como `http://localhost/api/<resto>`,
- * aunque el router real montase las rutas en `/<resto>`.
+ * Before a00012 S4, the default `baseUrl` was `http://localhost/api`
+ * and `/api` was automatically appended to `APP_URL` when read from
+ * the `.env`. An Express/Flask/Gin/FastAPI project without a global
+ * prefix ended up with all its URIs as `http://localhost/api/<rest>`,
+ * even though the actual router mounted the routes at `/<rest>`.
  *
- * Esta slice cierra ese bug verificando, en cuatro frameworks sin
- * prefijo global y un Laravel con y sin `RouteServiceProvider`, que la
- * colección generada **no** añade `/api` cuando no hay evidencia de
- * que el prefijo exista.
+ * This slice closes that bug by verifying, across four frameworks
+ * without a global prefix and a Laravel with and without
+ * `RouteServiceProvider`, that the generated collection does **not**
+ * add `/api` when there is no evidence the prefix exists.
  *
- * Las cinco fuentes documentadas que sí lo aportan:
- *   1. ruta explícita (routePrefix matcheado por un scanner);
- *   2. framework (Laravel/Express/... → prefix del router);
- *   3. config explícito (`delendai.config.json#basePath`,
+ * The five documented sources that do contribute it:
+ *   1. explicit route (routePrefix matched by a scanner);
+ *   2. framework (Laravel/Express/... → router prefix);
+ *   3. explicit config (`delendai.config.json#basePath`,
  *      `.expostmanrc.json#basePath`);
  *   4. OpenAPI `servers[]`;
- *   5. variable de entorno `POSTMAN_BASE_PATH`.
+ *   5. `POSTMAN_BASE_PATH` environment variable.
  *
- * Para Express/Flask/Gin/FastAPI **sin** config explícito, ninguna de
- * las cinco está activa, así que la colección debe salir sin `/api`.
- * Para Laravel sin `RouteServiceProvider`, los `routes/*.php` reciben
- * `["api"]` como prefijo lógico (esa parte del comportamiento se
- * mantiene) —y por tanto el `baseUrl` también lo lleva, porque esa es
- * la convención documentada del framework. En cambio, un Laravel sin
- * ningún `routes/*.php` debe salir sin `/api`.
+ * For Express/Flask/Gin/FastAPI **without** explicit config, none of
+ * the five is active, so the collection must come out without `/api`.
+ * For Laravel without `RouteServiceProvider`, the `routes/*.php`
+ * receive `["api"]` as a logical prefix (that part of the behavior
+ * is preserved) —and therefore the `baseUrl` also carries it, because
+ * that is the framework's documented convention. On the other hand,
+ * a Laravel without any `routes/*.php` must come out without `/api`.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -55,7 +55,7 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-/** Ejecuta `fn` con la raíz fijada a un proyecto temporal. */
+/** Runs `fn` with the root fixed to a temporary project. */
 async function inProject<T>(
   files: Record<string, string>,
   fn: (context: IProjectContext) => Promise<T>,
@@ -69,8 +69,8 @@ function generate(root: string) {
   return generateCollection(root, { orchestrator: defaultOrchestrator() });
 }
 
-describe("zero-config sin /api global (a00012 S4)", () => {
-  test("Express sin basePath: la baseUrl no lleva /api", async () => {
+describe("zero-config without global /api (a00012 S4)", () => {
+  test("Express without basePath: the baseUrl does not carry /api", async () => {
     const result = await inProject(
       {
         "package.json": JSON.stringify({
@@ -94,7 +94,7 @@ app.listen(3000);
     expect(result.baseUrl).toBe("http://localhost");
   });
 
-  test("Flask sin basePath: la baseUrl no lleva /api", async () => {
+  test("Flask without basePath: the baseUrl does not carry /api", async () => {
     const result = await inProject(
       {
         "requirements.txt": "flask>=3.0\n",
@@ -118,7 +118,7 @@ def item(item_id: int):
     expect(result.baseUrl).toBe("http://localhost");
   });
 
-  test("Gin sin basePath: la baseUrl no lleva /api", async () => {
+  test("Gin without basePath: the baseUrl does not carry /api", async () => {
     const result = await inProject(
       {
         "go.mod": "module example.test/gin-no-api\n\ngo 1.22\n",
@@ -142,7 +142,7 @@ func main() {
     expect(result.baseUrl).toBe("http://localhost");
   });
 
-  test("FastAPI sin basePath: la baseUrl no lleva /api", async () => {
+  test("FastAPI without basePath: the baseUrl does not carry /api", async () => {
     const result = await inProject(
       {
         "requirements.txt": "fastapi>=0.110\nuvicorn>=0.27\n",
@@ -166,10 +166,10 @@ def get_widget(widget_id: int):
     expect(result.baseUrl).toBe("http://localhost");
   });
 
-  test("Laravel sin routes/*.php: la baseUrl no lleva /api", async () => {
-    // El proyecto se "parece" a Laravel (composer.json + artisan) pero
-    // NO tiene ni `routes/api.php` ni `app/Providers/RouteServiceProvider.php`.
-    // Antes le pegábamos `/api` solo por tener el `.env`; ahora no.
+  test("Laravel without routes/*.php: the baseUrl does not carry /api", async () => {
+    // The project "looks like" Laravel (composer.json + artisan) but
+    // has NEITHER `routes/api.php` NOR `app/Providers/RouteServiceProvider.php`.
+    // Previously we glued `/api` on just for having `.env`; now we don't.
     const result = await inProject(
       {
         "composer.json": JSON.stringify({
@@ -180,8 +180,8 @@ def get_widget(widget_id: int):
       },
       async (context) => {
         const config = await buildZeroConfig(context);
-        // Sin routes/api.php ni RouteServiceProvider, filePrefixes está
-        // vacío, así que no hay fuente que aporte `/api`.
+        // Without routes/api.php nor RouteServiceProvider, filePrefixes is
+        // empty, so no source contributes `/api`.
         expect(config.baseUrl).toBe("http://localhost");
         expect(config.baseUrl.endsWith("/api")).toBe(false);
         return config;
@@ -190,11 +190,12 @@ def get_widget(widget_id: int):
     expect(result.baseUrl).toBe("http://localhost");
   });
 
-  test("Laravel con routes/api.php: la baseUrl lleva /api por convención del framework", async () => {
-    // routes/api.php existe → `filePrefixes` recibe `["api"]` por la
-    // convención de Laravel (detectFilePrefixes + el fallback de
-    // routes/*.php). Eso cuenta como fuente (2): el framework recogió
-    // el prefijo y lo aporta. La baseUrl, por tanto, SÍ lleva `/api`.
+  test("Laravel with routes/api.php: the baseUrl carries /api by framework convention", async () => {
+    // routes/api.php exists → `filePrefixes` receives `["api"]` by the
+    // Laravel convention (detectFilePrefixes + the routes/*.php
+    // fallback). That counts as source (2): the framework collected
+    // the prefix and contributes it. The baseUrl, therefore, DOES
+    // carry `/api`.
     const result = await inProject(
       {
         "composer.json": JSON.stringify({
@@ -212,10 +213,10 @@ def get_widget(widget_id: int):
     expect(result.baseUrl.endsWith("/api")).toBe(true);
   });
 
-  test("POSTMAN_BASE_PATH aporta el sufijo aunque no haya framework", async () => {
-    // Fuente (5): la variable de entorno es explícita y se respeta.
-    // Antes el default era `/api` por arte de magia; ahora el usuario
-    // lo declara y el loader lo pega al origen.
+  test("POSTMAN_BASE_PATH contributes the suffix even without a framework", async () => {
+    // Source (5): the environment variable is explicit and is
+    // respected. Previously the default was `/api` by magic; now the
+    // user declares it and the loader glues it to the origin.
     const previous = process.env.POSTMAN_BASE_PATH;
     process.env.POSTMAN_BASE_PATH = "/v3";
     try {
@@ -240,10 +241,10 @@ def get_widget(widget_id: int):
     }
   });
 
-  test("loadProject (zero-config) en Express: el config expone baseUrl = 'http://localhost'", async () => {
-    // Test focal del flujo completo: loadProject es la entrada que
-    // usan el pipeline y los comandos. Verifica que el config que
-    // llega al builder no lleva `/api` para un proyecto Express.
+  test("loadProject (zero-config) in Express: the config exposes baseUrl = 'http://localhost'", async () => {
+    // Focal test of the full flow: loadProject is the entry used by
+    // the pipeline and the commands. Verifies that the config reaching
+    // the builder does not carry `/api` for an Express project.
     await inProject(
       {
         "package.json": JSON.stringify({
@@ -264,12 +265,12 @@ app.get("/ping", (_req, res) => res.json({ ok: true }));
     );
   });
 
-  test("Express generado: la baseUrl efectiva no contiene /api", async () => {
-    // Verifica el camino completo: el pipeline genera una colección
-    // para un proyecto Express y el baseUrl del config no lleva /api.
-    // (Las URIs de las requests las decide el scanner; este test
-    //  asegura el SUFIJO de la baseUrl, que es la pieza que el bug
-    //  ensuciaba.)
+  test("Generated Express: the effective baseUrl does not contain /api", async () => {
+    // Verifies the full path: the pipeline generates a collection for
+    // an Express project and the config's baseUrl does not carry
+    // /api. (The request URIs are decided by the scanner; this test
+    //  asserts the SUFFIX of the baseUrl, which is the piece the bug
+    //  soiled.)
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({

@@ -1,19 +1,19 @@
 /**
- * `OpenApiRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * que lee `openapi.json` / `openapi.yaml` / `openapi.yml` en la raíz
- * del proyecto.
+ * `OpenApiRouteScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * that reads `openapi.json` / `openapi.yaml` / `openapi.yml` at the
+ * project root.
  *
- * Es el scanner con MAYOR ROI: cubre cualquier API documentada con
- * OpenAPI 3.x o Swagger 2.0 sin necesidad de scanner específico por
- * framework. Soporta además archivos en `public/`, `resources/`, `api/`,
- * `docs/`, `src/` (rutas comunes en Laravel, NestJS, FastAPI…).
+ * It's the highest-ROI scanner: it covers any API documented with
+ * OpenAPI 3.x or Swagger 2.0 without needing a per-framework scanner.
+ * It also supports files in `public/`, `resources/`, `api/`, `docs/`,
+ * `src/` (common paths in Laravel, NestJS, FastAPI…).
  *
- * Limitaciones:
- * - Solo lectura estática (no `$ref` resueltos desde red).
- * - No soporta OpenAPI 3.1 (lo aceptará parcialmente como 3.0).
- * - No parsea `examples` anidados más allá del primer nivel.
+ * Limitations:
+ * - Static-only reading (no `$ref` resolved from the network).
+ * - OpenAPI 3.1 is not supported (it will be partially accepted as 3.0).
+ * - Nested `examples` beyond the first level are not parsed.
  *
- * Si no hay ningún fichero OpenAPI, `detect()` devuelve 0.
+ * If no OpenAPI file exists, `detect()` returns 0.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -31,7 +31,7 @@ import { isRecord, parseJson, readArray, readObject, readString } from "../../co
 import { rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import type { OpenApiScannerOptions } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** Buscar OpenAPI en las localizaciones más comunes. */
+/** Look for OpenAPI in the most common locations. */
 const OPENAPI_CANDIDATES = [
   "openapi.json",
   "openapi.yaml",
@@ -73,41 +73,41 @@ const HTTP_METHODS = [
 // ---------------------------------------------------------------------------
 
 /**
- * Construcciones de YAML que este parser **no** entiende.
+ * YAML constructs this parser does **not** understand.
  *
- * No es una lista de deseos: es lo que se midió golpeando el parser con
- * entradas raras. Lo importante es que ninguna revienta — devuelven algo
- * **distinto en silencio**, que es peor:
+ * This is not a wish list: it's what was measured by hammering the
+ * parser with weird inputs. The important thing is that none of them
+ * crash — they return something **different silently**, which is worse:
  *
- * | Entrada | Lo que devuelve |
+ * | Input | What it returns |
  * |---|---|
- * | `a: &x 1` | la cadena `"&x 1"`, no el número |
- * | `b: *x` | la cadena `"*x"`, no lo que `x` valía |
- * | `<<: *base` | una clave literal llamada `<<` |
- * | `---` | solo el primer documento, sin decirlo |
+ * | `a: &x 1` | the string `"&x 1"`, not the number |
+ * | `b: *x` | the string `"*x"`, not what `x` was |
+ * | `<<: *base` | a literal key named `<<` |
+ * | `---` | only the first document, without saying so |
  *
- * Las anclas no son exóticas en OpenAPI: es como se comparte una
- * respuesta de error entre veinte endpoints sin repetirla. Un spec así
- * se parseaba «bien» y producía una colección con valores basura.
+ * Anchors are not exotic in OpenAPI: that's how an error response is
+ * shared between twenty endpoints without repeating it. A spec like
+ * that parsed «fine» and produced a collection with garbage values.
  *
- * Detectarlas y decirlo es lo que separa «no lo soporto» de «te he
- * mentido».
+ * Detecting them and saying so is what separates "I don't support it"
+ * from "I lied to you".
  */
 const YAML_NO_SOPORTADO: ReadonlyArray<{
   readonly pattern: RegExp;
   readonly what: string;
 }> = [
-  { pattern: /^\s*[\w"'/.-]+\s*:\s*&\S+/m, what: "anclas (`&nombre`)" },
-  { pattern: /^\s*[\w"'/.-]+\s*:\s*\*\S+/m, what: "alias (`*nombre`)" },
-  { pattern: /^\s*<<\s*:/m, what: "claves de fusión (`<<:`)" },
-  { pattern: /^---\s*$[\s\S]*^---\s*$/m, what: "varios documentos (`---`)" },
+  { pattern: /^\s*[\w"'/.-]+\s*:\s*&\S+/m, what: "anchors (`&name`)" },
+  { pattern: /^\s*[\w"'/.-]+\s*:\s*\*\S+/m, what: "aliases (`*name`)" },
+  { pattern: /^\s*<<\s*:/m, what: "merge keys (`<<:`)" },
+  { pattern: /^---\s*$[\s\S]*^---\s*$/m, what: "multiple documents (`---`)" },
 ];
 
 /**
- * Qué hay en este YAML que el parser no sabe leer. Vacío = todo bien.
+ * What's in this YAML that the parser can't read. Empty = everything OK.
  *
- * Se expone para poder avisar **antes** de producir una colección con
- * valores que no son los del spec.
+ * Exposed so we can warn **before** producing a collection with values
+ * that aren't the spec's.
  */
 export function unsupportedYamlFeatures(src: string): string[] {
   return YAML_NO_SOPORTADO.filter(({ pattern }) => pattern.test(src)).map(
@@ -116,20 +116,21 @@ export function unsupportedYamlFeatures(src: string): string[] {
 }
 
 /**
- * Parser YAML mínimo (sin dependencias). Soporta lo que OpenAPI usa:
- * mappings, sequences, scalars (string/number/bool/null), comentarios
- * `#`, y multi-line scalars `|` y `>`. Lo demás cae al string literal.
+ * Minimal YAML parser (no dependencies). Supports what OpenAPI uses:
+ * mappings, sequences, scalars (string/number/bool/null), `#` comments,
+ * and multi-line scalars `|` and `>`. Everything else falls back to a
+ * string literal.
  *
- * **Nunca lanza y nunca se cuelga**: sobre entrada rara devuelve lo que
- * pueda. Eso lo hace robusto y a la vez peligroso, porque un spec que no
- * sabe leer no se distingue de uno vacío — de ahí
- * `unsupportedYamlFeatures`, que sí lo distingue.
+ * **It never throws and never hangs**: on weird input it returns what
+ * it can. That makes it robust and at the same time dangerous, because
+ * a spec it can't read is indistinguishable from an empty one —
+ * hence `unsupportedYamlFeatures`, which does distinguish it.
  *
- * Existe sin dependencias a propósito: el binario compilado no puede
- * cargar paquetes en tiempo de ejecución.
+ * It exists without dependencies on purpose: the compiled binary can't
+ * load packages at runtime.
  */
 export function parseYamlLite(src: string): unknown {
-  // Sanitizar: tabuladores no son válidos en YAML.
+  // Sanitise: tabs are not valid in YAML.
   const lines = src.replace(/\t/g, "  ").split(/\r?\n/);
   let pos = 0;
 
@@ -207,7 +208,7 @@ export function parseYamlLite(src: string): unknown {
               }
             }
             pos++;
-            // Continuar el map en líneas siguientes
+            // Continue the map on the following lines
             while (pos < lines.length) {
               const next = lines[pos] ?? "";
               if (/^\s*$/.test(next)) { pos++; continue; }
@@ -258,7 +259,7 @@ export function parseYamlLite(src: string): unknown {
     while (pos < lines.length) {
       const cur = lines[pos] ?? "";
       if (/^\s*$/.test(cur)) { pos++; continue; }
-      // Saltar comentarios `#` también dentro de mappings.
+      // Skip `#` comments inside mappings too.
       if (/^\s*#/.test(cur)) { pos++; continue; }
       const ci = cur.match(/^(\s*)/)?.[1]?.length ?? 0;
       if (ci < indent) break;
@@ -309,9 +310,9 @@ export function parseYamlLite(src: string): unknown {
       return items.map((it) => parseScalar(it.trim()));
     }
     // Inline map (flow mapping): { type: string, format: email }.
-    // Muy habitual en specs OpenAPI escritos a mano para properties y
-    // parameters. Sin esto, todo el schema se quedaba como literal y los
-    // campos salían con `type: "any"`.
+      // Very common in hand-written OpenAPI specs for properties and
+      // parameters. Without this, the whole schema stayed as a literal
+      // and fields came out with `type: "any"`.
     if (s.startsWith("{") && s.endsWith("}")) {
       const inner = s.slice(1, -1).trim();
       const obj: Record<string, unknown> = {};
@@ -325,14 +326,14 @@ export function parseYamlLite(src: string): unknown {
       }
       return obj;
     }
-    // Anchors / aliases no se soportan; devolver literal.
+    // Anchors / aliases are not supported; return literal.
     return s;
   }
 
   /**
-   * Índice del `:` que separa key y valor en una entrada de flow mapping.
-   * Ignora los `:` dentro de quotes o de `[]`/`{}` anidados, para no
-   * partir por el `:` de `{ default: { a: 1 } }` ni por el de una URL.
+   * Index of the `:` separating key and value in a flow-mapping entry.
+   * Ignores `:` inside quotes or nested `[]`/`{}`, so it doesn't split
+   * on the `:` of `{ default: { a: 1 } }` or on a URL's colon.
    */
   function findFlowKeySeparator(entry: string): number {
     let depth = 0;
@@ -464,21 +465,21 @@ export class OpenApiRouteScanner implements IRouteScanner {
       }
       spec = parsed.value;
     } else {
-      // Avisar **antes** de parsear: el parser no lanza ante estas
-      // construcciones, devuelve valores que no son los del spec. Un
-      // fallo que no se ve es el que acaba en la colección.
+      // Warn **before** parsing: the parser doesn't throw on these
+      // constructs, it returns values that aren't the spec's. A
+      // failure you don't see is the one that ends up in the collection.
       const noSoportado = unsupportedYamlFeatures(raw);
       if (noSoportado.length > 0) {
         console.warn(
-          `⚠ ${specRel} usa YAML que este parser no entiende: ${noSoportado.join(", ")}.\n` +
-            "  · Los valores afectados saldrán mal en la colección, sin más aviso que este.\n" +
-            "  · Conviértelo a JSON (`openapi.json`) y se leerá entero.",
+          `⚠ ${specRel} uses YAML this parser doesn't understand: ${noSoportado.join(", ")}.\n` +
+            "  · The affected values will come out wrong in the collection, with no further warning.\n" +
+            "  · Convert it to JSON (`openapi.json`) and it will be read in full.",
         );
       }
       try {
         spec = parseYamlLite(raw);
       } catch (e) {
-        // Syntax error en YAML: abortar limpio.
+        // YAML syntax error: abort cleanly.
         throw new Error(`OpenApiRouteScanner: cannot parse ${specRel}: ${(e as Error).message}`);
       }
     }
@@ -491,10 +492,10 @@ export class OpenApiRouteScanner implements IRouteScanner {
     for (const [pathTemplate, pathItem] of Object.entries(paths)) {
       if (!pathItem || typeof pathItem !== "object") continue;
       const item = pathItem as Record<string, unknown>;
-      // Los `parameters` a nivel de path se leían aquí solo para
-      // guardarlos en `__params`, y nadie los consumía: `resolve()`
-      // vuelve a leer el spec del disco. Al retirar la propiedad
-      // escondida se quedaron sin lector, así que se van con ella.
+      // Path-level `parameters` were read here only to store them in
+      // `__params`, and nobody consumed them: `resolve()` re-reads the
+      // spec from disk. When the hidden property was removed, they
+      // were left without a reader, so they go with it.
       for (const method of HTTP_METHODS) {
         const op = item[method];
         if (!op || typeof op !== "object") continue;
@@ -606,15 +607,16 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
   readonly framework = "openapi" as const;
 
   /**
-   * Una ruta es suya si viene de este scanner.
+   * A route is its own if it comes from this scanner.
    *
-   * Antes se preguntaba por una propiedad escondida (`__params`) que el
-   * propio scanner colaba con `as any` en el objeto del contrato,
-   * porque una ruta no tenía forma de decir de dónde venía. Hacía falta
-   * en los proyectos híbridos —Express con un spec OpenAPI al lado—,
-   * donde `match.framework` es el del framework dominante y no el de
-   * cada ruta. Con `route.framework` la pregunta se responde sola, y el
-   * contrato vuelve a describir todo lo que circula por el pipeline.
+   * Before, it asked about a hidden property (`__params`) that the
+   * scanner itself stuffed with `as any` into the contract object,
+   * because a route had no way of saying where it came from. It was
+   * needed in hybrid projects — Express with an OpenAPI spec on the
+   * side — where `match.framework` is the dominant framework's and not
+   * each route's. With `route.framework` the question answers itself,
+   * and the contract again describes everything flowing through the
+   * pipeline.
    */
   async supports(
     route: ParsedRoute,
@@ -663,10 +665,10 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     ];
     for (const p of params) {
       if (!isRecord(p)) continue;
-      // Resolver $ref en parameters (ej. `{$ref: '#/components/parameters/X'}`).
+      // Resolve $ref in parameters (e.g. `{$ref: '#/components/parameters/X'}`).
       const resolvedRaw = resolveRef(p, spec);
       const resolvedP = isRecord(resolvedRaw) ? resolvedRaw : p;
-      // name, in, required pueden estar en el $ref resuelto o en el original.
+      // name, in, required can be in the resolved $ref or in the original.
       const name = readString(resolvedP, "name") ?? readString(p, "name") ?? "";
       const inLoc = (readString(resolvedP, "in") ??
         readString(p, "in") ??
@@ -680,10 +682,10 @@ export class OpenApiValidationProvider implements IValidationSpecProvider {
     const json = readObject(readObject(content, "content"), "application/json");
     if (json) {
       const raw = readObject(json, "schema") ?? {};
-      // Resolver $ref top-level (ej. `{$ref: '#/components/schemas/X'}`).
+      // Resolve top-level $ref (e.g. `{$ref: '#/components/schemas/X'}`).
       const resolved = resolveRef(raw, spec);
       const schema = (resolved ?? raw) as OpenApiSchema;
-      // allOf: mergear properties + required de cada subschema.
+      // allOf: merge properties + required from each subschema.
       const merged = mergeAllOf(schema, spec);
       const required = new Set(merged.required ?? []);
       for (const [name, sub] of Object.entries(merged.properties ?? {})) {
@@ -703,8 +705,8 @@ function keyOf(route: ParsedRoute): string {
 }
 
 /**
- * Resuelve un $ref local (`#/components/schemas/X`) en el spec.
- * Soporta un solo nivel de indirección. Devuelve `null` si no resuelve.
+ * Resolves a local `$ref` (`#/components/schemas/X`) in the spec.
+ * Supports one level of indirection. Returns `null` if it can't resolve.
  */
 function resolveRef(obj: unknown, spec: unknown): unknown {
   if (!isRecord(obj)) return null;
@@ -719,30 +721,31 @@ function resolveRef(obj: unknown, spec: unknown): unknown {
 }
 
 /**
- * Combina un schemaOpenAPI con `allOf: [...]` más profundo.
+ * Combines an OpenAPI schema with deeper `allOf: [...]`.
  *
- * Soporta:
- * - `allOf: [{schemaBody}, {schemaBody2}]` → mergea properties y required.
- * - `$ref` en items de `allOf`: se resuelve si `spec` se pasa.
- * - `oneOf`/`anyOf`: NO se mergea (mejor omitir que adivinar).
+ * Supports:
+ * - `allOf: [{schemaBody}, {schemaBody2}]` → merges properties and required.
+ * - `$ref` in `allOf` items: resolved if `spec` is passed.
+ * - `oneOf`/`anyOf`: NOT merged (better to omit than to guess).
  */
 function mergeAllOf(
   schema: unknown,
   spec?: unknown,
   /**
-   * Los `$ref` ya visitados en esta rama.
+   * The `$ref`s already visited on this branch.
    *
-   * La recursión es **ilimitada por construcción**: un `allOf` con un
-   * `$ref` lleva a `resolveRef`, y lo que devuelve vuelve a entrar aquí.
-   * `A → allOf: [$ref B]` con `B → allOf: [$ref A]` se llama sin fin, y
-   * esto lee specs de otra gente. No se ha conseguido reproducir un
-   * cuelgue —el camino hasta aquí exige que el spec parsee y que la ruta
-   * traiga cuerpo—, pero una recursión sin cota sobre entrada ajena no
-   * necesita una reproducción para merecer una cota.
+   * The recursion is **unbounded by construction**: an `allOf` with
+   * a `$ref` leads to `resolveRef`, and what it returns enters here
+   * again. `A → allOf: [$ref B]` with `B → allOf: [$ref A]` would call
+   * itself forever, and this reads other people's specs. A hang
+   * hasn't been reproduced — the path here requires the spec to parse
+   * and the route to carry a body — but unbounded recursion on
+   * external input doesn't need a reproduction to deserve a bound.
    *
-   * Se corta la rama, no todo: un `$ref` repetido en dos ramas distintas
-   * es legítimo y frecuente —una respuesta de error compartida— y
-   * marcarlo global haría que la segunda se perdiera.
+   * The branch is cut, not everything: a `$ref` repeated on two
+   * different branches is legitimate and common — a shared error
+   * response — and marking it globally would cause the second to be
+   * lost.
    */
   visitados: ReadonlySet<string> = new Set(),
 ): { properties: Record<string, OpenApiSchema>; required: string[] } {
@@ -750,7 +753,7 @@ function mergeAllOf(
   const required: string[] = [];
   if (!isRecord(schema)) return { properties, required };
 
-  // Resolver $ref en el schema raíz.
+  // Resolve $ref in the root schema.
   const ref = schema["$ref"];
   if (typeof ref === "string" && spec) {
     if (visitados.has(ref)) return { properties, required };
@@ -758,7 +761,7 @@ function mergeAllOf(
     if (resolved) return mergeAllOf(resolved, spec, new Set([...visitados, ref]));
   }
 
-  // Propiedades del schema raíz.
+  // Properties of the root schema.
   const props = schema["properties"];
   if (isRecord(props)) {
     for (const [k, v] of Object.entries(props)) {
@@ -772,7 +775,7 @@ function mergeAllOf(
     }
   }
 
-  // allOf: mergear cada subschema.
+  // allOf: merge each subschema.
   const allOf = schema["allOf"];
   if (Array.isArray(allOf)) {
     for (const sub of allOf) {
