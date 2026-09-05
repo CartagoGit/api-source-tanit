@@ -14,7 +14,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch"];
+const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
 async function isAspNetProject(projectRoot: string): Promise<boolean> {
   let entries: string[];
