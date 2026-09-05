@@ -18,5 +18,10 @@
   "theme.dark": "Dark",
   "result.requests": "requests",
   "result.folders": "folders",
-  "error.noFolder": "Pick the project root first"
+  "error.noFolder": "Pick the project root first",
+  "_meta": {
+    "_completeness": "reference",
+    "_annotatedBy": "x00037 S2",
+    "_annotatedAt": "2026-09-05"
+  }
 }

@@ -18,5 +18,11 @@
   "theme.dark": "Sombre",
   "result.requests": "requêtes",
   "result.folders": "dossiers",
-  "error.noFolder": "Choisissez d'abord la racine du projet"
+  "error.noFolder": "Choisissez d'abord la racine du projet",
+  "_meta": {
+    "_completeness": "complete",
+    "_referenceLocale": "en.json",
+    "_annotatedBy": "x00037 S2",
+    "_annotatedAt": "2026-09-05"
+  }
 }
