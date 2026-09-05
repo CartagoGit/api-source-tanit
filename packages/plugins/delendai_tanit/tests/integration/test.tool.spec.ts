@@ -1,25 +1,26 @@
 /**
- * Integration tests para `buildTestToolRegistration`.
+ * Integration tests for `buildTestToolRegistration`.
  *
- * Estrategia: mockeamos `IMcpPluginContext` con el workspace del
- * proyecto tanit y registramos el tool en un server MCP simulado.
- * Después invocamos el handler directamente para verificar el output
- * sin necesidad del host delendai completo.
+ * Strategy: we mock `IMcpPluginContext` with the tanit project's
+ * workspace and register the tool in a simulated MCP server.
+ * Then we invoke the handler directly to verify the output without
+ * needing the full delendai host.
  *
- * Lo que probamos:
- *   - Schema rechaza inputs inválidos.
- *   - Suite e2e verde: `ok=true`, todos los steps en verde.
- *   - Smoke por framework: agrega un step con `name=smoke:<framework>`.
- *   - Forzar fallo: con `withTypecheck=false` y un fixture inexistente,
- *     el step devuelve `ok=false` con un `detail` útil para actuar.
+ * What we test:
+ *   - Schema rejects invalid inputs.
+ *   - E2e suite green: `ok=true`, all steps green.
+ *   - Per-framework smoke: adds a step with `name=smoke:<framework>`.
+ *   - Forcing a failure: with `withTypecheck=false` and a missing
+ *     fixture, the step returns `ok=false` with a `detail` useful
+ *     for acting on.
  */
 import { describe, expect, test } from "vitest";
 
 import { buildTestToolRegistration } from "../../src/lib/tools/test.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
-// Workspace del proyecto tanit (no del plugin). El tool corre
-// `bun test tests/e2e/` desde ese cwd.
+// Workspace of the tanit project (not the plugin's). The tool runs
+// `bun test tests/e2e/` from that cwd.
 const TANIT_EXPORTER_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
@@ -33,7 +34,7 @@ describe("tanit_test", () => {
     expect(typeof reg.register).toBe("function");
   });
 
-  test("rechaza input inválido (framework no soportado)", async () => {
+  test("rejects invalid input (unsupported framework)", async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({ framework: "ruby-on-rails" });
@@ -41,7 +42,7 @@ describe("tanit_test", () => {
     expect(result.content[0]?.text).toMatch(/Input inválido/i);
   });
 
-  test("corre el smoke de todos los frameworks y devuelve ok=true", { timeout: 30_000 }, async () => {
+  test("runs the smoke for every framework and returns ok=true", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({ withTypecheck: false });
@@ -63,7 +64,7 @@ describe("tanit_test", () => {
     expect(parsed.durationMs).toBeGreaterThan(0);
   });
 
-  test("incluye typecheck cuando se pide", { timeout: 30_000 }, async () => {
+  test("includes typecheck when requested", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({ withTypecheck: true });
@@ -75,7 +76,7 @@ describe("tanit_test", () => {
     expect(names).toContain("typecheck");
   });
 
-  test("agrega un step smoke:<framework> cuando se pide", { timeout: 30_000 }, async () => {
+  test("adds a step smoke:<framework> when requested", { timeout: 30_000 }, async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const result = await handler({
@@ -95,14 +96,15 @@ describe("tanit_test", () => {
     expect(smokeStep?.summary).toMatch(/\d+ routes pass/);
   });
 
-  test("devuelve detalle cuando un step falla (framework inexistente vía archivo)", async () => {
+  test("returns detail when a step fails (missing framework via file)", async () => {
     const reg = buildTestToolRegistration(makeCtx());
     const _handler = await captureHandler(reg);
-    // Forzamos un framework con un archivo de test que no existe.
-    // `nestjs` SÍ existe; usamos uno inventado vía `framework` inválido
-    // que pase el zod pero no encuentre fixture: trampa no posible vía
-    // schema. Probamos un escenario de fallo con `withTypecheck` y un
-    // workspace vacío apuntando a una ruta inválida → typecheck fallará.
+    // We force a framework with a non-existent test file.
+    // `nestjs` DOES exist; we use a made-up one via an invalid
+    // `framework` that passes zod but finds no fixture: a trap not
+    // possible via the schema. We probe a failure scenario with
+    // `withTypecheck` and an empty workspace pointing at an invalid
+    // path → typecheck will fail.
     const badCtx = makeContext({ workspaceRoot: "/tmp/no-such-workspace-12345" });
     const reg2 = buildTestToolRegistration(badCtx);
     const handler2 = await captureHandler(reg2);
@@ -113,13 +115,13 @@ describe("tanit_test", () => {
       passed: boolean;
       steps: Array<{ name: string; ok: boolean; detail?: string }>;
     };
-    // Los dos campos dicen cosas distintas, y antes eran uno solo:
-    // `ok` es "los pasos se pudieron ejecutar" y `passed` es "salieron
-    // en verde". Un test en rojo es un resultado legítimo del tool, no
-    // un fallo suyo — por eso `ok` sigue siendo `true` aquí.
+    // The two fields say different things, and before they were one:
+    // `ok` means "the steps could run" and `passed` means "they came
+    // back green". A red test is a legitimate result of the tool, not
+    // a tool failure — which is why `ok` stays `true` here.
     expect(parsed.ok).toBe(true);
     expect(parsed.passed).toBe(false);
-    // El step typecheck debe haber fallado y tener detalle.
+    // The typecheck step must have failed and carry a detail.
     const typecheckStep = parsed.steps.find((s) => s.name === "typecheck");
     expect(typecheckStep).toBeDefined();
     expect(typecheckStep?.ok).toBe(false);

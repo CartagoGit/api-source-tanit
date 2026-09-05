@@ -1,32 +1,34 @@
 /**
- * Plugin delendai de tanit — entry point. USO INTERNO: este
- * paquete es `"private": true`, no se publica y se carga desde su TS.
+ * delendai plugin for tanit — entry point. INTERNAL USE: this
+ * package is `"private": true`, it is not published and is loaded
+ * from its TS source.
  *
- * Expone el proyecto Tanit como tools descubribles por cualquier
- * agente delendai compatible.
+ * Exposes the Tanit project as tools discoverable by any compatible
+ * delendai agent.
  *
- * Tools, por lo que hacen:
- *   - Escriben:   tanit_generate, tanit_init (la configuracion)
- *   - Publican:   tanit_push (el unico que sale de la maquina)
- *   - Diagnostican: tanit_scan (qué ve el discovery),
- *                   tanit_summary (el proyecto ya interpretado)
- *   - Inspeccionan lo generado: tanit_list, tanit_stats,
- *                   tanit_check (¿se ha desincronizado?),
- *                   tanit_validate
- *   - Ejecutan:   tanit_test
+ * Tools, by what they do:
+ *   - Write:      tanit_generate, tanit_init (configuration)
+ *   - Publish:    tanit_push (the only one that leaves the machine)
+ *   - Diagnose:   tanit_scan (what discovery sees),
+ *                  tanit_summary (the project already interpreted)
+ *   - Inspect the generated output: tanit_list, tanit_stats,
+ *                  tanit_check (has it drifted?),
+ *                  tanit_validate
+ *   - Execute:    tanit_test
  *
- * La lista vivía desactualizada —decía tres cuando ya había seis—, así
- * que ahora se agrupa por efecto: un tool nuevo no cabe sin decidir en
- * qué grupo entra, y esa decisión es la que `lint:mcp-surface` verifica.
+ * The list used to be out of date — it said three when there were
+ * already six — so now it is grouped by effect: a new tool cannot
+ * land without deciding which group it joins, and `lint:mcp-surface`
+ * verifies that decision.
  *
- * Diseño:
- *   - Single source of truth en `IMcpPluginContext`.
- *   - Zero `process.cwd()` / `process.env` directos en tools (siempre
- *     vía contexto o args del tool).
- *   - SOLID: cada tool es una función pura que devuelve
- *     `IToolRegistration` (forma canónica con `id` + `register(server)`).
- *   - Sin imports con extensión `.js`; este plugin se ejecuta en
- *     runtime con Bun (no se compila a `dist/`).
+ * Design:
+ *   - Single source of truth in `IMcpPluginContext`.
+ *   - Zero direct `process.cwd()` / `process.env` reads in tools
+ *     (always via context or tool args).
+ *   - SOLID: each tool is a pure function returning
+ *     `IToolRegistration` (canonical shape with `id` + `register(server)`).
+ *   - No imports with a `.js` extension; this plugin runs at
+ *     runtime in Bun (it is not compiled to `dist/`).
  */
 
 import { definePlugin } from "@delendai/core/public";

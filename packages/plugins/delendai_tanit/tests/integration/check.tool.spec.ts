@@ -1,14 +1,15 @@
 /**
- * El tool `check`, que era el que más falta hacía.
+ * The `check` tool, which was the one most needed.
  *
- * Responde «¿se ha desincronizado mi colección del código?» — la
- * pregunta que un agente quiere hacer antes de tocar nada, y que no
- * podía: el comando existía en el CLI desde el principio y el plugin no
- * lo exponía. Cuatro tools para doce comandos.
+ * It answers "has my collection drifted from the code?" — the
+ * question an agent wants to ask before touching anything, and that
+ * could not: the command existed in the CLI from the start and the
+ * plugin did not expose it. Four tools for twelve commands.
  *
- * Lo que se comprueba de fondo es que devuelve **datos**, no la tabla
- * que imprime el CLI: un agente que parsee texto con regex se rompe el
- * día que cambia una columna, y ese hack ya se pagó antes aquí mismo.
+ * What we really check is that it returns **data**, not the table
+ * the CLI prints: an agent that parses text with regex breaks the
+ * day a column changes, and that hack has already been paid for
+ * here.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn } from "node:child_process";
@@ -26,11 +27,11 @@ let proyecto = "";
 let coleccion = "";
 
 /**
- * Lanza el CLI de verdad.
+ * Spawns the real CLI.
  *
- * Con `node:child_process` y no con `Bun.spawn`: vitest corre en workers
- * de Node, donde `Bun` no está definido — es el mismo motivo por el que
- * `runner.helper` del plugin lleva su propio fallback documentado.
+ * With `node:child_process` and not `Bun.spawn`: vitest runs in Node
+ * workers, where `Bun` is not defined — same reason `runner.helper`
+ * in the plugin carries its own documented fallback.
  */
 function cli(args: readonly string[]): Promise<void> {
   return new Promise((resolve) => {
@@ -83,10 +84,10 @@ describe("una colección al día", () => {
 
 describe("una colección desincronizada", () => {
   /**
-   * EL test. Una colección con deriva **detectada** es una comprobación
-   * que ha funcionado: `ok` sigue siendo `true` y lo que cambia es
-   * `inSync`. Devolverlo como error de herramienta haría que el agente
-   * reintentara en vez de leer la lista.
+   * THE test. A collection with **detected** drift is a check that
+   * worked: `ok` stays `true` and what changes is `inSync`. Returning
+   * it as a tool error would make the agent retry instead of
+   * reading the list.
    */
   test("`ok` sigue en true; lo que cambia es `inSync`", { timeout: 120_000 }, async () => {
     const original = await readFile(coleccion, "utf8");
@@ -105,9 +106,9 @@ describe("una colección desincronizada", () => {
   });
 
   /**
-   * En GraphQL las cinco operaciones comparten `POST /graphql`, así que
-   * una lista sin nombres serían varias líneas idénticas: no diría cuál
-   * falta.
+   * In GraphQL the five operations share `POST /graphql`, so a list
+   * without names would be several identical lines: it would not
+   * say which one is missing.
    */
   test("dice qué operación falta, no solo cuántas", { timeout: 120_000 }, async () => {
     const original = await readFile(coleccion, "utf8");
@@ -130,16 +131,16 @@ describe("una colección desincronizada", () => {
 });
 
 /**
- * El otro protocolo, que era el 91 % sin cubrir.
+ * The other protocol, which was 91% uncovered.
  *
- * Este spec probaba **solo GraphQL**, y GraphQL estaba entre los nueve
- * frameworks donde `check` funcionaba. El bug —13 de 22 ejemplos
- * reportando deriva total sobre una colección recién generada— vivía en
- * el resto, y ningún test lo miraba.
+ * This spec only tested **GraphQL**, and GraphQL was one of the
+ * nine frameworks where `check` worked. The bug — 13 of 22 examples
+ * reporting total drift on a freshly generated collection — lived in
+ * the rest, and no test was looking at it.
  *
- * Express es el contrario exacto de GraphQL: REST con parámetros de
- * ruta, donde la URL identifica la operación y el nombre es ruido. Los
- * dos casos juntos son los que fijan la regla.
+ * Express is the exact opposite of GraphQL: REST with path params,
+ * where the URL identifies the operation and the name is noise.
+ * Together the two cases pin down the rule.
  */
 describe("un REST con parámetros de ruta", () => {
   let rest = "";
@@ -152,10 +153,10 @@ describe("un REST con parámetros de ruta", () => {
   }, 180_000);
 
   /**
-   * EL test que faltaba. `/api/users/:id` en el código y
-   * `/api/users/{{id}}` en la colección son el mismo endpoint, y
-   * «Get Users» es un nombre que deriva el constructor, no una segunda
-   * operación.
+   * The test that was missing. `/api/users/:id` in the code and
+   * `/api/users/{{id}}` in the collection are the same endpoint,
+   * and "Get Users" is a name the constructor derives, not a second
+   * operation.
    */
   test("una colección recién generada está al día", { timeout: 120_000 }, async () => {
     const out = await check({ projectRoot: rest });
@@ -165,7 +166,7 @@ describe("un REST con parámetros de ruta", () => {
     expect(out["missingInSource"]).toEqual([]);
   });
 
-  /** Y la deriva de verdad se sigue viendo. */
+  /** And real drift is still detected. */
   test("borrar una request sí sale como deriva", { timeout: 120_000 }, async () => {
     const ruta = join(rest, "tanit", "sample-express.postman_collection.json");
     const original = await readFile(ruta, "utf8");
@@ -184,7 +185,7 @@ describe("un REST con parámetros de ruta", () => {
   });
 });
 
-describe("lo que no puede hacer, lo dice", () => {
+describe("what it cannot do, it says", () => {
   test("un projectRoot que no existe da error con salida", async () => {
     const handler = await captureHandler(
       buildCheckToolRegistration(makeContext({ workspaceRoot: RAIZ })),

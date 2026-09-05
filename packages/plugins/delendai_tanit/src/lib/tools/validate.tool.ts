@@ -1,16 +1,16 @@
 /**
  * Tool `tanit_validate`.
  *
- * Ejecuta `diff.script.ts` + `validate-json.script.ts` del proyecto
- * tanit contra un JSON ya generado. Devuelve OK/KO con
- * lista de issues estructurados.
+ * Runs `diff.script.ts` + `validate-json.script.ts` from the tanit
+ * project against an already-generated JSON. Returns OK/KO with a
+ * structured issues list.
  *
  * SOLID:
- *   - S: solo valida, no genera.
- *   - L: delega el parseo a `runBunScript` (sin regex aquí).
- *   - D: usa opciones del plugin (cliScript path) inyectadas.
+ *   - S: only validates, it does not generate.
+ *   - L: it delegates parsing to `runBunScript` (no regex here).
+ *   - D: it uses the injected plugin options (cliScript path).
  *
- * Forma canónica `IToolRegistration`.
+ * Canonical `IToolRegistration` shape.
  */
 
 import {
@@ -83,8 +83,8 @@ export function buildValidateToolRegistration(
               bunBin: ctx.options["delendaiBunBin"] as string | undefined,
             },
           });
-          // Mutable aquí y `readonly` en el contrato de salida: la anotación
-          // anterior decía `readonly[]` y aun así hacía push.
+          // Mutable here and `readonly` in the output contract: the
+          // earlier annotation said `readonly[]` and still pushed.
           const issues: Array<IValidateOutput["issues"][number]> = [];
           if (!result.ok) {
             issues.push({
@@ -98,17 +98,17 @@ export function buildValidateToolRegistration(
           const routesMatch = result.stdout.match(/Routes en source:\s+(\d+)/);
           const collMatch = result.stdout.match(/Requests en colección:\s+(\d+)/);
 
-          // `ok` y `valid` dicen cosas distintas, y antes eran el mismo
-          // campo. `ok` es "la comprobación se pudo hacer"; `valid` es
-          // "la colección está al día". Una colección desincronizada
-          // detectada **es** una validación que ha funcionado.
+          // `ok` and `valid` say different things, and before they
+          // were the same field. `ok` means "the check could run";
+          // `valid` means "the collection is up to date". A detected
+          // drift **is** a validation that worked.
           //
-          // Devolvía `toolError` en ese caso, y eso marca la respuesta
-          // con `isError`: el agente que pregunta "¿está al día mi
-          // colección?" recibía un fallo de herramienta en vez de la
-          // respuesta "no, y estos son los motivos". La diferencia
-          // importa porque ante un error se reintenta o se abandona,
-          // mientras que ante `valid: false` se lee `issues` y se actúa.
+          // It used to return `toolError` in that case, which marks
+          // the response with `isError`: the agent asking "is my
+          // collection up to date?" received a tool failure instead
+          // of the answer "no, and these are the reasons". The
+          // difference matters because on an error you retry or give
+          // up, whereas on `valid: false` you read `issues` and act.
           const out: IValidateOutput = {
             ok: true,
             valid: result.ok && issues.length === 0,

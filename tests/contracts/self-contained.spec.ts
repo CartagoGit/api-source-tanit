@@ -1,20 +1,20 @@
 /**
- * El proyecto de contratos no importa de nadie.
+ * The contracts project imports nothing from anyone.
  *
- * Es la única propiedad que lo hace útil. Un contrato que necesita
- * alcanzar `core/` o `frameworks/` para tiparse no es un contrato: es la
- * firma de una implementación con otro nombre, y quien lo consuma se
- * lleva esa implementación detrás.
+ * This is the single property that makes it useful. A contract that needs
+ * to reach into `core/` or `frameworks/` for typing is not a contract: it
+ * is the signature of an implementation under another name, and whoever
+ * consumes it drags that implementation along.
  *
- * Y es exactamente el problema del que sale esta sección. Hoy la UI
- * importa `IProjectSummary` de `core/discovery/summary.service`, y el
- * plugin importaba el catálogo de `frameworks/index` —que
- * arrastra los 21 scanners— solo para leer una lista de nombres.
+ * And that is exactly the problem this section exists to solve. Today the
+ * UI imports `IProjectSummary` from `core/discovery/summary.service`, and
+ * the plugin imports the catalog from `frameworks/index` — which drags in
+ * all 21 scanners — just to read a list of names.
  *
- * `tsconfig.contracts.json` ya lo impide en compilación, porque incluye
- * únicamente esta carpeta. Esto lo comprueba además sobre el texto, que
- * es lo que caza un `import type` con ruta relativa hacia arriba antes
- * de que alguien lo dé por bueno.
+ * `tsconfig.contracts.json` already prevents this at compile time, because
+ * it includes only this folder. This test also checks the source text,
+ * which is what catches a `import type` with an upward relative path
+ * before anyone approves it.
  */
 import { describe, expect, test } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
@@ -22,16 +22,16 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * La carpeta se localiza sin `scripts/helpers/root.helper`, a propósito.
+ * The folder is located without `scripts/helpers/root.helper`, on purpose.
  *
- * Importarlo metería `scripts/` en el programa de
- * `tsconfig.contracts.json`, y entonces «la sección compila sola» sería
- * mentira justo en el fichero que viene a comprobarlo.
+ * Importing it would add `scripts/` to the `tsconfig.contracts.json`
+ * program, and then "the section compiles on its own" would be a lie in
+ * the very file that comes to verify it.
  */
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const CONTRACTS = join(AQUI, "..", "..", "packages", "contracts");
 
-/** Los `.ts` de un árbol, sin depender del walker del repo. */
+/** The `.ts` files of a tree, without depending on the repo walker. */
 async function collectFiles(dir: string): Promise<string[]> {
   const out: string[] = [];
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -42,7 +42,7 @@ async function collectFiles(dir: string): Promise<string[]> {
   return out;
 }
 
-/** Los especificadores relativos que importa un fichero. */
+/** The relative specifiers imported by a file. */
 function importsRelativos(source: string): string[] {
   const encontrados: string[] = [];
   const re = /(?:from|import)\s*\(?\s*["'](\.[^"']*)["']/g;
@@ -60,21 +60,21 @@ function importsRelativos(source: string): string[] {
 const ficheros = await collectFiles(CONTRACTS);
 
 describe("packages/contracts/", () => {
-  test("tiene contratos dentro", () => {
+  test("has contracts inside", () => {
     expect(ficheros.length).toBeGreaterThan(0);
   });
 
   /**
-   * EL test: ni un import que salga de la carpeta.
+   * THE test: not a single import may leave the folder.
    *
-   * Se **resuelve** la ruta en vez de mirar si empieza por `../..`. Esa
-   * heurística daba un falso positivo en cuanto un contrato de
-   * `interfaces/cli/` importó uno de `constants/cli/`: sube dos niveles
-   * y sigue dentro de `packages/contracts/`, que es exactamente lo que
-   * se quiere permitir. Un contrato puede apoyarse en otro; lo que no
-   * puede es apoyarse en una implementación.
+   * The path is **resolved** rather than just checking whether it starts
+   * with `../..`. That heuristic produced a false positive as soon as a
+   * contract in `interfaces/cli/` imported one from `constants/cli/`: it
+   * goes up two levels and stays inside `packages/contracts/`, which is
+   * exactly what should be allowed. A contract may build on another; what
+   * it cannot do is build on an implementation.
    */
-  test.for(ficheros)("%s no importa nada de fuera", async (fichero) => {
+  test.for(ficheros)("%s imports nothing from outside", async (fichero) => {
     const source = await readFile(fichero, "utf8");
     const fuera = importsRelativos(source).filter((spec) => {
       const destino = resolve(dirname(fichero), spec);
@@ -86,10 +86,10 @@ describe("packages/contracts/", () => {
   });
 
   /**
-   * Un contrato es una declaración. Si trae código ejecutable, quien lo
-   * importe se lleva ese código —y sus efectos— al arrancar.
+   * A contract is a declaration. If it carries executable code, whoever
+   * imports it brings that code — and its effects — along at startup.
    */
-  test.for(ficheros)("%s no trae implementación", async (fichero) => {
+  test.for(ficheros)("%s carries no implementation", async (fichero) => {
     const source = await readFile(fichero, "utf8");
     const sinComentarios = source
       .replace(/\/\*[\s\S]*?\*\//g, "")

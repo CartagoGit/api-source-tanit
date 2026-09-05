@@ -1,17 +1,18 @@
 /**
- * La pieza que faltaba, y las cuatro veces que su ausencia mordió.
+ * The piece that was missing, and the four times its absence bit.
  *
- * "La URL identifica la operación" vale en REST y no vale en GraphQL ni
- * en tRPC, donde hay un endpoint y lo que distingue una consulta de otra
- * es el nombre. Tres sitios respondían esa pregunta con tres fórmulas
- * distintas, y los tres fallaron por separado sobre el mismo ejemplo.
+ * "The URL identifies the operation" holds for REST and does not hold
+ * for GraphQL or tRPC, where there is one endpoint and what
+ * distinguishes one query from another is the name. Three places
+ * answered that question with three different formulas, and all three
+ * failed separately on the same example.
  */
 import { describe, expect, test } from "vitest";
 
 import { describeEndpoint, endpointKey, needsNameToDisambiguate } from "../../packages/core/helpers/route-identity.helper";
 
 describe("endpointKey", () => {
-  test("en REST, método y URI bastan", () => {
+  test("in REST, method and URI are enough", () => {
     expect(endpointKey({ method: "GET", uri: "/users" })).toBe(
       endpointKey({ method: "GET", uri: "/users" }),
     );
@@ -20,24 +21,24 @@ describe("endpointKey", () => {
     );
   });
 
-  test("normaliza la URI, para que `/api/x` y `api/x` no sean dos", () => {
+  test("normalizes the URI, so `/api/x` and `api/x` are not two", () => {
     expect(endpointKey({ method: "GET", uri: "/users" })).toBe(
       endpointKey({ method: "GET", uri: "users" }),
     );
   });
 
-  test("el método no distingue por mayúsculas", () => {
+  test("the method is not case-sensitive", () => {
     expect(endpointKey({ method: "get", uri: "/users" })).toBe(
       endpointKey({ method: "GET", uri: "/users" }),
     );
   });
 
   /**
-   * EL caso. Cinco operaciones de GraphQL comparten `POST /graphql`, y
-   * sin el nombre las cinco colapsan en una — que es exactamente lo que
-   * pasaba en `dedupeSpecs`, en los invariantes y en `check`.
+   * THE case. Five GraphQL operations share `POST /graphql`, and
+   * without the name all five collapse into one — exactly what was
+   * happening in `dedupeSpecs`, in the invariants, and in `check`.
    */
-  test("en RPC sobre POST, el nombre es lo único que las separa", () => {
+  test("in RPC over POST, the name is the only thing that separates them", () => {
     const operaciones = [
       { method: "POST", uri: "/graphql", name: "query users" },
       { method: "POST", uri: "/graphql", name: "query orders" },
@@ -49,18 +50,18 @@ describe("endpointKey", () => {
     expect(claves.size).toBe(5);
   });
 
-  test("el cuerpo separa dos variantes del mismo endpoint", () => {
+  test("the body separates two variants of the same endpoint", () => {
     const a = endpointKey({ method: "POST", uri: "/users", body: '{"name":"x"}' });
     const b = endpointKey({ method: "POST", uri: "/users", body: '{"name":"y"}' });
     expect(a).not.toBe(b);
   });
 
   /**
-   * Un nombre vacío no puede cambiar la clave: si lo hiciera, la misma
-   * ruta vista por dos caminos —uno que rellena `displayName` y otro que
-   * no— dejaría de coincidir consigo misma.
+   * An empty name cannot change the key: if it did, the same route seen
+   * through two paths —one that fills `displayName` and one that does
+   * not— would no longer match itself.
    */
-  test("un nombre o un cuerpo vacíos no cambian la clave", () => {
+  test("an empty name or body does not change the key", () => {
     const base = endpointKey({ method: "GET", uri: "/users" });
     expect(endpointKey({ method: "GET", uri: "/users", name: "" })).toBe(base);
     expect(endpointKey({ method: "GET", uri: "/users", body: "" })).toBe(base);
@@ -69,15 +70,15 @@ describe("endpointKey", () => {
 });
 
 describe("describeEndpoint", () => {
-  test("en REST basta con método y URI", () => {
+  test("in REST, method and URI are enough", () => {
     expect(describeEndpoint({ method: "GET", uri: "/users" })).toBe("GET /users");
   });
 
   /**
-   * Tres `POST /graphql` idénticos en una lista de "faltan estas" no
-   * dicen cuál buscar. Con el nombre, sí.
+   * Three identical `POST /graphql` in a "missing these" list do not
+   * say which one to look for. With the name, they do.
    */
-  test("con nombre, dice cuál es", () => {
+  test("with a name, says which one it is", () => {
     expect(
       describeEndpoint({ method: "POST", uri: "/graphql", name: "query orders" }),
     ).toContain("(query orders)");
@@ -85,7 +86,7 @@ describe("describeEndpoint", () => {
 });
 
 describe("needsNameToDisambiguate", () => {
-  test("un REST normal no lo necesita", () => {
+  test("a normal REST does not need it", () => {
     expect(
       needsNameToDisambiguate([
         { method: "GET", uri: "/users" },
@@ -95,7 +96,7 @@ describe("needsNameToDisambiguate", () => {
     ).toBe(false);
   });
 
-  test("varias operaciones en el mismo endpoint sí", () => {
+  test("several operations on the same endpoint, yes", () => {
     expect(
       needsNameToDisambiguate([
         { method: "POST", uri: "/graphql", name: "a" },
@@ -105,11 +106,12 @@ describe("needsNameToDisambiguate", () => {
   });
 
   /**
-   * Se pregunta por la forma de las rutas, no por una lista de
-   * frameworks: así un JSON-RPC escrito a mano funciona sin que nadie
-   * añada nada, y soportar un framework nuevo no obliga a tocar esto.
+   * It asks about the shape of the routes, not about a list of
+   * frameworks: a hand-written JSON-RPC works without anyone adding
+   * anything, and supporting a new framework does not force touching
+   * this.
    */
-  test("no depende de qué framework sea", () => {
+  test("does not depend on which framework it is", () => {
     expect(
       needsNameToDisambiguate([
         { method: "POST", uri: "/rpc", name: "sumar" },
@@ -118,7 +120,7 @@ describe("needsNameToDisambiguate", () => {
     ).toBe(true);
   });
 
-  test("una lista vacía o de uno no necesita nada", () => {
+  test("an empty or single-element list needs nothing", () => {
     expect(needsNameToDisambiguate([])).toBe(false);
     expect(needsNameToDisambiguate([{ method: "GET", uri: "/x" }])).toBe(false);
   });

@@ -1,17 +1,17 @@
 /**
- * El aspecto de la interfaz, en variables.
+ * The look of the interface, in variables.
  *
- * Lo que se comprueba aquí no es que los colores sean bonitos —eso no
- * se puede probar— sino las dos propiedades que hacen que un tema
- * funcione:
+ * What is checked here is not that the colors are nice —that cannot
+ * be tested— but the two properties that make a theme work:
  *
- *   1. **Ninguna regla escribe un color a pelo.** Si una lo hiciera, ese
- *      elemento se vería igual en los dos temas: bien en el que se
- *      escribió y roto en el otro. Es el fallo que más tarda en salir,
- *      porque hay que abrir el otro tema para verlo.
- *   2. **Los dos temas definen las mismas variables.** A un tema al que
- *      le falte una no le pasa nada visible: hereda la del otro y se ve
- *      mal en un sitio concreto.
+ *   1. **No rule writes a color hardcoded.** If one did, that
+ *      element would look the same in both themes: fine in the one it
+ *      was written for and broken in the other. It is the failure that
+ *      takes longest to surface, because you have to open the other
+ *      theme to see it.
+ *   2. **Both themes define the same variables.** A theme that lacks
+ *      one shows nothing visible: it inherits the other and looks
+ *      wrong in one specific spot.
  */
 import { describe, expect, test } from "vitest";
 
@@ -22,64 +22,64 @@ import {
 } from "../../packages/contracts/constants/cli/theme.constant";
 import { UI_STYLES } from "../../packages/ui/web/theme.constant";
 
-/** Los bloques que declaran variables: `:root`, el del sistema y el elegido. */
+/** The blocks that declare variables: `:root`, the system one and the chosen one. */
 function bloquesDeVariables(css: string): string[] {
   return [...css.matchAll(/\{([^{}]*--[^{}]*)\}/g)].map((m) => m[1] ?? "");
 }
 
 describe("los modos", () => {
-  test("son tres: sistema, claro y oscuro", () => {
+  test("are three: system, light and dark", () => {
     expect([...THEME_MODES]).toEqual(["system", "light", "dark"]);
   });
 
   /**
-   * Quien tiene el sistema en oscuro lo tiene por un motivo, y abrir
-   * una aplicación en blanco brillante es exactamente lo que configuró
-   * para que no pasara.
+   * Whoever has their system in dark mode does so for a reason, and
+   * opening an application in bright white is exactly what they
+   * configured to prevent.
    */
-  test("el de por defecto sigue al sistema, no impone uno", () => {
+  test("the default follows the system, does not impose one", () => {
     expect(DEFAULT_THEME).toBe("system");
   });
 });
 
-describe("los dos temas dicen lo mismo", () => {
-  test("el claro define todas las variables declaradas", () => {
+describe("both themes say the same thing", () => {
+  test("the light one defines all declared variables", () => {
     const raiz = bloquesDeVariables(UI_STYLES)[0] ?? "";
     for (const variable of THEME_VARIABLES) {
-      expect(raiz, `falta ${variable} en el tema claro`).toContain(`${variable}:`);
+      expect(raiz, `missing ${variable} in light theme`).toContain(`${variable}:`);
     }
   });
 
-  /** EL test: un tema incompleto hereda del otro y se ve mal en un sitio. */
-  test("el oscuro define exactamente las mismas", () => {
+  /** THE test: an incomplete theme inherits from the other and looks wrong in one spot. */
+  test("the dark one defines exactly the same", () => {
     const oscuro = /:root\[data-tema="dark"\]\s*\{([^}]*)\}/.exec(UI_STYLES)?.[1] ?? "";
-    expect(oscuro.length, "no hay bloque de tema oscuro").toBeGreaterThan(0);
+    expect(oscuro.length, "no dark theme block").toBeGreaterThan(0);
     for (const variable of THEME_VARIABLES) {
-      expect(oscuro, `falta ${variable} en el tema oscuro`).toContain(`${variable}:`);
+      expect(oscuro, `missing ${variable} in dark theme`).toContain(`${variable}:`);
     }
   });
 
-  test("el del sistema también, para que no herede a medias", () => {
+  test("the system one too, so it does not half-inherit", () => {
     const sistema =
       /:root:not\(\[data-tema="light"\]\)\s*\{([^}]*)\}/.exec(UI_STYLES)?.[1] ?? "";
     expect(sistema.length).toBeGreaterThan(0);
     for (const variable of THEME_VARIABLES) {
-      expect(sistema, `falta ${variable} en el tema del sistema`).toContain(
+      expect(sistema, `missing ${variable} in system theme`).toContain(
         `${variable}:`,
       );
     }
   });
 });
 
-describe("ni un color fuera de las variables", () => {
+describe("no color outside the variables", () => {
   /**
-   * EL otro test. Se miran las reglas —lo que no es un bloque de
-   * variables— y ahí no puede aparecer un color literal: todo tiene que
-   * ser `var(--algo)`.
+   * THE other test. The rules —what is not a variables block— are
+   * inspected, and there no literal color can appear: everything must
+   * be `var(--something)`.
    */
-  test("las reglas usan `var()`, no valores literales", () => {
-    // Se quitan los bloques que declaran variables: ahí los literales
-    // son justamente lo que se quiere.
+  test("the rules use `var()`, not literal values", () => {
+    // The blocks that declare variables are removed: there literals
+    // are exactly what is wanted.
     const soloReglas = UI_STYLES.replace(/\{[^{}]*--[^{}]*\}/g, "{}")
       .replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -88,14 +88,15 @@ describe("ni un color fuera de las variables", () => {
       ...soloReglas.matchAll(/\brgba?\([^)]*\)/g),
     ].map((m) => m[0]);
 
-    expect(literales, "hay colores escritos a pelo en una regla").toEqual([]);
+    expect(literales, "colors are hardcoded in a rule").toEqual([]);
   });
 
-  test("y ningún nombre de color suelto tampoco", () => {
+  test("and no bare color name either", () => {
     const soloReglas = UI_STYLES.replace(/\{[^{}]*--[^{}]*\}/g, "{}")
       .replace(/\/\*[\s\S]*?\*\//g, "");
-    // `transparent` y `inherit` no son colores del tema: son ausencia de
-    // color y herencia, y ninguno de los dos cambia entre temas.
+    // `transparent` and `inherit` are not theme colors: they are
+    // absence of color and inheritance, and neither changes between
+    // themes.
     const sospechosos = [
       ...soloReglas.matchAll(
         /:\s*(white|black|red|green|blue|gray|grey|yellow|orange)\b/g,
@@ -105,18 +106,19 @@ describe("ni un color fuera de las variables", () => {
   });
 });
 
-describe("lo accesible no es opcional", () => {
+describe("accessibility is not optional", () => {
   /**
-   * El foco visible es lo único que le dice a quien navega con teclado
-   * dónde está. Quitarlo deja la interfaz inusable sin ratón, y es de
-   * las cosas que se borran «porque se ve raro».
+   * Visible focus is the only thing that tells someone navigating with
+   * the keyboard where they are. Removing it makes the interface
+   * unusable without a mouse, and it is one of the things that get
+   * deleted "because it looks weird".
    */
-  test("el foco de teclado se ve", () => {
+  test("keyboard focus is visible", () => {
     expect(UI_STYLES).toContain(":focus-visible");
     expect(UI_STYLES).toMatch(/:focus-visible\s*\{[^}]*outline:/);
   });
 
-  test("el foco usa la variable, para que se vea en los dos temas", () => {
+  test("focus uses the variable, so it shows in both themes", () => {
     const regla = /:focus-visible\s*\{([^}]*)\}/.exec(UI_STYLES)?.[1] ?? "";
     expect(regla).toContain("var(--foco)");
   });

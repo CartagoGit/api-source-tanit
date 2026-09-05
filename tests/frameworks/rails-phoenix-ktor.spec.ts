@@ -1,10 +1,10 @@
 /**
- * Los tres scanners "declarativos": Rails, Phoenix y Ktor.
+ * The three "declarative" scanners: Rails, Phoenix and Ktor.
  *
- * Comparten lo que los hace fáciles de leer —las rutas viven en un
- * fichero, no repartidas por el código— y comparten también la trampa:
- * un `resources` es UNA línea y CINCO endpoints. Contarla como una ruta
- * sería quedarse con el 20% de la API.
+ * They share what makes them easy to read —routes live in a file,
+ * not scattered across the code— and they also share the trap: a
+ * `resources` is ONE line and FIVE endpoints. Counting it as a single
+ * route would leave you with 20% of the API.
  */
 import { describe, expect, test } from "vitest";
 
@@ -76,51 +76,52 @@ describeScannerContract({
 describe("Rails: `resources` expande a los endpoints REST", () => {
   const routes = (source: string) => parseRoutesFile(source, "config/routes.rb");
 
-  // Rails genera SIETE acciones, pero `new` y `edit` devuelven
-  // formularios HTML: en una API JSON no existen, y meterlas llenaría la
-  // colección de endpoints que dan 404. El `update` aparece dos veces
-  // (PUT y PATCH) desde a00010 / B-04 — Rails 5+ acepta ambos.
-  test("omite las acciones de formulario (new, edit)", () => {
+  // Rails generates SEVEN actions, but `new` and `edit` return
+  // HTML forms: in a JSON API they do not exist, and adding them
+  // would fill the collection with 404-returning endpoints. `update`
+  // appears twice (PUT and PATCH) since a00010 / B-04 — Rails 5+
+  // accepts both.
+  test("omits the form actions (new, edit)", () => {
     const found = routes("Rails.application.routes.draw do\n  resources :users\nend");
     expect(found).toHaveLength(6);
     expect(found.some((r) => r.uri.includes("/new"))).toBe(false);
     expect(found.some((r) => r.uri.includes("/edit"))).toBe(false);
   });
 
-  test("respeta `only:`", () => {
+  test("respects `only:`", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users, only: [:index, :show]\nend",
     );
     expect(found.map((r) => r.method).sort()).toEqual(["GET", "GET"]);
   });
 
-  test("respeta `except:`", () => {
+  test("respects `except:`", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users, except: [:destroy]\nend",
     );
     expect(found.some((r) => r.method === "DELETE")).toBe(false);
   });
 
-  // Un recurso singular opera siempre sobre "el mío": no hay listado ni
-  // `:id` que pasar.
-  test("`resource` singular no tiene index ni :id", () => {
+  // A singular resource always operates on "mine": there is no list
+  // and no `:id` to pass.
+  test("singular `resource` has no index and no :id", () => {
     const found = routes("Rails.application.routes.draw do\n  resource :profile\nend");
     expect(found.every((r) => !r.uri.includes("{id}"))).toBe(true);
     expect(found.filter((r) => r.method === "GET")).toHaveLength(1);
   });
 
-  test("los namespaces anidados se acumulan", () => {
+  test("nested namespaces accumulate", () => {
     const found = routes(
       'Rails.application.routes.draw do\n  namespace :api do\n    namespace :v1 do\n      get "/x", to: "a#b"\n    end\n  end\nend',
     );
     expect(found[0]?.uri).toBe("/api/v1/x");
   });
 
-  // a00011 C-1: el path param por defecto es `{id}` (Rails oficial),
-  // NO el singular del recurso. El singularizer naïve (`users → user`)
-  // se llevaba mal con `categories → categorie`, `people → people`,
-  // etc. — producía URLs incorrectas y ningún warning.
-  test("path param por defecto es `{id}` (Rails 5+ default)", () => {
+  // a00011 C-1: the default path param is `{id}` (Rails official),
+  // NOT the singular of the resource. The naive singularizer
+  // (`users → user`) misbehaved with `categories → categorie`,
+  // `people → people`, etc. — producing incorrect URLs with no warning.
+  test("default path param is `{id}` (Rails 5+ default)", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users\nend",
     );
@@ -128,16 +129,16 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
       (r) => r.uri.includes("{id}") && r.actionName !== undefined,
     );
     expect(withId.length).toBeGreaterThanOrEqual(3);
-    // Ningún endpoint REST lleva `{user}` (el singularizer está
-    // desactivado por defecto).
+    // No REST endpoint carries `{user}` (the singularizer is
+    // disabled by default).
     const withUser = found.filter(
       (r) => r.uri.includes("{user}") && r.actionName !== undefined,
     );
     expect(withUser).toHaveLength(0);
   });
 
-  // a00011 C-1: `resources :users, param: :slug` lo respeta.
-  test("`param: :otro` override del path param", () => {
+  // a00011 C-1: `resources :users, param: :slug` is respected.
+  test("`param: :other` overrides the path param", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users, param: :slug\nend",
     );
@@ -151,8 +152,8 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
     expect(withId).toHaveLength(0);
   });
 
-  // a00010 / B-04: `update` produce dos rutas — PUT y PATCH.
-  test("update produce PUT + PATCH (B-04 a00010)", () => {
+  // a00010 / B-04: `update` produces two routes — PUT and PATCH.
+  test("update produces PUT + PATCH (B-04 a00010)", () => {
     const found = routes(
       "Rails.application.routes.draw do\n  resources :users\nend",
     );
@@ -168,51 +169,51 @@ describe("Rails: `resources` expande a los endpoints REST", () => {
     expect(normalizeRailsParams(input)).toBe(expected);
   });
 
-  test("detecta por config/routes.rb + Gemfile", async () => {
+  test("detects via config/routes.rb + Gemfile", async () => {
     expect((await new RailsProjectScanner().detect(comprehensiveFixtureDir("rails"))).score).toBe(1);
   });
 
-  test("el scanner completo lee el fixture", async () => {
+  test("the full scanner reads the fixture", async () => {
     const scanner = new RailsRouteScanner();
     const match = await new RailsProjectScanner().resolve(comprehensiveFixtureDir("rails"));
     expect((await scanner.scan(match)).routes.length).toBeGreaterThan(10);
   });
 });
 
-describe("Phoenix: scopes anidados y resources", () => {
+describe("Phoenix: nested scopes and resources", () => {
   const routes = (source: string) => parseRouter(source, "router.ex");
 
-  test("los scopes se concatenan", () => {
+  test("scopes concatenate", () => {
     const found = routes(
       'defmodule R do\n  scope "/api" do\n    scope "/v1" do\n      get "/x", C, :y\n    end\n  end\nend',
     );
     expect(found[0]?.uri).toBe("/api/v1/x");
   });
 
-  // `pipe_through :api` declara el pipeline de plugs, no un endpoint.
-  test("`pipe_through` no es una ruta", () => {
+  // `pipe_through :api` declares the plugs pipeline, not an endpoint.
+  test("`pipe_through` is not a route", () => {
     const found = routes(
       'defmodule R do\n  scope "/api" do\n    pipe_through :api\n    get "/x", C, :y\n  end\nend',
     );
     expect(found).toHaveLength(1);
   });
 
-  test("`resources` expande a cinco", () => {
+  test("`resources` expands to five", () => {
     const found = routes('defmodule R do\n  resources "/users", UserController\nend');
     expect(found).toHaveLength(5);
   });
 
-  test("detecta por mix.exs con :phoenix", async () => {
+test("detects via mix.exs containing :phoenix", async () => {
     expect((await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("phoenix"))).score).toBe(
       1,
     );
   });
 
-  test("un proyecto sin phoenix no puntúa", async () => {
+  test("a project without phoenix scores 0", async () => {
     expect((await new PhoenixProjectScanner().detect(comprehensiveFixtureDir("rails"))).score).toBe(0);
   });
 
-  test("el scanner completo lee el fixture", async () => {
+  test("the full scanner reads the fixture", async () => {
     const scanner = new PhoenixRouteScanner();
     const match = await new PhoenixProjectScanner().resolve(
       comprehensiveFixtureDir("phoenix"),
@@ -221,19 +222,20 @@ describe("Phoenix: scopes anidados y resources", () => {
   });
 });
 
-describe("Ktor: el DSL anidado por llaves", () => {
+describe("Ktor: the brace-nested DSL", () => {
   const routes = (source: string) => parseKotlinRouting(source, "App.kt");
 
-  test("los `route()` anidados componen el path", () => {
+  test("nested `route()` calls compose the path", () => {
     const found = routes(
       'routing {\n  route("/api") {\n    route("/users") {\n      get("/activos") { }\n    }\n  }\n}',
     );
     expect(found[0]?.uri).toBe("/api/users/activos");
   });
 
-  // Un `get { }` SIN path es válido en Ktor y hereda el del `route` que
-  // lo envuelve. Ignorarlos dejaría fuera endpoints reales.
-  test("un `get { }` sin path hereda el prefijo", () => {
+  // A `get { }` WITHOUT a path is valid in Ktor and inherits the
+  // one from the wrapping `route`. Ignoring them would leave real
+  // endpoints out.
+  test("a `get { }` without path inherits the prefix", () => {
     const found = routes('routing {\n  route("/users") {\n    get { }\n    post { }\n  }\n}');
     expect(found.map((r) => `${r.method} ${r.uri}`).sort()).toEqual([
       "GET /users",
@@ -241,25 +243,25 @@ describe("Ktor: el DSL anidado por llaves", () => {
     ]);
   });
 
-  test("el bloque se cierra en su llave", () => {
+  test("the block closes on its brace", () => {
     const found = routes(
       'routing {\n  route("/a") {\n    get("/x") { }\n  }\n  get("/fuera") { }\n}',
     );
     expect(found.find((r) => r.uri === "/fuera")).toBeDefined();
   });
 
-  test("una llave dentro de una cadena no descuadra la pila", () => {
+  test("a brace inside a string does not unbalance the stack", () => {
     const found = routes(
       'routing {\n  route("/a") {\n    get("/x") { call.respond("{no cuenta}") }\n  }\n  get("/fuera") { }\n}',
     );
     expect(found.find((r) => r.uri === "/fuera")).toBeDefined();
   });
 
-  test("detecta por la dependencia de ktor", async () => {
+  test("detects via the ktor dependency", async () => {
     expect((await new KtorProjectScanner().detect(comprehensiveFixtureDir("ktor"))).score).toBe(1);
   });
 
-  test("el scanner completo lee el fixture", async () => {
+  test("the full scanner reads the fixture", async () => {
     const scanner = new KtorRouteScanner();
     const match = await new KtorProjectScanner().resolve(comprehensiveFixtureDir("ktor"));
     expect((await scanner.scan(match)).routes.length).toBeGreaterThan(5);

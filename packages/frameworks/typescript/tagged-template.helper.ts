@@ -1,49 +1,48 @@
 /**
- * `collectTaggedTemplates` — un *TaggedTemplateExpression* del AST TS,
- * visto desde el adaptador de frameworks.
+ * `collectTaggedTemplates` — a `TaggedTemplateExpression` from the TS
+ * AST, viewed from the frameworks adapter.
  *
- * (a00015 S1) Sustituye a `extractEmbeddedSdl` en `graphql.scanner.ts`.
- * La diferencia con el regex anterior:
+ * (a00015 S1) Replaces `extractEmbeddedSdl` in `graphql.scanner.ts`.
+ * The difference with the previous regex:
  *
- *   - El regex leía `gql\`...\`` sobre `text` y matcheaba cualquier
- *     cosa que pareciera un backtick abierto — incluyendo comentarios
- *     (`// gql\`...\``) y strings literales (`"gql\`...\``"). Falsos
- *     positivos típicos: un README dentro del código o un help text
- *     tipo "escribe gql\`type Query { ... }\`".
- *   - Esta implementación pide el árbol a `@babel/parser` (el mismo
- *     parser que usa `packages/core/language-frontends/typescript`)
- *     y devuelve los `TaggedTemplateExpression` que Babel reconoce
- *     como tales. Un `// gql\`...\`` está dentro de un nodo
- *     `CommentLine` y nunca aparece como
- *     `TaggedTemplateExpression`; un `"gql\`...\``" está dentro de
- *     un `StringLiteral` y solo el nodo externo es visible.
+ *   - The regex read `gql\`...\`` over `text` and matched anything
+ *     that looked like an open backtick — including comments
+ *     (`// gql\`...\``) and string literals (`"gql\`...\``"). Typical
+ *     false positives: a README inside the code or a help text like
+ *     "write gql\`type Query { ... }\`".
+ *   - This implementation asks `@babel/parser` for the tree (the same
+ *     parser used by `packages/core/language-frontends/typescript`)
+ *     and returns the `TaggedTemplateExpression`s Babel recognises
+ *     as such. A `// gql\`...\`` is inside a `CommentLine` node and
+ *     never appears as a `TaggedTemplateExpression`; a `"gql\`...\``"
+ *     is inside a `StringLiteral` and only the outer node is visible.
  *
- * No es un parser nuevo: `@babel/parser` ya está en el lockfile
- * (`@babel/parser@7.29.8`) por el frontend TS. Lo único que hace este
- * módulo es exponer una vista distinta del mismo árbol — los
- * `TaggedTemplateExpression` que el frontend descartó cuando se quedó
- * solo con `imports / symbols / classes / methodCalls / assignments /
- * decorators`. Reusar el parser es el invariante del proyecto (a00010
- * S7 — `core` no importa de `frameworks`, pero ambos comparten
+ * It is not a new parser: `@babel/parser` is already in the lockfile
+ * (`@babel/parser@7.29.8`) because of the TS frontend. All this
+ * module does is expose a different view of the same tree — the
+ * `TaggedTemplateExpression`s that the frontend discarded when it
+ * kept only `imports / symbols / classes / methodCalls / assignments /
+ * decorators`. Reusing the parser is the project's invariant (a00010
+ * S7 — `core` does not import from `frameworks`, but both share
  * `@babel/parser`).
  *
- * Por qué NO se añade `taggedTemplates` al `TSFile` del frontend:
- *   - El frontend es agnóstico de GraphQL. Un scanner que quiere
- *     `gql\`...\`` y otro que quiere `html\`...\`` no necesitan
- *     acoplarse al contrato del frontend: cada adapter de framework
- *     monta su propio consumidor encima del AST crudo.
- *   - Los 6 scanners que ya consumen el frontend (Express, NestJS,
- *     Fastify, Hono, Next.js, tRPC) no se enteran del cambio — siguen
- *     viendo el mismo `TSFile` que antes.
+ * Why `taggedTemplates` is NOT added to the frontend's `TSFile`:
+ *   - The frontend is GraphQL-agnostic. A scanner that wants
+ *     `gql\`...\`` and one that wants `html\`...\`` don't need to
+ *     couple to the frontend's contract: each framework adapter
+ *     mounts its own consumer on top of the raw AST.
+ *   - The 6 scanners that already consume the frontend (Express,
+ *     NestJS, Fastify, Hono, Next.js, tRPC) are not affected — they
+ *     keep seeing the same `TSFile` as before.
  *
- * Lo que el módulo NO hace (a00015 non-goals):
- *   - No resuelve tipos (`<T>`).
- *   - No sigue imports entre ficheros.
- *   - No parsea el contenido del template (es SDL sin tocar; el
- *     scanner GraphQL lo pasa por su propio parser SDL).
- *   - No reemplaza `extractEmbeddedSdl` directamente: este módulo es
- *     una *forma*; el adaptador que une esta forma con el scanner
- *     GraphQL vive en `S2` (`graphql-embedded.adapter.ts`).
+ * What the module does NOT do (a00015 non-goals):
+ *   - Does not resolve types (`<T>`).
+ *   - Does not follow imports across files.
+ *   - Does not parse the template's contents (it is SDL untouched;
+ *     the GraphQL scanner passes it through its own SDL parser).
+ *   - Does not replace `extractEmbeddedSdl` directly: this module is
+ *     a *shape*; the adapter that joins this shape with the GraphQL
+ *     scanner lives in `S2` (`graphql-embedded.adapter.ts`).
  */
 
 import { readFile } from "node:fs/promises";
@@ -54,17 +53,17 @@ import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.i
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 
 /**
- * `ITaggedTemplate` se importa desde
+ * `ITaggedTemplate` is imported from
  * `contracts/interfaces/frameworks/typescript.interface.ts`
- * (el contrato), que es donde `lint:contracts` lo exige. El
- * helper re-exporta el tipo para que los consumidores no tengan
- * que conocer la ruta de contracts.
+ * (the contract), which is where `lint:contracts` requires it. The
+ * helper re-exports the type so consumers don't have to know the
+ * contracts path.
  */
 import type { ITaggedTemplate } from "../../contracts/interfaces/frameworks/typescript.interface.js";
 
 export type { ITaggedTemplate };
 
-/** Forma mínima del nodo Babel que este módulo necesita reconocer. */
+/** Minimal shape of the Babel node this module needs to recognise. */
 interface BabelNode {
   readonly type: string;
   readonly start?: number | null;
@@ -72,39 +71,39 @@ interface BabelNode {
   readonly [key: string]: unknown;
 }
 
-/** Trata un `unknown` como BabelNode (cast permisivo, mismo patrón que el frontend). */
+/** Treats an `unknown` as a BabelNode (permissive cast, same pattern as the frontend). */
 function asBabelNode(value: unknown): BabelNode {
   return value as BabelNode;
 }
 
-/** Array de unknowns → array de BabelNodes. */
+/** Array of unknowns → array of BabelNodes. */
 function asArray(value: unknown): ReadonlyArray<BabelNode> {
   return Array.isArray(value) ? (value as ReadonlyArray<BabelNode>) : Array<BabelNode>();
 }
 
 /**
- * Indica si el archivo es JSX/TSX — mismo criterio que el frontend
- * (`packages/core/language-frontends/typescript/typescript.parser.ts`).
- * Sin esto, Babel rechaza `<Foo />` con syntax error y el scanner
- * pierde el archivo entero.
+ * Indicates whether the file is JSX/TSX — same criterion as the
+ * frontend (`packages/core/language-frontends/typescript/typescript.parser.ts`).
+ * Without this, Babel rejects `<Foo />` with a syntax error and the
+ * scanner loses the whole file.
  */
 function isJsxFile(filename: string): boolean {
   return filename.endsWith(".tsx") || filename.endsWith(".jsx");
 }
 
 /**
- * Resuelve el `tag` y el `importBinding` de una `TaggedTemplateExpression`.
+ * Resolves the `tag` and `importBinding` of a `TaggedTemplateExpression`.
  *
- * Tres formas que reconoce:
+ * Three shapes it recognises:
  *   - `gql\`...\``              → tag = "gql"
  *   - `graphql\`...\``          → tag = "graphql"
- *   - `Foo.Bar\`...\``          → tag = "Bar" (la propiedad del MemberExpression)
+ *   - `Foo.Bar\`...\``          → tag = "Bar" (the MemberExpression's property)
  *
- * `importBinding` solo se rellena cuando el tag es un Identifier
- * desnudo (no una llamada ni un MemberExpression): en esos casos el
- * identifier ES el binding local (`import { gql }`). En las demás
- * formas no hay un binding único y se deja undefined — los adapters
- * que necesitan resolver el módulo origen lo harán en otro slice.
+ * `importBinding` is only filled when the tag is a bare Identifier
+ * (not a call nor a MemberExpression): in those cases the identifier
+ * IS the local binding (`import { gql }`). In the other shapes there
+ * is no single binding and it is left undefined — adapters that need
+ * to resolve the source module will do that in another slice.
  */
 function readTag(callee: BabelNode): { tag: string; importBinding?: string } | null {
   if (callee.type === "Identifier") {
@@ -116,38 +115,37 @@ function readTag(callee: BabelNode): { tag: string; importBinding?: string } | n
     const property = asBabelNode(callee["property"]);
     const propName = String(property.name ?? property.value ?? "");
     if (!propName) return null;
-    // No hay un binding único: el tag es el nombre del método
-    // (`graphql` en `Foo.graphql\`...\``). El adapter puede usar `tag`
-    // directamente si solo le importa el nombre corto.
+    // There is no single binding: the tag is the method's name
+    // (`graphql` in `Foo.graphql\`...\``). The adapter can use `tag`
+    // directly if it only cares about the short name.
     return { tag: propName };
   }
   if (callee.type === "CallExpression") {
-    // `graphql(...)` no es un tagged template; ignoramos.
+    // `graphql(...)` is not a tagged template; we ignore it.
     return null;
   }
   return null;
 }
 
 /**
- * Recorre el árbol de Babel en DFS y emite una `ITaggedTemplate` por
- * cada `TaggedTemplateExpression` encontrada.
+ * Walks the Babel tree in DFS and emits one `ITaggedTemplate` per
+ * `TaggedTemplateExpression` found.
  *
- * Mismo patrón que `walk` en el frontend: visita TODO sin podar, y los
- * collectors deciden qué les interesa. Aquí nos interesa todo
- * `TaggedTemplateExpression`, sin filtrar por tag — el filtrado por
- * tag lo hace el adapter (S2), que es quien conoce la lista de tags
- * que le importan (`gql`, `graphql`, ...).
+ * Same pattern as `walk` in the frontend: visits EVERYTHING without
+ * pruning, and the collectors decide what they care about. Here we
+ * care about every `TaggedTemplateExpression`, without filtering by
+ * tag — the tag filter is done by the adapter (S2), which knows the
+ * list of tags it cares about (`gql`, `graphql`, ...).
  */
 function walkForTaggedTemplates(
   body: ReadonlyArray<BabelNode>,
   sourceFile: string,
   out: ITaggedTemplate[],
 ): void {
-  // Inicializamos el stack en orden inverso para que el primer
-  // nodo de `body` se procese primero al hacer `pop()` — el
-  // resultado es un recorrido top-down por el archivo, que es lo
-  // que el scanner SDL espera para poblar `customScalars` antes de
-  // procesar operaciones.
+  // We initialise the stack in reverse order so the first node of
+  // `body` is processed first when we `pop()` — the result is a
+  // top-down traversal of the file, which is what the SDL scanner
+  // expects to populate `customScalars` before processing operations.
   const stack: BabelNode[] = [...body].reverse();
   while (stack.length > 0) {
     const node = stack.pop();
@@ -160,22 +158,22 @@ function walkForTaggedTemplates(
         const quasi = asBabelNode(node["quasi"]);
         const start = typeof node.start === "number" ? node.start : 0;
         const end = typeof node.end === "number" ? node.end : start;
-        // El AST de Babel expone el cuerpo del template como
-        // `quasi.quasis: TemplateElement[]` — un array de
-        // fragmentos separados por interpolaciones (`${…}`). Cada
-        // `TemplateElement` lleva `value.raw` (la forma textual
-        // original, con `\n` literales) y `value.cooked` (la forma
-        // ya evaluada). El scanner SDL prefiere `raw` para no perder
-        // saltos de línea ni escapes — que es lo que el parser SDL
-        // espera ver.
+        // Babel's AST exposes the template's body as
+        // `quasi.quasis: TemplateElement[]` — an array of fragments
+        // separated by interpolations (`${…}`). Each `TemplateElement`
+        // carries `value.raw` (the original textual form, with
+        // literal `\n`) and `value.cooked` (the already-evaluated
+        // form). The SDL scanner prefers `raw` to avoid losing line
+        // breaks or escapes — which is what the SDL parser expects
+        // to see.
         const quasis = asArray(quasi["quasis"]);
         const raw = quasis
           .map((elem) => {
-            // `value` es un objeto `{ raw: string, cooked?: string }`
-            // — Babel expone ambos en `TemplateElement`. El cast a
-            // `Record<string, unknown>` es la forma permisiva que
-            // comparte el patrón del frontend (a00010 S7): sin
-            // importar `@babel/types`.
+            // `value` is an object `{ raw: string, cooked?: string }`
+            // — Babel exposes both on `TemplateElement`. The cast to
+            // `Record<string, unknown>` is the permissive form that
+            // shares the frontend's pattern (a00010 S7): without
+            // importing `@babel/types`.
             const value = elem["value"] as Record<string, unknown> | undefined;
             const rawText = value?.["raw"];
             return typeof rawText === "string" ? rawText : "";
@@ -193,12 +191,12 @@ function walkForTaggedTemplates(
       }
     }
 
-    // Hijos: cualquier campo que sea objeto/array con `type`. Los
-    // metemos en orden INVERSO al stack para que el primer hijo
-    // salga primero al hacer `pop()` — el resultado es un recorrido
-    // top-down por el archivo, ( el el scanner SDL pueda poblar
-    // `customScalars` antes de procesar operaciones (segunda
-    // revisión del audit `2026-09-04 P1 #12`).
+    // Children: any field that is an object/array with `type`. We
+    // push them in REVERSE order onto the stack so the first child
+    // comes out first when we `pop()` — the result is a top-down
+    // traversal of the file (so the SDL scanner can populate
+    // `customScalars` before processing operations — second review
+    // of the audit `2026-09-04 P1 #12`).
     const children: BabelNode[] = [];
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) {
@@ -219,13 +217,14 @@ function walkForTaggedTemplates(
 }
 
 /**
- * Parsea un archivo TS/JS y devuelve sus `TaggedTemplateExpression`.
+ * Parses a TS/JS file and returns its `TaggedTemplateExpression`s.
  *
- * Si Babel no puede parsear el archivo, registra el motivo en
- * `diagnostics` (si el array vino) y devuelve `[]` — el caller decide
- * qué hacer. Es el mismo contrato que `parseModule` en el frontend
- * (a00011 C-7 / B-rev-13): un archivo con sintaxis rara no aborta el
- * scan, pero el fallo queda visible para quien quiera reportarlo.
+ * If Babel cannot parse the file, logs the reason in `diagnostics`
+ * (if the array was passed) and returns `[]` — the caller decides
+ * what to do. This is the same contract as `parseModule` in the
+ * frontend (a00011 C-7 / B-rev-13): a file with weird syntax does not
+ * abort the scan, but the failure stays visible for whoever wants to
+ * report it.
  */
 export function collectTaggedTemplatesFromSource(
   source: string,
@@ -254,18 +253,18 @@ export function collectTaggedTemplatesFromSource(
 }
 
 /**
- * Recorre los TS/JS fuente de `projectRoot` y devuelve todas las
- * `TaggedTemplateExpression` que encuentre.
+ * Walks the TS/JS source under `projectRoot` and returns all the
+ * `TaggedTemplateExpression`s it finds.
  *
- * Usa `collectFiles(projectRoot, isSourceJsTsFile)` — el mismo
- * helper que `express.scanner.ts` y que `graphql.scanner.ts` ya usan
- * para localizar archivos TS/JS — así que respeta los mismos excludes
- * (`node_modules`, `dist`, etc.) sin reinventar la rueda.
+ * Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+ * that `express.scanner.ts` and `graphql.scanner.ts` already use to
+ * locate TS/JS files — so it honours the same excludes
+ * (`node_modules`, `dist`, etc.) without reinventing the wheel.
  *
- * `diagnostics` (opcional) recibe los archivos que el parser no pudo
- * digerir. Si no se pasa, los fallos se tragan silenciosamente — es
- * la forma "degradable" que usan los tests que solo quieren verificar
- * la forma del árbol.
+ * `diagnostics` (optional) receives the files the parser could not
+ * digest. If not passed, failures are swallowed silently — the
+ * "degradable" form used by tests that only want to verify the
+ * tree shape.
  */
 export async function collectTaggedTemplates(
   projectRoot: string,
@@ -278,16 +277,16 @@ export async function collectTaggedTemplates(
     try {
       text = await readFile(file, "utf8");
     } catch {
-      // El archivo desapareció entre `collectFiles` y `readFile` (un
-      // test que escribe y borra, o un editor en medio de un save).
-      // No abortamos el scan por eso.
+      // The file disappeared between `collectFiles` and `readFile` (a
+      // test that writes and deletes, or an editor mid-save).
+      // We don't abort the scan for that.
       continue;
     }
-    // `relative` solo para que `sourceFile` sea legible en logs; el
-    // adapter no lo usa y, si lo necesita, puede resolverlo él mismo.
-    // Si `relative` falla (path fuera de projectRoot), caemos al
-    // path absoluto — sigue siendo un identificador válido y permite
-    // al caller saber de qué archivo viene el template.
+    // `relative` only so `sourceFile` is readable in logs; the adapter
+    // doesn't use it and, if it needs to, can resolve it itself. If
+    // `relative` fails (path outside projectRoot), we fall back to
+    // the absolute path — it is still a valid identifier and lets the
+    // caller know which file the template came from.
     const rel = relative(projectRoot, file) || file;
     out.push(...collectTaggedTemplatesFromSource(text, rel, diagnostics));
   }

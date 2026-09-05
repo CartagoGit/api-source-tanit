@@ -1,9 +1,9 @@
 /**
- * E2E test exhaustivo para el scanner NestJS.
+ * Comprehensive E2E test for the NestJS scanner.
  *
- * Cubre:
- * - @Controller('prefix') + @Get/@Post/@Put/@Patch/@Delete con class-validator.
- * - DTOs con @IsString, @IsEmail, @IsInt, @IsEnum, @IsOptional.
+ * Covers:
+ * - @Controller('prefix') + @Get/@Post/@Put/@Patch/@Delete with class-validator.
+ * - DTOs with @IsString, @IsEmail, @IsInt, @IsEnum, @IsOptional.
  * - @MinLength, @MaxLength, @Min, @Max.
  * - Nested DTO (AddressDto).
  * - Enums (UserRole, OrderStatus, Currency).
@@ -26,23 +26,23 @@ describeCollectionContract({
 });
 
 describe("NestJS — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("nestjs-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(13);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("nestjs-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     // Users
     expect(findEndpoint(collection, "GET", "/users")).not.toBeNull();
@@ -62,7 +62,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/auth/logout")).not.toBeNull();
   });
 
-  test("POST /users tiene body params desde CreateUserDto", async () => {
+  test("POST /users has body params from CreateUserDto", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     expect(ep).not.toBeNull();
@@ -72,7 +72,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("age");
   });
 
-  test("PUT /users/{id} tiene body params desde UpdateUserDto", async () => {
+  test("PUT /users/{id} has body params from UpdateUserDto", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/users/{{id}}");
     expect(ep).not.toBeNull();
@@ -81,7 +81,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("email");
   });
 
-  test("PUT /users/{id}/address tiene body desde AddressDto", async () => {
+  test("PUT /users/{id}/address has body from AddressDto", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/users/{{id}}/address");
     expect(ep).not.toBeNull();
@@ -92,7 +92,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("postalCode");
   });
 
-  test("POST /orders tiene body params desde CreateOrderDto", async () => {
+  test("POST /orders has body params from CreateOrderDto", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "POST", "/orders");
     expect(ep).not.toBeNull();
@@ -102,7 +102,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("amount");
   });
 
-  test("PATCH /orders/{id}/status tiene status enum (UpdateOrderStatusDto)", async () => {
+  test("PATCH /orders/{id}/status has status enum (UpdateOrderStatusDto)", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/orders/{{id}}/status");
     expect(ep).not.toBeNull();
@@ -122,7 +122,7 @@ describe("NestJS — comprehensive fixture", () => {
     ]).toContain(body.status);
   });
 
-  test("POST /auth/login tiene email + password (LoginDto)", async () => {
+  test("POST /auth/login has email + password (LoginDto)", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "POST", "/auth/login");
     expect(ep).not.toBeNull();
@@ -131,7 +131,7 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("POST /auth/refresh tiene refreshToken (RefreshTokenDto)", async () => {
+  test("POST /auth/refresh has refreshToken (RefreshTokenDto)", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "POST", "/auth/refresh");
     expect(ep).not.toBeNull();
@@ -139,12 +139,12 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body).toHaveProperty("refreshToken");
   });
 
-  test("POST /auth/logout no tiene body (no DTO)", async () => {
+  test("POST /auth/logout has no body (no DTO)", async () => {
     const { collection } = await runGenerate("nestjs-comprehensive");
     const ep = findEndpoint(collection, "POST", "/auth/logout");
     expect(ep).not.toBeNull();
     const body = ep?.request?.body?.raw ?? "{}";
-    // Sin DTO → body vacío o sin campos.
+    // Without DTO → empty body or without fields.
     expect(body === "{}" || body === "" || body === undefined).toBe(true);
   });
 });

@@ -1,41 +1,41 @@
 /**
- * `scanner-bridge` — adapta el LanguageIR (S2+S3+S4) al shape
- * `TSMethodCall` que los 6 scanners TS-flavored consumen.
+ * `scanner-bridge` — adapts the LanguageIR (S2+S3+S4) to the
+ * `TSMethodCall` shape consumed by the 6 TS-flavored scanners.
  *
- * (a00016 S5) Los scanners Express, NestJS, Fastify, Hono, Next.js
- * y tRPC leían `ast.methodCalls` del frontend TS (a00010 S7). Ese
- * shape es un subconjunto del nuevo LanguageIR: cubre sólo
- * `Identifier.method` y deja fuera `this.router.get`,
+ * (a00016 S5) The Express, NestJS, Fastify, Hono, Next.js, and tRPC
+ * scanners used to read `ast.methodCalls` from the TS frontend
+ * (a00010 S7). That shape is a subset of the new LanguageIR: it
+ * covers only `Identifier.method` and leaves out `this.router.get`,
  * `server["get"]`, `app[M]`, etc.
  *
- * Este módulo es el **adapter** que traduce `IRouteCallExpression[]`
- * (multi-estilo) a `TSMethodCall[]` (legacy single-estilo), de modo
- * que la lógica de extracción de rutas dentro de cada scanner
- * (`for (const call of ast.methodCalls) { ... }`) sigue funcionando
- * sin reescribirse. La diferencia es que el scanner ahora ve
- * llamadas que antes eran invisibles.
+ * This module is the **adapter** that translates `IRouteCallExpression[]`
+ * (multi-style) into `TSMethodCall[]` (legacy single-style), so the
+ * route-extraction logic inside each scanner
+ * (`for (const call of ast.methodCalls) { ... }`) keeps working
+ * without being rewritten. The difference is that the scanner now
+ * sees calls that used to be invisible.
  *
- * Por qué NO se reescriben los scanners para consumir
- * `IRouteCallExpression` directamente:
- *   - 6 scanners × 200–700 líneas cada uno = ~3000 líneas de código
- *     que tocar. Bridge es ~150 líneas.
- *   - El shape `TSMethodCall` ya tiene `args: TSLiteral[]`,
- *     `line`/`column` y `bodyRange`. Lo único que cambia con el
- *     LanguageIR es `callee` (multi-segmento vs simple "app.get")
- *     y la presencia de `resolvedMethod` (S4) — que el bridge
- *     aplana antes de entregar.
+ * Why scanners are NOT rewritten to consume `IRouteCallExpression`
+ * directly:
+ *   - 6 scanners × 200–700 lines each = ~3000 lines of code to
+ *     touch. The bridge is ~150 lines.
+ *   - The `TSMethodCall` shape already has `args: TSLiteral[]`,
+ *     `line`/`column`, and `bodyRange`. The only thing that changes
+ *     with the LanguageIR is `callee` (multi-segment vs simple
+ *     "app.get") and the presence of `resolvedMethod` (S4) — which
+ *     the bridge flattens before delivering.
  *
- * Lo que el módulo SÍ hace:
- *   - Construye el `callee` canónico `"receiver.method"`.
- *   - Si `resolvedMethod` está presente (S4), lo usa como `method`.
- *   - Convierte el offset en bytes a `(line, column)` 1-based.
+ * What the module DOES:
+ *   - Builds the canonical `callee` `"receiver.method"`.
+ *   - If `resolvedMethod` is present (S4), uses it as `method`.
+ *   - Converts the byte offset to `(line, column)` 1-based.
  *
- * Lo que el módulo NO hace:
- *   - No reemplaza al frontend TS: el frontend sigue produciendo
- *     `TSFile` con `imports`, `assignments`, `classes`, `decorators`
- *     para los scanners que los necesitan (NestJS, Next.js, tRPC).
- *     Sólo la parte `methodCalls` se redirige al LanguageIR.
- *   - No resuelve tipos ni scopes — S2/S3/S4 ya hicieron su trabajo.
+ * What the module does NOT do:
+ *   - Does not replace the TS frontend: the frontend keeps producing
+ *     `TSFile` with `imports`, `assignments`, `classes`, `decorators`
+ *     for the scanners that need them (NestJS, Next.js, tRPC). Only
+ *     the `methodCalls` part is redirected to the LanguageIR.
+ *   - Does not resolve types or scopes — S2/S3/S4 already did their work.
  */
 
 import type { TSMethodCall } from "../../contracts/interfaces/core/language/typescript-frontend.interface.js";
@@ -43,12 +43,12 @@ import type { TSLiteral } from "../../contracts/interfaces/core/language/typescr
 import type { IRouteCallExpression } from "../../contracts/interfaces/core/language-ir.interface.js";
 
 /**
- * Convierte un offset en bytes (0-based) sobre `source` a
- * `(line, column)` 1-based (line) / 0-based (column) — el mismo
- * shape que `TSMethodCall.line` / `column`.
+ * Converts a 0-based byte offset in `source` to `(line, column)`
+ * 1-based (line) / 0-based (column) — the same shape as
+ * `TSMethodCall.line` / `column`.
  *
- * Si el offset cae fuera del rango, devuelve `{ line: 1, column: 0 }`
- * (la posición por defecto del frontend TS).
+ * If the offset falls outside the range, returns
+ * `{ line: 1, column: 0 }` (the TS frontend's default position).
  */
 function offsetToPosition(source: string, offset: number): { line: number; column: number } {
   if (offset < 0 || offset > source.length) return { line: 1, column: 0 };
@@ -63,8 +63,8 @@ function offsetToPosition(source: string, offset: number): { line: number; colum
       continue;
     }
     if (ch === 13) {
-      // `\r` o `\r\n` — count `\r` como salto, pero si viene
-      // seguido de `\n` no sumamos otra línea.
+      // `\r` or `\r\n` — count `\r` as a line break, but if followed
+      // by `\n` we don't add another line.
       line += 1;
       column = 0;
       if (i + 1 < offset && source.charCodeAt(i + 1) === 10) i += 1;
@@ -76,44 +76,44 @@ function offsetToPosition(source: string, offset: number): { line: number; colum
 }
 
 /**
- * Resuelve el `callee` canónico `"receiver.method"` para una
+ * Resolves the canonical `callee` `"receiver.method"` for an
  * `IRouteCallExpression`.
  *
- * Tres casos:
- *   - `method` no vacío → `${prefix}.${method}` (con el prefix que
- *     ya viene en `callee` cuando no es computed, o reconstruido).
- *   - `method` vacío + `resolvedMethod` (S4) → `prefix[resolvedMethod]`
- *     (forma del callee textual con corchetes).
- *   - `method` vacío sin resolver → devuelve el `callee` tal cual
- *     (el scanner lo descarta).
+ * Three cases:
+ *   - `method` non-empty → `${prefix}.${method}` (with the prefix
+ *     already in `callee` when it's not computed, or reconstructed).
+ *   - `method` empty + `resolvedMethod` (S4) → `prefix[resolvedMethod]`
+ *     (shape of the textual callee with brackets).
+ *   - `method` empty without resolution → returns `callee` as-is
+ *     (the scanner discards it).
  */
 function resolveCanonicalCallee(expr: IRouteCallExpression): string {
-  // Si `method` está relleno, ya tenemos la forma canónica en
-  // `callee` (S2 la emite como `"receiver.method"`). Lo devolvemos
-  // sin tocarlo.
+  // If `method` is filled, we already have the canonical shape in
+  // `callee` (S2 emits it as `"receiver.method"`). We return it
+  // untouched.
   if (expr.method) {
     return expr.callee;
   }
-  // `resolvedMethod` (S4) puede salvar un callee que parecía
-  // unresoluble. Emitimos `"receiver[method]"` para mantener la
-  // pista textual de que era computed.
+  // `resolvedMethod` (S4) can save a callee that looked unresolvable.
+  // We emit `"receiver[method]"` to keep the textual cue that it
+  // was computed.
   if (expr.resolvedMethod) {
-    // `callee` ya tiene la forma `"app[M]"` (S2). Reemplazamos el
-    // identifier entre corchetes por el valor resuelto.
+    // `callee` already has the shape `"app[M]"` (S2). We replace the
+    // identifier between brackets with the resolved value.
     return expr.callee.replace(/\[[^\]]+\]$/, `["${expr.resolvedMethod}"]`);
   }
-  // Sin resolver: devolvemos el callee original. El scanner lo
-  // descarta porque `split(".")` da una pieza sin método.
+  // Unresolved: return the original callee. The scanner discards it
+  // because `split(".")` yields a piece without a method.
   return expr.callee;
 }
 
 /**
- * Convierte `IRouteCallExpression[]` al shape `TSMethodCall[]` que
- * los scanners TS-flavored consumen.
+ * Converts `IRouteCallExpression[]` into the `TSMethodCall[]` shape
+ * that the TS-flavored scanners consume.
  *
- * El orden de salida es el mismo que el de entrada (top-down por
- * archivo), preservado por S2. Los scanners que ordenan por línea
- * pueden usar la `line` resultante directamente.
+ * The output order matches the input (top-down per file), preserved
+ * by S2. Scanners that sort by line can use the resulting `line`
+ * directly.
  */
 export function toTSMethodCalls(
   calls: ReadonlyArray<IRouteCallExpression>,
@@ -122,9 +122,9 @@ export function toTSMethodCalls(
   const out: TSMethodCall[] = [];
   for (const expr of calls) {
     const callee = resolveCanonicalCallee(expr);
-    // Si no hay método (ni `method` ni `resolvedMethod`) y el
-    // `callee` no contiene un punto, el scanner no puede hacer nada
-    // con esto. Lo descartamos silenciosamente.
+    // If there's no method (neither `method` nor `resolvedMethod`)
+    // and the `callee` doesn't contain a dot, the scanner can't do
+    // anything with this. We silently discard it.
     if (!callee.includes(".") && !callee.includes("[")) continue;
     const { line, column } = offsetToPosition(source, expr.range.start);
     const args: TSLiteral[] = expr.args.map((arg) => ({

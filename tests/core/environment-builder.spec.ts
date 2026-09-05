@@ -11,12 +11,12 @@ const spec = (uri: string): EndpointSpec =>
   ({ name: uri, method: "GET", uri, headers: [], query: [] }) as EndpointSpec;
 
 describe("buildEnvironment", () => {
-  test("incluye todas las variables recibidas", () => {
+  test("includes all received variables", () => {
     const env = buildEnvironment("Local", VARIABLES);
     expect(env.values.map((v) => v.key)).toEqual(["baseUrl", "token"]);
   });
 
-  test("los overrides ganan al valor base", () => {
+  test("overrides win over the base value", () => {
     const env = buildEnvironment("Prod", VARIABLES, {
       baseUrl: "https://api.example.com",
     });
@@ -25,14 +25,14 @@ describe("buildEnvironment", () => {
     );
   });
 
-  test("un override de una variable inexistente se ignora", () => {
+  test("an override for a non-existent variable is ignored", () => {
     const env = buildEnvironment("Local", VARIABLES, { noExiste: "x" });
     expect(env.values.map((v) => v.key)).toEqual(["baseUrl", "token"]);
   });
 
-  // Postman no exporta las variables marcadas como secret, que es lo que
-  // evita que un token acabe compartido por accidente.
-  test("marca como secret el token y todo lo que huela a credencial", () => {
+  // Postman does not export variables marked as secret, which is what
+  // keeps a token from being shared by accident.
+  test("marks the token and anything that smells like a credential as secret", () => {
     const env = buildEnvironment("Local", [
       ...VARIABLES,
       { key: "apiKey", value: "", type: "string" },
@@ -46,45 +46,45 @@ describe("buildEnvironment", () => {
     expect(typeOf("clientSecret")).toBe("secret");
   });
 
-  test("baseUrl no es secret", () => {
+  test("baseUrl is not secret", () => {
     expect(
       buildEnvironment("Local", VARIABLES).values.find((v) => v.key === "baseUrl")?.type,
     ).toBe("default");
   });
 
-  test("todas las variables llegan habilitadas", () => {
+  test("all variables arrive enabled", () => {
     for (const value of buildEnvironment("Local", VARIABLES).values) {
       expect(value.enabled).toBe(true);
     }
   });
 
-  test("respeta el nombre y el scope", () => {
+  test("respects the name and the scope", () => {
     const env = buildEnvironment("Staging", VARIABLES);
     expect(env.name).toBe("Staging");
     expect(env.scope).toBe("environment");
   });
 
-  test("el color es opcional", () => {
+  test("color is optional", () => {
     expect(buildEnvironment("Local", VARIABLES).color).toBeUndefined();
     expect(buildEnvironment("Local", VARIABLES, {}, "#FF0000").color).toBe("#FF0000");
   });
 
-  // p00014: un id aleatorio hace que cada import cree un environment
-  // nuevo en lugar de actualizar el existente.
-  test("el id es determinista para la misma colección y entorno", () => {
+  // p00014: a random id makes each import create a new environment
+  // instead of updating the existing one.
+  test("the id is deterministic for the same collection and environment", () => {
     const a = buildEnvironment("Local", VARIABLES, {}, undefined, "col-1");
     const b = buildEnvironment("Local", VARIABLES, {}, undefined, "col-1");
     expect(a.id).toBe(b.id);
     expect(a._postman_id).toBe(a.id);
   });
 
-  test("dos entornos de la misma colección tienen ids distintos", () => {
+  test("two environments of the same collection have different ids", () => {
     const local = buildEnvironment("Local", VARIABLES, {}, undefined, "col-1");
     const prod = buildEnvironment("Prod", VARIABLES, {}, undefined, "col-1");
     expect(local.id).not.toBe(prod.id);
   });
 
-  test("el mismo entorno en colecciones distintas no colisiona", () => {
+  test("the same environment across different collections does not collide", () => {
     const a = buildEnvironment("Local", VARIABLES, {}, undefined, "col-1");
     const b = buildEnvironment("Local", VARIABLES, {}, undefined, "col-2");
     expect(a.id).not.toBe(b.id);
@@ -92,7 +92,7 @@ describe("buildEnvironment", () => {
 });
 
 describe("buildEnvironments", () => {
-  test("produce un environment por definición", () => {
+  test("produces one environment per definition", () => {
     const envs = buildEnvironments([], VARIABLES, [
       { name: "Local", overrides: {} },
       { name: "Prod", overrides: {} },
@@ -100,11 +100,11 @@ describe("buildEnvironments", () => {
     expect(envs.map((e) => e.name)).toEqual(["Local", "Prod"]);
   });
 
-  test("sin definiciones devuelve []", () => {
+  test("with no definitions returns []", () => {
     expect(buildEnvironments([], VARIABLES, [])).toEqual([]);
   });
 
-  test("añade las variables de path que usan los endpoints", () => {
+  test("adds the path variables used by the endpoints", () => {
     const envs = buildEnvironments(
       [spec("/users/{{id}}")],
       VARIABLES,
@@ -113,7 +113,7 @@ describe("buildEnvironments", () => {
     expect(envs[0]?.values.map((v) => v.key)).toContain("id");
   });
 
-  test("no duplica una variable de path ya declarada", () => {
+  test("does not duplicate a path variable already declared", () => {
     const envs = buildEnvironments(
       [spec("/users/{{id}}")],
       [...VARIABLES, { key: "id", value: "42", type: "string" }],
@@ -124,7 +124,7 @@ describe("buildEnvironments", () => {
     expect(ids[0]?.value).toBe("42");
   });
 
-  test("propaga el id de colección a todos los entornos", () => {
+  test("propagates the collection id to all environments", () => {
     const envs = buildEnvironments([], VARIABLES, [
       { name: "Local", overrides: {} },
       { name: "Prod", overrides: {} },
@@ -134,7 +134,7 @@ describe("buildEnvironments", () => {
 });
 
 describe("defaultEnvironments", () => {
-  test("propone los cuatro entornos habituales", () => {
+  test("proposes the four usual environments", () => {
     expect(defaultEnvironments("https://api.example.com").map((e) => e.name)).toEqual([
       "Local",
       "Dev",
@@ -143,14 +143,14 @@ describe("defaultEnvironments", () => {
     ]);
   });
 
-  test("Producción conserva la baseUrl tal cual", () => {
+  test("Production keeps the baseUrl as-is", () => {
     const envs = defaultEnvironments("https://api.example.com");
     expect(envs.find((e) => e.name === "Production")?.overrides?.["baseUrl"]).toBe(
       "https://api.example.com",
     );
   });
 
-  test("Dev y Staging prefijan el subdominio", () => {
+  test("Dev and Staging prefix the subdomain", () => {
     const envs = defaultEnvironments("https://api.example.com");
     expect(envs.find((e) => e.name === "Dev")?.overrides?.["baseUrl"]).toContain("//dev.");
     expect(envs.find((e) => e.name === "Staging")?.overrides?.["baseUrl"]).toContain(
@@ -158,62 +158,62 @@ describe("defaultEnvironments", () => {
     );
   });
 
-  test("Local conserva el puerto y el path", () => {
+  test("Local keeps the port and path", () => {
     const envs = defaultEnvironments("http://localhost:8000/api");
     expect(envs.find((e) => e.name === "Local")?.overrides?.["baseUrl"]).toBe(
       "http://localhost:8000/api",
     );
   });
 
-  test("cada entorno trae su color", () => {
+  test("each environment carries its color", () => {
     for (const env of defaultEnvironments("https://api.example.com")) {
       expect(env.color).toMatch(/^#[0-9A-F]{6}$/i);
     }
   });
 });
 
-describe("buildEnvironments — inferencia de valores de path variables", () => {
+describe("buildEnvironments — path variable value inference", () => {
   function envVars(uri: string) {
     return buildEnvironments([spec(uri)], [], [{ name: "Local", overrides: {} }])[0]?.values ?? [];
   }
   const valueOf = (vars: ReturnType<typeof envVars>, key: string) =>
     vars.find((v) => v.key === key)?.value;
 
-  test("{{email}} recibe un ejemplo de correo", () => {
+  test("{{email}} gets an email example", () => {
     expect(valueOf(envVars("/users/{{userEmail}}"), "userEmail")).toBe("user@example.com");
   });
 
-  test("{{uuid}} recibe un UUID de ejemplo", () => {
+  test("{{uuid}} gets a UUID example", () => {
     expect(valueOf(envVars("/orders/{{orderId_uuid}}"), "orderId_uuid")).toMatch(
       /^00000000-0000-0000-0000-/,
     );
   });
 
-  test("{{codigo}} recibe un código de ejemplo", () => {
+  test("{{codigo}} gets a code example", () => {
     expect(valueOf(envVars("/items/{{codigo}}"), "codigo")).toBe("COD001");
   });
 
-  test("{{matricula}} recibe un valor de ejemplo", () => {
+  test("{{matricula}} gets an example value", () => {
     expect(valueOf(envVars("/vehiculos/{{matricula}}"), "matricula")).toBe("1234ABC");
   });
 
-  test("{{url}} recibe una URL de ejemplo", () => {
+  test("{{url}} gets a URL example", () => {
     expect(valueOf(envVars("/proxy/{{targetUrl}}"), "targetUrl")).toBe("https://example.com");
   });
 
-  test("{{date}} recibe una fecha de ejemplo", () => {
+  test("{{date}} gets a date example", () => {
     expect(valueOf(envVars("/reports/{{date}}"), "date")).toBe("2024-01-15");
   });
 
-  test("{{fecha}} también recibe una fecha (alias en español)", () => {
+  test("{{fecha}} also gets a date (Spanish alias)", () => {
     expect(valueOf(envVars("/facturas/{{fecha}}"), "fecha")).toBe("2024-01-15");
   });
 
-  test("una variable sin patrón especial recibe '1'", () => {
+  test("a variable with no special pattern gets '1'", () => {
     expect(valueOf(envVars("/items/{{itemId}}"), "itemId")).toBe("1");
   });
 
-  test("config con value vacío toma el ejemplo inferido", () => {
+  test("a config with an empty value takes the inferred example", () => {
     const envs = buildEnvironments(
       [spec("/users/{{id}}")],
       [{ key: "id", value: "", type: "string" }],

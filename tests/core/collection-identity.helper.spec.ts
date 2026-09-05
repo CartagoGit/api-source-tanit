@@ -4,93 +4,93 @@ import { collectionIdFor, environmentIdFor, stableUuid } from "../../packages/co
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 describe("stableUuid", () => {
-  test("es determinista: misma semilla, mismo UUID", () => {
+  test("is deterministic: same seed, same UUID", () => {
     expect(stableUuid("mi-api")).toBe(stableUuid("mi-api"));
   });
 
-  test("semillas distintas dan UUIDs distintos", () => {
+  test("different seeds give different UUIDs", () => {
     expect(stableUuid("mi-api")).not.toBe(stableUuid("otra-api"));
   });
 
-  test("tiene forma de UUID canónico", () => {
+  test("has the shape of a canonical UUID", () => {
     expect(stableUuid("mi-api")).toMatch(UUID_RE);
   });
 
-  // Postman rechaza IDs que no cumplan RFC 4122.
-  test("es un UUID de versión 5", () => {
+  // Postman rejects IDs that do not satisfy RFC 4122.
+  test("is a version 5 UUID", () => {
     expect(stableUuid("mi-api")[14]).toBe("5");
   });
 
-  test("tiene la variante RFC 4122 (10xx en el primer nibble del grupo 4)", () => {
+  test("has the RFC 4122 variant (10xx in the first nibble of group 4)", () => {
     expect(["8", "9", "a", "b"]).toContain(stableUuid("mi-api")[19]);
   });
 
-  test("normaliza mayúsculas y espacios sobrantes", () => {
+  test("normalizes uppercase and stray spaces", () => {
     expect(stableUuid("Mi  API")).toBe(stableUuid("mi api"));
     expect(stableUuid("  mi-api  ")).toBe(stableUuid("mi-api"));
   });
 
-  test("normaliza acentos", () => {
+  test("normalizes accents", () => {
     expect(stableUuid("Catálogo")).toBe(stableUuid("catalogo"));
   });
 
-  test("la semilla vacía sigue produciendo un UUID válido", () => {
+  test("an empty seed still produces a valid UUID", () => {
     expect(stableUuid("")).toMatch(UUID_RE);
   });
 });
 
 describe("collectionIdFor", () => {
-  test("respeta el id explícito del host", () => {
+  test("respects the explicit id from the host", () => {
     expect(collectionIdFor({ explicitId: "fijado-a-mano" })).toBe("fijado-a-mano");
   });
 
-  test("ignora un id explícito vacío o en blanco", () => {
+  test("ignores an explicit id that is empty or whitespace", () => {
     expect(collectionIdFor({ explicitId: "   ", collectionName: "API" })).toMatch(UUID_RE);
   });
 
-  test("el mismo proyecto da siempre el mismo id", () => {
+  test("the same project always yields the same id", () => {
     const identity = { collectionName: "Mi API", projectName: "mi-api", framework: "express" };
     expect(collectionIdFor(identity)).toBe(collectionIdFor({ ...identity }));
   });
 
-  test("dos proyectos distintos no colisionan", () => {
+  test("two different projects do not collide", () => {
     expect(collectionIdFor({ collectionName: "API A" })).not.toBe(
       collectionIdFor({ collectionName: "API B" }),
     );
   });
 
-  // Dos equipos con una carpeta llamada `backend/` no deben pisarse.
-  test("el framework desempata proyectos con el mismo nombre", () => {
+  // Two teams with a folder called `backend/` must not collide.
+  test("the framework breaks ties for projects with the same name", () => {
     expect(collectionIdFor({ projectName: "backend", framework: "express" })).not.toBe(
       collectionIdFor({ projectName: "backend", framework: "django" }),
     );
   });
 
-  test("sin ninguna pista devuelve un id fijo, no aleatorio", () => {
+  test("with no hints returns a fixed id, not a random one", () => {
     expect(collectionIdFor({})).toBe(collectionIdFor({}));
     expect(collectionIdFor({})).toMatch(UUID_RE);
   });
 });
 
 describe("environmentIdFor", () => {
-  test("es determinista", () => {
+  test("is deterministic", () => {
     expect(environmentIdFor("col-1", "Local")).toBe(environmentIdFor("col-1", "Local"));
   });
 
-  test("distingue entornos dentro de la misma colección", () => {
+  test("distinguishes environments within the same collection", () => {
     expect(environmentIdFor("col-1", "Local")).not.toBe(environmentIdFor("col-1", "Prod"));
   });
 
-  test("distingue el mismo entorno entre colecciones distintas", () => {
+  test("distinguishes the same environment across different collections", () => {
     expect(environmentIdFor("col-1", "Local")).not.toBe(environmentIdFor("col-2", "Local"));
   });
 
-  test("nunca coincide con el id de su colección", () => {
+  test("never matches the id of its collection", () => {
     const collectionId = stableUuid("mi-api");
     expect(environmentIdFor(collectionId, "Local")).not.toBe(collectionId);
   });
 
-  test("tiene forma de UUID canónico", () => {
+  test("has the shape of a canonical UUID", () => {
     expect(environmentIdFor("col-1", "Local")).toMatch(UUID_RE);
   });
 });

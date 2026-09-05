@@ -1,11 +1,11 @@
 /**
- * Scanner de Fiber (Go).
+ * Fiber (Go) scanner.
  *
- * Fiber copia la API de Express pero en Go. No se reutiliza el scanner
- * de Gin porque las diferencias no son cosméticas: Fiber agrupa con
- * `app.Group("/api")` devolviendo un router encadenable, y sus tags de
- * validación son `validate:"…"` (go-playground/validator) en vez del
- * `binding:"…"` de Gin.
+ * Fiber copies the Express API but in Go. The Gin scanner is not
+ * reused because the differences are not cosmetic: Fiber groups with
+ * `app.Group("/api")` returning a chainable router, and its
+ * validation tags are `validate:"…"` (go-playground/validator)
+ * instead of Gin's `binding:"…"`.
  */
 import { describe, expect, test } from "vitest";
 
@@ -39,45 +39,45 @@ async function scanFixture() {
   return { match, scanner, result, routes: result.routes };
 }
 
-describe("detección", () => {
-  test("un go.mod con gofiber puntúa 1", async () => {
+describe("detection", () => {
+  test("a go.mod containing gofiber scores 1", async () => {
     expect((await new FiberProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
-  test("un proyecto de Gin no es Fiber", async () => {
+  test("a Gin project is not Fiber", async () => {
     expect((await new FiberProjectScanner().detect(comprehensiveFixtureDir("gin"))).score).toBe(0);
   });
 });
 
-describe("rutas", () => {
-  test("el prefijo del Group se aplica", async () => {
+describe("routes", () => {
+  test("the Group prefix is applied", async () => {
     const { routes } = await scanFixture();
     expect(routes.every((r) => r.uri.startsWith("/api/"))).toBe(true);
   });
 
-  test("encuentra los siete endpoints del fixture", async () => {
+  test("finds the seven endpoints of the fixture", async () => {
     const { routes } = await scanFixture();
     expect(routes).toHaveLength(7);
   });
 
-  test("los métodos van en mayúscula aunque Go los escriba capitalizados", async () => {
+  test("methods are uppercase even though Go writes them capitalized", async () => {
     const { routes } = await scanFixture();
     expect(routes.every((r) => r.method === r.method.toUpperCase())).toBe(true);
   });
 
-  // La regresión que tumbó la máquina: `bodyStructNear` compartía el
-  // `lastIndex` del regex del bucle exterior y lo devolvía al inicio del
-  // match actual, así que el bucle encontraba la MISMA ruta para
-  // siempre. Bucle infinito y memoria hasta que el sistema mata el
-  // proceso. Si vuelve, este test no termina.
-  test("el escaneo termina", async () => {
+  // The regression that took the machine down: `bodyStructNear` shared
+  // the `lastIndex` of the outer loop regex and reset it to the start of
+  // the current match, so the loop kept finding the SAME route forever.
+  // Infinite loop and memory until the OS kills the process. If it
+  // returns, this test never finishes.
+  test("the scan finishes", async () => {
     const { routes } = await scanFixture();
     expect(routes.length).toBeGreaterThan(0);
   }, 15_000);
 });
 
-describe("tags validate: de go-playground/validator", () => {
-  test("resuelve el struct del body de un POST", async () => {
+describe("validate: tags from go-playground/validator", () => {
+  test("resolves the body struct of a POST", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new FiberValidateTagProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users")!;
@@ -90,14 +90,14 @@ describe("tags validate: de go-playground/validator", () => {
     expect(byName.get("role")?.enumValues).toEqual(["admin", "user", "guest"]);
   });
 
-  test("un GET sin struct no finge reglas", async () => {
+  test("a GET without a struct does not fake rules", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new FiberValidateTagProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
     expect(await provider.supports(health, match, result)).toBe(false);
   });
 
-  test("dos escaneos concurrentes no mezclan structs", async () => {
+  test("two concurrent scans do not mix structs", async () => {
     const projects = await Promise.all([
       createTempProject({
         "go.mod": "module fiber-a\n\nrequire github.com/gofiber/fiber/v2 v2.52.0\n",
@@ -135,13 +135,14 @@ type Ejemplo struct {
 }
 `;
 
-  // El nombre que viaja por la red es el del tag `json`, no el del campo
-  // de Go: mandar "Nombre" en vez de "nombre" da un 422.
-  test("usa el nombre del tag json, no el del campo", () => {
+  // The name that travels over the wire is the one in the `json` tag,
+  // not the Go field name: sending "Nombre" instead of "nombre"
+  // yields a 422.
+  test("uses the json tag name, not the field name", () => {
     expect(parseGoStruct(source, "Ejemplo").map((f) => f.fieldName)).toContain("nombre");
   });
 
-  test("mapea los tipos de Go", () => {
+  test("maps the Go types", () => {
     const byName = new Map(parseGoStruct(source, "Ejemplo").map((f) => [f.fieldName, f.type]));
     expect(byName.get("nombre")).toBe("string");
     expect(byName.get("edad")).toBe("integer");
@@ -149,13 +150,13 @@ type Ejemplo struct {
     expect(byName.get("tags")).toBe("array");
   });
 
-  // `json:"-"` significa "este campo no se serializa": mandarlo sería
-  // inventarse un campo que la API no espera.
-  test("omite los campos marcados con json:\"-\"", () => {
+  // `json:"-"` means "this field is not serialized": sending it would
+  // be inventing a field the API does not expect.
+  test("omits the fields marked with json:\"-\"", () => {
     expect(parseGoStruct(source, "Ejemplo").map((f) => f.fieldName)).not.toContain("-");
   });
 
-  test("un struct que no existe devuelve vacío", () => {
+  test("a struct that does not exist returns empty", () => {
     expect(parseGoStruct(source, "NoExiste")).toEqual([]);
   });
 });

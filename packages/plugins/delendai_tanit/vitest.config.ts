@@ -1,14 +1,14 @@
 /**
- * Vitest del plugin — proyecto independiente.
+ * Plugin vitest — independent project.
  *
- * El plugin no es una carpeta más del CLI: es un paquete propio que se
- * publica aparte y que se carga dentro de delendai. Por eso lleva su
- * `vitest.config.ts`, igual que cualquier plugin del repo de
- * delendai, y por eso el root lo recoge como workspace en
- * vez de listar sus tests como una sección más.
+ * The plugin is not just another folder of the CLI: it is its own
+ * package, published separately and loaded inside delendai. That is
+ * why it carries its own `vitest.config.ts`, like any plugin in the
+ * delendai repo, and why the root picks it up as a workspace
+ * instead of listing its tests as yet another section.
  *
- * Sus tests arrancan procesos reales (`bun test`, `bun run typecheck`
- * del proyecto host), de ahí el timeout largo.
+ * Its tests spawn real processes (`bun test`, `bun run typecheck`
+ * of the host project), hence the long timeout.
  */
 import { defineConfig } from "vitest/config";
 

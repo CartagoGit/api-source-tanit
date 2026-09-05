@@ -1,12 +1,12 @@
 /**
- * `summarizeProject` — el health en la salida del `summary`.
+ * `summarizeProject` — the health in the `summary` output.
  *
- * El cómputo puro tiene su propio spec (`project-health.spec.ts`); aquí
- * lo que se fija es el cableado: que el resumen que consumen el CLI y
- * el tool MCP lleva el bloque `health`, y que es **coherente con los
- * contadores que el mismo resumen ya declara** — un health que
- * contradiga a `withFormRequest` sería dos métricas eligiendo specs
- * distintos.
+ * The pure computation has its own spec (`project-health.spec.ts`);
+ * here what is fixed is the wiring: that the summary consumed by the
+ * CLI and the MCP tool carries the `health` block, and that it is
+ * **consistent with the counters that the same summary already
+ * declares** — a health that contradicts `withFormRequest` would be two
+ * metrics choosing different specs.
  */
 import { describe, expect, test } from "vitest";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
@@ -17,10 +17,10 @@ import { summarizeProject } from "../../packages/core/discovery/summary.service"
 import { defaultOrchestrator } from "../../packages/frameworks/framework.registry";
 
 /**
- * Un proyecto Express mínimo, en disco: una ruta con `express-validator`
- * no hay; el health de este fixture sale sin validación resuelta y con
- * bodies inferidos, que es exactamente el caso "sin reglas" que hay
- * que distinguir del "con reglas".
+ * A minimal Express project on disk: a route with `express-validator`
+ * is not present; the health for this fixture comes out without resolved
+ * validation and with inferred bodies, which is exactly the "no rules"
+ * case that must be distinguished from the "with rules" case.
  */
 async function proyectoExpressMini(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "health-summary-"));
@@ -48,7 +48,7 @@ async function proyectoExpressMini(): Promise<string> {
 }
 
 describe("summarizeProject — health", () => {
-  test("el resumen lleva el bloque health con porcentajes 0..100", async () => {
+  test("the summary carries the health block with percentages 0..100", async () => {
     const root = await proyectoExpressMini();
     try {
       const summary = await summarizeProject(root, defaultOrchestrator());
@@ -69,20 +69,20 @@ describe("summarizeProject — health", () => {
     }
   });
 
-  test("el health es coherente con los contadores del propio resumen", async () => {
+  test("the health is consistent with the counters of the summary itself", async () => {
     const root = await proyectoExpressMini();
     try {
       const summary = await summarizeProject(root, defaultOrchestrator());
       const total = summary.routesInCode;
-      if (total === 0) return; // Sin rutas no hay nada que contrastar.
+      if (total === 0) return; // No routes → nothing to compare.
       const health = summary.health;
-      // El % de validación derivado de los contadores canónicos debe
-      // coincidir con el que el health declara (ambos redondean igual).
+      // The validation % derived from the canonical counters must
+      // match what the health declares (both round the same way).
       expect(health.withValidationPercent).toBe(
         Math.round((summary.withFormRequest / total) * 100),
       );
-      // Y el total del pipeline manda: el body computado no puede
-      // superar lo que `routesInCode` dice que existe.
+      // And the pipeline total wins: the computed body cannot exceed
+      // what `routesInCode` says exists.
       expect(health.withBodySchemaPercent).toBeLessThanOrEqual(100);
     } finally {
       await rm(root, { recursive: true, force: true });

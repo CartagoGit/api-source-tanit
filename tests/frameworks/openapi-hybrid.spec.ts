@@ -1,16 +1,18 @@
 /**
- * El caso que justificaba `__params`, ahora sin él.
+ * The case that justified `__params`, now without it.
  *
- * `OpenApiValidationProvider.supports()` tenía que decir "esta ruta es
- * mía" en un proyecto **híbrido** —Express con un spec OpenAPI al
- * lado—, donde `match.framework` es el del framework dominante y no el
- * de cada ruta. Como `ParsedRoute` no llevaba de dónde venía, el scanner
- * se inventó una propiedad escondida, `__params`, que escribía y leía
- * con `as any` para que el compilador no la viera.
+ * `OpenApiValidationProvider.supports()` had to say "this route is
+ * mine" in a **hybrid** project —Express with an OpenAPI spec
+ * alongside—, where `match.framework` is the dominant framework and
+ * not the per-route one. Since `ParsedRoute` did not carry where it
+ * came from, the scanner invented a hidden property, `__params`,
+ * which it wrote and read with `as any` to keep the compiler from
+ * seeing it.
  *
- * Era la cuarta vez que mordía la misma pieza que faltaba: la identidad
- * de una ruta. Con `route.framework` la pregunta se responde sola y el
- * contrato vuelve a describir todo lo que circula por el pipeline.
+ * It was the fourth time the same missing piece bit us: route
+ * identity. With `route.framework` the question answers itself and the
+ * contract goes back to describing everything that flows through the
+ * pipeline.
  */
 import { describe, expect, test } from "vitest";
 
@@ -40,40 +42,40 @@ function proyecto(framework: string): IProjectMatch {
   return { framework, projectRoot: "/tmp/x", artifacts: [] };
 }
 
-describe("de quién es cada ruta en un proyecto híbrido", () => {
+describe("who owns each route in a hybrid project", () => {
   /**
-   * EL caso. El proyecto es Express; la ruta viene del scanner de
-   * OpenAPI. Sin identidad en la ruta esto no se podía distinguir, y de
-   * ahí salió `__params`.
+   * THE case. The project is Express; the route comes from the
+   * OpenAPI scanner. Without route identity it was impossible to tell,
+   * and `__params` was the workaround.
    */
-  test("una ruta de OpenAPI en un proyecto Express es suya", async () => {
+  test("an OpenAPI route in an Express project is claimed by OpenAPI", async () => {
     await expect(provider.supports(ruta("openapi"), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(
       true,
     );
   });
 
-  test("una ruta de Express en un proyecto Express no lo es", async () => {
+  test("an Express route in an Express project is not claimed by OpenAPI", async () => {
     await expect(provider.supports(ruta("express"), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(
       false,
     );
   });
 
-  test("en un proyecto OpenAPI puro sigue diciendo que sí", async () => {
+  test("in a pure OpenAPI project it still says yes", async () => {
     await expect(provider.supports(ruta(), proyecto("openapi"), EMPTY_SCAN_RESULT)).resolves.toBe(true);
   });
 
-  test("una ruta sin framework en un proyecto ajeno no se reclama", async () => {
+  test("a route without framework in a foreign project is not claimed", async () => {
     await expect(provider.supports(ruta(), proyecto("express"), EMPTY_SCAN_RESULT)).resolves.toBe(false);
   });
 });
 
-describe("el scanner ya no cuela nada fuera del contrato", () => {
-  test("las rutas que emite solo llevan campos del contrato", async () => {
+describe("the scanner no longer leaks anything outside the contract", () => {
+  test("the routes it emits only carry fields from the contract", async () => {
     const match = await new OpenApiProjectScanner().resolve(smokeFixtureDir("openapi"));
     const rutas = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(rutas.length).toBeGreaterThan(0);
 
-    // `__params` era la propiedad escondida: si vuelve, esto la caza.
+    // `__params` was the hidden property: if it returns, this catches it.
     for (const r of rutas) {
       expect(Object.keys(r)).not.toContain("__params");
     }

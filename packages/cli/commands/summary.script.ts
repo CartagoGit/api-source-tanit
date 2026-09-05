@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 /**
- * Script `summary`.
+ * `summary` script.
  *
- * Inspecciona un proyecto host sin generar artefactos. Sustituye al
- * `generate --inspect` (parseaba stdout con regex) por una llamada
- * in-process a `summarizeWithAllFrameworks()`.
+ * Inspects a host project without generating artifacts. It replaces
+ * `generate --inspect` (which parsed stdout with regex) with an
+ * in-process call to `summarizeWithAllFrameworks()`.
  *
- * Uso:
+ * Usage:
  *   bun scripts/summary.script.ts [--project-root <path>] [--format text|json] [--no-history]
  *
- * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` o cwd.
- * Default format: `text` (salida humana). `json` vuelca IProjectSummary.
- * `--no-history` desactiva el append a `~/.tanit/history.jsonl`,
- * para tests y para quien no quiera historial.
+ * Default project-root: `process.env.POSTMAN_PROJECT_ROOT` or cwd.
+ * Default format: `text` (human output). `json` dumps IProjectSummary.
+ * `--no-history` disables the append to `~/.tanit/history.jsonl`,
+ * for tests and for anyone who does not want history.
  */
 
 
@@ -27,8 +27,8 @@ interface ParsedArgs {
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  // Por `resolveRoot`, que es la misma resolución que usan los demás
-  // comandos. Antes cada uno tenía la suya y no coincidían.
+  // By `resolveRoot`, which is the same resolution used by the other
+  // commands. Previously each one had its own and they did not match.
   const { root: projectRoot } = resolveRoot({ argv });
   const formatIdx = argv.indexOf("--format");
   const formatRaw = formatIdx !== -1 ? argv[formatIdx + 1] : "text";
@@ -42,11 +42,11 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
       (s.frameworks.length > 1 ? ` (híbrido: ${s.frameworks.join(", ")})` : ""),
     `→ Project name:     ${s.projectName}`,
     `→ Base URL:         ${s.baseUrl}`,
-    // "Endpoints" y no "rutas en código": un `apiResource` de Laravel es
-    // UNA línea de código y SIETE endpoints, y lo que importa es lo
-    // segundo. La colección puede traer aún más *requests* que esto,
-    // porque el enriquecido añade variantes de body para el MISMO
-    // endpoint — variantes, no endpoints nuevos.
+    // "Endpoints" and not "routes in code": a Laravel `apiResource` is
+    // ONE line of code and SEVEN endpoints, and what matters is the
+    // second. The collection can still bring more *requests* than this,
+    // because enrichment adds body variants for the SAME endpoint —
+    // variants, not new endpoints.
     `→ Endpoints:        ${s.routesInCode}`,
     `→ With rules:       ${s.withFormRequest}`,
     `→ Without rules:    ${s.withoutFormRequest}`,
@@ -57,19 +57,19 @@ function asText(s: Awaited<ReturnType<typeof summarizeWithAllFrameworks>>): stri
     `→ Login:            ${s.auth ? s.auth.loginEndpoint : "not detected"}`,
     `→ Zero-config:      ${s.zeroConfig ? "yes" : "no"}`,
     `→ Config:           ${s.configPath}`,
-    // f00010 S2: la salud de la documentación, en una línea. El
-    // detalle completo viaja en el JSON; aquí solo la lectura rápida:
-    // "validación 44% · bodies 100% · ejemplos 100% · descripciones 100%".
+    // f00010 S2: documentation health, in one line. The full detail
+    // travels in the JSON; here is just the quick read:
+    // "validation 44% · bodies 100% · examples 100% · descriptions 100%".
     `→ Health:           validation ${s.health.withValidationPercent}% · ` +
       `body ${s.health.withBodySchemaPercent}% · ` +
       `examples ${s.health.withExamplesPercent}% · ` +
       `descriptions ${s.health.withDescriptionPercent}%`,
   ];
   for (const warning of s.warnings) lines.push(`\n⚠ ${warning}`);
-  // f00010 S3: el usuario ve **por qué** se eligió el framework, no
-  // solo cuál. Cada señal es una línea con su peso; los detectores
-  // que aún no se han enriquecido (la mayoría) muestran sólo el
-  // framework + score y se quedan sin bloque, que es lo honesto.
+  // f00010 S3: the user sees **why** the framework was chosen, not
+  // just which one. Each signal is one line with its weight; detectors
+  // not yet enriched (the majority) only show the framework + score and
+  // skip the block, which is the honest thing to do.
   if (s.evidence.length > 0) {
     lines.push(`\n→ ¿Por qué ${s.framework}?`);
     for (const e of s.evidence) {
@@ -91,12 +91,12 @@ export async function main(): Promise<number> {
     } else {
       console.log(asText(summary));
     }
-    // f00010 S4: dejar huella de la inspección en `~/.tanit/
-    // history.jsonl`. El append es **best-effort**: si falla (disco
-    // lleno, permisos), `summary` ya imprimió su resultado y la huella
-    // que no se pudo escribir no es motivo para devolver código 1.
-    // `--no-history` apaga la huella para tests repetidos y para
-    // quien no quiera historial.
+    // f00010 S4: leave a trace of the inspection in
+    // `~/.tanit/history.jsonl`. The append is **best-effort**: if it
+    // fails (disk full, permissions), `summary` already printed its
+    // result and the trace that could not be written is not a reason
+    // to return code 1. `--no-history` disables the trace for repeated
+    // tests and for anyone who does not want history.
     if (!hasFlag(argv, "--no-history")) {
       const outcome = await appendHistory({
         kind: "summary",

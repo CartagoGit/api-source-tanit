@@ -1,22 +1,22 @@
 /**
- * Enriquece el catálogo de endpoints con variantes de body y query
- * generadas automáticamente desde los FormRequests de Laravel.
+ * Enriches the endpoint catalog with auto-generated body and query
+ * variants from Laravel's FormRequests.
  *
- * Prioridad de resolución del FormRequest:
- *   1. Mapa explícito method+uri → ruta FormRequest (viene del discovery).
- *   2. Heurística por nombre del endpoint (`CrearUsuarioRequest`).
- *   3. Búsqueda en el índice de FormRequests del proyecto.
+ * FormRequest resolution priority:
+ *   1. Explicit map method+uri → FormRequest path (from discovery).
+ *   2. Heuristic by endpoint name (`CreateUserRequest`).
+ *   3. Search in the project's FormRequest index.
  *
- * Los endpoints con body declarado manualmente SÍ reciben variantes
- * adicionales (el body manual se conserva como "(base)").
+ * Endpoints with a manually-declared body DO receive additional
+ * variants (the manual body is kept as "(base)").
  *
- * S5 (a00012): `enrichCatalogWithFormRequests` se mantiene por
- * compat. El nuevo punto de entrada es el registry
- * (`packages/core/validation/validation-enricher.service.ts`); este
- * módulo exporta `LARAVEL_FORM_REQUEST_ENRICHER` para que `generate`
- * lo registre en el bootstrap. La función pública sólo delega en el
- * wrapper cuando el provider del endpoint es Laravel; el resto de
- * frameworks se queda igual.
+ * S5 (a00012): `enrichCatalogWithFormRequests` is kept for backward
+ * compatibility. The new entry point is the registry
+ * (`packages/core/validation/validation-enricher.service.ts`); this
+ * module exports `LARAVEL_FORM_REQUEST_ENRICHER` so `generate` can
+ * register it in the bootstrap. The public function only delegates
+ * to the wrapper when the endpoint's provider is Laravel; the rest
+ * of the frameworks stay as they are.
  */
 import type {
   EndpointSpec,
@@ -97,10 +97,10 @@ export async function enrichCatalogWithFormRequests(
     rulesWithUnknown: [],
   };
 
-  // Sin FormRequests que resolver no hay nada que enriquecer. Salir aquí
-  // evita tocar el disco y, sobre todo, evita lanzar en proyectos que no
-  // son Laravel: `requestsDir()` es `<raíz>/app/Http/Requests`, que en un
-  // proyecto Express o Go no existe.
+  // Without FormRequests to resolve there is nothing to enrich. Exiting
+  // here avoids touching disk and, importantly, avoids running on
+  // non-Laravel projects: `requestsDir()` is `<root>/app/Http/Requests`,
+  // which does not exist in an Express or Go project.
   if (formRequestByRoute.size === 0) return stats;
 
   const cache = new Map<string, Promise<FormRequestRules | null>>();
@@ -285,43 +285,46 @@ export async function enrichCatalogWithFormRequests(
 }
 
 /**
- * Re-export del enricher Laravel.
+ * Re-export of the Laravel enricher.
  *
- * El identificador se define en
+ * The identifier is defined in
  * `packages/contracts/constants/frameworks/laravel-form-request-enricher.constant.ts`
- * (regla `lint:contracts`: el tipo y la instancia van en `contracts/`,
- * no al lado de quien los usa). Este re-export preserva el path que
- * `generate.script.ts` y los tests ya conocían: importar desde
- * `catalog-enricher.service.js`. La sintaxis `export { … } from` no
- * dispara `lint:contracts` porque el script sólo busca
- * `export const FOO = …` o `export const FOO: …` literales.
+ * (`lint:contracts` rule: the type and instance go in `contracts/`,
+ * not next to whoever uses them). This re-export preserves the path
+ * `generate.script.ts` and the tests already knew: importing from
+ * `catalog-enricher.service.js`. The `export { … } from` syntax
+ * does not trigger `lint:contracts` because the script only looks
+ * for literal `export const FOO = …` or `export const FOO: …`.
  */
 export { LARAVEL_FORM_REQUEST_ENRICHER } from "../../contracts/constants/frameworks/laravel-form-request-enricher.constant.js";
 
 /**
- * Wrapper de compat: delega en el registry para los specs cuyo
+ * Compatibility wrapper: delegates to the registry for specs whose
  * `validationSource.provider === "laravel-form-request"`.
  *
- * Si un endpoint no lleva `validationSource`, o su provider no está
- * registrado, el wrapper lo deja pasar tal cual. Eso preserva la
- * invariante S5: un proyecto Express/FastAPI/... nunca entra por
- * el enricher Laravel aunque su `validation.resolve()` devuelva reglas.
+ * If an endpoint has no `validationSource`, or its provider is not
+ * registered, the wrapper lets it pass through as-is. This preserves
+ * the S5 invariant: an Express/FastAPI/... project never goes
+ * through the Laravel enricher even if its `validation.resolve()`
+ * returns rules.
  *
- * Devuelve un array paralelo al de entrada con los specs enriquecidos;
- * los que no tocaron el registry aparecen idénticos (mismo objeto).
+ * Returns an array parallel to the input with the enriched specs;
+ * those that did not touch the registry appear identical (same
+ * object).
  *
- * NO es un sustituto de `enrichCatalogWithFormRequests`: el wrapper
- * trabaja sobre `EndpointSpec[]` y `runValidationEnrichers` es por-spec,
- * así que las variantes Postman (carpeta + base + variantes) las sigue
- * produciendo la función legacy. Este wrapper existe para que el
- * `generate` pueda invocar el registry sin perder esa generación.
+ * It is NOT a substitute for `enrichCatalogWithFormRequests`: the
+ * wrapper works on `EndpointSpec[]` and `runValidationEnrichers` is
+ * per-spec, so the Postman variants (folder + base + variants) are
+ * still produced by the legacy function. This wrapper exists so
+ * that `generate` can invoke the registry without losing that
+ * generation.
  */
 export function enrichValidationSources(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
-  // El registry vive en `core/validation`. Importarlo arriba (estático)
-  // ya establece la dependencia `frameworks → core`, que es legal: el
-  // framework depende del núcleo, no al revés. Lo que NO se hace es
-  // tocar el registry aquí — el `registerValidationEnricher` está en
-  // el bootstrap de `generate`, que es quien debe decidir qué
-  // providers se cargan.
+  // The registry lives in `core/validation`. Importing it statically
+  // (above) already establishes the `frameworks → core` dependency,
+  // which is legal: the framework depends on the core, not the other
+  // way around. What we do NOT do is touch the registry here —
+  // `registerValidationEnricher` lives in the `generate` bootstrap,
+  // which is the one that decides which providers get loaded.
   return specs.map((spec) => runValidationEnrichers(spec));
 }

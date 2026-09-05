@@ -1,19 +1,19 @@
 /**
- * Los cuatro comandos que solo leen: `scan`, `list`, `stats`, `summary`.
+ * The four commands that only read: `scan`, `list`, `stats`, `summary`.
  *
- * Ninguno tenía test. La auditoría dijo que ahí viviría el siguiente
- * bug, y vivía: **`list` no listaba nada**. Imprimía «9 endpoints en la
- * colección, agrupados por zona:» y dejaba la pantalla en blanco, en los
- * veintiún frameworks, porque recorría `config.zoneOrder` para imprimir
- * y en zero-config esa lista viene vacía — todos los endpoints caen en
- * `defaultZone`, que no está en ella. `stats` tenía el mismo fallo en su
- * sección «Por zona». Un comando entero sin salida útil, y el otro con
- * una sección muerta.
+ * None had tests. The audit said the next bug would live there, and it
+ * did: **`list` listed nothing**. It printed "9 endpoints in the
+ * collection, grouped by zone:" and left the screen blank, across all
+ * twenty-one frameworks, because it iterated `config.zoneOrder` to
+ * print and in zero-config that list comes empty — all endpoints fall
+ * in `defaultZone`, which is not in it. `stats` had the same flaw in
+ * its "By zone" section. A whole command without useful output, and
+ * the other with a dead section.
  *
- * Cada comando se ejercita contra un proyecto REST y uno de **RPC sobre
- * POST**, porque es donde la suposición de que la URL identifica la
- * operación ha mordido cuatro veces: en GraphQL las cinco operaciones
- * comparten `POST /graphql`.
+ * Each command is exercised against a REST project and one of **RPC
+ * over POST**, because that is where the assumption that the URL
+ * identifies the operation has bitten four times: in GraphQL the five
+ * operations share `POST /graphql`.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -24,7 +24,7 @@ import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper"
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
 
-/** Proyectos de prueba: uno REST y uno de RPC sobre POST. */
+/** Test projects: one REST and one of RPC over POST. */
 const PROYECTOS = [
   { framework: "express", endpoints: 9, rpc: false },
   { framework: "graphql", endpoints: 5, rpc: true },
@@ -59,8 +59,8 @@ function run(comando: string, framework: string): Promise<{ code: number; output
   ]);
 }
 
-describe.each(PROYECTOS)("sobre $framework", ({ framework, endpoints, rpc }) => {
-  test("scan encuentra el proyecto y sus rutas", { timeout: 120_000 }, async () => {
+describe.each(PROYECTOS)("on $framework", ({ framework, endpoints, rpc }) => {
+  test("scan finds the project and its routes", { timeout: 120_000 }, async () => {
     const { code, output } = await run("scan", framework);
     expect(code, output).toBe(0);
     expect(output).toContain(framework);
@@ -68,49 +68,50 @@ describe.each(PROYECTOS)("sobre $framework", ({ framework, endpoints, rpc }) => 
   });
 
   /**
-   * EL test. Sin él, `list` decía cuántos había y no enseñaba ninguno.
+   * THE test. Without it, `list` said how many there were and showed
+   * none.
    */
-  test("list enseña los endpoints, no solo cuántos", { timeout: 120_000 }, async () => {
+  test("list shows the endpoints, not just how many", { timeout: 120_000 }, async () => {
     const { code, output } = await run("list-endpoints", framework);
     expect(code, output).toBe(0);
     expect(output).toContain(`${endpoints} endpoints`);
-    // Una línea por endpoint, con su método.
+    // One line per endpoint, with its method.
     const lineas = output.split("\n").filter((l) => /^\s{2}(GET|POST|PUT|PATCH|DELETE)\s/.test(l));
     expect(lineas.length).toBe(endpoints);
   });
 
-  test("list agrupa bajo una cabecera de zona", { timeout: 120_000 }, async () => {
+  test("list groups under a zone header", { timeout: 120_000 }, async () => {
     const { output } = await run("list-endpoints", framework);
     expect(output).toMatch(/─── .+ \(\d+\) ───/);
   });
 
-  test("stats cuenta lo mismo que list", { timeout: 120_000 }, async () => {
+  test("stats counts the same as list", { timeout: 120_000 }, async () => {
     const { code, output } = await run("stats", framework);
     expect(code, output).toBe(0);
     expect(output).toContain(`Total requests: ${endpoints}`);
   });
 
-  test("stats no deja la sección de zonas vacía", { timeout: 120_000 }, async () => {
+  test("stats does not leave the zones section empty", { timeout: 120_000 }, async () => {
     const { output } = await run("stats", framework);
     const zonas = output.slice(output.indexOf("By zone:"));
     expect(zonas).toMatch(/─── .+ \(\d+\) ───/);
   });
 
-  test("summary cuenta los mismos endpoints que list", { timeout: 120_000 }, async () => {
+  test("summary counts the same endpoints as list", { timeout: 120_000 }, async () => {
     const { code, output } = await run("summary", framework);
     expect(code, output).toBe(0);
-    // Lee el **código**, no la colección, así que la cifra tiene que
-    // coincidir con la de `list` sin haber mirado el fichero.
+    // It reads the **source**, not the collection, so the number
+    // must match that of `list` without having looked at the file.
     expect(output).toMatch(new RegExp(`Endpoints:\\s+${endpoints}`));
     expect(output).toContain(framework);
   });
 
   /**
-   * En RPC sobre POST las operaciones comparten método y URL, así que un
-   * listado sin nombres son cinco líneas idénticas: no dice nada.
+   * In RPC over POST the operations share method and URL, so a
+   * listing without names is five identical lines: it says nothing.
    */
   test.skipIf(!rpc)(
-    "list distingue las operaciones que comparten endpoint",
+    "list distinguishes operations that share an endpoint",
     { timeout: 120_000 },
     async () => {
       const { output } = await run("list-endpoints", framework);
@@ -123,7 +124,7 @@ describe.each(PROYECTOS)("sobre $framework", ({ framework, endpoints, rpc }) => 
   );
 });
 
-describe("sin colección en disco", () => {
+describe("without a collection on disk", () => {
   let vacio = "";
 
   beforeAll(async () => {
@@ -132,16 +133,16 @@ describe("sin colección en disco", () => {
   }, 60_000);
 
   /**
-   * `list` y `stats` leen la colección. Sin ella soltaban el volcado de
-   * Bun —cinco líneas de ENOENT con el código fuente del comando
-   * encima— y ni una palabra sobre qué hacer, cuando la respuesta es
-   * siempre la misma: generar primero.
+   * `list` and `stats` read the collection. Without it they used to
+   * dump Bun —five lines of ENOENT with the command source on top—
+   * and not a word about what to do, when the answer is always the
+   * same: generate first.
    *
-   * Un error que no dice la salida deja a quien lo lee igual de
-   * atascado, y encima parece que la herramienta se ha roto.
+   * An error that does not state the exit leaves whoever reads it
+   * equally stuck, and on top of it looks like the tool has broken.
    */
   test.for(["list-endpoints", "stats"] as const)(
-    "%s explica que falta la colección y cómo generarla",
+    "%s explains that the collection is missing and how to generate it",
     { timeout: 120_000 },
     async (comando) => {
       const { code, output } = await runProcess("bun", [
@@ -151,17 +152,17 @@ describe("sin colección en disco", () => {
       ]);
       expect(code).toBe(1);
       expect(output).toContain("No collection");
-      // La salida, no solo el diagnóstico.
+      // The output, not only the diagnostic.
       expect(output).toContain("generate");
-      // Y nada del volcado que había antes.
+      // And none of the dump that was there before.
       expect(output).not.toContain("ENOENT");
       expect(output).not.toContain("syscall");
     },
   );
 
-  /** `summary` y `scan` leen el código, así que no necesitan colección. */
+  /** `summary` and `scan` read the source, so they do not need a collection. */
   test.for(["summary", "scan"] as const)(
-    "%s funciona igual sin colección",
+    "%s works the same without a collection",
     { timeout: 120_000 },
     async (comando) => {
       const { code } = await runProcess("bun", [

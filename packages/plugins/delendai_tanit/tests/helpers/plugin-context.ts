@@ -1,18 +1,20 @@
 /**
- * Doble compartido de `IMcpPluginContext`.
+ * Shared double of `IMcpPluginContext`.
  *
- * Antes cada spec se montaba el suyo a mano, y los tres eran distintos
- * **y los tres estaban mal**: uno pasaba `new URL("file://…/")`, otro un
- * `"file://" + process.cwd()`, y el contrato real es un
- * `IWorkspacePathProvider`, o sea `{ root, resolve }`. Como los tools
- * leían el workspace con `ctx.workspace.toString()`, en los tests salía
- * una ruta plausible y en ejecución real salía `"[object Object]"`.
- * Todos los tools estaban rotos contra el host y los tests decían que
- * no.
+ * Before, each spec built its own by hand, and the three were all
+ * different **and all three were wrong**: one passed
+ * `new URL("file://…/")`, another `"file://" + process.cwd()`, and
+ * the real contract is an `IWorkspacePathProvider`, i.e.
+ * `{ root, resolve }`. Because the tools read the workspace with
+ * `ctx.workspace.toString()`, in the tests it produced a plausible
+ * path and in real execution it produced `"[object Object]"`. All
+ * tools were broken against the host and the tests said they were
+ * not.
  *
- * Por eso el workspace de este doble se construye con la fábrica de
- * verdad del core (`createWorkspacePathProvider`) en vez de imitarla:
- * si delendai cambia la forma del proveedor, estos tests se enteran.
+ * That is why this double's workspace is built with the core's real
+ * factory (`createWorkspacePathProvider`) instead of being
+ * imitated: if delendai changes the provider's shape, these tests
+ * notice.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -24,14 +26,14 @@ import {
   type IToolRegistration,
 } from "@delendai/core/public";
 
-/** Prefijo con el que el host cualifica los tools de este plugin. */
+/** Prefix the host uses to qualify this plugin's tools. */
 export const NAMESPACE_PREFIX = "tanit";
 
-/** Lo que se puede sobrescribir de un contexto de prueba. */
+/** What can be overridden on a test context. */
 export interface IMakeContextOptions {
-  /** Raíz absoluta del workspace. */
+  /** Absolute root of the workspace. */
   readonly workspaceRoot: string;
-  /** Options del plugin, tal como vendrían de `delendai.config.json`. */
+  /** Plugin options, as they would come from `delendai.config.json`. */
   readonly options?: Record<string, unknown>;
   readonly namespacePrefix?: string;
 }
@@ -45,20 +47,20 @@ export function makeContext(options: IMakeContextOptions): IMcpPluginContext {
   } as IMcpPluginContext;
 }
 
-/** Lo que devuelve el handler de un tool MCP. */
+/** What an MCP tool's handler returns. */
 export interface IToolCallResult {
   readonly content: ReadonlyArray<{ type: string; text: string }>;
   readonly isError?: boolean;
 }
 
-/** Handler de un tool, ya extraído de su registro. */
+/** A tool's handler, already extracted from its registration. */
 export type ToolHandler = (input: unknown) => Promise<IToolCallResult>;
 
 /**
- * Registra un tool en un server MCP simulado y devuelve su handler.
+ * Registers a tool in a simulated MCP server and returns its handler.
  *
- * El registro de verdad necesita el server del host; aquí solo hace
- * falta quedarse con la función para poder invocarla directamente.
+ * The real registration needs the host's server; here we only need
+ * to keep the function so we can invoke it directly.
  */
 export async function captureHandler(
   registration: IToolRegistration,
@@ -69,41 +71,42 @@ export async function captureHandler(
       handler = fn;
     },
   };
-  // La única aserción de tipo que queda en el repo, y está aquí a
-  // propósito.
+  // The only type assertion left in the repo, and it is here on
+  // purpose.
   //
-  // `register` espera el `McpServer` del SDK, un tipo de terceros con
-  // decenas de miembros que este doble no va a implementar: de todos
-  // ellos solo se llama a `registerTool`. Implementarlos todos para
-  // satisfacer al compilador sería escribir un SDK falso entero, y ese
-  // falso mentiría más que esta línea.
+  // `register` expects the SDK's `McpServer`, a third-party type
+  // with dozens of members this double does not implement: of all
+  // of them, only `registerTool` is ever called. Implementing them
+  // all to satisfy the compiler would amount to writing a fake SDK
+  // from scratch, and that fake would lie more than this line.
   //
-  // Lo que la hace aceptable es que está **en un sitio**, en un helper
-  // de tests, sobre un tipo que no controlamos. `lint:no-type-escapes`
-  // la tiene declarada con este motivo; cualquier otra falla.
+  // What makes it acceptable is that it lives **in one place**, in
+  // a test helper, over a type we do not control.
+  // `lint:no-type-escapes` whitelists it for this reason; any other
+  // fails.
   await registration.register(server as never);
   if (!handler) throw new Error("el tool no registró ningún handler");
   return handler;
 }
 
-/** Un tool capturado con **su** declaración, no con una copia. */
+/** A captured tool with **its** declaration, not a copy. */
 export interface ICapturedTool {
-  /** Nombre cualificado con el que lo despacha el host. */
+  /** Qualified name under which the host dispatches it. */
   readonly name: string;
   readonly handler: ToolHandler;
-  /** El `outputSchema` tal y como el tool lo registró. */
+  /** The `outputSchema` as the tool registered it. */
   readonly outputSchema: unknown;
   readonly inputSchema: unknown;
 }
 
 /**
- * Registra un tool y devuelve el handler **y su esquema declarado**.
+ * Registers a tool and returns the handler **and its declared schema**.
  *
- * `captureHandler` se queda solo con la función, que basta para probar
- * el comportamiento. Esto hace falta para lo otro: confrontar lo que el
- * handler devuelve con lo que el tool **dice** que devuelve. Comparar
- * contra una copia del esquema escrita en el test no comprobaría nada —
- * las dos copias se separarían juntas.
+ * `captureHandler` keeps only the function, which is enough to test
+ * behaviour. This one is needed for the other side: confronting what
+ * the handler returns with what the tool **says** it returns.
+ * Comparing against a copy of the schema written into the test would
+ * prove nothing — the two copies would drift together.
  */
 export async function captureTool(
   registration: IToolRegistration,
@@ -129,11 +132,12 @@ export async function captureTool(
 }
 
 /**
- * Los tools de un plugin ya registrado.
+ * A registered plugin's tools.
  *
- * `IMcpPluginRegistrations.tools` es opcional en el contrato del core,
- * pero para este plugin no lo es: si no hay tools, no hay plugin. Se
- * comprueba aquí una vez en vez de repetir el `?? []` en cada spec.
+ * `IMcpPluginRegistrations.tools` is optional in the core contract,
+ * but for this plugin it is not: if there are no tools, there is no
+ * plugin. It is checked here once instead of repeating `?? []` in
+ * each spec.
  */
 export async function registeredTools(
   plugin: { register: (ctx: IMcpPluginContext) => unknown },
@@ -147,18 +151,19 @@ export async function registeredTools(
 }
 
 /**
- * Raíz del workspace que el plugin inspecciona.
+ * Root of the workspace the plugin inspects.
  *
- * Sube buscando `delendai.config.json`, que es el marcador del
- * proyecto host — y no `package.json`, que lo tiene también el propio
- * plugin y pararía demasiado pronto.
+ * It walks up looking for `delendai.config.json`, which is the host
+ * project's marker — and not `package.json`, which the plugin
+ * itself also has and which would stop too early.
  *
- * Antes esto era `resolve(__dirname, "../../../..")`. Contar niveles
- * acopla el fichero a su profundidad en el árbol, y ya ha fallado tres
- * veces en esta reorganización: al mover los gates, al mover el plugin
- * a `packages/`, y otra vez al meterlo en `packages/plugins/`. Cada vez
- * el fallo fue silencioso, porque una ruta equivocada no lanza: solo no
- * encuentra nada.
+ * This used to be `resolve(__dirname, "../../../..")`. Counting
+ * levels couples the file to its depth in the tree, and it has
+ * already failed three times during this reorganisation: when
+ * moving the gates, when moving the plugin into `packages/`, and
+ * again when moving it into `packages/plugins/`. Each time the
+ * failure was silent, because a wrong path does not throw: it
+ * simply finds nothing.
  */
 export function workspaceRoot(importMetaUrl: string): string {
   let dir = dirname(fileURLToPath(importMetaUrl));
@@ -168,6 +173,6 @@ export function workspaceRoot(importMetaUrl: string): string {
     if (parent === dir) break;
     dir = parent;
   }
-  throw new Error("No se encontró delendai.config.json subiendo desde el test");
+  throw new Error("delendai.config.json not found walking up from the test");
 }
 

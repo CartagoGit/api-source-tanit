@@ -33,21 +33,21 @@ const ROOT = smokeFixtureDir("gin");
 const COMPREHENSIVE = comprehensiveFixtureDir("gin");
 
 describe("Gin scanner", () => {
-  test("detect() > 0 cuando go.mod tiene github.com/gin-gonic/gin", async () => {
+  test("detect() > 0 when go.mod contains github.com/gin-gonic/gin", async () => {
     expect((await new GinProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay go.mod", async () => {
+  test("detect() === 0 when there is no go.mod", async () => {
     expect((await new GinProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 5 rutas del mini-fixture", async () => {
+  test("scan() finds the 5 routes of the mini-fixture", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
   });
 
-  test("GET /health y CRUD /api/users presentes", async () => {
+  test("GET /health and CRUD /api/users present", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
@@ -58,28 +58,28 @@ describe("Gin scanner", () => {
     expect(pairs).toContain("DELETE /api/users/:id");
   });
 
-  test("path param Gin :id preservado en uri", async () => {
+  test("Gin path param :id preserved in uri", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.endsWith(":id"));
     expect(withId.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("rawUri conserva el path sin el prefijo del Group", async () => {
+  test("rawUri preserves the path without the Group prefix", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const route = routes.find((item) => item.uri === "/api/users/:id");
     expect(route?.rawUri).toBe("/users/:id");
   });
 
-  test("prefijo de Group /api aplicado a todas las subrutas", async () => {
+  test("Group /api prefix applied to all subroutes", async () => {
     const match = await new GinProjectScanner().resolve(ROOT);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const apiRoutes = routes.filter((r) => r.uri.startsWith("/api"));
     expect(apiRoutes.length).toBeGreaterThanOrEqual(4);
   });
 
-  test("resuelve prefijos de Group anidados", async () => {
+  test("resolves nested Group prefixes", async () => {
     const project = await createTempProject({
       "go.mod": "module nested-gin\n\nrequire github.com/gin-gonic/gin v1.9.1\n",
       "main.go": [
@@ -106,10 +106,10 @@ describe("Gin scanner", () => {
     }
   });
 
-  // a00010 / B-02: el regex reconocía HEAD/OPTIONS pero la lista
-  // posterior los descartaba. Un `.HEAD("/health")` y un
-  // `.OPTIONS("/cors")` deben llegar a la colección.
-  test("HEAD y OPTIONS no se filtran (B-02 a00010)", async () => {
+  // a00010 / B-02: the regex recognized HEAD/OPTIONS but the
+  // downstream list discarded them. A `.HEAD("/health")` and a
+  // `.OPTIONS("/cors")` must reach the collection.
+  test("HEAD and OPTIONS are not filtered (B-02 a00010)", async () => {
     const methods = ["GET", "POST", "HEAD", "OPTIONS"] as const;
     for (const m of methods) {
       const route = `r.${m}("/health/${m.toLowerCase()}", func(c *gin.Context) {})`;
@@ -119,18 +119,18 @@ describe("Gin scanner", () => {
     }
     const HEAD_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
     for (const m of HEAD_METHODS) {
-      // El set final del scanner los incluye a todos.
+    // The scanner's final set includes all of them.
       expect(["get","post","put","delete","patch","head","options"]).toContain(m);
     }
   });
 
-  test("comprehensive: detecta >13 rutas en multi-file Go", async () => {
+  test("comprehensive: detects >13 routes in multi-file Go", async () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(13);
   });
 
-  test("GinBindingProvider extrae campos binding de POST /api/users", async () => {
+  test("GinBindingProvider extracts binding fields from POST /api/users", async () => {
     const match = await new GinProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new GinRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users");

@@ -1,25 +1,25 @@
 /**
- * a00012 S3.b — Login body preservado.
+ * a00012 S3.b — Login body preserved.
  *
- * `useCredentialVariables` (la versión vieja) tenía un caso
- * destructivo: cuando el body del login no exponía `username`,
- * `email` o `password` como claves, machacaba el body entero con un
- * par inventado. Eso rompía:
+ * `useCredentialVariables` (the old version) had a destructive case:
+ * when the login body did not expose `username`, `email` or `password`
+ * as keys, it overwrote the entire body with an invented pair. That
+ * broke:
  *
- *   - Logins OAuth2 con `grant_type` + `client_id` + `client_secret`
- *     (no son credenciales de usuario, pero el body real debe
- *     sobrevivir).
- *   - Flujos OTP que llevan `phone` + `code` en lugar de password.
- *   - Endpoints de tenant/apiKey con campos que el scanner sí
- *     reconoció y que perderían sus nombres al sobreescribir.
+ *   - OAuth2 logins with `grant_type` + `client_id` + `client_secret`
+ *     (they are not user credentials, but the real body must survive).
+ *   - OTP flows that carry `phone` + `code` instead of password.
+ *   - Tenant/apiKey endpoints with fields the scanner did recognize
+ *     and which would lose their names when overwritten.
  *
- * `attachCredentialTemplate` es estricto: sólo parchea claves que ya
- * están en el body y que valen `string`. Si no encuentra credenciales,
- * deja el body intacto y avisa con `warnMissingCredentials`.
+ * `attachCredentialTemplate` is strict: it only patches keys that are
+ * already in the body and that are `string`. If it finds no
+ * credentials, it leaves the body intact and warns via
+ * `warnMissingCredentials`.
  *
- * Estos tests son la garantía: con un body que no es credencial, el
- * body original se conserva byte-a-byte y el aviso estructurado sale
- * por `console.warn` con la forma canónica.
+ * These tests are the guarantee: with a body that is not a credential,
+ * the original body is preserved byte-for-byte and the structured
+ * warning goes out through `console.warn` in its canonical shape.
  */
 import { describe, expect, test, vi } from "vitest";
 
@@ -71,8 +71,8 @@ function bodyOf(item: PostmanItem | null): Record<string, unknown> | undefined {
   return JSON.parse(item.request.body.raw) as Record<string, unknown>;
 }
 
-describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies ajenos (a00012 S3.b)", () => {
-  test("body OAuth2 client_credentials se conserva intacto y avisa", () => {
+describe("login-body-preserve — attachCredentialTemplate does not replace foreign bodies (a00012 S3.b)", () => {
+  test("an OAuth2 client_credentials body is preserved intact and a warning is emitted", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const originalBody = {
@@ -86,14 +86,16 @@ describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies a
       const flow = applyAuthFlow(col);
       const resultingBody = bodyOf(flow?.login ?? null);
 
-      // El body original se conserva byte-a-byte. NO se sustituye por
-      // {email: "...", password: "..."} como hacía useCredentialVariables.
+      // The original body is preserved byte-for-byte. It is NOT
+      // replaced by {email: "...", password: "..."} as
+      // useCredentialVariables used to do.
       expect(resultingBody).toEqual(originalBody);
       expect(resultingBody?.grant_type).toBe("password");
       expect(resultingBody?.client_id).toBe("x");
       expect(resultingBody?.client_secret).toBe("y");
 
-      // Y sale el aviso estructurado explicando por qué no se parchó.
+      // And the structured warning comes out explaining why nothing
+      // was patched.
       expect(warn).toHaveBeenCalled();
       const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
         kind: string;
@@ -112,10 +114,10 @@ describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies a
     }
   });
 
-  test("body con campos extra al lado de credenciales se conserva parcialmente", () => {
-    // Si el body lleva `username`/`password` Y campos extra del
-    // proyecto (p. ej. `tenant` o `remember_me`), las credenciales se
-    // parchean y lo demás se queda.
+  test("a body with extra fields next to credentials is partially preserved", () => {
+    // If the body carries `username`/`password` AND project extra
+    // fields (e.g. `tenant` or `remember_me`), the credentials are
+    // patched and the rest stays.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const originalBody = {
@@ -134,18 +136,18 @@ describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies a
       expect(resultingBody?.password).toBe("{{authPassword}}");
       expect(resultingBody?.tenant).toBe("acme");
       expect(resultingBody?.remember_me).toBe(true);
-      // No se emitió aviso: las credenciales estaban.
+      // No warning emitted: the credentials were there.
       expect(warn).not.toHaveBeenCalled();
     } finally {
       warn.mockRestore();
     }
   });
 
-  test("campos de credencial con valor no-string NO se tocan y avisa", () => {
-    // Si el scanner rellenó `email: 1` (un placeholder numérico) no es
-    // un valor de credencial: se respeta. Como consecuencia, falta
-    // una credencial de usuario válida y el body entero queda intacto
-    // con aviso estructurado.
+  test("credential fields with non-string values are NOT touched and a warning is emitted", () => {
+    // If the scanner filled `email: 1` (a numeric placeholder) it is
+    // not a credential value: it is respected. As a consequence, a
+    // valid user credential is missing and the whole body stays
+    // intact with a structured warning.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const originalBody = {
@@ -158,10 +160,10 @@ describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies a
       const flow = applyAuthFlow(col);
       const resultingBody = bodyOf(flow?.login ?? null);
 
-      // email: 1 no es string → se queda como está.
+      // email: 1 is not a string → it stays as-is.
       expect(resultingBody?.email).toBe(1);
-      // password sigue siendo el valor del scanner: como `email` no
-      // califica como credencial, NO se toca nada del body.
+      // password stays as the scanner's value: since `email` does not
+      // qualify as a credential, NOTHING in the body is touched.
       expect(resultingBody?.password).toBe("1234");
       const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
         kind: string;
@@ -177,8 +179,8 @@ describe("login-body-preserve — attachCredentialTemplate no reemplaza bodies a
   });
 });
 
-describe("warnMissingCredentials — aviso estructurado (a00012 S3.b)", () => {
-  test("emite JSON parseable con la forma canónica", () => {
+describe("warnMissingCredentials — structured warning (a00012 S3.b)", () => {
+  test("emits parseable JSON with the canonical shape", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       warnMissingCredentials({
@@ -202,7 +204,7 @@ describe("warnMissingCredentials — aviso estructurado (a00012 S3.b)", () => {
     }
   });
 
-  test("acepta `reason: no-json-body` sin `keys`", () => {
+  test("accepts `reason: no-json-body` without `keys`", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       warnMissingCredentials({

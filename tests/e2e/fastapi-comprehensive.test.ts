@@ -1,10 +1,10 @@
 /**
- * E2E test exhaustivo para el scanner FastAPI.
+ * Comprehensive E2E test for the FastAPI scanner.
  *
- * Cubre:
- * - Multiple Pydantic models por endpoint (CreateUserRequest, UpdateUserRequest, ListUsersRequest, etc.).
- * - Nested models (Address dentro de User).
- * - Optional fields con defaults.
+ * Covers:
+ * - Multiple Pydantic models per endpoint (CreateUserRequest, UpdateUserRequest, ListUsersRequest, etc.).
+ * - Nested models (Address inside User).
+ * - Optional fields with defaults.
  * - Validators: min_length, max_length, ge, le, gt, pattern.
  * - EmailStr, HttpUrl, UUID4 format.
  * - Enum / Literal type.
@@ -28,23 +28,23 @@ describeCollectionContract({
 });
 
 describe("FastAPI — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("fastapi-comprehensive");
     expect(metrics.routes).toBeGreaterThan(12);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("fastapi-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("todos los endpoints", async () => {
+  test("all the endpoints", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     expect(findEndpoint(collection, "GET", "/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/users")).not.toBeNull();
@@ -61,24 +61,24 @@ describe("FastAPI — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/webhooks/payment")).not.toBeNull();
   });
 
-  test("POST /users tiene body params (CreateUserRequest)", async () => {
+  test("POST /users has body params (CreateUserRequest)", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("name");
     expect(body).toHaveProperty("email");
-    // age y address son optional, no aparecen en el body por defecto.
+    // age and address are optional, they don't appear in the body by default.
   });
 
-  test("email tiene formato email (no null)", async () => {
+  test("email has email format (not null)", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body.email).toBe("user@example.com");
   });
 
-  test("PUT /users/{id}/address usa Address (single body)", async () => {
+  test("PUT /users/{id}/address uses Address (single body)", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/users/{{id}}/address");
     expect(ep).not.toBeNull();
@@ -89,7 +89,7 @@ describe("FastAPI — comprehensive fixture", () => {
     expect(body).toHaveProperty("postal_code");
   });
 
-  test("POST /orders tiene body params (CreateOrderRequest)", async () => {
+  test("POST /orders has body params (CreateOrderRequest)", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/orders");
     expect(ep).not.toBeNull();
@@ -99,7 +99,7 @@ describe("FastAPI — comprehensive fixture", () => {
     expect(body).toHaveProperty("items");
   });
 
-  test("PATCH /orders/{id}/status tiene status enum", async () => {
+  test("PATCH /orders/{id}/status has status enum", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/orders/{{id}}/status");
     expect(ep).not.toBeNull();
@@ -107,7 +107,7 @@ describe("FastAPI — comprehensive fixture", () => {
     expect(body).toHaveProperty("status");
   });
 
-  test("POST /auth/login tiene email + password", async () => {
+  test("POST /auth/login has email + password", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/auth/login");
     expect(ep).not.toBeNull();
@@ -116,7 +116,7 @@ describe("FastAPI — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("POST /webhooks/payment tiene event enum", async () => {
+  test("POST /webhooks/payment has event enum", async () => {
     const { collection } = await runGenerate("fastapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/webhooks/payment");
     expect(ep).not.toBeNull();

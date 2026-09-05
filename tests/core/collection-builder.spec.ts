@@ -36,7 +36,7 @@ function spec(partial: Partial<EndpointSpec>): EndpointSpec {
 
 describe("collection-builder.service", () => {
   describe("buildCollection", () => {
-    test("colección vacía produce una sola carpeta vacía", () => {
+    test("an empty collection produces a single empty folder", () => {
       const col = buildCollection([], baseConfig);
       expect(col.info.name).toBe("T Collection");
       expect(col.info.description).toBe("Test collection");
@@ -44,16 +44,17 @@ describe("collection-builder.service", () => {
       expect(col.item).toEqual([]);
     });
 
-    // El bloque `auth` sale de lo que hace la API, no de una constante.
-    // Antes este test comprobaba que una colección VACÍA salía con
-    // bearer — o sea, exigía la mentira: sin endpoints no hay forma de
-    // saber que la API use bearer, ni de que use nada.
-    test("sin ninguna señal de auth, no se inventa un bloque", () => {
+    // The `auth` block comes from what the API does, not from a
+    // constant. Previously this test asserted that an EMPTY collection
+    // came out with bearer — i.e. it required the lie: without
+    // endpoints there is no way to know the API uses bearer, or uses
+    // anything.
+    test("without any auth signal, no block is invented", () => {
       const col = buildCollection([], baseConfig);
       expect(col.auth).toBeUndefined();
     });
 
-    test("con un endpoint de login, bearer con {{token}}", () => {
+    test("with a login endpoint, bearer with {{token}}", () => {
       const col = buildCollection([spec({ method: "POST", uri: "/auth/login" })], baseConfig, {
         type: "bearer",
         evidence: "test",
@@ -64,7 +65,7 @@ describe("collection-builder.service", () => {
       });
     });
 
-    test("agrupa endpoints por topFolder", () => {
+    test("groups endpoints by topFolder", () => {
       const col = buildCollection(
         [
           spec({ method: "GET", uri: "/users" }),
@@ -78,7 +79,7 @@ describe("collection-builder.service", () => {
       expect(folderNames).toContain("Orders");
     });
 
-    test("respeta uriGroupOverrides", () => {
+    test("respects uriGroupOverrides", () => {
       const config = {
         ...baseConfig,
         uriGroupOverrides: { "tol/tecdoc": "tol/tecdoc" },
@@ -90,11 +91,11 @@ describe("collection-builder.service", () => {
       expect(col.item[0]?.name).toBe("Tol/Tecdoc");
     });
 
-    // Este test exigía lo contrario ("ids únicos"), que es justo el bug:
-    // Postman usa `_postman_id` para decidir si un import actualiza la
-    // colección o crea otra, así que un id nuevo por ejecución dejaba una
-    // copia más en el workspace cada vez que se regeneraba.
-    test("el mismo proyecto produce siempre el mismo info._postman_id", () => {
+    // This test used to assert the opposite ("unique ids"), which is
+    // exactly the bug: Postman uses `_postman_id` to decide whether an
+    // import updates the collection or creates a new one, so a fresh id
+    // per run left one extra copy in the workspace every regeneration.
+    test("the same project always produces the same info._postman_id", () => {
       const a = buildCollection([], baseConfig);
       const b = buildCollection([], baseConfig);
       expect(a.info._postman_id).toBe(b.info._postman_id);
@@ -103,18 +104,18 @@ describe("collection-builder.service", () => {
       );
     });
 
-    test("proyectos distintos producen ids distintos", () => {
+    test("different projects produce different ids", () => {
       const a = buildCollection([], { ...baseConfig, collectionName: "API A" });
       const b = buildCollection([], { ...baseConfig, collectionName: "API B" });
       expect(a.info._postman_id).not.toBe(b.info._postman_id);
     });
 
-    test("collectionId del host manda sobre el derivado", () => {
+    test("the host's collectionId overrides the derived one", () => {
       const col = buildCollection([], { ...baseConfig, collectionId: "id-fijado-a-mano" });
       expect(col.info._postman_id).toBe("id-fijado-a-mano");
     });
 
-    test("preserva la config.variables en la colección resultante", () => {
+    test("preserves config.variables in the resulting collection", () => {
       const config = {
         ...baseConfig,
         variables: [

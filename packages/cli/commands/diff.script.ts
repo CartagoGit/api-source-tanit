@@ -1,14 +1,14 @@
 /**
- * Compara las URIs declaradas en la colección Postman con las URIs reales
- * descubiertas en el código fuente. Imprime diff y sale con código distinto
- * de 0 si hay diferencias.
+ * Compares the URIs declared in the Postman collection against the
+ * actual URIs discovered in the source code. Prints the diff and exits
+ * with a non-zero code if there are differences.
  *
- * Framework-agnostic: usa el `DiscoveryOrchestrator` para obtener el
- * "source" correcto. Si el orchestrator encuentra un match no-Laravel
- * (OpenAPI, Express, etc.), compara contra esas rutas en lugar de
- * `parseAllRoutes()` (Laravel).
+ * Framework-agnostic: uses the `DiscoveryOrchestrator` to obtain the
+ * right "source". If the orchestrator finds a non-Laravel match
+ * (OpenAPI, Express, etc.), it compares against those routes instead
+ * of `parseAllRoutes()` (Laravel).
  *
- * Uso:
+ * Usage:
  *   bun scripts/diff.script.ts
  *   bun run check
  */
@@ -29,7 +29,7 @@ import type { PostmanCollection } from "../../contracts/interfaces/core/postman.
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import type { ICheckOutcome, ICheckReport } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
-/** Comprueba la deriva y devuelve el informe. `main` es quien lo pinta. */
+/** Checks for drift and returns the report. `main` is the one that prints it. */
 export async function runCheck(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
@@ -47,11 +47,11 @@ export async function runCheck(
   const { match, scanner } = await orch.detectProject(root);
 
   /**
-   * Una sola barra al principio.
+   * Exactly one leading slash.
    *
-   * Las URIs llegan de dos sitios —el scanner y la colección— y solo uno
-   * de los dos las trae ya con barra. Prefijar a ciegas daba `//graphql`
-   * justo en la lista que alguien lee para arreglar la deriva.
+   * URIs arrive from two places —the scanner and the collection— and
+   * only one of them already has a slash. Blindly prefixing produced
+   * `//graphql` precisely in the list someone reads to fix the drift.
    */
   const withLeadingSlash = (uri: string): string =>
     uri.startsWith("/") ? uri : `/${uri}`;
@@ -60,41 +60,44 @@ export async function runCheck(
   const sourceMap = new Map<string, { method: string; uri: string; name?: string }>();
 
   /**
-   * La clave con la que se compara una ruta.
+   * The key used to compare a route.
    *
-   * Método y URI **no bastan siempre**. En REST la URL identifica la
-   * operación, pero en RPC sobre POST no: GraphQL tiene un solo endpoint
-   * y lo que distingue una consulta de otra es el nombre. Sin él, un
-   * proyecto GraphQL de cinco operaciones se contaba como **una**, y
-   * entonces `check` no podía detectar deriva ninguna.
+   * Method and URI **are not always enough**. In REST the URL
+   * identifies the operation, but in RPC over POST it does not:
+   * GraphQL has a single endpoint and what distinguishes one query
+   * from another is the name. Without it, a five-operation GraphQL
+   * project was counted as **one**, and then `check` could not detect
+   * any drift.
    *
-   * Pero meter el nombre **siempre** rompe el caso contrario, y eso es
-   * lo que pasaba: en REST el scanner no emite `displayName`, mientras
-   * que la colección sí tiene nombre de request —«Get Orders», derivado
-   * de la URI por el constructor—. Las dos claves salían distintas para
-   * el mismo endpoint, así que `GET /api/orders`, sin un solo parámetro,
-   * aparecía a la vez en «falta» y en «sobra».
+   * But always including the name breaks the opposite case, which is
+   * what was happening: in REST the scanner does not emit
+   * `displayName`, while the collection does carry a request name —
+   * "Get Orders", derived from the URI by the constructor. The two
+   * keys came out different for the same endpoint, so `GET
+   * /api/orders`, without a single parameter, appeared both as
+   * "missing" and as "extra".
    *
-   * Se midió: **13 de 22 ejemplos** reportaban deriva total sobre una
-   * colección recién generada.
+   * It was measured: **13 of 22 examples** reported total drift on a
+   * freshly generated collection.
    *
-   * La decisión no es por framework: es una propiedad de las rutas que
-   * llegan. `needsNameToDisambiguate` mira si dos comparten método y
-   * URI; si ninguna lo hace, el nombre es ruido y se queda fuera de los
-   * dos lados. Es la misma pregunta que ya se hacía el pipeline, hecha
-   * una vez aquí en lugar de suponerse.
+   * The decision is not per framework: it is a property of the routes
+   * that arrive. `needsNameToDisambiguate` checks whether any two
+   * share method and URI; if none do, the name is noise and is left
+   * out of both sides. It is the same question the pipeline already
+   * asked, made once here instead of being assumed.
    */
   const sourceRoutes: Array<{ method: string; uri: string; name?: string }> = [];
 
   if (match && scanner) {
-    // El scanner del orchestrator, el mismo que usa `generate`.
+    // The orchestrator's scanner, the same one used by `generate`.
     //
-    // Antes había una rama `match.framework !== "laravel"` que mandaba a
-    // Laravel al camino legacy, y ese encuentra 7 rutas donde el
-    // pipeline encuentra 17: `check` no comparaba la colección contra lo
-    // que `generate` ve, sino contra otra heurística. Es la divergencia
-    // que ya tuvo `summary`, y `check` no puede tener una excepción para
-    // uno de los veintiún frameworks.
+    // Previously there was a `match.framework !== "laravel"` branch that
+    // sent Laravel down the legacy path, and that one found 7 routes
+    // where the pipeline found 17: `check` did not compare the
+    // collection against what `generate` sees, but against another
+    // heuristic. That is the same divergence `summary` once had, and
+    // `check` cannot have an exception for one of the twenty-one
+    // frameworks.
     for (const r of (await scanner.scan(match)).routes) {
       sourceRoutes.push({
         method: r.method,
@@ -104,9 +107,9 @@ export async function runCheck(
     }
     console.log(`(source: ${match.framework} via orchestrator)`);
   } else {
-    // Sin scanner que reconozca el proyecto queda la heurística de
-    // Laravel, que es lo único que había antes de que existieran los
-    // scanners.
+    // With no scanner recognizing the project, the Laravel heuristic
+    // remains, which is the only thing that existed before the
+    // scanners did.
     for (const r of await parseAllRoutes(config.filePrefixes, resolvedContext)) {
       sourceRoutes.push({ method: r.method, uri: stripApiPrefix(r.uri) });
     }
@@ -129,20 +132,20 @@ export async function runCheck(
   }));
 
   /**
-   * ¿Hace falta el nombre para distinguir?
+   * Is the name needed to disambiguate?
    *
-   * Se pregunta **solo sobre la fuente**, y esa asimetría es
-   * deliberada. La fuente es el código: si dos rutas comparten método y
-   * URI ahí, el protocolo es RPC sobre POST y el nombre es lo único que
-   * las separa —GraphQL, tRPC—.
+   * It is asked **only of the source**, and that asymmetry is
+   * deliberate. The source is the code: if two routes share method
+   * and URI there, the protocol is RPC over POST and the name is the
+   * only thing separating them — GraphQL, tRPC.
    *
-   * La colección no sirve para decidirlo porque tiene **variantes**: el
-   * enricher emite el mismo endpoint dos veces con cuerpos distintos
-   * («base» y «Mínimo (solo required)»), y eso no son dos operaciones,
-   * es una con dos ejemplos. Preguntárselo a ella daba `true` en
-   * Laravel y metía el nombre en la clave de los dos lados; como la
-   * fuente REST no emite nombre, los 17 endpoints salían como «faltan»
-   * y los 18 como «sobran».
+   * The collection cannot decide this because it has **variants**:
+   * the enricher emits the same endpoint twice with different bodies
+   * ("base" and "Minimum (required only)"), and that is not two
+   * operations, it is one operation with two examples. Asking it
+   * returned `true` for Laravel and put the name into the key on both
+   * sides; since the REST source does not emit a name, the 17
+   * endpoints came out as "missing" and the 18 as "extra".
    */
   const conNombre = needsNameToDisambiguate(sourceRoutes);
 
@@ -203,7 +206,7 @@ export async function runCheck(
   return { code: 1, report: informe };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   return (await runCheck(argv)).code;
 }

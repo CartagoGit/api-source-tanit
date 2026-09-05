@@ -1,23 +1,25 @@
 #!/usr/bin/env bun
 /**
- * `apisrc ui` — la herramienta sin terminal.
+ * `apisrc ui` — the tool without a terminal.
  *
- * Levanta la interfaz en `localhost` y abre el navegador. Existe porque
- * la herramienta solo vivía en la línea de comandos, y eso deja fuera a
- * buena parte de quien prueba APIs — que es justo el público de Postman.
+ * Brings up the interface on `localhost` and opens the browser. It
+ * exists because the tool only used to live on the command line, and
+ * that leaves out a large part of the audience that tries APIs — which
+ * is precisely Postman's audience.
  *
- * No añade **ni una dependencia**: `Bun.serve` ya está en el runtime que
- * el binario lleva dentro, y la interfaz viaja embebida como texto. Es
- * lo que descartó Electron, que son 150 MB por plataforma para envolver
- * exactamente esto.
+ * It adds **not a single dependency**: `Bun.serve` is already in the
+ * runtime the binary ships with, and the interface travels embedded as
+ * text. That is what ruled out Electron, which is 150 MB per platform
+ * to wrap exactly this.
  *
- * Y no reimplementa nada: las rutas llaman al mismo pipeline que el CLI.
- * Una segunda implementación es una que se desincroniza.
+ * And it does not reimplement anything: the routes call the same
+ * pipeline as the CLI. A second implementation is one that drifts out
+ * of sync.
  *
- * Uso:
+ * Usage:
  *   apisrc ui
  *   apisrc ui --port 5000
- *   apisrc ui --no-open      # no abre el navegador, solo dice la URL
+ *   apisrc ui --no-open      # does not open the browser, only prints the URL
  */
 import { stat } from "node:fs/promises";
 
@@ -43,7 +45,7 @@ import { planDryRun } from "../../ui/server/dry-run.service.js";
 import { readHistory } from "../../ui/server/history.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
-/** Abre el navegador, y si no puede, calla: la URL ya está impresa. */
+/** Opens the browser, and if it cannot, stays quiet: the URL is already printed. */
 function abrirNavegador(url: string): void {
   const plataforma = process.platform;
   const cmd =
@@ -55,36 +57,36 @@ function abrirNavegador(url: string): void {
   try {
     Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" });
   } catch {
-    // Sin navegador, o sin entorno gráfico. La URL está impresa arriba.
+    // No browser, or no graphical environment. The URL is already printed above.
   }
 }
 
 /**
- * Los colaboradores de la interfaz, atados al pipeline de verdad.
+ * The interface's collaborators, wired to the real pipeline.
  *
- * `withScopedPaths` porque el servidor es de vida larga y el
- * descubrimiento de rutas cachea por proceso: sin esto, inspeccionar el
- * proyecto A y luego el B devolvería lo de A.
+ * `withScopedPaths` because the server is long-lived and route
+ * discovery caches per process: without this, inspecting project A and
+ * then project B would return A's results.
  */
 function dependencias(catalogo: II18nCatalog): IUiDeps {
   return {
-    // Se pasa ya cargado: leer la carpeta de idiomas en cada petición
-    // sería releer quince ficheros por pulsación, y la carpeta solo
-    // cambia entre arranques.
+    // It is passed in already loaded: reading the languages folder on
+    // every request would mean rereading fifteen files per click, and
+    // the folder only changes between startups.
     locales: () => catalogo,
-    // Los ajustes viven en un fichero de la carpeta de configuración: no
-    // se pasan ya leídos porque cambian **mientras** la interfaz está
-    // abierta, y una copia en memoria se quedaría vieja en cuanto otra
-    // pestaña guardara algo.
+    // Settings live in a file inside the configuration folder: they are
+    // not passed in pre-read because they change **while** the
+    // interface is open, and an in-memory copy would go stale as soon
+    // as another tab saved something.
     browse: (path) => browseDirectory(path),
-    // El ensayo llama al pipeline de verdad —que construye en memoria—
-    // y planifica desde su resultado. Predecir los nombres a mano sería
-    // una segunda implementación que acabaría diciendo una cosa
-    // mientras `generate` hace otra.
+    // The dry run calls the real pipeline —which builds in memory— and
+    // plans from its output. Predicting the names by hand would be a
+    // second implementation that would end up saying one thing while
+    // `generate` does another.
     dryRun: async ({ projectRoot, outputDir, formats, framework, frameworkSearchRoot }) => {
-      // `generateWithAllFrameworks` recibe la raíz por argumento y no
-      // lee el singleton: sin contexto global que proteger, el
-      // `withScopedPaths` de aquí solo añadía serialización.
+      // `generateWithAllFrameworks` receives the root as an argument and
+      // does not read the singleton: with no global context to protect,
+      // the `withScopedPaths` here only added serialization.
       const result = await generateWithAllFrameworks(projectRoot, {
         ...(framework ? { forceFramework: framework } : {}),
         ...(frameworkSearchRoot ? { frameworkSearchRoot } : {}),
@@ -99,26 +101,28 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     readSettings: () => readSettings(),
     patchSettings: (cambios) => patchSettings(cambios),
     summarize: (projectRoot) => summarizeWithAllFrameworks(projectRoot),
-    // Llama al **mismo** comando que usa la terminal, con sus flags. No
-    // hay una segunda ruta de generación que pueda desincronizarse: si
-    // `generate` cambia, la interfaz cambia con él.
+    // It calls the **same** command used by the terminal, with its flags.
+    // There is no second generation path that can drift out of sync: if
+    // `generate` changes, the interface changes with it.
     generate: async ({ projectRoot, outputDir, formats, framework, frameworkSearchRoot }) => {
       const argv = ["--project-root", projectRoot];
       if (outputDir) argv.push("--output-dir", outputDir);
       if (formats && formats.length > 0) argv.push("--format", formats.join(","));
-      // Forzar el framework se apoya en el flag que ya existe: se salta
-      // la autodetección. La ruta ya fue validada contra el catálogo en
-      // las rutas de la interfaz.
+      // Forcing the framework rides on the flag that already exists: it
+      // skips autodetection. The path has already been validated against
+      // the catalog in the interface routes.
       if (framework) argv.push("--framework", framework);
-      // `--framework-search-root` se cuelga del CLI igual: el flag ya
-      // está y `runGenerate` lo lee. La validación del subdir vive en
-      // el pipeline, no en la UI; aquí se pasa tal cual.
+      // `--framework-search-root` is hung off the CLI the same way: the
+      // flag already exists and `runGenerate` reads it. Subdir
+      // validation lives in the pipeline, not in the UI; it is passed
+      // here as-is.
       if (frameworkSearchRoot) argv.push("--framework-search-root", frameworkSearchRoot);
 
-      // El contexto va explícito (r00008 S2): `runGenerate` lo inyecta
-      // en el pipeline y ninguna ruta lee `process.argv` del proceso.
-      // Antes esto exigía `withScopedPaths`, que pisa y restaura estado
-      // global — y dos peticiones concurrentes se lo destrozaban.
+      // The context is explicit (r00008 S2): `runGenerate` injects it
+      // into the pipeline and no route reads the process `process.argv`.
+      // Previously this required `withScopedPaths`, which stomps on
+      // global state and restores it — and two concurrent requests
+      // would trample each other.
       const context = resolveProjectContext({
         projectRoot,
         ...(outputDir ? { outputDir } : {}),
@@ -140,12 +144,12 @@ function dependencias(catalogo: II18nCatalog): IUiDeps {
     formats: () => EXPORT_FORMATS,
     frameworks: () => FRAMEWORK_IDS,
     /**
-     * Lee el historial compartido. No se inyecta `home` ni `env` porque
-     * el servidor es de la persona que lo arranca: su carpeta es la que
-     * tiene sentido. En un test el doble sustituye este método y la
-     * ruta real queda sin ejercitar — es el contrato que
-     * `tests/cli/ui-routes.spec.ts` ya prueba para el resto de
-     * colaboradores.
+     * Reads the shared history. Neither `home` nor `env` is injected
+     * because the server belongs to the person running it: their
+     * folder is the one that makes sense. In a test the double
+     * substitutes this method and the real path goes unexercised — that
+     * is the contract `tests/cli/ui-routes.spec.ts` already verifies
+     * for the rest of the collaborators.
      */
     history: ({ limit, projectRoot }) =>
       readHistory({
@@ -170,11 +174,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
-  // Los idiomas se dejan en disco la primera vez y se recargan desde
-  // ahí: es lo que hace que se puedan editar y que añadir uno sea dejar
-  // un fichero. Si la carpeta no se puede escribir —permisos, un
-  // sistema de solo lectura— se sigue con los empaquetados: quedarse sin
-  // interfaz por no poder escribir una copia editable sería absurdo.
+  // Languages are seeded to disk the first time and reloaded from there:
+  // that is what makes them editable and what makes adding one as easy
+  // as dropping in a file. If the folder cannot be written —permissions,
+  // a read-only system— it falls back to the bundled ones: losing the
+  // interface because an editable copy could not be written would be
+  // absurd.
   const carpetaIdiomas = userLocalesDir();
   try {
     await seedLocales(carpetaIdiomas);
@@ -208,9 +213,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   if (!hasFlag(argv, "--no-open")) abrirNavegador(server.url);
 
-  // Sin esto el puerto se queda ocupado y hay que buscar el proceso a
-  // mano, que en una herramienta con interfaz gráfica es lo último que
-  // alguien espera tener que hacer.
+  // Without this the port stays occupied and the process has to be
+  // hunted down by hand, which in a GUI tool is the last thing anyone
+  // expects to have to do.
   await new Promise<void>((resolve) => {
     const cerrar = (): void => {
       console.log("\nShutting the interface down.");

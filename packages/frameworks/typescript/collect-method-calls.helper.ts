@@ -1,12 +1,11 @@
 /**
- * `collectMethodCalls` — un *CallExpression* del AST TS visto desde el
- * adaptador multi-estilo de frameworks.
+ * `collectMethodCalls` — a `CallExpression` from the TS AST viewed
+ * from the multi-style frameworks adapter.
  *
- * (a00016 S2) Reemplaza la extracción simple de `Identifier.method`
- * que hacía el frontend TS (`packages/core/language-frontends/typescript/
- * typescript.parser.ts` → `collectMethodCalls`). La diferencia es la
- * cantidad de formas del *callee* que reconoce:
- *
+ * (a00016 S2) Replaces the simple `Identifier.method` extraction the
+ * TS frontend used to do (`packages/core/language-frontends/typescript/
+ * typescript.parser.ts` → `collectMethodCalls`). The difference is the
+ * number of *callee* shapes it recognises:
  *   - `app.get(...)`             → receiverKind="identifier".
  *   - `this.router.get(...)`     → receiverKind="this".
  *   - `api.router.get(...)`      → receiverKind="member".
@@ -14,32 +13,33 @@
  *   - `server["get"](...)`       → receiverKind="computed".
  *   - `router?.get(...)`         → receiverKind="optional".
  *
- * El frontend TS sólo reconoce `Identifier.method` (la primera), así
- * que los 5 estilos restantes eran invisibles para los 6 scanners
- * TS-flavored. Éste es el módulo que los hace visibles, exponiendo
- * un `IRouteCallExpression[]` que los scanners consumen.
+ * The TS frontend only recognises `Identifier.method` (the first one),
+ * so the remaining 5 styles were invisible to the 6 TS-flavoured
+ * scanners. This is the module that makes them visible, exposing an
+ * `IRouteCallExpression[]` that scanners consume.
  *
- * Por qué NO se mete en el `TSFile` del frontend:
- *   - Mismo argumento que `tagged-template.ts` (a00015 S1): el frontend
- *     es agnóstico del framework. Un collector multi-estilo que sabe
- *     qué cuenta como "callee de ruta" es lógica del adaptador de
- *     frameworks, no del frontend de lenguaje.
- *   - El frontend sigue produciendo su `methodCalls: TSMethodCall[]`
- *     intacto: los scanners que NO migraron (ninguno todavía) siguen
- *     funcionando exactamente igual que antes.
+ * Why it is NOT added to the frontend's `TSFile`:
+ *   - Same argument as `tagged-template.ts` (a00015 S1): the frontend
+ *     is framework-agnostic. A multi-style collector that knows what
+ *     counts as a "route callee" is logic of the frameworks adapter,
+ *     not the language frontend.
+ *   - The frontend keeps producing its `methodCalls: TSMethodCall[]`
+ *     untouched: scanners that did NOT migrate (none yet) keep working
+ *     exactly as before.
  *
- * Reutiliza `@babel/parser` y `@babel/traverse` ya en el lockfile
- * (`@babel/parser@7.29.8` por el frontend TS; `@babel/traverse` por la
- * misma dependencia transitiva). El pattern es el mismo que
- * `tagged-template.ts`: cast permisivo al `BabelNode`, walker DFS en
- * pila, `errorRecovery: true` para que un fichero raro no aborte el
- * scan.
+ * It reuses `@babel/parser` and `@babel/traverse` already in the
+ * lockfile (`@babel/parser@7.29.8` from the TS frontend;
+ * `@babel/traverse` from the same transitive dependency). The pattern
+ * is the same as `tagged-template.ts`: permissive cast to `BabelNode`,
+ * stack-based DFS walker, `errorRecovery: true` so a weird file does
+ * not abort the scan.
  *
- * Lo que el módulo NO hace (a00016 non-goals):
- *   - No resuelve tipos.
- *   - No sigue imports (lo hace S3 — `symbol-resolver.ts`).
- *   - No propaga constantes (lo hace S4 — `constant-propagation.ts`).
- *   - No reemplaza al `collectMethodCalls` del frontend; convive con él.
+ * What the module does NOT do (a00016 non-goals):
+ *   - Does not resolve types.
+ *   - Does not follow imports (S3 — `symbol-resolver.ts` does).
+ *   - Does not propagate constants (S4 — `constant-propagation.ts` does).
+ *   - Does not replace the frontend's `collectMethodCalls`; it
+ *     coexists with it.
  */
 
 import { readFile } from "node:fs/promises";
@@ -56,10 +56,10 @@ import type { TSLiteral } from "../../contracts/interfaces/core/language/typescr
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 
 // ---------------------------------------------------------------------------
-// Babel node helpers — mismo patrón que `tagged-template.ts` y que el
-// frontend TS. La idea es la misma: no importar `@babel/types`, tratar
-// el AST como `{ type: string, [k: string]: unknown }` y leer lo que
-// necesitamos con `asBabelNode`.
+// Babel node helpers — same pattern as `tagged-template.ts` and the TS
+// frontend. The idea is the same: don't import `@babel/types`, treat
+// the AST as `{ type: string, [k: string]: unknown }` and read what
+// we need with `asBabelNode`.
 // ---------------------------------------------------------------------------
 
 interface BabelNode {
@@ -85,13 +85,13 @@ function isJsxFile(filename: string): boolean {
 // Source helpers
 // ---------------------------------------------------------------------------
 
-/** Texto del `Identifier.name` (vacío si no aplica). */
+/** Text of `Identifier.name` (empty if not applicable). */
 function identName(node: BabelNode): string {
   const raw = node.name;
   return typeof raw === "string" ? raw : "";
 }
 
-/** Texto del `StringLiteral.value` (vacío si no aplica). */
+/** Text of `StringLiteral.value` (empty if not applicable). */
 function stringLiteralValue(node: BabelNode): string {
   const raw = node.value;
   return typeof raw === "string" ? raw : "";
@@ -102,23 +102,23 @@ function stringLiteralValue(node: BabelNode): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Forma canónica del callee, una vez descompuesto.
+ * Canonical callee shape, once decomposed.
  *
- * `prefix` es la cadena que va ANTES del método (`"app"`, `"this.router"`,
- * `"getRouter()"`, etc.). El scanner que quiera reproducir el código
- * original usa `prefix + "." + method` — salvo cuando `method` está
- * vacío (caso `computed` con string literal), donde la forma es
- * `prefix + '["' + resolvedMethod + '"]'`.
+ * `prefix` is the string that goes BEFORE the method (`"app"`,
+ * `"this.router"`, `"getRouter()"`, etc.). The scanner that wants to
+ * reproduce the original code uses `prefix + "." + method` — except
+ * when `method` is empty (the `computed` case with a string literal),
+ * where the shape is `prefix + '["' + resolvedMethod + '"]'`.
  *
- * `memberIsComputed` indica que la propiedad era computada (string
- * literal o identifier). El scanner que necesite propagar la
- * constante lo mira; los demás pueden ignorarlo porque `method`
- * siempre queda vacío en ese caso (lo resuelve S4).
+ * `memberIsComputed` indicates that the property was computed (string
+ * literal or identifier). The scanner that needs to propagate the
+ * constant looks at it; the rest can ignore it because `method` always
+ * stays empty in that case (S4 resolves it).
  *
- * `propertyIdentifier` es el nombre del identifier cuando la
- * propiedad computada era un Identifier (`app[M]`). Lo usa el
- * walker para reconstruir el `callee` textual como `"app[M]"`, que
- * S4 (`propagateConstants`) inspecciona para resolver.
+ * `propertyIdentifier` is the identifier's name when the computed
+ * property was an Identifier (`app[M]`). The walker uses it to
+ * reconstruct the textual `callee` as `"app[M]"`, which S4
+ * (`propagateConstants`) inspects to resolve.
  */
 interface ICalleeShape {
   readonly prefix: string;
@@ -142,20 +142,20 @@ interface ICalleeShape {
  *   - `router?.get(...)`          → `OptionalMemberExpression { object: Identifier("router"), property: Identifier("get") }`.
  *
  * Devuelve `null` cuando el callee no encaja en ninguna de las 6
- * formas (p. ej. `CallExpression` desnudo, `NewExpression`,
- * `OptionalCallExpression`). Los adapters que sólo les interesen los
- * routes pueden ignorar el `null` y seguir.
+* bare `CallExpression`, `NewExpression`,
+ * `OptionalCallExpression`). Adapters that only care about routes
+ * can ignore the `null` and move on.
  */
 function decomposeCallee(callee: BabelNode): ICalleeShape | null {
-  // Caso 1: `MemberExpression` clásica.
+  // Case 1: classic `MemberExpression`.
   if (callee.type === "MemberExpression") {
     const computed = callee.computed === true;
     const property = asBabelNode(callee.property);
     const object = asBabelNode(callee.object);
 
     if (computed && property.type === "StringLiteral") {
-      // `server["get"](...)` — receiverKind="computed" porque la
-      // propiedad es un string literal computado, no un identifier.
+      // `server["get"](...)` — receiverKind="computed" because the
+      // property is a computed string literal, not an identifier.
       return {
         prefix: renderReceiver(object),
         method: stringLiteralValue(property),
@@ -166,10 +166,10 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
     }
 
     if (computed && property.type === "Identifier") {
-      // `app[M](...)` — propiedad computada con un identifier. El
-      // método queda vacío aquí; S4 (`propagateConstants`) lo
-      // resolverá si `M` es una constante literal. Si no, el
-      // scanner descarta la llamada.
+      // `app[M](...)` — computed property with an identifier. The
+      // method stays empty here; S4 (`propagateConstants`) will
+      // resolve it if `M` is a literal constant. If not, the scanner
+      // discards the call.
       const propName = identName(property);
       return {
         prefix: renderReceiver(object),
@@ -188,21 +188,21 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         method,
         memberIsComputed: false,
         propertyIdentifier: "",
-        // Contamos la profundidad del CALLEE entero: `app.get` es 1
-        // nivel (identifier), `api.router.get` son 2 (member),
-        // `this.router.get` son 2 con raíz `this` (this).
+        // We count the depth of the entire CALLEE: `app.get` is 1
+        // level (identifier), `api.router.get` is 2 (member),
+        // `this.router.get` is 2 with a `this` root (this).
         receiverKind: calleeReceiverKind(callee),
       };
     }
 
-    // Formas que no encajan: spread, asignación como propiedad, etc.
+    // Shapes that don't fit: spread, assignment as property, etc.
     return null;
   }
 
   // Caso 2: `OptionalMemberExpression` — `router?.get(...)`.
-  // Babel lo emite como un nodo separado, no como `MemberExpression`
-  // con `optional: true`. Hay que distinguirlo para que
-  // `receiverKind` quede "optional" en vez de "identifier".
+  // Babel emits it as a separate node, not as `MemberExpression`
+  // with `optional: true`. We have to distinguish it so that
+  // `receiverKind` becomes "optional" instead of "identifier".
   if (callee.type === "OptionalMemberExpression") {
     const computed = callee.computed === true;
     const property = asBabelNode(callee.property);
@@ -214,15 +214,15 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
         method: stringLiteralValue(property),
         memberIsComputed: true,
         propertyIdentifier: "",
-        // Opcional gana sobre computed porque el `?.` es lo más
-        // distintivo del callee.
+        // Optional wins over computed because `?.` is the most
+        // distinctive thing about the callee.
         receiverKind: "optional",
       };
     }
 
     if (computed && property.type === "Identifier") {
-      // `app?.[M](...)` — análogo al caso member computed. S4
-      // resuelve la constante.
+      // `app?.[M](...)` — analogous to the computed member case. S4
+      // resolves the constant.
       const propName = identName(property);
       return {
         prefix: renderReceiver(object),
@@ -247,22 +247,22 @@ function decomposeCallee(callee: BabelNode): ICalleeShape | null {
     return null;
   }
 
-  // Cualquier otra forma (`CallExpression`, `Identifier` desnudo,
-  // `NewExpression`, ...) no entra en IR — devolvemos null y el
-  // collector la ignora.
+  // Any other shape (`CallExpression`, bare `Identifier`,
+  // `NewExpression`, ...) does not enter the IR — we return null and
+  // the collector ignores it.
   return null;
 }
 
 /**
- * Cadena legible del receptor. La usan los scanners para reproducir
- * el código original (`callee = prefix + "." + method`).
+ * Readable string for the receiver. Scanners use it to reproduce the
+ * original code (`callee = prefix + "." + method`).
  *
  * - `Identifier("app")`         → `"app"`.
  * - `ThisExpression`            → `"this"`.
- * - `MemberExpression` anidado  → `"api.router"` (recursivo).
- * - `CallExpression`            → `"getRouter()"` (la llamada entera).
- * - Otro                       → `""` (desconocido, los scanners
- *   pueden usar `receiverKind` para sacar más info si la necesitan).
+ * - Nested `MemberExpression`   → `"api.router"` (recursive).
+ * - `CallExpression`            → `"getRouter()"` (the whole call).
+ * - Other                       → `""` (unknown; scanners can use
+ *   `receiverKind` to get more info if they need it).
  */
 function renderReceiver(node: BabelNode): string {
   if (node.type === "Identifier") return identName(node);
@@ -288,22 +288,23 @@ function renderReceiver(node: BabelNode): string {
 }
 
 /**
- * Clasifica el **objeto inmediato** del callee en uno de los
- * `ReceiverKind` para reportar al caller.
+ * Classifies the **immediate object** of the callee into one of the
+ * `ReceiverKind`s to report to the caller.
  *
- * Esta función NO se usa directamente — `rootReceiverKind` (abajo) la
- * prefiere, porque lo que distingue `this.router.get` de `api.router.get`
- * es el FONDO de la cadena, no el nodo inmediato. Lo dejamos por si
- * algún adapter quiere clasificar el `object` localmente.
+ * This function is NOT used directly — `rootReceiverKind` (below)
+ * prefers it, because what distinguishes `this.router.get` from
+ * `api.router.get` is the BOTTOM of the chain, not the immediate node.
+ * We leave it for adapters that want to classify the `object`
+ * locally.
  *
  * - `Identifier` → "identifier".
  * - `ThisExpression` → "this".
- * - `MemberExpression` (no computed) → "member".
- * - `MemberExpression` con `computed: true` → "computed" si la
- *   propiedad es un string literal.
+ * - `MemberExpression` (not computed) → "member".
+ * - `MemberExpression` with `computed: true` → "computed" if the
+ *   property is a string literal.
  * - `OptionalMemberExpression` → "optional".
  * - `CallExpression` / `OptionalCallExpression` → "factory".
- * - Otro → "member" (fallback conservador).
+ * - Other → "member" (conservative fallback).
  */
 function receiverKindOf(node: BabelNode): ReceiverKind {
   if (node.type === "Identifier") return "identifier";
@@ -321,41 +322,42 @@ function receiverKindOf(node: BabelNode): ReceiverKind {
 }
 
 /**
- * Clasifica el CALLEE (no sólo el `object` inmediato) en uno de los
- * `ReceiverKind` para `MemberExpression`/`OptionalMemberExpression`.
+ * Classifies the CALLEE (not just the immediate `object`) into one
+ * of the `ReceiverKind`s for `MemberExpression`/`OptionalMemberExpression`.
  *
- * Cuenta la profundidad de la cadena y mira el fondo:
+ * Counts the chain's depth and looks at the bottom:
  *
- *   - `app.get`              → 1 nivel MemberExpression, fondo
+ *   - `app.get`              → 1-level MemberExpression, bottom
  *                              Identifier → "identifier".
- *   - `api.router.get`       → 2 niveles MemberExpression, fondo
+ *   - `api.router.get`       → 2-level MemberExpression, bottom
  *                              Identifier → "member".
- *   - `this.router.get`      → 2 niveles, fondo ThisExpression →
+ *   - `this.router.get`      → 2 levels, bottom ThisExpression →
  *                              "this".
- *   - `getRouter().get`      → 1 nivel MemberExpression cuyo object
- *                              es una CallExpression → "factory".
- *   - `server["get"]`        → 1 nivel MemberExpression con computed
+ *   - `getRouter().get`      → 1-level MemberExpression whose object
+ *                              is a CallExpression → "factory".
+ *   - `server["get"]`        → 1-level MemberExpression with computed
  *                              string literal → "computed".
  *
- * Por qué contar el CALLEE y no sólo el `object`: para `api.router.get`,
- * el `object` inmediato es `api.router` (otro MemberExpression). Si
- * clasificamos el `object` con `receiverKindOf` sale "member", pero el
- * resultado correcto depende de TODO el callee. Caminar desde el
- * callee y contar MemberExpressions anidados da la respuesta correcta.
+ * Why we count the CALLEE and not just the `object`: for
+ * `api.router.get`, the immediate `object` is `api.router` (another
+ * MemberExpression). If we classify the `object` with
+ * `receiverKindOf` we get "member", but the correct answer depends on
+ * the WHOLE callee. Walking from the callee and counting nested
+ * MemberExpressions gives the right answer.
  */
 function calleeReceiverKind(callee: BabelNode): ReceiverKind {
-  // Casos "fuertes" que se detectan sin contar: el fondo ya es un
-  // CallExpression, computed string literal o ThisExpression.
+  // "Strong" cases detected without counting: the bottom is already a
+  // CallExpression, a computed string literal, or a ThisExpression.
   if (callee.type === "OptionalMemberExpression") return "optional";
   if (callee.type !== "MemberExpression") return receiverKindOf(callee);
 
-  // Si la propiedad es un string literal computado, el callee ES
-  // `server["get"]` y la propiedad manda.
+  // If the property is a computed string literal, the callee IS
+  // `server["get"]` and the property wins.
   const computed = callee.computed === true;
   const property = asBabelNode(callee.property);
   if (computed && property.type === "StringLiteral") return "computed";
 
-  // Caminamos la cadena contando niveles y mirando el fondo.
+  // We walk the chain counting levels and looking at the bottom.
   let depth = 0;
   let cursor: BabelNode = callee;
   while (cursor.type === "MemberExpression") {
@@ -366,15 +368,15 @@ function calleeReceiverKind(callee: BabelNode): ReceiverKind {
     cursor = asBabelNode(cursor.object);
   }
 
-  // Fondo especial: `this` o un call.
+  // Special bottom: `this` or a call.
   if (cursor.type === "ThisExpression") return "this";
   if (cursor.type === "CallExpression" || cursor.type === "OptionalCallExpression") return "factory";
 
-  // Fondo Identifier: 1 nivel → identifier, 2+ → member.
+  // Identifier bottom: 1 level → identifier, 2+ → member.
   if (depth === 1) return "identifier";
   if (depth >= 2) return "member";
 
-  // No pudimos caminar — caer al clasificador local del fondo.
+  // We couldn't walk — fall back to the local classifier of the bottom.
   return receiverKindOf(cursor);
 }
 
@@ -383,19 +385,19 @@ function calleeReceiverKind(callee: BabelNode): ReceiverKind {
 // ---------------------------------------------------------------------------
 
 /**
- * Convierte un argumento del AST en un `TSLiteral` reducido.
+ * Converts an AST argument into a reduced `TSLiteral`.
  *
- * NO reusa `literalFromNode` del frontend TS — ese vive en
- * `core/language-frontends/typescript/`, y `frameworks/` no debe
- * importar de `core/` por el invariante a00010. Esta versión cubre
- * lo mínimo que necesitan los scanners TS (string/number/boolean,
- * identifier, null/undefined, arrow) y devuelve `kind: "unknown"`
- * para el resto (object literal, array, spread, llamada).
+ * It does NOT reuse `literalFromNode` from the TS frontend — that
+ * lives in `core/language-frontends/typescript/`, and `frameworks/`
+ * must not import from `core/` per the a00010 invariant. This version
+ * covers the minimum TS scanners need (string/number/boolean,
+ * identifier, null/undefined, arrow) and returns `kind: "unknown"`
+ * for the rest (object literal, array, spread, call).
  *
- * Si un scanner necesita algo más rico, este es el sitio donde
- * extender — pero `unknown` es honesto: si la forma no encaja, el
- * adapter la descarta y el caller sabe que tiene que mirar otra
- * ruta para sacar la información.
+ * If a scanner needs something richer, this is the place to extend —
+ * but `unknown` is honest: if the shape doesn't fit, the adapter
+ * discards it and the caller knows it has to look elsewhere to get
+ * the information.
  */
 function literalFromArg(node: BabelNode): TSLiteral {
   if (node.type === "StringLiteral") {
@@ -419,16 +421,16 @@ function literalFromArg(node: BabelNode): TSLiteral {
     const name = identName(node);
     return { kind: "identifier", identifierName: name };
   }
-  // Arrow functions: capturamos el bodyRange como hace el frontend.
+  // Arrow functions: capture the bodyRange as the frontend does.
   if (node.type === "ArrowFunctionExpression") {
     const body = asBabelNode(node.body);
     const start = typeof body.start === "number" ? body.start : 0;
     const end = typeof body.end === "number" ? body.end : start;
     return { kind: "arrow", bodyRange: { start, end } };
   }
-  // El resto (ObjectExpression, ArrayExpression, SpreadElement,
-  // CallExpression anidada, ...) queda como "unknown" — los scanners
-  // que necesiten esto tendrán su propio adapter.
+  // The rest (ObjectExpression, ArrayExpression, SpreadElement, nested
+  // CallExpression, ...) becomes "unknown" — scanners that need this
+  // will have their own adapter.
   return { kind: "unknown" };
 }
 
@@ -445,23 +447,23 @@ function extractArgs(node: BabelNode): ReadonlyArray<TSLiteral> {
 // ---------------------------------------------------------------------------
 
 /**
- * DFS por el AST que visita cada nodo exactamente una vez.
+ * DFS over the AST that visits each node exactly once.
  *
- * Mismo patrón que `walk` en el frontend: visita TODO sin podar, y los
- * collectors deciden qué les interesa. Aquí sólo nos interesan los
- * `CallExpression` cuyo callee encaje en una de las 6 formas —
- * el resto se descarta.
+ * Same pattern as `walk` in the frontend: visits EVERYTHING without
+ * pruning, and the collectors decide what they care about. Here we
+ * only care about `CallExpression`s whose callee fits one of the 6
+ * shapes — the rest is discarded.
  */
 function walkBody(
   body: ReadonlyArray<BabelNode>,
   sourceFile: string,
   out: IRouteCallExpression[],
 ): void {
-  // Inicializamos el stack en orden inverso para que el primer
-  // nodo de `body` se procese primero al hacer `pop()`. El resultado
-  // es un recorrido top-down por el archivo: las llamadas se emiten
-  // en el orden en que aparecen en el código, que es lo que los
-  // scanners esperan para correlacionar rutas con líneas.
+  // We initialise the stack in reverse order so the first node of
+  // `body` is processed first when we `pop()`. The result is a
+  // top-down traversal of the file: calls are emitted in the order
+  // they appear in the code, which is what scanners expect to
+  // correlate routes with lines.
   const stack: BabelNode[] = [...body].reverse();
   while (stack.length > 0) {
     const node = stack.pop();
@@ -554,15 +556,16 @@ export function collectMethodCallsFromSource(
 }
 
 /**
- * Recorre los TS/JS fuente de `projectRoot` y devuelve todas las
- * `IRouteCallExpression` que encuentre.
+ * Walks the TS/JS source under `projectRoot` and returns all the
+ * `IRouteCallExpression`s it finds.
  *
- * Usa `collectFiles(projectRoot, isSourceJsTsFile)` — el mismo helper
- * que `tagged-template.ts`, `express.scanner.ts` y `graphql.scanner.ts`
- * — así que respeta los mismos excludes (`node_modules`, `dist`, etc.).
+ * Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+ * as `tagged-template.ts`, `express.scanner.ts`, and
+ * `graphql.scanner.ts` — so it honours the same excludes
+ * (`node_modules`, `dist`, etc.).
  *
- * `diagnostics` (opcional) recibe los archivos que el parser no pudo
- * digerir. Si no se pasa, los fallos se tragan silenciosamente.
+ * `diagnostics` (optional) receives the files the parser could not
+ * digest. If not passed, failures are swallowed silently.
  */
 export async function collectMethodCalls(
   projectRoot: string,

@@ -1,27 +1,27 @@
 /**
- * Distinguir el código de lo que es texto dentro del código.
+ * Telling code apart from text inside code.
  *
- * Es la pregunta que los scanners hacían sin saberlo: *¿esta llamada
- * está de verdad ahí, o está dentro de una cadena?* Un fichero con
+ * This is the question the scanners were asking without knowing it:
+ * *is this call really there, or is it inside a string?* A file with
  *
  *     const ayuda = 'usa router.get("/x") para registrar';
  *
- * producía un endpoint `GET /x` que no existe en ninguna parte.
+ * produced a `GET /x` endpoint that did not exist anywhere.
  *
- * Y la mitad que es fácil olvidar: el path de una ruta **de verdad**
- * también es una cadena. Buscar en la máscara y leer de ella daría rutas
- * vacías, y el fallo sería silencioso — las rutas se descartarían una a
- * una sin que nada avise.
+ * And the half that is easy to forget: the path of a **real** route is
+ * also a string. Searching in the mask and reading from it would yield
+ * empty routes, and the failure would be silent — routes would be
+ * dropped one by one without anything noticing.
  */
 import { describe, expect, test } from "vitest";
 
 import { findOutsideStrings, maskStringLiterals } from "../../packages/core/helpers/source-scan.helper";
 
 describe("maskStringLiterals", () => {
-  // La longitud se conserva para que los desplazamientos de la máscara
-  // valgan sobre el original. Sin eso haría falta un mapa de posiciones,
-  // que es la clase de cosa que se desincroniza.
-  test("conserva la longitud exacta", () => {
+  // The length is preserved so the mask offsets still apply to the
+  // original. Without that you would need a position map, which is the
+  // kind of thing that drifts out of sync.
+  test("preserves the exact length", () => {
     for (const src of [
       `const a = "hola";`,
       `const a = 'con \\'escape\\' dentro';`,
@@ -32,33 +32,33 @@ describe("maskStringLiterals", () => {
     }
   });
 
-  test("vacía el contenido pero deja las comillas", () => {
+  test("empties the content but keeps the quotes", () => {
     expect(maskStringLiterals(`x = "abc"`)).toBe(`x = "   "`);
     expect(maskStringLiterals(`x = 'abc'`)).toBe(`x = '   '`);
   });
 
-  test("el código de fuera no se toca", () => {
+  test("the code outside is not touched", () => {
     expect(maskStringLiterals(`router.get("/x")`)).toBe(`router.get("  ")`);
   });
 
-  // Sin tratar el escape, un `"\\""` cierra donde no debe y a partir de
-  // ahí se enmascara código de verdad.
-  test("una comilla escapada no cierra la cadena", () => {
+  // Without handling the escape, a `"\\""` closes where it should not
+  // and from there onward real code gets masked.
+  test("an escaped quote does not close the string", () => {
     const masked = maskStringLiterals(`x = "a\\"b"; router.get("/y")`);
     expect(masked).toContain("router.get(");
   });
 
   /**
-   * Lo que va en `${…}` de una plantilla **sí** es código: es donde viven
-   * las interpolaciones que otros lints tienen que ver.
+   * What goes into `${…}` of a template **is** code: that is where
+   * interpolations live that other lints have to see.
    */
-  test("la interpolación de una plantilla se conserva", () => {
+  test("the interpolation of a template is preserved", () => {
     expect(maskStringLiterals("`a ${nombre} b`")).toContain("${nombre}");
   });
 
-  // Si una comilla queda abierta es que no era una cadena; enmascarar
-  // hasta el final se cargaría el resto del fichero.
-  test("una comilla suelta no se come el resto del fichero", () => {
+  // If a quote is left open it was not a string; masking to the end
+  // would eat the rest of the file.
+  test("a stray quote does not eat the rest of the file", () => {
     const src = `const a = "sin cerrar\nrouter.get("/y")`;
     expect(maskStringLiterals(src)).toContain("router.get(");
   });
@@ -67,26 +67,26 @@ describe("maskStringLiterals", () => {
 describe("findOutsideStrings", () => {
   const ROUTE = /(\w+)\s*\.\s*(get|post)\s*\(\s*(['"])([^'"\n]+)\3/gi;
 
-  test("encuentra una llamada normal", () => {
+  test("finds a normal call", () => {
     const found = findOutsideStrings(`router.get("/users", h);`, ROUTE);
     expect(found).toHaveLength(1);
     expect(found[0]?.match[4]).toBe("/users");
   });
 
-  // La segunda mitad del truco: el path de una ruta de verdad ES una
-  // cadena, así que hay que leerlo del original y no de la máscara.
-  test("el path se lee del original, no de la máscara en blanco", () => {
+  // The second half of the trick: the path of a real route IS a string,
+  // so it has to be read from the original and not from the blank mask.
+  test("the path is read from the original, not from the blank mask", () => {
     const found = findOutsideStrings(`router.post("/orders", h);`, ROUTE);
     expect(found[0]?.match[4]).toBe("/orders");
     expect(found[0]?.match[4]).not.toMatch(/^\s+$/);
   });
 
-  test("descarta la llamada que vive dentro de una cadena", () => {
+  test("discards the call that lives inside a string", () => {
     const src = `const ayuda = 'usa router.get("/falsa") para registrar';`;
     expect(findOutsideStrings(src, ROUTE)).toEqual([]);
   });
 
-  test("con las dos a la vez, solo cuenta la de verdad", () => {
+  test("with both at once, only the real one is counted", () => {
     const src = [
       `const ayuda = 'usa router.get("/falsa")';`,
       `router.get("/real", h);`,
@@ -97,17 +97,17 @@ describe("findOutsideStrings", () => {
   });
 
   /**
-   * `router.post(\n  "/x",\n  handler,\n)` es la forma normal en cuanto
-   * hay middlewares, y un bucle por líneas no ve el path porque está en
-   * otra línea que la llamada.
+   * `router.post(\n  "/x",\n  handler,\n)` is the normal shape as soon
+   * as there are middlewares, and a per-line loop misses the path
+   * because it sits on a different line from the call.
    */
-  test("cruza saltos de línea", () => {
+  test("crosses line breaks", () => {
     const src = `router.post(\n  "/multilinea",\n  validate(schema),\n  handler,\n);`;
     const found = findOutsideStrings(src, ROUTE);
     expect(found[0]?.match[4]).toBe("/multilinea");
   });
 
-  test("los comentarios se descartan antes de buscar", () => {
+  test("comments are discarded before searching", () => {
     const src = [
       `// router.get("/comentada");`,
       `/* router.post("/bloque"); */`,
@@ -117,20 +117,20 @@ describe("findOutsideStrings", () => {
     expect(found.map((f) => f.match[4])).toEqual(["/real"]);
   });
 
-  test("el índice apunta al sitio de verdad", () => {
+  test("the index points to the real location", () => {
     const src = `\n\nrouter.get("/x");`;
     expect(findOutsideStrings(src, ROUTE)[0]?.index).toBe(2);
   });
 
-  // El regex que se pasa no se toca: mover su `lastIndex` rompería el
-  // bucle de quien llama (ver `lint:regex-state`).
-  test("no altera el regex que recibe", () => {
+  // The regex that is passed in is not touched: moving its `lastIndex`
+  // would break the caller's loop (see `lint:regex-state`).
+  test("does not mutate the regex it receives", () => {
     ROUTE.lastIndex = 0;
     findOutsideStrings(`router.get("/a"); router.get("/b");`, ROUTE);
     expect(ROUTE.lastIndex).toBe(0);
   });
 
-  test("sin coincidencias devuelve vacío", () => {
+  test("with no matches returns empty", () => {
     expect(findOutsideStrings(`const x = 1;`, ROUTE)).toEqual([]);
   });
 });

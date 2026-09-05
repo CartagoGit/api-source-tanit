@@ -1,36 +1,36 @@
 /**
- * Contexto de runtime que `runner.helper` necesita para invocar al CLI.
+ * Runtime context that `runner.helper` needs to invoke the CLI.
  *
- * El plugin corre dentro de un host delendai de vida larga, y ese
- * host ya tiene un `ctx.workspace` y un set de `options` validadas con
- * Zod. Lo que el runner necesita sale de ahí:
+ * The plugin runs inside a long-lived delendai host, and that host
+ * already has a `ctx.workspace` and a set of Zod-validated `options`.
+ * What the runner needs comes from there:
  *
- *   - `cwd`: el workspace del host o el `projectRoot` que pidió el
- *     agente. NO leer de `process.cwd()`: depende de desde dónde se
- *     arrancó el host y cambia entre dev y producción.
- *   - `env`: el subset del entorno que el CLI debe heredar. El host lo
- *     filtra (algunos clientes AI recortan `PATH` y similares); el
- *     plugin debe pasarlo explícitamente para que los tests no
- *     dependan del shell de quien corre la suite.
- *   - `bunBin`: ruta absoluta al binario `bun`. El host lo resuelve
- *     una vez al arrancar y lo inyecta; si el agente lo necesita
- *     también lo puede fijar vía `DELENDAI_BUN_BIN` (lo lee el
- *     runner si `bunBin` no se le pasa).
+ *   - `cwd`: the host's workspace, or the `projectRoot` requested by
+ *     the agent. Do NOT read from `process.cwd()`: it depends on
+ *     where the host was started and changes between dev and prod.
+ *   - `env`: the subset of the environment the CLI should inherit.
+ *     The host filters it (some AI clients strip `PATH` and similar);
+ *     the plugin must pass it explicitly so tests don't depend on
+ *     whoever is running the suite's shell.
+ *   - `bunBin`: absolute path to the `bun` binary. The host resolves
+ *     it once at boot and injects it; if the agent needs to override
+ *     it, they can also set it via `DELENDAI_BUN_BIN` (the runner
+ *     reads it when `bunBin` is not passed).
  *
- * Cada campo es opcional: si falta, el runner cae a su default
- * documentado (el snapshot del boot en `process-snapshot.helper`,
- * `Bun.which("bun")` y `"bun"` como último fallback).
+ * Every field is optional: if missing, the runner falls back to its
+ * documented default (the boot snapshot in `process-snapshot.helper`,
+ * `Bun.which("bun")`, and `"bun"` as the last resort).
  *
- * Diseño:
- *   - Interfaz narrow, no clase. Cumple el §6 del universal: quien
- *     consume depende de la abstracción, no de quien la cumple.
- *   - Readonly para que nadie lo mute mientras un spawn está en vuelo.
+ * Design:
+ *   - Narrow interface, not a class. Satisfies the universal §6: the
+ *     consumer depends on the abstraction, not the implementer.
+ *   - Readonly so nothing mutates it while a spawn is in flight.
  */
 export interface IRunnerContext {
-  /** Working dir de spawn. Default: el snapshot del cwd al boot. */
+  /** Spawn working dir. Default: the cwd snapshot at boot. */
   readonly cwd?: string;
-  /** Entorno a heredar para el subproceso. Default: el snapshot del env al boot. */
+  /** Environment to inherit for the subprocess. Default: the env snapshot at boot. */
   readonly env?: Readonly<Record<string, string | undefined>>;
-  /** Path absoluta al binario `bun`. Default: `DELENDAI_BUN_BIN` → `Bun.which("bun")` → `command -v bun` → `"bun"`. */
+  /** Absolute path to the `bun` binary. Default: `DELENDAI_BUN_BIN` → `Bun.which("bun")` → `command -v bun` → `"bun"`. */
   readonly bunBin?: string;
 }

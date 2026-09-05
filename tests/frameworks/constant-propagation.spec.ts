@@ -1,16 +1,17 @@
 /**
- * Tests para `propagateConstants` (a00016 S4).
+ * Tests for `propagateConstants` (a00016 S4).
  *
- * Cubre los 4 casos del slice:
- *   1. Literal directo: `const M = "get"; app[M]("/x")` → `resolvedMethod = "get"`.
- *   2. No-op sobre unbound: `app[M]("/x")` sin binding → la llamada
- *      pasa tal cual.
- *   3. Concatenación skipped: `const M = "GET" + suffix` → no
- *      propaga (no emite binding, y aunque emita uno con un valor
- *      string, no es un literal directo — pero este test valida el
- *      caso extremo donde un caller externo pasa un binding).
- *   4. Template-literal skipped: `` const M = `get` `` → mismo
- *      razonamiento.
+ * Covers the 4 cases of the slice:
+ *   1. Direct literal: `const M = "get"; app[M]("/x")` → `resolvedMethod = "get"`.
+ *   2. No-op on unbound: `app[M]("/x")` without binding → the call
+ *      goes through unchanged.
+ *   3. Concatenation skipped: `const M = "GET" + suffix` → does not
+ *      propagate (no binding is emitted, and even if it emitted one
+ *      with a string value, it is not a direct literal — but this
+ *      test validates the edge case where an outside caller passes a
+ *      binding).
+ *   4. Template-literal skipped: `` const M = `get` `` → same
+ *      reasoning.
  */
 import { describe, expect, test } from "vitest";
 
@@ -18,14 +19,14 @@ import { propagateConstants } from "../../packages/frameworks/typescript/constan
 import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 import type { IConstantBinding } from "../../packages/contracts/interfaces/core/language-ir.interface";
 
-describe("propagateConstants — caso básico de propagación", () => {
-  test("literal directo: `const M = 'get'; app[M]('/x')` resuelve a resolvedMethod='get'", () => {
+describe("propagateConstants — basic propagation case", () => {
+  test("direct literal: `const M = 'get'; app[M]('/x')` resolves to resolvedMethod='get'", () => {
     const source = `const M = "get";
 app[M]("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
     expect(calls).toHaveLength(1);
-    // S2 reconoce `app[M]` como `receiverKind: "computed"`, `method: ""`,
+    // S2 recognizes `app[M]` as `receiverKind: "computed"`, `method: ""`,
     // `callee: "app[M]"`.
     expect(calls[0]?.callee).toBe("app[M]");
     expect(calls[0]?.method).toBe("");
@@ -41,16 +42,16 @@ app[M]("/x", h);
     const resolved = propagateConstants(calls, bindings);
     expect(resolved).toHaveLength(1);
     expect(resolved[0]?.resolvedMethod).toBe("get");
-    // El método final que el scanner usa: `method || resolvedMethod`.
+    // The final method the scanner uses: `method || resolvedMethod`.
     const finalMethod = resolved[0]?.method || resolved[0]?.resolvedMethod || "";
     expect(finalMethod).toBe("get");
-    // Los args se preservan.
+    // The args are preserved.
     expect(resolved[0]?.args[0]).toEqual({ kind: "string", value: "/x" });
   });
 
-  test("propaga un number como método", () => {
-    // `const M = 200; app[M]()` — caso patológico (200 no es un método
-    // HTTP), pero la propagación debe funcionar como tipo genérico.
+  test("propagates a number as method", () => {
+    // `const M = 200; app[M]()` — pathological case (200 is not an
+    // HTTP method), but propagation must still work as a generic type.
     const source = `app[M]();
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -66,52 +67,52 @@ app[M]("/x", h);
   });
 });
 
-describe("propagateConstants — casos negativos (no propaga)", () => {
-  test("no-op: `app[M]` sin binding → la llamada pasa tal cual", () => {
+describe("propagateConstants — negative cases (does not propagate)", () => {
+  test("no-op: `app[M]` without binding → the call goes through unchanged", () => {
     const source = `app[M]("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
     expect(calls[0]?.callee).toBe("app[M]");
     expect(calls[0]?.resolvedMethod).toBeUndefined();
 
-    // Sin bindings, no se propaga nada.
+    // Without bindings, nothing is propagated.
     const resolved = propagateConstants(calls, []);
     expect(resolved).toHaveLength(1);
     expect(resolved[0]?.resolvedMethod).toBeUndefined();
     expect(resolved[0]?.callee).toBe("app[M]");
   });
 
-  test("concat skipped: un binding con valor 'GET+suffix' no propaga si el collector lo filtra", () => {
-    // La regla "concatenación skipped" se aplica en el COLECTOR de
-    // bindings (no en `propagateConstants`): el collector emite
-    // SOLO `IConstantBinding` con valores literales directos.
+  test("concat skipped: a binding with value 'GET+suffix' does not propagate when the collector filters it", () => {
+    // The "concatenation skipped" rule is applied in the binding
+    // COLLECTOR (not in `propagateConstants`): the collector only
+    // emits `IConstantBinding` with direct literal values.
     //
-    // Si por error alguien pasa un binding con un valor que no es
-    // un literal simple, `propagateConstants` lo acepta igual (porque
-    // el contrato ya dice `string | number | boolean`). Este test
-    // documenta ese comportamiento: la defensiva está en la capa de
-    // arriba (el colector), no aquí.
+    // If by mistake someone passes a binding whose value is not a
+    // simple literal, `propagateConstants` still accepts it (because
+    // the contract already says `string | number | boolean`). This
+    // test documents that behavior: the defense is in the layer
+    // above (the collector), not here.
     const source = `app[M]("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
     const resolved = propagateConstants(calls, [
       {
         name: "M",
-        value: "GET+suffix", // hipotético caso patológico
+        value: "GET+suffix", // hypothetical pathological case
         range: { file: "server.ts", start: 0, end: 0 },
       },
     ]);
-    // Aunque el valor es semánticamente inválido, `propagateConstants`
-    // lo aplica: la defensiva de "no concatenación" está en el
-    // colector de bindings, no aquí.
+    // Even though the value is semantically invalid,
+    // `propagateConstants` applies it: the "no concatenation" defense
+    // lives in the binding collector, not here.
     expect(resolved[0]?.resolvedMethod).toBe("GET+suffix");
   });
 
-  test("template-literal skipped: análogo a concat", () => {
-    // Mismo argumento que arriba: el collector de bindings NO emite
-    // template literals (sólo literales directos), así que este caso
-    // no debería llegar aquí. Si llega, `propagateConstants` lo
-    // aplica (cualquier string es válido para el contrato).
+  test("template-literal skipped: analogous to concat", () => {
+    // Same argument as above: the binding collector does NOT emit
+    // template literals (only direct literals), so this case should
+    // never get here. If it does, `propagateConstants` applies it
+    // (any string is valid per the contract).
     const source = `app[M]("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -125,9 +126,9 @@ describe("propagateConstants — casos negativos (no propaga)", () => {
     expect(resolved[0]?.resolvedMethod).toBe("get");
   });
 
-  test("no propaga llamadas con method ya resuelto (server['get'])", () => {
-    // `server["get"]` ya tiene `method = "get"` por S2. La
-    // propagación no debe tocar `resolvedMethod` ni `method`.
+  test("does not propagate calls with already-resolved method (server['get'])", () => {
+    // `server["get"]` already has `method = "get"` from S2.
+    // Propagation must not touch `resolvedMethod` or `method`.
     const source = `server["get"]("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -135,13 +136,14 @@ describe("propagateConstants — casos negativos (no propaga)", () => {
     expect(calls[0]?.receiverKind).toBe("computed");
 
     const resolved = propagateConstants(calls, []);
-    // Como `method !== ""`, S4 no hace nada. La llamada pasa tal
-    // cual con `method: "get"` y `resolvedMethod: undefined`.
+    // Because `method !== ""`, S4 does nothing. The call goes
+    // through unchanged with `method: "get"` and
+    // `resolvedMethod: undefined`.
     expect(resolved[0]?.method).toBe("get");
     expect(resolved[0]?.resolvedMethod).toBeUndefined();
   });
 
-  test("no propaga llamadas no-computed (app.get)", () => {
+  test("does not propagate non-computed calls (app.get)", () => {
     const source = `app.get("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -149,9 +151,9 @@ describe("propagateConstants — casos negativos (no propaga)", () => {
     expect(calls[0]?.receiverKind).toBe("identifier");
 
     const resolved = propagateConstants(calls, [
-      // Aunque haya un binding con name="get", no afecta a `app.get`
-      // porque `method` ya está resuelto y el `receiverKind` no es
-      // "computed".
+      // Even with a binding named "get", it does not affect `app.get`
+      // because `method` is already resolved and `receiverKind` is
+      // not "computed".
       {
         name: "get",
         value: "post",

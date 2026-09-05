@@ -1,15 +1,15 @@
 /**
- * Helpers puros para ejecutar scripts del proyecto Tanit.
+ * Pure helpers for running scripts of the Tanit project.
  *
- * Single Responsibility: abstraer `Bun.spawn` con timeout, captura
- * de stdout/stderr y parseo seguro de output. Sin estado global, sin
- * dependencias de filesystem fuera del path que se le pasa.
+ * Single Responsibility: abstract `Bun.spawn` with timeout, stdout/
+ * stderr capture and safe output parsing. No global state, no
+ * filesystem dependencies outside the path it is given.
  *
- * El cwd, el env y la ruta a `bun` se reciben por parámetro (`ctx:
- * IRunnerContext`); los defaults documentados caen al global solo si
- * el caller no los aporta — que es lo que pasa en tests sueltos,
- * nunca en el flujo del plugin, donde `ctx.workspace.root` siempre
- * está disponible.
+ * The cwd, env and path to `bun` are received as parameters (`ctx:
+ * IRunnerContext`); the documented defaults fall back to the global
+ * only if the caller does not provide them — which happens in loose
+ * tests, never in the plugin flow, where `ctx.workspace.root` is
+ * always available.
  */
 
 import { spawnSync } from "node:child_process";
@@ -33,11 +33,11 @@ import {
 } from "./runner-context.helper";
 import { BUN_BIN_SNAPSHOT } from "../contracts/constants/runner-snapshot.constant";
 
-// `Bun.spawnSync` evita el `posix_spawn 'bun' ENOENT` que se
-// reproduce cuando el host MCP arranca el plugin bajo Bun y el
-// helper usa `node:child_process.spawnSync` (un nivel de indirección
-// que rompe la herencia del bun executable). El plugin asume runtime
-// Bun (lo exige `engines.bun` en su package.json).
+// `Bun.spawnSync` avoids the `posix_spawn 'bun' ENOENT` that
+// happens when the MCP host starts the plugin under Bun and the
+// helper uses `node:child_process.spawnSync` (one indirection level
+// that breaks the bun executable inheritance). The plugin assumes
+// Bun runtime (its `engines.bun` requires it).
 type BunSpawnSync = (opts: {
   cmd: string[];
   cwd?: string;
@@ -49,78 +49,80 @@ type BunSpawnSync = (opts: {
 }) => {
   exitCode: number;
   /**
-   * En **síncrono** con `stdout: "pipe"`, Bun devuelve los bytes ya
-   * leídos, no un stream: `spawnSync` no puede devolver algo que haya
-   * que consumir después. La declaración decía `ReadableStream` y los
-   * dos usos lo esquivaban con `as unknown as Uint8Array`, que es el
-   * casting tapando una declaración equivocada en vez de arreglarla.
+   * In **sync** mode with `stdout: "pipe"`, Bun returns the bytes
+   * already read, not a stream: `spawnSync` cannot return something
+   * that still needs to be consumed. The declaration used to say
+   * `ReadableStream`, and both uses dodged it with
+   * `as unknown as Uint8Array` — the casting was hiding a wrong
+   * declaration instead of fixing it.
    */
   stdout: Uint8Array | undefined;
   stderr: Uint8Array | undefined;
   success: boolean;
 };
-/** Lo que este helper necesita del global `Bun`, si existe. */
+/** What this helper needs from the global `Bun`, if it exists. */
 interface IBunGlobal {
   readonly spawnSync?: BunSpawnSync;
   readonly which?: (bin: string) => string | null;
 }
 
 /**
- * `Bun` a pelo es un identificador libre: fuera de Bun no es
- * `undefined`, es un **ReferenceError** en cuanto se evalúa el módulo.
- * Como esto estaba en el top level, importar el helper desde cualquier
- * runtime que no fuese Bun reventaba antes de llegar al fallback de
- * `node:child_process` — o sea, la rama "ejecución vía Node puro" que
- * el propio fichero documenta no se podía alcanzar nunca.
+ * Bare `Bun` is a free identifier: outside Bun it is not
+ * `undefined`, it is a **ReferenceError** the moment the module is
+ * evaluated. With this at the top level, importing the helper from
+ * any non-Bun runtime blew up before reaching the `node:child_process`
+ * fallback — meaning the "run via plain Node" branch the file itself
+ * documents could never be reached.
  *
- * Leerlo desde `globalThis` sí devuelve `undefined` y deja que el
- * fallback funcione. Es lo que permite que los tests del plugin corran
- * bajo vitest.
+ * Reading it from `globalThis` returns `undefined` instead, and lets
+ * the fallback work. That is what allows the plugin's tests to run
+ * under vitest.
  */
 const bunGlobal = (globalThis as { Bun?: IBunGlobal }).Bun;
 const bunSpawnSync = bunGlobal?.spawnSync;
 const useBunSpawn = typeof bunSpawnSync === "function";
 
 /**
- * Resuelve la path absoluta del binario `bun`. En el host el plugin
- * corre dentro de un proceso Bun (no Node), pero el helper usa
- * `node:child_process.spawnSync` para mantener el sync; resolvemos
- * la path absoluta una vez para sobrevivir a `env` recortadas por
- * hosts AI (algunos clientes MCP filtran `PATH` antes de spawn).
+ * Resolves the absolute path of the `bun` binary. Inside the host
+ * the plugin runs in a Bun process (not Node), but the helper uses
+ * `node:child_process.spawnSync` to keep things synchronous; we
+ * resolve the absolute path once to survive `env` values that AI
+ * hosts trim (some MCP clients filter `PATH` before spawning).
  *
- * Si el contexto ya trae `bunBin`, se devuelve tal cual. Si no, se
- * busca por el orden documentado: variable de entorno explícita →
- * `Bun.which` → `command -v bun` → `"bun"` como último fallback para
- * que `spawnSync` falle con ENOENT (que es legible) en vez de inventar.
+ * If the context already has `bunBin`, it is returned as-is.
+ * Otherwise the documented order is followed: explicit env var →
+ * `Bun.which` → `command -v bun` → `"bun"` as the last resort, so
+ * that `spawnSync` fails with ENOENT (which is readable) instead of
+ * guessing.
  */
 function resolveBunBin(ctx: IRunnerContext | undefined): string {
   const fromCtx = resolveBunBinFromCtx(ctx);
   if (fromCtx && fromCtx.length > 0) return fromCtx;
-  // 1) Variable de entorno explícita capturada al boot.
+  // 1) Explicit env var captured at boot.
   if (BUN_BIN_SNAPSHOT && BUN_BIN_SNAPSHOT.length > 0) return BUN_BIN_SNAPSHOT;
-  // 2) `Bun.which` (disponible en runtime Bun).
+  // 2) `Bun.which` (available in Bun runtime).
   const w = bunGlobal?.which?.("bun");
   if (typeof w === "string" && w.length > 0) return w;
-  // 3) `which` por stdlib (cubre ejecución vía Node puro).
+  // 3) `which` via stdlib (covers execution via plain Node).
   try {
     const out = stdlibExecSync("command -v bun", { encoding: "utf8" }).trim();
     if (out.length > 0) return out;
   } catch {
-    // ignore — caemos al fallback
+    // ignore — we fall through to the fallback
   }
-  // 4) Fallback: dejar que spawnSync intente resolver del PATH.
+  // 4) Fallback: let spawnSync try to resolve from PATH.
   return "bun";
 }
 
 /**
- * Normaliza un cwd para spawnSync. Acepta:
- *   - paths absolutos (`/foo/bar`)
- *   - URLs file:// (`file:///foo/bar/`)
- *   - el cwd del contexto (o `process.cwd()` como último recurso) cuando
- *     se pasa un string vacío o "."
+ * Normalises a cwd for spawnSync. Accepts:
+ *   - absolute paths (`/foo/bar`)
+ *   - file:// URLs (`file:///foo/bar/`)
+ *   - the context's cwd (or `process.cwd()` as a last resort) when
+ *     given an empty string or "."
  *
- * `Bun.spawnSync` con `cwd: "file:///..."` falla con ENOENT porque no
- * entiende el prefijo — necesitamos un path real del FS.
+ * `Bun.spawnSync` with `cwd: "file:///..."` fails with ENOENT because
+ * it does not understand the prefix — we need a real FS path.
  */
 export function normalizeCwd(
   cwd: string | undefined,
@@ -138,12 +140,12 @@ export function normalizeCwd(
 }
 
 /**
- * Ejecuta `bun <args...>` directo desde un cwd, con timeout.
- * Útil para sub-comandos (`bun test <file>`, `bun run <script>`) que NO
- * son un script .ts específico.
+ * Runs `bun <args...>` directly from a cwd, with timeout.
+ * Useful for sub-commands (`bun test <file>`, `bun run <script>`)
+ * that are NOT a specific .ts script.
  *
- * Devuelve `ok=false` si el proceso terminó con código != 0 o si el
- * timeout se agotó.
+ * Returns `ok=false` if the process exited with a non-zero code or
+ * the timeout was reached.
  */
 export function runBunCommand(
   args: ReadonlyArray<string>,
@@ -151,16 +153,16 @@ export function runBunCommand(
     readonly cwd: string;
     readonly timeoutMs?: number;
     /**
-     * Raíces donde el CLI puede escribir. El plugin las declara porque
-     * aquí la ruta de salida la elige un agente, no la persona que está
-     * delante.
+     * Roots where the CLI may write. The plugin declares them because
+     * here the output path is chosen by an agent, not the person in
+     * front of the keyboard.
      */
     readonly containRoots?: ReadonlyArray<string>;
     /**
-     * Contexto de runtime. Si el caller omite `cwd` (raro) el helper
-     * cae al `cwd` del contexto, y si tampoco está ahí, a
-     * `process.cwd()` (test suelto). El `env` y el `bunBin` siguen la
-     * misma cascada.
+     * Runtime context. If the caller omits `cwd` (rare) the helper
+     * falls back to the context's `cwd`, and if that is also missing,
+     * to `process.cwd()` (loose test). `env` and `bunBin` follow the
+     * same cascade.
      */
     readonly ctx?: IRunnerContext;
   },
@@ -184,7 +186,7 @@ export function runBunCommand(
   return toRunResult(raw, start);
 }
 
-/** La forma cruda que devuelven los dos `spawnSync`. */
+/** The raw shape returned by both `spawnSync`s. */
 interface IRawSpawnResult {
   readonly error?: Error | undefined;
   readonly status: number | null;
@@ -193,18 +195,19 @@ interface IRawSpawnResult {
 }
 
 /**
- * Normaliza la salida de cualquiera de los dos `spawnSync`.
+ * Normalises the output of either `spawnSync`.
  *
- * `Bun.spawnSync` y `child_process.spawnSync` devuelven formas
- * distintas (una trae `error`, la otra puede dar Buffer o `null` en los
- * streams), así que se unifican aquí y el resto del plugin lee una sola.
+ * `Bun.spawnSync` and `child_process.spawnSync` return different
+ * shapes (one carries `error`, the other may give Buffer or `null`
+ * in the streams), so they are unified here and the rest of the
+ * plugin reads just one.
  *
- * El detalle que importa: cuando el proceso **no llega a arrancar**
- * (cwd inexistente, binario no encontrado) `stderr` no es `null`, es la
- * cadena vacía — y el `stderr ?? String(error)` que había aquí antes se
- * quedaba con el `""`, tirando el único mensaje que explicaba el fallo.
- * El consumidor recibía `ok: false` sin ningún `detail`, que es
- * exactamente lo peor: sabes que falló y no por qué.
+ * The detail that matters: when the process **fails to start**
+ * (missing cwd, binary not found) `stderr` is not `null`, it is the
+ * empty string — and the old `stderr ?? String(error)` here kept the
+ * `""`, throwing away the only message that explained the failure.
+ * The consumer got `ok: false` with no `detail`, which is the worst
+ * possible outcome: you know it failed and not why.
  */
 function toRunResult(raw: IRawSpawnResult, startedAt: number): IRunScriptResult {
   const stdout = decodeStream(raw.stdout);
@@ -216,7 +219,7 @@ function toRunResult(raw: IRawSpawnResult, startedAt: number): IRunScriptResult 
       ok: false,
       exitCode: raw.status ?? 1,
       stdout,
-      // `||`, no `??`: el caso a cubrir es el string vacío.
+      // `||`, not `??`: the case to cover is the empty string.
       stderr: stderr || `${raw.error.name}: ${raw.error.message}`,
       durationMs,
     };
@@ -224,7 +227,7 @@ function toRunResult(raw: IRawSpawnResult, startedAt: number): IRunScriptResult 
   return { ok: raw.status === 0, exitCode: raw.status ?? 1, stdout, stderr, durationMs };
 }
 
-/** Buffer, string o nada → siempre string. */
+/** Buffer, string or nothing → always string. */
 function decodeStream(stream: string | Uint8Array | null | undefined): string {
   if (typeof stream === "string") return stream;
   if (stream instanceof Uint8Array) return new TextDecoder().decode(stream);
@@ -232,9 +235,9 @@ function decodeStream(stream: string | Uint8Array | null | undefined): string {
 }
 
 /**
- * Ejecuta un script `.ts` con bun en modo síncrono, con timeout.
- * Devuelve `ok=false` si el proceso terminó con código != 0 o si
- * el timeout se agotó (exit 124).
+ * Runs a `.ts` script with bun in synchronous mode, with timeout.
+ * Returns `ok=false` if the process exited with a non-zero code or
+ * the timeout was reached (exit 124).
  */
 export function runBunScript(
   scriptPath: string,
@@ -243,13 +246,13 @@ export function runBunScript(
     readonly cwd: string;
     readonly timeoutMs?: number;
     /**
-     * Raíces donde el CLI puede escribir. El plugin las declara porque
-     * aquí la ruta de salida la elige un agente, no la persona que está
-     * delante.
+     * Roots where the CLI may write. The plugin declares them because
+     * here the output path is chosen by an agent, not the person in
+     * front of the keyboard.
      */
     readonly containRoots?: ReadonlyArray<string>;
     /**
-     * Contexto de runtime. Misma cascada que en `runBunCommand`.
+     * Runtime context. Same cascade as in `runBunCommand`.
      */
     readonly ctx?: IRunnerContext;
   },
@@ -260,16 +263,16 @@ export function runBunScript(
   const cmd = [bunBin, "run", scriptPath, ...args];
   const cwd = normalizeCwd(options.cwd, options.ctx);
 
-  // El CLI lanzado a mano acepta `--output-dir` donde sea, y así debe
-  // ser. A través del plugin no: un `../` en un argumento no puede
-  // acabar escribiendo en el `$HOME` de nadie.
+  // The CLI launched by hand accepts `--output-dir` anywhere, and
+  // that's how it should be. Through the plugin it does not: a `../`
+  // in an argument must not end up writing in anyone's `$HOME`.
   //
-  // Las raíces son varias porque una sola no describe el uso legítimo —
-  // la salida puede ir con el proyecto que se escanea, dentro del
-  // workspace, o en un temporal, y las tres son razonables. El temporal
-  // entra a propósito: es donde va lo desechable, y dejarlo fuera
-  // convertiría el guardián en un estorbo que alguien acabaría
-  // quitando.
+  // The roots are plural because one alone does not describe the
+  // legitimate uses — the output can sit next to the scanned
+  // project, inside the workspace, or in a temp dir, and all three
+  // are reasonable. The temp dir is included on purpose: that is
+  // where disposable output goes, and leaving it out would turn the
+  // guardrail into a nuisance someone would eventually remove.
   const roots = [...(options.containRoots ?? []), cwd, tmpdir()];
   const baseEnv = resolveEnv(options.ctx);
   const env: Record<string, string | undefined> = {
@@ -320,9 +323,9 @@ function runBunSpawnSyncArray(
       stderr: r.stderr ? new TextDecoder().decode(r.stderr) : "",
     };
   } catch (err) {
-    // Cwd inválido, binario no encontrado, o spawn bloqueado.
-    // Devolvemos un resultado "fallido" en lugar de tirar la excepción,
-    // para que el caller pueda reportarlo como un step con `ok=false`.
+    // Invalid cwd, binary not found, or blocked spawn.
+    // We return a "failed" result instead of throwing, so the caller
+    // can report it as a step with `ok=false`.
     const e = err as Error;
     return {
       error: e,
@@ -335,15 +338,15 @@ function runBunSpawnSyncArray(
 
 
 /**
- * Lee el informe de `generate --json` desde el stdout del CLI.
+ * Reads the `generate --json` report from the CLI's stdout.
  *
- * Antes de esto el plugin sacaba las rutas con expresiones regulares
- * sobre el texto para personas (`/Colecci[oó]n escrita en (.+)/`). Se
- * rompió sin hacer ruido en cuanto el CLI se tradujo al inglés: el tool
- * seguía devolviendo `ok: true` con `collectionPath: "<no detectado>"` y
- * `requests: 0`, o sea un éxito que no lo era. Ahora el CLI emite un
- * documento JSON versionado por stdout (la traza legible se va a
- * stderr) y aquí solo queda parsearlo y validarlo.
+ * Before this, the plugin extracted paths with regexes over the
+ * human text (`/Collection written to (.+)/`). It broke silently as
+ * soon as the CLI was translated to English: the tool kept returning
+ * `ok: true` with `collectionPath: "<not detected>"` and `requests: 0`,
+ * i.e. a success that wasn't one. Now the CLI emits a versioned JSON
+ * document on stdout (the human trace goes to stderr) and here we
+ * just parse and validate it.
  */
 export function readGenerateReport(
   stdout: string,

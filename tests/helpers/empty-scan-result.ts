@@ -1,18 +1,18 @@
 /**
- * `EMPTY_SCAN_RESULT` — un `IScanResult` vacío para tests que solo
- * necesitan pasar el contrato del provider.
+ * `EMPTY_SCAN_RESULT` — an empty `IScanResult` for tests that only
+ * need to satisfy the provider's contract.
  *
- * A partir de a00010 S2, `IValidationSpecProvider.supports/resolve`
- * recibe `scanResult` como tercer argumento. Los providers que no
- * derivan reglas de lo que el scanner recogió (los doce que no son
- * Fastify/Hono/Fiber/Rust) lo ignoran, pero el contrato no permite
- * pasar `undefined`. Este módulo da un valor que cumple el shape y
- * mantiene los tests enfocados en lo que están probando.
+ * From a00010 S2 on, `IValidationSpecProvider.supports/resolve`
+ * receives `scanResult` as the third argument. Providers that do not
+ * derive rules from what the scanner collected (the twelve that are
+ * not Fastify/Hono/Fiber/Rust) ignore it, but the contract does not
+ * allow passing `undefined`. This module gives a value that satisfies
+ * the shape and keeps the tests focused on what they are testing.
  *
- * Los tests de Fastify/Hono/Fiber/Rust deben usar el `scanResult`
- * real que devolvió su scanner: ahí sí que miran dentro.
+ * Fastify/Hono/Fiber/Rust tests must use the real `scanResult`
+ * returned by their scanner: those do look inside.
  *
- * `@deprecated` nunca: este helper es deliberado, no temporal.
+ * Never `@deprecated`: this helper is intentional, not temporary.
  */
 import type { IScanResult } from "../../packages/contracts/interfaces/core/scanner.interface";
 

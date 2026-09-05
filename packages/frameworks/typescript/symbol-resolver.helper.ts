@@ -1,34 +1,36 @@
 /**
- * `symbol-resolver` — aliases, reexports y resolución de `const r = app`.
+ * `symbol-resolver` — aliases, reexports, and resolution of
+ * `const r = app`.
  *
- * (a00016 S3) Cierra el gap que `collectMethodCalls` deja: detecta
- * llamadas cuyo receptor es un alias (`const r = app; r.get(...)`) o
- * una exportación indirecta (`export { router } from "./router"`).
+ * (a00016 S3) Closes the gap that `collectMethodCalls` leaves:
+ * detects calls whose receiver is an alias
+ * (`const r = app; r.get(...)`) or an indirect export
+ * (`export { router } from "./router"`).
  *
- * Tres exports:
+ * Three exports:
  *
- *   - `collectAliases(projectRoot)` — devuelve los `import` del
- *     proyecto como `IImportBinding[]`. Cubre default, named,
- *     aliased (`import { Router as R }`) y namespace
- *     (`import * as ns`).
- *   - `collectReexports(projectRoot)` — devuelve los
- *     `export ... from` como `IReexport[]`.
- *   - `resolveCallee(calls, aliases, reexports)` — toma el output de
- *     S2 + los aliases/reexports y devuelve las llamadas con el
- *     `callee` reescrito a la forma canónica (`r.get` → `app.get`).
+ *   - `collectAliases(projectRoot)` — returns the project's `import`s
+ *     as `IImportBinding[]`. Covers default, named, aliased
+ *     (`import { Router as R }`), and namespace (`import * as ns`).
+ *   - `collectReexports(projectRoot)` — returns the
+ *     `export ... from` as `IReexport[]`.
+ *   - `resolveCallee(calls, aliases, reexports)` — takes the output of
+ *     S2 plus the aliases/reexports and returns the calls with the
+ *     `callee` rewritten to the canonical form (`r.get` → `app.get`).
  *
- * Por qué un módulo aparte:
- *   - Reusa el mismo parser Babel que S2 — no añade dependencias.
- *   - `resolveCallee` es independiente del walker: corre sobre los
- *     `IRouteCallExpression[]` que ya produjo `collectMethodCalls`.
- *     Los scanners no necesitan reorganizar su pipeline.
+ * Why a separate module:
+ *   - It reuses the same Babel parser as S2 — no new dependencies.
+ *   - `resolveCallee` is independent of the walker: it runs over the
+ *     `IRouteCallExpression[]` already produced by `collectMethodCalls`.
+ *     Scanners don't need to reorganise their pipeline.
  *
- * Lo que el módulo NO hace (a00016 non-goals):
- *   - No resuelve `import { foo } from "./x"` siguiendo al fichero
- *     `./x` para sacar el binding real. Eso es resolución
- *     cross-file, fuera del scope de esta slice.
- *   - No propaga constantes (lo hace S4 — `constant-propagation.ts`).
- *   - No distingue `import type` de `import` (Babel los trata igual).
+ * What the module does NOT do (a00016 non-goals):
+ *   - Does not resolve `import { foo } from "./x"` by following the
+ *     `./x` file to get the real binding. That is cross-file
+ *     resolution, outside this slice's scope.
+ *   - Does not propagate constants (S4 — `constant-propagation.ts` does).
+ *   - Does not distinguish `import type` from `import` (Babel treats
+ *     them the same).
  */
 
 import { readFile } from "node:fs/promises";
@@ -45,7 +47,7 @@ import type {
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 
 // ---------------------------------------------------------------------------
-// Babel node helpers — mismo patrón permisivo que S2 y que el frontend.
+// Babel node helpers — same permissive pattern as S2 and the frontend.
 // ---------------------------------------------------------------------------
 
 interface BabelNode {
@@ -82,15 +84,15 @@ function stringLiteralValue(node: BabelNode): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Saca el binding local y la fuente de un `ImportSpecifier`.
+ * Extracts the local binding and the source from an `ImportSpecifier`.
  *
  * - `import { Router }` → `{ local: "Router", imported: "Router" }`.
  * - `import { Router as R }` → `{ local: "R", imported: "Router" }`.
  * - `import * as ns` → `{ local: "ns", imported: "*" }`.
  * - `import x from "m"` → `{ local: "x", imported: "default" }`.
  *
- * Devuelve `null` si Babel emite un specifier sin nombre reconocible
- * (no debería pasar, pero el cast permisivo del AST lo permite).
+ * Returns `null` if Babel emits a specifier with no recognisable
+ * name (it shouldn't happen, but the permissive AST cast allows it).
  */
 function bindingFromSpecifier(spec: BabelNode): { local: string; imported: string } | null {
   if (spec.type === "ImportDefaultSpecifier") {
@@ -113,16 +115,16 @@ function bindingFromSpecifier(spec: BabelNode): { local: string; imported: strin
 }
 
 /**
- * Recorre el AST y emite `IImportBinding` por cada `ImportDeclaration`.
+ * Walks the AST and emits one `IImportBinding` per `ImportDeclaration`.
  *
- * Cubre:
+ * Covers:
  *   - `import x from "m"` — `name = "x"`.
  *   - `import * as ns from "m"` — `name = "ns"`.
- *   - `import { a, b as c } from "m"` — emite 2 bindings: `a` y `c`.
- *   - `import "m"` (side-effect) — no emite nada.
+ *   - `import { a, b as c } from "m"` — emits 2 bindings: `a` and `c`.
+ *   - `import "m"` (side-effect) — emits nothing.
  *
- * El `range.file` se rellena con `sourceFile` — el caller que quiera
- * grouping por archivo puede hacerlo después.
+ * `range.file` is filled with `sourceFile` — the caller that wants
+ * grouping by file can do that later.
  */
 function collectAliasesFromBody(
   body: ReadonlyArray<BabelNode>,
@@ -154,15 +156,16 @@ function collectAliasesFromBody(
 // ---------------------------------------------------------------------------
 
 /**
- * Emite `IReexport` por cada nodo que represente un reexport.
+ * Emits one `IReexport` per node that represents a reexport.
  *
- * Cubre:
- *   - `export { a, b as c } from "./x"` — emite 1 binding por specifier.
- *   - `export * from "./x"` — emite 1 binding con `name = "*"`.
+ * Covers:
+ *   - `export { a, b as c } from "./x"` — emits 1 binding per specifier.
+ *   - `export * from "./x"` — emits 1 binding with `name = "*"`.
  *
- * NO cubre `export { a }` (declaración local) ni
- * `export const a = ...` (declaración local) — eso son definiciones,
- * no reexports. Si el scanner necesita detectarlos, mirará otro sitio.
+ * Does NOT cover `export { a }` (local declaration) or
+ * `export const a = ...` (local declaration) — those are definitions,
+ * not reexports. If a scanner needs to detect them, it will look
+ * elsewhere.
  */
 function collectReexportsFromBody(
   body: ReadonlyArray<BabelNode>,
@@ -177,9 +180,9 @@ function collectReexportsFromBody(
       if (!fromValue) continue;
       const specifiers = asArray(stmt.specifiers);
       if (specifiers.length === 0) {
-        // `export {} from "./x"` es legal: reexport del namespace
-        // vacío. No emitimos nada porque no hay un nombre que
-        // registrar.
+        // `export {} from "./x"` is legal: re-export of the empty
+        // namespace. We emit nothing because there is no name to
+        // register.
         continue;
       }
       for (const spec of specifiers) {
@@ -214,30 +217,29 @@ function collectReexportsFromBody(
 }
 
 // ---------------------------------------------------------------------------
-// Const-alias detection (para resolveCallee)
+// Const-alias detection (for resolveCallee)
 // ---------------------------------------------------------------------------
 
 /**
- * Mapa `localName → targetName` de los `const X = Y` en un archivo.
+ * `localName → targetName` map of `const X = Y` in a file.
  *
- * Sólo entran las asignaciones donde `Y` es un `Identifier` desnudo
- * (`const r = app`), no `const r = express()` (que sería un factory
- * call). El factory call se detecta en S2 con `receiverKind: "factory"`
- * — no necesita propagación adicional.
+ * Only assignments where `Y` is a bare `Identifier` (`const r = app`)
+ * enter here, not `const r = express()` (which would be a factory
+ * call). The factory call is detected in S2 with
+ * `receiverKind: "factory"` — it needs no additional propagation.
  *
- * Esto cubre la "shape" de los scanners de hoy: el adaptador de
- * Express ya sabe que `const app = express()` es el router, y los
- * siguientes `app.get` los detecta directamente. Lo que faltaba era
- * `const r = app; r.get` — el alias de un alias. Este map lo
- * identifica.
+ * This covers today's scanners' "shape": the Express adapter already
+ * knows that `const app = express()` is the router, and detects the
+ * following `app.get` calls directly. What was missing was
+ * `const r = app; r.get` — alias of an alias. This map identifies it.
  *
- * `Record<string, string>` (no `Map`) para que el caller lo pueda
- * serializar o pasar como argumento a funciones puras. La forma
- * canoniza `const r = app` → `{ r: "app" }`.
+ * `Record<string, string>` (not `Map`) so the caller can serialise it
+ * or pass it as an argument to pure functions. The shape canonicalises
+ * `const r = app` → `{ r: "app" }`.
  */
 type ConstAliasMap = Readonly<Record<string, string>>;
 
-/** Devuelve el mapa de `const X = Y` (sólo Y identifier) en un archivo. */
+/** Returns the `const X = Y` map (only Y an identifier) in a file. */
 function collectConstAliasesFromBody(body: ReadonlyArray<BabelNode>): ConstAliasMap {
   const out: Record<string, string> = {};
   for (const stmt of body) {
@@ -263,11 +265,11 @@ function collectConstAliasesFromBody(body: ReadonlyArray<BabelNode>): ConstAlias
 // ---------------------------------------------------------------------------
 
 /**
- * DFS por el AST — mismo patrón que S2. Visita cada nodo exactamente
- * una vez. Los nodos que nos interesan (`ImportDeclaration`,
- * `ExportNamedDeclaration`, `ExportAllDeclaration`) sólo aparecen
- * en `body`, pero por uniformidad con el resto del codebase
- * caminamos todo el árbol.
+ * DFS over the AST — same pattern as S2. Visits each node exactly
+ * once. The nodes we care about (`ImportDeclaration`,
+ * `ExportNamedDeclaration`, `ExportAllDeclaration`) only appear in
+ * `body`, but for consistency with the rest of the codebase we walk
+ * the whole tree.
  */
 function walkBody(
   body: ReadonlyArray<BabelNode>,
@@ -311,7 +313,7 @@ interface IParsedFile {
   readonly constAliases: ConstAliasMap;
 }
 
-/** Parsea un archivo TS/JS y extrae aliases, reexports y const-aliases. */
+/** Parses a TS/JS file and extracts aliases, reexports, and const-aliases. */
 function parseForSymbols(
   source: string,
   filename: string,
@@ -407,21 +409,20 @@ export async function collectReexports(
 // ---------------------------------------------------------------------------
 
 /**
- * Mapa global de `aliasName → targetName` que combina:
+ * Global `aliasName → targetName` map that combines:
  *
- *   1. Aliases de import (`import { Router as R } from "express"`
- *      aporta `R → Router`).
- *   2. Reexports (`export { router } from "./router"` aporta
- *      `router → router`, pero el campo `from` queda como evidencia
- *      para que un futuro cross-file resolver pueda saltar al
- *      módulo).
- *   3. Const-aliases por archivo (`const r = app` en `file.ts` aporta
- *      `r → app` sólo para ese archivo).
+ *   1. Import aliases (`import { Router as R } from "express"`
+ *      contributes `R → Router`).
+ *   2. Reexports (`export { router } from "./router"` contributes
+ *      `router → router`, but the `from` field stays as evidence so a
+ *      future cross-file resolver can jump to the source module).
+ *   3. Const-aliases per file (`const r = app` in `file.ts`
+ *      contributes `r → app` only for that file).
  *
- * El arg `constAliasesByFile` se construye dentro de `resolveCallee`
- * re-leyendo los archivos — el caller no lo tiene que aportar. Se
- * acepta aquí para tests: los tests unitarios sobre
- * `resolveCallee` pasan const-aliases sin tocar disco.
+ * The `constAliasesByFile` arg is built inside `resolveCallee` by
+ * re-reading the files — the caller doesn't have to provide it. It is
+ * accepted here for tests: unit tests over `resolveCallee` pass
+ * const-aliases without touching the disk.
  */
 interface IAliasIndex {
   /** `localName → canonicalName` (global, de imports). */
@@ -430,7 +431,7 @@ interface IAliasIndex {
   readonly constMap: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
-/** Construye un índice en memoria de aliases a partir de los argumentos. */
+/** Builds an in-memory alias index from the arguments. */
 function buildAliasIndex(
   aliases: ReadonlyArray<IImportBinding>,
   reexports: ReadonlyArray<IReexport>,
@@ -438,16 +439,15 @@ function buildAliasIndex(
 ): IAliasIndex {
   const importMap: Record<string, string> = {};
   for (const alias of aliases) {
-    // Para un `import { Router as R } from "express"`, el binding
-    // local es `R` y el original es `Router`. La resolución canónica
-    // de `R.get` → `Router.get` es lo que queremos.
+    // For an `import { Router as R } from "express"`, the local binding
+    // is `R` and the original is `Router`. The canonical resolution
+    // of `R.get` → `Router.get` is what we want.
     importMap[alias.name] = alias.name;
   }
-  // Los reexports no resuelven a un nombre local diferente — `export
-  // { router } from "./router"` significa que `router` está disponible
-  // en este archivo con el mismo nombre. Si en el futuro queremos
-  // saltar al módulo origen, `from` queda disponible en
-  // `reexports[i].from`.
+  // Reexports don't resolve to a different local name — `export
+  // { router } from "./router"` means `router` is available in this
+  // file under the same name. If in the future we want to jump to the
+  // source module, `from` is available in `reexports[i].from`.
   for (const re of reexports) {
     importMap[re.name] = re.name;
   }
@@ -455,11 +455,11 @@ function buildAliasIndex(
 }
 
 /**
- * Aplica una cadena de alias a un nombre. `r → app → express` colapsa
- * a `express`. El límite (16) protege contra ciclos accidentales.
+ * Applies an alias chain to a name. `r → app → express` collapses to
+ * `express`. The limit (16) protects against accidental cycles.
  *
- * Si en algún paso el alias no resuelve, devuelve el último nombre
- * conocido — el scanner puede usar eso como heurística.
+ * If at any step the alias doesn't resolve, returns the last known
+ * name — the scanner can use that as a heuristic.
  */
 function followAliasChain(
   start: string,
@@ -480,25 +480,24 @@ function followAliasChain(
 }
 
 /**
- * Resuelve los `callee` de las llamadas a su forma canónica.
+ * Resolves the `callee` of the calls to its canonical form.
  *
- * Por cada `IRouteCallExpression`:
+ * For each `IRouteCallExpression`:
  *
- *   1. Si el receiver es un identifier (`r.get`, `app.get`, etc.) y
- *      `r` aparece como `const r = X` en el mismo archivo, reescribe
- *      el callee a `X.get` (con la misma `method` y `args`).
- *   2. Si el receiver es un identifier y `r` aparece como
- *      `import { R as r }`, reescribe a `R.get`.
- *   3. Las llamadas ya canónicas (`app.get`, `this.router.get`) se
- *      devuelven tal cual.
+ *   1. If the receiver is an identifier (`r.get`, `app.get`, etc.)
+ *      and `r` appears as `const r = X` in the same file, rewrites
+ *      the callee to `X.get` (keeping the same `method` and `args`).
+ *   2. If the receiver is an identifier and `r` appears as
+ *      `import { R as r }`, rewrites to `R.get`.
+ *   3. Calls that are already canonical (`app.get`, `this.router.get`)
+ *      are returned as-is.
  *
- * Devuelve un NUEVO array — no muta el input. Los scanners que
- * quieran conservar el original pueden comparar referencias.
+ * Returns a NEW array — does not mutate the input. Scanners that want
+ * to keep the original can compare references.
  *
- * Limitación documentada (a00016 non-goals): no resuelve
- * `import { Router } from "./router"` siguiendo al módulo
- * `./router` para sacar el binding real. Eso es cross-file y
- * queda fuera del scope.
+ * Documented limitation (a00016 non-goals): does not resolve
+ * `import { Router } from "./router"` by following the `./router`
+ * module to get the real binding. That is cross-file and out of scope.
  */
 export function resolveCallee(
   calls: ReadonlyArray<IRouteCallExpression>,
@@ -509,10 +508,10 @@ export function resolveCallee(
   const index = buildAliasIndex(aliases, reexports, constAliasesByFile);
   const out: IRouteCallExpression[] = [];
   for (const call of calls) {
-    // Sólo resolvemos los `receiverKind: "identifier"` cuyo receiver
-    // sea un único Identifier (`r.get`). El resto (member, this,
-    // computed, factory, optional) ya son canónicos o no se
-    // benefician del alias simple.
+    // We only resolve `receiverKind: "identifier"` whose receiver is a
+    // single Identifier (`r.get`). The rest (member, this, computed,
+    // factory, optional) are either already canonical or don't benefit
+    // from the simple alias.
     if (call.receiverKind !== "identifier" || !call.method) {
       out.push(call);
       continue;
@@ -543,17 +542,17 @@ export function resolveCallee(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: constAliasesByFile (caller lo necesita para resolveCallee)
+// Helper: constAliasesByFile (caller needs it for resolveCallee)
 // ---------------------------------------------------------------------------
 
 /**
- * Construye `constAliasesByFile` recorriendo `projectRoot`. Útil para
- * los callers que invocan `resolveCallee(calls, aliases, reexports)`.
+ * Builds `constAliasesByFile` by walking `projectRoot`. Useful for
+ * callers that invoke `resolveCallee(calls, aliases, reexports)`.
  *
- * NO se invoca automáticamente desde `resolveCallee` porque ésa es
- * pura sobre sus argumentos: el caller decide si quiere re-leer
- * disco. Los scanners que ya tienen los sources en memoria pueden
- * saltarse este helper.
+ * It is NOT invoked automatically from `resolveCallee` because the
+ * latter is pure over its arguments: the caller decides whether to
+ * re-read disk. Scanners that already have the sources in memory can
+ * skip this helper.
  */
 export async function collectConstAliasesByFile(
   projectRoot: string,

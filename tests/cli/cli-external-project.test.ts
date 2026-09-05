@@ -1,12 +1,12 @@
 /**
- * El CLI ejecutado sobre un proyecto EXTERNO al paquete.
+ * The CLI run against a project EXTERNAL to the package.
  *
- * Es el caso de uso principal —alguien instala el paquete y lo lanza
- * contra su API— y era el único sin cobertura. Estuvo roto: el CLI
- * spawnea el script de generación con `cwd` = raíz del paquete, y el
- * pipeline resolvía la raíz del proyecto como `process.env.
- * POSTMAN_PROJECT_ROOT ?? "."`, así que `--project-root` se ignoraba y
- * el escaneo apuntaba al propio export-to-postman: colección vacía.
+ * It is the main use case —someone installs the package and runs it
+ * against their API— and it was the only one without coverage. It was
+ * broken: the CLI spawned the generation script with `cwd` = package
+ * root, and the pipeline resolved the project root as `process.env.
+ * POSTMAN_PROJECT_ROOT ?? "."`, so `--project-root` was ignored and the
+ * scan targeted export-to-postman itself: empty collection.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
@@ -52,29 +52,29 @@ function countRequests(items: ReadonlyArray<Record<string, any>>): number {
   );
 }
 
-describe("CLI sobre un proyecto externo", () => {
-  test("`generate --project-root` escanea el proyecto indicado, no el paquete", async () => {
+describe("CLI against an external project", () => {
+  test("`generate --project-root` scans the given project, not the package", async () => {
     const { code } = await runCli(["generate", "--project-root", externalProject]);
     expect(code).toBe(0);
 
     const collection = await readCollection();
     const requests = countRequests((collection["item"] as Record<string, any>[]) ?? []);
-    // El fixture de express expone 9 endpoints. Antes salían 0.
+    // The express fixture exposes 9 endpoints. Before it returned 0.
     expect(requests).toBe(9);
   });
 
-  test("detecta el framework del proyecto externo", async () => {
+  test("detects the framework of the external project", async () => {
     const { output } = await runCli(["generate", "--project-root", externalProject]);
     expect(output).toContain("framework=express");
   });
 
-  test("escribe la colección dentro del proyecto, no del paquete", async () => {
+  test("writes the collection inside the project, not the package", async () => {
     await runCli(["generate", "--project-root", externalProject]);
     const files = await readdir(join(externalProject, OUTPUT_DIR_NAME));
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 
-  test("genera también los environments", async () => {
+  test("also generates the environments", async () => {
     await runCli(["generate", "--project-root", externalProject]);
     const files = await readdir(join(externalProject, OUTPUT_DIR_NAME));
     expect(files.filter((f) => f.endsWith(".postman_environment.json")).length).toBeGreaterThan(
@@ -82,7 +82,7 @@ describe("CLI sobre un proyecto externo", () => {
     );
   });
 
-  test("la colección resultante es Postman v2.1.0 con id estable", async () => {
+  test("the resulting collection is Postman v2.1.0 with stable id", async () => {
     await runCli(["generate", "--project-root", externalProject]);
     const first = (await readCollection())["info"] as Record<string, string>;
     await runCli(["generate", "--project-root", externalProject]);
@@ -92,7 +92,7 @@ describe("CLI sobre un proyecto externo", () => {
     expect(first["_postman_id"]).toBe(second["_postman_id"]!);
   });
 
-  test("`--help` documenta los comandos disponibles", async () => {
+  test("`--help` documents the available commands", async () => {
     const { output } = await runCli(["--help"]);
     for (const command of ["generate", "check", "list", "stats", "validate"]) {
       expect(output).toContain(command);

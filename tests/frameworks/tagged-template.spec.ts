@@ -1,18 +1,18 @@
 /**
- * Tests para `collectTaggedTemplates` (a00015 S1).
+ * Tests for `collectTaggedTemplates` (a00015 S1).
  *
- * Cubre:
- *   - Caso positivo: `gql\`type Query { f: String }\`` → 1 template.
- *   - Caso negativo (comentario): un `// gql\`...\`` dentro de un
- *     comentario NO se reconoce como TaggedTemplateExpression.
- *   - Caso negativo (string literal): un `"gql\`...\``" como literal
- *     tampoco se reconoce.
- *   - Caso multi-uso: 5 `gql\`...\`` → 5 templates.
+ * Covers:
+ *   - Positive case: `gql\`type Query { f: String }\`` → 1 template.
+ *   - Negative case (comment): a `// gql\`...\`` inside a comment is
+ *     NOT recognized as a TaggedTemplateExpression.
+ *   - Negative case (string literal): a `"gql\`...\``" as a literal is
+ *     also not recognized.
+ *   - Multi-use case: 5 `gql\`...\`` → 5 templates.
  *
- * Estos tests son unitarios sobre `collectTaggedTemplatesFromSource`
- * (reciben `source` + `filename`) porque es la primitiva pura.
- * `collectTaggedTemplates(projectRoot)` se cubre en S2 con el adapter
- * y un proyecto temporal en disco.
+ * These tests are unit tests over `collectTaggedTemplatesFromSource`
+ * (they take `source` + `filename`) because it is the pure primitive.
+ * `collectTaggedTemplates(projectRoot)` is covered in S2 with the
+ * adapter and a temporary project on disk.
  */
 import { describe, expect, test } from "vitest";
 
@@ -21,8 +21,8 @@ import {
   type ITaggedTemplate,
 } from "../../packages/frameworks/typescript/tagged-template.helper";
 
-describe("collectTaggedTemplatesFromSource — shape positiva", () => {
-  test("un gql`...` simple se reconoce como TaggedTemplateExpression", () => {
+describe("collectTaggedTemplatesFromSource — positive shape", () => {
+  test("a simple gql`...` is recognized as a TaggedTemplateExpression", () => {
     const source = `import { gql } from "@apollo/client";
 
 const typeDefs = gql\`
@@ -47,14 +47,14 @@ const typeDefs = gql\`
     }
   });
 
-  test("graphql`...` también se reconoce con tag='graphql'", () => {
+  test("graphql`...` is also recognized with tag='graphql'", () => {
     const source = `const t = graphql\`type Query { a: String }\`;`;
     const found = collectTaggedTemplatesFromSource(source, "schema.ts");
     expect(found).toHaveLength(1);
     expect(found[0]?.tag).toBe("graphql");
   });
 
-  test("Foo.graphql`...` se reconoce con tag='graphql' (MemberExpression)", () => {
+  test("Foo.graphql`...` is recognized with tag='graphql' (MemberExpression)", () => {
     const source = `const t = Foo.graphql\`type Query { a: String }\`;`;
     const found = collectTaggedTemplatesFromSource(source, "schema.ts");
     expect(found).toHaveLength(1);
@@ -62,10 +62,10 @@ const typeDefs = gql\`
   });
 });
 
-describe("collectTaggedTemplatesFromSource — falsos positivos", () => {
-  test("un gql`...` dentro de un comentario NO se reconoce", () => {
-    // Antes esto era un falso positivo en `extractEmbeddedSdl`:
-    // el regex veía `gql\`` y devolvía el contenido.
+describe("collectTaggedTemplatesFromSource — false positives", () => {
+  test("a gql`...` inside a comment is NOT recognized", () => {
+    // This was previously a false positive in `extractEmbeddedSdl`:
+    // the regex saw `gql\`` and returned the contents.
     const source = `// Puedes escribir gql\`type Query { fake: String }\` en el archivo.
 const real = 1;
 `;
@@ -73,16 +73,16 @@ const real = 1;
     expect(found).toHaveLength(0);
   });
 
-  test("un gql`...` dentro de un string literal NO se reconoce", () => {
-    // Antes esto era el otro falso positivo: el regex veía `gql\``
-    // dentro de un string y devolvía un SDL ficticio.
+  test("a gql`...` inside a string literal is NOT recognized", () => {
+    // This was the other false positive: the regex saw `gql\``
+    // inside a string and returned a fictitious SDL.
     const source = `const help = "gql\`type Query { fake: String }\` es la sintaxis";
 `;
     const found = collectTaggedTemplatesFromSource(source, "doc.ts");
     expect(found).toHaveLength(0);
   });
 
-  test("un gql`...` dentro de un block comment tampoco", () => {
+  test("a gql`...` inside a block comment is also not recognized", () => {
     const source = `/*
  * Aquí va un ejemplo: gql\`type Query { fake: String }\`
  */
@@ -93,8 +93,8 @@ const real = 1;
   });
 });
 
-describe("collectTaggedTemplatesFromSource — multi-uso", () => {
-  test("cinco gql`...` → cinco templates en orden de aparición", () => {
+describe("collectTaggedTemplatesFromSource — multi-use", () => {
+  test("five gql`...` → five templates in order of appearance", () => {
     const source = `
 const a = gql\`type Query { a: String }\`;
 const b = gql\`type Query { b: String }\`;
@@ -105,24 +105,26 @@ const e = gql\`type Query { e: String }\`;
     const found = collectTaggedTemplatesFromSource(source, "schema.ts");
     expect(found).toHaveLength(5);
     for (const tpl of found) expect(tpl.tag).toBe("gql");
-    // El orden es top-down: la letra del campo SDL debe ir en orden.
+    // Order is top-down: the SDL field letter must grow in order.
     const letters = found.map((t) => t.raw.match(/\{ ([a-z]):/)?.[1] ?? "");
     expect(letters).toEqual(["a", "b", "c", "d", "e"]);
   });
 });
 
-describe("collectTaggedTemplatesFromSource — degradable", () => {
-  test("sintaxis inválida → [] sin lanzar, y diagnostics recoge la razón", () => {
-    const source = `const x = gql\``; // backtick sin cerrar
-    // El adapter solo popula `diagnostics` con entries `{ severity:
-    // "error" | "warning" }`. Mantenemos el tipo del adapter (no
-    // un alias local) para que el test falle si cambia el contrato.
+describe("collectTaggedTemplatesFromSource — degrade-safe", () => {
+  test("invalid syntax → [] without throwing, and diagnostics captures the reason", () => {
+    const source = `const x = gql\``; // unclosed backtick
+    // The adapter only populates `diagnostics` with entries of the
+    // shape `{ severity: "error" | "warning" }`. We keep the adapter's
+    // type (not a local alias) so this test fails if the contract
+    // changes.
     const diagnostics: Parameters<typeof collectTaggedTemplatesFromSource>[2] = [];
     const found = collectTaggedTemplatesFromSource(source, "broken.ts", diagnostics);
     expect(found).toEqual([]);
-    // `errorRecovery: true` evita la excepción: o la tenemos vacía,
-    // o tenemos un warning pero el resultado es [].
-    // Aceptamos ambas formas — lo importante es que no lanza.
+    // `errorRecovery: true` prevents the exception: either the
+    // diagnostics are empty, or we have a warning but the result is
+    // []. Both shapes are accepted — what matters is that it does
+    // not throw.
     expect(Array.isArray(diagnostics)).toBe(true);
   });
 });

@@ -1,16 +1,16 @@
 /**
- * `runner.helper` — la frontera entre el plugin y el CLI.
+ * `runner.helper` — the frontier between the plugin and the CLI.
  *
- * Los dos bloques de aquí cubren fallos que estuvieron vivos y en
- * silencio, que es lo que los hace caros:
+ * The two blocks here cover failures that were alive and silent,
+ * which is what makes them costly:
  *
- *   1. El plugin sacaba las rutas generadas con expresiones regulares
- *      sobre el texto que el CLI imprime para personas. Cuando el CLI
- *      se tradujo al inglés, el tool siguió devolviendo `ok: true` con
- *      `collectionPath: "<no detectado>"` y `requests: 0`.
- *   2. Cuando `spawnSync` no consigue arrancar el proceso, `stderr` es
- *      la cadena vacía, y el `stderr ?? String(error)` se quedaba con
- *      ella: el consumidor recibía un fallo sin ninguna explicación.
+ *   1. The plugin extracted the generated paths with regexes over
+ *      the human text the CLI prints. When the CLI was translated to
+ *      English, the tool kept returning `ok: true` with
+ *      `collectionPath: "<not detected>"` and `requests: 0`.
+ *   2. When `spawnSync` cannot start the process, `stderr` is the
+ *      empty string, and the old `stderr ?? String(error)` kept it:
+ *      the consumer received a failure with no explanation.
  */
 import { describe, expect, test } from "vitest";
 
@@ -21,7 +21,7 @@ import {
 } from "../../src/lib/helpers/runner.helper";
 import { SUPPORTED_REPORT_VERSION } from "../../src/lib/contracts/constants/runner.constant";
 
-/** Un informe válido, con los campos que emite `generate --json`. */
+/** A valid report, with the fields `generate --json` emits. */
 function reportJson(overrides: Record<string, unknown> = {}): string {
   return JSON.stringify({
     version: SUPPORTED_REPORT_VERSION,
@@ -70,8 +70,8 @@ describe("readGenerateReport", () => {
     if (result.ok) expect(result.report.collectionPath).toBeNull();
   });
 
-  // Esta es la regresión: la salida legible del CLI ya no se parsea, y
-  // recibirla en vez del JSON tiene que ser un error explícito.
+  // This is the regression: the CLI's human output is no longer parsed,
+  // and receiving it instead of the JSON has to be an explicit error.
   test("el texto para personas ya no cuela como informe", () => {
     const humanOutput = [
       "→ Resolved paths:",
@@ -121,9 +121,9 @@ describe("runBunCommand", () => {
     expect(result.exitCode).not.toBe(0);
   });
 
-  // La regresión del `stderr ?? String(error)`: con un cwd inexistente
-  // el proceso no llega a arrancar, `stderr` es "" y antes el detalle
-  // del fallo se perdía entero.
+  // The `stderr ?? String(error)` regression: with a missing cwd the
+  // process does not start, `stderr` is "" and the failure detail was
+  // previously lost entirely.
   test("si el proceso no llega a arrancar, el motivo NO se pierde", () => {
     const result = runBunCommand(["--version"], {
       cwd: "/tmp/no-such-workspace-para-el-test-12345",

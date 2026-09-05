@@ -8,7 +8,7 @@ import { createTempProject, type ITempProject } from "../helpers/scanner-fixture
 
 describe("route-parser.service (pure helpers)", () => {
   describe("stripComments", () => {
-    test("elimina comentarios de bloque /* ... */", () => {
+    test("strips block comments /* ... */", () => {
       const src = `Route::get('/a', [Foo::class,'a']);
 /* Route::get('/b', [Foo::class,'b']); */
 Route::get('/c', [Foo::class,'c']);`;
@@ -18,7 +18,7 @@ Route::get('/c', [Foo::class,'c']);`;
       expect(stripped).toContain("/c");
     });
 
-    test("elimina comentarios de línea //", () => {
+    test("strips line comments //", () => {
       const src = `Route::get('/a', [Foo::class,'a']);
 // Route::get('/b', [Foo::class,'b']);
 Route::get('/c', [Foo::class,'c']);`;
@@ -26,7 +26,7 @@ Route::get('/c', [Foo::class,'c']);`;
       expect(stripped).not.toContain("/b");
     });
 
-    test("preserva // cuando va precedido de : (URL tipo http://)", () => {
+    test("preserves // when preceded by : (URL like http://)", () => {
       const src = `$url = 'http://example.com/api';`;
       const stripped = stripComments(src);
       expect(stripped).toContain("http://example.com/api");
@@ -34,45 +34,45 @@ Route::get('/c', [Foo::class,'c']);`;
   });
 
   describe("topGroupFor", () => {
-    test("devuelve el primer segmento cuando la URI empieza por api/", () => {
+    test("returns the first segment when the URI starts with api/", () => {
       expect(topGroupFor("api/clientes")).toBe("clientes");
     });
 
-    test("devuelve el primer segmento cuando la URI empieza por /api/", () => {
+    test("returns the first segment when the URI starts with /api/", () => {
       expect(topGroupFor("/api/clientes")).toBe("clientes");
     });
 
-    test("ignora sub-segmentos más profundos", () => {
+    test("ignores deeper sub-segments", () => {
       expect(topGroupFor("api/users/123")).toBe("users");
       expect(topGroupFor("api/pedidos/historial")).toBe("pedidos");
     });
 
-    test("respeta el override prefijo → grupo", () => {
+    test("respects the prefix → group override", () => {
       expect(topGroupFor("api/tol/tecdoc", { "tol/tecdoc": "tol/tecdoc" })).toBe(
         "tol/tecdoc",
       );
     });
 
-    test("URI vacía → (root)", () => {
+    test("empty URI → (root)", () => {
       expect(topGroupFor("")).toBe("(root)");
     });
 
-    test("URI que no es api → primer segmento", () => {
+    test("URI that is not an api → first segment", () => {
       expect(topGroupFor("alive")).toBe("alive");
     });
   });
 
   describe("prettyGroupName", () => {
-    test("capitaliza", () => {
+    test("capitalizes", () => {
       expect(prettyGroupName("pedidos")).toBe("Pedidos");
     });
 
-    test("sustituye - y _ por espacio", () => {
+    test("replaces - and _ with a space", () => {
       expect(prettyGroupName("usuarios-activos")).toBe("Usuarios Activos");
       expect(prettyGroupName("mi_api")).toBe("Mi Api");
     });
 
-    test("preserva / como separador", () => {
+    test("preserves / as separator", () => {
       expect(prettyGroupName("tol/tecdoc")).toBe("Tol/Tecdoc");
     });
 
@@ -80,14 +80,14 @@ Route::get('/c', [Foo::class,'c']);`;
       expect(prettyGroupName("(root)")).toBe("Root");
     });
 
-    test("string vacío → Root", () => {
+    test("empty string → Root", () => {
       expect(prettyGroupName("")).toBe("Root");
     });
   });
 });
 
 // ---------------------------------------------------------------------------
-// Parsing de archivos de rutas reales sobre un proyecto temporal en disco
+// Parsing real route files against a temporary project on disk
 // ---------------------------------------------------------------------------
 
 const RUTAS_PHP = `<?php
@@ -96,7 +96,7 @@ use Illuminate\\Support\\Facades\\Route;
 use App\\Http\\Controllers\\PedidoController;
 use App\\Http\\Controllers\\FacturaController as Facturas;
 
-// Ruta comentada: no debe contarse.
+// Commented route: must not be counted.
 // Route::get('comentada', fn () => 1);
 /* Route::get('bloque', fn () => 1); */
 
@@ -111,7 +111,7 @@ Route::get('facturas',
     [Facturas::class, 'listado']);
 
 Route::get('salud', fn () => 1);
-// Controlador sin use: se resuelve por la convención de namespace.
+// Controller without use: it is resolved by the namespace convention.
 Route::post('libros', [LibroController::class, 'crear']);
 `;
 
@@ -132,29 +132,30 @@ describe("route-parser.service — parseRoutesFile sobre disco", () => {
     await project.cleanup();
   });
 
-  test("resuelve las rutas con su prefijo por defecto", async () => {
+  test("resolves routes with their default prefix", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const uris = rutas.map((r) => r.uri);
     expect(uris).toContain("api/v1/admin/pedidos");
     expect(uris).toContain("api/v1");
     expect(uris).toContain("api/facturas");
     expect(uris).toContain("api/salud");
-    // Las comentadas desaparecen (stripComments antes de parsear).
+    // Commented ones disappear (stripComments runs before parsing).
     expect(uris.some((u) => u.includes("comentada"))).toBe(false);
     expect(uris.some((u) => u.includes("bloque"))).toBe(false);
   });
 
-  test("la pila de prefijos encadena y se desapila al cerrar el grupo", async () => {
+  test("the prefix stack chains and pops when the group closes", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const pedidos = rutas.find((r) => r.rawUri === "pedidos");
     expect(pedidos?.prefixChain).toEqual(["api", "v1", "admin"]);
-    // Lo declarado tras cerrar los grupos ya no hereda los prefijos.
+    // Anything declared after the groups close no longer inherits
+    // the prefixes.
     const salud = rutas.find((r) => r.rawUri === "salud");
     expect(salud?.prefixChain).toEqual(["api"]);
     expect(salud?.uri).toBe("api/salud");
   });
 
-  test("una uri vacía dentro de un prefijo hereda solo la cadena de prefijos", async () => {
+  test("an empty URI inside a prefix inherits only the prefix chain", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const raiz = rutas.find((r) => r.uri === "api/v1");
     expect(raiz?.rawUri).toBe("");
@@ -162,7 +163,7 @@ describe("route-parser.service — parseRoutesFile sobre disco", () => {
     expect(raiz?.actionName).toBe("index");
   });
 
-  test("resuelve imports con alias y sin alias", async () => {
+  test("resolves imports with and without alias", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const factura = rutas.find((r) => r.rawUri === "facturas");
     expect(factura?.controllerClass).toBe("App\\Http\\Controllers\\FacturaController");
@@ -171,15 +172,16 @@ describe("route-parser.service — parseRoutesFile sobre disco", () => {
     expect(pedido?.controllerClass).toBe("App\\Http\\Controllers\\PedidoController");
   });
 
-  test("el array del controlador puede partir en la línea siguiente", async () => {
-    // `facturas` declara la uri en una línea y el [Controller, 'accion']
-    // en la siguiente: la ventana de dos líneas debe capturarlo.
+  test("the controller array can split across the next line", async () => {
+    // `facturas` declares the uri on one line and the
+    // [Controller, 'action'] on the next: the two-line window must
+    // capture it.
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const factura = rutas.find((r) => r.rawUri === "facturas");
     expect(factura?.actionName).toBe("listado");
   });
 
-  test("una closure no aporta ni controlador ni acción", async () => {
+  test("a closure contributes neither controller nor action", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const salud = rutas.find((r) => r.rawUri === "salud");
     expect(salud?.controllerClass).toBeUndefined();
@@ -188,7 +190,7 @@ describe("route-parser.service — parseRoutesFile sobre disco", () => {
     expect(salud?.lineNumber).toBeGreaterThan(0);
   });
 
-  test("un controlador sin import se asume en App\\Http\\Controllers", async () => {
+  test("a controller without import is assumed under App\\Http\\Controllers", async () => {
     const rutas = await parseRoutesFile("routes/api.php", ["api"], contexto);
     const libro = rutas.find((r) => r.rawUri === "libros");
     expect(libro?.controllerClass).toBe("App\\Http\\Controllers\\LibroController");
@@ -214,12 +216,12 @@ describe("route-parser.service — parseAllRoutes", () => {
     await project.cleanup();
   });
 
-  test("asume el prefijo api para los archivos no listados", async () => {
+  test("assumes the api prefix for unlisted files", async () => {
     const rutas = await parseAllRoutes({}, contexto);
     expect(rutas.map((r) => r.uri).sort()).toEqual(["api/cosas", "api/salud"]);
   });
 
-  test("filePrefixes reemplaza el prefijo por defecto por archivo", async () => {
+  test("filePrefixes replaces the default prefix per file", async () => {
     const rutas = await parseAllRoutes(
       { "routes/api.php": [], "routes/erp.php": ["api", "erp"] },
       contexto,
@@ -231,12 +233,12 @@ describe("route-parser.service — parseAllRoutes", () => {
     expect(cosas?.prefixChain).toEqual(["api", "erp"]);
   });
 
-  test("ignora los ficheros que no son .php", async () => {
+  test("ignores files that are not .php", async () => {
     const rutas = await parseAllRoutes({}, contexto);
     expect(rutas.some((r) => r.sourceFile === "routes/notas.txt")).toBe(false);
   });
 
-  test("sin carpeta routes devuelve una lista vacía", async () => {
+  test("without a routes folder returns an empty list", async () => {
     const tmp = await createTempProject({ "composer.json": "{}" });
     try {
       const ctxLocal = resolveProjectContext({ projectRoot: tmp.root });

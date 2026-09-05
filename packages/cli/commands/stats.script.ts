@@ -1,14 +1,14 @@
 /**
- * Estadísticas de la colección, agrupadas por zonas.
+ * Collection statistics, grouped by zone.
  *
- * Uso:
+ * Usage:
  *   bun scripts/stats.script.ts
  *   bun run stats
  *
- * `runStats` devuelve los recuentos y `main` los pinta, por el mismo
- * motivo que en `list` y `check`: el tool del plugin necesita los datos,
- * y una tabla alineada con `padEnd` es lo peor que se le puede dar a un
- * agente para que la parsee.
+ * `runStats` returns the counts and `main` prints them, for the same
+ * reason as in `list` and `check`: the plugin tool needs the data,
+ * and a `padEnd`-aligned table is the worst thing to hand an agent
+ * to parse.
  */
 import { explainReadFailure, readCollection } from "../../core/helpers/collection-file.helper.js";
 import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
@@ -27,7 +27,7 @@ interface ZoneStats {
   byFolder: Map<string, number>;
 }
 
-/** Calcula las estadísticas y las devuelve, imprimiéndolas por el camino. */
+/** Calculates the statistics and returns them, printing them along the way. */
 export async function runStats(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
@@ -110,7 +110,7 @@ export async function runStats(
   };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   return (await runStats(argv)).code;
 }

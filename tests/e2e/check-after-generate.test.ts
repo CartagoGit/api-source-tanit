@@ -1,30 +1,30 @@
 /**
- * Generar y comprobar, en los veintiún frameworks.
+ * Generate and check, across all twenty-one frameworks.
  *
- * La invariante es la más simple que existe: una colección **recién
- * generada** de un proyecto está, por definición, al día con ese
- * proyecto. Si `check` dice otra cosa, `check` está mal.
+ * The invariant is the simplest one there is: a **freshly generated**
+ * collection of a project is, by definition, in sync with that project.
+ * If `check` says otherwise, `check` is wrong.
  *
- * Se midió antes de escribir esto: **13 de 22 ejemplos** reportaban
- * deriva total sobre una colección que acababa de salir de `generate`.
- * `check` es uno de los diez tools MCP, y su única pregunta es «¿se ha
- * desincronizado mi colección?»; contestar que sí siempre hace que un
- * agente regenere en bucle.
+ * Measured before writing this: **13 of 22 examples** reported total
+ * drift on a collection that had just come out of `generate`. `check` is
+ * one of the ten MCP tools, and its only question is "has my collection
+ * gone out of sync?"; answering yes always makes an agent regenerate in
+ * a loop.
  *
- * ## Por qué no había test
+ * ## Why there was no test
  *
- * Lo había: `check-rpc.test.ts` y `check.tool.spec.ts`. Los dos prueban
- * GraphQL, y GraphQL era de los nueve que funcionaban. La cobertura por
- * framework de este comando era del 9 %, y el bug vivía justo en el 91 %
- * restante.
+ * There was: `check-rpc.test.ts` and `check.tool.spec.ts`. Both test
+ * GraphQL, and GraphQL was one of the nine that worked. Per-framework
+ * coverage for this command was 9 %, and the bug lived in the remaining
+ * 91 %.
  *
- * ## Qué se afirma, y qué no
+ * ## What is asserted, and what is not
  *
- * No se afirma un número de endpoints: eso obligaría a mantener
- * veintiuna cifras cada vez que cambie un ejemplo, y es lo que hace que
- * un test así se acabe borrando. Se afirma que **las dos listas de
- * deriva están vacías**, que es la propiedad de verdad y vale igual en
- * los veintiuno.
+ * A specific number of endpoints is not asserted: that would force
+ * keeping twenty-one figures updated every time an example changes, and
+ * is exactly what makes such a test eventually get deleted. What is
+ * asserted is that **both drift lists are empty** — the real property,
+ * which holds equally across all twenty-one.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
@@ -36,11 +36,11 @@ import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
 
 /**
- * Los ejemplos, leídos del disco.
+ * The examples, read from disk.
  *
- * No se usa `FRAMEWORK_IDS`: hay ejemplos que no son un framework
- * —`example-app`, `example-openapi-headers`— y también cuentan, porque
- * son proyectos reales que alguien puede escanear.
+ * `FRAMEWORK_IDS` is not used: some examples are not a framework
+ * — `example-app`, `example-openapi-headers` — and they count too,
+ * because they are real projects that someone might scan.
  */
 const EJEMPLOS = (await readdir(EXAMPLES_DIR, { withFileTypes: true }))
   .filter((e) => e.isDirectory() && e.name.startsWith("example-"))
@@ -69,12 +69,12 @@ afterAll(async () => {
 });
 
 describe("una colección recién generada está al día", () => {
-  test("hay ejemplos que comprobar", () => {
+  test("there are examples to check", () => {
     expect(EJEMPLOS.length).toBeGreaterThan(20);
   });
 
   test.for(EJEMPLOS)(
-    "%s: `check` no encuentra ninguna deriva",
+    "%s: `check` finds no drift",
     { timeout: 240_000 },
     async (framework) => {
       const { code, output } = await runProcess("bun", [
@@ -85,7 +85,7 @@ describe("una colección recién generada está al día", () => {
 
       expect(
         output,
-        `${framework}: la colección acaba de salir de \`generate\` y \`check\` ve deriva`,
+        `${framework}: the collection just came out of \`generate\` and \`check\` sees drift`,
       ).toContain("in sync");
       expect(code, output).toBe(0);
     },

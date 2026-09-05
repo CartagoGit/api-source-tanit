@@ -1,14 +1,14 @@
 /**
- * Descubre endpoints automáticamente a partir de las rutas Laravel
- * parseadas y, opcionalmente, de las firmas de los controladores
- * (FormRequest tipado en el método).
+ * Discovers endpoints automatically from the parsed Laravel routes
+ * and, optionally, from controller signatures (typed FormRequest on
+ * the method).
  *
- * No depende de un catálogo manual: basta con `routes/*.php` y
- * `app/Http/Controllers` + `app/Http/Requests`.
+ * It does not depend on a manual catalog: `routes/*.php` plus
+ * `app/Http/Controllers` and `app/Http/Requests` is enough.
  *
- * El resultado es un `EndpointSpec[]` listo para `buildCollection()`.
- * Si se pasa un catálogo manual, se usa como **override** (misma
- * method+uri gana el manual: body, name, folder, description).
+ * The result is an `EndpointSpec[]` ready for `buildCollection()`. If
+ * a manual catalog is passed, it is used as an **override** (same
+ * method+uri wins from manual: body, name, folder, description).
  */
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFile } from "node:fs/promises";
@@ -23,7 +23,7 @@ import { prettyGroupName, topGroupFor } from "../../core/helpers/uri.helper.js";
 import type { FormRequestRules, ParsedRoute } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
 // ---------------------------------------------------------------------------
-// Nombres legibles a partir del método del controlador
+// Readable names from the controller method
 // ---------------------------------------------------------------------------
 
 const METHOD_LABELS: Record<string, string> = {
@@ -62,16 +62,16 @@ function humanizeSegment(seg: string): string {
 }
 
 /**
- * Convierte parámetros Laravel a variables Postman:
+ * Converts Laravel parameters to Postman variables:
  *   `{usuario}`           → `{{usuario}}`
  *   `{fabricante:tecdoc_id}` → `{{fabricante}}`
- *   y deja la URI empezando por `/` sin prefijo `api/`.
+ *   and leaves the URI starting with `/` without the `api/` prefix.
  */
 export function toPostmanUri(laravelUri: string): string {
   let u = stripApiPrefix(laravelUri.replace(/^\/+/, ""));
   u = u.replace(/\{([^}:]+)(?::[^}]+)?\}/g, "{{$1}}");
   if (!u.startsWith("/")) u = "/" + u;
-  // Normaliza dobles barras y trailing slash (salvo raíz).
+  // Normalise double slashes and trailing slash (except root).
   u = u.replace(/\/+/g, "/");
   if (u.length > 1 && u.endsWith("/")) u = u.slice(0, -1);
   return u;
@@ -92,18 +92,18 @@ function endpointName(route: ParsedRoute, postmanUri: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Resolución de FormRequest desde el controlador
+// FormRequest resolution from the controller
 // ---------------------------------------------------------------------------
 
-/** Cache: ruta abs del controlador → mapa methodName → FormRequest FQCN. */
+/** Cache: controller absolute path → methodName → FormRequest FQCN map. */
 const controllerFormRequestCache = new Map<
   string,
   Promise<Map<string, string>>
 >();
 
 /**
- * Parsea un controlador PHP y devuelve, por cada método público, el
- * primer parámetro tipado que termine en `Request` (FormRequest).
+ * Parses a PHP controller and returns, for each public method, the
+ * first typed parameter ending in `Request` (FormRequest).
  */
 async function parseControllerFormRequests(
   controllerFqcn: string,
@@ -141,7 +141,7 @@ async function parseControllerFormRequests(
       }
     }
 
-    // Métodos: public function name ( Type $var , ... ) — multilínea OK.
+    // Methods: public function name ( Type $var , ... ) — multiline OK.
     const methodRe =
       /(?:public|protected)\s+function\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)/gs;
     let mm: RegExpExecArray | null;
@@ -149,8 +149,9 @@ async function parseControllerFormRequests(
       const methodName = mm[1];
       const params = mm[2] ?? "";
       if (!methodName) continue;
-      // Cualquier parámetro tipado *Request (no solo el primero de la firma
-      // si hubiera uniones raras; tomamos el primero que matchee).
+      // Any typed *Request parameter (not just the first of the
+      // signature in case of unusual unions; we take the first that
+      // matches).
       const typeRe = /(?:\\?([A-Za-z0-9_\\]*Request))\s+\$/g;
       let typeMatch: RegExpExecArray | null;
       let picked: string | null = null;
@@ -164,7 +165,7 @@ async function parseControllerFormRequests(
       const typeName = picked.includes("\\")
         ? picked.split("\\").pop()!
         : picked;
-      // Ignora Illuminate\Http\Request genérico.
+      // Ignore the generic Illuminate\Http\Request.
       if (typeName === "Request" && !imports.has("Request")) continue;
       const fqcn =
         imports.get(typeName) ??
@@ -202,7 +203,7 @@ async function resolveFormRequestPath(
 }
 
 // ---------------------------------------------------------------------------
-// Construcción de EndpointSpec
+// EndpointSpec construction
 // ---------------------------------------------------------------------------
 
 async function routeToSpec(
@@ -223,7 +224,7 @@ async function routeToSpec(
     folder,
   };
 
-  // FormRequest desde firma del controlador (+ fallback por convención)
+  // FormRequest from controller signature (+ fallback by convention)
   let rules: FormRequestRules | null = null;
   if (route.controllerClass && route.actionName) {
     const map = await parseControllerFormRequests(route.controllerClass, context);
@@ -233,7 +234,7 @@ async function routeToSpec(
       rel = await resolveFormRequestPath(frFqcn, context);
     }
     if (!rel) {
-      // Convención de nombre: IndexXRequest / StoreXRequest / etc.
+      // Naming convention: IndexXRequest / StoreXRequest / etc.
       rel = await findFormRequestForController(
         route.controllerClass,
         route.actionName,
@@ -241,7 +242,7 @@ async function routeToSpec(
       );
     }
     if (rel) {
-      // Normaliza a ruta relativa al proyecto si vino absoluta.
+      // Normalise to a project-relative path if it came absolute.
       if (rel.startsWith("/")) {
         try {
           rel = rel.slice(context.projectRoot.length + 1);
@@ -265,7 +266,7 @@ async function routeToSpec(
   if (rules) {
     const method = route.method.toUpperCase();
     if (method === "POST" || method === "PUT" || method === "PATCH") {
-      // Body base = mínimo (required). El enricher añade más variantes.
+      // Base body = minimum (required). The enricher adds more variants.
       const min = generateMinimalBody(rules);
       const full = generateCompleteBody(rules);
       if (Object.keys(min).length > 0) spec.body = min;
@@ -283,7 +284,7 @@ async function routeToSpec(
  * Descubre todos los endpoints del proyecto.
  *
  * @param config ProjectConfig (filePrefixes, uriGroupOverrides…).
- * @param manualOverrides Catálogo manual opcional (gana en conflictos).
+ * @param manualOverrides Optional manual catalog (wins on conflicts).
  */
 export async function discoverEndpoints(
   config: ProjectConfig,
@@ -302,7 +303,7 @@ export async function discoverEndpoints(
   let withoutFr = 0;
 
   for (const route of routes) {
-    // Saltar closures / rutas sin método HTTP estándar ya filtradas.
+    // Skip closures / routes without a standard HTTP method already filtered.
     if (!["GET", "POST", "PUT", "DELETE", "PATCH"].includes(route.method)) {
       continue;
     }

@@ -1,19 +1,20 @@
 /**
- * El nombre de una request no es una ruta.
+ * The name of a request is not a route.
  *
- * `deriveName` pasaba el `displayName` del scanner por `toPostmanUri`,
- * que le pega una barra delante a todo lo que no la lleve — porque eso
- * es lo correcto para una URI. Para un nombre no: en Postman salía
- * `/POST /orders` donde el scanner de Next.js había puesto
- * `POST /orders`, y `/create_user` donde FastAPI había puesto el nombre
- * de la función.
+ * `deriveName` used to pass the scanner's `displayName` through
+ * `toPostmanUri`, which prepends a slash to anything that does not have
+ * one — because that is the right thing for a URI. For a name it is
+ * not: Postman ended up with `/POST /orders` where the Next.js scanner
+ * had put `POST /orders`, and `/create_user` where FastAPI had put the
+ * function name.
  *
- * Afectaba a los seis scanners que ponen `displayName` (next.js, gin,
- * flask, symfony, spring boot, fastapi), y no lo veía nadie porque una
- * barra de más en un nombre no rompe la colección: solo la afea.
+ * It affected the six scanners that set `displayName` (next.js, gin,
+ * flask, symfony, spring boot, fastapi), and nobody noticed because an
+ * extra slash on a name does not break the collection: it only uglifies
+ * it.
  *
- * Lo que sí hay que traducir en un nombre son los parámetros de ruta,
- * para que `GET /users/:id` se lea igual que su URI.
+ * What does need translating in a name are the path parameters, so
+ * `GET /users/:id` reads the same as its URI.
  */
 import { describe, expect, test } from "vitest";
 
@@ -24,96 +25,96 @@ function nameOf(route: Partial<ParsedRoute> & { method: string; uri: string }): 
   return deriveName(route as ParsedRoute);
 }
 
-describe("un displayName se respeta tal cual", () => {
-  test("no le crece una barra delante", () => {
+describe("a displayName is respected as-is", () => {
+  test("does not get a slash prepended", () => {
     expect(nameOf({ method: "POST", uri: "/orders", displayName: "POST /orders" })).toBe(
       "POST /orders",
     );
   });
 
-  test("el nombre de una función se queda como está", () => {
+  test("a function name is left as-is", () => {
     expect(nameOf({ method: "POST", uri: "/users", displayName: "create_user" })).toBe(
       "create_user",
     );
   });
 
-  test("un nombre de ruta de Symfony se queda como está", () => {
+  test("a Symfony route name is left as-is", () => {
     expect(nameOf({ method: "POST", uri: "/logout", displayName: "api_logout" })).toBe(
       "api_logout",
     );
   });
 
-  test("no se colapsan las barras del nombre", () => {
-    // Un nombre puede llevar `//` a propósito; no es una ruta que
-    // normalizar.
+  test("does not collapse the slashes in the name", () => {
+    // A name may carry `//` on purpose; it is not a route to normalize.
     expect(
       nameOf({ method: "GET", uri: "/x", displayName: "GET https://api/x" }),
     ).toBe("GET https://api/x");
   });
 
-  test("se le quitan los espacios de los bordes", () => {
+  test("trims whitespace from the edges", () => {
     expect(nameOf({ method: "GET", uri: "/x", displayName: "  listUsers  " })).toBe(
       "listUsers",
     );
   });
 });
 
-describe("los parámetros sí se traducen", () => {
-  test("`:id` de Express pasa a `{{id}}`", () => {
+describe("parameters do get translated", () => {
+  test("`:id` from Express becomes `{{id}}`", () => {
     expect(
       nameOf({ method: "GET", uri: "/users/:id", displayName: "GET /users/:id" }),
     ).toBe("GET /users/{{id}}");
   });
 
-  test("`<int:id>` de Django pasa a `{{id}}`", () => {
+  test("`<int:id>` from Django becomes `{{id}}`", () => {
     expect(
       nameOf({ method: "GET", uri: "/users/1", displayName: "GET /users/<int:id>" }),
     ).toBe("GET /users/{{id}}");
   });
 
-  test("`{id}` de Laravel pasa a `{{id}}`", () => {
+  test("`{id}` from Laravel becomes `{{id}}`", () => {
     expect(
       nameOf({ method: "GET", uri: "/users/1", displayName: "GET /users/{id}" }),
     ).toBe("GET /users/{{id}}");
   });
 
-  test("lo que ya es `{{id}}` no se toca", () => {
+  test("what is already `{{id}}` is not touched", () => {
     expect(
       nameOf({ method: "GET", uri: "/users/1", displayName: "GET /users/{{id}}" }),
     ).toBe("GET /users/{{id}}");
   });
 });
 
-describe("una URI sí se normaliza como URI", () => {
-  // Es la diferencia con un nombre, y el motivo de que ahora sean dos
-  // funciones distintas.
-  test("le crece la barra inicial si el scanner la omite", () => {
+describe("a URI is normalized as a URI", () => {
+  // This is the difference from a name, and the reason there are now two
+  // separate functions.
+  test("gets the leading slash when the scanner omits it", () => {
     expect(toPostmanUri("users")).toBe("/users");
   });
 
-  test("se le colapsan las barras repetidas", () => {
+  test("collapses repeated slashes", () => {
     expect(toPostmanUri("/api//v1///users")).toBe("/api/v1/users");
   });
 
-  test("y también traduce los parámetros", () => {
+  test("and also translates parameters", () => {
     expect(toPostmanUri("/users/:id")).toBe("/users/{{id}}");
   });
 });
 
 /**
- * Un `GET` no lleva cuerpo, así que unas reglas de body en un `GET` no
- * pueden ser suyas: son las del vecino.
+ * A `GET` does not carry a body, so body rules on a `GET` cannot be
+ * its own: they belong to the neighbor.
  *
- * Los providers que buscan "el esquema más cercano" cuando el handler no
- * referencia ninguno se lo cuelgan a cualquiera — el `GET /users` del
- * ejemplo de Express acababa con los campos del `POST /orders`. Mientras
- * esas reglas solo alimentaban el body de ejemplo no se veía, porque el
- * body ya se saltaba estos métodos; en cuanto empezaron a documentarse
- * y a salir en el OpenAPI, el documento describía un GET con cuerpo.
+ * Providers that look for "the closest schema" when the handler does
+ * not reference any attach it to whichever endpoint they please — the
+ * `GET /users` from the Express example ended up with the fields of
+ * `POST /orders`. While those rules only fed the example body it was
+ * not noticeable, because the body already skipped these methods;
+ * once they started being documented and showing up in OpenAPI, the
+ * document described a GET with a body.
  */
-describe("las reglas de body solo van a los métodos que lo aceptan", () => {
+describe("body rules only go to the methods that accept them", () => {
   test.each(["GET", "DELETE", "HEAD", "OPTIONS"] as const)(
-    "un %s no conserva reglas de body",
+    "a %s does not keep body rules",
     async (method) => {
       const { generateWithAllFrameworks } = await import("../../packages/frameworks/index");
       const { exampleDir } = await import("../../scripts/helpers/root.helper");
@@ -126,7 +127,7 @@ describe("las reglas de body solo van a los métodos que lo aceptan", () => {
     },
   );
 
-  test("un POST sí las conserva", async () => {
+  test("a POST does keep them", async () => {
     const { generateWithAllFrameworks } = await import("../../packages/frameworks/index");
     const { exampleDir } = await import("../../scripts/helpers/root.helper");
     const result = await generateWithAllFrameworks(exampleDir("express"));

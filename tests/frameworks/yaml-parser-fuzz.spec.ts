@@ -1,30 +1,30 @@
 /**
- * El parser de YAML contra entradas que nadie escribió a mano.
+ * The YAML parser against inputs nobody wrote by hand.
  *
- * `parseYamlLite` son 267 líneas sin dependencias —el binario compilado
- * no puede cargar paquetes en ejecución— y leen specs OpenAPI **de otra
- * gente**: entrada no controlada, del framework con más endpoints
- * medidos del proyecto.
+ * `parseYamlLite` is 267 lines without dependencies —the compiled
+ * binary cannot load packages at runtime— and reads OpenAPI specs
+ * **written by others**: uncontrolled input, from the framework with
+ * the most measured endpoints in the project.
  *
- * Se golpeó con entradas raras antes de escribir esto, y la buena
- * noticia es que **nunca lanza y nunca se cuelga**. La mala es que esa
- * misma robustez lo hace peligroso: un spec que no sabe leer no se
- * distingue de uno vacío. `a: &x 1` devuelve la cadena `"&x 1"` en vez
- * del número, y nadie se entera hasta que la colección lleva valores que
- * no son los del spec.
+ * It was hit with weird inputs before this was written, and the good
+ * news is that **it never throws and never hangs**. The bad news is
+ * that very same robustness makes it dangerous: a spec it cannot
+ * read is indistinguishable from an empty one. `a: &x 1` returns the
+ * string `"&x 1"` instead of the number, and nobody finds out until
+ * the collection carries values that are not the spec's.
  *
- * Las anclas no son exóticas en OpenAPI: es como se comparte una
- * respuesta de error entre veinte endpoints sin repetirla.
+ * Anchors are not exotic in OpenAPI: they are how a single error
+ * response is shared across twenty endpoints without copy-paste.
  *
- * De ahí las dos mitades de este fichero: las **invariantes**, que
- * valen para cualquier entrada, y la **detección**, que es lo que separa
- * «no lo soporto» de «te he mentido».
+ * Hence the two halves of this file: the **invariants**, which hold
+ * for any input, and the **detection**, which separates "I do not
+ * support this" from "I lied to you".
  */
 import { describe, expect, test } from "vitest";
 
 import { parseYamlLite, unsupportedYamlFeatures } from "../../packages/frameworks/scanners/openapi.scanner";
 
-/** Trozos con los que se construyen documentos al azar. */
+/** Pieces used to build random documents. */
 const PIEZAS = [
   "a: 1",
   "b: texto",
@@ -55,7 +55,7 @@ const PIEZAS = [
   'p: "\\u0000"',
 ];
 
-/** Un generador reproducible: un fallo se puede volver a ver. */
+/** A reproducible generator: a failure can be reproduced. */
 function aleatorio(semilla: number): () => number {
   let s = semilla >>> 0;
   return () => {
@@ -71,13 +71,13 @@ function documento(rnd: () => number, lineas: number): string {
   ).join("\n");
 }
 
-describe("invariantes: valen para cualquier entrada", () => {
+describe("invariants: hold for any input", () => {
   /**
-   * EL test. 500 documentos generados de trozos legales e ilegales
-   * mezclados. Si alguno lanza o cuelga, el scanner de OpenAPI se lleva
-   * por delante la generación entera de un proyecto.
+   * THE test. 500 documents generated from a mix of legal and illegal
+   * pieces. If any of them throws or hangs, the OpenAPI scanner takes
+   * the entire generation of a project down with it.
    */
-  test("nunca lanza, sobre 500 documentos generados", () => {
+  test("never throws, across 500 generated documents", () => {
     const rnd = aleatorio(20260808);
     const fallos: string[] = [];
     for (let i = 0; i < 500; i++) {
@@ -91,19 +91,19 @@ describe("invariantes: valen para cualquier entrada", () => {
     expect(fallos, fallos[0] ?? "").toEqual([]);
   });
 
-  test("termina: 200 documentos largos en menos de cinco segundos", () => {
+  test("finishes: 200 long documents in under five seconds", () => {
     const rnd = aleatorio(1234);
     const t0 = Date.now();
     for (let i = 0; i < 200; i++) parseYamlLite(documento(rnd, 200));
     expect(Date.now() - t0).toBeLessThan(5_000);
   });
 
-  test("una anidación absurda no desborda la pila", () => {
+  test("absurd nesting does not blow the stack", () => {
     const profundo = Array.from({ length: 500 }, (_, i) => `${" ".repeat(i)}k${i}:`).join("\n");
     expect(() => parseYamlLite(profundo)).not.toThrow();
   });
 
-  test("siempre devuelve algo, nunca `undefined`", () => {
+  test("always returns something, never `undefined`", () => {
     const rnd = aleatorio(77);
     for (let i = 0; i < 100; i++) {
       expect(parseYamlLite(documento(rnd, 10))).toBeDefined();
@@ -111,16 +111,16 @@ describe("invariantes: valen para cualquier entrada", () => {
   });
 
   test.for([
-    ["vacío", ""],
+    ["empty", ""],
     ["solo espacios", "   \n  \n"],
-    ["solo comentarios", "# nada\n# aquí"],
+    ["only comments", "# nada\n# aquí"],
     ["con BOM", "﻿a: 1"],
     ["truncado a media clave", "paths:\n  /users:\n    get"],
-  ] as const)("%s no rompe", ([, src]) => {
+  ] as const)("%s does not break", ([, src]) => {
     expect(() => parseYamlLite(src)).not.toThrow();
   });
 
-  test("lo que parsea bien, lo parsea bien", () => {
+  test("what it parses well, it parses well", () => {
     const spec = parseYamlLite(
       ["openapi: 3.0.0", "paths:", "  /users:", "    get:", "      summary: Listar"].join("\n"),
     ) as { openapi?: string; paths?: Record<string, Record<string, { summary?: string }>> };
@@ -129,26 +129,27 @@ describe("invariantes: valen para cualquier entrada", () => {
   });
 });
 
-describe("detección: lo que no sabe leer, lo dice", () => {
+describe("detection: what it cannot read, it says so", () => {
   test.for([
-    ["anclas", "responses: &comun\n  '200': {}", "anclas"],
+    ["anchors", "responses: &comun\n  '200': {}", "anclas"],
     ["alias", "responses: *comun", "alias"],
-    ["claves de fusión", "<<: *base", "fusión"],
-  ] as const)("avisa de %s", ([, src, esperado]) => {
+    ["merge keys", "<<: *base", "fusión"],
+  ] as const)("warns about %s", ([, src, esperado]) => {
     const encontrado = unsupportedYamlFeatures(src);
     expect(encontrado.length).toBeGreaterThan(0);
     expect(encontrado.join(" ")).toContain(esperado);
   });
 
-  test("varios documentos en un fichero", () => {
+  test("multiple documents in one file", () => {
     expect(unsupportedYamlFeatures("---\na: 1\n---\nb: 2\n").length).toBeGreaterThan(0);
   });
 
   /**
-   * El fallo simétrico, y el que de verdad protege: si avisara de más,
-   * cada spec normal saldría con un aviso y nadie los leería.
+   * The symmetric failure, and the one that really protects us: if
+   * it warned too much, every normal spec would come out with a
+   * warning and nobody would read them.
    */
-  test("un spec normal no dispara ningún aviso", () => {
+  test("a normal spec triggers no warning", () => {
     const normal = [
       "openapi: 3.0.0",
       "info:",
@@ -169,19 +170,19 @@ describe("detección: lo que no sabe leer, lo dice", () => {
     expect(unsupportedYamlFeatures(normal)).toEqual([]);
   });
 
-  test("una URL con `*` o `&` en un valor no es un ancla", () => {
+  test("a URL containing `*` or `&` in a value is not an anchor", () => {
     expect(unsupportedYamlFeatures("url: http://x.com/?a=1&b=2")).toEqual([]);
   });
 
   /**
-   * Esto documenta el daño concreto, y por eso el aviso existe: el
-   * parser no falla, devuelve la cadena literal.
+   * This documents the concrete damage, and is why the warning
+   * exists: the parser does not fail, it returns the literal string.
    */
-  test("sin el aviso, un ancla se cuela como texto", () => {
+  test("without the warning, an anchor sneaks through as text", () => {
     const conAncla = parseYamlLite("a: &x 1\nb: *x") as Record<string, unknown>;
     expect(conAncla["a"]).toBe("&x 1");
     expect(conAncla["b"]).toBe("*x");
-    // Y por eso hay que avisar.
+    // And that is why we must warn.
     expect(unsupportedYamlFeatures("a: &x 1\nb: *x").length).toBe(2);
   });
 });

@@ -1,20 +1,21 @@
 /**
  * Tool `tanit_generate`.
  *
- * Ejecuta el script `generate.script.ts` del proyecto tanit
- * contra el proyecto host que se le indique, devolviendo las rutas de los
- * artefactos generados y métricas básicas.
+ * Runs the tanit project's `generate.script.ts` against the given
+ * host project, returning the paths of the generated artefacts and
+ * basic metrics.
  *
  * SOLID:
- *   - S: solo orquesta la generación + parseo de output.
- *   - O: se puede extender (más flags) sin tocar el contrato.
- *   - L: lee el informe JSON del CLI, nunca su texto para personas.
- *   - D: depende de `runBunScript` (abstracción), no de Bun directo.
+ *   - S: only orchestrates generation + output parsing.
+ *   - O: can be extended (more flags) without touching the contract.
+ *   - L: reads the JSON report from the CLI, never its human text.
+ *   - D: depends on `runBunScript` (abstraction), not on Bun
+ *     directly.
  *
- * Forma canónica `IToolRegistration`: el `id` es estable dentro del
- * plugin (`tanit_generate`); el core lo cualifica con el
- * `namespacePrefix` del host. La MCP tool name registrada en el SDK
- * se construye en `register(server)` con el mismo prefijo.
+ * Canonical `IToolRegistration` shape: the `id` is stable inside the
+ * plugin (`tanit_generate`); the core qualifies it with the host's
+ * `namespacePrefix`. The MCP tool name registered in the SDK is
+ * built in `register(server)` with the same prefix.
  */
 
 import {
@@ -74,9 +75,9 @@ export function buildGenerateToolRegistration(
           }
           const args = parsed.data;
 
-          // Resolución del projectRoot con fallback documentado:
+          // projectRoot resolution with the documented fallback:
           //   args.projectRoot ?? ctx.options.defaultProjectRoot ?? ctx.workspace
-          // Validamos que el resultado apunte a un directorio existente.
+          // We validate that the result points to an existing directory.
           const workspaceRoot = ctx.workspace.root;
           const defaultProjectRoot = ctx.options["defaultProjectRoot"] as
             | string
@@ -87,9 +88,9 @@ export function buildGenerateToolRegistration(
           if (!existsSync(projectRoot)) {
             return toolError(
               `projectRoot no existe: ${projectRoot}`,
-              // Interpolación de verdad: esto era una cadena entre comillas
-              // dobles con `${workspaceRoot}` dentro, así que el agente leía
-              // el placeholder literal en vez de la ruta.
+              // True interpolation: this used to be a double-quoted
+              // string with `${workspaceRoot}` inside, so the agent
+              // read the literal placeholder instead of the path.
               "Pasa projectRoot absoluto, o configura defaultProjectRoot en " +
                 `delendai.config.json. Workspace actual: ${workspaceRoot}.`,
             );
@@ -100,19 +101,19 @@ export function buildGenerateToolRegistration(
           if (args.envs && args.envs.length > 0) {
             cliArgs.push("--envs", args.envs.join(","));
           }
-          // Reintento con el framework que diga la persona, cuando la
-          // detección no ha podido acertar.
+          // Retry with the framework the user names, when detection
+          // could not get it right.
           if (args.framework) cliArgs.push("--framework", args.framework);
           if (args.formats && args.formats.length > 0) {
             cliArgs.push("--format", args.formats.join(","));
           }
           if (args.openAfter) cliArgs.push("--open");
-          // `--framework-search-root` se cuelga del CLI cuando la
-          // detección por monorepo no basta: la opción del plugin
-          // (configurada por el host en `delendai.config.json`) o
-          // el valor que el agente pase al tool. La validación del
-          // subdir (sin `/` inicial, sin `..`) vive en el pipeline;
-          // aquí se pasa tal cual. f00011 S3.
+          // `--framework-search-root` is passed to the CLI when
+          // monorepo detection is not enough: the plugin option
+          // (configured by the host in `delendai.config.json`) or
+          // the value the agent passes to the tool. The subdir
+          // validation (no leading `/`, no `..`) lives in the
+          // pipeline; it is passed through unchanged here. f00011 S3.
           const pluginSearchRoot = ctx.options["frameworkSearchRoot"] as
             | string
             | undefined;
@@ -129,20 +130,21 @@ export function buildGenerateToolRegistration(
             containRoots: [projectRoot],
             ctx: {
               cwd: workspaceRoot,
-              // El binario viene de la opción validada del plugin (o
-              // cae al DELENDAI_BUN_BIN / Bun.which / command -v que
-              // el helper aplica). El env lo toma el helper de su
-              // default: el plugin no necesita leerlo para nada.
+              // The binary comes from the validated plugin option
+              // (or falls back to DELENDAI_BUN_BIN / Bun.which /
+              // command -v that the helper applies). The env is
+              // taken by the helper from its default: the plugin
+              // does not need to read it.
               bunBin: ctx.options["delendaiBunBin"] as string | undefined,
             },
           });
           if (!result.ok) {
             return toolError(
               `generate falló (exit=${result.exitCode}): ${result.stderr || result.stdout || "sin detalle"}`,
-              // Sin esta segunda línea, "no se ha reconocido nada" era un
-              // callejón sin salida: el agente no tenía forma de saber que
-              // la persona a la que asiste puede resolverlo diciendo de qué
-              // framework es su API.
+              // Without this second line, "nothing was recognised"
+              // was a dead end: the agent had no way to know that
+              // the user it is helping can resolve it by saying
+              // which framework their API is.
               "Revisa que projectRoot apunte a un proyecto de API de alguno de los\n" +
                 "frameworks soportados (ver docs/FRAMEWORKS.md).\n" +
                 (args.framework

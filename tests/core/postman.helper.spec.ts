@@ -6,7 +6,7 @@ import type {
   PostmanItem,
 } from "../../packages/contracts/interfaces/core/postman.interface";
 
-/** Construye una mini-colección para tests. */
+/** Builds a mini collection for tests. */
 function fixtureCollection(): PostmanCollection {
   return {
     info: {
@@ -49,25 +49,25 @@ function fixtureCollection(): PostmanCollection {
 
 describe("postman.helper", () => {
   describe("pathToSegments", () => {
-    test("elimina {{baseUrl}} y devuelve segmentos", () => {
+    test("removes {{baseUrl}} and returns segments", () => {
       expect(pathToSegments("{{baseUrl}}/api/users")).toEqual(["api", "users"]);
     });
 
-    test("ignora host cuando es https://", () => {
+    test("ignores host when it is https://", () => {
       expect(pathToSegments("https://example.com/api/users")).toEqual([
         "api",
         "users",
       ]);
     });
 
-    test("ignora host cuando es http://", () => {
+    test("ignores host when it is http://", () => {
       expect(pathToSegments("http://example.com/api/users")).toEqual([
         "api",
         "users",
       ]);
     });
 
-    test("omite segmentos vacíos", () => {
+    test("skips empty segments", () => {
       expect(pathToSegments("{{baseUrl}}//api///users/")).toEqual([
         "api",
         "users",
@@ -76,13 +76,13 @@ describe("postman.helper", () => {
   });
 
   describe("uriFromRaw", () => {
-    test("recompone la URI relativa con /", () => {
+    test("rebuilds the relative URI with /", () => {
       expect(uriFromRaw("{{baseUrl}}/api/users/123")).toBe("api/users/123");
     });
   });
 
   describe("walkCollection", () => {
-    test("aplana una colección con carpetas", () => {
+    test("flattens a collection with folders", () => {
       const flat = walkCollection(fixtureCollection());
       expect(flat).toHaveLength(3);
       expect(flat[0]).toEqual({
@@ -105,7 +105,7 @@ describe("postman.helper", () => {
       });
     });
 
-    test("anida carpetas con ' > '", () => {
+    test("nests folders with ' > '", () => {
       const col: PostmanCollection = {
         info: {
           name: "x",
@@ -140,12 +140,12 @@ describe("postman.helper", () => {
   });
 
   describe("countItems", () => {
-    test("cuenta requests y carpetas", () => {
+    test("counts requests and folders", () => {
       const c = countItems(fixtureCollection());
       expect(c).toEqual({ requests: 3, folders: 1 });
     });
 
-    test("colección vacía devuelve 0/0", () => {
+    test("an empty collection returns 0/0", () => {
       const empty: PostmanCollection = {
         info: {
           name: "x",

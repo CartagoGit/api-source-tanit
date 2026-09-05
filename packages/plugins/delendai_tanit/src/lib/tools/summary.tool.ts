@@ -1,18 +1,18 @@
 /**
  * Tool `tanit_summary`.
  *
- * Inspecciona un proyecto host sin generar artefactos. Devuelve:
- * framework detectado, baseUrl, rutas en código, FormRequests
- * resueltos, modo (zero-config o con config del host), y conteo
- * de bodies/queries auto-rellenados por la heurística agnóstica.
+ * Inspects a host project without generating artefacts. Returns:
+ * detected framework, baseUrl, routes in code, resolved
+ * FormRequests, mode (zero-config or with host config), and count
+ * of bodies/queries auto-filled by the framework-agnostic heuristic.
  *
- * SOLID: S = solo lectura; no muta nada.
- * D = la llamada se delega a `summarizeProject()` (mismo código
- *     que usa el CLI `scripts/summary.script.ts`). Esto elimina
- *     el "hack" previo de shells out a `generate --inspect` y
- *     parsear stdout con regex.
+ * SOLID: S = read-only; it mutates nothing.
+ * D = the call is delegated to `summarizeProject()` (same code the
+ *     CLI's `scripts/summary.script.ts` uses). This removes the
+ *     previous "hack" of shelling out to `generate --inspect` and
+ *     parsing stdout with regex.
  *
- * Forma canónica `IToolRegistration`.
+ * Canonical `IToolRegistration` shape.
  */
 
 import {
@@ -82,11 +82,11 @@ export function buildSummaryToolRegistration(
 
           try {
             const summary = await summarizeWithAllFrameworks(projectRoot);
-            // Anotado a propósito: el spread de un objeto ajeno pasa
-            // cualquier cosa, y entonces el `outputSchema` describiría
-            // una salida que nadie comprueba. Con el tipo delante, el
-            // compilador exige que lo que se devuelve sea lo que se
-            // prometió.
+            // Annotated on purpose: spreading a foreign object lets
+            // anything through, and then `outputSchema` would describe
+            // an output nobody checks. With the type in front, the
+            // compiler demands that what is returned is what was
+            // promised.
             const out: ISummaryOutput = {
               ok: true,
               framework: summary.framework,
@@ -105,10 +105,11 @@ export function buildSummaryToolRegistration(
               inferredVariables: summary.inferredVariables,
               auth: summary.auth ? { loginEndpoint: summary.auth.loginEndpoint } : null,
               warnings: [...summary.warnings],
-              // f00010 S2: salud de la documentación, en porcentajes.
-              // La salida va **proyectada campo a campo** (nunca spread):
-              // si el resumen estrena un campo y este bloque no se toca,
-              // el guard de `plugin.interface.ts` no compila.
+              // f00010 S2: documentation health, in percentages.
+              // The output is **projected field by field** (never
+              // spread): if the summary adds a new field and this
+              // block is not updated, the guard in
+              // `plugin.interface.ts` will not compile.
               health: {
                 withValidationPercent: summary.health.withValidationPercent,
                 withBodySchemaPercent: summary.health.withBodySchemaPercent,

@@ -1,10 +1,10 @@
 /**
- * Valida que el JSON generado cumple las invariantes de una colección
- * Postman v2.1.0 bien formada.
+ * Validates that the generated JSON satisfies the invariants of a
+ * well-formed Postman v2.1.0 collection.
  *
- * Sale con código distinto de 0 si alguna invariante falla.
+ * Exits with a non-zero code if any invariant fails.
  *
- * Uso:
+ * Usage:
  *   bun scripts/validate-json.script.ts
  *   bun run check
  */
@@ -88,8 +88,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   let projectName: string | undefined;
   let resolvedContext: IProjectContext | undefined;
   try {
-    // Contexto explícito (r00008 S1): como el resto de comandos, el
-    // loader no debe caer al singleton para saber qué proyecto es.
+    // Explicit context (r00008 S1): as with the rest of commands, the
+    // loader must not fall back to the singleton to figure out which
+    // project it is.
     resolvedContext = resolveProjectContext({ argv });
     const loaded = await loadProject(argv, resolvedContext);
     projectName = loaded.config.name;

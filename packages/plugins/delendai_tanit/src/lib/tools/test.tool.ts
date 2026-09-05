@@ -1,26 +1,25 @@
 /**
  * Tool `tanit_test`.
  *
- * Corre la batería de tests del propio proyecto tanit y
- * (opcionalmente) un smoke test contra un fixture de un framework
- * concreto. Devuelve un informe estructurado con duración y exit
- * code de cada step, pensado para que un agente MCP pueda actuar
- * sobre fallos sin re-correr nada.
+ * Runs the test suite of the tanit project itself and (optionally)
+ * a smoke test against a specific framework's fixture. Returns a
+ * structured report with duration and exit code per step, designed
+ * so that an MCP agent can act on failures without re-running.
  *
- * Steps ejecutados (en orden, con timeout individual):
- *   1. `bun run typecheck`  (a menos que `withTypecheck === false`).
- *   2. Smoke in-process por framework (si `framework` está dado):
- *      carga el scanner correspondiente + el fixture en
- *      `tests/smoke-fixtures/<framework>-mini/`, corre el `scan()`,
- *      y diffea contra el `expected.json` hermano.
- *   3. `bun test tests/e2e/`  — siempre.
+ * Steps executed (in order, each with its own timeout):
+ *   1. `bun run typecheck` (unless `withTypecheck === false`).
+ *   2. In-process smoke per framework (if `framework` is given):
+ *      loads the corresponding scanner + the fixture at
+ *      `tests/smoke-fixtures/<framework>-mini/`, runs `scan()`,
+ *      and diffs against the sibling `expected.json`.
+ *   3. `bun test tests/e2e/` — always.
  *
  * SOLID:
- *   - S: solo orquesta invocaciones + parseo de output.
- *   - L: prefiere `runBunCommand` sobre `Bun.spawn` directo.
- *   - D: usa opciones del plugin (workspace, scripts) inyectadas.
+ *   - S: only orchestrates invocations + output parsing.
+ *   - L: prefers `runBunCommand` over `Bun.spawn` directly.
+ *   - D: uses the injected plugin options (workspace, scripts).
  *
- * Forma canónica `IToolRegistration`.
+ * Canonical `IToolRegistration` shape.
  */
 
 import {
@@ -44,8 +43,8 @@ import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/fra
 const TOOL_ID = "test";
 
 /**
- * Raíz del mini-fixture de un framework. La convención es estable:
- * `tests/smoke-fixtures/<framework>-mini/`.
+ * Root of the mini-fixture for a framework. The convention is
+ * stable: `tests/smoke-fixtures/<framework>-mini/`.
  */
 function smokeFixtureRoot(workspaceRoot: string, framework: string): string {
   return `${workspaceRoot}/tests/smoke-fixtures/${framework}-mini`;
@@ -57,10 +56,10 @@ type SmokeOutcome =
   | { ok: false; detail: string };
 
 /**
- * Corre el smoke de un framework contra su mini-fixture.
+ * Runs the smoke for a framework against its mini-fixture.
  *
- * Los colaboradores salen del registry (`scannerBundleFor`), que es la
- * única fuente de verdad sobre qué frameworks existen.
+ * The collaborators come from the registry (`scannerBundleFor`),
+ * which is the single source of truth on which frameworks exist.
  */
 async function smokeFramework(
   framework: string,
@@ -90,8 +89,8 @@ async function smokeFramework(
 }
 
 /**
- * Igual que `smokeFramework` pero devuelve los argumentos de `pushStep`,
- * para el caso de un único framework pedido explícitamente.
+ * Same as `smokeFramework` but returns the arguments of `pushStep`,
+ * for the case of a single explicitly requested framework.
  */
 async function runFrameworkSmoke(
   framework: string,
@@ -113,9 +112,9 @@ async function runFrameworkSmoke(
 }
 
 /**
- * Devuelve un fragmento útil del stderr o stdout de un test que falló:
- * las últimas N líneas que contienen palabras clave (`fail`, `error`,
- * `error:`) para que un agente tenga contexto sin tener que re-correr.
+ * Returns a useful snippet of the stderr or stdout of a failed test:
+ * the last N lines that contain keywords (`fail`, `error`, `error:`)
+ * so that an agent has context without having to re-run.
  */
 function extractFailureDetail(stderr: string, stdout: string): string | undefined {
   if (!stderr && !stdout) return undefined;
@@ -132,7 +131,7 @@ function extractFailureDetail(stderr: string, stdout: string): string | undefine
 }
 
 /**
- * Formatea el diff del smoke-runner como un detalle legible.
+ * Formats the smoke-runner's diff as a readable detail.
  */
 function formatSmokeDetail(diff: {
   missing: ReadonlyArray<{ method: string; uri: string }>;
@@ -265,11 +264,11 @@ export function buildTestToolRegistration(
             );
           }
 
-          // Mismo reparto que en `validate`: `ok` es "los pasos se
-          // pudieron ejecutar", `passed` es "todos salieron en verde".
-          // Un test en rojo es un resultado legítimo del tool, no un
-          // fallo suyo, y el agente necesita distinguirlos para saber si
-          // reintentar o leer `steps`.
+          // Same split as in `validate`: `ok` means "the steps could
+          // run", `passed` means "all of them came back green". A red
+          // test is a legitimate result of the tool, not a tool
+          // failure, and the agent needs to distinguish them to know
+          // whether to retry or read `steps`.
           const out: ITestOutput = {
             ok: true,
             passed: steps.every((s) => s.ok),

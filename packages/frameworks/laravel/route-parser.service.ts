@@ -1,23 +1,26 @@
 /**
- * Servicio de parsing de rutas Laravel.
+ * Laravel route-parsing service.
  *
- * Lee `routes/*.php` línea a línea manteniendo una pila de prefijos
- * activos (Route::prefix('xxx')->group(...)). Ignora líneas comentadas
- * para no contar rutas comentadas como el `batches` index antiguo.
+ * Reads `routes/*.php` line by line while keeping a stack of active
+ * prefixes (`Route::prefix('xxx')->group(...)`). Ignores commented
+ * lines so commented-out routes like the old `batches` index aren't
+ * counted.
  *
- * Para los archivos cuyo prefijo se aplica externamente (cargados con
- * `Route::prefix('api/<x>')` en su ServiceProvider) se pasa un prefijo
- * inicial explícito vía FILE_PREFIXES. Esto cubre el caso típico de
- * proyectos Laravel con varios `mapXxxRoutes()` que añaden prefijos
- * distintos según el archivo.
+ * For files whose prefix is applied externally (loaded with
+ * `Route::prefix('api/<x>')` in their ServiceProvider) an explicit
+ * initial prefix is passed via FILE_PREFIXES. This covers the typical
+ * Laravel project with several `mapXxxRoutes()` methods that add
+ * different prefixes depending on the file.
  *
- * Devuelve cada ruta con:
- *   - `uri`: URI completa con prefijo resuelto.
- *   - `prefixChain`: lista de prefijos activos cuando se declaró la ruta.
+ * Returns each route with:
+ *   - `uri`: full URI with the prefix resolved.
+ *   - `prefixChain`: list of active prefixes when the route was
+ *     declared.
  *
- * También exporta helpers para calcular el grupo top-level
- * (`topGroupFor`) y un nombre legible (`prettyGroupName`) a partir de la
- * URI. Esto permite generar carpetas automáticamente sin hardcodear.
+ * It also exports helpers to compute the top-level group
+ * (`topGroupFor`) and a readable name (`prettyGroupName`) from the
+ * URI. This lets folders be generated automatically without
+ * hardcoding.
  */
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
@@ -34,19 +37,19 @@ const ACTION_RE =
 const USE_RE =
   /use\s+([A-Za-z0-9_\\]+)\s*(?:as\s+([A-Za-z0-9_]+))?\s*;/g;
 
-/** Elimina comentarios de una y varias líneas para que no se cuenten rutas comentadas. */
+/** Strips single-line and multi-line comments so commented-out routes aren't counted. */
 export function stripComments(src: string): string {
   let out = src.replace(/\/\*[\s\S]*?\*\//g, "");
   out = out.replace(/(^|[^:])\/\/.*$/gm, "$1");
   return out;
 }
 
-/** Parsea un archivo de rutas Laravel y devuelve las rutas descubiertas. */
+/** Parses a Laravel route file and returns the discovered routes. */
 /**
- * `context` es obligatorio. Antes era opcional por compatibilidad: sin él
- * se caía al singleton retirado de `paths.service` (r00010 S2,
- * 2026-09-03), que resolvía la raíz una vez por proceso. Pásalo siempre
- * desde código nuevo (ver p00017).
+ * `context` is mandatory. It used to be optional for compatibility:
+ * without it we fell back to the now-removed `paths.service` singleton
+ * (r00010 S2, 2026-09-03), which resolved the root once per process.
+ * Always pass it from new code (see p00017).
  */
 export async function parseRoutesFile(
   relPath: string,
@@ -57,7 +60,7 @@ export async function parseRoutesFile(
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
-  // Mapa alias → FQCN a partir de los `use` del archivo.
+  // alias → FQCN map built from the file's `use` statements.
   const imports = new Map<string, string>();
   let um: RegExpExecArray | null;
   const useRe = ownRegex(USE_RE);
@@ -67,7 +70,7 @@ export async function parseRoutesFile(
     const short = fqcn.split("\\").pop() ?? fqcn;
     const alias = um[2] ?? short;
     imports.set(alias, fqcn);
-    // También indexamos por el short name por si no hay alias.
+    // We also index by the short name in case there is no alias.
     if (!imports.has(short)) imports.set(short, fqcn);
   }
 
@@ -77,7 +80,7 @@ export async function parseRoutesFile(
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    // Algunas rutas parten el array del controlador en la línea siguiente.
+    // Some routes split the controller array over the next line.
     const nextLine = lines[i + 1] ?? "";
     const window = `${line} ${nextLine}`;
 
@@ -123,19 +126,20 @@ export async function parseRoutesFile(
 }
 
 /**
- * Parsea todos los archivos de rutas relevantes.
+ * Parses all relevant route files.
  *
- * @param filePrefixes Mapa archivo → prefijos externos (del `ProjectConfig`).
- *   Si un archivo no está aquí, se asume el prefijo `["api"]` por defecto.
+ * @param filePrefixes file → external prefixes map (from
+ *   `ProjectConfig`). If a file isn't here, the `["api"]` prefix is
+ *   assumed by default.
  */
 export async function parseAllRoutes(
   filePrefixes: Record<string, string[]> = {},
   context: IProjectContext,
 ): Promise<ParsedRoute[]> {
-  // Recorremos `routes/` directamente: cualquier archivo PHP es un
-  // archivo de rutas. Si está en `filePrefixes`, usamos esos prefijos;
-  // si no, asumimos el prefijo `api/` que añade Laravel por defecto
-  // en `RouteServiceProvider::mapApiRoutes()`.
+  // We walk `routes/` directly: any PHP file is a route file. If it
+  // is in `filePrefixes`, we use those prefixes; otherwise we assume
+  // the `api/` prefix that Laravel adds by default in
+  // `RouteServiceProvider::mapApiRoutes()`.
   const fs = await import("node:fs/promises");
   const ROUTES_DIR = projectDirs(context).routes;
   let entries: string[];

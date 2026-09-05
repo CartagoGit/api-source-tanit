@@ -1,21 +1,24 @@
 /**
  * Tool `tanit_scan`.
  *
- * El paso **anterior** a todo lo demás: qué ve el discovery antes de que
- * el pipeline convierta nada en requests. Qué scanner ganó, por qué
- * artefactos, y las rutas crudas que encontró.
+ * The step **before** everything else: what discovery sees before
+ * the pipeline turns anything into requests. Which scanner won, by
+ * which artefacts, and the raw routes it found.
  *
- * Es la respuesta a «¿por qué no encuentra mis rutas?», que hasta ahora
- * un agente solo podía contestar generando la colección entera y
- * deduciéndolo del resultado. `summary` da el proyecto ya interpretado;
- * esto da la materia prima. Cuando los dos números no cuadran, la
- * diferencia está justo entre estos dos tools.
+ * It is the answer to "why does it not find my routes?", which
+ * until now an agent could only answer by generating the whole
+ * collection and inferring it from the result. `summary` returns
+ * the project already interpreted; this one returns the raw
+ * material. When the two numbers do not match, the difference sits
+ * exactly between these two tools.
  *
- * `detected: false` no es un error del tool: no reconocer el framework es
- * un resultado legítimo, y devolverlo como fallo hace que el agente
- * reintente en vez de leer `artifacts` y entender por qué.
+ * `detected: false` is not a tool error: not recognising the
+ * framework is a legitimate result, and returning it as a failure
+ * makes the agent retry instead of reading `artifacts` and
+ * understanding why.
  *
- * Solo lectura: no genera ni escribe nada. De ahí `effects: []`.
+ * Read-only: it neither generates nor writes anything. Hence
+ * `effects: []`.
  */
 
 import {
@@ -83,9 +86,9 @@ export function buildScanToolRegistration(ctx: IMcpPluginContext): IToolRegistra
 
           const out: IScanOutput = {
             ok: true,
-            // Un escaneo sin framework es un resultado, no un fallo: el
-            // agente necesita ver `artifacts` vacío para entender que el
-            // proyecto no tiene manifiesto reconocible.
+            // A scan without a framework is a result, not a failure:
+            // the agent needs to see `artifacts` empty to understand
+            // that the project has no recognisable manifest.
             detected: outcome.framework !== null,
             root: outcome.root,
             framework: outcome.framework,

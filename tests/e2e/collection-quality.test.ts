@@ -1,13 +1,13 @@
 /**
- * La colección como producto.
+ * The collection as a product.
  *
- * Los tests de scanner comprueban que se detectan las rutas; estos
- * comprueban que lo que acaba en Postman **sirve**. Son cosas distintas:
- * una colección puede tener los 18 endpoints correctos y aun así ser
- * inútil si a los `PUT` les falta el body de ejemplo.
+ * The scanner tests check that routes are detected; these check that
+ * what ends up in Postman **works**. They are different things: a
+ * collection can have all 18 endpoints right and still be useless if
+ * its `PUT`s are missing the example body.
  *
- * Se corre sobre los 12 frameworks, así que un scanner nuevo hereda el
- * listón sin que nadie tenga que acordarse.
+ * It runs against all 12 frameworks, so a new scanner inherits the bar
+ * without anyone having to remember.
  */
 import { describe, expect, test } from "vitest";
 
@@ -17,7 +17,7 @@ import { SUPPORTED_METHODS } from "../../packages/contracts/constants/core/postm
 import type { PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
 import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
 
-/** Todas las requests de la colección, sin las carpetas. */
+/** All requests in the collection, without the folders. */
 function requestsOf(items: ReadonlyArray<PostmanItem>): PostmanItem[] {
   return items.flatMap((item) =>
     item.item ? requestsOf(item.item as PostmanItem[]) : [item],
@@ -25,7 +25,7 @@ function requestsOf(items: ReadonlyArray<PostmanItem>): PostmanItem[] {
 }
 
 describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
-  test("toda request tiene nombre, método y URL", async () => {
+  test("every request has name, method and URL", async () => {
     const { collection } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),
     );
@@ -36,7 +36,7 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
     }
   });
 
-  test("toda URL cuelga de {{baseUrl}}", async () => {
+  test("every URL hangs off {{baseUrl}}", async () => {
     const { collection } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),
     );
@@ -45,7 +45,7 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
     }
   });
 
-  test("ninguna URL tiene barras dobles", async () => {
+  test("no URL has double slashes", async () => {
     const { collection } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),
     );
@@ -55,17 +55,17 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
     }
   });
 
-  // La regresión: los campos opcionales se descartaban al construir el
-  // body, así que un `update` cuyo FormRequest declara todo con
-  // `sometimes` salía SIN body. Es el caso más común de PUT/PATCH, y un
-  // ejemplo sin body no sirve para nada.
-  test("las escrituras con reglas traen body de ejemplo", async () => {
+  // The regression: optional fields were dropped when building the body,
+  // so an `update` whose FormRequest declares everything with
+  // `sometimes` came out WITHOUT a body. This is the most common
+  // PUT/PATCH case, and an example without a body is useless.
+  test("writes with rules come with an example body", async () => {
     const { collection, specs } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),
     );
-    // Se comparan method + URI EXACTOS. Con una comparación por
-    // subcadena, `/auth/logout` casaba con la regla de otro endpoint y
-    // el test exigía body a un logout, que legítimamente no lo lleva.
+    // EXACT method + URI are compared. With a substring comparison,
+    // `/auth/logout` would match the rule from another endpoint and the
+    // test would require a body on a logout, which legitimately has none.
     const bodiesByKey = new Map(
       specs
         .filter((spec) => spec.formRequest && spec.body)
@@ -86,7 +86,7 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
     }
   });
 
-  test("ninguna cabecera va sin clave", async () => {
+  test("no header goes without a key", async () => {
     const { collection } = await generateWithAllFrameworks(
       comprehensiveFixtureDir(framework),
     );
@@ -98,23 +98,24 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
   });
 });
 
-describe("métodos HTTP que Postman soporta", () => {
-  // `EndpointSpec["method"]` no contemplaba HEAD ni OPTIONS, pero cinco
-  // scanners los detectan (`method: ["GET","HEAD"]` de Fastify,
-  // `app.Options()` de Fiber…). El adapter los filtraba en silencio: se
-  // escaneaban bien y desaparecían sin que nada lo dijera.
-  test("un HEAD declarado llega a la colección", async () => {
+describe("HTTP methods supported by Postman", () => {
+  // `EndpointSpec["method"]` did not cover HEAD or OPTIONS, but five
+  // scanners detect them (`method: ["GET","HEAD"]` in Fastify,
+  // `app.Options()` in Fiber…). The adapter was silently filtering
+  // them out: they were scanned correctly and disappeared without a word.
+  test("a declared HEAD reaches the collection", async () => {
     const { specs } = await generateWithAllFrameworks(
       comprehensiveFixtureDir("fastify"),
     );
     expect(specs.some((spec) => spec.method === "HEAD")).toBe(true);
   });
 
-  // La lista del adapter y la del tipo eran dos: añadir un método al
-  // tipo no servía de nada hasta acordarse de la otra.
-  // a00012 S3.c añadió TRACE porque el scanner de OpenAPI lo reconoce
-  // (`paths./y.trace`) pero el adapter lo filtraba en silencio.
-  test("la lista del adapter y la del contrato son la misma", () => {
+  // The adapter's list and the type's list were two different things:
+  // adding a method to the type was useless until the other was also
+  // updated. a00012 S3.c added TRACE because the OpenAPI scanner
+  // recognizes it (`paths./y.trace`) but the adapter was silently
+  // filtering it out.
+  test("the adapter list and the contract list are the same", () => {
     expect([...SUPPORTED_METHODS]).toEqual([
       "GET",
       "POST",

@@ -1,31 +1,31 @@
 /**
- * Contrato de `effectiveProjectRoot` / `effectiveSearchRoot` /
+ * Contract of `effectiveProjectRoot` / `effectiveSearchRoot` /
  * `rawProjectRoot` — a00014 S1.
  *
- * El helper centraliza lo que Express, Hono, NestJS y Next.js ya
- * hacían inline: resolver la raíz efectiva del proyecto a partir de
- * `match.frameworkSearchRoot`, y devolver `match.projectRoot` cuando
- * ese campo está ausente. La diferencia con los inline es que
- * ningún scanner puede ignorar `frameworkSearchRoot` por accidente:
- * los 21 scanners consumen ahora esta primitiva, y la gate
- * `lint:effective-project-root` rechaza cualquier scanner que siga
- * leyendo `match.projectRoot` directamente.
+ * The helper centralizes what Express, Hono, NestJS and Next.js were
+ * already doing inline: resolve the effective project root from
+ * `match.frameworkSearchRoot`, and return `match.projectRoot` when
+ * that field is absent. The difference from the inline versions is
+ * that no scanner can ignore `frameworkSearchRoot` by accident: all
+ * 21 scanners now consume this primitive, and the
+ * `lint:effective-project-root` gate rejects any scanner that keeps
+ * reading `match.projectRoot` directly.
  *
- * Los ocho tests cubren el contrato entero:
+ * The eight tests cover the full contract:
  *
- *   1. Ausente (null/undefined/cadena vacía) → `projectRoot`.
- *   2. Relativo dentro de la raíz → unión resuelta.
- *   3. Absoluto → verbatim (decisión del host, no del helper).
- *   4. Escape relativo (`..` que sale de la raíz) → `Error` con
- *      contexto.
- *   5. Idempotencia: dos llamadas seguidas devuelven el mismo valor.
+ *   1. Absent (null/undefined/empty string) → `projectRoot`.
+ *   2. Relative inside the root → resolved join.
+ *   3. Absolute → verbatim (host's decision, not the helper's).
+ *   4. Relative escape (`..` leaving the root) → `Error` with context.
+ *   5. Idempotence: two consecutive calls return the same value.
  *   6. Trailing slash: `'apps/api/'` ≡ `'apps/api'`.
- *   7. Pureza: el objeto `match` original no se muta tras la llamada.
- *   8. Repetición con `effectiveSearchRoot` (alias): misma semántica.
+ *   7. Purity: the original `match` object is not mutated after the
+ *      call.
+ *   8. Repetition with `effectiveSearchRoot` (alias): same semantics.
  *
- * `tsconfig.base.json` tiene `allowImportingTsExtensions: false`, por
- * lo que el import va sin la extensión `.ts` (mismo patrón que el
- * resto de `tests/core/*.spec.ts`).
+ * `tsconfig.base.json` has `allowImportingTsExtensions: false`, so the
+ * import omits the `.ts` extension (same pattern as the rest of
+ * `tests/core/*.spec.ts`).
  */
 import { describe, expect, test } from "vitest";
 
@@ -40,20 +40,20 @@ function matchWith(
   projectRoot = "/tmp/mono",
   framework = "fastify",
 ): Parameters<typeof effectiveProjectRoot>[0] {
-  // El helper sólo lee `projectRoot`, `frameworkSearchRoot` y
-  // `framework` del match. Construir un objeto ad-hoc mantiene el
-  // test libre de la forma completa de `IProjectMatch`, que no
-  // aporta nada al contrato que se prueba aquí.
+  // The helper only reads `projectRoot`, `frameworkSearchRoot` and
+  // `framework` from the match. Building an ad-hoc object keeps the
+  // test free of the full `IProjectMatch` shape, which adds nothing
+  // to the contract being tested here.
   const match = {
     framework,
     projectRoot,
     artifacts: [] as ReadonlyArray<string>,
   };
-  // `IProjectMatch.frameworkSearchRoot` está tipado como
-  // `string | undefined` (no `null`); el helper sí trata `null` como
-  // ausente por simetría con los call sites reales (CLI / plugin),
-  // pero el contrato del tipo no incluye `null`. Normalizamos aquí
-  // para que el test hable el mismo idioma que la interfaz.
+  // `IProjectMatch.frameworkSearchRoot` is typed as `string |
+  // undefined` (not `null`); the helper does treat `null` as absent
+  // for symmetry with the real call sites (CLI / plugin), but the
+  // type contract does not include `null`. We normalize here so the
+  // test speaks the same language as the interface.
   if (frameworkSearchRoot === undefined || frameworkSearchRoot === null) {
     return match;
   }
@@ -61,7 +61,7 @@ function matchWith(
 }
 
 describe("effectiveProjectRoot", () => {
-  test("frameworkSearchRoot ausente → projectRoot (sin tocar)", () => {
+  test("absent frameworkSearchRoot → projectRoot (untouched)", () => {
     const projectRoot = "/tmp/mono";
     expect(effectiveProjectRoot(matchWith(undefined, projectRoot))).toBe(
       projectRoot,
@@ -77,27 +77,27 @@ describe("effectiveProjectRoot", () => {
     );
   });
 
-  test("frameworkSearchRoot absoluto → lanza (a00014 S4: el contrato dice 'never absolute')", () => {
+  test("absolute frameworkSearchRoot → throws (a00014 S4: contract says 'never absolute')", () => {
     expect(() =>
       effectiveProjectRoot(matchWith("/srv/shared")),
     ).toThrowError(/frameworkSearchRoot inválido[\s\S]*absoluta[\s\S]*relativa/);
     expect(() =>
       effectiveProjectRoot(matchWith("/etc")),
     ).toThrowError(/frameworkSearchRoot inválido/);
-    // El caso de prefilio-trampa (x00022): '/tmp/mono-mala' empieza
-    // por '/tmp/mono' pero no está dentro. Como es absoluto, lo
-    // rechaza el guard de isAbsolute antes de la comparación.
+    // The trap-prefix case (x00022): '/tmp/mono-mala' starts with
+    // '/tmp/mono' but is not inside it. Because it is absolute, the
+    // isAbsolute guard rejects it before the comparison runs.
     expect(() =>
       effectiveProjectRoot(matchWith("/tmp/mono-mala")),
     ).toThrowError(/frameworkSearchRoot inválido/);
   });
 
-  test("frameworkSearchRoot = '' → projectRoot (cadena vacía ≡ ausente)", () => {
+  test("frameworkSearchRoot = '' → projectRoot (empty string ≡ absent)", () => {
     const projectRoot = "/tmp/mono";
     expect(effectiveProjectRoot(matchWith("", projectRoot))).toBe(projectRoot);
   });
 
-  test("frameworkSearchRoot = '../escape' → lanza con contexto del match", () => {
+  test("frameworkSearchRoot = '../escape' → throws with match context", () => {
     const projectRoot = "/tmp/mono";
     const framework = "fastify";
     expect(() =>
@@ -107,20 +107,20 @@ describe("effectiveProjectRoot", () => {
     );
   });
 
-  test("idempotente: dos llamadas seguidas devuelven el mismo valor", () => {
+  test("idempotent: two consecutive calls return the same value", () => {
     const match = matchWith("apps/api");
     const first = effectiveProjectRoot(match);
     const second = effectiveProjectRoot(match);
     expect(second).toBe(first);
   });
 
-  test("trailing slash: 'apps/api/' ≡ 'apps/api' (path.resolve normaliza)", () => {
+  test("trailing slash: 'apps/api/' ≡ 'apps/api' (path.resolve normalizes)", () => {
     expect(effectiveProjectRoot(matchWith("apps/api/"))).toBe(
       "/tmp/mono/apps/api",
     );
   });
 
-  test("puro: no muta el match original", () => {
+  test("pure: does not mutate the original match", () => {
     const match = matchWith("apps/api");
     const before = { ...match };
     effectiveProjectRoot(match);
@@ -128,34 +128,34 @@ describe("effectiveProjectRoot", () => {
   });
 });
 
-describe("effectiveSearchRoot (alias de effectiveProjectRoot)", () => {
-  test("mismo comportamiento con valor presente: 'apps/api'", () => {
+describe("effectiveSearchRoot (alias of effectiveProjectRoot)", () => {
+  test("same behavior with a present value: 'apps/api'", () => {
     expect(effectiveSearchRoot(matchWith("apps/api"))).toBe(
       "/tmp/mono/apps/api",
     );
   });
 
-  test("mismo comportamiento con valor absoluto: lanza", () => {
+  test("same behavior with an absolute value: throws", () => {
     expect(() => effectiveSearchRoot(matchWith("/srv/shared"))).toThrowError(
       /frameworkSearchRoot inválido/,
     );
   });
 
-  test("mismo comportamiento con escape: lanza", () => {
+  test("same behavior with an escape: throws", () => {
     expect(() => effectiveSearchRoot(matchWith("../escape"))).toThrowError(
       /frameworkSearchRoot inválido/,
     );
   });
 });
 
-describe("rawProjectRoot (escape hatch para projectRoot literal)", () => {
-  test("devuelve match.projectRoot tal cual, sin tocar frameworkSearchRoot", () => {
+describe("rawProjectRoot (escape hatch for literal projectRoot)", () => {
+  test("returns match.projectRoot as-is, without touching frameworkSearchRoot", () => {
     const projectRoot = "/tmp/mono";
     expect(rawProjectRoot(matchWith("apps/api", projectRoot))).toBe(projectRoot);
     expect(rawProjectRoot(matchWith(undefined, projectRoot))).toBe(projectRoot);
   });
 
-  test("ignora frameworkSearchRoot aunque sea absoluto", () => {
+  test("ignores frameworkSearchRoot even when it is absolute", () => {
     const projectRoot = "/tmp/mono";
     expect(rawProjectRoot(matchWith("/srv/shared", projectRoot))).toBe(
       projectRoot,

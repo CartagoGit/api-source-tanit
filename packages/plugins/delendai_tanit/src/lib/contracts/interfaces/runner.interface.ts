@@ -1,18 +1,19 @@
 /**
- * Lo que devuelven los ayudantes internos del plugin.
+ * What the plugin's internal helpers return.
  *
- * Viven aquí y no junto a la función que los usa por lo mismo que en el
- * resto del repositorio: un tipo pegado a su implementación obliga a
- * importarla para declararlo, y los tools acaban arrastrando el runner
- * entero solo para tipar una respuesta.
+ * They live here, not next to the function that uses them, for the
+ * same reason as elsewhere in the repo: a type glued to its
+ * implementation forces you to import it just to declare it, and the
+ * tools end up dragging in the whole runner to type a response.
  *
- * No están en `packages/contracts/` porque el plugin es un paquete
- * independiente que se publica solo: compila con `@types/node` real
- * mientras el resto del repo usa declaraciones ambient escritas a mano.
+ * They are not in `packages/contracts/` because the plugin is an
+ * independent package that publishes on its own: it compiles with
+ * real `@types/node` while the rest of the repo uses hand-written
+ * ambient declarations.
  */
 import { z } from "zod";
 
-/** Resultado de ejecutar un script via bun. */
+/** Result of running a script via bun. */
 export interface IRunScriptResult {
   readonly ok: boolean;
   readonly exitCode: number;
@@ -22,15 +23,17 @@ export interface IRunScriptResult {
 }
 
 /**
- * Forma del informe que emite `generate --json`.
+ * Shape of the report emitted by `generate --json`.
  *
- * Se valida en vez de confiarse: el CLI es otro paquete que se
- * actualiza por su cuenta, y un campo que desaparece tiene que dar un
- * error claro aquí y no un `undefined` que viaje hasta el agente.
+ * It is validated rather than trusted: the CLI is another package
+ * that updates on its own, and a disappearing field has to fail
+ * loudly here rather than produce an `undefined` that travels up to
+ * the agent.
  *
- * El esquema vive con su tipo, y no al lado de quien lo parsea, porque
- * el tipo **se infiere de él**: separarlos obligaría a importar el
- * runner entero para declarar la forma del informe.
+ * The schema lives next to its type, not next to whoever parses it,
+ * because the type **is inferred from it**: separating them would
+ * force importing the whole runner just to declare the shape of the
+ * report.
  */
 export const GenerateReportSchema = z.object({
   version: z.number(),
@@ -74,9 +77,9 @@ export interface ISmokeResult {
   readonly fixtureRoot: string;
   readonly actualCount: number;
   readonly expectedCount: number;
-  /** Solo en rutas que están en `expected` pero NO en `actual`. */
+  /** Routes in `expected` but NOT in `actual`. */
   readonly missing: ReadonlyArray<IExpectedRoute>;
-  /** Solo en rutas que están en `actual` pero NO en `expected`. */
+  /** Routes in `actual` but NOT in `expected`. */
   readonly unexpected: ReadonlyArray<{ readonly method: string; readonly uri: string }>;
   readonly durationMs: number;
 }

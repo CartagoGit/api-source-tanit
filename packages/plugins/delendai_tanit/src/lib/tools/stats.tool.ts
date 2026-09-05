@@ -1,17 +1,18 @@
 /**
  * Tool `tanit_stats`.
  *
- * La forma de la colección en números: cuántas requests, por método y por
- * carpeta. Es lo que un agente mira para decidir si merece la pena
- * trocear la colección, o para contestar «¿qué tamaño tiene esta API?»
- * sin descargarse el JSON entero.
+ * The shape of the collection in numbers: how many requests, by
+ * method and by folder. It is what an agent looks at to decide
+ * whether the collection is worth splitting, or to answer "how big
+ * is this API?" without downloading the whole JSON.
  *
- * El CLI lo imprime como tabla alineada con `padEnd`, y el ancho de
- * columna depende del nombre de carpeta más largo — o sea que cambia
- * entre proyectos. Parsear eso con regex es exactamente el hack que este
- * plugin ya pagó una vez.
+ * The CLI prints it as a table aligned with `padEnd`, and the
+ * column width depends on the longest folder name — so it changes
+ * between projects. Parsing that with regex is exactly the hack
+ * this plugin already paid for once.
  *
- * Solo lectura: no genera ni escribe nada. De ahí `effects: []`.
+ * Read-only: it neither generates nor writes anything. Hence
+ * `effects: []`.
  */
 
 import {

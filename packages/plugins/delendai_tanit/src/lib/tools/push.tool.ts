@@ -1,29 +1,32 @@
 /**
  * Tool `tanit_push`.
  *
- * El único que sale de la máquina: publica la colección en el workspace
- * de Postman de quien lo pide. Como el `_postman_id` es determinista por
- * proyecto, invocarlo dos veces **actualiza** en vez de duplicar.
+ * The only one that leaves the machine: it publishes the collection
+ * to the requester's Postman workspace. Because `_postman_id` is
+ * deterministic per project, invoking it twice **updates** instead
+ * of duplicating.
  *
- * ## El secreto no entra por aquí
+ * ## The secret does not come in here
  *
- * `PushInputSchema` no declara `apiKey`, y es deliberado. La clave la
- * lee el CLI de `POSTMAN_API_KEY`, que es donde el host puede guardarla
- * sin que viaje por la conversación. Declararla como input sería una
- * invitación a que el agente la pida, la reciba y la repita — y lo que
- * un modelo repite acaba en un historial que nadie puede retirar.
+ * `PushInputSchema` does not declare `apiKey`, and that is
+ * deliberate. The CLI reads the key from `POSTMAN_API_KEY`, which
+ * is where the host can store it without it being passed through
+ * the conversation. Declaring it as an input would invite the agent
+ * to ask for it, receive it, and repeat it — and what a model repeats
+ * ends up in a log nobody can retract.
  *
- * ## Y tampoco sale
+ * ## And it does not come out either
  *
- * El error llega redactado desde `runPush`: `{ reason, nextAction }`, no
- * el cuerpo crudo de la respuesta de Postman. Ese cuerpo puede incluir
- * la petición que lo causó, y con ella la cabecera de la clave.
+ * The error arrives redacted from `runPush`: `{ reason, nextAction }`,
+ * not the raw body of the Postman response. That body can include
+ * the request that caused it, and with it the key's header.
  *
- * ## Por qué declara `effects: ["network"]`
+ * ## Why it declares `effects: ["network"]`
  *
- * Porque el host lo usa para decidir si un agente puede invocarlo sin
- * confirmación. Subir a un workspace ajeno es de las pocas cosas de este
- * proyecto que no se deshacen borrando un fichero.
+ * Because the host uses it to decide whether an agent may invoke it
+ * without confirmation. Uploading to a foreign workspace is one of
+ * the few things in this project that cannot be undone by deleting
+ * a file.
  */
 
 import {
@@ -96,8 +99,8 @@ export function buildPushToolRegistration(ctx: IMcpPluginContext): IToolRegistra
           const outcome = await runPush(argv, context);
 
           if (outcome.error) {
-            // El motivo ya viene redactado de `runPush`: nunca trae el
-            // cuerpo de la respuesta de Postman.
+            // The reason already comes redacted from `runPush`: it
+            // never carries the body of the Postman response.
             return toolError(outcome.error.reason, outcome.error.nextAction);
           }
 

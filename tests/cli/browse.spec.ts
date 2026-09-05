@@ -1,19 +1,19 @@
 /**
- * El explorador de carpetas.
+ * The folder browser.
  *
- * Escribir la ruta a mano es donde más se falla: una errata devuelve «no
- * existe» y no queda pista de dónde estabas. Lo que se comprueba aquí es
- * que navegar no se convierta en otra cosa:
+ * Writing the path by hand is where most mistakes happen: a typo
+ * returns "does not exist" with no clue of where you were. What is
+ * checked here is that browsing does not become something else:
  *
- *   1. **Solo carpetas.** Ni ficheros ni su contenido. Esto es un
- *      servidor HTTP en la máquina de alguien, y un endpoint que
- *      devolviera contenido sería un lector de ficheros arbitrario.
- *   2. **Un directorio ilegible no rompe la lista.** Quien navega por
- *      `/` se cruza con carpetas del sistema sin permiso, y que la lista
- *      entera falle por eso haría el explorador inservible justo donde
- *      más falta hace.
- *   3. **La raíz no tiene padre.** Devolverse a sí misma haría que el
- *      botón de subir pareciera roto.
+ *   1. **Only folders.** Neither files nor their content. This is an
+ *      HTTP server on someone's machine, and an endpoint that returned
+ *      content would be an arbitrary file reader.
+ *   2. **An unreadable directory does not break the listing.** Whoever
+ *      browses `/` runs into system folders without permission, and
+ *      having the whole list fail because of that would make the
+ *      browser useless exactly where it is most needed.
+ *   3. **The root has no parent.** Returning to itself would make the
+ *      up button look broken.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
@@ -42,19 +42,19 @@ afterAll(async () => {
   if (raiz) await rm(raiz, { recursive: true, force: true });
 });
 
-describe("lo que se lista", () => {
-  test("las carpetas, en orden", async () => {
+describe("what is listed", () => {
+  test("the folders, in order", async () => {
     const r = await browseDirectory(raiz);
     expect(r.ok).toBe(true);
     expect(r.entries.map((e) => e.name)).toEqual(["alfa", "beta"]);
   });
 
   /**
-   * EL test de seguridad. Ni el fichero ni —mucho menos— lo que hay
-   * dentro. Un explorador que devuelve contenido es un lector de
-   * ficheros arbitrario con otro nombre.
+   * THE security test. Neither the file nor —much less— what is
+   * inside. A browser that returns content is an arbitrary file reader
+   * under another name.
    */
-  test("ni los ficheros ni su contenido", async () => {
+  test("neither the files nor their content", async () => {
     const r = await browseDirectory(raiz);
     const serializado = JSON.stringify(r);
 
@@ -64,69 +64,70 @@ describe("lo que se lista", () => {
   });
 
   /**
-   * Las ocultas fuera: con ellas, la carpeta personal empieza con
-   * treinta entradas de configuración antes de la primera que a alguien
-   * le interesa. Quien las necesite puede escribir la ruta.
+   * Hidden ones out: with them, the home folder starts with thirty
+   * config entries before the first one someone cares about. Whoever
+   * needs them can type the path.
    */
-  test("las ocultas no estorban la lista", async () => {
+  test("hidden ones do not clutter the listing", async () => {
     const r = await browseDirectory(raiz);
     expect(r.entries.map((e) => e.name)).not.toContain(".oculta");
   });
 
-  test("cada entrada trae su ruta absoluta, que es lo que se elige", async () => {
+  test("each entry carries its absolute path, which is what is chosen", async () => {
     const r = await browseDirectory(raiz);
     expect(r.entries[0]?.path).toBe(join(raiz, "alfa"));
   });
 });
 
-describe("moverse por el árbol", () => {
-  test("se baja a una subcarpeta", async () => {
+describe("moving through the tree", () => {
+  test("goes down into a subfolder", async () => {
     const r = await browseDirectory(join(raiz, "alfa"));
     expect(r.entries.map((e) => e.name)).toEqual(["dentro"]);
   });
 
-  test("se sube por el padre", async () => {
+  test("goes up through the parent", async () => {
     const r = await browseDirectory(join(raiz, "alfa"));
     expect(r.parent).toBe(raiz);
   });
 
-  /** Devolverse a sí misma haría que el botón de subir pareciera roto. */
-  test("la raíz del sistema no tiene padre", async () => {
+  /** Returning to itself would make the up button look broken. */
+  test("the system root has no parent", async () => {
     const r = await browseDirectory("/");
     expect(r.parent).toBeNull();
   });
 
-  test("sin ruta se empieza en la carpeta personal, no en la raíz", async () => {
+  test("without a path starts at the home folder, not at the root", async () => {
     const r = await browseDirectory();
     expect(r.path).toBe(defaultBrowseRoot());
   });
 
-  test("una ruta vacía tampoco es un error: aún no se ha elegido nada", async () => {
+  test("an empty path is not an error either: nothing has been chosen yet", async () => {
     const r = await browseDirectory("   ");
     expect(r.ok).toBe(true);
     expect(r.path).toBe(defaultBrowseRoot());
   });
 });
 
-describe("lo que no se puede abrir se dice, sin romper nada", () => {
-  test("una carpeta que no existe da un motivo, no una excepción", async () => {
+describe("what cannot be opened is told, without breaking anything", () => {
+  test("a folder that does not exist gives a reason, not an exception", async () => {
     const r = await browseDirectory(join(raiz, "no-existe"));
     expect(r.ok).toBe(false);
     expect(r.reason).toContain("not a folder");
     expect(r.entries).toEqual([]);
   });
 
-  test("un fichero no es una carpeta, y lo dice", async () => {
+  test("a file is not a folder, and it says so", async () => {
     const r = await browseDirectory(join(raiz, "un-fichero.txt"));
     expect(r.ok).toBe(false);
     expect(r.reason).toContain("not a folder");
   });
 
   /**
-   * Un enlace roto se **marca**, no desaparece: verlo y no poder entrar
-   * se entiende; que no salga parece que el explorador falla.
+   * A broken symlink is **marked**, not hidden: seeing it and not
+   * being able to enter is understood; not showing it looks like the
+   * browser is failing.
    */
-  test("un enlace roto sale marcado como ilegible", async () => {
+  test("a broken symlink is shown marked as unreadable", async () => {
     const conEnlace = await mkdtemp(join(tmpdir(), "enlace-"));
     try {
       await symlink(join(conEnlace, "no-existe"), join(conEnlace, "colgando"));
@@ -140,18 +141,18 @@ describe("lo que no se puede abrir se dice, sin romper nada", () => {
   });
 });
 
-describe("las migas de pan", () => {
-  test("van de la raíz hasta la carpeta actual", async () => {
+describe("breadcrumbs", () => {
+  test("go from the root to the current folder", async () => {
     const migas = breadcrumbs("/uno/dos/tres");
     expect(migas.map((m) => m.name)).toEqual(["/", "uno", "dos", "tres"]);
   });
 
-  test("cada miga lleva la ruta a la que salta", () => {
+  test("each crumb carries the path it jumps to", () => {
     const migas = breadcrumbs("/uno/dos");
     expect(migas.map((m) => m.path)).toEqual(["/", "/uno", "/uno/dos"]);
   });
 
-  test("la raíz sola es una sola miga", () => {
+  test("the root alone is a single crumb", () => {
     expect(breadcrumbs("/").map((m) => m.name)).toEqual(["/"]);
   });
 });

@@ -1,29 +1,30 @@
 /**
  * Tool `tanit_init`.
  *
- * Prepara un `config.constant.ts` válido dentro del proyecto anfitrión.
+ * Prepares a valid `config.constant.ts` inside the host project.
  *
- * ## Por qué merece ser un tool si el zero-config ya funciona
+ * ## Why it deserves to be a tool if zero-config already works
  *
- * Se midió: sobre `example-express`, generar con la config que escribe
- * `init` y generar sin ella dan **exactamente lo mismo** — 9 requests,
- * 3 carpetas, el mismo tamaño. O sea que `init` no hace falta para que
- * la herramienta funcione, y decir lo contrario sería vender humo.
+ * It was measured: on `example-express`, generating with the config
+ * `init` writes and generating without it produce **exactly the
+ * same** — 9 requests, 3 folders, the same size. So `init` is not
+ * required for the tool to work, and saying otherwise would be
+ * selling smoke.
  *
- * Hace falta para lo otro: **personalizar**. Zonas, nombres de carpeta,
- * descripciones por guard, variables propias. Y ahí el problema real es
- * que un agente que quiera dejar preparada esa personalización tendría
- * que inventarse la forma de `ProjectConfig` de memoria. Escribir un
- * fichero de configuración adivinando su esquema es exactamente el
- * fallo que este proyecto lleva toda la ronda persiguiendo.
+ * It is needed for the other thing: **customising**. Zones, folder
+ * names, per-guard descriptions, custom variables. And there the
+ * real problem is that an agent wanting to leave that customisation
+ * ready would have to invent the shape of `ProjectConfig` from
+ * memory. Writing a config file by guessing its schema is exactly
+ * the failure this project has spent the whole round chasing.
  *
- * `init` lo escribe **desde el contrato real**, con los `// TODO` donde
- * toca, y devuelve las dos rutas para que alguien las abra.
+ * `init` writes it **from the real contract**, with the `// TODO`s
+ * where they belong, and returns both paths so someone can open them.
  *
- * ## Escribe dentro del proyecto de quien llama
+ * ## It writes inside the caller's project
  *
- * De ahí `effects: ["write"]`: el host lo usa para decidir si un agente
- * puede invocarlo sin confirmación.
+ * Hence `effects: ["write"]`: the host uses it to decide whether an
+ * agent may invoke it without confirmation.
  */
 
 import {

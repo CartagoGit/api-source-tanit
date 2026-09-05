@@ -1,20 +1,19 @@
 /**
  * Tool `tanit_check`.
  *
- * Responde «¿se ha desincronizado mi colección del código?», que es la
- * pregunta que un agente más quiere hacer antes de tocar nada — y la
- * que no se podía hacer: el comando existía en el CLI desde el
- * principio y el plugin no lo exponía.
+ * Answers "has my collection drifted from the code?", which is the
+ * question an agent most wants to ask before touching anything — and
+ * the one that could not be asked: the command existed in the CLI
+ * from the start and the plugin did not expose it.
  *
- * Devuelve **los endpoints**, no la tabla que imprime el CLI. Un agente
- * que parsee texto con regex se rompe el día que cambie una columna, y
- * ese hack ya se pagó antes en este mismo plugin.
+ * It returns **the endpoints**, not the table the CLI prints. An
+ * agent that parses text with regex breaks the day a column changes,
+ * and that hack has already been paid for in this very plugin.
  *
- * `ok` y `inSync` dicen cosas distintas a propósito: `ok` es «la
- * comprobación se pudo hacer», `inSync` es el resultado. Una colección
- * desincronizada **detectada** es una comprobación que ha funcionado, y
- * devolverla como error de herramienta hace que el agente reintente en
- * vez de leer la lista.
+ * `ok` and `inSync` deliberately say different things: `ok` means
+ * "the check could run"; `inSync` is the result. A **detected**
+ * drift is a check that worked, and returning it as a tool error
+ * makes the agent retry instead of reading the list.
  */
 
 import {

@@ -1,52 +1,53 @@
 /**
- * Lanzar un proceso desde un test, de forma portable.
+ * Spawn a process from a test, in a portable way.
  *
- * Los tests que ejercitan el CLI o el binario compilado necesitan
- * arrancar un proceso de verdad. Usaban `Bun.spawn`, que solo existe
- * cuando el runner ES bun: bajo vitest los tests corren en workers de
- * Node y `Bun` no está definido. Este helper usa `node:child_process`,
- * que funciona en los dos.
+ * Tests that exercise the CLI or the compiled binary need to start a
+ * real process. They used `Bun.spawn`, which only exists when the
+ * runner IS bun: under vitest the tests run in Node workers and `Bun`
+ * is not defined. This helper uses `node:child_process`, which works
+ * in both.
  *
- * Devuelve stdout y stderr por separado **y** concatenados, porque casi
- * todas las aserciones son del tipo "el CLI dijo esto en algún sitio" y
- * repartir la búsqueda entre dos streams solo genera tests frágiles.
+ * It returns stdout and stderr both separately **and** concatenated,
+ * because most assertions are of the form "the CLI said this
+ * somewhere" and splitting the search across two streams only
+ * produces brittle tests.
  */
 import { spawn } from "node:child_process";
 
-/** Salida completa de un proceso ya terminado. */
+/** Full output from an already-finished process. */
 export interface IProcessResult {
-  /** Código de salida. `-1` si murió por señal. */
+  /** Exit code. `-1` if killed by a signal. */
   readonly code: number;
   readonly stdout: string;
   readonly stderr: string;
-  /** `stdout + stderr`, para aserciones que no distinguen. */
+  /** `stdout + stderr`, for assertions that do not distinguish. */
   readonly output: string;
 }
 
-/** Opciones del lanzamiento. */
+/** Spawn options. */
 export interface IRunProcessOptions {
   readonly cwd?: string;
-  /** Variables que se **añaden** a las del proceso actual. */
+  /** Variables added on top of the current process's environment. */
   readonly env?: Record<string, string | undefined>;
   /**
-   * Entorno exacto, sin heredar nada del proceso actual.
+   * Exact environment, inheriting nothing from the current process.
    *
-   * Lo usa el test del binario compilado: recorta el `PATH` para que no
-   * haya ni bun ni node y así comprobar que el ejecutable es de verdad
-   * autocontenido. Si esto heredase el entorno, el test pasaría siempre
-   * y no probaría nada.
+   * Used by the compiled-binary test: it strips `PATH` so neither bun
+   * nor node is available, to verify the executable is truly
+   * self-contained. If this inherited the environment, the test would
+   * always pass and prove nothing.
    */
   readonly exactEnv?: Record<string, string>;
-  /** Milisegundos antes de matarlo. Por defecto 120 s. */
+  /** Milliseconds before killing it. Defaults to 120 s. */
   readonly timeoutMs?: number;
 }
 
 /**
- * Ejecuta `command args…` y espera a que termine.
+ * Runs `command args…` and waits for it to finish.
  *
- * Nunca lanza por un exit code distinto de 0: el código es parte del
- * resultado y muchos tests lo comprueban a propósito. Sí lanza si el
- * binario no se puede ejecutar (ENOENT), que es un fallo del test.
+ * It never throws on a non-zero exit code: the code is part of the
+ * result, and many tests assert on it on purpose. It does throw if
+ * the binary cannot be executed (ENOENT) — that is a test failure.
  */
 export function runProcess(
   command: string,

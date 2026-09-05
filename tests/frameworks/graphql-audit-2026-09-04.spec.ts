@@ -1,14 +1,14 @@
 /**
- * Tests para los fixes del audit 2026-09-04 en el scanner GraphQL.
+ * Tests for the 2026-09-04 audit fixes in the GraphQL scanner.
  *
- * Cubre:
- *   - P1 #3: dedupe entre Query.user y Mutation.user con el mismo
- *     nombre (antes se perdía uno).
- *   - P1 #4: escalares personalizados no se tratan como objetos.
- *   - P1 #5: SDL embebido en `gql\`...\`` se extrae de TS/JS.
- *   - 2ª revisión: los custom scalars viven dentro de `scan()` y
- *     dos scans consecutivos (incluido `Promise.all`) NO contaminan
- *     el resultado del segundo.
+ * Covers:
+ *   - P1 #3: dedupe between Query.user and Mutation.user with the
+ *     same name (previously one was lost).
+ *   - P1 #4: custom scalars are not treated as objects.
+ *   - P1 #5: embedded SDL in `gql\`...\`` is extracted from TS/JS.
+ *   - 2nd review: custom scalars live inside `scan()` and two
+ *     consecutive scans (including `Promise.all`) do NOT contaminate
+ *     the second one's result.
  */
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -36,7 +36,7 @@ afterEach(async () => {
 });
 
 describe("graphql scanner — audit 2026-09-04 fixes", () => {
-  test("P1 #3: dedupe entre Query.user y Mutation.user con mismo nombre", async () => {
+  test("P1 #3: dedupe between Query.user and Mutation.user with the same name", async () => {
     const project = await createTempProject(
       {
         "schema.graphql": `type Query { user: User }
@@ -62,7 +62,7 @@ input UserInput { id: ID!; name: String! }
     expect(names).toEqual(["mutation user", "query user"]);
   });
 
-  test("P1 #4: escalares personalizados no generan selección de campos", () => {
+  test("P1 #4: custom scalars do not generate field selection", () => {
     const sdl = `scalar DateTime
 scalar UUID
 
@@ -72,15 +72,15 @@ type Query {
 }
 type User { id: ID! }
 `;
-    // Pasada 1: recogemos escalares del SDL completo (no solo del
-    // bloque Query). Ahora `collectCustomScalars` es pura: cada
-    // llamada devuelve un Set NUEVO.
+    // Pass 1: collect scalars from the full SDL (not just the Query
+    // block). `collectCustomScalars` is now pure: every call returns a
+    // NEW Set.
     const customScalars = collectCustomScalars(sdl);
     expect(customScalars.has("DateTime")).toBe(true);
     expect(customScalars.has("UUID")).toBe(true);
     expect(customScalars.has("ID")).toBe(false); // builtin
 
-    // Pasada 2: extraemos operaciones con el Set como referencia.
+    // Pass 2: extract operations with the Set as reference.
     const ops = parseOperations(sdl, "query");
     expect(ops).toHaveLength(2);
 
@@ -88,8 +88,8 @@ type User { id: ID! }
     expect(now).toBeDefined();
     if (now) {
       const doc = buildQueryDocument(now, customScalars);
-      // Si el bug persiste, pediría `now { __typename }` sobre un
-      // escalar — query inválida.
+      // If the bug persists, it would ask for `now { __typename }`
+      // on a scalar — an invalid query.
       expect(doc).not.toContain("__typename");
     }
 
@@ -97,12 +97,12 @@ type User { id: ID! }
     expect(byId).toBeDefined();
     if (byId) {
       const doc = buildQueryDocument(byId, customScalars);
-      // `byId` devuelve un objeto (User) → debe llevar `__typename`.
+      // `byId` returns an object (User) → must carry `__typename`.
       expect(doc).toContain("__typename");
     }
   });
 
-  test("2ª revisión #13: 'scalar X @specifiedBy(...)' también se reconoce", () => {
+  test("2nd review #13: 'scalar X @specifiedBy(...)' is also recognized", () => {
     const sdl = `scalar DateTime @specifiedBy(url: "https://...")
 type Query { now: DateTime! }
 `;
@@ -110,11 +110,11 @@ type Query { now: DateTime! }
     expect(customScalars.has("DateTime")).toBe(true);
   });
 
-  test("2ª revisión #12: escalar declarado en fichero aparte también se ve", async () => {
-    // Si los escalares están en un fichero distinto al de las
-    // operaciones, el scan debe hacer una pasada previa que los
-    // recoja todos antes de generar las queries. Antes esto fallaba
-    // porque parseOperations aislado no veía el `scalar X` externo.
+  test("2nd review #12: a scalar declared in a separate file is also visible", async () => {
+    // If the scalars are in a different file than the operations,
+    // the scan must make a prior pass that collects them all before
+    // generating the queries. Previously this failed because
+    // isolated parseOperations did not see the external `scalar X`.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -144,16 +144,17 @@ type User { id: ID! }
     expect(nowRoute).toBeDefined();
     const body = nowRoute?.body as { query: string } | undefined;
     expect(body).toBeDefined();
-    // Si el bug persiste, generaría `now { __typename }` sobre un
-    // DateTime — query inválida.
+    // If the bug persists, it would generate `now { __typename }`
+    // on a DateTime — an invalid query.
     expect(body?.query).not.toContain("__typename");
   });
 
-  test("2ª revisión #10: scan() no guarda estado entre invocaciones", async () => {
-    // Antes dos scans consecutivos contaminaban sus escalares: el
-    // segundo heredaba los `scalar X` del primero. Verificamos que
-    // NO: el proyecto B con un type User (objeto) NO debe
-    // considerarlo escalar porque A declaró `scalar User` antes.
+  test("2nd review #10: scan() does not keep state between invocations", async () => {
+    // Previously two consecutive scans contaminated their scalars:
+    // the second inherited the first's `scalar X`. We verify that
+    // is NOT the case: project B with a type User (object) must NOT
+    // treat it as a scalar because A declared `scalar User`
+    // earlier.
     const projectA = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -179,7 +180,7 @@ type Query { current: User }
     projects.push(projectA, projectB);
 
     const scanner = new GraphQlRouteScanner();
-    // Scan A: User es scalar.
+    // Scan A: User is a scalar.
     const routesA = (await scanner.scan({
       framework: "graphql",
       projectRoot: projectA.root,
@@ -189,7 +190,7 @@ type Query { current: User }
     const bodyA = currentA?.body as { query: string } | undefined;
     expect(bodyA?.query).not.toContain("__typename");
 
-    // Scan B: User es objeto — DEBE llevar `__typename`.
+    // Scan B: User is an object — MUST carry `__typename`.
     const routesB = (await scanner.scan({
       framework: "graphql",
       projectRoot: projectB.root,
@@ -200,10 +201,10 @@ type Query { current: User }
     expect(bodyB?.query).toContain("__typename");
   });
 
-  test("2ª revisión #10: scan() NO contamina en Promise.all", async () => {
-    // La regresión más grave: dos `scan()` concurrentes compartiendo
-    // un Set global. Verificamos que `Promise.all` produce el
-    // resultado correcto para cada proyecto por separado.
+  test("2nd review #10: scan() does NOT contaminate under Promise.all", () => {
+    // The most severe regression: two concurrent `scan()` calls
+    // sharing a global Set. We verify that `Promise.all` produces the
+    // right result for each project independently.
     const projectA = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -247,11 +248,11 @@ type Query { now: DateTime! }
     const bodyB = (routesB.routes.find((r) => r.displayName === "query now")
       ?.body as { query: string } | undefined)?.query;
 
-    expect(bodyA).not.toContain("__typename"); // DateTime es scalar en A
-    expect(bodyB).toContain("__typename"); // DateTime es objeto en B
+    expect(bodyA).not.toContain("__typename"); // DateTime is a scalar in A
+    expect(bodyB).toContain("__typename"); // DateTime is an object in B
   });
 
-  test("P1 #5: extrae bloques gql`...` de un fichero TS", () => {
+  test("P1 #5: extracts gql`...` blocks from a TS file", () => {
     const source = `import { gql } from "@apollo/client";
 
 const schema = gql\`
@@ -272,7 +273,7 @@ const schema = gql\`
     expect(blocks[0]).toContain("type User");
   });
 
-  test("P1 #5: scanner GraphQL extrae operaciones de SDL embebido", async () => {
+  test("P1 #5: GraphQL scanner extracts operations from embedded SDL", async () => {
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -307,10 +308,10 @@ export const typeDefs = gql\`
 });
 
 describe("graphql scanner — false positive en detect() (audit 2nd-review #14)", () => {
-  test(".graphql con fragments pero SIN type Query/Mutation: score 0", async () => {
-    // Antes: emptyResult(0.5) — un frontend con solo fragments se
-    // clasificaba como servidor GraphQL. Ahora: emptyResult(0) —
-    // solo el manifest puntúa.
+  test(".graphql with fragments but NO type Query/Mutation: score 0", async () => {
+    // Previously: emptyResult(0.5) — a frontend with only
+    // fragments was classified as a GraphQL server. Now:
+    // emptyResult(0) — only the manifest scores.
     const project = await createTempProject({
       "package.json": JSON.stringify({ name: "frontend" }),
       "fragments.graphql": `fragment UserFields on User {
@@ -329,7 +330,7 @@ describe("graphql scanner — false positive en detect() (audit 2nd-review #14)"
     await project.cleanup();
   });
 
-  test(".graphql con type Query: score 1 (camino feliz)", async () => {
+  test(".graphql with type Query: score 1 (happy path)", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({
         dependencies: { graphql: "^16.0.0" },

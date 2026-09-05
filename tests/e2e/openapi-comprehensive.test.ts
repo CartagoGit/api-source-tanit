@@ -1,14 +1,14 @@
 /**
- * E2E test exhaustivo para el scanner OpenAPI.
+ * Comprehensive E2E test for the OpenAPI scanner.
  *
- * Cubre:
- * - $ref en schemas, parameters, responses.
- * - allOf (UserCreate extiende UserBase).
- * - enum con múltiples valores.
+ * Covers:
+ * - $ref in schemas, parameters, responses.
+ * - allOf (UserCreate extends UserBase).
+ * - enum with multiple values.
  * - format: email, uuid, date-time, url.
- * - parameters en path-level (compartidos por todos los métodos).
- * - headers custom (X-Tenant-ID, X-Request-ID).
- * - validación de invariantes Postman v2.1.0.
+ * - path-level parameters (shared by all methods).
+ * - custom headers (X-Tenant-ID, X-Request-ID).
+ * - Postman v2.1.0 invariant validation.
  */
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
@@ -28,34 +28,34 @@ describeCollectionContract({
 });
 
 describe("OpenAPI — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("openapi-comprehensive");
     console.log("metrics:", metrics);
     expect(metrics.routes).toBeGreaterThan(15);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     const issues = validatePostmanInvariants(collection);
     expect(issues).toEqual([]);
     expect(collection.info.schema).toContain("2.1.0");
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("openapi-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
     expect(metrics.routes).toBeGreaterThanOrEqual(20);
   });
 
-  test("info.title se usa como collectionName (basename = info.title)", async () => {
+  test("info.title is used as collectionName (basename = info.title)", async () => {
     const { collection } = await runGenerate("openapi-comprehensive", {
       basename: "Comprehensive OpenAPI Test API (Postman)",
     });
     expect(collection.info.name).toContain("Comprehensive OpenAPI");
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     expect(findEndpoint(collection, "GET", "/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/users")).not.toBeNull();
@@ -65,7 +65,7 @@ describe("OpenAPI — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/auth/login")).not.toBeNull();
   });
 
-  test("POST /users tiene body parameters (UserCreate con allOf + $ref)", async () => {
+  test("POST /users has body parameters (UserCreate with allOf + $ref)", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/users");
     expect(ep).not.toBeNull();
@@ -75,18 +75,18 @@ describe("OpenAPI — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("headers custom X-Tenant-ID aparecen en /auth/logout", async () => {
+  test("custom headers X-Tenant-ID appear on /auth/logout", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     const ep = findEndpoint(collection, "POST", "/auth/logout");
     expect(ep).not.toBeNull();
     const headers = (ep?.request?.header ?? []) as Array<{ key: string; value: string }>;
     const tenant = headers.find((h) => h.key === "X-Tenant-ID");
     expect(tenant).toBeDefined();
-    // El header puede tener formato either auto (Bearer) o custom (your-tenant-id).
-    // Lo importante es que el key está presente.
+    // The header may have either an auto (Bearer) or a custom
+    // (your-tenant-id) format. What matters is that the key is present.
   });
 
-  test("path params sin llaves dobles", async () => {
+  test("path params without double braces", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     const ep = findEndpoint(collection, "GET", "/users/{{id}}");
     expect(ep).not.toBeNull();
@@ -94,7 +94,7 @@ describe("OpenAPI — comprehensive fixture", () => {
     expect(raw).toContain("{{id}}");
   });
 
-  test("query params aparecen en /users GET", async () => {
+  test("query params appear on /users GET", async () => {
     const { collection } = await runGenerate("openapi-comprehensive");
     const ep = findEndpoint(collection, "GET", "/users");
     expect(ep).not.toBeNull();
@@ -105,11 +105,11 @@ describe("OpenAPI — comprehensive fixture", () => {
     expect(keys).toContain("search");
   });
 
-  test("el hash de la collection es estable entre ejecuciones", async () => {
-    // Antes esto hasheaba una vez y comprobaba `> 0`, que es cierto para
-    // cualquier salida y no detectaba nada. Lo que importa es que dos
-    // generaciones del mismo fixture den el MISMO hash: es lo que hace
-    // que reimportar en Postman actualice en vez de duplicar.
+  test("the collection hash is stable between runs", async () => {
+    // Previously this hashed once and asserted `> 0`, which is true for
+    // any output and detected nothing. What matters is that two
+    // generations of the same fixture yield the SAME hash: that is what
+    // makes reimporting into Postman update rather than duplicate.
     const first = await runGenerate("openapi-comprehensive");
     const second = await runGenerate("openapi-comprehensive");
     expect(hashNormalized(first.collection)).toBe(hashNormalized(second.collection));

@@ -33,47 +33,47 @@ const ROOT = smokeFixtureDir("aspnet");
 const COMPREHENSIVE = comprehensiveFixtureDir("aspnet");
 
 describe("ASP.NET scanner", () => {
-  test("detect() > 0 cuando hay un .csproj con Microsoft.AspNetCore", async () => {
+  test("detect() > 0 when a .csproj with Microsoft.AspNetCore exists", async () => {
     expect((await new AspNetProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay .csproj", async () => {
+  test("detect() === 0 when there is no .csproj", async () => {
     expect((await new AspNetProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 4 rutas del mini-fixture", async () => {
+  test("scan() finds the 4 routes of the mini-fixture", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
-  test("[Route('api/users')] aplicado como prefijo de clase a todas las rutas", async () => {
+  test("[Route('api/users')] applied as class-level prefix to every route", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     for (const r of routes) expect(r.uri).toMatch(/api\/users/);
   });
 
-  test("GET, POST, GET/{id}, DELETE/{id} todos presentes", async () => {
+  test("GET, POST, GET/{id}, DELETE/{id} all present", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const methods = routes.map((r) => r.method).sort();
     expect(methods).toEqual(["DELETE", "GET", "GET", "POST"]);
   });
 
-  test("[HttpGet('{id}')] → path param {id} en la uri", async () => {
+  test("[HttpGet('{id}')] → path param {id} in the uri", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.method === "GET" && r.uri.includes("{id}"));
     expect(show).toBeDefined();
   });
 
-  test("comprehensive: detecta >10 rutas en multi-controller C#", async () => {
+  test("comprehensive: detects >10 routes in multi-controller C#", async () => {
     const match = await new AspNetProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
-  test("[FromBody] provider resuelve campos del modelo para POST", async () => {
+  test("[FromBody] provider resolves model fields for POST", async () => {
     const match = await new AspNetProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
@@ -90,10 +90,10 @@ describe("ASP.NET scanner", () => {
 describe("ASP.NET — minimal APIs (.NET 6+)", () => {
   const ROOT_MINIMAL = comprehensiveFixtureDir("aspnet");
 
-  // Es la forma por defecto desde .NET 6 (`dotnet new webapi`) y no la
-  // cubría nada: un proyecto que solo las usara producía una colección
-  // vacía.
-  test("detecta app.MapGet en Program.cs", async () => {
+  // It is the default shape since .NET 6 (`dotnet new webapi`) and
+  // nothing covered it: a project that only used them produced an
+  // empty collection.
+  test("detects app.MapGet in Program.cs", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     const health = routes.find((r) => r.uri === "/health");
     expect(health).toBeDefined();
@@ -101,14 +101,14 @@ describe("ASP.NET — minimal APIs (.NET 6+)", () => {
     expect(health?.sourceFile).toBe("Program.cs");
   });
 
-  test("aplica el prefijo de MapGroup", async () => {
+  test("applies the MapGroup prefix", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     const uris = routes.filter((r) => r.sourceFile === "Program.cs").map((r) => r.uri);
     expect(uris).toContain("/api/products");
     expect(uris).toContain("/api/products/{id}");
   });
 
-  test("cubre los cinco verbos del grupo", async () => {
+  test("covers all five group verbs", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     const products = routes
       .filter((r) => r.uri.startsWith("/api/products"))
@@ -117,16 +117,16 @@ describe("ASP.NET — minimal APIs (.NET 6+)", () => {
     expect(products).toEqual(["DELETE", "GET", "GET", "POST", "PUT"]);
   });
 
-  test("un endpoint comentado no aparece", async () => {
+  test("a commented endpoint does not appear", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     expect(routes.map((r) => r.uri).join(" ")).not.toContain("endpoint-comentado");
   });
 
-  // a00011 C-6: `{id:int}` es ASP.NET normal y corriente. La
-  // restricción es documentación de servidor; en la colección el
-  // token es lo que el usuario sustituye. Antes del fix la URL
-  // salía literal `{id:int}` y Postman no la trataba como path param.
-  test("path constraint {id:int} se reduce a {id} (C-6 a00011)", async () => {
+  // a00011 C-6: `{id:int}` is vanilla ASP.NET. The constraint is
+  // server-side documentation; in the collection the token is what
+  // the user substitutes. Before the fix the URL came out literally
+  // as `{id:int}` and Postman did not treat it as a path param.
+  test("path constraint {id:int} is reduced to {id} (C-6 a00011)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Tienda.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
@@ -150,7 +150,7 @@ app.Run();`,
     await project.cleanup();
   });
 
-  test("[controller] token se resuelve al nombre derivado (C-6 a00011)", async () => {
+  test("[controller] token is resolved to the derived name (C-6 a00011)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Tienda.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
@@ -176,20 +176,20 @@ public class UsersController : ControllerBase
     await project.cleanup();
   });
 
-  test("conviven minimal APIs y controladores en el mismo proyecto", async () => {
+  test("minimal APIs and controllers coexist in the same project", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     expect(routes.some((r) => r.sourceFile === "Program.cs")).toBe(true);
     expect(routes.some((r) => r.sourceFile?.startsWith("Controllers/"))).toBe(true);
   });
 
-  test("no duplica endpoints entre las dos formas", async () => {
+  test("does not duplicate endpoints across the two shapes", async () => {
     const { routes } = await scanProject("aspnet", ROOT_MINIMAL);
     const keys = routes.map((r) => `${r.method} ${r.uri}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
 
-describe("ASP.NET — resolución del DTO por ruta", () => {
+describe("ASP.NET — per-route DTO resolution", () => {
   const ROOT = comprehensiveFixtureDir("aspnet");
 
   async function fieldsFor(method: string, uri: string): Promise<string[]> {
@@ -201,9 +201,10 @@ describe("ASP.NET — resolución del DTO por ruta", () => {
     return result.fields.map((f) => f.fieldName);
   }
 
-  // Antes se buscaba el primer `[FromBody]` de TODO el fichero, así que
-  // en un controlador con varios POST todos recibían el mismo DTO.
-  test("dos endpoints del mismo controller usan cada uno su DTO", async () => {
+  // Previously it looked up the first `[FromBody]` of the entire
+  // file, so a controller with multiple POSTs all received the same
+  // DTO.
+  test("two endpoints in the same controller each use their own DTO", async () => {
     expect(await fieldsFor("POST", "/api/orders")).toEqual([
       "CustomerName",
       "CustomerEmail",
@@ -213,7 +214,7 @@ describe("ASP.NET — resolución del DTO por ruta", () => {
     expect(await fieldsFor("PATCH", "/api/orders/{id}/status")).toEqual(["Status", "Note"]);
   });
 
-  test("resuelve el DTO del parámetro tipado de un minimal API", async () => {
+  test("resolves the DTO of a minimal API's typed parameter", async () => {
     expect(await fieldsFor("POST", "/api/products")).toEqual([
       "Name",
       "Price",
@@ -221,16 +222,16 @@ describe("ASP.NET — resolución del DTO por ruta", () => {
     ]);
   });
 
-  test("los GET no reciben body", async () => {
+  test("GETs do not receive a body", async () => {
     expect(await fieldsFor("GET", "/api/users")).toEqual([]);
     expect(await fieldsFor("GET", "/api/products")).toEqual([]);
   });
 
-  test("los DELETE no reciben body", async () => {
+  test("DELETEs do not receive a body", async () => {
     expect(await fieldsFor("DELETE", "/api/users/{id}")).toEqual([]);
   });
 
-  test("un endpoint sin body declarado no inventa campos", async () => {
+  test("an endpoint without a declared body does not invent fields", () => {
     expect(await fieldsFor("POST", "/api/auth/logout")).toEqual([]);
   });
 });

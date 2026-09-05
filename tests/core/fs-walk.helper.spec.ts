@@ -22,33 +22,33 @@ afterAll(async () => {
 });
 
 describe("collectFiles", () => {
-  test("recorre recursivamente y devuelve rutas absolutas", async () => {
+  test("walks recursively and returns absolute paths", async () => {
     const files = await collectFiles(join(root, "src"), (n) => n.endsWith(".ts"));
     expect(files).toHaveLength(2);
     for (const f of files) expect(f.startsWith(root)).toBe(true);
   });
 
-  test("baja más de un nivel de anidamiento", async () => {
+  test("descends more than one nesting level", async () => {
     const files = await collectFiles(join(root, "src"), (n) => n.endsWith(".js"));
     expect(files).toHaveLength(1);
     expect(files[0]).toContain(join("nested", "deep", "c.js"));
   });
 
-  test("aplica el filtro por nombre de fichero", async () => {
+  test("applies the filename filter", async () => {
     expect(await collectFiles(root, (n) => n.endsWith(".md"))).toHaveLength(1);
   });
 
-  test("devuelve [] en un directorio inexistente en lugar de lanzar", async () => {
+  test("returns [] for a non-existent directory instead of throwing", async () => {
     expect(await collectFiles(join(root, "no-existe"), () => true)).toEqual([]);
   });
 
-  test("devuelve [] cuando nada casa el filtro", async () => {
+  test("returns [] when nothing matches the filter", async () => {
     expect(await collectFiles(root, () => false)).toEqual([]);
   });
 });
 
 describe("collectFilesFrom", () => {
-  test("agrega varias raíces", async () => {
+  test("aggregates several roots", async () => {
     const files = await collectFilesFrom(
       [join(root, "src"), join(root, "lib")],
       (n) => n.endsWith(".ts"),
@@ -56,7 +56,7 @@ describe("collectFilesFrom", () => {
     expect(files).toHaveLength(3);
   });
 
-  test("no repite ficheros cuando las raíces se solapan", async () => {
+  test("does not repeat files when roots overlap", async () => {
     const files = await collectFilesFrom(
       [root, join(root, "src")],
       (n) => n.endsWith(".ts"),
@@ -64,7 +64,7 @@ describe("collectFilesFrom", () => {
     expect(new Set(files).size).toBe(files.length);
   });
 
-  test("ignora las raíces que no existen", async () => {
+  test("ignores roots that do not exist", async () => {
     const files = await collectFilesFrom(
       [join(root, "lib"), join(root, "fantasma")],
       (n) => n.endsWith(".ts"),
@@ -74,43 +74,43 @@ describe("collectFilesFrom", () => {
 });
 
 describe("isSourceJsTsFile", () => {
-  test("acepta las extensiones de código", () => {
+  test("accepts the code extensions", () => {
     for (const n of ["a.ts", "a.js", "a.mjs", "a.cjs", "a.tsx", "a.jsx"]) {
       expect(isSourceJsTsFile(n)).toBe(true);
     }
   });
 
-  test("rechaza otras extensiones", () => {
+  test("rejects other extensions", () => {
     expect(isSourceJsTsFile("a.py")).toBe(false);
     expect(isSourceJsTsFile("README.md")).toBe(false);
   });
 
-  test("rechaza declaraciones de tipos", () => {
+  test("rejects type declarations", () => {
     expect(isSourceJsTsFile("types.d.ts")).toBe(false);
   });
 
-  test("rechaza tests, que no declaran endpoints reales", () => {
+  test("rejects tests, which do not declare real endpoints", () => {
     expect(isSourceJsTsFile("users.test.ts")).toBe(false);
     expect(isSourceJsTsFile("users.spec.ts")).toBe(false);
   });
 
-  test("rechaza los configs de vite/vitest", () => {
+  test("rejects vite/vitest configs", () => {
     expect(isSourceJsTsFile("vite.config.ts")).toBe(false);
     expect(isSourceJsTsFile("vitest.config.ts")).toBe(false);
   });
 });
 
-describe("árboles hostiles", () => {
-  // La regresión que motivó reescribir el recorrido. Con
-  // `readdir({ recursive: true })` —una sola llamada— un ciclo de
-  // enlaces hacía fallar el recorrido ENTERO y devolvía lista vacía,
-  // perdiendo también lo que ya había encontrado. Medido: un proyecto
-  // de Express con `src/self -> .` daba 0 endpoints teniendo el
-  // `server.js` al lado, y la colección salía vacía sin decir por qué.
+describe("hostile trees", () => {
+  // The regression that motivated rewriting the walk. With
+  // `readdir({ recursive: true })` —a single call— a symlink cycle
+  // would fail the ENTIRE walk and return an empty list, also losing
+  // what had already been found. Measured: an Express project with
+  // `src/self -> .` returned 0 endpoints while `server.js` was right
+  // there, and the collection came out empty without saying why.
   //
-  // No es un caso de laboratorio: Capistrano despliega con `current ->
-  // .` y los monorepos enlazan paquetes entre sí.
-  test("un ciclo de enlaces no ciega el recorrido", async () => {
+  // Not a lab case: Capistrano deploys with `current -> .`, and
+  // monorepos symlink packages to each other.
+  test("a symlink cycle does not blind the walk", async () => {
     const dir = await mkdtemp(join(tmpdir(), "fs-walk-loop-"));
     try {
       await mkdir(join(dir, "src"), { recursive: true });
@@ -124,7 +124,7 @@ describe("árboles hostiles", () => {
     }
   });
 
-  test("una carpeta ilegible solo se pierde a sí misma", async () => {
+  test("an unreadable folder only loses itself", async () => {
     const dir = await mkdtemp(join(tmpdir(), "fs-walk-perm-"));
     try {
       await mkdir(join(dir, "abierta"), { recursive: true });
@@ -141,7 +141,7 @@ describe("árboles hostiles", () => {
     }
   });
 
-  test("un enlace a un fichero de código sí cuenta", async () => {
+  test("a symlink to a code file does count", async () => {
     const dir = await mkdtemp(join(tmpdir(), "fs-walk-link-"));
     try {
       await mkdir(join(dir, "real"), { recursive: true });
@@ -155,7 +155,7 @@ describe("árboles hostiles", () => {
     }
   });
 
-  test("un enlace roto no rompe el recorrido", async () => {
+  test("a broken symlink does not break the walk", async () => {
     const dir = await mkdtemp(join(tmpdir(), "fs-walk-broken-"));
     try {
       await writeFile(join(dir, "bueno.ts"), "export const a = 1;");

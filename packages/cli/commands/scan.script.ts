@@ -1,44 +1,45 @@
 #!/usr/bin/env bun
 /**
- * Smoke test del discovery framework-agnostic.
+ * Smoke test of the framework-agnostic discovery.
  *
- * Uso:
+ * Usage:
  *   bun scripts/scan.script.ts
  *   bun scripts/scan.script.ts --project-root /path/to/project
  *   POSTMAN_PROJECT_ROOT=/path/to/project bun scripts/scan.script.ts
  *
- * Recorre los `IProjectScanner` registrados, elige el de mayor score,
- * e imprime las rutas encontradas. Pensado para CI y para debugging
- * del discovery sin tener que generar una colección completa.
+ * Walks through the registered `IProjectScanner`s, picks the one with
+ * the highest score, and prints the discovered routes. Designed for CI
+ * and for debugging discovery without having to generate a full
+ * collection.
  *
- * ## Por qué `runScan` está separado de `main`
+ * ## Why `runScan` is split apart from `main`
  *
- * Mismo motivo que en `generate`, `check` y `list`: el tool del plugin
- * necesita **los datos**, y parsear la salida con regex se rompe el día
- * que cambie una columna.
+ * Same reason as in `generate`, `check`, and `list`: the plugin tool
+ * needs **the data**, and parsing the output with regex breaks the day
+ * a column changes.
  *
- * Y hay una razón más urgente. Este fichero llamaba a
- * `process.exit(await main())` **sin guard**, en el cuerpo del módulo:
- * cualquiera que lo importara —un test, el plugin— lanzaba un escaneo y
- * mataba el proceso. En un servidor MCP de vida larga eso es el servidor
- * entero cayéndose al cargar el tool. Estaba así en cuatro de los doce
- * comandos, y `lint:command-coverage` ahora lo exige.
+ * And there is a more urgent reason. This file used to call
+ * `process.exit(await main())` **without a guard**, in the module body:
+ * anyone who imported it —a test, the plugin— would launch a scan and
+ * kill the process. In a long-lived MCP server that is the whole server
+ * going down while loading the tool. That was the case in four of the
+ * twelve commands, and `lint:command-coverage` now requires it.
  */
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import { guessedRootNotice, resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.interface.js";
 
-/** Escanea el proyecto y devuelve lo encontrado, imprimiéndolo por el camino. */
+/** Scans the project and returns what was found, printing it along the way. */
 export async function runScan(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
 ): Promise<IScanOutcome> {
   const root = context?.projectRoot ?? resolveRoot({ argv }).root;
 
-  // Decir cuando se ha adivinado: el último recurso es el directorio
-  // actual, y escanear el sitio equivocado en silencio es cómo `watch`
-  // acabó recorriendo `/tmp` entero.
+  // Say when the root was guessed: the last resort is the current
+  // directory, and silently scanning the wrong place is how `watch`
+  // ended up walking all of `/tmp`.
   const aviso = context ? "" : guessedRootNotice(resolveRoot({ argv }));
   if (aviso) console.log(`${aviso}\n`);
 
@@ -100,7 +101,7 @@ export async function runScan(
   };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   return (await runScan(argv)).code;
 }

@@ -1,11 +1,11 @@
 /**
- * E2E test exhaustivo para el scanner Spring Boot (Java).
+ * Comprehensive E2E test for the Spring Boot (Java) scanner.
  *
- * Cubre:
+ * Covers:
  * - @RestController + @RequestMapping("/api/X") (class prefix).
  * - @GetMapping/@PostMapping/@PutMapping/@DeleteMapping/@PatchMapping.
  * - @PathVariable, @RequestParam, @RequestBody.
- * - DTOs con jakarta.validation.constraints.* (@NotBlank, @Email,
+ * - DTOs with jakarta.validation.constraints.* (@NotBlank, @Email,
  *   @Min, @Max, @Size, @Pattern).
  * - Enums via @Pattern(regexp = "a|b|c").
  * - Multi-package: users/, orders/, auth/.
@@ -27,23 +27,23 @@ describeCollectionContract({
 });
 
 describe("Spring Boot — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("springboot-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(11);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("springboot-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     // Users
     expect(findEndpoint(collection, "GET", "/api/users")).not.toBeNull();
@@ -61,7 +61,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
   });
 
-  test("POST /api/users tiene body desde DTO User", async () => {
+  test("POST /api/users has body from DTO User", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users");
     expect(ep).not.toBeNull();
@@ -72,7 +72,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(body).toHaveProperty("role");
   });
 
-  test("PUT /api/users/{id} tiene body desde DTO User", async () => {
+  test("PUT /api/users/{id} has body from DTO User", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}");
     expect(ep).not.toBeNull();
@@ -81,7 +81,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(body).toHaveProperty("email");
   });
 
-  test("POST /api/orders tiene body desde DTO Order", async () => {
+  test("POST /api/orders has body from DTO Order", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/orders");
     expect(ep).not.toBeNull();
@@ -92,7 +92,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(body).toHaveProperty("currency");
   });
 
-  test("PATCH /api/orders/{id}/status tiene body desde DTO Order", async () => {
+  test("PATCH /api/orders/{id}/status has body from DTO Order", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status");
     expect(ep).not.toBeNull();
@@ -100,7 +100,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(body).toHaveProperty("customerName");
   });
 
-  test("POST /api/auth/login tiene email + password (DTO LoginRequest)", async () => {
+  test("POST /api/auth/login has email + password (DTO LoginRequest)", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login");
     expect(ep).not.toBeNull();
@@ -109,7 +109,7 @@ describe("Spring Boot — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("role es enum (Pattern regexp=admin|user|guest)", async () => {
+  test("role is enum (Pattern regexp=admin|user|guest)", async () => {
     const { collection } = await runGenerate("springboot-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users");
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");

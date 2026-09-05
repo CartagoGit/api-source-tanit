@@ -1,16 +1,17 @@
 /**
- * Los lanzadores de `bin/`.
+ * The `bin/` launchers.
  *
- * Su contrato es corto y hay que defenderlo: **resuelven el motor y le
- * pasan los argumentos, y nada más**. La versión anterior de esto
- * (`runtime/`, retirada en p00021) reimplementaba el generador en Node,
- * Python y PHP; las tres copias divergieron del original y ninguna
- * tenía un solo test. Cuando el proyecto se hizo agnóstico, las tres
- * seguían siendo solo-Laravel y nadie se enteró.
+ * Their contract is short and must be defended: **they resolve the
+ * engine and pass the arguments, and nothing else**. The previous
+ * version of this (`runtime/`, retired in p00021) reimplemented the
+ * generator in Node, Python and PHP; the three copies diverged from
+ * the original and none had a single test. When the project became
+ * framework-agnostic, all three were still Laravel-only and nobody
+ * noticed.
  *
- * Por eso lo que se comprueba aquí no es tanto que funcionen —eso
- * depende de la plataforma— como que **sigan siendo finos**: si alguno
- * empieza a hablar de rutas, frameworks o colecciones, está mal.
+ * That is why what is checked here is not so much that they work —that
+ * depends on the platform— but that **they stay thin**: if any of them
+ * starts to talk about routes, frameworks or collections, it is wrong.
  */
 import { describe, expect, test } from "vitest";
 import { readFile, readdir, stat } from "node:fs/promises";
@@ -22,7 +23,7 @@ import { runProcess } from "../helpers/run-process";
 const BIN_DIR = fromRoot("bin");
 const WRAPPERS_DIR = join(BIN_DIR, "wrappers");
 
-/** Palabras que delatan lógica de dominio dentro de un lanzador. */
+/** Words that betray domain logic inside a launcher. */
 const DOMAIN_WORDS = [
   "postman_collection",
   "laravel",
@@ -33,11 +34,11 @@ const DOMAIN_WORDS = [
 ];
 
 /**
- * Los lanzadores, solo ficheros.
+ * The launchers, files only.
  *
- * Filtrar por tipo y no por nombre importa: el test de sintaxis de
- * Python dejaba un `__pycache__/` dentro de `wrappers/` y el siguiente
- * test intentaba leerlo como fichero (EISDIR).
+ * Filtering by type and not by name matters: the Python syntax test
+ * left a `__pycache__/` inside `wrappers/` and the next test tried to
+ * read it as a file (EISDIR).
  */
 async function launcherFiles(): Promise<string[]> {
   const candidates: string[] = [];
@@ -53,30 +54,31 @@ async function launcherFiles(): Promise<string[]> {
   return candidates;
 }
 
-describe("los lanzadores son finos", () => {
-  test("hay un lanzador POSIX y uno de Windows", async () => {
+describe("the launchers are thin", () => {
+  test("there is a POSIX launcher and a Windows one", async () => {
     const names = await readdir(BIN_DIR);
-    // El nombre canónico vive en `BIN_NAME` (contratos) y lo pinza el
-    // test de abajo contra el `bin` del package.json; aquí solo se
-    // comprueba que los dos lanzadores existen con ese nombre.
+    // The canonical name lives in `BIN_NAME` (contracts) and is
+    // pinned by the test below against the `bin` of package.json;
+    // here only the existence of both launchers under that name is
+    // checked.
     expect(names).toContain("apisrc");
     expect(names).toContain("apisrc.ps1");
   });
 
-  test("ninguno pasa de 100 líneas", async () => {
+  test("none exceeds 100 lines", async () => {
     for (const file of await launcherFiles()) {
       const lines = (await readFile(file, "utf8")).split("\n").length;
       expect(lines, file).toBeLessThan(100);
     }
   });
 
-  // El test que de verdad importa: que no vuelva a aparecer una
-  // reimplementación disfrazada de wrapper.
-  test("ninguno contiene lógica de dominio", async () => {
+  // The test that really matters: that a reimplementation disguised
+  // as a wrapper does not reappear.
+  test("none contains domain logic", async () => {
     for (const file of await launcherFiles()) {
       const source = (await readFile(file, "utf8")).toLowerCase();
-      // Las menciones en comentarios explican justo esto, así que se
-      // miran solo las líneas de código.
+      // Mentions in comments explain exactly this, so only code
+      // lines are inspected.
       const code = source
         .split("\n")
         .filter((line) => !/^\s*(#|\/\/|\*|<!--)/.test(line))
@@ -87,20 +89,20 @@ describe("los lanzadores son finos", () => {
     }
   });
 
-  test("el lanzador POSIX es ejecutable", async () => {
+  test("the POSIX launcher is executable", async () => {
     const mode = (await stat(join(BIN_DIR, "apisrc"))).mode;
     // eslint-disable-next-line no-bitwise
     expect(mode & 0o111).toBeGreaterThan(0);
   });
 
-  test("el lanzador POSIX es sintácticamente válido", async () => {
+  test("the POSIX launcher is syntactically valid", async () => {
     const result = await runProcess("sh", ["-n", join(BIN_DIR, "apisrc")]);
     expect(result.code, result.output).toBe(0);
   });
 
-  // `py_compile` escribiría un `__pycache__/` dentro de `wrappers/`.
-  // `compile()` hace la misma comprobación sin dejar rastro.
-  test("el wrapper de Python es sintácticamente válido", async () => {
+  // `py_compile` would write a `__pycache__/` inside `wrappers/`.
+  // `compile()` does the same check without leaving a trace.
+  test("the Python wrapper is syntactically valid", async () => {
     const path = join(WRAPPERS_DIR, "apisrc.py");
     const result = await runProcess("python3", [
       "-c",
@@ -109,28 +111,28 @@ describe("los lanzadores son finos", () => {
     expect(result.code, result.output).toBe(0);
   });
 
-  test("todos apuntan al mismo nombre canónico", async () => {
+  test("all point to the same canonical name", async () => {
     for (const file of await launcherFiles()) {
       const source = await readFile(file, "utf8");
       expect(source, file).toMatch(/apisrc/);
-      // El nombre viejo no puede quedar en un lanzador nuevo.
+      // The old name must not survive in a new launcher.
       expect(source, file).not.toMatch(/postman-from-routes/);
     }
   });
 });
 
 /**
- * El nombre del ejecutable, en un solo sitio.
+ * The executable name, in one place.
  *
- * Estaba escrito a mano en el script de compilación y se quedó en
- * `postman-from-routes` —el nombre viejo— cuando el producto se
- * renombró. Los binarios de las releases salían con un nombre que no
- * existe en ninguna otra parte del proyecto, y el workflow que los
- * publica buscaba ese patrón: los dos coincidían **en estar mal**, así
- * que nada fallaba.
+ * It was hand-written in the build script and stayed as
+ * `postman-from-routes` —the old name— when the product was renamed.
+ * Release binaries came out with a name that did not exist anywhere
+ * else in the project, and the workflow that publishes them looked
+ * for that pattern: the two matched **in being wrong**, so nothing
+ * failed.
  */
-describe("el nombre del binario", () => {
-  test("es el mismo que el `bin` del package.json", async () => {
+describe("the binary name", () => {
+  test("is the same as the `bin` of package.json", async () => {
     const { BIN_NAME } = await import("../../packages/contracts/constants/core/postman.constant");
     const pkg = JSON.parse(
       await readFile(join(REPO_ROOT, "package.json"), "utf8"),
@@ -138,18 +140,18 @@ describe("el nombre del binario", () => {
     expect(Object.keys(pkg.bin ?? {})).toContain(BIN_NAME);
   });
 
-  test("el workflow de releases publica ese patrón, no otro", async () => {
+  test("the releases workflow publishes that pattern, not another", async () => {
     const { BIN_NAME } = await import("../../packages/contracts/constants/core/postman.constant");
     const workflow = await readFile(
       join(REPO_ROOT, ".github", "workflows", "release-binaries.yml"),
       "utf8",
     );
     expect(workflow).toContain(`dist/${BIN_NAME}-`);
-    // Publicar un patrón que ya no se genera dejaría la release vacía.
+    // Publishing a pattern that is no longer generated would leave the release empty.
     expect(workflow).not.toMatch(/postman-from-routes/);
   });
 
-  test("el script de compilación no lo escribe a mano", async () => {
+  test("the build script does not write it by hand", async () => {
     const source = await readFile(
       join(REPO_ROOT, "scripts", "build", "build-binary.script.ts"),
       "utf8",

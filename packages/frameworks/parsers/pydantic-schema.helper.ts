@@ -1,9 +1,10 @@
 /**
- * Parser de modelos Pydantic → `IValidationSpec`.
+ * Pydantic model parser → `IValidationSpec`.
  *
- * Pydantic aparece en FastAPI (donde es la forma canónica) y en Flask
- * vía `flask-pydantic`. Vivía dentro de `fastapi.scanner.ts`, así que
- * Flask no podía aprovecharlo y se quedaba sin bodies reales.
+ * Pydantic appears in FastAPI (where it is the canonical form) and in
+ * Flask via `flask-pydantic`. It used to live inside
+ * `fastapi.scanner.ts`, so Flask could not reuse it and ended up with
+ * no real bodies.
  *
  *   class UserCreate(BaseModel):
  *       name: str
@@ -11,16 +12,17 @@
  *       age: Optional[int] = None
  *       role: Literal["admin", "user"] = "user"
  *
- * El análisis es textual: no se importa el módulo del proyecto
- * escaneado, que puede estar en otra versión de Python o sin instalar.
+ * The analysis is textual: the scanned project's module is not
+ * imported — it may be on another Python version or not installed at
+ * all.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IPydanticModel } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** Clases base que identifican un modelo parseable. */
+/** Base classes that identify a parseable model. */
 const MODEL_BASE_RE = /class\s+(\w+)\s*\(\s*(?:BaseModel|pydantic\.BaseModel)\s*\)\s*:/g;
 
-/** `campo: tipo` o `campo: tipo = valor`, con indentación de clase. */
+/** `field: type` or `field: type = value`, with class indentation. */
 const FIELD_RE = /^\s+([a-zA-Z_][\w]*)\s*:\s*([^\n=]+?)\s*(?:=\s*(.+?))?\s*$/;
 
 const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
@@ -42,7 +44,7 @@ const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   Literal: "enum",
 };
 
-/** Tipos de Pydantic que expresan un formato semántico. */
+/** Pydantic types that express a semantic format. */
 const FORMAT_MAP: Record<string, string> = {
   EmailStr: "email",
   HttpUrl: "url",
@@ -59,10 +61,10 @@ const FORMAT_MAP: Record<string, string> = {
 };
 
 /**
- * Todos los modelos Pydantic declarados en un fuente Python.
+ * All Pydantic models declared in a Python source file.
  *
- * El final de la clase se detecta por indentación: la primera línea no
- * vacía que arranque en la columna 0 la cierra.
+ * The end of the class is detected by indentation: the first non-blank
+ * line starting at column 0 closes it.
  */
 export function parsePydanticModels(source: string): IPydanticModel[] {
   const out: IPydanticModel[] = [];
@@ -95,7 +97,7 @@ export function parsePydanticModels(source: string): IPydanticModel[] {
   return out;
 }
 
-/** Convierte los campos de un modelo en specs del contrato. */
+/** Converts a model's fields into contract specs. */
 export function pydanticModelToSpecs(
   model: IPydanticModel,
   location: IValidationSpec["location"] = "body",
@@ -105,7 +107,7 @@ export function pydanticModelToSpecs(
   );
 }
 
-/** Convierte una anotación de tipo en un spec. */
+/** Converts a type annotation into a spec. */
 export function pydanticFieldToSpec(
   fieldName: string,
   annotation: string,
@@ -124,9 +126,9 @@ export function pydanticFieldToSpec(
   };
 }
 
-/** Anotación → tipo lógico del contrato. */
+/** Annotation → logical type of the contract. */
 export function mapPydanticType(annotation: string): IValidationSpec["type"] {
-  // Los tipos con formato (EmailStr, HttpUrl…) siguen siendo strings.
+  // Types with a format (EmailStr, HttpUrl…) are still strings.
   for (const name of Object.keys(FORMAT_MAP)) {
     if (annotation.includes(name)) return "string";
   }
@@ -141,7 +143,7 @@ export function mapPydanticType(annotation: string): IValidationSpec["type"] {
   return TYPE_MAP[base] ?? "any";
 }
 
-/** Anotación → formato semántico, si lo hay. */
+/** Annotation → semantic format, if any. */
 export function mapPydanticFormat(annotation: string): string | undefined {
   for (const [name, format] of Object.entries(FORMAT_MAP)) {
     if (annotation.includes(name)) return format;
@@ -149,7 +151,7 @@ export function mapPydanticFormat(annotation: string): string | undefined {
   return undefined;
 }
 
-/** Un campo es obligatorio salvo que sea `Optional` o tenga default. */
+/** A field is required unless it is `Optional` or has a default. */
 export function isPydanticRequired(annotation: string): boolean {
   return !annotation.includes("Optional") && !annotation.includes("None");
 }

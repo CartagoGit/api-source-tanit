@@ -1,15 +1,16 @@
 /**
- * `LaravelRouteScanner` — implementación concreta del contrato
- * `IRouteScanner` y `IProjectScanner` para proyectos Laravel.
+ * `LaravelRouteScanner` — concrete implementation of the `IRouteScanner`
+ * and `IProjectScanner` contracts for Laravel projects.
  *
- * Esta clase es la PRIMERA implementación; convivirá con
- * `OpenApiRouteScanner`, `ExpressRouteScanner`, etc. cuando se añadan.
+ * This class is the FIRST implementation; it will coexist with
+ * `OpenApiRouteScanner`, `ExpressRouteScanner`, etc. when they are
+ * added.
  *
- * Mantiene la lógica Laravel que vivía en `route-parser.service.ts` y
- * en el singleton ya retirado `paths.service.ts` (r00010 S2,
- * 2026-09-03), para evitar regresiones: parsea `Route::…` con regex,
- * resuelve prefijos de `RouteServiceProvider`, devuelve `ParsedRoute`
- * en su forma neutra.
+ * It keeps the Laravel logic that used to live in
+ * `route-parser.service.ts` and in the now-removed `paths.service.ts`
+ * singleton (r00010 S2, 2026-09-03), to avoid regressions: parses
+ * `Route::…` with regex, resolves prefixes from
+ * `RouteServiceProvider`, returns `ParsedRoute` in its neutral form.
  */
 import { existsSync } from "node:fs";
 import { ownRegex } from "../../core/helpers/regex.helper.js";
@@ -44,10 +45,10 @@ const PROVIDER_PREFIX_RE = /Route::prefix\s*\(\s*['"]([^'"]+)['"]/g;
 const PROVIDER_GROUP_RE =
   /->group\s*\(\s*base_path\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 
-/** Patrón `->where('foo', '\d+')` en el contexto de un route call. */
+/** Pattern `->where('foo', '\d+')` in the context of a route call. */
 const WHERE_RE = /->where\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/g;
 
-/** Rutas RESTful expandidas para `Route::resource` (7 verbos). */
+/** RESTful routes expanded for `Route::resource` (7 verbs). */
 const RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; action: string }> = [
   { method: "GET", suffix: "", action: "index" },
   { method: "GET", suffix: "/create", action: "create" },
@@ -58,7 +59,7 @@ const RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; action: s
   { method: "DELETE", suffix: "/{id}", action: "destroy" },
 ];
 
-/** Rutas RESTful expandidas para `Route::apiResource` (5 verbos, sin UI). */
+/** RESTful routes expanded for `Route::apiResource` (5 verbs, no UI). */
 const API_RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; action: string }> = [
   { method: "GET", suffix: "", action: "index" },
   { method: "POST", suffix: "", action: "store" },
@@ -68,19 +69,19 @@ const API_RESOURCE_ROUTES: ReadonlyArray<{ method: string; suffix: string; actio
 ];
 
 /**
- * Captura las constraints `where('campo', 'regex')` en el rango de
- * líneas desde la declaración del route hasta su cierre (`;` o `;`).
+ * Captures `where('field', 'regex')` constraints in the line range
+ * from the route declaration up to its closing (`;`).
  *
- * @param lines Array de líneas del archivo.
- * @param startIndex 0-based index de la línea donde está la declaración.
- * @returns Map nombre → regex (sin las barras de JS).
+ * @param lines Array of file lines.
+ * @param startIndex 0-based index of the declaration line.
+ * @returns Map name → regex (without JS slashes).
  */
 function captureWhereConstraints(
   lines: string[],
   startIndex: number,
 ): Map<string, string> {
   const out = new Map<string, string>();
-  // Busca en una ventana de 5 líneas hacia adelante (suficiente para
+  // Searches a 5-line forward window (enough for
   // `Route::get(...)->where('foo', '\d+')->where('bar', '...');`).
   const end = Math.min(startIndex + 5, lines.length);
   for (let i = startIndex; i < end; i++) {
@@ -99,22 +100,24 @@ function captureWhereConstraints(
 }
 
 /**
- * Codifica una URI con constraints where() en la forma
- * `{name:regex}`. Si no hay constraints, devuelve `{name}`.
+ * Encodes a URI with `where()` constraints into the shape
+ * `{name:regex}`. If there are no constraints, returns `{name}`.
  */
 function encodeWithConstraints(name: string, constraints: Map<string, string>): string {
   const c = constraints.get(name);
   if (!c) return `{${name}}`;
-  // Laravel acepta el regex sin delimitadores; Postman también lo acepta
-  // visualmente (ej. `{id:\\\\d+}`), pero por consistencia con otros
-  // scanners usamos `:p` y dejamos la firma en `displayName` si la
-  //我们需要. Devolvemos la URI como `{name:regex}` visualmente.
+  // Laravel accepts the regex without delimiters; Postman also
+  // accepts it visually (e.g. `{id:\\\\d+}`), but for consistency
+  // with other scanners we use `:p` and leave the signature in
+  // `displayName` if needed. We return the URI as `{name:regex}`
+  // visually.
   return `{${name}:${c}}`;
 }
 
 /**
- * Codifica `where()` constraints en una URI ya construida. Si el
- * campo `{name}` está en `constraints`, se convierte a `{name:regex}`.
+ * Encodes `where()` constraints into an already-built URI. If the
+ * `{name}` field is in `constraints`, it is converted to
+ * `{name:regex}`.
  */
 function encodeWithConstraintsInUri(
   uri: string,
@@ -134,7 +137,7 @@ function resolveControllerClass(
   return imports.get(alias) ?? `App\\Http\\Controllers\\${alias}`;
 }
 
-/** Archivos de rutas que NO son HTTP API. */
+/** Route files that are NOT HTTP API. */
 const NON_API_ROUTE_FILES = new Set([
   "web.php",
   "console.php",
@@ -290,7 +293,7 @@ export class LaravelRouteScanner implements IRouteScanner {
     const filePrefixes =
       this.opts.filePrefixes ?? (await detectFilePrefixes(projectRoot));
 
-    // Rellena prefijos por defecto para archivos no listados.
+    // Fill in default prefixes for files not listed.
     const phpFiles = entries.filter((e) => e.endsWith(".php") && !NON_API_ROUTE_FILES.has(e));
     const out: ParsedRoute[] = [];
     for (const f of phpFiles) {
@@ -346,7 +349,7 @@ export async function parseRoutesFile(
       prefixStack.pop();
     }
 
-    // Route::resource / Route::apiResource → expande a N routes.
+    // Route::resource / Route::apiResource → expand to N routes.
     const resourceMatch = RESOURCE_RE.exec(line);
     if (resourceMatch?.[1] && resourceMatch[2] && resourceMatch[3]) {
       const kind = resourceMatch[1];
@@ -358,8 +361,9 @@ export async function parseRoutesFile(
       const whereConstraints = captureWhereConstraints(lines, i);
       const expanded =
         kind === "apiResource" ? API_RESOURCE_ROUTES : RESOURCE_ROUTES;
-      // Laravel usa el nombre singular del recurso como parámetro implícito;
-      // `->parameters(['users' => 'user_id'])` permite sobrescribirlo.
+      // Laravel uses the singular name of the resource as the implicit
+      // parameter; `->parameters(['users' => 'user_id'])` lets you
+      // override it.
       const parameterName = resourceParameterName(options, resourceUri);
       const paramToken = /^[a-z_][\w]*$/i.test(parameterName)
         ? `{${parameterName}}`
@@ -367,7 +371,7 @@ export async function parseRoutesFile(
       for (const r of expanded) {
         const rawForThis = (resourceUri + r.suffix)
           .replace(/^\/+/, "")
-          // Sustituir el `/{id}` literal del sufijo por el param correcto.
+          // Substitute the literal `/{id}` of the suffix with the right param.
           .replace(/\{id\}/g, paramToken);
         const segments = rawForThis
           ? [...prefixStack, rawForThis]
@@ -383,7 +387,7 @@ export async function parseRoutesFile(
           controllerClass,
           actionName: r.action,
         });
-        // a00010 / B-04: `update` también acepta PATCH en Laravel 5+.
+        // a00010 / B-04: `update` also accepts PATCH in Laravel 5+.
         if (r.action === "update") {
           out.push({
             method: "PATCH",
@@ -441,17 +445,19 @@ export async function parseRoutesFile(
 // ---------------------------------------------------------------------------
 
 /**
- * Provider de validación que extrae las reglas de los `FormRequest`
- * de Laravel. Ver `form-request-parser.service.ts` para el parser
- * de `class X extends FormRequest { public function rules(): array {...} }`.
+ * Validation provider that extracts the rules from Laravel's
+ * `FormRequest`. See `form-request-parser.service.ts` for the
+ * `class X extends FormRequest { public function rules(): array {...} }`
+ * parser.
  *
- * Estrategia de resolución:
+ * Resolution strategy:
  *   1. `route.controllerClass` + `route.actionName` → `findFormRequestForController`
- *      (respeta la convención de naming: Index/Store/Update/Destroy + resource).
- *   2. Parsea el FormRequest con `parseFormRequest`.
- *   3. Convierte cada `campo → [reglas...]` en uno o más `IValidationSpec`.
- *      Todas las reglas son `body` por defecto (los FormRequest en Laravel
- *      validan el body de POST/PUT/PATCH; en GET se usan para query params).
+ *      (respects the naming convention: Index/Store/Update/Destroy + resource).
+ *   2. Parse the FormRequest with `parseFormRequest`.
+ *   3. Convert each `field → [rules...]` into one or more
+ *      `IValidationSpec`s. All rules are `body` by default (Laravel's
+ *      FormRequest validates the body of POST/PUT/PATCH; on GET they
+ *      are used for query params).
  */
 export class LaravelFormRequestValidationProvider
   implements IValidationSpecProvider
@@ -476,15 +482,16 @@ export class LaravelFormRequestValidationProvider
       return { endpointKey, fields: [] };
     }
 
-    // Importación tardía para evitar ciclos y mantener arranque liviano.
+    // Late import to avoid cycles and keep startup light.
     const { findFormRequestForController, parseFormRequest } = await import(
       "./form-request-parser.service.js"
     );
 
-    // El projectRoot viene del match, no del singleton retirado de
-    // `paths.service` (r00010 S2, 2026-09-03): así el provider funciona
-    // sobre cualquier proyecto sin depender de POSTMAN_PROJECT_ROOT y dos
-    // escaneos en el mismo proceso no se pisan.
+    // The projectRoot comes from the match, not from the removed
+    // `paths.service` singleton (r00010 S2, 2026-09-03): this lets
+    // the provider work over any project without depending on
+    // POSTMAN_PROJECT_ROOT, and two scans in the same process don't
+    // step on each other.
     const rel = await findFormRequestForController(
       _route.controllerClass,
       _route.actionName,
@@ -508,7 +515,7 @@ export class LaravelFormRequestValidationProvider
     const isGet = _route.method.toUpperCase() === "GET";
     const fields: IValidationSpec[] = [];
     for (const [fieldName, fieldRules] of Object.entries(rules.rules)) {
-      // `algo.*` se ignora para esta primera versión.
+      // `foo.*` is ignored for this first version.
       if (fieldName.includes(".*")) continue;
       const required = fieldRules.includes("required");
       const type = mapLaravelType(fieldRules);
@@ -607,6 +614,6 @@ function extractPattern(rules: string[]): string | undefined {
   return r.slice(6);
 }
 
-// Helper export para evitar warning de unused en imports.
+// Helper export to avoid unused import warning.
 export const _internal = { detectFilePrefixes };
 void sep;

@@ -1,12 +1,13 @@
 /**
- * Script principal: genera la colección Postman v2.1.0 descubriendo
- * automáticamente los endpoints desde `routes/*.php` + firmas de
- * controladores (FormRequest), y enriqueciendo con variantes.
+ * Main script: generates the Postman v2.1.0 collection by automatically
+ * discovering endpoints from `routes/*.php` + controller signatures
+ * (FormRequest), and enriching with variants.
  *
- * La configuración del host se carga de forma agnóstica vía
- * `loadProject()` (`--config`, `POSTMAN_CONFIG` o `examples/<proyecto>/config.constant.ts`).
+ * The host configuration is loaded in a framework-agnostic way via
+ * `loadProject()` (`--config`, `POSTMAN_CONFIG`, or
+ * `examples/<project>/config.constant.ts`).
  *
- * Uso:
+ * Usage:
  *   bun scripts/generate.script.ts
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
@@ -49,13 +50,13 @@ import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constan
 import { MultipleServicesWithoutCombineError } from "../../core/discovery/generation.pipeline.js";
 
 /**
- * Descubre endpoints y construye la colección usando el pipeline
- * compartido (`services/generation.pipeline.ts`).
+ * Discovers endpoints and builds the collection using the shared
+ * pipeline (`services/generation.pipeline.ts`).
  *
- * Este script solo pone lo que es suyo: parseo de flags, trazas por
- * consola, enriquecido con variantes y escritura de artefactos. El orden
- * de los pasos del pipeline vive en el servicio, para que el CLI, los
- * tests y el gate ejecuten exactamente lo mismo.
+ * This script only adds what is its own: flag parsing, console
+ * traces, variant enrichment, and writing artifacts. The order of the
+ * pipeline steps lives in the service, so the CLI, the tests, and the
+ * gate execute exactly the same thing.
  */
 async function runPipeline(
   basename: string | null,
@@ -67,12 +68,13 @@ async function runPipeline(
   console.log("→ Resolved paths:");
   console.log(describeDiscoveredPaths(context));
 
-  // OJO: NO usar `process.cwd()` ni `"."`. El CLI spawnea este script
-  // con `cwd` = raíz del paquete, así que un path relativo apunta al
-  // propio api-source-tanit y el escaneo sale vacío. `projectRoot()`
-  // resuelve el flag `--project-root` y `POSTMAN_PROJECT_ROOT`.
-  // Con contexto inyectado (ui, tests, tools) el singleton ni se mira:
-  // r00008 S2 — el argv del proceso no es el de la petición.
+  // WARNING: do NOT use `process.cwd()` or `"."`. The CLI spawns this
+  // script with `cwd` = package root, so a relative path points at
+  // api-source-tanit itself and the scan comes back empty.
+  // `projectRoot()` resolves the `--project-root` flag and
+  // `POSTMAN_PROJECT_ROOT`. With injected context (ui, tests, tools)
+  // the singleton is not even consulted: r00008 S2 — the process argv
+  // is not the one from the request.
   const root = context.projectRoot;
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
@@ -98,13 +100,13 @@ async function runPipeline(
 }
 
 /**
- * Avisa si en la ruta de salida ya hay una colección con el MISMO nombre
- * pero DISTINTO `_postman_id`.
+ * Warns when a collection with the SAME name but a DIFFERENT
+ * `_postman_id` already exists at the output path.
  *
- * Significa que dos proyectos diferentes van a competir por el mismo
- * hueco en Postman: al importar el segundo, el usuario acaba con dos
- * colecciones homónimas y no sabe cuál es cuál. La salida es fijar
- * `collectionId` en el config de uno de los dos.
+ * It means two different projects will compete for the same slot in
+ * Postman: when the second is imported, the user ends up with two
+ * homonymous collections and cannot tell which is which. The fix is
+ * to set `collectionId` in one of the two configs.
  */
 async function warnOnIdentityClash(
   outputPath: string,
@@ -129,15 +131,15 @@ async function warnOnIdentityClash(
       );
     }
   } catch {
-    // Un JSON previo ilegible no es motivo para abortar la generación.
+    // A previous unreadable JSON is not a reason to abort generation.
   }
 }
 
 /**
- * Genera, escribe y devuelve el informe. Sin imprimir el JSON.
+ * Generates, writes, and returns the report. Without printing the JSON.
  *
- * `main` es la envoltura que lo imprime cuando se pide `--json`; quien
- * quiera los datos llama aquí y se ahorra el intermediario.
+ * `main` is the wrapper that prints it when `--json` is requested;
+ * whoever wants the data calls here and skips the intermediary.
  */
 export async function runGenerate(
   argv: string[] = process.argv.slice(2),
@@ -148,9 +150,9 @@ export async function runGenerate(
   const startedAt = Date.now();
   const jsonMode = args.includes("--json");
 
-  // En modo `--json` el stdout es del informe y de nadie más. La traza
-  // legible no se pierde: se va a stderr, que es donde va lo que
-  // acompaña a un resultado sin formar parte de él.
+  // In `--json` mode stdout belongs to the report and no one else. The
+  // human-readable trace is not lost: it goes to stderr, which is
+  // where what accompanies a result without being part of it belongs.
   const humanLog = console.log;
   if (jsonMode) {
     console.log = (...parts: unknown[]) => {
@@ -158,7 +160,7 @@ export async function runGenerate(
     };
   }
   const environmentPaths: string[] = [];
-  /** Ficheros de formatos distintos de Postman. */
+  /** Files in formats other than Postman. */
   const extraPaths: string[] = [];
   let collectionPath: string | null = null;
 
@@ -169,37 +171,39 @@ export async function runGenerate(
   const basenameIdx = args.indexOf("--basename");
   const basenameFlag =
     basenameIdx !== -1 ? args[basenameIdx + 1] ?? null : null;
-  // `--framework <id>` se salta la detección. Es la salida para los
-  // proyectos donde la autodetección NO PUEDE acertar: monorepos cuyo
-  // manifiesto está en la raíz, dependencias con alias, manifiestos que
-  // se generan en el build. Quien ejecuta esto sabe de qué es su API.
+  // `--framework <id>` skips detection. It is the escape hatch for
+  // projects where autodetection CANNOT be right: monorepos whose
+  // manifest lives at the root, dependencies with aliases, manifests
+  // generated at build time. Whoever runs this knows what their API
+  // is.
   const frameworkIdx = args.indexOf("--framework");
   const frameworkFlag = frameworkIdx !== -1 ? (args[frameworkIdx + 1] ?? null) : null;
 
-  // `--framework-search-root <subdir>` apunta al workspace concreto
-  // del framework dentro del proyecto. Tiene dos usos:
-  //   1. Forzar un subdir que la detección por monorepo no acertaría
-  //      (varios workspaces con un solo manifest en la raíz).
-  //   2. Apuntar a un subdir cuando la autodetección tampoco lo hace
-  //      (manifest en raíz, dependencia con alias, ...).
+  // `--framework-search-root <subdir>` points at the specific workspace
+  // of the framework inside the project. It has two uses:
+  //   1. Force a subdir that the monorepo detection would miss
+  //      (several workspaces with a single manifest at the root).
+  //   2. Point at a subdir when autodetection does not either
+  //      (manifest at root, dependency with an alias, ...).
   //
-  // Si se omite y el proyecto es un monorepo con un solo workspace,
-  // el orquestador lo rellena automáticamente. La validación de la
-  // ruta (sin `/` inicial, sin `..`) vive en el pipeline; aquí solo
-  // se lee.
+  // If it is omitted and the project is a monorepo with a single
+  // workspace, the orchestrator fills it in automatically. Path
+  // validation (no leading `/`, no `..`) lives in the pipeline; here
+  // it is only read.
   const searchRootIdx = args.indexOf("--framework-search-root");
   const frameworkSearchRoot =
     searchRootIdx !== -1 ? (args[searchRootIdx + 1] ?? null) : null;
 
-  // a00013 S3: `--combine-services` fusiona los servicios de un monorepo
-  // en una sola coleccion (modo legacy). Default false: una coleccion
-  // por servicio. Para proyectos planos (un solo servicio) el flag se
-  // ignora.
+  // a00013 S3: `--combine-services` merges the services of a monorepo
+  // into a single collection (legacy mode). Default false: one
+  // collection per service. For flat projects (a single service) the
+  // flag is ignored.
   const combineServicesFlag = args.includes("--combine-services");
 
-  // `--format a,b,c`. Se valida ANTES de escanear: un nombre mal escrito
-  // descubierto al final, tras recorrer el proyecto y sin haber escrito
-  // el fichero que se pedía, no dice nada de lo que ha pasado.
+  // `--format a,b,c`. Validated BEFORE scanning: a misspelled format
+  // name discovered at the end, after walking the project and having
+  // not written the file that was asked for, says nothing about what
+  // happened.
   const formatIdx = args.indexOf("--format");
   const parsedFormats = parseFormats(formatIdx !== -1 ? (args[formatIdx + 1] ?? null) : null);
   if (!parsedFormats.ok) {
@@ -226,8 +230,8 @@ export async function runGenerate(
   );
   const discoveredSpecs = pipeline.specs;
 
-  // Los avisos van ANTES de escribir nada: si alguien corta la
-  // ejecución al ver que le falta media API, mejor que se entere aquí.
+  // Warnings go BEFORE writing anything: if someone aborts the run on
+  // seeing half an API is missing, better they find out here.
   for (const warning of pipeline.warnings) {
     console.log(`\n⚠ ${warning}`);
   }
@@ -237,9 +241,9 @@ export async function runGenerate(
   const config = pipeline.config;
   const origin = pipeline.match?.framework ?? "legacy";
 
-  // Modo --inspect: solo imprimir discovery, sin escribir archivos.
-  // Pensado para que `summary` (y herramientas similares) puedan
-  // consultar el estado del proyecto sin generar artefactos.
+  // --inspect mode: only print the discovery, do not write any files.
+  // Designed so that `summary` (and similar tools) can query the
+  // project state without producing artifacts.
   if (inspectMode) {
     console.log("\n→ --inspect mode (no files written)");
     console.log(`  · Framework:      ${origin}`);
@@ -254,12 +258,12 @@ export async function runGenerate(
           (frameworkSearchRoot ? " (--framework-search-root)" : " (auto-detected)"),
       );
     } else if (frameworkSearchRoot) {
-      // Audit 2026-09-04 (monorepo expansion): con override, si el
-      // workspace no contiene framework (caso típico: typo del
-      // usuario, subdir que no existe), el match queda sin
-      // frameworkSearchRoot y se omite el renglón. Pero el usuario
-      // SÍ pasó el flag y merece verlo en `--inspect`. Lo
-      // imprimimos siempre que el flag esté presente.
+      // Audit 2026-09-04 (monorepo expansion): with an override, if
+      // the workspace does not contain the framework (typical case:
+      // user typo, subdir that does not exist), the match has no
+      // frameworkSearchRoot and the row is skipped. But the user DID
+      // pass the flag and deserves to see it in `--inspect`. It is
+      // printed whenever the flag is present.
       console.log(
         `  · Search root:    ${frameworkSearchRoot} (--framework-search-root, no framework matched)`,
       );
@@ -270,7 +274,7 @@ export async function runGenerate(
     return { code: 0, report: null };
   }
 
-  // Índice method+uri → FormRequest para el enricher.
+  // method+uri → FormRequest index for the enricher.
   const frIndex = new Map<string, string>();
   for (const spec of discoveredSpecs) {
     if (!spec.formRequest) continue;
@@ -292,18 +296,18 @@ export async function runGenerate(
   }
 
   console.log("→ Enriching with validation-rule variants…");
-  // S5 (a00012): side-effect registration del enricher Laravel. El
-  // registry es global al proceso; registrarlo aquí garantiza que
-  // cualquier tool/test que importe `runValidationEnrichers` después
-  // de arrancar `generate` vea al provider. Phase 2 moverá el registro
-  // al bootstrap, pero mientras `core` no sepa de Laravel, esto vive
-  // en el script que conoce ambos lados.
+  // S5 (a00012): side-effect registration of the Laravel enricher. The
+  // registry is process-global; registering it here guarantees that
+  // any tool/test importing `runValidationEnrichers` after `generate`
+  // starts sees the provider. Phase 2 will move the registration to
+  // the bootstrap, but as long as `core` does not know about Laravel,
+  // this lives in the script that knows both sides.
   registerValidationEnricher(LARAVEL_FORM_REQUEST_ENRICHER);
-  // S5: despacha los specs por provider a través del registry. Los
-  // que no tengan `validationSource` o cuyo provider no esté
-  // registrado vuelven idénticos (Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER`
-  // es idempotente). La generación real de variantes sigue en
-  // `enrichCatalogWithFormRequests`, llamada justo debajo.
+  // S5: dispatches the specs by provider through the registry. Those
+  // without `validationSource` or whose provider is not registered
+  // come back identical (Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER` is
+  // idempotent). The actual variant generation stays in
+  // `enrichCatalogWithFormRequests`, called just below.
   enrichValidationSources(discoveredSpecs);
   const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
   console.log(`  · Body variants:   ${stats.bodyVariants}`);
@@ -319,8 +323,8 @@ export async function runGenerate(
   // Cobertura bidireccional
   const sourceRoutes = new Map<string, DiscoveredRoute>();
   for (const r of pipeline.routes) {
-    // Solo Laravel (legacy) quita el prefijo `api/`. Otros frameworks
-    // tienen prefix real (api/v1, etc.) y deben conservarse.
+    // Only Laravel (legacy) strips the `api/` prefix. Other frameworks
+    // have a real prefix (api/v1, etc.) and must keep it.
     const uri = pipeline.origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
     const key = `${r.method} ${normalizeForComparison(uri)}`;
     sourceRoutes.set(key, { method: r.method, uri });
@@ -369,7 +373,7 @@ export async function runGenerate(
     return { code: 1, report: null };
   }
 
-  // --output / --basename respetan variables de entorno + flags.
+  // --output / --basename respect environment variables + flags.
   if (basenameFlag) {
     process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag;
   }
@@ -382,11 +386,11 @@ export async function runGenerate(
   collectionPath = OUTPUT_PATH;
   const { requests, folders } = countItems(collection);
 
-  // Cero endpoints con exit 0 es un exito que no lo es: un paso de CI
-  // que ejecute esto pasaria aunque no se hubiera encontrado nada, y
-  // alguien importaria una coleccion vacia sin enterarse. Se puede
-  // pedir lo contrario con --allow-empty (util para un proyecto que
-  // todavia no tiene rutas).
+  // Zero endpoints with exit 0 is a non-success: a CI step running
+  // this would pass even if nothing was found, and someone would
+  // import an empty collection without noticing. The opposite can be
+  // requested with --allow-empty (useful for a project that does not
+  // have routes yet).
   if (requests === 0 && !args.includes("--allow-empty")) {
     console.error(
       "\n✗ No endpoints were found, so nothing was written.\n" +
@@ -396,9 +400,9 @@ export async function runGenerate(
     );
     return { code: 1, report: null };
   }
-  // Los formatos extra se serializan del MISMO catálogo de endpoints que
-  // la colección de Postman: dos formatos del mismo proyecto no pueden
-  // discrepar porque cada uno haya escaneado por su cuenta.
+  // Extra formats are serialized from the SAME endpoint catalog as the
+  // Postman collection: two formats from the same project cannot
+  // disagree because each scanned on its own.
   const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = resolvedContext.outputDir;
@@ -419,8 +423,8 @@ export async function runGenerate(
       extraPaths.push(target);
     }
     console.log(`  · ${artifacts.length} file(s) in ${extraFormats.join(", ")}`);
-    // Un formato que no lo representa todo lo dice: el fichero sale
-    // igual, pero incompleto.
+    // A format that does not represent everything says so: the file
+    // comes out the same, but incomplete.
     for (const warning of exportWarnings(extraFormats, exportInput)) {
       console.warn(`\n⚠ ${warning}`);
     }
@@ -469,15 +473,16 @@ export async function runGenerate(
   }
 
   if (openAfter) {
-    // Antes esto hacía `spawnSync("bun", ["run", "<dir>/open-postman.script.ts", …])`
-    // con `(import.meta as { dir?: string }).dir ?? process.cwd()`. Tres
-    // defectos a la vez: el cast silenciaba un campo que no existe en
-    // `import.meta`, el fallback caía a `process.cwd()` (vetado por
-    // `lint:tools`/`lint:lint-tool-no-process.script.ts`), y la ruta
-    // construida no resolvía al fichero desde la reorg de `packages/`.
-    // Llamar al `main` del módulo hermano en proceso es la versión
-    // correcta: misma exit code, sin spawn, sin globales.
-    console.log("\n→ --open: lanzando open-postman…");
+    // Previously this did `spawnSync("bun", ["run", "<dir>/open-postman.script.ts", …])`
+    // with `(import.meta as { dir?: string }).dir ?? process.cwd()`.
+    // Three flaws at once: the cast silenced a field that does not
+    // exist in `import.meta`, the fallback landed on `process.cwd()`
+    // (banned by `lint:tools`/`lint:lint-tool-no-process.script.ts`),
+    // and the built path did not resolve to the file after the
+    // `packages/` reorg. Calling the sibling module's `main` in
+    // process is the correct version: same exit code, no spawn, no
+    // globals.
+    console.log("\n→ --open: launching open-postman…");
     const exit = await runOpenPostman();
     if (exit !== 0) {
       console.error("✘ open-postman.script.ts falló.");
@@ -501,8 +506,8 @@ export async function runGenerate(
       folders,
       auth: pipeline.authFlow?.login
         ? {
-            // El login es un `PostmanItem`: método y URL viven en su
-            // `request`, no en el item.
+            // The login is a `PostmanItem`: method and URL live on its
+            // `request`, not on the item itself.
             loginEndpoint: `${pipeline.authFlow.login.request?.method ?? "POST"} ${
               pipeline.authFlow.login.request?.url?.raw ?? pipeline.authFlow.login.name
             }`,
@@ -515,7 +520,7 @@ export async function runGenerate(
   return { code: 0, report };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
@@ -524,11 +529,11 @@ export async function main(
 }
 
 /**
- * Traduce un error del sistema de ficheros a algo accionable.
+ * Translates a filesystem error into something actionable.
  *
- * Sin esto, un directorio sin permiso de escritura sacaba
- * `EACCES: permission denied, mkdir ...` con su traza de Bun encima: la
- * información estaba, pero enterrada y sin decir qué hacer.
+ * Without this, a directory without write permission would print
+ * `EACCES: permission denied, mkdir ...` with Bun's trace on top: the
+ * information was there, but buried and without saying what to do.
  */
 function explainWriteError(error: unknown): string {
   const code = (error as { code?: string })?.code;
@@ -554,11 +559,12 @@ if (import.meta.main) {
   try {
     process.exit(await main());
   } catch (error) {
-    // x00024: el pipeline ahora lanza este error cuando hay >1 servicio
-    // y el caller no pidió --combine-services. Lo traducimos a exit
-    // 64 (EX_USAGE) con un mensaje accionable: scripts de CI detectan
-    // el caso sin parsear texto, y la persona que lo lee en pantalla
-    // ve qué servicios se detectaron y cómo resolverlo.
+    // x00024: the pipeline now throws this error when there is >1
+    // service and the caller did not request --combine-services. It
+    // is translated to exit 64 (EX_USAGE) with an actionable message:
+    // CI scripts detect the case without parsing text, and the person
+    // reading it on screen sees which services were detected and how
+    // to resolve it.
     if (error instanceof MultipleServicesWithoutCombineError) {
       console.error(`\n✗ ${error.message}`);
       if (error.serviceIds.length > 0) {

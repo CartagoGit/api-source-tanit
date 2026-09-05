@@ -1,18 +1,18 @@
 /**
- * Qué código de salida devuelve el CLI, y por qué importa.
+ * What exit code the CLI returns, and why it matters.
  *
- * Un CLI se usa dentro de scripts: en un `Makefile`, en un paso de CI,
- * en un hook de pre-commit. Ahí el código de salida **es** el resultado;
- * la prosa que imprima no la lee nadie.
+ * A CLI is used inside scripts: in a `Makefile`, in a CI step, in a
+ * pre-commit hook. There the exit code **is** the result; the prose
+ * it prints is read by no one.
  *
- * Dos casos salían con 0 cuando no habían hecho lo que se les pidió:
+ * Two cases exited with 0 when they had not done what they were asked:
  *
- *   - Cero endpoints encontrados: escribía una colección vacía y salía
- *     bien. Un paso de CI pasaba aunque el escaneo no hubiera visto
- *     nada, y alguien importaba una colección vacía sin enterarse.
- *   - Sin permiso de escritura: salía un `EACCES` con la traza de Bun
- *     encima. La información estaba, pero enterrada y sin decir qué
- *     hacer.
+ *   - Zero endpoints found: it wrote an empty collection and exited
+ *     fine. A CI step passed even though the scan had seen nothing,
+ *     and someone imported an empty collection without noticing.
+ *   - No write permission: an `EACCES` came out with Bun's stack
+ *     trace on top. The information was there, but buried and without
+ *     saying what to do.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
@@ -51,57 +51,57 @@ afterAll(async () => {
 
 const generate = (args: readonly string[]) => runProcess("bun", [GENERATE, ...args]);
 
-describe("códigos de salida de `generate`", () => {
-  test("un proyecto con endpoints sale con 0", async () => {
+describe("exit codes of `generate`", () => {
+  test("a project with endpoints exits with 0", async () => {
     const result = await generate(["--project-root", realProject]);
     expect(result.code, result.output).toBe(0);
   }, 60_000);
 
-  // La regresión: esto salía con 0 y escribía una colección vacía.
-  test("cero endpoints sale con 1 y no escribe nada", async () => {
+  // The regression: this exited 0 and wrote an empty collection.
+  test("zero endpoints exits with 1 and writes nothing", async () => {
     const result = await generate(["--project-root", emptyProject]);
     expect(result.code).toBe(1);
     expect(result.output).toMatch(/no endpoints were found/i);
   }, 60_000);
 
-  test("el mensaje de cero endpoints dice qué hacer", async () => {
+  test("the zero-endpoints message says what to do", async () => {
     const { output } = await generate(["--project-root", emptyProject]);
     expect(output).toMatch(/--project-root/);
     expect(output).toMatch(/FRAMEWORKS\.md/);
     expect(output).toMatch(/--allow-empty/);
   }, 60_000);
 
-  // Un proyecto que aún no tiene rutas es un caso legítimo: se puede
-  // pedir explícitamente que no falle.
-  test("--allow-empty vuelve a salir con 0", async () => {
+  // A project that has no routes yet is a legitimate case: you can
+  // explicitly ask it not to fail.
+  test("--allow-empty exits with 0 again", async () => {
     const result = await generate(["--project-root", emptyProject, "--allow-empty"]);
     expect(result.code, result.output).toBe(0);
   }, 60_000);
 
-  test("un projectRoot inexistente sale con 1 y lo dice", async () => {
+  test("a nonexistent projectRoot exits with 1 and says so", async () => {
     const result = await generate(["--project-root", join(workDir, "no-existe-zzz")]);
     expect(result.code).toBe(1);
     expect(result.output).toMatch(/does not exist/i);
   }, 60_000);
 
   /**
-   * Como **root** este escenario no existe: `chmod 0555` no impide
-   * escribir a quien puede saltarse los permisos, así que el test
-   * pasaría siempre sin comprobar nada. Se vio corriendo el gate dentro
-   * de un contenedor, donde el usuario por defecto es root.
+   * As **root** this scenario does not exist: `chmod 0555` does not
+   * prevent writing to whoever can bypass permissions, so the test
+   * would always pass without checking anything. This was seen running
+   * the gate inside a container, where the default user is root.
    *
-   * Se salta con el motivo escrito, en vez de dejarlo pasar en verde:
-   * un test que no puede fallar es peor que no tenerlo, porque además
-   * cuenta como cobertura.
+   * It is skipped with the reason written down, instead of letting it
+   * pass green: a test that cannot fail is worse than not having it,
+   * because it also counts as coverage.
    */
   test.skipIf(typeof process.getuid === "function" && process.getuid?.() === 0)(
-    "sin permiso de escritura sale con 1 y explica, sin traza",
+    "without write permission exits with 1 and explains, without a trace",
     async () => {
     const result = await generate(["--project-root", readOnlyProject]);
     expect(result.code).toBe(1);
     expect(result.output).toMatch(/no permission/i);
     expect(result.output).toMatch(/--output-dir/);
-      // Lo que NO debe salir: el volcado de Bun.
+      // What must NOT come out: Bun's dump.
       expect(result.output).not.toMatch(/at <anonymous>/);
     },
     60_000,

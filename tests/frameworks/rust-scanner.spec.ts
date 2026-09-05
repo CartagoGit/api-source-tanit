@@ -1,13 +1,13 @@
 /**
- * Scanner de Rust (Actix-web y Rocket).
+ * Rust scanner (Actix-web and Rocket).
  *
- * Los dos van en el mismo scanner porque declaran las rutas igual: un
- * macro de atributo encima del handler. Separarlos sería duplicar el
- * mismo parser para cambiar dos líneas de detección.
+ * Both live in the same scanner because they declare routes the
+ * same way: an attribute macro above the handler. Splitting them
+ * would duplicate the same parser to change two detection lines.
  *
- * Lo que sí difiere es el path param —Rocket escribe `<id>` y Actix
- * `{id}`— y eso se normaliza en la capa que sabe de Rust, no aguas
- * abajo.
+ * What does differ is the path param —Rocket writes `<id>` and Actix
+ * `{id}`— and that is normalized in the Rust-aware layer, not
+ * further downstream.
  */
 import { describe, expect, test } from "vitest";
 
@@ -42,32 +42,33 @@ async function scanFixture() {
   return { match, scanner, result, routes: result.routes };
 }
 
-describe("detección", () => {
-  test("un Cargo.toml con actix-web puntúa 1", async () => {
+describe("detection", () => {
+  test("a Cargo.toml with actix-web scores 1", async () => {
     expect((await new RustProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
-  test("un proyecto de Go no es Rust", async () => {
+  test("a Go project is not Rust", async () => {
     expect((await new RustProjectScanner().detect(comprehensiveFixtureDir("fiber"))).score).toBe(0);
   });
 });
 
-describe("rutas", () => {
-  test("lee los macros de atributo", async () => {
+describe("routes", () => {
+  test("reads the attribute macros", async () => {
     const { routes } = await scanFixture();
     expect(routes.some((r) => r.method === "GET" && r.uri.endsWith("/health"))).toBe(true);
     expect(routes.some((r) => r.method === "DELETE")).toBe(true);
   });
 
-  test("el prefijo del web::scope se aplica", async () => {
+  test("the web::scope prefix is applied", async () => {
     const { routes } = await scanFixture();
     expect(routes.every((r) => r.uri.startsWith("/api/"))).toBe(true);
   });
 });
 
 describe("normalizePathParams", () => {
-  // Rocket y Actix escriben el mismo concepto distinto. Unificar aquí
-  // evita que cada capa de abajo tenga que conocer los dos dialectos.
+  // Rocket and Actix write the same concept differently. Unifying
+  // here prevents each downstream layer from needing to know both
+  // dialects.
   test.each([
     ["/users/<id>", "/users/{id}"],
     ["/users/{id}", "/users/{id}"],
@@ -94,23 +95,25 @@ pub struct Ejemplo {
 }
 `;
 
-  // En Rust lo opcional se marca en el TIPO (`Option<T>`), no en un
-  // atributo: es la diferencia clave con los otros ecosistemas.
-  test("Option<T> significa opcional", () => {
+  // In Rust optionality is marked on the TYPE (`Option<T>`), not on
+  // an attribute: that is the key difference from the other
+  // ecosystems.
+  test("Option<T> means optional", () => {
     const byName = new Map(parseRustStruct(source, "Ejemplo").map((f) => [f.fieldName, f]));
     expect(byName.get("nombre")?.required).toBe(true);
     expect(byName.get("edad")?.required).toBe(false);
   });
 
-  // `#[serde(rename)]` cambia el nombre que viaja por la red: mandar
-  // `role` en vez de `userRole` sería un campo que la API no espera.
-  test("respeta el rename de serde", () => {
+  // `#[serde(rename)]` changes the name that travels over the wire:
+  // sending `role` instead of `userRole` would be a field the API
+  // does not expect.
+  test("respects the serde rename", () => {
     const names = parseRustStruct(source, "Ejemplo").map((f) => f.fieldName);
     expect(names).toContain("userRole");
     expect(names).not.toContain("role");
   });
 
-  test("mapea los tipos de Rust", () => {
+  test("maps the Rust types", () => {
     const byName = new Map(
       parseRustStruct(source, "Ejemplo").map((f) => [f.fieldName, f.type]),
     );
@@ -119,18 +122,18 @@ pub struct Ejemplo {
     expect(byName.get("etiquetas")).toBe("array");
   });
 
-  test("lee el format de validate(email)", () => {
+  test("reads the format from validate(email)", () => {
     const byName = new Map(parseRustStruct(source, "Ejemplo").map((f) => [f.fieldName, f]));
     expect(byName.get("correo")?.format).toBe("email");
   });
 
-  test("un struct que no existe devuelve vacío", () => {
+  test("a struct that does not exist returns empty", () => {
     expect(parseRustStruct(source, "NoExiste")).toEqual([]);
   });
 });
 
-describe("el provider resuelve el body del handler", () => {
-  test("un POST con web::Json<T> trae sus campos", async () => {
+describe("the provider resolves the handler body", () => {
+  test("a POST with web::Json<T> brings its fields", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new RustValidatorProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri.endsWith("/users"))!;
@@ -139,14 +142,14 @@ describe("el provider resuelve el body del handler", () => {
     expect(fields.map((f) => f.fieldName)).toContain("email");
   });
 
-  test("un GET sin Json<T> no finge reglas", async () => {
+  test("a GET without Json<T> does not fake rules", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new RustValidatorProvider();
     const health = routes.find((r) => r.uri.endsWith("/health"))!;
     expect(await provider.supports(health, match, result)).toBe(false);
   });
 
-  test("dos escaneos concurrentes no mezclan structs", async () => {
+  test("two concurrent scans do not mix structs", async () => {
     const projects = await Promise.all([
       createTempProject({
         "Cargo.toml": '[package]\nname = "rust-a"\n\n[dependencies]\nactix-web = "4.5"\n',
@@ -172,8 +175,8 @@ describe("el provider resuelve el body del handler", () => {
   });
 });
 
-describe("Rust — detección Rocket", () => {
-  test("detect() > 0 con Cargo.toml que tiene rocket", async () => {
+describe("Rust — Rocket detection", () => {
+  test("detect() > 0 with a Cargo.toml that contains rocket", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nrocket = "0.5"\n',
@@ -186,7 +189,7 @@ describe("Rust — detección Rocket", () => {
     }
   });
 
-  test("detect() === 0 cuando Cargo.toml no tiene actix-web ni rocket", async () => {
+  test("detect() === 0 when Cargo.toml has neither actix-web nor rocket", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nserde = "1.0"\n',
@@ -198,7 +201,7 @@ describe("Rust — detección Rocket", () => {
     }
   });
 
-  test("Rocket <param> → {param} en la URI (normalizePathParams)", async () => {
+  test("Rocket <param> → {param} in the URI (normalizePathParams)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nrocket = "0.5"\n',
@@ -223,8 +226,8 @@ describe("Rust — detección Rocket", () => {
   });
 });
 
-describe("Rust — rutas programáticas y scope múltiple", () => {
-  test(".route('/x', web::get()) genera rutas programáticas", async () => {
+describe("Rust — programmatic routes and multi-scope", () => {
+  test(".route('/x', web::get()) generates programmatic routes", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nactix-web = "4"\n',
@@ -253,7 +256,7 @@ describe("Rust — rutas programáticas y scope múltiple", () => {
     }
   });
 
-  test("múltiples web::scope en el mismo archivo → prefijo vacío (ambiguo)", async () => {
+  test("multiple web::scope in the same file → empty prefix (ambiguous)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "Cargo.toml": '[package]\nname = "demo"\n\n[dependencies]\nactix-web = "4"\n',
@@ -270,7 +273,8 @@ describe("Rust — rutas programáticas y scope múltiple", () => {
     try {
       const match = await new RustProjectScanner().resolve(project.root);
       const result = await new RustRouteScanner().scan(match);
-      // Con múltiples scopes el prefijo queda vacío para evitar asignarlo mal
+      // With multiple scopes the prefix stays empty to avoid assigning
+      // it incorrectly
       const uris = result.routes.map((r) => r.uri);
       expect(uris).toContain("/ping");
     } finally {
@@ -290,12 +294,12 @@ pub struct Metadata {
 }
 `;
 
-  test("format url se detecta en validate(url)", () => {
+  test("format url is detected in validate(url)", () => {
     const fields = parseRustStruct(source, "Metadata");
     expect(fields.find((f) => f.fieldName === "website")?.format).toBe("url");
   });
 
-  test("tipo desconocido (serde_json::Value) mapea a object", () => {
+  test("unknown type (serde_json::Value) maps to object", () => {
     const fields = parseRustStruct(source, "Metadata");
     expect(fields.find((f) => f.fieldName === "data")?.type).toBe("object");
   });

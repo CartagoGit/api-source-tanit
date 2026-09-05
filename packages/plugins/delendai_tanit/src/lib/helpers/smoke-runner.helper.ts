@@ -1,13 +1,13 @@
 /**
- * Helper `smoke-runner`.
+ * `smoke-runner` helper.
  *
- * Ejecuta el scanner del framework pedido contra un mini-fixture y
- * diffa el output contra un `expected.json` hermano. Esto convierte
- * al plugin en la única fuente de verdad para "¿el scanner del
- * framework X sigue funcionando?" — sin tener que ejecutar el
- * orquestador ni generar una collection completa.
+ * Runs the requested framework's scanner against a mini-fixture and
+ * diffs the output against the sibling `expected.json`. This makes
+ * the plugin the single source of truth for "is the scanner for
+ * framework X still working?" — without having to run the
+ * orchestrator or generate a complete collection.
  *
- * Formato de `expected.json`:
+ * `expected.json` format:
  *   {
  *     "framework": "django",
  *     "routes": [
@@ -16,10 +16,11 @@
  *     ]
  *   }
  *
- * El diff compara `(method, uri)` ordenados. Si las URIs del fixture
- * y del scanner difieren (e.g. Django con `<int:id>` vs FastAPI con
- * `{id}`), el usuario puede ajustar el `expected.json` para reflejar
- * el comportamiento real del scanner y bloquear regresiones futuras.
+ * The diff compares sorted `(method, uri)` pairs. If the fixture's
+ * and the scanner's URIs differ (e.g. Django with `<int:id>` vs
+ * FastAPI with `{id}`), the user can adjust `expected.json` to
+ * reflect the scanner's actual behaviour and lock down future
+ * regressions.
  */
 
 import { readFile } from "node:fs/promises";
@@ -33,20 +34,21 @@ import type {
   ISmokeResult,
 } from "../contracts/interfaces/runner.interface";
 
-/** Llave estable para diffing (method+uri). */
+/** Stable key for diffing (method+uri). */
 function key(r: { method: string; uri: string }): string {
   return `${r.method.toUpperCase()}\t${r.uri}`;
 }
 
 /**
- * Carga el `expected.json` desde la raíz del fixture. Lanza si no
- * existe o no se puede parsear.
+ * Loads the `expected.json` from the fixture root. Throws if it does
+ * not exist or cannot be parsed.
  */
 /**
- * Estrecha un `Record<string, unknown>` a `IExpectedFixture`, validando
- * los campos obligatorios. Sustituye al `as IExpectedFixture` que
- * silenciaba manifestas inválidos: si el `expected.json` no tiene la
- * forma correcta, el smoke-runner lo dice con un mensaje accionable.
+ * Narrows a `Record<string, unknown>` down to `IExpectedFixture`,
+ * validating the required fields. Replaces the `as IExpectedFixture`
+ * that silently swallowed invalid manifests: if the `expected.json`
+ * does not have the right shape, the smoke-runner says so with an
+ * actionable message.
  */
 function asExpectedFixture(
   value: Record<string, unknown>,
@@ -60,7 +62,8 @@ function asExpectedFixture(
       `expected.json inválido en ${source}: requiere { framework: string, routes: array }`,
     );
   }
-  // La estrechez final es legítima: el predicado ya validó la forma.
+  // The final narrowing is legitimate: the predicate already
+  // validated the shape.
   return value as unknown as IExpectedFixture;
 }
 
@@ -77,8 +80,8 @@ export async function loadExpected(fixtureRoot: string): Promise<IExpectedFixtur
 }
 
 /**
- * Compara las rutas del scanner contra el `expected.json` y devuelve
- * un `ISmokeResult` con el diff.
+ * Compares the scanner's routes against the `expected.json` and
+ * returns the missing/unexpected diff.
  */
 export function diffRoutes(
   actual: ReadonlyArray<ParsedRoute>,
@@ -94,12 +97,13 @@ export function diffRoutes(
 }
 
 /**
- * API principal: corre el smoke-runner para un framework.
+ * Main API: runs the smoke-runner for a framework.
  *
- * `scanner` es un `IRouteScanner` ya construido; `match` es el
- * `IProjectMatch` resuelto (normalmente por un `IProjectScanner`).
+ * `scanner` is an already-built `IRouteScanner`; `match` is the
+ * resolved `IProjectMatch` (usually by an `IProjectScanner`).
  *
- * `fixtureRoot` es la ruta al mini-fixture (donde está `expected.json`).
+ * `fixtureRoot` is the path to the mini-fixture (where the sibling
+ * `expected.json` lives).
  */
 export async function runSmoke(opts: {
   framework: string;

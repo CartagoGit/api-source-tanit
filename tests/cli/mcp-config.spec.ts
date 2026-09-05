@@ -1,20 +1,20 @@
 /**
- * Que la configuración del servidor MCP hable del repo que existe.
+ * That the MCP server configuration talks about the repo that exists.
  *
- * `plugins.search.options.roots` y `plugins.conventions.options.roots`
- * declaraban `contract`, `service`, `helper` y `plugins`: la estructura
- * anterior a que todo se moviera bajo `packages/`. El propio servidor lo
- * denunciaba en `overview.configIssues` con ocho incidencias —
+ * `plugins.search.options.roots` and `plugins.conventions.options.roots`
+ * declared `contract`, `service`, `helper`, and `plugins`: the
+ * structure before everything moved under `packages/`. The server
+ * itself flagged it in `overview.configIssues` with eight issues —
  * *"does not exist in this workspace — the plugin will scan nothing"*.
  *
- * El fallo es de los malos: los dos plugins seguían **devolviendo
- * resultados**, solo que de una fracción del repo. Una búsqueda que no
- * encuentra algo no se distingue de una búsqueda sobre una carpeta que
- * no existe, así que la auditoría automática parecía completa mientras
- * nacía sesgada.
+ * The failure is of the bad kind: the two plugins kept **returning
+ * results**, only from a fraction of the repo. A search that does not
+ * find something cannot be told apart from a search over a folder that
+ * does not exist, so the automated audit looked complete while being
+ * born biased.
  *
- * Esto lo comprueba contra el disco, que es la única forma de que mover
- * una carpeta rompa aquí y no en silencio.
+ * This checks against the disk, which is the only way that moving a
+ * folder breaks here and not silently.
  */
 import { describe, expect, test } from "vitest";
 import { readFile, stat } from "node:fs/promises";
@@ -44,18 +44,18 @@ async function esDirectorio(rel: string): Promise<boolean> {
   }
 }
 
-/** Los plugins que declaran sobre qué carpetas trabajan. */
+/** The plugins that declare which folders they work on. */
 const CON_ROOTS = ["search", "conventions"] as const;
 
-describe("las raíces que escanean los plugins", () => {
-  test.for(CON_ROOTS)("%s las declara", async (plugin) => {
+describe("the roots scanned by the plugins", () => {
+  test.for(CON_ROOTS)("%s declares them", async (plugin) => {
     const roots = (await config()).plugins?.[plugin]?.options?.roots;
     expect(roots, `${plugin} no declara roots`).toBeDefined();
     expect(roots?.length ?? 0).toBeGreaterThan(0);
   });
 
-  // EL test: sin él, el servidor avisa y nadie lo lee.
-  test.for(CON_ROOTS)("todas las raíces de %s existen en disco", async (plugin) => {
+  // THE test: without it, the server warns and nobody reads it.
+  test.for(CON_ROOTS)("all of %s roots exist on disk", async (plugin) => {
     const roots = (await config()).plugins?.[plugin]?.options?.roots ?? [];
     const fantasmas: string[] = [];
     for (const root of roots) {
@@ -68,28 +68,30 @@ describe("las raíces que escanean los plugins", () => {
   });
 
   /**
-   * El fallo simétrico: declarar tan poco que el plugin no vea el código.
-   * `packages/` es donde vive todo lo que se publica; si no está, la
-   * búsqueda y las convenciones miran cualquier cosa menos el producto.
+   * The symmetric failure: declaring so little that the plugin does
+   * not see the code. `packages/` is where everything that gets
+   * published lives; if it is missing, search and conventions look
+   * at anything but the product.
    */
-  test.for(CON_ROOTS)("%s cubre el código que se publica", async (plugin) => {
+  test.for(CON_ROOTS)("%s covers the code that is published", async (plugin) => {
     const roots = (await config()).plugins?.[plugin]?.options?.roots ?? [];
     expect(roots).toContain("packages");
   });
 });
 
 /**
- * Los directorios sueltos que declara la configuración.
+ * The loose directories declared in the configuration.
  *
- * `roots` ya se comprobaba; esto cubre el resto —`scaffoldDir`,
- * `auditDir`, `proposalsDir`…—, que era por donde se coló el fallo:
- * `issues.scaffoldDir` apuntaba a
- * `docs/delendai/proposals/retired/issues`, dentro del árbol de
- * propuestas, donde `lint:proposals` exige `<kind><NNNNN>-<slug>.md`. La
- * primera issue escrita ahí habría roto el gate del repositorio.
+ * `roots` was already checked; this covers the rest —`scaffoldDir`,
+ * `auditDir`, `proposalsDir`…—, which is where the failure slipped
+ * in: `issues.scaffoldDir` pointed to
+ * `docs/delendai/proposals/retired/issues`, inside the proposals
+ * tree, where `lint:proposals` requires
+ * `<kind><NNNNN>-<slug>.md`. The first issue written there would
+ * have broken the repo gate.
  */
-describe("los directorios declarados en la configuración", () => {
-  test("todos existen en disco", async () => {
+describe("the directories declared in the configuration", () => {
+  test("all exist on disk", async () => {
     const c = await config();
     const fantasmas: string[] = [];
 
@@ -101,15 +103,15 @@ describe("los directorios declarados en la configuración", () => {
       }
     }
 
-    expect(fantasmas, `directorios declarados que no existen`).toEqual([]);
+    expect(fantasmas, `declared directories that do not exist`).toEqual([]);
   });
 
   /**
-   * Y ninguno puede apuntar dentro del árbol de propuestas: ahí manda
-   * `lint:proposals`, que exige un nombre con id y kind. Un plugin que
-   * escriba ahí rompe el gate a la primera.
+   * And none may point inside the proposals tree: `lint:proposals`
+   * rules there, requiring a name with id and kind. A plugin that
+   * writes there breaks the gate on the first try.
    */
-  test("ninguno escribe dentro del árbol de propuestas", async () => {
+  test("none writes inside the proposals tree", async () => {
     const c = await config();
     const invasores: string[] = [];
 
@@ -126,22 +128,22 @@ describe("los directorios declarados en la configuración", () => {
   });
 });
 
-describe("el plugin propio se declara con una ruta que existe", () => {
+describe("the own plugin is declared with a path that exists", () => {
   /**
-   * Un `path` que no resuelve deja al plugin fuera sin ruido: el
-   * servidor arranca igual, con un tool menos. Se comprueba todo
-   * `"path": "…"` del fichero, no solo el de expostman, para que
-   * añadir un plugin nuevo con una ruta mal escrita también falle.
+   * A `path` that does not resolve leaves the plugin out silently:
+   * the server starts the same, with one fewer tool. Every
+   * `"path": "…"` in the file is checked, not only expostman's, so
+   * that adding a new plugin with a wrongly written path also fails.
    */
-  test("todos los `path` declarados apuntan a algo que existe", async () => {
+  test("all declared `path`s point to something that exists", async () => {
     const raw = await readFile(join(REPO_ROOT, "delendai.config.json"), "utf8");
     const rutas = [...raw.matchAll(/"path"\s*:\s*"([^"]+)"/g)].map((m) => m[1] ?? "");
-    expect(rutas.length, "ningún plugin declara `path`").toBeGreaterThan(0);
+    expect(rutas.length, "no plugin declares `path`").toBeGreaterThan(0);
     for (const ruta of rutas) {
-      // `${workspaceFolder}` lo expande el host, no nosotros.
+      // `${workspaceFolder}` is expanded by the host, not by us.
       if (ruta.includes("${")) continue;
       const abs = join(REPO_ROOT, ruta.replace(/^\.\//, ""));
-      await expect(stat(abs), `${ruta} no existe`).resolves.toBeDefined();
+      await expect(stat(abs), `${ruta} does not exist`).resolves.toBeDefined();
     }
   });
 });

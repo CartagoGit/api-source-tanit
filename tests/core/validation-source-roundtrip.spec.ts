@@ -1,21 +1,21 @@
 /**
- * a00012 S5 — `IValidationSource` + registry `runValidationEnrichers`.
+ * a00012 S5 — `IValidationSource` + `runValidationEnrichers` registry.
  *
- * Tres tests mínimos para fijar el contrato agnóstico:
+ * Three minimal tests to fix the agnostic contract:
  *
- *   1. Un spec con `provider: "zod"` (registrable a futuro) NO se ve
- *      afectado por el enricher Laravel: el registry devuelve el mismo
- *      objeto cuando el provider no tiene enricher registrado.
- *   2. Un spec con `provider: "laravel-form-request"` SÍ entra por el
- *      enricher registrado. Phase 1 lo deja idempotente, así que la
- *      aserción es que vuelve intacto, pero **habiendo pasado** por el
- *      enricher (lo demostramos registrando un stub que cambia el
- *      `description` y viendo que el cambio se ve).
- *   3. Un spec sin `validationSource` no se toca: el registry es
- *      no-op para los endpoints que el adapter dejó sin provider.
+ *   1. A spec with `provider: "zod"` (registrable in the future) is NOT
+ *      affected by the Laravel enricher: the registry returns the same
+ *      object when the provider has no enricher registered.
+ *   2. A spec with `provider: "laravel-form-request"` DOES go through
+ *      the registered enricher. Phase 1 leaves it idempotent, so the
+ *      assertion is that it returns intact, but **having passed**
+ *      through the enricher (we demonstrate it by registering a stub
+ *      that changes the `description` and seeing the change appear).
+ *   3. A spec without `validationSource` is not touched: the registry
+ *      is a no-op for endpoints the adapter left without a provider.
  *
- * El stub del test 2 es local y se desregistra al final; así no
- * contamina el estado global entre tests.
+ * The stub for test 2 is local and is unregistered at the end; that
+ * way it does not pollute global state between tests.
  */
 import { afterEach, describe, expect, test } from "vitest";
 
@@ -28,7 +28,7 @@ import {
 } from "../../packages/core/validation/validation-enricher.service";
 import type { IValidationEnricher } from "../../packages/core/validation/validation-enricher.service";
 
-/** Helper para construir specs mínimos en tests. */
+/** Helper to build minimal specs in tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {
   return {
     name: "x",
@@ -42,26 +42,26 @@ afterEach(() => {
   _resetValidationEnrichersForTests();
 });
 
-describe("runValidationEnrichers — contrato agnóstico", () => {
-  test("un provider sin enricher registrado NO afecta al spec", () => {
-    // No registramos nada: `getValidationEnricher("zod")` devuelve
-    // `undefined`. La invariante S5 es que cualquier provider sin
-    // enricher (zod, joi, json-schema, …) deja pasar el spec tal
-    // cual. Un proyecto Express nunca debe acabar mutado por un
-    // enricher equivocado.
+describe("runValidationEnrichers — agnostic contract", () => {
+  test("a provider without a registered enricher does NOT affect the spec", () => {
+    // We register nothing: `getValidationEnricher("zod")` returns
+    // `undefined`. The S5 invariant is that any provider without an
+    // enricher (zod, joi, json-schema, …) lets the spec pass through
+    // unchanged. An Express project must never end up mutated by a
+    // wrong enricher.
     const before = spec({
       validationSource: { provider: "zod", reference: "OrderSchema" },
     });
     const after = runValidationEnrichers(before);
-    expect(after).toBe(before); // misma referencia: no se construye copia.
+    expect(after).toBe(before); // same reference: no copy is built.
   });
 
-  test("un provider registrado SÍ ejecuta su enricher", () => {
-    // Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER` es idempotente. Para
-    // demostrar que el registry de verdad despacha, registramos un stub
-    // que muta la descripción y comprobamos que el cambio aparece.
-    // Que el stub sea local al test es importante: si el registry
-    // arrastrara estado entre tests, esto se rompería.
+  test("a registered provider DOES run its enricher", () => {
+    // Phase 1: `LARAVEL_FORM_REQUEST_ENRICHER` is idempotent. To
+    // demonstrate that the registry really dispatches, we register a
+    // stub that mutates the description and check that the change
+    // appears. Keeping it local to the test is important: if the
+    // registry leaked state across tests, this would break.
     const stub: IValidationEnricher = {
       provider: "laravel-form-request",
       enrich: (s) => ({
@@ -81,22 +81,22 @@ describe("runValidationEnrichers — contrato agnóstico", () => {
     expect(after.description).toContain("[enriched-by-stub]");
   });
 
-  test("un spec sin validationSource NO se ve afectado", () => {
-    // Sin `validationSource` no hay nada que enrutar: el registry
-    // devuelve el mismo spec. Esto es la base de "un proyecto que
-    // el adapter no marcó como Laravel queda sin enriquecer".
+  test("a spec without validationSource is NOT affected", () => {
+    // Without `validationSource` there is nothing to route: the
+    // registry returns the same spec. This is the basis of "a project
+    // the adapter did not mark as Laravel stays unenriched".
     const before = spec({});
     const after = runValidationEnrichers(before);
     expect(after).toBe(before);
   });
 });
 
-describe("helpers de registro", () => {
-  test("getValidationEnricher devuelve undefined si no hay enricher", () => {
+describe("registry helpers", () => {
+  test("getValidationEnricher returns undefined when there is no enricher", () => {
     expect(getValidationEnricher("joi")).toBeUndefined();
   });
 
-  test("getValidationEnricher devuelve el enricher registrado", () => {
+  test("getValidationEnricher returns the registered enricher", () => {
     const stub: IValidationEnricher = {
       provider: "joi",
       enrich: (s) => s,

@@ -1,8 +1,8 @@
 /**
- * Imprime la lista plana de endpoints contenidos en la colección,
- * agrupados por zonas con cabecera de separación `─── Zona ───`.
+ * Prints the flat list of endpoints contained in the collection,
+ * grouped by zones with a `─── Zone ───` separator header.
  *
- * Uso:
+ * Usage:
  *   bun scripts/list-endpoints.script.ts
  *   bun run list
  */
@@ -16,12 +16,12 @@ import type { IProjectContext } from "../../contracts/interfaces/core/project-co
 import type { IListOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /**
- * Lista los endpoints y los devuelve.
+ * Lists the endpoints and returns them.
  *
- * `main` es la envoltura que los pinta. Se separa por el mismo motivo
- * que en `generate` y `check`: el tool del plugin necesita **los
- * datos**, y parsear la tabla con regex se rompe el día que cambie una
- * columna.
+ * `main` is the wrapper that prints them. They are split apart for the
+ * same reason as in `generate` and `check`: the plugin tool needs
+ * **the data**, and parsing a regex-built table breaks the day a column
+ * changes.
  */
 export async function runList(
   argv: string[] = process.argv.slice(2),
@@ -72,7 +72,7 @@ export async function runList(
   return { code: 0, endpoints: rows };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   return (await runList(argv)).code;
 }

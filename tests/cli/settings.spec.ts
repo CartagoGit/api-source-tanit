@@ -1,16 +1,16 @@
 /**
- * Los ajustes que sobreviven al cierre.
+ * The settings that survive close.
  *
- * Lo que se comprueba no es que se guarden —eso es una línea— sino las
- * cuatro formas en que unos ajustes persistentes se estropean:
+ * What is checked is not that they are saved —that is one line— but
+ * the four ways persistent settings get corrupted:
  *
- *   1. **Que no haya fichero** la primera vez, y eso no sea un error.
- *   2. **Que el fichero esté roto** y la interfaz siga abriendo.
- *   3. **Que alguien lo edite a mano** y meta un valor imposible: es
- *      texto, en su carpeta, y lo va a editar.
- *   4. **Que lo escribiera una versión posterior**, que es cuando
- *      adivinar el significado de un campo corrompe los ajustes de
- *      alguien.
+ *   1. **That there is no file** the first time, and that is not an
+ *      error.
+ *   2. **That the file is broken** and the interface keeps opening.
+ *   3. **That someone edits it by hand** and types an impossible
+ *      value: it is text, in their folder, and they will edit it.
+ *   4. **That a later version wrote it**, which is when guessing the
+ *      meaning of a field corrupts someone's settings.
  */
 import { describe, expect, test } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -28,7 +28,7 @@ import {
   writeSettings,
 } from "../../packages/ui/settings/settings.service";
 
-/** Un fichero de ajustes en un temporal, distinto por test. */
+/** A settings file in a temp, different per test. */
 async function conFichero<T>(fn: (path: string) => Promise<T>): Promise<T> {
   const dir = await mkdtemp(join(tmpdir(), "ajustes-"));
   try {
@@ -38,14 +38,14 @@ async function conFichero<T>(fn: (path: string) => Promise<T>): Promise<T> {
   }
 }
 
-describe("dónde vive el fichero", () => {
-  test("cuelga de la carpeta de configuración, no del paquete", () => {
+describe("where the file lives", () => {
+  test("hangs from the config folder, not from the package", () => {
     expect(settingsPath("/cfg/expostman")).toBe("/cfg/expostman/settings.json");
   });
 });
 
-describe("guardar y recuperar", () => {
-  test("lo guardado vuelve al reabrir", async () => {
+describe("save and retrieve", () => {
+  test("what is saved comes back on reopen", async () => {
     await conFichero(async (path) => {
       await writeSettings(
         { version: SETTINGS_VERSION, locale: "es", theme: "dark" },
@@ -57,7 +57,7 @@ describe("guardar y recuperar", () => {
     });
   });
 
-  test("guardar crea la carpeta si no está", async () => {
+  test("saving creates the folder if it does not exist", async () => {
     await conFichero(async (path) => {
       const anidado = join(path, "..", "sub", "carpeta", "settings.json");
       await writeSettings({ version: SETTINGS_VERSION, locale: "fr" }, anidado);
@@ -66,11 +66,11 @@ describe("guardar y recuperar", () => {
   });
 
   /**
-   * Cambiar un ajuste no puede borrar los otros. Guardar el objeto
-   * entero desde el navegador haría que dos pestañas se pisaran lo que
-   * la otra acaba de cambiar.
+   * Changing one setting must not erase the others. Saving the
+   * whole object from the browser would make two tabs step on
+   * what the other just changed.
    */
-  test("cambiar uno conserva el resto", async () => {
+  test("changing one preserves the rest", async () => {
     await conFichero(async (path) => {
       await writeSettings(
         { version: SETTINGS_VERSION, locale: "es", theme: "dark", lastProjectRoot: "/x" },
@@ -84,7 +84,7 @@ describe("guardar y recuperar", () => {
     });
   });
 
-  test("la versión se escribe siempre, aunque no se pase", async () => {
+  test("the version is always written, even if not passed", async () => {
     await conFichero(async (path) => {
       await writeSettings({ version: 0, locale: "de" }, path);
       const crudo = JSON.parse(await readFile(path, "utf8")) as { version: number };
@@ -93,15 +93,15 @@ describe("guardar y recuperar", () => {
   });
 });
 
-describe("nada de esto puede impedir arrancar", () => {
-  /** La primera vez no hay fichero, y eso **no** es un problema. */
-  test("sin fichero se arranca con los valores por defecto, sin queja", async () => {
+describe("none of this may prevent startup", () => {
+  /** The first time there is no file, and that is **not** a problem. */
+  test("without a file it starts with defaults, without complaining", async () => {
     const { settings, problem } = await readSettings("/no/existe/settings.json");
     expect(settings).toEqual(DEFAULT_SETTINGS);
     expect(problem).toBeNull();
   });
 
-  test("un JSON roto no impide abrir, pero se dice", async () => {
+  test("a broken JSON does not prevent opening, but it is told", async () => {
     await conFichero(async (path) => {
       await writeFile(path, "{esto no es json");
       const { settings, problem } = await readSettings(path);
@@ -110,7 +110,7 @@ describe("nada de esto puede impedir arrancar", () => {
     });
   });
 
-  test("un fichero que no es un objeto tampoco", async () => {
+  test("a file that is not an object either", async () => {
     await conFichero(async (path) => {
       await writeFile(path, JSON.stringify(["no", "soy", "ajustes"]));
       const { problem } = await readSettings(path);
@@ -119,12 +119,12 @@ describe("nada de esto puede impedir arrancar", () => {
   });
 
   /**
-   * EL test de la versión. Un fichero de una versión **posterior** lo
-   * escribió un programa que sabe más que este; adivinar qué significan
-   * sus campos es cómo se corrompen los ajustes de alguien. Se ignora
-   * y —sobre todo— no se sobrescribe sin avisar.
+   * THE version test. A file of a **later** version was written by
+   * a program that knows more than this one; guessing what its
+   * fields mean is how someone's settings get corrupted. It is
+   * ignored and —above all— not overwritten without warning.
    */
-  test("una versión futura se respeta: no se lee ni se pisa a ciegas", async () => {
+  test("a future version is respected: not read nor overwritten blindly", async () => {
     await conFichero(async (path) => {
       await writeFile(
         path,
@@ -141,13 +141,13 @@ describe("nada de esto puede impedir arrancar", () => {
   });
 });
 
-describe("alguien lo va a editar a mano, porque es texto en su carpeta", () => {
+describe("someone will edit it by hand, because it is text in their folder", () => {
   /**
-   * EL test. Un `theme: "azul"` editado a mano no puede acabar en el
-   * atributo del documento: ahí produciría un tema que no existe y una
-   * pantalla a medio pintar.
+   * THE test. A `theme: "blue"` edited by hand must not end up in
+   * the document attribute: there it would produce a theme that
+   * does not exist and a half-rendered screen.
    */
-  test("un tema inventado se descarta, no se propaga", async () => {
+  test("a made-up theme is discarded, not propagated", async () => {
     await conFichero(async (path) => {
       await writeFile(path, JSON.stringify({ version: 1, theme: "azul" }));
       const { settings } = await readSettings(path);
@@ -156,10 +156,10 @@ describe("alguien lo va a editar a mano, porque es texto en su carpeta", () => {
   });
 
   /**
-   * Y el descarte es **campo a campo**: quien se equivoca en un ajuste
-   * no debería perder los otros cinco.
+   * And the discard is **field by field**: whoever gets one setting
+   * wrong should not lose the other five.
    */
-  test("un campo malo no se lleva por delante los buenos", async () => {
+  test("a bad field does not take down the good ones", async () => {
     await conFichero(async (path) => {
       await writeFile(
         path,
@@ -173,7 +173,7 @@ describe("alguien lo va a editar a mano, porque es texto en su carpeta", () => {
     });
   });
 
-  test("un tipo equivocado se ignora en vez de viajar", async () => {
+  test("a wrong type is ignored instead of traveling", async () => {
     await conFichero(async (path) => {
       await writeFile(
         path,
@@ -185,7 +185,7 @@ describe("alguien lo va a editar a mano, porque es texto en su carpeta", () => {
     });
   });
 
-  test("una cadena vacía no cuenta como valor elegido", async () => {
+  test("an empty string does not count as a chosen value", async () => {
     await conFichero(async (path) => {
       await writeFile(path, JSON.stringify({ version: 1, locale: "   " }));
       expect((await readSettings(path)).settings.locale).toBeUndefined();
@@ -193,11 +193,11 @@ describe("alguien lo va a editar a mano, porque es texto en su carpeta", () => {
   });
 
   /**
-   * `locale` sin valor significa «el del sistema», que no es lo mismo
-   * que un idioma concreto: quien cambie el idioma de su equipo quiere
-   * que la interfaz le siga.
+   * `locale` without a value means "the system's", which is not the
+   * same as a specific language: whoever changes the team's
+   * language wants the interface to follow.
    */
-  test("sin idioma guardado se sigue al sistema, no se fija uno", async () => {
+  test("without a saved language it follows the system, does not pin one", async () => {
     await conFichero(async (path) => {
       await writeSettings({ version: SETTINGS_VERSION, theme: "dark" }, path);
       expect((await readSettings(path)).settings.locale).toBeUndefined();

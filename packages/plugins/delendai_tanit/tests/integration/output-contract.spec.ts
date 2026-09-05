@@ -1,35 +1,36 @@
 /**
- * Lo que cada tool **devuelve** contra lo que cada tool **declara**.
+ * What each tool **returns** versus what each tool **declares**.
  *
- * Los ocho tools publican un `outputSchema`. Hasta aquí eso era texto en
- * un fichero: `lint:mcp-surface` comprobaba que estuviera, y los specs
- * de cada tool comprobaban campos sueltos elegidos a mano. Nadie
- * confrontaba la salida real con la declaración completa.
+ * The eight tools publish an `outputSchema`. Until now that was
+ * text in a file: `lint:mcp-surface` checked that it was present,
+ * and each tool's specs checked hand-picked individual fields.
+ * Nobody confronted the actual output with the full declaration.
  *
- * Y esa distancia ya se pagó. `SummaryOutputSchema` declaraba seis
- * campos mientras el handler hacía `toolJson({ ok: true, ...summary })`
- * y soltaba los dieciocho. El contrato público del proyecto hacia otros
- * agentes llevaba tiempo mintiendo, y no había nada que pudiera notarlo.
+ * And that gap was already paid for. `SummaryOutputSchema` declared
+ * six fields while the handler did `toolJson({ ok: true, ...summary })`
+ * and returned all eighteen. The project's public contract toward
+ * other agents had been lying for a while, and nothing could notice.
  *
- * Aquí se comprueban las dos direcciones, que son fallos distintos:
+ * Both directions are checked here, since they are different bugs:
  *
- *   · **Faltan campos** → un agente que se fía del esquema lee
- *     `undefined` donde el contrato prometía un valor. Lo caza el
- *     `safeParse`.
- *   · **Sobran campos** → el tool devuelve datos que su contrato no
- *     describe, así que nadie puede validarlos ni saber que existen. Zod
- *     los descarta en silencio, así que hay que comparar las claves a
- *     mano.
+ *   · **Missing fields** → an agent trusting the schema reads
+ *     `undefined` where the contract promised a value. `safeParse`
+ *     catches it.
+ *   · **Extra fields** → the tool returns data its contract does not
+ *     describe, so nobody can validate it or even know it exists.
+ *     Zod silently drops it, so the keys have to be compared by
+ *     hand.
  *
- * El esquema se saca del **registro del tool** (`captureTool`), no de un
- * import del módulo de esquemas. Comparar contra una copia escrita en el
- * test no comprobaría nada: las dos copias se separarían juntas.
+ * The schema is taken from the **tool's registration** (`captureTool`),
+ * not from an import of the schema module. Comparing against a copy
+ * written into the test would prove nothing: the two copies would
+ * drift together.
  *
- * ## Por qué `test` no está
+ * ## Why `test` is not here
  *
- * `tanit_test` ejecuta la suite del proyecto. Invocarlo desde dentro
- * de la suite es una bomba de bifurcación: cada ejecución lanzaría otra.
- * Su contrato lo cubre `test.tool.spec.ts` con dobles.
+ * `tanit_test` runs the project's test suite. Invoking it from inside
+ * the suite is a fork bomb: each run would launch another. Its
+ * contract is covered by `test.tool.spec.ts` with doubles.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn } from "node:child_process";
@@ -53,7 +54,7 @@ let work = "";
 let proyecto = "";
 let coleccion = "";
 
-/** El CLI de verdad, por subproceso: vitest corre en workers de Node. */
+/** The real CLI, by subprocess: vitest runs in Node workers. */
 function cli(args: readonly string[]): Promise<void> {
   return new Promise((resolve) => {
     const child = spawn(
@@ -83,7 +84,7 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-/** Los siete tools que se pueden invocar sin efectos desmedidos. */
+/** The seven tools that can be invoked without outsized side effects. */
 const TOOLS = [
   { id: "scan", build: buildScanToolRegistration, input: () => ({ projectRoot: proyecto }) },
   { id: "summary", build: buildSummaryToolRegistration, input: () => ({ projectRoot: proyecto }) },
@@ -102,7 +103,7 @@ const TOOLS = [
   },
 ] as const;
 
-/** Invoca un tool y devuelve su salida junto al esquema que declaró. */
+/** Invokes a tool and returns its output along with the schema it declared. */
 async function invocar(
   build: (ctx: ReturnType<typeof makeContext>) => Parameters<typeof captureTool>[0],
   input: Record<string, unknown>,
@@ -133,50 +134,52 @@ describe("cada tool devuelve lo que declara", () => {
   );
 
   /**
-   * EL otro lado. Zod descarta las claves que no conoce sin decir nada,
-   * así que un campo de más pasa el `safeParse` tan tranquilo — y es un
-   * campo que ningún agente puede saber que existe.
+   * The other side. Zod silently drops the keys it does not know,
+   * so an extra field passes `safeParse` quietly — and that is a
+   * field no agent can know exists.
    */
   test.for(TOOLS)(
-    "$id: no devuelve ni un campo que su esquema no declare",
+    "$id: does not return a single field its schema does not declare",
     { timeout: 240_000 },
     async ({ build, input }) => {
       const { salida, esquema, nombre } = await invocar(build, input());
 
-      // `.shape` es propio de `ZodObject`, y el test de abajo comprueba
-      // que todos los esquemas lo son. Se estrecha aquí en vez de con un
-      // escape de tipo.
+      // `.shape` is specific to `ZodObject`, and the test below checks
+      // that all schemas are. Narrowing happens here instead of via a
+      // type escape.
       const declaradas = Object.keys((esquema as ZodObject<ZodRawShape>).shape);
       const sobran = Object.keys(salida).filter((k) => !declaradas.includes(k));
 
-      expect(sobran, `${nombre} devuelve campos sin declarar`).toEqual([]);
+      expect(sobran, `${nombre} returns fields without declaring them`).toEqual([]);
     },
   );
 
   /**
-   * Un `outputSchema` que no es un objeto no describe nada: un agente no
-   * puede saber qué campos leer. Se comprueba aparte porque el test de
-   * arriba usa `.shape`, y sin esto un esquema degenerado lo rompería
-   * con un error de acceso en vez de con un diagnóstico.
+   * An `outputSchema` that is not an object describes nothing: an
+   * agent cannot know which fields to read. It is checked separately
+   * because the test above uses `.shape`, and without this a
+   * degenerate schema would break it with an access error rather
+   * than a diagnostic.
    */
-  test.for(TOOLS)("$id: su outputSchema es un objeto con forma", async ({ build }) => {
+  test.for(TOOLS)("$id: its outputSchema is an object with a shape", async ({ build }) => {
     const tool = await captureTool(build(makeContext({ workspaceRoot: RAIZ })));
     const shape = (tool.outputSchema as Partial<ZodObject<ZodRawShape>>).shape;
-    expect(shape, `${tool.name} no declara una forma de objeto`).toBeDefined();
+    expect(shape, `${tool.name} does not declare an object shape`).toBeDefined();
     expect(Object.keys(shape ?? {}).length).toBeGreaterThan(0);
   });
 
   /**
-   * Todos prometen `ok: true` en el camino feliz. El error viaja por el
-   * sobre universal de `toolError`, con `isError`, así que un cliente
-   * distingue los dos casos sin que cada tool invente su forma.
+   * All of them promise `ok: true` on the happy path. The error
+   * travels through `toolError`'s universal envelope, with
+   * `isError`, so a client distinguishes the two cases without each
+   * tool inventing its own shape.
    */
   test.for(TOOLS)(
     "$id: el camino feliz responde ok",
     { timeout: 240_000 },
     async ({ build, input }) => {
       const { salida, nombre } = await invocar(build, input());
-      expect(salida["ok"], `${nombre} no devolvió ok:true`).toBe(true);
+      expect(salida["ok"], `${nombre} did not return ok:true`).toBe(true);
     },
   );
 });

@@ -1,15 +1,15 @@
 /**
- * Dónde escribe la herramienta, y dónde NO.
+ * Where the tool writes, and where it does NOT.
  *
- * La salida iba a `${projectRoot}/build/`. `build/` es la carpeta de
- * salida por defecto de Gradle, de Maven con ciertas configuraciones, de
- * muchos proyectos de Go y de la mitad de los Makefile del mundo, así
- * que estábamos mezclando colecciones con los artefactos de compilación
- * de quien usa la herramienta — en una carpeta que su `clean` borra
- * entera.
+ * The output used to go to `${projectRoot}/build/`. `build/` is the
+ * default output folder of Gradle, of Maven under certain
+ * configurations, of many Go projects, and of half the Makefiles in
+ * the world, so we were mixing collections with the build artifacts
+ * of whoever used the tool — in a folder that their `clean` wipes
+ * entirely.
  *
- * Ahora la salida es `${projectRoot}/export-to-postman/`. Nadie tiene
- * una carpeta con ese nombre; si la tiene, es la nuestra.
+ * Now the output is `${projectRoot}/export-to-postman/`. Nobody has
+ * a folder with that name; if they do, it is ours.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -24,7 +24,7 @@ import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/r
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 const SOURCE_PROJECT = exampleDir("express");
 
-/** Contenido que dejamos en el `build/` del proyecto para vigilarlo. */
+/** Content we leave in the project's `build/` to watch it. */
 const SENTINEL = "no me toques\n";
 
 let workDir = "";
@@ -35,8 +35,8 @@ beforeAll(async () => {
   project = join(workDir, "proyecto-ajeno");
   await cp(SOURCE_PROJECT, project, { recursive: true });
 
-  // El proyecto ya tiene su propio `build/` con cosas dentro, como
-  // tendría cualquier proyecto de Gradle o de Go.
+  // The project already has its own `build/` with stuff inside, like
+  // any Gradle or Go project would.
   await mkdir(join(project, "build"), { recursive: true });
   await writeFile(join(project, "build", "artefacto-del-usuario.jar"), SENTINEL);
 
@@ -47,15 +47,15 @@ afterAll(async () => {
   if (workDir) await rm(workDir, { recursive: true, force: true });
 });
 
-describe("carpeta de salida", () => {
-  test("escribe en export-to-postman/, no en build/", async () => {
+describe("output folder", () => {
+  test("writes to export-to-postman/, not to build/", async () => {
     expect(existsSync(join(project, OUTPUT_DIR_NAME))).toBe(true);
     const files = await readdir(join(project, OUTPUT_DIR_NAME));
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 
-  // El test de verdad: el `build/` del usuario sigue como estaba.
-  test("no toca el build/ que ya tenía el proyecto", async () => {
+  // The real test: the user's `build/` is still as it was.
+  test("does not touch the project's existing build/", async () => {
     const files = await readdir(join(project, "build"));
     expect(files).toEqual(["artefacto-del-usuario.jar"]);
     expect(await readFile(join(project, "build", "artefacto-del-usuario.jar"), "utf8")).toBe(
@@ -63,20 +63,20 @@ describe("carpeta de salida", () => {
     );
   });
 
-  test("los environments van a la misma carpeta", async () => {
+  test("environments go to the same folder", async () => {
     const files = await readdir(join(project, OUTPUT_DIR_NAME));
     expect(files.filter((f) => f.endsWith(".postman_environment.json")).length).toBeGreaterThan(
       0,
     );
   });
 
-  test("la constante no lleva separadores: es un nombre, no una ruta", () => {
+  test("the constant carries no separators: it is a name, not a path", () => {
     expect(OUTPUT_DIR_NAME).not.toContain("/");
     expect(OUTPUT_DIR_NAME).not.toContain("\\");
     expect(OUTPUT_DIR_NAME).not.toContain(sep);
   });
 
-  test("--output-dir sigue mandando por encima", async () => {
+  test("--output-dir still overrides", async () => {
     const custom = join(workDir, "otra-carpeta");
     await runProcess("bun", [GENERATE, "--project-root", project, "--output-dir", custom], {
       cwd: REPO_ROOT,
@@ -85,7 +85,7 @@ describe("carpeta de salida", () => {
     expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   }, 60_000);
 
-  test("POSTMAN_OUTPUT_DIR también", async () => {
+  test("POSTMAN_OUTPUT_DIR too", async () => {
     const custom = join(workDir, "por-entorno");
     await runProcess("bun", [GENERATE, "--project-root", project], {
       cwd: REPO_ROOT,

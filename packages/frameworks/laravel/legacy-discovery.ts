@@ -1,15 +1,14 @@
 /**
- * La heurística histórica de Laravel, empaquetada como estrategia.
+ * The historical Laravel heuristic, packaged as a strategy.
  *
- * Antes de que existieran los scanners, esto **era** la herramienta:
- * leer `routes/*.php`, resolver los FormRequests de los controladores y
- * emitir endpoints. Hoy Laravel tiene su propio scanner, así que este
- * camino solo entra cuando ningún scanner reconoce el proyecto — un
- * Laravel con una disposición rara, básicamente.
+ * Before scanners existed, this **was** the tool: read `routes/*.php`,
+ * resolve the controllers' FormRequests, and emit endpoints. Today
+ * Laravel has its own scanner, so this path only runs when no scanner
+ * recognises the project — basically a Laravel with an unusual layout.
  *
- * Se envuelve en `ILegacyDiscovery` para que el pipeline pueda
- * invocarlo sin conocerlo. Antes lo importaba directo, y con él se
- * colaba un parser de PHP dentro del núcleo agnóstico.
+ * It is wrapped in `ILegacyDiscovery` so the pipeline can invoke it
+ * without knowing about it. Before, it was imported directly, and that
+ * dragged a PHP parser into the agnostic core.
  */
 import type {
   ILegacyDiscovery,
@@ -20,7 +19,7 @@ import type { ProjectConfig } from "../../contracts/interfaces/core/project-conf
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { discoverEndpoints } from "./endpoint-discovery.service.js";
 
-/** Descubrimiento de último recurso sobre `routes/*.php`. */
+/** Last-resort discovery over `routes/*.php`. */
 export const laravelLegacyDiscovery: ILegacyDiscovery = {
   name: "laravel-legacy",
 

@@ -1,12 +1,13 @@
 /**
  * Tool `tanit_list`.
  *
- * Los endpoints de la colección, **en datos**. El CLI imprime una tabla
- * agrupada por zonas para leer con los ojos; un agente que la parsee con
- * regex se rompe el día que cambie una columna, y ese hack ya se pagó
- * antes en este mismo plugin.
+ * The endpoints of the collection, **as data**. The CLI prints a
+ * table grouped by zones for human reading; an agent that parses it
+ * with regex breaks the day a column changes, and that hack has
+ * already been paid for in this very plugin.
  *
- * Es de solo lectura: no genera ni escribe nada. De ahí `effects: []`.
+ * It is read-only: it neither generates nor writes anything. Hence
+ * `effects: []`.
  */
 
 import {

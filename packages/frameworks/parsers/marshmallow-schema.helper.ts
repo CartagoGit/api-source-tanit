@@ -1,8 +1,8 @@
 /**
- * Parser de schemas Marshmallow → `IValidationSpec`.
+ * Marshmallow schema parser → `IValidationSpec`.
  *
- * Marshmallow es la librería de validación más usada en Flask, por
- * delante de `flask-pydantic`. Su forma canónica:
+ * Marshmallow is the most-used validation library in Flask, ahead of
+ * `flask-pydantic`. Its canonical shape:
  *
  *   class UserSchema(Schema):
  *       name = fields.Str(required=True, validate=validate.Length(min=1, max=80))
@@ -10,20 +10,20 @@
  *       age = fields.Int(required=False)
  *       role = fields.Str(validate=validate.OneOf(["admin", "user"]))
  *
- * Igual que el resto de parsers del paquete, el análisis es textual: no
- * se importa el módulo del proyecto escaneado.
+ * Like the rest of the package's parsers, the analysis is textual: the
+ * scanned project's module is not imported.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IMarshmallowSchema } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** `class X(Schema):` y sus variantes habituales. */
+/** `class X(Schema):` and its usual variants. */
 const SCHEMA_BASE_RE =
   /class\s+(\w+)\s*\(\s*(?:ma\.)?(?:Schema|SQLAlchemyAutoSchema|SQLAlchemySchema)\s*\)\s*:/g;
 
-/** `campo = fields.Tipo(...)`, con indentación de clase. */
+/** `field = fields.Type(...)`, with class indentation. */
 const FIELD_RE = /^\s+([a-zA-Z_][\w]*)\s*=\s*((?:ma\.)?fields\.\w+\s*\(.*)$/;
 
-/** `fields.<Tipo>` → tipo lógico del contrato. */
+/** `fields.<Type>` → logical type of the contract. */
 const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   Str: "string",
   String: "string",
@@ -49,7 +49,7 @@ const TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   Enum: "enum",
 };
 
-/** `fields.<Tipo>` que además implican un formato semántico. */
+/** `fields.<Type>` that additionally imply a semantic format. */
 const FORMAT_MAP: Record<string, string> = {
   Email: "email",
   Url: "url",
@@ -60,7 +60,7 @@ const FORMAT_MAP: Record<string, string> = {
   IPv6: "ipv6",
 };
 
-/** Todos los schemas Marshmallow declarados en un fuente Python. */
+/** All Marshmallow schemas declared in a Python source file. */
 export function parseMarshmallowSchemas(source: string): IMarshmallowSchema[] {
   const out: IMarshmallowSchema[] = [];
   const re = new RegExp(SCHEMA_BASE_RE.source, "g");
@@ -92,7 +92,7 @@ export function parseMarshmallowSchemas(source: string): IMarshmallowSchema[] {
   return out;
 }
 
-/** Convierte los campos de un schema en specs del contrato. */
+/** Converts a schema's fields into contract specs. */
 export function marshmallowSchemaToSpecs(
   schema: IMarshmallowSchema,
   location: IValidationSpec["location"] = "body",
@@ -102,7 +102,7 @@ export function marshmallowSchemaToSpecs(
   );
 }
 
-/** Convierte una expresión `fields.X(...)` en un spec. */
+/** Converts a `fields.X(...)` expression into a spec. */
 export function marshmallowFieldToSpec(
   fieldName: string,
   expression: string,
@@ -118,8 +118,8 @@ export function marshmallowFieldToSpec(
     fieldName,
     location,
     type: enumValues ? "enum" : (TYPE_MAP[kind] ?? "any"),
-    // Marshmallow es opcional por defecto y marca lo obligatorio con
-    // `required=True`, al revés que zod.
+    // Marshmallow is optional by default and marks mandatory fields with
+    // `required=True`, the opposite of zod.
     required: /required\s*=\s*True/.test(expression),
     ...(format ? { format } : {}),
     ...(enumValues ? { enumValues } : {}),

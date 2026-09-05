@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
 /**
- * Abre la colección Postman generada en la app del sistema.
+ * Opens the generated Postman collection in the system app.
  *
- * Estrategia multiplataforma (orden de preferencia):
- *   1. Si `POSTMAN_FORCE_OPEN=web` → abre `https://app.postman.com/import`
- *      y muestra la ruta al JSON para arrastrarlo.
- *   2. macOS:   `open -a "Postman" <file>`   (y fallback `xdg-open`).
- *   3. Linux:   `xdg-open <file>`             (con fallback `gio open`).
- *   4. Windows: `start "" <file>`             vía cmd.exe.
- *   5. Si no hay app de escritorio → abre web y muestra ruta local.
+ * Cross-platform strategy (preference order):
+ *   1. If `POSTMAN_FORCE_OPEN=web` → opens `https://app.postman.com/import`
+ *      and shows the path to the JSON so it can be dragged in.
+ *   2. macOS:   `open -a "Postman" <file>`   (and `xdg-open` fallback).
+ *   3. Linux:   `xdg-open <file>`             (with `gio open` fallback).
+ *   4. Windows: `start "" <file>`             via cmd.exe.
+ *   5. If there is no desktop app → opens the web and shows the local path.
  *
- * Uso:
+ * Usage:
  *   bun run scripts/open-postman.script.ts
  *   bun run scripts/open-postman.script.ts --web
  *   bun run scripts/open-postman.script.ts --file <path>
@@ -31,8 +31,9 @@ export async function main(): Promise<number> {
   const explicitFile =
     fileFlag !== -1 ? args[fileFlag + 1] ?? null : null;
 
-  // Contexto explícito (r00008 S1): como el resto de comandos, el
-  // loader no debe caer al singleton para saber qué proyecto es.
+  // Explicit context (r00008 S1): as with the rest of commands, the
+  // loader must not fall back to the singleton to figure out which project
+  // it is.
   const resolvedContext = resolveProjectContext({ argv: args });
   const { config } = await loadProject(args, resolvedContext).catch(() => ({
     config: undefined,

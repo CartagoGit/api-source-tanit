@@ -1,20 +1,21 @@
 /**
- * `GinScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para Gin (Go web framework).
+ * `GinScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Gin (Go web framework).
  *
- * Detección:
- *   - `go.mod` con `github.com/gin-gonic/gin`.
+ * Detection:
+ *   - `go.mod` with `github.com/gin-gonic/gin`.
  *
  * Parsing:
- *   - Llama a `Router.METHOD("/path", handler)`. Captura el prefijo del
- *     `Router.Group("/api/v1")` recursivamente.
- *   - Soporta `engine := gin.Default()` o cualquier variable.
- *   - Soporta middleware: `Router.GET("/x", middleware, handler)`.
+ *   - Calls `Router.METHOD("/path", handler)`. Captures the prefix from
+ *     `Router.Group("/api/v1")` recursively.
+ *   - Supports `engine := gin.Default()` or any variable.
+ *   - Supports middleware: `Router.GET("/x", middleware, handler)`.
  *
  * Validation:
- *   - `GinBindingProvider` (best-effort): extrae `binding:"required"` tags
- *     de structs Go desde el handler. Limitado: parseo de Go structs es
- *     parcial y no soporta referencias a otros paquetes.
+ *   - `GinBindingProvider` (best-effort): extracts `binding:"required"`
+ *     tags from Go structs referenced by the handler. Limited: Go
+ *     struct parsing is partial and does not support references to
+ *     other packages.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -39,10 +40,10 @@ const HTTP_METHODS = [
   "put",
   "delete",
   "patch",
-  // a00010 / B-02: `HEAD` y `OPTIONS` se reconocen en el regex
-  // (`ROUTE_RE`) pero la lista posterior los descartaba en silencio.
-  // Postman los soporta; un `r.HEAD("/health")` terminaba sin salir
-  // en la colección.
+  // a00010 / B-02: `HEAD` and `OPTIONS` were recognised by the regex
+  // (`ROUTE_RE`) but the list below silently dropped them. Postman
+  // supports them; an `r.HEAD("/health")` ended up missing from the
+  // collection.
   "head",
   "options",
 ];
@@ -109,18 +110,18 @@ export class GinRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = effectiveProjectRoot(match);
-    // 1) main.go (si está en raíz).
+    // 1) main.go (if at root).
     const main = join(projectRoot, "main.go");
     if (existsSync(main)) {
       out.push(...(await parseGoFile(main, "main.go", projectRoot)));
     }
-    // 2) cmd/, pkg/, internal/, src/ — recursivo.
+    // 2) cmd/, pkg/, internal/, src/ — recursive.
     await findAllGoFiles(projectRoot).then(async (files) => {
       for (const f of files) {
         const rel = f.startsWith(projectRoot)
           ? f.slice(projectRoot.length + 1).split("/").join("/")
           : f;
-        // Evitar duplicar main.go raíz.
+        // Avoid duplicating root main.go.
         if (rel === "main.go") continue;
         out.push(...(await parseGoFile(f, rel, projectRoot)));
       }
@@ -131,7 +132,7 @@ export class GinRouteScanner implements IRouteScanner {
 
 
 /**
- * Busca recursivamente todos los `.go` del proyecto (retorna solo paths).
+ * Recursively finds all `.go` files in the project (returns paths only).
  */
 async function findAllGoFiles(projectRoot: string): Promise<string[]> {
   const out: string[] = [];
@@ -168,25 +169,25 @@ async function parseGoFile(
   } catch {
     return [];
   }
-  // Sin esto, una ruta comentada acababa en la colección del usuario.
-  // Go comparte la sintaxis de comentarios de JS/TS.
+  // Without this, a commented-out route ended up in the user's
+  // collection. Go shares JS/TS comment syntax.
   const raw = stripJsComments(source);
 
-  // 1) Detectar prefixes de Groups.
+  // 1) Detect Group prefixes.
   //
-  // a00011 C-8: los grupos se anidan como un grafo. La forma canónica:
+  // a00011 C-8: groups nest as a graph. The canonical shape:
   //
   //   api := r.Group("/api")
-  //   users := api.Group("/users")     // ← el receptor de ESTE grupo
-  //   users.GET("/list", h)            //   es OTRO grupo, no la raíz
+  //   users := api.Group("/users")     // ← the receiver of THIS group
+  //   users.GET("/list", h)            //   is ANOTHER group, not the root
   //
-  // El GROUP_RE captura el receptor (`users`) y el emisor (`api`).
-  // Resolver el prefix de un grupo significa subir por la cadena de
-  // emisores hasta llegar a la raíz (`r`), concatenando los prefijos
-  // en el camino. Antes solo se miraba el prefix literal del propio
-  // grupo, así que `/api/users/list` salía como `/users/list`.
+  // GROUP_RE captures the receiver (`users`) and the emitter (`api`).
+  // Resolving a group's prefix means walking up the chain of emitters
+  // until reaching the root (`r`), concatenating prefixes along the
+  // way. Before we only looked at the literal prefix of the group
+  // itself, so `/api/users/list` came out as `/users/list`.
   const groupPrefix = new Map<string, string>();
-  /** Quién es el emisor de cada grupo (`users` → `api`). */
+  /** Who emits each group (`users` → `api`). */
   const groupParent = new Map<string, string>();
   let m: RegExpExecArray | null;
   const groupRe = ownRegex(GROUP_RE);
@@ -201,7 +202,7 @@ async function parseGoFile(
   /**
    * Prefijo completo de un grupo, subiendo por la cadena de padres.
    * Un guard de profundidad evita el ciclo imposible (`a := a.Group`)
-   * que un fuente roto podría declarar.
+   * that a broken source could declare.
    */
   const resolveGroupPrefix = (ident: string): string => {
     const parts: string[] = [];
@@ -216,7 +217,7 @@ async function parseGoFile(
     return joinRoutePath(...parts);
   };
 
-  // 2) Buscar routes.
+  // 2) Look for routes.
   const routeRe = ownRegex(ROUTE_RE);
   while ((m = routeRe.exec(raw)) !== null) {
     const ident = m[1] ?? "";
@@ -239,7 +240,7 @@ async function parseGoFile(
 }
 
 // ---------------------------------------------------------------------------
-// Validation spec provider (no-op por ahora; bodies via inference)
+// Validation spec provider (no-op for now; bodies via inference)
 // ---------------------------------------------------------------------------
 
 export class GinBindingProvider implements IValidationSpecProvider {
@@ -251,7 +252,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
     _scanResult: IScanResult,
   ): Promise<boolean> {
     if (match.framework !== "gin") return false;
-    // Buscar archivos .go en el proyecto que puedan contener structs.
+    // Look for .go files in the project that may contain structs.
     return route.sourceFile !== undefined;
   }
 
@@ -273,7 +274,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
     if (fields.length === 0) {
       // Fallback: buscar structs en otros archivos .go del proyecto.
       const files = await findAllGoFiles(effectiveProjectRoot(match));
-      // Filtrar archivos cuyo nombre sugiere relevancia al URI.
+      // Filter files whose name suggests relevance to the URI.
       const uriWords = (route.uri ?? "")
         .split("/")
         .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"))
@@ -300,7 +301,7 @@ export class GinBindingProvider implements IValidationSpecProvider {
       }
     }
     if (fields.length === 0) return { endpointKey, fields: [] };
-    // Solo aplicar a métodos que aceptan body (POST/PUT/PATCH).
+    // Only apply to methods that accept a body (POST/PUT/PATCH).
     if (!["POST", "PUT", "PATCH"].includes(route.method.toUpperCase())) {
       return { endpointKey, fields: [] };
     }
@@ -310,9 +311,9 @@ export class GinBindingProvider implements IValidationSpecProvider {
 }
 
 /**
- * Parsea structs Go del archivo y extrae fields con binding tags.
- * Estrategia: encontrar `type X struct { ... }` y para cada field capturar
- * el `binding:"..."` tag.
+ * Parses Go structs from the file and extracts fields with binding tags.
+ * Strategy: find `type X struct { ... }` and for each field capture
+ * the `binding:"..."` tag.
  */
 function parseGoStructsInFile(raw: string, uri?: string): IValidationSpec[] {
   // Coleccionar (struct name, fields[]) por struct del archivo.
@@ -331,7 +332,7 @@ function parseStructsAndPick(
   structMap: Array<{ name: string; fields: IValidationSpec[] }>,
   uri?: string,
 ): IValidationSpec[] {
-  // Regex: `type X struct {` con captura del body y nombre.
+  // Regex: `type X struct {` with capture of the body and name.
   const typeRe = /type\s+(\w+)\s+struct\s*\{([\s\S]*?)\n\}/g;
   let m: RegExpExecArray | null;
   while ((m = typeRe.exec(raw)) !== null) {
@@ -363,10 +364,10 @@ function parseStructsAndPick(
     }
     if (fields.length > 0) structMap.push({ name: structName, fields });
   }
-  // Si solo hay un struct → usar ese.
+  // If there is only one struct → use that.
   if (structMap.length === 1) return structMap[0]!.fields;
-  // Si hay varios y tenemos URI, intentar matchear el nombre del struct
-  // con palabras del último segmento del path (o del path completo).
+  // If there are several and we have a URI, try to match the struct
+  // name against words from the last segment of the path (or the full path).
   if (structMap.length > 1 && uri) {
     const lastSeg = uri.split("/").filter(Boolean).pop() ?? "";
     const candidates = [
@@ -382,8 +383,8 @@ function parseStructsAndPick(
       const startsWith = structMap.find((s) => s.name.startsWith(lname));
       if (startsWith) return startsWith.fields;
     }
-    // Match por cualquier palabra del path: /api/users/{id}/address
-    // → buscar struct que contenga "User", "Address", "Users", etc.
+    // Match by any word of the path: /api/users/{id}/address
+    // → look for struct containing "User", "Address", "Users", etc.
     const allWords = uri
       .split("/")
       .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"));
@@ -395,7 +396,7 @@ function parseStructsAndPick(
       if (match) return match.fields;
     }
   }
-  // Si hay varios → usar el más pequeño (heurística: payload mínimo).
+  // If there are several → use the smallest (heuristic: minimum payload).
   if (structMap.length > 1) {
     structMap.sort((a, b) => a.fields.length - b.fields.length);
     return structMap[0]!.fields;
@@ -407,7 +408,7 @@ function inferGoFieldType(binding: string, fieldName: string): IValidationSpec["
   if (binding.includes("email")) return "string";
   if (binding.includes("oneof=")) return "enum";
   if (binding.includes("min=") || binding.includes("max=") || binding.includes("len=")) {
-    // Heurística: si el nombre tiene "id", "count", "age", "amount" → number.
+    // Heuristic: if the name has "id", "count", "age", "amount" → number.
     if (/id|count|age|amount|number|num$/i.test(fieldName)) return "integer";
     return "string";
   }

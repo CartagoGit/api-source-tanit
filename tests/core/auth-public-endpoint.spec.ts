@@ -1,19 +1,20 @@
 /**
- * a00012 S3.b — Auth por operación.
+ * a00012 S3.b — Auth per operation.
  *
- * `defaultHeaders()` inyecta `Authorization: Bearer {{token}}` cuando
- * el esquema global es bearer. Antes lo hacía para **todas** las
- * requests, incluyendo el login —que es precisamente el endpoint que
- * emite el token. Resultado: 401 al primer Send, y la culpa apuntando
- * a una request que en realidad es lo que rellena la variable.
+ * `defaultHeaders()` injects `Authorization: Bearer {{token}}` when
+ * the global scheme is bearer. It used to do that for **all**
+ * requests, including login — which is precisely the endpoint that
+ * issues the token. Result: 401 on the first Send, with the blame
+ * pointing at a request that is actually the one that fills the
+ * variable.
  *
- * El override por operación (`EndpointSpec.auth: { kind: "none" }`)
- * permite marcar endpoints públicos (login, /health, /register) para
- * que el builder omita esa cabecera sin tocar el esquema global.
+ * The per-operation override (`EndpointSpec.auth: { kind: "none" }`)
+ * lets us mark public endpoints (login, /health, /register) so the
+ * builder skips that header without touching the global scheme.
  *
- * Estos tests son la garantía de esa regla: con un global `bearer`,
- * un endpoint declarado público sale sin `Authorization` mientras que
- * otro cualquiera del mismo proyecto sí la lleva.
+ * These tests are the guarantee of that rule: with a global `bearer`,
+ * an endpoint declared public comes out without `Authorization` while
+ * any other one in the same project does carry it.
  */
 import { describe, expect, test } from "vitest";
 
@@ -51,13 +52,13 @@ function spec(partial: Partial<EndpointSpec>): EndpointSpec {
   } as EndpointSpec;
 }
 
-/** Esquema global bearer (igual que el que infiere el detector cuando hay login). */
+/** Global bearer scheme (same as what the detector infers when there is login). */
 const bearerScheme = { type: "bearer" as const, evidence: "test" };
 
 /**
- * Devuelve los headers de un item a partir de su nombre. Cero
- * carpetas: con `buildCollection` + dos endpoints en la raíz, basta
- * con un walk plano.
+ * Returns the headers of an item by name. Zero nesting: with
+ * `buildCollection` + two endpoints at the root, a flat walk is
+ * enough.
  */
 function headersOf(collection: ReturnType<typeof buildCollection>, itemName: string) {
   for (const folder of collection.item) {
@@ -67,7 +68,7 @@ function headersOf(collection: ReturnType<typeof buildCollection>, itemName: str
       }
     }
   }
-  throw new Error(`No se encontró el item "${itemName}" en la colección`);
+  throw new Error(`Item "${itemName}" was not found in the collection`);
 }
 
 function hasAuthHeader(headers: Array<{ key: string; value?: string }>): boolean {
@@ -77,14 +78,14 @@ function hasAuthHeader(headers: Array<{ key: string; value?: string }>): boolean
 }
 
 describe("auth-public-endpoint — override por operación (a00012 S3.b)", () => {
-  test("un endpoint público no lleva Authorization aunque el global sea bearer", () => {
+  test("a public endpoint does not carry Authorization even when the global is bearer", () => {
     const col = buildCollection(
       [
         spec({
           name: "Login",
           method: "POST",
           uri: "/auth/login",
-          // Override explícito: este endpoint es público.
+          // Explicit override: this endpoint is public.
           auth: { kind: "none" },
         }),
         spec({
@@ -101,9 +102,9 @@ describe("auth-public-endpoint — override por operación (a00012 S3.b)", () =>
     expect(hasAuthHeader(headersOf(col, "ListUsers"))).toBe(true);
   });
 
-  test("el override sólo afecta al endpoint que lo declara", () => {
-    // Tres endpoints: uno público, dos protegidos. El header
-    // `Authorization` aparece en los protegidos y NO en el público.
+  test("the override only affects the endpoint that declares it", () => {
+    // Three endpoints: one public, two protected. The `Authorization`
+    // header appears on the protected ones and NOT on the public one.
     const col = buildCollection(
       [
         spec({
@@ -132,9 +133,9 @@ describe("auth-public-endpoint — override por operación (a00012 S3.b)", () =>
     expect(hasAuthHeader(headersOf(col, "ListOrders"))).toBe(true);
   });
 
-  test("sin override, todos los endpoints heredan el esquema global", () => {
-    // El comportamiento por defecto se conserva: un endpoint que no
-    // declara override sigue recibiendo la cabecera como antes.
+  test("without an override, all endpoints inherit the global scheme", () => {
+    // The default behavior is preserved: an endpoint that does not
+    // declare an override keeps receiving the header as before.
     const col = buildCollection(
       [
         spec({ name: "A", method: "GET", uri: "/a" }),
@@ -148,10 +149,10 @@ describe("auth-public-endpoint — override por operación (a00012 S3.b)", () =>
     expect(hasAuthHeader(headersOf(col, "B"))).toBe(true);
   });
 
-  test("con esquema global distinto de bearer, el override no cambia nada visible", () => {
-    // El override `none` se aplica sobre la cabecera `Authorization`
-    // que mete el builder; con scheme `none` global no se inyecta esa
-    // cabecera en ningún caso, y el override queda como no-op.
+  test("with a global scheme other than bearer, the override changes nothing visible", () => {
+    // The `none` override applies to the `Authorization` header that
+    // the builder injects; with global `none` scheme that header is
+    // never injected in the first place, so the override is a no-op.
     const col = buildCollection(
       [
         spec({

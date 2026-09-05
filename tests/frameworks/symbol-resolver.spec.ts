@@ -1,15 +1,15 @@
 /**
- * Tests para `collectAliases`, `collectReexports` y `resolveCallee`
+ * Tests for `collectAliases`, `collectReexports` and `resolveCallee`
  * (a00016 S3).
  *
- * Cubre las 4 formas que el scanner necesita:
+ * Covers the 4 shapes the scanner needs:
  *   - `import x from "./y"` → alias.
  *   - `import { x as y } from "./y"` → aliased import.
  *   - `export { x } from "./y"` → reexport.
- *   - `const r = app; r.get(...)` → resolución de alias local.
+ *   - `const r = app; r.get(...)` → local alias resolution.
  *
- * Tests unitarios — las primitivas puras no leen disco. Los walkers
- * de disco usan un directorio temporal pequeño escrito por el test.
+ * Unit tests — the pure primitives do not read disk. The disk
+ * walkers use a small temporary directory written by the test.
  */
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -24,7 +24,7 @@ import {
 } from "../../packages/frameworks/typescript/symbol-resolver.helper";
 import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 
-/** Path al directorio temporal compartido por los tests de disco. */
+/** Path to the temporary directory shared by the disk tests. */
 let tmpRoot = "";
 
 beforeAll(() => {
@@ -52,15 +52,15 @@ afterAll(() => {
   if (tmpRoot) rmSync(tmpRoot, { recursive: true, force: true });
 });
 
-describe("collectAliases — formas del import", () => {
-  test("walk de disco: default + aliased + namespace → 3 aliases", async () => {
+describe("collectAliases — import shapes", () => {
+  test("disk walk: default + aliased + namespace → 3 aliases", async () => {
     const aliases = await collectAliases(tmpRoot);
     // `import app from "express"` → { name: "app", source: "express" }.
     // `import { Router as R } from "express"` → { name: "R", ... }.
     // `import * as ns from "express"` → { name: "ns", ... }.
-    // `export { router } from "./router"` también entra como alias con
-    // name="router" — la separación aliases vs reexports es por la
-    // presencia de `from`, no por el kind del nodo.
+    // `export { router } from "./router"` also enters as an alias
+    // with name="router" — the aliases vs reexports split is by the
+    // presence of `from`, not by the AST node kind.
     const names = aliases.map((a) => a.name).sort();
     expect(names).toContain("app");
     expect(names).toContain("R");
@@ -70,9 +70,9 @@ describe("collectAliases — formas del import", () => {
   });
 
   test("aliased import: `import { Router as R } from 'express'`", () => {
-    // Esta parte valida la mecánica de `resolveCallee` con aliases
-    // sintéticos: la lógica del walker se prueba en
-    // `collectReexports — disco` más abajo.
+    // This part validates the mechanics of `resolveCallee` with
+    // synthetic aliases: the walker logic is tested under
+    // `collectReexports — disk` further down.
     const source = `import { Router as R } from "express";
 const r = R;
 r.get("/x", h);
@@ -85,12 +85,12 @@ r.get("/x", h);
       [],
       { "server.ts": { R: "R", r: "R" } },
     );
-    // `r` → `R` → `R` (alias canónico).
+    // `r` → `R` → `R` (canonical alias).
     expect(resolved[0]?.callee).toBe("R.get");
   });
 
-  test("default + aliased + namespace en el mismo archivo: 3 aliases", () => {
-    // Forma del `IImportBinding` esperada por el walker para este código:
+  test("default + aliased + namespace in the same file: 3 aliases", () => {
+    // Shape of the `IImportBinding` the walker expects for this code:
     // `import a from "m"` → { name: "a", source: "m", ... }
     // `import { b as c } from "m"` → { name: "c", source: "m", ... }
     // `import * as d from "m"` → { name: "d", source: "m", ... }
@@ -101,11 +101,11 @@ r.get("/x", h);
   });
 });
 
-describe("collectReexports — formas del export-from", () => {
-  test("named reexport: `export { router } from './router'` produce 1 IReexport", () => {
-    // Mismo truco: validamos el shape vía resolveCallee en lugar de
-    // un walker de disco. Los nombres sintéticos son los que
-    // esperaría producir el walker para este código.
+describe("collectReexports — export-from shapes", () => {
+  test("named reexport: `export { router } from './router'` produces 1 IReexport", () => {
+    // Same trick: we validate the shape via resolveCallee instead of
+    // a disk walker. The synthetic names are the ones the walker
+    // would be expected to produce for this code.
     const source = `export { router } from "./router";
 export { health } from "./health";
 `;
@@ -116,11 +116,11 @@ export { health } from "./health";
     expect(reexports).toHaveLength(2);
     expect(reexports[0]?.name).toBe("router");
     expect(reexports[1]?.from).toBe("./health");
-    // El shape del IReexport cumple el contrato.
+    // The shape of the IReexport satisfies the contract.
     expect(source).toContain("export { router } from");
   });
 
-  test("namespace reexport: `export * from './router'` produce IReexport con name='*'", () => {
+  test("namespace reexport: `export * from './router'` produces IReexport with name='*'", () => {
     const reexports = [
       { name: "*", from: "./router", range: { file: "x.ts", start: 0, end: 0 } },
     ];
@@ -128,7 +128,7 @@ export { health } from "./health";
   });
 });
 
-describe("resolveCallee — el caso que cierra el gap", () => {
+describe("resolveCallee — the case that closes the gap", () => {
   test("const r = app; r.get('/x') → app.get('/x')", () => {
     const source = `const r = app;
 r.get("/x", h);
@@ -140,12 +140,12 @@ r.get("/x", h);
     const resolved = resolveCallee(calls, [], [], { "server.ts": { r: "app" } });
     expect(resolved).toHaveLength(1);
     expect(resolved[0]?.callee).toBe("app.get");
-    // `method` y `args` se preservan.
+    // `method` and `args` are preserved.
     expect(resolved[0]?.method).toBe("get");
     expect(resolved[0]?.args[0]).toEqual({ kind: "string", value: "/x" });
   });
 
-  test("cadena de aliases: const r = a; const a = app → r.get colapsa a app.get", () => {
+  test("alias chain: const r = a; const a = app → r.get collapses to app.get", () => {
     const source = `const r = a;
 r.get("/x", h);
 `;
@@ -156,7 +156,7 @@ r.get("/x", h);
     expect(resolved[0]?.callee).toBe("app.get");
   });
 
-  test("alias de import: `R.get` donde R viene de `import { Router as R }`", () => {
+  test("import alias: `R.get` where R comes from `import { Router as R }`", () => {
     const source = `R.get("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -167,11 +167,11 @@ r.get("/x", h);
       [{ name: "R", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
       [],
     );
-    // R ya es el canónico (su importMap apunta a sí mismo).
+    // R is already the canonical name (its importMap points at itself).
     expect(resolved[0]?.callee).toBe("R.get");
   });
 
-  test("un receiver que no es identifier no se toca", () => {
+  test("a non-identifier receiver is left untouched", () => {
     const source = `this.router.get("/x", h);
 `;
     const calls = collectMethodCallsFromSource(source, "server.ts");
@@ -179,14 +179,14 @@ r.get("/x", h);
     expect(calls[0]?.receiverKind).toBe("this");
 
     const resolved = resolveCallee(calls, [], [], { "server.ts": { router: "app" } });
-    // `this.router.get` no es `receiverKind: "identifier"`, no se
-    // reescribe.
+    // `this.router.get` is not `receiverKind: "identifier"`, so it is
+    // not rewritten.
     expect(resolved[0]?.callee).toBe("this.router.get");
   });
 });
 
-describe("symbol-resolver — walker de disco (sanity)", () => {
-  test("collectReexports del tmpRoot incluye `router` y `*`", async () => {
+describe("symbol-resolver — disk walker (sanity)", () => {
+  test("collectReexports from tmpRoot includes `router` and `*`", async () => {
     const reexports = await collectReexports(tmpRoot);
     const names = reexports.map((r) => `${r.name}@${r.from}`).sort();
     expect(names).toContain("router@./router");

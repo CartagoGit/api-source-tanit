@@ -1,47 +1,46 @@
 /**
- * Helper para que los detectores devuelvan el `{ score, evidence }`
- * que el orquestador (y la UI) esperan.
+ * Helper so detectors return the `{ score, evidence }` shape the
+ * orchestrator (and the UI) expect.
  *
- * Hoy todos los detectores pasan por aquí: `emptyResult(score)` cuando
- * la señal es única o cuando todavía no hemos enriquecido el detector,
- * `withEvidence(...)` cuando queremos anotar una o varias señales
- * concretas. Migrar un detector a evidence es una substitución del
- * `return score` por `return withEvidence(score, [ { signal, weight } ])`,
- * sin tocar el resto de la lógica.
+ * Every detector goes through here today: `emptyResult(score)` when
+ * the signal is unique or we haven't enriched the detector yet,
+ * `withEvidence(...)` when we want to annotate one or more concrete
+ * signals. Migrating a detector to evidence is just swapping
+ * `return score` for `return withEvidence(score, [ { signal, weight } ])`,
+ * without touching the rest of the logic.
  *
- * Es helper (no contrato) porque los scanners ya son contratos: añadir
- * aquí un export más y mantener `IProjectScannerResult` en
- * `contracts/interfaces` evita arrastrar el contrato del orquestador a
- * quien no lo necesita.
+ * It is a helper (not a contract) because scanners already are the
+ * contracts: adding another export here and keeping
+ * `IProjectScannerResult` in `contracts/interfaces` keeps the
+ * orchestrator's contract from leaking to those who don't need it.
  */
 import type {
   IProjectDetectionEvidence,
   IProjectScannerResult,
 } from "../../contracts/interfaces/core/scanner.interface";
 
-/** Construye un resultado vacío (sin evidence) — el caso por defecto. */
+/** Builds an empty result (no evidence) — the default case. */
 export function emptyResult(score: number): IProjectScannerResult {
   return { score: clampScore(score), evidence: [] };
 }
 
 /**
- * Normaliza un score al rango `[0, 1]` que el orquestador (y la UI)
- * esperan.
+ * Normalises a score to the `[0, 1]` range the orchestrator (and the
+ * UI) expect.
  *
- * Reglas explícitas —no delegación a `Math.max(0, Math.min(1, …))`—
- * para que un test pueda fijar cada caso sin tener que recordar el
- * comportamiento por defecto de `Math`:
+ * Explicit rules —no delegation to `Math.max(0, Math.min(1, …))`—
+ * so a test can pin every case without having to remember `Math`'s
+ * default behaviour:
  *
- * - `NaN` → `0` (un detector que devuelve NaN es un detector roto).
- * - `+Infinity` → `1`, `-Infinity` → `0` (los el `<` y `>` los cubrían
- *   ya, pero la spec los nombra explícitamente).
+ * - `NaN` → `0` (a detector returning NaN is a broken detector).
+ * - `+Infinity` → `1`, `-Infinity` → `0` (the `<` and `>` checks
+ *   already covered them, but the spec names them explicitly).
  * - `value < 0` → `0`, `value > 1` → `1`.
- * - resto → `value`.
+ * - otherwise → `value`.
  *
- * Centralizado aquí (a00012 S2) para que ningún scanner tenga que
- * aplicar `Math.min(…, 1)` a mano, y para que la evidencia pueda llevar
- * pesos fuera de `[0, 1]` sin propagar `NaN`/`±Infinity` al score
- * final.
+ * Centralised here (a00012 S2) so no scanner has to apply
+ * `Math.min(…, 1)` by hand, and so evidence can carry weights outside
+ * `[0, 1]` without propagating `NaN`/`±Infinity` to the final score.
  */
 export function clampScore(value: number): number {
   if (Number.isNaN(value)) return 0;
@@ -52,7 +51,7 @@ export function clampScore(value: number): number {
   return value;
 }
 
-/** Construye un resultado con una o varias señales. */
+/** Builds a result with one or more signals. */
 export function withEvidence(
   score: number,
   evidence: ReadonlyArray<IProjectDetectionEvidence>,

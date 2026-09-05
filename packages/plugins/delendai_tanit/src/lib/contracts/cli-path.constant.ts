@@ -1,38 +1,39 @@
 /**
- * Dónde vive el CLI que este plugin ejecuta.
+ * Where the CLI this plugin executes lives.
  *
- * El plugin no importa el CLI: lo **spawnea**, así que lo único que
- * comparten es una ruta escrita a mano. Y una ruta escrita a mano se
- * queda vieja sin decir nada.
+ * The plugin does NOT import the CLI: it **spawns** it, so the only
+ * thing they share is a hand-written path. And a hand-written path
+ * goes stale without anyone noticing.
  *
- * Pasó: al reorganizar en `packages/`, el CLI se movió de
- * `scripts/` a `packages/cli/`, y esta cadena se quedó en tres sitios
- * (los dos tools y `delendai.config.json`) apuntando a un fichero
- * inexistente. Nada falló en los gates —
- * `runBunScript` devuelve `ok: false` con "module not found", y eso solo
- * se ve ejecutando el tool de verdad contra el host. O sea: los dos
- * tools que escriben artefactos llevaban commits rotos y los tests
- * seguían verdes, porque ninguno llegaba a spawnear nada.
+ * What happened: when we reorganised into `packages/`, the CLI moved
+ * from `scripts/` to `packages/cli/`, and this string was left behind
+ * in three places (the two tools and `delendai.config.json`) pointing
+ * to a non-existent file. Nothing failed the gates —
+ * `runBunScript` returns `ok: false` with "module not found", and that
+ * only shows up when actually running the tool against the host. In
+ * other words: the two tools that write artefacts were shipping broken
+ * commits and the tests stayed green because none of them ever
+ * actually spawned anything.
  *
- * Ahora la ruta está una vez y `cli-path.constant.spec.ts` comprueba que
- * el fichero existe. Mover el CLI otra vez rompe un gate en vez de
- * romper a quien use el plugin.
+ * Now the path lives in one place and `cli-path.constant.spec.ts`
+ * verifies the file exists. Moving the CLI again breaks a gate instead
+ * of breaking whoever uses the plugin.
  */
 
 /**
- * Ruta del entrypoint del CLI, relativa a la raíz del workspace.
+ * Path to the CLI entrypoint, relative to the workspace root.
  *
- * Separadores `/` a propósito: se compone con `${workspaceRoot}/…` y
- * tanto Bun como Node los aceptan también en Windows.
+ * `/` separators on purpose: it composes with `${workspaceRoot}/…` and
+ * both Bun and Node accept them on Windows too.
  */
 export const CLI_SCRIPT_RELATIVE = "packages/cli/cli.script.ts" as const;
 
 /**
- * El entrypoint del CLI para un workspace concreto.
+ * The CLI entrypoint for a given workspace.
  *
- * `override` es la opción `cliScript` de `delendai.config.json`: quien
- * tenga el paquete instalado en otro sitio puede decirlo. Sin ella, se
- * asume que el workspace ES el repositorio de Tanit.
+ * `override` is the `cliScript` option from `delendai.config.json`:
+ * whoever installed the package elsewhere can say so. Without it, the
+ * workspace is assumed to BE the Tanit repository.
  */
 export function resolveCliScript(
   workspaceRoot: string,

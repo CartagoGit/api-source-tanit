@@ -1,20 +1,20 @@
 /**
- * El tool `scan`: qué ve el discovery antes de generar nada.
+ * The `scan` tool: what discovery sees before generating anything.
  *
- * Es la respuesta a «¿por qué no encuentra mis rutas?», que hasta ahora
- * un agente solo podía contestar generando la colección entera y
- * deduciéndolo del resultado.
+ * It is the answer to "why does it not find my routes?", which
+ * until now an agent could only answer by generating the whole
+ * collection and inferring it from the result.
  *
- * Dos cosas se comprueban aquí que ningún otro test cubre:
+ * Two things are checked here that no other test covers:
  *
- *   · Que **no reconocer nada es un resultado**, no un fallo. Devolverlo
- *     como error de herramienta haría que el agente reintentara en vez
- *     de leer `artifacts` vacío y entender por qué.
- *   · Que el módulo se puede **importar**. `scan.script.ts` llamaba a
- *     `process.exit(await main())` sin guard: cargarlo mataba el
- *     proceso, que en un servidor MCP de vida larga es el servidor
- *     entero cayéndose al registrar el tool. Este fichero no compilaría
- *     siquiera si eso volviera.
+ *   · That **not recognising anything is a result**, not a failure.
+ *     Returning it as a tool error would make the agent retry
+ *     instead of reading `artifacts` empty and understanding why.
+ *   · That the module can be **imported**. `scan.script.ts` called
+ *     `process.exit(await main())` with no guard: loading it
+ *     killed the process, which in a long-lived MCP server is the
+ *     whole server crashing when the tool is registered. This file
+ *     would not even compile if that came back.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -49,7 +49,7 @@ async function scan(input: Record<string, unknown>): Promise<Record<string, unkn
 }
 
 describe("un proyecto que sí se reconoce", () => {
-  test("dice qué framework, y que lo detectó", { timeout: 120_000 }, async () => {
+  test("says which framework, and that it detected it", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
     expect(out["ok"]).toBe(true);
     expect(out["detected"]).toBe(true);
@@ -57,30 +57,30 @@ describe("un proyecto que sí se reconoce", () => {
   });
 
   /**
-   * Los artefactos son el «por qué». Sin ellos, un framework mal
-   * detectado es indistinguible de uno bien detectado.
+   * The artefacts are the "why". Without them, a wrongly detected
+   * framework is indistinguishable from a correctly detected one.
    */
-  test("dice por qué artefactos lo dedujo", { timeout: 120_000 }, async () => {
+  test("says by which artefacts it inferred it", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
     const artefactos = out["artifacts"] as string[];
     expect(artefactos.length).toBeGreaterThan(0);
     expect(artefactos).toContain("package.json");
   });
 
-  test("nombra el scanner que recorre las rutas", { timeout: 120_000 }, async () => {
+  test("names the scanner that walks the routes", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
     expect(out["scanner"]).toBe("ExpressRouteScanner");
   });
 
-  test("devuelve las rutas crudas, con método y URI", { timeout: 120_000 }, async () => {
+  test("returns the raw routes, with method and URI", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
     const rutas = out["routes"] as Array<{ method: string; uri: string }>;
     expect(rutas.length).toBeGreaterThan(0);
     expect(rutas.every((r) => r.method.length > 0 && r.uri.length > 0)).toBe(true);
   });
 
-  /** La raíz resuelta, para que el agente sepa qué se miró de verdad. */
-  test("dice qué carpeta escaneó", { timeout: 120_000 }, async () => {
+  /** The resolved root, so the agent knows what was actually looked at. */
+  test("says which folder it scanned", { timeout: 120_000 }, async () => {
     const out = await scan({ projectRoot: proyecto });
     expect(out["root"]).toBe(proyecto);
   });
@@ -88,15 +88,16 @@ describe("un proyecto que sí se reconoce", () => {
 
 describe("un proyecto que no se reconoce", () => {
   /**
-   * EL test. `ok` sigue en `true` porque el escaneo se hizo; lo que dice
-   * que no hubo suerte es `detected`. Si esto devolviera `isError`, el
-   * agente reintentaría en bucle en vez de leer que no hay artefactos.
+   * THE test. `ok` stays `true` because the scan ran; what says
+   * there was no luck is `detected`. If this returned `isError`,
+   * the agent would retry in a loop instead of reading that there
+   * are no artefacts.
    */
-  test("`ok` sigue en true; lo que cambia es `detected`", { timeout: 120_000 }, async () => {
+  test("`ok` stays `true`; what changes is `detected`", { timeout: 120_000 }, async () => {
     const anonimo = join(work, "nada");
     await cp(join(RAIZ, "examples/example-express"), anonimo, { recursive: true });
     await rm(join(anonimo, "tanit"), { recursive: true, force: true });
-    // Sin manifiesto ni fuentes reconocibles no queda nada que delatar.
+    // With no manifest nor recognisable sources nothing is left to give it away.
     await rm(join(anonimo, "package.json"), { force: true });
     await rm(join(anonimo, "server.js"), { force: true });
     await writeFile(join(anonimo, "LEEME.txt"), "no soy una API\n");

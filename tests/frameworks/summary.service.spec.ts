@@ -12,7 +12,7 @@ describe("summary.service", () => {
   });
 
   describe("summarizeProject", () => {
-    test("lanza si projectRoot no existe", async () => {
+    test("throws when projectRoot does not exist", async () => {
       await expect(summarizeProject(
 "/tmp/__no_existe_zzz__",
 defaultOrchestrator(),
@@ -21,7 +21,7 @@ defaultOrchestrator(),
       );
     });
 
-    test("devuelve un resumen estructurado para un fixture Django conocido", async () => {
+    test("returns a structured summary for a known Django fixture", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/django-mini`,
         defaultOrchestrator(),
@@ -33,7 +33,7 @@ defaultOrchestrator(),
       expect(summary.configPath).toBe("<zero-config>");
     });
 
-    test("devuelve un resumen estructurado para un fixture Express", async () => {
+    test("returns a structured summary for an Express fixture", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/express-mini`,
         defaultOrchestrator(),
@@ -42,7 +42,7 @@ defaultOrchestrator(),
       expect(summary.routesInCode).toBeGreaterThan(0);
     });
 
-    test("devuelve un resumen estructurado para un fixture FastAPI", async () => {
+    test("returns a structured summary for a FastAPI fixture", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/fastapi-mini`,
         defaultOrchestrator(),
@@ -51,7 +51,7 @@ defaultOrchestrator(),
       expect(summary.routesInCode).toBeGreaterThan(0);
     });
 
-    test("devuelve un resumen estructurado para un fixture Symfony", async () => {
+    test("returns a structured summary for a Symfony fixture", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/symfony-mini`,
         defaultOrchestrator(),
@@ -60,11 +60,11 @@ defaultOrchestrator(),
       expect(summary.routesInCode).toBeGreaterThan(0);
     });
 
-    // Laravel es el unico que sigue pasando por el camino legacy, asi
-    // que es el unico caso que necesita el fallback inyectado. Sin el,
-    // `routesInCode` es 0 — que es la respuesta correcta cuando no se
-    // le ha dado ninguna estrategia de ultimo recurso.
-    test("devuelve un resumen estructurado para un fixture Laravel", async () => {
+    // Laravel is the only one still going through the legacy path, so
+    // it is the only case that needs the injected fallback. Without it,
+    // `routesInCode` is 0 — which is the correct answer when no
+    // last-resort strategy has been provided.
+    test("returns a structured summary for a Laravel fixture", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/laravel-mini`,
         defaultOrchestrator(),
@@ -74,7 +74,7 @@ defaultOrchestrator(),
       expect(summary.routesInCode).toBeGreaterThan(0);
     });
 
-    test("expone counts de bodies/queries auto-inferidos", async () => {
+    test("exposes counts of auto-inferred bodies/queries", async () => {
       const summary = await summarizeProject(
         `${REPO_ROOT}/tests/smoke-fixtures/django-mini`,
         defaultOrchestrator(),
@@ -85,7 +85,7 @@ defaultOrchestrator(),
       expect(summary.queriesAdded).toBeGreaterThanOrEqual(0);
     });
 
-    test("ruta relativa se resuelve contra process.cwd", async () => {
+    test("relative path is resolved against process.cwd", async () => {
       const summary = await summarizeProject(
 "./tests/smoke-fixtures/django-mini",
 defaultOrchestrator(),

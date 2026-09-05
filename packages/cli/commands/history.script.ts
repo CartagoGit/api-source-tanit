@@ -1,19 +1,20 @@
 #!/usr/bin/env bun
 /**
- * Script `history`.
+ * `history` script.
  *
- * Lista las últimas generaciones e inspecciones, ordenadas de más
- * reciente a más antigua. Es el reverso del `summary` y `generate` que
- * registran: sin algo que lea `history.jsonl`, ese fichero se llenaría
- * sin que nadie lo mirara nunca.
+ * Lists the most recent generations and inspections, sorted from most
+ * recent to oldest. It is the inverse of the `summary` and `generate`
+ * scripts that record entries: without something reading `history.jsonl`,
+ * that file would fill up without anyone ever looking at it.
  *
- * El formato por defecto es texto con una línea por entrada (proyecto,
- * framework, endpoints, fecha). `--json` vuelca las entradas en JSONL,
- * igual que están en disco, para encadenar con `jq` u otra herramienta.
+ * The default format is text with one line per entry (project,
+ * framework, endpoints, date). `--json` dumps the entries as JSONL,
+ * exactly as they are on disk, ready to be piped into `jq` or another
+ * tool.
  *
- * Uso:
- *   bun scripts/history.script.ts [--limit N] [--project <raíz>] [--json] [--clear]
- *   apisrc history [--limit N] [--project <raíz>] [--json] [--clear]
+ * Usage:
+ *   bun scripts/history.script.ts [--limit N] [--project <root>] [--json] [--clear]
+ *   apisrc history [--limit N] [--project <root>] [--json] [--clear]
  */
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import {
@@ -37,9 +38,9 @@ function formatEntry(entry: IHistoryEntry, anchoProyecto = 24): string {
 }
 
 /**
- * Decide el ancho de la columna de proyecto según la entrada más larga
- * del lote. Sin esto, un proyecto con nombre de 30 caracteres se sale
- * de la columna y el siguiente parece parte del nombre.
+ * Decides the project column width based on the longest entry in the
+ * batch. Without this, a project with a 30-character name overflows the
+ * column and the next entry looks like part of the name.
  */
 function anchoProyectoOptimo(entries: ReadonlyArray<IHistoryEntry>): number {
   if (entries.length === 0) return 24;
@@ -80,18 +81,17 @@ function asText(
 }
 
 /**
- * Lee y muestra el historial.
+ * Reads and shows the history.
  *
- * `argv` y `options` se inyectan para que `tests/cli/history.spec.ts`
- * pueda ejercitar el comando sin tocar el sistema: `--limit`,
- * `--project`, `--json` y `--clear` se leen aquí mismo.
+ * `argv` and `options` are injected so that `tests/cli/history.spec.ts`
+ * can exercise the command without touching the system: `--limit`,
+ * `--project`, `--json`, and `--clear` are read right here.
  *
- * La ruta del historial se calcula desde `options.historyPath` o, en
- * su defecto, `options.home`. Sin ninguna, delega en `historyPath()`
- * (que usa `process.env.HOME` por convención). Esto último es lo que
- * hace `main()` para producción; los tests pasan siempre una ruta
- * concreta para no escribir en `~/.tanit/` de quien corre la
- * suite.
+ * The history path is computed from `options.historyPath` or, failing
+ * that, `options.home`. With neither, it falls back to `historyPath()`
+ * (which uses `process.env.HOME` by convention). The latter is what
+ * `main()` does for production; tests always pass a concrete path
+ * so they do not write to whoever runs the suite's `~/.tanit/`.
  */
 export async function runHistory(
   argv: string[] = process.argv.slice(2),
@@ -153,7 +153,7 @@ export async function runHistory(
   }
 }
 
-/** La envoltura que usa el CLI: imprime la salida y devuelve el código. */
+/** The wrapper used by the CLI: prints the output and returns the code. */
 export async function main(
   argv: string[] = process.argv.slice(2),
 ): Promise<number> {

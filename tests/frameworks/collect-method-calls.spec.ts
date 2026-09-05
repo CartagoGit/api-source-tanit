@@ -1,8 +1,7 @@
 /**
- * Tests para `collectMethodCallsFromSource` (a00016 S2).
+ * Tests for `collectMethodCallsFromSource` (a00016 S2).
  *
- * Cubre los 6 estilos que `IRouteCallExpression.receiverKind`
- * distingue:
+ * Covers the 6 styles that `IRouteCallExpression.receiverKind` distinguishes:
  *
  *   - identifier (`app.get`)
  *   - this (`this.router.get`)
@@ -11,16 +10,16 @@
  *   - computed (`server["get"]`)
  *   - optional (`router?.get`)
  *
- * Tests unitarios sobre `collectMethodCallsFromSource(source, filename)`
- * — la primitiva pura. `collectMethodCalls(projectRoot)` se cubre en
- * S5 con un proyecto temporal en disco, igual que en a00015 S2.
+ * Unit tests over `collectMethodCallsFromSource(source, filename)` —
+ * the pure primitive. `collectMethodCalls(projectRoot)` is covered in
+ * S5 with a temporary project on disk, same as in a00015 S2.
  */
 import { describe, expect, test } from "vitest";
 
 import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
 
-describe("collectMethodCallsFromSource — estilos del callee", () => {
-  test("identifier: `app.get('/x')` se reconoce con receiverKind=identifier", () => {
+describe("collectMethodCallsFromSource — callee styles", () => {
+  test("identifier: `app.get('/x')` is recognized with receiverKind=identifier", () => {
     const source = `import express from "express";
 const app = express();
 app.get("/users", handler);
@@ -34,7 +33,7 @@ app.get("/users", handler);
     expect(expr?.args[0]).toEqual({ kind: "string", value: "/users" });
   });
 
-  test("this: `this.router.get('/x')` se reconoce con receiverKind=this", () => {
+  test("this: `this.router.get('/x')` is recognized with receiverKind=this", () => {
     const source = `class UsersController {
   list() {
     this.router.get("/users", () => null);
@@ -49,7 +48,7 @@ app.get("/users", handler);
     expect(expr?.method).toBe("get");
   });
 
-  test("member: `api.router.get('/x')` se reconoce con receiverKind=member", () => {
+  test("member: `api.router.get('/x')` is recognized with receiverKind=member", () => {
     const source = `api.router.get("/users", handler);
 api.router.post("/orders", handler);
 `;
@@ -61,7 +60,7 @@ api.router.post("/orders", handler);
     expect(found[1]?.receiverKind).toBe("member");
   });
 
-  test("factory: `getRouter().get('/x')` se reconoce con receiverKind=factory", () => {
+  test("factory: `getRouter().get('/x')` is recognized with receiverKind=factory", () => {
     const source = `getRouter().get("/health", () => "ok");
 `;
     const found = collectMethodCallsFromSource(source, "server.ts");
@@ -73,16 +72,16 @@ api.router.post("/orders", handler);
     expect(expr?.args[0]).toEqual({ kind: "string", value: "/health" });
   });
 
-  test("computed: `server['get']('/x')` se reconoce con receiverKind=computed", () => {
+  test("computed: `server['get']('/x')` is recognized with receiverKind=computed", () => {
     const source = `server["get"]("/users", handler);
 server["post"]("/orders", handler);
 `;
     const found = collectMethodCallsFromSource(source, "server.ts");
     expect(found).toHaveLength(2);
-    // Para string literals directos (`server["get"]`), el método YA
-    // se conoce en el parse — `method` se rellena con el valor del
-    // literal. S4 (`propagateConstants`) sólo añade valor cuando la
-    // propiedad es un identificador que resuelve a una constante
+    // For direct string literals (`server["get"]`), the method is
+    // ALREADY known at parse time — `method` is filled with the
+    // literal's value. S4 (`propagateConstants`) only adds value
+    // when the property is an identifier that resolves to a constant
     // (`const M = "get"; app[M]()`).
     expect(found[0]?.callee).toBe('server["get"]');
     expect(found[0]?.receiverKind).toBe("computed");
@@ -92,23 +91,23 @@ server["post"]("/orders", handler);
     expect(found[1]?.method).toBe("post");
   });
 
-  test("optional: `router?.get('/x')` se reconoce con receiverKind=optional", () => {
+  test("optional: `router?.get('/x')` is recognized with receiverKind=optional", () => {
     const source = `router?.get("/users", handler);
 `;
     const found = collectMethodCallsFromSource(source, "server.ts");
     expect(found).toHaveLength(1);
     const expr = found[0];
-    // El callee textual omite el `?.` porque `renderReceiver` usa
-    // `.` para imprimir. El scanner que necesite el `?.` mira
-    // `receiverKind === "optional"` y lo añade en su output.
+    // The textual callee omits the `?.` because `renderReceiver` uses
+    // `.` for printing. A scanner that needs the `?.` checks
+    // `receiverKind === "optional"` and adds it in its output.
     expect(expr?.callee).toBe("router.get");
     expect(expr?.receiverKind).toBe("optional");
     expect(expr?.method).toBe("get");
   });
 });
 
-describe("collectMethodCallsFromSource — coexistencia y rangos", () => {
-  test("mezcla de los 6 estilos en un mismo archivo se identifican todos", () => {
+describe("collectMethodCallsFromSource — coexistence and ranges", () => {
+  test("a mix of the 6 styles in the same file is fully identified", () => {
     const source = `app.get("/a", h);
 this.router.get("/b", h);
 api.router.get("/c", h);
@@ -124,7 +123,7 @@ router?.get("/f", h);
     );
   });
 
-  test("el rango apunta a los offsets correctos (start >= 0, end > start)", () => {
+  test("the range points to the correct offsets (start >= 0, end > start)", () => {
     const source = `app.get("/x", h);
 `;
     const found = collectMethodCallsFromSource(source, "server.ts");
@@ -136,7 +135,7 @@ router?.get("/f", h);
     expect(expr.range.end).toBeGreaterThan(expr.range.start);
   });
 
-  test("formas no soportadas se ignoran (CallExpression desnuda)", () => {
+  test("unsupported shapes are ignored (bare CallExpression)", () => {
     const source = `handler();
 foo(arg);
 `;
@@ -144,12 +143,13 @@ foo(arg);
     expect(found).toHaveLength(0);
   });
 
-  test("un fichero con sintaxis inválida no aborta el scan y devuelve []", () => {
+  test("a file with invalid syntax does not abort the scan and returns []", () => {
     const source = `app.get("/users", handler`;
     const found = collectMethodCallsFromSource(source, "broken.ts");
-    // Con `errorRecovery: true`, Babel devuelve un AST parcial; en
-    // este caso el `CallExpression` puede parsear y el collector
-    // emite la expresión igual. Verificamos que NO lanza.
+    // With `errorRecovery: true`, Babel returns a partial AST; in
+    // this case the `CallExpression` can still parse and the
+    // collector emits the expression anyway. We verify it does NOT
+    // throw.
     expect(Array.isArray(found)).toBe(true);
   });
 });

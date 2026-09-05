@@ -1,22 +1,22 @@
 #!/usr/bin/env bun
 /**
- * `apisrc init` — bootstrap del proyecto host.
+ * `apisrc init` — bootstraps the host project.
  *
- * Escanea un proyecto Laravel y genera automáticamente:
- *   - `examples/<proyecto>/config.constant.ts`
- *   - `examples/<proyecto>/endpoints.constant.ts` (vacío, para overrides)
+ * Scans a Laravel project and automatically generates:
+ *   - `examples/<project>/config.constant.ts`
+ *   - `examples/<project>/endpoints.constant.ts` (empty, for overrides)
  *
- * Detecta:
- *   - `composer.json` → nombre del paquete.
- *   - `routes/*.php` → prefijos usados.
+ * Detects:
+ *   - `composer.json` → package name.
+ *   - `routes/*.php` → prefixes in use.
  *   - `app/Http/Middleware/` → Sanctum/Passport/JWT.
  *   - `.env` / `.env.example` → APP_URL → baseUrl.
- *   - `app/Providers/RouteServiceProvider.php` → prefijos aplicados.
+ *   - `app/Providers/RouteServiceProvider.php` → applied prefixes.
  *
- * Uso:
+ * Usage:
  *   bun run scripts/init.script.ts
- *   bun run scripts/init.script.ts --name mi-api
- *   bun run scripts/init.script.ts --output ./examples/mi-api
+ *   bun run scripts/init.script.ts --name my-api
+ *   bun run scripts/init.script.ts --output ./examples/my-api
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { writeFileAtomic } from "../../core/helpers/atomic-write.helper.js";
@@ -29,12 +29,12 @@ import type { IProjectContext } from "../../contracts/interfaces/core/project-co
 import { BASE_PATH_ENV_VAR, DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 
 /**
- * Prepara la configuración y devuelve **qué ha escrito**.
+ * Prepares the configuration and returns **what was written**.
  *
- * `main` es la envoltura que solo devuelve el código de salida, igual
- * que en el resto de comandos. Se separa porque el tool del plugin
- * necesita las rutas: son lo que un agente tiene que enseñar para que
- * alguien vaya a editar los `// TODO`.
+ * `main` is the wrapper that only returns the exit code, as in the
+ * rest of the commands. They are split apart because the plugin tool
+ * needs the paths: they are what an agent has to show so that someone
+ * goes and edits the `// TODO`s.
  */
 export async function runInit(
   argv: string[] = process.argv.slice(2),
@@ -45,34 +45,34 @@ export async function runInit(
   const nameFlag = readFlag(argv, "--name");
   const outFlag = readFlag(argv, "--output");
 
-  // --- Detección del nombre -----------------------------------------
+  // --- Name detection -------------------------------------------------
   //
-  // Por `detectProjectNameIn`, que es lo que ya usa el modo zero-config
-  // y sabe leer los once ecosistemas: `package.json`, `go.mod`,
-  // `pom.xml`, `Cargo.toml`, `composer.json`…
+  // By `detectProjectNameIn`, which is what the zero-config mode already
+  // uses and knows how to read the eleven ecosystems: `package.json`,
+  // `go.mod`, `pom.xml`, `Cargo.toml`, `composer.json`…
   //
-  // Antes esto miraba **solo `composer.json`** —herencia de cuando la
-  // herramienta era de Laravel— y si no lo encontraba se quedaba con el
-  // nombre de la carpeta. El resultado es que el asistente **empeoraba**
-  // el proyecto: sobre `example-express`, `summary` decía
-  // `sample-express` antes de ejecutarlo y el nombre del directorio
-  // después, porque la config generada pisa la detección buena.
+  // Previously this only looked at **`composer.json`** —a leftover
+  // from when the tool was Laravel-only— and if it could not find it,
+  // it fell back to the folder name. The result was that the wizard
+  // **made the project worse**: on `example-express`, `summary` would
+  // say `sample-express` before running it and the directory name
+  // after, because the generated config overwrites the good detection.
   const projectName = nameFlag ?? (await detectProjectNameIn(root));
 
-  // --- Detección de baseUrl -----------------------------------------
+  // --- baseUrl detection ---------------------------------------------
   //
-  // El default es el origen (a00012 S4). El sufijo `/api` solo aparece
-  // cuando una de las fuentes documentadas lo aporta:
-  //   1. ruta explícita (routePrefix matcheado por un scanner),
-  //   2. framework (Laravel/Express/... → prefix del router),
-  //   3. config explícito (`delendai.config.json#basePath`,
+  // The default is the origin (a00012 S4). The `/api` suffix only
+  // appears when one of the documented sources supplies it:
+  //   1. explicit route (routePrefix matched by a scanner),
+  //   2. framework (Laravel/Express/... → router prefix),
+  //   3. explicit config (`delendai.config.json#basePath`,
   //      `.tanitrc.json#basePath`),
   //   4. OpenAPI `servers[]`,
-  //   5. variable de entorno `POSTMAN_BASE_PATH`.
+  //   5. environment variable `POSTMAN_BASE_PATH`.
   //
-  // Aquí se cubren las dos que aplican al asistente: `APP_URL` (con su
-  // sufijo tal cual) y `POSTMAN_BASE_PATH` (env). Las tres primeras
-  // corresponden a decisiones del proyecto, no del asistente.
+  // The two that apply to the wizard are covered here: `APP_URL` (with
+  // its suffix as-is) and `POSTMAN_BASE_PATH` (env). The first three
+  // correspond to project decisions, not the wizard's.
   let baseUrl: string = DEFAULT_BASE_URL;
   for (const f of [".env", ".env.example"]) {
     const p = join(root, f);
@@ -98,7 +98,7 @@ export async function runInit(
     }
   }
 
-  // --- Detección de middleware de auth -------------------------------
+  // --- Auth middleware detection -------------------------------------
   const authGuards: string[] = [];
   const middlewareDir = join(root, "app/Http/Middleware");
   if (existsSync(middlewareDir)) {
@@ -115,9 +115,10 @@ export async function runInit(
   }
   if (authGuards.length === 0) authGuards.push("token");
 
-  // --- Detección de prefijos de rutas --------------------------------
-  // Solo incluimos archivos de rutas HTTP/CLI con Route::xxx (no web.php,
-  // console.php ni channels.php, que no exponen endpoints API).
+  // --- Route prefix detection ----------------------------------------
+  // Only HTTP/CLI route files with Route::xxx are included (not
+  // web.php, console.php, or channels.php, which do not expose API
+  // endpoints).
   const filePrefixes: Record<string, string[]> = {};
   const routesDir = join(root, "routes");
   const NON_API_ROUTE_FILES = new Set([
@@ -134,7 +135,7 @@ export async function runInit(
     }
   }
 
-  // --- Genera archivos ------------------------------------------------
+  // --- Generate files ------------------------------------------------
   const dest = outFlag
     ? resolve(outFlag)
     : join(root, "resources/postman/examples", projectName);
@@ -237,10 +238,11 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
   console.log(`  · ${endpointsPath}`);
   console.log("");
   console.log("Next step:");
-  // `bun run build` es un script **de este repositorio**, no del
-  // proyecto de quien usa la herramienta: en su terminal no existe. El
-  // asistente está para quien no se sabe los flags, así que terminar
-  // con un comando que no puede ejecutar es dejarlo peor que antes.
+  // `bun run build` is a script **from this repository**, not from the
+  // project of the person using the tool: it does not exist in their
+  // terminal. The wizard exists for those who do not know the flags,
+  // so ending with a command they cannot run leaves them worse off
+  // than before.
   console.log("  apisrc generate   # build the Postman collection");
   return {
     code: 0,
@@ -254,7 +256,7 @@ export const ALL_ENDPOINTS: EndpointSpec[] = [
   };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   return (await runInit(argv)).code;
 }

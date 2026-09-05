@@ -1,9 +1,10 @@
 /**
- * Arranque del plugin (p00013).
+ * Plugin boot (p00013).
  *
- * El plugin se carga por su `path` desde `delendai.config.json`, así
- * que un fallo aquí no se ve hasta que el host MCP intenta arrancar y se
- * cae entero. Estos tests lo instancian igual que lo haría el host.
+ * The plugin is loaded by its `path` from `delendai.config.json`, so
+ * a failure here is not visible until the MCP host tries to start
+ * and crashes entirely. These tests instantiate it the same way the
+ * host would.
  */
 import { describe, expect, test } from "vitest";
 import { resolve } from "node:path";
@@ -16,7 +17,7 @@ const PACKAGE_ROOT = workspaceRoot(import.meta.url);
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
 
-/** Los 4 tools que el plugin promete, por id. */
+/** The 4 tools the plugin promises, by id. */
 const EXPECTED_TOOLS = [
   "check",
   "generate",
@@ -47,14 +48,14 @@ describe("arranque del plugin", () => {
     }
   });
 
-  // Los efectos declarados son lo que el host usa para decidir si un
-  // agente puede invocar el tool sin confirmación.
-  test("los tools que escriben o lanzan procesos lo declaran", async () => {
+  // The declared effects are what the host uses to decide whether
+  // an agent can invoke the tool without confirmation.
+  test("tools that write or spawn processes declare it", async () => {
     const tools = await registeredTools(plugin, makeCtx());
     const byId = new Map(tools.map((tool) => [tool.id, tool]));
     expect(byId.get("generate")?.effects).toContain("write");
     expect(byId.get("test")?.effects).toContain("spawn");
-    // `summary` solo inspecciona: no debe declarar efectos.
+    // `summary` only inspects: it must not declare effects.
     expect(byId.get("summary")?.effects ?? []).toEqual([]);
   });
 
@@ -73,10 +74,10 @@ describe("arranque del plugin", () => {
       defaultProjectRoot: "/tmp/proyecto",
       cliScript: "/tmp/cli.ts",
     });
-    // La cifra sale de `EXPECTED_TOOLS`, no escrita a mano: el `6`
-    // literal que había aquí se quedó viejo al añadir `stats` y `scan`,
-    // igual que la lista de tools del docblock del plugin decía tres
-    // cuando ya había seis.
+    // The figure comes from `EXPECTED_TOOLS`, not written by hand:
+    // the literal `6` here went stale when `stats` and `scan` were
+    // added, same as the plugin docblock's tools list said three
+    // when there were already six.
     expect(await registeredTools(plugin, ctx)).toHaveLength(EXPECTED_TOOLS.length);
   });
 

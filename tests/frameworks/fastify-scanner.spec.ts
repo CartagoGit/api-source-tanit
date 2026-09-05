@@ -1,14 +1,14 @@
 /**
- * Scanner de Fastify.
+ * Fastify scanner.
  *
- * Fastify es el caso mejor de todos los de Node: lleva el esquema
- * **dentro** de la declaración de la ruta, y es JSON Schema, así que da
- * tipos exactos en vez de inferidos. Eso hay que aprovecharlo, y estos
- * tests fijan que se aproveche.
+ * Fastify is the best Node case of them all: it carries the schema
+ * **inside** the route declaration, and it is JSON Schema, so it
+ * gives exact types instead of inferred ones. That must be taken
+ * advantage of, and these tests pin down that it is.
  *
- * Antes de existir este scanner, un proyecto Fastify lo recogía el de
- * Express, que lo reconocía por parecido de sintaxis y se perdía los
- * esquemas enteros.
+ * Before this scanner existed, a Fastify project was picked up by
+ * the Express one, which recognized it by syntax similarity and
+ * dropped the schemas entirely.
  */
 import { describe, expect, test } from "vitest";
 
@@ -43,7 +43,7 @@ describeScannerContract({
 
 const FIXTURE = comprehensiveFixtureDir("fastify");
 
-/** Escanea el fixture completo con una instancia limpia. */
+/** Scans the full fixture with a fresh instance. */
 async function scanFixture() {
   const detector = new FastifyProjectScanner();
   const match = await detector.resolve(FIXTURE);
@@ -52,52 +52,52 @@ async function scanFixture() {
   return { match, scanner, result, routes: result.routes };
 }
 
-describe("detección", () => {
-  test("un proyecto con `fastify` puntúa 1", async () => {
+describe("detection", () => {
+  test("a project with `fastify` scores 1", async () => {
     expect((await new FastifyProjectScanner().detect(FIXTURE)).score).toBe(1);
   });
 
-  test("un proyecto sin fastify no puntúa", async () => {
+  test("a project without fastify scores 0", async () => {
     expect(
       (await new FastifyProjectScanner().detect(comprehensiveFixtureDir("django"))).score,
     ).toBe(0);
   });
 });
 
-describe("las tres formas de declarar una ruta", () => {
-  test("la corta: app.get('/x')", async () => {
+describe("the three ways of declaring a route", () => {
+  test("the short one: app.get('/x')", async () => {
     const { routes } = await scanFixture();
     expect(routes.some((r) => r.method === "GET" && r.uri === "/api/health")).toBe(true);
   });
 
-  test("la larga: app.route({ method, url })", async () => {
+  test("the long one: app.route({ method, url })", async () => {
     const { routes } = await scanFixture();
     expect(routes.some((r) => r.method === "POST" && r.uri === "/api/auth/login")).toBe(
       true,
     );
   });
 
-  // `method: ["GET", "HEAD"]` es una sola declaración y dos endpoints.
-  test("la larga con varios métodos da un endpoint por método", async () => {
+  // `method: ["GET", "HEAD"]` is a single declaration and two endpoints.
+  test("the long one with several methods yields one endpoint per method", async () => {
     const { routes } = await scanFixture();
     const status = routes.filter((r) => r.uri === "/api/status");
     expect(status.map((r) => r.method).sort()).toEqual(["GET", "HEAD"]);
   });
 
-  test("el prefijo del `register` se aplica a todas", async () => {
+  test("the `register` prefix is applied to all of them", async () => {
     const { routes } = await scanFixture();
     expect(routes.every((r) => r.uri.startsWith("/api/"))).toBe(true);
   });
 
-  test("no se repite ninguna ruta", async () => {
+  test("no route is repeated", async () => {
     const { routes } = await scanFixture();
     const keys = routes.map((r) => `${r.method} ${r.uri}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 });
 
-describe("esquemas JSON Schema de la propia ruta", () => {
-  test("el provider resuelve la ruta que declara body", async () => {
+describe("JSON Schemas from the route itself", () => {
+  test("the provider resolves the route that declares body", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new FastifySchemaProvider();
     const post = routes.find((r) => r.method === "POST" && r.uri === "/api/users")!;
@@ -111,7 +111,7 @@ describe("esquemas JSON Schema de la propia ruta", () => {
     expect(byName.get("role")?.enumValues).toEqual(["admin", "user", "guest"]);
   });
 
-  test("el provider resuelve el schema de app.route", async () => {
+  test("the provider resolves the schema from app.route", async () => {
     const project = await createTempProject({
       "package.json": '{"name":"mini","dependencies":{"fastify":"^4.26.0"}}',
       "server.js": [
@@ -135,7 +135,7 @@ describe("esquemas JSON Schema de la propia ruta", () => {
     }
   });
 
-  test("una ruta sin esquema no lo finge", async () => {
+  test("a route without a schema does not fake one", async () => {
     const { match, result, routes } = await scanFixture();
     const provider = new FastifySchemaProvider();
     const health = routes.find((r) => r.uri === "/api/health")!;
@@ -144,7 +144,7 @@ describe("esquemas JSON Schema de la propia ruta", () => {
 });
 
 describe("parseFastifySchema", () => {
-  test("distingue body, querystring, params y headers", () => {
+  test("distinguishes body, querystring, params and headers", () => {
     const fields = parseFastifySchema(`{
       body: { type: "object", required: ["a"], properties: { a: { type: "string" } } },
       querystring: { type: "object", properties: { page: { type: "integer" } } },
@@ -158,7 +158,7 @@ describe("parseFastifySchema", () => {
     expect(byName.get("x-token")).toBe("header");
   });
 
-  test("`required` marca solo lo que está en la lista", () => {
+  test("`required` only flags what is in the list", () => {
     const fields = parseFastifySchema(`{
       body: { required: ["obligatorio"], properties: {
         obligatorio: { type: "string" }, opcional: { type: "string" }
@@ -169,13 +169,13 @@ describe("parseFastifySchema", () => {
     expect(byName.get("opcional")).toBe(false);
   });
 
-  test("un esquema vacío no inventa campos", () => {
+  test("an empty schema does not invent fields", () => {
     expect(parseFastifySchema("{}")).toEqual([]);
   });
 
-  // Un objeto anidado tiene sus propias llaves: si el recorrido no las
-  // equilibra, se come el campo siguiente.
-  test("un objeto anidado no se lleva por delante al siguiente campo", () => {
+  // A nested object has its own braces: if traversal does not
+  // balance them, it eats the next field.
+  test("a nested object does not sweep the next field with it", () => {
     const fields = parseFastifySchema(`{
       body: { properties: {
         direccion: { type: "object", properties: { calle: { type: "string" } } },
@@ -187,17 +187,17 @@ describe("parseFastifySchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S4 — lockfiles como bonus de scoring en detect().
+// f00011 S4 — lockfiles as scoring bonuses in detect().
 // ---------------------------------------------------------------------------
 
 describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
-  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
-  // +0.15 (bun). El detector de Fastify suele estar al tope (1.0 con
-  // `fastify` directo), así que el bonus aparece en `evidence`
-  // aunque no cambie el score visible — exactamente lo que se busca
-  // con esta propuesta: trazabilidad, no detección.
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+  // f00011 S4: `pnpm-lock.yaml` and `bun.lockb` sharpen the
+  // detector's confidence without being detection. Small weights:
+  // +0.1 (pnpm), +0.15 (bun). The Fastify detector usually sits at
+  // the cap (1.0 with `fastify` directly), so the bonus shows up in
+  // `evidence` even though it does not change the visible score —
+  // exactly what this proposal aims for: traceability, not detection.
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -212,7 +212,7 @@ describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
       "bun.lockb": "",
@@ -227,7 +227,7 @@ describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -242,7 +242,7 @@ describe("Fastify — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("without lockfiles no lockfile signal appears", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { fastify: "^4.0.0" } }),
     });

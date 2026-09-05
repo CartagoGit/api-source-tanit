@@ -1,61 +1,62 @@
 /**
- * El catálogo y el registro dicen lo mismo.
+ * The catalog and the registry say the same thing.
  *
- * `FRAMEWORK_IDS` vive en contratos y es una lista literal; el registro
- * de scanners es quien la cumple. Esa dirección es deliberada: derivar
- * la lista del registro obligaba a importar los veintiún scanners —con
- * sus parsers de PHP, Go, Java, Python y Rust— para leer veintiún
- * strings. El plugin MCP lo hacía solo para declarar un `z.enum`.
+ * `FRAMEWORK_IDS` lives in contracts and is a literal list; the
+ * scanner registry is the one that fulfils it. That direction is
+ * deliberate: deriving the list from the registry forced importing
+ * the twenty-one scanners —with their PHP, Go, Java, Python and Rust
+ * parsers— just to read twenty-one strings. The MCP plugin did that
+ * solely to declare a `z.enum`.
  *
- * El precio de invertirlo es tener dos listas, y este repositorio ya
- * sabe cómo acaba eso: `NON_LARAVEL_FRAMEWORKS` enumeraba once de doce
- * frameworks, Laravel no estaba, y `summary` se iba por un camino
- * distinto contando rutas declaradas en vez de endpoints. Decía 7 donde
- * el pipeline encuentra 17.
+ * The price of inverting it is having two lists, and this repository
+ * already knows how that ends: `NON_LARAVEL_FRAMEWORKS` enumerated
+ * eleven of twelve frameworks, Laravel was missing, and `summary`
+ * went down a different path counting declared routes instead of
+ * endpoints. It said 7 where the pipeline finds 17.
  *
- * Lo que hacía peligrosa aquella lista no era existir: era que **nadie
- * la comparaba**. Este fichero es esa comparación.
+ * What made that list dangerous was not its existence: it was that
+ * **nobody compared them**. This file is that comparison.
  */
 import { describe, expect, test } from "vitest";
 
 import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
 import { registeredFrameworkIds } from "../../packages/frameworks/framework.registry";
 
-describe("el catálogo y el registro", () => {
-  /** EL test: ni sobra ni falta ninguno, en ninguno de los dos lados. */
-  test("declaran exactamente los mismos frameworks", () => {
+describe("catalog and registry", () => {
+  /** THE test: none missing and none extra, on either side. */
+  test("declare exactly the same frameworks", () => {
     const catalogo = [...FRAMEWORK_IDS].sort();
     const registrados = [...registeredFrameworkIds()].sort();
 
-    expect(registrados, "el registro tiene alguno que el catálogo no declara").toEqual(
+    expect(registrados, "the registry has one the catalog does not declare").toEqual(
       catalogo,
     );
   });
 
-  test("el catálogo no repite ninguno", () => {
+  test("the catalog has no duplicates", () => {
     expect(new Set(FRAMEWORK_IDS).size).toBe(FRAMEWORK_IDS.length);
   });
 
-  test("el registro tampoco: dos detectores con el mismo id se pisan", () => {
+  test("neither does the registry: two detectors with the same id would clash", () => {
     const ids = registeredFrameworkIds();
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   /**
-   * El orden alfabético no es estético: hace que añadir un framework sea
-   * una línea de diff en vez de un bloque reordenado, y que revisarlo
-   * sea leer una línea.
+   * Alphabetical order is not aesthetic: it makes adding a framework a
+   * one-line diff instead of a reordered block, and reviewing it is
+   * reading a single line.
    */
-  test("el catálogo va en orden alfabético", () => {
+  test("the catalog is in alphabetical order", () => {
     expect([...FRAMEWORK_IDS]).toEqual([...FRAMEWORK_IDS].sort());
   });
 
   /**
-   * Leer el catálogo no puede costar cargar los scanners. Es la razón de
-   * ser de todo esto, así que se comprueba sobre el texto del fichero:
-   * si alguien le añade un import a `frameworks/`, esto lo dice.
+   * Reading the catalog cannot cost loading the scanners. That is the
+   * whole reason for this, so it is asserted on the file text: if
+   * someone adds an import to `frameworks/`, this catches it.
    */
-  test("el catálogo no importa nada", async () => {
+  test("the catalog imports nothing", async () => {
     const { readFile } = await import("node:fs/promises");
     const { fileURLToPath } = await import("node:url");
     const { dirname, join } = await import("node:path");

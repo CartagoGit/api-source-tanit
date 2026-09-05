@@ -1,12 +1,12 @@
 /**
- * E2E test exhaustivo para el scanner Flask.
+ * Comprehensive E2E test for the Flask scanner.
  *
- * Cubre:
- * - `@app.route("/path", methods=[...])` en app/routes.py.
- * - Blueprints con `url_prefix="/api/users"` + `@<name>_bp.route(...)`.
- * - Múltiples métodos HTTP por endpoint.
+ * Covers:
+ * - `@app.route("/path", methods=[...])` in app/routes.py.
+ * - Blueprints with `url_prefix="/api/users"` + `@<name>_bp.route(...)`.
+ * - Multiple HTTP methods per endpoint.
  * - Path params `<int:id>` → `{{id}}`.
- * - Carpetas agrupadas por blueprint.
+ * - Folders grouped by blueprint.
  */
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
@@ -27,23 +27,23 @@ describeCollectionContract({
 });
 
 describe("Flask — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("flask-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(13);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("flask-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
     // Health
     expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
@@ -65,35 +65,35 @@ describe("Flask — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
   });
 
-  test("los blueprints tienen el prefix url_prefix", async () => {
+  test("blueprints have the url_prefix", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
-    // Si el scanner no aplica url_prefix, los endpoints serían `/users` en
-    // lugar de `/api/users`.
+    // If the scanner does not apply url_prefix, the endpoints would be
+    // `/users` instead of `/api/users`.
     const allEps = allRequests(collection);
     for (const ep of allEps) {
       const raw = ep.request?.url?.raw ?? "";
       if (raw.includes("/api/users") || raw.includes("/api/orders") || raw.includes("/api/auth")) {
-        // OK, tiene prefix
+        // OK, has prefix
       }
     }
-    // Ningún endpoint de users debe estar sin el prefix `/api/`.
+    // No users endpoint may be missing the `/api/` prefix.
     for (const ep of allEps) {
       const raw = ep.request?.url?.raw ?? "";
-      // Si el path es solo `/users` o `/users/...` sin `/api`, falla.
+      // If the path is just `/users` or `/users/...` without `/api`, fail.
       if (/users/.test(raw) && !raw.includes("/api/users")) {
-        expect.fail(`Endpoint sin prefix /api/: ${raw}`);
+        expect.fail(`Endpoint without /api/ prefix: ${raw}`);
       }
     }
   });
 
-  test("las rutas están agrupadas por blueprint (carpetas)", async () => {
+  test("routes are grouped by blueprint (folders)", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
     const folderNames = topFolderNames(collection);
-    // Debe haber al menos una carpeta de cada blueprint.
+    // There should be at least one folder per blueprint.
     expect(folderNames.length).toBeGreaterThanOrEqual(3);
   });
 
-  test("path params Flask <int:id> se convierten a {{id}}", async () => {
+  test("Flask <int:id> path params convert to {{id}}", async () => {
     const { collection } = await runGenerate("flask-comprehensive");
     const allEps = findEndpoint(collection, "GET", "/api/users/{{id}}");
     expect(allEps).not.toBeNull();

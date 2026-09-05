@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
- * `apisrc push` — sube la colección directamente a Postman.
+ * `apisrc push` — uploads the collection directly to Postman.
  *
- * Evita el paso manual de Import: genera y publica en el workspace del
- * usuario mediante la API pública de Postman. Como el `_postman_id` es
- * determinista por proyecto, ejecutarlo dos veces **actualiza** la
- * colección en lugar de duplicarla.
+ * Skips the manual Import step: it generates and publishes to the
+ * user's workspace via the public Postman API. Since `_postman_id` is
+ * deterministic per project, running it twice **updates** the
+ * collection instead of duplicating it.
  *
- * La API key se saca de `--api-key` o de `POSTMAN_API_KEY`, y nunca se
- * imprime ni se escribe en disco.
+ * The API key is read from `--api-key` or `POSTMAN_API_KEY`, and is
+ * never printed or written to disk.
  */
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
@@ -22,7 +22,7 @@ import type {
 } from "../../contracts/interfaces/cli/push-outcome.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 
-/** Lo que se devuelve cuando no se ha llegado a subir nada. */
+/** What is returned when nothing has been uploaded yet. */
 function sinSubir(code: number, error: IPushFailure | null): IPushOutcome {
   return {
     code,
@@ -36,14 +36,15 @@ function sinSubir(code: number, error: IPushFailure | null): IPushOutcome {
 }
 
 /**
- * Sube la colección y devuelve **lo que ha pasado**, imprimiéndolo por
- * el camino.
+ * Uploads the collection and returns **what happened**, printing it
+ * along the way.
  *
- * `main` es la envoltura que solo devuelve el código de salida, igual
- * que en `generate`, `check` y `list`. Se separa porque el tool del
- * plugin necesita los datos: parsear estas líneas con expresiones
- * regulares se rompe a la primera traducción — ya pasó, y el tool
- * `generate` devolvía `ok: true` con `collectionPath: "<no detectado>"`.
+ * `main` is the wrapper that only returns the exit code, as in
+ * `generate`, `check`, and `list`. They are split apart because the
+ * plugin tool needs the data: parsing these lines with regular
+ * expressions breaks at the first translation — it has already
+ * happened, and the `generate` tool returned `ok: true` with
+ * `collectionPath: "<not detected>"`.
  */
 export async function runPush(
   argv: string[] = process.argv.slice(2),
@@ -67,8 +68,8 @@ export async function runPush(
   const withEnvironments = !argv.includes("--no-environments");
   const options = { apiKey, workspaceId };
 
-  // `push` **no leía `--project-root`**: usaba solo el singleton, así
-  // que pasarle el flag no hacía nada. Ahora resuelve como los demás.
+  // `push` **did not read `--project-root`**: it only used the singleton,
+  // so passing the flag did nothing. It now resolves like the rest.
   const root = (context ?? resolveProjectContext({ argv })).projectRoot;
 
   let usuario: string;
@@ -82,14 +83,14 @@ export async function runPush(
 
   console.log("→ Scanning the project…");
   const basename = readFlag(argv, "--basename");
-  // `--framework <id>` se salta la detección, igual que en `generate`.
-  // Sin esto, quien necesita forzarlo podía generar los ficheros pero no
-  // subirlos: el mismo proyecto funcionaba con un comando y no con el
-  // otro, sin ninguna razón que se pudiera explicar.
+  // `--framework <id>` skips detection, same as in `generate`. Without
+  // this, anyone who needs to force it could generate the files but
+  // not upload them: the same project worked with one command and not
+  // the other, for no explainable reason.
   const forceFramework = readFlag(argv, "--framework");
-  // `--framework-search-root` se pasa tal cual al pipeline. La validación
-  // de la ruta (sin `/` inicial, sin `..`) vive en `generation.pipeline.ts`;
-  // aquí solo se lee.
+  // `--framework-search-root` is passed as-is to the pipeline. Path
+  // validation (no leading `/`, no `..`) lives in
+  // `generation.pipeline.ts`; here it is only read.
   const frameworkSearchRoot = readFlag(argv, "--framework-search-root");
   const result = await generateWithAllFrameworks(root, {
     ...(basename ? { collectionName: basename } : {}),
@@ -166,7 +167,7 @@ export async function runPush(
   };
 }
 
-/** La envoltura que usa el CLI: solo el código de salida. */
+/** The wrapper used by the CLI: only the exit code. */
 export async function main(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
@@ -183,18 +184,20 @@ function countRequests(items: ReadonlyArray<IItem>): number {
 }
 
 /**
- * Traduce un fallo de la API a algo que se puede devolver a un agente.
+ * Translates an API failure into something that can be returned to an
+ * agent.
  *
- * **Aquí es donde se decide qué NO sale.** `PostmanApiError.detail` es
- * el cuerpo que devuelve Postman, y eso es texto de un tercero: puede
- * traer la petición que lo causó, y con ella la cabecera `X-Api-Key`.
- * `push` es el único comando que maneja un secreto y el que un agente
- * va a invocar por su cuenta, así que lo que devuelva acaba en un
- * historial de conversación o en un log del host.
+ * **This is where it is decided what does NOT go out.** `PostmanApiError.detail`
+ * is the body returned by Postman, which is third-party text: it can
+ * carry the request that caused it, and with it the `X-Api-Key`
+ * header. `push` is the only command that handles a secret and the
+ * one an agent will invoke on its own, so whatever it returns ends up
+ * in a conversation history or in a host log.
  *
- * Por eso el `detail` **no viaja**: se queda en la traza que ve la
- * persona, y al agente le va un motivo redactado con su salida. Un
- * secreto que se filtra por un mensaje de error no se puede retirar.
+ * That is why `detail` **does not travel**: it stays in the trace the
+ * human sees, and the agent receives a reason redacted to fit its
+ * output. A secret leaked through an error message cannot be
+ * retrieved.
  */
 function falloDeApi(err: unknown): IPushFailure {
   if (err instanceof PostmanApiError) {

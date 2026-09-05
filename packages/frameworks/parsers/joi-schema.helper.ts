@@ -1,8 +1,8 @@
 /**
- * Parser de schemas Joi → `IValidationSpec`.
+ * Joi schema parser → `IValidationSpec`.
  *
- * Joi es la segunda librería de validación más habitual en proyectos
- * Express/Hapi/Koa, y aparece siempre con la misma forma:
+ * Joi is the second most common validation library in Express/Hapi/Koa
+ * projects, and always appears in the same shape:
  *
  *   const schema = Joi.object({
  *     email: Joi.string().email().required(),
@@ -10,21 +10,21 @@
  *     role:  Joi.string().valid("admin", "user"),
  *   });
  *
- * Igual que el parser de zod, el análisis es textual y best-effort: no
- * se ejecuta el código del proyecto escaneado. Los campos que no encajan
- * en la heurística se ignoran en lugar de abortar el escaneo.
+ * Like the zod parser, the analysis is textual and best-effort: the
+ * scanned project's code is not executed. Fields that don't fit the
+ * heuristic are skipped instead of aborting the scan.
  *
- * Nota sobre `required`: Joi es opcional-por-defecto y marca lo
- * obligatorio con `.required()`. Mantenemos la semántica histórica del
- * scanner (obligatorio salvo `.optional()` explícito) porque en la
- * práctica los schemas de request declaran `.required()` en casi todo y
- * un body de ejemplo incompleto es peor que uno con campos de más.
+ * Note on `required`: Joi is optional-by-default and marks things as
+ * mandatory with `.required()`. We keep the scanner's historical
+ * semantics (required unless explicitly `.optional()`) because in
+ * practice request schemas declare `.required()` on almost everything,
+ * and an incomplete example body is worse than one with extra fields.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { splitTopLevel, unwrapObjectLiteralItem } from "../../core/helpers/source-scan.helper.js";
 import type { IJoiField } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** `Joi.<method>()` → tipo lógico del contrato. */
+/** `Joi.<method>()` → logical type of the contract. */
 const JOI_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   string: "string",
   number: "number",
@@ -40,7 +40,7 @@ const JOI_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   any: "any",
 };
 
-/** Métodos y chainings de Joi que expresan un formato semántico. */
+/** Joi methods and chainings that express a semantic format. */
 const JOI_FORMAT_MAP: Record<string, string> = {
   email: "email",
   uri: "url",
@@ -51,9 +51,9 @@ const JOI_FORMAT_MAP: Record<string, string> = {
 const JOI_FIELD_RE = /^([a-zA-Z_$][\w$]*)\s*:\s*Joi\s*\.\s*(\w+)\s*\(([^)]*)\)(.*)$/s;
 
 /**
- * Parsea el interior de un `Joi.object({ ... })` y devuelve sus campos.
+ * Parses the inside of a `Joi.object({ ... })` and returns its fields.
  *
- * `body` es el texto entre los paréntesis de la llamada, llaves incluidas.
+ * `body` is the text between the call's parentheses, braces included.
  */
 export function parseJoiObjectLiteral(body: string): IJoiField[] {
   const out: IJoiField[] = [];
@@ -66,7 +66,7 @@ export function parseJoiObjectLiteral(body: string): IJoiField[] {
   return out;
 }
 
-/** Parsea un item `name: Joi.string().email().required()`. */
+/** Parses an item `name: Joi.string().email().required()`. */
 export function parseJoiFieldExpression(item: string): IJoiField | null {
   const m = JOI_FIELD_RE.exec(item);
   const name = m?.[1];
@@ -75,8 +75,8 @@ export function parseJoiFieldExpression(item: string): IJoiField | null {
 
   const chain = m[4] ?? "";
 
-  // El formato puede venir del método base (`Joi.email()`) o de un
-  // chaining posterior (`Joi.string().email()`).
+  // The format can come from the base method (`Joi.email()`) or from a
+  // later chaining (`Joi.string().email()`).
   let format = JOI_FORMAT_MAP[method];
   for (const [chainMethod, mapped] of Object.entries(JOI_FORMAT_MAP)) {
     if (new RegExp(`\\.\\s*${chainMethod}\\s*\\(`).test(chain)) format = mapped;
@@ -97,7 +97,7 @@ export function parseJoiFieldExpression(item: string): IJoiField | null {
   };
 }
 
-/** Convierte un `IJoiField` en el spec agnóstico del contrato. */
+/** Converts an `IJoiField` into the contract's agnostic spec. */
 export function joiFieldToSpec(
   field: IJoiField,
   location: IValidationSpec["location"] = "body",

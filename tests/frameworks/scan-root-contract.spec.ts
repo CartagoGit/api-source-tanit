@@ -1,29 +1,29 @@
 /**
- * Contrato de `effectiveScanRoot` / `safeScanRoot` — a00012 S1.b.
+ * Contract of `effectiveScanRoot` / `safeScanRoot` — a00012 S1.b.
  *
- * El helper centraliza lo que Hono, NestJS y Next.js ya hacían inline:
- * resolver la raíz efectiva de escaneo a partir de
- * `match.frameworkSearchRoot`, y devolver `match.projectRoot` cuando
- * ese campo está ausente. La diferencia con los inline es la guarda
- * de contención: un `frameworkSearchRoot` con `..` no debe poder
- * sacar al scanner del `projectRoot`.
+ * The helper centralizes what Hono, NestJS and Next.js were already
+ * doing inline: resolve the effective scan root from
+ * `match.frameworkSearchRoot`, and return `match.projectRoot` when
+ * that field is absent. The difference versus the inline versions is
+ * the containment guard: a `frameworkSearchRoot` with `..` must not be
+ * able to take the scanner outside of `projectRoot`.
  *
- * Los cuatro casos cubren el contrato entero:
+ * The four cases cover the full contract:
  *
- *   1. Ausente (null/undefined/cadena vacía) → `projectRoot`.
- *   2. Relativo dentro del raíz → unión resuelta.
- *   3. Escape (`..` que sale de la raíz) → `Error` con contexto.
+ *   1. Absent (null/undefined/empty string) → `projectRoot`.
+ *   2. Relative inside the root → resolved join.
+ *   3. Escape (`..` that leaves the root) → `Error` with context.
  *
- * El cuarto caso (cadena vacía) no estaba en la propuesta original,
- * pero es una de las tres formas que el helper trata como "ausente":
- * un caller que reciba un valor vacío del CLI no debe acabar con una
- * resolución a `projectRoot + ""` (= `projectRoot`), que es lo
- * correcto, pero también es la única diferencia observable entre
- * `""` y `undefined`, y conviene fijarla.
+ * The fourth case (empty string) was not in the original proposal,
+ * but it is one of the three forms the helper treats as "absent": a
+ * caller that receives an empty value from the CLI must not end up
+ * with a resolution to `projectRoot + ""` (= `projectRoot`), which
+ * is the correct behavior, but it is also the only observable
+ * difference between `""` and `undefined`, and worth pinning down.
  *
- * `tsconfig.base.json` tiene `allowImportingTsExtensions: false`, por
- * lo que el import va sin la extensión `.ts` (mismo patrón que el
- * resto de `tests/frameworks/*.spec.ts`).
+ * `tsconfig.base.json` has `allowImportingTsExtensions: false`, so
+ * the import goes without the `.ts` extension (same pattern as the
+ * rest of `tests/frameworks/*.spec.ts`).
  */
 import { describe, expect, test } from "vitest";
 
@@ -37,20 +37,20 @@ function matchWith(
   projectRoot = "/tmp/mono",
   framework = "fastify",
 ): Parameters<typeof effectiveScanRoot>[0] {
-  // El helper sólo lee `projectRoot`, `frameworkSearchRoot` y
-  // `framework` del match. Construir un objeto ad-hoc mantiene el
-  // test libre de la forma completa de `IProjectMatch`, que no
-  // aporta nada al contrato que se prueba aquí.
+  // The helper only reads `projectRoot`, `frameworkSearchRoot` and
+  // `framework` from the match. Building an ad-hoc object keeps the
+  // test free of the full `IProjectMatch` shape, which adds nothing
+  // to the contract being tested here.
   const match = {
     framework,
     projectRoot,
     artifacts: [] as ReadonlyArray<string>,
   };
-  // `IProjectMatch.frameworkSearchRoot` está tipado como
-  // `string | undefined` (no `null`); el helper sí trata `null` como
-  // ausente por simetría con los call sites reales (CLI / plugin),
-  // pero el contrato del tipo no incluye `null`. Normalizamos aquí
-  // para que el test hable el mismo idioma que la interfaz.
+  // `IProjectMatch.frameworkSearchRoot` is typed as `string | undefined`
+  // (not `null`); the helper does treat `null` as absent for symmetry
+  // with the real call sites (CLI / plugin), but the type contract does
+  // not include `null`. We normalize here so the test speaks the same
+  // language as the interface.
   if (frameworkSearchRoot === undefined || frameworkSearchRoot === null) {
     return match;
   }
@@ -58,7 +58,7 @@ function matchWith(
 }
 
 describe("effectiveScanRoot", () => {
-  test("frameworkSearchRoot ausente → projectRoot (sin tocar)", () => {
+  test("absent frameworkSearchRoot → projectRoot (untouched)", () => {
     const projectRoot = "/tmp/mono";
     expect(effectiveScanRoot(matchWith(undefined, projectRoot))).toBe(
       projectRoot,
@@ -70,12 +70,12 @@ describe("effectiveScanRoot", () => {
     expect(effectiveScanRoot(matchWith("apps/api"))).toBe("/tmp/mono/apps/api");
   });
 
-  test("frameworkSearchRoot = '' → projectRoot (cadena vacía ≡ ausente)", () => {
+  test("frameworkSearchRoot = '' → projectRoot (empty string ≡ absent)", () => {
     const projectRoot = "/tmp/mono";
     expect(effectiveScanRoot(matchWith("", projectRoot))).toBe(projectRoot);
   });
 
-  test("frameworkSearchRoot = '../escape' → lanza con contexto del match", () => {
+  test("frameworkSearchRoot = '../escape' → throws with match context", () => {
     const projectRoot = "/tmp/mono";
     const framework = "fastify";
     expect(() =>
@@ -84,17 +84,17 @@ describe("effectiveScanRoot", () => {
   });
 });
 
-describe("safeScanRoot (alias de effectiveScanRoot)", () => {
-  test("mismo comportamiento con valor presente: 'apps/api'", () => {
+describe("safeScanRoot (alias of effectiveScanRoot)", () => {
+  test("same behavior with a present value: 'apps/api'", () => {
     expect(safeScanRoot(matchWith("apps/api"))).toBe("/tmp/mono/apps/api");
   });
 
-  test("mismo comportamiento con valor ausente: projectRoot", () => {
+  test("same behavior with an absent value: projectRoot", () => {
     const projectRoot = "/tmp/mono";
     expect(safeScanRoot(matchWith(undefined, projectRoot))).toBe(projectRoot);
   });
 
-  test("mismo comportamiento con escape: lanza", () => {
+  test("same behavior with an escape: throws", () => {
     expect(() => safeScanRoot(matchWith("../escape"))).toThrowError(
       /frameworkSearchRoot inválido/,
     );

@@ -1,34 +1,34 @@
 /**
- * Dos análisis a la vez en el mismo proceso.
+ * Two analyses at the same time in the same process.
  *
- * No es un caso de laboratorio: el servidor MCP es un proceso de vida
- * larga y puede recibir dos peticiones solapadas de un agente. Y el
- * pipeline dependía de estado **global** — `withProjectRoot()` guardaba
- * `process.env.POSTMAN_PROJECT_ROOT` y una caché de módulo, los pisaba,
- * ejecutaba y restauraba.
+ * This is not a laboratory case: the MCP server is a long-lived process
+ * and may receive two overlapping requests from an agent. The pipeline
+ * depended on **global** state — `withProjectRoot()` saved
+ * `process.env.POSTMAN_PROJECT_ROOT` and a module cache, overwrote
+ * them, ran, and restored them.
  *
- * Con dos llamadas concurrentes eso se destroza: la segunda pisa el
- * valor mientras la primera sigue viva, y al terminar la primera
- * restaura el estado anterior dejando a la segunda mirando la raíz
- * equivocada.
+ * With two concurrent calls that breaks: the second overwrites the
+ * value while the first is still running, and when the first finishes
+ * it restores the previous state, leaving the second looking at the
+ * wrong root.
  *
- * Se cazó comparando `summary` con `generate` sobre el mismo proyecto
- * lanzados con `Promise.all`: 16 y 17 endpoints donde secuencialmente
- * dan 18 los dos. Ninguno de los dos números era correcto.
+ * It was caught by comparing `summary` with `generate` on the same
+ * project launched with `Promise.all`: 16 and 17 endpoints where
+ * sequentially both return 18. Neither number was correct.
  */
 import { describe, expect, test } from "vitest";
 
 import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
 
-/** Lo que da analizar un fixture a solas, que es la verdad de referencia. */
+/** What analyzing a fixture alone yields — the reference truth. */
 async function baseline(framework: string): Promise<number> {
   const result = await generateWithAllFrameworks(comprehensiveFixtureDir(framework));
   return result.metrics.specs;
 }
 
 describe("pipeline bajo concurrencia", () => {
-  test("dos proyectos DISTINTOS a la vez no se mezclan", async () => {
+  test("two DISTINCT projects at once do not mix", async () => {
     const [django, laravel] = [await baseline("django"), await baseline("laravel")];
 
     const [a, b] = await Promise.all([
@@ -42,7 +42,7 @@ describe("pipeline bajo concurrencia", () => {
     expect(b.metrics.specs).toBe(laravel);
   });
 
-  test("el mismo proyecto dos veces a la vez da lo mismo", async () => {
+  test("the same project twice at once yields the same", async () => {
     const expected = await baseline("express");
     const results = await Promise.all([
       generateWithAllFrameworks(comprehensiveFixtureDir("express")),
@@ -51,7 +51,7 @@ describe("pipeline bajo concurrencia", () => {
     for (const result of results) expect(result.metrics.specs).toBe(expected);
   });
 
-  test("seis a la vez, todos correctos", async () => {
+  test("six at once, all correct", async () => {
     const frameworks = ["laravel", "django", "express", "fastapi", "nestjs", "gin"];
     const expected = new Map<string, number>();
     for (const framework of frameworks) expected.set(framework, await baseline(framework));
@@ -69,10 +69,10 @@ describe("pipeline bajo concurrencia", () => {
     });
   });
 
-  // La cola no puede romperse porque una llamada falle: si se encadenara
-  // la promesa rechazada, la siguiente heredaría el fallo y el proceso
-  // quedaría inservible.
-  test("un fallo no envenena las llamadas siguientes", async () => {
+  // The queue must not break because one call fails: if the rejected
+  // promise were chained, the next one would inherit the failure and
+  // the process would become unusable.
+  test("a failure does not poison the following calls", async () => {
     const expected = await baseline("flask");
 
     await expect(
@@ -83,7 +83,7 @@ describe("pipeline bajo concurrencia", () => {
     expect(after.metrics.specs).toBe(expected);
   });
 
-  test("la identidad de la colección aguanta la concurrencia", async () => {
+  test("the collection identity holds under concurrency", async () => {
     const [a, b] = await Promise.all([
       generateWithAllFrameworks(comprehensiveFixtureDir("symfony")),
       generateWithAllFrameworks(comprehensiveFixtureDir("symfony")),

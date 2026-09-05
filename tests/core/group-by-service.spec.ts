@@ -1,20 +1,19 @@
 /**
- * Tests del helper `groupByService` (a00013 S1).
+ * Tests for the `groupByService` helper (a00013 S1).
  *
- * El helper es puro, así que los tests no tocan el sistema de
- * archivos ni `process.cwd()`. Cubren las cuatro garantías que el
- * contrato del helper promete:
+ * The helper is pure, so the tests do not touch the file system or
+ * `process.cwd()`. They cover the four guarantees the helper's
+ * contract promises:
  *
- *  1. `serviceId` estable y derivado de `frameworkSearchRoot`.
- *  2. Proyecto de un solo servicio → grafo de un servicio, no
- *     una excepción.
- *  3. Dos workspaces con misma `METHOD+URI` se mantienen como dos
- *     servicios distintos (el caso que cerraba a00013).
- *  4. `combined` del caller se respeta y el default es `false`.
+ *  1. Stable `serviceId` derived from `frameworkSearchRoot`.
+ *  2. Single-service project → graph of one service, not an exception.
+ *  3. Two workspaces with the same `METHOD+URI` stay as two distinct
+ *     services (the case a00013 closed).
+ *  4. The caller's `combined` is respected and the default is `false`.
  *
- * El error de "faltan rutas para X" se cubre porque es la trampa
- * más típica al cablear callers reales: pasan los matches pero
- * olvidan poblar `routesByMatch` para alguno.
+ * The "missing routes for X" error is covered because it is the most
+ * typical trap when wiring real callers: they pass the matches but
+ * forget to populate `routesByMatch` for one of them.
  */
 import { describe, expect, it } from "vitest";
 
@@ -47,23 +46,23 @@ function route(method: string, uri: string): ParsedRoute {
 }
 
 describe("deriveServiceId", () => {
-  it("usa frameworkSearchRoot cuando existe", () => {
+  it("uses frameworkSearchRoot when present", () => {
     expect(deriveServiceId(match("express", "/repo", "apps/api"))).toBe("apps_api");
   });
 
-  it("cae a framework@projectRoot sin frameworkSearchRoot", () => {
+  it("falls back to framework@projectRoot without frameworkSearchRoot", () => {
     expect(deriveServiceId(match("nestjs", "/repo"))).toBe("nestjs_repo");
   });
 
-  it("normaliza caracteres fuera de [A-Za-z0-9_-]", () => {
+  it("normalizes characters outside [A-Za-z0-9_-]", () => {
     expect(deriveServiceId(match("express", "/repo", "apps/api v2!"))).toBe("apps_api_v2");
   });
 
-  it("devuelve 'default' cuando la normalización deja la cadena vacía", () => {
+  it("returns 'default' when normalization leaves the string empty", () => {
     expect(deriveServiceId(match("express", "/repo", "!!!"))).toBe("default");
   });
 
-  it("dos workspaces con mismo frameworkSearchRoot colisionan en id (intencional)", () => {
+  it("two workspaces with the same frameworkSearchRoot collide on id (intentional)", () => {
     expect(deriveServiceId(match("express", "/repo", "apps/api"))).toBe(
       deriveServiceId(match("nestjs", "/repo", "apps/api")),
     );
@@ -71,7 +70,7 @@ describe("deriveServiceId", () => {
 });
 
 describe("groupByService", () => {
-  it("produce un grafo de un servicio cuando el proyecto no es monorepo", () => {
+  it("produces a one-service graph when the project is not a monorepo", () => {
     const m = match("express", "/repo/apps/api", "apps/api");
     const graph = groupByService({
       matches: [m],
@@ -83,7 +82,7 @@ describe("groupByService", () => {
     expect(graph.combined).toBe(false);
   });
 
-  it("lanza cuando un match no tiene entrada en routesByMatch", () => {
+  it("throws when a match has no entry in routesByMatch", () => {
     const m = match("nestjs", "/repo/apps/api", "apps/api");
     expect(() =>
       groupByService({
@@ -93,7 +92,7 @@ describe("groupByService", () => {
     ).toThrow(/missing routes for service 'apps_api'/);
   });
 
-  it("mantiene dos services distintos con misma METHOD+URI", () => {
+  it("keeps two distinct services with the same METHOD+URI", () => {
     const users = match("express", "/repo", "apps/users-api");
     const payments = match("nestjs", "/repo", "apps/payments-api");
     const graph = groupByService({
@@ -110,7 +109,7 @@ describe("groupByService", () => {
     expect(graph.services[1]?.endpoints[0]?.uri).toBe("/health");
   });
 
-  it("respeta el override combined=true cuando el caller lo pide", () => {
+  it("respects the combined=true override when the caller asks for it", () => {
     const graph = groupByService({
       matches: [match("express", "/repo", "a"), match("nestjs", "/repo", "b")],
       routesByMatch: new Map([
@@ -123,7 +122,7 @@ describe("groupByService", () => {
     expect(graph.services).toHaveLength(2);
   });
 
-  it("el default de combined es false (no combine-services implícito)", () => {
+  it("the default of combined is false (no implicit combine-services)", () => {
     const graph = groupByService({
       matches: [match("express", "/repo", "a")],
       routesByMatch: new Map([["a", []]]),
@@ -131,7 +130,7 @@ describe("groupByService", () => {
     expect(graph.combined).toBe(false);
   });
 
-  it("propaga auth y baseUrl por servicio cuando el caller los pasa", () => {
+  it("propagates auth and baseUrl per service when the caller passes them", () => {
     const users = match("express", "/repo", "apps/users-api");
     const graph = groupByService({
       matches: [users],
@@ -148,13 +147,13 @@ describe("groupByService", () => {
     expect(graph.services[0]?.auth).toEqual({ kind: "scheme", scheme: "bearer" });
   });
 
-  it("lanza cuando matches está vacío y no es monorepo", () => {
+  it("throws when matches is empty and it is not a monorepo", () => {
     expect(() =>
       groupByService({ matches: [], routesByMatch: new Map() }),
     ).toThrow(/at least one match/);
   });
 
-  it("acepta grafo vacío en monorepo declarado sin workspaces", () => {
+  it("accepts an empty graph in a declared monorepo with no workspaces", () => {
     const graph = groupByService({
       matches: [],
       routesByMatch: new Map(),

@@ -1,17 +1,17 @@
 /**
- * Integration tests de `buildSummaryToolRegistration`.
+ * Integration tests for `buildSummaryToolRegistration`.
  *
- * El contexto y el capturador de handlers salen de
- * `tests/helpers/plugin-context.ts`: son los mismos que usan los otros
- * specs, y el workspace se construye con la fábrica real del core para
- * que el doble no pueda separarse del contrato.
+ * The context and the handler capturer come from
+ * `tests/helpers/plugin-context.ts`: they are the same ones the
+ * other specs use, and the workspace is built with the core's real
+ * factory so the double cannot drift from the contract.
  */
 import { describe, expect, test } from "vitest";
 
 import { buildSummaryToolRegistration } from "../../src/lib/tools/summary.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
-/** Raíz del proyecto tanit (no la del plugin). */
+/** Root of the tanit project (not the plugin's). */
 const TANIT_EXPORTER_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
@@ -62,7 +62,7 @@ describe("tanit_summary", () => {
     expect(parsed.zeroConfig).toBe(true);
   });
 
-  test("resuelve defaultProjectRoot relativo al workspace del plugin", async () => {
+  test("resolves defaultProjectRoot relative to the plugin's workspace", async () => {
     const reg = buildSummaryToolRegistration(
       makeCtx({ defaultProjectRoot: "tests/smoke-fixtures/django-mini" }),
     );
@@ -80,7 +80,7 @@ describe("tanit_summary", () => {
     expect(parsed.configPath).toBe("<zero-config>");
   });
 
-  test("devuelve el mismo resultado en llamadas consecutivas (cache reset)", async () => {
+  test("returns the same result on consecutive calls (cache reset)", async () => {
     const reg = buildSummaryToolRegistration(makeCtx());
     const handler = await captureHandler(reg);
     const r1 = await handler({

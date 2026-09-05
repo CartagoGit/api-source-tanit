@@ -47,7 +47,7 @@ describe("Project scanner detection contract", () => {
     }
   });
 
-  test("Django no devuelve score positivo sin evidencia", async () => {
+  test("Django does not return a positive score without evidence", async () => {
     const project = await createTempProject({
       "requirements.txt": "Django==5.0\n",
     }, "detection-contract-django-");

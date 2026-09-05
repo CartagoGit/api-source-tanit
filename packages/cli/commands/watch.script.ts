@@ -1,19 +1,20 @@
 #!/usr/bin/env bun
 /**
- * `apisrc watch` — regenera la colección al guardar.
+ * `apisrc watch` — regenerates the collection on save.
  *
- * Genera una vez y se queda mirando. Cada vez que algo cambia bajo la
- * raíz del proyecto, vuelve a generar y dice qué ha cambiado respecto de
- * la vez anterior.
+ * Generates once and then keeps watching. Every time something changes
+ * under the project root, it regenerates and reports what changed
+ * compared to the previous run.
  *
- * La carpeta de salida se ignora **siempre** — está dentro de lo que se
- * vigila, así que sin eso la primera escritura dispararía la siguiente y
- * no pararía nunca. Vive en `watcher.service.ts`, con sus tests.
+ * The output folder is **always** ignored — it lives inside what is
+ * being watched, so without this the first write would trigger the
+ * next one and never stop. That logic lives in `watcher.service.ts`,
+ * with its tests.
  *
- * Uso:
- *   apisrc watch --project-root ./mi-api
- *   apisrc watch --project-root ./mi-api --once   # una pasada y sale
- *   apisrc watch --format postman,openapi         # regenera los dos
+ * Usage:
+ *   apisrc watch --project-root ./my-api
+ *   apisrc watch --project-root ./my-api --once   # one pass and exit
+ *   apisrc watch --format postman,openapi         # regenerates both
  */
 import { dirname, join, relative } from "node:path";
 import { mkdir } from "node:fs/promises";
@@ -32,12 +33,12 @@ import {
 } from "../../core/helpers/atomic-write.helper.js";
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 
-/** `18:05:42`, que es lo que hace legible una traza que va creciendo. */
+/** `18:05:42`, which is what makes a growing trace legible. */
 function stamp(): string {
   return new Date().toTimeString().slice(0, 8);
 }
 
-/** `+2` / `-1` / cadena vacía si no cambió. */
+/** `+2` / `-1` / empty string if it did not change. */
 function delta(current: number, previous: number | null): string {
   if (previous === null || current === previous) return "";
   const diff = current - previous;
@@ -47,19 +48,20 @@ function delta(current: number, previous: number | null): string {
 interface IRunResult {
   readonly requests: number;
   readonly folders: number;
-  /** Ficheros escritos en formatos distintos de Postman. */
+  /** Files written in formats other than Postman. */
   readonly extra: number;
   readonly ms: number;
   readonly framework: string;
 }
 
 /**
- * Una generación completa: escanear, construir y escribir.
+ * A complete generation: scan, build, and write.
  *
- * Escribe **todos** los formatos pedidos, no solo Postman. Regenerar la
- * colección y dejar el `.openapi.yaml` de hace media hora al lado es
- * peor que no regenerar nada: los dos ficheros dicen cosas distintas del
- * mismo proyecto y no hay forma de saber cuál está al día.
+ * Writes **all** requested formats, not just Postman. Regenerating the
+ * collection while leaving the half-hour-old `.openapi.yaml` next to
+ * it is worse than regenerating nothing: the two files say different
+ * things about the same project and there is no way to tell which one
+ * is up to date.
  */
 async function regenerate(
   root: string,
@@ -108,12 +110,12 @@ async function regenerate(
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  // `watch` se queda mirando un árbol entero, así que importa más que en
-  // ningún otro comando saber **cuál**. Sin `--project-root` cae al
-  // directorio actual, y lanzarlo desde el sitio equivocado recorría lo
-  // que hubiera debajo sin decir una palabra. Por eso `watch` resuelve
-  // su propia raíz con fallback a `cwd` en vez de delegar esa decisión
-  // en `resolveProjectContext`, que es estricto a propósito.
+  // `watch` keeps watching a whole tree, so knowing **which** one matters
+  // more than in any other command. Without `--project-root` it falls
+  // back to the current directory, and running it from the wrong place
+  // silently walked whatever was underneath. That is why `watch`
+  // resolves its own root with a `cwd` fallback instead of delegating
+  // the decision to `resolveProjectContext`, which is strict on purpose.
   const explicitRoot =
     readFlag(argv, "--project-root") ?? process.env["POSTMAN_PROJECT_ROOT"];
   const root = explicitRoot ?? process.cwd();
@@ -124,9 +126,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   const frameworkIdx = argv.indexOf("--framework");
   const forceFramework = frameworkIdx !== -1 ? (argv[frameworkIdx + 1] ?? null) : null;
-  // `--framework-search-root` se pasa al pipeline tal cual. La
-  // validación (sin `/` inicial, sin `..`) vive en `generation.pipeline.ts`;
-  // `watch` solo lo lee.
+  // `--framework-search-root` is passed to the pipeline as-is. Path
+  // validation (no leading `/`, no `..`) lives in
+  // `generation.pipeline.ts`; `watch` only reads it.
   const searchRootIdx = argv.indexOf("--framework-search-root");
   const frameworkSearchRoot =
     searchRootIdx !== -1 ? (argv[searchRootIdx + 1] ?? null) : null;
@@ -138,8 +140,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 1;
   }
 
-  // `--format` vale aquí igual que en `generate`: se valida antes de la
-  // primera pasada, no en el primer cambio de fichero.
+  // `--format` works here the same way as in `generate`: it is
+  // validated before the first pass, not on the first file change.
   const formatIdx = argv.indexOf("--format");
   const parsedFormats = parseFormats(formatIdx !== -1 ? (argv[formatIdx + 1] ?? null) : null);
   if (!parsedFormats.ok) {
@@ -151,8 +153,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
   const formats = parsedFormats.formats;
 
-  // Una primera pasada antes de vigilar: si el proyecto no genera, más
-  // vale enterarse ahora que quedarse esperando cambios en algo roto.
+  // One pass before watching: if the project does not generate, better
+  // to find out now than to keep waiting for changes on something
+  // broken.
   let previous: IRunResult;
   try {
     previous = await regenerate(root, forceFramework, formats, context, frameworkSearchRoot);
@@ -167,9 +170,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       ` · ${previous.ms} ms`,
   );
 
-  // `--once` genera y sale. Es lo que hace falta en un pipeline: la
-  // comprobación de que la colección sigue saliendo, sin un proceso que
-  // no termina nunca.
+  // `--once` generates and exits. That is what is needed in a pipeline:
+  // a check that the collection still comes out, without a process that
+  // never terminates.
   if (argv.includes("--once")) return 0;
 
   console.log(`[${stamp()}] → watching ${root} (Ctrl+C to stop)`);
@@ -192,15 +195,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         );
         last = now;
       } catch (error) {
-        // Un fallo no puede tumbar el watcher: lo normal mientras se
-        // edita es que el fichero esté a medias un instante.
+        // A failure must not take down the watcher: while editing, it is
+        // normal for the file to be half-written for an instant.
         console.error(`[${stamp()}] ✗ ${error instanceof Error ? error.message : String(error)}`);
       }
     },
   });
 
-  // Ctrl+C cierra el watcher antes de salir. Sin esto queda el handle
-  // abierto y el proceso no termina.
+  // Ctrl+C closes the watcher before exiting. Without this the handle
+  // stays open and the process never terminates.
   await new Promise<void>((resolve) => {
     const stop = (): void => {
       handle.close();

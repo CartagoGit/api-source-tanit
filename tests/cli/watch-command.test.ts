@@ -1,17 +1,17 @@
 /**
- * El comando `watch`, no su motor.
+ * The `watch` command, not its engine.
  *
- * `watcher.service.spec.ts` cubre las piezas puras y
- * `tests/e2e/watch.test.ts` comprueba que `fs.watch` llega y que
- * escribir la colección no se dispara a sí misma. Lo que no cubría nadie
- * era **el comando**: sus flags, sus códigos de salida y sus mensajes.
+ * `watcher.service.spec.ts` covers the pure pieces and
+ * `tests/e2e/watch.test.ts` checks that `fs.watch` fires and that
+ * writing the collection does not trigger itself. What nobody covered
+ * was **the command**: its flags, its exit codes and its messages.
  *
- * Era el último de los seis que la auditoría encontró sin ejecutar, y de
- * los otros cinco tres estaban rotos.
+ * It was the last of the six the audit found unexercised, and of the
+ * other five three were broken.
  *
- * Se usa `--once` —genera una pasada y sale— porque es lo que permite
- * probar el comando sin gestionar un proceso de vida larga. Que el modo
- * vigilante de verdad funcione ya lo prueba el e2e.
+ * `--once` is used —generate one pass and exit— because it is what
+ * lets us test the command without managing a long-lived process. That
+ * the actual watch mode works is already proven by the e2e.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
@@ -46,7 +46,7 @@ function watch(args: readonly string[]): Promise<{ code: number; output: string 
 }
 
 describe("watch --once", () => {
-  test("genera la colección y termina", { timeout: 120_000 }, async () => {
+  test("generates the collection and exits", { timeout: 120_000 }, async () => {
     const root = await proyecto("once-basico");
     const { code, output } = await watch(["--project-root", root, "--once"]);
     expect(code, output).toBe(0);
@@ -55,7 +55,7 @@ describe("watch --once", () => {
     expect(salida.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 
-  test("lo que escribe es una colección válida", { timeout: 120_000 }, async () => {
+  test("what it writes is a valid collection", { timeout: 120_000 }, async () => {
     const root = await proyecto("once-valida");
     await watch(["--project-root", root, "--once"]);
     const dir = join(root, OUTPUT_DIR_NAME);
@@ -68,7 +68,7 @@ describe("watch --once", () => {
     expect(doc.item?.length ?? 0).toBeGreaterThan(0);
   });
 
-  test("`--format` saca también los otros formatos", { timeout: 120_000 }, async () => {
+  test("`--format` outputs the other formats too", { timeout: 120_000 }, async () => {
     const root = await proyecto("once-formatos");
     const { code, output } = await watch([
       "--project-root",
@@ -83,22 +83,22 @@ describe("watch --once", () => {
   });
 });
 
-describe("watch rechaza lo que no puede hacer", () => {
+describe("watch rejects what it cannot do", () => {
   /**
-   * Sin `--project-root`, `projectRoot()` **no falla**: cae al
-   * directorio actual. Eso deja muerta la rama «no se pudo determinar la
-   * raíz» que el comando tiene escrita, y hace que lanzarlo desde el
-   * sitio equivocado recorra ese árbol entero.
+   * Without `--project-root`, `projectRoot()` **does not fail**: it
+   * falls back to the current directory. That leaves the "could not
+   * determine the root" branch the command has written dead, and
+   * makes running it from the wrong place walk that whole tree.
    *
-   * Se midió: `watch --once` desde `/tmp` encontró un proyecto suelto
-   * entre los temporales y generó su colección, sin decir una palabra.
-   * Desde `$HOME` recorrería la casa.
+   * It was measured: `watch --once` from `/tmp` found a stray
+   * project among the temporaries and generated its collection
+   * without saying a word. From `$HOME` it would walk the home.
    *
-   * El fallback se queda —es cómodo y hay quien lo usa—, pero ahora dice
-   * qué está mirando. Un comportamiento implícito deja de ser una trampa
-   * en cuanto se dice en voz alta.
+   * The fallback stays —it is convenient and some people use it—,
+   * but it now says what it is watching. An implicit behavior stops
+   * being a trap as soon as it is said out loud.
    */
-  test("sin `--project-root` dice qué directorio va a vigilar", { timeout: 120_000 }, async () => {
+  test("without `--project-root` it says which directory it will watch", { timeout: 120_000 }, async () => {
     const root = await proyecto("sin-flag");
     const { output } = await runProcess("bun", [WATCH, "--once"], {
       cwd: root,
@@ -108,7 +108,7 @@ describe("watch rechaza lo que no puede hacer", () => {
     expect(output).toContain(root);
   });
 
-  test("un `--debounce` que no es número se rechaza", { timeout: 60_000 }, async () => {
+  test("a non-numeric `--debounce` is rejected", { timeout: 60_000 }, async () => {
     const root = await proyecto("debounce-malo");
     const { code, output } = await watch([
       "--project-root",
@@ -121,7 +121,7 @@ describe("watch rechaza lo que no puede hacer", () => {
     expect(output).toContain("--debounce");
   });
 
-  test("un `--format` inventado se rechaza antes de escribir nada", { timeout: 120_000 }, async () => {
+  test("a made-up `--format` is rejected before writing anything", { timeout: 120_000 }, async () => {
     const root = await proyecto("formato-malo");
     const { code, output } = await watch([
       "--project-root",
@@ -131,7 +131,7 @@ describe("watch rechaza lo que no puede hacer", () => {
       "inventado",
     ]);
     expect(code).toBe(1);
-    // Y no ha dejado una carpeta de salida a medias.
+    // And it has not left a half-written output folder.
     await expect(readdir(join(root, OUTPUT_DIR_NAME))).rejects.toThrow();
     expect(output).not.toMatch(/at <anonymous>/);
   });

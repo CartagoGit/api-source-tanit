@@ -1,18 +1,18 @@
 /**
- * `PhoenixScanner` — `IProjectScanner` + `IRouteScanner` para Phoenix
+ * `PhoenixScanner` — `IProjectScanner` + `IRouteScanner` for Phoenix
  * (Elixir).
  *
- * Como Rails, Phoenix declara las rutas en un solo fichero
- * (`lib/<app>_web/router.ex`) y tiene un `resources` que expande a
- * varios endpoints. Y como Rails, ese `resources` genera también las
- * acciones `new` y `edit`, que devuelven **formularios HTML** y no
- * existen en una API JSON.
+ * Like Rails, Phoenix declares routes in a single file
+ * (`lib/<app>_web/router.ex`) and has a `resources` that expands to
+ * several endpoints. And like Rails, that `resources` also generates the
+ * `new` and `edit` actions, which return **HTML forms** and do not
+ * exist in a JSON API.
  *
- * Lo propio de Phoenix:
- *   - `scope "/api", MiAppWeb do … end` — el segundo argumento es el
- *     módulo, no parte de la URL.
- *   - `pipe_through :api` — declara el pipeline, no una ruta.
- *   - Los path params se escriben `:id`, igual que en Rails.
+ * What's specific to Phoenix:
+ *   - `scope "/api", MiAppWeb do … end` — the second argument is the
+ *     module, not part of the URL.
+ *   - `pipe_through :api` — declares the pipeline, not a route.
+ *   - Path params are written as `:id`, just like in Rails.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -28,7 +28,7 @@ import type {
   IScanResult,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-/** Acciones REST de `resources` que tienen sentido en una API JSON. */
+/** REST actions of `resources` that make sense in a JSON API. */
 const RESOURCE_ACTIONS = [
   { action: "index", method: "GET", suffix: "" },
   { action: "create", method: "POST", suffix: "" },
@@ -41,7 +41,7 @@ const SCOPE_RE = /^\s*scope\s+"([^"]+)"/;
 const RESOURCES_RE = /^\s*resources\s+"([^"]+)"\s*,\s*\w+(.*)$/;
 const ROUTE_RE = /^\s*(get|post|put|patch|delete|head|options)\s+"([^"]+)"/;
 
-/** Encuentra el `router.ex` de la aplicación. */
+/** Finds the application's `router.ex`. */
 async function findRouter(projectRoot: string): Promise<string | null> {
   const libDir = join(projectRoot, "lib");
   if (!existsSync(libDir)) return null;
@@ -52,7 +52,7 @@ async function findRouter(projectRoot: string): Promise<string | null> {
   } catch {
     return null;
   }
-  // La convención es `lib/<app>_web/router.ex`.
+  // The convention is `lib/<app>_web/router.ex`.
   for (const entry of entries) {
     const candidate = join(libDir, entry, "router.ex");
     if (existsSync(candidate)) return candidate;
@@ -106,7 +106,7 @@ export class PhoenixRouteScanner implements IRouteScanner {
   }
 }
 
-/** Recorre el `router.ex` llevando la pila de `scope` por indentación. */
+/** Walks `router.ex` carrying the `scope` stack by indentation. */
 export function parseRouter(source: string, sourceFile: string): ParsedRoute[] {
   const routes: ParsedRoute[] = [];
   const lines = source.split("\n");
@@ -195,7 +195,7 @@ function listOption(options: string, name: string): string[] {
     .filter(Boolean);
 }
 
-/** Phoenix escribe `:id`; el pipeline espera `{id}`. */
+/** Phoenix writes `:id`; the pipeline expects `{id}`. */
 export function normalizePhoenixParams(uri: string): string {
   return uri.replace(/:(\w+)/g, "{$1}");
 }

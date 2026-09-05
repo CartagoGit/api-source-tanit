@@ -1,22 +1,22 @@
 /**
- * a00012 S5 — `generate` contra un proyecto Express.
+ * a00012 S5 — `generate` against an Express project.
  *
- * Aserción: el adapter ya NO escribe `validationSource` en endpoints
- * cuyo framework no es Laravel. La invariante a cerrar es:
+ * Assertion: the adapter no longer writes `validationSource` on
+ * endpoints whose framework is not Laravel. The invariant to close:
  *
- *   "un proyecto Express NUNCA entra por `enrichCatalogWithFormRequests`"
+ *   "an Express project NEVER enters via `enrichCatalogWithFormRequests`"
  *
- * Eso lo demostramos cargando `example-express`, pidiendo specs al
- * adapter universal, y comprobando que ninguno lleva
- * `validationSource.provider === "laravel-form-request"` —ni siquiera
- * cuando el provider configurado devuelve reglas.
+ * We prove that by loading `example-express`, asking the universal
+ * adapter for specs, and checking that none of them carries
+ * `validationSource.provider === "laravel-form-request"` — not even
+ * when the configured provider returns rules.
  *
- * Es un test de integración corto: usa la API pública del adapter
- * (`buildSpecsFromScanner`) más un scanner sintético que dice ser
- * express pero expone un provider que SIEMPRE devuelve reglas. Antes
- * de S5 eso terminaba con `formRequest: "express:..."` y un viaje
- * inútil por el enricher Laravel; ahora el adapter descarta el
- * provider porque `laravelFormRequestProvider("express")` devuelve
+ * It is a short integration test: it uses the adapter's public API
+ * (`buildSpecsFromScanner`) plus a synthetic scanner that claims to be
+ * express but exposes a provider that ALWAYS returns rules. Before
+ * S5 that ended with `formRequest: "express:..."` and an unnecessary
+ * trip through the Laravel enricher; now the adapter discards the
+ * provider because `laravelFormRequestProvider("express")` returns
  * `undefined`.
  */
 import { describe, expect, test } from "vitest";
@@ -30,14 +30,14 @@ import type {
   ParsedRoute,
 } from "../../packages/contracts/interfaces/core/scanner.interface";
 
-/** Un `IProjectMatch` sintético para un proyecto Express. */
+/** A synthetic `IProjectMatch` for an Express project. */
 const MATCH_EXPRESS: IProjectMatch = {
   framework: "express",
   projectRoot: "/tmp/express",
   artifacts: [],
 };
 
-/** Scanner que devuelve la única ruta que nos interesa. */
+/** Scanner that returns the only route we care about. */
 function expressScanner(route: ParsedRoute): IRouteScanner {
   return {
     framework: "express",
@@ -47,10 +47,10 @@ function expressScanner(route: ParsedRoute): IRouteScanner {
 }
 
 /**
- * Provider "amistoso" que SIEMPRE devuelve reglas para cualquier
- * ruta. Antes de S5 esto causaba que el adapter asignara
- * `formRequest: "express:..."` aunque el framework detectado no
- * fuese Laravel. Después de S5 el adapter descarta este resultado.
+ * "Friendly" provider that ALWAYS returns rules for any route.
+ * Before S5 this caused the adapter to assign
+ * `formRequest: "express:..."` even though the detected framework
+ * was not Laravel. After S5 the adapter discards this result.
  */
 const friendlyProvider: IValidationSpecProvider = {
   framework: "express",
@@ -78,31 +78,31 @@ const route = (overrides: Partial<ParsedRoute>): ParsedRoute => ({
   ...overrides,
 });
 
-describe("a00012 S5 — generate contra un proyecto Express", () => {
-  test("el adapter NO asigna validationSource a un endpoint Express", async () => {
+describe("a00012 S5 — generate against an Express project", () => {
+  test("the adapter does NOT assign validationSource to an Express endpoint", async () => {
     const result = await buildSpecsFromScanner(
       expressScanner(route({ method: "POST", uri: "/users" })),
       MATCH_EXPRESS,
       friendlyProvider,
     );
-    // El adapter devolvió un spec, lo cual confirma que el provider
-    // se ejecutó y devolvió reglas. Eso es lo que ANTES habría
-    // activado el enricher Laravel (incorrectamente).
+    // The adapter returned a spec, which confirms the provider ran
+    // and returned rules. That is what would have BEFORE activated
+    // the Laravel enricher (incorrectly).
     expect(result.specs).toHaveLength(1);
     const ep = result.specs[0];
     expect(ep).toBeDefined();
-    // La invariante S5: `validationSource` queda undefined para
-    // frameworks cuyo provider no es Laravel. El campo legacy
-    // `formRequest` puede seguir ahí (no es objeto de este slice),
-    // pero `validationSource` debe ser `undefined`.
+    // The S5 invariant: `validationSource` stays undefined for
+    // frameworks whose provider is not Laravel. The legacy
+    // `formRequest` field may still be there (it is not the target
+    // of this slice), but `validationSource` must be `undefined`.
     expect(ep?.validationSource).toBeUndefined();
   });
 
-  test("el adapter SÍ asigna validationSource a un endpoint Laravel", async () => {
-    // El caso contrario: un proyecto Laravel con provider friendly.
-    // Aquí el adapter DEBE escribir `validationSource.provider ===
-    // "laravel-form-request"` y dejar el `enrichCatalogWithFormRequests`
-    // hacer su trabajo.
+  test("the adapter DOES assign validationSource to a Laravel endpoint", async () => {
+    // The opposite case: a Laravel project with friendly provider.
+    // Here the adapter MUST write `validationSource.provider ===
+    // "laravel-form-request"` and let `enrichCatalogWithFormRequests`
+    // do its job.
     const MATCH_LARAVEL: IProjectMatch = {
       framework: "laravel",
       projectRoot: "/tmp/laravel",
@@ -119,11 +119,11 @@ describe("a00012 S5 — generate contra un proyecto Express", () => {
     expect(ep?.validationSource?.reference).toContain("laravel");
   });
 
-  test("un endpoint sin provider NO recibe validationSource", async () => {
-    // Sin provider, el adapter no debería asignar validationSource
-    // (ni formRequest) — son proyectos donde el scanner simplemente
-    // no sabe validar. La invariante S5 sigue siendo "sólo Laravel
-    // lleva validationSource".
+  test("an endpoint without provider does NOT receive validationSource", async () => {
+    // Without a provider, the adapter should not assign
+    // validationSource (nor formRequest) — these are projects where
+    // the scanner simply does not know how to validate. The S5
+    // invariant remains "only Laravel carries validationSource".
     const result = await buildSpecsFromScanner(
       expressScanner(route({ method: "POST", uri: "/users" })),
       MATCH_EXPRESS,

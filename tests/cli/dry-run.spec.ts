@@ -1,12 +1,13 @@
 /**
- * El ensayo: qué pasaría si se generara, sin generar.
+ * The dry run: what would happen if we generated, without generating.
  *
- * Lo que se comprueba es lo único que hace útil a un ensayo: **que
- * acierte**. Un ensayo que dice una cosa y una generación que hace otra
- * es peor que no tener ensayo, porque además da confianza.
+ * What is checked is the only thing that makes a dry run useful:
+ * **that it is accurate**. A dry run that says one thing and a
+ * generation that does another is worse than having no dry run,
+ * because it also gives confidence.
  *
- * Por eso el test que cierra el círculo compara el plan con lo que
- * `generate` deja de verdad en disco.
+ * That is why the test that closes the circle compares the plan with
+ * what `generate` actually leaves on disk.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
@@ -36,25 +37,25 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-describe("qué dice el ensayo", () => {
-  test("cuenta las requests que tendría la colección", () => {
+describe("what the dry run says", () => {
+  test("counts the requests the collection would have", () => {
     const plan = planDryRun({ projectRoot: proyecto, result: resultado });
     expect(plan.ok).toBe(true);
     expect(plan.requests).toBeGreaterThan(0);
   });
 
-  test("nombra el framework y el proyecto", () => {
+  test("names the framework and the project", () => {
     const plan = planDryRun({ projectRoot: proyecto, result: resultado });
     expect(plan.framework).toBe("express");
     expect(plan.projectName).toBe("sample-express");
   });
 
-  test("por defecto va a la carpeta convencional", () => {
+  test("by default goes to the conventional folder", () => {
     const plan = planDryRun({ projectRoot: proyecto, result: resultado });
     expect(plan.outputDir).toBe(join(proyecto, OUTPUT_DIR_NAME));
   });
 
-  test("y respeta la que se le pida", () => {
+  test("and respects the one it is given", () => {
     const plan = planDryRun({
       projectRoot: proyecto,
       outputDir: "/otro/sitio",
@@ -65,11 +66,11 @@ describe("qué dice el ensayo", () => {
   });
 
   /**
-   * Los entornos son de Postman: no salen con un OpenAPI ni con un
-   * script de cURL, y prometerlos ahí sería mentir sobre lo que va a
-   * aparecer.
+   * Environments are Postman: they do not come out with an OpenAPI
+   * nor with a cURL script, and promising them there would be lying
+   * about what is going to appear.
    */
-  test("los entornos solo cuando se pide Postman", () => {
+  test("environments only when Postman is requested", () => {
     const conPostman = planDryRun({ projectRoot: proyecto, result: resultado });
     const soloOpenApi = planDryRun({
       projectRoot: proyecto,
@@ -81,7 +82,7 @@ describe("qué dice el ensayo", () => {
     expect(soloOpenApi.files.some((f) => f.kind === "environment")).toBe(false);
   });
 
-  test("un formato inventado invalida el plan y dice cuáles valen", () => {
+  test("a made-up format invalidates the plan and says which ones are valid", () => {
     const plan = planDryRun({
       projectRoot: proyecto,
       formats: ["inventado"],
@@ -92,12 +93,13 @@ describe("qué dice el ensayo", () => {
   });
 });
 
-describe("lo que de verdad asusta: sobrescribir", () => {
+describe("what really scares: overwriting", () => {
   /**
-   * La primera vez todo es nuevo y el dato no dice nada. A partir de la
-   * segunda es la única pregunta que importa: qué se pierde.
+   * The first time everything is new and the datum says nothing.
+   * From the second on, it is the only question that matters: what
+   * is lost.
    */
-  test("sobre una carpeta vacía no sobrescribe nada", async () => {
+  test("on an empty folder overwrites nothing", async () => {
     const limpio = join(work, "limpio");
     await copyExampleClean(exampleDir("express"), limpio);
     const plan = planDryRun({ projectRoot: limpio, result: resultado });
@@ -105,7 +107,7 @@ describe("lo que de verdad asusta: sobrescribir", () => {
     expect(plan.files.every((f) => !f.overwrites)).toBe(true);
   });
 
-  test("un fichero que ya está sale marcado, y contado", async () => {
+  test("a file that is already there is marked, and counted", async () => {
     const conAlgo = join(work, "con-algo");
     await copyExampleClean(exampleDir("express"), conAlgo);
     const salida = join(conAlgo, OUTPUT_DIR_NAME);
@@ -125,9 +127,9 @@ describe("lo que de verdad asusta: sobrescribir", () => {
   });
 });
 
-describe("el ensayo no toca el disco", () => {
-  /** Si lo tocara, dejaría de ser un ensayo. */
-  test("planificar no crea la carpeta de salida", async () => {
+describe("the dry run does not touch the disk", () => {
+  /** If it did, it would stop being a dry run. */
+  test("planning does not create the output folder", async () => {
     const intacto = join(work, "intacto");
     await copyExampleClean(exampleDir("express"), intacto);
     await rm(join(intacto, "export-to-postman"), { recursive: true, force: true });
@@ -138,13 +140,14 @@ describe("el ensayo no toca el disco", () => {
   });
 });
 
-describe("y sobre todo: acierta", () => {
+describe("and above all: it is accurate", () => {
   /**
-   * EL test. Un ensayo que dice una cosa y una generación que hace otra
-   * es peor que no tener ensayo, porque además da confianza. Se compara
-   * el plan con lo que `generate` deja de verdad en disco.
+   * THE test. A dry run that says one thing and a generation that
+   * does another is worse than having no dry run, because it also
+   * gives confidence. The plan is compared with what `generate`
+   * actually leaves on disk.
    */
-  test("lo que el ensayo anuncia es lo que `generate` escribe", async () => {
+  test("what the dry run advertises is what `generate` writes", async () => {
     const real = join(work, "de-verdad");
     await copyExampleClean(exampleDir("express"), real);
     await rm(join(real, OUTPUT_DIR_NAME), { recursive: true, force: true });
@@ -168,7 +171,9 @@ describe("y sobre todo: acierta", () => {
       .map((f) => f.path.split("/").pop()!)
       .sort();
 
-    expect(anunciados, `el ensayo anunció ${anunciados.length} y salieron ${enDisco.length}`)
-      .toEqual(enDisco);
+    expect(
+      anunciados,
+      `dry run announced ${anunciados.length} and ${enDisco.length} came out`,
+    ).toEqual(enDisco);
   }, 240_000);
 });

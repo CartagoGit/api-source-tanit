@@ -1,21 +1,21 @@
 /**
- * El tool `init`, y la única pregunta que importa de él: **¿lo que
- * escribe sirve?**
+ * The `init` tool, and the only question that matters about it:
+ * **is what it writes usable?**
  *
- * Un scaffolder que produce un fichero sintácticamente correcto pero que
- * el pipeline no puede cargar, o que empeora el resultado, es peor que
- * no tener scaffolder: deja el proyecto en un estado que parece
- * configurado.
+ * A scaffolder that produces a syntactically correct file that the
+ * pipeline cannot load, or that makes the result worse, is worse than
+ * no scaffolder at all: it leaves the project in a state that looks
+ * configured.
  *
- * Y no es hipotético. `init` **empeoraba** el proyecto: leía solo
- * `composer.json` para el nombre —herencia de cuando esto era una
- * herramienta de Laravel— y si no lo encontraba se quedaba con el nombre
- * del directorio. Sobre `example-express`, `summary` decía
- * `sample-express` antes de ejecutarlo y el nombre de la carpeta
- * después, porque la config generada pisa la detección buena.
+ * And it is not hypothetical. `init` **used to make the project
+ * worse**: it only read `composer.json` for the name — a leftover
+ * from when this was a Laravel tool — and if it could not find one
+ * it kept the directory name. On `example-express`, `summary` would
+ * say `sample-express` before running it and the folder name after,
+ * because the generated config overrode the good detection.
  *
- * Por eso el test central no mira el fichero: **genera con él y sin él,
- * y compara**.
+ * That is why the central test does not inspect the file: it
+ * **generates with it and without it, and compares**.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn } from "node:child_process";
@@ -32,7 +32,7 @@ let work = "";
 let conInit = "";
 let sinInit = "";
 
-/** El CLI de verdad, devolviendo su salida. */
+/** The real CLI, returning its output. */
 function cli(args: readonly string[]): Promise<string> {
   return new Promise((resolve) => {
     const child = spawn(
@@ -80,7 +80,7 @@ describe("lo que init detecta", () => {
     timeout: 120_000,
   }, async () => {
     const { salida } = await invocar({ projectRoot: conInit });
-    // La carpeta se llama `con-init`; el manifiesto dice `sample-express`.
+    // The folder is named `con-init`; the manifest says `sample-express`.
     expect(salida["projectName"]).toBe("sample-express");
     expect(salida["projectName"]).not.toBe("con-init");
   });
@@ -89,7 +89,7 @@ describe("lo que init detecta", () => {
     const { salida } = await invocar({ projectRoot: conInit });
     expect(String(salida["configPath"])).toContain("config.constant.ts");
     expect(String(salida["endpointsPath"])).toContain("endpoints.constant.ts");
-    // Y dentro del proyecto que se le pidió, no en otro sitio.
+    // And inside the project it was given, not somewhere else.
     expect(String(salida["configPath"]).startsWith(conInit)).toBe(true);
   });
 
@@ -101,9 +101,9 @@ describe("lo que init detecta", () => {
   });
 
   /**
-   * Los `// TODO` no son ruido: son el contrato con quien lo lee. Sin
-   * ellos, un fichero de configuración generado parece una decisión
-   * tomada en vez de un punto de partida.
+   * The `// TODO`s are not noise: they are the contract with whoever
+   * reads them. Without them, a generated config file looks like a
+   * decision made instead of a starting point.
    */
   test("señala qué hay que personalizar", { timeout: 120_000 }, async () => {
     const { salida } = await invocar({ projectRoot: conInit });
@@ -112,13 +112,15 @@ describe("lo que init detecta", () => {
   });
 });
 
-describe("y sobre todo: lo que escribe no estropea nada", () => {
+describe("and above all: what it writes does not break anything", () => {
   /**
-   * EL test. Se genera en los dos proyectos —uno con la config de
-   * `init`, otro sin nada— y tienen que salir los mismos endpoints.
+   * THE test. We generate in both projects — one with `init`'s
+   * config, one without anything — and the endpoints must come out
+   * identical.
    *
-   * Si `init` degradara la detección, aquí saldrían cifras distintas, y
-   * es exactamente lo que pasaba con el nombre del proyecto.
+   * If `init` degraded detection, different numbers would come out
+   * here, which is exactly what was happening with the project
+   * name.
    */
   test("generar con la config de init da lo mismo que sin ella", {
     timeout: 240_000,
@@ -131,22 +133,23 @@ describe("y sobre todo: lo que escribe no estropea nada", () => {
     ]);
 
     const requests = (texto: string): string =>
-      /(\d+) requests in (\d+) folders/.exec(texto)?.[0] ?? "sin cifras";
+      /(\d+) requests in (\d+) folders/.exec(texto)?.[0] ?? "no figures";
 
     expect(requests(salidaCon), salidaCon).toBe(requests(salidaSin));
-    expect(requests(salidaCon)).not.toBe("sin cifras");
+    expect(requests(salidaCon)).not.toBe("no figures");
   });
 
   /**
-   * El nombre de la colección sale del proyecto, no del directorio. Es
-   * la regresión concreta que hubo: con la config generada pisando la
-   * detección, la colección pasaba a llamarse como la carpeta.
+   * The collection name comes from the project, not the directory.
+   * It is the concrete regression we had: with the generated config
+   * overriding detection, the collection ended up named after the
+   * folder.
    *
-   * Se mira el fichero **escrito**, no la traza. Escribir este test
-   * destapó que la traza previa al escaneo anunciaba
-   * `<carpeta>.postman_collection.json` mientras el CLI escribía
-   * `<proyecto>.postman_collection.json` — ya arreglado en
-   * `describeDiscoveredPaths`, con su propio test en core.
+   * We check the **written** file, not the trace. Writing this test
+   * uncovered that the pre-scan trace announced
+   * `<folder>.postman_collection.json` while the CLI wrote
+   * `<project>.postman_collection.json` — already fixed in
+   * `describeDiscoveredPaths`, with its own test in core.
    */
   test("la colección sigue llamándose como el proyecto", {
     timeout: 240_000,

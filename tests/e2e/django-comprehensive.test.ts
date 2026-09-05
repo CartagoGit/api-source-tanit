@@ -1,18 +1,18 @@
 /**
- * E2E test exhaustivo para el scanner Django.
+ * Comprehensive E2E test for the Django scanner.
  *
- * Cubre:
- * - urls.py raíz con `path("api/<x>/", include("app.<x>.urls"))`.
- * - Sub-app `app/<x>/urls.py` con `path("", SomeView.as_view())`.
- * - Path params Django `<int:id>`, `<str:slug>`, `<id>`.
+ * Covers:
+ * - Root urls.py with `path("api/<x>/", include("app.<x>.urls"))`.
+ * - Sub-app `app/<x>/urls.py` with `path("", SomeView.as_view())`.
+ * - Django path params `<int:id>`, `<str:slug>`, `<id>`.
  * - DRF generics: ListCreateAPIView, RetrieveUpdateDestroyAPIView,
- *   RetrieveAPIView, UpdateAPIView → expansión a {GET, POST, PUT, PATCH,
- *   DELETE} según la clase padre real leída desde views.py.
- * - FBV con `@api_view(["POST"])` → expansión al método del decorator.
- * - Includes anidados con prefix `path("api/users/", include(...))`.
- * - DRF serializers (Serializer + ChoiceField + EmailField) → fields
- *   correctos por endpoint (no del "primer serializer del archivo").
- * - Estabilidad: el hash de la collection debe ser determinista.
+ *   RetrieveAPIView, UpdateAPIView → expansion to {GET, POST, PUT, PATCH,
+ *   DELETE} according to the actual parent class read from views.py.
+ * - FBV with `@api_view(["POST"])` → expansion to the decorator method.
+ * - Nested includes with prefix `path("api/users/", include(...))`.
+ * - DRF serializers (Serializer + ChoiceField + EmailField) → correct
+ *   fields per endpoint (not from the "first serializer in the file").
+ * - Stability: the collection hash must be deterministic.
  */
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
@@ -34,31 +34,31 @@ describeCollectionContract({
 });
 
 /**
- * Helper local: encuentra TODOS los endpoints que matchean method+uri.
- * (Django fixture no genera duplicados, pero dejamos el helper por si
- * en el futuro hay routes con includes superpuestos).
+ * Local helper: finds ALL endpoints that match method+uri.
+ * (The Django fixture does not produce duplicates, but we keep the
+ * helper in case routes with overlapping includes appear in the future).
  */
 
 describe("Django — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("django-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(15);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("django-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri (Django paths → {{id}})", async () => {
+  test("finds the endpoints by method+uri (Django paths → {{id}})", async () => {
     const { collection } = await runGenerate("django-comprehensive");
-    // Health (FBV en views.py raíz, sin serializer).
+    // Health (FBV in root views.py, no serializer).
     expect(findEndpoint(collection, "GET", "/health/")).not.toBeNull();
     // Users — ListCreateAPIView → {GET, POST}.
     expect(findEndpoint(collection, "GET", "/api/users/")).not.toBeNull();
@@ -79,15 +79,15 @@ describe("Django — comprehensive fixture", () => {
     // Orders — UpdateAPIView (status) → {PUT, PATCH}.
     expect(findEndpoint(collection, "PUT", "/api/orders/{{id}}/status/")).not.toBeNull();
     expect(findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status/")).not.toBeNull();
-    // Orders — FBV cancel_order con @api_view(["POST"]) → {POST}.
+    // Orders — FBV cancel_order with @api_view(["POST"]) → {POST}.
     expect(findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel/")).not.toBeNull();
-    // Auth — FBV @api_view(["POST"]) → {POST} cada una.
+    // Auth — FBV @api_view(["POST"]) → {POST} each.
     expect(findEndpoint(collection, "POST", "/api/auth/login/")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/auth/refresh/")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/auth/logout/")).not.toBeNull();
   });
 
-  test("POST /api/users tiene body params desde UserSerializer (UserListCreateView)", async () => {
+  test("POST /api/users has body params from UserSerializer (UserListCreateView)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users/");
     expect(ep).not.toBeNull();
@@ -98,26 +98,26 @@ describe("Django — comprehensive fixture", () => {
     expect(body).toHaveProperty("role");
   });
 
-  test("PUT /api/users/{id} usa UpdateUserSerializer (UserDetailView), NO UserSerializer", async () => {
+  test("PUT /api/users/{id} uses UpdateUserSerializer (UserDetailView), NOT UserSerializer", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("name");
     expect(body).toHaveProperty("email");
-    // NO debe tener `age` ni `role` (esos son de UserSerializer, no de UpdateUserSerializer).
+    // It must NOT have `age` or `role` (those are from UserSerializer, not UpdateUserSerializer).
     expect(body).not.toHaveProperty("age");
     expect(body).not.toHaveProperty("role");
   });
 
-  test("DELETE /api/users/{id} no tiene body (RetrieveUpdateDestroyAPIView → DELETE sin serializer write)", async () => {
+  test("DELETE /api/users/{id} has no body (RetrieveUpdateDestroyAPIView → DELETE without write serializer)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "DELETE", "/api/users/{{id}}/");
     expect(ep).not.toBeNull();
     expect(ep?.request?.body).toBeUndefined();
   });
 
-  test("PUT /api/users/{id}/address usa AddressSerializer (street, city, country, postal_code)", async () => {
+  test("PUT /api/users/{id}/address uses AddressSerializer (street, city, country, postal_code)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address/");
     expect(ep).not.toBeNull();
@@ -128,7 +128,7 @@ describe("Django — comprehensive fixture", () => {
     expect(body).toHaveProperty("postal_code");
   });
 
-  test("POST /api/orders usa OrderSerializer (customer_name, customer_email, amount, currency)", async () => {
+  test("POST /api/orders uses OrderSerializer (customer_name, customer_email, amount, currency)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/orders/");
     expect(ep).not.toBeNull();
@@ -139,40 +139,40 @@ describe("Django — comprehensive fixture", () => {
     expect(body).toHaveProperty("currency");
   });
 
-  test("PATCH /api/orders/{id}/status usa UpdateOrderStatusSerializer (solo status)", async () => {
+  test("PATCH /api/orders/{id}/status uses UpdateOrderStatusSerializer (status only)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status/");
     expect(ep).not.toBeNull();
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
-    // Solo `status` (ChoiceField → enum) — NO customer_name ni amount.
+    // Only `status` (ChoiceField → enum) — NOT customer_name or amount.
     expect(body).toHaveProperty("status");
     expect(body).not.toHaveProperty("customer_name");
     expect(body).not.toHaveProperty("amount");
   });
 
-  test("POST /api/orders/{id}/cancel (FBV sin serializer) NO usa OrderSerializer de la view vecina", async () => {
+  test("POST /api/orders/{id}/cancel (FBV without serializer) does NOT use OrderSerializer from the neighboring view", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/orders/{{id}}/cancel/");
     expect(ep).not.toBeNull();
-    // Si por error cogiese OrderSerializer tendría customer_name/amount.
+    // If by mistake it picked OrderSerializer, it would have customer_name/amount.
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).not.toHaveProperty("customer_name");
     expect(body).not.toHaveProperty("amount");
     expect(body).not.toHaveProperty("currency");
   });
 
-test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convención", async () => {
+test("POST /api/auth/login (FBV) infers body from LoginSerializer by convention", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login/");
     expect(ep).not.toBeNull();
-    // FBV sin `serializer_class` explícito; el provider busca
-    // `LoginSerializer` por convención (login → Login).
+    // FBV without explicit `serializer_class`; the provider looks for
+    // `LoginSerializer` by convention (login → Login).
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");
     expect(body).toHaveProperty("email");
     expect(body).toHaveProperty("password");
   });
 
-  test("POST /api/auth/logout (FBV) infiere body desde LogoutSerializer", async () => {
+  test("POST /api/auth/logout (FBV) infers body from LogoutSerializer", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/logout/");
     expect(ep).not.toBeNull();
@@ -180,36 +180,37 @@ test("POST /api/auth/login (FBV) infiere body desde LoginSerializer por convenci
     expect(body).toHaveProperty("refresh_token");
   });
 
-  test("path params Django <int:id> se convierten a {{id}} en todas las URIs", async () => {
+  test("Django <int:id> path params convert to {{id}} in all URIs", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const allEps = findAllEndpoints(collection, "GET", "/api/users/{{id}}/");
     expect(allEps.length).toBeGreaterThan(0);
     for (const ep of allEps) {
       const raw = ep?.request?.url?.raw ?? "";
-      // Ninguna URI puede tener `<` (forma Django raw).
+      // No URI may have `<` (raw Django form).
       expect(raw).not.toMatch(/<[a-zA-Z_]/);
     }
   });
 
-  test("el hash de la collection es estable (snapshot)", async () => {
+  test("the collection hash is stable (snapshot)", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const hash1 = hashNormalized(collection);
-    // Segunda corrida: debe producir el mismo hash (sin randomness).
+    // Second run: it must produce the same hash (no randomness).
     const { collection: collection2 } = await runGenerate("django-comprehensive");
     const hash2 = hashNormalized(collection2);
     expect(hash1).toBe(hash2);
-    // Snap: imprimimos el hash para inspección manual si rompe.
+    // Snap: print the hash for manual inspection if it breaks.
     if (hash1 !== hash2) {
       console.error("HASH MISMATCH:", hash1, hash2);
     }
   });
 
-  test("normalizado no contiene conversores Django <int:...> ni <str:...>", async () => {
+  test("normalized contains no Django <int:...> or <str:...> converters", async () => {
     const { collection } = await runGenerate("django-comprehensive");
     const norm = JSON.stringify(normalizeCollection(collection));
-    // Solo los path converters reales de Django — `<int:id>`, `<str:slug>`,
-    // `<uuid:token>`, `<path:rest>`, `<slug:slug>`. NO el placeholder
-    // `<NORMALIZED>` que mete el helper de compare-json en claves volátiles.
+    // Only the real Django path converters — `<int:id>`, `<str:slug>`,
+    // `<uuid:token>`, `<path:rest>`, `<slug:slug>`. NOT the
+    // `<NORMALIZED>` placeholder inserted by the compare-json helper in
+    // volatile keys.
     expect(norm).not.toMatch(/<int:/);
     expect(norm).not.toMatch(/<str:/);
     expect(norm).not.toMatch(/<uuid:/);

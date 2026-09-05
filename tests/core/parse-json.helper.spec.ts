@@ -1,35 +1,34 @@
 /**
- * Parsear ficheros ajenos sin que `any` se cuele.
+ * Parsing other people's files without `any` slipping in.
  *
- * Los scanners leen manifiestos y specs de otra gente. El patrón que
- * había era `let parsed: any` y a partir de ahí el tipo dejaba de
- * describir lo que circulaba — que es exactamente por donde entró
- * `__params`.
+ * The scanners read manifests and specs from other people. The pattern
+ * that existed was `let parsed: any`, after which the type stopped
+ * describing what was flowing around — exactly how `__params` got in.
  */
 import { describe, expect, test } from "vitest";
 
 import { declaredDependencies, isRecord, parseJson, readArray, readObject, readString } from "../../packages/core/helpers/parse-json.helper";
 
 describe("parseJson", () => {
-  test("devuelve el valor cuando el JSON es válido", () => {
+  test("returns the value when the JSON is valid", () => {
     const r = parseJson('{"a":1}');
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toEqual({ a: 1 });
   });
 
-  test("devuelve el motivo cuando no lo es", () => {
+  test("returns the reason when it is not", () => {
     const r = parseJson("{roto");
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason.length).toBeGreaterThan(0);
   });
 
   /**
-   * Los dos casos se confundían: `JSON.parse("null")` devuelve `null`, y
-   * un `catch` que también deja `null` hace que un fichero corrupto y
-   * uno que legítimamente contiene `null` acaben iguales. Solo uno de
-   * los dos merece un aviso.
+   * The two cases were being confused: `JSON.parse("null")` returns
+   * `null`, and a `catch` that also leaves `null` makes a corrupt file
+   * and one that legitimately contains `null` end up identical. Only
+   * one of the two deserves a warning.
    */
-  test("distingue `null` legítimo de fichero corrupto", () => {
+  test("distinguishes a legitimate `null` from a corrupt file", () => {
     const valido = parseJson("null");
     const roto = parseJson("nul");
     expect(valido.ok).toBe(true);
@@ -38,7 +37,7 @@ describe("parseJson", () => {
   });
 });
 
-describe("los predicados que los scanners repetían a mano", () => {
+describe("the predicates scanners used to repeat by hand", () => {
   test.for([
     [{ a: 1 }, true],
     [[], false],
@@ -49,20 +48,20 @@ describe("los predicados que los scanners repetían a mano", () => {
     expect(isRecord(valor)).toBe(esperado);
   });
 
-  test("readObject solo devuelve objetos", () => {
+  test("readObject returns objects only", () => {
     expect(readObject({ a: { b: 1 } }, "a")).toEqual({ b: 1 });
     expect(readObject({ a: [1] }, "a")).toBeUndefined();
     expect(readObject({ a: "x" }, "a")).toBeUndefined();
     expect(readObject(null, "a")).toBeUndefined();
   });
 
-  test("readString rechaza la cadena vacía", () => {
+  test("readString rejects the empty string", () => {
     expect(readString({ a: "x" }, "a")).toBe("x");
     expect(readString({ a: "" }, "a")).toBeUndefined();
     expect(readString({ a: 1 }, "a")).toBeUndefined();
   });
 
-  test("readArray solo devuelve arrays", () => {
+  test("readArray returns arrays only", () => {
     expect(readArray({ a: [1, 2] }, "a")).toEqual([1, 2]);
     expect(readArray({ a: { 0: 1 } }, "a")).toBeUndefined();
   });
@@ -70,12 +69,12 @@ describe("los predicados que los scanners repetían a mano", () => {
 
 describe("declaredDependencies", () => {
   /**
-   * EL caso. Unos scanners miraban `devDependencies` y otros no, así que
-   * el mismo proyecto se detectaba o no según cuál preguntara. La
-   * pregunta es «¿este proyecto usa X?», y un framework en
-   * `devDependencies` sigue siendo el framework del proyecto.
+   * THE case. Some scanners looked at `devDependencies` and others
+   * did not, so the same project was detected or not depending on
+   * which one asked. The question is "does this project use X?", and a
+   * framework in `devDependencies` is still the project's framework.
    */
-  test("funde dependencies y devDependencies", () => {
+  test("merges dependencies and devDependencies", () => {
     const deps = declaredDependencies({
       dependencies: { express: "^4" },
       devDependencies: { vitest: "^1" },
@@ -83,7 +82,7 @@ describe("declaredDependencies", () => {
     expect(deps).toEqual({ express: "^4", vitest: "^1" });
   });
 
-  test("gana `dependencies` cuando el paquete está en las dos", () => {
+  test("`dependencies` wins when a package is in both", () => {
     const deps = declaredDependencies({
       dependencies: { x: "1.0.0" },
       devDependencies: { x: "2.0.0" },
@@ -91,13 +90,13 @@ describe("declaredDependencies", () => {
     expect(deps["x"]).toBe("1.0.0");
   });
 
-  test("un manifiesto sin bloques da un objeto vacío, no revienta", () => {
+  test("a manifest without the sections gives an empty object, does not crash", () => {
     expect(declaredDependencies({ name: "x" })).toEqual({});
     expect(declaredDependencies(null)).toEqual({});
     expect(declaredDependencies("no soy un objeto")).toEqual({});
   });
 
-  test("una versión que no es cadena se ignora", () => {
+  test("a non-string version is ignored", () => {
     expect(declaredDependencies({ dependencies: { x: 1, y: "2" } })).toEqual({ y: "2" });
   });
 });

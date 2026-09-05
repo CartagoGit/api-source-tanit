@@ -1,15 +1,14 @@
 /**
- * `generate --json` — el contrato máquina del CLI.
+ * `generate --json` — the machine contract of the CLI.
  *
- * Es lo que consume el plugin de delendai. Antes no existía: el
- * plugin sacaba las rutas con expresiones regulares sobre el texto para
- * personas, y se rompió sin hacer ruido en cuanto ese texto pasó del
- * castellano al inglés. Estos tests fijan la forma para que la próxima
- * vez que alguien toque la salida legible, el gate lo diga.
+ * It is what the delendai plugin consumes. It did not exist before:
+ * the plugin extracted routes with regular expressions over the text
+ * for humans, and broke silently as soon as that text moved from
+ * Spanish to English. These tests pin the shape so that next time
+ * someone touches the human output, the gate says so.
  *
- * El invariante fuerte del modo `--json`: **stdout es exactamente un
- * documento JSON**. Si una traza se cuela por ahí, el consumidor se
- * come un error de parseo.
+ * The strong invariant of `--json` mode: **stdout is exactly one JSON
+ * document**. If a trace leaks there, the consumer eats a parse error.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, rm } from "node:fs/promises";
@@ -51,73 +50,75 @@ afterAll(async () => {
 });
 
 describe("generate --json", () => {
-  test("stdout es exactamente un documento JSON", () => {
+  test("stdout is exactly one JSON document", () => {
     expect(() => JSON.parse(stdout)).not.toThrow();
   });
 
-  test("la traza legible se va a stderr, no contamina stdout", () => {
+  test("the human trace goes to stderr, does not pollute stdout", () => {
     expect(stderr).toContain("Collection written to");
     expect(stdout).not.toContain("Collection written to");
   });
 
-  test("declara la versión del contrato", () => {
+  test("declares the contract version", () => {
     expect(report.version).toBe(GENERATE_REPORT_VERSION);
     expect(report.ok).toBe(true);
   });
 
   /**
-   * El plugin de delendai rechaza un informe cuya versión no conoce.
-   * Si alguien sube `GENERATE_REPORT_VERSION` y se olvida del plugin, el
-   * tool `generate` deja de funcionar entero, y sin este test nadie se
-   * entera hasta que un agente lo invoca de verdad.
+   * The delendai plugin rejects a report whose version it does not
+   * know. If someone bumps `GENERATE_REPORT_VERSION` and forgets
+   * the plugin, the `generate` tool stops working entirely, and
+   * without this test nobody finds out until an agent actually
+   * invokes it.
    *
-   * Se **importa** la constante en vez de buscarla con una regex dentro
-   * de un fichero. La versión anterior leía
-   * `src/lib/helpers/runner.helper.ts` y sacaba el número con
-   * `/SUPPORTED_REPORT_VERSION = (\d+)/`; al mudar la constante a la
-   * carpeta de contratos del plugin, el `exec` devolvió `undefined`, el
-   * `Number()` lo convirtió en `NaN`, y lo que falló fue este test — no
-   * el contrato. Un test que lee código como texto comprueba dónde está
-   * escrito algo, no cuánto vale.
+   * The constant is **imported** instead of being searched with a
+   * regex inside a file. The previous version read
+   * `src/lib/helpers/runner.helper.ts` and pulled the number with
+   * `/SUPPORTED_REPORT_VERSION = (\d+)/`; when the constant moved to
+   * the plugin's contracts folder, `exec` returned `undefined`,
+   * `Number()` turned it into `NaN`, and what failed was this test
+   * — not the contract. A test that reads code as text checks where
+   * something is written, not what its value is.
    */
-  test("el plugin lee exactamente esta versión del contrato", () => {
+  test("the plugin reads exactly this contract version", () => {
     expect(SUPPORTED_REPORT_VERSION).toBe(GENERATE_REPORT_VERSION);
   });
 
-  test("trae el framework detectado y el nombre del proyecto", () => {
+  test("carries the detected framework and the project name", () => {
     expect(report.framework).toBe("express");
     expect(report.projectRoot).toBe(project);
   });
 
-  // El fixture se copia a una carpeta temporal con OTRO nombre
-  // (`mi-api`), y aun así el proyecto se identifica por lo que declara
-  // su `package.json`. Es lo que queremos: mover o clonar el repo no
-  // cambia la identidad de la colección, así que reimportar sigue
-  // actualizando la que ya está en Postman en vez de duplicarla.
-  test("el nombre sale del manifiesto, no de la carpeta", () => {
+  // The fixture is copied to a temporary folder with ANOTHER name
+  // (`mi-api`), and yet the project is identified by what its
+  // `package.json` declares. That is what we want: moving or cloning
+  // the repo does not change the collection's identity, so reimport
+  // keeps updating the one already in Postman instead of duplicating
+  // it.
+  test("the name comes from the manifest, not from the folder", () => {
     expect(project.endsWith("mi-api")).toBe(true);
     expect(report.projectName).toBe("sample-express");
   });
 
-  test("la colección que anuncia existe de verdad en disco", () => {
+  test("the collection it advertises really exists on disk", () => {
     expect(report.collectionPath).not.toBeNull();
     expect(existsSync(report.collectionPath!)).toBe(true);
   });
 
-  test("los environments que anuncia existen de verdad en disco", () => {
+  test("the environments it advertises really exist on disk", () => {
     expect(report.environmentPaths.length).toBeGreaterThan(0);
     for (const path of report.environmentPaths) {
       expect(existsSync(path), path).toBe(true);
     }
   });
 
-  test("el conteo de requests coincide con el del fixture", () => {
-    // El ejemplo de express expone 9 endpoints en 3 carpetas.
+  test("the request count matches the fixture", () => {
+    // The express example exposes 9 endpoints in 3 folders.
     expect(report.requests).toBe(9);
     expect(report.folders).toBe(3);
   });
 
-  test("el collectionId es el _postman_id, estable entre ejecuciones", async () => {
+  test("the collectionId is the _postman_id, stable across runs", async () => {
     const again = await runProcess(
       "bun",
       [GENERATE, "--project-root", project, "--json"],
@@ -128,13 +129,13 @@ describe("generate --json", () => {
     expect(report.collectionId).toMatch(/^[0-9a-f-]{36}$/);
   }, 60_000);
 
-  test("informa del flujo de login detectado", () => {
+  test("reports the detected login flow", () => {
     expect(report.auth).not.toBeNull();
     expect(report.auth?.loginEndpoint).toMatch(/POST/);
     expect(report.auth?.tokenVariable).toBe("token");
   });
 
-  test("sin --json, stdout sigue siendo el texto para personas", async () => {
+  test("without --json, stdout remains the human text", async () => {
     const human = await runProcess("bun", [GENERATE, "--project-root", project], {
       cwd: REPO_ROOT,
     });

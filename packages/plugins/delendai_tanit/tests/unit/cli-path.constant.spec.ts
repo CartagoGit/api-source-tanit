@@ -1,15 +1,15 @@
 /**
- * La ruta al CLI que el plugin spawnea.
+ * The path to the CLI the plugin spawns.
  *
- * Este spec existe porque el plugin y el CLI **no comparten tipos**: lo
- * único que los une es una cadena con una ruta, y una cadena no la
- * comprueba nadie. Al reorganizar en `packages/` el CLI se movió y esta
- * cadena se quedó atrás en tres sitios; los tools seguían registrándose,
- * los tests seguían verdes, y `generate` fallaba solo al ejecutarlo de
- * verdad contra el host.
+ * This spec exists because the plugin and the CLI **do not share
+ * types**: the only thing tying them together is a string holding a
+ * path, and nobody checks that string. When we reorganised into
+ * `packages/` the CLI moved and this string was left behind in three
+ * places; the tools kept registering, the tests stayed green, and
+ * `generate` only failed when actually run against the host.
  *
- * Aquí se comprueba lo que ningún typecheck puede: que el fichero al
- * final de la ruta existe.
+ * This is where we check what no typecheck can: that the file at the
+ * end of the path actually exists.
  */
 import { describe, expect, test } from "vitest";
 import { existsSync, statSync } from "node:fs";
@@ -23,8 +23,9 @@ import { workspaceRoot } from "../helpers/plugin-context";
 const ROOT = workspaceRoot(import.meta.url);
 
 describe("resolveCliScript", () => {
-  // El test que importa: si alguien mueve el CLI, esto falla nombrando
-  // la constante exacta en vez de romperle el tool a quien lo use.
+  // The test that matters: if anyone moves the CLI, this fails by
+  // naming the exact constant instead of breaking the tool for whoever
+  // uses it.
   test("la ruta por defecto apunta a un fichero que existe", () => {
     const resolved = resolveCliScript(ROOT);
     expect(existsSync(resolved), resolved).toBe(true);
@@ -47,10 +48,10 @@ describe("resolveCliScript", () => {
 
 describe("delendai.config.json", () => {
   /**
-   * El host lee su `cliScript` del config, no de la constante. Son dos
-   * copias de la misma ruta, así que la que manda en producción puede
-   * quedarse vieja aunque la constante esté bien — que es exactamente lo
-   * que pasó.
+   * The host reads its `cliScript` from the config, not from the
+   * constant. They are two copies of the same path, so the one that
+   * runs in production can go stale even when the constant is fine —
+   * which is exactly what happened.
    */
   test("el `cliScript` configurado coincide con la constante", async () => {
     const { readFile } = await import("node:fs/promises");

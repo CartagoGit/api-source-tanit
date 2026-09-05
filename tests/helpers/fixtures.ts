@@ -1,11 +1,11 @@
 /**
- * Helpers para crear fixtures de filesystem en tests.
+ * Helpers for creating filesystem fixtures in tests.
  *
- * El `mkFixtureSync` acepta un árbol de archivos { path: content } y
- * lo escribe en un tmpdir. Devuelve la ruta absoluta.
+ * `mkFixtureSync` accepts a tree of files { path: content } and
+ * writes it under a tmpdir. It returns the absolute path.
  *
- * Esto permite tests unitarios rápidos sin tener un proyecto completo
- * en disco.
+ * This enables fast unit tests without needing a full project on
+ * disk.
  */
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { cp as cpAsync, rm as rmAsync } from "node:fs/promises";
@@ -17,9 +17,9 @@ import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman
 export type FixtureTree = Record<string, string>;
 
 /**
- * Crea un fixture temporal y devuelve su path absoluto.
+ * Creates a temporary fixture and returns its absolute path.
  *
- * Ejemplo:
+ * Example:
  *   const root = mkFixtureSync({
  *     "package.json": `{"name": "demo"}`,
  *     "src/index.ts": `console.log("hi")`,
@@ -39,7 +39,7 @@ export function mkFixtureSync(tree: FixtureTree): string {
 }
 
 /**
- * Limpia un fixture creado con `mkFixtureSync`.
+ * Cleans up a fixture created with `mkFixtureSync`.
  */
 export function rmFixtureSync(root: string): void {
   if (existsSync(root)) {
@@ -48,8 +48,8 @@ export function rmFixtureSync(root: string): void {
 }
 
 /**
- * Helper de alto nivel: ejecuta una `fn` con un fixture temporal,
- * lo limpia al terminar.
+ * High-level helper: runs `fn` with a temporary fixture and cleans
+ * up afterwards.
  */
 export function withFixture<T>(tree: FixtureTree, fn: (root: string) => T): T {
   const root = mkFixtureSync(tree);
@@ -61,7 +61,7 @@ export function withFixture<T>(tree: FixtureTree, fn: (root: string) => T): T {
 }
 
 /**
- * Versión async del `withFixture`.
+ * Async version of `withFixture`.
  */
 export async function withFixtureAsync<T>(
   tree: FixtureTree,
@@ -76,23 +76,24 @@ export async function withFixtureAsync<T>(
 }
 
 /**
- * Copia un proyecto de `examples/` a un temporal **sin lo que generó
- * una ejecución anterior**.
+ * Copies a project from `examples/` to a temporary location **without
+ * anything a previous run generated**.
  *
- * `cp` a secas no vale, y el fallo no se ve hasta que muerde. Los
- * ejemplos son proyectos de verdad sobre los que se lanza el CLI, así
- * que acaban con una carpeta `export-to-postman/` dentro. Está en
- * `.gitignore`, no en el repo — pero está **en disco**, y `cp` la copia.
+ * A bare `cp` is not enough, and the failure does not show up until it
+ * bites. The examples are real projects the CLI is run against, so
+ * they end up with an `export-to-postman/` folder inside. It is in
+ * `.gitignore`, not in the repo — but it is **on disk**, and `cp`
+ * copies it.
  *
- * `exit-codes.test.ts` lo pagó: creaba un proyecto de solo lectura con
- * `chmod 0555` sobre la raíz para comprobar que `generate` falla al no
- * poder escribir. Con la carpeta de salida ya copiada —y con sus
- * permisos, 0755— `generate` escribía dentro tan tranquilo y salía con
- * 0. El test solo pasaba en una máquina donde nadie hubiera lanzado el
- * CLI sobre los ejemplos; en la de cualquiera que hubiera hecho
- * `bun run build`, fallaba sin motivo aparente.
+ * `exit-codes.test.ts` paid the price: it created a read-only project
+ * with `chmod 0555` on the root to check that `generate` fails when
+ * it cannot write. With the output folder already copied — and with
+ * its permissions, 0755 — `generate` happily wrote inside and exited
+ * 0. The test only passed on a machine where nobody had run the CLI
+ * on the examples; on anyone who had run `bun run build`, it failed
+ * for no apparent reason.
  *
- * Esto es lo que separa un test de un test que depende de la suerte.
+ * This is what separates a test from one that depends on luck.
  */
 export async function copyExampleClean(source: string, destination: string): Promise<void> {
   await cpAsync(source, destination, { recursive: true });

@@ -49,7 +49,7 @@ afterAll(async () => {
 });
 
 describe("parseFormRequest", () => {
-  test("extrae todos los campos de rules()", async () => {
+  test("extracts all rules() fields", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
       context,
@@ -57,7 +57,7 @@ describe("parseFormRequest", () => {
     expect(Object.keys(rules.rules)).toEqual(["name", "email", "age", "role", "avatar"]);
   });
 
-  test("lee el nombre de la clase", async () => {
+  test("reads the class name", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
       context,
@@ -65,7 +65,7 @@ describe("parseFormRequest", () => {
     expect(rules.className).toBe("CreateUserRequest");
   });
 
-  test("entiende las reglas en array", async () => {
+  test("understands rules as an array", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
       context,
@@ -73,8 +73,8 @@ describe("parseFormRequest", () => {
     expect(rules.rules["name"]).toEqual(["required", "string", "max:80"]);
   });
 
-  // Laravel acepta las dos sintaxis y hay que soportar ambas.
-  test("entiende las reglas en string separadas por |", async () => {
+  // Laravel accepts both syntaxes and both must be supported.
+  test("understands rules as a | separated string", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
       context,
@@ -82,12 +82,12 @@ describe("parseFormRequest", () => {
     expect(rules.rules["email"]).toEqual(["required", "email", "unique:users"]);
   });
 
-  test("un rules() vacío se marca como isEmpty", async () => {
+  test("an empty rules() is flagged as isEmpty", async () => {
     const rules = await parseFormRequest("app/Http/Requests/EmptyRequest.php", context);
     expect(rules.isEmpty).toBe(true);
   });
 
-  test("respeta la raíz de proyecto que se le pasa", async () => {
+  test("respects the project root it receives", async () => {
     const rules = await parseFormRequest(
       "app/Http/Requests/CreateUserRequest.php",
       context,
@@ -107,47 +107,47 @@ describe("detectTypedRule", () => {
     expect(detectTypedRule(rules)).toBe(expected);
   });
 
-  test("sin regla de tipo devuelve null", () => {
+  test("with no type rule returns null", () => {
     expect(detectTypedRule(["required"])).toBeNull();
   });
 });
 
 describe("exampleValueForRule", () => {
-  // Todos los formatos caían en la misma rama que `date`, así que un
-  // campo email salía como "2024-01-15" en el body de ejemplo.
+  // All formats fell down the same branch as `date`, so an email
+  // field ended up as "2024-01-15" in the example body.
   test.each([
     ["email", "@"],
     ["url", "https://"],
     ["uuid", "-"],
     ["ip", "."],
-  ])("%s produce un ejemplo con formato de %s", (rule, marker) => {
+  ])("%s produces an example with the format of %s", (rule, marker) => {
     expect(String(exampleValueForRule(rule, "campo"))).toContain(marker);
   });
 
-  test("cada formato produce un ejemplo distinto", () => {
+  test("every format produces a distinct example", () => {
     const values = ["string", "email", "url", "uuid", "ip", "date"].map((r) =>
       String(exampleValueForRule(r, "campo")),
     );
     expect(new Set(values).size).toBe(values.length);
   });
 
-  test("un string usa el nombre del campo", () => {
+  test("a string uses the field name", () => {
     expect(exampleValueForRule("string", "apellido")).toBe("sample_apellido");
   });
 
-  test("date sigue siendo una fecha", () => {
+  test("date still is a date", () => {
     expect(exampleValueForRule("date", "creado")).toBe("2024-01-15");
   });
 
-  test("integer produce un número", () => {
+  test("integer produces a number", () => {
     expect(typeof exampleValueForRule("integer", "age")).toBe("number");
   });
 
-  test("boolean produce un booleano", () => {
+  test("boolean produces a boolean", () => {
     expect(typeof exampleValueForRule("boolean", "activo")).toBe("boolean");
   });
 
-  test("una regla desconocida no lanza", () => {
+  test("an unknown rule does not throw", () => {
     expect(() => exampleValueForRule("regla_inventada", "x")).not.toThrow();
   });
 });
@@ -157,7 +157,7 @@ function rulesOf(rules: Record<string, string[]>): FormRequestRules {
 }
 
 describe("generateMinimalBody", () => {
-  test("incluye solo los campos required", () => {
+  test("includes only required fields", () => {
     const body = generateMinimalBody(
       rulesOf({
         name: ["required", "string"],
@@ -167,13 +167,13 @@ describe("generateMinimalBody", () => {
     expect(Object.keys(body)).toEqual(["name"]);
   });
 
-  test("un rules vacío produce un body vacío", () => {
+  test("an empty rules produces an empty body", () => {
     expect(generateMinimalBody(rulesOf({}))).toEqual({});
   });
 });
 
 describe("generateCompleteBody", () => {
-  test("incluye también los opcionales", () => {
+  test("also includes optional fields", () => {
     const body = generateCompleteBody(
       rulesOf({
         name: ["required", "string"],
@@ -183,7 +183,7 @@ describe("generateCompleteBody", () => {
     expect(Object.keys(body)).toEqual(["name", "nota"]);
   });
 
-  test("respeta el tipo de cada campo", () => {
+  test("respects each field's type", () => {
     const body = generateCompleteBody(
       rulesOf({ edad: ["required", "integer"], activo: ["required", "boolean"] }),
     );
@@ -193,7 +193,7 @@ describe("generateCompleteBody", () => {
 });
 
 describe("generateBodyVariants", () => {
-  test("produce al menos la variante mínima", () => {
+  test("produces at least the minimal variant", () => {
     const variants = generateBodyVariants(
       rulesOf({ name: ["required", "string"], nota: ["nullable", "string"] }),
     );
@@ -201,7 +201,7 @@ describe("generateBodyVariants", () => {
     for (const variant of variants) expect(variant.name.length).toBeGreaterThan(0);
   });
 
-  test("sin reglas produce solo la variante vacía", () => {
+  test("with no rules produces only the empty variant", () => {
     const variants = generateBodyVariants(rulesOf({}));
     expect(variants).toHaveLength(1);
     expect(variants[0]?.body).toEqual({});
@@ -209,14 +209,14 @@ describe("generateBodyVariants", () => {
 });
 
 describe("generateQueryVariants", () => {
-  test("cada variante trae sus query params", () => {
+  test("each variant brings its query params", () => {
     const variants = generateQueryVariants(
       rulesOf({ search: ["nullable", "string"], page: ["nullable", "integer"] }),
     );
     for (const variant of variants) expect(Array.isArray(variant.query)).toBe(true);
   });
 
-  test("sin reglas no produce variantes", () => {
+  test("with no rules produces no variants", () => {
     expect(generateQueryVariants(rulesOf({}))).toEqual([]);
   });
 });

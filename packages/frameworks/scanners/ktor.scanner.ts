@@ -1,27 +1,27 @@
 /**
- * `KtorScanner` — `IProjectScanner` + `IRouteScanner` para Ktor
+ * `KtorScanner` — `IProjectScanner` + `IRouteScanner` for Ktor
  * (Kotlin).
  *
- * Ktor declara las rutas con un DSL anidado:
+ * Ktor declares routes with a nested DSL:
  *
  *     routing {
  *       route("/api") {
  *         get("/users") { … }
  *         route("/orders") {
- *           post { … }          // sin path: hereda el del `route`
+ *           post { … }          // no path: inherits from the `route`
  *         }
  *       }
  *     }
  *
- * Dos cosas lo separan de los demás:
- *   - El anidamiento es por **llaves**, no por indentación ni por una
- *     llamada encadenada, así que hay que llevar la pila contando `{` y
- *     `}`.
- *   - Un `get { … }` **sin path** es válido y hereda el del `route` que
- *     lo envuelve. Ignorarlos dejaría fuera endpoints reales.
+ * Two things set it apart from the others:
+ *   - Nesting is by **braces**, not by indentation or a chained call,
+ *     so the stack has to be kept by counting `{` and `}`.
+ *   - A `get { … }` **without a path** is valid and inherits the path
+ *     from the surrounding `route`. Ignoring them would leave real
+ *     endpoints out.
  *
- * Los path params van como `{id}`, que ya es la forma que espera el
- * pipeline: no hay que normalizar nada.
+ * Path params look like `{id}`, which is already the shape the
+ * pipeline expects: nothing to normalise.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -41,19 +41,19 @@ import type {
 
 const METHODS = ["get", "post", "put", "patch", "delete", "head", "options"] as const;
 
-/** `get("/users") {` o `get {` — el path es opcional. */
+/** `get("/users") {` or `get {` — the path is optional. */
 const ROUTE_RE = new RegExp(
   String.raw`^\s*(${METHODS.join("|")})\s*(?:\(\s*"([^"]*)"\s*\))?\s*\{`,
 );
 
-/** `route("/api") {` — abre un prefijo. */
+/** `route("/api") {` — opens a prefix. */
 const ROUTE_BLOCK_RE = /^\s*route\s*\(\s*"([^"]*)"\s*\)\s*\{/;
 
 function isKotlinSourceFile(name: string): boolean {
   return name.endsWith(".kt");
 }
 
-/** Ficheros de build donde se declara la dependencia de Ktor. */
+/** Build files where the Ktor dependency is declared. */
 const BUILD_FILES = ["build.gradle.kts", "build.gradle", "pom.xml"];
 
 async function declaresKtor(projectRoot: string): Promise<boolean> {
@@ -63,7 +63,7 @@ async function declaresKtor(projectRoot: string): Promise<boolean> {
     try {
       if (/\bktor\b/i.test(await readFile(path, "utf8"))) return true;
     } catch {
-      // Ilegible: se prueba el siguiente.
+      // Unreadable: try the next one.
     }
   }
   return false;
@@ -97,8 +97,8 @@ export class KtorRouteScanner implements IRouteScanner {
     const files = await collectFiles(effectiveProjectRoot(match), isKotlinSourceFile);
     const routes: ParsedRoute[] = [];
 
-    // Lectura en paralelo con tope, entregada en el orden de
-    // entrada: la colección tiene que salir igual cada vez.
+    // Parallel reads with a cap, delivered in input order:
+    // the collection has to come out identical every time.
     for await (const { path: file, text: source } of readFilesInOrder(files)) {
       if (!/\brouting\s*\{|\broute\s*\(/.test(source)) continue;
       routes.push(...parseKotlinRouting(source, relative(rawProjectRoot(match), file)));
@@ -109,10 +109,10 @@ export class KtorRouteScanner implements IRouteScanner {
 }
 
 /**
- * Recorre el DSL contando llaves.
+ * Walks the DSL counting braces.
  *
- * La pila guarda el prefijo de cada `route("/x") {` abierto y a qué
- * profundidad de llaves se abrió, para desapilarlo en su `}`.
+ * The stack stores the prefix of each open `route("/x") {` and the
+ * brace depth at which it was opened, so it can be popped on its `}`.
  */
 export function parseKotlinRouting(source: string, sourceFile: string): ParsedRoute[] {
   const routes: ParsedRoute[] = [];
@@ -123,7 +123,7 @@ export function parseKotlinRouting(source: string, sourceFile: string): ParsedRo
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    // Kotlin comenta con `//`. Una ruta comentada no es una ruta.
+    // Kotlin comments with `//`. A commented-out route is not a route.
     const code = /^\s*\/\//.test(line) ? "" : line;
 
     const block = ROUTE_BLOCK_RE.exec(code);
@@ -159,7 +159,7 @@ export function parseKotlinRouting(source: string, sourceFile: string): ParsedRo
   return routes;
 }
 
-/** Balance de llaves de una línea, ignorando las de dentro de cadenas. */
+/** Brace balance of a line, ignoring those inside strings. */
 function countBraces(line: string): number {
   let balance = 0;
   let inString = false;

@@ -1,14 +1,14 @@
 /**
- * Construcción de proyectos temporales para los tests de scanner.
+ * Building temporary projects for scanner tests.
  *
- * Antes cada spec montaba su árbol a mano con `mkdtemp` + `mkdir` +
- * `copyFile` línea a línea. Además de repetirse, era frágil: en
- * `laravel-scanner.spec.ts` un `mkdir(join(dir, "artisan"))` creaba
- * `artisan` como DIRECTORIO y el `writeFile` posterior reventaba con
- * EISDIR.
+ * Before, each spec assembled its tree by hand with `mkdtemp` + `mkdir`
+ * + `copyFile` line by line. Beyond being repetitive, it was brittle:
+ * in `laravel-scanner.spec.ts` a `mkdir(join(dir, "artisan"))` created
+ * `artisan` as a DIRECTORY and the subsequent `writeFile` blew up
+ * with EISDIR.
  *
- * Aquí un proyecto se declara como un mapa `ruta relativa → contenido` y
- * los directorios intermedios se crean solos.
+ * Here a project is declared as a `relative path → content` map and
+ * the intermediate directories are created automatically.
  */
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, } from "node:path";
@@ -20,19 +20,19 @@ import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
 export const PACKAGE_ROOT = REPO_ROOT;
 
-/** Proyecto temporal en disco, con su limpieza. */
+/** Temporary project on disk, with its cleanup. */
 export interface ITempProject {
-  /** Raíz absoluta del proyecto. */
+  /** Absolute root of the project. */
   readonly root: string;
-  /** Borra el árbol. Llamar siempre en `afterAll`/`finally`. */
+  /** Deletes the tree. Always call in `afterAll`/`finally`. */
   cleanup(): Promise<void>;
 }
 
 /**
- * Monta un proyecto temporal a partir de un mapa ruta→contenido.
+ * Assembles a temporary project from a path→content map.
  *
- * Un fichero vacío se declara con `""`; los directorios intermedios se
- * crean automáticamente, así que no hace falta listarlos.
+ * An empty file is declared with `""`; intermediate directories are
+ * created automatically, so there is no need to list them.
  *
  * ```ts
  * const project = await createTempProject({
@@ -58,21 +58,21 @@ export async function createTempProject(
   };
 }
 
-/** Raíz del fixture "comprehensive" de un framework. */
+/** Root of the "comprehensive" fixture for a framework. */
 export function comprehensiveFixture(framework: FrameworkId): string {
   return join(PACKAGE_ROOT, "tests", "fixtures", `${framework}-comprehensive`);
 }
 
-/** Raíz del mini-fixture de smoke de un framework. */
+/** Root of the smoke mini-fixture for a framework. */
 export function smokeFixture(framework: FrameworkId): string {
   return join(PACKAGE_ROOT, "tests", "smoke-fixtures", `${framework}-mini`);
 }
 
 /**
- * `IProjectMatch` de un framework sobre una raíz, usando el detector
- * registrado. Evita construir el match a mano en cada spec, que es donde
- * se colaban `artifacts: []` y otros campos inconsistentes con lo que
- * produce el detector real.
+ * `IProjectMatch` for a framework on a given root, using the registered
+ * detector. Avoids building the match by hand in each spec, which is
+ * where `artifacts: []` and other fields inconsistent with what the
+ * real detector produces slipped in.
  */
 export async function matchFor(
   framework: FrameworkId,
@@ -84,14 +84,14 @@ export async function matchFor(
 }
 
 /**
- * Escanea una raíz con el scanner registrado del framework y devuelve
- * las rutas junto al match usado.
+ * Scans a root with the framework's registered scanner and returns the
+ * routes along with the match used.
  *
- * A partir de a00010 S2, `scan()` devuelve un `IScanResult`: las
- * rutas y (cuando aplica) los mapas auxiliares con schemas,
- * validators o structs. Los consumidores que solo querían la lista
- * de rutas piden `routes` — el resto del `IScanResult` se conserva en
- * `result` por si lo necesitan.
+ * From a00010 S2 on, `scan()` returns an `IScanResult`: the routes
+ * and (when applicable) the auxiliary maps with schemas, validators
+ * or structs. Consumers that only wanted the routes list ask for
+ * `routes` — the rest of the `IScanResult` is preserved in `result`
+ * for whoever needs it.
  */
 export async function scanProject(
   framework: FrameworkId,

@@ -1,27 +1,28 @@
 /**
- * El tool `push`, y sobre todo: **que la clave no se escape**.
+ * The `push` tool, and above all: **that the key does not leak**.
  *
- * Es el único tool que sale de la máquina y el único que maneja un
- * secreto. Y es justo el que un agente va a invocar por su cuenta, así
- * que lo que devuelva acaba en un historial de conversación, en un log
- * del host, o repetido de vuelta por el modelo. Un secreto que se filtra
- * por un mensaje de error no se puede retirar.
+ * It is the only tool that leaves the machine and the only one that
+ * handles a secret. And it is exactly the one an agent will invoke
+ * on its own, so what it returns ends up in a conversation history,
+ * a host log, or repeated back by the model. A secret that leaks
+ * through an error message cannot be recalled.
  *
- * Se comprueban las tres puertas por las que podría salir:
+ * Three doors through which it could leak are checked:
  *
- *   1. El **input**: `PushInputSchema` no declara `apiKey`, y es
- *      `.strict()`, así que pasarla es un input inválido. Declararla
- *      sería una invitación a que el agente la pida y la repita.
- *   2. La **salida feliz**: ni el valor, ni una versión enmascarada, ni
- *      el nombre de la variable.
- *   3. El **error**, que es la puerta que se olvida. `PostmanApiError`
- *      trae un `detail` que es el cuerpo devuelto por Postman, y ese
- *      cuerpo puede incluir la petición que lo causó — con su cabecera
- *      `X-Api-Key` dentro.
+ *   1. The **input**: `PushInputSchema` does not declare `apiKey`,
+ *      and it is `.strict()`, so passing it is invalid input.
+ *      Declaring it would be an invitation for the agent to ask for
+ *      it and repeat it.
+ *   2. The **happy output**: neither the value, nor a masked version,
+ *      nor the variable's name.
+ *   3. The **error**, which is the door people forget. `PostmanApiError`
+ *      carries a `detail` that is the body returned by Postman, and
+ *      that body can include the request that caused it — with its
+ *      `X-Api-Key` header inside.
  *
- * No hay red de por medio: la clave que se usa es falsa y Postman
- * rechaza la autenticación, que es precisamente el camino de error que
- * se quiere inspeccionar.
+ * There is no network in between: the key used is fake and Postman
+ * rejects the authentication, which is precisely the error path we
+ * want to inspect.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, rm } from "node:fs/promises";
@@ -34,7 +35,7 @@ import { captureTool, makeContext, workspaceRoot } from "../helpers/plugin-conte
 
 const RAIZ = workspaceRoot(import.meta.url);
 
-/** Una clave inventada, con una forma reconocible para poder buscarla. */
+/** A made-up key, with a recognisable shape so we can grep for it. */
 const CLAVE_FALSA = "PMAK-clave-inventada-para-el-test-000000";
 
 let work = "";
@@ -66,12 +67,12 @@ async function invocar(input: Record<string, unknown>) {
 
 describe("el input no acepta la clave", () => {
   /**
-   * EL test del input. El esquema es `.strict()`, así que una `apiKey`
-   * no es «un campo que se ignora»: es un input inválido. La diferencia
-   * importa — ignorarla en silencio dejaría al agente creyendo que la ha
-   * entregado.
+   * THE input test. The schema is `.strict()`, so an `apiKey` is not
+   * "a field that gets ignored": it is invalid input. The
+   * difference matters — ignoring it silently would leave the agent
+   * thinking it has delivered it.
    */
-  test("`apiKey` en el input se rechaza, no se ignora", () => {
+  test("`apiKey` in the input is rejected, not ignored", () => {
     const parsed = PushInputSchema.safeParse({
       projectRoot: "/x",
       apiKey: CLAVE_FALSA,
@@ -79,7 +80,7 @@ describe("el input no acepta la clave", () => {
     expect(parsed.success).toBe(false);
   });
 
-  test("el esquema no declara ningún campo que huela a secreto", () => {
+  test("the schema declares no field that smells like a secret", () => {
     const declaradas = Object.keys(PushInputSchema.shape);
     const sospechosas = declaradas.filter((k) =>
       /key|token|secret|password|credential/i.test(k),
@@ -90,35 +91,36 @@ describe("el input no acepta la clave", () => {
 
 describe("la clave no sale por ninguna parte", () => {
   /**
-   * EL test. La clave es falsa, así que Postman contesta 401 y el tool
-   * responde con `toolError` — el camino donde el `detail` de la API
-   * podría arrastrar la petición entera.
+   * THE test. The key is fake, so Postman answers 401 and the tool
+   * responds with `toolError` — the path where the API's `detail`
+   * could drag the whole request along.
    */
-  test("ni en el error de autenticación", { timeout: 120_000 }, async () => {
+  test("not even on the authentication error", { timeout: 120_000 }, async () => {
     const resultado = await invocar({ projectRoot: proyecto });
     const texto = JSON.stringify(resultado);
 
     expect(texto).not.toContain(CLAVE_FALSA);
-    // Ni el prefijo suelto: una clave a medias sigue siendo una pista.
+    // Not even the bare prefix: a half-key is still a clue.
     expect(texto).not.toContain("PMAK-");
   });
 
   test("ni el nombre de la variable de entorno", { timeout: 120_000 }, async () => {
     const resultado = await invocar({ projectRoot: proyecto });
     const texto = JSON.stringify(resultado);
-    // Decir «POSTMAN_API_KEY» en la salida de error es aceptable como
-    // pista para la persona, pero no puede ir acompañado del valor.
+    // Saying "POSTMAN_API_KEY" in the error output is acceptable as a
+    // hint to the user, but it cannot come with the value attached.
     if (texto.includes("POSTMAN_API_KEY")) {
       expect(texto).not.toContain(CLAVE_FALSA);
     }
   });
 
   /**
-   * El error tiene que ser accionable igualmente. Un tool que protege el
-   * secreto devolviendo «error» a secas deja a quien lo llama sin saber
-   * si la clave caducó, si falta permiso o si Postman está caído.
+   * The error must still be actionable. A tool that protects the
+   * secret by returning a bare "error" leaves whoever called it
+   * unable to tell whether the key expired, permission is missing,
+   * or Postman is down.
    */
-  test("pero el error sigue diciendo qué hacer", { timeout: 120_000 }, async () => {
+  test("but the error still says what to do", { timeout: 120_000 }, async () => {
     const resultado = await invocar({ projectRoot: proyecto });
     expect(resultado.isError).toBe(true);
     const texto = resultado.content[0]?.text ?? "";
@@ -133,7 +135,7 @@ describe("lo que no puede hacer, lo dice", () => {
     expect(resultado.content[0]?.text ?? "").toContain("no existe");
   });
 
-  test("sin clave en el entorno, lo dice y explica dónde crearla", {
+  test("without a key in the environment, it says so and explains where to create one", {
     timeout: 120_000,
   }, async () => {
     const previa = process.env["POSTMAN_API_KEY"];

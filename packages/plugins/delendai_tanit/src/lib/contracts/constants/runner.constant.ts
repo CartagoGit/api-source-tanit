@@ -1,13 +1,13 @@
 /**
- * Los valores fijos que el plugin comparte consigo mismo.
+ * Fixed values the plugin shares with itself.
  */
 
 /**
- * Versión del contrato que este plugin sabe leer.
+ * Version of the contract this plugin knows how to read.
  *
- * Tiene que ir a la par de `GENERATE_REPORT_VERSION` en
- * `contracts/generate-report.interface.ts`. Un test lo comprueba: si
- * alguien sube una y no la otra, el plugin deja de leer al CLI y hay
- * que enterarse en el gate, no en producción.
+ * It must stay in lockstep with `GENERATE_REPORT_VERSION` in
+ * `contracts/generate-report.interface.ts`. A test checks it: if
+ * someone bumps one without the other, the plugin stops reading the
+ * CLI and the gate catches it — instead of production.
  */
 export const SUPPORTED_REPORT_VERSION = 3;

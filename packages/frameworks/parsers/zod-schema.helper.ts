@@ -1,8 +1,8 @@
 /**
- * Parser de schemas zod → `IValidationSpec`.
+ * Zod schema parser → `IValidationSpec`.
  *
- * Zod aparece en tres de los frameworks soportados (Express, Next.js y
- * NestJS vía `nestjs-zod`), siempre con la misma forma:
+ * Zod appears in three of the supported frameworks (Express, Next.js
+ * and NestJS via `nestjs-zod`), always in the same shape:
  *
  *   const schema = z.object({
  *     email: z.string().email(),
@@ -10,23 +10,23 @@
  *     role:  z.enum(["admin", "user"]),
  *   });
  *
- * El parseo es deliberadamente best-effort y basado en texto: no
- * ejecutamos el módulo del host ni instanciamos zod, porque el proyecto
- * escaneado puede estar en otra versión de node, sin dependencias
- * instaladas, o directamente no ser ejecutable. Lo que no se reconoce se
- * degrada a `type: "string"` en lugar de romper el escaneo.
+ * Parsing is deliberately best-effort and text-based: we don't run the
+ * host's module or instantiate zod, because the scanned project may be
+ * on a different node version, with dependencies not installed, or not
+ * runnable at all. What isn't recognised is downgraded to
+ * `type: "string"` instead of breaking the scan.
  */
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { splitTopLevel, unwrapObjectLiteralItem } from "../../core/helpers/source-scan.helper.js";
 import type { IZodField } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** Tipos donde `.min()/.max()` hablan del VALOR, no de la longitud. */
+/** Types where `.min()/.max()` refer to the VALUE, not to length. */
 const NUMERIC_TYPES: ReadonlySet<IValidationSpec["type"]> = new Set([
   "number",
   "integer",
 ]);
 
-/** `z.<method>()` → tipo lógico del contrato. */
+/** `z.<method>()` → logical type of the contract. */
 const ZOD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   string: "string",
   number: "number",
@@ -46,7 +46,7 @@ const ZOD_TYPE_MAP: Record<string, IValidationSpec["type"]> = {
   nativeEnum: "enum",
 };
 
-/** Chainings de zod que expresan un formato semántico. */
+/** Zod chainings that express a semantic format. */
 const ZOD_FORMAT_MAP: Record<string, string> = {
   email: "email",
   url: "url",
@@ -63,16 +63,16 @@ const ZOD_FORMAT_MAP: Record<string, string> = {
 const ZOD_CHAIN_RE = /\.\s*([a-zA-Z_][\w]*)\s*\(/g;
 
 /**
- * Parsea el interior de un `z.object({ ... })` y devuelve sus campos.
+ * Parses the inside of a `z.object({ ... })` and returns its fields.
  *
- * `body` es el texto entre los paréntesis de la llamada, llaves incluidas.
+ * `body` is the text between the call's parentheses, braces included.
  */
 export function parseZodObjectLiteral(body: string): IZodField[] {
   const out: IZodField[] = [];
   for (const item of splitTopLevel(body)) {
     const cleaned = unwrapObjectLiteralItem(item);
     if (!cleaned) continue;
-    // Acepta identificadores (`foo`) y quoted keys (`"X-API-Key"`).
+    // Accepts identifiers (`foo`) and quoted keys (`"X-API-Key"`).
     const m = /^(?:["']([^"']+)["']|([a-zA-Z_$][\w$]*))\s*:\s*(.+)$/s.exec(cleaned);
     if (!m) continue;
     const name = m[1] ?? m[2];
@@ -84,7 +84,7 @@ export function parseZodObjectLiteral(body: string): IZodField[] {
   return out;
 }
 
-/** Parsea la parte derecha de un campo (`z.string().email()`). */
+/** Parses the right-hand side of a field (`z.string().email()`). */
 export function parseZodFieldExpression(name: string, expr: string): IZodField | null {
   const baseMatch = /z\s*\.\s*([a-zA-Z_][\w]*)\s*\(/.exec(expr);
   if (!baseMatch?.[1]) return null;
@@ -115,7 +115,7 @@ export function parseZodFieldExpression(name: string, expr: string): IZodField |
   };
 }
 
-/** Convierte un `IZodField` en el spec agnóstico del contrato. */
+/** Converts an `IZodField` into the contract's agnostic spec. */
 export function zodFieldToSpec(
   field: IZodField,
   location: IValidationSpec["location"] = "body",
@@ -127,13 +127,13 @@ export function zodFieldToSpec(
     required: field.required,
     ...(field.format ? { format: field.format } : {}),
     ...(field.enumValues ? { enumValues: field.enumValues } : {}),
-    // Aquí es donde `.min()` deja de ser ambiguo: sobre un número es una
-    // cota de valor, sobre lo demás es de longitud.
+    // Here is where `.min()` stops being ambiguous: on a number it's a
+    // value bound, on everything else it's a length bound.
     ...(numericBounds(field)),
   };
 }
 
-/** Traduce `min`/`max` crudos a la pareja que corresponde al tipo. */
+/** Translates raw `min`/`max` into the pair that matches the type. */
 function numericBounds(field: IZodField): Partial<IValidationSpec> {
   const isNumeric = NUMERIC_TYPES.has(field.type);
   return {

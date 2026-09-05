@@ -1,10 +1,10 @@
 /**
- * Tipos del dominio del plugin `tanit`.
+ * Types for the `tanit` plugin's domain.
  *
- * Mantienen el contrato limpio: el plugin NO depende de la
- * implementación interna del proyecto Tanit (que vive en
- * `../../contracts/`, `../../services/`). Solo define las entradas y
- * salidas que un agente ve al invocar los tools.
+ * They keep the contract clean: the plugin does NOT depend on the
+ * internal implementation of the Tanit project (which lives in
+ * `../../contracts/`, `../../services/`). It only defines the inputs
+ * and outputs an agent sees when invoking the tools.
  */
 
 import { z } from "zod";
@@ -18,59 +18,59 @@ import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-
 import type { IPushOutcome } from "../../../../../contracts/interfaces/cli/push-outcome.interface";
 import type { IInitOutcome } from "../../../../../contracts/interfaces/cli/init-outcome.interface";
 
-// --- Opciones del plugin (leídas de delendai.config.json) ------------------
+// --- Plugin options (read from delendai.config.json) -----------------------
 
 export const TanitOptionsSchema = z
   .object({
     /**
-     * Ruta por defecto al proyecto host cuando el agente no
-     * la pasa explícitamente. La cadena de fallback completa es:
+     * Default path to the host project when the agent does not
+     * pass it explicitly. The full fallback chain is:
      *   `args.projectRoot ?? defaultProjectRoot ?? workspaceRoot`.
-     * Si ninguno resuelve, el tool devuelve un error claro.
+     * If none resolves, the tool returns a clear error.
      */
     defaultProjectRoot: z.string().min(1).optional(),
     /**
-     * Ruta al script CLI del paquete Tanit.
+     * Path to the Tanit package's CLI script.
      *
-     * El valor por defecto vive en `cli-path.constant.ts`, no aquí: esta
-     * frase decía `scripts/cli.script.ts` mucho después de que el CLI se
-     * moviera a `packages/`, que es justo el motivo de que ahora haya un
-     * único sitio donde está escrito y un test que lo comprueba.
+     * The default lives in `cli-path.constant.ts`, not here: this
+     * sentence used to say `scripts/cli.script.ts` long after the CLI
+     * moved into `packages/`, which is exactly why there is now a
+     * single place where it is written and a test that verifies it.
      */
     cliScript: z.string().min(1).optional(),
     /**
-     * Ruta absoluta al binario `bun` que el plugin usa para invocar al
-     * CLI. Se lee una vez al boot (no en cada tool call) y se pasa al
-     * `runner.helper` a través de `IRunnerContext.bunBin`. Si no se
-     * fija, el helper cae al `DELENDAI_BUN_BIN` del entorno y luego
-     * a `Bun.which("bun")` / `command -v bun`.
+     * Absolute path to the `bun` binary the plugin uses to invoke the
+     * CLI. It is read once at boot (not on every tool call) and passed
+     * to `runner.helper` via `IRunnerContext.bunBin`. If not set, the
+     * helper falls back to `DELENDAI_BUN_BIN` from the environment,
+     * then to `Bun.which("bun")` / `command -v bun`.
      *
-     * Esta opción existe para que los hosts AI que filtran `PATH`
-     * antes de spawn (algunos clientes MCP recortan variables) puedan
-     * garantizar que el plugin encuentra su binario. Sin ella el
-     * plugin depende de `PATH` del shell de quien arranca el host.
+     * This option exists so that AI hosts that filter `PATH` before
+     * spawning (some MCP clients strip variables) can guarantee the
+     * plugin finds its binary. Without it, the plugin depends on the
+     * `PATH` of whoever starts the host.
      */
     delendaiBunBin: z.string().min(1).optional(),
     /**
-     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     * Subdirectory of the framework inside the project. f00011 S3.
      *
-     * Cuando el proyecto es un monorepo (`turbo.json`,
-     * `pnpm-workspace.yaml`, ...) o un proyecto donde el manifiesto
-     * está en la raíz pero el código del framework vive en un
-     * subdir, la autodetección del orquestador mira la raíz por
-     * defecto y no encuentra nada. Con esta opción el plugin pasa
-     * el subdir al CLI (`--framework-search-root <sub>`) y el
-     * orquestador lo pega al `match.frameworkSearchRoot` que ya
-     * leen los scanners (f00011 S1).
+     * When the project is a monorepo (`turbo.json`,
+     * `pnpm-workspace.yaml`, ...) or a project where the manifest is
+     * at the root but the framework code lives in a subdir, the
+     * orchestrator's autodetection looks at the root by default and
+     * finds nothing. With this option the plugin passes the subdir to
+     * the CLI (`--framework-search-root <sub>`) and the orchestrator
+     * attaches it to the `match.frameworkSearchRoot` that the
+     * scanners already read (f00011 S1).
      *
-     * Sin esta opción, el orquestador auto-detecta cuando hay un
-     * solo workspace en el monorepo; con varios, no elige por su
-     * cuenta y devuelve un aviso.
+     * Without this option, the orchestrator auto-detects when there
+     * is a single workspace in the monorepo; with several it does not
+     * choose on its own and returns a warning.
      *
-     * **Nunca absoluto.** La raíz del proyecto la fija
-     * `defaultProjectRoot ?? ctx.workspace`; este campo solo añade
-     * un segmento POSIX. El CLI lo valida antes de pasarlo al
-     * pipeline, así que el plugin no tiene que repetirlo.
+     * **Never absolute.** The project root is fixed by
+     * `defaultProjectRoot ?? ctx.workspace`; this field only adds a
+     * POSIX segment. The CLI validates it before passing it to the
+     * pipeline, so the plugin does not have to repeat the check.
      */
     frameworkSearchRoot: z.string().min(1).optional(),
   })
@@ -80,14 +80,14 @@ export type ITanitOptions = z.infer<
   typeof TanitOptionsSchema
 >;
 
-// --- Inputs de los tools ----------------------------------------------------
+// --- Tool inputs -------------------------------------------------------------
 
 /**
- * `projectRoot` ahora es OPCIONAL en los 3 tools.
- * El fallback canónico en runtime es:
+ * `projectRoot` is now OPTIONAL in the 3 tools.
+ * The canonical fallback at runtime is:
  *   `args.projectRoot ?? ctx.options.defaultProjectRoot ?? ctx.workspace`.
- * Decidimos hacerlo en el handler (no en zod) para que el schema
- * siga siendo declarativo y el comportamiento sea explícito.
+ * We decided to do it in the handler (not in zod) so the schema
+ * stays declarative and the behaviour is explicit.
  */
 export const GenerateInputSchema = z
   .object({
@@ -96,45 +96,46 @@ export const GenerateInputSchema = z
     envs: z.array(z.string().min(1)).optional(),
     openAfter: z.boolean().optional(),
     /**
-     * Framework a la fuerza, saltándose la autodetección.
+     * Framework forced, bypassing autodetection.
      *
-     * Es la salida para los proyectos donde la detección por manifiesto
-     * NO PUEDE acertar: un monorepo cuyo `package.json` está en la raíz,
-     * una dependencia con alias, un manifiesto que se genera en el
-     * build. Sin esto, un agente que recibe "no se ha detectado nada" no
-     * tiene forma de aprovechar que la persona a la que asiste sí sabe
-     * de qué es su API.
+     * It is the escape hatch for projects where manifest-based
+     * detection CANNOT succeed: a monorepo whose `package.json` lives
+     * at the root, a dependency with an alias, a manifest generated
+     * at build time. Without this, an agent that receives "nothing
+     * detected" has no way to leverage that the person it is helping
+     * knows which framework their API is.
      *
-     * La lista sale del catálogo de contratos, igual que en `test`: una
-     * lista escrita a mano rechazaría el framework número veinte el día
-     * que se añada. Antes salía de `frameworks/index`, que para leer
-     * veintiún nombres arrastraba los veintiún scanners.
+     * The list comes from the contracts catalogue, same as in
+     * `test`: a hand-written list would reject the twentieth
+     * framework the day it gets added. It used to come from
+     * `frameworks/index`, which dragged in all twenty-one scanners
+     * just to read twenty-one names.
      */
     framework: z.enum([...FRAMEWORK_IDS]).optional(),
     /**
-     * Subdirectorio del framework dentro del proyecto. f00011 S3.
+     * Subdirectory of the framework inside the project. f00011 S3.
      *
-     * Cuando el proyecto es un monorepo o tiene el manifiesto en
-     * la raíz y el código en un subdir, esta opción viaja hasta
-     * el `--framework-search-root` del CLI. El agente puede
-     * pasarlo aquí, o el host puede fijarlo de antemano en
-     * `delendai.config.json` (`TanitOptionsSchema.
-     * frameworkSearchRoot`); el segundo gana cuando ambos están.
+     * When the project is a monorepo or has the manifest at the root
+     * and the code in a subdir, this option travels to the CLI's
+     * `--framework-search-root`. The agent can pass it here, or the
+     * host can pre-set it in `delendai.config.json`
+     * (`TanitOptionsSchema.frameworkSearchRoot`); the latter wins
+     * when both are set.
      *
-     * El valor se valida en `generation.pipeline.ts`: no puede ser
-     * absoluto ni contener `..`.
+     * The value is validated in `generation.pipeline.ts`: it cannot
+     * be absolute or contain `..`.
      */
     frameworkSearchRoot: z.string().min(1).optional(),
     /**
-     * Formatos de salida. Por defecto solo Postman.
+     * Output formats. Defaults to Postman only.
      *
-     * Existen seis y el plugin solo llegaba al primero, así que un agente
-     * al que le piden "sácame el OpenAPI de esta API" no tenía forma de
-     * hacerlo aunque el CLI supiera.
+     * There are six, and the plugin only reached the first one, so an
+     * agent asked to "give me the OpenAPI of this API" had no way to
+     * do it even though the CLI knew how.
      *
-     * La lista sale del registro de exportadores, igual que `framework`
-     * sale del de scanners: una escrita a mano rechazaría el séptimo el
-     * día que se añada.
+     * The list comes from the exporters registry, same as `framework`
+     * comes from the scanners registry: a hand-written list would
+     * reject the seventh the day it gets added.
      */
     formats: z
       .array(z.enum([...EXPORT_FORMATS]))
@@ -162,12 +163,13 @@ export const SummaryInputSchema = z
 export type ISummaryInput = z.infer<typeof SummaryInputSchema>;
 
 /**
- * Salud de la documentación del proyecto, en porcentajes `0..100`.
+ * Health of the project's documentation, in percentages `0..100`.
  *
- * Espejo zod de `IProjectHealth` (contratos). Cada campo responde "de
- * cuántos endpoints la colección va a llevar esta pieza": con ellos un
- * agente ve si la API está bien documentada **antes** de generar, sin
- * abrir la colección para contarlo a mano.
+ * Zod mirror of `IProjectHealth` (contracts). Each field answers
+ * "out of how many endpoints the collection will carry this piece":
+ * with them an agent sees whether the API is well-documented
+ * **before** generating, without opening the collection to count
+ * manually.
  */
 export const ProjectHealthSchema = z
   .object({
@@ -205,27 +207,28 @@ export const ProjectHealthSchema = z
 export type IProjectHealthOutput = z.infer<typeof ProjectHealthSchema>;
 
 /**
- * Inputs del tool `test`. Por defecto corre la suite e2e completa del
- * propio paquete Tanit (ya en workspace). Si se pasa
- * `framework`, corre un smoke test contra el fixture correspondiente
- * (`tests/fixtures/<framework>-comprehensive/`).
+ * Inputs of the `test` tool. By default it runs the full e2e suite
+ * of the Tanit package itself (already in the workspace). If
+ * `framework` is passed, it runs a smoke test against the
+ * corresponding fixture (`tests/fixtures/<framework>-comprehensive/`).
  */
 export const TestInputSchema = z
   .object({
     /**
-     * Si se da, corre un smoke test contra el fixture de ese framework.
-     * Los valores válidos son los del registro de scanners, así que
-     * un framework nuevo se acepta sin tocar este fichero.
+     * If given, runs a smoke test against that framework's fixture.
+     * Valid values come from the scanners registry, so a new framework
+     * is accepted without touching this file.
      */
     framework: z
-      // La lista NO se escribe a mano: sale del catálogo de contratos.
-      // Antes era un `enum` con doce nombres, y al añadir el trece el
-      // plugin lo rechazaba como input inválido — la misma clase de
-      // lista paralela que hizo que `summary` divergiera de `generate`.
+      // The list is NOT hand-written: it comes from the contracts
+      // catalogue. It used to be an `enum` with twelve names, and
+      // adding the thirteenth made the plugin reject it as invalid
+      // input — the same class of parallel list that made `summary`
+      // diverge from `generate`.
       .enum([...FRAMEWORK_IDS])
       .optional(),
     /**
-     * Si es `true`, corre `bun run typecheck` además de `bun test`.
+     * If `true`, runs `bun run typecheck` in addition to `bun test`.
      * Default: true.
      */
     withTypecheck: z.boolean().optional(),
@@ -234,31 +237,33 @@ export const TestInputSchema = z
 
 export type ITestInput = z.infer<typeof TestInputSchema>;
 
-// --- Outputs de los tools ----------------------------------------------------
+// --- Tool outputs ------------------------------------------------------------
 
 /**
- * Los cuatro tools declaran `outputSchema`, y no es un adorno.
+ * The four tools declare `outputSchema`, and it is not a flourish.
  *
- * El invariante universal §6 —que `AGENT-BOOTSTRAP.md` copia por
- * referencia y §3.2 repite— dice que todo tool público lo declara.
- * Ninguno lo hacía. Un agente que llamaba a `tanit_generate` recibía
- * una salida sin contrato: no podía validar la respuesta ni saber qué
- * campos existen sin ejecutarla y mirar lo que salía. Y esta es la
- * superficie **pública** del proyecto hacia otros agentes, que es
- * justamente donde un contrato importa más.
+ * The universal invariant §6 — copied by reference into
+ * `AGENT-BOOTSTRAP.md` and repeated in §3.2 — says every public tool
+ * declares one. None of them did. An agent calling `tanit_generate`
+ * got an output with no contract: it could not validate the response
+ * or know which fields exist without executing it and looking at
+ * what came back. And this is the project's **public** surface
+ * toward other agents, which is exactly where a contract matters
+ * the most.
  *
- * Los esquemas describen el **éxito**, con `ok: z.literal(true)`. El
- * error no va aquí: `toolError` tiene su propio sobre universal
- * (`{ ok: false, error: { reason, nextAction? } }`) y marca la respuesta
- * con `isError`, así que un cliente lo distingue sin que cada tool
- * repita esa forma. Es el mismo reparto que usan los tools del host.
+ * The schemas describe **success**, with `ok: z.literal(true)`. The
+ * error does not live here: `toolError` has its own universal
+ * envelope (`{ ok: false, error: { reason, nextAction? } }`) and
+ * marks the response with `isError`, so a client distinguishes it
+ * without each tool repeating that shape. It is the same split the
+ * host's tools use.
  *
- * Los tipos se derivan de los esquemas con `z.infer`, no se escriben dos
- * veces: una interfaz a mano al lado de un esquema es dos fuentes de
- * verdad que se separan a la primera.
+ * The types are derived from the schemas with `z.infer`, not written
+ * twice: a hand-written interface next to a schema is two sources of
+ * truth that drift apart the first chance they get.
  */
 
-/** Lo que devuelve `generate` cuando la colección se ha escrito. */
+/** What `generate` returns when the collection has been written. */
 export const GenerateOutputSchema = z.object({
   ok: z.literal(true),
   framework: z
@@ -302,7 +307,7 @@ export const GenerateOutputSchema = z.object({
 
 export type IGenerateOutput = z.infer<typeof GenerateOutputSchema>;
 
-/** Lo que devuelve `validate` sobre una colección ya escrita. */
+/** What `validate` returns on an already-written collection. */
 export const ValidateOutputSchema = z.object({
   ok: z.literal(true),
   valid: z
@@ -332,14 +337,15 @@ export const ValidateOutputSchema = z.object({
 export type IValidateOutput = z.infer<typeof ValidateOutputSchema>;
 
 /**
- * Lo que devuelve `summary`: el proyecto visto desde el código, sin
- * generar nada.
+ * What `summary` returns: the project as seen from the code, without
+ * generating anything.
  *
- * Describe el resumen **entero**, que es lo que el tool devuelve de
- * verdad. La interfaz anterior declaraba seis campos mientras el handler
- * hacía `toolJson({ ok: true, ...summary })` y soltaba los dieciocho:
- * el contrato escrito y el comportamiento llevaban tiempo sin coincidir,
- * y nadie podía notarlo porque no había esquema que los confrontara.
+ * It describes the **whole** summary, which is what the tool
+ * actually returns. The previous interface declared six fields
+ * while the handler did `toolJson({ ok: true, ...summary })` and
+ * returned all eighteen: the written contract and the actual
+ * behaviour had been out of sync for a while, and nobody could
+ * notice because there was no schema to confront them.
  */
 export const SummaryOutputSchema = z.object({
   ok: z.literal(true),
@@ -382,9 +388,9 @@ export const SummaryOutputSchema = z.object({
   warnings: z
     .array(z.string())
     .describe("Avisos accionables: proyecto híbrido, nada reconocido…"),
-  // f00010 S3: las señales que motivaron la elección del framework. La
-  // UI las pinta como tarjetas; el agente las puede reusar para
-  // responder "¿por qué Laravel?" sin tener que re-escanear.
+  // f00010 S3: the signals that drove the framework's selection. The
+  // UI renders them as cards; the agent can reuse them to answer
+  // "why Laravel?" without having to re-scan.
   evidence: z
     .array(
       z.object({
@@ -401,9 +407,9 @@ export const SummaryOutputSchema = z.object({
     .describe(
       "Vacío si el detector aún no se ha enriquecido; se rellena progresivamente.",
     ),
-  // f00010 S2: la salud de la documentación, en porcentajes. Sobre los
-  // specs finales (los mismos que alimentaría `generate`), así que lo
-  // que dice el health es lo que la colección va a llevar.
+  // f00010 S2: documentation health, in percentages. On the final
+  // specs (the same ones `generate` would feed), so what the health
+  // says is what the collection will carry.
   health: ProjectHealthSchema.describe(
     "Salud de la documentación, en porcentajes 0..100. 0 en todo con cero endpoints.",
   ),
@@ -412,27 +418,27 @@ export const SummaryOutputSchema = z.object({
 export type ISummaryOutput = z.infer<typeof SummaryOutputSchema>;
 
 /**
- * El esquema tiene que cubrir el contrato **entero**.
+ * The schema must cover the entire contract.
  *
- * Esto no es una comprobación decorativa: es la que impide que vuelva a
- * pasar lo que ya pasó. `SummaryOutputSchema` declaraba 6 campos
- * mientras el handler hacía `toolJson({ ok: true, ...summary })` y
- * soltaba los dieciocho. El contrato escrito y el comportamiento
- * llevaban tiempo sin coincidir y nadie podía notarlo, porque no había
- * nada que los confrontara.
+ * This is not a decorative check: it is what prevents what already
+ * happened from happening again. `SummaryOutputSchema` declared 6
+ * fields while the handler did `toolJson({ ok: true, ...summary })`
+ * and returned all eighteen: the written contract and the actual
+ * behaviour had been out of sync for a while, and nobody could
+ * notice because there was nothing to confront them.
  *
- * Con esta línea, añadir un campo a `IProjectSummary` y olvidarse del
- * esquema **no compila**. Los campos de más sí se permiten —el tool
- * añade `ok`— porque lo que se comprueba es que no falte ninguno. Es
- * la que cazó `health` el día que `IProjectSummary` lo estrenó: sin
- * ella, `SummaryOutputSchema` habría seguido describiendo el resumen
- * de hace dos slices.
+ * With this line, adding a field to `IProjectSummary` and forgetting
+ * the schema **will not compile**. Extra fields are allowed — the
+ * tool adds `ok` — because what is checked is that none are missing.
+ * It is the one that caught `health` the day `IProjectSummary`
+ * introduced it: without it, `SummaryOutputSchema` would have kept
+ * describing the summary from two slices ago.
  */
 const _summaryCubreElContrato: z.ZodType<{ ok: true } & IProjectSummary> =
   SummaryOutputSchema;
 void _summaryCubreElContrato;
 
-/** Un paso de `test`: la ejecución de un sub-comando. */
+/** A step of `test`: the execution of a sub-command. */
 export const TestStepSchema = z.object({
   name: z.string().describe("`typecheck`, `test e2e`, `smoke:<framework>`…"),
   ok: z.boolean(),
@@ -463,20 +469,21 @@ export const TestOutputSchema = z.object({
 
 export type ITestOutput = z.infer<typeof TestOutputSchema>;
 
-// --- `check`: la pregunta que un agente mas quiere hacer ---------------------
+// --- `check`: the question an agent most wants to ask ------------------------
 
 /**
- * Entrada de `check`.
+ * `check` input.
  *
- * Es el tool que faltaba, y el mas llamativo de los que faltaban:
- * responde «¿se ha desincronizado mi coleccion del codigo?», que es
- * justo lo que un agente quiere saber antes de tocar nada. Estaba en el
- * CLI desde el principio y no se exponia.
+ * It is the tool that was missing, and the most striking one of the
+ * missing ones: it answers "has my collection drifted from the
+ * code?", which is exactly what an agent wants to know before
+ * touching anything. It existed in the CLI from the start and was
+ * not exposed.
  */
 export const CheckInputSchema = z
   .object({
     projectRoot: z.string().min(1).optional(),
-    /** La coleccion a comparar. Si falta, la que corresponda al proyecto. */
+    /** The collection to compare. If missing, the one for the project. */
     collectionPath: z.string().min(1).optional(),
   })
   .strict();
@@ -521,19 +528,19 @@ export const CheckOutputSchema = z.object({
 export type ICheckOutput = z.infer<typeof CheckOutputSchema>;
 
 /**
- * Igual que en `summary`: el esquema tiene que cubrir el informe entero.
+ * Same as in `summary`: the schema must cover the entire report.
  *
- * `ICheckReport` es lo que produce el comando; el tool le añade `ok` y
- * `durationMs`. Si mañana el informe gana un campo y el esquema no, esto
- * deja de compilar en vez de devolver una salida que el contrato del
- * tool no describe.
+ * `ICheckReport` is what the command produces; the tool adds `ok`
+ * and `durationMs`. If tomorrow the report gains a field and the
+ * schema does not, this stops compiling instead of returning an
+ * output the tool's contract does not describe.
  */
 const _checkCubreElInforme: z.ZodType<
   { ok: true; durationMs: number } & ICheckReport
 > = CheckOutputSchema;
 void _checkCubreElInforme;
 
-// --- `list`: los endpoints, en datos ----------------------------------------
+// --- `list`: the endpoints, as data ------------------------------------------
 
 export const ListInputSchema = z
   .object({ projectRoot: z.string().min(1).optional() })
@@ -542,11 +549,10 @@ export const ListInputSchema = z
 export type IListInput = z.infer<typeof ListInputSchema>;
 
 /**
- * Lo que devuelve `list`.
+ * What `list` returns.
  *
- * En datos y no en prosa: el CLI imprime una tabla para leer, y un
- * agente que la parsee con regex se rompe el dia que cambie una
- * columna.
+ * As data, not as prose: the CLI prints a table for humans, and an
+ * agent parsing it with regex breaks the day a column changes.
  */
 export const ListOutputSchema = z.object({
   ok: z.literal(true),
@@ -556,14 +562,14 @@ export const ListOutputSchema = z.object({
       method: z.string(),
       uri: z.string(),
       name: z.string(),
-      folder: z.string().describe("La carpeta de la coleccion donde vive."),
+      folder: z.string().describe("The collection folder where it lives."),
     }),
   ),
 });
 
 export type IListOutput = z.infer<typeof ListOutputSchema>;
 
-// --- `stats`: la forma de la coleccion, en numeros --------------------------
+// --- `stats`: the shape of the collection, in numbers ------------------------
 
 export const StatsInputSchema = z
   .object({ projectRoot: z.string().min(1).optional() })
@@ -572,11 +578,11 @@ export const StatsInputSchema = z
 export type IStatsInput = z.infer<typeof StatsInputSchema>;
 
 /**
- * Lo que devuelve `stats`.
+ * What `stats` returns.
  *
- * El CLI imprime una tabla alineada con `padEnd`, que es lo peor que se
- * le puede dar a un agente para parsear: el ancho de columna depende del
- * nombre de carpeta mas largo, asi que cambia entre proyectos.
+ * The CLI prints a table aligned with `padEnd`, which is the worst
+ * thing you can hand an agent to parse: the column width depends on
+ * the longest folder name, so it changes between projects.
  */
 export const StatsOutputSchema = z.object({
   ok: z.literal(true),
@@ -596,32 +602,32 @@ export const StatsOutputSchema = z.object({
         total: z.number().int().nonnegative(),
         byFolder: z.array(
           z.object({
-            folder: z.string().describe("La carpeta de primer nivel."),
+            folder: z.string().describe("The first-level folder."),
             count: z.number().int().nonnegative(),
           }),
         ),
       }),
     )
     .describe(
-      "Solo las zonas con contenido. Un proyecto sin configuracion de " +
-        "zonas tiene una sola, la de por defecto.",
+      "Only the zones with content. A project without a zone " +
+        "configuration has just one, the default.",
     ),
 });
 
 export type IStatsOutput = z.infer<typeof StatsOutputSchema>;
 
 /**
- * El esquema cubre lo que devuelve el comando, menos su codigo de salida.
+ * The schema covers what the command returns, minus its exit code.
  *
- * `code` no viaja al agente: un fallo se responde con `toolError`, que
- * lleva su propio sobre. Lo demas —total y los dos desgloses— tiene que
- * estar entero.
+ * `code` does not travel to the agent: a failure is answered with
+ * `toolError`, which carries its own envelope. Everything else —
+ * the total and the two breakdowns — must be present in full.
  */
 const _statsCubreElComando: z.ZodType<{ ok: true } & Omit<IStatsOutcome, "code">> =
   StatsOutputSchema;
 void _statsCubreElComando;
 
-// --- `scan`: que ve el discovery antes de generar nada ----------------------
+// --- `scan`: what discovery sees before generating anything ------------------
 
 export const ScanInputSchema = z
   .object({ projectRoot: z.string().min(1).optional() })
@@ -630,13 +636,13 @@ export const ScanInputSchema = z
 export type IScanInput = z.infer<typeof ScanInputSchema>;
 
 /**
- * Lo que devuelve `scan`.
+ * What `scan` returns.
  *
- * Es la respuesta a «¿por que no encuentra mis rutas?». `summary` da el
- * proyecto ya interpretado; esto da el paso anterior — que scanner gano,
- * por que artefactos, y las rutas **crudas**, antes de que el pipeline
- * las convierta en requests. Cuando los dos numeros no cuadran, la
- * diferencia esta entre estos dos tools.
+ * It is the answer to "why does it not find my routes?". `summary`
+ * returns the project already interpreted; this one returns the step
+ * before — which scanner won, by which artefacts, and the **raw**
+ * routes, before the pipeline turns them into requests. When the two
+ * numbers do not match, the difference sits between these two tools.
  */
 export const ScanOutputSchema = z.object({
   ok: z.literal(true),
@@ -647,19 +653,19 @@ export const ScanOutputSchema = z.object({
         "`detected` dice si reconocio algun framework. No reconocer nada " +
         "es un resultado, no un fallo de la herramienta.",
     ),
-  root: z.string().describe("La raiz que se escaneo, ya resuelta."),
+  root: z.string().describe("The root that was scanned, already resolved."),
   framework: z.string().nullable(),
   artifacts: z
     .array(z.string())
-    .describe("Los ficheros que delataron al framework: `package.json`, `server.js`…"),
+    .describe("The files that gave the framework away: `package.json`, `server.js`…"),
   scanner: z
     .string()
     .nullable()
-    .describe("La clase que recorre las rutas. Util cuando el framework acierta y las rutas no."),
+    .describe("The class that walks the routes. Useful when the framework matches but the routes do not."),
   validation: z
     .string()
     .nullable()
-    .describe("El proveedor de reglas de validacion, o null si el framework no tiene."),
+    .describe("The validation-rules provider, or null if the framework has none."),
   routes: z.array(
     z.object({
       method: z.string(),
@@ -674,56 +680,57 @@ export const ScanOutputSchema = z.object({
 export type IScanOutput = z.infer<typeof ScanOutputSchema>;
 
 /**
- * Lo mismo para `scan`, menos `code`, y con `detected` y `durationMs`
- * que anade el tool.
+ * Same as for `scan`, minus `code`, and with `detected` and
+ * `durationMs` added by the tool.
  *
- * `detected` no esta en el comando porque alli se deduce de que
- * `framework` sea `null`; el tool lo hace explicito para que un agente
- * no tenga que inferirlo.
+ * `detected` is not in the command because there it is inferred from
+ * `framework` being `null`; the tool makes it explicit so an agent
+ * does not have to infer it.
  */
 const _scanCubreElComando: z.ZodType<
   { ok: true; detected: boolean; durationMs: number } & Omit<IScanOutcome, "code">
 > = ScanOutputSchema;
 void _scanCubreElComando;
 
-// --- `push`: la unica operacion que escribe fuera del disco -----------------
+// --- `push`: the only operation that writes off-disk ------------------------
 
 /**
- * Entrada de `push`.
+ * `push` input.
  *
- * **No lleva `apiKey`.** El secreto no entra por el input del tool: lo
- * lee el CLI de `POSTMAN_API_KEY`, que es donde el host puede guardarlo
- * sin que viaje por la conversacion. Un `apiKey` en el esquema seria una
- * invitacion a que el agente lo pida y lo repita.
+ * **Does not carry `apiKey`.** The secret does not come in through the
+ * tool's input: the CLI reads it from `POSTMAN_API_KEY`, which is
+ * where the host can store it without it travelling through the
+ * conversation. An `apiKey` in the schema would be an invitation for
+ * the agent to ask for it and repeat it.
  */
 export const PushInputSchema = z
   .object({
     projectRoot: z.string().min(1).optional(),
-    /** Workspace destino. Si falta, el personal por defecto. */
+    /** Destination workspace. If missing, the user's personal one. */
     workspaceId: z.string().min(1).optional(),
-    /** Framework a la fuerza, igual que en `generate`. */
+    /** Framework forced, same as in `generate`. */
     framework: z.enum([...FRAMEWORK_IDS]).optional(),
-    /** Si es `false`, sube solo la coleccion. Por defecto sube tambien los entornos. */
+    /** If `false`, uploads the collection only. Defaults to also uploading environments. */
     withEnvironments: z.boolean().optional(),
   })
   .strict();
 
 export type IPushInput = z.infer<typeof PushInputSchema>;
 
-/** Un artefacto que ha llegado a Postman. */
+/** An artefact that has reached Postman. */
 export const PushedArtifactSchema = z.object({
-  action: z.enum(["created", "updated"]).describe("`created` si no existia."),
-  uid: z.string().describe("UID que asigna Postman: `<userId>-<uuid>`."),
+  action: z.enum(["created", "updated"]).describe("`created` if it did not exist."),
+  uid: z.string().describe("UID assigned by Postman: `<userId>-<uuid>`."),
   name: z.string(),
 });
 
 /**
- * Lo que devuelve `push`.
+ * What `push` returns.
  *
- * Ni un campo con el secreto, ni enmascarado. El fallo llega como
- * `{ reason, nextAction }` **redactados**, no como el cuerpo crudo de la
- * respuesta de Postman: ese cuerpo puede traer la peticion que lo causo,
- * y con ella la cabecera de la clave.
+ * Not a single field with the secret, not even masked. The failure
+ * arrives as `{ reason, nextAction }` **redacted**, not as the raw
+ * body of the Postman response: that body can carry the request that
+ * caused it, and with it the key's header.
  */
 export const PushOutputSchema = z.object({
   ok: z.literal(true),
@@ -751,11 +758,11 @@ export const PushOutputSchema = z.object({
 export type IPushOutput = z.infer<typeof PushOutputSchema>;
 
 /**
- * El esquema cubre el resultado del comando, menos `code` y `error`.
+ * The schema covers the command's result, minus `code` and `error`.
  *
- * `code` no viaja —el sobre de `toolError` ya distingue el fallo— y
- * `error` tampoco: cuando lo hay, el tool responde con `toolError` en
- * vez de con este esquema.
+ * `code` does not travel — the `toolError` envelope already
+ * distinguishes the failure — and neither does `error`: when it is
+ * present, the tool answers with `toolError` instead of this schema.
  */
 const _pushCubreElComando: z.ZodType<
   { ok: true; pushed: boolean; durationMs: number } & Omit<
@@ -765,22 +772,22 @@ const _pushCubreElComando: z.ZodType<
 > = PushOutputSchema;
 void _pushCubreElComando;
 
-// --- `init`: preparar la configuracion sin parsear stdout -------------------
+// --- `init`: prepare the config without parsing stdout ---------------------
 
 /**
- * Entrada de `init`.
+ * `init` input.
  *
- * `outputDir` existe porque el destino por defecto —
- * `<raiz>/resources/postman/examples/<nombre>/` — viene de cuando esto
- * era una herramienta de Laravel, y en otros ecosistemas no es donde
- * nadie lo buscaria.
+ * `outputDir` exists because the default destination —
+ * `<root>/resources/postman/examples/<name>/` — comes from when
+ * this was a Laravel tool, and in other ecosystems it is not where
+ * anyone would look.
  */
 export const InitInputSchema = z
   .object({
     projectRoot: z.string().min(1).optional(),
-    /** Nombre del proyecto, si la deteccion por manifiesto no acierta. */
+    /** Project name, if manifest detection does not succeed. */
     name: z.string().min(1).optional(),
-    /** Donde escribir la configuracion. Por defecto, la ruta convencional. */
+    /** Where to write the configuration. Defaults to the conventional path. */
     outputDir: z.string().min(1).optional(),
   })
   .strict();
@@ -788,12 +795,12 @@ export const InitInputSchema = z
 export type IInitInput = z.infer<typeof InitInputSchema>;
 
 /**
- * Lo que devuelve `init`.
+ * What `init` returns.
  *
- * Las dos rutas son lo importante: los ficheros que escribe estan llenos
- * de `// TODO` a proposito, asi que el siguiente paso siempre es que
- * alguien los edite. Un agente que no pueda decir **donde** estan no ha
- * terminado el trabajo, solo lo ha empezado.
+ * The two paths are what matters: the files it writes are full of
+ * `// TODO`s on purpose, so the next step is always for someone to
+ * edit them. An agent that cannot say **where** they are has not
+ * finished the job, only started it.
  */
 export const InitOutputSchema = z.object({
   ok: z.literal(true),
@@ -816,7 +823,7 @@ export const InitOutputSchema = z.object({
 
 export type IInitOutput = z.infer<typeof InitOutputSchema>;
 
-/** El esquema cubre el resultado del comando, menos `code` y `error`. */
+/** The schema covers the command's result, minus `code` and `error`. */
 const _initCubreElComando: z.ZodType<
   { ok: true; durationMs: number } & Omit<IInitOutcome, "code" | "error">
 > = InitOutputSchema;

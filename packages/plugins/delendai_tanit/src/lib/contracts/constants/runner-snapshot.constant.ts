@@ -1,43 +1,43 @@
 /**
- * Snapshot inmutable del `process.env` y `process.cwd()` capturados al
- * boot del plugin.
+ * Immutable snapshot of `process.env` and `process.cwd()` captured at
+ * plugin boot.
  *
- * El universal §6 dice "Async I/O only in hot paths; `*Sync` is boot-time
- * only" — la captura de un snapshot del entorno del proceso **es**
- * boot-time: se hace una vez al cargar el módulo, no en cada tool
- * call. El resultado es `readonly`, así que nadie puede mutarlo
- * mientras un spawn está en vuelo.
+ * The universal §6 says "Async I/O only in hot paths; `*Sync` is
+ * boot-time only" — capturing a snapshot of the process environment
+ * **is** boot-time: it happens once when the module loads, not on
+ * every tool call. The result is `readonly`, so nothing can mutate
+ * it while a spawn is in flight.
  *
- * Por qué existe:
- *   - `runner.helper` necesita el `env` y `bunBin` para invocar al CLI.
- *   - `IMcpPluginContext` no expone `env` directamente (lo deja al
- *     plugin decidir).
- *   - `lint:tools` (universal §6, mirrored por `lint-tool-no-process`)
- *     prohíbe leer `process.env` desde tools y helpers.
+ * Why it exists:
+ *   - `runner.helper` needs `env` and `bunBin` to invoke the CLI.
+ *   - `IMcpPluginContext` does not expose `env` directly (it leaves
+ *     that decision to the plugin).
+ *   - `lint:tools` (universal §6, mirrored by `lint-tool-no-process`)
+ *     forbids reading `process.env` from tools and helpers.
  *
- * La solución es: leer **una vez** aquí, exponer el snapshot como
- * constantes, y dejar que el resto del plugin las consuma. Eso
- * cumple el universal §6 sin obligar al host a inyectar un env
- * arbitrario.
+ * The solution: read it **once** here, expose the snapshot as
+ * constants, and let the rest of the plugin consume them. That
+ * satisfies universal §6 without forcing the host to inject an
+ * arbitrary env.
  */
 
-/** Snapshot del entorno capturado al cargar el módulo. */
+/** Snapshot of the environment captured at module load. */
 export const ENV_SNAPSHOT: Readonly<Record<string, string | undefined>> =
   Object.freeze({ ...process.env });
 
-/** Snapshot del cwd capturado al cargar el módulo. */
+/** Snapshot of the cwd captured at module load. */
 export const CWD_SNAPSHOT: string = process.cwd();
 
 /**
- * Snapshot del binario `bun`, con la cascada documentada:
- *   1. `DELENDAI_BUN_BIN` del entorno capturado (operador forzado).
- *   2. `undefined` para que `runner.helper` aplique su propio fallback
+ * Snapshot of the `bun` binary, with the documented cascade:
+ *   1. `DELENDAI_BUN_BIN` from the captured environment (operator override).
+ *   2. `undefined` so `runner.helper` applies its own fallback
  *      (Bun.which / command -v / "bun").
  *
- * El helper `Bun.which("bun")` no entra en el snapshot porque sólo
- * está disponible en runtime Bun y se consulta en cada spawn (es
- * barato, y si el host cambia de binario a mitad de sesión lo
- * respeta).
+ * The `Bun.which("bun")` helper does not enter the snapshot because it
+ * is only available in the Bun runtime and is queried on every spawn
+ * (it is cheap, and if the host switches binaries mid-session the
+ * helper picks it up).
  */
 export const BUN_BIN_SNAPSHOT: string | undefined = (() => {
   const fromEnv = ENV_SNAPSHOT["DELENDAI_BUN_BIN"];

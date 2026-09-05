@@ -1,20 +1,20 @@
 /**
- * Servicio para parsear FormRequests de Laravel y extraer sus reglas de
- * validación (`rules()`). A partir de esas reglas genera:
+ * Service to parse Laravel FormRequests and extract their validation
+ * rules (`rules()`). From those rules it generates:
  *
- *   - Un body de ejemplo "mínimo" (solo campos required y tipados).
- *   - Un body de ejemplo "completo" (todos los campos opcionales también).
- *   - Variantes de query params para endpoints GET de búsqueda.
+ *   - A "minimum" example body (only required and typed fields).
+ *   - A "complete" example body (all optional fields too).
+ *   - Query-param variants for search GET endpoints.
  *
- * Limitaciones:
- * - Solo procesa reglas literales (`['required', 'string', ...]`). Las
- *   reglas dinámicas (`Rule::when(...)`, reglas condicionales con
- *   `$this->user()`, etc.) se IGNORAN y se documentan como advertencia.
- * - Las reglas `algo.*` (anidadas) se IGNORAN para la generación
- *   automática pero se listan en `unknown`.
+ * Limitations:
+ * - Only literal rules (`['required', 'string', ...]`) are processed.
+ *   Dynamic rules (`Rule::when(...)`, conditional rules with
+ *   `$this->user()`, etc.) are IGNORED and reported as warnings.
+ * - `foo.*` (nested) rules are IGNORED for auto-generation but are
+ *   listed under `unknown`.
  *
- * El body generado es un EJEMPLO. El usuario puede editarlo en el
- * catálogo para casos especiales.
+ * The generated body is an EXAMPLE. The user can edit it in the
+ * catalog for special cases.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -29,13 +29,13 @@ function extractRulesBlock(src: string): string | null {
   if (startIdx === -1) return null;
   const tail = src.slice(startIdx);
 
-  // Encontrar el primer `return [` o `return[`.
+  // Find the first `return [` or `return[`.
   const retMatch = tail.match(/return\s*[\[({]/);
   if (!retMatch) return null;
   const openChar = retMatch[0].slice(-1);
   if (openChar !== "[") return null;
 
-  // Posición justo después de `return ` (o justo donde está el `[`).
+  // Position right after `return ` (or where the `[` is).
   const openIdx = retMatch.index! + retMatch[0].length - 1;
 
   let depth = 0;
@@ -68,8 +68,8 @@ function extractRulesBlock(src: string): string | null {
 function parseRulePair(text: string): { field: string; rules: string[]; unknown: string[] } | null {
   const m = text.match(/^\s*['"]([^'"]+)['"]\s*=>\s*(.+?)(?=,\s*(?:['"][^'"]+['"]\s*=>)|$)/s);
   if (!m) return null;
-  // Los dos grupos son obligatorios en el patrón, pero eso el compilador
-  // no lo sabe: comprobarlos cuesta una línea y quita dos `!`.
+  // Both groups are required in the pattern, but the compiler doesn't
+  // know that: checking costs one line and saves two `!`.
   const [, field, rawRhs] = m;
   if (field === undefined || rawRhs === undefined) return null;
   const rhs = rawRhs.trim().replace(/,?\s*$/, "");
@@ -157,23 +157,24 @@ function parseRulesArray(block: string): { rules: Record<string, string[]>; unkn
   if (body.startsWith("[") && body.endsWith("]")) {
     body = body.slice(1, -1);
   }
-  // Encontrar TODAS las apariciones de `'campo' =>` y sus posiciones.
+  // Find ALL occurrences of `'field' =>` and their positions.
   const fieldRe = /['"]([^'"]+)['"]\s*=>\s*/g;
   const found: Array<{ field: string; rhsStart: number }> = [];
   let m: RegExpExecArray | null;
   while ((m = fieldRe.exec(body)) !== null) {
     const field = m[1];
     if (field === undefined) continue;
-    // Inicio del valor: justo después de `=> `
+    // Start of the value: right after `=> `
     found.push({ field, rhsStart: m.index + m[0].length });
   }
-  // El RHS de un campo acaba donde empieza el siguiente `'campo' =>`
-  // (el `,` que los separa se lo come el regex del siguiente).
+  // The RHS of a field ends where the next `'field' =>` begins
+  // (the separating `,` is eaten by the next regex's match).
   //
-  // Antes esto era un bucle por índice que **mutaba** los elementos ya
-  // metidos en el array (`matches[i].rhsEnd = end`), leyendo `matches[i]`
-  // y `matches[i + 1]` sin que nada garantizara que existieran. Mapear
-  // deja el mismo cálculo sin índices sueltos ni mutación.
+  // Before, this was an index loop that **mutated** the elements
+  // already pushed into the array (`matches[i].rhsEnd = end`),
+  // reading `matches[i]` and `matches[i + 1]` without anything
+  // guaranteeing they existed. Mapping leaves the same calculation
+  // without loose indexes or mutation.
   const matches = found.map((current, i) => {
     const next = found[i + 1];
     if (!next) return { ...current, rhsEnd: body.length };
@@ -199,9 +200,9 @@ export async function parseFormRequest(
   const raw = await readFile(abs, "utf8");
   const text = stripComments(raw);
 
-  // Acepta FormRequest directo o cualquier subclase (IndexRequest,
-  // StoreRequest, UpdateRequest, etc.). Basta con que el nombre de la
-  // clase padre termine en FormRequest.
+  // Accepts FormRequest directly or any subclass (IndexRequest,
+  // StoreRequest, UpdateRequest, etc.). Only the parent class name has
+  // to end in FormRequest.
   const classMatch = text.match(/class\s+(\w+)\s+extends\s+\w*FormRequest/);
   const className = classMatch?.[1] ?? "(unknown)";
 
@@ -215,7 +216,7 @@ export async function parseFormRequest(
   return { sourceFile: relPath, className, rules, unknown, isEmpty };
 }
 
-// --- Generación de valores de ejemplo ------------------------------------
+// --- Generation of example values ------------------------------------
 
 const TYPED_RULES = new Set([
   "string", "email", "url", "uuid", "ip", "mac_address",
@@ -225,8 +226,8 @@ const TYPED_RULES = new Set([
 
 export function detectTypedRule(rules: string[]): string | null {
   for (const r of rules) {
-    // `split` siempre devuelve al menos un elemento, pero el tipo no lo
-    // dice. `?? r` es el mismo valor que daría en ese caso.
+// `split` always returns at least one element, but the type doesn't
+  // say so. `?? r` is the same value it would give in that case.
     const name = r.split(":")[0] ?? r;
     if (TYPED_RULES.has(name)) return r;
   }
@@ -236,9 +237,9 @@ export function detectTypedRule(rules: string[]): string | null {
 export function exampleValueForRule(rule: string, fieldName: string): unknown {
   const [name, ...args] = rule.split(":");
   switch (name) {
-    // Cada formato tiene su ejemplo. Antes todos caían en la misma rama
-    // que `date`, así que un `email` salía como "2024-01-15" y el body de
-    // ejemplo era inservible sin editarlo a mano.
+    // Each format has its own example. Before, all of them fell into the
+    // same branch as `date`, so an `email` came out as "2024-01-15"
+    // and the example body was unusable without manual editing.
     case "email":
       return "user@example.com";
     case "url":
@@ -294,7 +295,7 @@ function isNestedWildcard(field: string): boolean {
   return field.includes(".*");
 }
 
-/** Body con solo los campos required (mínimo viable). */
+/** Body with only the required fields (minimum viable). */
 export function generateMinimalBody(rules: FormRequestRules): Record<string, unknown> {
   if (rules.isEmpty) return {};
   const out: Record<string, unknown> = {};
@@ -306,7 +307,7 @@ export function generateMinimalBody(rules: FormRequestRules): Record<string, unk
       out[field] = exampleValueForRule(typed, field);
       continue;
     }
-    // required sin tipo explícito: string de ejemplo (mejor que omitir).
+    // Required without explicit type: example string (better than omitting).
     const inRule = fieldRules.find((r) => r.startsWith("in:"));
     if (inRule) {
       out[field] = exampleValueForRule(inRule, field);
@@ -317,7 +318,7 @@ export function generateMinimalBody(rules: FormRequestRules): Record<string, unk
   return out;
 }
 
-/** Body con todos los campos (required + sometimes), valores plausibles. */
+/** Body with all fields (required + sometimes), plausible values. */
 export function generateCompleteBody(rules: FormRequestRules): Record<string, unknown> {
   if (rules.isEmpty) return {};
   const out: Record<string, unknown> = {};
@@ -338,14 +339,14 @@ export function generateCompleteBody(rules: FormRequestRules): Record<string, un
 }
 
 /**
- * Variantes de body a partir de un FormRequest.
+ * Body variants from a FormRequest.
  *
- * Genera:
- *   - Mínimo (solo required)
- *   - Completo (todos los campos tipados)
- *   - Una variante por cada campo `in:a,b,c` (enum) con cada opción
- *     (tope 6 por campo para no explotar el producto cartesiano)
- *   - Vacío `{}` si no hay required (útil para PUT parciales)
+ * Generates:
+ *   - Minimum (required only)
+ *   - Complete (all typed fields)
+ *   - One variant per `in:a,b,c` (enum) field with each option
+ *     (cap 6 per field to avoid blowing up the cartesian product)
+ *   - Empty `{}` if there are no required (useful for partial PUTs)
  */
 export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
   const min = generateMinimalBody(rules);
@@ -355,7 +356,7 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
   if (Object.keys(min).length > 0) {
     out.push({ name: "Mínimo (solo required)", body: min });
   } else {
-    // PUT/PATCH sin required: body vacío como base válida.
+    // PUT/PATCH without required: empty body as a valid base.
     out.push({ name: "Empty (no required fields)", body: {} });
   }
 
@@ -366,7 +367,7 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
     }
   }
 
-  // Variantes por enum `in:opt1,opt2,...` (máx. 3 campos × 4 opciones).
+  // Variants by enum `in:opt1,opt2,...` (max 3 fields × 4 options).
   let enumFields = 0;
   for (const [field, fieldRules] of Object.entries(rules.rules)) {
     if (isNestedWildcard(field)) continue;
@@ -387,7 +388,7 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
     }
   }
 
-  // Deduplicar por JSON del body.
+  // Deduplicate by body JSON.
   const seen = new Set<string>();
   return out.filter((v) => {
     const k = JSON.stringify(v.body);
@@ -397,21 +398,21 @@ export function generateBodyVariants(rules: FormRequestRules): BodyVariant[] {
   });
 }
 
-// --- Variantes de query params -------------------------------------------
+// --- Query-param variants -------------------------------------------
 
 const QUERY_LIKE_FIELDS = new Set([
   "nombre", "razon_social", "cif", "codigo", "busqueda", "search", "q",
 ]);
 
 /**
- * Genera variantes de query params a partir de las reglas.
- * Útil para endpoints GET de listado/búsqueda (IndexXxxRequest).
+ * Generates query-param variants from the rules.
+ * Useful for list/search GET endpoints (IndexXxxRequest).
  */
 export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
   if (rules.isEmpty) return [];
   const variants: QueryVariant[] = [];
 
-  // Variante "Básica": un campo like típico si existe.
+  // "Basic" variant: a typical like field if one exists.
   const likeField = Object.entries(rules.rules).find(([f, rs]) =>
     QUERY_LIKE_FIELDS.has(f) && detectTypedRule(rs) !== null,
   );
@@ -426,7 +427,7 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
     });
   }
 
-  // Variante "Todos": todos los filtros como query params.
+  // "All filters" variant: every filter as query params.
   const all: QueryVariant["query"] = [];
   for (const [field, fieldRules] of Object.entries(rules.rules)) {
     if (isNestedWildcard(field)) continue;
@@ -448,12 +449,13 @@ export function generateQueryVariants(rules: FormRequestRules): QueryVariant[] {
 }
 
 /**
- * Dado un namespace de controlador `App\Http\Controllers\X\YController`
- * y un nombre de método, busca el FormRequest asociado por convención
- * de nombre en `app/Http/Requests/` (primero subcarpeta del controlador,
- * luego todo el árbol).
+ * Given a controller namespace `App\Http\Controllers\X\YController`
+ * and a method name, looks up the FormRequest associated by naming
+ * convention in `app/Http/Requests/` (first the controller's
+ * subfolder, then the whole tree).
  *
- * Devuelve ruta relativa al proyecto (`app/Http/Requests/...php`) o null.
+ * Returns the project-relative path (`app/Http/Requests/...php`) or
+ * null.
  */
 export async function findFormRequestForController(
   controllerClass: string,
@@ -463,11 +465,12 @@ export async function findFormRequestForController(
   const fs = await import("node:fs/promises");
   const path = await import("node:path");
 
-  // `projectRootOverride` es el camino preferente: mantiene el provider
-  // reentrante (dos proyectos escaneados en el mismo proceso no se pisan).
-  // Antes, sin él, caíamos al singleton de `paths.service` (retirado en
-  // r00010 S2, 2026-09-03), que resolvía la raíz una única vez por
-  // proceso desde POSTMAN_PROJECT_ROOT / --project-root.
+  // `projectRootOverride` is the preferred path: it keeps the provider
+  // reentrant (two projects scanned in the same process don't step
+  // on each other). Before, without it, we fell back to the
+  // `paths.service` singleton (removed in r00010 S2, 2026-09-03),
+  // which resolved the root once per process from
+  // POSTMAN_PROJECT_ROOT / --project-root.
   const base = path.join(context.projectRoot, "app", "Http", "Requests");
 
   const toRelative = (abs: string): string =>
@@ -505,7 +508,7 @@ export async function findFormRequestForController(
       candidateClassNames.add(`${pfx}${controllerFile.replace(/Controller$/, "")}Request`);
     }
   }
-  // camelCase del propio método: buscaMotorizaciones → BuscaMotorizacionesRequest
+  // camelCase of the method itself: buscaMotorizaciones → BuscaMotorizacionesRequest
   const camel =
     methodName.charAt(0).toUpperCase() + methodName.slice(1) + "Request";
   candidateClassNames.add(camel);
@@ -527,7 +530,7 @@ export async function findFormRequestForController(
     return map;
   }
 
-  // 1) Subdirs del controlador
+  // 1) Controller subdirs
   const searchRoots: string[] = [];
   if (subDirs.length) searchRoots.push(path.join(base, ...subDirs));
   if (resourceHint) searchRoots.push(path.join(base, resourceHint));

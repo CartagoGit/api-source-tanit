@@ -1,10 +1,10 @@
 /**
- * El registro de secciones.
+ * The sections registry.
  *
- * Es la pieza de la que cuelgan vitest, el typecheck y `test:changed`,
- * así que un fallo aquí no rompe un test: hace que el gate deje de
- * mirar una carpeta sin avisar. Por eso se comprueba el mapeo caso a
- * caso y no solo "devuelve algo".
+ * It is the piece that vitest, the typecheck, and `test:changed` hang
+ * off, so a failure here does not break a test: it makes the gate
+ * stop watching a folder without warning. That is why the mapping is
+ * checked case by case and not only "it returns something".
  */
 import { describe, expect, test } from "vitest";
 
@@ -18,12 +18,12 @@ import {
 } from "../../scripts/gates/sections.constant";
 
 describe("SECTIONS", () => {
-  test("los nombres son únicos", () => {
+  test("names are unique", () => {
     const names = SECTIONS.map((section) => section.name);
     expect(new Set(names).size).toBe(names.length);
   });
 
-  test("toda dependencia declarada existe", () => {
+  test("every declared dependency exists", () => {
     for (const section of SECTIONS) {
       for (const dependency of section.dependsOn) {
         expect(sectionByName(dependency), `${section.name} → ${dependency}`).toBeDefined();
@@ -32,37 +32,39 @@ describe("SECTIONS", () => {
   });
 
   /**
-   * La regla decía «el núcleo no depende de nadie», y eso dejó de ser
-   * cierto al aparecer `contracts`. Pero nunca fue lo que se quería
-   * decir: lo que mantiene agnóstico al núcleo es que no dependa de
-   * **frameworks**, no que no dependa de nada. Depender de un proyecto
-   * que solo tiene interfaces no le añade ningún framework encima.
+   * The rule said "the core depends on no one", and that stopped
+   * being true when `contracts` appeared. But it was never what we
+   * meant to say: what keeps the core agnostic is that it does not
+   * depend on **frameworks**, not that it depends on nothing.
+   * Depending on a project that only has interfaces does not add
+   * any framework on top.
    *
-   * Se escribe como lo que significa para que la próxima sección
-   * nuclear no obligue a tocar el test otra vez.
+   * It is written as what it means so that the next nuclear section
+   * does not force touching the test again.
    */
-  test("el núcleo no depende de frameworks: es lo que lo mantiene agnóstico", () => {
+  test("the core does not depend on frameworks: that is what keeps it agnostic", () => {
     expect(sectionByName("core")?.dependsOn).not.toContain("frameworks");
   });
 
-  /** Y por debajo de los contratos no hay nada: son la base del grafo. */
-  test("los contratos no dependen de nadie", () => {
+  /** And below contracts there is nothing: they are the base of the graph. */
+  test("contracts depend on no one", () => {
     expect(sectionByName("contracts")?.dependsOn).toEqual([]);
   });
 
   /**
-   * Todas dependen de los contratos. Es lo que permite que un tipo
-   * compartido se use sin arrastrar la implementación que lo estrenó.
+   * They all depend on contracts. It is what lets a shared type be
+   * used without dragging along the implementation that premiered
+   * it.
    */
-  test("todas las demás secciones dependen de los contratos", () => {
+  test("all other sections depend on contracts", () => {
     for (const section of SECTIONS) {
       if (section.name === "contracts") continue;
       expect(section.dependsOn, section.name).toContain("contracts");
     }
   });
 
-  test("no hay ciclos en el grafo de dependencias", () => {
-    // Si lo hubiera, `withDependents` no terminaría o devolvería de más.
+  test("no cycles in the dependency graph", () => {
+    // If there were one, `withDependents` would not finish or would return too many.
     for (const section of SECTIONS) {
       const reach = withDependents([section]).map((s) => s.name);
       expect(reach).toContain(section.name);
@@ -71,19 +73,19 @@ describe("SECTIONS", () => {
   });
 });
 
-describe("bestSectionFor — gana el prefijo más específico", () => {
+describe("bestSectionFor — the most specific prefix wins", () => {
   test.each([
     ["packages/core/domain/collection-builder.service.ts", "core"],
     ["packages/core/helpers/uri.helper.ts", "core"],
     ["packages/core/contracts/postman.interface.ts", "core"],
-    // Los scanners y los parsers de cada framework viven fuera del
-    // núcleo desde que se separaron las dos capas.
+    // Scanners and parsers for each framework live outside the core
+    // since the two layers were split.
     ["packages/frameworks/scanners/gin.scanner.ts", "frameworks"],
     ["packages/frameworks/laravel/laravel.scanner.ts", "frameworks"],
     ["packages/frameworks/parsers/zod-schema.helper.ts", "frameworks"],
     ["packages/frameworks/framework.registry.ts", "frameworks"],
-    // El adapter sí es del núcleo: trabaja sobre el contrato genérico
-    // `ParsedRoute`, no sobre ningún framework concreto.
+    // The adapter is from the core: it works on the generic contract
+    // `ParsedRoute`, not on any concrete framework.
     ["packages/core/adapters/parsed-route-to-spec.adapter.ts", "core"],
     ["packages/cli/commands/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
@@ -92,20 +94,20 @@ describe("bestSectionFor — gana el prefijo más específico", () => {
     expect(bestSectionFor(file)?.name).toBe(expected);
   });
 
-  test("un fichero fuera de toda sección no cae en ninguna", () => {
+  test("a file outside any section does not fall into any", () => {
     expect(bestSectionFor("README.md")).toBeUndefined();
     expect(bestSectionFor("docs/INSTALL.md")).toBeUndefined();
   });
 });
 
 describe("sectionsForFiles", () => {
-  test("un scanner solo activa frameworks", () => {
+  test("a scanner alone activates frameworks", () => {
     expect(
       sectionsForFiles(["packages/frameworks/scanners/flask.scanner.ts"]).map((s) => s.name),
     ).toEqual(["frameworks"]);
   });
 
-  test("varios ficheros activan varias secciones, sin repetir", () => {
+  test("several files activate several sections, without repeating", () => {
     const names = sectionsForFiles([
       "packages/frameworks/scanners/flask.scanner.ts",
       "packages/frameworks/scanners/gin.scanner.ts",
@@ -115,36 +117,36 @@ describe("sectionsForFiles", () => {
   });
 
   test.each(GLOBAL_PATHS.map((path) => [path]))(
-    "tocar %s obliga a correrlo todo",
+    "touching %s forces running everything",
     (globalPath) => {
       const file = globalPath.endsWith("/") ? `${globalPath}algo.ts` : globalPath;
       expect(sectionsForFiles([file]).length).toBe(SECTIONS.length);
     },
   );
 
-  test("cambiar solo documentación no activa ninguna sección", () => {
+  test("changing only documentation activates no section", () => {
     expect(sectionsForFiles(["README.md", "docs/POSTMAN.md"])).toEqual([]);
   });
 });
 
 describe("withDependents", () => {
-  test("tocar el núcleo arrastra a todos sus consumidores", () => {
+  test("touching the core drags along all its consumers", () => {
     const names = withDependents([sectionByName("core")!]).map((s) => s.name);
     expect(names).toEqual(["core", "frameworks", "cli", "e2e", "plugin"]);
   });
 
-  test("tocar un scanner no arrastra al núcleo", () => {
+  test("touching a scanner does not drag along the core", () => {
     const names = withDependents([sectionByName("frameworks")!]).map((s) => s.name);
     expect(names).not.toContain("core");
     expect(names).toContain("frameworks");
     expect(names).toContain("e2e");
   });
 
-  test("la hoja del grafo no arrastra nada más", () => {
+  test("the leaf of the graph drags nothing else", () => {
     expect(withDependents([sectionByName("e2e")!]).map((s) => s.name)).toEqual(["e2e"]);
   });
 
-  test("se conserva el orden declarado, no el de descubrimiento", () => {
+  test("the declared order is preserved, not the discovery order", () => {
     const names = withDependents([sectionByName("cli")!, sectionByName("core")!]).map(
       (s) => s.name,
     );

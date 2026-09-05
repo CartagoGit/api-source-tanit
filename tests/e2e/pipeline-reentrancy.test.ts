@@ -1,15 +1,15 @@
 /**
- * Reentrancia del pipeline: dos proyectos en el mismo proceso.
+ * Pipeline reentrancy: two projects in the same process.
  *
- * El singleton retirado de `paths.service` (r00010 S2, 2026-09-03)
- * resolvía la raíz del proyecto **una vez por proceso** y la cacheaba.
- * Valía para el CLI, que arranca un proceso por proyecto, pero rompía
- * a cualquier consumidor de vida larga —el servidor MCP, el gate, la
- * propia suite de tests—: el segundo proyecto analizado recibía la
- * configuración y las rutas del primero.
+ * The singleton removed from `paths.service` (r00010 S2, 2026-09-03)
+ * resolved the project root **once per process** and cached it. It was
+ * fine for the CLI, which spawns one process per project, but it broke
+ * any long-lived consumer — the MCP server, the gate, the test suite
+ * itself: the second project analyzed received the configuration and
+ * routes of the first.
  *
- * Era además la causa de fondo del bug del provider de FormRequests de
- * Laravel, que ignoraba `match.projectRoot` y leía el singleton.
+ * It was also the root cause of the Laravel FormRequest provider bug,
+ * which ignored `match.projectRoot` and read the singleton.
  */
 import { describe, expect, test } from "vitest";
 import { join, } from "node:path";
@@ -22,8 +22,8 @@ const EXPRESS = join(FIXTURES, "express-comprehensive");
 const DJANGO = join(FIXTURES, "django-comprehensive");
 const LARAVEL = join(FIXTURES, "laravel-comprehensive");
 
-describe("pipeline reentrante", () => {
-  test("dos proyectos seguidos detectan cada uno su framework", async () => {
+describe("reentrant pipeline", () => {
+  test("two projects in a row each detect their own framework", async () => {
     const first = await generateWithAllFrameworks(EXPRESS);
     const second = await generateWithAllFrameworks(DJANGO);
 
@@ -31,7 +31,7 @@ describe("pipeline reentrante", () => {
     expect(second.match?.framework).toBe("django");
   });
 
-  test("el segundo proyecto no hereda las rutas del primero", async () => {
+  test("the second project does not inherit the routes of the first", async () => {
     const first = await generateWithAllFrameworks(EXPRESS);
     const second = await generateWithAllFrameworks(DJANGO);
 
@@ -39,7 +39,7 @@ describe("pipeline reentrante", () => {
     expect(second.match?.projectRoot).toBe(DJANGO);
   });
 
-  test("volver al primero da el mismo resultado que la primera vez", async () => {
+  test("going back to the first yields the same result as the first time", async () => {
     const before = await generateWithAllFrameworks(EXPRESS);
     await generateWithAllFrameworks(DJANGO);
     const after = await generateWithAllFrameworks(EXPRESS);
@@ -48,7 +48,7 @@ describe("pipeline reentrante", () => {
     expect(after.collection.info._postman_id).toBe(before.collection.info._postman_id!);
   });
 
-  test("cada colección conserva su propia identidad", async () => {
+  test("each collection keeps its own identity", async () => {
     const express = await generateWithAllFrameworks(EXPRESS);
     const django = await generateWithAllFrameworks(DJANGO);
 
@@ -57,10 +57,11 @@ describe("pipeline reentrante", () => {
     );
   });
 
-  // El provider de FormRequests de Laravel leía la raíz del singleton en
-  // lugar de `match.projectRoot`: sin POSTMAN_PROJECT_ROOT no resolvía ni
-  // uno, y tras analizar otro proyecto resolvía los del proyecto anterior.
-  test("los FormRequest de Laravel se resuelven tras analizar otro proyecto", async () => {
+  // The Laravel FormRequest provider read the root from the singleton
+  // instead of from `match.projectRoot`: without POSTMAN_PROJECT_ROOT it
+  // resolved none, and after analyzing another project it resolved
+  // those from the previous project.
+  test("Laravel FormRequests resolve after analyzing another project", async () => {
     await generateWithAllFrameworks(EXPRESS);
     const laravel = await generateWithAllFrameworks(LARAVEL);
 
@@ -68,7 +69,7 @@ describe("pipeline reentrante", () => {
     expect(laravel.metrics.withValidation).toBeGreaterThan(0);
   });
 
-  test("el orden de análisis no cambia el resultado de Laravel", async () => {
+  test("the analysis order does not change the Laravel result", async () => {
     const alone = await generateWithAllFrameworks(LARAVEL);
     await generateWithAllFrameworks(DJANGO);
     const afterOther = await generateWithAllFrameworks(LARAVEL);
@@ -77,13 +78,13 @@ describe("pipeline reentrante", () => {
     expect(afterOther.metrics.routes).toBe(alone.metrics.routes);
   });
 
-  test("no deja POSTMAN_PROJECT_ROOT tocado al terminar", async () => {
+  test("does not leave POSTMAN_PROJECT_ROOT touched when finished", async () => {
     const before = process.env["POSTMAN_PROJECT_ROOT"];
     await generateWithAllFrameworks(EXPRESS);
     expect(process.env["POSTMAN_PROJECT_ROOT"]).toBe(before);
   });
 
-  test("restaura el entorno aunque el pipeline lance", async () => {
+  test("restores the environment even if the pipeline throws", async () => {
     const before = process.env["POSTMAN_PROJECT_ROOT"];
     await generateWithAllFrameworks(join(FIXTURES, "no-existe")).catch(() => undefined);
     expect(process.env["POSTMAN_PROJECT_ROOT"]).toBe(before);

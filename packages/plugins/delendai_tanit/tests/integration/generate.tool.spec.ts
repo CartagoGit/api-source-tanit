@@ -1,14 +1,15 @@
 /**
- * Integration tests de `buildGenerateToolRegistration`.
+ * Integration tests for `buildGenerateToolRegistration`.
  *
- * El tool no importa el CLI: lo **spawnea**. Así que lo único que se
- * puede comprobar de verdad es ejecutándolo, y eso es justo lo que aquí
- * no se estaba haciendo — el plugin llevaba commits apuntando a un
- * `scripts/cli.script.ts` que ya no existía y ningún test lo notó,
- * porque ninguno llegaba a spawnear nada.
+ * The tool does not import the CLI: it **spawns** it. So the only
+ * thing we can really check is by running it, which is exactly what
+ * was not happening here — the plugin shipped commits pointing at
+ * a `scripts/cli.script.ts` that no longer existed and no test
+ * noticed, because none of them ever actually spawned anything.
  *
- * El caso que da sentido a `framework`: un proyecto **sin manifiesto**,
- * donde la detección no puede acertar por mucho que se la mejore.
+ * The case that gives `framework` its meaning: a project **without a
+ * manifest**, where detection cannot succeed no matter how much it
+ * improves.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdtemp, rm, unlink } from "node:fs/promises";
@@ -18,13 +19,13 @@ import { tmpdir } from "node:os";
 import { buildGenerateToolRegistration } from "../../src/lib/tools/generate.tool";
 import { captureHandler, makeContext, workspaceRoot } from "../helpers/plugin-context";
 
-/** Raíz del proyecto tanit (no la del plugin). */
+/** Root of the tanit project (not the plugin's). */
 const TANIT_ROOT = workspaceRoot(import.meta.url);
 
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: TANIT_ROOT, options });
 
-/** Copia del fixture de Fastify sin su `package.json`, y dónde escribir. */
+/** Copy of the Fastify fixture without its `package.json`, and where to write. */
 let sinManifiesto = "";
 let salida = "";
 let workDir = "";
@@ -72,17 +73,17 @@ describe("tanit_generate", () => {
     expect(result.content[0]?.text).toMatch(/no existe/);
   });
 
-  // Este es el test que habría cazado la ruta muerta al CLI: es el único
-  // que llega a ejecutar el binario de verdad.
+  // This is the test that would have caught the dead CLI path: it is
+  // the only one that actually executes the binary.
   test(
-    "sin `framework`, un proyecto sin manifiesto falla y el aviso ofrece la salida",
+    "without `framework`, a manifestless project fails and the warning offers the way out",
     { timeout: 120_000 },
     async () => {
       const handler = await captureHandler(buildGenerateToolRegistration(makeCtx()));
       const result = await handler({ projectRoot: sinManifiesto, outputDir: salida });
       expect(result.isError).toBe(true);
       const text = result.content[0]?.text ?? "";
-      // Lo importante no es que falle: es que diga qué hacer.
+      // What matters is not that it fails: it is that it says what to do.
       expect(text).toMatch(/framework/);
       expect(text).toMatch(/fastify/);
     },
@@ -109,12 +110,12 @@ describe("tanit_generate", () => {
 });
 
 /**
- * Los formatos, desde el plugin.
+ * The formats, from the plugin.
  *
- * Existen seis y el plugin solo llegaba al primero: un agente al que le
- * piden "sácame el OpenAPI de esta API" no tenía forma de hacerlo aunque
- * el CLI supiera. La lista sale del registro de exportadores, igual que
- * `framework` sale del de scanners.
+ * There are six and the plugin only reached the first one: an agent
+ * asked to "give me the OpenAPI of this API" had no way to do it
+ * even though the CLI knew how. The list comes from the exporters
+ * registry, same as `framework` comes from the scanners registry.
  */
 describe("tanit_generate — formatos", () => {
   test("rechaza un formato que no está en el registro", async () => {
@@ -140,8 +141,8 @@ describe("tanit_generate — formatos", () => {
         collectionPath: string | null;
         extraPaths: string[];
       };
-      // La colección sigue saliendo: los formatos extra se suman, no
-      // sustituyen.
+      // The collection is still emitted: the extra formats are added,
+      // not substituted.
       expect(parsed.collectionPath).toContain(salida);
       expect(parsed.extraPaths.some((p) => p.endsWith(".openapi.yaml"))).toBe(true);
       expect(parsed.extraPaths.some((p) => p.endsWith(".curl.sh"))).toBe(true);

@@ -1,12 +1,12 @@
 /**
- * Escribir entero o no escribir.
+ * Write the whole thing or do not write.
  *
- * `writeFile` trunca antes de escribir, así que entre los dos momentos
- * el fichero está a medias. El caso que importa es `watch`: reescribe la
- * colección en cada cambio del proyecto mientras Postman la tiene
- * importada, así que cada guardado era una ventana para leer un JSON
- * truncado — y un JSON truncado no es una colección incompleta, es un
- * fichero que Postman no abre.
+ * `writeFile` truncates before writing, so between the two moments the
+ * file is half-written. The case that matters is `watch`: it rewrites
+ * the collection on every project change while Postman has it
+ * imported, so each save was a window in which to read a truncated
+ * JSON — and a truncated JSON is not an incomplete collection, it is a
+ * file that Postman cannot open.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
@@ -29,56 +29,57 @@ afterEach(async () => {
 });
 
 describe("writeFileAtomic", () => {
-  test("escribe el contenido", async () => {
+  test("writes the content", async () => {
     const destino = join(dir, "a.txt");
     await writeFileAtomic(destino, "hola");
     expect(await readFile(destino, "utf8")).toBe("hola");
   });
 
-  test("sustituye lo que hubiera", async () => {
+  test("replaces what was there", async () => {
     const destino = join(dir, "a.txt");
     await writeFile(destino, "viejo");
     await writeFileAtomic(destino, "nuevo");
     expect(await readFile(destino, "utf8")).toBe("nuevo");
   });
 
-  test("crea el directorio si no existe", async () => {
+  test("creates the directory if it does not exist", async () => {
     const destino = join(dir, "sub", "otro", "a.txt");
     await writeFileAtomic(destino, "hola");
     expect(await readFile(destino, "utf8")).toBe("hola");
   });
 
   /**
-   * El temporal tiene que nacer **al lado** del destino. En `/tmp` el
-   * `rename` cruzaría sistemas de ficheros, que no es atómico: el
-   * sistema devuelve `EXDEV` y toca copiar, que es justo lo que se
-   * quería evitar.
+   * The temp file has to be born **next to** the destination. In
+   * `/tmp` the `rename` would cross filesystems, which is not atomic:
+   * the system returns `EXDEV` and you fall back to copying, which is
+   * exactly what you wanted to avoid.
    */
-  test("no deja temporales al terminar", async () => {
+  test("leaves no temp files when it finishes", async () => {
     await writeFileAtomic(join(dir, "a.txt"), "hola");
     expect(await readdir(dir)).toEqual(["a.txt"]);
   });
 
-  test("tampoco los deja cuando falla", async () => {
-    // Un destino que es un directorio: el `rename` no puede sustituirlo.
+  test("also leaves none when it fails", async () => {
+    // A destination that is a directory: the `rename` cannot replace it.
     const destino = join(dir, "soy-un-dir");
     await writeFileAtomic(join(destino, "dentro.txt"), "x");
     await expect(writeFileAtomic(destino, "hola")).rejects.toThrow();
-    // Queda el directorio y lo que tenía dentro; ningún `.tmp` suelto.
+    // The directory and its contents remain; no stray `.tmp`.
     const sobrantes = (await readdir(dir)).filter((n) => n.endsWith(".tmp"));
     expect(sobrantes).toEqual([]);
   });
 
   /**
-   * EL test. Con `writeFile` directo, un fallo a mitad deja el fichero
-   * anterior destrozado; aquí tiene que quedarse intacto.
+   * THE test. With `writeFile` directly, a mid-flight failure leaves
+   * the previous file mangled; here it must stay intact.
    */
-  test("un fallo deja el fichero anterior exactamente como estaba", async () => {
+  test("a failure leaves the previous file exactly as it was", async () => {
     const destino = join(dir, "coleccion.json");
     const bueno = JSON.stringify({ item: [1, 2, 3] }, null, 2);
     await writeFile(destino, bueno);
 
-    // Un objeto con ciclo: `JSON.stringify` lanza antes de tocar disco.
+    // An object with a cycle: `JSON.stringify` throws before touching
+    // disk.
     const ciclo: Record<string, unknown> = {};
     ciclo["yo"] = ciclo;
     await expect(writeJsonAtomic(destino, ciclo)).rejects.toThrow();
@@ -87,27 +88,27 @@ describe("writeFileAtomic", () => {
     expect(() => JSON.parse(bueno) as unknown).not.toThrow();
   });
 
-  test("escrituras concurrentes sobre la misma ruta no se pisan el temporal", async () => {
+  test("concurrent writes on the same path do not stomp on each other's temp file", async () => {
     const destino = join(dir, "a.txt");
     await Promise.all(
       Array.from({ length: 12 }, (_, i) => writeFileAtomic(destino, `valor-${i}`)),
     );
-    // Gana una, pero el fichero es una de las doce enteras, no un trozo
-    // de una pegado a un trozo de otra.
+    // One wins, but the file is one of the twelve in full, not a piece
+    // of one glued to a piece of another.
     expect(await readFile(destino, "utf8")).toMatch(/^valor-\d+$/);
     expect((await readdir(dir)).filter((n) => n.endsWith(".tmp"))).toEqual([]);
   });
 });
 
 describe("writeJsonAtomic", () => {
-  test("escribe JSON indentado y con salto final", async () => {
+  test("writes indented JSON with a trailing newline", async () => {
     const destino = join(dir, "a.json");
     await writeJsonAtomic(destino, { a: 1 });
     const raw = await readFile(destino, "utf8");
     expect(raw).toBe('{\n  "a": 1\n}\n');
   });
 
-  test("lo que escribe se puede volver a leer", async () => {
+  test("what it writes can be read back", async () => {
     const destino = join(dir, "a.json");
     const valor = { item: [{ name: "x" }], info: { schema: "v2.1.0" } };
     await writeJsonAtomic(destino, valor);
@@ -115,11 +116,11 @@ describe("writeJsonAtomic", () => {
   });
 
   /**
-   * Serializar antes de abrir el fichero no es un detalle de estilo: si
-   * se serializara mientras se escribe, un objeto con un ciclo dejaría
-   * el fichero a medias sin que el proceso llegara a morirse.
+   * Serializing before opening the file is not a style detail: if
+   * serialization happened during the write, an object with a cycle
+   * would leave the file half-written without the process ever dying.
    */
-  test("un objeto que no se puede serializar no llega a crear fichero", async () => {
+  test("an object that cannot be serialized does not create a file", async () => {
     const destino = join(dir, "nunca.json");
     const ciclo: Record<string, unknown> = {};
     ciclo["yo"] = ciclo;

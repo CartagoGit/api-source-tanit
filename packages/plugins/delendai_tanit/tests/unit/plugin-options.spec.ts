@@ -1,20 +1,20 @@
 /**
  * `TanitOptionsSchema` — f00011 S3.
  *
- * Cubre la **opción** `frameworkSearchRoot` del plugin, no el tool.
- * Lo que valida:
+ * Covers the `frameworkSearchRoot` **option** of the plugin, not the
+ * tool. What it validates:
  *
- *  - `frameworkSearchRoot` es opcional (la config puede omitirlo).
- *  - Cuando se da, es una cadena no vacía.
- *  - Los campos que ya existían (`defaultProjectRoot`, `cliScript`,
- *    `delendaiBunBin`) siguen funcionando como antes: no se rompió
- *    nada al añadir el campo.
- *  - Un campo desconocido se rechaza (la schema es `.strict()`) y el
- *    error señala el nombre del campo.
+ *  - `frameworkSearchRoot` is optional (the config may omit it).
+ *  - When provided, it is a non-empty string.
+ *  - The fields that already existed (`defaultProjectRoot`, `cliScript`,
+ *    `delendaiBunBin`) keep working as before: adding the field did
+ *    not break anything.
+ *  - An unknown field is rejected (the schema is `.strict()`) and the
+ *    error names the offending field.
  *
- * El camino del tool (que la propaga al CLI) está cubierto por
- * `tests/integration/generate.tool.spec.ts`; aquí se queda la unidad
- * de la opción.
+ * The tool path (which propagates it to the CLI) is covered by
+ * `tests/integration/generate.tool.spec.ts`; this file stays the unit
+ * for the option.
  */
 import { describe, expect, test } from "vitest";
 

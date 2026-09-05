@@ -22,31 +22,31 @@ const baseConfig: ProjectConfig = {
 
 describe("zone.helper", () => {
   describe("zoneForUri", () => {
-    test("match exacto contra un prefix", () => {
+    test("exact match against a prefix", () => {
       expect(zoneForUri("/api/users", baseConfig)).toBe("Users");
     });
 
-    test("match por descendencia (segmento hijo)", () => {
+    test("matches by descent (child segment)", () => {
       expect(zoneForUri("/api/users/123/profile", baseConfig)).toBe("Users");
     });
 
-    test("acepta URI con prefijo /api/ y lo normaliza", () => {
+    test("accepts a URI with the /api/ prefix and normalizes it", () => {
       expect(zoneForUri("/api/auth/login", baseConfig)).toBe("Auth");
     });
 
-    test("acepta URI con prefijo api/ (sin slash inicial)", () => {
+    test("accepts a URI with the api/ prefix (without the leading slash)", () => {
       expect(zoneForUri("api/users", baseConfig)).toBe("Users");
     });
 
-    test("devuelve defaultZone cuando no hay match", () => {
+    test("returns defaultZone when there is no match", () => {
       expect(zoneForUri("/api/products", baseConfig)).toBe("Other");
     });
 
-    test("URI raíz → defaultZone", () => {
+    test("root URI → defaultZone", () => {
       expect(zoneForUri("/", baseConfig)).toBe("Other");
     });
 
-    test("URI vacía → defaultZone", () => {
+    test("empty URI → defaultZone", () => {
       expect(zoneForUri("", baseConfig)).toBe("Other");
     });
   });
