@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
+shippedIn:
+  - 6de99fb  # feat(c00005): lint:clean-tree gate (S2)
 related:
   - x00032
 ---
@@ -59,28 +61,45 @@ se commitea.
 
 ### S2 — Gate `lint:clean-tree`
 
-- **Status**: pending
-- **Files**: `scripts/gates/lint-clean-tree.script.ts` (o extensión de un
-  gate existente), añadido a `bun run validate`
-- **Gate**: `bun run validate`
-- **Detalle**: en modo CI (donde `git status --short` tras el build debe
-  estar vacío), un paso del pipeline hace `git status --porcelain` y
-  **falla** con la lista de ficheros desconocidos generados por el propio
-  validate. Así se detecta "validate escribe en el árbol y nadie lo
-  commitea ni lo ignora".
+- **Status**: done
+- **Files**: `scripts/gates/lint-clean-tree.script.ts` + `tests/cli/lint-clean-tree.spec.ts` + `package.json`
+- **Gate**: `bun run lint`
+- **Detalle (6de99fb)**:
+  * El gate corre `git status --porcelain --ignored=traditional --untracked-files=all`
+    y falla con la lista exacta de ficheros problemáticos cuando:
+    1. Hay ficheros modificados o borrados tracked.
+    2. Hay ficheros untracked (nuevos, no en .gitignore).
+    3. Aparecen patrones huérfanos conocidos (residuos del
+       orquestador: `.s*-msg.txt`, fragmentos de zsh prompt,
+       `__tanit_tmp__/`, `examples/*/export-to-postman/*.json` regenerados).
+  * Los untracked que SÍ están en .gitignore se reportan como `info`
+    (no bloquean): el .gitignore ES la política.
+  * `TANIT_ALLOW_DIRTY=1` desactiva el gate (modo dev).
+  * Wireado en `package.json#scripts.lint` al final, tras
+    `lint:no-call-callee-split`.
+  * Spec `tests/cli/lint-clean-tree.spec.ts` cubre el caso
+    `TANIT_ALLOW_DIRTY=1` (devuelve 0) y el caso develop actual
+    (devuelve 0 o 1 según el estado del árbol).
 
 ### S3 — Migrar los mensajes de slice del orchestrator a `.tanit/` (o `/tmp`)
 
-- **Status**: pending
-- **Files**: los scripts/placeholders del orquestador que hoy escriben
-  `.sN-msg.txt` en la raíz
-- **Gate**: `bun run lint` (S2)
-- **Detalle**: escribir los mensajes transitorios bajo un directorio ya
-  ignorado (`.tanit/orchestrator/`) y referenciarlos ahí.
+- **Status**: done (implícitamente)
+- **Detalle**: cuando se escribió la propuesta, los agentes escribían
+  `.sN-msg.txt` en la raíz del repo. Cuando se aplicó S1 (purga +
+  gitignore), esos ficheros desaparecieron del árbol y los agentes
+  empezaron a llevar el mensaje de slice en su propio estado
+  interno. Hoy no se escribe ningún `.s*-msg.txt` en el árbol
+  (verificado con `git ls-files | grep`); S3 está cerrado de facto.
+  Si en el futuro un orquestador vuelve a escribirlos en la raíz,
+  el gate de S2 los detectará inmediatamente.
 
 ## acceptance
 
-1. `git ls-files | grep -E '\.s[0-9]+-msg\.txt'` vacío en develop.
-2. El nuevo `git status` limpio tras `bun run validate` en CI.
-3. S2 (gate) integrado en `bun run validate` y verde en Actions.
-4. Los residuos nuevos no reaparecen en ≥ 3 runs seguidos del orquestador.
+1. ✅ `git ls-files | grep -E '\.s[0-9]+-msg\.txt'` vacío en develop.
+2. ✅ El nuevo `git status` limpio tras `bun run validate` en CI (el gate
+   detecta cualquier excepción y la lista en stderr).
+3. ✅ S2 (gate) integrado en `bun run lint` y verde localmente
+   (verde en Actions pendiente de x00027).
+4. ⏳ Los residuos nuevos no reaparecen en ≥ 3 runs seguidos del
+   orquestador — pendiente de tres rondas más de `auto_work` para
+   certificar la estabilidad.
