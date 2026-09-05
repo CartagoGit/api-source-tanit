@@ -81,11 +81,38 @@ jobs:
       - name: "Link jsonc-parser into the file: package store"
         run: |
           set -euo pipefail
-          STORE_DIR="$(find node_modules/.bun -maxdepth 1 -type d -name '@delendai+core@file*' | head -1)"
-          if [ -z "$STORE_DIR" ]; then echo "::error::store de @delendai/core no encontrado"; exit 1; fi
-          mkdir -p "$STORE_DIR/node_modules"
-          ln -sfn "${GITHUB_WORKSPACE}/../delendai/node_modules/jsonc-parser" "$STORE_DIR/node_modules/jsonc-parser"
-          echo "enlazado jsonc-parser en $STORE_DIR"
+          # El `file:` del plugin hace que las dependencias transitivas del
+          # core del hermano NO se instalen en este repo: `jsonc-parser`, que
+          # el `dist/public/index.js` del core importa, queda fuera del store
+          # aislado de bun (`.bun/@delendai+core@file+.../node_modules`). Lo
+          # enlazamos a mano.
+          #
+          # Ruta del store RESUELTA por glob, no hardcodeada: el sufijo
+          # (`…+<hash>`) direcciona el contenido exacto del `package.json`
+          # del core, así que mover el SHA lo cambia (hardcodearlo hacía
+          # caer el `ln`). Va DESPUÉS del `Install dependencies` porque el
+          # store no existe hasta que corre el install.
+          CORE="$(find node_modules/.bun -maxdepth 1 -type d -name '@delendai+core@file*' | head -n1)"
+          [ -n "$CORE" ] || { echo "::error::no existe el store de @delendai/core (¿falló bun install?)"; exit 1; }
+          # La fuente se resuelve con require.resolve DESDE el core del
+          # hermano: da la ubicación REAL del paquete tanto si bun lo
+          # hoistea a node_modules/jsonc-parser (como en un puesto de
+          # trabajo con todo instalado) como si lo deja en el store aislado
+          # (node_modules/.bun/jsonc-parser@…/node_modules/jsonc-parser),
+          # que es el caso del runner limpio. Un `ln` a
+          # ../delendai/node_modules/jsonc-parser es dangling en CI y
+          # reproduce exactamente este bug.
+          SRC="$( ( cd "${GITHUB_WORKSPACE}/../delendai/packages/core" \
+                     && bun -e 'process.stdout.write(require("node:path").dirname(require.resolve("jsonc-parser/package.json")))' ) )"
+          [ -d "$SRC" ] || { echo "::error::jsonc-parser no se resuelve desde el core del hermano"; exit 1; }
+          mkdir -p "$CORE/node_modules"
+          ln -sfn "$SRC" "$CORE/node_modules/jsonc-parser"
+          # Anti-dangling: `ln` crea enlaces a rutas inexistentes sin
+          # quejarse; la importación subsecuente muere con
+          # "Cannot find package 'jsonc-parser'" — comprobarlo aquí.
+          test -e "$CORE/node_modules/jsonc-parser/package.json" \
+            || { echo "::error::symlink dangling a $SRC"; exit 1; }
+          echo "enlazado jsonc-parser: $CORE/node_modules/jsonc-parser -> $SRC"
 
 
       # `bun run validate` encadena typecheck, los lints del repo, la
