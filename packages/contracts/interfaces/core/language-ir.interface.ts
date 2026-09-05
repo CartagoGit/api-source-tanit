@@ -127,6 +127,16 @@ export interface IRouteCallExpression {
   /** Shape of the receiver (not of the method). */
   readonly receiverKind: ReceiverKind;
   /**
+   * The receiver text with NO method segment appended: `"app"`,
+   * `"this.router"`, `"api.router"`, `"getRouter()"`, `"router"`.
+   * Populated by the collector from `ICalleeShape.prefix` (x00038). It
+   * is the STRUCTURED counterpart of `callee`: a scanner can look the
+   * router prefix up by `receiver` without `callee.split(".")` — the
+   * operation that silently dropped `this.router.get`, `api.router.get`
+   * and `server["get"]` because their verb is not the second dot-segment.
+   */
+  readonly receiver?: string;
+  /**
    * The HTTP method when it is an `Identifier` (`get`, `post`...).
    * Empty when the property is a computed string literal
    * (`server["get"]`) — in that case look at `resolvedMethod`.

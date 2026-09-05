@@ -486,6 +486,7 @@ function walkBody(
         out.push({
           callee: calleeText,
           receiverKind: shape.receiverKind,
+          receiver: shape.prefix,
           method: shape.method,
           args,
           range: { file: sourceFile, start, end },
