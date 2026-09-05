@@ -1,17 +1,17 @@
 /**
- * Tests del OpenAPI exporter centrados en nulabilidad 3.1 (a00011 C-4).
+ * Tests for the OpenAPI exporter centered on 3.1 nullability (a00011 C-4).
  *
- * OpenAPI 3.1 usa JSON Schema 2020-12: `nullable: true` (la forma de
- * OpenAPI 3.0) está deprecado. La nulabilidad se modela así:
+ * OpenAPI 3.1 uses JSON Schema 2020-12: `nullable: true` (the
+ * OpenAPI 3.0 form) is deprecated. Nullability is modeled like so:
  *
- *   - **Escalares** (`scalar`/`enum`/`literal`): `type: [T, "null"]`.
- *   - **Compuestos** (`object`/`array`/`union`/`intersection`):
+ *   - **Scalars** (`scalar`/`enum`/`literal`): `type: [T, "null"]`.
+ *   - **Composites** (`object`/`array`/`union`/`intersection`):
  *     `oneOf: [{...inner}, { type: "null" }]`.
- *   - **References**: igual que compuestos (envuelto en `oneOf`).
+ *   - **References**: same as composites (wrapped in `oneOf`).
  *
- * Estos tests comprueban que el exporter de `packages/core/exporters/
- * openapi.exporter.ts` aplica esa traducción, y que **nunca** emite
- * `nullable: true` (regresión no-regresión).
+ * These tests check that the exporter at `packages/core/exporters/
+ * openapi.exporter.ts` applies that translation, and that it **never**
+ * emits `nullable: true` (no-regression).
  */
 import { describe, expect, test } from "vitest";
 
@@ -28,7 +28,7 @@ import { createSchemaGraph } from "../../../packages/core/schema/serialize.helpe
 import { createEnumNode, createScalarNode } from "../../../packages/core/schema/scalar.helper";
 import { createUnionNode } from "../../../packages/core/schema/union.helper";
 
-/** Construye un `EndpointSpec` mínimo válido para el exporter. */
+/** Builds a minimal valid `EndpointSpec` for the exporter. */
 function spec(uri: string, method: EndpointSpec["method"], extra: Partial<EndpointSpec> = {}): EndpointSpec {
   return {
     name: `Spec ${method} ${uri}`,
@@ -38,7 +38,7 @@ function spec(uri: string, method: EndpointSpec["method"], extra: Partial<Endpoi
   };
 }
 
-/** Input base para `buildOpenApiDocument`. */
+/** Base input for `buildOpenApiDocument`. */
 function baseInput(specs: ReadonlyArray<EndpointSpec>): IExportInput {
   return {
     specs,
@@ -53,7 +53,7 @@ function baseInput(specs: ReadonlyArray<EndpointSpec>): IExportInput {
   };
 }
 
-/** Helper para extraer el `schema` del requestBody de un endpoint. */
+/** Helper to extract the `schema` from an endpoint's requestBody. */
 function extractRequestSchema(doc: Record<string, unknown>, path: string, method: string): Record<string, unknown> {
   const paths = doc["paths"] as Record<string, Record<string, unknown>>;
   const op = paths[path]?.[method] as Record<string, unknown>;
@@ -63,8 +63,8 @@ function extractRequestSchema(doc: Record<string, unknown>, path: string, method
   return json["schema"] as Record<string, unknown>;
 }
 
-describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
-  test("`nullable` envolviendo `scalar: string` emite `type: ['string', 'null']`", () => {
+describe("OpenAPI exporter — 3.1 nullability (a00011 C-4)", () => {
+  test("`nullable` wrapping `scalar: string` emits `type: ['string', 'null']`", () => {
     const stringId: SchemaNodeId = "n:0";
     const nullableId: SchemaNodeId = "n:1";
     const root: SchemaNodeId = "n:2";
@@ -93,12 +93,12 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const properties = schema["properties"] as Record<string, unknown>;
     const nick = properties["nick"] as Record<string, unknown>;
 
-    // Forma 3.1: type array, no `nullable: true`.
+    // 3.1 form: type array, not `nullable: true`.
     expect(nick["type"]).toEqual(["string", "null"]);
     expect(nick["nullable"]).toBeUndefined();
   });
 
-  test("`nullable` envolviendo `scalar: integer` emite `type: ['integer', 'null']`", () => {
+  test("`nullable` wrapping `scalar: integer` emits `type: ['integer', 'null']`", () => {
     const intId: SchemaNodeId = "n:0";
     const nullableId: SchemaNodeId = "n:1";
     const root: SchemaNodeId = "n:2";
@@ -129,7 +129,7 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     expect(age["nullable"]).toBeUndefined();
   });
 
-  test("`nullable` envolviendo `object` emite `type: ['object', 'null']` con `properties` preservadas", () => {
+  test("`nullable` wrapping `object` emits `type: ['object', 'null']` with `properties` preserved", () => {
     const fieldId: SchemaNodeId = "n:0";
     const innerObjId: SchemaNodeId = "n:1";
     const nullableId: SchemaNodeId = "n:2";
@@ -163,12 +163,11 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const properties = schema["properties"] as Record<string, unknown>;
     const address = properties["address"] as Record<string, unknown>;
 
-    // JSON Schema 2020-12 (OpenAPI 3.1) admite `type: ["object", "null"]`
-    // igual que para escalares: el array de tipos cubre cualquier
-    // combinación, incluido `object + null`. La forma `oneOf` también
-    // sería válida, pero `type: [...]` es la más compacta y la que
-    // prefiere esta implementación cuando el inner tiene `type`
-    // escalar.
+    // JSON Schema 2020-12 (OpenAPI 3.1) allows `type: ["object", "null"]`
+    // just like for scalars: the type array covers any combination,
+    // including `object + null`. The `oneOf` form would also be
+    // valid, but `type: [...]` is the most compact and the one this
+    // implementation prefers when the inner has a scalar `type`.
     expect(address["type"]).toEqual(["object", "null"]);
     expect(address["nullable"]).toBeUndefined();
     expect(address["oneOf"]).toBeUndefined();
@@ -177,7 +176,7 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     expect(innerProps["street"]).toEqual({ type: "string" });
   });
 
-  test("`nullable` envolviendo `union` emite `oneOf` con el union + `null`", () => {
+  test("`nullable` wrapping `union` emits `oneOf` with the union + `null`", () => {
     const stringId: SchemaNodeId = "n:0";
     const intId: SchemaNodeId = "n:1";
     const unionId: SchemaNodeId = "n:2";
@@ -217,18 +216,18 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const oneOf = value["oneOf"] as ReadonlyArray<Record<string, unknown>>;
     expect(oneOf).toHaveLength(2);
 
-    // La primera rama es el `oneOf` del union (string | integer).
+    // The first branch is the union's `oneOf` (string | integer).
     const unionBranch = oneOf[0] as Record<string, unknown>;
     const unionOneOf = unionBranch["oneOf"] as ReadonlyArray<Record<string, unknown>>;
     expect(unionOneOf).toHaveLength(2);
     expect(unionOneOf[0]).toEqual({ type: "string" });
     expect(unionOneOf[1]).toEqual({ type: "integer" });
 
-    // La segunda rama es la nulabilidad.
+    // The second branch is the nullability.
     expect(oneOf[1]).toEqual({ type: "null" });
   });
 
-  test("`nullable` envolviendo `enum` emite `type: ['string', 'null']` con `enum` preservado", () => {
+  test("`nullable` wrapping `enum` emits `type: ['string', 'null']` with `enum` preserved", () => {
     const enumId: SchemaNodeId = "n:0";
     const nullableId: SchemaNodeId = "n:1";
     const root: SchemaNodeId = "n:2";
@@ -258,16 +257,16 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const properties = schema["properties"] as Record<string, unknown>;
     const color = properties["color"] as Record<string, unknown>;
 
-    // `enum` se serializa como `{ type: "string", enum: [...] }`.
-    // El exporter lo trata como escalar (type === "string"), así que
-    // la nulabilidad va como `type: ["string", "null"]` y conserva el
-    // `enum`.
+    // `enum` is serialized as `{ type: "string", enum: [...] }`. The
+    // exporter treats it as a scalar (type === "string"), so the
+    // nullability goes as `type: ["string", "null"]` and preserves
+    // the `enum`.
     expect(color["type"]).toEqual(["string", "null"]);
     expect(color["nullable"]).toBeUndefined();
     expect(color["enum"]).toEqual(["red", "green", "blue"]);
   });
 
-  test("`nullable` envolviendo `array` emite `type: ['array', 'null']` con `items` preservado", () => {
+  test("`nullable` wrapping `array` emits `type: ['array', 'null']` with `items` preserved", () => {
     const itemId: SchemaNodeId = "n:0";
     const arrayId: SchemaNodeId = "n:1";
     const nullableId: SchemaNodeId = "n:2";
@@ -296,17 +295,17 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const properties = schema["properties"] as Record<string, unknown>;
     const tags = properties["tags"] as Record<string, unknown>;
 
-    // Igual que para `object`: el `type` del inner es "array" (string),
-    // así que la nulabilidad va como `type: ["array", "null"]`.
+    // Same as for `object`: the inner's `type` is "array" (string),
+    // so the nullability goes as `type: ["array", "null"]`.
     expect(tags["type"]).toEqual(["array", "null"]);
     expect(tags["nullable"]).toBeUndefined();
     expect(tags["oneOf"]).toBeUndefined();
     expect(tags["items"]).toEqual({ type: "string" });
   });
 
-  test("ningún documento OpenAPI del lote emite `nullable: true` (regresión no-regresión)", () => {
-    // Casos que en 3.0 habrían emitido `nullable: true`. Comprobamos
-    // que **ninguno** lo hace ya, en cualquier rama del exporter.
+  test("no OpenAPI document in the batch emits `nullable: true` (no-regression)", () => {
+    // Cases that in 3.0 would have emitted `nullable: true`. We check
+    // that **none** does so anymore, in any branch of the exporter.
     const scalarId: SchemaNodeId = "n:0";
     const objectId: SchemaNodeId = "n:1";
     const nullScalarId: SchemaNodeId = "n:2";
@@ -334,15 +333,15 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
       baseInput([spec("/api/all", "POST", { schemaGraph: graph })]),
     );
 
-    // Recorremos el documento en busca de `nullable: true` (lo
-    // prohibimos en cualquier nivel, incluido `components.schemas`).
+    // We walk the document looking for `nullable: true` (we forbid it
+    // at any level, including `components.schemas`).
     const yaml = JSON.stringify(doc);
     expect(yaml).not.toMatch(/"nullable"\s*:\s*true/);
   });
 
-  test("`nullable` sin `inner` cae a `{ type: 'null' }` (grafo incompleto)", () => {
-    // Defensa: si el grafo está roto (un `nullable` sin `inner`), el
-    // exporter no debe lanzar — debe emitir algo honesto.
+  test("`nullable` without `inner` falls back to `{ type: 'null' }` (incomplete graph)", () => {
+    // Defense: if the graph is broken (a `nullable` without `inner`),
+    // the exporter must not throw — it must emit something honest.
     const nullableId: SchemaNodeId = "n:0";
     const root: SchemaNodeId = "n:1";
 
@@ -366,18 +365,18 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const schema = extractRequestSchema(doc, "/api/loose", "post");
     const properties = schema["properties"] as Record<string, unknown>;
     const x = properties["x"] as Record<string, unknown>;
-    // `inner` faltante → emitNullable devuelve `{ type: "null" }`.
-    // El exporter no lanza y la salida es 3.1 válida.
+    // Missing `inner` → emitNullable returns `{ type: "null" }`. The
+    // exporter does not throw and the output is 3.1 valid.
     expect(x["nullable"]).toBeUndefined();
     expect(x).toEqual({ type: "null" });
   });
 
-  test("campos sin `nullable` siguen emitiendo su esquema normal (no-regresión)", () => {
-    // Sanity: con un grafo sin nodos `nullable`, el exporter no añade
-    // composición 3.1 espuria. Usamos un escalar sin `name` para que
-    // se inlinee (los escalares con nombre van a `components.schemas`
-    // como `$ref`, que es otra vía válida pero no la que queremos
-    // comprobar aquí).
+  test("fields without `nullable` keep emitting their normal schema (no-regression)", () => {
+    // Sanity: with a graph without `nullable` nodes, the exporter
+    // does not add spurious 3.1 composition. We use a scalar without
+    // `name` so it inlines (scalars with name go to
+    // `components.schemas` as `$ref`, which is another valid path but
+    // not the one we want to check here).
     const graph: ISchemaGraph = createSchemaGraph(
       new Map<SchemaNodeId, ISchemaNode>([
         ["n:0", createScalarNode("string", "n:0")],
@@ -399,14 +398,14 @@ describe("OpenAPI exporter — nulabilidad 3.1 (a00011 C-4)", () => {
     const properties = schema["properties"] as Record<string, unknown>;
     const email = properties["email"] as Record<string, unknown>;
 
-    // Sin envolver: el campo es `{ type: "string" }` directo.
+    // Without wrapping: the field is `{ type: "string" }` directly.
     expect(email).toEqual({ type: "string" });
     expect(email["nullable"]).toBeUndefined();
     expect(email["oneOf"]).toBeUndefined();
   });
 });
 describe("OpenAPI exporter — auth per-op override (audit 2026-09-04 P1 #7)", () => {
-  test("spec.auth = { kind: 'none' } emite security: [] a nivel de operación", () => {
+  test("spec.auth = { kind: 'none' } emits security: [] at the operation level", () => {
     const doc = buildOpenApiDocument(
       baseInput([
         spec("/api/login", "POST", { auth: { kind: "none" } }),
@@ -414,24 +413,24 @@ describe("OpenAPI exporter — auth per-op override (audit 2026-09-04 P1 #7)", (
       ]),
     );
 
-    // El documento declara seguridad global `none` por el baseInput,
-    // así que el endpoint con auth: { kind: "none" } debe llevar
-    // `security: []` explícito (override por operación).
+    // The document declares `none` global security via baseInput, so
+    // the endpoint with auth: { kind: "none" } must carry an explicit
+    // `security: []` (per-operation override).
     const paths = doc["paths"] as Record<string, Record<string, unknown>>;
     const login = paths["/api/login"]?.["post"] as Record<string, unknown>;
     expect(login["security"]).toEqual([]);
 
-    // El otro endpoint sin override debe respetar el esquema global
-    // (en este caso baseInput pone auth: { type: "none" } así que
-    // hereda eso; lo importante es que NO tiene `security: []`
-    // explícito por-op).
+    // The other endpoint without override must respect the global
+    // scheme (in this case baseInput sets auth: { type: "none" } so it
+    // inherits that; the important thing is that it does NOT have
+    // per-op `security: []`).
     const users = paths["/api/users"]?.["get"] as Record<string, unknown>;
     expect(users["security"]).toBeUndefined();
   });
 
-  test("override per-op con auth { kind: 'none' } desactiva bearer global", () => {
-    // Caso real del audit: la colección tiene auth global bearer,
-    // pero /auth/login debe ser público.
+  test("per-op override with auth { kind: 'none' } disables the global bearer", () => {
+    // Real audit case: the collection has global bearer auth, but
+    // /auth/login must be public.
     const input: IExportInput = {
       ...baseInput([spec("/auth/login", "POST", { auth: { kind: "none" } })]),
       auth: { type: "bearer" },
@@ -444,7 +443,7 @@ describe("OpenAPI exporter — auth per-op override (audit 2026-09-04 P1 #7)", (
 });
 
 describe("OpenAPI exporter — cookie params (audit 2026-09-04 P2 #9)", () => {
-  test("spec.fields con location='cookie' emite in: cookie", () => {
+  test("spec.fields with location='cookie' emits in: cookie", () => {
     const doc = buildOpenApiDocument(
       baseInput([
         spec("/api/me", "GET", {

@@ -1,20 +1,21 @@
 /**
- * `NestJsScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para proyectos NestJS (Node.js + TypeScript).
+ * `NestJsScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for NestJS projects (Node.js + TypeScript).
  *
- * Detección:
- *   - `package.json` con `dependencies` que contenga `@nestjs/core`.
- *   - `nest-cli.json` (heurístico).
+ * Detection:
+ *   - `package.json` with `dependencies` containing `@nestjs/core`.
+ *   - `nest-cli.json` (heuristic).
  *
  * Parsing:
- *   - Decoradores `@Controller('path')` (clase) + `@Get()`, `@Post()`, ...
- *     (método). Captura el prefijo del controller y el path específico.
- *   - Soporta paths con `:id` → `:p` (se normaliza más adelante).
+ *   - Decorators `@Controller('path')` (class) + `@Get()`, `@Post()`, ...
+ *     (method). Captures the controller's prefix and the specific path.
+ *   - Supports paths with `:id` → `:p` (normalised later).
  *
  * Validation:
- *   - `NestJsClassValidatorProvider` extrae constraints de `class-validator`
- *     de los DTOs (`@IsString`, `@IsEmail`, `@IsInt`, `@IsOptional`, …).
- *   - Si hay `class-transformer` o `class-validator`, son las dependencias.
+ *   - `NestJsClassValidatorProvider` extracts `class-validator` constraints
+ *     from DTOs (`@IsString`, `@IsEmail`, `@IsInt`, `@IsOptional`, …).
+ *   - If `class-transformer` or `class-validator` are present, those
+ *     are the dependencies.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -36,8 +37,8 @@ import type {
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
 /**
- * Lee package.json y devuelve true si tiene `@nestjs/core` en
- * dependencies o devDependencies.
+ * Reads package.json and returns true if it has `@nestjs/core` in
+ * dependencies or devDependencies.
  */
 async function isNestJsProject(projectRoot: string): Promise<boolean> {
   const pkgPath = join(projectRoot, "package.json");
@@ -50,45 +51,45 @@ async function isNestJsProject(projectRoot: string): Promise<boolean> {
   }
   const parsed = parseJson(raw);
   if (!parsed.ok) return false;
-  // `declaredDependencies` funde `dependencies` y `devDependencies`, que
-  // es la pregunta que se hace de verdad: un framework declarado en las
-  // de desarrollo sigue siendo el framework del proyecto. Unos scanners
-  // las miraban y otros no.
+  // `declaredDependencies` merges `dependencies` and `devDependencies`,
+  // which is the real question: a framework declared in devDeps is
+  // still the project's framework. Some scanners looked at them and
+  // others didn't.
   const deps = declaredDependencies(parsed.value);
   return typeof deps["@nestjs/core"] === "string";
 }
 
 /**
- * Devuelve la raíz efectiva donde este scanner mira `src/`.
+ * Returns the effective root where this scanner looks at `src/`.
  *
- * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
- * tras detectar monorepo), se une con `projectRoot`. Si está ausente,
- * se devuelve `projectRoot` sin modificar.
+ * If `IProjectMatch` carries `frameworkSearchRoot` (filled by the host
+ * after monorepo detection), it's joined with `projectRoot`. If absent,
+ * `projectRoot` is returned unchanged.
  *
- * Renombrada local (`nestjsEffectiveSearchRoot`) para no chocar con la
- * homónima en `nextjs.scanner.ts`: cada scanner tiene su propia
- * implementación porque cada uno necesita un search root distinto —
- * aquí solo `src/`; en nextjs, `app/` y `pages/`. f00011 S1.
+ * Renamed locally (`nestjsEffectiveSearchRoot`) so it doesn't clash
+ * with the homonym in `nextjs.scanner.ts`: each scanner has its own
+ * implementation because each needs a different search root — here,
+ * just `src/`; in nextjs, `app/` and `pages/`. f00011 S1.
  *
- * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
- * `packages/core/discovery/effective-project-root.helper.ts`, que es
- * la primitiva única que usan los 21 scanners. El helper local se
- * conserva como no-op histórico para no romper call sites externos,
- * pero el scanner ya no la usa.
+ * a00014 S2: now delegated to `effectiveProjectRoot(match)` from
+ * `packages/core/discovery/effective-project-root.helper.ts`, the
+ * single primitive all 21 scanners use. The local helper is kept as
+ * a historic no-op so external call sites don't break, but the scanner
+ * no longer uses it.
  */
 function nestjsEffectiveSearchRoot(match: IProjectMatch): string {
   return effectiveProjectRoot(match);
 }
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
- * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
- * (bun). Vive aquí —igual que `nestjsEffectiveSearchRoot`— porque
- * cada scanner decide qué hacer con la señal. El cap a 1 del
- * `withEvidence` ya absorbe el caso de un NestJS que sin esto ya
- * puntuaba al tope.
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the detector's
+ * confidence without being detection. Small weights: +0.1 (pnpm),
+ * +0.15 (bun). It lives here — same as `nestjsEffectiveSearchRoot` —
+ * because each scanner decides what to do with the signal. The cap at
+ * 1 that `withEvidence` applies absorbs the case of a NestJS that
+ * without this already scored at the top.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
   const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
@@ -116,15 +117,15 @@ export class NestJsProjectScanner implements IProjectScanner {
     const signals: Array<{ signal: string; weight: number; artifact?: string }> = [
       { signal: "@nestjs/core declarado como dependencia", weight: 0.5, artifact: "package.json" },
     ];
-    // f00011 S1: `nest-cli.json` es la señal canónica de que el
-    // proyecto fue inicializado con la CLI de Nest (no es solo una
-    // dependencia suelta). Antes pesaba 0.3; la propuesta lo sube a
-    // 0.7 — más cerca del peso del `@nestjs/core` en sí, porque un
-    // proyecto con CLI casi siempre tiene el layout esperado.
-    if (hasNestCli) signals.push({ signal: "nest-cli.json presente", weight: 0.7, artifact: "nest-cli.json" });
+    // f00011 S1: `nest-cli.json` is the canonical signal that the
+    // project was initialised with the Nest CLI (not just a loose
+    // dependency). Before it weighed 0.3; the proposal raises it to
+    // 0.7 — closer to the weight of `@nestjs/core` itself, because a
+    // project with CLI almost always has the expected layout.
+    if (hasNestCli) signals.push({ signal: "nest-cli.json present", weight: 0.7, artifact: "nest-cli.json" });
     if (hasSrc) signals.push({ signal: "directorio src/ presente", weight: 0.2, artifact: "src/" });
-    // f00011 S4: lockfile como bonus de runtime. Sumamos al final
-    // para que no pueda tapar una ausencia de framework.
+    // f00011 S4: lockfile as runtime bonus. Added at the end so it
+    // can't mask an absent framework.
     for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
     return withEvidence(signals.reduce((a, s) => a + s.weight, 0), signals);
   }
@@ -142,8 +143,8 @@ export class NestJsProjectScanner implements IProjectScanner {
 // ---------------------------------------------------------------------------
 
 /**
- * Decorator `@Controller(path)` en la clase.
- * Permite prefijos múltiples: `@Controller({ path: 'users', version: '1' })`.
+ * Decorator `@Controller(path)` on the class.
+ * Allows compound prefixes: `@Controller({ path: 'users', version: '1' })`.
  */
 const CLASS_CONTROLLER_RE = /@Controller\s*\(\s*(?:["']([^"']+)["']|\{[^}]*path\s*:\s*["']([^"']+)["'])[^)]*\)?/;
 
@@ -161,25 +162,26 @@ export class NestJsRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
-    // (ej. `"apps/api"`) y el scanner mira ahí. Sin esto, un proyecto
-    // NestJS en `apps/api/` salía sin rutas porque `src/` vive en el
-    // subdir. La raíz se mantiene en `match.projectRoot` para que el
-    // `setGlobalPrefix` se siga buscando donde el orquestador lo dejó.
+    // f00011 S1: in monorepos the host passes `frameworkSearchRoot`
+    // (e.g. `"apps/api"`) and the scanner looks there. Without this,
+    // a NestJS project in `apps/api/` came out without routes because
+    // `src/` lives in the subdir. The root stays in `match.projectRoot`
+    // so `setGlobalPrefix` is still searched where the orchestrator
+    // left it.
     const searchRoot = nestjsEffectiveSearchRoot(match);
     const srcDir = join(searchRoot, "src");
     if (!existsSync(srcDir)) return { routes: out };
     await this.walkDir(srcDir, searchRoot, out);
 
-    // `app.setGlobalPrefix("api/v1")` en el bootstrap se aplica a TODOS
-    // los controladores. Sin esto, un proyecto que lo use —lo normal en
-    // NestJS— produce URIs sin el prefijo y ninguna request responde.
+    // `app.setGlobalPrefix("api/v1")` in the bootstrap is applied to ALL
+    // controllers. Without this, a project that uses it —the norm in
+    // NestJS— produces URIs without the prefix and no request responds.
     //
-    // Audit 2026-09-04 P2 #3: probamos primero el `searchRoot` (donde
-    // vive el bootstrap en monorepos `apps/api`) y luego el
-    // `projectRoot` (estructura plana donde `main.ts` está en la raíz).
-    // Antes solo mirábamos `projectRoot`, así que un Nest en `apps/api`
-    // salía sin el prefijo.
+    // Audit 2026-09-04 P2 #3: we try the `searchRoot` first (where the
+    // bootstrap lives in monorepos `apps/api`) and then `projectRoot`
+    // (flat layout where `main.ts` is at the root). Before we only
+    // looked at `projectRoot`, so a Nest in `apps/api` came out
+    // without the prefix.
     const globalPrefix = await readGlobalPrefix(
       searchRoot,
       rawProjectRoot(match),
@@ -231,7 +233,7 @@ export class NestJsRouteScanner implements IRouteScanner {
     const text = stripJsComments(raw);
     const lines = text.split("\n");
 
-    // 1) Buscar `@Controller('path')` en la primera mitad del archivo.
+    // 1) Look for `@Controller('path')` in the first half of the file.
     let controllerPath = "";
     let controllerMatchIndex = -1;
     for (let i = 0; i < lines.length; i++) {
@@ -245,7 +247,7 @@ export class NestJsRouteScanner implements IRouteScanner {
     }
     if (controllerMatchIndex === -1) return out; // No es un controller.
 
-    // 2) Buscar method decorators `@METHOD('path')` DESPUÉS del controller.
+    // 2) Look for method decorators `@METHOD('path')` AFTER the controller.
     for (let i = controllerMatchIndex + 1; i < lines.length; i++) {
       const line = lines[i] ?? "";
       let m: RegExpExecArray | null;
@@ -255,7 +257,7 @@ export class NestJsRouteScanner implements IRouteScanner {
         const subPath = m[2] ?? "";
         if (!HTTP_METHODS.includes(method)) continue;
         const fullPath = joinRoutePath("/", controllerPath, subPath);
-        // Buscar la signature del método en líneas siguientes.
+        // Look for the method signature in the next lines.
         let methodName = "";
         for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
           const sig = /\b([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
@@ -280,25 +282,25 @@ export class NestJsRouteScanner implements IRouteScanner {
   }
 }
 
-/** `app.setGlobalPrefix("api/v1")` en el arranque de la aplicación. */
+/** `app.setGlobalPrefix("api/v1")` in the application's bootstrap. */
 const GLOBAL_PREFIX_RE = /setGlobalPrefix\s*\(\s*["'`]([^"'`]+)["'`]/;
 
 /**
- * Prefijo global declarado en el bootstrap, o `null` si no hay.
+ * Global prefix declared in the bootstrap, or `null` if there is none.
  *
- * `setGlobalPrefix` se aplica a TODOS los controladores. Sin leerlo, un
- * proyecto que lo use —lo normal en NestJS— producía URIs sin el prefijo
- * y ninguna request respondía.
+ * `setGlobalPrefix` is applied to ALL controllers. Without reading it,
+ * a project that uses it —the norm in NestJS— produced URIs without
+ * the prefix and no request responded.
  *
- * Audit 2026-09-04 P2 #3 (Nest global prefix desde searchRoot): antes
- * solo mirábamos `match.projectRoot`. En un monorepo con
- * `frameworkSearchRoot: "apps/api"`, el `setGlobalPrefix` está en
- * `apps/api/src/main.ts` y el scanner no lo encontraba: las rutas
- * salían sin el prefijo global. Ahora probamos primero el searchRoot
- * (donde `main.ts` vive en monorepos) y luego el projectRoot
- * (estructura plana donde `main.ts` está en la raíz).
+ * Audit 2026-09-04 P2 #3 (Nest global prefix from searchRoot): before
+ * we only looked at `match.projectRoot`. In a monorepo with
+ * `frameworkSearchRoot: "apps/api"`, the `setGlobalPrefix` is in
+ * `apps/api/src/main.ts` and the scanner couldn't find it: routes came
+ * out without the global prefix. We now try the searchRoot first
+ * (where `main.ts` lives in monorepos) and then projectRoot (flat
+ * layout where `main.ts` is at the root).
  *
- * `roots` es la lista ordenada de prueba; el primer match gana.
+ * `roots` is the ordered list of candidates; the first match wins.
  */
 async function readGlobalPrefix(
   ...roots: ReadonlyArray<string>
@@ -382,16 +384,16 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
     const text = stripJsComments(raw);
     const lines = text.split("\n");
 
-    // 1) Localizar la firma del método (después del @Get/@Post).
+    // 1) Locate the method's signature (after the @Get/@Post).
     const sigIdx = lines.findIndex((l) =>
       new RegExp(`\\b${route.description}\\s*\\(`).test(l),
     );
     if (sigIdx < 0) return { endpointKey, fields: [] };
 
-    // 2) Recoger imports para resolver DTOs referenciados.
+    // 2) Collect imports to resolve referenced DTOs.
     const imports = parseImports(text, abs);
 
-    // 3) Detectar `@Body() <name>: <DtoType>` en la línea de la signature.
+    // 3) Detect `@Body() <name>: <DtoType>` in the signature line.
     const sigLine = lines[sigIdx] ?? "";
     let fields: IValidationSpec[] = [];
     const bodyMatch = /@Body\s*\(\s*\)\s*[\s\S]*?\s+([a-zA-Z_][\w]*)\s*:\s*([A-Z][\w]*)/.exec(sigLine);
@@ -400,25 +402,24 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
       const dtoPath = imports.get(dtoTypeName);
       fields = dtoPath
         ? await parseDtoFile(dtoPath, dtoTypeName)
-        : // Sin import, la clase está en este mismo fichero. Es lo que
-          // hace media documentación de Nest y cualquier proyecto
-          // pequeño, y hasta ahora se quedaba sin body.
+        : // Without an import, the class is in this very file. That's
+          // what half of Nest's docs teach and what anyone does in a
+          // small project, and until now it ended up without a body.
           parseDtoSource(text, dtoTypeName);
-      // Un import que apunta a un barrel (`./dto`) puede no llevar a la
-      // clase. Si no salió nada, se mira aquí igualmente antes de
-      // rendirse.
+      // An import pointing at a barrel (`./dto`) might not lead to the
+      // class. If nothing came out, we look here too before giving up.
       if (fields.length === 0) fields = parseDtoSource(text, dtoTypeName);
     }
 
-    // 4) Los parámetros sueltos de la firma: `@Query("page") page: number`,
+    // 4) The loose signature parameters: `@Query("page") page: number`,
     //    `@Param("id") id: string`, `@Headers("x-tenant") tenant: string`.
     //
-    // Esto era un fallback con un regex que emparejaba un decorador con
-    // **cualquier** campo dentro de las 9 líneas anteriores (`[\s\S]*?`
-    // entre medias) y lo marcaba todo como `body`. El resultado era que
-    // un `@Query("page")` de un GET aparecía documentado como campo de
-    // body, con el tipo del primer `@IsString()` que pillara por encima.
-    // Un GET no tiene body, así que la colección afirmaba algo imposible.
+    // This was a fallback with a regex that matched a decorator with
+    // **any** field within the 9 lines above (`[\s\S]*?` between parts)
+    // and marked it all as `body`. The result was that a `@Query("page")`
+    // on a GET appeared documented as a body field, with the type of
+    // the first `@IsString()` it caught above. A GET has no body, so the
+    // collection asserted something impossible.
     fields.push(...parseSignatureParams(sigLine));
 
     return { endpointKey, fields };
@@ -426,15 +427,15 @@ export class NestJsClassValidatorProvider implements IValidationSpecProvider {
 }
 
 /**
- * Los parámetros que NestJS inyecta por decorador en la firma.
+ * The parameters NestJS injects by decorator in the signature.
  *
- * `@Query("page") page: number` es un parámetro de query, no un campo de
- * body, y la diferencia importa: un GET no tiene body, así que
- * documentarlo ahí describe una petición que no se puede hacer.
+ * `@Query("page") page: number` is a query parameter, not a body
+ * field, and the difference matters: a GET has no body, so
+ * documenting it there describes a request that can't be made.
  *
- * `@Body()` no entra: ese lo resuelve el DTO, que trae mucha más
- * información (obligatoriedad, formatos, cotas) que el tipo de
- * TypeScript.
+ * `@Body()` doesn't enter: the DTO resolves it, and the DTO carries
+ * much more information (mandatory, formats, bounds) than the
+ * TypeScript type.
  */
 const PARAM_DECORATORS: Readonly<Record<string, IValidationSpec["location"]>> = {
   Query: "query",
@@ -442,7 +443,7 @@ const PARAM_DECORATORS: Readonly<Record<string, IValidationSpec["location"]>> = 
   Headers: "header",
 };
 
-/** Tipo de TypeScript → tipo del contrato. Lo que no se reconoce, string. */
+/** TypeScript type → contract type. Anything not recognised, string. */
 function tsTypeToSpecType(tsType: string): IValidationSpec["type"] {
   const t = tsType.trim().toLowerCase();
   if (t === "number") return "number";
@@ -454,24 +455,25 @@ function tsTypeToSpecType(tsType: string): IValidationSpec["type"] {
 
 function parseSignatureParams(sigLine: string): IValidationSpec[] {
   const out: IValidationSpec[] = [];
-  // El decorador y su parámetro van pegados: `@Query("page") page: number`.
-  // Sin espacio arbitrario entre medias no se puede emparejar un
-  // decorador con un campo que no es suyo.
+  // The decorator and its parameter sit together:
+  // `@Query("page") page: number`. Without arbitrary whitespace
+  // between parts we can't match a decorator with a field that
+  // isn't its own.
   const re = /@(Query|Param|Headers)\s*\(\s*(?:["']([^"']+)["'])?\s*\)\s*([a-zA-Z_][\w]*)\s*\??\s*:\s*([a-zA-Z_][\w\[\]<>|]*)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(sigLine)) !== null) {
     const location = PARAM_DECORATORS[m[1] ?? ""];
     if (!location) continue;
-    // El nombre lo manda el argumento del decorador (`@Query("page")`);
-    // si no lo lleva, el de la variable.
+    // The name is set by the decorator argument (`@Query("page")`);
+    // if it doesn't have one, by the variable's name.
     const fieldName = m[2] || m[3] || "";
     if (!fieldName) continue;
     out.push({
       fieldName,
       location,
       type: tsTypeToSpecType(m[4] ?? ""),
-      // Un `?` en la firma es opcional; el resto se asume obligatorio,
-      // que es lo que NestJS hace por defecto.
+      // A `?` in the signature is optional; the rest is assumed
+      // required, which is NestJS's default.
       required: !new RegExp(`\\b${m[3]}\\s*\\?\\s*:`).test(sigLine),
     });
   }
@@ -479,20 +481,20 @@ function parseSignatureParams(sigLine: string): IValidationSpec[] {
 }
 
 /**
- * Parsea todos los imports del archivo del controller y devuelve un mapa
- * `TypeName → ruta absoluta del archivo del DTO`.
+ * Parses all imports in the controller's file and returns a map
+ * `TypeName → absolute path of the DTO file`.
  */
 function parseImports(text: string, controllerAbsPath: string): Map<string, string> {
   const out = new Map<string, string>();
   const dir = controllerAbsPath.replace(/[^/\\]+$/, "");
-  // Match: `import { Foo, Bar } from "./path"` o `import { Foo } from "../path"`.
+  // Match: `import { Foo, Bar } from "./path"` or `import { Foo } from "../path"`.
   const importRe = /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"]/g;
   let m: RegExpExecArray | null;
   while ((m = importRe.exec(text)) !== null) {
     const names = (m[1] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     const relPath = m[2] ?? "";
-    if (!relPath.startsWith(".")) continue; // Skip paquetes npm.
-    // Resolver a .ts file. Asumir extensión `.ts` o `.dto.ts`.
+    if (!relPath.startsWith(".")) continue; // Skip npm packages.
+    // Resolve to .ts file. Assume `.ts` extension or `.dto.ts`.
     const candidates = [
       join(dir, relPath) + ".ts",
       join(dir, relPath, "index.ts"),
@@ -508,7 +510,7 @@ function parseImports(text: string, controllerAbsPath: string): Map<string, stri
 }
 
 /**
- * Lee un archivo DTO y devuelve los campos de la class `dtoTypeName`.
+ * Reads a DTO file and returns the fields of class `dtoTypeName`.
  */
 async function parseDtoFile(
   dtoPath: string,
@@ -524,37 +526,38 @@ async function parseDtoFile(
 }
 
 /**
- * Los campos de una clase DTO, buscándola dentro de un fuente ya leído.
+ * The fields of a DTO class, looking for it inside a source already
+ * read.
  *
- * Va aparte de `parseDtoFile` porque el DTO **no siempre está en otro
- * fichero**. Un controlador de NestJS con su `class CreateUserDto`
- * declarada encima —que es lo que enseña media documentación de Nest y
- * lo que hace cualquiera en un proyecto pequeño— no importa nada, así
- * que la resolución por imports no encontraba la clase y el endpoint
- * salía sin body. El fallback que había miraba solo las 8 líneas justo
- * encima de la firma, donde no está la clase.
+ * This is separate from `parseDtoFile` because the DTO **isn't always
+ * in another file**. A NestJS controller with its `class CreateUserDto`
+ * declared above — what half of Nest's docs teach and what anyone does
+ * in a small project — doesn't import anything, so the import-based
+ * resolution didn't find the class and the endpoint came out without a
+ * body. The previous fallback only looked at the 8 lines right above
+ * the signature, where the class isn't.
  *
- * `source` tiene que venir ya sin comentarios.
+ * `source` must already have comments stripped.
  */
 function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
   const lines = text.split("\n");
 
-  // 1) Encontrar la línea `export class <dtoTypeName>`.
+  // 1) Find the `export class <dtoTypeName>` line.
   const classIdx = lines.findIndex((l) =>
     new RegExp(`\\b(?:export\\s+)?class\\s+${dtoTypeName}\\b`).test(l),
   );
   if (classIdx < 0) return [];
 
-  // 2) Recoger las líneas desde classIdx hasta el cierre `}` de la class.
+  // 2) Collect lines from classIdx until the class's closing `}`.
   const fields: IValidationSpec[] = [];
   let braceDepth = 0;
   let started = false;
-  // Buffer de decorators `@IsXxx(args)` antes del field.
+  // Buffer of `@IsXxx(args)` decorators before the field.
   let pendingDecorators: Array<{ decorator: string; args: string }> = [];
   for (let i = classIdx; i < lines.length; i++) {
     const line = lines[i] ?? "";
     if (i === classIdx) {
-      // Encontrar la primera `{` para empezar.
+      // Find the first `{` to start.
       for (const c of line) {
         if (c === "{") {
           braceDepth++;
@@ -570,8 +573,8 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
     }
     if (started && braceDepth <= 0) break;
 
-    // 3) Si la línea tiene solo decorators (`@Decorator()` o `@Decorator(args)`),
-    //    agregarlos al buffer.
+    // 3) If the line has only decorators (`@Decorator()` or
+    //    `@Decorator(args)`), add them to the buffer.
     const decOnly = line.match(/^\s*@([A-Z]\w*)\s*(?:\(([^)]*)\))?\s*$/);
     if (decOnly) {
       const decName = decOnly[1] ?? "";
@@ -582,17 +585,17 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
       continue;
     }
 
-    // 4) Si la línea tiene `field: type`, `field!: type` o `field?: type`,
-    //    consumir el buffer y emitir los fields.
+    // 4) If the line has `field: type`, `field!: type` or `field?: type`,
+    //    consume the buffer and emit the fields.
     //
-    // El patrón era `(?:!|:)\s*:`, o sea que exigía DOS puntos: `field!:`
-    // o `field::`. Un `name: string` normal —la forma en que se declara
-    // el 99% de los DTO— no casaba nunca, así que el parser de DTOs de
-    // NestJS no sacaba un solo campo, ni de un fichero aparte ni de la
-    // misma clase. El `?` de los opcionales tampoco estaba contemplado.
+    // The pattern was `(?:!|:)\s*:`, which required TWO colons: `field!:`
+    // or `field::`. A normal `name: string` — the way 99% of DTOs are
+    // declared — never matched, so the NestJS DTO parser pulled no
+    // field at all, either from a separate file or from the same class.
+    // The `?` for optional fields wasn't covered either.
     const fm = /^[\s\S]*?([a-zA-Z_][\w]*)\s*[!?]?\s*:\s*([a-zA-Z_][\w\[\]<>,\s|"']*)/.exec(line);
     if (!fm || pendingDecorators.length === 0) {
-      // Línea no-field; limpiar buffer.
+      // Not a field line; clear the buffer.
       if (line.trim().length > 0 && !line.match(/^[\s,;]+$/)) {
         pendingDecorators = [];
       }
@@ -601,21 +604,21 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
     const fieldName = fm[1] ?? "";
     const fieldType = (fm[2] ?? "").trim();
 
-    // Un campo, una spec.
+    // One field, one spec.
     //
-    // Esto emitía **una spec por decorador**, así que
-    // `@IsString() @MinLength(1) @MaxLength(100) name: string` producía
-    // tres campos llamados `name` —cada uno con un trozo de la
-    // información y ninguno con toda— y el body de ejemplo salía con la
-    // misma clave repetida. Ahora los decoradores de un campo se funden
-    // en la misma spec, que es lo que son: distintas restricciones sobre
-    // una sola cosa.
+    // This emitted **one spec per decorator**, so
+    // `@IsString() @MinLength(1) @MaxLength(100) name: string` produced
+    // three fields called `name` — each with a slice of the
+    // information and none with all of it — and the example body came
+    // out with the same key repeated. Now the decorators of a field
+    // are merged into the same spec, which is what they are: different
+    // constraints on one thing.
     const field: IValidationSpec = {
       fieldName,
       location: "body",
       type: "string",
-      // `@IsOptional()` puede venir antes o después del resto, así que se
-      // decide mirando todos los decoradores del campo, no el de turno.
+      // `@IsOptional()` can come before or after the rest, so we decide
+      // by looking at all the field's decorators, not just the current one.
       required: !pendingDecorators.some((d) => d.decorator === "IsOptional"),
     };
     let recognised = false;
@@ -624,8 +627,9 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
       const map = VALIDATOR_MAP[decorator];
       if (!map) continue;
       recognised = true;
-      // `IsOptional` solo habla de obligatoriedad, ya resuelta arriba: no
-      // debe pisar el tipo que declara `@IsInt()` o `@IsEmail()`.
+      // `IsOptional` only speaks about required-ness, already resolved
+      // above: it must not overwrite the type declared by `@IsInt()` or
+      // `@IsEmail()`.
       if (decorator !== "IsOptional") {
         field.type = map.type;
         if (map.format) field.format = map.format;
@@ -640,13 +644,14 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
             .filter(Boolean);
         }
       }
-      // Length. Los argumentos de class-validator son POSICIONALES:
+      // Length. class-validator arguments are POSITIONAL:
       // `@MinLength(1)`, `@MaxLength(100)`, `@Length(1, 100)`.
       //
-      // Esto buscaba `min: 1` / `max: 100`, una forma con nombre que
-      // class-validator no tiene y que ni siquiera es TypeScript válido
-      // como argumento suelto. O sea que ninguna de las tres sacaba
-      // nunca su valor: el campo salía sin cotas y nadie se enteraba.
+      // This looked for `min: 1` / `max: 100`, a named shape
+      // class-validator doesn't have and which isn't even valid
+      // TypeScript as a bare argument. None of the three ever got its
+      // value out: the field came out without bounds and nobody
+      // noticed.
       if (decorator === "Length" || decorator === "MinLength" || decorator === "MaxLength") {
         const numbers = [...args.matchAll(/\d+/g)].map((m) => Number(m[0]));
         if (decorator === "MinLength" && numbers[0] !== undefined) {
@@ -656,7 +661,7 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
           field.maxLength = numbers[0];
         }
         if (decorator === "Length") {
-          // `@Length(min)` y `@Length(min, max)`.
+          // `@Length(min)` and `@Length(min, max)`.
           if (numbers[0] !== undefined) field.minLength = numbers[0];
           if (numbers[1] !== undefined) field.maxLength = numbers[1];
         }
@@ -670,11 +675,11 @@ function parseDtoSource(text: string, dtoTypeName: string): IValidationSpec[] {
         }
       }
     }
-    // Sin ningún decorador de class-validator no es un campo validado:
-    // es una propiedad cualquiera de la clase.
+    // Without any class-validator decorator, it's not a validated field:
+    // it's just any class property.
     if (recognised) fields.push(field);
     pendingDecorators = [];
-    void fieldType; // unused pero útil para type-aware rules
+    void fieldType; // unused but useful for type-aware rules
   }
   return fields;
 }

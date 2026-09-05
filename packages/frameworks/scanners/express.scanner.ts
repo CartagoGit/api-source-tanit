@@ -1,24 +1,25 @@
 /**
- * `ExpressRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para frameworks Node.js: Express, Fastify, Koa-router y Hapi.
+ * `ExpressRouteScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Node.js frameworks: Express, Fastify, Koa-router, and Hapi.
  *
- * Detección:
- *   - `package.json` con `dependencies` o `devDependencies` que contengan
- *     `express`, `fastify`, `@koa/router`, `@hapi/hapi` o `koa`.
- *   - Auto-detecta la raíz del proyecto desde `package.json`.
+ * Detection:
+ *   - `package.json` with `dependencies` or `devDependencies` containing
+ *     `express`, `fastify`, `@koa/router`, `@hapi/hapi`, or `koa`.
+ *   - Auto-detects the project root from `package.json`.
  *
  * Parsing:
- *   - Regex robusta sobre `app.METHOD(path, handler)` y `router.METHOD(path, handler)`.
- *   - Soporta:
+ *   - Robust regex on `app.METHOD(path, handler)` and `router.METHOD(path, handler)`.
+ *   - Supports:
  *     - Express: `app.get('/users', (req, res) => {...})`, `router.post(...)`
  *     - Fastify: `fastify.get('/users', handler)`, `app.route({...}).get(...)`
  *     - Koa: `router.get('/users', ctx => {...})`
  *     - Hapi: `server.route({ method: 'GET', path: '/users', handler: () => {...} })`
- *   - Detecta `Router()` / `express.Router()` / `Router({ prefix: '/api' })`.
- *   - Recoge prefijos `app.use('/api', router)` para routers anidados.
+ *   - Detects `Router()` / `express.Router()` / `Router({ prefix: '/api' })`.
+ *   - Collects prefixes from `app.use('/api', router)` for nested routers.
  *
- * Sin validation provider (estos frameworks no tienen "FormRequest" nativo);
- * depende de `applyAgnosticInference` para generar body/query heurísticos.
+ * No validation provider (these frameworks don't have a native
+ * "FormRequest"); relies on `applyAgnosticInference` for heuristic
+ * body/query generation.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -49,29 +50,30 @@ import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.i
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 
 /**
- * Frameworks de Node que este scanner cubre por parecido con Express.
+ * Node frameworks this scanner covers because they look like Express.
  *
- * `fastify` estaba aquí y se ha ido: tiene su propio scanner, que lee el
- * JSON Schema que Fastify declara DENTRO de cada ruta. Eso es
- * información de tipos exacta; esto solo reconoce la forma de la
- * llamada. Dejarlo aquí hacía que un proyecto Fastify casara con los
- * dos y se mezclaran dos lecturas, una buena y otra a medias.
+ * `fastify` was here and is gone: it has its own scanner, which reads
+ * the JSON Schema Fastify declares INSIDE each route. That's exact
+ * type information; this only recognises the call shape. Leaving it
+ * here made a Fastify project match both, mixing two reads — one
+ * good and one half.
  *
- * Koa y Hapi siguen porque no tienen scanner propio todavía.
+ * Koa and Hapi stay because they don't have their own scanner yet.
  */
 const FRAMEWORK_PACKAGES = ["express", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
- * detector de Express (y Koa/Hapi, que comparten este scanner). Pesos
- * pequeños: +0.1 (pnpm), +0.15 (bun). El score final pasa por
- * `withEvidence(score, evidence)` sin cap aquí —el detector ya
- * devuelve 0.7–0.9— así que el bonus sí mueve la aguja en estos
- * casos. La señal nunca tapa la ausencia de framework: se suma al
- * final, después del paquete que ya dio la detección principal.
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the Express
+ * detector's confidence (and Koa/Hapi, which share this scanner).
+ * Small weights: +0.1 (pnpm), +0.15 (bun). The final score goes
+ * through `withEvidence(score, evidence)` with no cap — the detector
+ * already returns 0.7–0.9 — so the bonus does move the needle in
+ * these cases. The signal never masks the absence of a framework:
+ * it's added at the end, after the package that already gave the
+ * main detection.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact: string }> {
   const out: Array<{ signal: string; weight: number; artifact: string }> = [];
@@ -84,11 +86,11 @@ function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: n
   return out;
 }
 
-// Las regex multilínea que reconocían `app.METHOD(path, handler)`,
-// `Router({ prefix })` y `app.use('/prefix', router)` vivían aquí.
-// a00010 S7 las sustituye por el AST que produce el frontend
-// TypeScript — la forma es la misma, pero ya no hay falsos
-// positivos en strings ni hace falta `findOutsideStrings`.
+// The multiline regexes that recognised `app.METHOD(path, handler)`,
+// `Router({ prefix })` and `app.use('/prefix', router)` lived here.
+// a00010 S7 replaced them with the AST produced by the TypeScript
+// frontend — the shape is the same, but there are no longer false
+// positives in strings and no `findOutsideStrings` is needed.
 
 // ---------------------------------------------------------------------------
 // Project detection
@@ -117,9 +119,9 @@ export class ExpressProjectScanner implements IProjectScanner {
         deps[name] !== undefined ? Math.max(acc, 0.9) : Math.max(acc, 0.7),
       0,
     );
-    // f00010 S2: el detector explica por qué puntuó. Cada match
-    // (directo o por prefijo) sube el score y se anota en evidence
-    // para que `summary` y la UI muestren la trazabilidad.
+    // f00010 S2: the detector explains why it scored. Each match
+    // (direct or by prefix) bumps the score and is noted in evidence
+    // so `summary` and the UI show the traceability.
     const pkg = parsed.value;
     const evidence = matches.map((name) => {
       const inDeps = name in ((pkg["dependencies"] as Record<string, string> | undefined) ?? {});
@@ -127,18 +129,18 @@ export class ExpressProjectScanner implements IProjectScanner {
       return {
         signal:
           deps[name] !== undefined
-            ? `package.json declara ${name} en ${where}`
-            : `package.json declara ${name}* (paquete con prefijo coincidente)`,
+            ? `package.json declares ${name} in ${where}`
+            : `package.json declares ${name}* (matching-prefix package)`,
         weight: deps[name] !== undefined ? 0.9 : 0.7,
         artifact: "package.json",
       };
     });
-    // f00011 S4: lockfile como bonus de runtime. El score base es el
-    // máximo de los pesos de cada match (varios paquetes compatibles
-    // no se acumulan); el lockfile sí se suma al final porque es una
-    // señal ortogonal, no competidora. Sumamos al final para que un
-    // lockfile no pueda tapar una ausencia de framework — la
-    // detección por `package.json` siempre va delante.
+    // f00011 S4: lockfile as runtime bonus. The base score is the
+    // maximum of the weights of each match (several compatible
+    // packages don't accumulate); the lockfile is added at the end
+    // because it's an orthogonal signal, not a competing one.
+    // Added at the end so a lockfile can't mask an absent framework —
+    // `package.json` detection always goes first.
     let finalScore = score;
     for (const lock of lockfileSignals(projectRoot)) {
       evidence.push(lock);
@@ -170,21 +172,22 @@ async function collectJsFiles(projectRoot: string): Promise<string[]> {
 }
 
 /**
- * Resuelve la raíz efectiva del scanner respetando `frameworkSearchRoot`.
+ * Resolves the scanner's effective root honouring `frameworkSearchRoot`.
  *
- * Audit 2ª revisión #4: Express no usaba `match.frameworkSearchRoot`,
- * solo `match.projectRoot`. En un monorepo con dos apps Express
- * (`apps/api`, `apps/admin`) y `--framework-search-root apps/api`,
- * el scanner recorría la raíz entera del monorepo y contaminaba la
- * colección con rutas de `apps/admin`. Esta función es el contrato
- * único que `effectiveScanRoot` de `core/discovery/scan-root.helper.ts`
- * ya define — todos los scanners deberían delegar en él.
+ * Audit 2nd review #4: Express wasn't using `match.frameworkSearchRoot`,
+ * only `match.projectRoot`. In a monorepo with two Express apps
+ * (`apps/api`, `apps/admin`) and `--framework-search-root apps/api`,
+ * the scanner walked the entire monorepo root and contaminated the
+ * collection with routes from `apps/admin`. This function is the
+ * single contract that `effectiveScanRoot` from
+ * `core/discovery/scan-root.helper.ts` already defines — all scanners
+ * should delegate to it.
  *
- * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
- * `packages/core/discovery/effective-project-root.helper.ts`, que es
- * la primitiva única que usan los 21 scanners. El helper local se
- * conserva como no-op histórico para no romper call sites externos,
- * pero el scanner ya no la usa.
+ * a00014 S2: now delegated to `effectiveProjectRoot(match)` from
+ * `packages/core/discovery/effective-project-root.helper.ts`, the
+ * single primitive all 21 scanners use. The local helper is kept as
+ * a historic no-op so external call sites don't break, but the scanner
+ * no longer uses it.
  */
 function expressSearchRoot(match: IProjectMatch): string {
   return effectiveProjectRoot(match);
@@ -198,21 +201,22 @@ interface ParsedModule {
 }
 
 /**
- * `raw` llega ya leído, no lo lee esta función.
+ * `raw` arrives already read, this function does not read it.
  *
- * Es lo que permite que quien llama pida los ficheros en paralelo con
- * tope en vez de uno detrás de otro. La alternativa —dejar la lectura
- * aquí dentro— obliga a que el bucle de fuera espere a cada disco.
+ * That's what lets the caller fetch files in parallel with a cap
+ * instead of one after another. The alternative —leaving the read
+ * inside here— forces the outer loop to wait for each disk.
  *
- * Migrado en a00010 S7 a consumir el AST del frontend TypeScript:
- * antes regex sobre el código fuente (con sus falsos positivos:
- * multilínea, strings anidadas, comentarios), ahora una sola
- * pasada por el AST produce `imports`, `assignments` y `methodCalls`
- * que el adapter de Express consume.
+ * Migrated in a00010 S7 to consume the TypeScript frontend AST:
+ * before, regex over the source code (with its false positives:
+ * multiline, nested strings, comments), now a single AST pass produces
+ * `imports`, `assignments` and `methodCalls` that the Express adapter
+ * consumes.
  *
- * `diagnostics` (a00011 C-7 / B-rev-13) acumula los ficheros que el
- * frontend no pudo parsear: la función devuelve módulo vacío y añade
- * la razón al array del caller, que la eleva a `IScanResult`.
+ * `diagnostics` (a00011 C-7 / B-rev-13) accumulates the files the
+ * frontend couldn't parse: the function returns an empty module and
+ * adds the reason to the caller's array, which elevates it to
+ * `IScanResult`.
  */
 function parseModuleSafe(
   file: string,
@@ -221,9 +225,9 @@ function parseModuleSafe(
 ): ParsedModule {
   const ast = parseModule(raw, file, diagnostics);
   if (!ast) {
-    // El motivo ya quedó registrado en `diagnostics` por el frontend:
-    // el scanner sigue funcionando, solo no encuentra rutas en
-    // ese fichero.
+    // The reason is already recorded in `diagnostics` by the frontend:
+    // the scanner keeps working, it just doesn't find routes in
+    // that file.
     return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
   }
   const routerPrefixes = new Map<string, string>();
@@ -231,9 +235,9 @@ function parseModuleSafe(
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
 
   // (1) Router prefix declarations: `const r = Router({ prefix: '/api/v1' })`.
-  // El frontend devuelve el `objectShape` del argumento (que el
-  // parser desempaca del CallExpression cuando es un wrapper
-  // transparente); el adapter busca el campo `prefix` aquí.
+  // The frontend returns the argument's `objectShape` (which the
+  // parser unpacks from the CallExpression when it's a transparent
+  // wrapper); the adapter looks for the `prefix` field here.
   for (const assignment of ast.assignments) {
     const value = assignment.value;
     if (value.kind !== "object" || !value.objectShape) continue;
@@ -245,16 +249,16 @@ function parseModuleSafe(
     routerPrefixes.set(assignment.name, prefix);
   }
 
-  // (2) `app.use('/prefix', router)` y `app.use('/prefix')` —
-  // el primero monta un router con prefijo; el segundo es
-  // middleware puro (sin router al que prefijar).
+  // (2) `app.use('/prefix', router)` and `app.use('/prefix')` —
+  // the first mounts a router with prefix; the second is pure
+  // middleware (no router to prefix).
   //
-  // a00016 S5: `methodCalls` ya NO viene del frontend TS — viene del
-  // LanguageIR pipeline (S2 + S4). El frontend sólo aporta
-  // `assignments` y `decorators`. El bridge `toTSMethodCalls`
-  // convierte `IRouteCallExpression[]` al shape `TSMethodCall[]` que
-  // el resto de este scanner sigue consumiendo — sin tocar la
-  // lógica de extracción.
+  // a00016 S5: `methodCalls` no longer comes from the TS frontend —
+  // it comes from the LanguageIR pipeline (S2 + S4). The frontend
+  // only provides `assignments` and `decorators`. The
+  // `toTSMethodCalls` bridge converts `IRouteCallExpression[]` into
+  // the `TSMethodCall[]` shape that the rest of this scanner keeps
+  // consuming — without touching the extraction logic.
   const irCalls = collectMethodCallsFromSource(raw, file, diagnostics);
   const propagated = propagateConstants(irCalls, []);
   const methodCalls = toTSMethodCalls(propagated, raw);
@@ -269,7 +273,7 @@ function parseModuleSafe(
     appUsePrefixes.set(routerArg.identifierName, prefix);
   }
 
-  // (3) Method calls que parecen declaraciones de ruta.
+  // (3) Method calls that look like route declarations.
   for (const call of methodCalls) {
     const [ident, method] = call.callee.split(".");
     if (!ident || !method) continue;
@@ -287,9 +291,9 @@ function parseModuleSafe(
   }
 
   // (4) Hapi: `server.route({ method: 'GET', path: '/users', ... })`.
-  // Babel emite este shape como un `CallExpression` a
-  // `<ident>.route(...)` con un ObjectExpression como argumento.
-  // Buscamos directamente en `methodCalls` por el callee.
+  // Babel emits this shape as a `CallExpression` to
+  // `<ident>.route(...)` with an ObjectExpression as argument. We
+  // look directly in `methodCalls` for the callee.
   for (const call of methodCalls) {
     if (!call.callee.endsWith(".route")) continue;
     const obj = call.args[0];
@@ -312,11 +316,11 @@ function parseModuleSafe(
 }
 
 /**
- * Llama al frontend con `errorRecovery: true` para no romper el
- * scan cuando un archivo tiene sintaxis rara. Si Babel no puede
- * hacer nada con el archivo, el frontend devuelve `null` y registra
- * la razón en `diagnostics` (a00011 C-7 / B-rev-13): el scan sigue,
- * pero el fichero no desaparece sin rastro.
+ * Calls the frontend with `errorRecovery: true` to not break the
+ * scan when a file has weird syntax. If Babel can't do anything with
+ * the file, the frontend returns `null` and logs the reason in
+ * `diagnostics` (a00011 C-7 / B-rev-13): the scan continues, but the
+ * file doesn't disappear without a trace.
  */
 
 // ---------------------------------------------------------------------------
@@ -334,13 +338,13 @@ export class ExpressRouteScanner implements IRouteScanner {
     const files = await collectJsFiles(expressSearchRoot(match));
     const modules: ParsedModule[] = [];
     const diagnostics: Array<IParseDiagnostic> = [];
-    // En paralelo con tope, entregados en el orden de entrada: la
-    // colección tiene que salir igual en cada ejecución.
+    // Parallel reads with a cap, delivered in input order: the
+    // collection must come out identical on every run.
     for await (const { path, text } of readFilesInOrder(files)) {
       modules.push(parseModuleSafe(path, text, diagnostics));
     }
 
-    // Mapa routerName → prefix (incluye app.use prefixes).
+    // Map routerName → prefix (includes app.use prefixes).
     const routerPrefixes = new Map<string, string>();
     for (const m of modules) {
       for (const [varName, prefix] of m.routerPrefixes) {
@@ -354,19 +358,19 @@ export class ExpressRouteScanner implements IRouteScanner {
     const out: ParsedRoute[] = [];
     for (const m of modules) {
       for (const r of m.routes) {
-        // Si el route viene de un router conocido, aplica su prefix.
+        // If the route comes from a known router, apply its prefix.
         let prefix = "";
         if (r.routerName && routerPrefixes.has(r.routerName)) {
           prefix = routerPrefixes.get(r.routerName) ?? "";
         }
-        // Normaliza dobles slashes y slash final.
+        // Normalise double slashes and trailing slash.
         const fullPath = (prefix + r.path)
           .replace(/\/+/g, "/")
           .replace(/\/+$/, "");
-        // `m.file` viene de `collectJsFiles(searchRoot)` así que es
-        // absoluta desde searchRoot (no desde match.projectRoot).
-        // Usamos `searchRoot` para derivar el `sourceFile` y que la
-        // ruta sea coherente con el workspace efectivo del scanner.
+        // `m.file` comes from `collectJsFiles(searchRoot)` so it's
+        // absolute from searchRoot (not from match.projectRoot).
+        // We use `searchRoot` to derive `sourceFile` so the path
+        // matches the scanner's effective workspace.
         const relFile = m.file
           .replace(rawProjectRoot(match), "")
           .replace(/^[\\/]/, "")
@@ -382,8 +386,8 @@ export class ExpressRouteScanner implements IRouteScanner {
         });
       }
     }
-    // Los ficheros que el frontend no pudo parsear no abortan el
-    // scan, pero tampoco desaparecen sin rastro: suben como
+    // Files the frontend couldn't parse don't abort the scan, but
+    // they don't disappear without a trace either: they go up as
     // diagnostics (a00011 C-7 / B-rev-13).
     return diagnostics.length > 0 ? { routes: out, diagnostics } : { routes: out };
   }
@@ -394,17 +398,17 @@ export class ExpressRouteScanner implements IRouteScanner {
 // ---------------------------------------------------------------------------
 
 /**
- * Validation provider para Express/Fastify/Koa/Hapi.
+ * Validation provider for Express/Fastify/Koa/Hapi.
  *
- * Detecta esquemas de validación **inline** en el código:
+ * Detects **inline** validation schemas in the code:
  *   - zod: `z.object({ name: z.string(), email: z.string().email() })`
  *   - Joi: `Joi.object({ name: Joi.string().required() })`
  *
- * Estrategia:
- *   1. Lee el archivo del handler.
- *   2. Busca el primer `z.object({...})` o `Joi.object({...})` que aparezca
- *      en el handler (líneas posteriores a la línea del route).
- *   3. Convierte los fields a `IValidationSpec`.
+ * Strategy:
+ *   1. Read the handler's file.
+ *   2. Find the first `z.object({...})` or `Joi.object({...})` that appears
+ *      in the handler (lines after the route's line).
+ *   3. Convert the fields into `IValidationSpec`s.
  */
 export class ExpressZodValidationProvider implements IValidationSpecProvider {
   readonly framework = "express" as const;
@@ -414,7 +418,7 @@ export class ExpressZodValidationProvider implements IValidationSpecProvider {
     _match: IProjectMatch,
     _scanResult: IScanResult,
   ): Promise<boolean> {
-    // En principio siempre intentamos; el resolve devuelve [] si no encuentra.
+    // In principle we always try; resolve returns [] if it finds nothing.
     return true;
   }
 
@@ -430,29 +434,29 @@ export class ExpressZodValidationProvider implements IValidationSpecProvider {
 }
 
 /**
- * Parsea un `z.object({...})` o `Joi.object({...})` y devuelve los fields.
- * Estrategia best-effort: regexes balanceadas por paréntesis.
+ * Parses a `z.object({...})` or `Joi.object({...})` and returns the fields.
+ * Best-effort strategy: parens-balanced regexes.
  *
- * Busca el schema en el archivo entero (no solo en el handler), porque
- * la convención más común es:
+ * Searches the schema across the whole file (not just in the handler),
+ * because the most common convention is:
  *
  *   const createUserSchema = z.object({...});
  *   app.post('/users', handler);
  *
- * Si hubiera múltiples `z.object()`, tomamos el primero que aparezca
- * DESPUÉS de la línea del route (el más cercano al handler).
+ * If there are multiple `z.object()`, we take the first one that
+ * appears AFTER the route's line (the closest to the handler).
  *
- * Headers: detecta además `headers: z.object({...})` (Joi/zod) en el
- * bloque del handler, y emite esos fields con `location: "header"`.
+ * Headers: also detects `headers: z.object({...})` (Joi/zod) in the
+ * handler's block, and emits those fields with `location: "header"`.
  */
 async function findInlineSchema(
   route: ParsedRoute,
   match: IProjectMatch,
 ): Promise<IValidationSpec[]> {
   if (!route.sourceFile) return [];
-  // Audit 2ª revisión #4: sourceFile es relativo a la raíz
-  // efectiva (searchRoot si hay frameworkSearchRoot), no a la
-  // raíz del match.
+  // Audit 2nd review #4: sourceFile is relative to the effective
+  // root (searchRoot if frameworkSearchRoot is set), not to the
+  // match's root.
   const abs = join(expressSearchRoot(match), route.sourceFile);
   let raw: string;
   try {
@@ -463,22 +467,22 @@ async function findInlineSchema(
   const text = stripJsComments(raw);
   const lines = text.split("\n");
 
-  // 1) Detectar qué framework usa el handler.
-  //    Estrategia (orden de prioridad):
-  //    a. **Schema usado en el handler**: parsear el cuerpo del handler
-  //       buscando `SchemaName.parse(req.body)` o `SchemaName.validate(req.body)`.
-  //       Si el nombre del schema está declarado como `= z.object(...)`, usar zod.
-  //       Si está como `= Joi.object(...)`, usar Joi.
-  //    b. **Anterior más cercano no-header**: si el handler no usa
-  //       `.parse()` ni `.validate()`, usar el schema zod/jod anterior y más
-  //       cercano (skip schemas que parezcan headers).
-  //    c. **Cualquier más cercano**: si no hay nada body-like, fallback.
+  // 1) Detect which library the handler uses.
+  //    Strategy (priority order):
+  //    a. **Schema used in the handler**: parse the handler's body
+  //       looking for `SchemaName.parse(req.body)` or `SchemaName.validate(req.body)`.
+  //       If the schema's name is declared as `= z.object(...)`, use zod.
+  //       If as `= Joi.object(...)`, use Joi.
+  //    b. **Closest previous non-header**: if the handler uses neither
+  //       `.parse()` nor `.validate()`, use the closest previous zod/Joi
+  //       schema (skip schemas that look like headers).
+  //    c. **Closest of any kind**: if there's nothing body-like, fallback.
   const startLine = Math.max(0, route.lineNumber - 1);
   const handlerBody = collectHandlerBody(lines, startLine);
   const referencedSchemaName = handlerBody
     ? findReferencedSchemaName(handlerBody)
     : null;
-  // Resolver a qué framework pertenece el schema referenciado.
+  // Resolve which library the referenced schema belongs to.
   let prefer: "zod" | "joi" | null = null;
   if (referencedSchemaName) {
     if (new RegExp(`\\b${referencedSchemaName}\\s*=\\s*z\\s*\\.\\s*object`).test(text)) {
@@ -488,11 +492,11 @@ async function findInlineSchema(
     }
   }
 
-  // 2) zod primero, Joi como segunda opción. La selección del schema
-  //    es idéntica en ambos casos, solo cambia la librería.
+  // 2) zod first, Joi as second option. The schema selection is
+  //    identical in both cases, only the library changes.
   for (const library of ["zod", "joi"] as const) {
-    // Si el handler referencia explícitamente un schema de la OTRA
-    // librería, no adivinamos con esta.
+    // If the handler explicitly references a schema from the OTHER
+    // library, we don't guess with this one.
     if (prefer && prefer !== library) continue;
 
     const call = pickSchemaCall(text, library, startLine, prefer === library ? referencedSchemaName : null);
@@ -511,18 +515,18 @@ async function findInlineSchema(
   return [];
 }
 
-/** Ventana (chars) hacia atrás donde buscar `const X = z.object(`. */
+/** Look-back window (chars) where to search for `const X = z.object(`. */
 const SCHEMA_DECL_LOOKBEHIND = 80;
 
 /**
- * Elige qué `<lib>.object({...})` del archivo describe el body de este
- * handler, en tres pasos de confianza decreciente:
+ * Picks which `<lib>.object({...})` in the file describes this
+ * handler's body, in three steps of decreasing confidence:
  *
- *   1. El schema que el handler referencia por nombre
+ *   1. The schema the handler references by name
  *      (`createUserSchema.parse(req.body)`).
- *   2. El schema declarado ANTES del handler más cercano que tenga
- *      campos y no parezca un schema de headers.
- *   3. El más cercano en líneas, en cualquier dirección.
+ *   2. The closest previously declared schema that has fields and
+ *      doesn't look like a headers schema.
+ *   3. The closest one in absolute distance.
  */
 function pickSchemaCall(
   text: string,
@@ -546,7 +550,7 @@ function pickSchemaCall(
     if (named) return named;
   }
 
-  // 2) El anterior más cercano que parezca un body.
+  // 2) The closest previous one that looks like a body.
   const before = calls
     .map((call) => ({ call, line: countLinesBefore(text, call.callStart) }))
     .filter((x) => x.line < startLine)
@@ -559,17 +563,17 @@ function pickSchemaCall(
     return candidate.call;
   }
 
-  // 3) El más cercano en valor absoluto.
+  // 3) The closest one in absolute distance.
   return findNearestBalanced(text, objectRe, startLine);
 }
 
 /**
- * Busca el `headers: <lib>.object({...})` más cercano al handler y
- * devuelve sus campos con `location: "header"`.
+ * Searches for the `headers: <lib>.object({...})` closest to the
+ * handler and returns its fields with `location: "header"`.
  *
- * Los schemas de headers se declaran normalmente en el objeto de
- * configuración de la ruta, justo encima o debajo del handler, así que
- * la proximidad en líneas es el mejor desempate disponible.
+ * Headers schemas are usually declared in the route's configuration
+ * object, right above or below the handler, so line proximity is
+ * the best tiebreaker available.
  */
 function findHeaderSchemaNear(
   text: string,
@@ -591,8 +595,8 @@ function findHeaderSchemaNear(
 }
 
 /**
- * Recoge el cuerpo del handler (el callback `app.METHOD('/x', (req, res) => { ... })`)
- * desde `startLine` hasta el `}` de cierre del callback.
+ * Collects the handler's body (the callback `app.METHOD('/x', (req, res) => { ... })`)
+ * from `startLine` up to the callback's closing `}`.
  */
 function collectHandlerBody(lines: string[], startLine: number): string {
   const out: string[] = [];
@@ -619,10 +623,10 @@ function collectHandlerBody(lines: string[], startLine: number): string {
 }
 
 /**
- * Busca el nombre del schema referenciado en el cuerpo del handler:
+ * Searches the schema name referenced in the handler's body:
  *   `const body = CreateUserSchema.parse(req.body);` → "CreateUserSchema"
  *
- * Busca `.parse(req.body)` o `.validate(req.body)`.
+ * Looks for `.parse(req.body)` or `.validate(req.body)`.
  */
 function findReferencedSchemaName(handlerBody: string): string | null {
   const re = /\b([A-Z][\w]*)\s*\.\s*(?:parse|validate)\s*\(\s*req\.body/g;
@@ -635,13 +639,13 @@ function findReferencedSchemaName(handlerBody: string): string | null {
 }
 
 /**
- * Heurística: ¿este schema parece un HEADER schema?
+ * Heuristic: does this schema look like a HEADER schema?
  *
- * Reconoce:
- * - Cualquier key con guión (kebab-case HTTP): `X-API-Key`, `Content-Type`, …
- * - Headers comunes sin guión: `Authorization`, `Accept`, `User-Agent`, …
+ * Recognises:
+ * - Any key with a dash (kebab-case HTTP): `X-API-Key`, `Content-Type`, …
+ * - Common headers without a dash: `Authorization`, `Accept`, `User-Agent`, …
  *
- * Si TODAS las keys del schema son headers, devolvemos true.
+ * If ALL of the schema's keys are headers, we return true.
  */
 const HEADER_KEY_NAMES = new Set([
   "authorization",

@@ -1,12 +1,12 @@
 /**
- * Ramas del cargador de config del proyecto host.
+ * Branches of the host project config loader.
  *
- * `project-loader.spec.ts` cubre el camino zero-config; este recorre
- * las decisiones del resolutor: `--config` (relativo y absoluto, lo
- * venga el CLI o el env), el legacy `POSTMAN_EXAMPLE`, un
- * `config.constant.ts` real encontrado en el proyecto (con y sin
- * overrides de endpoints), los errores de export inválido, y los
- * lectores de `RouteServiceProvider` y `routes/` del zero-config.
+ * `project-loader.spec.ts` covers the zero-config path; this one walks
+ * the resolver's decisions: `--config` (relative and absolute, whether
+ * it comes from the CLI or the env), the legacy `POSTMAN_EXAMPLE`, a
+ * real `config.constant.ts` found in the project (with and without
+ * endpoint overrides), invalid export errors, and the zero-config
+ * readers of `RouteServiceProvider` and `routes/`.
  */
 import { afterEach, describe, expect, test } from "vitest";
 import {
@@ -28,7 +28,7 @@ afterEach(async () => {
   project = null;
 });
 
-/** Un config.constant.ts válido, como el que escribe un proyecto host. */
+/** A valid config.constant.ts, like the one a host project writes. */
 const CONFIG_OK = `import type { ProjectConfig } from "../project-config.type.js";
 export const config: ProjectConfig = {
   name: "tienda",
@@ -50,7 +50,7 @@ const TOKEN = "no-relevante";
 export { TOKEN };
 `;
 
-/** Monta un proyecto temporal y ejecuta `fn` con la raíz fijada a él. */
+/** Sets up a temporary project and runs `fn` with the root fixed to it. */
 async function inProject<T>(
   files: Record<string, string>,
   fn: (context: IProjectContext) => Promise<T>,
@@ -87,7 +87,7 @@ function detectFilePrefixes() {
 }
 
 describe("resolveConfigPath", () => {
-  test("--config absoluto gana a todo lo demás", async () => {
+  test("--config absolute wins over everything else", async () => {
     await inProject({}, async () => {
       const cfg = `${project!.root}/mi-config.constant.ts`;
       const res = await resolveConfigPath(["node", "x", "--config", cfg]);
@@ -95,14 +95,14 @@ describe("resolveConfigPath", () => {
     });
   });
 
-  test("--config relativo se resuelve contra el cwd del proceso", async () => {
+  test("--config relative is resolved against the process cwd", async () => {
     await inProject({}, async () => {
       const ruta = await resolveConfigPath(["node", "x", "--config", "rel.conf.ts"]);
       expect(ruta.endsWith("/rel.conf.ts")).toBe(true);
     });
   });
 
-  test("--config=valor pegado también funciona", async () => {
+  test("--config=value glued together also works", async () => {
     await inProject({}, async () => {
       const cfg = `${project!.root}/pegado.ts`;
       const res = await resolveConfigPath(["node", "x", `--config=${cfg}`]);
@@ -110,7 +110,7 @@ describe("resolveConfigPath", () => {
     });
   });
 
-  test("POSTMAN_CONFIG se usa si no hay --config", async () => {
+  test("POSTMAN_CONFIG is used when there is no --config", async () => {
     await inProject({}, async () => {
       const cfg = `${project!.root}/env-config.ts`;
       process.env.POSTMAN_CONFIG = cfg;
@@ -122,7 +122,7 @@ describe("resolveConfigPath", () => {
     });
   });
 
-  test("POSTMAN_EXAMPLE busca en el paquete (camino legacy)", async () => {
+  test("POSTMAN_EXAMPLE looks in the package (legacy path)", async () => {
     await inProject({}, async () => {
       process.env.POSTMAN_EXAMPLE = "example-app";
       try {
@@ -134,17 +134,17 @@ describe("resolveConfigPath", () => {
     });
   });
 
-  test("POSTMAN_EXAMPLE inexistente sigue al host y cae en zero", async () => {
+  test("a missing POSTMAN_EXAMPLE keeps going and falls to zero", async () => {
     const res = await inProject({ ".env": "APP_NAME=Demo\n" }, () =>
       resolveConfigPath([]).then(() => {
-        process.env.POSTMAN_EXAMPLE = "no-existe";
+        process.env.POSTMAN_EXAMPLE = "does-not-exist";
         return resolveConfigPath([]).finally(() => delete process.env.POSTMAN_EXAMPLE);
       }),
     );
     expect(res).toBe("__zero__");
   });
 
-  test("encuentra resources/postman/examples/<nombre> del host", async () => {
+  test("finds the host's resources/postman/examples/<name>", async () => {
     const res = await inProject(
       {
         "composer.json": '{"name":"acme/tienda"}',
@@ -155,10 +155,10 @@ describe("resolveConfigPath", () => {
     expect(res).toContain("resources/postman/examples/tienda/config.constant.ts");
   });
 
-  test("si el nombre del manifiesto no casa, prueba cualquier examples/<*>", async () => {
+  test("if the manifest name does not match, it tries any examples/<*>", async () => {
     const res = await inProject(
       {
-        // El nombre derivará de la carpeta temporal, no "otro".
+        // The name will derive from the temporary folder, not "otro".
         "examples/otro/config.constant.ts": CONFIG_OK,
       },
       () => resolveConfigPath([]),
@@ -166,14 +166,14 @@ describe("resolveConfigPath", () => {
     expect(res).toContain("examples/otro/config.constant.ts");
   });
 
-  test("sin nada, el sentinel es __zero__", async () => {
+  test("with nothing, the sentinel is __zero__", async () => {
     const res = await inProject({}, () => resolveConfigPath([]));
     expect(res).toBe("__zero__");
   });
 });
 
-describe("loadProject con config explícito", () => {
-  test("carga un config.constant.ts real con su export", async () => {
+describe("loadProject with explicit config", () => {
+  test("loads a real config.constant.ts with its export", async () => {
     const loaded = await inProject(
       {
         "composer.json": '{"name":"acme/tienda"}',
@@ -189,7 +189,7 @@ describe("loadProject con config explícito", () => {
     expect(loaded.manualEndpoints).toEqual([]);
   });
 
-  test("una config sin export utilizable falla con un mensaje claro", async () => {
+  test("a config without a usable export fails with a clear message", async () => {
     await expect(
       inProject(
         {
@@ -201,7 +201,7 @@ describe("loadProject con config explícito", () => {
     ).rejects.toThrow(/No se encontró export 'config'/);
   });
 
-  test("endpoints.constant.ts del mismo directorio carga como overrides", async () => {
+  test("endpoints.constant.ts from the same directory is loaded as overrides", async () => {
     const loaded = await inProject(
       {
         "composer.json": '{"name":"acme/tienda"}',
@@ -219,7 +219,7 @@ export const ALL_ENDPOINTS = [
     expect(loaded.manualEndpoints[0]?.uri).toBe("/ping");
   });
 
-  test("un export de endpoints que no es array falla con su mensaje", async () => {
+  test("an endpoint export that is not an array fails with its message", async () => {
     await expect(
       inProject(
         {
@@ -233,7 +233,7 @@ export const ALL_ENDPOINTS = [
     ).rejects.toThrow("El export de endpoints manuales no es un array.");
   });
 
-  test("endpoints.ts y manual-endpoints.constant.ts son candidatos", async () => {
+  test("endpoints.ts and manual-endpoints.constant.ts are candidates", async () => {
     const loaded = await inProject(
       {
         "composer.json": '{"name":"acme/tienda"}',
@@ -247,7 +247,7 @@ export const ALL_ENDPOINTS = [
     expect(loaded.manualEndpoints).toEqual([]);
   });
 
-  test("--config con ruta inexistente lanza con la ruta en el mensaje", async () => {
+  test("--config with a missing path throws with the path in the message", async () => {
     await expect(
       inProject({}, () =>
         loadProject(["node", "x", "--config", `${project!.root}/nope.ts`]),
@@ -256,8 +256,8 @@ export const ALL_ENDPOINTS = [
   });
 });
 
-describe("buildZeroConfig — caminos alternativos", () => {
-  test("APP_URL con /api no se le añade otra vez", async () => {
+describe("buildZeroConfig — alternative paths", () => {
+  test("APP_URL with /api is not appended again", async () => {
     const config = await inProject(
       { ".env": "APP_URL=https://api.midominio.com/api\n" },
       buildZeroConfig,
@@ -265,10 +265,10 @@ describe("buildZeroConfig — caminos alternativos", () => {
     expect(config.baseUrl).toBe("https://api.midominio.com/api");
   });
 
-  test("APP_URL entre comillas se limpia", async () => {
-    // a00012 S4: ya no se añade `/api` automáticamente. El APP_URL se
-    // respeta tal cual; el sufijo solo lo aporta una fuente explícita
-    // (Laravel + RouteServiceProvider, `POSTMAN_BASE_PATH`, …).
+  test("APP_URL with quotes is cleaned", async () => {
+    // a00012 S4: `/api` is no longer added automatically. APP_URL is
+    // respected as-is; the suffix is only contributed by an explicit
+    // source (Laravel + RouteServiceProvider, `POSTMAN_BASE_PATH`, …).
     const config = await inProject(
       { ".env": 'APP_URL="https://api.midominio.com"\n' },
       buildZeroConfig,
@@ -276,7 +276,7 @@ describe("buildZeroConfig — caminos alternativos", () => {
     expect(config.baseUrl).toBe("https://api.midominio.com");
   });
 
-  test(".env.example vale cuando no hay .env", async () => {
+  test(".env.example is valid when there is no .env", async () => {
     const config = await inProject(
       { ".env.example": "APP_URL=https://staging.midominio.com\n" },
       buildZeroConfig,
@@ -284,16 +284,17 @@ describe("buildZeroConfig — caminos alternativos", () => {
     expect(config.baseUrl).toContain("staging");
   });
 
-  test("un .env ilegible no revienta: cae al localhost", async () => {
-    // EISDIR no se simula con el fixture (escribe contenido, no
-    // directorios con ese nombre exacto), así que la rama `catch` se
-    // provoca con un `.env` que NO declara APP_URL y un segundo
-    // `.env.example` también mudo: la rama de `break` no se alcanza.
+  test("an unreadable .env does not crash: falls back to localhost", async () => {
+    // EISDIR is not simulated by the fixture (it writes content, not
+    // directories with that exact name), so the `catch` branch is
+    // triggered by a `.env` that does NOT declare APP_URL and a
+    // second `.env.example` also mute: the `break` branch is not
+    // reached.
     //
-    // a00012 S4: la baseUrl por defecto es el ORIGEN (`http://localhost`).
-    // El `/api` ya no se pega automáticamente: solo aparece cuando una
-    // fuente explícita lo aporta (Laravel + RouteServiceProvider,
-    // `POSTMAN_BASE_PATH`, …).
+    // a00012 S4: the default baseUrl is the ORIGIN (`http://localhost`).
+    // The `/api` is no longer glued automatically: it only appears
+    // when an explicit source contributes it (Laravel +
+    // RouteServiceProvider, `POSTMAN_BASE_PATH`, …).
     const config = await inProject(
       { ".env": "APP_KEY=xxx\n" },
       buildZeroConfig,
@@ -301,7 +302,7 @@ describe("buildZeroConfig — caminos alternativos", () => {
     expect(config.baseUrl).toBe("http://localhost");
   });
 
-  test("el mapa filePrefixes sale del RouteServiceProvider", async () => {
+  test("the filePrefixes map comes from the RouteServiceProvider", async () => {
     const config = await inProject(
       {
         ".env": "APP_NAME=Demo\n",
@@ -322,13 +323,13 @@ class RouteServiceProvider {
     expect(config.filePrefixes["routes/externo.php"]).toEqual(["api", "externo"]);
   });
 
-  test("los .php de routes/ sin mapa reciben el prefijo api por defecto", async () => {
+  test(".php files in routes/ without a map get the api prefix by default", async () => {
     const config = await inProject(
       {
         ".env": "APP_NAME=Demo\n",
         "routes/pedidos.php": "<?php\n",
         "routes/web.php": "<?php\n",
-        "routes/notas.md": "no es php",
+        "routes/notas.md": "not php",
       },
       buildZeroConfig,
     );
@@ -337,7 +338,7 @@ class RouteServiceProvider {
     expect(config.filePrefixes["routes/notas.md"]).toBeUndefined();
   });
 
-  test("el prefijo del ServiceProvider manda sobre el por defecto", async () => {
+  test("the ServiceProvider's prefix wins over the default", async () => {
     const config = await inProject(
       {
         ".env": "APP_NAME=Demo\n",
@@ -356,13 +357,13 @@ class RouteServiceProvider {
   });
 });
 
-describe("detectFilePrefixes — entradas explícitas", () => {
-  test("sin RouteServiceProvider devuelve {}", async () => {
+describe("detectFilePrefixes — explicit inputs", () => {
+  test("without a RouteServiceProvider returns {}", async () => {
     const res = await inProject({}, detectFilePrefixes);
     expect(res).toEqual({});
   });
 
-  test("un bloque de acción sin prefix+group no entra en el mapa", async () => {
+  test("an action block without prefix+group does not enter the map", async () => {
     const res = await inProject(
       {
         "app/Providers/RouteServiceProvider.php": `<?php
@@ -382,16 +383,16 @@ class RouteServiceProvider {
     expect(res["routes/bien.php"]).toEqual(["v2"]);
   });
 
-  test("un RouteServiceProvider que no existe devuelve {}", async () => {
+  test("a non-existent RouteServiceProvider returns {}", async () => {
     const res = await inProject({}, detectFilePrefixes);
     expect(res).toEqual({});
   });
 });
 
-describe("detectProjectName — ramas del loader", () => {
-  test("de la raíz la decide el contexto, no el singleton", async () => {
-    // Dos contextos explícitos dan nombres distintos en el mismo
-    // proceso: es la propiedad que r00008 persigue.
+describe("detectProjectName — loader branches", () => {
+  test("from the root, the context decides, not the singleton", async () => {
+    // Two explicit contexts give different names in the same process:
+    // this is the property r00008 pursues.
     await inProject(
       { "composer.json": '{"name":"acme/primero"}' },
       async () => {
@@ -404,22 +405,22 @@ describe("detectProjectName — ramas del loader", () => {
   });
 });
 
-describe("_internal — extractores sueltos", () => {
-  test("extractConfig acepta config, default y projectConfig", () => {
+describe("_internal — loose extractors", () => {
+  test("extractConfig accepts config, default and projectConfig", () => {
     const ok = { config: { name: "a" } };
     expect(_internal.extractConfig(ok, "x").name).toBe("a");
     expect(_internal.extractConfig({ default: { name: "b" } }, "x").name).toBe("b");
     expect(_internal.extractConfig({ projectConfig: { name: "c" } }, "x").name).toBe("c");
     expect(() => _internal.extractConfig({}, "x")).toThrow(/No se encontró export/);
     expect(() =>
-      _internal.extractConfig({ config: "no-soy-objeto" }, "x"),
+      _internal.extractConfig({ config: "not-an-object" }, "x"),
     ).toThrow(/No se encontró export/);
     expect(() =>
       _internal.extractConfig({ config: { sinNombre: 1 } }, "x"),
     ).toThrow(/No se encontró export/);
   });
 
-  test("extractEndpoints acepta ALL_ENDPOINTS, endpoints y default", () => {
+  test("extractEndpoints accepts ALL_ENDPOINTS, endpoints and default", () => {
     expect(_internal.extractEndpoints({ ALL_ENDPOINTS: [1] })).toEqual([1]);
     expect(_internal.extractEndpoints({ endpoints: [1, 2] })).toEqual([1, 2]);
     expect(_internal.extractEndpoints({ default: [3] })).toEqual([3]);
@@ -429,16 +430,16 @@ describe("_internal — extractores sueltos", () => {
     );
   });
 
-  test("resolveMaybeRelative resuelve absolutos y relativos", () => {
+  test("resolveMaybeRelative resolves absolutes and relatives", () => {
     expect(_internal.resolveMaybeRelative("/abs/x.ts", "/base")).toBe("/abs/x.ts");
     expect(_internal.resolveMaybeRelative("rel/x.ts", "/base")).toBe(
       "/base/rel/x.ts",
     );
   });
 
-  test("findHostConfig prefiere el nombre del manifiesto y cae a cualquier ejemplo", async () => {
-    // El proyecto se llama por composer; el único examples/<*> disponible
-    // tiene otro nombre. El fallback entra y lo encuentra.
+  test("findHostConfig prefers the manifest name and falls back to any example", async () => {
+    // The project is named via composer; the only examples/<*>
+    // available has another name. The fallback enters and finds it.
     const res = await inProject(
       {
         "composer.json": '{"name":"acme/tienda"}',
