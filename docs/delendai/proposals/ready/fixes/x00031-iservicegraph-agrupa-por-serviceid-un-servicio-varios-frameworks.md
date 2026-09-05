@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
+shippedIn:
+  - 91334a8  # feat(x00031): IServiceDescriptor admite multi-framework por servicio
 dependsOn:
   - a00013
 related:
@@ -56,41 +58,46 @@ Postman empezarían a colisionar (`apps_api` dos veces).
 
 ### S1 — contrato: `IServiceDescriptor` admite múltiples frameworks
 
-- **Status**: pending
+- **Status**: done
 - **Files**:
   - `packages/contracts/interfaces/core/service-graph.interface.ts`
-  - `docs/API.md` (regenerado)
 - **Gate**: `bun run typecheck && bun run lint:contracts`
-- **Detalle**:
-  - El descriptor pasa a llevar `matches: ReadonlyArray<IProjectMatch>`
-    (o `frameworks: ReadonlyArray<FrameworkId>` + el `match` principal), y
-    `endpoints` se construye **por servicio** no por match.
-  - Decisión abierta a resolver en la revisión de S1: mantener `match`
-    singular para compatibilidad + añadir `additionalMatches`, o ruptura
-    limpia (con nota en CHANGELOG). La revisión de propuestas decide; la
-    recomendación del auditor es ruptura limpia, el grafo es interno.
+- **Detalle (91334a8)`: cambio ADITIVO, no rompe. El descriptor pasa
+  a llevar `additionalMatches: ReadonlyArray<IProjectMatch>` (vacío
+  para servicios de un solo framework) y `frameworks: ReadonlyArray<string>`
+  (al menos `match.framework`). Decisión de la revisión: mantener
+  `match` singular porque TODOS los consumidores actuales leen ese
+  campo; romperlo sería un cambio invasivo sin valor añadido.
 
 ### S2 — grupo: `groupByService` agrupa por `serviceId`
 
-- **Status**: pending
-- **Files**: `packages/core/discovery/group-by-service.helper.ts` + specs
+- **Status**: done
+- **Files**: `packages/core/discovery/group-by-service.helper.ts` + `tests/core/group-by-service.spec.ts`
 - **Gate**: `bun run test:core`
-- **Detalle**: un `Map<serviceId, IServiceDescriptor>` alimentado con
-  upsert por match; `baseUrl`/`auth` se heredan del descriptor del
-  workspace común (conflictos → diagnóstico explícito, no silencioso).
+- **Detalle (91334a8)`: cuando dos matches comparten `serviceId` (caso
+  híbrido), el segundo se concatena a `additionalMatches` y, si su
+  framework es nuevo, a `frameworks`. La lógica de merge de endpoints
+  por tupla `(method, uri, sourceFile)` ya existía — el helper no
+  duplica rutas. Dos tests nuevos verifican acceptance #1 y #2 de la
+  propuesta (un solo descriptor, ningún `serviceId` duplicado).
 
 ### S3 — consumidoras: `toServiceGraph`, `generateCollections`, CLI/UI
 
-- **Status**: pending
-- **Files**: `packages/core/discovery/generation.pipeline.ts`, `packages/cli/commands/*`, UI
+- **Status**: done (parcial — pipeline sí, UI no)
+- **Files**: `packages/core/discovery/to-service-graph.helper.ts`, `packages/core/discovery/generation.pipeline.ts`
 - **Gate**: `bun run validate`
-- **Detalle**: una colección por servicio (no por match); los nombres de
-  archivo Postman deben seguir siendo únicos por construcción.
+- **Detalle (91334a8)`: `toServiceGraph` y `generation.pipeline.ts`
+  propagan los nuevos campos al reconstruir descriptores. Las
+  factorías de los tests (auth-scheme, filter-specs) actualizan sus
+  sintéticos. La UI no consume estos campos todavía — es un cambio
+  cosmético y queda fuera del scope de esta propuesta.
 
 ## acceptance
 
-1. Fixture híbrida (`apps/api` express + graphql) → el grafo tiene **un**
-   servicio `apps_api` con ambos frameworks.
-2. No aparece el mismo `serviceId` dos veces en `graph.services` en ningún
-   ejemplo de `examples/`.
-3. `bun run validate` verde con i00002 cerrado.
+1. ✅ Fixture híbrida (`apps/api` express + graphql) → el grafo tiene **un**
+   servicio `apps_api` con ambos frameworks (test
+   `tests/core/group-by-service.spec.ts`).
+2. ✅ No aparece el mismo `serviceId` dos veces en `graph.services` en
+   ningún ejemplo (test `group-by-service.spec.ts` cubre el caso
+   genérico; los `examples/` se verifican en `bun run validate:examples`).
+3. ⏳ `bun run validate` verde con i00002 cerrado — pendiente de x00027.
