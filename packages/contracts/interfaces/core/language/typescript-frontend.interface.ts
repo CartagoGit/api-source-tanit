@@ -139,6 +139,46 @@ export interface TSMethodCall {
    * use it to re-enter the body with `findInsideRange`.
    */
   readonly bodyRange?: { readonly start: number; readonly end: number };
+  /**
+   * The receiver name (`app`, `router`, `this.router`, `api.router`)
+   * and the HTTP verb, carried STRUCTURALLY from the LanguageIR so a
+   * consumer no longer has to reconstruct them by `callee.split(".")`.
+   *
+   * `split(".")` was a silent-loss trap: on `this.router.get` it
+   * yields `method = "router"` (not a verb) and the route disappears;
+   * on `server["get"]` there is no dot at all and the route is dropped
+   * too. x00038 / a00016 S6: the bridge that already knows the
+   * structured fields (`receiverKind`, `method`, `resolvedMethod` from
+   * IRouteCallExpression) now forwards them, so the scanner can compare
+   * `method` directly against the verb set and use `receiver` for the
+   * router-prefix lookup — with no textual parsing as the semantic
+   * mechanism.
+   *
+   * Optional: the plain TS frontend (`Identifier.method` shape) emits
+   * these without going through the IR bridge; adapters that predate
+   * a00016 keep reading `callee`. Only the IR-fed call sites (Express
+   * multi-style) see them populated.
+   */
+  readonly receiver?: string;
+  /**
+   * HTTP verb when the collector could resolve it (identifier method,
+   * computed-string method, or a constant-propagated `resolvedMethod`).
+   * Populated only by the IR bridge (x00038). May be mixed-case; the
+   * canonical verb set is lowercase on the consumer.
+   */
+  readonly method?: string;
+  /**
+   * Receiver shape (x00038). Lets a scanner decide router-prefix
+   * treatment from the STRUCTURED receiver (`"identifier"` vs
+   * `"this"`/`"member"`/`"factory"`), not by counting dots in `callee`.
+   */
+  readonly receiverKind?:
+    | "identifier"
+    | "this"
+    | "member"
+    | "factory"
+    | "computed"
+    | "optional";
 }
 
 /**
