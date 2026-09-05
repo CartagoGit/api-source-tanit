@@ -231,7 +231,7 @@ describe("ASP.NET — per-route DTO resolution", () => {
     expect(await fieldsFor("DELETE", "/api/users/{id}")).toEqual([]);
   });
 
-  test("an endpoint without a declared body does not invent fields", () => {
+  test("an endpoint without a declared body does not invent fields", async () => {
     expect(await fieldsFor("POST", "/api/auth/logout")).toEqual([]);
   });
 });

@@ -201,7 +201,7 @@ type Query { current: User }
     expect(bodyB?.query).toContain("__typename");
   });
 
-  test("2nd review #10: scan() does NOT contaminate under Promise.all", () => {
+  test("2nd review #10: scan() does NOT contaminate under Promise.all", async () => {
     // The most severe regression: two concurrent `scan()` calls
     // sharing a global Set. We verify that `Promise.all` produces the
     // right result for each project independently.
