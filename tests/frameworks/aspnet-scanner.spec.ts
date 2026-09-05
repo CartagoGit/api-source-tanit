@@ -41,10 +41,10 @@ describe("ASP.NET scanner", () => {
     expect((await new AspNetProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() finds the 4 routes of the mini-fixture", async () => {
+  test("scan() finds the 6 routes of the mini-fixture", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
-    expect(routes).toHaveLength(4);
+    expect(routes).toHaveLength(6);
   });
 
   test("[Route('api/users')] applied as class-level prefix to every route", async () => {
@@ -53,11 +53,11 @@ describe("ASP.NET scanner", () => {
     for (const r of routes) expect(r.uri).toMatch(/api\/users/);
   });
 
-  test("GET, POST, GET/{id}, DELETE/{id} all present", async () => {
+  test("GET, POST, GET/{id}, DELETE/{id}, HEAD, OPTIONS all present", async () => {
     const match = await new AspNetProjectScanner().resolve(ROOT);
     const routes = (await new AspNetRouteScanner().scan(match)).routes;
     const methods = routes.map((r) => r.method).sort();
-    expect(methods).toEqual(["DELETE", "GET", "GET", "POST"]);
+    expect(methods).toEqual(["DELETE", "GET", "GET", "HEAD", "OPTIONS", "POST"]);
   });
 
   test("[HttpGet('{id}')] → path param {id} in the uri", async () => {
@@ -233,5 +233,139 @@ describe("ASP.NET — per-route DTO resolution", () => {
 
   test("an endpoint without a declared body does not invent fields", async () => {
     expect(await fieldsFor("POST", "/api/auth/logout")).toEqual([]);
+  });
+});
+
+describe("ASP.NET — full HTTP method coverage (x00036)", () => {
+  // Antes de x00036, `[HttpHead]` y `[HttpOptions]` se detectaban en la
+  // regex METHOD_ATTR_RE pero el array `HTTP_METHODS` (línea 17 de
+  // aspnet.scanner.ts) solo admitía los cinco verbos principales, así
+  // que las rutas se descartaban en silencio. El usuario recibía una
+  // colección Postman sin HEAD ni OPTIONS — los healthchecks de K8s y
+  // los prefights de CORS quedaban fuera sin warning.
+  test("[HttpHead] produces a HEAD endpoint (controller style)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Demo.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup><PackageReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
+</Project>`,
+      "Controllers/HealthController.cs": `using Microsoft.AspNetCore.Mvc;
+[ApiController]
+[Route("api/health")]
+public class HealthController : ControllerBase
+{
+  [HttpHead]
+  public IActionResult Ping() => Ok();
+}`,
+    });
+    try {
+      const match = await new AspNetProjectScanner().resolve(project.root);
+      const routes = (await new AspNetRouteScanner().scan(match)).routes;
+      const head = routes.find((r) => r.method === "HEAD");
+      expect(head).toBeDefined();
+      expect(head?.uri).toBe("/api/health");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("[HttpOptions] produces an OPTIONS endpoint (controller style)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Demo.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+  <ItemGroup><PackageReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
+</Project>`,
+      "Controllers/CorsController.cs": `using Microsoft.AspNetCore.Mvc;
+[ApiController]
+[Route("api/cors")]
+public class CorsController : ControllerBase
+{
+  [HttpOptions]
+  public IActionResult Preflight() => Ok();
+}`,
+    });
+    try {
+      const match = await new AspNetProjectScanner().resolve(project.root);
+      const routes = (await new AspNetRouteScanner().scan(match)).routes;
+      const options = routes.find((r) => r.method === "OPTIONS");
+      expect(options).toBeDefined();
+      expect(options?.uri).toBe("/api/cors");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("app.MapHead produces a HEAD endpoint (minimal API style)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Demo.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+</Project>`,
+      "Program.cs": `var app = WebApplication.CreateBuilder(args).Build();
+app.MapHead("/api/ping", () => Results.Ok());
+app.Run();`,
+    });
+    try {
+      const match = await new AspNetProjectScanner().resolve(project.root);
+      const routes = (await new AspNetRouteScanner().scan(match)).routes;
+      const head = routes.find((r) => r.method === "HEAD");
+      expect(head).toBeDefined();
+      expect(head?.uri).toBe("/api/ping");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("app.MapOptions produces an OPTIONS endpoint (minimal API style)", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Demo.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+</Project>`,
+      "Program.cs": `var app = WebApplication.CreateBuilder(args).Build();
+app.MapOptions("/api/preflight", () => Results.Ok());
+app.Run();`,
+    });
+    try {
+      const match = await new AspNetProjectScanner().resolve(project.root);
+      const routes = (await new AspNetRouteScanner().scan(match)).routes;
+      const options = routes.find((r) => r.method === "OPTIONS");
+      expect(options).toBeDefined();
+      expect(options?.uri).toBe("/api/preflight");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("the five original verbs do not regress", async () => {
+    // Si alguien vuelve a estrechar HTTP_METHODS, este test lo coge
+    // aunque ningún endpoint use los verbos nuevos.
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "Demo.csproj": `<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup>
+</Project>`,
+      "Controllers/UsersController.cs": `using Microsoft.AspNetCore.Mvc;
+[ApiController]
+[Route("api/users")]
+public class UsersController : ControllerBase
+{
+  [HttpGet] public object List() => new[] { 1, 2 };
+  [HttpPost] public object Create() => new { };
+  [HttpPut("{id}")] public object Update(string id) => new { };
+  [HttpDelete("{id}")] public object Delete(string id) => new { };
+  [HttpPatch("{id}")] public object Patch(string id) => new { };
+}`,
+    });
+    try {
+      const match = await new AspNetProjectScanner().resolve(project.root);
+      const routes = (await new AspNetRouteScanner().scan(match)).routes;
+      const methods = routes.map((r) => r.method).sort();
+      expect(methods).toEqual(["DELETE", "GET", "PATCH", "POST", "PUT"]);
+    } finally {
+      await project.cleanup();
+    }
   });
 });

@@ -14,6 +14,14 @@
       "uri": "/api/users/{id}"
     },
     {
+      "method": "HEAD",
+      "uri": "/api/users"
+    },
+    {
+      "method": "OPTIONS",
+      "uri": "/api/users"
+    },
+    {
       "method": "POST",
       "uri": "/api/users"
     }

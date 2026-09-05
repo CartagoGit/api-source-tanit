@@ -251,9 +251,14 @@ async function parseCsFile(
  * `app.MapGet("/users", handler)` — .NET 6+ minimal APIs.
  *
  * Captures: 1 = variable (`app`, `users`…), 2 = verb, 3 = path.
+ *
+ * x00036 S1: incluye también `MapHead` y `MapOptions` (HEAD para
+ * health-checks, OPTIONS para preflight CORS). Ambos verbos ya están
+ * aceptados por `HTTP_METHODS` para el camino de controllers
+ * (`[HttpHead]` / `[HttpOptions]`).
  */
 const MINIMAL_API_RE =
-  /\b([a-zA-Z_][\w]*)\s*\.\s*Map(Get|Post|Put|Delete|Patch)\s*\(\s*(["'][^"']*["'])/g;
+  /\b([a-zA-Z_][\w]*)\s*\.\s*Map(Get|Post|Put|Delete|Patch|Head|Options)\s*\(\s*(["'][^"']*["'])/g;
 
 /**
  * `var group = app.MapGroup("/api/users");` — group prefix.
