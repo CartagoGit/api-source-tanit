@@ -14,6 +14,7 @@
 
 import type { IGenerationOptions } from "../core/discovery.interface.js";
 import type {
+  IParseDiagnostic,
   IProjectScanner,
   IRouteScanner,
   IValidationSpec,
@@ -105,6 +106,14 @@ export interface OpenApiScannerOptions {
 export interface ICollectEmbeddedSdlOptions {
   /** Tags accepted as embedded SDL. Default: `["gql", "graphql"]`. */
   readonly tags?: ReadonlyArray<string>;
+  /**
+   * Channel where the collector records diagnostics it produces
+   * (a00015 S4): today, a `warning` for every `gql` template that
+   * carried `${…}` interpolations and was therefore skipped rather
+   * than parsed. The caller (`graphql.scanner.ts`) forwards its own
+   * `IScanResult.diagnostics` array here.
+   */
+  readonly diagnostics?: Array<IParseDiagnostic>;
 }
 
 /** A procedure with its full path inside the router. */

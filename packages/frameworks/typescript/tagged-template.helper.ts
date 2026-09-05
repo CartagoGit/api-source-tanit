@@ -167,18 +167,30 @@ function walkForTaggedTemplates(
         // breaks or escapes — which is what the SDL parser expects
         // to see.
         const quasis = asArray(quasi["quasis"]);
-        const raw = quasis
-          .map((elem) => {
-            // `value` is an object `{ raw: string, cooked?: string }`
-            // — Babel exposes both on `TemplateElement`. The cast to
-            // `Record<string, unknown>` is the permissive form that
-            // shares the frontend's pattern (a00010 S7): without
-            // importing `@babel/types`.
-            const value = elem["value"] as Record<string, unknown> | undefined;
-            const rawText = value?.["raw"];
-            return typeof rawText === "string" ? rawText : "";
-          })
-          .join("");
+        // a00015 S4: `${…}` interpolations live in `quasi.expressions`,
+        // not in `quasi.quasis`. A naive `.join("")` over the quasis
+        // dropped them silently: `gql`${shared} …`` lost `${shared}`
+        // — a common case in schema/fragment composition. We do not
+        // resolve them here (that is the API IR job from a00016); we
+        // insert a deterministic sentinel per expression so the piece
+        // never disappears without a trace. A template with N
+        // expressions has N+1 quasis.
+        const expressions = asArray(quasi["expressions"]);
+        const hasInterpolation = expressions.length > 0;
+        let raw = "";
+        for (let i = 0; i < quasis.length; i += 1) {
+          // `value` is an object `{ raw: string, cooked?: string }` —
+          // Babel exposes both on `TemplateElement`. The cast to
+          // `Record<string, unknown>` is the permissive form that
+          // shares the frontend's pattern (a00010 S7): without
+          // importing `@babel/types`.
+          const value = quasis[i]?.["value"] as Record<string, unknown> | undefined;
+          const rawText = value?.["raw"];
+          raw += typeof rawText === "string" ? rawText : "";
+          if (i < expressions.length) {
+            raw += `__TANIT_INTERP_${i}__`;
+          }
+        }
         out.push({
           tag: tagInfo.tag,
           ...(tagInfo.importBinding !== undefined
@@ -187,6 +199,7 @@ function walkForTaggedTemplates(
           raw,
           range: { start, end },
           sourceFile,
+          ...(hasInterpolation ? { hasInterpolation: true } : {}),
         });
       }
     }

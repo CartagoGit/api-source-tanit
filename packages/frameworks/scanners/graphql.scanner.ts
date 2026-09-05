@@ -27,6 +27,7 @@ import type {
   IProjectScanner,
   IRouteScanner,
   IScanResult,
+  IParseDiagnostic,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
@@ -360,8 +361,15 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // them through `collectCustomScalars` and `scanSchema` in that
     // same order. `customScalars` must be populated before
     // generating operations (second review of audit 2026-09-04 P1 #12).
+    // a00015 S4: templates with `${…}` interpolations are omitted
+    // and surfaced as warnings via `embeddedDiagnostics`, which the
+    // adapter propagates on the IScanResult. Before, the frontend
+    // dropped them silently and the scanner produced an incomplete
+    // SDL.
+    const embeddedDiagnostics: IParseDiagnostic[] = [];
     const embeddedSdl: string[] = collectEmbeddedSdl(
       await collectTaggedTemplates(effectiveProjectRoot(match)),
+      { diagnostics: embeddedDiagnostics },
     );
 
     // Audit second review #10 (custom scalars + scan cycle):
@@ -404,7 +412,10 @@ export class GraphQlRouteScanner implements IRouteScanner {
         routes.push(op);
       }
     }
-    return { routes: routes };
+    return {
+      routes: routes,
+      ...(embeddedDiagnostics.length > 0 ? { diagnostics: embeddedDiagnostics } : {}),
+    };
   }
 }
 

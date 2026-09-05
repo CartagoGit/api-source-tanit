@@ -23,10 +23,17 @@
  *   `tag` o `importBinding` para filtrar; por defecto `tag` ya es
  *   el binding local.
  * - `raw`: el contenido del template tal cual está entre los
- *   backticks — interpolaciones `${…}` incluidas como texto.
- *   El adapter de GraphQL limpia las interpolaciones después (no es
- *   problema del frontend hacerlo, porque el frontend no sabe que el
- *   contenido es SDL).
+ *   backticks. Las interpolaciones `${…}` NO se resuelven (el frontend
+ *   no sabe que el contenido es SDL): a00015 S4 coloca en su lugar un
+ *   sentinel determinista `__TANIT_INTERP_<n>__` por cada expresión del
+ *   template (numerada por ocurrencia). Así la interpolación no se
+ *   borra en silencio: el scanner GraphQL detecta `hasInterpolation` y
+ *   se niega a parsear ese template (emite un diagnóstico) en lugar de
+ *   extraer un SDL incompleto. Cuando `hasInterpolation` no está, `raw`
+ *   no contiene ningún sentinel.
+ * - `hasInterpolation`: true si el template tenía al menos un
+ *   `${…}` (y por tanto `raw` incluye sentinel(s)). Opcional para no
+ *   romper consumidores previos (a00015 S4).
  * - `range`: rango en bytes sobre el archivo original. El start
  *   apunta al primer carácter del tag; el end apunta al último
  *   carácter del backtick de cierre (inclusive). Útil para reporting
@@ -39,4 +46,6 @@ export interface ITaggedTemplate {
   readonly range: { readonly start: number; readonly end: number };
   readonly importBinding?: string;
   readonly sourceFile: string;
+  /** a00015 S4: ver doc de la interfaz. */
+  readonly hasInterpolation?: boolean;
 }

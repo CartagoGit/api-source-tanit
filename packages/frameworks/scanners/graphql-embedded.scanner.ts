@@ -83,6 +83,22 @@ export function collectEmbeddedSdl(
   const out: string[] = [];
   for (const tpl of templates) {
     if (!tagSet.has(tpl.tag)) continue;
+    // a00015 S4: un template con interpolaciones `${…}` llega con
+    // `hasInterpolation: true` y sus sentinels en `raw`. Parsearlo
+    // daría un SDL incompleto (el token rompe la sintaxis) o, antes,
+    // se borraba la interpolación en silencio. Lo honesto: NO parsear y
+    // señalar por qué un warning. Resolver bindings queda para el
+    // API IR de a00016.
+    if (tpl.hasInterpolation === true) {
+      options.diagnostics?.push({
+        file: tpl.sourceFile,
+        severity: "warning",
+        reason:
+          "GraphQL embedded SDL omite un template con interpolaciones " +
+          "`${…}` no resueltas; el esquema esta incompleto y no se parsea.",
+      });
+      continue;
+    }
     out.push(tpl.raw);
   }
   return out;
