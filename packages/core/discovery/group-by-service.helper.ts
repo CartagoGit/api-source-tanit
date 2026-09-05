@@ -141,6 +141,12 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
       const merged: IServiceDescriptor = {
         serviceId: existing.serviceId,
         match: existing.match,
+        // x00031 S1: append the new match to `additionalMatches` and
+        // to `frameworks` so callers can see the hybrid composition.
+        additionalMatches: [...existing.additionalMatches, match],
+        frameworks: existing.frameworks.includes(match.framework)
+          ? existing.frameworks
+          : [...existing.frameworks, match.framework],
         endpoints: [
           ...existing.endpoints,
           ...routes.filter(
@@ -167,6 +173,11 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
     const descriptor: IServiceDescriptor = {
       serviceId,
       match,
+      // x00031 S1: populate the new additive fields for first-match
+      // case. `additionalMatches` is empty here; `frameworks` is the
+      // single-framework list.
+      additionalMatches: [],
+      frameworks: [match.framework],
       endpoints: routes,
       baseUrl: input.baseUrlByService?.get(serviceId) ?? null,
       auth: input.authByService?.get(serviceId) ?? undefined,

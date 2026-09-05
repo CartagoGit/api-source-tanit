@@ -114,6 +114,9 @@ export function decorateServices(
   const services: IServiceDescriptor[] = graph.services.map((service) => ({
     serviceId: service.serviceId,
     match: service.match,
+    // x00031 S1: preserve the hybrid metadata.
+    additionalMatches: service.additionalMatches,
+    frameworks: service.frameworks,
     endpoints: service.endpoints,
     baseUrl: overrides.baseUrlByService?.get(service.serviceId) ?? service.baseUrl,
     auth: overrides.authByService?.get(service.serviceId) ?? service.auth,

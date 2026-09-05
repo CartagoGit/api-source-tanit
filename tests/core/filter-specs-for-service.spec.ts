@@ -56,6 +56,10 @@ function service(
   return {
     serviceId,
     match: dummyMatch,
+    // x00031 S1: los tests fabrican servicios sintéticos con un solo
+    // framework y sin secondary matches.
+    additionalMatches: [],
+    frameworks: [dummyMatch.framework],
     endpoints,
     baseUrl: null,
     auth: undefined,

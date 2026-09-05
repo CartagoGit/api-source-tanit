@@ -273,6 +273,11 @@ async function buildFor(
       {
         serviceId: "default",
         match: synthetic,
+        // x00031 S1: additive fields. The synthetic `default` service
+        // wraps the whole discovery into one descriptor; it has no
+        // secondary matches and exposes the original framework.
+        additionalMatches: [],
+        frameworks: [synthetic.framework],
         endpoints: discovery.routes,
         baseUrl: null,
         auth: undefined,
@@ -320,6 +325,10 @@ async function buildFor(
     const mergedService: IServiceDescriptor = {
       serviceId: first.serviceId,
       match: first.match,
+      // x00031 S1: propagate the hybrid metadata from the first service
+      // (which is the only one with the merged endpoints anyway).
+      additionalMatches: first.additionalMatches,
+      frameworks: first.frameworks,
       endpoints: mergedEndpoints,
       baseUrl: first.baseUrl,
       auth: first.auth,

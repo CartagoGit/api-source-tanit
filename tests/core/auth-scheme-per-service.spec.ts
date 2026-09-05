@@ -55,6 +55,10 @@ function descriptor(
   return {
     serviceId,
     match,
+    // x00031 S1: tests fabrican descriptores sintéticos con un solo
+    // framework y sin secondary matches.
+    additionalMatches: [],
+    frameworks: [match.framework],
     endpoints: [],
     baseUrl,
     auth,
