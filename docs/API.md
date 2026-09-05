@@ -261,12 +261,12 @@ de llegada, que coincide con el del orquestador.
 export function candidatesFromSpecs( scannerScore: ReadonlyMap<string, Confidence>, ): ( specs: ReadonlyArray<
 ```
 
-Wrapper para consumir candidatos desde `EndpointSpec[]` (la forma
-que produce el adapter). Conserva el `framework` por candidato a
-partir de la metadata del spec: el pipeline marca el spec con
-`formRequest` o el nombre del controller, pero la fuente más
-fiable es pasar el `framework` explícitamente (que es lo que
-hace `discoverSpecs` cuando itera sobre los `usable`).
+Wrapper for consuming candidates from `EndpointSpec[]` (the adapter's
+output). It preserves each candidate's `framework` from spec metadata: the
+pipeline marks the spec with `formRequest` or the controller name, but the
+most reliable source is an explicit `framework` (as `discoverSpecs` does
+when iterating over the `usable` items).
+This adapter shape is consumed by the merger pipeline.
 
 #### `endpointSpecFromMerged`
 
@@ -280,6 +280,7 @@ other services.
 
 Copies the fields selected by the merger: identity (method, uri, name) and
 the winning pieces (body, fields, description, auth).
+The auth branch is mapped without changing its semantic type.
 
 Audit 2026-09-04 P1 #6 + second review #16 #17: the per-operation auth
 scheme override must survive the merger. `spec.auth` maps to the candidate's
@@ -325,7 +326,7 @@ mutable copy for that reason; we preserve that contract.
 
 ### `packages/core/discovery/generation.pipeline.ts`
 
-Pipeline de generación: `projectRoot` → `PostmanCollection`.
+Generation pipeline: `projectRoot` -> `PostmanCollection`.
 
 #### `MultipleServicesWithoutCombineError`
 
@@ -333,55 +334,53 @@ Pipeline de generación: `projectRoot` → `PostmanCollection`.
 export class MultipleServicesWithoutCombineError extends Error
 ```
 
-Lanzada por `generateCollection()` cuando el proyecto tiene varios
-servicios pero el caller NO pidió `--combine-services` (ni
+Thrown by `generateCollection()` when the project has several
+services but the caller did NOT request `--combine-services` (nor
 `IGenerationOptions.combineServices === true`).
 
-## Por qué existe
+## Why it exists
 
-Hasta x00024, el contrato en singular documentaba "una sola
-colección" pero el branch multi-servicio hacía `return result[0]` y
-descartaba el resto **silenciosamente**. Eso convertía
-`await generateCollection(monorepoRoot)` en una llamada que pierde
-servicios sin avisar, exactamente el tipo de bug que un caller
-jamás detecta en CI. La API plural `generateCollections()` ya
-devolvía el array completo.
+Until x00024, the singular contract documented "a single collection"
+but the multi-service branch did `return result[0]` and silently
+discarded the rest. That turned `await generateCollection(monorepoRoot)`
+into a call that loses services without warning -- exactly the kind
+of bug a caller never catches in CI. The plural API
+`generateCollections()` was already returning the full array.
 
-## Cuándo se lanza
+## When it is thrown
 
-`generateCollection()` invoca `buildFor` y observa tres formas:
+`generateCollection()` calls `buildFor` and observes three shapes:
 
-  - **Single-service** (un solo match, monorepo de un workspace o
-    proyecto plano): `result` es un único `IGenerationResult`. Sin
+  - **Single-service** (a single match, single-workspace monorepo,
+    or flat project): `result` is a single `IGenerationResult`. No
     throw.
-  - **Multi-service + `combineServices: true`**: el caller pidió
-    fusionar; `buildFor` ya devuelve un único `IGenerationResult`
-    combinado. Sin throw.
-  - **Multi-service + `combineServices: false/undefined`**: aquí se
-    lanza esta excepción.
+  - **Multi-service + `combineServices: true`**: the caller asked to
+    fuse; `buildFor` already returns a single combined
+    `IGenerationResult`. No throw.
+  - **Multi-service + `combineServices: false/undefined`**: this is
+    the case where this exception is thrown.
 
-El contrato legacy (single-service) sigue funcionando exactamente
-igual que antes — esto solo añade un caso nuevo.
+The legacy contract (single-service) keeps working exactly as
+before -- this only adds a new case.
 
-## Forma del error
+## Shape of the error
 
-Lleva los datos que la CLI necesita para dar un mensaje útil sin
-tener que parsear el texto del `super()`:
+It carries the data the CLI needs to print a useful message without
+having to parse the text of `super()`:
 
-  - `serviceCount`: el número de servicios detectados.
-  - `serviceIds`: los ids derivados (de `match.frameworkSearchRoot`
-    vía `deriveServiceId`); vacío si ninguno tenía id resoluble.
+  - `serviceCount`: the number of services detected.
+  - `serviceIds`: the derived ids (from `match.frameworkSearchRoot`
+    via `deriveServiceId`); empty if none had a resolvable id.
 
-El mensaje incluye la sugerencia ("use --combine-services or
-generateCollections()") para que un usuario que vea el error en
-crudo sepa qué hacer.
+The message includes the suggestion ("use --combine-services or
+generateCollections()") so that a user who sees the error in raw
+form knows what to do.
 
-Vive en este mismo `.pipeline.ts` (no en `packages/core/errors/`)
-porque la regla `lint:naming` de `packages/core/` solo admite los
-sufijos `.service`, `.pipeline`, `.orchestrator`, `.adapter` y
-`.helper`. Un error class no encaja en ninguno, así que se queda
-donde se lanza — el mismo patrón que `PostmanApiError` en
-`domain/postman-api.service.ts`.
+It lives in this same `.pipeline.ts` (not in `packages/core/errors/`)
+because `lint:naming` for `packages/core/` only allows the suffixes
+`.service`, `.pipeline`, `.orchestrator`, `.adapter`, and `.helper`.
+An error class fits none, so it stays where it is thrown -- the same
+pattern as `PostmanApiError` in `domain/postman-api.service.ts`.
 
 #### `generateCollection`
 
@@ -389,21 +388,22 @@ donde se lanza — el mismo patrón que `PostmanApiError` en
 export async function generateCollection( projectRoot: string, options: IGenerationOptions, ): Promise<IGenerationResult>
 ```
 
-Descubre los endpoints de un proyecto y construye su colección.
+Discovers the endpoints of a project and builds its collection.
 
-`projectRoot` manda, y llega **como argumento** hasta abajo: el
-contexto se resuelve una vez aquí y viaja explícito por el pipeline,
-el loader y los scanners.
+`projectRoot` is the source of truth, and it travels **as an
+argument** all the way down: the context is resolved once here and
+the loader and the scanners.
 
-Antes esto iba envuelto en `withProjectRoot()`, que fijaba variables
-de entorno globales, ejecutaba y las restauraba. Funcionaba, pero al
-precio de una cola: dos llamadas concurrentes se pisaban el estado,
-así que había que serializarlas. Dos análisis a la vez tardaban lo que
-la suma.
+Before, this was wrapped in `withProjectRoot()`, which set global
+environment variables, executed, and restored them. It worked, but at
+the cost of a queue: two concurrent calls clobbered each other's
+state, so they had to be serialized. Two analyses at a time took as
+long as their sum.
 
-Ya no. `tests/e2e/concurrent-projects.test.ts` genera dos proyectos de
-frameworks distintos con `Promise.all` y comprueba que ninguno se
-cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
+No more. `tests/e2e/concurrent-projects.test.ts` generates two
+projects of different frameworks with `Promise.all` and verifies that
+they do not collide: not in endpoints, not in name, not in the
+context root.
 
 #### `generateCollections`
 
@@ -411,17 +411,17 @@ cruza: ni en endpoints, ni en nombre, ni en la raíz del contexto.
 export async function generateCollections( projectRoot: string, options: IGenerationOptions, ): Promise<ReadonlyArray<IGenerationResult>>
 ```
 
-Variante multi-service de `generateCollection`. Devuelve TODAS
-las colecciones, una por servicio, en el orden de descubrimiento.
+Multi-service variant of `generateCollection`. Returns ALL the
+collections, one per service, in discovery order.
 
-- Sin flag `--combine-services` y con N>1 servicios: array de N
-  colecciones (cada una con `collectionName` derivado del
+- Without `--combine-services` and with N>1 services: an array of
+  N collections (each with `collectionName` derived from the
   serviceId).
-- Con flag `--combine-services` o N===1: array de longitud 1
-  (la coleccion legacy).
+- With `--combine-services` or N===1: an array of length 1 (the
+  legacy collection).
 
-El CLI genera un fichero por entrada; el plugin MCP y la web
-exponen el array tal cual.
+The CLI writes one file per entry; the MCP plugin and the web UI
+expose the array as-is.
 
 ### `packages/core/discovery/group-by-service.helper.ts`
 
@@ -1326,7 +1326,7 @@ export class InsomniaExporter implements IExportTarget
 
 ### `packages/core/exporters/openapi.exporter.ts`
 
-Exportador a OpenAPI 3.1.0.
+Exporter to OpenAPI 3.1.0.
 
 #### `buildOpenApiDocument`
 
@@ -1334,11 +1334,12 @@ Exportador a OpenAPI 3.1.0.
 export function buildOpenApiDocument(input: IExportInput): Record<string, unknown>
 ```
 
-El documento OpenAPI como objeto, antes de serializarlo.
+The OpenAPI document as an object, before serializing it.
 
-Se exporta para poder comprobar su **estructura** con aserciones
-precisas en vez de buscando subcadenas en un YAML. Que el YAML sea
-correcto es otro problema, y lo cubre `yaml.helper.spec.ts`.
+It is exported so its **structure** can be checked with precise
+assertions instead of scanning for substrings in a YAML. That the
+YAML itself is correct is another problem, and `yaml.helper.spec.ts`
+covers it.
 
 #### `OpenApiExporter`
 
@@ -1348,7 +1349,7 @@ export class OpenApiExporter implements IExportTarget
 
 ### `packages/core/helpers/argv.helper.ts`
 
-Leer un flag de la línea de comandos, una sola vez.
+Read a flag from the command line, once.
 
 #### `readFlag`
 
@@ -1356,12 +1357,12 @@ Leer un flag de la línea de comandos, una sola vez.
 export function readFlag( argv: ReadonlyArray<string>, name: string, ): string | undefined
 ```
 
-El valor de `--flag valor`, o `undefined` si no está.
+The value of `--flag value`, or `undefined` if not present.
 
-Acepta también `--flag=valor`, que es como lo escribe la mitad de la
-gente y como lo generan casi todos los scripts. Antes solo funcionaba
-la forma con espacio y la otra se ignoraba en silencio: el flag
-parecía no estar.
+Also accepts `--flag=value`, which is how half the people write it
+and how almost every script generates it. Before, only the
+space-separated form worked and the other one was silently ignored:
+the flag looked like it wasn't there.
 
 #### `hasFlag`
 
@@ -1371,7 +1372,7 @@ export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean
 
 ### `packages/core/helpers/atomic-write.helper.ts`
 
-Escribir un fichero entero, o no escribirlo.
+Write a whole file, or don't write it at all.
 
 #### `writeFileAtomic`
 
@@ -1379,10 +1380,10 @@ Escribir un fichero entero, o no escribirlo.
 export async function writeFileAtomic( destino: string, contenido: string, ): Promise<void>
 ```
 
-Escribe `contenido` en `destino` de forma atómica.
+Writes `contenido` to `destino` atomically.
 
-Crea el directorio si hace falta. Si algo falla, `destino` se queda
-exactamente como estaba y no queda ningún temporal por el medio.
+Creates the directory if needed. If anything fails, `destino` stays
+exactly as it was and no temp file is left behind.
 
 #### `writeJsonAtomic`
 
@@ -1390,12 +1391,12 @@ exactamente como estaba y no queda ningún temporal por el medio.
 export async function writeJsonAtomic( destino: string, valor: unknown, espacios = 2, ): Promise<void>
 ```
 
-Lo mismo, para JSON.
+Same, for JSON.
 
-Serializa **antes** de tocar el disco: si el objeto tiene un ciclo o
-un `BigInt`, `JSON.stringify` lanza y no se ha abierto ningún fichero.
-Serializar mientras se escribe es como se acaba con un fichero a
-medias sin que el proceso llegue a morirse.
+Serializes **before** touching the disk: if the object has a cycle
+or a `BigInt`, `JSON.stringify` throws and no file has been opened.
+Serializing while writing is how you end up with a half-written file
+without the process even crashing.
 
 #### `appendFileAtomic`
 
@@ -1403,29 +1404,29 @@ medias sin que el proceso llegue a morirse.
 export async function appendFileAtomic( destino: string, contenido: string, ): Promise<void>
 ```
 
-Append atómico de `contenido` al final de `destino`.
+Atomic append of `contenido` to the end of `destino`.
 
-Se diferencia de `writeFileAtomic` en lo que protege:
+It differs from `writeFileAtomic` in what it protects:
 
-  - `writeFileAtomic` escribe el fichero **entero**: un `rename`
-    dentro del mismo sistema de ficheros es atómico, pero el fichero
-    se trunca antes del rename. Es lo que se quiere para una
-    colección de Postman, donde el lector necesita la versión
-    completa o nada.
+  - `writeFileAtomic` writes the **whole** file: a `rename` within
+    the same filesystem is atomic, but the file is truncated before
+    the rename. That's what you want for a Postman collection, where
+    the reader needs the complete version or nothing.
 
-  - `appendFileAtomic` añade `contenido` al final: usa `appendFile`,
-    que abre el destino con `O_APPEND`. En POSIX eso es atómico
-    por cada `write(2)`: dos procesos que escriben a la vez no se
-    pisan —sus bytes van al final en algún orden, pero ninguno se
-    pierde a medias—. Es lo que se quiere para un log en JSONL:
-    cada línea es una entrada, y leer las últimas N líneas debe ser
-    seguro aunque haya otra escritura en curso.
+  - `appendFileAtomic` appends `contenido` to the end: it uses
+    `appendFile`, which opens the destination with `O_APPEND`. On
+    POSIX that's atomic per `write(2)`: two processes writing at
+    once don't step on each other —their bytes end up at the end in
+    some order, but none is lost half-written—. That's what you want
+    for a JSONL log: each line is one entry, and reading the last N
+    lines must be safe even if another write is in progress.
 
-Si el fichero no existe, lo crea (mkdir recursivo del directorio,
-igual que `writeFileAtomic`). Si la escritura falla, no deja
-contenido parcial visible: `appendFile` no trunca antes de escribir,
-así que un fallo a mitad de línea se ve como un prefijo sin newline,
-y eso lo maneja la lectura tratándolo como línea corrupta.
+If the file doesn't exist, it creates it (recursive mkdir on the
+directory, same as `writeFileAtomic`). If the write fails, it
+doesn't leave partial content visible: `appendFile` doesn't truncate
+before writing, so a failure halfway through a line shows up as a
+prefix without a newline, and that's handled by the reader as a
+corrupted line.
 
 ### `packages/core/helpers/collection-file.helper.ts`
 
@@ -1457,7 +1458,7 @@ repeating the `console.error` block in each one.
 
 ### `packages/core/helpers/collection-identity.helper.ts`
 
-Identidad estable de los artefactos Postman.
+Stable identity of Postman artifacts.
 
 #### `stableUuid`
 
@@ -1465,11 +1466,11 @@ Identidad estable de los artefactos Postman.
 export function stableUuid(seed: string): string
 ```
 
-UUID v5 determinista a partir de una semilla.
+Deterministic UUID v5 from a seed.
 
-@param seed Texto que identifica al artefacto (nombre del proyecto,
-            nombre del entorno…). Se normaliza para que diferencias de
-            mayúsculas o espacios no produzcan IDs distintos.
+@param seed Text that identifies the artifact (project name,
+            environment name…). Normalized so that differences in
+            casing or whitespace don't produce different IDs.
 
 #### `collectionIdFor`
 
@@ -1477,11 +1478,11 @@ UUID v5 determinista a partir de una semilla.
 export function collectionIdFor(identity: ICollectionIdentity): string
 ```
 
-ID de la colección de un proyecto.
+ID of a project's collection.
 
-Si el host declara `collectionId`, se respeta tal cual: es la vía para
-conservar la colección en Postman aunque se renombre o se mueva el
-proyecto de carpeta.
+If the host declares `collectionId`, it's honored as-is: it's the
+way to keep the collection in Postman even if the project is renamed
+or moved between folders.
 
 #### `environmentIdFor`
 
@@ -1510,7 +1511,7 @@ export function collectionErrors(collection: PostmanCollection): ICollectionIssu
 
 ### `packages/core/helpers/fs-walk.helper.ts`
 
-Recorrido recursivo de directorios para los scanners.
+Recursive directory walk for the scanners.
 
 #### `collectFiles`
 
@@ -1518,12 +1519,12 @@ Recorrido recursivo de directorios para los scanners.
 export async function collectFiles( root: string, matches: (fileName: string) => boolean, options: ICollectFilesOptions =
 ```
 
-Rutas absolutas de todos los ficheros bajo `root` (recursivo) cuyo
-nombre pasa el filtro.
+Absolute paths of all files under `root` (recursive) whose name
+passes the filter.
 
-Nunca lanza. Un directorio ilegible o un ciclo de enlaces se saltan y
-el resto del árbol se recorre igual — que es lo que esta función
-prometía y no cumplía.
+Never throws. An unreadable directory or a link cycle are skipped and
+the rest of the tree is still walked — which is what this function
+promised and didn't deliver.
 
 #### `collectFilesFrom`
 
@@ -1531,8 +1532,8 @@ prometía y no cumplía.
 export async function collectFilesFrom( roots: ReadonlyArray<string>, matches: (fileName: string) => boolean, options: ICollectFilesOptions =
 ```
 
-Igual que `collectFiles` sobre varias raíces, sin repetidos y
-saltándose las que no existen.
+Same as `collectFiles` over multiple roots, without duplicates and
+skipping those that don't exist.
 
 #### `isSourceJsTsFile`
 
@@ -1588,7 +1589,7 @@ uses this one and has a plan B.
 
 ### `packages/core/helpers/parse-json.helper.ts`
 
-Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
+Parse third-party JSON without `any` leaking into the rest of the program.
 
 #### `parseJson`
 
@@ -1596,12 +1597,12 @@ Parsear JSON ajeno sin que `any` se cuele en el resto del programa.
 export function parseJson(raw: string): JsonRead
 ```
 
-Parsea, distinguiendo "no se pudo" de "parseó a `null`".
+Parse, distinguishing "couldn't parse" from "parsed to `null`".
 
-Los dos casos se confundían: `JSON.parse("null")` devuelve `null`, y
-un `catch` que también deja `null` hace que un fichero corrupto y uno
-que legítimamente contiene `null` acaben iguales. Solo uno de los dos
-merece un aviso.
+The two cases got confused: `JSON.parse("null")` returns `null`, and a
+`catch` that also leaves `null` makes a corrupt file and one that
+legitimately contains `null` end up identical. Only one of them
+deserves a warning.
 
 #### `isRecord`
 
@@ -1633,13 +1634,13 @@ export function readArray(value: unknown, key: string): unknown[] | undefined
 export function declaredDependencies(pkg: unknown): Record<string, string>
 ```
 
-Las dependencias declaradas en un `package.json`, fundidas.
+The dependencies declared in a `package.json`, merged.
 
-`dependencies` y `devDependencies` juntas, porque la pregunta que los
-scanners hacen es «¿este proyecto usa X?» y un framework en
-`devDependencies` sigue siendo el framework del proyecto. Unos
-scanners las miraban y otros no, así que el mismo proyecto se
-detectaba o no según cuál preguntara.
+`dependencies` and `devDependencies` together, because the question
+the scanners ask is "does this project use X?" and a framework in
+`devDependencies` is still the project's framework. Some scanners
+looked at them and others didn't, so the same project was detected or
+not depending on which one was asking.
 
 ### `packages/core/helpers/path-containment.helper.ts`
 
@@ -1677,7 +1678,7 @@ project, inside the workspace, or in a temp dir — not to anyone's
 
 ### `packages/core/helpers/postman.helper.ts`
 
-Helpers reutilizables para recorrer y analizar colecciones Postman.
+Reusable helpers for walking and analyzing Postman collections.
 
 #### `pathToSegments`
 
@@ -1697,8 +1698,8 @@ export function uriFromRaw(rawUrl: string): string
 export function walkCollection( collection: PostmanCollection, ): CollectionRequest[]
 ```
 
-Recorre la colección y devuelve todos los requests planos.
-Si `folder` se pasa, se usa como prefijo del path de carpetas.
+Walk the collection and return all flat requests.
+If `folder` is passed, it's used as the prefix of the folder path.
 
 #### `countItems`
 
