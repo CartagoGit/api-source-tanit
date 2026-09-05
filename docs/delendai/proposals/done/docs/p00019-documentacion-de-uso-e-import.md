@@ -10,6 +10,8 @@ related:
     - p00010 # binario único
     - p00014 # identidad de colección
     - p00015 # flujo de login
+shippedIn:
+  - a758c22  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Cuatro documentos escritos (README, INSTALL, FRAMEWORKS, POSTMAN) con todos los comandos ejecutados. Las capturas de Postman son diagramas ASCII: no se pueden hacer capturas reales en este entorno.

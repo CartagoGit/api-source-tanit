@@ -12,6 +12,8 @@ related:
     - p00013 # bugs previos del plugin
     - p00026 # avisos del editor: el tsconfig del plugin sale de ahí
     - p00028 # gates por sección: el plugin es una de ellas
+shippedIn:
+  - 160365d  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada el 2026-08-07.** S1, S2 y S3 el 2026-08-06. S4 se retira con

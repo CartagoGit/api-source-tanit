@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-11
+shippedIn:
+  - af9ff56  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **S1 entregada.** Los quince idiomas viven cada uno en su fichero y se

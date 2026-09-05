@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: general
 date: 2026-08-30
+shippedIn:
+  - 52042da  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00009 — Resolver el arranque MCP portable sin checkout hermano

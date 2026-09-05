@@ -9,6 +9,8 @@ date: 2026-07-31
 related:
     - p00008 # npm path
     - p00007 # the plugin's runtime dep
+shippedIn:
+  - 8722e89  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Los 4 binarios compilan y el de linux-x64 está

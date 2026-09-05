@@ -10,6 +10,8 @@ shipped-in: ["47785ab", "09fd7a5"]
 last-transition-id: 1e6a1a1d-297c-45bc-992f-b53ba4895d88
 last-correlation-id: 1e6a1a1d-297c-45bc-992f-b53ba4895d88
 last-transition-from: ready
+shippedIn:
+  - 52042da  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00010 — Evitar bloqueos y escrituras inseguras en desktop y init MCP

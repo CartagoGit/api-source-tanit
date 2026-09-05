@@ -10,6 +10,8 @@ shipped-in: ["50f248c", "97b8625"]
 last-transition-id: d53e004c-6e27-43f0-b272-10d1649fbaf2
 last-correlation-id: d53e004c-6e27-43f0-b272-10d1649fbaf2
 last-transition-from: ready
+shippedIn:
+  - 52042da  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # r00009 — Eliminar estado global de rutas para soportar concurrencia multi-proyecto

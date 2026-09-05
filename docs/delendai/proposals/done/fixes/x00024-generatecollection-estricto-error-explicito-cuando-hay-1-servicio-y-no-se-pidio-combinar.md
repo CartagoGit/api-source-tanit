@@ -13,6 +13,8 @@ dependsOn:
 related:
   - a00009
   - f00011
+shippedIn:
+  - c566050  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00024 — `generateCollection()` estricto
@@ -46,7 +48,7 @@ completo, pero los callers que usan la singular no se enteran del bug.
 
 ### S1 — lanzar `MultipleServicesWithoutCombineError`
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `packages/core/discovery/generation.pipeline.ts` (rama `Array.isArray(result)`)
   - `packages/core/errors/multiple-services-without-combine.error.ts` (nuevo)
@@ -70,7 +72,7 @@ completo, pero los callers que usan la singular no se enteran del bug.
 
 ### S2 — propagar al CLI con exit code 64
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**: `packages/cli/commands/generate.script.ts`
 - **Gate**: `bun run test:cli`
 - **Detalle**:

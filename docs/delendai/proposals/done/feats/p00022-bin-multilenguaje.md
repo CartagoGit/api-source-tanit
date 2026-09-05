@@ -10,6 +10,8 @@ related:
     - p00010 # el binario compilado es el motor que estos wrappers invocan
     - p00021 # sustituye a las reimplementaciones que se retiran
     - p00025 # bin canónico corto + alias; los wrappers no deben fijar el nombre largo
+shippedIn:
+  - 2f7b465  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-07.** S1, S2 y S3. `bin/expostman` (POSIX),

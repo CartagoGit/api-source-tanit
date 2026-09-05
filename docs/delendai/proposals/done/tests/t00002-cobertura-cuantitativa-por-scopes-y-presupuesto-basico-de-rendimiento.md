@@ -9,6 +9,8 @@ date: 2026-08-08
 related:
   - t00001
   - a00002
+shippedIn:
+  - 6d37cca  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-08.** Cobertura medida por primera vez: statements

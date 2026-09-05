@@ -11,6 +11,8 @@ related:
     - p00010 # binario compilado — el nombre del artefacto
     - p00019 # docs de uso e import
     - p00022 # wrappers multi-lenguaje — deben usar el bin corto
+shippedIn:
+  - d7b50b1  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Decidido por el dueño del repo:

@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00024
     - p00028
+shippedIn:
+  - cbb62ed  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00032 — exportación multiformato: OpenAPI 3.1, Insomnia v4, Bruno, HAR y cURL

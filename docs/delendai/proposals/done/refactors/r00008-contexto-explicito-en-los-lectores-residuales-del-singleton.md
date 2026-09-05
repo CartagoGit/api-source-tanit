@@ -9,6 +9,8 @@ date: 2026-08-29
 related:
   - p00017
   - r00005
+shippedIn:
+  - 0ac222e  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # r00008 — contexto explícito en los tres lectores residuales del singleton

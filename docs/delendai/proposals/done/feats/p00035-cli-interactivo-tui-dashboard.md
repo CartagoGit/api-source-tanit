@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00025
+shippedIn:
+  - 58a680a  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00035 — CLI interactivo TUI con vista previa, selección de frameworks y dashboard de calidad

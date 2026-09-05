@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-11
+shippedIn:
+  - ecaaeed  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada el mismo dia.** El test de S1 fallaba en los 13 medidos y

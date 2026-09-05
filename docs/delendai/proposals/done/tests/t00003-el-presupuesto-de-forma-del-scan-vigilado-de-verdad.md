@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-29
 related:
   - t00002
+shippedIn:
+  - f967468  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # t00003 — El presupuesto de forma del scan, vigilado de verdad

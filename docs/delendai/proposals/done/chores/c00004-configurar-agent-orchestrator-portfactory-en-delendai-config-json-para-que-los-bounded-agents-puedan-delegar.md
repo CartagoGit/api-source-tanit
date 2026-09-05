@@ -11,6 +11,8 @@ shippedIn:
 dependsOn: []
 related:
   - q00007
+shippedIn:
+  - c566050  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # c00004 — Configurar `agent-orchestrator` `portFactory`
@@ -62,7 +64,7 @@ que sí permite que el dispatch corra, registrando cada llamada con
 
 ### S1 — añadir `portFactory` + `allowFakeDispatchPort` a `delendai.config.json`
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `delendai.config.json`
 - **Gate**: `bun run lint:bootstrap-drift && bun run lint:mcp && bun run typecheck`
@@ -87,7 +89,7 @@ que sí permite que el dispatch corra, registrando cada llamada con
 
 ### S2 — tests E2E: dispatch con FakeDispatchPort funciona
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**: `tests/mcp/orchestrator-dispatch.spec.ts` (nuevo)
 - **Gate**: `bun run test:e2e`
 - **Detalle**:

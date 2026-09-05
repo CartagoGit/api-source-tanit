@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00024
+shippedIn:
+  - ca5655b  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00030 — motor de escaneo robusto basado en AST (Abstract Syntax Tree)

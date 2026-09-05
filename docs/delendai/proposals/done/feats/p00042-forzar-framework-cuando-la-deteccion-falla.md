@@ -10,6 +10,8 @@ related:
     - p00024 # proyectos híbridos: varios detectores a la vez
     - p00029 # cada framework nuevo amplía lo autodetectable, pero nunca lo cubre todo
     - p00030 # el motor de AST reduce los falsos negativos, no los elimina
+shippedIn:
+  - 1397e54  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00042 — forzar el framework cuando la detección falla

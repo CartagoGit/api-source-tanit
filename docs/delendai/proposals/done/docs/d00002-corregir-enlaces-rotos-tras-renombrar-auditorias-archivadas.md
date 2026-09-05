@@ -9,6 +9,8 @@ date: 2026-08-30
 last-transition-id: 4a2df735-272e-4bfa-80a9-1998b55166af
 last-correlation-id: 4a2df735-272e-4bfa-80a9-1998b55166af
 last-transition-from: in-progress
+shippedIn:
+  - 52042da  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # d00002 — Corregir enlaces rotos tras renombrar auditorías archivadas

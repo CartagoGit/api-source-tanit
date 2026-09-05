@@ -10,6 +10,8 @@ related:
     - p00010 # el binario compilado cubre mejor el motivo por el que existía
     - p00020 # la reorganización de carpetas
     - p00022 # lo que SÍ hace falta por lenguaje
+shippedIn:
+  - 2f7b465  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Borradas las 1231 líneas de `runtime/`

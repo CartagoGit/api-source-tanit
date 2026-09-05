@@ -9,6 +9,8 @@ date: 2026-08-29
 related:
   - t00002
   - t00003
+shippedIn:
+  - 0ac222e  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # t00004 — branches de scanners: fixtures dirigidos para subir el suelo (62→70)

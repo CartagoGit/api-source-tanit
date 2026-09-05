@@ -15,6 +15,8 @@ shippedIn:
   - 66ca1e2  # S6: examples + output folder verification
   - 6c3754e  # S7: proposals hygiene + AGENT-BOOTSTRAP archaeology note
   - 151886f  # merge into develop + push + gh repo rename + topics
+shippedIn:
+  - 536608a  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # b00001 — rebrand Tanit — el proyecto pasa de export-to-postman a Tanit (API Source Discovery)
@@ -78,7 +80,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
 > **Ejecución secuencial.** Aunque los archivos son disjuntos entre S1–S7, comparten el `bun.lock`, el `package.json` raíz y la build de TS: un `bun run typecheck` roto entre slices dejaría el host MCP sin boot. `delendai.config.json` tiene `agentWorktree: false`, así que no hay worktrees paralelos. El orchestrator dispatcha un `implementation_runner` por slice en orden S1 → S7; S8 (GitHub) lo cierra él mismo tras S7.
 
 ### S1 — Source code TS (no plugin, no desktop)
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `packages/cli/**`
   - `packages/contracts/**`
@@ -104,7 +106,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - El artefacto built `packages/core/domain/test-script.service.js` está regenerado (output del script anterior) o ya no existe (no se commitea, lo verifica el `.gitignore`).
 
 ### S2 — Plugin folder rename + namespace + tipos
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1
 - **Files**:
   - `packages/plugins/delendai_expostman/**` (carpeta entera) → renombrada vía `git mv` a `packages/plugins/delendai_tanit/**`.
@@ -131,7 +133,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - `grep -rEln '(expostman|Expostman|ExportToPostman)' packages/plugins/delendai_tanit delendai.config.json package.json` devuelve lista vacía.
 
 ### S3 — Binarios, desktop, docker, CI
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1, S2
 - **Files**:
   - `bin/expostman` → `bin/apisrc`
@@ -160,7 +162,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - Los scripts de build invocan `bun build` con `--outfile` apuntando a `apisrc` o `tanit-desktop` según corresponda.
 
 ### S4 — Root config + lockfile
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1, S2, S3
 - **Files**:
   - `package.json` (raíz)
@@ -191,7 +193,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - `tsconfig.*.json` no requieren edits estructurales: sus `paths` y `references` apuntan a carpetas dentro de `packages/`, no al nombre del paquete. Si alguno hace referencia al nombre, ajustarlo en este slice.
 
 ### S5 — Documentación de usuario y pointers de host
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1, S2, S3, S4
 - **Files**:
   - `README.md`
@@ -232,7 +234,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - `bun run lint:proposals` pasa (no toca propuestas, pero valida que el link a esta propuesta desde otros sitios sigue vivo).
 
 ### S6 — Examples y carpeta de salida
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1, S2, S3, S4, S5
 - **Files**:
   - `export-to-postman/` (carpeta entera) → renombrada vía `git mv` a `tanit/` (es el output commiteado de `example-app` y `sample-express`; se regenera limpio en este slice).
@@ -248,7 +250,7 @@ Las propuestas históricas (p00001–p00043, x00001–x00025, a00001–a00016, e
   - El script de e2e no contiene referencias hardcoded al nombre viejo.
 
 ### S7 — Higiene de propuestas + validate gate final
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **dependsOn**: S1, S2, S3, S4, S5, S6
 - **Files**:
   - `docs/delendai/proposals/README.md` (header + nota arqueológica).

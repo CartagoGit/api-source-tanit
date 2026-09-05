@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00011 # lint:tools forma parte del gate
     - p00016 # las suites homogéneas son parte del gate
+shippedIn:
+  - a758c22  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Implementado: `bun run validate` = typecheck + lint:tools + test + validate:examples, más el workflow de CI.

@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00024
+shippedIn:
+  - 01d8d19  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-07.** De 12 a 19 frameworks, los siete de la

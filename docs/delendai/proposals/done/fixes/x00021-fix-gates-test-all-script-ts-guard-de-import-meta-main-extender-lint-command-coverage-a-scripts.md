@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-03
+shippedIn:
+  - fb8cfe5  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00021 — fix(gates): guard `import.meta.main` en `test-all.script.ts` + coverage de scripts

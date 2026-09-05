@@ -9,6 +9,8 @@ date: 2026-07-31
 related:
     - p00006 # the extension contract documents this rule
     - p00005 # the agents must obey the rule
+shippedIn:
+  - 72f7a2a  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Implementado en `bun run lint:tools`, encadenado dentro de `bun run validate` (p00018 S1).

@@ -9,6 +9,8 @@ date: 2026-07-31
 related:
     - p00001 # finish v0.1 first (this proposal builds on it)
     - plugins/postman-exporter/
+shippedIn:
+  - a99c280  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 ## Resolution (2026-08-03)

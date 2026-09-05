@@ -9,6 +9,8 @@ date: 2026-08-07
 related:
     - p00027 # S4: el plugin no puede activar la regla mientras arrastre código del CLI
     - p00030 # el motor de AST reduce el parseo por índices, no lo elimina
+shippedIn:
+  - a8ee98f  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00043 — `noUncheckedIndexedAccess` en todas las secciones

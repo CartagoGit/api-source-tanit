@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00021 # runtime/ se retira como parte de esta reorganización
     - p00022 # el bin multi-lenguaje depende de esta estructura
+shippedIn:
+  - 2f7b465  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Las cinco slices.

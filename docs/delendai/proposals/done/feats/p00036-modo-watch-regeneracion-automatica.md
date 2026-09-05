@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-06
+shippedIn:
+  - b59ca63  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada el 2026-08-07.** Con una decisión de forma: es

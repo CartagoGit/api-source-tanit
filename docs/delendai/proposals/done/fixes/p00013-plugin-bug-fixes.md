@@ -11,6 +11,8 @@ related:
     - p00005 # orchestrator agents
     - p00009 # vitest suite
     - p00011 # no-process-cwd lint
+shippedIn:
+  - ce6dc37  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** El plugin arranca y registra sus 4 tools con sus

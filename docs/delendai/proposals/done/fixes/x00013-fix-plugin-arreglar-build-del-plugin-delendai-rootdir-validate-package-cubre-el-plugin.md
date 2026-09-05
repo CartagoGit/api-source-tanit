@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-03
+shippedIn:
+  - fb8cfe5  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00013 — fix(plugin): arreglar build del plugin delendai

@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00014 # identidad de colección
     - p00019 # documentación del flujo
+shippedIn:
+  - a758c22  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Detección por método+URI, script que prueba 8 caminos

@@ -9,6 +9,8 @@ date: 2026-07-31
 related:
     - 170672e # init commit (Limpiar residuos del host inicial)
     - e4569a0 # init commit (Plugin delendai `postman-exporter` + config local)
+shippedIn:
+  - a99c280  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 ## Resolution (2026-08-03)

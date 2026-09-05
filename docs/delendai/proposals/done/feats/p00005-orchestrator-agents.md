@@ -10,6 +10,8 @@ related:
     - d692f50 # plugins commit
     - p00001 # parser/builder maturity
     - p00003 # test plugin already wired
+shippedIn:
+  - dbbcd1d  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Los 5 agentes existen en `.github/agents/` y `.claude/agents/`, apuntando al bootstrap de proyecto.

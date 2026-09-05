@@ -11,6 +11,8 @@ related:
     - p00022 # bin multi-lenguaje: los wrappers dependen del nombre de salida
     - p00023 # paridad entre frameworks
     - p00027 # el plugin como proyecto independiente
+shippedIn:
+  - c98a2c5  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Las cuatro slices.

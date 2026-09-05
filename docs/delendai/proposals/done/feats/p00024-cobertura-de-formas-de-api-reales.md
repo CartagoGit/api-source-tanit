@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00016 # el contrato de scanner donde se declaran las capacidades
+shippedIn:
+  - 2f7b465  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** El orchestrator gana `detectAll()` y el

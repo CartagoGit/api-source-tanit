@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-30
 related:
   - p00008
+shippedIn:
+  - adf267f  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # c00002 — release automatizada de npm desde CI

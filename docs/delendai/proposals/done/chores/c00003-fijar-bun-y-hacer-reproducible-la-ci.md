@@ -11,6 +11,8 @@ related:
   - a00009
   - a00010
   - a00011
+shippedIn:
+  - fb8cfe5  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # c00003 — fijar Bun y hacer reproducible la CI

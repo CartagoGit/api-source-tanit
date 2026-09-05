@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00037
+shippedIn:
+  - f3359e3  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # p00038 — seguridad: remediación de vulnerabilidades, SAST y escaneo de secretos en pipeline CI

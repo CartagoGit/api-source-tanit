@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00014 # la identidad de colección depende de esto
     - p00011 # no process.cwd() en tools — misma familia de problema
+shippedIn:
+  - a758c22  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** S1 y S2 hechos: `IProjectContext` +

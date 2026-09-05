@@ -10,6 +10,8 @@ related:
     - p00001 # slice S3 vitest baseline
     - p00002 # slice S1 IRouterAdapter contract
     - plugins/postman-exporter/
+shippedIn:
+  - a99c280  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** El tool `test` está en `plugins/postman-exporter/src/lib/tools/test.tool.ts` con 11 tests de integración. Cubre typecheck, smoke por framework contra los mini-fixtures y la suite completa.

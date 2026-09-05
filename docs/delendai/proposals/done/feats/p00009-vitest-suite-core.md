@@ -10,6 +10,8 @@ related:
     - p00001 # slice S3 is the minimum baseline; this is the full suite
     - p00008 # tests before publish
     - p00007 # the plugin tests are tracked separately
+shippedIn:
+  - 8722e89  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** 38/38 módulos de `services/` y `helpers/` con tests

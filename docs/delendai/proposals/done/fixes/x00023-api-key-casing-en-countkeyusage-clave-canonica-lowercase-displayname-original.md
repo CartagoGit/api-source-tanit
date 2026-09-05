@@ -12,6 +12,8 @@ dependsOn: []
 related:
   - a00009
   - x00022
+shippedIn:
+  - c566050  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00023 — API key casing en `countKeyUsage`
@@ -58,7 +60,7 @@ detector concluye "no API key", cuando debería contar 2.
 
 ### S1 — fix + test de regresión
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `packages/core/domain/auth-scheme.service.ts` (modifica `countKeyUsage`)
   - `tests/core/auth-scheme.service.spec.ts` (añade 3 tests nuevos)
@@ -81,7 +83,7 @@ detector concluye "no API key", cuando debería contar 2.
 
 ### S2 — normalizar igual la ruta `query` params
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**: `packages/core/domain/auth-scheme.service.ts`
 - **Gate**: `bun run test:core tests/core/auth-scheme.service.spec.ts`
 - **Detalle**: aplicar el mismo patrón al `Map` de query params (mismo bug,

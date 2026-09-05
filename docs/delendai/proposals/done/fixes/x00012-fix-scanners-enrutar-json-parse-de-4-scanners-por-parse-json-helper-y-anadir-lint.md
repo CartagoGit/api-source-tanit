@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-09-03
+shippedIn:
+  - 10b6fb7  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00012 — fix(scanners): enrutar `JSON.parse` de 4 scanners por `parse-json.helper` y añadir lint

@@ -9,6 +9,8 @@ date: 2026-08-08
 related:
   - p00017
   - a00002
+shippedIn:
+  - 6d37cca  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Parcial a 2026-08-08.** S1 entregado: `resolveRoot()` responde por

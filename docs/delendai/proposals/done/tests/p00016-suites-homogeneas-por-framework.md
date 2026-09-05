@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-08-06
 related:
     - p00009 # vitest suite core
+shippedIn:
+  - a758c22  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Las tres slices hechas: `scanner-fixture.ts`,

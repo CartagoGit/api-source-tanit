@@ -10,6 +10,8 @@ related:
     - p00005 # the agents themselves
     - p00006 # the contract doc
     - p00011 # the lint rule
+shippedIn:
+  - 72f7a2a  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** `.github/agents.md` escrito: arquitectura, gate, dónde tocar cada cosa, las 6 reglas que rompen el build y los 4 tools.

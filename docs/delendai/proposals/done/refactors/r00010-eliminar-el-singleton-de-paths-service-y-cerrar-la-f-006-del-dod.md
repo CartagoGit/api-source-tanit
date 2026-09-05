@@ -8,6 +8,8 @@ track: general
 date: 2026-09-03
 shipped-in: ["5936178", "fceb2e1", "3aac5af"]
 last-transition-from: ready
+shippedIn:
+  - 39e5042  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # r00010 — Eliminar el singleton de `paths.service` y cerrar la F-006 del DoD

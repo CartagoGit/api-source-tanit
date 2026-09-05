@@ -10,6 +10,8 @@ revised: 2026-09-03
 closed: 2026-09-03
 related:
     - p00008 # publicar este paquete tiene el mismo tipo de bloqueo operacional
+shippedIn:
+  - 6fb52e4  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-09-03 — decisión del proyecto.** Hasta que

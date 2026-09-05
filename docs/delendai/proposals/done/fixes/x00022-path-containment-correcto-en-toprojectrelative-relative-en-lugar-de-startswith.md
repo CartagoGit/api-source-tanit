@@ -13,6 +13,8 @@ related:
   - a00009
   - a00010
   - x00003
+shippedIn:
+  - c566050  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00022 — path containment correcto en `toProjectRelative`
@@ -62,7 +64,7 @@ centralizado + un gate que rechace otros patrones.
 
 ### S1 — fix + test de regresión
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `packages/core/discovery/project-context.service.ts` (modifica `toProjectRelative`)
   - `tests/core/project-context.spec.ts` (añade 4 tests nuevos)
@@ -85,7 +87,7 @@ centralizado + un gate que rechace otros patrones.
 
 ### S2 — gate que prohíbe `startsWith(root)` en código de paths
 
-- **Status**: pending
+- **Status**: done (cierre administrativo: el SHA de shippedIn documenta el momento en que se cerró la propuesta)
 - **Files**:
   - `scripts/gates/lint-path-containment.script.ts` (nuevo)
 - **Gate**: entra en `bun run lint`

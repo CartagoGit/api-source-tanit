@@ -6,6 +6,8 @@ status: done
 type: proposal
 track: export-to-postman
 date: 2026-08-30
+shippedIn:
+  - 052031d  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 # x00008 — corregir bugs silenciosos de scanners y rutas de salida

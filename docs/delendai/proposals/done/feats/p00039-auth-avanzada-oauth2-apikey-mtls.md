@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00015
     - p00031 # los scripts de test avanzados usan el esquema detectado
+shippedIn:
+  - 6dca15a  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada el 2026-08-07.** Con un no-objetivo añadido: mTLS y HMAC no

@@ -10,6 +10,8 @@ related:
     - p00001 # finish v0.1 first
     - p00004 # cleanup before publish
     - p00009 # tests before publish
+shippedIn:
+  - 8722e89  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada 2026-08-06.** Preparación completa: LICENSE, metadatos npm, `files` con la documentación, y `bun run validate:package` que empaqueta, instala en un proyecto limpio y ejecuta el binario. **El `npm publish` en sí queda para el dueño del repo**: publicar es irreversible y necesita credenciales.

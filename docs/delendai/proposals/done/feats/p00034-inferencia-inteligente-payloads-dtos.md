@@ -9,6 +9,8 @@ date: 2026-08-06
 related:
     - p00024
     - p00030
+shippedIn:
+  - 5b1e332  # cierre administrativo (x00032 S1 regla 2): SHA de creación del registro
 ---
 
 > **Cerrada el 2026-08-07.** La tabla de "estado actual" que traía era
