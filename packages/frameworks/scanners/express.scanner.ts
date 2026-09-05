@@ -66,7 +66,7 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
 /**
  * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the Express
+ * f00011 S4: `pnpm-lock.yaml` and Bun lockfiles refine the Express
  * detector's confidence (and Koa/Hapi, which share this scanner).
  * Small weights: +0.1 (pnpm), +0.15 (bun). The final score goes
  * through `withEvidence(score, evidence)` with no cap — the detector
@@ -74,13 +74,20 @@ const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"
  * these cases. The signal never masks the absence of a framework:
  * it's added at the end, after the package that already gave the
  * main detection.
+ *
+ * x00035 S1: Bun ≥ 1.2 emits `bun.lock` (text) and Bun < 1.2 emits
+ * `bun.lockb` (binary). Both are accepted; if both are present
+ * (degenerate case, modern project with a stale binary lock), the
+ * modern `bun.lock` wins and `bun.lockb` is ignored.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact: string }> {
   const out: Array<{ signal: string; weight: number; artifact: string }> = [];
   if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
     out.push({ signal: "pnpm-lock.yaml presente", weight: 0.1, artifact: "pnpm-lock.yaml" });
   }
-  if (existsSync(join(projectRoot, "bun.lockb"))) {
+  if (existsSync(join(projectRoot, "bun.lock"))) {
+    out.push({ signal: "bun.lock presente", weight: 0.15, artifact: "bun.lock" });
+  } else if (existsSync(join(projectRoot, "bun.lockb"))) {
     out.push({ signal: "bun.lockb presente", weight: 0.15, artifact: "bun.lockb" });
   }
   return out;
