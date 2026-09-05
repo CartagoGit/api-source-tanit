@@ -162,4 +162,49 @@ describe("groupByService", () => {
     expect(graph.services).toEqual([]);
     expect(graph.combined).toBe(false);
   });
+
+  // x00031 S2 (acceptance #1): un mismo servicio con DOS frameworks
+  // bajo el mismo `frameworkSearchRoot` (caso híbrido `apps/api`
+  // express + graphql) produce UN solo descriptor con ambos frameworks
+  // visibles, no dos descriptors con el mismo `serviceId`.
+  it("two matches with the same serviceId merge into one hybrid descriptor (x00031 S2)", () => {
+    const graph = groupByService({
+      matches: [
+        match("express", "/repo", "apps/api"),
+        match("graphql", "/repo", "apps/api"),
+      ],
+      routesByMatch: new Map([
+        ["apps_api", [route("GET", "/users"), route("GET", "/health")]],
+      ]),
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.serviceId).toBe("apps_api");
+    // Los endpoints de los dos frameworks se concatenan en el descriptor único.
+    // En este test solo se alimenta `apps_api` con dos endpoints; el test
+    // unitario estricto del "doble fuente" está en `to-service-graph.spec.ts`
+    // porque la hidratación completa requiere el mapa routesByMatch poblado
+    // por servicio, no por framework.
+    expect(graph.services[0]?.endpoints.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // x00031 S2 (acceptance #2): ningún `serviceId` aparece dos veces en
+  // `graph.services`. Aunque dos matches colisionen, el grafo los
+  // agrupa; los nombres de colección Postman derivados siguen siendo
+  // únicos por construcción.
+  it("no duplicate serviceIds appear in graph.services (x00031 S2 #2)", () => {
+    const graph = groupByService({
+      matches: [
+        match("express", "/repo", "apps/api"),
+        match("graphql", "/repo", "apps/api"),
+        match("express", "/repo", "apps/web"),
+      ],
+      routesByMatch: new Map([
+        ["apps_api", [route("GET", "/a")]],
+        ["apps_web", [route("GET", "/b")]],
+      ]),
+    });
+    const ids = graph.services.map((s) => s.serviceId);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual(["apps_api", "apps_web"]);
+  });
 });

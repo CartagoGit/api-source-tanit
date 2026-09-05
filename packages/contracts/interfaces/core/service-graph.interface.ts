@@ -58,8 +58,37 @@ import type { IMonorepoDetection } from "./discovery.interface.js";
 export interface IServiceDescriptor {
   /** Stable identity of the service; used as the merge key and as the name. */
   readonly serviceId: string;
-  /** The resolved framework match for THIS service. */
+  /**
+   * The resolved framework match for THIS service. When the service
+   * hosts several frameworks (hybrid case, e.g. express + graphql
+   * under the same `frameworkSearchRoot`), this is the FIRST match;
+   * the rest live in `additionalMatches`.
+   *
+   * x00031 S1 partial: keeping `match` singular is non-breaking for
+   * every caller that already reads this field. New callers that need
+   * the full set should use `frameworks` (added in x00031 S1, 2026-09-05)
+   * or `additionalMatches`.
+   */
   readonly match: IProjectMatch;
+  /**
+   * Extra matches for the same `serviceId` — populated when several
+   * scanners resolved to the same id (the hybrid case). Empty for
+   * the common single-framework service.
+   *
+   * Added in x00031 S1. Non-breaking: existing callers that only read
+   * `match` keep working.
+   */
+  readonly additionalMatches: ReadonlyArray<IProjectMatch>;
+  /**
+   * The frameworks this service exposes. Always contains at least one
+   * value (`match.framework`); when the service is hybrid, it contains
+   * all of them in the order they were merged.
+   *
+   * Convenience for callers that don't need full match data (e.g. a UI
+   * showing badges like "express · graphql" in the service header).
+   * x00031 S1.
+   */
+  readonly frameworks: ReadonlyArray<string>;
   /** The routes detected for THIS service, in the neutral format. */
   readonly endpoints: ReadonlyArray<ParsedRoute>;
   /**
