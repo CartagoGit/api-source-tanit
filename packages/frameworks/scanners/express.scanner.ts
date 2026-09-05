@@ -64,6 +64,19 @@ const FRAMEWORK_PACKAGES = ["express", "@koa/router", "@hapi/hapi", "koa"];
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
 /**
+ * Receivers that ARE the application/server instance itself and so
+ * never carry a router prefix. Declared on them we treat the call as
+ * a direct route (the historical `app`/`server`/`fastify`/`koa` set);
+ * any other identifier is a router variable that may have a prefix.
+ */
+const RESERVED_RECEIVERS: ReadonlySet<string> = new Set([
+  "app",
+  "server",
+  "fastify",
+  "koa",
+]);
+
+/**
  * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
  * f00011 S4: `pnpm-lock.yaml` and Bun lockfiles refine the Express
@@ -281,19 +294,34 @@ function parseModuleSafe(
   }
 
   // (3) Method calls that look like route declarations.
+  // x00038 / a00016 S6: read the STRUCTURED `method` and `receiver`
+  // the bridge forwards, instead of reconstructing them with
+  // `call.callee.split(".")`. The split was a silent-loss trap:
+  // `this.router.get` split to ["this","router","get"] -> verb
+  // "router" (not an HTTP verb -> route dropped); `server["get"]`
+  // has no dot at all -> verb undefined -> dropped. Now the verb and
+  // the receiver come from the IR, so every recognised style yields a
+  // route. `computedMethod` distinguishes `server["get"]` from a plain
+  // router chain (we never prefix computed receivers).
   for (const call of methodCalls) {
-    const [ident, method] = call.callee.split(".");
-    if (!ident || !method) continue;
-    if (!HTTP_METHODS.includes(method)) continue;
+    const verb = (call.method ?? "").toLowerCase();
+    if (!verb || !HTTP_METHODS.includes(verb)) {
+      continue;
+    }
     const pathArg = call.args[0];
-    if (pathArg?.kind !== "string") continue;
+    if (pathArg?.kind !== "string") {
+      continue;
+    }
     const path = pathArg.value;
-    if (typeof path !== "string" || !path.startsWith("/")) continue;
+    if (typeof path !== "string" || !path.startsWith("/")) {
+      continue;
+    }
     const line = call.line;
-    if (ident !== "app" && ident !== "server" && ident !== "fastify" && ident !== "koa") {
-      routes.push({ method, path, line, routerName: ident });
+    const receiver = call.receiver ?? "";
+    if (receiver && !RESERVED_RECEIVERS.has(receiver)) {
+      routes.push({ method: verb, path, line, routerName: receiver });
     } else {
-      routes.push({ method, path, line });
+      routes.push({ method: verb, path, line });
     }
   }
 

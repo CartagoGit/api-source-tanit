@@ -122,9 +122,6 @@ export function toTSMethodCalls(
   const out: TSMethodCall[] = [];
   for (const expr of calls) {
     const callee = resolveCanonicalCallee(expr);
-    // If there's no method (neither `method` nor `resolvedMethod`)
-    // and the `callee` doesn't contain a dot, the scanner can't do
-    // anything with this. We silently discard it.
     if (!callee.includes(".") && !callee.includes("[")) continue;
     const { line, column } = offsetToPosition(source, expr.range.start);
     const args: TSLiteral[] = expr.args.map((arg) => ({
@@ -140,6 +137,14 @@ export function toTSMethodCalls(
       args,
       line,
       column,
+      // x00038 / a00016 S6: forward the STRUCTURED fields so the
+      // scanner can read the verb without re-parsing `callee`. The
+      // effective method is `method` (identifier/computed-literal) or,
+      // when constant propagation resolved a `receiver[X]`, the
+      // `resolvedMethod`.
+      ...(expr.receiver !== undefined ? { receiver: expr.receiver } : {}),
+      method: expr.method || expr.resolvedMethod || "",
+      receiverKind: expr.receiverKind,
     });
   }
   return out;
