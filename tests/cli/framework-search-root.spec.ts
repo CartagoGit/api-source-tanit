@@ -109,7 +109,7 @@ describe("--framework-search-root en `generate`", () => {
     ]);
     expect(code).not.toBe(0);
     expect(output).toContain("--framework-search-root");
-    expect(output).toContain("subdirectorio relativo");
+    expect(output).toContain("subdirectory relative to projectRoot");
   });
 
   test("valor inválido (con `..`) → error claro", async () => {

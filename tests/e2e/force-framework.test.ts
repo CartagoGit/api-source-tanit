@@ -68,7 +68,7 @@ describe("un id que no existe", () => {
   test("falla al instante", async () => {
     await expect(
       generateWithAllFrameworks(sinManifiesto, { forceFramework: "inventado" }),
-    ).rejects.toThrow(/No hay ningún scanner/);
+    ).rejects.toThrow(/No scanner for/);
   });
 
   test("el error lista los frameworks disponibles", async () => {

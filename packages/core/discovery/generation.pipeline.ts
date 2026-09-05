@@ -295,8 +295,37 @@ async function buildFor(
     combined,
   });
 
-  if (graph.services.length === 1 || combined) {
+  if (graph.services.length === 1) {
     return buildForService(discovery, graph.services[0]!, context, options);
+  }
+  if (combined) {
+    // Combined mode: merge every service's endpoints into a single
+    // descriptor and pass it to `buildForService`. The endpoint
+    // filter inside `buildForService` is then a no-op (it filters by
+    // the descriptor's own `endpoints` list, which already contains
+    // every contribution). `match` / `baseUrl` / `auth` come from
+    // the first service; the merged `endpoints` is what produces
+    // the single combined collection the caller expects.
+    const seen = new Set<string>();
+    const mergedEndpoints: ParsedRoute[] = [];
+    for (const s of graph.services) {
+      for (const r of s.endpoints) {
+        const key = `${r.method}|${r.uri}|${r.sourceFile}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        mergedEndpoints.push(r);
+      }
+    }
+    const first = graph.services[0]!;
+    const mergedService: IServiceDescriptor = {
+      serviceId: first.serviceId,
+      match: first.match,
+      endpoints: mergedEndpoints,
+      baseUrl: first.baseUrl,
+      auth: first.auth,
+      variables: first.variables,
+    };
+    return buildForService(discovery, mergedService, context, options);
   }
   const out: IGenerationResult[] = [];
   for (const service of graph.services) {

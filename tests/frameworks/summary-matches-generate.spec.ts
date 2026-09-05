@@ -74,7 +74,7 @@ describe("summary y generate ven lo mismo", () => {
 
   test("un projectRoot inexistente sí lanza", async () => {
     await expect(summarizeWithAllFrameworks("/tmp/__no_existe_zzz__")).rejects.toThrow(
-      /no existe/i,
+      /does not exist/i,
     );
   });
 });

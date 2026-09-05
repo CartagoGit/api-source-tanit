@@ -110,6 +110,7 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
   // the derived id otherwise (workspaces keep their per-service
   // split).
   const flatHybrid =
+    input.matches.length > 1 &&
     input.detectedMonorepo === false &&
     input.matches.every(
       (m) => m.frameworkSearchRoot === undefined || m.frameworkSearchRoot === "",
@@ -131,20 +132,36 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
     const existing = byId.get(serviceId);
     if (existing) {
       // Second (or later) match of the same service: merge its routes
-      // in, deduplicating by `(method, uri, sourceFile)` — the same
-      // identity `accumulateRoutesByService` uses.
-      existing.endpoints = [
-        ...existing.endpoints,
-        ...routes.filter(
-          (r) =>
-            !existing.endpoints.some(
-              (e) =>
-                e.method === r.method &&
-                e.uri === r.uri &&
-                e.sourceFile === r.sourceFile,
-            ),
-        ),
-      ];
+      // in, deduplicating by `(method, uri, sourceFile)` -- the same
+      // identity `accumulateRoutesByService` uses. `IServiceDescriptor`
+      // is `readonly` everywhere, so we replace the descriptor in the
+      // map with a new one carrying the merged endpoints (and copy
+      // `baseUrl`, `auth`, `variables` from the previous entry -- the
+      // first match wins for those, consistent with a00013 S3).
+      const merged: IServiceDescriptor = {
+        serviceId: existing.serviceId,
+        match: existing.match,
+        endpoints: [
+          ...existing.endpoints,
+          ...routes.filter(
+            (r) =>
+              !existing.endpoints.some(
+                (e) =>
+                  e.method === r.method &&
+                  e.uri === r.uri &&
+                  e.sourceFile === r.sourceFile,
+              ),
+          ),
+        ],
+        baseUrl: existing.baseUrl,
+        auth: existing.auth,
+        variables: existing.variables,
+      };
+      byId.set(serviceId, merged);
+      // Keep `services` in sync: replace the same slot so callers that
+      // iterate by index see the merged descriptor.
+      const slot = services.findIndex((s) => s.serviceId === serviceId);
+      if (slot !== -1) services[slot] = merged;
       continue;
     }
     const descriptor: IServiceDescriptor = {

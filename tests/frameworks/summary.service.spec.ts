@@ -17,7 +17,7 @@ describe("summary.service", () => {
 "/tmp/__no_existe_zzz__",
 defaultOrchestrator(),
 )).rejects.toThrow(
-        /projectRoot no existe/,
+        /projectRoot does not exist/,
       );
     });
 

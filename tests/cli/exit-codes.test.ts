@@ -81,7 +81,7 @@ describe("códigos de salida de `generate`", () => {
   test("un projectRoot inexistente sale con 1 y lo dice", async () => {
     const result = await generate(["--project-root", join(workDir, "no-existe-zzz")]);
     expect(result.code).toBe(1);
-    expect(result.output).toMatch(/no existe/i);
+    expect(result.output).toMatch(/does not exist/i);
   }, 60_000);
 
   /**
