@@ -59,20 +59,34 @@ jobs:
           bun install --frozen-lockfile
           bun tools/scripts/compile/build.script.ts packages/core
 
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       # El core publica `jsonc-parser` como dependencia normal, pero su
       # copia instalada con `file:` vive dentro del store aislado de bun
-      # (`.bun/@delendai+core@.../node_modules`), que NO la arrastra: con
+      # (`.bun/@delendai+core@…/node_modules`), que NO la arrastra: con
       # `file:` las dependencias transitivas del paquete enlazado no se
       # instalan. En local la resuelve el node_modules del propio
       # delendai; en CI el checkout limpio no la tiene. Enlazamos la que
       # acaba de instalar el `bun install` del hermano (mismo lockfile).
+      #
+      # Dos detalles que antes rompían este paso (segunda causa de CI rojo
+      # tras el bug de YAML del `name`): (a) corría ANTES del install de
+      # este repo, cuando el store `.bun/…` todavía no existe; y (b) el
+      # segmento de hash del nombre (`…+1a2e9f62…`) estaba hardcodeado, y
+      # ese hash direcciona el contenido exacto del `package.json` del
+      # core, así que mover el SHA del hermano lo cambiaba y el `ln` caía
+      # con "No such file or directory". Va ahora DESPUÉS del install y
+      # resuelve el store por glob. x00027 / i00002.
       - name: "Link jsonc-parser into the file: package store"
         run: |
-          STORE_DIR="node_modules/.bun/@delendai+core@file+..+delendai+packages+core+1a2e9f62db74697b/node_modules"
-          ln -sfn "${GITHUB_WORKSPACE}/../delendai/node_modules/jsonc-parser" "${STORE_DIR}/jsonc-parser"
+          set -euo pipefail
+          STORE_DIR="$(find node_modules/.bun -maxdepth 1 -type d -name '@delendai+core@file*' | head -1)"
+          if [ -z "$STORE_DIR" ]; then echo "::error::store de @delendai/core no encontrado"; exit 1; fi
+          mkdir -p "$STORE_DIR/node_modules"
+          ln -sfn "${GITHUB_WORKSPACE}/../delendai/node_modules/jsonc-parser" "$STORE_DIR/node_modules/jsonc-parser"
+          echo "enlazado jsonc-parser en $STORE_DIR"
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
 
       # `bun run validate` encadena typecheck, los lints del repo, la
       # suite de tests con sus umbrales de cobertura, la generación real
