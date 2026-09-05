@@ -6,7 +6,7 @@ node_modules/
 # mundo, y escribir ahi mezclaba nuestra salida con la de quien usa la
 # herramienta.
 tanit/
-build/
+/build/
 
 *.log
 
