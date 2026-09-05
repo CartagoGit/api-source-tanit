@@ -1,19 +1,19 @@
 /**
- * `NextJsScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para Next.js (App Router y Pages Router).
+ * `NextJsScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Next.js (App Router and Pages Router).
  *
- * Detección:
- *   - `package.json` con `dependencies.next`.
+ * Detection:
+ *   - `package.json` with `dependencies.next`.
  *
  * Parsing:
- *   - **App Router** (Next.js 13+): archivos `app/<segment>/route.ts` con
+ *   - **App Router** (Next.js 13+): `app/<segment>/route.ts` files with
  *     `export async function GET(request)`, `export async function POST(request)`.
- *   - **Pages Router** (legacy): archivos `pages/api/<segment>.ts` con
- *     `export default function handler(req, res)` y `export const config = ...`.
+ *   - **Pages Router** (legacy): `pages/api/<segment>.ts` files with
+ *     `export default function handler(req, res)` and `export const config = ...`.
  *   - **Dynamic segments**: `[id]` → `:p` (path param).
  *
  * Validation:
- *   - `NextJsZodProvider` (best-effort): extrae zod schemas inline en
+ *   - `NextJsZodProvider` (best-effort): extracts inline zod schemas in
  *     route handlers (`const schema = z.object({...})`).
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -47,27 +47,29 @@ async function isNextJsProject(projectRoot: string): Promise<boolean> {
   }
   const parsed = parseJson(raw);
   if (!parsed.ok) return false;
-  // `declaredDependencies` funde `dependencies` y `devDependencies`, que
-  // es la pregunta que se hace de verdad: un framework declarado en las
-  // de desarrollo sigue siendo el framework del proyecto. Unos scanners
-  // las miraban y otros no.
+  // `declaredDependencies` merges `dependencies` and `devDependencies`,
+  // which is the real question: a framework declared in devDeps is
+  // still the project's framework. Some scanners looked at them and
+  // others didn't.
   const deps = declaredDependencies(parsed.value);
   return typeof deps.next === "string";
 }
 
 /**
- * ¿El proyecto donde se mira es un monorepo?
+ * Is the project being scanned a monorepo?
  *
- * Turbo (`turbo.json` en raíz) y npm/yarn/pnpm workspaces
- * (`package.json#workspaces`) son señales **agnósticas del framework**:
- * no cambian qué framework es el proyecto, solo confirman que el
- * `projectRoot` raíz no es donde vive el framework. Por eso viven en un
- * helper compartido por los scanners que pueden recibirlas (de momento
- * Next.js, por la propuesta f00011 S1) y no en uno concreto.
+ * Turbo (`turbo.json` at root) and npm/yarn/pnpm workspaces
+ * (`package.json#workspaces`) are **framework-agnostic** signals:
+ * they don't change which framework the project is, only confirm
+ * that the root `projectRoot` is not where the framework lives.
+ * That is why they live in a helper shared by the scanners that can
+ * receive them (for now Next.js, per proposal f00011 S1) and not
+ * in a specific one.
  *
- * La función no lanza y devuelve `false` si el `package.json` no
- * parsea — el detector ya filtró esa posibilidad, pero leer el campo en
- * crudo dejaría un `any` pululando.
+ * The function does not throw and returns `false` if the
+ * `package.json` doesn't parse — the detector already filtered that
+ * possibility, but reading the field raw would leave an `any`
+ * floating around.
  */
 function hasMonorepoMarkers(projectRoot: string): boolean {
   if (existsSync(join(projectRoot, "turbo.json"))) return true;
@@ -75,8 +77,8 @@ function hasMonorepoMarkers(projectRoot: string): boolean {
   if (!existsSync(pkgPath)) return false;
   const parsed = parseJsonSafe(pkgPath);
   if (!parsed) return false;
-  // `workspaces` puede ser un array (npm/yarn clásico) o un objeto con
-  // `packages` (yarn/pnpm). Cualquiera de los dos cuenta.
+  // `workspaces` can be an array (classic npm/yarn) or an object with
+  // `packages` (yarn/pnpm). Either counts.
   const ws = parsed["workspaces"];
   if (Array.isArray(ws) && ws.length > 0) return true;
   if (
@@ -91,11 +93,11 @@ function hasMonorepoMarkers(projectRoot: string): boolean {
 }
 
 /**
- * Variante local de `parseJson` que devuelve `null` cuando algo falla.
+ * Local variant of `parseJson` that returns `null` on any failure.
  *
- * El scanner ya pasó por `isNextJsProject` y sabe que el `package.json`
- * existe y parsea — aquí solo queremos el valor del campo
- * `workspaces`, así que un fallo de parse se trata como "ausencia".
+ * The scanner already went through `isNextJsProject` and knows the
+ * `package.json` exists and parses — here we only want the value of
+ * the `workspaces` field, so a parse failure is treated as "absent".
  */
 function parseJsonSafe(pkgPath: string): Record<string, unknown> | null {
   let raw: string;
@@ -112,20 +114,22 @@ function parseJsonSafe(pkgPath: string): Record<string, unknown> | null {
 }
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` **afinan** la confianza de
- * un detector que ya reconoció el framework. No la introducen — un
- * `pnpm-lock.yaml` sin `next` declarado sigue siendo `score: 0`—. Por
- * eso los pesos son pequeños: +0.1 (pnpm) y +0.15 (bun). El cap a 1
- * que el `withEvidence` aplica al score final absorbe el caso en el
- * que la señal llega a un detector que ya estaba al tope (un Next.js
- * completo sigue marcando 1, no 1.1).
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` **refine** the
+ * confidence of a detector that already recognised the framework.
+ * They don't introduce it — a `pnpm-lock.yaml` without a declared
+ * `next` is still `score: 0`. That's why the weights are small:
+ * +0.1 (pnpm) and +0.15 (bun). The cap at 1 that `withEvidence`
+ * applies to the final score absorbs the case where the signal
+ * arrives at a detector already at the top (a complete Next.js still
+ * marks 1, not 1.1).
  *
- * Vive aquí en vez de en un helper compartido porque cada scanner
- * decide qué hace con la señal (Next.js la acumula; otros podrían
- * filtrarla por runtime). El patrón es el mismo que `honoDeps()` o
- * `dependsOnFastify()`: helper local, contrato en `contracts/`.
+ * It lives here rather than in a shared helper because each scanner
+ * decides what to do with the signal (Next.js accumulates it; others
+ * could filter it by runtime). The pattern is the same as
+ * `honoDeps()` or `dependsOnFastify()`: local helper, contract in
+ * `contracts/`.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
   const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
@@ -162,11 +166,12 @@ export class NextJsProjectScanner implements IProjectScanner {
     ];
     if (hasApp || hasSrcApp) signals.push({ signal: "App Router presente", weight: 0.4, artifact: "app/" });
     if (hasPages || hasSrcPages) signals.push({ signal: "Pages Router presente", weight: 0.4, artifact: "pages/" });
-    // f00011 S1: `next.config.*` por sí solo ya era 0.2 (puede ser de un
-    // proyecto que solo usa Next como bundler, sin rutas). La propuesta
-    // sube el peso a 0.5 cuando además hay un router real (App/Pages).
-    // Sin router, el peso se queda en 0.2 — evita inflar el score en
-    // proyectos donde next es solo una dependencia auxiliar.
+    // f00011 S1: `next.config.*` alone was already 0.2 (it might be from a
+    // project that only uses Next as a bundler, without routes). The
+    // proposal raises the weight to 0.5 when there is also a real router
+    // (App/Pages). Without a router, the weight stays at 0.2 — it
+    // avoids inflating the score in projects where next is just an
+    // auxiliary dependency.
     if (hasNextConfig) {
       signals.push({
         signal: hasRouter
@@ -176,12 +181,13 @@ export class NextJsProjectScanner implements IProjectScanner {
         ...(hasNextConfig ? {} : {}),
       });
     }
-    // f00011 S1: señales agnósticas de monorepo. Si el `package.json`
-    // raíz declara workspaces o hay `turbo.json`, el framework puede
-    // vivir en un subdir — vale subir el score 0.1 para empujar al
-    // orquestador a aplicar `frameworkSearchRoot`. Sin esta pista, un
-    // Next.js en `apps/web/` salía con score 0.5 porque el manifiesto
-    // raíz nunca tenía `next` como dependencia directa.
+    // f00011 S1: framework-agnostic monorepo signals. If the root
+    // `package.json` declares workspaces or there is a `turbo.json`,
+    // the framework may live in a subdir — it's worth bumping the
+    // score 0.1 to push the orchestrator to apply `frameworkSearchRoot`.
+    // Without this hint, a Next.js in `apps/web/` came out with score
+    // 0.5 because the root manifest never had `next as direct
+    // dependency.
     if (hasMonorepoMarkers(projectRoot)) {
       signals.push({
         signal: "monorepo (turbo.json o workspaces)",
@@ -189,9 +195,9 @@ export class NextJsProjectScanner implements IProjectScanner {
         artifact: "package.json",
       });
     }
-    // f00011 S4: lockfile como bonus de runtime. Sumamos al final para
-    // que un lockfile no pueda tapar una ausencia de framework — la
-    // señal solo aporta cuando el detector ya estaba convencido.
+    // f00011 S4: lockfile as runtime bonus. Added at the end so a
+    // lockfile can't mask an absent framework — the signal only
+    // contributes when the detector was already convinced.
     for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
     return withEvidence(signals.reduce((a, s) => a + s.weight, 0), signals);
   }
@@ -229,10 +235,11 @@ export class NextJsRouteScanner implements IRouteScanner {
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
-    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
-    // (ej. `"apps/web"`) y el scanner mira ahí en vez de en la raíz.
-    // Sin esto, un proyecto Next.js dentro de `apps/web/` salía con
-    // cero rutas porque `app/` y `pages/` viven en el subdir.
+    // f00011 S1: in monorepos the host passes `frameworkSearchRoot`
+    // (e.g. `"apps/web"`) and the scanner looks there instead of at
+    // the root. Without this, a Next.js project inside `apps/web/`
+    // came out with zero routes because `app/` and `pages/` live in
+    // the subdir.
     const projectRoot = effectiveProjectRoot(match);
     // 1) App Router.
     for (const base of ["app", join("src", "app")]) {
@@ -384,7 +391,7 @@ async function parsePageRouteFile(
 }
 
 // ---------------------------------------------------------------------------
-// Validation spec provider — zod inline en el route handler
+// Validation spec provider — zod inline in the route handler
 // ---------------------------------------------------------------------------
 
 /** `z.object(` — schema de body declarado en el propio route handler. */
@@ -415,9 +422,9 @@ export class NextJsZodProvider implements IValidationSpecProvider {  readonly fr
       return { endpointKey, fields: [] };
     }
 
-    // Un `route.ts` de App Router agrupa varios métodos en un archivo, así
-    // que elegimos el `z.object()` más cercano al handler de ESTE método
-    // en lugar del primero del archivo.
+    // An App Router `route.ts` groups several methods in one file, so
+    // we pick the `z.object()` closest to THIS method's handler
+    // rather than the first one in the file.
     const text = stripJsComments(raw);
     const handlerLine = findHandlerLine(text, route.method);
     const call = findNearestBalanced(text, ZOD_OBJECT_RE, handlerLine);
@@ -430,8 +437,8 @@ export class NextJsZodProvider implements IValidationSpecProvider {  readonly fr
 }
 
 /**
- * Línea (0-based) donde arranca el handler exportado del método dado.
- * Devuelve 0 si no se encuentra, que equivale a "usa el primer schema".
+ * Line (0-based) where the given method's exported handler starts.
+ * Returns 0 if not found, which means means "use the first schema".
  */
 function findHandlerLine(text: string, method: string): number {
   const re = new RegExp(

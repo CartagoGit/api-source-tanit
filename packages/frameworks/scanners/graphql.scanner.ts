@@ -1,20 +1,21 @@
 /**
- * `GraphQLScanner` — esquemas `.graphql` / `.gql` y SDL embebido.
+ * `GraphQLScanner` — `.graphql` / `.gql` schemas and embedded SDL.
  *
- * GraphQL no tiene rutas: tiene **un** endpoint —`/graphql` casi
- * siempre— y lo que cambia es el cuerpo. Así que aquí un "endpoint" de
- * la colección es una **operación** del esquema: cada campo de
- * `type Query` y de `type Mutation` sale como un `POST /graphql` con su
- * consulta ya escrita en el body.
+ * GraphQL has no routes: it has **one** endpoint — `/graphql` almost
+ * always — and what changes is the body. So here a collection
+ * "endpoint" is a schema **operation**: each field of `type Query` and
+ * `type Mutation` comes out as a `POST /graphql` with its query
+ * already written in the body.
  *
- * Eso es lo que hace la colección útil: quien la importa le da a Send y
- * la consulta se ejecuta. Una colección con un solo `POST /graphql` y el
- * body vacío no ahorra nada — el trabajo era justo escribir la consulta.
+ * That's what makes the collection useful: whoever imports it hits
+ * Send and the query runs. A collection with a single `POST /graphql`
+ * and an empty body saves nothing — writing the query was exactly the
+ * work.
  *
- * Las suscripciones **no** se emiten. Van por WebSocket, y una petición
- * HTTP a `/graphql` con una `subscription` dentro no funciona: contesta
- * un error del servidor. Emitirla sería entregar algo que falla al
- * primer Send, que es peor que no entregarla.
+ * Subscriptions are **not** emitted. They go over WebSocket, and an
+ * HTTP request to `/graphql` with a `subscription` inside doesn't work:
+ * the server responds with an error. Emitting it would deliver
+ * something that fails on the first Send — worse than not delivering it.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -34,7 +35,7 @@ import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { collectTaggedTemplates } from "../typescript/tagged-template.helper.js";
 import { collectEmbeddedSdl } from "./graphql-embedded.scanner.js";
 
-/** Paquetes que delatan un servidor GraphQL. */
+/** Packages that give away a GraphQL server. */
 const GRAPHQL_PACKAGES = [
   "graphql",
   "@apollo/server",
@@ -46,45 +47,45 @@ const GRAPHQL_PACKAGES = [
   "mercurius",
 ];
 
-/** Rutas donde casi todo el mundo monta el endpoint. */
+/** Path where almost everyone mounts the endpoint. */
 const DEFAULT_ENDPOINT = "/graphql";
 
-/** Escalares de serie. No admiten selección de campos. */
+/** Built-in scalars. They don't allow field selection. */
 const BUILTIN_SCALARS = new Set(["String", "Int", "Float", "Boolean", "ID"]);
 
 /**
- * Devuelve true si el tipo (sin `[`, `]`, `!`) es escalar.
+ * Returns true if the type (without `[`, `]`, `!`) is a scalar.
  *
- * Audit 2026-09-04 (segunda revisión): el `customScalars` que tenía
- * antes era un Set a nivel de módulo. Dos scans consecutivos
- * (especialmente en `Promise.all` con proyectos distintos)
- * contaminaban sus escalares: el segundo proyecto heredaba los
- * `scalar X` del primero. El contrato `IScanResult` exige
- * explícitamente que el scanner no guarde estado entre invocaciones
- * (es lo que justifica que el `scan()` reciba `match` por argumento
- * y devuelva rutas por valor). Ahora `customScalars` es **local a
- * cada `scan()`** y se pasa por argumento a las funciones puras.
+ * Audit 2026-09-04 (second review): the previous `customScalars` was
+ * a module-level Set. Two consecutive scans (especially in
+ * `Promise.all` with different projects) would contaminate their
+ * scalars: the second project would inherit the first's `scalar X`.
+ * The `IScanResult` contract explicitly requires the scanner to keep
+ * no state between calls (which is what justifies `scan()` taking
+ * `match` as argument and returning routes by value). Now
+ * `customScalars` is **local to each `scan()`** and passed as an
+ * argument to pure functions.
  */
 function isScalarType(type: string, customScalars: ReadonlySet<string>): boolean {
   const bare = type.replace(/[[\]!]/g, "");
   return BUILTIN_SCALARS.has(bare) || customScalars.has(bare);
 }
 
-/** Ficheros de esquema. */
+/** Schema files. */
 function isSchemaFile(name: string): boolean {
   return name.endsWith(".graphql") || name.endsWith(".gql");
 }
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
- * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
- * (bun). El detector de GraphQL suma evidencia y luego devuelve el
- * `Math.max(fromPackage, 0.5)` o `1`; el bonus aparece en `evidence`
- * aunque el cap no le deje mover el score visible — exactamente lo
- * que se busca con esta propuesta: trazabilidad de runtime, no
- * detección nueva.
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the detector's
+ * confidence without being detection. Small weights: +0.1 (pnpm),
+ * +0.15 (bun). The GraphQL detector sums evidence and then returns
+ * the `Math.max(fromPackage, 0.5)` or `1`; the bonus shows up in
+ * `evidence` even though the cap doesn't let it move the visible
+ * score — exactly what this proposal wants: runtime traceability,
+ * not new detection.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
   const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
@@ -118,29 +119,28 @@ export class GraphQlProjectScanner implements IProjectScanner {
       }
     }
 
-    // f00011 S4: lockfile como bonus de runtime. Se acumula en
-    // `signals` para que aparezca en `evidence` independientemente
-    // de la rama que termine devolviendo el resultado. Sumamos al
-    // final para que un lockfile no pueda tapar una ausencia de
-    // framework — la detección por `package.json` o esquema va
-    // siempre delante.
+    // f00011 S4: lockfile as runtime bonus. Accumulated in `signals`
+    // so it appears in `evidence` regardless of which branch ends
+    // up returning the result. Added at the end so a lockfile can't
+    // mask an absent framework — `package.json` or schema detection
+    // always goes first.
     for (const lock of lockfileSignals(projectRoot)) signals.push(lock);
 
-    // Un `.graphql` con `type Query` es la señal más fuerte que hay: no
-    // depende del ecosistema ni del gestor de paquetes, así que también
-    // reconoce un esquema de Go, Python o Java.
+    // A `.graphql` with `type Query` is the strongest signal there
+    // is: it doesn't depend on the ecosystem or the package manager,
+    // so it also recognises a Go, Python, or Java schema.
     const schemas = await collectFiles(projectRoot, isSchemaFile);
     if (schemas.length === 0) {
       return signals.length > 0
         ? withEvidence(fromPackage, signals)
         : emptyResult(0);
     }
-    // Audit 2ª revisión #14: antes, si había archivos `.graphql`
-    // pero ninguno contenía `type Query/Mutation`, devolvíamos
-    // `emptyResult(0.5)`. Un proyecto frontend con solo fragments o
-    // tipos auxiliares acababa marcado como servidor GraphQL. Ahora
-    // **solo el manifest puntúa** cuando no hay `type Query`. Los
-    // archivos `.graphql` sueltos ya no son evidencia de servidor.
+    // Audit 2nd review #14: before, if there were `.graphql` files but
+    // none contained `type Query/Mutation`, we returned
+    // `emptyResult(0.5)`. A frontend project with only fragments or
+    // auxiliary types ended up marked as a GraphQL server. Now only
+    // the manifest scores when there's no `type Query`. Loose
+    // `.graphql` files are no longer evidence of a server.
     for await (const entry of readFilesInOrder(schemas)) {
       const text = entry.text;
       if (/\btype\s+(Query|Mutation)\b/.test(text)) {
@@ -150,9 +150,9 @@ export class GraphQlProjectScanner implements IProjectScanner {
         ]);
       }
     }
-    // Sin Query/Mutation: si el manifest no puntúa, no es un
-    // servidor GraphQL (aunque haya archivos `.graphql`). Bajamos a
-    // 0 para no contaminar la detección.
+    // Without Query/Mutation: if the manifest doesn't score, it's not
+    // a GraphQL server (even if there are `.graphql` files). We drop
+    // to 0 to avoid contaminating the detection.
     return signals.length > 0
       ? withEvidence(fromPackage, signals)
       : emptyResult(0);
@@ -168,16 +168,16 @@ export class GraphQlProjectScanner implements IProjectScanner {
   }
 }
 
-/** Un campo de `type Query` o `type Mutation`. */
+/** A field of `type Query` or `type Mutation`. */
 interface IOperation {
   readonly kind: "query" | "mutation";
   readonly name: string;
-  /** Argumentos declarados, con su tipo tal cual está en el esquema. */
+  /** Declared arguments, with their type as it appears in the schema. */
   readonly args: ReadonlyArray<{ name: string; type: string }>;
   readonly returns: string;
 }
 
-/** Comentarios `#` y descripciones `"""…"""` fuera del camino. */
+/** `#` comments and `"""…"""` descriptions out of the way. */
 export function stripGraphQlComments(source: string): string {
   return source
     .replace(/"""[\s\S]*?"""/g, " ")
@@ -185,11 +185,11 @@ export function stripGraphQlComments(source: string): string {
 }
 
 /**
- * El cuerpo de un `type X { … }`, con las llaves balanceadas.
+ * The body of `type X { … }`, with balanced braces.
  *
- * `indexOf("}")` no vale: un campo puede llevar un tipo con llaves en su
- * descripción, y sobre todo un esquema con varios tipos cortaría en el
- * primer cierre que encuentre.
+ * `indexOf("}")` doesn't cut it: a field can carry a type with braces
+ * in its description, and above all a schema with several types
+ * would cut at the first close it finds.
  */
 function typeBody(source: string, typeName: string): string | null {
   const header = new RegExp(`\\btype\\s+${typeName}\\b[^{]*\\{`).exec(source);
@@ -208,22 +208,21 @@ function typeBody(source: string, typeName: string): string | null {
 }
 
 /**
- * Recoge los escalares personalizados declarados en el esquema con la
- * directiva `scalar Nombre`. Audit 2026-09-04 P1 #4 + segunda revisión.
+ * Collects the custom scalars declared in the schema with the
+ * `scalar Name` directive. Audit 2026-09-04 P1 #4 + second review.
  *
- * Devuelve un Set NUEVO por invocación: el caller es el dueño del
- * estado y decide cuándo se inicializa. Esto cumple el contrato
- * `IScanResult` (el scanner no guarda estado entre invocaciones) y
- * permite que `Promise.all([scan(A), scan(B)])` no contamine B con
- * los escalares de A.
+ * Returns a NEW Set per call: the caller owns the state and decides
+ * when to initialise it. This honours the `IScanResult` contract
+ * (the scanner keeps no state between calls) and lets
+ * `Promise.all([scan(A), scan(B)])` not contaminate B with A's
+ * scalars.
  */
 export function collectCustomScalars(source: string): Set<string> {
   const out = new Set<string>();
   const cleaned = stripGraphQlComments(source);
-  // Reconoce `scalar X` y `scalar X @directive(...)` (audit
-  // segunda revisión #13). El bloque tras `scalar` puede llevar
-  // directivas antes del salto de línea; si las hay, no se
-  // contabiliza el nombre.
+  // Recognises `scalar X` and `scalar X @directive(...)` (audit
+  // second review #13). The block after `scalar` may carry directives
+  // before the newline; if there are any, the name isn't counted.
   const re = /^\s*scalar\s+(\w+)(?:\s+@\w+[\s\S]*?)?$/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(cleaned)) !== null) {
@@ -233,11 +232,11 @@ export function collectCustomScalars(source: string): Set<string> {
 }
 
 /**
- * Los campos de un bloque de tipo.
+ * The fields of a type block.
  *
- * Un campo es `nombre(args): Tipo`. Los argumentos pueden traer valores
- * por defecto y tipos anidados, así que se recorta por paréntesis
- * balanceados en vez de por regex.
+ * A field is `name(args): Type`. Arguments may carry default values
+ * and nested types, so we slice by balanced parentheses rather than
+ * by regex.
  */
 export function parseOperations(
   source: string,
@@ -267,11 +266,11 @@ export function parseOperations(
 }
 
 /**
- * La consulta lista para mandar.
+ * The query ready to send.
  *
- * Los argumentos van como **variables** y no incrustados en el texto:
- * es lo que permite cambiarlos desde el panel de Postman sin editar la
- * consulta, y lo que hace que un `String!` no acabe sin comillas.
+ * Arguments go as **variables**, not embedded in the text: that's what
+ * lets you change them from the Postman panel without editing the
+ * query, and what keeps a `String!` from ending up without quotes.
  */
 export function buildQueryDocument(
   op: IOperation,
@@ -285,16 +284,16 @@ export function buildQueryDocument(
     op.args.length > 0
       ? `(${op.args.map((a) => `${a.name}: $${a.name}`).join(", ")})`
       : "";
-  // Un objeto necesita selección de campos y un escalar no la admite:
-  // ponérsela a un `String!` produce una consulta **inválida**, que es
-  // peor que no ponerla.
+  // An object needs field selection and a scalar does not accept it:
+  // putting one on a `String!` produces an **invalid** query, which
+  // is worse than not putting it.
   //
-  // Los escalares que trae GraphQL de serie empiezan por mayúscula igual
-  // que los objetos, así que no basta con mirar la primera letra: hay que
-  // nombrarlos. Un escalar propio (`DateTime`, `JSON`) no se puede
-  // distinguir de un objeto sin resolver el esquema entero, y en la duda
-  // se pide `__typename` — que existe en cualquier objeto y hace la
-  // consulta válida.
+  // The scalars GraphQL ships with start with an uppercase letter, same
+  // as objects, so looking at the first letter isn't enough: you have
+  // to name them. A custom scalar (`DateTime`, `JSON`) cannot be
+  // distinguished from an object without resolving the whole schema;
+  // in doubt we ask for `__typename` — which exists on any object and
+  // makes the query valid.
   const bare = op.returns.replace(/[[\]!]/g, "");
   const selection = isScalarType(bare, customScalars)
     ? ""
@@ -302,7 +301,7 @@ export function buildQueryDocument(
   return `${op.kind} ${op.name}${declaration} {\n  ${op.name}${call}${selection}\n}`;
 }
 
-/** Valor de ejemplo para una variable, por su tipo de GraphQL. */
+/** Example value for a variable, by its GraphQL type. */
 function exampleForType(
   type: string,
   customScalars: ReadonlySet<string>,
@@ -321,12 +320,12 @@ function exampleForType(
     case "String":
       return "texto";
     default:
-      // Audit 2026-09-04 P1 #4: si es un escalar personalizado
-      // declarado por el esquema, devolvemos un string placeholder
-      // (los escalares custom suelen serializar como string: `DateTime`,
-      // `UUID`, `EmailAddress`). Si no, es un input type propio: un
-      // objeto vacío es lo honesto, porque sus campos están en otra
-      // parte del esquema y adivinarlos sería inventar.
+      // Audit 2026-09-04 P1 #4: if it's a custom scalar declared by
+      // the schema, we return a placeholder string (custom scalars
+      // usually serialise as string: `DateTime`, `UUID`,
+      // `EmailAddress`). Otherwise it's a custom input type: an empty
+      // object is the honest choice, because its fields live elsewhere
+      // in the schema and guessing them would be inventing.
       return isScalarType(bare, customScalars) ? "valor" : {};
   }
 }
@@ -339,40 +338,39 @@ export class GraphQlRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    // Audit 2026-09-04 P1 #5 (embedded SDL): antes el scanner solo
-    // miraba `.graphql`/`.gql`, pero un proyecto server-side puede
-    // declarar el esquema inline con `gql\`...\``. Si el servidor no
-    // tiene ningún `.graphql` en disco, el scanner devolvía 0
-    // operaciones. Ahora recorre además `.ts`/`.js`/`.tsx`/`.jsx`
-    // y extrae los bloques `gql\`…\`` antes de aplicar el parser.
+    // Audit 2026-09-04 P1 #5 (embedded SDL): before, the scanner only
+    // looked at `.graphql`/`.gql`, but a server-side project may
+    // declare the schema inline with `gql\`...\``. If the server
+    // had no `.graphql` on disk, the scanner returned 0 operations.
+    // Now it also walks `.ts`/`.js`/`.tsx`/`.jsx` and extracts the
+    // `gql\`…\`` blocks before applying the parser.
     const schemaFiles = await collectFiles(effectiveProjectRoot(match), isSchemaFile);
 
-    // a00015 S1+S2+S3: el scanner ahora delega la extracción
-    // embedded SDL en el AST TS (collectTaggedTemplates →
-    // collectEmbeddedSdl). Antes un regex sobre cada fichero
-    // (`extractEmbeddedSdl(text)`) matcheaba falsos positivos en
-    // comentarios (`// gql\`...\``) y strings (`"gql\`...\``) — ver
-    // propuesta a00015. El AST no se equivoca: un
-    // TaggedTemplateExpression solo aparece como tal cuando Babel
-    // reconoce la sintaxis real.
+    // a00015 S1+S2+S3: the scanner now delegates embedded-SDL
+    // extraction to the TS AST (collectTaggedTemplates →
+    // collectEmbeddedSdl). Before, a regex on each file
+    // (`extractEmbeddedSdl(text)`) matched false positives in
+    // comments (`// gql\`...\``) and strings (`"gql\`...\``) — see
+    // proposal a00015. The AST doesn't get it wrong: a
+    // TaggedTemplateExpression only appears as such when Babel
+    // recognises the real syntax.
     //
-    // Los SDL extraídos se devuelven como string[] en el orden
-    // top-down de los TaggedTemplateExpression: el scanner los
-    // pasa por `collectCustomScalars` y por `scanSchema` en ese
-    // mismo orden. `customScalars` debe poblarse antes de generar
-    // operaciones (segunda revisión del audit 2026-09-04 P1 #12).
+    // The extracted SDLs are returned as string[] in the top-down
+    // order of the TaggedTemplateExpressions: the scanner passes
+    // them through `collectCustomScalars` and `scanSchema` in that
+    // same order. `customScalars` must be populated before
+    // generating operations (second review of audit 2026-09-04 P1 #12).
     const embeddedSdl: string[] = collectEmbeddedSdl(
       await collectTaggedTemplates(effectiveProjectRoot(match)),
     );
 
-    // Audit segunda revisión #10 (custom scalars + ciclo de scan):
-    // dos pasadas. La primera recoge todos los escalares
-    // personalizados del proyecto entero (no solo del bloque
-    // `type Query`); la segunda genera las operaciones con ese Set
-    // como referencia. Esto cierra el bug "scalar DateTime en
-    // 99-scalars.graphql no se ve cuando se parsea 00-query.graphql
-    // primero". El Set es local a este `scan()` — nunca se comparte
-    // entre invocaciones (segunda revisión, P1).
+    // Audit second review #10 (custom scalars + scan cycle):
+    // two passes. The first collects all custom scalars across the
+    // whole project (not just the `type Query` block); the second
+    // generates operations with that Set as reference. This closes
+    // the bug "scalar DateTime in 99-scalars.graphql isn't seen when
+    // 00-query.graphql is parsed first". The Set is local to this
+    // `scan()` — never shared between calls (second review, P1).
     const customScalars = new Set<string>();
     for await (const { text } of readFilesInOrder(schemaFiles)) {
       for (const scalar of collectCustomScalars(text)) customScalars.add(scalar);
@@ -397,10 +395,10 @@ export class GraphQlRouteScanner implements IRouteScanner {
       }
     }
 
-    // Embedded SDL: bloques `gql\`...\`` AST-derived de TS/JS. El
-    // primer esquema `.graphql` que contenga `type Query` ya
-    // cuenta como servidor; este paso es complementario y solo añade
-    // operaciones nuevas (el `seen` dedupe evita duplicados).
+    // Embedded SDL: AST-derived `gql\`...\`` blocks from TS/JS. The
+    // first `.graphql` schema containing `type Query` already
+    // counts as a server; this step is complementary and only adds
+    // new operations (the `seen` dedupe avoids duplicates).
     for (const sdl of embeddedSdl) {
       for (const op of scanSchema(sdl, "<embedded>", seen, routes, customScalars)) {
         routes.push(op);
@@ -411,15 +409,14 @@ export class GraphQlRouteScanner implements IRouteScanner {
 }
 
 /**
- * Saca operaciones (Query/Mutation) de un texto SDL y las añade a
- * `routes` si no están en `seen`. Devuelve las añadidas para que el
- * caller encadene.
+ * Extracts operations (Query/Mutation) from an SDL text and appends
+ * them to `routes` if they aren't in `seen`. Returns the added ones
+ * so the caller can chain.
  *
- * `customScalars` lo aporta el caller (típicamente el `scan()` del
- * scanner) tras una pasada previa sobre todo el SDL del proyecto —
- * es lo que evita el bug de la segunda revisión #12 ("custom scalar
- * en otro fichero no se ve si se procesa primero el fichero de
- * operaciones").
+ * `customScalars` is supplied by the caller (typically the scanner's
+ * `scan()`) after a prior pass over the whole project's SDL — which
+ * avoids the second-review #12 bug ("custom scalar in another file
+ * isn't seen if the operations file is processed first").
  */
 function scanSchema(
   sdl: string,
@@ -459,5 +456,5 @@ function scanSchema(
   return added;
 }
 
-// `scanSchema` se mantiene como helper local (no se exporta) — solo
-// lo usa el `scan()` del propio scanner.
+// `scanSchema` is kept as a local helper (not exported) — only the
+// scanner's own `scan()` uses it.

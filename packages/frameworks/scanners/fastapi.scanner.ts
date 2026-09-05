@@ -1,20 +1,20 @@
 /**
- * `FastApiRouteScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * + `IValidationSpecProvider` para proyectos FastAPI (Python).
+ * `FastApiRouteScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * + `IValidationSpecProvider` for FastAPI (Python) projects.
  *
- * Detección:
- *   - `pyproject.toml` o `requirements.txt` con `fastapi` o `fastapi[...]`.
- *   - Auto-detecta la raíz del proyecto desde `pyproject.toml` o `requirements.txt`.
+ * Detection:
+ *   - `pyproject.toml` or `requirements.txt` with `fastapi` or `fastapi[...]`.
+ *   - Auto-detects the project root from `pyproject.toml` or `requirements.txt`.
  *
  * Parsing:
- *   - Decoradores de path operations: `@app.METHOD('/path')`, `@router.METHOD('/path')`.
+ *   - Path-operation decorators: `@app.METHOD('/path')`, `@router.METHOD('/path')`.
  *   - Pydantic BaseModel fields → `IValidationSpec`.
- *   - Métodos soportados: get, post, put, delete, patch, options, head.
+ *   - Supported methods: get, post, put, delete, patch, options, head.
  *
- * Si el proyecto también expone `/openapi.json` o `/docs` (Swagger UI),
- * el `OpenApiRouteScanner` lo descubrirá automáticamente porque busca
- * estos paths en la raíz del proyecto. Aquí solo cubrimos el caso
- * estático (sin servidor corriendo).
+ * If the project also exposes `/openapi.json` or `/docs` (Swagger UI),
+ * the `OpenApiRouteScanner` will discover it automatically because it
+ * looks for these paths at the project root. We only cover the static
+ * case here (no server running).
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -125,13 +125,13 @@ export class FastApiRouteScanner implements IRouteScanner {
     const routerPrefixes = new Map<string, string>();
     const out: ParsedRoute[] = [];
 
-    // En paralelo con tope, en el orden de entrada: la colección
-    // tiene que salir igual en cada ejecución.
+    // Parallel reads with a cap, in input order: the collection has to
+    // come out identical on every run.
     for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       const text = stripComments(raw);
       const lines = text.split("\n");
 
-      // 1) Recoger routers con prefix.
+      // 1) Collect routers with prefix.
       for (const line of lines) {
         const prefixMatch = new RegExp(ROUTER_PREFIX_RE.source, "gi").exec(line);
         if (prefixMatch?.[2]) {
@@ -140,7 +140,7 @@ export class FastApiRouteScanner implements IRouteScanner {
         }
       }
 
-      // 2) Recoger decoradores de path operations.
+      // 2) Collect path-operation decorators.
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i] ?? "";
         const re = new RegExp(DECORATOR_RE.source, "gi");
@@ -162,7 +162,7 @@ export class FastApiRouteScanner implements IRouteScanner {
             .split(sep)
             .join("/");
 
-          // Buscar el handler name en las siguientes líneas (típico: `def handlerName(`).
+          // Look for the handler name in the next lines (typical: `def handlerName(`).
           let handlerName: string | undefined;
           for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
             const hm = /^(?:async\s+)?def\s+([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
@@ -196,9 +196,9 @@ export class FastApiRouteScanner implements IRouteScanner {
 interface ModelInfo {
   /** className → fields. */
   readonly fields: ReadonlyMap<string, string>;
-  /** Fichero donde está definida. */
+  /** File where the model is defined. */
   readonly file: string;
-  /** Línea donde está `class ModelName(BaseModel):`. */
+  /** Line where `class ModelName(BaseModel):` is. */
   readonly line: number;
 }
 
@@ -222,9 +222,9 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
     const files = await collectPyFiles(effectiveProjectRoot(match));
     const models: Map<string, ModelInfo> = new Map();
 
-    // 1) Recoger todos los BaseModel del proyecto.
-    // En paralelo con tope, en el orden de entrada: la colección
-    // tiene que salir igual en cada ejecución.
+    // 1) Collect all the project's BaseModels.
+    // Parallel reads with a cap, in input order: the collection has to
+    // come out identical on every run.
     for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       for (const model of parsePydanticModels(stripComments(raw))) {
         models.set(model.className, {
@@ -235,10 +235,10 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
       }
     }
 
-    // 2) Sin BaseModel conocidos, devolver vacío.
+    // 2) Without known BaseModels, return empty.
     if (models.size === 0) return { endpointKey, fields: [] };
 
-    // 3) Mapear el endpoint al modelo correcto.
+    // 3) Map the endpoint to the correct model.
     const candidate = await pickModelForRoute(route, models, files);
     if (!candidate) return { endpointKey, fields: [] };
 
@@ -250,29 +250,30 @@ export class FastApiPydanticValidationProvider implements IValidationSpecProvide
 }
 
 /**
- * Elige el BaseModel apropiado para un endpoint.
+ * Chooses the right BaseModel for an endpoint.
  *
- * Heurística (orden de prioridad):
- *   a. **Anotación de tipo en el handler**: `def create_user(req: CreateUserRequest): ...`
- *      El scanner ya tiene `route.displayName` con el nombre de la función,
- *      y `route.sourceFile` + `route.lineNumber` apunta a la línea del decorador.
- *      Buscamos el handler en el archivo y parseamos su firma.
- *   b. **Convención de nombre**: `POST /users` → `CreateUserRequest`, `GET /users` → `ListUsersRequest`.
- *   c. **Fallback**: primer modelo del fichero.
+ * Heuristic (priority order):
+ *   a. **Type annotation in the handler**: `def create_user(req: CreateUserRequest): ...`
+ *      The scanner already has `route.displayName` with the function
+ *      name, and `route.sourceFile` + `route.lineNumber` point to the
+ *      decorator's line. We look up the handler in the file and parse
+ *      its signature.
+ *   b. **Naming convention**: `POST /users` → `CreateUserRequest`, `GET /users` → `ListUsersRequest`.
+ *   c. **Fallback**: first model of the file.
  */
 async function pickModelForRoute(
   route: ParsedRoute,
   models: Map<string, ModelInfo>,
   files: string[],
 ): Promise<ModelInfo | null> {
-  // a) Anotación de tipo en el handler.
+  // a) Type annotation in the handler.
   if (route.displayName) {
     const handlerName = route.displayName.trim();
     for (const file of files) {
       const text = await readFile(file, "utf8").catch(() => "");
       if (!text) continue;
-      // `def handlerName(` seguido de un parámetro tipado con un BaseModel.
-      // Match: cualquier model que sea un BaseModel (no solo `*Request`).
+      // `def handlerName(` followed by a typed parameter with a BaseModel.
+      // Match: any model that is a BaseModel (not only `*Request`).
       const handlerRe = new RegExp(
         `def\\s+${escapeRegex(handlerName)}\\s*\\([^)]*?\\s*:\\s*([A-Z]\\w*)\\b`,
         "s",
@@ -285,13 +286,13 @@ async function pickModelForRoute(
     }
   }
 
-  // b) Convención de nombre.
+  // b) Naming convention.
   const method = route.method.toUpperCase();
 
-  // Si el path tiene `{id}` o path-param, no es un body típicamente:
+  // If the path has `{id}` or a path-param, it's not typically a body:
   //   GET /users/{id}   → no body
   //   DELETE /users/{id} → no body
-  //   PUT /users/{id}    → SÍ body (UpdateUserRequest)
+  //   PUT /users/{id}    → YES body (UpdateUserRequest)
   const hasPathParam = route.uri.includes("{") || route.uri.includes("{{");
   if (method === "GET" && hasPathParam) return null;
   if (method === "DELETE") return null;
@@ -310,7 +311,7 @@ async function pickModelForRoute(
     ? singular.charAt(0).toUpperCase() + singular.slice(1)
     : "";
 
-  // Convención: {Verbo}{Resource}Request
+  // Convention: {Verb}{Resource}Request
   //   POST /users        → CreateUserRequest
   //   PUT /users/{id}    → UpdateUserRequest
   //   GET /users         → ListUsersRequest
@@ -327,13 +328,13 @@ async function pickModelForRoute(
     if (model) return model;
   }
 
-  // c) Fallback: primer modelo del fichero.
+  // c) Fallback: first model of the file.
   if (route.sourceFile) {
     for (const info of models.values()) {
       if (info.file.endsWith(route.sourceFile)) return info;
     }
   }
-  // Último fallback: primer modelo global.
+  // Last fallback: first global model.
   const first = models.values().next().value;
   return first ?? null;
 }

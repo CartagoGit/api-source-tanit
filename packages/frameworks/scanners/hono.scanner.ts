@@ -1,18 +1,18 @@
 /**
- * `HonoScanner` — `IProjectScanner` + `IRouteScanner` para Hono.
+ * `HonoScanner` — `IProjectScanner` + `IRouteScanner` for Hono.
  *
- * Hono es el framework de los runtimes de borde: Cloudflare Workers,
- * Deno, Bun y Node. Su sintaxis se parece a la de Express, pero con dos
- * diferencias que importan al escanear:
+ * Hono is the edge-runtime framework: Cloudflare Workers, Deno, Bun,
+ * and Node. Its syntax looks like Express's, but with two differences
+ * that matter for scanning:
  *
- *   - **Encadena**: `app.get("/a", h).post("/b", h)` es válido, así que
- *     no basta con buscar `<ident>.method(`.
- *   - **Monta sub-apps**: `app.route("/api", usersApp)` es el
- *     equivalente de un router con prefijo.
+ *   - **It chains**: `app.get("/a", h).post("/b", h)` is valid, so
+ *     looking for `<ident>.method(` is not enough.
+ *   - **It mounts sub-apps**: `app.route("/api", usersApp)` is the
+ *     equivalent of a router with prefix.
  *
- * Validación: Hono la delega en `@hono/zod-validator`, que envuelve un
- * esquema de zod. Se reutiliza el parser de zod que ya existe en vez de
- * escribir otro — es la misma librería, solo cambia quién la invoca.
+ * Validation: Hono delegates it to `@hono/zod-validator`, which wraps a
+ * zod schema. We reuse the existing zod parser rather than writing a new
+ * one — same library, just a different caller.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -41,24 +41,24 @@ import type {
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "options", "all"] as const;
 
 /**
- * Una llamada a método HTTP con su ruta.
+ * A call to an HTTP method with its path.
  *
- * No exige un identificador delante justamente para cubrir el
- * encadenado: en `app.get("/a", h).post("/b", h)`, el `.post` no tiene
- * variable propia.
+ * It deliberately does not require an identifier in front, just to
+ * cover chaining: in `app.get("/a", h).post("/b", h)`, `.post` has no
+ * variable of its own.
  */
 const ROUTE_RE = new RegExp(
   String.raw`\.\s*(${HTTP_METHODS.join("|")})\s*\(\s*(['"\`])([^'"\`]+)\2`,
   "gi",
 );
 
-/** `app.route("/api", sub)` — el equivalente de montar un router. */
+/** `app.route("/api", sub)` — the equivalent of mounting a router. */
 const MOUNT_RE = /\.\s*route\s*\(\s*(['"`])([^'"`]+)\1\s*,\s*([\w$]+)/g;
 
-/** `zValidator("json", EsquemaZod)` de `@hono/zod-validator`. */
+/** `zValidator("json", ZodSchema)` from `@hono/zod-validator`. */
 const ZOD_VALIDATOR_RE = /zValidator\s*\(\s*(['"`])(\w+)\1\s*,\s*([\w$]+)/g;
 
-/** Qué parte de la petición valida cada target de `zValidator`. */
+/** Which part of the request each `zValidator` target validates. */
 const TARGET_TO_LOCATION: Record<string, IValidationSpec["location"]> = {
   json: "body",
   form: "body",
@@ -86,36 +86,36 @@ function honoDeps(pkg: Record<string, unknown> | null): Record<string, string> {
 }
 
 /**
- * Devuelve la raíz efectiva donde este scanner mira sus fuentes.
+ * Returns the effective root where this scanner looks at its sources.
  *
- * Si el `IProjectMatch` lleva `frameworkSearchRoot` (el host lo rellenó
- * tras detectar monorepo), se une con `projectRoot`. Si está ausente,
- * se devuelve `projectRoot` sin modificar.
+ * If `IProjectMatch` carries `frameworkSearchRoot` (filled by the host
+ * after monorepo detection), it's joined with `projectRoot`. If absent,
+ * `projectRoot` is returned unchanged.
  *
- * Renombrada local (`honoEffectiveSearchRoot`) por la misma razón que
- * en `nestjs.scanner.ts`: cada scanner tiene su propia implementación
- * porque cada uno necesita un search root distinto. f00011 S1.
+ * Renamed locally (`honoEffectiveSearchRoot`) for the same reason as in
+ * `nestjs.scanner.ts`: each scanner has its own implementation because
+ * each one needs a different search root. f00011 S1.
  *
- * a00014 S2: ahora se delega en `effectiveProjectRoot(match)` de
- * `packages/core/discovery/effective-project-root.helper.ts`, que es
- * la primitiva única que usan los 21 scanners. El helper local se
- * conserva como no-op histórico para no romper call sites externos,
- * pero el scanner ya no la usa.
+ * a00014 S2: now delegated to `effectiveProjectRoot(match)` from
+ * `packages/core/discovery/effective-project-root.helper.ts`, the single
+ * primitive all 21 scanners use. The local helper is kept as a historic
+ * no-op so external call sites don't break, but the scanner no longer
+ * uses it.
  */
 function honoEffectiveSearchRoot(match: IProjectMatch): string {
   return effectiveProjectRoot(match);
 }
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
- * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
- * (bun) — Bun es especialmente relevante para Hono porque es uno de
- * los runtimes de borde que Hono soporta como first-class. El cap a
- * 1 del `withEvidence` ya absorbe el caso de un Hono con `hono`
- * declarado, donde el bonus queda en `evidence` aunque no cambie el
- * score visible.
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the detector's
+ * confidence without being detection. Small weights: +0.1 (pnpm),
+ * +0.15 (bun) — Bun is especially relevant for Hono because it's one
+ * of the edge runtimes Hono supports as first-class. The cap at 1
+ * that `withEvidence` applies absorbs the case of Hono with `hono`
+ * declared, where the bonus stays in `evidence` even though it
+ * doesn't change the visible score.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact?: string }> {
   const out: Array<{ signal: string; weight: number; artifact?: string }> = [];
@@ -133,23 +133,23 @@ export class HonoProjectScanner implements IProjectScanner {
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const deps = honoDeps(await readPackageJson(projectRoot));
-    // f00011 S4: lockfile como bonus de runtime. Se calcula una vez
-    // aquí y se suma al final de cada rama positiva para que un
-    // lockfile no pueda tapar una ausencia de framework — la
-    // detección por dependencia o `wrangler.toml` va siempre delante.
+    // f00011 S4: lockfile as runtime bonus. Computed once here and
+    // added at the end of each positive branch so a lockfile can't
+    // mask an absent framework — dependency or `wrangler.toml`
+    // detection always goes first.
     const locks = lockfileSignals(projectRoot);
     if (deps["hono"]) {
       const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
-        { signal: "package.json declara hono en dependencies/devDependencies", weight: 1, artifact: "package.json" },
+        { signal: "package.json declares hono in dependencies/devDependencies", weight: 1, artifact: "package.json" },
       ];
-      // `wrangler.toml` se mantiene como BONUS de runtime cuando ya
-      // hay `hono` en deps: describe el despliegue típico de Hono
-      // (Cloudflare Workers) y matiza la evidencia. **No** es una
-      // señal de framework por sí mismo — un `wrangler.toml` sin
-      // hono es Cloudflare Workers, no Hono (audit 2026-09-04 P2
-      // #8: antes el detector sumaba 0.6 por wrangler.toml solo,
-      // clasificando proyectos itty-router / vanilla Workers como
-      // Hono en silencio).
+      // `wrangler.toml` stays as a runtime BONUS when `hono` is
+      // already in deps: it describes Hono's typical deployment
+      // (Cloudflare Workers) and refines the evidence. It is **not**
+      // a framework signal by itself — a `wrangler.toml` without
+      // hono is Cloudflare Workers, not Hono (audit 2026-09-04 P2
+      // #8: before, the detector added 0.6 for wrangler.toml alone,
+      // silently classifying itty-router / vanilla Workers projects
+      // as Hono).
       if (existsSync(join(projectRoot, "wrangler.toml"))) {
         evidence.push({
           signal: "wrangler.toml presente (runtime de borde)",
@@ -160,23 +160,23 @@ export class HonoProjectScanner implements IProjectScanner {
       for (const lock of locks) evidence.push(lock);
       return withEvidence(evidence.reduce((a, s) => a + s.weight, 0), evidence);
     }
-    // Solo un `@hono/*` puede ser un proyecto que lo use de refilón.
+    // Only an `@hono/*` could be from a project that uses it incidentally.
     const pluginMatch = Object.keys(deps).some((name) => name.startsWith("@hono/"));
     if (pluginMatch) {
       const evidence: Array<{ signal: string; weight: number; artifact?: string }> = [
-        { signal: "package.json solo declara plugins @hono/* (uso de refilón)", weight: 0.6, artifact: "package.json" },
+        { signal: "package.json only declares @hono/* plugins (incidental use)", weight: 0.6, artifact: "package.json" },
         ...locks,
       ];
       const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
       return withEvidence(0.6 + lockBonus, evidence);
     }
-    // Audit 2026-09-04 P2 #8: `wrangler.toml` sin hono declarado
-    // ya NO clasifica como Hono. Antes sumaba 0.6, lo que provocaba
-    // falsos positivos: un worker con itty-router, vanilla Workers,
-    // Remix on Cloudflare, etc., acababa como Hono. Ahora se
-    // requiere dependencia hono (o `@hono/*`) para entrar al
-    // detector. `wrangler.toml` queda como evidencia solo cuando
-    // complementa una detección hono ya positiva.
+    // Audit 2026-09-04 P2 #8: `wrangler.toml` without hono declared
+    // is NO LONGER classified as Hono. Before, it added 0.6, which
+    // caused false positives: a worker with itty-router, vanilla
+    // Workers, Remix on Cloudflare, etc., ended up as Hono. Now a
+    // hono dependency (or `@hono/*`) is required to enter the
+    // detector. `wrangler.toml` stays as evidence only when it
+    // complements an already-positive hono detection.
     return emptyResult(0);
   }
 
@@ -201,24 +201,24 @@ export class HonoRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    // f00011 S1: en monorepos el host pasa `frameworkSearchRoot`
-    // (ej. `"apps/api"`) y el scanner camina ahí en vez de en la
-    // raíz. Sin esto, un proyecto Hono dentro de un worker monorepo
-    // salía sin rutas porque `src/` vive en el subdir. La raíz se
-    // mantiene en `match.projectRoot` para que las rutas (`sourceFile`)
-    // sigan siendo relativas al proyecto host.
+    // f00011 S1: in monorepos the host passes `frameworkSearchRoot`
+    // (e.g. `"apps/api"`) and the scanner walks there instead of at
+    // the root. Without this, a Hono project inside a worker monorepo
+    // came out without routes because `src/` lives in the subdir.
+    // The root stays in `match.projectRoot` so the routes
+    // (`sourceFile`) keep being relative to the host project.
     const searchRoot = honoEffectiveSearchRoot(match);
     const files = await collectFiles(searchRoot, isSourceJsTsFile);
     const routes: ParsedRoute[] = [];
-    // `validators` vive aquí, no en un campo de instancia: si
-    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
-    // los descriptores y un `GET /health` sin zValidator podría heredar
-    // el del `POST /users` del escaneo anterior. Es el bug que cerró
-    // a00010 S2.
+    // `validators` lives here, not as an instance field: if it
+    // survived across calls, two consecutive scans would share
+    // descriptors and a `GET /health` without a zValidator could
+    // inherit the one from the previous scan's `POST /users`. This
+    // is the bug a00010 S2 closed.
     const validators = new Map<string, IValidatorDescriptor>();
 
-    // Lectura en paralelo con tope, entregada en el orden de
-    // entrada: la colección tiene que salir igual cada vez.
+    // Parallel reads with a cap, delivered in input order: the
+    // collection must come out identical every time.
     for await (const { path: file, text: raw } of readFilesInOrder(files)) {
       if (!/\bhono\b|new Hono\(/i.test(raw)) continue;
 
@@ -226,16 +226,16 @@ export class HonoRouteScanner implements IRouteScanner {
       const sourceFile = relative(rawProjectRoot(match), file);
       const prefix = mountPrefixOf(source);
 
-      // `findOutsideStrings` en vez de `matchAll`: una llamada escrita
-      // dentro de un texto —`'usa app.get("/x")'`— no es una ruta, y
-      // producía un endpoint que no existe en ninguna parte.
+      // `findOutsideStrings` instead of `matchAll`: a call written inside
+      // a string —`'usa app.get("/x")'`— is not a route, and used to
+      // produce an endpoint that doesn't exist anywhere.
       for (const { match: routeMatch, index } of findOutsideStrings(source, ROUTE_RE)) {
         const rawMethod = (routeMatch[1] ?? "").toLowerCase();
         const rawUri = routeMatch[3] ?? "";
         if (!rawUri.startsWith("/")) continue;
 
-        // `.all()` responde a cualquier método; se emite como GET, que
-        // es el que alguien va a querer probar primero.
+        // `.all()` answers to any method; emitted as GET, which is the one
+        // people will want to try first.
         const method = rawMethod === "all" ? "GET" : rawMethod.toUpperCase();
         const uri = joinRoutePath(prefix, rawUri);
 
@@ -264,11 +264,11 @@ export class HonoRouteScanner implements IRouteScanner {
 }
 
 /**
- * Prefijo con el que se monta este fichero, si se monta con uno.
+ * Prefix under which this file is mounted, if it is mounted under one.
  *
- * Solo se aplica cuando hay **un** montaje en el fichero: con varios no
- * se puede saber cuál corresponde a qué ruta sin seguir las variables,
- * y equivocarse de prefijo es peor que no poner ninguno.
+ * Only applies when there is **one** mount in the file: with several,
+ * we can't tell which one corresponds to which route without following
+ * variables, and getting the prefix wrong is worse than putting none.
  */
 function mountPrefixOf(source: string): string {
   const mounts = [...source.matchAll(MOUNT_RE)].map((m) => m[2] ?? "");
@@ -276,13 +276,12 @@ function mountPrefixOf(source: string): string {
 }
 
 /**
- * El `zValidator(...)` de una ruta, buscado **dentro de su propia
- * llamada**.
+ * The `zValidator(...)` of a route, searched **within its own call**.
  *
- * Con una ventana de caracteres, un `app.get("/health", h)` sin
- * validador se quedaba con el de la ruta de más abajo y salía con
- * reglas ajenas. Equilibrando los paréntesis, una ruta sin validador no
- * encuentra ninguno.
+ * With a character window, an `app.get("/health", h)` without a
+ * validator would take the one from the route below it and come out
+ * with foreign rules. Balancing the parens, a route without a
+ * validator finds none.
  */
 function validatorInCall(
   source: string,
@@ -332,17 +331,17 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
 }
 
 /**
- * Reglas desde `@hono/zod-validator`.
+ * Rules from `@hono/zod-validator`.
  *
- * Reutiliza el parser de zod que ya existe: es la misma librería que en
- * Express o Next.js, solo cambia quién la invoca. Escribir un segundo
- * parser de zod sería la forma más rápida de que los dos divergieran.
+ * Reuses the existing zod parser: it's the same library as in Express
+ * or Next.js, only the caller changes. Writing a second zod parser
+ * would be the fastest way for the two to drift apart.
  *
- * No guarda el scanner: el nombre del esquema y el fichero donde está
- * declarado viajan en `scanResult.validators`, que se rellena en cada
- * `scan()` y se descarta al terminar. Antes tenía
- * `private readonly scanner: HonoRouteScanner` y un `Map` de
- * instancia, y dos escaneos consecutivos se contaminaban (a00010 S2).
+ * It does not retain the scanner: the schema name and the file where
+ * it is declared ride in `scanResult.validators`, which is filled on
+ * each `scan()` and discarded when it ends. Before it had
+ * `private readonly scanner: HonoRouteScanner` and an instance `Map`,
+ * and two consecutive scans would contaminate each other (a00010 S2).
  */
 export class HonoZodValidatorProvider implements IValidationSpecProvider {
   readonly framework = "hono" as const;
@@ -383,16 +382,16 @@ export class HonoZodValidatorProvider implements IValidationSpecProvider {
 }
 
 /**
- * El literal del `z.object({…})` que declara un esquema con nombre.
+ * The literal of `z.object({…})` that declares a named schema.
  *
- * Usa `findAllBalanced`, que es el mismo camino que sigue el scanner de
- * Express para lo mismo. Escribir aquí otro recorrido de llaves sería
- * mantener dos implementaciones de la misma idea, y la segunda siempre
- * es la que se queda sin arreglar.
+ * Uses `findAllBalanced`, which is the same path the Express scanner
+ * follows for the same thing. Writing another brace walk here would
+ * keep two implementations of the same idea, and the second one is
+ * always the one that goes unfixed.
  *
- * El corte **incluye** las llaves: es lo que espera
- * `parseZodObjectLiteral`, y es la convención que ya seguían los otros
- * scanners.
+ * The slice **includes** the braces: that's what
+ * `parseZodObjectLiteral` expects, and the convention the other
+ * scanners already followed.
  */
 function zodObjectLiteralOf(source: string, schemaName: string): string | null {
   const declaration = new RegExp(
@@ -404,7 +403,7 @@ function zodObjectLiteralOf(source: string, schemaName: string): string | null {
   return source.slice(call.callStart + 1, call.callEnd);
 }
 
-/** Dónde van los campos de un esquema, según el target del validador. */
+/** Where a schema's fields go, according to the validator's target. */
 function locationOfValidator(source: string, schemaName: string): IValidationSpec["location"] {
   let match: RegExpExecArray | null;
   const zodValidatorRe = ownRegex(ZOD_VALIDATOR_RE);
