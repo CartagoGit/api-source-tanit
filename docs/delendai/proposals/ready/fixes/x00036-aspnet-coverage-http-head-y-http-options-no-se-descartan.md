@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: general
 date: 2026-09-05
+shippedIn:
+  - 9807255  # fix(x00036): ASP.NET scanner accepts MapHead/MapOptions + tests + smoke fixture
 ---
 
 # x00036 — ASP.NET coverage: HttpHead y HttpOptions no se descartan
@@ -59,28 +61,46 @@ Bug pequeño pero confirmado en código actual (no estado transitorio).
 
 ### S1 — Ampliar HTTP_METHODS a los siete verbos
 
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/frameworks/scanners/aspnet.scanner.ts`
 - **Gate**: type
-- **Acceptance**: `HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"]`. Los dos `if (!HTTP_METHODS.includes(method)) continue;` aceptan los nuevos verbos.
+- **Detalle extra (9807255)**: además de extender `HTTP_METHODS`, había
+  que extender la regex `MINIMAL_API_RE` para que `app.MapHead(...)` y
+  `app.MapOptions(...)` también se reconocieran. La propuesta original
+  mencionaba solo el check `HTTP_METHODS.includes`; en la práctica el
+  filtro previo de la regex ya descartaba los verbos nuevos en el camino
+  minimal-API, así que sin tocar la regex la mitad del fix era invisible.
+- **Acceptance**: ✅ `HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"]` y `MINIMAL_API_RE` extendida con `|Head|Options`.
 
 ### S2 — Tests: scanner reconoce [HttpHead] y [HttpOptions]
 
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1]
 - **Files**: `tests/frameworks/aspnet-scanner.spec.ts`
 - **Gate**: lint
+- **Detalle (9807255)**: nuevo `describe("ASP.NET — full HTTP method coverage (x00036)")`
+  con cinco tests — los cuatro de los verbos nuevos (controller + minimal API)
+  y uno de no-regresión sobre los cinco verbos originales.
 
 ### S3 — Fixture smoke: controller ASP.NET con MapHead y MapOptions
 
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S2]
-- **Files**: `tests/smoke-fixtures/aspnet-http-head-options-mini/`
+- **Files**: `tests/smoke-fixtures/aspnet-mini/` (extendido, no se creó una nueva carpeta — los verbos nuevos caben en el fixture existente, evita fragmentar la suite).
 - **Gate**: e2e
+- **Detalle (9807255)**: `UsersController` gana `[HttpHead] Ping` y
+  `[HttpOptions] Preflight`; `expected.json` lista los dos verbos nuevos
+  como `HEAD /api/users` y `OPTIONS /api/users`.
 
 ## Acceptance
 
-- `[HttpHead]` produce un endpoint con `method: "head"`.
-- `[HttpOptions]` produce un endpoint con `method: "options"`.
-- Los métodos previos (get/post/put/delete/patch) no regresionan.
-- `bun run validate` verde.
+- `[HttpHead]` produce un endpoint con `method: "head"`. ✅
+- `[HttpOptions]` produce un endpoint con `method: "options"`. ✅
+- `app.MapHead` / `app.MapOptions` también detectados. ✅ (cubierto por
+  el mismo slice; la propuesta original no lo nombraba pero era el mismo
+  bug en otra forma).
+- Los métodos previos (get/post/put/delete/patch) no regresionan. ✅
+  (test de no-regresión añadido en el slice S2).
+- `bun run validate` verde. ⏳ pendiente de Actions (x00027 / i00002
+  bloquean la verificación end-to-end del último bullet); localmente
+  typecheck + lint + tests pasan.
