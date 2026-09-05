@@ -1051,16 +1051,18 @@ async function discoverSpecs(
         provenance,
         matches: usable.map((c) => c.match),
         routesByService: accumulateRoutesByService(
-          perScanner.map(({ serviceId, scannerSpecs }) => {
-            // `scannerSpecs` are `EndpointSpec` (post-process) and the
-            // helper expects `ParsedRoute` (pre-process). We rebuild
-            // the routes each scanner contributed by looking at which
-            // global routes match that scanner's specs.
-            const scannerRoutes = routes.filter((r) =>
-              scannerSpecs.some(
-                (s) => s.method === r.method && s.uri === r.uri,
-              ),
-            );
+          perScanner.map(({ serviceId, scannerRoutes }) => {
+            // x00025 S1: cada scanner YA sabe qué rutas emitió
+            // (`scannerRoutes: result.routes` en el push de arriba). Lo
+            // que antes pasaba aquí era reconstruir esa atribución
+            // re-filtrando el array global `routes` por `(method,
+            // uri)` — exactamente la identidad inestable entre
+            // servicios que x00025 cerró como P1. Reactivar ese
+            // filtrado es el motivo por el que el test e2e de x00028
+            // veía dos `GET /health` por servicio: el filtro global
+            // atribuiría los health de `apps/users` Y `apps/orders` a
+            // AMBOS descriptores, y luego `filterSpecsForService`
+            // ya no tenía con qué restringir.
             return { serviceId, scannerRoutes };
           }),
         ),
