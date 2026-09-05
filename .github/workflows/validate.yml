@@ -20,7 +20,18 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      # `fetch-depth: 0`: el gate `lint:proposals` con x00032 S1 (regla 2)
+      # verifica que cada `shippedIn:` sea un commit alcanzable
+      # (`git cat-file -e`). El checkout por defecto de `actions/checkout`
+      # es shallow (profundidad 1), así que en CI esos SHAs históricos no
+      # existen y el gate daría 100+ falsos positivos que en local, con el
+      # historial completo, no aparecen. Traer todo el historial hace que
+      # la regla signifique lo mismo aquí que en el puesto del
+      # desarrollador; es la condición para que el gate pueda activarse en
+      # `bun run lint` sin romper CI. x00032.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # Materializa el checkout hermano que `bun install` necesita para
       # resolver el `file:` del plugin. Va **antes** de `setup-bun` y
