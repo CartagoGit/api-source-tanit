@@ -45,6 +45,20 @@ jobs:
         with:
           bun-version: 1.3.14
 
+      # El `exports` de `@delendai/core` apunta sus `types` a `dist/`,
+      # que NO viaja en git: el checkout limpio del clone no la trae.
+      # El plugin tipa contra `@delendai/core/public` (moduleResolution
+      # bundler → `exports["./public"].types` → `dist/public/index.d.ts`),
+      # así que sin compilar el core el typecheck del plugin muere con
+      # TS2307 "Cannot find module". Compilamos el core del hermano
+      # ANTES de instalar: es exactamente lo que el desarrollador tiene
+      # en local tras su primer `bun run build` en delendai.
+      - name: Build delendai core (dist/ for type resolution)
+        run: |
+          cd "${GITHUB_WORKSPACE}/../delendai"
+          bun install --frozen-lockfile
+          bun tools/scripts/compile/build.script.ts packages/core
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
