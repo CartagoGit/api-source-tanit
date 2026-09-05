@@ -1,23 +1,24 @@
 /**
- * `expostman ui` levantado de verdad, hablándole por HTTP.
+ * `expostman ui` actually started, talking to it via HTTP.
  *
- * `ui-routes.spec.ts` prueba las respuestas con dobles. Esto prueba lo
- * que ningún doble puede: que el puerto abre, que la página se sirve,
- * que un POST sin cuerpo no revienta, y —sobre todo— que **generar
- * escribe en el proyecto que se pide**.
+ * `ui-routes.spec.ts` tests the responses with doubles. This tests
+ * what no double can: that the port opens, that the page is served,
+ * that a POST without body does not blow up, and —above all— that
+ * **generating writes to the requested project**.
  *
- * Va como subproceso y no en el mismo test: `Bun.serve` solo existe
- * bajo Bun, y vitest corre en workers de Node. Lanzarlo de fuera es
- * además lo que de verdad se quiere probar — el comando entero, no sus
- * piezas.
+ * It runs as a subprocess and not in the same test: `Bun.serve` only
+ * exists under Bun, and vitest runs in Node workers. Launching it
+ * from the outside is also what we really want to test — the whole
+ * command, not its pieces.
  *
- * El caso de la generación no es hipotético. Ejercitando la API a mano,
- * la primera versión escribió la colección **dentro de este
- * repositorio** en vez de en el proyecto pedido: `runGenerate` leía sus
- * flags del argv que se le pasaba, pero el singleton retirado de
- * `paths.service` (r00010 S2, 2026-09-03) resolvía la raíz leyendo
- * `process.argv` del proceso — que en un servidor de vida larga era el
- * del `expostman ui`. Es la deuda que r00005 vino a cerrar.
+ * The generation case is not hypothetical. Exercising the API by
+ * hand, the first version wrote the collection **inside this
+ * repository** instead of in the requested project: `runGenerate`
+ * read its flags from the argv passed to it, but the retired
+ * singleton in `paths.service` (r00010 S2, 2026-09-03) resolved
+ * the root by reading `process.argv` of the process — which in a
+ * long-lived server was the one from `expostman ui`. It is the debt
+ * r00005 came to close.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
@@ -29,7 +30,7 @@ import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper"
 import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { copyExampleClean } from "../helpers/fixtures";
 
-/** Un puerto poco transitado, y el servidor busca otro si está ocupado. */
+/** A lightly used port, and the server looks for another if busy. */
 const PORT = 4881;
 const BASE = `http://127.0.0.1:${PORT}`;
 
@@ -37,18 +38,18 @@ let work = "";
 let proyecto = "";
 let proceso: ChildProcess | null = null;
 
-/** Espera a que el servidor conteste, sin dormir a ciegas. */
+/** Waits for the server to answer, without sleeping blindly. */
 async function esperarAlServidor(intentos = 60): Promise<void> {
   for (let i = 0; i < intentos; i++) {
     try {
       const res = await fetch(`${BASE}/`);
       if (res.ok) return;
     } catch {
-      /* todavía no escucha */
+      /* not listening yet */
     }
     await new Promise((r) => setTimeout(r, 250));
   }
-  throw new Error(`La interfaz no respondió en ${BASE} tras ${intentos} intentos`);
+  throw new Error(`The interface did not respond at ${BASE} after ${intentos} attempts`);
 }
 
 beforeAll(async () => {
@@ -69,7 +70,7 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-/** El testigo que sirve la página. Sin él la API no contesta. */
+/** The token the page serves. Without it the API does not answer. */
 async function testigo(): Promise<string> {
   const html = await (await fetch(`${BASE}/`)).text();
   return /data-token="([^"]+)"/.exec(html)?.[1] ?? "";
@@ -96,33 +97,35 @@ async function post(
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 }
 
-describe("la página", () => {
-  test("se sirve desde memoria, sin leer ficheros del disco", async () => {
+describe("the page", () => {
+  test("is served from memory, without reading files from disk", async () => {
     const res = await fetch(`${BASE}/`);
     expect(res.status).toBe(200);
     const html = await res.text();
     expect(html).toContain("<!doctype html>");
-    // El título del producto (b00001 S5: rebrand Tanit). El test no
-    // debe depender del idioma del `<h1>` (va con data-i18n), así que
-    // mira el `<title>`, que es único en la página.
+    // The product title (b00001 S5: Tanit rebrand). The test must
+    // not depend on the language of the `<h1>` (it goes with
+    // data-i18n), so it looks at `<title>`, which is unique on the
+    // page.
     expect(html).toContain("<title>Tanit</title>");
   });
 
-  test("declara idioma, para los lectores de pantalla", async () => {
+  test("declares language, for screen readers", async () => {
     const html = await (await fetch(`${BASE}/`)).text();
     expect(html).toContain('<html lang="es"');
   });
 
-  test("no carga nada de fuera: la política lo impide", async () => {
+  test("loads nothing from outside: the policy forbids it", async () => {
     const res = await fetch(`${BASE}/`);
     expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
     const html = await (await fetch(`${BASE}/`)).text();
-    // Sin CDN ni fuentes remotas: el `.exe` tiene que funcionar sin red.
+    // No CDN or remote fonts: the `.exe` has to work without network.
     expect(html).not.toMatch(/src="https?:/);
   });
 
-  test("lo que no es la página ni la API da 404", async () => {
-    // Con testigo: sin él saldría un 403 y el 404 quedaría sin probar.
+  test("what is neither the page nor the API returns 404", async () => {
+    // With token: without it a 403 would come out and the 404 would
+    // remain untested.
     const res = await fetch(`${BASE}/otra-cosa`, {
       headers: { "x-tanit-token": await testigo() },
     });
@@ -131,21 +134,21 @@ describe("la página", () => {
 });
 
 /**
- * Que **otra web** no pueda usar esta interfaz.
+ * That **another web** cannot drive this interface.
  *
- * Escuchar en `127.0.0.1` no basta, y esa es la trampa: el servidor no
- * es alcanzable desde la red, pero sí desde el navegador de quien lo
- * ejecuta. Cualquier página que esa persona visite mientras la interfaz
- * corre puede hacerle un POST.
+ * Listening on `127.0.0.1` is not enough, and that is the trap: the
+ * server is not reachable from the network, but it is from the
+ * browser of whoever runs it. Any page that person visits while the
+ * interface is running can POST to it.
  *
- * Se midió antes de arreglarlo: con `content-type: text/plain` —una
- * petición «simple», que el navegador manda **sin preflight**— una web
- * cualquiera conseguía que `/api/generate` escribiera ficheros donde
- * quisiera, vía `outputDir`. No podía leer la respuesta, pero el efecto
- * ya había ocurrido.
+ * It was measured before the fix: with `content-type: text/plain` —
+ * a "simple" request, which the browser sends **without preflight**
+ * — any web could get `/api/generate` to write files wherever it
+ * wanted, via `outputDir`. It could not read the response, but the
+ * effect had already happened.
  */
-describe("la interfaz no se deja conducir desde fuera", () => {
-  test("sin testigo no contesta, aunque la petición sea válida", async () => {
+describe("the interface cannot be driven from outside", () => {
+  test("without a token it does not answer, even if the request is valid", async () => {
     const res = await fetch(`${BASE}/api/capabilities`, { method: "POST" });
     expect(res.status).toBe(403);
     const j = (await res.json()) as { error: { reason: string } };
@@ -153,15 +156,16 @@ describe("la interfaz no se deja conducir desde fuera", () => {
   });
 
   /**
-   * EL test. `text/plain` es lo que hace la petición «simple» y por
-   * tanto exenta de preflight: es la puerta exacta por la que entraba.
+   * THE test. `text/plain` is what makes the request "simple" and
+   * therefore exempt from preflight: it is the exact door through
+   * which the attack entered.
    */
-  test("el POST simple con `text/plain` tampoco pasa", async () => {
-    // La carpeta va dentro del temporal de este test y no en `/tmp` a
-    // secas: una ruta fija hace que el test dependa de lo que dejó la
-    // ejecución anterior, y así pasó — al comprobar que el test cazaba
-    // el fallo, la ejecución sin guard creó la carpeta y la siguiente
-    // pasada falló por eso, no por el bug.
+  test("the simple POST with `text/plain` does not pass either", async () => {
+    // The folder goes inside this test's temp and not in `/tmp`
+    // bare: a fixed path makes the test depend on what the previous
+    // run left, and that is exactly what happened — when checking
+    // that the test caught the bug, the unguarded run created the
+    // folder and the next pass failed for that, not for the bug.
     const noDeberia = join(work, "no-deberia-existir");
     const res = await fetch(`${BASE}/api/generate`, {
       method: "POST",
@@ -169,11 +173,11 @@ describe("la interfaz no se deja conducir desde fuera", () => {
       body: JSON.stringify({ projectRoot: proyecto, outputDir: noDeberia }),
     });
     expect(res.status).toBe(403);
-    // Y no ha escrito nada.
+    // And it has not written anything.
     await expect(readdir(noDeberia)).rejects.toThrow();
   });
 
-  test("un Origin ajeno se rechaza antes de mirar el cuerpo", async () => {
+  test("a foreign Origin is rejected before looking at the body", async () => {
     const res = await fetch(`${BASE}/api/capabilities`, {
       method: "POST",
       headers: { origin: "https://malicioso.example" },
@@ -183,48 +187,49 @@ describe("la interfaz no se deja conducir desde fuera", () => {
     expect(j.error.reason).toContain("malicioso.example");
   });
 
-  test("la página lleva el testigo dentro, para que solo ella pueda usarlo", async () => {
+  test("the page carries the token inside, so only it can use it", async () => {
     const html = await (await fetch(`${BASE}/`)).text();
     expect(html).toMatch(/data-token="[0-9a-f-]{36}"/);
   });
 
   /**
-   * El testigo va en el HTML y no en una cookie a propósito: una cookie
-   * la manda el navegador **sola** en cualquier petición a este origen,
-   * incluidas las que dispare otra web. Eso la haría inútil aquí.
+   * The token goes in the HTML and not in a cookie on purpose: a
+   * cookie is sent by the browser **by itself** on any request to
+   * this origin, including those triggered by another web. That
+   * would make it useless here.
    */
-  test("no se apoya en cookies", async () => {
+  test("does not rely on cookies", async () => {
     const res = await fetch(`${BASE}/`);
     expect(res.headers.get("set-cookie")).toBeNull();
   });
 });
 
-describe("la API", () => {
+describe("the API", () => {
   /**
-   * La interfaz pide esto nada más cargar, y sin cuerpo. La primera
-   * versión lo trataba como «JSON inválido» y la página fallaba en su
-   * primera petición.
+   * The interface asks for this as soon as it loads, and without
+   * body. The first version treated it as "invalid JSON" and the
+   * page failed on its first request.
    */
-  test("un POST sin cuerpo es legítimo", async () => {
+  test("a POST without body is legitimate", async () => {
     const { status, json } = await post("/api/capabilities");
     expect(status).toBe(200);
     expect(json["formats"]).toContain("postman");
     expect(json["frameworks"]).toContain("express");
   });
 
-  test("un cuerpo roto sí es un error, y lo dice", async () => {
+  test("a broken body is an error, and it says so", async () => {
     const res = await fetch(`${BASE}/api/inspect`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
         "x-tanit-token": await testigo(),
       },
-      body: "{esto no es json",
+      body: "{not valid json",
     });
     expect(res.status).toBe(400);
   });
 
-  test("inspecciona el proyecto de verdad", async () => {
+  test("inspects the real project", async () => {
     const { status, json } = await post("/api/inspect", { projectRoot: proyecto });
     expect(status).toBe(200);
     const summary = json["summary"] as { framework: string; routesInCode: number };
@@ -232,12 +237,12 @@ describe("la API", () => {
     expect(summary.routesInCode).toBeGreaterThan(0);
   });
 
-  test("inspeccionar no escribe nada", async () => {
+  test("inspecting does not write anything", async () => {
     await post("/api/inspect", { projectRoot: proyecto });
     await expect(readdir(join(proyecto, OUTPUT_DIR_NAME))).rejects.toThrow();
   });
 
-  test("una carpeta que no existe da 404 con salida", async () => {
+  test("a folder that does not exist returns 404 with output", async () => {
     const { status, json } = await post("/api/inspect", { projectRoot: "/no/existe/zzz" });
     expect(status).toBe(404);
     const error = json["error"] as { nextAction: string };
@@ -245,22 +250,22 @@ describe("la API", () => {
   });
 
   /**
-   * EL test. Sin `withScopedPaths`, esto escribía dentro del repo desde
-   * el que se lanzó la interfaz.
+   * THE test. Without `withScopedPaths`, this wrote inside the repo
+   * from which the interface was launched.
    */
-  test("generar escribe en el proyecto pedido", { timeout: 120_000 }, async () => {
+  test("generate writes to the requested project", { timeout: 120_000 }, async () => {
     const { status, json } = await post("/api/generate", { projectRoot: proyecto });
     expect(status).toBe(200);
     const result = json["result"] as { collectionPath: string; requests: number };
     expect(result.collectionPath.startsWith(proyecto)).toBe(true);
     expect(result.requests).toBeGreaterThan(0);
 
-    // Y está de verdad en el disco, donde dice.
+    // And it is really on disk, where it says.
     const salida = await readdir(join(proyecto, OUTPUT_DIR_NAME));
     expect(salida.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
   });
 
-  test("un formato inventado se rechaza y dice cuáles valen", async () => {
+  test("a made-up format is rejected and says which ones are valid", async () => {
     const { status, json } = await post("/api/generate", {
       projectRoot: proyecto,
       formats: ["inventado"],
@@ -270,7 +275,7 @@ describe("la API", () => {
     expect(error.nextAction).toContain("postman");
   });
 
-  test("los ajustes guardados llegan a la página", async () => {
+  test("saved settings reach the page", async () => {
     const { status, json } = await post("/api/settings");
     expect(status).toBe(200);
     expect(json["ok"]).toBe(true);
@@ -278,16 +283,16 @@ describe("la API", () => {
     expect(settings["version"]).toBe(1);
   });
 
-  test("guardar un ajuste de la página lo persiste de verdad", async () => {
+  test("saving a setting from the page actually persists it", async () => {
     const guardado = await post("/api/settings/save", { theme: "dark" });
     expect(guardado.status).toBe(200);
-    // Releído por una petición nueva: sobrevivió en disco.
+    // Re-read by a new request: it survived on disk.
     const releido = await post("/api/settings");
     const settings = releido.json["settings"] as Record<string, unknown>;
     expect(settings["theme"]).toBe("dark");
   });
 
-  test("los idiomas llegan con sus traducciones, para el selector", async () => {
+  test("languages arrive with their translations, for the selector", async () => {
     const { status, json } = await post("/api/locales");
     expect(status).toBe(200);
     const locales = json["locales"] as Array<Record<string, unknown>>;
@@ -299,39 +304,39 @@ describe("la API", () => {
 });
 
 /**
- * S4 — la tuerca y la pantalla de ajustes, probadas sobre el HTML que
- * el servidor sirve de verdad. El gate de esta slice es e2e: comprobar
- * el string en memoria no vale, porque lo que se distribuye es lo que
- * sale por HTTP.
+ * S4 — the gear and the settings screen, tested against the HTML that
+ * the server actually serves. The gate for this slice is e2e:
+ * checking the string in memory is not enough, because what is
+ * distributed is what comes out over HTTP.
  */
-describe("la pantalla de ajustes (S4)", () => {
-  /** El HTML tal y como llega al navegador. */
+describe("the settings screen (S4)", () => {
+  /** The HTML as it reaches the browser. */
   async function pagina(): Promise<string> {
     return (await fetch(`${BASE}/`)).text();
   }
 
-  test("la tuerca está en la cabecera, con nombre accesible", async () => {
+  test("the gear is in the header, with an accessible name", async () => {
     const html = await pagina();
     expect(html).toContain('id="ajustes"');
     expect(html).toMatch(/<(button|span|div)[^>]*id="ajustes"[^>]*aria-label="[^"]+"/);
   });
 
-  test("la pantalla de ajustes existe y contiene idioma y tema", async () => {
+  test("the settings screen exists and contains language and theme", async () => {
     const html = await pagina();
     expect(html).toContain('id="vista-ajustes"');
     expect(html).toContain('id="idioma"');
     expect(html).toContain('id="tema"');
   });
 
-  test("el tema elegido viaja en data-tema, no en clases repetidas", async () => {
+  test("the chosen theme travels in data-tema, not in repeated classes", async () => {
     const html = await pagina();
     expect(html).toContain(':root[data-tema="dark"]');
     expect(html).toContain(':root[data-tema="light"]');
-    // El bloque del sistema cede cuando hay elección manual.
+    // The system block yields when there is a manual choice.
     expect(html).toContain(':root:not([data-tema="light"])');
   });
 
-  test("los textos llevan su clave de traducción en data-i18n", async () => {
+  test("the texts carry their translation key in data-i18n", async () => {
     const html = await pagina();
     expect(html).toContain('data-i18n="app.title"');
     expect(html).toContain('data-i18n="settings.language"');
@@ -339,49 +344,51 @@ describe("la pantalla de ajustes (S4)", () => {
     expect(html).toContain('data-i18n="theme.system"');
   });
 
-  test("no hay botón de guardar: el guardado es automático", async () => {
+  test("there is no save button: saving is automatic", async () => {
     const html = await pagina();
-    // La sección de ajustes llama a /api/settings/save desde el script,
-    // pero ninguna parte declara un botón que diga guardar.
+    // The settings section calls /api/settings/save from the script,
+    // but no part declares a save button.
     expect(html).not.toMatch(/id="guardar"/i);
     expect(html).toContain("/api/settings/save");
   });
 
-  test("la pantalla de ajustes no reemplaza el formulario: conserva el estado", async () => {
+  test("the settings screen does not replace the form: state is preserved", async () => {
     const html = await pagina();
-    // Las dos vistas conviven (una oculta); nada se destruye al cambiar.
+    // Both views coexist (one hidden); nothing is destroyed when switching.
     expect(html).toContain('id="vista-principal"');
     expect(html).toContain('id="vista-ajustes"');
   });
 });
 
 /**
- * S5 — formato, framework forzado y aviso de destino, probados sobre el
- * HTML que el servidor sirve: la interfaz debe **ofrecer** lo que el
- * CLI ya sabía hacer, no solo aceptarlo si llega escrito a mano.
+ * S5 — format, forced framework and destination notice, tested against
+ * the HTML that the server serves: the interface must **offer** what
+ * the CLI already knew how to do, not just accept it if it arrives
+ * written by hand.
  */
-describe("formato, framework y destino (S5)", () => {
-  test("la página pinta el selector de framework vacío, con la opción auto", async () => {
+describe("format, framework and destination (S5)", () => {
+  test("the page paints the framework selector empty, with the auto option", async () => {
     const html = await (await fetch(`${BASE}/`)).text();
     expect(html).toContain('id="framework"');
     expect(html).toContain('data-i18n="framework.auto"');
-    // La lista la rellena /api/capabilities: el HTML no la lleva a mano.
+    // The list is filled by /api/capabilities: the HTML does not
+    // carry it by hand.
     expect(html).not.toMatch(/<option value="express"/);
   });
 
-  test("la página reserva sitio para la nota de los formatos no reimportables", async () => {
+  test("the page reserves space for the note about non-reimportable formats", async () => {
     const html = await (await fetch(`${BASE}/`)).text();
     expect(html).toContain('id="nota-bruno"');
   });
 
-  test("capabilities de verdad marca bruno como no importable", async () => {
+  test("real capabilities mark bruno as not importable", async () => {
     const { status, json } = await post("/api/capabilities");
     expect(status).toBe(200);
     const importables = json["postmanImportable"] as string[];
     expect(importables).not.toContain("bruno");
   });
 
-  test("generar con framework inventado, sobre el proceso real, da 400", async () => {
+  test("generate with a made-up framework, on the real process, returns 400", async () => {
     const { status, json } = await post("/api/generate", {
       projectRoot: proyecto,
       framework: "inventado",

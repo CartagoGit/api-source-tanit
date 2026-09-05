@@ -1,21 +1,23 @@
 /**
- * La hoja de estilos de la interfaz.
+ * The interface's stylesheet.
  *
- * Va como una constante y no como un fichero `.css` porque la página se
- * sirve **desde memoria** —el binario compilado no tiene sistema de
- * ficheros— y porque la política de seguridad de la propia página
- * prohíbe cargar nada de fuera.
+ * It lives as a constant and not as a `.css` file because the page
+ * is served **from memory** — the compiled binary has no filesystem
+ * — and because the page's own security policy forbids loading
+ * anything from outside.
  *
- * Es un **asset**, no un contrato, y por eso vive aquí y no en
- * `packages/contracts/`: lo que sí es contrato son los modos y los
- * nombres de las variables, que los comparten los ajustes, el servidor
- * y esta hoja. Están en `contracts/constants/cli/theme.constant.ts`.
+ * It is an **asset**, not a contract, and that is why it lives here
+ * and not in `packages/contracts/`: what is a contract are the modes
+ * and the variable names, which are shared by the settings, the
+ * server and this stylesheet. They live in
+ * `contracts/constants/cli/theme.constant.ts`.
  *
- * Ni un color escrito a pelo en las reglas: **todo** apunta a una
- * variable, y cambiar de tema es cambiar los valores de esas variables.
- * Con clases (`.oscuro .boton { … }`) cada elemento necesitaría su regla
- * repetida por tema, así que uno nuevo se vería bien en el tema en el
- * que se escribió y roto en los otros.
+ * Not a single colour written hard-coded in the rules: **everything**
+ * points to a variable, and switching theme is changing those
+ * variables' values. With classes (`.dark .button { … }`) each
+ * element would need its rule repeated per theme, so a new one
+ * would look fine in the theme it was written for and broken in
+ * the others.
  */
 
 export const UI_STYLES = String.raw`

@@ -64,13 +64,13 @@ export interface IExpectedRoute {
   readonly uri: string;
 }
 
-/** Forma del `expected.json`. */
+/** Shape of the `expected.json`. */
 export interface IExpectedFixture {
   readonly framework: string;
   readonly routes: ReadonlyArray<IExpectedRoute>;
 }
 
-/** Resultado del smoke-runner. */
+/** Result of the smoke-runner. */
 export interface ISmokeResult {
   readonly ok: boolean;
   readonly framework: string;

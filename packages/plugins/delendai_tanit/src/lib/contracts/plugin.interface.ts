@@ -490,7 +490,7 @@ export const CheckInputSchema = z
 
 export type ICheckInput = z.infer<typeof CheckInputSchema>;
 
-/** Un endpoint que esta en un lado y no en el otro. */
+/** An endpoint that is on one side and not the other. */
 export const DriftedEndpointSchema = z.object({
   method: z.string(),
   uri: z.string(),

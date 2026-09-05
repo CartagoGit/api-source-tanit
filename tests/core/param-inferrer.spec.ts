@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { exampleForPathParam, exampleForQueryField, extractPathParams, inferBodyForSpec, inferQueryForSpec } from "../../packages/core/domain/param-inferrer.service";
 import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
 
-/** Helper para construir un EndpointSpec mínimo en tests. */
+/** Helper to build a minimal EndpointSpec in tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {
   return {
     method: "GET",
@@ -18,20 +18,20 @@ function spec(partial: Partial<EndpointSpec>): EndpointSpec {
 
 describe("param-inferrer.service", () => {
   describe("extractPathParams", () => {
-    test("extrae los nombres en orden", () => {
+    test("extracts the names in order", () => {
       expect(extractPathParams("/users/{{id}}/posts/{{postId}}")).toEqual([
         "id",
         "postId",
       ]);
     });
 
-    test("URI sin params devuelve []", () => {
+    test("a URI without params returns []", () => {
       expect(extractPathParams("/users")).toEqual([]);
     });
   });
 
   describe("exampleForPathParam", () => {
-    test("id puro → '1'", () => {
+    test("plain id → '1'", () => {
       expect(exampleForPathParam("id")).toBe("1");
       expect(exampleForPathParam("user_id")).toBe("1");
     });
@@ -40,25 +40,25 @@ describe("param-inferrer.service", () => {
       expect(exampleForPathParam("codigo")).toBe("CODIGO001");
     });
 
-    test("codigo_proveedor cae al primer pattern (codigo) — orden importa", () => {
-      // El primer pattern que matchea es el que gana. Hoy en día
-      // `codigo_proveedor` matchea `codigo` antes que su propio
-      // pattern. Documentamos el comportamiento, no lo corregimos
-      // aquí (queda como mejora para un futuro PR).
+    test("codigo_proveedor falls back to the first matching pattern (codigo) — order matters", () => {
+      // The first pattern that matches wins. Today
+      // `codigo_proveedor` matches `codigo` before its own pattern.
+      // We document the behavior here; fixing it is left for a
+      // future PR.
       expect(exampleForPathParam("codigo_proveedor")).toBe("CODIGO001");
     });
 
-    test("email → 'usuario@ejemplo.com'", () => {
+    test("email → 'user@example.com'", () => {
       expect(exampleForPathParam("email")).toBe("user@example.com");
     });
 
-    test("uuid → UUID v4 fijo", () => {
+    test("uuid → fixed UUID v4", () => {
       expect(exampleForPathParam("uuid")).toBe(
         "00000000-0000-0000-0000-000000000001",
       );
     });
 
-    test("nombre desconocido → '1' (fallback)", () => {
+    test("unknown name → '1' (fallback)", () => {
       expect(exampleForPathParam("xyz_unknown")).toBe("1");
     });
   });
@@ -69,27 +69,27 @@ describe("param-inferrer.service", () => {
       expect(exampleForQueryField("pagina")).toBe("1");
     });
 
-    test("busqueda → 'ejemplo'", () => {
+    test("search → 'example'", () => {
       expect(exampleForQueryField("q")).toBe("ejemplo");
       expect(exampleForQueryField("search")).toBe("ejemplo");
     });
 
-    test("estado → 'active'", () => {
+    test("status → 'active'", () => {
       expect(exampleForQueryField("status")).toBe("active");
       expect(exampleForQueryField("estado")).toBe("active");
     });
 
-    test("campo desconocido → 'ejemplo'", () => {
+    test("unknown field → 'example'", () => {
       expect(exampleForQueryField("xyz_unknown")).toBe("ejemplo");
     });
   });
 
   describe("inferBodyForSpec", () => {
-    test("GET no genera body", () => {
+    test("GET generates no body", () => {
       expect(inferBodyForSpec(spec({ method: "GET" }))).toBeNull();
     });
 
-    test("DELETE no genera body", () => {
+    test("DELETE generates no body", () => {
       expect(inferBodyForSpec(spec({ method: "DELETE" }))).toBeNull();
     });
 
@@ -101,14 +101,14 @@ describe("param-inferrer.service", () => {
       expect(result?.body.force).toBe(true);
     });
 
-    test("POST /despersonar → body vacío", () => {
+    test("POST /despersonar → empty body", () => {
       const result = inferBodyForSpec(
         spec({ method: "POST", uri: "/usuarios/despersonar" }),
       );
       expect(result?.body).toEqual({});
     });
 
-    test("POST con sub-path que no es acción → body genérico", () => {
+    test("POST with a sub-path that is not an action → generic body", () => {
       const result = inferBodyForSpec(
         spec({ method: "POST", uri: "/productos/asignar" }),
       );
@@ -116,7 +116,7 @@ describe("param-inferrer.service", () => {
       expect(result?.body.notes).toContain("productos");
     });
 
-    test("PUT /usuarios/{{id}} → body genérico", () => {
+    test("PUT /usuarios/{{id}} → generic body", () => {
       const result = inferBodyForSpec(
         spec({ method: "PUT", uri: "/api/usuarios/{{id}}" }),
       );
@@ -124,7 +124,7 @@ describe("param-inferrer.service", () => {
       expect(result?.body.force).toBe(false);
     });
 
-    test("PUT /usuarios/{{id}} → body genérico", () => {
+    test("PUT /usuarios/{{id}} → generic body", () => {
       const result = inferBodyForSpec(
         spec({ method: "PUT", uri: "/api/usuarios/{{id}}" }),
       );
@@ -134,13 +134,13 @@ describe("param-inferrer.service", () => {
   });
 
   describe("inferQueryForSpec", () => {
-    test("GET no-GET → []", () => {
+    test("non-GET → []", () => {
       expect(
         inferQueryForSpec(spec({ method: "POST", uri: "/x" })),
       ).toEqual([]);
     });
 
-    test("GET show con path param → solo include", () => {
+    test("GET show with path param → include only", () => {
       const result = inferQueryForSpec(
         spec({ method: "GET", uri: "/users/{{id}}" }),
       );
@@ -148,7 +148,7 @@ describe("param-inferrer.service", () => {
       expect(result[0]?.key).toBe("include");
     });
 
-    test("GET index → paginación + búsqueda", () => {
+    test("GET index → pagination + search", () => {
       const result = inferQueryForSpec(
         spec({ method: "GET", uri: "/api/users" }),
       );
@@ -158,7 +158,7 @@ describe("param-inferrer.service", () => {
       expect(keys).toContain("q");
     });
 
-    test("GET /alive excluye paginación", () => {
+    test("GET /alive excludes pagination", () => {
       const result = inferQueryForSpec(
         spec({ method: "GET", uri: "/alive" }),
       );
@@ -166,7 +166,7 @@ describe("param-inferrer.service", () => {
       expect(keys).toEqual(["q"]);
     });
 
-    test("GET /pdf excluye paginación", () => {
+    test("GET /pdf excludes pagination", () => {
       const result = inferQueryForSpec(
         spec({ method: "GET", uri: "/api/facturas/pdf" }),
       );

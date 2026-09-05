@@ -7,30 +7,30 @@ import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman
 
 const ctx = (projectRoot: string) => resolveProjectContext({ projectRoot });
 
-describe("resolveProjectContext — de dónde sale la raíz", () => {
-  test("el parámetro explícito manda", () => {
+describe("resolveProjectContext — where the root comes from", () => {
+  test("the explicit parameter wins", () => {
     expect(ctx("/tmp/mi-api").projectRoot).toBe("/tmp/mi-api");
   });
 
-  test("resuelve una ruta relativa a absoluta", () => {
+  test("resolves a relative path to absolute", () => {
     expect(resolveProjectContext({ projectRoot: "." }).projectRoot).toBe(resolve("."));
   });
 
-  test("lee --project-root de argv", () => {
+  test("reads --project-root from argv", () => {
     const context = resolveProjectContext({
       argv: ["bun", "cli", "--project-root", "/tmp/desde-argv"],
     });
     expect(context.projectRoot).toBe("/tmp/desde-argv");
   });
 
-  test("lee POSTMAN_PROJECT_ROOT del entorno", () => {
+  test("reads POSTMAN_PROJECT_ROOT from the environment", () => {
     const context = resolveProjectContext({
       env: { POSTMAN_PROJECT_ROOT: "/tmp/desde-env" },
     });
     expect(context.projectRoot).toBe("/tmp/desde-env");
   });
 
-  test("el parámetro gana a argv y al entorno", () => {
+  test("the parameter wins over argv and the environment", () => {
     const context = resolveProjectContext({
       projectRoot: "/tmp/gana",
       argv: ["--project-root", "/tmp/argv"],
@@ -39,7 +39,7 @@ describe("resolveProjectContext — de dónde sale la raíz", () => {
     expect(context.projectRoot).toBe("/tmp/gana");
   });
 
-  test("argv gana al entorno", () => {
+  test("argv wins over the environment", () => {
     const context = resolveProjectContext({
       argv: ["--project-root", "/tmp/argv"],
       env: { POSTMAN_PROJECT_ROOT: "/tmp/env" },
@@ -47,21 +47,21 @@ describe("resolveProjectContext — de dónde sale la raíz", () => {
     expect(context.projectRoot).toBe("/tmp/argv");
   });
 
-  // Seguir con una raíz adivinada produce colecciones vacías sin decir
-  // por qué; fue exactamente el bug del CLI con `--project-root`.
-  test("sin ninguna fuente lanza con un mensaje accionable", () => {
+  // Continuing with a guessed root produces empty collections without
+  // saying why; that was exactly the CLI bug with `--project-root`.
+  test("with no source throws an actionable message", () => {
     expect(() => resolveProjectContext({ argv: [], env: {} })).toThrow(
       /--project-root|POSTMAN_PROJECT_ROOT/,
     );
   });
 });
 
-describe("resolveProjectContext — derivados", () => {
-  test("el outputDir por defecto es <raíz>/build", () => {
+describe("resolveProjectContext — derivatives", () => {
+  test("the default outputDir is <root>/build", () => {
     expect(ctx("/tmp/mi-api").outputDir).toBe(join("/tmp/mi-api", OUTPUT_DIR_NAME));
   });
 
-  test("respeta un outputDir explícito", () => {
+  test("respects an explicit outputDir", () => {
     const context = resolveProjectContext({
       projectRoot: "/tmp/mi-api",
       outputDir: "/tmp/salida",
@@ -69,7 +69,7 @@ describe("resolveProjectContext — derivados", () => {
     expect(context.outputDir).toBe("/tmp/salida");
   });
 
-  test("lee --output-dir de argv", () => {
+  test("reads --output-dir from argv", () => {
     const context = resolveProjectContext({
       projectRoot: "/tmp/mi-api",
       argv: ["--output-dir", "/tmp/flag"],
@@ -77,7 +77,7 @@ describe("resolveProjectContext — derivados", () => {
     expect(context.outputDir).toBe("/tmp/flag");
   });
 
-  test("lee POSTMAN_OUTPUT_DIR del entorno", () => {
+  test("reads POSTMAN_OUTPUT_DIR from the environment", () => {
     const context = resolveProjectContext({
       projectRoot: "/tmp/mi-api",
       env: { POSTMAN_OUTPUT_DIR: "/tmp/env-out" },
@@ -85,37 +85,38 @@ describe("resolveProjectContext — derivados", () => {
     expect(context.outputDir).toBe("/tmp/env-out");
   });
 
-  test("el basename sale del último segmento de la raíz", () => {
+  test("the basename comes from the last segment of the root", () => {
     expect(ctx("/tmp/proyectos/mi-api").projectBasename).toBe("mi-api");
   });
 
   /**
-   * Que apunte a **este** paquete se comprueba mirando lo que tiene
-   * dentro, no cómo se llama la carpeta. El nombre del directorio es del
-   * entorno: quien clone en otro sitio, o quien construya en un
-   * contenedor que monta en `/work`, tiene otro.
+   * That it points to **this** package is checked by looking at what
+   * it contains, not by the folder's name. The directory name belongs
+   * to the environment: whoever clones elsewhere, or builds in a
+   * container that mounts at `/work`, has a different one.
    */
-  test("el packageRoot apunta a este paquete", () => {
+  test("the packageRoot points to this package", () => {
     const pkgRoot = ctx("/tmp/x").packageRoot;
     expect(isAbsolute(pkgRoot)).toBe(true);
     expect(existsSync(join(pkgRoot, "package.json"))).toBe(true);
   });
 });
 
-// El problema de fondo del singleton: dos proyectos en el mismo proceso.
-describe("resolveProjectContext — reentrancia", () => {
-  test("dos contextos coexisten sin pisarse", () => {
+// The underlying problem of the singleton: two projects in the same
+// process.
+describe("resolveProjectContext — reentrancy", () => {
+  test("two contexts coexist without clashing", () => {
     const a = ctx("/tmp/proyecto-a");
     const b = ctx("/tmp/proyecto-b");
     expect(a.projectRoot).toBe("/tmp/proyecto-a");
     expect(b.projectRoot).toBe("/tmp/proyecto-b");
   });
 
-  test("cada llamada devuelve un objeto nuevo", () => {
+  test("each call returns a new object", () => {
     expect(ctx("/tmp/x")).not.toBe(ctx("/tmp/x"));
   });
 
-  test("no toca process.env", () => {
+  test("does not touch process.env", () => {
     const before = process.env["POSTMAN_PROJECT_ROOT"];
     resolveProjectContext({ projectRoot: "/tmp/x" });
     expect(process.env["POSTMAN_PROJECT_ROOT"]).toBe(before);
@@ -123,7 +124,7 @@ describe("resolveProjectContext — reentrancia", () => {
 });
 
 describe("projectDirs", () => {
-  test("deriva routes, app y requests de la raíz", () => {
+  test("derives routes, app and requests from the root", () => {
     const dirs = projectDirs(ctx("/tmp/mi-api"));
     expect(dirs.routes).toBe(join("/tmp/mi-api", "routes"));
     expect(dirs.app).toBe(join("/tmp/mi-api", "app"));
@@ -132,51 +133,51 @@ describe("projectDirs", () => {
 });
 
 describe("fromProjectRoot / toProjectRelative", () => {
-  test("son inversos entre sí", () => {
+  test("are inverses of each other", () => {
     const context = ctx("/tmp/mi-api");
     const abs = fromProjectRoot(context, "app/Http/Controllers/UserController.php");
     expect(toProjectRelative(context, abs)).toBe("app/Http/Controllers/UserController.php");
   });
 
-  test("una ruta fuera del proyecto se devuelve absoluta", () => {
+  test("a path outside the project is returned as absolute", () => {
     expect(toProjectRelative(ctx("/tmp/mi-api"), "/otro/sitio/x.php")).toBe(
       "/otro/sitio/x.php",
     );
   });
 
-  test("el resultado usa siempre separadores POSIX", () => {
+  test("the result always uses POSIX separators", () => {
     const context = ctx("/tmp/mi-api");
     expect(toProjectRelative(context, "/tmp/mi-api/a/b/c.php")).toBe("a/b/c.php");
   });
 });
 
-// x00022 — antes el chequeo era `startsWith(root)`, que matcheaba
-// falsamente `/home/u/api-secret` contra `/home/u/api`. La fórmula nueva
-// (relative() + guarda `..${sep}` / absoluto) cierra ese agujero.
+// x00022 — previously the check was `startsWith(root)`, which falsely
+// matched `/home/u/api-secret` against `/home/u/api`. The new formula
+// (relative() + `..${sep}` / absolute guard) closes that hole.
 describe("toProjectRelative — path containment (x00022)", () => {
-  test("un hermano con prefijo común NO se considera dentro", () => {
+  test("a sibling with a common prefix is NOT considered inside", () => {
     expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api-secret/x.ts")).toBe(
       "/home/u/api-secret/x.ts",
     );
   });
 
-  test("una ruta realmente dentro sí se recorta", () => {
+  test("a path truly inside IS trimmed", () => {
     expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api/sub/file.ts")).toBe(
       "sub/file.ts",
     );
   });
 
-  test("la propia raíz se mapea a cadena vacía", () => {
+  test("the root itself maps to an empty string", () => {
     expect(toProjectRelative(ctx("/home/u/api"), "/home/u/api")).toBe("");
   });
 
-  test("la raíz con trailing slash sigue mapeando a cadena vacía", () => {
+  test("the root with a trailing slash still maps to an empty string", () => {
     expect(toProjectRelative(ctx("/home/u/api/"), "/home/u/api/")).toBe("");
   });
 });
 
 describe("hasProjectDir", () => {
-  test("detecta un subdirectorio existente", async () => {
+  test("detects an existing subdirectory", async () => {
     const project = await createTempProject({ "routes/api.php": "<?php" });
     try {
       expect(hasProjectDir(ctx(project.root), "routes")).toBe(true);

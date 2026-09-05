@@ -1,15 +1,15 @@
 /**
  * `resolveWorkspaceGlobs` — a00012 S1.a.
  *
- * El resolver materializa los globs de workspaces en directorios
- * reales. Estos tests crean los workspaces con `mkdtemp` +
- * `mkdir` (no se mockea `fs`) y verifican:
+ * The resolver materializes workspace globs into real directories.
+ * These tests create the workspaces with `mkdtemp` + `mkdir`
+ * (`fs` is not mocked) and verify:
  *
- *  - Expanse de `*` (un nivel) con materialización real.
- *  - Expanse de `**` (recursivo).
- *  - Exclusión con `!` (estilo pnpm).
- *  - Rechazo de absolutos y escapes.
- *  - Determinismo: orden estable entre invocaciones.
+ *  - Expansion of `*` (one level) with real materialization.
+ *  - Expansion of `**` (recursive).
+ *  - Exclusion with `!` (pnpm-style).
+ *  - Rejection of absolute paths and escapes.
+ *  - Determinism: stable order across invocations.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";

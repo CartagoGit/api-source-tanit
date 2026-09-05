@@ -1,19 +1,20 @@
 /**
- * Tests CLI para a00013 S3 (`--combine-services` parsing).
+ * CLI tests for a00013 S3 (`--combine-services` parsing).
  *
- * Estricto: NO se prueba el wiring del pipeline a fondo (eso es un
- * test e2e que requiere el orchestrator real). Aqui se valida
- * exclusivamente que el flag `--combine-services` se PARSEA y se
- * PROPAGA al `IGenerationOptions`. El test se centra en:
+ * Strict: the pipeline wiring is NOT tested in depth (that is an e2e
+ * test that requires the real orchestrator). Here we only validate
+ * that the `--combine-services` flag is PARSED and PROPAGATED to
+ * `IGenerationOptions`. The test focuses on:
  *
- *  - El flag es aceptable como argumento (no aborta el script).
- *  - El script termina con codigo 1 (no 0) cuando el proyecto
- *    detectado no genera endpoints, tanto con el flag como sin el
- *    flag. Eso confirma que `buildFor` no rompe con `matches.length
- *    === 0` ni con `matches.length === N`.
- *  - El script produce el mismo codigo de salida en el camino
- *    "no framework" con y sin `--combine-services`: el flag no
- *    afecta al comportamiento cuando no hay nada que emitir.
+ *  - The flag is acceptable as an argument (it does not abort the
+ *    script).
+ *  - The script exits with code 1 (not 0) when the detected project
+ *    generates no endpoints, both with and without the flag. That
+ *    confirms `buildFor` does not break with `matches.length === 0`
+ *    nor with `matches.length === N`.
+ *  - The script produces the same exit code on the "no framework"
+ *    path with and without `--combine-services`: the flag does not
+ *    affect the behavior when there is nothing to emit.
  */
 import { afterEach, beforeEach, describe, expect, it, test } from "vitest";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -26,8 +27,9 @@ import { CLI_COMMANDS_DIR } from "../../scripts/helpers/root.helper";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 
-// Nota: el CLI no usa `process.cwd()`; resuelve el projectRoot via
-// `--project-root` o `argv`. Por eso este test no hace `process.chdir`.
+// Note: the CLI does not use `process.cwd()`; it resolves the
+// projectRoot via `--project-root` or `argv`. That is why this test
+// does not `process.chdir`.
 
 
 describe("a00013 S3 CLI --combine-services parsing", () => {
@@ -43,13 +45,13 @@ describe("a00013 S3 CLI --combine-services parsing", () => {
     }
   });
 
-  it("con proyecto vacio y SIN --combine-services: sale con codigo no-cero", async () => {
+  it("with empty project and WITHOUT --combine-services: exits with non-zero code", async () => {
     mkdirSync(join(emptyRoot, "apps"), { recursive: true });
     const result = await runGenerate(["--project-root", emptyRoot]);
     expect(result.code).not.toBe(0);
   });
 
-  it("con proyecto vacio y CON --combine-services: sale con el mismo codigo no-cero", async () => {
+  it("with empty project and WITH --combine-services: exits with the same non-zero code", async () => {
     mkdirSync(join(emptyRoot, "apps"), { recursive: true });
     const result = await runGenerate([
       "--project-root", emptyRoot,
@@ -58,29 +60,30 @@ describe("a00013 S3 CLI --combine-services parsing", () => {
     expect(result.code).not.toBe(0);
   });
 
-  it("--combine-services no aborta con un flag desconocido adicional", async () => {
-    // El flag debe ser puramente aditivo: combinarse con flags que ya
-    // existen (--json) sin lanzar errores de parseo.
+  it("--combine-services does not abort with an additional unknown flag", async () => {
+    // The flag must be purely additive: combine with already existing
+    // flags (--json) without throwing parse errors.
     mkdirSync(join(emptyRoot, "apps"), { recursive: true });
     const result = await runGenerate([
       "--project-root", emptyRoot,
       "--combine-services",
       "--json",
     ]);
-    // El proyecto sigue vacio: el codigo refleja eso, no el flag.
+    // The project is still empty: the code reflects that, not the flag.
     expect(result.code).not.toBe(0);
   });
 });
 
 /**
- * x00024 S2 — CLI traduce `MultipleServicesWithoutCombineError` a
- * exit code 64 (`EX_USAGE`) con mensaje accionable.
+ * x00024 S2 — CLI translates `MultipleServicesWithoutCombineError`
+ * to exit code 64 (`EX_USAGE`) with an actionable message.
  *
- * Se lanza el CLI como subproceso (vía `runProcess`) porque es la
- * única forma de observar el exit code real: el catch vive en el
- * bloque `if (import.meta.main)` del script, no en `runGenerate`.
+ * The CLI is launched as a subprocess (via `runProcess`) because it
+ * is the only way to observe the real exit code: the catch lives in
+ * the `if (import.meta.main)` block of the script, not in
+ * `runGenerate`.
  */
-describe("x00024 S2 — CLI exit code 64 en multi-service sin --combine-services", () => {
+describe("x00024 S2 — CLI exit code 64 on multi-service without --combine-services", () => {
   let workRoot: string;
 
   beforeEach(() => {
@@ -93,11 +96,11 @@ describe("x00024 S2 — CLI exit code 64 en multi-service sin --combine-services
     }
   });
 
-  test("monorepo con 2 servicios sin --combine-services → exit 64 y mensaje accionable", async () => {
-    // Mismo patrón de fixture sintético que en
-    // `tests/core/monorepo-multi-workspace.spec.ts`: un monorepo con
-    // dos workspaces (NestJS + Express) que la detección expandida
-    // identifica como dos servicios.
+  test("monorepo with 2 services without --combine-services → exit 64 and actionable message", async () => {
+    // Same synthetic fixture pattern as in
+    // `tests/core/monorepo-multi-workspace.spec.ts`: a monorepo
+    // with two workspaces (NestJS + Express) that the expanded
+    // detection identifies as two services.
     writeFileSync(
       join(workRoot, "package.json"),
       JSON.stringify({
@@ -144,22 +147,22 @@ app.get("/pages", (_req, res) => res.json([]));
       "--project-root", workRoot,
     ]);
 
-    // El exit code es la pieza que un script de CI puede leer sin
-    // parsear texto: 64 = EX_USAGE (convención sysexits).
+    // The exit code is the piece a CI script can read without
+    // parsing text: 64 = EX_USAGE (sysexits convention).
     expect(result.code, result.output).toBe(64);
-    // El mensaje debe nombrar la solución, no solo el problema.
+    // The message must name the solution, not only the problem.
     expect(result.output).toMatch(/Detected \d+ service/i);
     expect(result.output).toMatch(/--combine-services/);
-    // Si los serviceIds están en el error, también deben aparecer
-    // listados en el stderr del CLI (es la parte accionable).
+    // If the serviceIds are in the error, they must also appear
+    // listed in the CLI's stderr (that is the actionable part).
     expect(result.output).toMatch(/Detected services/i);
   }, 60_000);
 
-  test("monorepo con 2 servicios + --combine-services → NO exit 64 (legacy)", async () => {
-    // El flag debe suprimir el error: el caller ya pidió combinar, así
-    // que el pipeline emite una sola colección combinada y termina
-    // con éxito (o con el código que corresponda al contenido, nunca
-    // 64 por este motivo).
+  test("monorepo with 2 services + --combine-services → NO exit 64 (legacy)", async () => {
+    // The flag must suppress the error: the caller already asked
+    // to combine, so the pipeline emits a single combined collection
+    // and ends successfully (or with whatever code corresponds to
+    // the content, never 64 for this reason).
     writeFileSync(
       join(workRoot, "package.json"),
       JSON.stringify({
@@ -192,10 +195,10 @@ export class AppController {
       "--combine-services",
     ]);
 
-    // El exit 64 sería una regresión del fix. Si el script termina
-    // con 0 (escritura OK) o con 1 (cero endpoints por alguna razón
-    // concreta del fixture), pero NO 64, el comportamiento es el
-    // esperado.
+    // Exit 64 would be a regression of the fix. If the script ends
+    // with 0 (write OK) or with 1 (zero endpoints for some concrete
+    // reason of the fixture), but NOT 64, the behavior is the
+    // expected one.
     expect(result.code, result.output).not.toBe(64);
   }, 60_000);
 });

@@ -32,21 +32,21 @@ const ROOT = smokeFixtureDir("nextjs");
 const COMPREHENSIVE = comprehensiveFixtureDir("nextjs");
 
 describe("Next.js scanner", () => {
-  test("detect() > 0 cuando package.json tiene 'next' como dependencia", async () => {
+  test("detect() > 0 when package.json lists 'next' as a dependency", async () => {
     expect((await new NextJsProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay package.json", async () => {
+  test("detect() === 0 when there is no package.json", async () => {
     expect((await new NextJsProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 4 rutas del mini-fixture (App Router)", async () => {
+  test("scan() finds the 4 routes of the mini-fixture (App Router)", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
     const routes = (await new NextJsRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
-  test("GET y POST en /api/users, GET y DELETE en /api/users/:id", async () => {
+  test("GET and POST on /api/users, GET and DELETE on /api/users/:id", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
     const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
@@ -56,7 +56,7 @@ describe("Next.js scanner", () => {
     expect(pairs).toContain("DELETE /api/users/:id");
   });
 
-  test("[id] en nombre de directorio → :id en la uri (segmento dinámico App Router)", async () => {
+  test("[id] in directory name → :id in the uri (dynamic App Router segment)", async () => {
     const match = await new NextJsProjectScanner().resolve(ROOT);
     const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const dynamic = routes.filter((r) => r.uri.includes(":id"));
@@ -64,7 +64,7 @@ describe("Next.js scanner", () => {
     for (const r of dynamic) expect(r.uri).not.toContain("[id]");
   });
 
-  test("comprehensive: detecta >10 rutas incluyendo auth y orders", async () => {
+  test("comprehensive: detects >10 routes including auth and orders", async () => {
     const match = await new NextJsProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new NextJsRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
@@ -73,7 +73,7 @@ describe("Next.js scanner", () => {
     expect(uris.some((u) => u.includes("orders"))).toBe(true);
   });
 
-  test("zod provider resuelve campos de z.object para POST /api/users", async () => {
+  test("zod provider resolves z.object fields for POST /api/users", async () => {
     const match = await new NextJsProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new NextJsRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users") && !r.uri.includes(":"));
@@ -86,7 +86,7 @@ describe("Next.js scanner", () => {
     expect(names).toContain("email");
   });
 
-  test("Pages Router /pages/api/*.ts también se detecta", async () => {
+  test("Pages Router /pages/api/*.ts is also detected", async () => {
     const { mkdtemp, writeFile, rm, mkdir } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -124,8 +124,8 @@ describe("Next.js scanner", () => {
   });
 });
 
-describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
-  test("detect() === 1 con src/app (Next.js 13+ en src layout)", async () => {
+describe("Next.js — detect() branches for src/ and 0.5 score", () => {
+  test("detect() === 1 with src/app (Next.js 13+ in src layout)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -138,7 +138,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("detect() === 1 con src/pages (Pages Router en src layout)", async () => {
+  test("detect() === 1 with src/pages (Pages Router in src layout)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
@@ -151,7 +151,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("detect() === 0.5 cuando hay next pero no hay carpetas app/ ni pages/", async () => {
+  test("detect() === 0.5 when next is present but no app/ or pages/ folders", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -163,7 +163,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("scan() descubre rutas en src/app con segments dinámicos", async () => {
+  test("scan() discovers routes in src/app with dynamic segments", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -183,7 +183,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("Pages Router: switch/case por req.method genera rutas múltiples", async () => {
+  test("Pages Router: switch/case on req.method generates multiple routes", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
@@ -210,7 +210,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("Pages Router: req.method === comparación genera la ruta de ese método", async () => {
+  test("Pages Router: req.method === comparison generates the route for that method", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
@@ -233,7 +233,7 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
     }
   });
 
-  test("Pages Router: index.ts en subdirectorio da uri = /api/subdir", async () => {
+  test("Pages Router: index.ts in subdirectory yields uri = /api/subdir", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
@@ -251,29 +251,30 @@ describe("Next.js — detect() branches de src/ y puntuación 0.5", () => {
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S1 — regresiones de señales nuevas (next.config.* boost + monorepo
+// f00011 S1 — regression for new signals (next.config.* boost + monorepo
 // + frameworkSearchRoot).
 // ---------------------------------------------------------------------------
 
-describe("Next.js — detect() boost por next.config.* con App/Pages Router (f00011 S1)", () => {
-  // f00011 S1: `next.config.*` solo (sin router) sigue pesando 0.2.
-  // La subida a 0.5 solo se aplica cuando hay App o Pages Router, que
-  // es cuando el proyecto realmente usa Next como framework de rutas.
-  test("detect() === 0.7 cuando hay next.config.* + next como dependencia pero sin App/Pages Router", async () => {
+describe("Next.js — detect() boost by next.config.* with App/Pages Router (f00011 S1)", () => {
+  // f00011 S1: `next.config.*` alone (without a router) still weighs
+  // 0.2. The boost to 0.5 only applies when there is an App or Pages
+  // Router, i.e. when the project actually uses Next as a route
+  // framework.
+  test("detect() === 0.7 when there is next.config.* + next as a dependency but no App/Pages Router", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
       "next.config.js": "module.exports = { reactStrictMode: true };\n",
     });
     try {
-      // 0.5 (next dep) + 0.2 (next.config.* sin router) = 0.7.
+      // 0.5 (next dep) + 0.2 (next.config.* without router) = 0.7.
       expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(0.7);
     } finally {
       await project.cleanup();
     }
   });
 
-  test("detect() === 1 (cap) cuando hay next.config.* + App Router", async () => {
+  test("detect() === 1 (cap) when there is next.config.* + App Router", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -281,7 +282,7 @@ describe("Next.js — detect() boost por next.config.* con App/Pages Router (f00
       "app/api/health/route.ts": "export async function GET() { return Response.json({ ok: true }); }\n",
     });
     try {
-      // 0.5 (next dep) + 0.4 (App Router) + 0.5 (next.config.* con router) = 1.4 → cap 1.
+      // 0.5 (next dep) + 0.4 (App Router) + 0.5 (next.config.* with router) = 1.4 → cap 1.
       expect((await new NextJsProjectScanner().detect(project.root)).score).toBe(1);
     } finally {
       await project.cleanup();
@@ -289,12 +290,13 @@ describe("Next.js — detect() boost por next.config.* con App/Pages Router (f00
   });
 });
 
-describe("Next.js — frameworkSearchRoot para monorepos (f00011 S1)", () => {
-  // f00011 S1: en un monorepo el `package.json` raíz es el del workspace
-  // y el `next.config.*` + `app/` viven en un subdir (`apps/web`).
-  // Sin `frameworkSearchRoot`, el scanner mira la raíz y no encuentra
-  // nada. Con él, las rutas salen del subdir.
-  test("scan() encuentra rutas cuando frameworkSearchRoot apunta al subdir con App Router", async () => {
+describe("Next.js — frameworkSearchRoot for monorepos (f00011 S1)", () => {
+  // f00011 S1: in a monorepo the root `package.json` is the
+  // workspace's and the `next.config.*` + `app/` live in a subdir
+  // (`apps/web`). Without `frameworkSearchRoot`, the scanner looks
+  // at the root and finds nothing. With it, the routes come out of
+  // the subdir.
+  test("scan() finds routes when frameworkSearchRoot points at the App Router subdir", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ workspaces: ["apps/*"] }),
@@ -317,7 +319,7 @@ describe("Next.js — frameworkSearchRoot para monorepos (f00011 S1)", () => {
     }
   });
 
-  test("detect() suma 0.1 cuando turbo.json está en la raíz (señal de monorepo)", async () => {
+  test("detect() adds 0.1 when turbo.json is at the root (monorepo signal)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -331,7 +333,7 @@ describe("Next.js — frameworkSearchRoot para monorepos (f00011 S1)", () => {
     }
   });
 
-  test("detect() suma 0.1 cuando package.json declara workspaces (señal de monorepo)", async () => {
+  test("detect() adds 0.1 when package.json declares workspaces (monorepo signal)", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({
@@ -349,15 +351,15 @@ describe("Next.js — frameworkSearchRoot para monorepos (f00011 S1)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S4 — lockfiles como bonus de scoring en detect().
+// f00011 S4 — lockfiles as scoring bonuses in detect().
 // ---------------------------------------------------------------------------
 
-describe("Next.js — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` añade una señal de peso 0.1 al
-  // evidence. El score sube en 0.1 (no toca el cap en este caso
-  // porque partimos de 0.5 — `next` declarado — sin App/Pages
-  // Router). El lockfile afina, no detecta.
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+describe("Next.js — lockfiles as runtime bonuses (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` adds a 0.1-weight signal to the
+  // evidence. The score rises by 0.1 (it does not hit the cap here
+  // because we start from 0.5 — `next` declared — without App/Pages
+  // Router). The lockfile refines, it does not detect.
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -373,7 +375,7 @@ describe("Next.js — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -389,7 +391,7 @@ describe("Next.js — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),
@@ -405,7 +407,7 @@ describe("Next.js — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("without lockfiles no lockfile signal appears", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^14.0.0" } }),

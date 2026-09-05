@@ -36,21 +36,21 @@ const ROOT = smokeFixtureDir("express");
 const COMPREHENSIVE = comprehensiveFixtureDir("express");
 
 describe("Express scanner", () => {
-  test("detect() > 0 cuando package.json tiene 'express'", async () => {
+  test("detect() > 0 when package.json contains 'express'", async () => {
     expect((await new ExpressProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 en directorio sin package.json", async () => {
+  test("detect() === 0 in a directory without package.json", async () => {
     expect((await new ExpressProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 5 rutas del mini-fixture", async () => {
+  test("scan() finds the 5 routes of the mini-fixture", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
     const routes = (await new ExpressRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(5);
   });
 
-  test("GET /health y GET/POST /api/users están presentes", async () => {
+  test("GET /health and GET/POST /api/users are present", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
     const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const pairs = routes.map((r) => `${r.method} ${r.uri}`);
@@ -59,20 +59,20 @@ describe("Express scanner", () => {
     expect(pairs).toContain("POST /api/users");
   });
 
-  test("path param :id en app.get('/api/users/:id') → uri con :id", async () => {
+  test("path param :id in app.get('/api/users/:id') → uri with :id", async () => {
     const match = await new ExpressProjectScanner().resolve(ROOT);
     const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes(":id"));
     expect(withId.length).toBeGreaterThanOrEqual(2);
   });
 
-  test("comprehensive: detecta >10 rutas de router encadenado", async () => {
+  test("comprehensive: detects >10 routes from a chained router", async () => {
     const match = await new ExpressProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new ExpressRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
-  test("zod provider resuelve campos del body para POST", async () => {
+  test("zod provider resolves body fields for POST", async () => {
     const match = await new ExpressProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new ExpressRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
@@ -86,11 +86,11 @@ describe("Express scanner", () => {
   });
 });
 
-describe("Express — varios montajes en la misma línea", () => {
-  // `app.use()` se leía con `.exec()` una sola vez por línea, así que
-  // `app.use("/v1", a); app.use("/v2", b);` perdía el segundo montaje y
-  // sus rutas salían sin prefijo.
-  test("aplica el prefijo de todos los app.use de una línea", async () => {
+describe("Express — several mounts on the same line", () => {
+  // `app.use()` was read with `.exec()` only once per line, so
+  // `app.use("/v1", a); app.use("/v2", b);` lost the second mount and
+  // its routes came out without prefix.
+  test("applies the prefix of every app.use in one line", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "src/server.js": [
@@ -114,7 +114,7 @@ describe("Express — varios montajes en la misma línea", () => {
     }
   });
 
-  test("varios Router() declarados en la misma línea reciben su prefijo", async () => {
+  test("several Router() declared on the same line receive their prefix", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "src/server.js": [
@@ -137,7 +137,7 @@ describe("Express — varios montajes en la misma línea", () => {
     }
   });
 
-  test("concatena el prefijo aunque la ruta ya empiece por /api", async () => {
+  test("concatenates the prefix even when the route already starts with /api", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "src/server.js": [
@@ -157,8 +157,8 @@ describe("Express — varios montajes en la misma línea", () => {
   });
 });
 
-describe("Express — Joi validation provider inline", () => {
-  test("Joi.object inline resuelve campos del body", async () => {
+describe("Express — inline Joi validation provider", () => {
+  test("inline Joi.object resolves the body fields", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0", joi: "^17.0.0" } }),
       "src/server.js": [
@@ -192,7 +192,7 @@ describe("Express — Joi validation provider inline", () => {
 });
 
 describe("Express — header schema near handler", () => {
-  test("z.object en posición headers: devuelve campos con location header", async () => {
+  test("z.object in headers position: returns fields with location header", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0", zod: "^4.0.0" } }),
       "src/server.js": [
@@ -223,7 +223,7 @@ describe("Express — header schema near handler", () => {
 });
 
 describe("Express — Router({ prefix }) detection", () => {
-  test("Router declarado con prefix se aplica a las rutas del router", async () => {
+  test("Router declared with prefix is applied to the router's routes", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "src/server.js": [
@@ -236,8 +236,9 @@ describe("Express — Router({ prefix }) detection", () => {
     });
     try {
       const { routes } = await scanProject("express", project.root);
-      // El prefijo del Router se captura en routerPrefixes;
-      // si el Router no se monta con app.use('/prefix', router) no hereda prefix
+      // The Router prefix is captured in routerPrefixes; if the
+      // Router is not mounted with app.use('/prefix', router) it does
+      // not inherit the prefix
       expect(routes.length).toBeGreaterThan(0);
     } finally {
       await project.cleanup();
@@ -246,16 +247,16 @@ describe("Express — Router({ prefix }) detection", () => {
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S4 — lockfiles como bonus de scoring en detect().
+// f00011 S4 — lockfiles as scoring bonuses in detect().
 // ---------------------------------------------------------------------------
 
-describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
-  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
-  // +0.15 (bun). A diferencia de Next.js/NestJS, Express suele
-  // quedar en 0.7–0.9 antes del bonus, así que el lockfile sí
-  // mueve la aguja en el score visible.
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+describe("Express — lockfiles as runtime bonuses (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` and `bun.lockb` sharpen the
+  // detector's confidence without being detection. Small weights:
+  // +0.1 (pnpm), +0.15 (bun). Unlike Next.js/NestJS, Express usually
+  // sits at 0.7–0.9 before the bonus, so the lockfile does move the
+  // needle on the visible score.
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -270,7 +271,7 @@ describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "bun.lockb": "",
@@ -285,7 +286,7 @@ describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -300,7 +301,7 @@ describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("without lockfiles no lockfile signal appears", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
     });
@@ -314,10 +315,11 @@ describe("Express — lockfiles como bonus de runtime (f00011 S4)", () => {
   });
 });
 
-describe("Express scanner — frameworkSearchRoot (audit 2nd-review #4)", () => {
-  test("scan() respeta match.frameworkSearchRoot: solo lee del workspace indicado", async () => {
-    // Antes el scanner recorría `match.projectRoot` y, en monorepos,
-    // contaminaba la colección con rutas de otros workspaces.
+describe("Express scanner — frameworkSearchRoot (audit 2nd review #4)", () => {
+  test("scan() respects match.frameworkSearchRoot: only reads from the given workspace", async () => {
+    // Previously the scanner walked `match.projectRoot` and, in
+    // monorepos, contaminated the collection with routes from other
+    // workspaces.
     const project = await createTempProject({
       "package.json": JSON.stringify({
         name: "monorepo",
@@ -355,8 +357,8 @@ app.get("/admin-only", (_req, res) => res.json({}));
       ).routes;
       const uris = routes.map((r) => r.uri).sort();
       expect(uris).toContain("/api-only");
-      // /admin-only NO debe aparecer porque el override limita el
-      // scan al workspace apps/api.
+      // /admin-only must NOT appear because the override limits the
+      // scan to the apps/api workspace.
       expect(uris).not.toContain("/admin-only");
     } finally {
       await project.cleanup();

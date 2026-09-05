@@ -1,33 +1,34 @@
 /**
- * Contrato común de la COLECCIÓN generada, para los e2e.
+ * Common contract of the generated COLLECTION, for the e2e tests.
  *
- * `scanner-contract.ts` cubre la capa de escaneo (`ParsedRoute`); esto
- * cubre el otro extremo del pipeline: lo que el usuario acaba
- * importando en Postman. Un scanner puede devolver rutas impecables y
- * aun así producir una colección con requests duplicadas, variables sin
- * declarar o un id inestable que duplica la colección en cada import.
+ * `scanner-contract.ts` covers the scan layer (`ParsedRoute`); this
+ * covers the other end of the pipeline: what the user ends up
+ * importing into Postman. A scanner can return impeccable routes
+ * and still produce a collection with duplicated requests,
+ * undeclared variables or an unstable id that duplicates the
+ * collection on every import.
  *
- * Cada `tests/e2e/<framework>-comprehensive.test.ts` lo invoca y añade
- * debajo solo sus comprobaciones específicas.
+ * Each `tests/e2e/<framework>-comprehensive.test.ts` invokes it and
+ * adds below only its specific checks.
  */
 import { describe, expect, test } from "vitest";
 import { checkCollectionInvariants } from "../../packages/core/helpers/collection-invariants.helper";
 import type { PostmanCollection, PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
 import { runGenerate } from "./run-scanner";
 
-/** Ajustes del contrato de colección. */
+/** Options for the collection contract. */
 export interface ICollectionContractOptions {
-  /** Nombre del fixture bajo `tests/fixtures/`. */
+  /** Name of the fixture under `tests/fixtures/`. */
   readonly fixtureName: string;
-  /** Número exacto de requests esperadas. */
+  /** Exact number of expected requests. */
   readonly expectedRequests?: number;
-  /** Mínimo de requests, si el número exacto no es estable. */
+  /** Minimum requests, when the exact number is not stable. */
   readonly minRequests?: number;
-  /** El proyecto expone endpoint de login. */
+  /** The project exposes a login endpoint. */
   readonly hasAuth?: boolean;
 }
 
-/** Registra los casos comunes a toda colección generada. */
+/** Registers the cases common to every generated collection. */
 export function describeCollectionContract(options: ICollectionContractOptions): void {
   const { fixtureName } = options;
 
@@ -42,9 +43,10 @@ export function describeCollectionContract(options: ICollectionContractOptions):
       expect(collection.info.schema).toContain("2.1.0");
     });
 
-    // Postman usa `_postman_id` para decidir si un import actualiza la
-    // colección o crea otra. Si cambia entre ejecuciones, cada
-    // regeneración deja una copia más en el workspace.
+    // Postman uses `_postman_id` to decide whether an import updates
+    // the collection or creates a new one. If it changes between
+    // runs, every regeneration leaves yet another copy in the
+    // workspace.
     test("el _postman_id es estable entre generaciones", async () => {
       const first = await runGenerate(fixtureName);
       const second = await runGenerate(fixtureName);
@@ -122,9 +124,10 @@ export function describeCollectionContract(options: ICollectionContractOptions):
       test("el login guarda el token y va dentro de la primera carpeta", async () => {
         const { collection } = await runGenerate(fixtureName);
 
-        // Buscamos el item por URL explícita `…/auth/login` para no
-        // confundirlo con `/auth/refresh` (también guarda token y
-        // también lleva el script "Login returns a token").
+        // We look up the item by the explicit URL `…/auth/login`
+        // so we do not confuse it with `/auth/refresh` (which also
+        // saves the token and also carries the "Login returns a
+        // token" script).
         const login = [...eachRequest(collection.item)].find(
           (item) =>
             (item.request?.url?.raw ?? "").includes("/auth/login") &&
@@ -133,26 +136,26 @@ export function describeCollectionContract(options: ICollectionContractOptions):
             ),
         );
         expect(login).toBeDefined();
-        // El body del login contiene credenciales — ya sean variables
-        // Postman (`{{authUsername}}`) o valores reales del schema Zod
-        // (post-S7 AST). Solo verificamos que el campo de email/username
-        // y el de password estén presentes, en el formato que cada
-        // framework decida.
+        // The login body contains credentials — either Postman variables
+        // (`{{authUsername}}`) or real values from the Zod schema
+        // (post-S7 AST). We only check that the email/username
+        // field and the password field are present, in whichever
+        // shape each framework picks.
         const body = login?.request?.body?.raw ?? "";
         expect(body.length).toBeGreaterThan(2);
         expect(body.toLowerCase()).toMatch(/email|username/);
         expect(body.toLowerCase()).toMatch(/password/);
 
-        // a00012 S3.a: el folder raíz de la colección ya no se llama
-        // "auth"/"login"/"sesi" sino lo que el scanner devuelva como
-        // `autoMainKey` (típicamente la versión del API). Lo que el
-        // contrato sí exige hoy es que el **login viva bajo la
-        // primera carpeta top-level** — sea cual sea su nombre.
+        // a00012 S3.a: the collection's root folder is no longer named
+        // "auth"/"login"/"session" but whatever the scanner returns
+        // as `autoMainKey` (typically the API version). What the
+        // contract does require is that **the login lives under the
+        // first top-level folder** — whatever its name is.
         const firstFolder = collection.item[0];
         expect(firstFolder).toBeDefined();
         expect(
           anyRequestInside(firstFolder!),
-          "el login debería caer dentro de la primera carpeta top-level",
+          "the login should fall inside the first top-level folder",
         ).toBe(true);
       });
     }
@@ -184,12 +187,12 @@ function* eachFolder(items: ReadonlyArray<PostmanItem>): Generator<PostmanItem> 
 }
 
 /**
- * `true` si el item es una carpeta (tiene sub-items) y, descendiendo
- * recursivamente, contiene al menos un request directo o en cualquier
- * subcarpeta. Usado por el contrato de auth (a00012 S3.a) donde el
- * folder raíz puede llamarse "v2", "v1", "Admin", etc. y lo único que
- * el contrato verifica es que el login **cae dentro** de la primera
- * carpeta top-level.
+ * `true` if the item is a folder (has sub-items) and, descending
+ * recursively, contains at least one request directly or in any
+ * subfolder. Used by the auth contract (a00012 S3.a) where the
+ * root folder may be named "v2", "v1", "Admin", etc. and all the
+ * contract verifies is that the login **falls inside** the first
+ * top-level folder.
  */
 function anyRequestInside(folder: PostmanItem): boolean {
   if (!folder.item) return false;

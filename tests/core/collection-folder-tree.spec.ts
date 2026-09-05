@@ -1,9 +1,9 @@
 /**
- * S3.a (a00012 H-P2a): el `folder:` explícito de un endpoint debe
- * poder aterrizar como subcarpeta bajo el top real calculado del URI
- * (y no como carpeta top-level fantasma).
+ * S3.a (a00012 H-P2a): an endpoint's explicit `folder:` must be able
+ * to land as a subfolder under the real top computed from the URI
+ * (not as a phantom top-level folder).
  *
- * El bug original vivía en `collection-builder.service.ts`:
+ * The original bug lived in `collection-builder.service.ts`:
  *
  *   const mainKey = g.explicit ? g.key : autoMainKey;
  *   if (g.explicit) {
@@ -13,12 +13,12 @@
  *     h.direct.push(...g.items);
  *   }
  *
- * Cuando `g.explicit` era true, `mainKey === g.key` por construcción,
- * así que la rama `else` (subcarpeta explícita) **nunca se ejecutaba**.
+ * When `g.explicit` was true, `mainKey === g.key` by construction,
+ * so the `else` branch (explicit subfolder) **never ran**.
  *
- * La salida de Postman del fixture se inspecciona por nombre de
- * carpeta (`col.item[*].name`) y por la jerarquía `item[]` — los
- * sub-folders van antes de los items directos.
+ * The Postman output of the fixture is inspected by folder name
+ * (`col.item[*].name`) and by the `item[]` hierarchy — subfolders come
+ * before direct items.
  */
 import { describe, expect, test } from "vitest";
 
@@ -44,8 +44,8 @@ const baseConfig: ProjectConfig = {
 };
 
 /**
- * Helper mínimo para declarar specs en este archivo. Sólo lo que usan
- * los casos de folder-tree: `method`, `uri`, `name` y `folder`.
+ * Minimal helper to declare specs in this file. Only what the
+ * folder-tree cases use: `method`, `uri`, `name` and `folder`.
  */
 function spec(partial: Partial<EndpointSpec> & { name: string; uri: string }): EndpointSpec {
   return {
@@ -58,19 +58,19 @@ function spec(partial: Partial<EndpointSpec> & { name: string; uri: string }): E
   } as EndpointSpec;
 }
 
-/** Primera carpeta top-level cuyo `name` coincide (case-insensitive). */
+/** First top-level folder whose `name` matches (case-insensitive). */
 function findFolder(items: PostmanItem[], name: string): PostmanItem | undefined {
   const lower = name.toLowerCase();
   return items.find((it) => it.name.toLowerCase() === lower);
 }
 
-/** Primera entrada hija cuyo `name` coincide dentro de una carpeta. */
+/** First child entry whose `name` matches inside a folder. */
 function findChild(folder: PostmanItem, name: string): PostmanItem | undefined {
   return folder.item?.find((it) => it.name.toLowerCase() === name.toLowerCase());
 }
 
 describe("collection-folder-tree (S3.a a00012)", () => {
-  test("explícito 'Admin' bajo top real 'users' → subcarpeta Admin dentro de Users", () => {
+  test("explicit 'Admin' under real top 'users' → subfolder Admin inside Users", () => {
     const col = buildCollection(
       [
         spec({
@@ -86,13 +86,13 @@ describe("collection-folder-tree (S3.a a00012)", () => {
     expect(usersFolder).toBeDefined();
     const adminFolder = findChild(usersFolder!, "Admin");
     expect(adminFolder).toBeDefined();
-    // La subcarpeta Admin NO debe colarse como carpeta top-level.
+    // The Admin subfolder must NOT leak as a top-level folder.
     expect(findFolder(col.item, "Admin")).toBeUndefined();
-    // Y trae el endpoint dentro.
+    // And it carries the endpoint inside.
     expect(adminFolder!.item?.[0]?.name).toBe("List admin items");
   });
 
-  test("explícito autorreferencial (folder === top real) → va a direct", () => {
+  test("self-referential explicit (folder === real top) → goes to direct", () => {
     const col = buildCollection(
       [
         spec({
@@ -106,13 +106,13 @@ describe("collection-folder-tree (S3.a a00012)", () => {
 
     const publicFolder = findFolder(col.item, "Public");
     expect(publicFolder).toBeDefined();
-    // El endpoint vive en `direct`, no dentro de una subcarpeta.
+    // The endpoint lives in `direct`, not inside a subfolder.
     expect(publicFolder!.item?.[0]?.name).toBe("List public posts");
-    // Y no hay subcarpeta "Public" colgada de sí misma.
+    // And there is no "Public" subfolder hanging off itself.
     expect(findChild(publicFolder!, "Public")).toBeUndefined();
   });
 
-  test("implícito (sin folder:) sigue yendo a direct del top real", () => {
+  test("implicit (no folder:) still goes to direct of the real top", () => {
     const col = buildCollection(
       [
         spec({ name: "List orders", uri: "/orders" }),
@@ -125,7 +125,7 @@ describe("collection-folder-tree (S3.a a00012)", () => {
     expect(ordersFolder!.item?.[0]?.name).toBe("List orders");
   });
 
-  test("dos grupos explícitos con el mismo top real → ambos bajo la misma carpeta raíz", () => {
+  test("two explicit groups with the same real top → both under the same root folder", () => {
     const col = buildCollection(
       [
         spec({
@@ -142,9 +142,9 @@ describe("collection-folder-tree (S3.a a00012)", () => {
       baseConfig,
     );
 
-    // Ambos comparten `users` como top real, así que la raíz debe ser
-    // una sola carpeta "Users" — no debe aparecer "Users" dos veces ni
-    // colarse "Admin"/"Public" como top-level.
+    // Both share `users` as the real top, so the root must be a
+    // single "Users" folder — "Users" must not appear twice, and
+    // "Admin"/"Public" must not leak as top-level.
     const topNames = col.item.map((f) => f.name.toLowerCase());
     expect(topNames).toContain("users");
     expect(topNames).not.toContain("admin");
@@ -156,10 +156,10 @@ describe("collection-folder-tree (S3.a a00012)", () => {
     expect(findChild(usersFolder!, "Public")).toBeDefined();
   });
 
-  test("snapshot semántico: árbol {Users: direct+subs, Orders: direct}", () => {
+  test("semantic snapshot: tree {Users: direct+subs, Orders: direct}", () => {
     const col = buildCollection(
       [
-        // Explícito Admin, top real Users → subs.
+        // Explicit Admin, real top Users → subs.
         spec({
           name: "List admin users",
           uri: "/users/admin/users",
@@ -170,15 +170,15 @@ describe("collection-folder-tree (S3.a a00012)", () => {
           uri: "/users/admin/items",
           folder: "Admin",
         }),
-        // Explícito Public, top real Users → subs (mismo root que Admin).
+        // Explicit Public, real top Users → subs (same root as Admin).
         spec({
           name: "List public posts",
           uri: "/users/public/posts",
           folder: "Public",
         }),
-        // Implícito bajo Users → direct del root Users.
+        // Implicit under Users → direct of root Users.
         spec({ name: "Get profile", uri: "/users/profile" }),
-        // Implícito bajo Orders → root Orders con direct.
+        // Implicit under Orders → root Orders with direct.
         spec({ name: "List orders", uri: "/orders/list" }),
       ],
       baseConfig,
@@ -189,7 +189,7 @@ describe("collection-folder-tree (S3.a a00012)", () => {
     expect(usersFolder).toBeDefined();
     expect(ordersFolder).toBeDefined();
 
-    // Users/: primero las subs (Admin, Public), luego el direct.
+    // Users/: first the subs (Admin, Public), then the direct.
     expect(usersFolder!.item?.[0]?.name).toBe("Admin");
     expect(usersFolder!.item?.[1]?.name).toBe("Public");
     expect(usersFolder!.item?.[2]?.name).toBe("Get profile");
@@ -202,15 +202,14 @@ describe("collection-folder-tree (S3.a a00012)", () => {
     ]);
     expect(publicFolder!.item?.map((it) => it.name)).toEqual(["List public posts"]);
 
-    // Orders/: sólo el item directo.
+    // Orders/: only the direct item.
     expect(ordersFolder!.item?.map((it) => it.name)).toEqual(["List orders"]);
   });
 
-  test("explícito bajo top real compartido con implícito → raíz única con subs + direct", () => {
-    // "Public" explícito cuyo top real es "public"; además hay un
-    // implícito bajo "public". Ambos deben aterrizar bajo la misma
-    // carpeta raíz "Public" — el explícito como subs y el implícito
-    // como direct.
+  test("explicit under real top shared with implicit → unique root with subs + direct", () => {
+    // Explicit "Public" whose real top is "public"; plus an implicit
+    // one under "public". Both must land under the same "Public" root
+    // folder — the explicit as subs and the implicit as direct.
     const col = buildCollection(
       [
         spec({
@@ -225,14 +224,14 @@ describe("collection-folder-tree (S3.a a00012)", () => {
 
     const publicFolder = findFolder(col.item, "Public");
     expect(publicFolder).toBeDefined();
-    // Una sola raíz "Public".
+    // A single "Public" root.
     expect(col.item.filter((f) => f.name.toLowerCase() === "public")).toHaveLength(1);
 
     const publicSub = findChild(publicFolder!, "Public");
     expect(publicSub).toBeDefined();
     expect(publicSub!.item?.[0]?.name).toBe("Get public profile");
 
-    // El implícito va después de la sub.
+    // The implicit one comes after the sub.
     const directChild = publicFolder!.item?.find(
       (it) => it.name === "List public items",
     );

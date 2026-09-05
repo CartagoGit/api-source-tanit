@@ -1,24 +1,24 @@
 /**
  * `RustScanner` — `IProjectScanner` + `IRouteScanner` +
- * `IValidationSpecProvider` para Actix-web y Rocket.
+ * `IValidationSpecProvider` for Actix-web and Rocket.
  *
- * Los dos van juntos en un scanner porque declaran las rutas **igual**:
- * un macro de atributo encima del handler.
+ * Both live in one scanner because they declare routes **the same way**:
+ * an attribute macro above the handler.
  *
- *     #[get("/users")]           // Actix y Rocket
- *     #[post("/users/<id>")]     // Rocket usa <id>
- *     #[post("/users/{id}")]     // Actix usa {id}
+ *     #[get("/users")]           // Actix and Rocket
+ *     #[post("/users/<id>")]     // Rocket uses <id>
+ *     #[post("/users/{id}")]     // Actix uses {id}
  *
- * Separarlos sería duplicar el mismo parser para cambiar dos líneas de
- * detección. Lo que sí cambia es la forma del path param, y eso se
- * normaliza al final.
+ * Splitting them would duplicate the same parser just to change two
+ * lines of detection. What does change is the path-param syntax, and
+ * that is normalised at the end.
  *
- * Actix tiene además la forma programática —`.route("/x", web::get())`—
- * y el `scope("/api")` para prefijos.
+ * Actix also has the programmatic form —`.route("/x", web::get())`—
+ * and `scope("/api")` for prefixes.
  *
- * Validación: el ecosistema usa `serde` para deserializar y el crate
- * `validator` para las reglas, con `#[validate(...)]` sobre los campos
- * del struct.
+ * Validation: the ecosystem uses `serde` for deserialisation and the
+ * `validator` crate for the rules, with `#[validate(...)]` on the
+ * struct fields.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -42,33 +42,33 @@ import type {
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
 
-/** `#[get("/users")]` — el macro de atributo, en Actix y en Rocket. */
+/** `#[get("/users")]` — the attribute macro, in Actix and Rocket. */
 const ATTR_ROUTE_RE = new RegExp(
   String.raw`#\[\s*(${HTTP_METHODS.join("|")})\s*\(\s*"([^"]+)"`,
   "gi",
 );
 
-/** `.route("/users", web::get().to(handler))` — la forma de Actix. */
+/** `.route("/users", web::get().to(handler))` — the Actix form. */
 const PROGRAMMATIC_RE =
   /\.route\s*\(\s*"([^"]+)"\s*,\s*web::(get|post|put|delete|patch|head)\s*\(/gi;
 
-/** `.service(web::scope("/api"))` — prefijo en Actix. */
+/** `.service(web::scope("/api"))` — Actix prefix. */
 const SCOPE_RE = /web::scope\s*\(\s*"([^"]+)"/g;
 
-/** La firma del handler que sigue al macro: da su nombre. */
+/** Signature of the handler following the macro: gives its name. */
 const HANDLER_RE = /(?:pub\s+)?(?:async\s+)?fn\s+(\w+)\s*\(([^)]*)\)/;
 
-/** `Json<CreateUser>` o `web::Json<CreateUser>` en los argumentos. */
+/** `Json<CreateUser>` or `web::Json<CreateUser>` in the arguments. */
 const JSON_ARG_RE = /(?:web::)?Json\s*<\s*(\w+)\s*>/;
 
-/** Campo de struct con sus atributos encima. */
+/** Struct field with its attributes above. */
 const STRUCT_FIELD_RE = /(?:^|\n)((?:\s*#\[[^\]]*\]\s*\n)*)\s*(?:pub\s+)?(\w+)\s*:\s*([^,\n]+)/g;
 
 function isRustSourceFile(name: string): boolean {
   return name.endsWith(".rs");
 }
 
-/** Qué crate web usa el proyecto, si usa alguno. */
+/** Which web crate the project uses, if any. */
 async function detectCrate(projectRoot: string): Promise<"actix" | "rocket" | null> {
   const cargo = join(projectRoot, "Cargo.toml");
   if (!existsSync(cargo)) return null;
@@ -115,21 +115,21 @@ export class RustRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    // a00012 S1.b / a00014 S2: la raíz efectiva respeta
-    // `frameworkSearchRoot` para monorepos. Antes era
-    // `match.projectRoot` directo, lo que en un monorepo hacía que
-    // `collectFiles` caminase el árbol del workspace entero en lugar
-    // del subdirectorio del framework.
+    // a00012 S1.b / a00014 S2: the effective root respects
+    // `frameworkSearchRoot` for monorepos. Before it was
+    // `match.projectRoot` directly, which in a monorepo made
+    // `collectFiles` walk the whole workspace tree instead of the
+    // framework's subdirectory.
     const files = await collectFiles(effectiveProjectRoot(match), isRustSourceFile);
     const routes: ParsedRoute[] = [];
-    // `structs` vive aquí, no como `private readonly` de instancia: si
-    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
-    // los structs y una ruta sin `Json<T>` heredaría el de la anterior.
-    // Es el bug que cerró a00010 S2.
+    // `structs` lives here, not as an instance `private readonly`: if it
+    // survived across calls, two consecutive scans would share structs
+    // and a route without `Json<T>` would inherit the previous one.
+    // This is the bug a00010 S2 closed.
     const structs = new Map<string, IStructDescriptor>();
 
-    // Lectura en paralelo con tope, entregada en el orden de
-    // entrada: la colección tiene que salir igual cada vez.
+    // Parallel reads with a cap, delivered in input order: the
+    // collection must come out identical every time.
     for await (const { path: file, text: source } of readFilesInOrder(files)) {
 
       const sourceFile = relative(rawProjectRoot(match), file);
@@ -159,18 +159,18 @@ export class RustRouteScanner implements IRouteScanner {
 }
 
 /**
- * Prefijo del `web::scope("/api")`, si el fichero declara uno solo.
+ * Prefix from `web::scope("/api")`, if the file declares exactly one.
  *
- * Con varios no se puede saber cuál cubre a qué ruta sin seguir el
- * árbol de servicios, y poner el prefijo equivocado es peor que no
- * poner ninguno.
+ * With several we can't tell which one covers which route without
+ * following the service tree, and putting the wrong prefix is worse
+ * than putting none.
  */
 function scopePrefixOf(source: string): string {
   const scopes = [...source.matchAll(SCOPE_RE)].map((m) => m[1] ?? "");
   return scopes.length === 1 ? (scopes[0] ?? "") : "";
 }
 
-/** Una ruta declarada con macro, con el struct de su body si lo tiene. */
+/** A route declared with a macro, with its body struct if any. */
 interface IAttributeRoute {
   readonly route: ParsedRoute;
   readonly bodyStruct: string | null;
@@ -190,8 +190,8 @@ function parseAttributeRoutes(
     const rawUri = match[2] ?? "";
     if (!rawUri.startsWith("/")) continue;
 
-    // El handler viene justo después del macro; sus argumentos dicen si
-    // hay un `Json<T>` que deserializar.
+    // The handler comes right after the macro; its arguments tell whether
+    // there is a `Json<T>` to deserialise.
     const after = source.slice(match.index, match.index + 600);
     const handler = HANDLER_RE.exec(after);
     const bodyStruct = handler ? (JSON_ARG_RE.exec(handler[2] ?? "")?.[1] ?? null) : null;
@@ -236,16 +236,16 @@ function parseProgrammaticRoutes(
 }
 
 /**
- * Unifica la sintaxis de path param de los dos crates.
+ * Unifies the path-param syntax of the two crates.
  *
- * Rocket escribe `<id>` y Actix `{id}`. El resto del pipeline espera
- * una sola forma, así que se normaliza aquí — en la capa que sabe de
- * Rust — y no aguas abajo.
+ * Rocket writes `<id>` and Actix `{id}`. The rest of the pipeline
+ * expects a single form, so we normalise here — in the layer that
+ * knows about Rust — and not downstream.
  */
 export function normalizePathParams(uri: string): string {
   return uri.replace(/<([^>/]+)>/g, (_whole, name: string) => {
-    // Rocket admite `<id..>` para segmentos múltiples: el nombre es lo
-    // que va antes de los puntos.
+    // Rocket accepts `<id..>` for multiple segments: the name is
+    // whatever comes before the dots.
     const clean = name.replace(/\.\.$/, "");
     return `{${clean}}`;
   });
@@ -271,7 +271,7 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
   return out;
 }
 
-/** Reglas desde `#[validate(...)]` del crate `validator`. */
+/** Rules from `#[validate(...)]` of the `validator` crate. */
 export class RustValidatorProvider implements IValidationSpecProvider {
   readonly framework = "rust" as const;
 
@@ -302,7 +302,7 @@ export class RustValidatorProvider implements IValidationSpecProvider {
   }
 }
 
-/** Campos de un struct de Rust, con sus atributos `validate` y `serde`. */
+/** Fields of a Rust struct, with its `validate` and `serde` attributes. */
 export function parseRustStruct(source: string, structName: string): IValidationSpec[] {
   const declaration = new RegExp(String.raw`struct\s+${structName}\s*\{`).exec(source);
   if (!declaration) return [];
@@ -332,12 +332,12 @@ export function parseRustStruct(source: string, structName: string): IValidation
     const rustType = (field[3] ?? "").trim();
     if (!name) continue;
 
-    // `#[serde(rename = "x")]` cambia el nombre que viaja por la red.
+    // `#[serde(rename = "x")]` changes the name that travels over the wire.
     const renamed = /serde\s*\([^)]*rename\s*=\s*"([^"]+)"/.exec(attributes)?.[1];
     const validate = /validate\s*\(([^\]]*)\)/.exec(attributes)?.[1] ?? "";
 
-    // En Rust lo opcional se marca en el TIPO (`Option<T>`), no en un
-    // atributo: es la diferencia clave con los otros ecosistemas.
+    // In Rust, optionality is marked on the TYPE (`Option<T>`), not as an
+    // attribute: that's the key difference from the other ecosystems.
     const optional = /^Option\s*</.test(rustType);
 
     fields.push({

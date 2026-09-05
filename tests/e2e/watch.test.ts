@@ -1,11 +1,12 @@
 /**
- * El modo watch, de verdad: se toca un fichero y se regenera.
+ * The watch mode, for real: touch a file and regenerate.
  *
- * Los tests de `watcher.service.spec.ts` cubren las piezas por separado.
- * Este comprueba lo único que no se puede comprobar con dobles: que
- * `fs.watch` recursivo llega, que el cambio dispara, y —sobre todo— que
- * **escribir la colección no vuelve a disparar el watcher**. Esa
- * retroalimentación es un bucle infinito, y solo se ve ejecutándolo.
+ * The `watcher.service.spec.ts` tests cover the pieces separately. This
+ * one checks the only thing that cannot be tested with doubles: that
+ * recursive `fs.watch` reaches, that the change triggers, and — most of
+ * all — that **writing the collection does not trigger the watcher
+ * again**. That feedback loop is infinite, and it is only visible by
+ * running it.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -31,7 +32,7 @@ afterEach(async () => {
   if (root) await rm(root, { recursive: true, force: true });
 });
 
-/** Espera a que `check` sea cierto, o se rinde. */
+/** Waits until `check` is true, or gives up. */
 async function waitFor(check: () => boolean, ms = 3000): Promise<boolean> {
   const deadline = Date.now() + ms;
   while (Date.now() < deadline) {
@@ -42,7 +43,7 @@ async function waitFor(check: () => boolean, ms = 3000): Promise<boolean> {
 }
 
 describe("watchProject", () => {
-  test("un cambio en un fichero fuente dispara onChange", { timeout: 15_000 }, async () => {
+  test("a change in a source file triggers onChange", { timeout: 15_000 }, async () => {
     const batches: string[][] = [];
     handle = watchProject({
       root,
@@ -55,20 +56,20 @@ describe("watchProject", () => {
     await writeFile(join(root, "src", "users.route.ts"), "export const x = 1;\n");
     const fired = await waitFor(() => batches.length > 0);
 
-    expect(fired, "el watcher no reaccionó al cambio").toBe(true);
+    expect(fired, "the watcher did not react to the change").toBe(true);
     expect(batches[0]?.some((p) => p.includes("users.route.ts"))).toBe(true);
   });
 
   /**
-   * El test que justifica todo el cuidado del servicio.
+   * The test that justifies all the care put into the service.
    *
-   * Se escribe en la carpeta de salida, que está DENTRO de la raíz
-   * vigilada — igual que hace la herramienta al generar. Si el watcher
-   * reaccionara, cada generación provocaría la siguiente y el proceso no
-   * pararía nunca.
+   * It writes to the output folder, which is INSIDE the watched root —
+   * exactly what the tool does on generate. If the watcher reacted,
+   * each generation would trigger the next one and the process would
+   * never stop.
    */
   test(
-    "escribir en la carpeta de salida NO dispara nada",
+    "writing to the output folder does NOT trigger anything",
     { timeout: 15_000 },
     async () => {
       let calls = 0;
@@ -86,14 +87,14 @@ describe("watchProject", () => {
           JSON.stringify({ intento: i }),
         );
       }
-      // Margen de sobra para que cualquier evento hubiera llegado.
+      // Plenty of slack for any event to have arrived.
       await new Promise<void>((r) => setTimeout(r, 600));
 
-      expect(calls, "el watcher se disparó con su propia escritura").toBe(0);
+      expect(calls, "the watcher fired on its own write").toBe(0);
     },
   );
 
-  test("varios guardados seguidos producen un solo onChange", { timeout: 15_000 }, async () => {
+  test("several saves in a row produce a single onChange", { timeout: 15_000 }, async () => {
     let calls = 0;
     handle = watchProject({
       root,
@@ -112,7 +113,7 @@ describe("watchProject", () => {
     expect(calls).toBe(1);
   });
 
-  test("close() deja de vigilar", { timeout: 15_000 }, async () => {
+  test("close() stops watching", { timeout: 15_000 }, async () => {
     let calls = 0;
     handle = watchProject({
       root,
@@ -130,7 +131,7 @@ describe("watchProject", () => {
     expect(calls).toBe(0);
   });
 
-  test("node_modules no despierta al watcher", { timeout: 15_000 }, async () => {
+  test("node_modules does not wake the watcher", { timeout: 15_000 }, async () => {
     let calls = 0;
     handle = watchProject({
       root,

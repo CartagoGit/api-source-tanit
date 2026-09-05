@@ -37,19 +37,19 @@ const ROOT = smokeFixtureDir("nestjs");
 const COMPREHENSIVE = comprehensiveFixtureDir("nestjs");
 
 describe("NestJS scanner", () => {
-  test("detect() > 0 cuando package.json tiene @nestjs/core", async () => {
+  test("detect() > 0 when package.json contains @nestjs/core", async () => {
     const scanner = new NestJsProjectScanner();
     const score = (await scanner.detect(ROOT)).score;
     expect(score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 en un directorio vacío", async () => {
+  test("detect() === 0 in an empty directory", async () => {
     const scanner = new NestJsProjectScanner();
     const score = (await scanner.detect("/tmp")).score;
     expect(score).toBe(0);
   });
 
-  test("scan() devuelve las 5 rutas del mini-fixture", async () => {
+  test("scan() returns the 5 routes of the mini-fixture", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
     const routes = (await new NestJsRouteScanner().scan(match)).routes;
@@ -58,14 +58,14 @@ describe("NestJS scanner", () => {
     expect(methods).toEqual(["DELETE", "GET", "GET", "POST", "PUT"]);
   });
 
-  test("prefix @Controller('users') se aplica a todas las rutas", async () => {
+  test("prefix @Controller('users') is applied to every route", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
     const routes = (await new NestJsRouteScanner().scan(match)).routes;
     for (const r of routes) expect(r.uri).toMatch(/^\/users/);
   });
 
-  test("path param ':id' presente en rutas con @Get(':id'), @Put(':id'), @Delete(':id')", async () => {
+  test("path param ':id' present in routes with @Get(':id'), @Put(':id'), @Delete(':id')", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(ROOT);
     const routes = (await new NestJsRouteScanner().scan(match)).routes;
@@ -73,7 +73,7 @@ describe("NestJS scanner", () => {
     expect(withId.length).toBeGreaterThanOrEqual(3);
   });
 
-  test("comprehensive: detecta >10 rutas repartidas en 3 controllers", async () => {
+  test("comprehensive: detects >10 routes across 3 controllers", async () => {
     const ps = new NestJsProjectScanner();
     const match = await ps.resolve(COMPREHENSIVE);
     const routes = (await new NestJsRouteScanner().scan(match)).routes;
@@ -109,35 +109,35 @@ export class UsersController {
     }
   }
 
-  // `setGlobalPrefix` se aplica a TODOS los controladores. Sin leerlo, un
-  // proyecto que lo use —lo normal en NestJS— salía con URIs sin prefijo
-  // y ninguna request respondía.
-  test("aplica el prefijo global a todas las rutas", async () => {
+  // `setGlobalPrefix` applies to ALL controllers. Without reading it,
+  // a project that used it —the norm in NestJS— came out with URIs
+  // without prefix and no request would respond.
+  test("applies the global prefix to all routes", async () => {
     expect(await scanWithMain('app.setGlobalPrefix("api/v1");')).toEqual([
       "GET /api/v1/users",
       "POST /api/v1/users",
     ]);
   });
 
-  test("sin prefijo global las rutas quedan como están", async () => {
+  test("without the global prefix the routes stay as they are", async () => {
     expect(await scanWithMain("const app = 1;")).toEqual(["GET /users", "POST /users"]);
   });
 
-  test("un setGlobalPrefix comentado no se aplica", async () => {
+  test("a commented setGlobalPrefix is not applied", async () => {
     expect(await scanWithMain('// app.setGlobalPrefix("comentado");')).toEqual([
       "GET /users",
       "POST /users",
     ]);
   });
 
-  test("acepta comillas simples y backticks", async () => {
+  test("accepts single quotes and backticks", async () => {
     expect(await scanWithMain("app.setGlobalPrefix('api');")).toEqual([
       "GET /api/users",
       "POST /api/users",
     ]);
   });
 
-  test("normaliza el prefijo con barra inicial", async () => {
+  test("normalizes the prefix with a leading slash", async () => {
     expect(await scanWithMain('app.setGlobalPrefix("/api");')).toEqual([
       "GET /api/users",
       "POST /api/users",
@@ -148,7 +148,7 @@ export class UsersController {
 describe("NestJS — detect() score variants", () => {
   const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
 
-  test("detect() === 1 cuando hay src y nest-cli.json", async () => {
+  test("detect() === 1 when there is src and nest-cli.json", async () => {
     const project = await createTempProject({
       "package.json": PACKAGE,
       "nest-cli.json": "{}",
@@ -161,7 +161,7 @@ describe("NestJS — detect() score variants", () => {
     }
   });
 
-  test("detect() === 0.8 cuando hay src pero no nest-cli.json", async () => {
+  test("detect() === 0.8 when there is src but no nest-cli.json", async () => {
     const project = await createTempProject({
       "package.json": PACKAGE,
       "src/main.ts": "// bootstrap",
@@ -173,7 +173,7 @@ describe("NestJS — detect() score variants", () => {
     }
   });
 
-  test("detect() === 0.5 cuando no hay src ni nest-cli.json", async () => {
+  test("detect() === 0.5 when there is no src nor nest-cli.json", async () => {
     const project = await createTempProject({ "package.json": PACKAGE });
     try {
       expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(0.5);
@@ -186,7 +186,7 @@ describe("NestJS — detect() score variants", () => {
 describe("NestJS — @Controller object form", () => {
   const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
 
-  test("@Controller({ path: 'items' }) aplica el path como prefijo", async () => {
+  test("@Controller({ path: 'items' }) applies the path as prefix", async () => {
     const project = await createTempProject({
       "package.json": PACKAGE,
       "src/items/items.controller.ts": [
@@ -207,7 +207,7 @@ describe("NestJS — @Controller object form", () => {
     }
   });
 
-  test("archivo sin @Controller no produce rutas", async () => {
+  test("a file without @Controller produces no routes", async () => {
     const project = await createTempProject({
       "package.json": PACKAGE,
       "src/service.ts": [
@@ -226,16 +226,16 @@ describe("NestJS — @Controller object form", () => {
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S1 — regresiones de señales nuevas (nest-cli.json boost +
+// f00011 S1 — regression for new signals (nest-cli.json boost +
 // frameworkSearchRoot).
 // ---------------------------------------------------------------------------
 
 describe("NestJS — detect() boost por nest-cli.json (f00011 S1)", () => {
   const PKG = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
-  // f00011 S1: el peso de `nest-cli.json` sube de 0.3 a 0.7. Es la
-  // señal canónica de que el proyecto fue inicializado con la CLI de
-  // Nest (no es solo una dependencia suelta).
-  test("detect() === 1 (cap) cuando hay nest-cli.json + @nestjs/core + src/", async () => {
+  // f00011 S1: the weight of `nest-cli.json` goes up from 0.3 to
+  // 0.7. It is the canonical signal that the project was initialized
+  // with the Nest CLI (not just a dependency hanging there).
+  test("detect() === 1 (cap) when there is nest-cli.json + @nestjs/core + src/", async () => {
     const project = await createTempProject({
       "package.json": PKG,
       "nest-cli.json": "{}",
@@ -249,15 +249,15 @@ describe("NestJS — detect() boost por nest-cli.json (f00011 S1)", () => {
     }
   });
 
-  test("detect() === 1 (cap) cuando hay nest-cli.json pero NO hay src/", async () => {
+  test("detect() === 1 (cap) when there is nest-cli.json but NO src/", async () => {
     const project = await createTempProject({
       "package.json": PKG,
       "nest-cli.json": "{}",
     });
     try {
       // 0.5 (@nestjs/core) + 0.7 (nest-cli.json) = 1.2 → cap 1.
-      // El cap hace que coincida con el caso anterior — eso es lo
-      // correcto: el cap evita inflar más allá de "detectado".
+      // The cap makes it match the previous case — that is the
+      // correct behavior: the cap avoids inflating past "detected".
       expect((await new NestJsProjectScanner().detect(project.root)).score).toBe(1);
     } finally {
       await project.cleanup();
@@ -267,10 +267,10 @@ describe("NestJS — detect() boost por nest-cli.json (f00011 S1)", () => {
 
 describe("NestJS — frameworkSearchRoot para monorepos (f00011 S1)", () => {
   const PKG = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
-  // f00011 S1: en un monorepo el `src/` está en `apps/api/`. Sin
-  // `frameworkSearchRoot` el scanner mira la raíz y no encuentra
-  // controladores; con él, sale el scan completo del subdir.
-  test("scan() encuentra rutas cuando frameworkSearchRoot apunta al subdir con src/", async () => {
+  // f00011 S1: in a monorepo the `src/` lives in `apps/api/`.
+  // Without `frameworkSearchRoot` the scanner looks at the root and
+  // finds no controllers; with it, the full subdir scan comes out.
+  test("scan() finds routes when frameworkSearchRoot points at the src/ subdir", async () => {
     const CONTROLLER = [
       'import { Controller, Get } from "@nestjs/common";',
       '@Controller("users")',
@@ -297,10 +297,10 @@ describe("NestJS — frameworkSearchRoot para monorepos (f00011 S1)", () => {
     }
   });
 
-  // El `setGlobalPrefix` se sigue buscando en `projectRoot` aunque el
-  // `src/` esté en un subdir — es donde vive el `main.ts` y donde el
-  // orquestador espera encontrar el bootstrap.
-  test("setGlobalPrefix se aplica aunque frameworkSearchRoot apunte a un subdir", async () => {
+  // `setGlobalPrefix` is still looked up at `projectRoot` even if the
+  // `src/` lives in a subdir — that is where the `main.ts` lives and
+  // where the orchestrator expects to find the bootstrap.
+  test("setGlobalPrefix is applied even when frameworkSearchRoot points at a subdir", async () => {
     const CONTROLLER = [
       'import { Controller, Get } from "@nestjs/common";',
       '@Controller("orders")',
@@ -331,21 +331,21 @@ describe("NestJS — frameworkSearchRoot para monorepos (f00011 S1)", () => {
 describe("NestJS — ClassValidatorProvider", () => {
   const PACKAGE = JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } });
 
-  test("supports() === false cuando la ruta no tiene description", async () => {
+  test("supports() === false when the route has no description", async () => {
     const provider = new NestJsClassValidatorProvider();
     const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [] };
     const match = { framework: "nestjs" as const, projectRoot: "/tmp", artifacts: [] };
     expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
-  test("supports() === false cuando framework no es nestjs", async () => {
+  test("supports() === false when framework is not nestjs", async () => {
     const provider = new NestJsClassValidatorProvider();
     const route = { method: "GET", uri: "/users", rawUri: "/users", sourceFile: "src/users.controller.ts", lineNumber: 1, prefixChain: [], description: "list" };
     const match = { framework: "express" as const, projectRoot: "/tmp", artifacts: [] };
     expect(await provider.supports(route, match, EMPTY_SCAN_RESULT)).toBe(false);
   });
 
-  test("resuelve DTO inline con IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl", async () => {
+  test("resolves inline DTO with IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl", async () => {
     const controllerSource = [
       'import { Controller, Post, Body } from "@nestjs/common";',
       'import { IsString, IsEmail, IsUUID, IsArray, IsBoolean, IsDate, IsEnum, IsUrl, IsInt, IsNumber, IsOptional, IsObject, IsNotEmpty, IsDefined, IsPositive, IsNegative, MinLength, MaxLength, Length, Min, Max } from "class-validator";',
@@ -443,7 +443,7 @@ describe("NestJS — ClassValidatorProvider", () => {
     }
   });
 
-  test("parseSignatureParams extrae @Param, @Query y @Headers", async () => {
+  test("parseSignatureParams extracts @Param, @Query and @Headers", async () => {
     const controllerSource = [
       'import { Controller, Get, Param, Query, Headers } from "@nestjs/common";',
       "@Controller('items')",
@@ -476,7 +476,7 @@ describe("NestJS — ClassValidatorProvider", () => {
     }
   });
 
-  test("DTO importado desde archivo externo se resuelve correctamente", async () => {
+  test("DTO imported from an external file resolves correctly", async () => {
     const dtoSource = [
       'import { IsString, IsEmail } from "class-validator";',
       "export class RegisterDto {",
@@ -515,7 +515,7 @@ describe("NestJS — ClassValidatorProvider", () => {
     }
   });
 
-  test("tsTypeToSpecType: number, boolean, date y array como tipos TypeScript", async () => {
+  test("tsTypeToSpecType: number, boolean, date and array as TypeScript types", async () => {
     const controllerSource = [
       'import { Controller, Get, Query } from "@nestjs/common";',
       "@Controller('items')",
@@ -549,13 +549,13 @@ describe("NestJS — ClassValidatorProvider", () => {
 // f00011 S4 — lockfiles como bonus de scoring en detect().
 // ---------------------------------------------------------------------------
 
-describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
-  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
-  // +0.15 (bun). El lockfile aparece en `evidence` aunque el cap a
-  // 1 del `withEvidence` ya lo enmascare en proyectos con
-  // `nest-cli.json` (que sumaba 0.7 + 0.5 = 1.2).
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+describe("NestJS — lockfiles as runtime bonuses (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` and `bun.lockb` sharpen the
+  // detector's confidence without being detection. Small weights:
+  // +0.1 (pnpm), +0.15 (bun). The lockfile shows up in `evidence`
+  // even though the `withEvidence` cap of 1 already masks it in
+  // projects with `nest-cli.json` (which summed 0.7 + 0.5 = 1.2).
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -570,7 +570,7 @@ describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } }),
       "bun.lockb": "",
@@ -585,7 +585,7 @@ describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } }),
       "pnpm-lock.yaml": "",
@@ -600,7 +600,7 @@ describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("without lockfiles no lockfile signal appears", async () => {
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { "@nestjs/core": "^10.0.0" } }),
     });
@@ -614,12 +614,12 @@ describe("NestJS — lockfiles como bonus de runtime (f00011 S4)", () => {
   });
 });
 
-describe("NestJS scanner — global prefix desde searchRoot (audit 2026-09-04 P2 #3)", () => {
-  test("setGlobalPrefix en apps/api/src/main.ts se aplica con frameworkSearchRoot", async () => {
-    // En monorepos el bootstrap vive en el workspace (apps/api), no en
-    // la raíz. Antes el scanner buscaba solo en `match.projectRoot` y
-    // no encontraba el setGlobalPrefix, así que las rutas salían sin
-    // el prefijo.
+describe("NestJS scanner — global prefix from searchRoot (audit 2026-09-04 P2 #3)", () => {
+  test("setGlobalPrefix in apps/api/src/main.ts is applied with frameworkSearchRoot", async () => {
+    // In monorepos the bootstrap lives in the workspace (apps/api),
+    // not in the root. Previously the scanner only looked in
+    // `match.projectRoot` and did not find the setGlobalPrefix, so
+    // routes came out without the prefix.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -648,7 +648,7 @@ bootstrap();
       framework: "nestjs",
       projectRoot: project.root,
       artifacts: ["package.json", "src"],
-      frameworkSearchRoot: ".", // simula lo que produciría expandMonorepoDetection
+      frameworkSearchRoot: ".", // simulates what expandMonorepoDetection would produce
     };
     const routes = (await new NestJsRouteScanner().scan(match)).routes;
     expect(routes[0]?.uri).toBe("/api/v1/items");

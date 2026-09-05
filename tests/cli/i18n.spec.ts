@@ -1,18 +1,19 @@
 /**
- * Los idiomas de la interfaz.
+ * The interface languages.
  *
- * Tres cosas se comprueban aquí, y las tres son las que hacen que un
- * sistema de traducciones sirva o estorbe:
+ * Three things are tested here, and they are the three that make a
+ * translation system help or get in the way:
  *
- *   1. **Elegir bien el idioma de quien llega.** No es comparar cadenas:
- *      `pt-BR` tiene que caer en `pt` antes que en inglés, y `zh` tiene
- *      que encontrar `zh-Hans`. Las dos direcciones.
- *   2. **Que una clave suelta no rompa la pantalla.** Un idioma al 80 %
- *      enseña el 80 % traducido y el resto en inglés — nunca la clave
- *      cruda, que es lo que convierte una traducción incompleta en una
- *      interfaz rota.
- *   3. **Que añadir un idioma sea dejar un fichero.** Es lo que se pidió,
- *      y sin un test es lo primero que deja de funcionar.
+ *   1. **Picking the right language for whoever arrives.** It is not
+ *      string comparison: `pt-BR` must fall back to `pt` before
+ *      English, and `zh` must find `zh-Hans`. Both directions.
+ *   2. **That a missing key does not break the screen.** A language
+ *      at 80% shows the 80% translated and the rest in English —
+ *      never the raw key, which is what turns an incomplete
+ *      translation into a broken interface.
+ *   3. **That adding a language is just dropping a file.** That is
+ *      what was asked, and without a test it is the first thing
+ *      that stops working.
  */
 import { describe, expect, test } from "vitest";
 import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
@@ -37,21 +38,21 @@ import { fromRoot } from "../../scripts/helpers/root.helper";
 
 const CODIGOS = BUNDLED_LOCALES.map((l) => l.code);
 
-describe("el catálogo de idiomas", () => {
-  test("trae quince", () => {
+describe("the language catalog", () => {
+  test("it ships fifteen", () => {
     expect(BUNDLED_LOCALES).toHaveLength(15);
   });
 
-  test("ninguno repetido", () => {
+  test("none duplicated", () => {
     expect(new Set(CODIGOS).size).toBe(CODIGOS.length);
   });
 
   /**
-   * El nombre va en el idioma que nombra —«Français», no «Francés»—
-   * porque quien busca el suyo en una lista no sabe cómo se dice en el
-   * idioma que está viendo.
+   * The name goes in the language it names —"Français", not
+   * "French"— because whoever looks for theirs in a list does not
+   * know how to say it in the language they are seeing.
    */
-  test("cada uno se nombra en su propio idioma", () => {
+  test("each names itself in its own language", () => {
     for (const l of BUNDLED_LOCALES) {
       expect(l.nativeName.length, l.code).toBeGreaterThan(0);
     }
@@ -59,19 +60,19 @@ describe("el catálogo de idiomas", () => {
     expect(BUNDLED_LOCALES.find((l) => l.code === "ja")?.nativeName).toBe("日本語");
   });
 
-  test("el árabe y el urdu se marcan de derecha a izquierda", () => {
+  test("Arabic and Urdu are marked right-to-left", () => {
     expect(BUNDLED_LOCALES.find((l) => l.code === "ar")?.rtl).toBe(true);
     expect(BUNDLED_LOCALES.find((l) => l.code === "ur")?.rtl).toBe(true);
     expect(BUNDLED_LOCALES.find((l) => l.code === "es")?.rtl).toBeUndefined();
   });
 
   /**
-   * EL test de sincronía. El servicio enumera los catálogos a mano
-   * —tiene que hacerlo, para que el empaquetador los vea— así que la
-   * carpeta y la lista pueden separarse. Es la clase de lista paralela
-   * que este repositorio ya pagó con `NON_LARAVEL_FRAMEWORKS`.
+   * THE sync test. The service enumerates the catalogs by hand —
+   * it has to, so the bundler sees them — so the folder and the
+   * list can drift apart. It is the kind of parallel list this
+   * repository already paid for with `NON_LARAVEL_FRAMEWORKS`.
    */
-  test("hay un fichero por cada idioma declarado, y ninguno de más", async () => {
+  test("there is one file per declared language, and none extra", async () => {
     const ficheros = (await readdir(fromRoot("packages/ui/i18n/locales")))
       .filter((f) => f.endsWith(".json"))
       .map((f) => f.replace(/\.json$/, ""))
@@ -80,51 +81,52 @@ describe("el catálogo de idiomas", () => {
   });
 });
 
-describe("elegir el idioma de quien llega", () => {
-  test("coincidencia exacta", () => {
+describe("picking the language of whoever arrives", () => {
+  test("exact match", () => {
     expect(pickLocale(["es"], CODIGOS)).toBe("es");
   });
 
-  /** `pt-BR` prefiere portugués a inglés. Es la dirección obvia. */
-  test("una variante cae en su idioma base", () => {
+  /** `pt-BR` prefers Portuguese to English. The obvious direction. */
+  test("a variant falls back to its base language", () => {
     expect(pickLocale(["pt-BR"], CODIGOS)).toBe("pt");
   });
 
   /**
-   * Y la dirección contraria, que es la que se olvida: pedir `zh` a
-   * secas tiene que encontrar `zh-Hans`. Sin esto, alguien con el
-   * navegador en chino acabaría en inglés teniendo chino disponible.
+   * And the opposite direction, which is the one we forget: asking
+   * for `zh` bare must find `zh-Hans`. Without this, someone with
+   * the browser in Chinese would end up in English while Chinese
+   * is available.
    */
-  test("un idioma base encuentra su variante", () => {
+  test("a base language finds its variant", () => {
     expect(pickLocale(["zh"], CODIGOS)).toBe("zh-Hans");
   });
 
-  test("respeta el orden de preferencia del navegador", () => {
+  test("respects the browser's preference order", () => {
     expect(pickLocale(["xx", "fr", "es"], CODIGOS)).toBe("fr");
   });
 
-  test("no distingue mayúsculas: `ES` es `es`", () => {
+  test("is case-insensitive: `ES` is `es`", () => {
     expect(pickLocale(["ES"], CODIGOS)).toBe("es");
   });
 
-  test("sin nada que casar, inglés", () => {
+  test("with nothing to match, English", () => {
     expect(pickLocale(["xx", "yy"], CODIGOS)).toBe(FALLBACK_LOCALE);
     expect(pickLocale([], CODIGOS)).toBe(FALLBACK_LOCALE);
   });
 
-  test("una preferencia vacía no cuenta como coincidencia", () => {
+  test("an empty preference does not count as a match", () => {
     expect(pickLocale(["", "  ", "es"], CODIGOS)).toBe("es");
   });
 });
 
-describe("cargar los idiomas", () => {
-  test("los quince vienen empaquetados", async () => {
+describe("loading the languages", () => {
+  test("the fifteen come bundled", async () => {
     const { locales } = await loadLocales();
     expect(locales).toHaveLength(15);
     expect(locales.every((l) => l.origin === "bundled")).toBe(true);
   });
 
-  test("todos traen texto para las claves del inglés", async () => {
+  test("all carry text for the English keys", async () => {
     const { locales } = await loadLocales();
     const clavesEn = Object.keys(
       locales.find((l) => l.code === "en")?.translations ?? {},
@@ -137,12 +139,12 @@ describe("cargar los idiomas", () => {
   });
 
   /**
-   * EL test del respaldo. Un idioma al que le falta una clave enseña el
-   * inglés, **no** la clave cruda: ver `settings.theme` en mitad de una
-   * pantalla es lo que convierte una traducción incompleta en algo que
-   * parece roto.
+   * THE fallback test. A language missing a key shows English, **not**
+   * the raw key: seeing `settings.theme` in the middle of a screen is
+   * what turns an incomplete translation into something that looks
+   * broken.
    */
-  test("una clave que falta cae al inglés, nunca a la clave cruda", async () => {
+  test("a missing key falls back to English, never to the raw key", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(
@@ -153,7 +155,7 @@ describe("cargar los idiomas", () => {
       const es = locales.find((l) => l.code === "es")!;
 
       expect(translate(es, "nav.settings")).toBe("Ajustes propios");
-      // Esta no la trae: sale la inglesa.
+      // This one is not present: English comes out.
       expect(translate(es, "action.generate")).toBe("Generate");
       expect(translate(es, "action.generate")).not.toBe("action.generate");
     } finally {
@@ -161,23 +163,23 @@ describe("cargar los idiomas", () => {
     }
   });
 
-  test("una clave que no existe en ningún sitio devuelve la clave, no vacío", async () => {
+  test("a key that does not exist anywhere returns the key, not empty", async () => {
     const { locales } = await loadLocales();
     const en = locales.find((l) => l.code === "en")!;
     expect(translate(en, "no.existe.en.ninguna.parte")).toBe("no.existe.en.ninguna.parte");
   });
 });
 
-describe("añadir un idioma es dejar un fichero", () => {
-  /** Lo que se pidió: un idioma nuevo sin tocar código. */
-  test("un idioma que no venía aparece en la lista", async () => {
+describe("adding a language is just dropping a file", () => {
+  /** What was asked: a new language without touching code. */
+  test("a language that did not ship appears in the list", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(join(dir, "eu.json"), JSON.stringify({ "nav.settings": "Ezarpenak" }));
       const { locales } = await loadLocales(dir);
 
       const eu = locales.find((l) => l.code === "eu");
-      expect(eu, "el idioma externo no se cargó").toBeDefined();
+      expect(eu, "external language did not load").toBeDefined();
       expect(eu!.origin).toBe("external");
       expect(translate(eu!, "nav.settings")).toBe("Ezarpenak");
     } finally {
@@ -185,7 +187,7 @@ describe("añadir un idioma es dejar un fichero", () => {
     }
   });
 
-  test("un externo pisa al empaquetado del mismo código", async () => {
+  test("an external one overrides the bundled one of the same code", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(join(dir, "fr.json"), JSON.stringify({ "nav.settings": "Réglages" }));
@@ -194,14 +196,14 @@ describe("añadir un idioma es dejar un fichero", () => {
 
       expect(fr.origin).toBe("external");
       expect(translate(fr, "nav.settings")).toBe("Réglages");
-      // Y sigue habiendo quince: no se duplica.
+      // And there are still fifteen: not duplicated.
       expect(locales).toHaveLength(15);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
   });
 
-  test("una carpeta que no existe no es un error: es lo normal", async () => {
+  test("a folder that does not exist is not an error: it is the normal case", async () => {
     const { locales, rejected } = await loadLocales("/no/existe/idiomas");
     expect(locales).toHaveLength(15);
     expect(rejected).toEqual([]);
@@ -209,17 +211,17 @@ describe("añadir un idioma es dejar un fichero", () => {
 });
 
 /**
- * Los idiomas tras instalar.
+ * The languages after installing.
  *
- * La primera vez que arranca, la aplicación deja los quince en la
- * carpeta de configuración del sistema. Eso es lo que convierte «los
- * idiomas están dentro del programa» en «los idiomas son ficheros que
- * puedes abrir»: sin ellos en disco, quien instala el `.deb` sabe que
- * hay quince pero no dónde, y añadir uno sería adivinar el nombre de
- * una carpeta que no existe.
+ * The first time it starts, the application drops the fifteen in
+ * the system's configuration folder. That is what turns "the
+ * languages are inside the program" into "the languages are files
+ * you can open": without them on disk, whoever installs the `.deb`
+ * knows there are fifteen but not where, and adding one would be
+ * guessing the name of a folder that does not exist.
  */
-describe("los idiomas acaban en disco, para poder tocarlos", () => {
-  test("la primera vez deja los quince", async () => {
+describe("the languages end up on disk, to be editable", () => {
+  test("the first time drops the fifteen", async () => {
     const dir = await mkdtemp(join(tmpdir(), "seed-"));
     try {
       await seedLocales(join(dir, "locales"));
@@ -232,11 +234,11 @@ describe("los idiomas acaban en disco, para poder tocarlos", () => {
   });
 
   /**
-   * EL test. Si sembrara en cada arranque, la primera corrección que
-   * alguien hiciera a una traducción desaparecería al reabrir — y eso
-   * es peor que no dejar editarlos.
+   * THE test. If it seeded on every start, the first correction
+   * someone makes to a translation would disappear on reopen — and
+   * that is worse than not letting them edit them.
    */
-  test("no pisa lo que ya está: una corrección sobrevive al reinicio", async () => {
+  test("does not overwrite what is already there: a correction survives restart", async () => {
     const dir = await mkdtemp(join(tmpdir(), "seed-"));
     const locales = join(dir, "locales");
     try {
@@ -256,7 +258,7 @@ describe("los idiomas acaban en disco, para poder tocarlos", () => {
     }
   });
 
-  test("un idioma añadido a mano sobrevive a la siembra", async () => {
+  test("a language added by hand survives the seeding", async () => {
     const dir = await mkdtemp(join(tmpdir(), "seed-"));
     const locales = join(dir, "locales");
     try {
@@ -272,11 +274,11 @@ describe("los idiomas acaban en disco, para poder tocarlos", () => {
   });
 
   /**
-   * Y si alguien borra la carpeta entera, la interfaz sigue igual: los
-   * quince están empaquetados. El disco es una copia editable, no la
-   * fuente, así que no hay que reinstalar nada.
+   * And if someone deletes the whole folder, the interface stays
+   * the same: the fifteen are bundled. The disk is an editable
+   * copy, not the source, so nothing needs to be reinstalled.
    */
-  test("borrar la carpeta entera no deja la interfaz sin idiomas", async () => {
+  test("deleting the whole folder does not leave the interface without languages", async () => {
     const dir = await mkdtemp(join(tmpdir(), "seed-"));
     const locales = join(dir, "locales");
     try {
@@ -292,14 +294,14 @@ describe("los idiomas acaban en disco, para poder tocarlos", () => {
   });
 });
 
-describe("un idioma roto no tumba la interfaz, pero se dice", () => {
-  test("un JSON inválido se rechaza con su motivo", async () => {
+describe("a broken language does not bring the interface down, but it is reported", () => {
+  test("an invalid JSON is rejected with its reason", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(join(dir, "xx.json"), "{esto no es json");
       const { locales, rejected } = await loadLocales(dir);
 
-      // Los quince siguen ahí: la interfaz arranca igual.
+      // The fifteen are still there: the interface starts the same.
       expect(locales).toHaveLength(15);
       expect(rejected).toHaveLength(1);
       expect(rejected[0]!.file).toBe("xx.json");
@@ -309,7 +311,7 @@ describe("un idioma roto no tumba la interfaz, pero se dice", () => {
     }
   });
 
-  test("un fichero que no es un mapa de textos se rechaza", async () => {
+  test("a file that is not a flat map of texts is rejected", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(join(dir, "yy.json"), JSON.stringify(["no", "soy", "un", "mapa"]));
@@ -321,11 +323,11 @@ describe("un idioma roto no tumba la interfaz, pero se dice", () => {
   });
 
   /**
-   * El rechazo tiene que llegar a quien escribió el fichero. Si
-   * desapareciera, esa persona vería su idioma ausente de la lista sin
-   * ninguna pista de por qué.
+   * The rejection must reach whoever wrote the file. If it
+   * disappeared, that person would see their language missing from
+   * the list without any hint of why.
    */
-  test("el motivo nombra el fichero", async () => {
+  test("the reason names the file", async () => {
     const dir = await mkdtemp(join(tmpdir(), "locales-"));
     try {
       await writeFile(join(dir, "zz.json"), "{");
@@ -339,22 +341,22 @@ describe("un idioma roto no tumba la interfaz, pero se dice", () => {
 });
 
 /**
- * Dónde acaban esos ficheros en cada sistema.
+ * Where those files end up on each system.
  *
- * Las tres convenciones no son intercambiables: un `~/.config` en
- * Windows deja una carpeta oculta en el perfil que nadie encuentra, y
- * `%APPDATA%` en Linux no significa nada. Se inyectan `env` y
- * `platform` porque es la única forma de probar las tres sin cambiar de
- * sistema operativo.
+ * The three conventions are not interchangeable: a `~/.config` on
+ * Windows leaves a hidden folder in the profile that nobody
+ * finds, and `%APPDATA%` on Linux means nothing. `env` and
+ * `platform` are injected because it is the only way to test all
+ * three without changing operating system.
  */
-describe("la carpeta de configuración de cada sistema", () => {
-  test("Linux respeta XDG_CONFIG_HOME cuando está", () => {
+describe("the config folder of each system", () => {
+  test("Linux respects XDG_CONFIG_HOME when set", () => {
     expect(userConfigDir({ XDG_CONFIG_HOME: "/xdg" }, "linux", "/home/x")).toBe(
       "/xdg/tanit",
     );
   });
 
-  test("Linux cae a ~/.config cuando no", () => {
+  test("Linux falls back to ~/.config when not", () => {
     expect(userConfigDir({}, "linux", "/home/x")).toBe("/home/x/.config/tanit");
   });
 
@@ -370,7 +372,7 @@ describe("la carpeta de configuración de cada sistema", () => {
     );
   });
 
-  test("los idiomas cuelgan de ella, no de otro sitio", () => {
+  test("the languages hang off it, not from somewhere else", () => {
     const base = userConfigDir({}, "linux", "/home/x");
     expect(userLocalesDir({}, "linux", "/home/x")).toBe(`${base}/locales`);
   });

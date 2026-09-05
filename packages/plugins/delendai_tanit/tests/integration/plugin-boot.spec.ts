@@ -99,11 +99,11 @@ describe("declaración en delendai.config.json", () => {
     expect(entry.default?.name).toBe("tanit");
   });
 
-  // Los plugins superseded desaparecen del config para no tumbar el
-  // arranque del host con una entrada a un directorio borrado. Hoy
-  // la lista canónica de plugins está en `delendai.config.json`; este
-  // test los cuenta para que un plugin olvidado salga como test
-  // rojo en vez de como host muerto al boot.
+  // Superseded plugins are removed from the config so the host does
+  // not crash on boot with an entry pointing at a deleted directory.
+  // Today the canonical plugin list lives in `delendai.config.json`;
+  // this test counts them so a forgotten plugin shows up as a red
+  // test instead of a dead host at boot.
   test("cuenta los plugins declarados en delendai.config.json", async () => {
     const config = JSON.parse(
       await readFile(resolve(PACKAGE_ROOT, "delendai.config.json"), "utf8"),

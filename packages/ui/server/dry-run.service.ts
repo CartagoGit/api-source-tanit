@@ -1,24 +1,25 @@
 /**
- * El ensayo: qué pasaría si se generara, sin generar.
+ * The rehearsal: what would happen if we generated, without generating.
  *
- * La única forma de saber qué iba a salir era generarlo, y eso escribe
- * en la carpeta de alguien. Con un proyecto que no es el que creías —o
- * una carpeta de salida equivocada— eso significa dejar ficheros donde
- * no van y tener que borrarlos a mano.
+ * The only way to know what would come out was to generate it, and
+ * that writes into someone's folder. With a project that is not the
+ * one you thought — or a wrong output folder — that means leaving
+ * files where they do not belong and having to delete them by hand.
  *
- * ## Lo que de verdad asusta es sobrescribir
+ * ## What is actually scary is overwriting
  *
- * «Se van a crear seis ficheros» tranquiliza. «Se van a sobrescribir
- * dos» es la información por la que existe esto: la primera vez todo es
- * nuevo, y a partir de la segunda lo interesante es qué se pierde.
+ * "Six files will be created" reassures. "Two will be overwritten"
+ * is the information this exists for: the first time everything is
+ * new, and from the second on what matters is what gets lost.
  *
- * ## Por qué el ensayo llama al pipeline de verdad
+ * ## Why the rehearsal calls the real pipeline
  *
- * Porque predecir los nombres a mano sería una segunda implementación de
- * `outputBasename`, y se desincronizaría — el ensayo diría una cosa y
- * `generate` escribiría otra, que es exactamente el fallo que un ensayo
- * viene a evitar. El pipeline **construye en memoria**; escribir es cosa
- * del script. Así que se le pregunta a él y no se escribe nada.
+ * Because predicting the names by hand would be a second
+ * implementation of `outputBasename`, and it would drift — the
+ * rehearsal would say one thing and `generate` would write another,
+ * which is exactly the failure a rehearsal is here to prevent. The
+ * pipeline **builds in memory**; writing is the script's job. So
+ * we ask it and write nothing.
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -34,7 +35,7 @@ import {
 } from "../../contracts/constants/core/export-formats.constant.js";
 import { OUTPUT_DIR_NAME } from "../../contracts/constants/core/postman.constant.js";
 
-/** La extensión con la que sale cada formato. */
+/** The extension each format is emitted with. */
 const EXTENSIONES: Readonly<Record<string, string>> = {
   postman: ".postman_collection.json",
   openapi: ".openapi.yaml",
@@ -44,7 +45,7 @@ const EXTENSIONES: Readonly<Record<string, string>> = {
   curl: ".curl.sh",
 };
 
-/** Cómo se llama el fichero de un entorno. */
+/** How an environment's file is named. */
 function nombreDeEntorno(base: string, entorno: string): string {
   const slug = entorno
     .toLowerCase()
@@ -56,10 +57,11 @@ function nombreDeEntorno(base: string, entorno: string): string {
 }
 
 /**
- * Qué ficheros se crearían, cuáles se sobrescribirían, y qué hay dentro.
+ * Which files would be created, which would be overwritten, and what
+ * is in them.
  *
- * No toca el disco salvo para **preguntar si un fichero ya está**, que
- * es justamente lo que hay que saber.
+ * It does not touch the disk except to **ask whether a file already
+ * exists**, which is exactly what we need to know.
  */
 export function planDryRun(input: IDryRunInput): IDryRunPlan {
   const salida = input.outputDir ?? join(input.projectRoot, OUTPUT_DIR_NAME);
@@ -88,8 +90,8 @@ export function planDryRun(input: IDryRunInput): IDryRunPlan {
     });
   }
 
-  // Los entornos solo salen con Postman: son suyos, no de OpenAPI ni de
-  // un script de cURL.
+  // Environments only come out with Postman: they are Postman's, not
+  // OpenAPI's or a cURL script's.
   if (pedidos.includes(DEFAULT_EXPORT_FORMAT)) {
     for (const entorno of input.result.config.environments ?? []) {
       const ruta = join(salida, nombreDeEntorno(base, entorno.name));
@@ -109,9 +111,10 @@ export function planDryRun(input: IDryRunInput): IDryRunPlan {
     framework: input.result.match?.framework ?? null,
     requests: input.result.specs.length,
     files,
-    // Se cuenta aquí y no en la interfaz: es **el** dato del ensayo, y
-    // dejar que cada consumidor lo derive es cómo dos pantallas acaban
-    // diciendo cifras distintas de lo mismo.
+    // We count it here, not in the interface: it is **the** piece of
+    // data the rehearsal exists for, and letting each consumer
+    // derive it is how two screens end up showing different numbers
+    // for the same thing.
     overwrites: files.filter((f) => f.overwrites).length,
     warnings: [...input.result.warnings],
     ...(desconocidos.length > 0

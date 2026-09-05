@@ -1,20 +1,23 @@
 /**
  * `--framework-search-root` — f00011 S3.
  *
- * Cubre el lado CLI del flag:
+ * Covers the CLI side of the flag:
  *
- *   1. `--help` lo documenta en la sección COMMON FLAGS.
- *   2. Pasarlo a `generate` propaga el valor al `match.frameworkSearchRoot`
- *      y el pipeline lo ve (se imprime en `--inspect`).
- *   3. Sin pasarlo, un proyecto monorepo con un solo workspace ve cómo
- *      el orquestador auto-rellena el subdir y avisa al usuario.
- *   4. Con varios workspaces, el orquestador NO rellena `frameworkSearchRoot`.
- *   5. Un valor absoluto o con `..` se rechaza con error claro.
- *   6. El flag también pasa por `push` y `watch`.
+ *   1. `--help` documents it in the COMMON FLAGS section.
+ *   2. Passing it to `generate` propagates the value to
+ *      `match.frameworkSearchRoot` and the pipeline sees it (printed
+ *      in `--inspect`).
+ *   3. Without it, a monorepo project with a single workspace sees
+ *      the orchestrator auto-fill the subdir and warn the user.
+ *   4. With several workspaces, the orchestrator does NOT fill
+ *      `frameworkSearchRoot`.
+ *   5. An absolute value or one with `..` is rejected with a clear
+ *      error.
+ *   6. The flag also passes through `push` and `watch`.
  *
- * No cubre el camino del plugin (eso es `tests/plugin/plugin-options.
- * spec.ts`) ni los scanners (eso está en `tests/frameworks/*`, fuera
- * del dominio de S3).
+ * It does not cover the plugin path (that is
+ * `tests/plugin/plugin-options.spec.ts`) nor the scanners (those
+ * live in `tests/frameworks/*`, outside S3 scope).
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -41,19 +44,19 @@ afterAll(async () => {
 });
 
 /**
- * Crea un monorepo falso con el fixture de Express dentro del primer
- * workspace. Es la forma más barata de tener un proyecto que un
- * scanner reconozca Y una estructura de monorepo encima: así el
- * orquestador puede auto-detectar el subdir y la búsqueda del
- * framework no falla por falta de código.
+ * Creates a fake monorepo with the Express fixture inside the first
+ * workspace. It is the cheapest way to have a project that a scanner
+ * recognises AND a monorepo structure on top: this way the
+ * orchestrator can auto-detect the subdir and the framework search
+ * does not fail for lack of code.
  *
- * El truco está en la raíz: el `package.json` raíz declara `express`
- * en `dependencies`, además de los `workspaces`. Sin esa pista, el
- * orquestador no detecta nada (los scanners miran la raíz, no el
- * subdir), y `frameworkSearchRoot` solo tiene sentido si hay un
- * scanner que ya matcheó. Es exactamente el caso de uso real: en un
- * monorepo real, la raíz a menudo re-exporta las dependencias del
- * framework para que las herramientas las vean.
+ * The trick is at the root: the root `package.json` declares
+ * `express` in `dependencies`, alongside the `workspaces`. Without
+ * that hint, the orchestrator detects nothing (scanners look at the
+ * root, not the subdir), and `frameworkSearchRoot` only makes sense
+ * if there is already a scanner that matched. It is exactly the
+ * real use case: in a real monorepo, the root often re-exports the
+ * framework dependencies so tools can see them.
  */
 async function makeMonorepoWithExpress(
   rel: string,
@@ -67,9 +70,9 @@ async function makeMonorepoWithExpress(
       {
         name: rel,
         workspaces,
-        // Pista para el orquestador: la raíz declara la dependencia
-        // del framework. Sin esto, ningún scanner matchea y el caso
-        // de uso de `frameworkSearchRoot` nunca se da.
+        // Hint for the orchestrator: the root declares the framework
+        // dependency. Without this, no scanner matches and the
+        // `frameworkSearchRoot` use case never arises.
         dependencies: { express: "^4.0.0" },
       },
       null,
@@ -78,28 +81,29 @@ async function makeMonorepoWithExpress(
     "utf8",
   );
   const first = workspaces[0];
-  if (!first) throw new Error("workspaces vacío");
+  if (!first) throw new Error("empty workspaces");
   const subdir = join(dir, first);
   await cp(exampleDir("express"), subdir, { recursive: true });
-  // Materializar el resto de workspaces como carpetas vacías: la
-  // detección necesita verlas en disco para contar varios y decidir
-  // NO auto-rellenar `frameworkSearchRoot`. Sin esto, solo el primero
-  // existe y el helper cree que es el único.
+  // Materialise the rest of the workspaces as empty folders: the
+  // detection needs to see them on disk to count more than one and
+  // decide NOT to auto-fill `frameworkSearchRoot`. Without this,
+  // only the first one exists and the helper thinks it is the only
+  // one.
   for (const w of workspaces.slice(1)) {
     await mkdir(join(dir, w), { recursive: true });
   }
   return { root: dir, frameworkSearchRoot: first };
 }
 
-describe("--help documenta el flag", () => {
-  test("`--help` menciona --framework-search-root", async () => {
+describe("--help documents the flag", () => {
+  test("`--help` mentions --framework-search-root", async () => {
     const { output } = await runCli(["--help"]);
     expect(output).toContain("--framework-search-root");
   });
 });
 
-describe("--framework-search-root en `generate`", () => {
-  test("valor inválido (absoluto) → error claro", async () => {
+describe("--framework-search-root in `generate`", () => {
+  test("invalid value (absolute) → clear error", async () => {
     const { code, output } = await runCli([
       "generate",
       "--project-root",
@@ -112,7 +116,7 @@ describe("--framework-search-root en `generate`", () => {
     expect(output).toContain("subdirectory relative to projectRoot");
   });
 
-  test("valor inválido (con `..`) → error claro", async () => {
+  test("invalid value (with `..`) → clear error", async () => {
     const { code, output } = await runCli([
       "generate",
       "--project-root",
@@ -124,10 +128,10 @@ describe("--framework-search-root en `generate`", () => {
     expect(output).toContain("--framework-search-root");
   });
 
-  test("valor válido aparece en `--inspect`", async () => {
-    // El paquete `examples/example-express` no es un monorepo, así que
-    // pasar `--framework-search-root <algo>` no rompe nada y el subdir
-    // aparece en la salida `--inspect`.
+  test("valid value appears in `--inspect`", async () => {
+    // The `examples/example-express` package is not a monorepo, so
+    // passing `--framework-search-root <something>` does not break
+    // anything and the subdir appears in the `--inspect` output.
     const { code, output } = await runCli([
       "generate",
       "--project-root",
@@ -143,12 +147,12 @@ describe("--framework-search-root en `generate`", () => {
   });
 });
 
-describe("auto-detección de monorepo en `generate`", () => {
-  test("monorepo con un solo workspace → auto-rellena y avisa", async () => {
-    // El orquestador detecta el monorepo, mira el único workspace
-    // (donde está el fixture de Express), y rellena `frameworkSearchRoot`
-    // por su cuenta. La salida `--inspect` debe mostrarlo con la
-    // marca "(auto-detected)".
+describe("monorepo auto-detection in `generate`", () => {
+  test("monorepo with a single workspace → auto-fills and warns", async () => {
+    // The orchestrator detects the monorepo, looks at the only
+    // workspace (where the Express fixture lives), and fills
+    // `frameworkSearchRoot` on its own. The `--inspect` output must
+    // show it with the "(auto-detected)" mark.
     const { root } = await makeMonorepoWithExpress("monorepo-single", [
       "apps/api",
     ]);
@@ -164,12 +168,12 @@ describe("auto-detección de monorepo en `generate`", () => {
     expect(output).toContain("(auto-detected)");
   });
 
-  test("monorepo con varios workspaces → NO rellena frameworkSearchRoot", async () => {
-    // El helper marca `frameworkSearchRoot` como `null` cuando hay más
-    // de un workspace. Con uno de los dos copiando el fixture, el
-    // escaneo del primero debería seguir funcionando, pero la línea
-    // `Search root:` no aparece en `--inspect` (el orquestador no
-    // rellenó el subdir).
+  test("monorepo with several workspaces → does NOT fill frameworkSearchRoot", async () => {
+    // The helper marks `frameworkSearchRoot` as `null` when there is
+    // more than one workspace. With one of the two copying the
+    // fixture, the scan of the first one should still work, but the
+    // line `Search root:` does not appear in `--inspect` (the
+    // orchestrator did not fill the subdir).
     const { root } = await makeMonorepoWithExpress("monorepo-multi", [
       "apps/api",
       "apps/web",
@@ -184,9 +188,10 @@ describe("auto-detección de monorepo en `generate`", () => {
   });
 });
 
-describe("--framework-search-root en otros comandos", () => {
-  test("`push` lo acepta (no falla al parsear)", async () => {
-    // Sin API key el comando falla por eso, no por el flag.
+describe("--framework-search-root in other commands", () => {
+  test("`push` accepts it (does not fail to parse)", async () => {
+    // Without an API key the command fails for that reason, not for
+    // the flag.
     const { code, output } = await runCli([
       "push",
       "--project-root",
@@ -198,10 +203,10 @@ describe("--framework-search-root en otros comandos", () => {
     expect(output).toContain("Missing Postman API key");
   });
 
-  test("`watch --once` lo acepta y genera una vez", async () => {
-    // `--once` hace que `watch` corra una sola generación y salga. Es
-    // la forma barata de probar que el flag llega al pipeline sin
-    // dejar un proceso a largo plazo en el test.
+  test("`watch --once` accepts it and generates once", async () => {
+    // `--once` makes `watch` run a single generation and exit. It is
+    // the cheap way to prove the flag reaches the pipeline without
+    // leaving a long-lived process in the test.
     const { code } = await runCli([
       "watch",
       "--project-root",
@@ -210,8 +215,8 @@ describe("--framework-search-root en otros comandos", () => {
       "apps/api",
       "--once",
     ]);
-    // El código 0 es lo que se persigue: `--once` ejecuta una generación
-    // y termina sin error.
+    // Exit 0 is what we seek: `--once` runs one generation and
+    // exits without error.
     expect(code).toBe(0);
   });
 });

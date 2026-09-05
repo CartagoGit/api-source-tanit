@@ -1,17 +1,19 @@
 /**
- * Qué contesta la interfaz a cada petición, sin saber de HTTP.
+ * What the interface replies to each request, without knowing about
+ * HTTP.
  *
- * Esto es una función de `(ruta, cuerpo)` a `(estado, datos)`. No toca
- * `Bun.serve`, no abre puertos y no lee `process.argv`: se le pasa lo
- * que necesita. Por eso se puede probar entera sin levantar nada, que
- * es lo que separa una interfaz con tests de una que se prueba a mano.
+ * This is a function from `(path, body)` to `(status, data)`. It
+ * does not touch `Bun.serve`, does not open ports and does not read
+ * `process.argv`: it is given what it needs. That is why it can be
+ * tested in full without bringing anything up, which is what
+ * separates an interface with tests from one tested by hand.
  *
- * El transporte —el puerto, los CORS, el apagado limpio— vive en
- * `ui-server.service.ts`. Aquí solo está la respuesta.
+ * Transport — the port, the CORS, the clean shutdown — lives in
+ * `ui-server.service.ts`. Only the response is here.
  *
- * Ninguna ruta reimplementa lógica de producto: todas llaman al mismo
- * pipeline que usa el CLI. La interfaz es otra puerta al mismo sitio,
- * no una segunda implementación que se desincronice.
+ * No route reimplements product logic: every route calls the same
+ * pipeline the CLI uses. The interface is another door to the same
+ * place, not a second implementation that drifts.
  */
 import type { IUiDeps, IUiResponse } from "../../contracts/interfaces/cli/ui.interface.js";
 import type { ISettings } from "../../contracts/interfaces/cli/settings.interface.js";
@@ -20,18 +22,18 @@ import { THEME_MODES } from "../../contracts/constants/cli/theme.constant.js";
 const ok = (body: unknown): IUiResponse => ({ status: 200, body });
 
 /**
- * Un error que la persona puede leer y accionar.
+ * An error the user can read and act on.
  *
- * Siempre lleva `nextAction`: un mensaje que dice qué ha pasado y no qué
- * hacer deja igual de atascado, y en una interfaz gráfica eso se nota
- * más porque no hay `--help` a mano.
+ * It always carries `nextAction`: a message that says what happened
+ * but not what to do leaves them just as stuck, and in a graphical
+ * interface that hurts more because there is no `--help` at hand.
  */
 const fail = (status: number, reason: string, nextAction: string): IUiResponse => ({
   status,
   body: { ok: false, error: { reason, nextAction } },
 });
 
-/** El cuerpo de una petición, ya parseado. */
+/** A request's body, already parsed. */
 type Body = Record<string, unknown>;
 
 function texto(body: Body, clave: string): string | undefined {
@@ -45,9 +47,9 @@ function lista(body: Body, clave: string): string[] | undefined {
 }
 
 /**
- * Resuelve una petición de la interfaz.
+ * Resolves an interface request.
  *
- * `path` sin query. `body` es `{}` para las de solo lectura.
+ * `path` without query. `body` is `{}` for the read-only ones.
  */
 export async function handleUiRequest(
   path: string,
@@ -55,14 +57,15 @@ export async function handleUiRequest(
   deps: IUiDeps,
 ): Promise<IUiResponse> {
   switch (path) {
-    /** Lo que la interfaz necesita para dibujarse: formatos y frameworks. */
+    /** What the interface needs to render itself: formats and frameworks. */
     /**
-     * Los idiomas, para que la página pinte su selector.
+     * The locales, so the page can paint its selector.
      *
-     * Va aparte de `/api/capabilities` porque cambia por otro motivo:
-     * los formatos y los frameworks son del producto, y los idiomas son
-     * de quien lo usa —puede añadir uno dejando un fichero, y entonces
-     * esta respuesta cambia sin que el producto haya cambiado—.
+     * It lives apart from `/api/capabilities` because it changes for
+     * a different reason: formats and frameworks belong to the
+     * product, and locales belong to the user — anyone can add one
+     * by dropping in a file, and this response changes without the
+     * product having changed.
      */
     case "/api/locales": {
       const catalogo = deps.locales();
@@ -77,19 +80,19 @@ export async function handleUiRequest(
             origin: l.origin,
             translations: l.translations,
           })),
-          // Los ficheros que alguien dejó y no se pudieron leer. Van en
-          // la respuesta y no en un log del servidor porque quien los
-          // escribió está mirando la interfaz, no la terminal.
+          // The files someone left and could we not read. They go in the
+          // response, not in a server log, because whoever wrote
+          // them is looking at the interface, not the terminal.
           rejected: catalogo.rejected,
         },
       };
     }
 
     /**
-     * Los ajustes guardados.
+     * The saved settings.
      *
-     * Van por su propia ruta porque son de quien usa la interfaz, no del
-     * producto — igual que los idiomas.
+     * They live on their own route because they belong to the user
+     * of the interface, not to the product — same as locales.
      */
     case "/api/settings": {
       const { settings, problem } = await deps.readSettings();
@@ -98,26 +101,26 @@ export async function handleUiRequest(
         body: {
           ok: true,
           settings,
-          // El motivo por el que no se pudieron usar los guardados, si
-          // lo hay. Viaja a la interfaz y no a un log: unos ajustes que
-          // desaparecen sin explicación parecen un fallo del programa.
+          // Why the saved settings could not be used, if so. It travels to
+          // the interface, not to a log: settings that vanish
+          // without explanation look like a program bug.
           problem,
         },
       };
     }
 
     /**
-     * Guarda unos cuantos ajustes.
+     * Saves a few settings.
      *
-     * No hay botón de guardar: la interfaz llama aquí al tocar un
-     * control. Un botón se olvida, y entonces el ajuste que alguien
-     * cambió no está la próxima vez, que es justo lo que unos ajustes
-     * persistentes vienen a evitar.
+     * There is no save button: the interface calls here as soon as a
+     * control is touched. A button is forgettable, and then the
+     * setting someone changed is gone next time — which is exactly
+     * what persistent settings exist to avoid.
      */
     case "/api/settings/save": {
-      // Se reutilizan los lectores del propio fichero en vez de escribir
-      // otros: dos formas de leer «una cadena no vacía» acaban difiriendo
-      // en el caso raro, que es el que rompe.
+      // We reuse the readers from the file itself rather than writing
+      // our own: two ways of reading "a non-empty string" end up
+      // differing in the rare case, which is the one that breaks.
       const locale = texto(body, "locale");
       const theme = texto(body, "theme");
       const proyecto = texto(body, "lastProjectRoot");
@@ -125,13 +128,13 @@ export async function handleUiRequest(
       const framework = texto(body, "lastFramework");
       const formatos = lista(body, "lastFormats");
 
-      // Audit 2026-09-04 P3 #21 (settings validation on write): antes
-      // el `theme` se casteaba a `ISettings["theme"]` sin validar;
-      // un POST con theme="banana" se guardaba OK y solo se
-      // saneaba en el siguiente read, con el efecto "guardado
-      // exitoso → reinicio → ajuste desaparecido". Validamos el
-      // write igual que valida el read: si no está en THEME_MODES,
-      // 400 inmediato, sin escribir nada a disco.
+      // Audit 2026-09-04 P3 #21 (settings validation on write):
+      // previously `theme` was cast to `ISettings["theme"]` without
+      // validation; a POST with theme="banana" would save OK and
+      // only be sanitised on the next read, with the effect
+      // "successful save → restart → setting gone". We validate the
+      // write the same way the read does: if it is not in
+      // THEME_MODES, an immediate 400, with nothing written to disk.
       if (theme && !THEME_MODES.includes(theme as ISettings["theme"] & string)) {
         return fail(
           400,
@@ -140,10 +143,9 @@ export async function handleUiRequest(
         );
       }
 
-      // Se construye de una vez y no campo a campo: los ajustes son
-      // `readonly`, y eso es a propósito — un objeto que se muta a
-      // trozos acaba guardándose a medias cuando alguien añade un
-      // `return` temprano.
+      // We build it in one go and not field by field: the settings are
+      // `readonly`, on purpose — an object mutated piecemeal ends up
+      // being saved halfway when someone adds an early `return`.
       const cambios: Partial<Omit<ISettings, "version">> = {
         ...(locale ? { locale } : {}),
         ...(theme ? { theme: theme as ISettings["theme"] } : {}),
@@ -166,21 +168,21 @@ export async function handleUiRequest(
     }
 
     /**
-     * Navegar carpetas, para elegir origen y destino sin escribir la
-     * ruta a mano — que es donde más se falla: una errata devuelve «no
-     * existe» y no queda pista de dónde estabas.
+     * Browse folders, to pick source and destination without typing
+     * the path by hand — where the most mistakes happen: a typo
+     * returns "does not exist" and leaves no clue where you were.
      */
     case "/api/browse":
-      // El listado ya trae su propio `ok`, que dice si la carpeta se
-      // pudo leer. Se respeta tal cual en vez de forzarlo a `true`: una
-      // carpeta sin permiso es una respuesta legítima del explorador, no
-      // un fallo de la ruta.
+      // The listing already carries its own `ok`, which says whether
+      // the folder could be read. We respect it as is instead of
+      // forcing it to `true`: a folder without permission is a
+      // legitimate answer from the explorer, not a route failure.
       return ok({ ...(await deps.browse(texto(body, "path"))) });
 
     /**
-     * El ensayo. Enseña qué ficheros saldrían y **cuáles se
-     * sobrescribirían**, que es lo que de verdad importa a partir de la
-     * segunda vez.
+     * The rehearsal. It shows which files would come out and
+     * **which would be overwritten**, which is what actually matters
+     * from the second time on.
      */
     case "/api/dry-run": {
       const projectRoot = texto(body, "projectRoot");
@@ -206,8 +208,9 @@ export async function handleUiRequest(
         framework: texto(body, "framework"),
       });
 
-      // Un plan inválido —un formato que no existe— es un 400: se ha
-      // pedido algo imposible, no ha fallado el ensayo.
+      // An invalid plan — a format that does not exist — is a 400:
+      // something impossible was requested, the rehearsal did not
+      // fail.
       if (!plan.ok) {
         return fail(
           400,
@@ -224,20 +227,21 @@ export async function handleUiRequest(
         formats: deps.formats(),
         frameworks: deps.frameworks(),
         /**
-         * Qué formatos importa Postman. No es decoración: `bruno` es el
-         * formato nativo de otro producto, y ofrecerlo como equivalente
-         * — sin decir que hay que abrirlo allí — sería engañar a quien
-         * elige con la expectativa de reimportar en Postman.
+         * Which formats Postman imports. Not decoration: `bruno` is
+         * another product's native format, and offering it as
+         * equivalent — without saying it must be opened there — would
+         * be misleading anyone who picks it expecting to reimport in
+         * Postman.
          */
         postmanImportable: deps.formats().filter((f) => f !== "bruno"),
       });
 
     /**
-     * Enseña lo detectado **antes** de escribir nada.
+     * Shows what was detected **before** writing anything.
      *
-     * Es el paso que ya hace bien el asistente de terminal, y el que
-     * evita la sorpresa de encontrarse una carpeta nueva sin haberla
-     * pedido.
+     * It is the step the terminal assistant already does well, and
+     * the one that avoids the surprise of finding a new folder you
+     * did not ask for.
      */
     case "/api/inspect": {
       const projectRoot = texto(body, "projectRoot");
@@ -256,9 +260,9 @@ export async function handleUiRequest(
         return ok({
           ok: true,
           summary,
-          // No es un error: un proyecto sin rutas todavía es legítimo.
-          // Pero decirlo aquí evita generar una colección vacía y que
-          // parezca que la herramienta falló.
+          // Not an error: a project with no routes yet is legitimate. But
+          // saying so here prevents generating an empty collection
+          // that looks like a tool failure.
           notice:
             "No routes were recognised. If you know which framework it is, " +
             "you can force it; if the project has no routes yet, this is correct.",
@@ -267,7 +271,7 @@ export async function handleUiRequest(
       return ok({ ok: true, summary });
     }
 
-        /** Genera de verdad. Solo después de que se haya visto lo detectado. */
+        /** Generates for real. Only after the detected view has been shown. */
     case "/api/generate": {
       const projectRoot = texto(body, "projectRoot");
       if (!projectRoot) {
@@ -287,11 +291,11 @@ export async function handleUiRequest(
       }
 
       /**
-       * El framework forzado se valida contra el catálogo antes de
-       * llegar al pipeline: rechazarlo aquí es un 400 accionable con la
-       * lista exacta; dejarlo pasar para que la autodetección del
-       * pipeline lo ignore en silencio generaría lo opuesto a lo que la
-       * persona pidió.
+       * The forced framework is validated against the catalogue before
+       * reaching the pipeline: rejecting it here is an actionable
+       * 400 with the exact list; letting it through only to have
+       * the pipeline silently ignore it would produce the opposite
+       * of what the user asked for.
        */
       const framework = texto(body, "framework");
       if (framework && !deps.frameworks().includes(framework)) {
@@ -312,10 +316,11 @@ export async function handleUiRequest(
       });
 
       /**
-       * Escribir fuera del proyecto es un uso legítimo —recoger varias
-       * colecciones en un sitio—, pero no puede parecer un aviso más del
-       * resultado: se dice **dónde** va a aparecer la salida, y solo
-       * cuando la carpeta elegida no es la de dentro del proyecto.
+       * Writing outside the project is a legitimate use — collecting
+       * several collections in one place — but it cannot look like
+       * just another warning in the result: we say **where** the
+       * output will appear, and only when the chosen folder is not
+       * the one inside the project.
        */
       const avisoDestino =
         outputDir && outputDir !== `${projectRoot}/tanit`
@@ -330,17 +335,16 @@ export async function handleUiRequest(
     }
 
     /**
-     * El historial de generaciones, para el dashboard.
+     * Generation history, for the dashboard.
      *
-     * Devuelve las últimas N entradas (`limit`, 20 por defecto) y
-     * deja a la UI enseñarlas sin tener que volver a leer cada
-     * proyecto. Un `projectRoot` filtra a un único proyecto; sin él,
-     * todos.
+     * Returns the last N entries (`limit`, 20 by default) and lets
+     * the UI render them without having to re-read each project.
+     * A `projectRoot` filters to a single project; without it, all
+     * of them.
      *
-     * No es decorativo: la ruta existe **porque** la página la
-     * llama al cargar, y enseñarla como parte del formulario
-     * principal es lo que materializa FEAT-001 (dashboard
-     * multi-proyecto).
+     * Not decorative: the route exists **because** the page calls
+     * it on load, and rendering it as part of the main form is what
+     * materialises FEAT-001 (multi-project dashboard).
      */
     case "/api/history": {
       const limitText = body["limit"];

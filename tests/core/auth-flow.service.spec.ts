@@ -39,11 +39,11 @@ const scriptOf = (item: PostmanItem | null) =>
 const bodyOf = (item: PostmanItem | null) =>
   JSON.parse(item?.request?.body?.raw ?? "{}") as Record<string, unknown>;
 
-describe("detectAuthFlow — detección por método + URI", () => {
-  // El mecanismo anterior comparaba el NOMBRE del item contra una lista,
-  // y los nombres que genera el builder ("Crear Login", "/POST auth/login")
-  // no casaban nunca. Por eso el auto-token no se activaba en ningún
-  // proyecto.
+describe("detectAuthFlow — detection by method + URI", () => {
+  // The previous mechanism compared the item NAME against a list, and
+  // the names the builder generates ("Create Login", "/POST auth/login")
+  // never matched. That is why auto-token never activated in any
+  // project.
   test.each([
     ["/auth/login", "POST"],
     ["/login", "POST"],
@@ -53,50 +53,50 @@ describe("detectAuthFlow — detección por método + URI", () => {
     ["/auth/token", "POST"],
     ["/oauth/token", "POST"],
     ["/sessions", "POST"],
-  ])("reconoce %s como login sea cual sea el nombre del item", (path, method) => {
-    const flow = detectAuthFlow(collection([request("Nombre Arbitrario", method, path)]));
+  ])("recognizes %s as login regardless of the item name", (path, method) => {
+    const flow = detectAuthFlow(collection([request("Arbitrary Name", method, path)]));
     expect(flow?.login).not.toBeNull();
   });
 
-  test("reconoce el refresh", () => {
+  test("recognizes the refresh", () => {
     const flow = detectAuthFlow(collection([request("x", "POST", "/auth/refresh")]));
     expect(flow?.refresh).not.toBeNull();
     expect(flow?.login).toBeNull();
   });
 
-  test("reconoce el logout con cualquiera de sus métodos", () => {
+  test("recognizes the logout with any of its methods", () => {
     for (const method of ["POST", "GET", "DELETE"]) {
       const flow = detectAuthFlow(collection([request("x", method, "/auth/logout")]));
       expect(flow?.logout).not.toBeNull();
     }
   });
 
-  test("no confunde un GET /login con el endpoint de autenticación", () => {
+  test("does not confuse a GET /login with the auth endpoint", () => {
     expect(detectAuthFlow(collection([request("x", "GET", "/login")]))).toBeNull();
   });
 
-  test("no marca como login un endpoint que solo contiene la palabra", () => {
+  test("does not flag as login an endpoint that only contains the word", () => {
     expect(detectAuthFlow(collection([request("x", "POST", "/login-attempts")]))).toBeNull();
   });
 
-  test("busca dentro de carpetas anidadas", () => {
+  test("looks inside nested folders", () => {
     const nested = folder("Auth", [folder("v1", [request("x", "POST", "/auth/login")])]);
     expect(detectAuthFlow(collection([nested]))?.login).not.toBeNull();
   });
 
-  test("devuelve null en una colección sin auth", () => {
+  test("returns null for a collection without auth", () => {
     expect(detectAuthFlow(collection([request("x", "GET", "/users")]))).toBeNull();
   });
 
-  test("ignora la query string al comparar", () => {
+  test("ignores the query string when comparing", () => {
     const item = request("x", "POST", "/auth/login");
     item.request!.url.raw = "{{baseUrl}}/auth/login?redirect=/home";
     expect(detectAuthFlow(collection([item]))?.login).not.toBeNull();
   });
 });
 
-describe("applyAuthFlow — captura del token", () => {
-  test("el login guarda el token en el environment", () => {
+describe("applyAuthFlow — token capture", () => {
+  test("login stores the token in the environment", () => {
     const c = collection([request("x", "POST", "/auth/login")]);
     const flow = applyAuthFlow(c);
     expect(scriptOf(flow?.login ?? null)).toContain(
@@ -104,23 +104,23 @@ describe("applyAuthFlow — captura del token", () => {
     );
   });
 
-  test("cae a collectionVariables si no hay environment activo", () => {
+  test("falls back to collectionVariables if there is no active environment", () => {
     const c = collection([request("x", "POST", "/auth/login")]);
     expect(scriptOf(applyAuthFlow(c)?.login ?? null)).toContain(
       `pm.collectionVariables.set('${AUTH_TOKEN_VARIABLE}', token)`,
     );
   });
 
-  // Antes se exigía `tokenResponsePath` configurado a mano y, sin él, no
-  // se generaba script ninguno.
-  test("sin tokenResponsePath prueba los caminos habituales", () => {
+  // Previously `tokenResponsePath` had to be configured by hand, and
+  // without it no script was generated at all.
+  test("without tokenResponsePath tries the usual paths", () => {
     const script = scriptOf(applyAuthFlow(collection([request("x", "POST", "/auth/login")]))?.login ?? null);
     for (const path of ["access_token", "token", "data.access_token", "accessToken", "jwt"]) {
       expect(script).toContain(`"${path}"`);
     }
   });
 
-  test("con tokenResponsePath declarado usa solo ese", () => {
+  test("with a declared tokenResponsePath uses only that one", () => {
     const script = scriptOf(
       applyAuthFlow(collection([request("x", "POST", "/auth/login")]), {
         tokenResponsePath: "data.mi_token",
@@ -130,33 +130,33 @@ describe("applyAuthFlow — captura del token", () => {
     expect(script).not.toContain('"access_token"');
   });
 
-  test("el fallo es visible: usa pm.test, no un if silencioso", () => {
+  test("the failure is visible: it uses pm.test, not a silent if", () => {
     const script = scriptOf(applyAuthFlow(collection([request("x", "POST", "/auth/login")]))?.login ?? null);
     expect(script).toContain("pm.test(");
     expect(script).toContain("Token not found");
   });
 
-  test("el refresh también captura el token", () => {
+  test("the refresh also captures the token", () => {
     const c = collection([request("x", "POST", "/auth/refresh")]);
     expect(scriptOf(applyAuthFlow(c)?.refresh ?? null)).toContain("pm.environment.set");
   });
 
-  test("el logout limpia el token", () => {
+  test("the logout clears the token", () => {
     const c = collection([request("x", "POST", "/auth/logout")]);
     const script = scriptOf(applyAuthFlow(c)?.logout ?? null);
     expect(script).toContain(`pm.environment.set('${AUTH_TOKEN_VARIABLE}', '')`);
     expect(script).toContain(`pm.collectionVariables.set('${AUTH_TOKEN_VARIABLE}', '')`);
   });
 
-  test("devuelve null y no toca nada si no hay auth", () => {
+  test("returns null and does not touch anything if there is no auth", () => {
     const c = collection([request("x", "GET", "/users")]);
     expect(applyAuthFlow(c)).toBeNull();
     expect(c.item[0]?.event).toBeUndefined();
   });
 });
 
-describe("applyAuthFlow — body de credenciales", () => {
-  test("conserva los nombres de campo reales del proyecto", () => {
+describe("applyAuthFlow — credentials body", () => {
+  test("preserves the project's actual field names", () => {
     const c = collection([
       request("x", "POST", "/auth/login", { username: "demo", password: "1234" }),
     ]);
@@ -167,7 +167,7 @@ describe("applyAuthFlow — body de credenciales", () => {
     });
   });
 
-  test("reconoce email como campo de usuario", () => {
+  test("recognizes email as the user field", () => {
     const c = collection([
       request("x", "POST", "/auth/login", { email: "a@b.c", password: "1234" }),
     ]);
@@ -176,23 +176,25 @@ describe("applyAuthFlow — body de credenciales", () => {
     );
   });
 
-  // `attachCredentialTemplate` ya no sustituye un body desconocido
-  // por uno inventado: deja el body intacto y avisa (a00012 S3.b).
-  // El test anterior (que sí lo sustituía) validaba el comportamiento
-  // viejo; mantenemos la intención —"un body inferido sin credenciales
-  // NO debe contaminar el que arma el builder"—, pero la garantía pasa
-  // a ser "lo deja como está" en lugar de "lo machaca".
-  test("preserva un body inferido sin credenciales y avisa", () => {
+  // `attachCredentialTemplate` no longer replaces an unknown body
+  // with an invented one: it leaves the body intact and warns
+  // (a00012 S3.b). The previous test (which did replace it) validated
+  // the old behavior; we keep the intent —"an inferred body without
+  // credentials must NOT contaminate what the builder produces"—but
+  // the guarantee becomes "leaves it as-is" instead of "stomps on
+  // it".
+  test("preserves an inferred body without credentials and warns", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const c = collection([
         request("x", "POST", "/auth/login", { force: false, notes: "Operación POST sobre auth" }),
       ]);
       const body = bodyOf(applyAuthFlow(c)?.login ?? null);
-      // El body original se conserva TAL CUAL —no se inyectan credenciales
-      // que no estaban, ni se borran los campos que sí estaban.
+      // The original body is preserved AS-IS — no credentials that
+      // were not there get injected, and fields that were there are
+      // not removed.
       expect(body).toEqual({ force: false, notes: "Operación POST sobre auth" });
-      // Y se emite el aviso estructurado explicando por qué.
+      // And the structured warning is emitted explaining why.
       expect(warn).toHaveBeenCalled();
       const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
         kind: string;
@@ -210,14 +212,14 @@ describe("applyAuthFlow — body de credenciales", () => {
     }
   });
 
-  test("preserva el body vacío del login y avisa (no crea uno inventado)", () => {
+  test("preserves the empty login body and warns (does not invent one)", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const c = collection([request("x", "POST", "/auth/login")]);
       const login = applyAuthFlow(c)?.login ?? null;
-      // El body sigue ausente: no se inventa uno con email/password.
+      // The body stays absent: no email/password body is invented.
       expect(login?.request?.body).toBeUndefined();
-      // Aviso estructurado en su lugar.
+      // Structured warning in its place.
       const payload = JSON.parse(warn.mock.calls[0]?.[0] as string) as {
         kind: string;
         reason: string;
@@ -229,13 +231,13 @@ describe("applyAuthFlow — body de credenciales", () => {
     }
   });
 
-  // Antes se añadía Content-Type SIEMPRE, porque la función vieja
-  // machacaba el body con uno inventado aunque no hubiera credenciales.
-  // `attachCredentialTemplate` (a00012 S3.b) sólo escribe el body (y por
-  // tanto añade Content-Type) cuando realmente parchea credenciales.
-  // Mantenemos la intención —"cuando escribimos JSON, marcamos el
-  // Content-Type"—, pero limitada al caso en que hay credenciales.
-  test("añade Content-Type: application/json cuando parchea credenciales", () => {
+  // Content-Type used to be added ALWAYS, because the old function
+  // stomped the body with an invented one even without credentials.
+  // `attachCredentialTemplate` (a00012 S3.b) only writes the body (and
+  // therefore adds Content-Type) when it actually patches
+  // credentials. We keep the intent —"when we write JSON, we mark the
+  // Content-Type"—but limited to the case where credentials exist.
+  test("adds Content-Type: application/json when it patches credentials", () => {
     const c = collection([
       request("x", "POST", "/auth/login", { username: "demo", password: "1234" }),
     ]);
@@ -243,9 +245,9 @@ describe("applyAuthFlow — body de credenciales", () => {
     expect(headers.some((h) => h.key === "Content-Type")).toBe(true);
   });
 
-  test("NO añade Content-Type cuando deja el body intacto", () => {
-    // Si el login no traía credenciales, no se escribe body y por
-    // tanto no hay razón para añadir Content-Type.
+  test("does NOT add Content-Type when it leaves the body intact", () => {
+    // If login had no credentials, no body is written and there is
+    // no reason to add Content-Type.
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     try {
       const c = collection([
@@ -258,14 +260,14 @@ describe("applyAuthFlow — body de credenciales", () => {
     }
   });
 
-  test("no duplica el Content-Type si ya estaba", () => {
+  test("does not duplicate Content-Type if it was already there", () => {
     const item = request("x", "POST", "/auth/login");
     item.request!.header.push({ key: "Content-Type", value: "application/json" });
     const headers = applyAuthFlow(collection([item]))?.login?.request?.header ?? [];
     expect(headers.filter((h) => h.key === "Content-Type")).toHaveLength(1);
   });
 
-  test("documenta el flujo en la descripción del login", () => {
+  test("documents the flow in the login's description", () => {
     const c = collection([request("x", "POST", "/auth/login")]);
     const description = applyAuthFlow(c)?.login?.description ?? "";
     expect(description).toContain(AUTH_USERNAME_VARIABLE);
@@ -274,22 +276,22 @@ describe("applyAuthFlow — body de credenciales", () => {
   });
 });
 
-describe("applyAuthFlow — fallback por nombre", () => {
-  test("usa loginEndpointName cuando la URI no es convencional", () => {
+describe("applyAuthFlow — name-based fallback", () => {
+  test("uses loginEndpointName when the URI is not conventional", () => {
     const c = collection([request("Mi Login Raro", "POST", "/acceso-empresa")]);
     const flow = applyAuthFlow(c, { loginEndpointName: "Mi Login Raro" });
     expect(flow?.login).not.toBeNull();
     expect(scriptOf(flow?.login ?? null)).toContain("pm.environment.set");
   });
 
-  test("no inventa un login si el nombre declarado no existe", () => {
-    const c = collection([request("Otro", "POST", "/acceso-empresa")]);
+  test("does not invent a login if the declared name does not exist", () => {
+    const c = collection([request("Other", "POST", "/acceso-empresa")]);
     expect(applyAuthFlow(c, { loginEndpointName: "No Existe" })).toBeNull();
   });
 });
 
 describe("authEnvironmentVariables", () => {
-  test("declara usuario, contraseña y token", () => {
+  test("declares username, password and token", () => {
     expect(authEnvironmentVariables().map((v) => v.key)).toEqual([
       AUTH_USERNAME_VARIABLE,
       AUTH_PASSWORD_VARIABLE,
@@ -297,36 +299,36 @@ describe("authEnvironmentVariables", () => {
     ]);
   });
 
-  test("las marca como secret para que Postman no las exporte en claro", () => {
+  test("marks them as secret so Postman does not export them in clear", () => {
     for (const v of authEnvironmentVariables()) expect(v.type).toBe("secret");
   });
 });
 
 describe("hasLoginEndpoint", () => {
-  test("reconoce POST /login en los specs", () => {
+  test("recognizes POST /login in the specs", () => {
     expect(hasLoginEndpoint([{ method: "POST", uri: "/login" }])).toBe(true);
   });
 
-  test("GET /login no cuenta", () => {
+  test("GET /login does not count", () => {
     expect(hasLoginEndpoint([{ method: "GET", uri: "/login" }])).toBe(false);
   });
 
-  test("sin specs devuelve false", () => {
+  test("without specs returns false", () => {
     expect(hasLoginEndpoint([])).toBe(false);
   });
 
-  test("reconoce /sessions como login endpoint", () => {
+  test("recognizes /sessions as a login endpoint", () => {
     expect(hasLoginEndpoint([{ method: "POST", uri: "/sessions" }])).toBe(true);
   });
 });
 
 describe("detectLaravelTokenPath", () => {
-  test("sin directorio Controllers devuelve undefined", async () => {
-    const result = await detectLaravelTokenPath("/ruta/que/no/existe");
+  test("without a Controllers directory returns undefined", async () => {
+    const result = await detectLaravelTokenPath("/path/que/no/existe");
     expect(result).toBeUndefined();
   });
 
-  test("con directorio Controllers pero sin auth controllers devuelve undefined", async () => {
+  test("with a Controllers directory but no auth controllers returns undefined", async () => {
     const { mkdtemp, mkdir } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -337,7 +339,7 @@ describe("detectLaravelTokenPath", () => {
     await import("node:fs/promises").then(({ rm }) => rm(root, { recursive: true, force: true }));
   });
 
-  test("con AuthController que devuelve access_token lo detecta", async () => {
+  test("with an AuthController returning access_token detects it", async () => {
     const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -352,7 +354,7 @@ describe("detectLaravelTokenPath", () => {
     await import("node:fs/promises").then(({ rm }) => rm(root, { recursive: true, force: true }));
   });
 
-  test("con AuthController que devuelve data.token lo detecta", async () => {
+  test("with an AuthController returning data.token detects it", async () => {
     const { mkdtemp, mkdir, writeFile } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");

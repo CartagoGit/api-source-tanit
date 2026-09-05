@@ -1,20 +1,21 @@
 /**
- * `TrpcScanner` — routers de tRPC.
+ * `TrpcScanner` — tRPC routers.
  *
- * tRPC parece que no tiene rutas porque desde el cliente se llama como
- * si fueran funciones. Pero por debajo **es HTTP**, y con reglas fijas:
+ * tRPC looks like it has no routes because from the client side it is
+ * called as if they were functions. But underneath **it is HTTP**, and
+ * with fixed rules:
  *
- *   - Un `query` es un `GET /trpc/<ruta.del.procedimiento>` con la
- *     entrada en `?input=<json>`.
- *   - Un `mutation` es un `POST /trpc/<ruta>` con la entrada en el body.
+ *   - A `query` is a `GET /trpc/<procedure.path>` with the input in
+ *     `?input=<json>`.
+ *   - A `mutation` is a `POST /trpc/<path>` with the input in the body.
  *
- * O sea que se puede generar una colección que **funciona**, que es
- * justo lo que no se puede hacer a mano sin saberse esas reglas de
- * memoria. Es lo que más valor tiene de este scanner: tRPC es el
- * protocolo del lote que más gente usa sin saber qué URL está llamando.
+ * So a collection that **works** can be generated — which is exactly
+ * what cannot be done by hand without memorising these rules. That is
+ * the most valuable part of this scanner: tRPC is the protocol that
+ * the most people use without knowing which URL they are calling.
  *
- * El nombre del procedimiento sale de anidar los routers:
- * `appRouter → users → list` es `users.list`.
+ * The procedure name comes from nesting the routers:
+ * `appRouter → users → list` is `users.list`.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -34,20 +35,20 @@ import { findClosingParen, stripJsComments } from "../../core/helpers/source-sca
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type { ITrpcProcedure } from "../../contracts/interfaces/frameworks/scanners.interface.js";
 
-/** El prefijo con el que se monta tRPC casi siempre. */
+/** The prefix tRPC is almost always mounted at. */
 const DEFAULT_PREFIX = "/trpc";
 
 const TRPC_PACKAGES = ["@trpc/server", "@trpc/client", "@trpc/next"];
 
 /**
- * Lockfiles presentes en `projectRoot` como señales bonus de runtime.
+ * Lockfiles present in `projectRoot` as bonus runtime signals.
  *
- * f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza del
- * detector sin ser detección. Pesos pequeños: +0.1 (pnpm), +0.15
- * (bun). El detector de tRPC casi siempre llega a 0.95 por la
- * dependencia; el bonus aparece en `evidence` aunque no cambie el
- * score visible — exactamente lo que se busca: trazabilidad, no
- * detección.
+ * f00011 S4: `pnpm-lock.yaml` and `bun.lockb` refine the detector's
+ * confidence without being detection. Small weights: +0.1 (pnpm),
+ * +0.15 (bun). The tRPC detector almost always reaches 0.95 from
+ * the dependency; the bonus shows up in `evidence` even though it
+ * doesn't change the visible score — exactly what we want:
+ * traceability, not detection.
  */
 function lockfileSignals(projectRoot: string): Array<{ signal: string; weight: number; artifact: string }> {
   const out: Array<{ signal: string; weight: number; artifact: string }> = [];
@@ -79,8 +80,8 @@ export class TrpcProjectScanner implements IProjectScanner {
       weight: 0.95 / matched.length,
       artifact: "package.json",
     }));
-    // f00011 S4: lockfile como bonus de runtime. Sumamos al final
-    // para que no pueda tapar una ausencia de framework.
+    // f00011 S4: lockfile as runtime bonus. Added at the end so it
+    // can't mask a missing framework.
     const locks = lockfileSignals(projectRoot);
     evidence.push(...locks);
     const lockBonus = locks.reduce((a, e) => a + e.weight, 0);
@@ -95,11 +96,11 @@ export class TrpcProjectScanner implements IProjectScanner {
 /** `router({ … })` y `t.router({ … })`. */
 const ROUTER_RE = /(?:^|[\s=({,])(?:t\s*\.\s*)?router\s*\(/g;
 
-/** `const usersRouter = t.router(` → nombre y posición del paréntesis. */
+/** `const usersRouter = t.router(` → name and position of the parenthesis. */
 const NAMED_ROUTER_RE =
   /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(?:t\s*\.\s*)?router\s*\(/g;
 
-/** Índice de los routers declarados con nombre en un fuente. */
+/** Index of the routers declared with a name in a source. */
 export function findNamedRouters(source: string): Map<string, number> {
   const out = new Map<string, number>();
   const own = new RegExp(NAMED_ROUTER_RE.source, NAMED_ROUTER_RE.flags);
@@ -112,11 +113,11 @@ export function findNamedRouters(source: string): Map<string, number> {
 }
 
 /**
- * Los nombres de router que aparecen **como valor** dentro de otro.
+ * Router names that appear **as a value** inside another one.
  *
- * Es lo que separa una raíz de una rama: `users: usersRouter` hace que
- * `usersRouter` sea una rama, y lo que no aparezca en ninguna es la
- * raíz del árbol.
+ * It's what separates a root from a branch: `users: usersRouter`
+ * makes `usersRouter` a branch, and whatever doesn't appear anywhere
+ * is the root of the tree.
  */
 export function referencedRouterNames(
   source: string,
@@ -131,29 +132,30 @@ export function referencedRouterNames(
 }
 
 /**
- * Lee un `router({ … })` y devuelve sus procedimientos, entrando en los
- * routers anidados.
+ * Reads a `router({ … })` and returns its procedures, descending into
+ * nested routers.
  *
- * Se recorre carácter a carácter en vez de con un regex porque la
- * estructura es recursiva: un router contiene routers, y eso un patrón
- * plano no lo distingue.
+ * We walk character by character instead of using a regex because the
+ * structure is recursive: a router contains routers, and a flat pattern
+ * cannot distinguish that.
  */
 export function parseRouterObject(
   source: string,
   from = 0,
   prefix = "",
   /**
-   * Routers declarados aparte, por nombre.
+   * Routers declared separately, by name.
    *
-   * Casi nadie escribe el árbol entero en una sola expresión: lo normal
-   * es `const usersRouter = t.router({…})` y luego
-   * `t.router({ users: usersRouter })`. Sin resolver esa indirección, los
-   * procedimientos salen **sin su prefijo** —`list` en vez de
-   * `users.list`— y encima el `list` de un router pisa al del otro,
-   * porque desde fuera parecen el mismo.
+   * Almost nobody writes the whole tree in one expression: the usual
+   * shape is `const usersRouter = t.router({…})` and then
+   * `t.router({ users: usersRouter })`. Without resolving that
+   * indirection, procedures come out **without their prefix** —
+   * `list` instead of `users.list` — and the `list` of one router
+   * collides with the other's, because from the outside they look the
+   * same.
    */
   namedRouters: ReadonlyMap<string, number> = new Map(),
-  /** Nombres ya visitados, para que una referencia circular no cuelgue. */
+  /** Names already visited, so a circular reference doesn't hang. */
   visiting: ReadonlySet<string> = new Set(),
 ): ITrpcProcedure[] {
   const open = source.indexOf("{", from);
@@ -164,26 +166,26 @@ export function parseRouterObject(
   const out: ITrpcProcedure[] = [];
   const body = source.slice(open + 1, close);
 
-  // Cada clave del objeto es un procedimiento o un router anidado.
+  // Each object key is a procedure or a nested router.
   const keyRe = /(\w+)\s*:/g;
   let match: RegExpExecArray | null;
   while ((match = keyRe.exec(body)) !== null) {
     const key = match[1] ?? "";
-    // Solo las claves de primer nivel: las de dentro las ve la llamada
-    // recursiva con su propio prefijo.
+    // Only top-level keys: those inside are seen by the recursive
+    // call with its own prefix.
     if (depthAt(body, match.index) !== 0) continue;
 
     const rest = body.slice(match.index + match[0].length);
     const full = prefix ? `${prefix}.${key}` : key;
 
-    // Router escrito en el sitio: `users: t.router({ … })`.
+    // Router inlined: `users: t.router({ … })`.
     const nested = /^\s*(?:t\s*\.\s*)?router\s*\(/.exec(rest);
     if (nested) {
       out.push(...parseRouterObject(rest, nested[0].length - 1, full, namedRouters, visiting));
       continue;
     }
 
-    // Router por referencia: `users: usersRouter`.
+    // Router by reference: `users: usersRouter`.
     const reference = /^\s*([A-Za-z_$][\w$]*)\s*(?:,|\}|$)/.exec(rest)?.[1];
     if (reference && namedRouters.has(reference) && !visiting.has(reference)) {
       out.push(
@@ -198,8 +200,8 @@ export function parseRouterObject(
       continue;
     }
 
-    // `.query(...)`, `.mutation(...)`, `.subscription(...)` — el primero
-    // que aparezca antes de la siguiente clave de primer nivel.
+    // `.query(...)`, `.mutation(...)`, `.subscription(...)` — the
+    // first one to appear before the next top-level key.
     const kind = /\.\s*(query|mutation|subscription)\s*\(/.exec(
       rest.slice(0, nextTopLevelKey(rest)),
     )?.[1];
@@ -210,7 +212,7 @@ export function parseRouterObject(
   return out;
 }
 
-/** El `}` que cierra el `{` de `open`. */
+/** The `}` that closes the `{` at `open`. */
 function matchingBrace(source: string, open: number): number {
   let depth = 0;
   for (let i = open; i < source.length; i++) {
@@ -223,7 +225,7 @@ function matchingBrace(source: string, open: number): number {
   return -1;
 }
 
-/** Profundidad de llaves y paréntesis en una posición. */
+/** Depth of braces and parens at a position. */
 function depthAt(text: string, index: number): number {
   let depth = 0;
   for (let i = 0; i < index; i++) {
@@ -234,7 +236,7 @@ function depthAt(text: string, index: number): number {
   return depth;
 }
 
-/** Dónde empieza la siguiente clave de primer nivel, o el final. */
+/** Where the next top-level key starts, or the end. */
 function nextTopLevelKey(text: string): number {
   const re = /(\w+)\s*:/g;
   let match: RegExpExecArray | null;
@@ -266,13 +268,14 @@ export class TrpcRouteScanner implements IRouteScanner {
       const sourceFile = relative(rawProjectRoot(match), path);
 
       const namedRouters = findNamedRouters(source);
-      // Una raíz no es "el router sin nombre" — `appRouter` también
-      // tiene uno. Es el que **nadie referencia**: `usersRouter` aparece
-      // dentro de `appRouter`, y `appRouter` no aparece dentro de nadie.
+      // A root isn't "the router without a name" — `appRouter` also has
+      // one. It's the one **nobody references**: `usersRouter` appears
+      // inside `appRouter`, and `appRouter` doesn't appear inside anyone.
       //
-      // Entrar también por los referenciados sacaría cada procedimiento
-      // dos veces: una con su prefijo (`users.list`) y otra sin él
-      // (`list`), y la segunda es una ruta que no existe.
+      // Entering through the referenced ones too would emit each
+      // procedure twice: once with its prefix (`users.list`) and once
+      // without it (`list`), and the second is a route that doesn't
+      // exist.
       const referenced = referencedRouterNames(source, namedRouters);
       const skip = new Set(
         [...namedRouters].filter(([name]) => referenced.has(name)).map(([, at]) => at),
@@ -289,14 +292,14 @@ export class TrpcRouteScanner implements IRouteScanner {
           if (seen.has(proc.path)) continue;
           seen.add(proc.path);
 
-          // Las suscripciones van por WebSocket: una petición HTTP al
-          // endpoint no funciona, y emitirla sería entregar algo que
-          // falla al primer Send.
+          // Subscriptions go over WebSocket: an HTTP request to the endpoint
+          // doesn't work, and emitting it would deliver something that
+          // fails on the first Send.
           if (proc.kind === "subscription") continue;
 
           const isQuery = proc.kind === "query";
           routes.push({
-            // La regla de tRPC sobre HTTP: query → GET, mutation → POST.
+            // The tRPC rule over HTTP: query → GET, mutation → POST.
             method: isQuery ? "GET" : "POST",
             uri: `${DEFAULT_PREFIX}/${proc.path}`,
             rawUri: `${DEFAULT_PREFIX}/${proc.path}`,
@@ -306,9 +309,10 @@ export class TrpcRouteScanner implements IRouteScanner {
             displayName: proc.path,
             description: `${proc.kind} \`${proc.path}\``,
             tags: [isQuery ? "Queries" : "Mutations"],
-            // La entrada viaja distinto según el tipo: en la query va
-            // como `?input=<json>` y en la mutación como cuerpo. Se deja
-            // el sobre vacío listo, que es lo que no se sabe de memoria.
+            // The input travels differently depending on the type: in
+            // the query it goes as `?input=<json>` and in the mutation
+            // as a body. We leave the envelope empty and ready, which
+            // is what can't be memorised.
             ...(isQuery
               ? { }
               : { body: { } }),

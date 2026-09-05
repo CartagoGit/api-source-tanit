@@ -21,15 +21,15 @@ const ROOT = smokeFixtureDir("openapi");
 const COMPREHENSIVE = comprehensiveFixtureDir("openapi");
 
 describe("OpenAPI scanner", () => {
-  test("detect() > 0 cuando hay openapi.yaml en la raíz", async () => {
+  test("detect() > 0 when openapi.yaml exists at the root", async () => {
     expect((await new OpenApiProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay archivo openapi/swagger", async () => {
+  test("detect() === 0 when there is no openapi/swagger file", async () => {
     expect((await new OpenApiProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 4 rutas del mini-fixture (yaml)", async () => {
+  test("scan() finds the 4 routes of the mini-fixture (yaml)", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
     const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
@@ -45,14 +45,14 @@ describe("OpenAPI scanner", () => {
     expect(pairs).toContain("DELETE /api/users/{id}");
   });
 
-  test("path param {id} de paths /api/users/{id} preservado", async () => {
+  test("path param {id} from paths /api/users/{id} preserved", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
     const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     const withId = routes.filter((r) => r.uri.includes("{id}"));
     expect(withId.length).toBe(2);
   });
 
-  test("OpenAPI validation provider resuelve campos de requestBody.schema para POST", async () => {
+  test("OpenAPI validation provider resolves requestBody.schema fields for POST", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
     const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST");
@@ -65,10 +65,11 @@ describe("OpenAPI scanner", () => {
     expect(names).toContain("email");
   });
 
-  // `IValidationSpec` separa el tipo lógico del formato semántico:
-  // `format: email` en el spec OpenAPI es un string con formato email,
-  // no un tipo "email" (que no existe en el contrato).
-  test("campo email es string con format 'email'", async () => {
+  // `IValidationSpec` separates the logical type from the semantic
+  // format: `format: email` in the OpenAPI spec is a string with the
+  // email format, not an "email" type (which does not exist in the
+  // contract).
+  test("email field is a string with format 'email'", async () => {
     const match = await new OpenApiProjectScanner().resolve(ROOT);
     const result = await new OpenApiRouteScanner().scan(match);
     const routes = result.routes;
@@ -85,7 +86,7 @@ describe("OpenAPI scanner", () => {
     expect(email?.format).toBe("email");
   });
 
-  test("comprehensive: detecta >20 rutas con $ref schemas y parámetros", async () => {
+  test("comprehensive: detects >20 routes with $ref schemas and parameters", async () => {
     const match = await new OpenApiProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new OpenApiRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(20);
@@ -93,11 +94,11 @@ describe("OpenAPI scanner", () => {
 });
 
 // ---------------------------------------------------------------------------
-// parseYamlLite: ramas del parser que los fixtures normales no provocan.
+// parseYamlLite: parser branches that the normal fixtures do not trigger.
 // ---------------------------------------------------------------------------
 
-describe("parseYamlLite — escalares, keys con quotes y flow collections", () => {
-  test("~ y null se convierten a null; booleans y números también", () => {
+describe("parseYamlLite — scalars, quoted keys and flow collections", () => {
+  test("~ and null become null; booleans and numbers too", () => {
     const parsed = parseYamlLite(
       "vacio: ~\nnulo: null\nbandera: true\nnegado: false\nentero: -12\ndecimal: 3.5",
     ) as Record<string, unknown>;
@@ -109,7 +110,7 @@ describe("parseYamlLite — escalares, keys con quotes y flow collections", () =
     expect(parsed.decimal).toBe(3.5);
   });
 
-  test("keys y valores entre comillas simples/dobles pierden el quote", () => {
+  test("keys and values in single/double quotes lose the quotes", () => {
     const parsed = parseYamlLite(
       "'200': ok\n\"404\": ko\nclave: 'con simples'\notra: \"con dobles\"",
     ) as Record<string, unknown>;
@@ -119,7 +120,7 @@ describe("parseYamlLite — escalares, keys con quotes y flow collections", () =
     expect(parsed.otra).toBe("con dobles");
   });
 
-  test("secuencias de scalars y de mappings inline con continuación", () => {
+  test("sequences of scalars and inline mappings with continuation", () => {
     const parsed = parseYamlLite(
       [
         "lista:",
@@ -136,14 +137,14 @@ describe("parseYamlLite — escalares, keys con quotes y flow collections", () =
     expect(lista[2]).toEqual({ name: "id", in: "path", required: true });
   });
 
-  test("secuencia con mapping en bloque anidado tras '- ' vacío", () => {
+  test("sequence with nested block mapping after an empty '- '", () => {
     const parsed = parseYamlLite(
       ["cosas:", "  -", "    a: 1", "    b: dos"].join("\n"),
     ) as Record<string, unknown>;
     expect(parsed.cosas).toEqual([{ a: 1, b: "dos" }]);
   });
 
-  test("bloques literales | y > tanto en mapping como tras '- clave:'", () => {
+  test("literal blocks | and > both in mapping and after '- key:'", () => {
     const parsed = parseYamlLite(
       [
         "literal: |",
@@ -161,7 +162,7 @@ describe("parseYamlLite — escalares, keys con quotes y flow collections", () =
     expect(((parsed.lista as unknown[]) ?? [])[0]).toEqual({ texto: "dentro" });
   });
 
-  test("flow sequence y flow mapping (incluido vacío y con URLs con ':')", () => {
+  test("flow sequence and flow mapping (including empty and URLs containing ':')", () => {
     const parsed = parseYamlLite(
       [
         "vacia: []",
@@ -183,26 +184,26 @@ describe("parseYamlLite — escalares, keys con quotes y flow collections", () =
     expect(parsed.url).toEqual({ base: "http://x.com:8080/y" });
     expect(parsed.conCommaEnLista).toEqual([[1, 2], 3]);
     expect(parsed.claveQuoted).toEqual({ "a:b": 1 });
-    // `soloclave` no tiene `:` a nivel top: se descarta, no rompe.
+      // `soloclave` has no `:` at the top level: it is dropped, does not break.
     expect(parsed.sinSeparador).toEqual({ x: 1 });
   });
 
-  test("tabuladores se sanitizan (YAML no los admite)", () => {
+  test("tabs are sanitized (YAML does not accept them)", () => {
     const parsed = parseYamlLite("a:\n\tb: 1") as Record<string, unknown>;
     expect(parsed.a).toEqual({ b: 1 });
   });
 
-  test("YAML que no es un mapping (array top-level) devuelve array", () => {
+  test("YAML that is not a mapping (top-level array) returns an array", () => {
     expect(parseYamlLite("- 1\n- 2")).toEqual([1, 2]);
   });
 });
 
 // ---------------------------------------------------------------------------
-// OpenApiRouteScanner: ramas de scan() fuera del happy path.
+// OpenApiRouteScanner: scan() branches outside the happy path.
 // ---------------------------------------------------------------------------
 
-describe("OpenApiRouteScanner — ramas de scan()", () => {
-  test("opts.specPath gana sobre los artefactos detectados", async () => {
+describe("OpenApiRouteScanner — scan() branches", () => {
+  test("opts.specPath wins over detected artifacts", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({ paths: { "/raiz": { get: { summary: "raiz" } } } }),
       "docs/openapi.json": JSON.stringify({ paths: { "/docs": { get: { summary: "docs" } } } }),
@@ -218,7 +219,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("specPath a un fichero que no existe devuelve []", async () => {
+  test("specPath pointing at a non-existent file returns []", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({ paths: {} }),
     });
@@ -231,7 +232,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("match sin artefactos devuelve []", async () => {
+  test("match without artifacts returns []", async () => {
     const result = await new OpenApiRouteScanner().scan({
       framework: "openapi",
       projectRoot: "/tmp",
@@ -240,7 +241,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     expect(result.routes).toEqual([]);
   });
 
-  test("JSON inválido lanza con mensaje claro", async () => {
+  test("invalid JSON throws with a clear message", async () => {
     const project = await createTempProject({ "openapi.json": "{no es json" });
     try {
       const match = await new OpenApiProjectScanner().resolve(project.root);
@@ -250,7 +251,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("YAML con anclas avisa por console.warn pero no lanza", async () => {
+  test("YAML with anchors warns via console.warn but does not throw", async () => {
     const project = await createTempProject({
       "openapi.yaml": "paths:\n  /a:\n    get:\n      summary: &s hola\n",
     });
@@ -266,7 +267,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("basePath de opts gana sobre el del spec y llena prefixChain", async () => {
+  test("opts basePath wins over the spec's and fills prefixChain", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({ basePath: "/v3", paths: { "/users": { get: {} } } }),
     });
@@ -283,7 +284,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("sin basePath la prefixChain queda vacía y las barras dobles se colapsan", async () => {
+  test("without basePath prefixChain is empty and double slashes collapse", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({ paths: { "/users": { get: {} } } }),
     });
@@ -297,7 +298,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("servers[0].url aporta el prefijo en OpenAPI 3", async () => {
+  test("servers[0].url contributes the prefix in OpenAPI 3", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({
         openapi: "3.0.3",
@@ -315,7 +316,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("displayName y description: operationId > summary > método+path", async () => {
+  test("displayName and description: operationId > summary > method+path", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({
         paths: {
@@ -336,7 +337,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
       expect(get?.description).toBe("D");
       const post = routes.find((r) => r.method === "POST");
       expect(post?.displayName).toBe("SoloSummary");
-      // Sin description propia, el summary hace de description.
+      // Without its own description, summary doubles as description.
       expect(post?.description).toBe("SoloSummary");
       expect(post?.tags).toBeUndefined();
       const put = routes.find((r) => r.method === "PUT");
@@ -347,7 +348,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("verbos minoritarios head/options/trace también salen", async () => {
+  test("minority verbs head/options/trace also come out", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({
         paths: { "/y": { head: {}, options: {}, trace: {} } },
@@ -362,7 +363,7 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
     }
   });
 
-  test("pathItem u op que no son objetos se descartan sin lanzar", async () => {
+  test("pathItem or op that are not objects are dropped without throwing", async () => {
     const project = await createTempProject({
       "openapi.json": JSON.stringify({
         paths: {
@@ -382,10 +383,10 @@ describe("OpenApiRouteScanner — ramas de scan()", () => {
 });
 
 // ---------------------------------------------------------------------------
-// OpenApiValidationProvider: los caminos que el mini-fixture no toca.
+// OpenApiValidationProvider: paths the mini-fixture does not touch.
 // ---------------------------------------------------------------------------
 
-/** Monta un proyecto temporal con un spec JSON y lo deja listo para el provider. */
+/** Builds a temporary project with a JSON spec and leaves it ready for the provider. */
 async function specProject(spec: unknown) {
   const project = await createTempProject({
     "openapi.json": typeof spec === "string" ? spec : JSON.stringify(spec),
@@ -394,7 +395,7 @@ async function specProject(spec: unknown) {
   return { project, match };
 }
 
-describe("OpenApiValidationProvider — ramas de resolve()", () => {
+describe("OpenApiValidationProvider — resolve() branches", () => {
   const provider = new OpenApiValidationProvider();
 
   function rutaDe(method: string, rawUri: string): ParsedRoute {
@@ -408,7 +409,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     };
   }
 
-  test("match sin artefactos devuelve fields vacías y endpointKey normalizada", async () => {
+  test("match without artifacts returns empty fields and normalized endpointKey", async () => {
     const result = await provider.resolve(
       { method: "GET", uri: "/Users", rawUri: "/Users", sourceFile: "", lineNumber: 0, prefixChain: [] },
       { framework: "openapi", projectRoot: "/tmp", artifacts: [] },
@@ -418,7 +419,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     expect(result.fields).toEqual([]);
   });
 
-  test("spec ilegible (JSON roto) devuelve fields vacías sin lanzar", async () => {
+  test("unreadable spec (broken JSON) returns empty fields without throwing", async () => {
     const { project, match } = await specProject("{roto");
     try {
       const result = await provider.resolve(rutaDe("GET", "/users"), match, EMPTY_SCAN_RESULT);
@@ -428,12 +429,12 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     }
   });
 
-  test("rawUri sin pathItem u op en el spec devuelve fields vacías", async () => {
+  test("rawUri without pathItem or op in the spec returns empty fields", async () => {
     const { project, match } = await specProject({ paths: { "/users": { post: {} } } });
     try {
       const sinPath = await provider.resolve(rutaDe("GET", "/no-existe"), match, EMPTY_SCAN_RESULT);
       expect(sinPath.fields).toEqual([]);
-      // El path existe pero no el verbo.
+      // The path exists but the verb does not.
       const sinOp = await provider.resolve(rutaDe("GET", "/users"), match, EMPTY_SCAN_RESULT);
       expect(sinOp.fields).toEqual([]);
     } finally {
@@ -441,7 +442,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     }
   });
 
-  test("parameters de path, de op, $ref y defaults de 'in'", async () => {
+  test("path parameters, op parameters, $ref, and 'in' defaults", async () => {
     const { project, match } = await specProject({
       components: {
         parameters: {
@@ -481,7 +482,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     }
   });
 
-  test("requestBody con tipos scalar, formatos date/datetime, enum y file", async () => {
+  test("requestBody with scalar types, date/datetime formats, enum and file", async () => {
     const { project, match } = await specProject({
       paths: {
         "/things": {
@@ -535,7 +536,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     }
   });
 
-  test("requestBody con $ref top-level, allOf mixto y ciclo de $ref acotado", async () => {
+  test("requestBody with $ref top-level, mixed allOf, and bounded $ref cycle", async () => {
     const { project, match } = await specProject({
       components: {
         schemas: {
@@ -591,11 +592,11 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
       expect(mergeado.get("id")?.required).toBe(true);
       expect(mergeado.get("name")?.required).toBe(true);
 
-      // El ciclo no puede colgar: la cota de $ref visitados corta la rama.
+      // The cycle cannot hang: the visited $ref bound cuts the branch.
       const ciclo = await provider.resolve(rutaDe("POST", "/ciclo"), match, EMPTY_SCAN_RESULT);
       expect(ciclo.fields).toEqual([]);
 
-      // Schema vacío: ni properties ni required → cero campos.
+      // Empty schema: no properties, no required → zero fields.
       const vacio = await provider.resolve(rutaDe("POST", "/vacio"), match, EMPTY_SCAN_RESULT);
       expect(vacio.fields).toEqual([]);
     } finally {
@@ -603,7 +604,7 @@ describe("OpenApiValidationProvider — ramas de resolve()", () => {
     }
   });
 
-  test("spec YAML (no .json) también resuelve campos del provider", async () => {
+  test("YAML spec (not .json) also resolves provider fields", async () => {
     const project = await createTempProject({
       "openapi.yaml": [
         "paths:",

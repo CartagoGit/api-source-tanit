@@ -1,22 +1,23 @@
 /**
- * La interfaz, embebida como texto.
+ * The interface, embedded as text.
  *
- * Va en un `.ts` y no en un `.html` a propósito: el binario compilado
- * **no puede leer ficheros que no estén dentro de él**, así que un
- * `readFile("index.html")` funcionaría en desarrollo y fallaría en el
- * ejecutable que se distribuye — el peor tipo de fallo, el que solo
- * aparece en la máquina de quien lo usa.
+ * It lives in a `.ts` rather than an `.html` on purpose: the
+ * compiled binary **cannot read files that are not inside it**, so
+ * a `readFile("index.html")` would work in development and fail in
+ * the distributed executable — the worst kind of failure, the one
+ * that only shows up on the user's machine.
  *
- * Sin dependencias de terceros, por lo mismo: no hay CDN que valga
- * cuando el objetivo es abrir un `.exe` y que funcione.
+ * No third-party dependencies, for the same reason: no CDN is worth
+ * anything when the goal is to open an `.exe` and have it work.
  *
- * Accesibilidad, decidida aquí y no «más adelante»:
+ * Accessibility, decided here and not "later":
  *
- *   · Todo se recorre con el teclado, en orden, y el foco se ve.
- *   · El estado no se comunica solo por color — lleva texto.
- *   · Lo que cambia solo (resultados, errores) va en `aria-live`, o un
- *     lector de pantalla no se entera de nada.
- *   · Se respeta `prefers-reduced-motion` y `prefers-color-scheme`.
+ *   · Everything is reachable with the keyboard, in order, and the
+ *     focus is visible.
+ *   · State is not communicated by colour alone — it carries text.
+ *   · What changes on its own (results, errors) goes in `aria-live`,
+ *     or a screen reader notices nothing.
+ *   · `prefers-reduced-motion` and `prefers-color-scheme` are honoured.
  */
 export const UI_HTML = String.raw`<!doctype html>
 <html lang="es">

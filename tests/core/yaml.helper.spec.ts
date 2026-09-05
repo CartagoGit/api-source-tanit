@@ -1,19 +1,19 @@
 /**
- * El emisor de YAML.
+ * The YAML emitter.
  *
- * Este spec existe por una razón concreta: al principio no se emitía
- * YAML **precisamente** por miedo a estas reglas. La decisión se
- * revisó, y lo que la hace segura es citar toda cadena — así que lo que
- * hay que probar es justo eso, con los valores que corrompen un
- * documento en silencio.
+ * This spec exists for a concrete reason: at first YAML was not emitted
+ * **precisely** out of fear of these rules. The decision was reviewed,
+ * and what makes it safe is quoting every string — so what must be
+ * tested is exactly that, with the values that silently corrupt a
+ * document.
  */
 import { describe, expect, test } from "vitest";
 
 import { toYaml } from "../../packages/core/helpers/yaml.helper";
 
-describe("las cadenas peligrosas van citadas", () => {
-  // La tabla del infierno de YAML: sin comillas, cada una de estas deja
-  // de ser la cadena que era.
+describe("dangerous strings are quoted", () => {
+  // The YAML hell table: without quotes, each of these stops being
+  // the string it was.
   test.each([
     ["sí", '"sí"'],
     ["yes", '"yes"'],
@@ -31,104 +31,105 @@ describe("las cadenas peligrosas van citadas", () => {
     ["- guion", '"- guion"'],
     ["*ancla", '"*ancla"'],
     ["&ref", '"&ref"'],
-  ])("%s se emite como %s", (input, expected) => {
+  ])("%s is emitted as %s", (input, expected) => {
     expect(toYaml({ v: input })).toBe(`v: ${expected}\n`);
   });
 
-  test("un salto de línea se escapa, no rompe el bloque", () => {
+  test("a line break is escaped, it does not break the block", () => {
     expect(toYaml({ v: "una\ndos" })).toBe('v: "una\\ndos"\n');
   });
 
-  test("las comillas dentro se escapan", () => {
+  test("quotes inside are escaped", () => {
     expect(toYaml({ v: 'dice "hola"' })).toBe('v: "dice \\"hola\\""\n');
   });
 
-  test("el unicode sobrevive", () => {
+  test("unicode survives", () => {
     expect(toYaml({ v: "añadió ñ y €" })).toBe('v: "añadió ñ y €"\n');
   });
 });
 
-describe("los números y booleanos NO van citados", () => {
-  // Citarlos los convertiría en texto, que es el error simétrico.
-  test("un número es un número", () => {
+describe("numbers and booleans are NOT quoted", () => {
+  // Quoting them would turn them into text, which is the symmetric
+  // error.
+  test("a number is a number", () => {
     expect(toYaml({ v: 42 })).toBe("v: 42\n");
     expect(toYaml({ v: 1.5 })).toBe("v: 1.5\n");
     expect(toYaml({ v: 0 })).toBe("v: 0\n");
   });
 
-  test("un booleano es un booleano", () => {
+  test("a boolean is a boolean", () => {
     expect(toYaml({ v: true })).toBe("v: true\n");
     expect(toYaml({ v: false })).toBe("v: false\n");
   });
 
-  test("null es null", () => {
+  test("null is null", () => {
     expect(toYaml({ v: null })).toBe("v: null\n");
   });
 
-  test("NaN e Infinity no son YAML válido, así que salen como null", () => {
+  test("NaN and Infinity are not valid YAML, so they come out as null", () => {
     expect(toYaml({ v: Number.NaN })).toBe("v: null\n");
     expect(toYaml({ v: Number.POSITIVE_INFINITY })).toBe("v: null\n");
   });
 });
 
-describe("las claves", () => {
-  test("un identificador va sin comillas", () => {
+describe("keys", () => {
+  test("an identifier goes without quotes", () => {
     expect(toYaml({ openapi: "3.1.0" })).toBe('openapi: "3.1.0"\n');
   });
 
-  // Las claves de OpenAPI son rutas y códigos de estado.
-  test("una ruta va citada", () => {
+  // OpenAPI keys are paths and status codes.
+  test("a path is quoted", () => {
     expect(toYaml({ "/api/users": 1 })).toBe('"/api/users": 1\n');
   });
 
-  test("un código de estado va citado", () => {
+  test("a status code is quoted", () => {
     expect(toYaml({ "200": "OK" })).toBe('"200": "OK"\n');
   });
 
-  test("un mime type va citado", () => {
+  test("a mime type is quoted", () => {
     expect(toYaml({ "application/json": 1 })).toBe('"application/json": 1\n');
   });
 
-  test("una clave reservada va citada", () => {
+  test("a reserved key is quoted", () => {
     expect(toYaml({ no: 1 })).toBe('"no": 1\n');
   });
 });
 
-describe("estructura", () => {
-  test("objetos anidados se sangran de dos en dos", () => {
+describe("structure", () => {
+  test("nested objects are indented by two", () => {
     expect(toYaml({ info: { title: "API", version: "1.0.0" } })).toBe(
       'info:\n  title: "API"\n  version: "1.0.0"\n',
     );
   });
 
-  test("una lista de escalares", () => {
+  test("a list of scalars", () => {
     expect(toYaml({ tags: ["a", "b"] })).toBe('tags:\n- "a"\n- "b"\n');
   });
 
-  test("una lista de objetos pega el guion a la primera línea", () => {
+  test("a list of objects sticks the dash to the first line", () => {
     expect(toYaml({ servers: [{ url: "http://x" }] })).toBe(
       'servers:\n- url: "http://x"\n',
     );
   });
 
-  test("un objeto vacío es `{}`, no una clave suelta", () => {
+  test("an empty object is `{}`, not a stray key", () => {
     expect(toYaml({ scopes: {} })).toBe("scopes: {}\n");
   });
 
-  test("una lista vacía es `[]`", () => {
+  test("an empty list is `[]`", () => {
     expect(toYaml({ security: [] })).toBe("security: []\n");
   });
 
-  test("`undefined` se omite en vez de emitir una clave sin valor", () => {
+  test("`undefined` is omitted instead of emitting a key without a value", () => {
     expect(toYaml({ a: 1, b: undefined })).toBe("a: 1\n");
   });
 
-  test("siempre termina en salto de línea", () => {
+  test("always ends with a newline", () => {
     expect(toYaml({ a: 1 }).endsWith("\n")).toBe(true);
   });
 });
 
-describe("un documento con la forma de un OpenAPI", () => {
+describe("a document with the shape of an OpenAPI", () => {
   const doc = toYaml({
     openapi: "3.1.0",
     info: { title: "Mi API", version: "1.0.0" },
@@ -144,20 +145,20 @@ describe("un documento con la forma de un OpenAPI", () => {
     },
   });
 
-  test("sale con la forma esperada", () => {
+  test("comes out in the expected shape", () => {
     expect(doc).toContain('openapi: "3.1.0"');
     expect(doc).toContain('  "/api/users":');
-    // La secuencia se sangra al nivel de su clave, que es lo que hace
-    // todo el mundo y lo que YAML permite.
+    // The sequence is indented to its key's level, which is what
+    // everyone does and what YAML allows.
     expect(doc).toContain('      - name: "page"');
     expect(doc).toContain('        "200":');
     expect(doc).toContain('          description: "OK"');
   });
 
-  // La prueba de fuego: que un parser de verdad lo lea igual. No hay
-  // librería de YAML en el repo, así que se comprueba la propiedad que
-  // importa — ninguna cadena sin comillas — sobre el documento entero.
-  test("ninguna cadena se ha quedado sin comillas", () => {
+  // The litmus test: that a real parser reads it the same way. There
+  // is no YAML library in the repo, so we check the property that
+  // matters — no unquoted strings — over the whole document.
+  test("no string was left unquoted", () => {
     for (const line of doc.split("\n")) {
       const value = /: (.+)$/.exec(line)?.[1];
       if (!value) continue;
@@ -169,7 +170,7 @@ describe("un documento con la forma de un OpenAPI", () => {
         value === "true" ||
         value === "false" ||
         /^-?\d+(\.\d+)?$/.test(value);
-      expect(ok, `sin citar: ${line}`).toBe(true);
+      expect(ok, `unquoted: ${line}`).toBe(true);
     }
   });
 });

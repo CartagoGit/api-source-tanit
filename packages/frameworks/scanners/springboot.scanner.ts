@@ -1,22 +1,22 @@
 /**
- * `SpringBootScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para Spring Boot (Java / Kotlin).
+ * `SpringBootScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Spring Boot (Java / Kotlin).
  *
- * Detección:
- *   - `pom.xml` con `spring-boot-starter-web` o `build.gradle` con
+ * Detection:
+ *   - `pom.xml` with `spring-boot-starter-web` or `build.gradle` with
  *     `org.springframework.boot`.
- *   - `Application.java` con anotación `@SpringBootApplication`.
+ *   - `Application.java` with `@SpringBootApplication` annotation.
  *
  * Parsing:
- *   - `@RequestMapping("/api/v1")` o `@RestController` (en la clase) — captura
- *     el prefijo del controller.
- *   - `@GetMapping("/users")`, `@PostMapping(...)`, etc. (en método).
- *   - `@PathVariable`, `@RequestParam`, `@RequestBody` para path/query/body.
+ *   - `@RequestMapping("/api/v1")` or `@RestController` (on the class)
+ *     — captures the controller's prefix.
+ *   - `@GetMapping("/users")`, `@PostMapping(...)`, etc. (on the method).
+ *   - `@PathVariable`, `@RequestParam`, `@RequestBody` for path/query/body.
  *
  * Validation:
- *   - `SpringBootBeanValidationProvider` (best-effort): extrae
- *     `jakarta.validation.constraints.*` de DTOs.
- *   - Limitado: solo constraints inline en el package local.
+ *   - `SpringBootBeanValidationProvider` (best-effort): extracts
+ *     `jakarta.validation.constraints.*` from DTOs.
+ *   - Limited: only inline constraints in the local package.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -60,9 +60,9 @@ export class SpringBootProjectScanner implements IProjectScanner {
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     const isSpring = await isSpringBootProject(projectRoot);
     if (!isSpring) return emptyResult(0);
-    // a00010 / B-05: distinguir Java vs Kotlin cambia las rutas de
-    // entrada (`src/main/java` vs `src/main/kotlin`) y el evidence
-    // que se le enseña al usuario.
+    // a00010 / B-05: distinguishing Java vs Kotlin changes the entry
+    // paths (`src/main/java` vs `src/main/kotlin`) and the evidence
+    // shown to the user.
     const hasJava = existsSync(join(projectRoot, "src", "main", "java"));
     const hasKotlin = existsSync(join(projectRoot, "src", "main", "kotlin"));
     const hasSrc = hasJava || hasKotlin;
@@ -87,7 +87,7 @@ export class SpringBootProjectScanner implements IProjectScanner {
     if (existsSync(join(projectRoot, "pom.xml"))) artifacts.push("pom.xml");
     if (existsSync(join(projectRoot, "build.gradle"))) artifacts.push("build.gradle");
     if (existsSync(join(projectRoot, "src", "main", "java"))) artifacts.push("src/main/java");
-    // a00010 / B-05: registrar Kotlin como artefacto canónico.
+    // a00010 / B-05: register Kotlin as a canonical artifact.
     if (existsSync(join(projectRoot, "src", "main", "kotlin"))) artifacts.push("src/main/kotlin");
     return { framework: "springboot", projectRoot, artifacts };
   }
@@ -124,9 +124,9 @@ export class SpringBootRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = effectiveProjectRoot(match);
-    // a00010 / B-05: escanear AMBAS raíces canónicas — Java y Kotlin.
-    // Un proyecto Kotlin estándar vive en `src/main/kotlin/`; antes se
-    // ignoraba entero porque `scan()` solo entraba por `java`.
+    // a00010 / B-05: scan BOTH canonical roots — Java and Kotlin.
+    // A standard Kotlin project lives in `src/main/kotlin/`; before it
+    // was ignored entirely because `scan()` only entered through `java`.
     const roots = [
       join(projectRoot, "src", "main", "java"),
       join(projectRoot, "src", "main", "kotlin"),
@@ -175,24 +175,25 @@ async function parseJavaFile(
     return [];
   }
   const text = stripJavaComments(raw);
-  // a00011 C-6: las anotaciones multilínea son Java normal y corriente:
+  // a00011 C-6: multi-line annotations are normal Java:
   //
   //   @GetMapping(
   //       path = "/users",
   //       produces = "application/json"
   //   )
   //
-  // El regex `\([^)]*\)` exige el cierre en la misma línea, así que
-  // esta forma se perdía entera y con ella el endpoint. La solución es
-  // **pre-fusionar**: juntar líneas hasta que los paréntesis balanceen
-  // antes de partir en líneas para el matching. El `lineNumber` que
-  // se reporta es el de la PRIMERA línea de la anotación, que es
-  // donde un usuario miraría al buscarla en el fuente.
+  // The regex `\([^)]*\)` requires the close on the same line, so this
+  // form was lost entirely and with it the the endpoint. The solution
+  // is **pre-merge**: join lines until the parentheses balance before
+  // splitting into lines for matching. The `lineNumber` reported is
+  // the FIRST line of the annotation, where a user would look for it
+  // in the source.
   const lines = mergeBalancedParens(text.split("\n"));
 
   /**
-   * Fusiona cada línea con las siguientes hasta que su contenido
-   * balancea paréntesis. Una línea ya balanceada sale tal cual.
+   * Merges each line with the following ones until its content
+   * balances parentheses. An already-balanced line passes through
+   * as-is.
    */
   function mergeBalancedParens(source: string[]): string[] {
     const merged: string[] = [];
@@ -222,9 +223,9 @@ async function parseJavaFile(
     return merged;
   }
 
-  // 1) Detectar prefijo del controller.
-  //    Pasada 1: encontrar @RequestMapping con args (prefiere con path).
-  //    Pasada 2: fallback a @RestController/@Controller (sin prefix).
+  // 1) Detect controller prefix.
+  //    Pass 1: find @RequestMapping with args (preferring one with path).
+  //    Pass 2: fallback to @RestController/@Controller (no prefix).
   let classPrefix = "";
   let classStart = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -245,7 +246,7 @@ async function parseJavaFile(
     }
     if (classStart >= 0) break;
   }
-  // Pasada 2: si no hay @RequestMapping con path, buscar @RestController/@Controller.
+  // Pass 2: if there is no @RequestMapping with path, look for @RestController/@Controller.
   if (classStart < 0) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
@@ -263,7 +264,7 @@ async function parseJavaFile(
   }
   if (classStart < 0) return out;
 
-  // 2) Buscar method mappings.
+  // 2) Look for method mappings.
   for (let i = classStart + 1; i < lines.length; i++) {
     const line = lines[i] ?? "";
     let m: RegExpExecArray | null;
@@ -296,7 +297,7 @@ async function parseJavaFile(
           if (methods.length === 0) methods = ["get"];
           break;
       }
-      // Buscar signature del método.
+      // Look for the method signature.
       let methodName = "";
       for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
         const sig = /\b([a-zA-Z_][\w]*)\s*\(\s*(@?\w+)?\s*\)/.exec(lines[j] ?? "");
@@ -366,13 +367,13 @@ export class SpringBootBeanValidationProvider implements IValidationSpecProvider
     } catch {
       return { endpointKey, fields: [] };
     }
-    // Detectar `@RequestBody @Valid <DtoType> body` en el archivo.
+    // Detect `@RequestBody @Valid <DtoType> body` in the file.
     const m = /@RequestBody\s+@?[A-Za-z]+\s+(\w+)\s+\w+/.exec(raw);
     let dtoType = m?.[1];
     if (!dtoType) return { endpointKey, fields: [] };
     let fields = parseJavaDto(raw, dtoType);
     if (fields.length === 0) {
-      // Fallback: buscar el DTO en otros archivos Java.
+      // Fallback: look for the DTO in other Java files.
       fields = await findDtoInProject(effectiveProjectRoot(match), dtoType, route.uri);
     }
     if (fields.length === 0) return { endpointKey, fields: [] };
@@ -381,16 +382,16 @@ export class SpringBootBeanValidationProvider implements IValidationSpecProvider
 }
 
 /**
- * Parsea una class Java del archivo y extrae fields con sus
- * anotaciones de validación.
+ * Parses a Java class from the file and extracts fields with their
+ * validation annotations.
  */
 function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
   const out: IValidationSpec[] = [];
-  // Encontrar la class.
+  // Find the class.
   const classRe = new RegExp(`class\\s+${dtoType}\\s*\\{`, "g");
   const classMatch = classRe.exec(raw);
   if (!classMatch) return out;
-  // Capturar el body de la class.
+  // Capture the class body.
   const start = classMatch.index + classMatch[0].length;
   let depth = 1;
   let end = start;
@@ -400,11 +401,11 @@ function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
     if (depth === 0) { end = i; break; }
   }
   const body = raw.slice(start, end);
-  // Capturar field con anotaciones:
+  // Capture field with annotations:
   //   @NotBlank
   //   @Size(min = 1, max = 100)
   //   private String name;
-  // Regex multilinea con DOTALL.
+  // Multiline regex with DOTALL.
   const fieldRe = /(@\w+(?:\([^)]*\))?)\s+(?:@\w+(?:\([^)]*\))?\s+)*\s*(?:private|public|protected)?\s*([\w<>,\s]+?)\s+(\w+)\s*;/g;
   let m: RegExpExecArray | null;
   while ((m = fieldRe.exec(body)) !== null) {
@@ -443,7 +444,7 @@ function parseJavaDto(raw: string, dtoType: string): IValidationSpec[] {
 }
 
 /**
- * Infiere el tipo IValidationSpec a partir del tipo Java.
+ * Infers the IValidationSpec type from the Java type.
  */
 function inferJavaFieldType(javaType: string, isEmail: boolean): IValidationSpec["type"] {
   if (isEmail) return "string";
@@ -456,7 +457,7 @@ function inferJavaFieldType(javaType: string, isEmail: boolean): IValidationSpec
 }
 
 /**
- * Busca un DTO en otros archivos Java del proyecto.
+ * Searches for a DTO in other Java files of the project.
  */
 async function findDtoInProject(
   projectRoot: string,
@@ -477,7 +478,7 @@ async function findDtoInProject(
   }
   const srcMain = join(projectRoot, "src", "main", "java");
   if (existsSync(srcMain)) await walk(srcMain);
-  // Filtrar por nombre de archivo relacionado al URI.
+  // Filter by file name related to the URI.
   const uriWords = (uri ?? "")
     .split("/")
     .filter((w) => w && !w.startsWith("{{") && !w.startsWith(":"))

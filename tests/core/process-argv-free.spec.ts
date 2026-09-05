@@ -1,29 +1,31 @@
 /**
- * `process.argv` no entra al core en runtime (a00012 S4).
+ * `process.argv` does not enter the core at runtime (a00012 S4).
  *
- * Antes del S4, `resolveConfigPath` y `loadProject` declaraban
- * `argv: string[] = process.argv` como default. El core leía el global
- * del proceso: el servidor MCP o la UI web, que también llaman al
- * pipeline, terminaban heredando los argv del proceso host. El bug
- * era silencioso: en el caso típico del plugin el global tenía los
- * flags del IDE, así que `--config` no matcheaba y caía al zero-config,
- * pero un `--config <algo>` del host que coincidiera con la ruta
- * equivocada podía pisar el config del proyecto.
+ * Before S4, `resolveConfigPath` and `loadProject` declared
+ * `argv: string[] = process.argv` as default. The core read the
+ * process global: the MCP server or the web UI, which also call into
+ * the pipeline, ended up inheriting the argv of the host process. The
+ * bug was silent: in the typical plugin case the global carried the
+ * IDE's flags, so `--config` did not match and it fell back to the
+ * zero-config, but a `--config <something>` from the host that
+ * happened to coincide with the wrong path could overwrite the
+ * project's config.
  *
- * El S4 cierra la fuga: el default pasa a `argv: ReadonlyArray<string> = []`.
- * El CLI pasa `process.argv.slice(2)` desde `cli.script.ts` (composition
- * root, ahí SÍ toca el global), y los tests pasan un array explícito o
- * vacío.
+ * S4 closes the leak: the default becomes
+ * `argv: ReadonlyArray<string> = []`. The CLI passes
+ * `process.argv.slice(2)` from `cli.script.ts` (the composition root —
+ * there, yes, touching the global is fine), and tests pass an explicit
+ * or empty array.
  *
- * Este spec verifica la propiedad desde tres ángulos:
+ * This spec verifies the property from three angles:
  *
- *   1. `loadProject` con `argv: []` no lee `process.argv`. Lo
- *      demostramos stubbeando `process.argv` y observando que la
- *      función no lo consulta.
- *   2. `--config <path>` se aplica cuando va en el array explícito,
- *      ignorando el global.
- *   3. El pipeline (`generation.pipeline.ts`) pasa `options.argv ?? []`
- *      a `loadProject`, de modo que quien lo invoca controla el array.
+ *   1. `loadProject` with `argv: []` does not read `process.argv`. We
+ *      demonstrate it by stubbing `process.argv` and watching the
+ * function not consult it.
+ *   2. `--config <path>` is applied when it is in the explicit array,
+ *      ignoring the global.
+ *   3. The pipeline (`generation.pipeline.ts`) passes `options.argv ?? []`
+ *      to `loadProject`, so the caller controls the array.
  */
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { createTempProject, type ITempProject } from "../helpers/scanner-fixture";
@@ -46,12 +48,11 @@ afterEach(async () => {
 });
 
 /**
- * Stub de `process.argv` con backup/restore alrededor del test.
+ * `process.argv` stub with backup/restore around the test.
  *
- * `process.argv` es **getter-only** en Bun y Node 20+, así que la
- * forma correcta es `vi.spyOn(process, "argv", "get")`. La función
- * devuelve el spy para que el test pueda asertar contra él sin
- * re-llamar.
+ * `process.argv` is **getter-only** in Bun and Node 20+, so the right
+ * form is `vi.spyOn(process, "argv", "get")`. The function returns the
+ * spy so the test can assert against it without re-calling.
  */
 function withStubbedArgv<T>(argv: string[], fn: () => Promise<T>): Promise<T> {
   const spy = vi.spyOn(process, "argv", "get").mockReturnValue(argv);
@@ -71,20 +72,21 @@ async function inProject<T>(
 }
 
 describe("loadProject no lee process.argv (a00012 S4)", () => {
-  test("argv=[] ignora process.argv global: --config del host no se aplica", async () => {
+  test("argv=[] ignores the global process.argv: host's --config does not apply", async () => {
     await inProject(
       {
         "composer.json": '{"name":"acme/argv-free"}',
       },
       async (context) => {
-        // El global del proceso dice `--config /etc/passwd`. Si el
-        // loader leyese process.argv, saltaría la detección normal y
-        // devolvería error por ruta inexistente. Como ya no lo lee,
-        // ignora el flag y resuelve el config del proyecto.
+        // The process global says `--config /etc/passwd`. If the
+        // loader read process.argv, it would skip normal detection
+        // and fail on a non-existent path. Since it no longer reads
+        // it, the flag is ignored and the project's config is
+        // resolved.
         await withStubbedArgv(["node", "x", "--config", "/etc/passwd"], async () => {
           const loaded = await loadProject([], context);
-          // La config viene del proyecto (composer.json) o del
-          // zero-config; en cualquier caso, NO de /etc/passwd.
+          // The config comes from the project (composer.json) or
+          // zero-config; in any case NOT from /etc/passwd.
           expect(loaded.config.name).not.toBe("passwd");
           expect(loaded.configPath).not.toBe("/etc/passwd");
         });
@@ -92,17 +94,17 @@ describe("loadProject no lee process.argv (a00012 S4)", () => {
     );
   });
 
-  test("argv=['--config', '<mi-config>'] aplica el flag y rechaza el global", async () => {
+  test("argv=['--config', '<my-config>'] applies the flag and rejects the global", async () => {
     await inProject(
       {
         "composer.json": '{"name":"acme/explicit-argv"}',
       },
       async (context) => {
         const cfg = `${projectTmp!.root}/mi-config.ts`;
-        // El global dice otra cosa; el argv explícito del loader
-        // manda. La función resuelve el flag del array que le
-        // pasamos, no el global.
-        await withStubbedArgv(["node", "x", "--config", "/global-que-no-debe-aplicar"], async () => {
+        // The global says something else; the explicit argv of the
+        // loader wins. The function resolves the flag from the array
+        // we pass, not the global.
+        await withStubbedArgv(["node", "x", "--config", "/global-that-must-not-apply"], async () => {
           const path = await resolveConfigPath(["node", "x", "--config", cfg], context);
           expect(path).toBe(cfg);
         });
@@ -110,11 +112,11 @@ describe("loadProject no lee process.argv (a00012 S4)", () => {
     );
   });
 
-  test("stub de process.argv: el loader no lo consulta", async () => {
-    // Comprobamos que `loadProject` no llama a nada que devuelva
-    // `process.argv`. Esto es una guardia del universal §6 ("no leer
-    // globales en hot path"): si alguien añade un default
-    // `process.argv` en el futuro, este test lo caza.
+  test("process.argv stub: the loader does not consult it", async () => {
+    // We verify that `loadProject` calls nothing that returns
+    // `process.argv`. This is a guard from universal §6 ("no reading
+    // globals in the hot path"): if anyone adds a default
+    // `process.argv` in the future, this test catches it.
     await inProject(
       {
         "composer.json": '{"name":"acme/no-leer-global"}',
@@ -124,24 +126,25 @@ describe("loadProject no lee process.argv (a00012 S4)", () => {
         await withStubbedArgv(["node", "x", "--config", "/no-aplica"], async () => {
           await loadProject([], context);
         });
-        // El loader con argv=[] no debe haber leído process.argv en
-        // ningún momento: ni siquiera una vez.
+        // The loader with argv=[] must not have read process.argv at
+        // any point: not even once.
         expect(spy).not.toHaveBeenCalled();
       },
     );
   });
 });
 
-describe("resolveConfigPath no lee process.argv (a00012 S4)", () => {
-  test("argv=[] ignora --config del global", async () => {
+describe("resolveConfigPath does not read process.argv (a00012 S4)", () => {
+  test("argv=[] ignores --config from the global", async () => {
     await inProject(
       {
         "composer.json": '{"name":"acme/resolve-argv"}',
       },
       async (context) => {
         await withStubbedArgv(["node", "x", "--config", "/lo-que-sea"], async () => {
-          // Sin argv explícito, debe resolver el config del proyecto
-          // (o el sentinel "__zero__"), nunca el flag global.
+          // Without explicit argv, it must resolve the project's
+          // config (or the "__zero__" sentinel), never the global
+          // flag.
           const path = await resolveConfigPath([], context);
           expect(path).not.toBe("/lo-que-sea");
           expect(typeof path).toBe("string");
@@ -151,8 +154,8 @@ describe("resolveConfigPath no lee process.argv (a00012 S4)", () => {
   });
 });
 
-describe("buildZeroConfig no lee process.argv (a00012 S4)", () => {
-  test("argv stubbeado no afecta al baseUrl por defecto", async () => {
+describe("buildZeroConfig does not read process.argv (a00012 S4)", () => {
+  test("a stubbed argv does not affect the default baseUrl", async () => {
     await inProject(
       {
         "composer.json": '{"name":"acme/zero-argv"}',
@@ -170,12 +173,12 @@ describe("buildZeroConfig no lee process.argv (a00012 S4)", () => {
   });
 });
 
-describe("generation.pipeline pasa argv explícito al loader (a00012 S4)", () => {
-  test("generateCollection sin options.argv: el pipeline no rompe", async () => {
-    // El comportamiento esperado es que falte `options.argv` y el
-    // loader reciba `[]`. Si alguien restaura `process.argv` aquí,
-    // este test detecta el cambio de contrato: el pipeline debe
-    // seguir funcionando aunque el global tenga `--config` raro.
+describe("generation.pipeline passes explicit argv to the loader (a00012 S4)", () => {
+  test("generateCollection without options.argv: the pipeline does not break", async () => {
+    // The expected behavior is that `options.argv` is missing and the
+    // loader receives `[]`. If anyone restores `process.argv` here,
+    // this test detects the contract change: the pipeline must keep
+    // working even if the global has a weird `--config`.
     projectTmp = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -197,7 +200,7 @@ app.listen(3000);
         const result = await generateCollection(projectTmp!.root, {
           orchestrator: defaultOrchestrator(),
         });
-        // El baseUrl por defecto NO debe contener el global stubbeado.
+        // The default baseUrl must NOT contain the stubbed global.
         expect(result.config.baseUrl).not.toBe("/etc/passwd");
         expect(result.config.baseUrl).toBe("http://localhost");
       },

@@ -1,53 +1,54 @@
 /**
- * El contrato de salida de los cuatro tools del plugin.
+ * The output contract of the four plugin tools.
  *
- * `AGENT-BOOTSTRAP.md#L62` copia por referencia el invariante universal
- * §6 —"Every public tool declares an `outputSchema`"— y §3.2 lo repite.
- * **Ninguno de los cuatro lo declaraba.** Un agente que llamaba a
- * `delendai_tanit_generate` recibía una salida sin contrato: no
- * podía validar la respuesta ni saber qué campos existen sin ejecutarla
- * y mirar lo que salía.
+ * `AGENT-BOOTSTRAP.md#L62` copies by reference the universal invariant
+ * §6 —"Every public tool declares an `outputSchema`"— and §3.2 repeats
+ * it. **None of the four declared it.** An agent that called
+ * `delendai_tanit_generate` received an output without a contract: it
+ * could not validate the response nor know which fields existed
+ * without running it and looking at what came out.
  *
- * Al escribir los esquemas salieron dos cosas más, que es lo que suele
- * pasar cuando se obliga a un contrato a existir:
+ * When writing the schemas, two more things came out, which is what
+ * usually happens when a contract is forced to exist:
  *
- *   - `summary` declaraba seis campos en su interfaz y devolvía los
- *     dieciocho del resumen con `toolJson({ ok: true, ...summary })`.
- *     El contrato escrito y el comportamiento llevaban tiempo sin
- *     coincidir, y no había forma de notarlo.
- *   - `validate` y `test` usaban `ok` para dos preguntas distintas:
- *     "¿funcionó la herramienta?" y "¿salió bien el resultado?".
- *     `validate` llegaba a devolver `toolError` con una colección
- *     desincronizada, lo que marca la respuesta con `isError` — el
- *     agente que pregunta "¿está al día?" recibía un fallo de
- *     herramienta en vez de la respuesta "no, y estos son los motivos".
+ *   - `summary` declared six fields in its interface and returned the
+ *     eighteen of the summary with `toolJson({ ok: true, ...summary })`.
+ *     The written contract and the behavior had not agreed for a
+ *     while, and there was no way to notice it.
+ *   - `validate` and `test` used `ok` for two different questions:
+ *     "did the tool work?" and "did the result come out well?".
+ *     `validate` even returned `toolError` with an out-of-sync
+ *     collection, which marks the response with `isError` — the
+ *     agent that asks "is it up to date?" received a tool failure
+ *     instead of the answer "no, and these are the reasons".
  */
 import { describe, expect, test } from "vitest";
 
 /**
- * Este spec necesita las dependencias del **plugin**, no las del
- * paquete: los esquemas se construyen con `zod`, que es suya.
+ * This spec needs the **plugin's** dependencies, not the package's:
+ * the schemas are built with `zod`, which is theirs.
  *
- * Y esas no siempre están. El plugin declara
- * `"@delendai/core": "file:../../../../delendai/packages/core"`, un
- * `file:` que apunta fuera del repositorio, así que en cualquier sitio
- * sin el checkout hermano —un contenedor limpio, un CI, un clon
- * recién hecho— el install del workspace se queda a medias y `zod` no
- * llega. El síntoma es un `z.object` indefinido que no tiene nada que
- * ver con lo que este fichero prueba.
+ * And those are not always there. The plugin declares
+ * `"@delendai/core": "file:../../../../delendai/packages/core"`, a
+ * `file:` pointing outside the repository, so anywhere without the
+ * sibling checkout —a clean container, a CI, a fresh clone— the
+ * workspace install stays half-done and `zod` does not arrive. The
+ * symptom is an undefined `z.object` that has nothing to do with
+ * what this file tests.
  *
- * Se declara la precondición aquí, y no se excluye desde fuera, porque
- * la condición es de este spec. Cuando `p00007` cierre y el paquete
- * venga de npm, esto sobra.
+ * The precondition is declared here, not excluded from outside,
+ * because the condition is this spec's. When `p00007` closes and
+ * the package comes from npm, this is unnecessary.
  */
 /**
- * Se intenta cargar y se mira si carga. Nada de comprobar rutas ni
- * dependencias sueltas: la condición es exactamente «¿se puede usar este
- * módulo?», y preguntarla de otra forma es adivinar.
+ * An attempt is made to load and we check whether it loads. Nothing
+ * about checking paths or loose dependencies: the condition is
+ * exactly "can this module be used?", and asking it any other way
+ * is guessing.
  *
- * Antes se probó mirando si existía `node_modules/zod` — y existía, pero
- * a medias, así que el spec seguía reventando. El disco decía que sí y
- * la realidad que no.
+ * It was once tested by checking if `node_modules/zod` existed —
+ * and it did, but half-installed, so the spec kept blowing up.
+ * The disk said yes and reality said no.
  */
 const contratos = await import(
   "../../packages/plugins/delendai_tanit/src/lib/contracts/plugin.interface"
@@ -56,12 +57,12 @@ const contratos = await import(
 const PLUGIN_DEPS = contratos !== null;
 
 /**
- * El import es **dinámico** y va detrás de la comprobación, no arriba.
+ * The import is **dynamic** and goes behind the check, not above.
  *
- * `describe.skipIf` llega tarde: el módulo se evalúa al importarlo, y
- * si `zod` no está, revienta con `z.object` indefinido antes de que
- * ningún `skip` pueda actuar. Un import estático haría que este fichero
- * tumbara la suite entera en vez de saltarse solo.
+ * `describe.skipIf` arrives late: the module is evaluated when
+ * imported, and if `zod` is missing it blows up with undefined
+ * `z.object` before any `skip` can act. A static import would make
+ * this file take down the whole suite instead of skipping itself.
  */
 const SCHEMAS = {
   generate: contratos?.GenerateOutputSchema,
@@ -70,26 +71,26 @@ const SCHEMAS = {
   test: contratos?.TestOutputSchema,
 } as const;
 
-describe.skipIf(!PLUGIN_DEPS)("los cuatro tools declaran su salida", () => {
-  test.for(Object.entries(SCHEMAS))("%s tiene esquema de salida", ([, schema]) => {
+describe.skipIf(!PLUGIN_DEPS)("the four tools declare their output", () => {
+  test.for(Object.entries(SCHEMAS))("%s has an output schema", ([, schema]) => {
     expect(schema).toBeDefined();
     expect(typeof schema?.safeParse).toBe("function");
   });
 
   /**
-   * `ok: true` fijo, no `boolean`. El fallo tiene su propio sobre
-   * universal (`toolError` → `{ ok: false, error }` con `isError`), así
-   * que un esquema de salida que admitiera `ok: false` estaría
-   * describiendo dos contratos a la vez.
+   * `ok: true` fixed, not `boolean`. The failure has its own
+   * universal envelope (`toolError` → `{ ok: false, error }` with
+   * `isError`), so an output schema that admitted `ok: false` would
+   * be describing two contracts at once.
    */
-  test.for(Object.entries(SCHEMAS))("%s fija `ok` en true", ([name, schema]) => {
+  test.for(Object.entries(SCHEMAS))("%s fixes `ok` to true", ([name, schema]) => {
     const conFalse = schema?.safeParse({ ok: false });
-    expect(conFalse?.success, `${name} acepta ok:false`).toBe(false);
+    expect(conFalse?.success, `${name} accepts ok:false`).toBe(false);
   });
 });
 
-describe.skipIf(!PLUGIN_DEPS)("`ok` y el resultado son dos preguntas distintas", () => {
-  test("una colección desincronizada es una validación que funcionó", () => {
+describe.skipIf(!PLUGIN_DEPS)("`ok` and the result are two different questions", () => {
+  test("an out-of-sync collection is a validation that worked", () => {
     const parsed = contratos!.ValidateOutputSchema.safeParse({
       ok: true,
       valid: false,
@@ -101,7 +102,7 @@ describe.skipIf(!PLUGIN_DEPS)("`ok` y el resultado son dos preguntas distintas",
     expect(parsed.success).toBe(true);
   });
 
-  test("un test en rojo es un resultado, no un fallo del tool", () => {
+  test("a failing test is a result, not a tool failure", () => {
     const parsed = contratos!.TestOutputSchema.safeParse({
       ok: true,
       passed: false,
@@ -112,7 +113,7 @@ describe.skipIf(!PLUGIN_DEPS)("`ok` y el resultado son dos preguntas distintas",
     expect(parsed.success).toBe(true);
   });
 
-  test("`valid` y `passed` son obligatorios: sin ellos no se sabe el resultado", () => {
+  test("`valid` and `passed` are mandatory: without them the result is unknown", () => {
     expect(
       contratos!.ValidateOutputSchema.safeParse({
         ok: true,
@@ -129,13 +130,13 @@ describe.skipIf(!PLUGIN_DEPS)("`ok` y el resultado son dos preguntas distintas",
   });
 });
 
-describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de verdad", () => {
+describe.skipIf(!PLUGIN_DEPS)("the schema describes what the tool actually returns", () => {
   /**
-   * EL test de `summary`: los campos que el handler pasa y la interfaz
-   * anterior no declaraba. Sin esto, el esquema podría volver a
-   * quedarse corto y nadie lo notaría.
+   * THE `summary` test: the fields the handler passes and the
+   * previous interface did not declare. Without this, the schema
+   * could fall short again and nobody would notice.
    */
-  test("summary cubre el resumen entero, no seis campos de dieciocho", () => {
+  test("summary covers the whole summary, not six of eighteen fields", () => {
     const completo = {
       ok: true,
       framework: "express",
@@ -164,7 +165,7 @@ describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de ve
     expect(contratos!.SummaryOutputSchema.safeParse(completo).success).toBe(true);
   });
 
-  test("generate acepta el proyecto híbrido y el que no reconoce nada", () => {
+  test("generate accepts the hybrid project and the one that recognises nothing", () => {
     const base = {
       ok: true,
       warnings: [],
@@ -184,13 +185,13 @@ describe.skipIf(!PLUGIN_DEPS)("el esquema describe lo que el tool devuelve de ve
         frameworks: ["express", "nextjs"],
       }).success,
     ).toBe(true);
-    // Nada reconocido: `framework` es null y no es un error de forma.
+    // Nothing recognised: `framework` is null and it is not a shape error.
     expect(
       contratos!.GenerateOutputSchema.safeParse({ ...base, framework: null, frameworks: [] }).success,
     ).toBe(true);
   });
 
-  test("los contadores no admiten negativos", () => {
+  test("counters do not admit negative numbers", () => {
     expect(
       contratos!.SummaryOutputSchema.safeParse({
         ok: true,

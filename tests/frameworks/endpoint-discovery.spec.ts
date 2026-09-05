@@ -22,12 +22,12 @@ const spec = (partial: Partial<EndpointSpec>): EndpointSpec =>
   }) as EndpointSpec;
 
 describe("mergeWithManual", () => {
-  test("sin overrides devuelve el catálogo automático intacto", () => {
+  test("without overrides returns the auto catalog intact", () => {
     const auto = [spec({ uri: "/users" })];
     expect(mergeWithManual(auto, [])).toEqual(auto);
   });
 
-  test("el override gana en el nombre", () => {
+  test("override wins on name", () => {
     const merged = mergeWithManual(
       [spec({ method: "GET", uri: "/users", name: "Obtener Users" })],
       [spec({ method: "GET", uri: "/users", name: "Listado de clientes" })],
@@ -35,7 +35,7 @@ describe("mergeWithManual", () => {
     expect(merged[0]?.name).toBe("Listado de clientes");
   });
 
-  test("el override gana en el body", () => {
+  test("override wins on body", () => {
     const merged = mergeWithManual(
       [spec({ method: "POST", uri: "/users", body: { a: 1 } })],
       [spec({ method: "POST", uri: "/users", body: { b: 2 } })],
@@ -43,9 +43,9 @@ describe("mergeWithManual", () => {
     expect(merged[0]?.body).toEqual({ b: 2 });
   });
 
-  // El override corrige lo que el scanner deduce, pero no debe borrar
-  // la referencia al FormRequest que el enricher necesita después.
-  test("un override sin formRequest conserva el auto-detectado", () => {
+  // The override fixes what the scanner infers, but must not erase
+  // the reference to the FormRequest the enricher needs afterwards.
+  test("an override without formRequest keeps the auto-detected one", () => {
     const merged = mergeWithManual(
       [spec({ method: "POST", uri: "/users", formRequest: "laravel:post /users" })],
       [spec({ method: "POST", uri: "/users", name: "Crear" })],
@@ -53,7 +53,7 @@ describe("mergeWithManual", () => {
     expect(merged[0]?.formRequest).toBe("laravel:post /users");
   });
 
-  test("empareja aunque el parámetro se llame distinto", () => {
+  test("matches even when the parameter is named differently", () => {
     const merged = mergeWithManual(
       [spec({ method: "GET", uri: "/users/{{id}}" })],
       [spec({ method: "GET", uri: "/users/{userId}", name: "Ver cliente" })],
@@ -62,7 +62,7 @@ describe("mergeWithManual", () => {
     expect(merged[0]?.name).toBe("Ver cliente");
   });
 
-  test("un endpoint manual que no existe en el código se añade", () => {
+  test("a manual endpoint that does not exist in code is added", () => {
     const merged = mergeWithManual(
       [spec({ method: "GET", uri: "/users" })],
       [spec({ method: "POST", uri: "/webhooks/stripe", name: "Webhook" })],
@@ -71,7 +71,7 @@ describe("mergeWithManual", () => {
     expect(merged[1]?.name).toBe("Webhook");
   });
 
-  test("no confunde endpoints con el mismo path y distinto método", () => {
+  test("does not confuse endpoints with the same path and different method", () => {
     const merged = mergeWithManual(
       [spec({ method: "GET", uri: "/users" }), spec({ method: "POST", uri: "/users" })],
       [spec({ method: "POST", uri: "/users", name: "Crear usuario" })],
@@ -81,7 +81,7 @@ describe("mergeWithManual", () => {
     expect(merged.find((s) => s.method === "POST")?.name).toBe("Crear usuario");
   });
 
-  test("un catálogo automático vacío devuelve solo los manuales", () => {
+  test("an empty auto catalog returns only the manual ones", () => {
     const manual = [spec({ name: "Solo manual" })];
     expect(mergeWithManual([], manual)).toEqual(manual);
   });
@@ -102,7 +102,7 @@ const CONFIG: ProjectConfig = {
 };
 
 describe("enrichCatalogWithFormRequests", () => {
-  test("sin índice de FormRequests no rompe la colección", async () => {
+  test("without FormRequests index the collection is not broken", async () => {
     const collection = buildCollection([spec({ uri: "/users" })], { ...CONFIG });
     const before = JSON.stringify(collection);
     const stats = await enrichCatalogWithFormRequests(collection, new Map());
@@ -111,7 +111,7 @@ describe("enrichCatalogWithFormRequests", () => {
     expect(JSON.stringify(collection)).toBe(before);
   });
 
-  test("cuenta como no resuelto lo que no encuentra", async () => {
+  test("counts what it does not find as unresolved", async () => {
     const project = await createTempProject({});
     const context = resolveProjectContext({ projectRoot: project.root });
     const collection = buildCollection([spec({ method: "POST", uri: "/users" })], {
@@ -129,7 +129,7 @@ describe("enrichCatalogWithFormRequests", () => {
     }
   });
 
-  test("una colección vacía devuelve estadísticas en cero", async () => {
+  test("an empty collection returns zero statistics", async () => {
     const collection = buildCollection([], { ...CONFIG });
     const stats = await enrichCatalogWithFormRequests(collection, new Map());
 
@@ -144,47 +144,47 @@ describe("enrichCatalogWithFormRequests", () => {
 });
 
 // ---------------------------------------------------------------------------
-// toPostmanUri — conversión de parámetros y normalización de barras
+// toPostmanUri — parameter conversion and slash normalization
 // ---------------------------------------------------------------------------
 
 describe("toPostmanUri", () => {
-  test("convierte parámetros Laravel en variables Postman", () => {
+  test("converts Laravel parameters into Postman variables", () => {
     expect(toPostmanUri("api/clientes/{cliente}")).toBe("/clientes/{{cliente}}");
   });
 
-  test("descarta la regex de los parámetros con constraint", () => {
+  test("drops the regex from parameters with a constraint", () => {
     expect(toPostmanUri("api/fabricantes/{fabricante:tecdoc_id}")).toBe(
       "/fabricantes/{{fabricante}}",
     );
   });
 
-  test("quita el prefijo api/ con o sin barra inicial", () => {
+  test("strips the api/ prefix with or without a leading slash", () => {
     expect(toPostmanUri("api/pedidos")).toBe("/pedidos");
     expect(toPostmanUri("/api/pedidos")).toBe("/pedidos");
   });
 
-  test("normaliza dobles barras y trailing slash", () => {
+  test("normalizes double slashes and trailing slash", () => {
     expect(toPostmanUri("api//doble///barra/")).toBe("/doble/barra");
   });
 
-  test("la raíz se conserva como /", () => {
+  test("the root stays as /", () => {
     expect(toPostmanUri("/")).toBe("/");
     expect(toPostmanUri("api/")).toBe("/");
   });
 
-  test("una uri sin api/ se deja tal cual", () => {
+  test("a URI without api/ stays as-is", () => {
     expect(toPostmanUri("login")).toBe("/login");
   });
 });
 
 // ---------------------------------------------------------------------------
-// discoverEndpoints + routeToSpec sobre un proyecto Laravel temporal
+// discoverEndpoints + routeToSpec on a temporary Laravel project
 // ---------------------------------------------------------------------------
 
 /**
- * Controlador con todas las formas de firma que el parser distingue:
- * FormRequest importado, importado con alias, Request genérico de
- * Illuminate y parámetro sin tipar.
+ * Controller with every signature shape the parser distinguishes:
+ * imported FormRequest, imported with alias, generic Illuminate
+ * Request and an untyped parameter.
  */
 const USUARIO_CONTROLLER = `<?php
 
@@ -205,44 +205,45 @@ class UsuarioController extends Controller
 
     protected function sincronizar(FacturaRequest $peticion)
     {
-        // Método protegido con FormRequest fuera de app/Http/Requests:
-        // el resolver de ruta lo rechaza y cae al fallback por convención.
+        // Protected method with FormRequest outside app/Http/Requests:
+        // the route resolver rejects it and falls back to the
+        // convention-based fallback.
     }
 
     public function auditar(GestorRequest $peticion)
     {
-        // Alias terminado en Request apuntando a una clase que NO
-        // termina en Request: el FQCN no se acepta como FormRequest.
+        // Alias ending in Request pointing at a class that does NOT
+        // end in Request: the FQCN is not accepted as a FormRequest.
     }
 
     public function store(CrearUsuarioRequest $peticion)
     {
-        // FormRequest vía import directo.
+        // FormRequest via direct import.
     }
 
     public function update(UpdateRequest $peticion)
     {
-        // FormRequest vía import con alias terminado en Request.
+        // FormRequest via import with alias ending in Request.
     }
 
     public function destroy($usuario)
     {
-        // Parámetro sin tipar: se cae a la convención de nombres.
+        // Untyped parameter: falls back to the naming convention.
     }
 
     public function activar(Request $peticion)
     {
-        // Illuminate\\Http\\Request genérico: NO cuenta como FormRequest.
+        // Generic Illuminate\\Http\\Request: does NOT count as FormRequest.
     }
 
     public function buscarAlta(Request $peticion)
     {
-        // Método camelCase para el humanizado del nombre.
+        // camelCase method for the humanized name.
     }
 
     public function importar(\App\Http\Requests\Usuarios\ImportarUsuarioRequest $peticion)
     {
-        // FormRequest tipado con el FQCN completo inline (sin import).
+        // FormRequest typed with the full FQCN inline (no import).
     }
 }
 `;
@@ -255,8 +256,8 @@ use App\\Http\\Controllers\\PedidoController;
 
 Route::get('usuarios', [UsuarioController::class, 'index']);
 Route::post('usuarios', [UsuarioController::class, 'store']);
-// Segunda ruta hacia la misma acción: el cache de reglas del
-// FormRequest debe reutilizarse entre ambas.
+// Second route to the same action: the FormRequest rule cache
+// must be reused across both.
 Route::post('usuarios/crear', [UsuarioController::class, 'store']);
 Route::post('usuarios/importar', [UsuarioController::class, 'importar']);
 Route::put('usuarios/{usuario}', [UsuarioController::class, 'update']);
@@ -323,7 +324,7 @@ const FR_SINCRONIZAR = FORM_REQUEST_TEMPLATE(
   `            'lote' => ['required', 'string'],`,
 );
 
-describe("discoverEndpoints sobre un proyecto temporal", () => {
+describe("discoverEndpoints over a temporary project", () => {
   let project: ITempProject;
   let contexto: IProjectContext;
 
@@ -351,7 +352,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
 
   const descubre = () => discoverEndpoints(configPara(), [], contexto);
 
-  test("convierte las rutas en specs con uri Postman y nombre legible", async () => {
+  test("turns routes into specs with a Postman uri and readable name", async () => {
     const res = await descubre();
     expect(res.routes).toHaveLength(11);
     expect(res.specs).toHaveLength(11);
@@ -363,7 +364,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     expect(specDe("GET", "/usuarios")?.folder).toBe("Usuarios");
     expect(specDe("PUT", "/usuarios/{{usuario}}")?.name).toBe("Actualizar Usuarios");
     expect(specDe("DELETE", "/usuarios/{{usuario}}")?.name).toBe("Eliminar Usuarios");
-    // Método fuera de las etiquetas conocidas + recurso de dos palabras.
+    // Method outside the known labels + a two-word resource.
     expect(specDe("GET", "/usuarios/buscar-alta")?.name).toContain("Buscar Alta");
 
     const pedidos = specDe("GET", "/pedidos");
@@ -371,7 +372,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     expect(pedidos?.folder).toBe("Pedidos");
   });
 
-  test("el body sale del FormRequest mínimo para POST y PUT", async () => {
+  test("the body comes from the minimal FormRequest for POST and PUT", async () => {
     const res = await descubre();
     const crear = res.specs.find((s) => s.method === "POST" && s.uri === "/usuarios");
     expect(crear?.formRequest).toBe("app/Http/Requests/Usuarios/CrearUsuarioRequest.php");
@@ -381,8 +382,9 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     });
     expect(crear?.description).toBe("Auto · CrearUsuarioRequest");
 
-    // update: FormRequest resuelto vía alias; sin campos required, el
-    // body mínimo está vacío y se cae al completo.
+    // update: FormRequest resolved via alias; with no required
+    // fields, the minimal body is empty and falls back to the full
+    // one.
     const actualizar = res.specs.find((s) => s.method === "PUT");
     expect(actualizar?.formRequest).toBe(
       "app/Http/Requests/Usuarios/ActualizarUsuarioRequest.php",
@@ -390,54 +392,57 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     expect(actualizar?.body).toEqual({ nombre: "sample_nombre" });
   });
 
-  test("el fallback por convención encuentra el FormRequest del destroy", async () => {
-    // DestroyUsuarioRequest no está importado en el controlador y el
-    // parámetro no tiene tipo: se localiza por convención de nombre
-    // (destroy → Destroy… + recurso Usuario en app/Http/Requests).
+  test("the convention fallback finds the destroy FormRequest", async () => {
+    // DestroyUsuarioRequest is not imported in the controller and the
+    // parameter has no type: it is located by name convention
+    // (destroy → Destroy… + Usuario resource in app/Http/Requests).
     const res = await descubre();
     const borrar = res.specs.find((s) => s.method === "DELETE");
     expect(borrar?.formRequest).toBe("app/Http/Requests/DestroyUsuarioRequest.php");
     expect(borrar?.description).toBe("Auto · DestroyUsuarioRequest");
-    // DELETE no es POST/PUT/PATCH: la descripción entra, el body no.
+    // DELETE is not POST/PUT/PATCH: the description comes in, the
+    // body does not.
     expect(borrar?.body).toBeUndefined();
   });
 
-  test("sin FormRequest ni por firma ni por convención el spec queda pelado", async () => {
+  test("without FormRequest neither by signature nor by convention the spec stays bare", async () => {
     const res = await descubre();
     const index = res.specs.find((s) => s.method === "GET" && s.uri === "/usuarios");
     expect(index?.formRequest).toBeUndefined();
     expect(index?.body).toBeUndefined();
     expect(index?.description).toBeUndefined();
 
-    // Request genérico de Illuminate: no genera FormRequest.
+    // Generic Illuminate Request: no FormRequest is generated.
     const activar = res.specs.find((s) => s.uri.endsWith("/activar"));
     expect(activar?.formRequest).toBeUndefined();
-    // El nombre usa el último segmento significativo, no el prefijo.
+    // The name uses the last meaningful segment, not the prefix.
     expect(activar?.name).toBe("Activar Activar");
   });
 
-  test("los métodos con body solo lo llevan en POST/PUT/PATCH", async () => {
+  test("methods with body only carry it on POST/PUT/PATCH", async () => {
     const res = await descubre();
-    // GET con FormRequest no recibe body: solo POST/PUT/PATCH. Hay
-    // cuatro POST con reglas (store×2, import, sincronizar) y un PUT.
+    // GET with FormRequest receives no body: only POST/PUT/PATCH.
+    // There are four POSTs with rules (store×2, import, sincronizar)
+    // and one PUT.
     const conCuerpo = res.specs.filter((s) => s.body !== undefined).map((s) => s.method);
     expect(conCuerpo.sort()).toEqual(["POST", "POST", "POST", "POST", "PUT"]);
   });
 
-  test("los contadores conFormRequest / sinFormRequest cuadran con los specs", async () => {
+  test("the conFormRequest / sinFormRequest counters reconcile with the specs", async () => {
     const res = await descubre();
-    // store×2, update, destroy, import, sincronizar = 6 con FormRequest;
-    // index, activar, buscarAlta, auditar (alias que no apunta a un
-    // FormRequest) y pedidos.index = 5 sin FormRequest.
+    // store×2, update, destroy, import, sincronizar = 6 with FormRequest;
+    // index, activar, buscarAlta, auditar (alias that does not point at
+    // a FormRequest) and pedidos.index = 5 without FormRequest.
     expect(res.withFormRequest).toBe(6);
     expect(res.withoutFormRequest).toBe(5);
     expect(res.withFormRequest + res.withoutFormRequest).toBe(res.specs.length);
   });
 
-  test("un alias Request cuyo FQCN no es un FormRequest no resuelve nada", async () => {
-    // El import `use App\Models\Gestor as GestorRequest` hace que el
-    // parser de firmas apunte a App\Models\Gestor: resolveFormRequestPath
-    // lo rechaza y la convención tampoco encuentra nada.
+  test("a Request alias whose FQCN is not a FormRequest resolves nothing", async () => {
+    // The import `use App\Models\Gestor as GestorRequest` makes the
+    // signature parser point at App\Models\Gestor:
+    // resolveFormRequestPath rejects it and the convention finds
+    // nothing either.
     const res = await descubre();
     const auditar = res.specs.find((s) => s.uri.endsWith("/auditar"));
     expect(auditar?.formRequest).toBeUndefined();
@@ -445,17 +450,17 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     expect(auditar?.description).toBeUndefined();
   });
 
-  test("el fallback por convención también cubre verbos con camelCase", async () => {
-    // `sincronizar` importa un modelo (no un FormRequest de Http\Requests):
-    // resolveFormRequestPath lo rechaza y la resolución cae en la
-    // convención de nombres, donde `SincronizarRequest` casa.
+  test("the convention fallback also covers camelCase verbs", async () => {
+    // `sincronizar` imports a model (not a Http\Requests FormRequest):
+    // resolveFormRequestPath rejects it and resolution falls into the
+    // naming convention, where `SincronizarRequest` matches.
     const res = await descubre();
     const sincronizar = res.specs.find((s) => s.uri.endsWith("/sincronizar"));
     expect(sincronizar?.formRequest).toBe("app/Http/Requests/SincronizarRequest.php");
     expect(sincronizar?.description).toBe("Auto · SincronizarRequest");
   });
 
-  test("los overrides manuales ganan pero conservan el formRequest", async () => {
+  test("manual overrides win but preserve the formRequest", async () => {
     const res = await discoverEndpoints(
       configPara(),
       [
@@ -474,7 +479,7 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
     expect(crear?.formRequest).toBe("app/Http/Requests/Usuarios/CrearUsuarioRequest.php");
   });
 
-  test("un proyecto sin carpeta routes devuelve todo vacío sin romper", async () => {
+  test("a project without a routes folder returns everything empty without breaking", async () => {
     const tmp = await createTempProject({ "composer.json": "{}" });
     try {
       const ctxLocal = resolveProjectContext({ projectRoot: tmp.root });
@@ -490,10 +495,10 @@ describe("discoverEndpoints sobre un proyecto temporal", () => {
 });
 
 // ---------------------------------------------------------------------------
-// enrichCatalogWithFormRequests — rutas de enriquecimiento no recorridas
+// enrichCatalogWithFormRequests — enrichment paths not yet walked
 // ---------------------------------------------------------------------------
 
-describe("enrichCatalogWithFormRequests — enriquecimiento real", () => {
+describe("enrichCatalogWithFormRequests — real enrichment", () => {
   let project: ITempProject;
   let contexto: IProjectContext;
 
@@ -548,8 +553,9 @@ class DinamicaRequest extends FormRequest
   });
 
   /**
-   * El endpoint vive dentro de su carpeta: buildCollection envuelve cada
-   * grupo en un item con `item`. El enriquecer muta ese nodo interior.
+   * The endpoint lives inside its folder: buildCollection wraps each
+   * group in an item with `item`. The enricher mutates that inner
+   * node.
    */
   const nodoEndpoint = (collection: ReturnType<typeof buildCollection>) =>
     collection.item[0]?.item?.[0];
@@ -562,7 +568,7 @@ class DinamicaRequest extends FormRequest
     };
   };
 
-  test("GET con reglas de búsqueda genera variantes de query y envuelve el item", async () => {
+  test("GET with search rules generates query variants and wraps the item", async () => {
     const { collection, stats } = await enriquecer(
       [spec({ name: "Listar Usuarios", method: "GET", uri: "/usuarios" })],
       new Map([["GET usuarios", "app/Http/Requests/ListarUsuarioRequest.php"]]),
@@ -580,19 +586,20 @@ class DinamicaRequest extends FormRequest
     const queries = contenedor?.item?.map(
       (v) => v.request?.url.query?.map((q) => q.key) ?? [],
     );
-    // La variante "Básica" usa el PRIMER campo filtrable del rules():
-    // aquí `nombre` (el segundo trae todos los campos).
+    // The "Basic" variant uses the FIRST filterable field in rules():
+    // here `nombre` (the second carries all the fields).
     expect(queries).toEqual([["nombre"], ["nombre", "busqueda"]]);
   });
 
-  test("POST enriquece con variantes de body, deduplicando la de enum", async () => {
+  test("POST enriches with body variants, deduping the enum one", async () => {
     const { collection, stats } = await enriquecer(
       [spec({ name: "Crear Usuario", method: "POST", uri: "/usuarios" })],
       new Map([["POST usuarios", "app/Http/Requests/StoreUsuarioRequest.php"]]),
     );
     expect(stats.resolved).toBe(1);
-    // Mínimo + enum inactivo: la variante enum=activo coincide con el
-    // mínimo y se deduplica; el completo también coincide y no entra.
+    // Minimal + enum=inactivo: the enum=activo variant matches the
+    // minimal and is deduped; the full one also matches and does not
+    // enter.
     expect(stats.bodyVariants).toBe(2);
 
     const variantes = nodoEndpoint(collection)?.item?.[1]?.item ?? [];
@@ -605,13 +612,13 @@ class DinamicaRequest extends FormRequest
       { name: "sample_name", estado: "activo" },
       { name: "sample_name", estado: "inactivo" },
     ]);
-    // Cada variante lleva su Content-Type.
+    // Each variant carries its Content-Type.
     expect(variantes[0]?.request?.header.some((h) => h.key === "Content-Type")).toBe(true);
   });
 
-  test("la adivinanza por nombre crea candidatos Store a partir de Crear", async () => {
-    // Índice con un FormRequest que no existe: la resolución cae en la
-    // heurística de nombres y encuentra StoreUsuarioRequest.
+  test("name guessing creates Store candidates from Crear", async () => {
+    // Index with a FormRequest that does not exist: resolution falls
+    // back to the naming heuristic and finds StoreUsuarioRequest.
     const { collection, stats } = await enriquecer(
       [spec({ name: "Crear Usuario", method: "POST", uri: "/usuarios" })],
       new Map([["POST usuarios", "app/Http/Requests/NoExiste.php"]]),
@@ -621,7 +628,7 @@ class DinamicaRequest extends FormRequest
     expect(nodoEndpoint(collection)?.item).toBeDefined();
   });
 
-  test("PATCH sin required genera vacío + completo + variantes de enum", async () => {
+  test("PATCH without required yields empty + full + enum variants", async () => {
     const { collection, stats } = await enriquecer(
       [spec({ name: "Editar Usuario", method: "PATCH", uri: "/usuarios/{{id}}" })],
       new Map([["PATCH usuarios/:p", "app/Http/Requests/PutUsuarioRequest.php"]]),
@@ -635,9 +642,9 @@ class DinamicaRequest extends FormRequest
     expect(cuerpos).toEqual([{}, { estado: "ok" }, { estado: "ko" }]);
   });
 
-  test("GET sin variantes de query no reestructura el item", async () => {
-    // PutUsuarioRequest solo tiene `estado` con `in:`: ninguna regla
-    // tipada entra en generateQueryVariants y el nodo queda intacto.
+  test("GET without query variants does not restructure the item", async () => {
+    // PutUsuarioRequest only has `estado` with `in:`: no typed rule
+    // enters generateQueryVariants and the node stays intact.
     const { collection, stats } = await enriquecer(
       [spec({ name: "Ver Usuario", method: "GET", uri: "/usuarios" })],
       new Map([["GET usuarios", "app/Http/Requests/PutUsuarioRequest.php"]]),
@@ -649,7 +656,7 @@ class DinamicaRequest extends FormRequest
     expect(nodo?.request).toBeDefined();
   });
 
-  test("las reglas dinámicas se acumulan en rulesWithUnknown", async () => {
+test("dynamic rules accumulate in rulesWithUnknown", async () => {
     const { stats } = await enriquecer(
       [spec({ name: "Crear Dinamica", method: "POST", uri: "/dinamica" })],
       new Map([["POST dinamica", "app/Http/Requests/DinamicaRequest.php"]]),
@@ -661,7 +668,7 @@ class DinamicaRequest extends FormRequest
     expect(stats.bodyVariants).toBe(1);
   });
 
-  test("un FormRequest inexistente se cuenta como no resuelto", async () => {
+  test("a non-existent FormRequest is counted as unresolved", async () => {
     const { stats } = await enriquecer(
       [spec({ name: "Ver Usuario", method: "GET", uri: "/usuarios/{{id}}" })],
       new Map([["GET usuarios/:p", "app/Http/Requests/VaciaRequest.php"]]),
@@ -670,7 +677,7 @@ class DinamicaRequest extends FormRequest
     expect(stats.unresolved).toBe(1);
   });
 
-  test("DELETE con reglas resueltas se cuenta pero no genera variantes", async () => {
+  test("DELETE with resolved rules is counted but generates no variants", async () => {
     const { stats } = await enriquecer(
       [spec({ name: "Eliminar Usuario", method: "DELETE", uri: "/usuarios/{{id}}" })],
       new Map([["DELETE usuarios/:p", "app/Http/Requests/StoreUsuarioRequest.php"]]),
@@ -680,14 +687,15 @@ class DinamicaRequest extends FormRequest
     expect(stats.queryVariants).toBe(0);
   });
 
-  test("Eliminar resuelve por la adivinanza Destroy cuando el índice falla", async () => {
+  test("Eliminar resolves via the Destroy guess when the index fails", async () => {
     let collection: ReturnType<typeof buildCollection>;
     collection = buildCollection(
       [spec({ name: "Eliminar Usuario", method: "DELETE", uri: "/usuarios/{{id}}" })],
       { ...CONFIG },
     );
-    // Índice sin archivo: la resolución recae en la heurística de
-    // nombres (Eliminar → DestroyUsuarioRequest del fixture principal).
+    // Index without a file: resolution falls back to the naming
+    // heuristic (Eliminar → DestroyUsuarioRequest from the main
+    // fixture).
     const stats = await enrichCatalogWithFormRequests(
       collection,
       new Map([["DELETE usuarios/:p", "app/Http/Requests/NoExisteRequest.php"]]),
@@ -696,7 +704,7 @@ class DinamicaRequest extends FormRequest
     expect(stats.resolved).toBe(1);
   });
 
-  test("un body manual se conserva como base y se cuenta en skippedManualBody", async () => {
+  test("a manual body is kept as base and counted in skippedManualBody", async () => {
     const { stats } = await enriquecer(
       [
         spec({
@@ -713,7 +721,7 @@ class DinamicaRequest extends FormRequest
     expect(stats.skippedManualBody).toBe(1);
   });
 
-  test("un endpoint que no casa ni por índice ni por nombre queda sin tocar", async () => {
+  test("an endpoint that matches neither by index nor by name is left untouched", async () => {
     const { collection, stats } = await enriquecer(
       [spec({ name: "Operacion Rara", method: "POST", uri: "/raro" })],
       new Map([["POST raro", "app/Http/Requests/NoExisteRequest.php"]]),
@@ -723,10 +731,10 @@ class DinamicaRequest extends FormRequest
     expect(nodoEndpoint(collection)?.item).toBeUndefined();
   });
 
-  test("un FormRequest sin reglas cuenta como no enriquecible", async () => {
-    // VaciarRequest devuelve `[]`: `loadFormRequest` lo parsea, lo ve
-    // vacío (isEmpty) y devuelve null → el endpoint queda sin resolver
-    // y el nodo intacto.
+  test("a FormRequest without rules counts as not enrichable", async () => {
+    // VaciarRequest returns `[]`: `loadFormRequest` parses it,
+    // sees it empty (isEmpty) and returns null → the endpoint stays
+    // unresolved and the node stays intact.
     const { collection, stats } = await enriquecer(
       [spec({ name: "Vaciar Usuarios", method: "POST", uri: "/usuarios/vaciar", body: { a: 1 } })],
       new Map([["POST usuarios/vaciar", "app/Http/Requests/VaciarRequest.php"]]),

@@ -1,15 +1,15 @@
 /**
- * Lo que contesta la interfaz, sin levantar ningún puerto.
+ * What the interface answers, without bringing up any port.
  *
- * Las rutas están separadas del transporte a propósito: son una función
- * de `(ruta, cuerpo)` a `(estado, datos)`, con sus colaboradores
- * inyectados. Por eso se pueden probar enteras aquí — incluidos los
- * casos que a mano son incómodos de provocar, como una carpeta que no
- * existe o un formato inventado.
+ * The routes are separated from the transport on purpose: they are a
+ * function from `(route, body)` to `(status, data)`, with their
+ * collaborators injected. That is why they can be tested entirely
+ * here — including the cases that are awkward to provoke by hand,
+ * like a folder that does not exist or a made-up format.
  *
- * Lo que se comprueba de fondo es que **la interfaz no reimplementa
- * nada**: llama al mismo pipeline que el CLI. Una segunda
- * implementación es una que se desincroniza.
+ * What is checked in depth is that **the interface does not
+ * reimplement anything**: it calls the same pipeline as the CLI.
+ * A second implementation is one that drifts out of sync.
  */
 import { describe, expect, test } from "vitest";
 
@@ -43,7 +43,7 @@ const RESUMEN: IProjectSummary = {
   },
 };
 
-/** Dobles que registran con qué se les llamó. */
+/** Doubles that record what they were called with. */
 function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
   readonly generado: Array<Record<string, unknown>>;
 } {
@@ -63,8 +63,8 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
       ],
       rejected: [],
     }),
-    // Los ajustes del doble viven en memoria: probar las rutas no
-    // debería tocar el disco de nadie.
+    // The double's settings live in memory: testing the routes
+    // should not touch anyone's disk.
     readSettings: async () => ({ settings: { version: 1, ...guardados }, problem: null }),
     patchSettings: async (cambios) => {
       Object.assign(guardados, cambios);
@@ -106,14 +106,15 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
       };
     },
     /**
-     * Doble de historial: vacío por defecto. Las pruebas que necesitan
-     * entradas concretas lo sobreescriben vía `overrides`.
+     * History double: empty by default. Tests that need concrete
+     * entries override it via `overrides`.
      *
-     * La firma coincide con `IUiDeps["history"]`: un objeto con
-     * `limit?` y `projectRoot?`. Devolver `ok: true` con `entries: []`
-     * y `totalEntries: 0` es lo mismo que enseña el servicio real
-     * cuando el fichero no existe — los tests existentes no
-     * comprueban historial, así que el doble no debe pintar nada.
+     * The signature matches `IUiDeps["history"]`: an object with
+     * `limit?` and `projectRoot?`. Returning `ok: true` with
+     * `entries: []` and `totalEntries: 0` is the same as what the
+     * real service shows when the file does not exist — existing
+     * tests do not check history, so the double should not paint
+     * anything.
      */
     history: async () => ({
       ok: true as const,
@@ -132,14 +133,14 @@ const cuerpo = (r: { body: unknown }): Record<string, unknown> =>
   r.body as Record<string, unknown>;
 
 /**
- * Los idiomas van por su propia ruta, y no en `/api/capabilities`,
- * porque cambian por otro motivo: los formatos y los frameworks son del
- * producto; los idiomas son de quien lo usa —puede añadir uno dejando
- * un fichero, y entonces esta respuesta cambia sin que el producto haya
- * cambiado—.
+ * Languages go through their own route, not through
+ * `/api/capabilities`, because they change for a different reason:
+ * formats and frameworks are of the product; languages are of whoever
+ * uses it —you can add one by dropping a file, and then this
+ * response changes without the product having changed.
  */
 describe("/api/locales", () => {
-  test("devuelve los idiomas con su nombre nativo y sus textos", async () => {
+  test("returns the languages with their native name and their texts", async () => {
     const r = await handleUiRequest("/api/locales", {}, deps());
     expect(r.status).toBe(200);
     const locales = cuerpo(r)["locales"] as Array<{ code: string; nativeName: string }>;
@@ -148,11 +149,11 @@ describe("/api/locales", () => {
   });
 
   /**
-   * Los ficheros que alguien dejó y no se pudieron leer viajan en la
-   * respuesta, no a un log del servidor: quien los escribió está
-   * mirando la interfaz, no la terminal.
+   * Files someone dropped that could not be read travel in the
+   * response, not to a server log: whoever wrote them is looking
+   * at the interface, not at the terminal.
    */
-  test("los idiomas rechazados llegan a la interfaz, no a un log", async () => {
+  test("rejected languages reach the interface, not a log", async () => {
     const r = await handleUiRequest(
       "/api/locales",
       {},
@@ -169,15 +170,15 @@ describe("/api/locales", () => {
 });
 
 /**
- * Los ajustes que sobreviven al cierre.
+ * Settings that survive close.
  *
- * No hay botón de guardar: la interfaz llama al guardar en cuanto se
- * toca un control. Un botón se olvida, y entonces el ajuste que alguien
- * cambió no está la próxima vez — que es justo lo que unos ajustes
- * persistentes vienen a evitar.
+ * There is no save button: the interface calls save as soon as a
+ * control is touched. A button gets forgotten, and then the
+ * setting someone changed is not there next time — which is
+ * exactly what persistent settings come to avoid.
  */
 describe("/api/settings", () => {
-  test("devuelve lo guardado", async () => {
+  test("returns what was saved", async () => {
     const d = deps();
     await handleUiRequest("/api/settings/save", { locale: "es" }, d);
     const r = await handleUiRequest("/api/settings", {}, d);
@@ -186,7 +187,7 @@ describe("/api/settings", () => {
     expect((cuerpo(r)["settings"] as { locale: string }).locale).toBe("es");
   });
 
-  test("guardar uno conserva los demás", async () => {
+  test("saving one preserves the rest", async () => {
     const d = deps();
     await handleUiRequest("/api/settings/save", { locale: "es", theme: "dark" }, d);
     await handleUiRequest("/api/settings/save", { theme: "light" }, d);
@@ -198,11 +199,11 @@ describe("/api/settings", () => {
   });
 
   /**
-   * Un cuerpo sin nada reconocible es un error y no un guardado vacío:
-   * devolver `ok` sin haber guardado nada deja a quien llama creyendo
-   * que su ajuste está.
+   * A body without anything recognisable is an error and not an
+   * empty save: returning `ok` without having saved anything leaves
+   * the caller believing their setting is set.
    */
-  test("un guardado sin nada reconocible se rechaza", async () => {
+  test("a save with nothing recognisable is rejected", async () => {
     const r = await handleUiRequest("/api/settings/save", { inventado: "x" }, deps());
     expect(r.status).toBe(400);
     const error = cuerpo(r)["error"] as { nextAction: string };
@@ -210,11 +211,11 @@ describe("/api/settings", () => {
   });
 
   /**
-   * El motivo por el que no se pudieron leer los guardados viaja a la
-   * interfaz, no a un log del servidor: unos ajustes que desaparecen sin
-   * explicación parecen un fallo del programa.
+   * The reason why saved settings could not be read travels to the
+   * interface, not to a server log: settings that disappear without
+   * explanation look like a program failure.
    */
-  test("un problema al leerlos llega a la interfaz", async () => {
+  test("a problem reading them reaches the interface", async () => {
     const r = await handleUiRequest(
       "/api/settings",
       {},
@@ -230,12 +231,12 @@ describe("/api/settings", () => {
 });
 
 /**
- * Elegir carpeta explorando, no escribiéndola: es donde más se falla,
- * porque una errata devuelve «no existe» y no queda pista de dónde
- * estabas.
+ * Picking a folder by browsing, not by typing it: that is where
+ * mistakes happen most, because a typo returns "does not exist"
+ * and there is no hint of where you were.
  */
 describe("/api/browse", () => {
-  test("lista las carpetas de una ruta", async () => {
+  test("lists the folders of a path", async () => {
     const r = await handleUiRequest("/api/browse", { path: "/casa" }, deps());
     expect(r.status).toBe(200);
     const entries = cuerpo(r)["entries"] as Array<{ name: string }>;
@@ -243,11 +244,12 @@ describe("/api/browse", () => {
   });
 
   /**
-   * Una carpeta sin permiso es una respuesta legítima del explorador, no
-   * un fallo de la ruta: se devuelve tal cual, con su `ok: false`, para
-   * que la interfaz lo enseñe en vez de tratarlo como una caída.
+   * A folder without permission is a legitimate response from the
+   * browser, not a failure of the route: it is returned as-is, with
+   * its `ok: false`, so the interface can show it instead of
+   * treating it as a crash.
    */
-  test("una carpeta ilegible se devuelve tal cual, no como error HTTP", async () => {
+  test("an unreadable folder is returned as-is, not as an HTTP error", async () => {
     const r = await handleUiRequest(
       "/api/browse",
       { path: "/root" },
@@ -269,10 +271,10 @@ describe("/api/browse", () => {
 });
 
 /**
- * El ensayo: enseña qué saldría **sin escribir nada**.
+ * The dry run: shows what would come out **without writing anything**.
  */
 describe("/api/dry-run", () => {
-  test("devuelve el plan con los ficheros y las requests", async () => {
+  test("returns the plan with the files and the requests", async () => {
     const r = await handleUiRequest("/api/dry-run", { projectRoot: "/x" }, deps());
     expect(r.status).toBe(200);
     const plan = cuerpo(r)["plan"] as { requests: number; files: unknown[] };
@@ -280,21 +282,21 @@ describe("/api/dry-run", () => {
     expect(plan.files).toHaveLength(1);
   });
 
-  /** Y no genera: es un ensayo. */
-  test("ensayar no escribe nada", async () => {
+  /** And it does not generate: it is a dry run. */
+  test("dry-running does not write anything", async () => {
     const d = deps();
     await handleUiRequest("/api/dry-run", { projectRoot: "/x" }, d);
     expect(d.generado).toEqual([]);
   });
 
-  test("sin carpeta lo dice y explica qué elegir", async () => {
+  test("without a folder it says so and explains what to pick", async () => {
     const r = await handleUiRequest("/api/dry-run", {}, deps());
     expect(r.status).toBe(400);
     const error = cuerpo(r)["error"] as { nextAction: string };
     expect(error.nextAction).toContain("project root");
   });
 
-  test("una carpeta que no existe da 404", async () => {
+  test("a folder that does not exist returns 404", async () => {
     const r = await handleUiRequest(
       "/api/dry-run",
       { projectRoot: "/no/existe" },
@@ -304,10 +306,10 @@ describe("/api/dry-run", () => {
   });
 
   /**
-   * Un plan inválido es un 400: se ha pedido algo imposible, no ha
-   * fallado el ensayo.
+   * An invalid plan is a 400: something impossible has been asked,
+   * the dry run has not failed.
    */
-  test("un formato inventado invalida el plan con salida", async () => {
+  test("a made-up format invalidates the plan with output", async () => {
     const r = await handleUiRequest(
       "/api/dry-run",
       { projectRoot: "/x", formats: ["inventado"] },
@@ -333,7 +335,7 @@ describe("/api/dry-run", () => {
 });
 
 describe("/api/capabilities", () => {
-  test("dice qué formatos y frameworks hay, para que la interfaz se dibuje sola", async () => {
+  test("says which formats and frameworks are available, so the interface draws itself", async () => {
     const r = await handleUiRequest("/api/capabilities", {}, deps());
     expect(r.status).toBe(200);
     expect(cuerpo(r)["formats"]).toContain("openapi");
@@ -341,21 +343,21 @@ describe("/api/capabilities", () => {
   });
 });
 
-describe("/api/inspect — enseña antes de escribir", () => {
-  test("devuelve el resumen del proyecto", async () => {
+describe("/api/inspect — shows before writing", () => {
+  test("returns the project summary", async () => {
     const r = await handleUiRequest("/api/inspect", { projectRoot: "/x" }, deps());
     expect(r.status).toBe(200);
     expect((cuerpo(r)["summary"] as IProjectSummary).routesInCode).toBe(9);
   });
 
-  test("sin carpeta, lo dice y explica qué elegir", async () => {
+  test("without a folder, it says so and explains what to pick", async () => {
     const r = await handleUiRequest("/api/inspect", {}, deps());
     expect(r.status).toBe(400);
     const error = cuerpo(r)["error"] as { nextAction: string };
     expect(error.nextAction).toContain("raíz");
   });
 
-  test("una carpeta que no existe da 404, no un fallo del servidor", async () => {
+  test("a folder that does not exist returns 404, not a server failure", async () => {
     const r = await handleUiRequest(
       "/api/inspect",
       { projectRoot: "/no/existe" },
@@ -365,11 +367,12 @@ describe("/api/inspect — enseña antes de escribir", () => {
   });
 
   /**
-   * Cero rutas no es un error: un proyecto que aún no tiene endpoints es
-   * legítimo. Pero decirlo aquí evita generar una colección vacía y que
-   * parezca que la herramienta falló.
+   * Zero routes is not an error: a project that does not have
+   * endpoints yet is legitimate. But saying so here avoids
+   * generating an empty collection and making it look like the
+   * tool failed.
    */
-  test("cero rutas no es un error, es un aviso", async () => {
+  test("zero routes is not an error, it is a notice", async () => {
     const r = await handleUiRequest(
       "/api/inspect",
       { projectRoot: "/x" },
@@ -379,7 +382,7 @@ describe("/api/inspect — enseña antes de escribir", () => {
     expect(cuerpo(r)["notice"]).toBeDefined();
   });
 
-  test("inspeccionar no genera nada", async () => {
+  test("inspecting does not generate anything", async () => {
     const d = deps();
     await handleUiRequest("/api/inspect", { projectRoot: "/x" }, d);
     expect(d.generado).toEqual([]);
@@ -387,7 +390,7 @@ describe("/api/inspect — enseña antes de escribir", () => {
 });
 
 describe("/api/generate", () => {
-  test("pasa la carpeta y los formatos al pipeline, sin reinterpretarlos", async () => {
+  test("passes the folder and the formats to the pipeline, without reinterpreting them", async () => {
     const d = deps();
     const r = await handleUiRequest(
       "/api/generate",
@@ -403,10 +406,11 @@ describe("/api/generate", () => {
   });
 
   /**
-   * El formato se valida **antes** de llamar al pipeline: fallar después
-   * de haber empezado a escribir es como se dejan carpetas a medias.
+   * The format is validated **before** calling the pipeline:
+   * failing after having started to write is how folders end up
+   * half-done.
    */
-  test("un formato inventado se rechaza sin llegar a generar", async () => {
+  test("a made-up format is rejected before reaching generation", async () => {
     const d = deps();
     const r = await handleUiRequest(
       "/api/generate",
@@ -416,23 +420,23 @@ describe("/api/generate", () => {
     expect(r.status).toBe(400);
     expect(d.generado).toEqual([]);
     const error = cuerpo(r)["error"] as { nextAction: string };
-    // Y dice cuáles valen, que es lo accionable.
+    // And it says which ones are valid, which is the actionable part.
     expect(error.nextAction).toContain("postman");
   });
 
-  test("sin formatos, el pipeline decide su defecto", async () => {
+  test("without formats, the pipeline decides its default", async () => {
     const d = deps();
     await handleUiRequest("/api/generate", { projectRoot: "/x" }, d);
     expect(d.generado[0]).not.toHaveProperty("formats");
   });
 
   /**
-   * La autodetección no puede acertar siempre —monorepos, dependencias
-   * con alias—. Forzar el framework en la interfaz apoya a quien la
-   * detección deja fuera, y la lista viene del catálogo, no de una
-   * segunda fuente.
+   * Auto-detection cannot always be right —monorepos, aliased
+   * dependencies—. Forcing the framework in the interface supports
+   * whoever the detection leaves out, and the list comes from the
+   * catalog, not a second source.
    */
-  test("un framework del catálogo se pasa al pipeline tal cual", async () => {
+  test("a framework from the catalog is passed to the pipeline as-is", async () => {
     const d = deps();
     const r = await handleUiRequest(
       "/api/generate",
@@ -443,7 +447,7 @@ describe("/api/generate", () => {
     expect(d.generado[0]).toMatchObject({ projectRoot: "/x", framework: "laravel" });
   });
 
-  test("un framework inventado se rechaza con la lista del catálogo", async () => {
+  test("a made-up framework is rejected with the catalog list", async () => {
     const d = deps();
     const r = await handleUiRequest(
       "/api/generate",
@@ -457,12 +461,12 @@ describe("/api/generate", () => {
   });
 
   /**
-   * Escribir fuera del proyecto es un uso legítimo —recoger varias
-   * colecciones en un sitio—. Lo que no puede pasar desapercibido: la
-   * respuesta dicen dónde quedó la colección cuando el destino no es el
-   * de dentro del proyecto.
+   * Writing outside the project is a legitimate use —gathering
+   * several collections in one place—. What cannot go unnoticed:
+   * the response says where the collection ended up when the
+   * destination is not inside the project.
    */
-  test("un destino fuera del proyecto se acepta y se anuncia", async () => {
+  test("a destination outside the project is accepted and announced", async () => {
     const r = await handleUiRequest(
       "/api/generate",
       { projectRoot: "/x", outputDir: "/otro/sitio" },
@@ -470,18 +474,18 @@ describe("/api/generate", () => {
     );
     expect(r.status).toBe(200);
     const aviso = cuerpo(r)["notice"] as string;
-    // El aviso señala la colección real, que es lo que la persona venir
-    // a buscar.
+    // The notice points to the real collection, which is what the
+    // person comes looking for.
     expect(aviso).toContain("outside the project");
     expect(aviso).toContain(".postman_collection.json");
   });
 
-  test("el destino por defecto, dentro del proyecto, no genera aviso", async () => {
+  test("the default destination, inside the project, does not generate a notice", async () => {
     const r = await handleUiRequest(
       "/api/generate",
-      // La carpeta convencional es la constante del proyecto
-      // (`OUTPUT_DIR_NAME`); hardcodear el nombre aquí es lo que
-      // rompió este test en el rebrand b00001.
+      // The conventional folder is the project constant
+      // (`OUTPUT_DIR_NAME`); hardcoding the name here is what broke
+      // this test on the b00001 rebrand.
       { projectRoot: "/x", outputDir: `/x/${OUTPUT_DIR_NAME}` },
       deps(),
     );
@@ -490,11 +494,11 @@ describe("/api/generate", () => {
   });
 
   /**
-   * `bruno` es el formato nativo de otro producto. Postman no lo
-   * importa; ofrecerlo como equivalente engañaría a quien elige con la
-   * expectativa de reimportar ahí.
+   * `bruno` is the native format of another product. Postman does
+   * not import it; offering it as an equivalent would deceive
+   * whoever picks it expecting to reimport there.
    */
-  test("capabilities distingue lo que Postman importa de lo que no", async () => {
+  test("capabilities distinguishes what Postman imports from what it does not", async () => {
     const r = await handleUiRequest("/api/capabilities", {}, deps());
     expect(r.status).toBe(200);
     expect(cuerpo(r)["formats"]).toContain("bruno");
@@ -504,8 +508,8 @@ describe("/api/generate", () => {
   });
 });
 
-describe("una ruta que no existe", () => {
-  test("devuelve 404 y dice cuáles hay", async () => {
+describe("a route that does not exist", () => {
+  test("returns 404 and says which ones exist", async () => {
     const r = await handleUiRequest("/api/inventada", {}, deps());
     expect(r.status).toBe(404);
     const error = cuerpo(r)["error"] as { nextAction: string };
@@ -513,17 +517,17 @@ describe("una ruta que no existe", () => {
   });
 });
 
-describe("todos los errores son accionables", () => {
+describe("all errors are actionable", () => {
   /**
-   * En una interfaz gráfica no hay `--help` a mano: un mensaje que dice
-   * qué pasó y no qué hacer deja a la persona atascada delante de una
-   * pantalla.
+   * In a graphical interface there is no `--help` at hand: a
+   * message that says what happened but not what to do leaves the
+   * person stuck in front of a screen.
    */
   test.for([
     ["/api/inspect", {}],
     ["/api/generate", {}],
     ["/api/inventada", {}],
-  ] as const)("%s lleva `nextAction`", async ([ruta, body]) => {
+  ] as const)("%s carries `nextAction`", async ([ruta, body]) => {
     const r = await handleUiRequest(ruta, body, deps());
     expect(r.status).toBeGreaterThanOrEqual(400);
     const error = cuerpo(r)["error"] as { reason: string; nextAction: string };

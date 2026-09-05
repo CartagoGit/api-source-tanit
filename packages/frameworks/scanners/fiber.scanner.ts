@@ -1,16 +1,16 @@
 /**
  * `FiberScanner` — `IProjectScanner` + `IRouteScanner` +
- * `IValidationSpecProvider` para Fiber (Go).
+ * `IValidationSpecProvider` for Fiber (Go).
  *
- * Fiber copia deliberadamente la API de Express, pero en Go: los
- * métodos van en mayúscula (`app.Get`) y los path params llevan `:`.
- * La detección es por `go.mod`, igual que Gin.
+ * Fiber deliberately copies the Express API, but in Go: methods are
+ * capitalised (`app.Get`) and path params use `:`. Detection is via
+ * `go.mod`, same as Gin.
  *
- * No se reutiliza el scanner de Gin porque las diferencias no son
- * cosméticas: Fiber agrupa con `app.Group("/api")` devolviendo un
- * `fiber.Router` que se encadena, y sus tags de validación son
- * `validate:"required"` (go-playground/validator) en vez del
- * `binding:"required"` de Gin.
+ * We don't reuse Gin's scanner because the differences are not
+ * cosmetic: Fiber groups with `app.Group("/api")` returning a
+ * chainable `fiber.Router`, and its validation tags are
+ * `validate:"required"` (go-playground/validator) instead of Gin's
+ * `binding:"required"`.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -33,7 +33,7 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-/** Métodos de Fiber, capitalizados como los escribe Go. */
+/** Fiber's methods, capitalised the way Go writes them. */
 const METHODS = ["Get", "Post", "Put", "Delete", "Patch", "Head", "Options", "All"] as const;
 
 const ROUTE_RE = new RegExp(
@@ -41,7 +41,7 @@ const ROUTE_RE = new RegExp(
   "g",
 );
 
-/** `api := app.Group("/api")` — la variable pasa a llevar ese prefijo. */
+/** `api := app.Group("/api")` — the variable then carries that prefix. */
 const GROUP_RE = /\b(\w+)\s*:?=\s*[\w.]+\s*\.\s*Group\s*\(\s*"([^"]+)"/g;
 
 /** Un campo de struct con su tag: `Name string \`json:"name" validate:"required"\`` */
@@ -88,21 +88,21 @@ export class FiberRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    // a00012 S1.b / a00014 S2: la raíz efectiva respeta
-    // `frameworkSearchRoot` para monorepos. Antes era
-    // `match.projectRoot` directo, lo que en un monorepo hacía que
-    // `collectFiles` caminase el árbol del workspace entero en lugar
-    // del subdirectorio del framework.
+    // a00012 S1.b / a00014 S2: the effective root respects
+    // `frameworkSearchRoot` for monorepos. Before it was
+    // `match.projectRoot` directly, which in a monorepo made
+    // `collectFiles` walk the whole workspace tree instead of the
+    // framework's subdirectory.
     const files = await collectFiles(effectiveProjectRoot(match), isGoSourceFile);
     const routes: ParsedRoute[] = [];
-    // `structs` vive aquí, no como `private readonly` de instancia: si
-    // sobreviviera entre llamadas, dos escaneos consecutivos compartirían
-    // los structs y una ruta sin `BodyParser` heredaría el de la
-    // anterior. Es el bug que cerró a00010 S2.
+    // `structs` lives here, not as an instance `private readonly`: if it
+    // survived across calls, two consecutive scans would share structs
+    // and a route without `BodyParser` would inherit the previous one.
+    // This is the bug a00010 S2 closed.
     const structs = new Map<string, IStructDescriptor>();
 
-    // Lectura en paralelo con tope, entregada en el orden de
-    // entrada: la colección tiene que salir igual cada vez.
+    // Parallel reads with a cap, delivered in input order: the
+    // collection must come out identical every time.
     for await (const { path: file, text: source } of readFilesInOrder(files)) {
       if (!/fiber/i.test(source)) continue;
 
@@ -116,8 +116,8 @@ export class FiberRouteScanner implements IRouteScanner {
         const rawUri = routeMatch[3] ?? "";
         if (!rawUri.startsWith("/")) continue;
 
-        // `All` responde a cualquier método; se emite como GET, que es
-        // el que alguien quiere probar primero.
+        // `All` answers to any method; we emit it as GET, which is the one
+        // people want to try first.
         const method = rawMethod === "All" ? "GET" : rawMethod.toUpperCase();
         const prefix = groups.get(receiver) ?? "";
         const uri = joinRoutePath(prefix, rawUri);
@@ -146,7 +146,7 @@ export class FiberRouteScanner implements IRouteScanner {
   }
 }
 
-/** Variable → prefijo, para los `Group("/api")`. */
+/** Variable → prefix, for the `Group("/api")` calls. */
 function groupPrefixes(source: string): Map<string, string> {
   const groups = new Map<string, string>();
   let match: RegExpExecArray | null;
@@ -158,25 +158,25 @@ function groupPrefixes(source: string): Map<string, string> {
 }
 
 /**
- * El struct que el handler parsea con `BodyParser`.
+ * The struct the handler parses with `BodyParser`.
  *
- * Fiber declara el body así:
+ * Fiber declares the body like this:
  *
  *     var body CreateUserRequest
  *     if err := c.BodyParser(&body); err != nil { … }
  *
- * Se busca dentro del handler, que empieza justo tras la ruta. La
- * ventana es generosa porque el handler puede ser largo, pero se corta
- * en la siguiente declaración de ruta para no robarle el struct.
+ * It's searched inside the handler, which starts right after the
+ * route. The window is generous because the handler can be long, but
+ * it stops at the next route declaration to not steal its struct.
  */
 function bodyStructNear(source: string, routeStart: number): string | null {
-  // Regex PROPIO, no `ROUTE_RE`.
+  // Own regex, NOT `ROUTE_RE`.
   //
-  // Reutilizar el del bucle exterior significa compartir su `lastIndex`.
-  // La primera versión lo movía para buscar la ruta siguiente y luego lo
-  // devolvía al inicio del match actual — con lo que el bucle exterior
-  // volvía a encontrar la MISMA ruta, para siempre. Un bucle infinito
-  // que se come la memoria hasta que el sistema mata el proceso.
+  // Reusing the outer loop's means sharing its `lastIndex`. The first
+  // version moved it to find the next route and then put it back at the
+  // current match's start — so the outer loop kept finding the SAME
+  // route, forever. An infinite loop that eats memory until the system
+  // kills the process.
   const lookahead = new RegExp(ROUTE_RE.source, ROUTE_RE.flags);
   lookahead.lastIndex = routeStart + 1;
   const next = lookahead.exec(source);
@@ -209,17 +209,18 @@ function dedupe(routes: ReadonlyArray<ParsedRoute>): ParsedRoute[] {
 }
 
 /**
- * Reglas desde los tags `validate:"…"` de go-playground/validator.
+ * Rules from `validate:"…"` tags of go-playground/validator.
  *
- * Es el equivalente de Fiber al `binding:"…"` de Gin: la misma idea con
- * otro nombre, porque Fiber no trae validador propio y todo el mundo usa
- * el mismo paquete.
+ * It's Fiber's equivalent of Gin's `binding:"…"`: the same idea under
+ * a different name, because Fiber doesn't ship its own validator and
+ * everyone uses the same package.
  *
- * No guarda el scanner: el struct que parsea el body y el fichero donde
- * está declarado viajan en `scanResult.structs`, que se rellena en cada
- * `scan()` y se descarta al terminar. Antes tenía
- * `private readonly scanner: FiberRouteScanner` y un `Map` de instancia,
- * y dos escaneos consecutivos se contaminaban (a00010 S2).
+ * It does not retain the scanner: the struct that parses the body and
+ * the file where it is declared ride along in `scanResult.structs`,
+ * which is filled on each `scan()` and discarded when it ends. Before it
+ * had `private readonly scanner: FiberRouteScanner` and an instance
+ * `Map`, and two consecutive scans would contaminate each other
+ * (a00010 S2).
  */
 export class FiberValidateTagProvider implements IValidationSpecProvider {
   readonly framework = "fiber" as const;
@@ -251,7 +252,7 @@ export class FiberValidateTagProvider implements IValidationSpecProvider {
   }
 }
 
-/** Campos de un struct de Go, leyendo sus tags. */
+/** Fields of a Go struct, reading its tags. */
 export function parseGoStruct(source: string, structName: string): IValidationSpec[] {
   const declaration = new RegExp(
     String.raw`type\s+${structName}\s+struct\s*\{`,
@@ -280,8 +281,9 @@ export function parseGoStruct(source: string, structName: string): IValidationSp
     const goType = field[2] ?? "";
     const tags = field[3] ?? "";
 
-    // El nombre que viaja por la red es el del tag `json`, no el del
-    // campo de Go: `Name string \`json:"name"\`` se envía como `name`.
+    // The name that travels over the wire is the one in the `json` tag,
+    // not the Go field name: `Name string \`json:"name"\`` is sent as
+    // `name`.
     const jsonTag = /json:"([^",]+)/.exec(tags)?.[1];
     const name = jsonTag ?? (field[1] ?? "");
     if (name === "-") continue;

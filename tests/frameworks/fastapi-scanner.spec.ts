@@ -32,7 +32,7 @@ const ROOT = smokeFixtureDir("fastapi");
 const COMPREHENSIVE = comprehensiveFixtureDir("fastapi");
 
 describe("FastAPI scanner", () => {
-  test("async def conserva el nombre del handler", async () => {
+  test("async def preserves the handler's name", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -52,15 +52,15 @@ describe("FastAPI scanner", () => {
     }
   });
 
-  test("detect() > 0 cuando requirements.txt tiene 'fastapi'", async () => {
+  test("detect() > 0 when requirements.txt contains 'fastapi'", async () => {
     expect((await new FastApiProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay requirements.txt ni pyproject.toml", async () => {
+  test("detect() === 0 when there is no requirements.txt or pyproject.toml", async () => {
     expect((await new FastApiProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 4 rutas del mini-fixture", async () => {
+  test("scan() finds the 4 routes of the mini-fixture", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
     const routes = (await new FastApiRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
@@ -77,20 +77,20 @@ describe("FastAPI scanner", () => {
     expect(showRoute).toBeDefined();
   });
 
-  test("path param {user_id} preservado tal como lo escribe el dev", async () => {
+  test("path param {user_id} preserved as the developer writes it", async () => {
     const match = await new FastApiProjectScanner().resolve(ROOT);
     const routes = (await new FastApiRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.uri.includes("{user_id}"));
     expect(show?.uri).toContain("{user_id}");
   });
 
-  test("comprehensive: detecta >10 rutas con @router decorators y prefijos", async () => {
+  test("comprehensive: detects >10 routes with @router decorators and prefixes", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new FastApiRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(10);
   });
 
-  test("Pydantic provider resuelve campos de BaseModel para POST", async () => {
+  test("Pydantic provider resolves BaseModel fields for POST", async () => {
     const match = await new FastApiProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new FastApiRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("users"));
@@ -105,7 +105,7 @@ describe("FastAPI scanner", () => {
 });
 
 describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
-  test("detect() > 0 cuando pyproject.toml lista fastapi como dependencia", async () => {
+  test("detect() > 0 when pyproject.toml lists fastapi as a dependency", async () => {
     const project = await createTempProject({
       "pyproject.toml": '[project]\nname = "demo"\ndependencies = ["fastapi>=0.100"]\n',
     });
@@ -116,7 +116,7 @@ describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
     }
   });
 
-  test("detect() > 0 cuando Pipfile tiene fastapi", async () => {
+  test("detect() > 0 when Pipfile contains fastapi", async () => {
     const project = await createTempProject({
       "Pipfile": '[packages]\nfastapi = "*"\n',
     });
@@ -127,7 +127,7 @@ describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
     }
   });
 
-  test("resolve() incluye pyproject.toml cuando existe", async () => {
+  test("resolve() includes pyproject.toml when it exists", async () => {
     const project = await createTempProject({
       "pyproject.toml": '[project]\ndependencies = ["fastapi"]\n',
       "main.py": "from fastapi import FastAPI\napp = FastAPI()\n",
@@ -142,7 +142,7 @@ describe("FastAPI — detect() con pyproject.toml y Pipfile", () => {
 });
 
 describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
-  test("APIRouter con prefix definido en la misma línea aplica prefijo", async () => {
+  test("APIRouter with prefix defined on the same line applies the prefix", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -166,7 +166,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
     }
   });
 
-  test("decorador con ident que no está en routerPrefixes usa path sin prefijo", async () => {
+  test("decorator with an ident not in routerPrefixes uses path without prefix", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -187,7 +187,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
     }
   });
 
-  test("decorador sin def en líneas siguientes no incluye displayName", async () => {
+  test("decorator without `def` on the following lines has no displayName", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -210,7 +210,7 @@ describe("FastAPI — branches del router prefix y el scanner de rutas", () => {
 });
 
 describe("FastAPI — Pydantic validation branches", () => {
-  test("provider devuelve vacío cuando no hay BaseModel en el proyecto", async () => {
+  test("provider returns empty when there is no BaseModel in the project", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -233,7 +233,7 @@ describe("FastAPI — Pydantic validation branches", () => {
     }
   });
 
-  test("provider devuelve vacío para GET con path param (no body)", async () => {
+  test("provider returns empty for GET with path param (no body)", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [
@@ -259,7 +259,7 @@ describe("FastAPI — Pydantic validation branches", () => {
     }
   });
 
-  test("provider devuelve vacío para DELETE", async () => {
+  test("provider returns empty for DELETE", async () => {
     const project = await createTempProject({
       "requirements.txt": "fastapi\n",
       "main.py": [

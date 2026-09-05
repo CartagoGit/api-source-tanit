@@ -1,20 +1,20 @@
 /**
- * `summary` — la salud de la documentación, en lo que ve el usuario.
+ * `summary` — the documentation health, in what the user sees.
  *
- * El cómputo puro tiene su spec (`tests/core/project-health.spec.ts`):
- * allí se verifica que `computeProjectHealth()` clasifica cada
- * categoría en su pieza. Lo que se verifica aquí es **lo que el
- * comando `summary` entrega**: el bloque `health` dentro de
- * `IProjectSummary`, los cuatro porcentajes que se imprimen tal cual
- * en la línea `→ Health: validation x% · body x% · examples x% ·
- * descriptions x%` del CLI, y la coherencia del conjunto cuando se
- * combina con fixtures reales.
+ * The pure computation has its spec (`tests/core/project-health.spec.ts`):
+ * there we verify that `computeProjectHealth()` classifies each
+ * category into its piece. What is verified here is **what the
+ * `summary` command delivers**: the `health` block inside
+ * `IProjectSummary`, the four percentages that print as-is in the
+ * CLI line `→ Health: validation x% · body x% · examples x% ·
+ * descriptions x%`, and the coherence of the set when combined with
+ * real fixtures.
  *
- * El dato de cada test es el resumen de un proyecto, no un `EndpointSpec`
- * armado a mano: el `summary` no se alimenta de specs sueltos sino del
- * `result.specs` que produce el pipeline. Reproducir el path completo
- * —frameworks → routes → specs finales— es lo que distingue un test
- * del summary de un test de `computeProjectHealth`.
+ * The datum of each test is a project summary, not a hand-built
+ * `EndpointSpec`: `summary` is not fed loose specs but the
+ * `result.specs` the pipeline produces. Reproducing the whole path
+ * —frameworks → routes → final specs— is what distinguishes a
+ * summary test from a `computeProjectHealth` test.
  */
 import { afterEach, describe, expect, test } from "vitest";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
@@ -27,7 +27,7 @@ import type {
   IProjectSummary,
 } from "../../packages/contracts/interfaces/core/domain.interface.js";
 
-/** Raíz de las fixtures reales: cada carpeta modela un framework distinto. */
+/** Root of the real fixtures: each folder models a different framework. */
 const FIXTURES = {
   express: "tests/fixtures/express-comprehensive",
   fastapi: "tests/fixtures/fastapi-comprehensive",
@@ -36,7 +36,7 @@ const FIXTURES = {
   rails: "tests/fixtures/rails-comprehensive",
 } as const;
 
-/** Carpeta temporal con un proyecto vacío: `summary` lo aceptará. */
+/** Temporary folder with an empty project: `summary` will accept it. */
 let work = "";
 
 afterEach(async () => {
@@ -61,15 +61,15 @@ async function proyectoConManifest(
   return root;
 }
 
-describe("summary — health: las cuatro categorías del bloque", () => {
+describe("summary — health: the four categories of the block", () => {
   /**
-   * El CLI imprime la línea `→ Health: validation x% · body x% · examples
-   * x% · descriptions x%`. Cada porcentaje es lo que el usuario ve sin
-   * abrir el JSON; si alguno se sale del rango 0..100, esa línea
-   * imprime `NaN%` o `150%`, que es exactamente la mentira que el health
-   * viene a evitar.
+   * The CLI prints the line `→ Health: validation x% · body x% ·
+   * examples x% · descriptions x%`. Each percentage is what the user
+   * sees without opening the JSON; if any goes out of the 0..100
+   * range, that line prints `NaN%` or `150%`, which is exactly the
+   * lie the health comes to avoid.
    */
-  test("los cuatro porcentajes son enteros acotados en 0..100", async () => {
+  test("the four percentages are integers bounded in 0..100", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.express);
     const health = summary.health;
     expect(Number.isInteger(health.withValidationPercent)).toBe(true);
@@ -88,37 +88,37 @@ describe("summary — health: las cuatro categorías del bloque", () => {
   });
 
   /**
-   * `withValidationPercent` cuenta `formRequest != null` por endpoint.
-   * Una fixture con formularios resueltos (Laravel) y otra sin ellos
-   * (Rails, que no usa FormRequest por convención) deben producir
-   * porcentajes distintos: si los dos salieran a 0 o a 100, la
-   * categoría no se estaría midiendo.
+   * `withValidationPercent` counts `formRequest != null` per endpoint.
+   * A fixture with resolved forms (Laravel) and another without them
+   * (Rails, which does not use FormRequest by convention) must
+   * produce different percentages: if both came out at 0 or at 100,
+   * the category would not be measured.
    */
-  test("rutas con validación: Laravel supera a Rails porque tiene FormRequest", async () => {
+  test("routes with validation: Laravel exceeds Rails because it has FormRequest", async () => {
     const laravel = await summarizeWithAllFrameworks(FIXTURES.laravel);
     const rails = await summarizeWithAllFrameworks(FIXTURES.rails);
     expect(laravel.health.withValidationPercent).toBeGreaterThan(
       rails.health.withValidationPercent,
     );
-    // Sanity: el fixture Laravel real debe tener al menos un FormRequest
-    // resuelto; si no, el contraste no probaría nada.
+    // Sanity: the real Laravel fixture must have at least one resolved
+    // FormRequest; if not, the contrast would prove nothing.
     expect(laravel.withFormRequest).toBeGreaterThan(0);
   });
 
   /**
-   * `withBodySchemaPercent` cuenta specs cuyo `body` trae contenido
-   * real. La fixture FastAPI del repo está armada con Pydantic: la
-   * inferencia agnóstica del pipeline resuelve bodies para sus
-   * endpoints, así que el porcentaje tiene que ser > 0. Si saliera 0,
-   * algo en el cableado summary → computeProjectHealth se rompió.
+   * `withBodySchemaPercent` counts specs whose `body` carries real
+   * content. The FastAPI fixture in the repo is wired up with
+   * Pydantic: the agnostic inference of the pipeline resolves bodies
+   * for its endpoints, so the percentage must be > 0. If it came out
+   * 0, something in the wiring summary → computeProjectHealth broke.
    */
-  test("bodies con schema: FastAPI infiere bodies desde Pydantic, no es 0", async () => {
+  test("bodies with schema: FastAPI infers bodies from Pydantic, not 0", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.fastapi);
     expect(summary.health.withBodySchemaPercent).toBeGreaterThan(0);
-    // Y el contador canónico del propio resumen debe coincidir con el
-    // cociente que devuelve el health (ambos redondean igual): si los
-    // dos números cuentan cosas distintas, el `summary` y el tool MCP
-    // enseñan métricas que discrepan.
+    // And the canonical counter of the summary itself must agree with
+    // the ratio the health returns (both round the same): if the two
+    // numbers count different things, `summary` and the MCP tool show
+    // discrepant metrics.
     const total = summary.routesInCode;
     if (total > 0) {
       const derivedFromCounters = Math.round(
@@ -131,43 +131,44 @@ describe("summary — health: las cuatro categorías del bloque", () => {
   });
 
   /**
-   * `withExamplesPercent` admite **dos** vías de ejemplo: body con
-   * contenido o query/header con valor. La inferencia agnóstica
-   * rellena queries cuando puede, así que la fixture Express —
-   * modelos sin validación formal— debe tener ejemplos aunque su body
-   * esté vacío en varios endpoints.
+   * `withExamplesPercent` admits **two** paths for an example: body
+   * with content, or query/header with a value. The agnostic
+   * inference fills in queries when it can, so the Express fixture —
+   * models without formal validation— must have examples even
+   * though its body is empty on several endpoints.
    */
-  test("examples: Express tiene ejemplos vía query aunque no use FormRequest", async () => {
+  test("examples: Express has examples via query even without FormRequest", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.express);
     expect(summary.health.withExamplesPercent).toBeGreaterThan(0);
   });
 
   /**
-   * `withDescriptionPercent` exige texto tras `trim()`. Las fixtures
-   * reales rara vez llevan docstrings por ruta, así que el porcentaje
-   * tiende a 0; si se queda a 0 también en un proyecto que **sí**
-   * tendría descripciones (Django suele llevar docstrings en
-   * views.py), sería un bug. Aquí validamos solo la cota mínima:
-   * nunca negativo y siempre entero.
+   * `withDescriptionPercent` requires text after `trim()`. Real
+   * fixtures rarely carry docstrings per route, so the percentage
+   * tends to 0; if it stayed at 0 on a project that **would** have
+   * descriptions (Django often carries docstrings in views.py), that
+   * would be a bug. Here we validate only the minimum bound: never
+   * negative and always integer.
    */
-  test("descriptions: el porcentaje nunca es negativo aunque el proyecto no documente", async () => {
+  test("descriptions: the percentage is never negative even when the project does not document", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.django);
     expect(summary.health.withDescriptionPercent).toBeGreaterThanOrEqual(0);
     expect(summary.health.withDescriptionPercent).toBeLessThanOrEqual(100);
   });
 });
 
-describe("summary — health: el cómputo combinado", () => {
+describe("summary — health: the combined computation", () => {
   /**
-   * Cero endpoints → cero en todo. La regla está en
-   * `computeProjectHealth`: si el total es 0, no se divide. Un
-   * proyecto recién creado (con `package.json` y nada más) cae en
-   * este caso y el CLI debe imprimir `validation 0% · body 0% ·
-   * examples 0% · descriptions 0%`, no `NaN%`.
+   * Zero endpoints → zero across the board. The rule is in
+   * `computeProjectHealth`: if the total is 0, division does not
+   * happen. A freshly created project (with `package.json` and
+   * nothing else) falls into this case and the CLI must print
+   * `validation 0% · body 0% · examples 0% · descriptions 0%`, not
+   * `NaN%`.
    */
-  test("un proyecto sin rutas: los cuatro porcentajes son 0", async () => {
+  test("a project with no routes: the four percentages are 0", async () => {
     const root = await proyectoConManifest(
-      JSON.stringify({ name: "vacio", version: "1.0.0" }),
+      JSON.stringify({ name: "empty", version: "1.0.0" }),
     );
     const summary = await summarizeWithAllFrameworks(root);
     const health = summary.health;
@@ -179,16 +180,17 @@ describe("summary — health: el cómputo combinado", () => {
   });
 
   /**
-   * El porcentaje **derivado** de los contadores canónicos del resumen
-   * debe coincidir con el que el bloque `health` declara. Si difieren,
-   * hay dos métricas eligiendo specs distintos: una de las dos está
-   * mintiendo, y eso es exactamente lo que el health viene a evitar.
+   * The percentage **derived** from the canonical counters of the
+   * summary must match what the `health` block declares. If they
+   * differ, two metrics are picking different specs: one of the two
+   * is lying, and that is exactly what the health comes to avoid.
    *
-   * Esta es la garantía de coherencia que el CLI y el tool MCP
-   * necesitan: quien lea `withFormRequest` y `routesInCode` y se haga
-   * la cuenta, debe sacar lo mismo que `summary.health.withValidationPercent`.
+   * This is the coherence guarantee the CLI and the MCP tool need:
+   * whoever reads `withFormRequest` and `routesInCode` and does the
+   * math, must get the same as
+   * `summary.health.withValidationPercent`.
    */
-  test("coherencia: el porcentaje de validación coincide con withFormRequest/total", async () => {
+  test("coherence: the validation percentage matches withFormRequest/total", async () => {
     for (const fx of [
       FIXTURES.express,
       FIXTURES.fastapi,
@@ -204,18 +206,18 @@ describe("summary — health: el cómputo combinado", () => {
   });
 
   /**
-   * Los cuatro porcentajes **no** tienen que sumar 100: un endpoint
-   * puede llevar validación, body, ejemplo y descripción todo a la
-   * vez. Lo que se valida es que cada uno mide **su** categoría, no
-   * la del vecino. Si dos categorías coincidieran siempre, una de
-   * las dos no estaría midiendo.
+   * The four percentages do **not** have to sum to 100: an endpoint
+   * can carry validation, body, example and description all at the
+   * same time. What is validated is that each measures **its**
+   * category, not its neighbour's. If two categories always agreed,
+   * one of the two would not be measuring anything.
    */
-  test("las cuatro categorías son independientes: ninguna copia a otra", async () => {
+  test("the four categories are independent: none copies another", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.laravel);
     const health = summary.health;
-    // Categorías estructuralmente distintas deben poder diferir. Si en
-    // esta fixture todas son iguales, el contrato se rompe: significaría
-    // que medir una es medir todas.
+    // Structurally distinct categories must be able to differ. If in
+    // this fixture all are equal, the contract breaks: it would mean
+    // measuring one is measuring all.
     const values = [
       health.withValidationPercent,
       health.withBodySchemaPercent,
@@ -226,13 +228,13 @@ describe("summary — health: el cómputo combinado", () => {
   });
 
   /**
-   * La forma del bloque `health` no cambia entre proyectos: el CLI
-   * imprime siempre las cuatro claves con números. Un test pequeño
-   * pero decisivo — si `IProjectHealth` perdiera una clave, este test
-   * detecta el cambio de contrato antes de que la línea del CLI
-   * empiece a imprimir `undefined%`.
+   * The shape of the `health` block does not change between projects:
+   * the CLI always prints the four keys with numbers. A small but
+   * decisive test — if `IProjectHealth` lost a key, this test detects
+   * the contract change before the CLI line starts printing
+   * `undefined%`.
    */
-  test("el bloque health tiene exactamente las cuatro claves contractuales", async () => {
+  test("the health block has exactly the four contractual keys", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.django);
     const claves = Object.keys(summary.health).sort();
     expect(claves).toEqual([
@@ -241,12 +243,12 @@ describe("summary — health: el cómputo combinado", () => {
       "withExamplesPercent",
       "withValidationPercent",
     ]);
-    // Y todas las firmas son `number`: si alguien metiera un string por
-    // accidente, el CLI imprimiría `validation abc%`. El listado de
-    // claves ya viene tipado por `Object.keys` — pero `IProjectHealth`
-    // no expone firma dinámica, así que se itera como unión literal
-    // (las cuatro claves contractuales, en su orden) en lugar de un
-    // index dinámico.
+    // And all signatures are `number`: if someone slipped in a
+    // string by accident, the CLI would print `validation abc%`.
+    // The key listing already comes typed by `Object.keys` — but
+    // `IProjectHealth` does not expose a dynamic signature, so it is
+    // iterated as a literal union (the four contractual keys, in
+    // order) instead of a dynamic index.
     const clavesTipadas: ReadonlyArray<keyof IProjectHealth> = [
       "withBodySchemaPercent",
       "withDescriptionPercent",
@@ -261,8 +263,8 @@ describe("summary — health: el cómputo combinado", () => {
 });
 
 /**
- * Helper: typeguard para que los tests que importan esto no tengan
- * que repetir el cast a `IProjectHealth` cuando quieran leer un campo.
+ * Helper: typeguard so that tests that import this do not have to
+ * repeat the cast to `IProjectHealth` when they want to read a field.
  */
 export function isHealth(value: unknown): value is IProjectHealth {
   if (typeof value !== "object" || value === null) return false;
@@ -275,7 +277,7 @@ export function isHealth(value: unknown): value is IProjectHealth {
   );
 }
 
-/** Typeguard paralelo para `IProjectSummary`, útil en composición. */
+/** Parallel typeguard for `IProjectSummary`, useful in composition. */
 export function isSummary(value: unknown): value is IProjectSummary {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;

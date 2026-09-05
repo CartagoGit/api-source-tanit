@@ -1,49 +1,49 @@
 /**
- * f00010 S3: la tarjeta "evidencia + salud" en `index.html.constant.ts`.
+ * f00010 S3: the "evidence + health" card in `index.html.constant.ts`.
  *
- * Lo que se fija aquí es el **contrato de render**, no la integración
- * (esa vive en `ui-server.test.ts`, que levanta `expostman ui` de
- * verdad). El contrato es:
+ * What is pinned here is the **render contract**, not the integration
+ * (that lives in `ui-server.test.ts`, which actually starts
+ * `expostman ui`). The contract is:
  *
- *   1. La página lleva un contenedor `#deteccion` con la rejilla de
- *      evidencia y salud.
- *   2. Las clases CSS existen y los colores vienen de variables del
- *      tema, no de literales — así un cambio de tema pinta la sección
- *      sin tocarla.
- *   3. El JS pinta con `createElement` + `textContent`. Nunca
- *      `innerHTML = ...` con datos del summary: la señal, el peso, el
- *      archivo y los porcentajes van por `textContent`, porque
- *      `innerHTML` interpreta el contenido como HTML y un nombre de
- *      archivo con `<` o `&` rompería el render o abriría XSS.
- *   4. Hay emoji en los lugares que la propuesta pide: la brújula
- *      precede cada señal y un círculo de color (🟢 / 🟡 / 🔴) marca
- *      cada tramo de salud.
- *   5. La función `pintaDeteccion` está definida y se llama desde el
- *      handler de `/api/inspect`.
+ *   1. The page carries a `#deteccion` container with the evidence
+ *      and health grid.
+ *   2. The CSS classes exist and colors come from theme variables,
+ *      not literals — that way a theme change paints the section
+ *      without touching it.
+ *   3. The JS paints with `createElement` + `textContent`. Never
+ *      `innerHTML = ...` with summary data: the signal, the weight,
+ *      the file and the percentages go through `textContent`,
+ *      because `innerHTML` interprets content as HTML and a file
+ *      name with `<` or `&` would break the render or open XSS.
+ *   4. There are emojis where the proposal asks: the compass
+ *      precedes each signal and a colored circle (🟢 / 🟡 / 🔴)
+ *      marks each health band.
+ *   5. The `pintaDeteccion` function is defined and called from the
+ *      `/api/inspect` handler.
  *
- * Se prueba como string: la constante es el HTML completo. Si la
- * constante cambiase, se rompería el render en la máquina de quien la
- * usa — el peor tipo de fallo —, así que más vale que el contrato esté
- * escrito en un test que en un comentario.
+ * It is tested as a string: the constant is the full HTML. If the
+ * constant changed, the render would break on the user's machine —
+ * the worst kind of failure —, so the contract is better written in
+ * a test than in a comment.
  */
 import { describe, expect, test } from "vitest";
 
 import { UI_HTML } from "../../packages/ui/web/index.html.constant";
 
-describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
-  test("la página lleva el contenedor con su título y dos bloques", () => {
+describe("f00010 S3 — detection section (evidence + health)", () => {
+  test("the page carries the container with its title and two blocks", () => {
     expect(UI_HTML).toMatch(/<section[^>]*id="deteccion"[^>]*>/);
     expect(UI_HTML).toContain('id="deteccion-titulo"');
     expect(UI_HTML).toContain('id="evidencia-lista"');
     expect(UI_HTML).toContain('id="salud-cuadro"');
-    // Accesibilidad: la sección se anuncia por su título.
+    // Accessibility: the section is announced by its title.
     expect(UI_HTML).toContain('aria-labelledby="deteccion-titulo"');
-    // Los dos bloques pintables también son regiones en vivo.
+    // The two paintable blocks are also live regions.
     expect(UI_HTML).toContain('id="evidencia-lista" aria-live="polite"');
     expect(UI_HTML).toContain('id="salud-cuadro" aria-live="polite"');
   });
 
-  test("todas las clases CSS de la tarjeta existen en el <style>", () => {
+  test("all CSS classes of the card exist in the <style>", () => {
     for (const clase of [
       "deteccion",
       "deteccion-cuerpo",
@@ -64,18 +64,18 @@ describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
       "salud-barra",
       "salud-barra-relleno",
     ]) {
-      // Cada clase debe aparecer como selector CSS, no solo como
-      // valor de un atributo: `.${clase}{` o `.${clase} `.
+      // Each class must appear as a CSS selector, not only as an
+      // attribute value: `.${clase}{` or `.${clase} `.
       const patron = new RegExp(
         `\\.${clase.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\\s,{:]`,
       );
-      expect(UI_HTML.match(patron), `falta la regla .${clase}`).not.toBeNull();
+      expect(UI_HTML.match(patron), `missing the rule .${clase}`).not.toBeNull();
     }
   });
 
-  test("los colores del bloque nuevo vienen de variables del tema", () => {
-    // El bloque va desde `.deteccion {` hasta el último cierre de la
-    // sección salud (justo antes del @media de reduced-motion).
+  test("the colors of the new block come from theme variables", () => {
+    // The block goes from `.deteccion {` to the last close of the
+    // health section (just before the reduced-motion @media).
     const inicio = UI_HTML.indexOf(".deteccion {");
     const fin = UI_HTML.indexOf(
       ".salud-celda--error .salud-porcentaje { color: var(--error); }",
@@ -86,58 +86,58 @@ describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
       inicio,
       fin + ".salud-celda--error .salud-porcentaje { color: var(--error); }".length,
     );
-    // Ningún hexadecimal introducido por la sección.
+    // No hex introduced by the section.
     expect(bloque).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-    // Y se apoya en las variables ya definidas.
+    // And it relies on the already-defined variables.
     expect(bloque).toContain("var(--ok)");
     expect(bloque).toContain("var(--aviso)");
     expect(bloque).toContain("var(--error)");
     expect(bloque).toContain("var(--borde)");
   });
 
-  test("--aviso está definida en los cuatro bloques del tema", () => {
-    // Cuatro bloques: :root por defecto, prefers-color-scheme dark,
-    // [data-tema="dark"], [data-tema="light"]. Si uno se queda sin
-    // la variable, las barras amarillas se pintan del color por
-    // defecto del navegador.
+  test("--aviso is defined in the four theme blocks", () => {
+    // Four blocks: :root default, prefers-color-scheme dark,
+    // [data-tema="dark"], [data-tema="light"]. If one is missing
+    // the variable, the yellow bars are painted with the browser's
+    // default color.
     const matches = UI_HTML.match(/--aviso:\s*[^;]+;/g) ?? [];
     expect(matches.length).toBe(4);
   });
 
-  test("las funciones de pintado existen y se llaman tras el inspect", () => {
+  test("the paint functions exist and are called after inspect", () => {
     expect(UI_HTML).toMatch(/function\s+pintaDeteccion\s*\(/);
     expect(UI_HTML).toMatch(/function\s+pintaEvidencia\s*\(/);
     expect(UI_HTML).toMatch(/function\s+pintaSalud\s*\(/);
-    // Quien inspecciona debe terminar llamando a pintaDeteccion(s).
+    // Whoever inspects must end up calling pintaDeteccion(s).
     expect(UI_HTML).toMatch(/pintaDeteccion\(\s*s\s*\)/);
   });
 
-  test("no se asigna innerHTML con datos del summary (XSS-safe)", () => {
-    // Encontramos cada asignación `.innerHTML = ...` y la
-    // clasificamos como segura si la parte derecha es exactamente la
-    // cadena vacía (es lo que se usa para limpiar contenedores).
-    // Cualquier otro valor se considera una regresión de XSS: los
-    // nombres de archivo y las señales vienen del detector y pueden
-    // traer `<`, `>`, `&` o comillas.
+  test("no innerHTML is assigned with summary data (XSS-safe)", () => {
+    // We find every `.innerHTML = ...` assignment and classify it
+    // as safe if the right-hand side is exactly the empty string
+    // (that is what is used to clear containers). Any other value
+    // is treated as an XSS regression: file names and signals come
+    // from the detector and may carry `<`, `>`, `&` or quotes.
     const asignaciones = UI_HTML.match(/\.innerHTML\s*=[^;\n]*/g) ?? [];
     const problematicas = asignaciones.filter((a) => !/=\s*""\s*$/.test(a));
     expect(
       problematicas,
-      `innerHTML con datos: ${problematicas.join(" | ")}`,
+      `innerHTML with data: ${problematicas.join(" | ")}`,
     ).toEqual([]);
   });
 
-  test("los datos del summary se pintan con textContent", () => {
-    // Cada variable local que recibe un dato del summary debe aparecer
-    // cerca (≤ 300 chars) de un textContent, en cualquier dirección.
-    // La heurística es laxa porque cubre el contrato sin parsear JS:
-    // detecta la regresión típica (cambiar textContent por innerHTML
-    // para "meter HTML") sin atarse a la forma exacta del código.
+  test("summary data is painted with textContent", () => {
+    // Each local variable that receives a summary datum must appear
+    // close (≤ 300 chars) to a textContent, in either direction. The
+    // heuristic is loose because it covers the contract without
+    // parsing JS: it detects the typical regression (swapping
+    // textContent for innerHTML to "inject HTML") without tying itself
+    // to the exact shape of the code.
     //
-    // Se nombran las VARIABLES LOCALES que reciben el dato, no los
-    // campos crudos del summary: la asignación `var w = e.weight`
-    // cuenta, aunque `e.weight` ya no esté cerca del textContent
-    // (lo está `w.toFixed(2)` en la línea siguiente).
+    // The LOCAL VARIABLES that receive the data are named, not the
+    // raw fields of the summary: the assignment `var w = e.weight`
+    // counts, even if `e.weight` is no longer close to the
+    // textContent (`w.toFixed(2)` is, on the next line).
     const variables = ["e.signal", "e.artifact", "pct", "emoji"];
     for (const variable of variables) {
       const re = new RegExp(
@@ -145,19 +145,19 @@ describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
       );
       expect(
         UI_HTML.match(re),
-        `variable "${variable}" sin textContent cercano`,
+        `variable "${variable}" with no nearby textContent`,
       ).not.toBeNull();
     }
   });
 
-  test("los emojis de evidence + health están en la constante", () => {
-    // La brújula precede cada señal de evidencia (en el CSS via
-    // `content:`) y los círculos de color viven en el JS. Como el
-    // HTML viaja dentro de `String.raw`, los escapes unicode se
-    // preservan tal cual: el test admite las dos formas
-    // (escapes o emojis literales) para no atarse a una sola.
+  test("the evidence + health emojis are in the constant", () => {
+    // The compass precedes each evidence signal (in CSS via
+    // `content:`) and the colored circles live in the JS. Since the
+    // HTML travels inside `String.raw`, unicode escapes are
+    // preserved as-is: the test accepts both forms (escapes or
+    // literal emojis) so it does not tie itself to one.
     const escapes = [
-      "\\u{1F9ED}", // 🧭 brújula
+      "\\u{1F9ED}", // 🧭 compass
       "\\u{1F7E2}", // 🟢 verde
       "\\u{1F7E1}", // 🟡 amarillo
       "\\u{1F534}", // 🔴 rojo
@@ -168,30 +168,29 @@ describe("f00010 S3 — sección de detección (evidencia + salud)", () => {
     expect(todosComoEscape || todosComoLiteral).toBe(true);
   });
 
-  test("los tres tramos de salud se eligen por porcentaje", () => {
-    // Los umbrales (75 / 50) viven en el JS, no en el HTML como tal:
-    // basta con que existan las tres ramas y los emoticonos
-    // asociados. Si alguien cambia los tramos, este test le obliga
-    // a mantener los tres.
+  test("the three health bands are chosen by percentage", () => {
+    // The thresholds (75 / 50) live in the JS, not in the HTML
+    // itself: it is enough that the three branches and the
+    // associated emoticons exist. If someone changes the bands,
+    // this test forces them to keep all three.
     expect(UI_HTML).toMatch(/pct >= 75 \? "ok"/);
     expect(UI_HTML).toMatch(/pct >= 50 \? "aviso"/);
     expect(UI_HTML).toMatch(/: "error"/);
-    // Y las clases CSS existen para los tres estados.
+    // And the CSS classes exist for all three states.
     expect(UI_HTML).toContain(".salud-celda--ok");
     expect(UI_HTML).toContain(".salud-celda--aviso");
     expect(UI_HTML).toContain(".salud-celda--error");
   });
 
-  test("la tarjeta se esconde en errores y se muestra en aciertos", () => {
-    // f00010 S3: si el inspect falla, la tarjeta no debe quedarse
-    // con los datos del proyecto anterior. La cadena exacta puede
-    // cambiar; lo que se fija es la estructura: dentro de la rama
-    // !res.ok, antes del return, se hace hidden = true sobre el
-    // contenedor.
+  test("the card hides on errors and shows on successes", () => {
+    // f00010 S3: if inspect fails, the card must not stay with the
+    // previous project's data. The exact string may change; what is
+    // pinned is the structure: inside the !res.ok branch, before
+    // the return, hidden = true is done on the container.
     expect(UI_HTML).toMatch(
       /!res\.ok[\s\S]{0,400}\$\("deteccion"\)[\s\S]{0,80}hidden\s*=\s*true/,
     );
-    // Y si acierta, se hace visible.
+    // And if it succeeds, it becomes visible.
     expect(UI_HTML).toMatch(/seccion\.hidden\s*=\s*false/);
   });
 });

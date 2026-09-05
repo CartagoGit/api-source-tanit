@@ -15,7 +15,7 @@ function collection(overrides: Partial<PostmanCollection> = {}): PostmanCollecti
       _postman_id: "11111111-2222-3333-4444-555555555555",
     },
     variable: [{ key: "baseUrl", value: "http://localhost", type: "string" }],
-    item: [request("Listar users", "GET", "{{baseUrl}}/users")],
+    item: [request("List users", "GET", "{{baseUrl}}/users")],
     ...overrides,
   } as PostmanCollection;
 }
@@ -23,28 +23,28 @@ function collection(overrides: Partial<PostmanCollection> = {}): PostmanCollecti
 const messagesOf = (c: PostmanCollection) =>
   checkCollectionInvariants(c).map((i) => i.message);
 
-describe("checkCollectionInvariants — colección correcta", () => {
-  test("no reporta nada sobre una colección bien formada", () => {
+describe("checkCollectionInvariants — correct collection", () => {
+  test("reports nothing on a well-formed collection", () => {
     expect(checkCollectionInvariants(collection())).toEqual([]);
   });
 });
 
-describe("errores de .info", () => {
-  test("schema que no es v2.1.0", () => {
+describe(".info errors", () => {
+  test("schema that is not v2.1.0", () => {
     const c = collection();
     c.info.schema = "https://schema.getpostman.com/json/collection/v2.0.0/collection.json";
     expect(collectionErrors(c).map((i) => i.path)).toContain("$.info.schema");
   });
 
-  test("nombre vacío", () => {
+  test("empty name", () => {
     const c = collection();
     c.info.name = "   ";
     expect(collectionErrors(c).map((i) => i.path)).toContain("$.info.name");
   });
 
-  // Sin `_postman_id` Postman inventa uno en cada import y el usuario
-  // acaba con una colección nueva por cada regeneración.
-  test("_postman_id ausente es error, no aviso", () => {
+  // Without `_postman_id` Postman invents one on every import and the
+  // user ends up with a new collection on every regeneration.
+  test("absent _postman_id is an error, not a warning", () => {
     const c = collection();
     delete (c.info as { _postman_id?: string })._postman_id;
     const issue = collectionErrors(c).find((i) => i.path === "$.info._postman_id");
@@ -52,39 +52,39 @@ describe("errores de .info", () => {
     expect(issue?.message).toContain("new collection");
   });
 
-  test("colección sin items es aviso", () => {
+  test("a collection without items is a warning", () => {
     const issues = checkCollectionInvariants(collection({ item: [] }));
     expect(issues.some((i) => i.severity === "warning" && i.path === "$.item")).toBe(true);
   });
 });
 
-describe("errores de items", () => {
-  test("request sin método", () => {
+describe("item errors", () => {
+  test("request without a method", () => {
     const bad = brokenRequest("roto", "method");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request without method");
   });
 
-  test("request sin url.raw", () => {
+  test("request without url.raw", () => {
     const bad = brokenRequest("roto", "url");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request without url.raw");
   });
 
-  test("request sin array de headers", () => {
+  test("request without a headers array", () => {
     const bad = brokenRequest("roto", "header");
     expect(messagesOf(collection({ item: [bad] }))).toContain("request without headers array");
   });
 
-  test("item que no es ni carpeta ni request", () => {
+  test("item that is neither folder nor request", () => {
     const bad = brokenRequest("raro", "request");
     expect(messagesOf(collection({ item: [bad] }))).toContain("neither folder nor request");
   });
 
-  test("item sin nombre", () => {
+  test("item without a name", () => {
     const bad = request("", "GET", "{{baseUrl}}/x");
     expect(messagesOf(collection({ item: [bad] }))).toContain("item without name");
   });
 
-  test("carpeta vacía es aviso", () => {
+  test("empty folder is a warning", () => {
     const vacia = folder("Users");
     const issues = checkCollectionInvariants(collection({ item: [vacia] }));
     expect(issues.some((i) => i.severity === "warning" && i.message === "empty folder")).toBe(
@@ -92,28 +92,28 @@ describe("errores de items", () => {
     );
   });
 
-  test("recorre carpetas anidadas", () => {
+  test("walks nested folders", () => {
     const nested = folder("Users", [folder("v1", [request("", "GET", "{{baseUrl}}/x")])]);
     expect(messagesOf(collection({ item: [nested] }))).toContain("item without name");
   });
 });
 
-describe("duplicados", () => {
-  // Es el bug que tenía Symfony: el mismo endpoint declarado en YAML y
-  // con #[Route] salía dos veces en la colección.
-  test("detecta dos requests con el mismo método y url", () => {
+describe("duplicates", () => {
+  // This is the bug Symfony had: the same endpoint declared in YAML
+  // and with #[Route] appeared twice in the collection.
+  test("detects two requests with the same method and url", () => {
     const items = [
-      request("Listar users", "GET", "{{baseUrl}}/users"),
+      request("List users", "GET", "{{baseUrl}}/users"),
       request("Users list", "GET", "{{baseUrl}}/users"),
     ];
     const issues = checkCollectionInvariants(collection({ item: items }));
     expect(issues.some((i) => i.message.includes("duplica"))).toBe(true);
   });
 
-  test("detecta duplicados repartidos entre carpetas distintas", () => {
+  test("detects duplicates spread across different folders", () => {
     const items = [
-      folder("A", [request("uno", "GET", "{{baseUrl}}/users")]),
-      folder("B", [request("dos", "GET", "{{baseUrl}}/users")]),
+      folder("A", [request("one", "GET", "{{baseUrl}}/users")]),
+      folder("B", [request("two", "GET", "{{baseUrl}}/users")]),
     ];
     expect(
       checkCollectionInvariants(collection({ item: items })).some((i) =>
@@ -122,44 +122,44 @@ describe("duplicados", () => {
     ).toBe(true);
   });
 
-  test("mismo path con métodos distintos no es duplicado", () => {
+  test("same path with different methods is not a duplicate", () => {
     const items = [
-      request("Listar", "GET", "{{baseUrl}}/users"),
-      request("Crear", "POST", "{{baseUrl}}/users"),
+      request("List", "GET", "{{baseUrl}}/users"),
+      request("Create", "POST", "{{baseUrl}}/users"),
     ];
     expect(checkCollectionInvariants(collection({ item: items }))).toEqual([]);
   });
 });
 
-describe("variables sin declarar", () => {
-  test("avisa de una {{var}} que no está en collection.variable", () => {
-    const c = collection({ item: [request("Ver", "GET", "{{baseUrl}}/users/{{id}}")] });
+describe("undeclared variables", () => {
+  test("warns about a {{var}} that is not in collection.variable", () => {
+    const c = collection({ item: [request("View", "GET", "{{baseUrl}}/users/{{id}}")] });
     const issue = checkCollectionInvariants(c).find((i) => i.message.includes("{{id}}"));
     expect(issue).toBeDefined();
     expect(issue?.severity).toBe("warning");
   });
 
-  test("no avisa si la variable está declarada", () => {
+  test("does not warn if the variable is declared", () => {
     const c = collection({
       variable: [
         { key: "baseUrl", value: "http://localhost", type: "string" },
         { key: "id", value: "1", type: "string" },
       ],
-      item: [request("Ver", "GET", "{{baseUrl}}/users/{{id}}")],
+      item: [request("View", "GET", "{{baseUrl}}/users/{{id}}")],
     });
     expect(checkCollectionInvariants(c)).toEqual([]);
   });
 
-  test("no avisa de las variables dinámicas de Postman", () => {
-    const c = collection({ item: [request("Ver", "GET", "{{baseUrl}}/x/{{$guid}}")] });
+  test("does not warn about Postman's dynamic variables", () => {
+    const c = collection({ item: [request("View", "GET", "{{baseUrl}}/x/{{$guid}}")] });
     expect(checkCollectionInvariants(c)).toEqual([]);
   });
 
-  test("solo avisa una vez por variable aunque aparezca en varios sitios", () => {
+  test("warns only once per variable even if it appears in several places", () => {
     const c = collection({
       item: [
-        request("Ver", "GET", "{{baseUrl}}/users/{{id}}"),
-        request("Borrar", "DELETE", "{{baseUrl}}/users/{{id}}"),
+        request("View", "GET", "{{baseUrl}}/users/{{id}}"),
+        request("Delete", "DELETE", "{{baseUrl}}/users/{{id}}"),
       ],
     });
     expect(checkCollectionInvariants(c).filter((i) => i.message.includes("{{id}}"))).toHaveLength(
@@ -169,22 +169,22 @@ describe("variables sin declarar", () => {
 });
 
 describe("collectionErrors", () => {
-  test("filtra los avisos y deja solo los errores", () => {
-    const c = collection({ item: [request("Ver", "GET", "{{baseUrl}}/users/{{id}}")] });
+  test("filters the warnings and leaves only the errors", () => {
+    const c = collection({ item: [request("View", "GET", "{{baseUrl}}/users/{{id}}")] });
     expect(checkCollectionInvariants(c).length).toBeGreaterThan(0);
     expect(collectionErrors(c)).toEqual([]);
   });
 });
 
-describe("errores de .info — casos extremos", () => {
-  test("info completamente ausente produce error y corta la comprobación", () => {
+describe(".info errors — edge cases", () => {
+  test("completely absent info produces an error and short-circuits the check", () => {
     const c = collection();
     Reflect.deleteProperty(c, "info");
     const issues = checkCollectionInvariants(c);
     expect(issues.some((i) => i.message === "missing .info")).toBe(true);
   });
 
-  test("item que no es un array produce error", () => {
+  test("item that is not an array produces an error", () => {
     const c = collection();
     Reflect.set(c, "item", "no-array");
     const issues = checkCollectionInvariants(c);
@@ -192,10 +192,10 @@ describe("errores de .info — casos extremos", () => {
   });
 });
 
-describe("URL con doble barra", () => {
-  test("una URL con doble barra es aviso, no error", () => {
+describe("URL with a double slash", () => {
+  test("a URL with a double slash is a warning, not an error", () => {
     const c = collection({
-      item: [request("Raro", "GET", "{{baseUrl}}//users")],
+      item: [request("Weird", "GET", "{{baseUrl}}//users")],
     });
     const issues = checkCollectionInvariants(c);
     const issue = issues.find((i) => i.message.includes("double slash"));
@@ -204,8 +204,9 @@ describe("URL con doble barra", () => {
   });
 });
 
-describe("duplicados con cuerpo (RPC sobre POST)", () => {
-  // GraphQL usa siempre POST /graphql; el cuerpo distingue la operación.
+describe("duplicates with body (RPC over POST)", () => {
+  // GraphQL always uses POST /graphql; the body distinguishes the
+  // operation.
   function rpcItem(name: string, body: string) {
     return {
       name,
@@ -218,27 +219,27 @@ describe("duplicados con cuerpo (RPC sobre POST)", () => {
     };
   }
 
-  test("misma URL y método pero cuerpos distintos no es duplicado", () => {
+  test("same URL and method but different bodies is not a duplicate", () => {
     const items = [
-      rpcItem("Query usuarios", `{"query":"{users}"}`),
-      rpcItem("Query pedidos", `{"query":"{orders}"}`),
+      rpcItem("Query users", `{"query":"{users}"}`),
+      rpcItem("Query orders", `{"query":"{orders}"}`),
     ];
     expect(checkCollectionInvariants(collection({ item: items }))).toEqual([]);
   });
 
-  test("misma URL, método Y cuerpo sí es duplicado", () => {
+  test("same URL, method AND body IS a duplicate", () => {
     const body = `{"query":"{users}"}`;
-    const items = [rpcItem("Primera", body), rpcItem("Segunda", body)];
+    const items = [rpcItem("First", body), rpcItem("Second", body)];
     expect(
       checkCollectionInvariants(collection({ item: items })).some((i) => i.message.includes("duplica")),
     ).toBe(true);
   });
 });
 
-describe("variable con nombre vacío tras trim", () => {
-  test("{{   }} con solo espacios no genera aviso de variable", () => {
+describe("variable with an empty name after trim", () => {
+  test("{{   }} with only spaces does not generate a variable warning", () => {
     const c = collection({
-      item: [request("Ver", "GET", "{{baseUrl}}/x/{{   }}")],
+      item: [request("View", "GET", "{{baseUrl}}/x/{{   }}")],
     });
     const issues = checkCollectionInvariants(c);
     expect(issues.every((i) => !i.message.includes("{{   }}"))).toBe(true);

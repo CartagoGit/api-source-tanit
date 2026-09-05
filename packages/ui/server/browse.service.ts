@@ -1,27 +1,28 @@
 /**
- * Navegar carpetas desde la interfaz.
+ * Browsing folders from the UI.
  *
- * Escribir la ruta a mano es donde más se falla: una errata devuelve «no
- * existe» y no queda pista de dónde estabas. Poder subir y bajar por el
- * árbol convierte eso en mirar.
+ * Typing the path by hand is where the most mistakes happen: a typo
+ * returns "does not exist" and leaves no clue where you were. Being
+ * able to move up and down the tree turns that into looking.
  *
- * ## Solo carpetas, nunca contenido
+ * ## Folders only, never content
  *
- * Se devuelven **nombres de directorio**. Ni ficheros ni, mucho menos, lo
- * que hay dentro de ellos. Dos motivos, y el segundo es el que manda:
+ * We return **directory names**. No files, and certainly not their
+ * contents. Two reasons, and the second is the one that matters:
  *
- *   · Lo que se elige aquí es una carpeta, y enseñar los miles de
- *     ficheros de un `node_modules` hace la lista inútil.
- *   · Esto es un servidor HTTP en la máquina de alguien. Un endpoint que
- *     devolviera contenido sería un lector de ficheros arbitrario, y da
- *     igual que escuche solo en `127.0.0.1`: la interfaz ya tuvo un CSRF
- *     por dar por bueno ese razonamiento.
+ *   · What is being picked here is a folder, and showing thousands of
+ *     files from a `node_modules` makes the list useless.
+ *   · This is an HTTP server on someone's machine. An endpoint that
+ *     returned contents would be an arbitrary file reader, and it
+ *     does not matter that it only listens on `127.0.0.1`: the UI
+ *     already had a CSRF for trusting that reasoning.
  *
- * ## Un directorio ilegible no rompe la navegación
+ * ## An unreadable directory does not break navigation
  *
- * Se marca y se sigue. Alguien navegando por `/` se cruza con carpetas
- * del sistema a las que no tiene acceso, y que la lista entera falle por
- * eso haría el explorador inservible justo donde más falta hace.
+ * It is flagged and we move on. Someone browsing `/` will cross
+ * system folders they cannot access, and having the whole list fail
+ * for that would make the explorer useless exactly where it is
+ * most needed.
  */
 import { readdir, stat } from "node:fs/promises";
 import { dirname, join, parse, resolve, sep } from "node:path";
@@ -33,16 +34,16 @@ import type {
 } from "../../contracts/interfaces/cli/browse.interface.js";
 
 /**
- * Cuántas entradas se devuelven como mucho.
+ * Maximum number of entries returned.
  *
- * Una carpeta con diez mil subdirectorios existe —`/nix/store`, un
- * `node_modules` grande— y mandarlos todos convierte la respuesta en
- * megabytes que además nadie va a leer. Se corta y se dice que se ha
- * cortado, que es distinto de mentir sobre el total.
+ * A folder with ten thousand subdirectories exists — `/nix/store`, a
+ * large `node_modules` — and sending them all turns the response
+ * into megabytes that no one will read. We cut it off and say so,
+ * which is different from lying about the total.
  */
 const MAXIMO = 500;
 
-/** ¿Se puede leer y es un directorio? */
+/** Can it be read, and is it a directory? */
 async function esDirectorio(ruta: string): Promise<boolean> {
   try {
     return (await stat(ruta)).isDirectory();
@@ -52,22 +53,23 @@ async function esDirectorio(ruta: string): Promise<boolean> {
 }
 
 /**
- * Dónde empezar cuando no se dice nada.
+ * Where to start when nothing is given.
  *
- * La carpeta personal y no la raíz del sistema: es donde está lo que
- * alguien quiere escanear, y empezar en `/` obliga a bajar cinco niveles
- * cada vez.
+ * The home folder, not the system root: that is where what someone
+ * wants to scan lives, and starting at `/` forces them to navigate
+ * five levels down every time.
  */
 export function defaultBrowseRoot(): string {
   return homedir();
 }
 
 /**
- * Lista los subdirectorios de una carpeta.
+ * Lists the subdirectories of a folder.
  *
- * `path` vacío o inexistente cae a la carpeta personal en vez de fallar:
- * quien abre el explorador por primera vez no ha elegido nada todavía, y
- * un error ahí sería un error por no haber hecho nada.
+ * An empty or non-existent `path` falls back to the home folder
+ * instead of failing: whoever opens the explorer for the first time
+ * has not picked anything yet, and an error there would be an error
+ * for not having done anything.
  */
 export async function browseDirectory(path?: string): Promise<IBrowseListing> {
   const pedida = path?.trim();
@@ -100,9 +102,9 @@ export async function browseDirectory(path?: string): Promise<IBrowseListing> {
 
   const directorios = crudas
     .filter((e) => e.isDirectory() || e.isSymbolicLink())
-    // Las ocultas fuera: quien las necesite puede escribir la ruta. Con
-    // ellas, la carpeta personal empieza con treinta entradas de
-    // configuración antes de la primera que a alguien le interesa.
+    // Hidden ones out: whoever needs them can type the path. With
+    // them, the home folder starts with thirty configuration entries
+    // before the first one someone actually cares about.
     .filter((e) => !e.name.startsWith("."))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
@@ -115,15 +117,16 @@ export async function browseDirectory(path?: string): Promise<IBrowseListing> {
     entries.push({
       name: nombre,
       path: completa,
-      // Un enlace a un fichero, o a un directorio que ya no está, se
-      // marca ilegible en vez de desaparecer: verlo y no poder entrar
-      // se entiende; que no salga parece que el explorador falla.
+      // A link to a file, or to a directory that no longer exists,
+      // is flagged unreadable instead of disappearing: seeing it and
+      // not being able to enter is understandable; not showing it
+      // makes the explorer look broken.
       readable: await esDirectorio(completa),
     });
   }
 
-  // La raíz no tiene padre, y devolverse a sí misma haría que el botón
-  // de subir pareciera roto.
+  // The root has no parent, and returning itself would make the "up"
+  // button look broken.
   const raiz = parse(objetivo).root;
   const parent = objetivo === raiz ? null : dirname(objetivo);
 
@@ -143,7 +146,7 @@ export async function browseDirectory(path?: string): Promise<IBrowseListing> {
   };
 }
 
-/** Los separadores de la ruta, para pintar migas de pan. */
+/** Path separators, for rendering breadcrumbs. */
 export function breadcrumbs(path: string): ReadonlyArray<IBrowseEntry> {
   const absoluta = resolve(path);
   const raiz = parse(absoluta).root;

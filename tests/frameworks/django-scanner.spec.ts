@@ -18,8 +18,9 @@ describeScannerContract({
     validation: true,
     pathParams: true,
     stripsComments: true,
-    // Django declara la barra final a propósito: con APPEND_SLASH (el
-    // defecto) llamar sin ella devuelve 301 y un POST pierde el body.
+    // Django declares the trailing slash on purpose: with
+    // APPEND_SLASH (the default) calling without it returns 301 and a
+    // POST loses the body.
     trailingSlash: true,
   },
   minimalProject: {
@@ -37,21 +38,21 @@ const ROOT = smokeFixtureDir("django");
 const COMPREHENSIVE = comprehensiveFixtureDir("django");
 
 describe("Django scanner", () => {
-  test("detect() > 0 cuando hay manage.py", async () => {
+  test("detect() > 0 when manage.py exists", async () => {
     expect((await new DjangoProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 cuando no hay manage.py", async () => {
+  test("detect() === 0 when there is no manage.py", async () => {
     expect((await new DjangoProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() encuentra las 4 rutas del mini-fixture", async () => {
+  test("scan() finds the 4 routes of the mini-fixture", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
     const routes = (await new DjangoRouteScanner().scan(match)).routes;
     expect(routes).toHaveLength(4);
   });
 
-  test("rutas contienen health, api/users, api/users/<int:id>", async () => {
+  test("routes contain health, api/users, api/users/<int:id>", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
     const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const uris = routes.map((r) => r.uri);
@@ -60,20 +61,20 @@ describe("Django scanner", () => {
     expect(uris.some((u) => u.includes("<int:id>") || u.includes("{id}"))).toBe(true);
   });
 
-  test("path param Django <int:id> preservado en uri del ParsedRoute", async () => {
+  test("Django path param <int:id> preserved in ParsedRoute uri", async () => {
     const match = await new DjangoProjectScanner().resolve(ROOT);
     const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.uri.includes("<int:id>"));
     expect(show).toBeDefined();
   });
 
-  test("comprehensive: detecta >15 rutas con include() y CBVs/FBVs", async () => {
+  test("comprehensive: detects >15 routes with include() and CBVs/FBVs", async () => {
     const match = await new DjangoProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new DjangoRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(15);
   });
 
-  test("DRF serializer provider resuelve campos para POST /api/users", async () => {
+  test("DRF serializer provider resolves fields for POST /api/users", async () => {
     const match = await new DjangoProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new DjangoRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri.includes("api/users"));
@@ -86,11 +87,11 @@ describe("Django scanner", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Detección: las variantes de manifest que el mini-fixture no ejercita.
+// Detection: manifest variants the mini-fixture does not exercise.
 // ---------------------------------------------------------------------------
 
-describe("Django detect — variantes de manifest", () => {
-  test("Pipfile con django da 0.8 sin manage.py", async () => {
+describe("Django detect — manifest variants", () => {
+  test("Pipfile with django scores 0.8 without manage.py", async () => {
     const project = await createTempProject({
       Pipfile: '[packages]\ndjango = "*"\n',
     });
@@ -101,7 +102,7 @@ describe("Django detect — variantes de manifest", () => {
     }
   });
 
-  test("pyproject.toml con djangorestframework da 0.8", async () => {
+  test("pyproject.toml with djangorestframework scores 0.8", async () => {
     const project = await createTempProject({
       "pyproject.toml": '[project]\ndependencies = ["djangorestframework"]\n',
     });
@@ -112,7 +113,7 @@ describe("Django detect — variantes de manifest", () => {
     }
   });
 
-  test("requirements.txt sin django da 0 aunque exista", async () => {
+  test("requirements.txt without django scores 0 even when present", async () => {
     const project = await createTempProject({
       "requirements.txt": "flask==3.0\n",
     });
@@ -125,10 +126,10 @@ describe("Django detect — variantes de manifest", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Routing: expansión de ViewSets según la clase base de DRF.
+// Routing: ViewSet expansion according to the DRF base class.
 // ---------------------------------------------------------------------------
 
-/** urls.py mínimo con una CBV dada y su views.py con la herencia declarada. */
+/** Minimal urls.py with a given CBV and its views.py with the declared inheritance. */
 function drfProject(appDir: string, className: string, baseClass: string) {
   return {
     "manage.py": "#!/usr/bin/env python\n",
@@ -137,7 +138,7 @@ function drfProject(appDir: string, className: string, baseClass: string) {
   };
 }
 
-describe("Django — expansión de ViewSets por clase base", () => {
+describe("Django — ViewSet expansion by base class", () => {
   const casos: ReadonlyArray<[string, string]> = [
     ["generics.ListCreateAPIView", "GET,POST"],
     ["generics.RetrieveUpdateDestroyAPIView", "DELETE,GET,PATCH,PUT"],
@@ -153,7 +154,7 @@ describe("Django — expansión de ViewSets por clase base", () => {
 
   const tabla = test.each(casos);
 
-  tabla("clase base %s → métodos %s", async (base, esperados) => {
+  tabla("base class %s → methods %s", async (base, esperados) => {
     const project = await createTempProject(drfProject("app/items", "CosasView", base));
     try {
       const { match, routes } = await scanProject("django", project.root);
@@ -169,7 +170,7 @@ describe("Django — expansión de ViewSets por clase base", () => {
     }
   });
 
-  test("CBV bajo src/ resuelve la clase base", async () => {
+  test("CBV under src/ resolves the base class", async () => {
     const project = await createTempProject(
       drfProject("src/items", "CosasView", "viewsets.ModelViewSet"),
     );
@@ -187,7 +188,7 @@ describe("Django — expansión de ViewSets por clase base", () => {
     }
   });
 
-  test("CBV sin clase base conocida cae al heurístico GET", async () => {
+  test("CBV without a known base class falls back to the GET heuristic", async () => {
     const project = await createTempProject(drfProject("app", "OpacaView", "object"));
     try {
       const { routes } = await scanProject("django", project.root);
@@ -197,7 +198,7 @@ describe("Django — expansión de ViewSets por clase base", () => {
     }
   });
 
-  test("views.py se busca también en apps/<app>/ (convención DRF)", async () => {
+  test("views.py is also looked up under apps/<app>/ (DRF convention)", async () => {
     const project = await createTempProject(drfProject("apps/pedidos", "PedidosView", "generics.CreateAPIView"));
     try {
       const { routes } = await scanProject("django", project.root);
@@ -209,11 +210,11 @@ describe("Django — expansión de ViewSets por clase base", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Routing: FBV con @api_view y heurística sin decorador.
+// Routing: FBV with @api_view and heuristic without decorator.
 // ---------------------------------------------------------------------------
 
 describe("Django — function based views", () => {
-  test("@api_view(['POST','PUT']) expande los verbos declarados", async () => {
+  test("@api_view(['POST','PUT']) expands the declared verbs", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": "from django.urls import path\nfrom . import views\n\nurlpatterns = [path('accion/', views.accion)]\n",
@@ -227,7 +228,7 @@ describe("Django — function based views", () => {
     }
   });
 
-  test("@api_view con verbos no reconocidos cae a GET", async () => {
+  test("@api_view with unrecognized verbs falls back to GET", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": "urlpatterns = [path('raro/', views.raro)]\n",
@@ -241,7 +242,7 @@ describe("Django — function based views", () => {
     }
   });
 
-  test("FBV sin @api_view usa el heurístico GET", async () => {
+  test("FBV without @api_view uses the GET heuristic", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": "urlpatterns = [path('plano/', views.plano)]\n",
@@ -261,7 +262,7 @@ describe("Django — function based views", () => {
 // ---------------------------------------------------------------------------
 
 describe("Django — include()", () => {
-  test("include('app.items.urls') resuelve el módulo con puntos", async () => {
+  test("include('app.items.urls') resolves the dotted module", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": 'from django.urls import path, include\n\nurlpatterns = [path("items/", include("items.urls"))]\n',
@@ -271,14 +272,14 @@ describe("Django — include()", () => {
       const { routes } = await scanProject("django", project.root);
       const uris = routes.map((r) => r.uri).sort();
       expect(uris).toEqual(["/items/detalle/<int:id>/", "/items/lista/"]);
-      // El prefixChain arrastra el prefijo declarado en path().
+      // The prefixChain carries the prefix declared in path().
       expect(routes[0]?.prefixChain).toEqual(["items/"]);
     } finally {
       await project.cleanup();
     }
   });
 
-  test("include([...]) en forma de lista procesa cada sub-urls", async () => {
+  test("include([...]) as a list processes each sub-urls", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": "urlpatterns = [include(['app/urls_a.py', 'app/urls_b.py'])]\n",
@@ -293,7 +294,7 @@ describe("Django — include()", () => {
     }
   });
 
-  test("un include ya procesado no se procesa dos veces", async () => {
+  test("an already-processed include is not processed twice", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py": [
@@ -306,7 +307,7 @@ describe("Django — include()", () => {
     });
     try {
       const { routes } = await scanProject("django", project.root);
-      // La segunda include llega a un fichero ya procesado: no duplica.
+      // The second include hits an already processed file: no duplicate.
       expect(routes.map((r) => r.uri)).toEqual(["/x/uno/"]);
     } finally {
       await project.cleanup();
@@ -338,7 +339,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     };
   }
 
-  test("ruta sin sourceFile devuelve fields vacías", async () => {
+  test("route without sourceFile returns empty fields", async () => {
     const project = await createTempProject({ "manage.py": "" });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
@@ -350,7 +351,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("CBV sin serializer_class devuelve fields vacías", async () => {
+  test("CBV without serializer_class returns empty fields", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('cosas/', CosasView.as_view())]\n",
@@ -365,7 +366,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("CBV sin views.py devuelve fields vacías", async () => {
+  test("CBV without views.py returns empty fields", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('huerfana/', HuerfanaView.as_view())]\n",
@@ -379,7 +380,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("fields Meta + inline: type map, EmailField y ChoiceField con choices", async () => {
+  test("Meta fields + inline: type map, EmailField and ChoiceField with choices", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('users/', UserCreateView.as_view())]\n",
@@ -405,7 +406,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("field con tipo no reconocido en el type map cae a any", async () => {
+  test("field with an unrecognized type in the type map falls back to any", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('raro/', RaroView.as_view())]\n",
@@ -426,7 +427,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("serializer sin Meta.fields emite los inline fields como requeridos", async () => {
+  test("serializer without Meta.fields emits inline fields as required", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('inline/', InlineView.as_view())]\n",
@@ -435,9 +436,9 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
         "class InlineSerializer(serializers.Serializer):",
         "    titulo = serializers.CharField(max_length=10)",
         "    activo = serializers.BooleanField()",
-        // BUG conocido del scanner (se reporta en la entrega): la rama
-        // inline compara `required=false` en minúsculas, así que el
-        // `required=False` real de Python sale como obligatorio.
+        // Known scanner bug (reported in the handoff): the inline
+        // branch compares `required=false` in lowercase, so Python's
+        // real `required=False` ends up as required.
         "    nota = serializers.CharField(required=False)",
       ].join("\n"),
     });
@@ -447,14 +448,14 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
       const byName = new Map(result.fields.map((f) => [f.fieldName, f]));
       expect(byName.get("titulo")).toMatchObject({ type: "string", required: true });
       expect(byName.get("activo")).toMatchObject({ type: "boolean" });
-      // Comportamiento actual: required=true pese a `required=False`.
+      // Current behavior: required=true despite `required=False`.
       expect(byName.get("nota")).toMatchObject({ required: true });
     } finally {
       await project.cleanup();
     }
   });
 
-  test("FBV: encuentra el serializer por nombre capitalizado de la función", async () => {
+  test("FBV: finds the serializer by the capitalized name of the function", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('fbv/', pedido)]\n",
@@ -471,7 +472,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("FBV sin serializers.py devuelve fields vacías", async () => {
+  test("FBV without serializers.py returns empty fields", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('solo/', fsv)]\n",
@@ -486,7 +487,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("findViewNameForUri quita el prefijo declarado en prefixChain", async () => {
+  test("findViewNameForUri strips the prefix declared in prefixChain", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "urls.py":
@@ -498,8 +499,9 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      // La URI trae el prefijo aplicado; el prefixChain lo arrastra desde
-      // el include. El provider debe quitarlo antes de comparar.
+      // The URI comes with the prefix applied; the prefixChain
+      // carries it from the include. The provider must strip it
+      // before comparing.
       const result = await provider.resolve(
         ruta("/api/lista/", "app/api/urls.py", "POST", { prefixChain: ["api/"] }),
         match,
@@ -512,7 +514,7 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     }
   });
 
-  test("URI relativa vacía busca el path('') del urls.py", async () => {
+  test("empty relative URI looks up path('') in urls.py", async () => {
     const project = await createTempProject({
       "manage.py": "",
       "app/urls.py": "urlpatterns = [path('', RaizView.as_view())]\n",
@@ -520,7 +522,8 @@ describe("DjangoSerializerProvider — ramas del proveedor", () => {
     });
     try {
       const match = await new DjangoProjectScanner().resolve(project.root);
-      // Tras normalizar, la URI relativa queda vacía: rama del path("").
+      // After normalization, the relative URI is empty: the
+      // path("") branch.
       const result = await provider.resolve(ruta("/", "app/urls.py", "GET"), match, EMPTY_SCAN_RESULT);
       expect(result.endpointKey).toBe("get /");
       expect(result.fields).toEqual([]);

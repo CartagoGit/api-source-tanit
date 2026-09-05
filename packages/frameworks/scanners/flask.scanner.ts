@@ -1,19 +1,20 @@
 /**
- * `FlaskScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para Flask (Python minimal web framework).
+ * `FlaskScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Flask (Python minimal web framework).
  *
- * Detección:
- *   - `requirements.txt` o `pyproject.toml` con `flask`.
+ * Detection:
+ *   - `requirements.txt` or `pyproject.toml` with `flask`.
  *
  * Parsing:
- *   - Decoradores `@app.route('/path', methods=['GET', 'POST'])` en views.py.
- *   - Soporta Blueprints: `@bp.route(...)` con `bp = Blueprint('users', __name__)`.
- *   - Soporta `app.add_url_rule(...)` (regex).
+ *   - Decorators `@app.route('/path', methods=['GET', 'POST'])` in views.py.
+ *   - Supports Blueprints: `@bp.route(...)` with
+ *     `bp = Blueprint('users', __name__)`.
+ *   - Supports `app.add_url_rule(...)` (regex).
  *
  * Validation:
- *   - `FlaskValidationProvider`: extrae los campos de los schemas
- *     Marshmallow (`fields.Str(required=True)`) y de los modelos
- *     Pydantic de `flask-pydantic`.
+ *   - `FlaskValidationProvider`: extracts the fields from
+ *     Marshmallow schemas (`fields.Str(required=True)`) and from
+ *     Pydantic models of `flask-pydantic`.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -168,7 +169,7 @@ async function walkPy(
 }
 
 async function findBlueprints(projectRoot: string): Promise<string[]> {
-  // Retorna rutas ABSOLUTAS de .py files (no ParsedRoute[]).
+  // Returns ABSOLUTE paths of .py files (not ParsedRoute[]).
   const out: string[] = [];
   for (const base of ["app", "apps", "src", "blueprints"]) {
     const dir = join(projectRoot, base);
@@ -210,7 +211,7 @@ async function parseFlaskFile(
   const text = stripPyComments(raw);
   const lines = text.split("\n");
 
-  // Detectar prefijo del Blueprint: `bp = Blueprint('users', __name__, url_prefix='/api/v1')`.
+  // Detect Blueprint prefix: `bp = Blueprint('users', __name__, url_prefix='/api/v1')`.
   let bpPrefix = "";
   if (isBlueprint) {
     const bpRe = /Blueprint\s*\(\s*['"][\w]+['"]\s*,\s*__name__\s*(?:,\s*url_prefix\s*=\s*['"]([^'"]+)['"])?/;
@@ -228,11 +229,11 @@ async function parseFlaskFile(
       const methodsList = m[3] ?? "";
       const methods = parseMethods(methodsList);
       if (methods.length === 0) methods.push("get");
-      // Solo aceptar `app`, `bp`, `blueprint` o cualquier `<name>_bp` /
-      // `<name>_blueprint` como idents.
+      // Only accept `app`, `bp`, `blueprint` or any `<name>_bp` /
+      // `<name>_blueprint` as idents.
       if (!/^(app|bp|blueprint|api)$/i.test(ident) && !/^[\w]+_(bp|blueprint)$/i.test(ident)) continue;
       const fullPath = joinRoutePath(bpPrefix, path);
-      // Buscar signature del método abajo.
+      // Look for the method signature below.
       let methodName = "";
       for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
         const sig = /def\s+([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
@@ -293,30 +294,30 @@ function stripPyComments(src: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Validation spec provider (no-op por ahora; bodies se generan con applyAgnosticInference)
+// Validation spec provider (no-op for now; bodies are generated with applyAgnosticInference)
 // ---------------------------------------------------------------------------
 
 /**
- * Provider de validación de Flask.
+ * Flask validation provider.
  *
- * Cubre las dos formas habituales de validar en Flask:
+ * Covers the two common validation shapes in Flask:
  *
- *   - **Marshmallow** (la más extendida):
+ *   - **Marshmallow** (the most widespread):
  *       `class UserSchema(Schema): name = fields.Str(required=True)`
- *   - **Pydantic** vía `flask-pydantic`:
+ *   - **Pydantic** via `flask-pydantic`:
  *       `class UserCreate(BaseModel): name: str`
  *
- * El schema se asocia al endpoint en tres pasos de confianza
- * decreciente, igual que en los demás scanners:
+ * The schema is bound to the endpoint in three steps of decreasing
+ * confidence, same as in the other scanners:
  *
- *   1. El schema referenciado en el cuerpo del handler
+ *   1. The schema referenced in the handler body
  *      (`UserSchema().load(request.json)`, `body: UserCreate`).
- *   2. El que coincide por convención de nombre con el recurso de la
- *      ruta (`/api/users` → `UserSchema`, `UserCreateSchema`…).
- *   3. Ninguno: se deja que la inferencia agnóstica rellene el body.
+ *   2. The one matching by naming convention the route's resource
+ *      (`/api/users` → `UserSchema`, `UserCreateSchema`…).
+ *   3. None: let the agnostic inference fill the body.
  *
- * Antes esto era un stub que devolvía `[]` con `supports: false`, así
- * que Flask era el único framework con 0 endpoints con reglas reales.
+ * Before this was a stub returning `[]` with `supports: false`, so
+ * Flask was the only framework with 0 endpoints with real rules.
  */
 export class FlaskValidationProvider implements IValidationSpecProvider {
   readonly framework = "flask" as const;
@@ -336,7 +337,7 @@ export class FlaskValidationProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
 
-    // Los GET y DELETE no llevan body; sus params ya salen de la URI.
+    // GET and DELETE don't carry a body; their params already come from the URI.
     if (route.method === "GET" || route.method === "DELETE") {
       return { endpointKey, fields: [] };
     }
@@ -352,13 +353,13 @@ export class FlaskValidationProvider implements IValidationSpecProvider {
   }
 }
 
-/** Un schema de validación localizado, ya convertido a specs. */
+/** A located validation schema, already converted to specs. */
 interface IFlaskSchema {
   readonly name: string;
   readonly specs: ReadonlyArray<IValidationSpec>;
 }
 
-/** Recorre el proyecto y recoge todos los schemas Marshmallow y Pydantic. */
+/** Walks the project and collects all Marshmallow and Pydantic schemas. */
 async function collectFlaskSchemas(
   projectRoot: string,
 ): Promise<Map<string, IFlaskSchema>> {
@@ -391,7 +392,7 @@ async function collectFlaskSchemas(
   return out;
 }
 
-/** Ficheros Python del proyecto, saltando tests y `__init__` vacíos. */
+/** Python files of the project, skipping tests and empty `__init__`. */
 async function collectPythonFiles(projectRoot: string): Promise<string[]> {
   return collectFilesFrom(
     ["app", "src", "api", ""].map((dir) => (dir ? join(projectRoot, dir) : projectRoot)),
@@ -400,8 +401,8 @@ async function collectPythonFiles(projectRoot: string): Promise<string[]> {
 }
 
 /**
- * Cuerpo del handler de una ruta: desde la línea del decorador hasta la
- * siguiente definición en columna 0.
+ * Handler body of a route: from the decorator line up to the next
+ * definition at column 0.
  */
 async function readHandlerBody(route: ParsedRoute, projectRoot: string): Promise<string> {
   if (!route.sourceFile) return "";
@@ -424,7 +425,7 @@ async function readHandlerBody(route: ParsedRoute, projectRoot: string): Promise
   return out.join("\n");
 }
 
-/** Paso 1: el schema que el handler nombra explícitamente. */
+/** Step 1: the schema the handler names explicitly. */
 function pickSchemaByReference(
   handlerBody: string,
   schemas: ReadonlyMap<string, IFlaskSchema>,
@@ -436,7 +437,7 @@ function pickSchemaByReference(
   return null;
 }
 
-/** Paso 2: el schema cuyo nombre casa con el recurso de la ruta. */
+/** Step 2: the schema whose name matches the route's resource. */
 function pickSchemaByConvention(
   route: ParsedRoute,
   schemas: ReadonlyMap<string, IFlaskSchema>,

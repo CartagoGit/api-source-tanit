@@ -50,7 +50,7 @@ function smokeFixtureRoot(workspaceRoot: string, framework: string): string {
   return `${workspaceRoot}/tests/smoke-fixtures/${framework}-mini`;
 }
 
-/** Resultado compacto de un smoke: cuántas rutas casaron, o por qué no. */
+/** Compact smoke result: how many routes matched, or why not. */
 type SmokeOutcome =
   | { ok: true; routeCount: number }
   | { ok: false; detail: string };
@@ -238,7 +238,7 @@ export function buildTestToolRegistration(
 
           // Step 3: smoke in-process de TODOS los mini-fixtures registrados.
           // Sustituye el spawn de `bun test tests/e2e/`, que creaba decenas
-          // de subprocesos bun en paralelo y reventaba la RAM del host.
+          // of bun subprocesses in parallel and blew up the host's RAM.
           {
             const smokeAllStart = Date.now();
             const { existsSync } = await import("node:fs");

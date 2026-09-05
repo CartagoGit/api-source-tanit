@@ -1,19 +1,19 @@
 /**
- * Tests del helper `toServiceGraph` (a00013 S2).
+ * Tests for the `toServiceGraph` helper (a00013 S2).
  *
- * El helper S2 es **adyacente**: no lo consume nadie todavía; vive
- * para que S3 y S4 lo enchufen sin tener que cambiar el contrato. Los
- * tests garantizan las dos invariantes que S2 deja sentadas:
+ * The S2 helper is **adjacent**: nobody it uses it yet; it exists so
+ * that S3 and S4 can plug it in without changing the contract. The
+ * tests guarantee the two invariants S2 lays down:
  *
- *  1. Un proyecto plano (un solo match) produce un grafo con
- *     `services.length === 1` y `combined === false`. Es el camino
- *     del 100% de los ejemplos.
- *  2. Un monorepo multi-workspace produce un servicio por match,
- *     sin fusionar ni siquiera cuando las rutas son iguales. Es el
- *     P1 arquitectónico que cerraba a00013.
+ *  1. A flat project (single match) produces a graph with
+ *     `services.length === 1` and `combined === false`. This is the
+ *     path of 100% of the examples.
+ *  2. A multi-workspace monorepo produces one service per match,
+ *     without merging even when the routes are identical. This is
+ *     the architectural P1 that a00013 closed.
  *
- * `decorateServices` se prueba por separado porque su contrato es
- * ortogonal al de `toServiceGraph`.
+ * `decorateServices` is tested separately because its contract is
+ * orthogonal to `toServiceGraph`'s.
  */
 import { describe, expect, it } from "vitest";
 
@@ -60,7 +60,7 @@ const monorepoMulti: IMonorepoDetection = {
 };
 
 describe("toServiceGraph", () => {
-  it("single-service produce un grafo con length 1 y combined false", () => {
+  it("single-service produces a graph with length 1 and combined false", () => {
     const m = match("express", "/repo/apps/api", "apps/api");
     const routes = new Map<string, ReadonlyArray<ParsedRoute>>([
       ["apps_api", [route("GET", "/health")]],
@@ -72,14 +72,14 @@ describe("toServiceGraph", () => {
     expect(graph.services[0]?.endpoints).toHaveLength(1);
   });
 
-  it("single-service sin frameworkSearchRoot cae a framework@projectRoot", () => {
+  it("single-service without frameworkSearchRoot falls back to framework@projectRoot", () => {
     const m = match("nestjs", "/repo");
     const graph = toServiceGraph({ matches: [m], routesByService: new Map() });
     expect(graph.services).toHaveLength(1);
     expect(graph.services[0]?.serviceId).toBe("nestjs_repo");
   });
 
-  it("multi-service mantiene identidad aunque las rutas sean iguales", () => {
+  it("multi-service preserves identity even when the routes are identical", () => {
     const users = match("express", "/repo", "apps/users-api");
     const payments = match("nestjs", "/repo", "apps/payments-api");
     const routes = new Map<string, ReadonlyArray<ParsedRoute>>([
@@ -98,7 +98,7 @@ describe("toServiceGraph", () => {
     expect(graph.services[1]?.endpoints[0]?.uri).toBe("/health");
   });
 
-  it("rellena entradas vacias cuando el caller omite rutas de un match", () => {
+  it("fills empty entries when the caller omits routes for a match", () => {
     const m = match("express", "/repo", "apps/api");
     const graph = toServiceGraph({
       matches: [m],
@@ -108,7 +108,7 @@ describe("toServiceGraph", () => {
     expect(graph.services[0]?.endpoints).toHaveLength(0);
   });
 
-  it("monorepo declarado sin matches devuelve grafo vacio (no inventa servicio)", () => {
+  it("a declared monorepo with no matches returns an empty graph (no invented service)", () => {
     const graph = toServiceGraph({
       matches: [],
       routesByService: new Map(),
@@ -123,7 +123,7 @@ describe("toServiceGraph", () => {
     expect(graph.combined).toBe(false);
   });
 
-  it("respeta el combined del caller (futuro --combine-services)", () => {
+  it("respects the caller's combined (future --combine-services)", () => {
     const m1 = match("express", "/repo", "a");
     const m2 = match("nestjs", "/repo", "b");
     const graph = toServiceGraph({
@@ -135,7 +135,7 @@ describe("toServiceGraph", () => {
     expect(graph.services).toHaveLength(2);
   });
 
-  it("propaga baseUrl y auth cuando el caller los pasa", () => {
+  it("propagates baseUrl and auth when the caller passes them", () => {
     const m = match("express", "/repo", "apps/api");
     const auth: IEndpointAuth = { kind: "scheme", scheme: "bearer" };
     const graph = toServiceGraph({
@@ -150,7 +150,7 @@ describe("toServiceGraph", () => {
 });
 
 describe("decorateServices", () => {
-  it("aplica baseUrl y auth solo donde el caller los da", () => {
+  it("applies baseUrl and auth only where the caller provides them", () => {
     const m = match("express", "/repo", "apps/api");
     const graph = toServiceGraph({
       matches: [m],
@@ -163,7 +163,7 @@ describe("decorateServices", () => {
     expect(decorated.services[0]?.auth).toBeUndefined();
   });
 
-  it("conserva combined del grafo original", () => {
+  it("preserves the original graph's combined", () => {
     const m = match("express", "/repo", "apps/api");
     const graph = toServiceGraph({
       matches: [m],
@@ -174,7 +174,7 @@ describe("decorateServices", () => {
     expect(decorated.combined).toBe(true);
   });
 
-  it("variables por servicio se propagan vacias por defecto", () => {
+  it("variables per service default to an empty array", () => {
     const m = match("express", "/repo", "apps/api");
     const graph = toServiceGraph({
       matches: [m],

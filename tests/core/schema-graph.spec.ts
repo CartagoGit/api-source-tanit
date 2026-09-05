@@ -1,10 +1,10 @@
 /**
- * Tests del `SchemaGraph` (a00010 S6).
+ * Tests for `SchemaGraph` (a00010 S6).
  *
- * Cubre los seis casos que pidió la propuesta: object/array/union/
- * reference/flatten/OpenAPI. El grafo se construye con los helpers
- * puros (`createObjectNode`, `createArrayNode`, etc.) y se enchufa al
- * OpenAPI exporter por la vía de `EndpointSpec.schemaGraph`.
+ * Covers the six cases the proposal asked for: object/array/union/
+ * reference/flatten/OpenAPI. The graph is built with the pure helpers
+ * (`createObjectNode`, `createArrayNode`, etc.) and plugs into the
+ * OpenAPI exporter via `EndpointSpec.schemaGraph`.
  */
 import { describe, expect, test } from "vitest";
 
@@ -31,7 +31,7 @@ import {
 import { createUnionNode } from "../../packages/core/schema/union.helper";
 import type { IExportInput } from "../../packages/contracts/interfaces/core/export-target.interface";
 
-/** Construye un `EndpointSpec` mínimo válido para el exporter. */
+/** Builds a minimal valid `EndpointSpec` for the exporter. */
 function spec(uri: string, method: EndpointSpec["method"], extra: Partial<EndpointSpec> = {}): EndpointSpec {
   return {
     name: `Spec ${method} ${uri}`,
@@ -41,7 +41,7 @@ function spec(uri: string, method: EndpointSpec["method"], extra: Partial<Endpoi
   };
 }
 
-/** Input base para `buildOpenApiDocument`. */
+/** Base input for `buildOpenApiDocument`. */
 function baseInput(specs: ReadonlyArray<EndpointSpec>): IExportInput {
   return {
     specs,
@@ -56,8 +56,8 @@ function baseInput(specs: ReadonlyArray<EndpointSpec>): IExportInput {
   };
 }
 
-describe("SchemaGraph — nodos", () => {
-  test("object con dos campos serializa a JSON con `id`, `kind` y `children`", () => {
+describe("SchemaGraph — nodes", () => {
+  test("object with two fields serializes to JSON with `id`, `kind` and `children`", () => {
     const nameId: SchemaNodeId = "n:0";
     const ageId: SchemaNodeId = "n:1";
     const root: SchemaNodeId = "n:2";
@@ -76,7 +76,7 @@ describe("SchemaGraph — nodos", () => {
       root,
     );
 
-    // El nodo raíz es un `object` con dos `children`.
+    // The root node is an `object` with two `children`.
     const rootNode = graph.nodes.get(root);
     expect(rootNode?.kind).toBe("object");
     expect(rootNode?.children).toHaveLength(2);
@@ -85,7 +85,7 @@ describe("SchemaGraph — nodos", () => {
     expect(rootNode?.children?.[1]?.name).toBe("age");
     expect(rootNode?.children?.[1]?.required).toBe(false);
 
-    // JSON-serializable: el contrato es que sea plain-data.
+    // JSON-serializable: the contract is that it is plain-data.
     const json = JSON.stringify({
       root,
       nodes: Array.from(graph.nodes.entries()),
@@ -95,7 +95,7 @@ describe("SchemaGraph — nodos", () => {
     expect(roundtrip.root).toBe(root);
   });
 
-  test("array con `items` apunta a otro nodo por id", () => {
+  test("array with `items` points to another node by id", () => {
     const itemId: SchemaNodeId = "n:0";
     const arrayId: SchemaNodeId = "n:1";
     const graph: ISchemaGraph = createSchemaGraph(
@@ -121,7 +121,7 @@ describe("SchemaGraph — nodos", () => {
     expect(item?.scalarType).toBe("string");
   });
 
-  test("union con dos alternativas registra ambos ids", () => {
+  test("union with two alternatives registers both ids", () => {
     const altA: SchemaNodeId = "n:0";
     const altB: SchemaNodeId = "n:1";
     const unionId: SchemaNodeId = "n:2";
@@ -142,12 +142,12 @@ describe("SchemaGraph — nodos", () => {
     expect(union?.alternatives).toEqual([altA, altB]);
     expect(union?.name).toBe("StringOrNumber");
 
-    // Las alternativas existen y son nodos distintos.
+    // The alternatives exist and are distinct nodes.
     expect(graph.nodes.get(altA)?.scalarType).toBe("string");
     expect(graph.nodes.get(altB)?.scalarType).toBe("integer");
   });
 
-  test("reference se resuelve devolviendo el nodo destino", () => {
+  test("reference resolves by returning the target node", () => {
     const userId: SchemaNodeId = "n:0";
     const refId: SchemaNodeId = "n:1";
     const graph: ISchemaGraph = createSchemaGraph(
@@ -168,7 +168,7 @@ describe("SchemaGraph — nodos", () => {
     expect(ref?.kind).toBe("reference");
     expect(ref?.ref).toBe(userId);
 
-    // `resolveReference` devuelve el nodo destino.
+    // `resolveReference` returns the target node.
     const target = graph.nodes.get(ref?.ref ?? "");
     expect(target?.kind).toBe("object");
     expect(target?.name).toBe("User");
@@ -176,7 +176,7 @@ describe("SchemaGraph — nodos", () => {
 });
 
 describe("SchemaGraph — flatten-helper", () => {
-  test("apana un object con dos escalares a un array de IEndpointField", () => {
+  test("flattens an object with two scalars to an IEndpointField array", () => {
     const graph: ISchemaGraph = buildSchemaGraph([
       { fieldName: "name", location: "body", type: "string", required: true },
       { fieldName: "age", location: "body", type: "integer", required: false },
@@ -193,7 +193,7 @@ describe("SchemaGraph — flatten-helper", () => {
     expect(age?.required).toBe(false);
   });
 
-  test("apana un enum preservando `enumValues`", () => {
+  test("flattens an enum preserving `enumValues`", () => {
     const graph: ISchemaGraph = buildSchemaGraph([
       {
         fieldName: "role",
@@ -213,7 +213,7 @@ describe("SchemaGraph — flatten-helper", () => {
 });
 
 describe("SchemaGraph — OpenAPI exporter", () => {
-  test("con `schemaGraph` produce `properties` y `required`", () => {
+  test("with `schemaGraph` it produces `properties` and `required`", () => {
     const graph: ISchemaGraph = buildSchemaGraph([
       { fieldName: "name", location: "body", type: "string", required: true },
       { fieldName: "age", location: "body", type: "integer", required: false },
@@ -238,7 +238,7 @@ describe("SchemaGraph — OpenAPI exporter", () => {
     expect(schema["required"]).toEqual(["name"]);
   });
 
-  test("un nodo con `name` produce `$ref` y entrada en `components.schemas`", () => {
+  test("a node with `name` produces `$ref` and an entry in `components.schemas`", () => {
     const userId: SchemaNodeId = "n:0";
     const refId: SchemaNodeId = "n:1";
     const root: SchemaNodeId = "n:2";
@@ -286,7 +286,7 @@ describe("SchemaGraph — OpenAPI exporter", () => {
     const userProps = userSchema["properties"] as Record<string, unknown>;
     expect(userProps["email"]).toEqual({ type: "string", format: "email" });
 
-    // El body del endpoint referencia el esquema por $ref.
+    // The endpoint body references the schema by $ref.
     const op = (doc["paths"] as Record<string, Record<string, unknown>>)["/api/teams"]?.["post"] as Record<string, unknown>;
     const body = op["requestBody"] as Record<string, unknown>;
     const content = body["content"] as Record<string, Record<string, unknown>>;
@@ -296,10 +296,10 @@ describe("SchemaGraph — OpenAPI exporter", () => {
     expect(properties["owner"]).toEqual({ $ref: "#/components/schemas/User" });
   });
 
-  test("sin `schemaGraph` cae al camino de `fields` (no rompe retrocompat)", () => {
-    // Spec sin `schemaGraph` y con `fields` (camino legacy): debe
-    // seguir emitiendo `properties` desde `fields`, no desde un grafo
-    // inexistente.
+  test("without `schemaGraph` falls back to the `fields` path (no backward-compat break)", () => {
+    // Spec without `schemaGraph` and with `fields` (legacy path): it
+    // must still emit `properties` from `fields`, not from a
+    // non-existent graph.
     const doc = buildOpenApiDocument(
       baseInput([
         spec("/api/users", "POST", {
@@ -324,20 +324,20 @@ describe("SchemaGraph — OpenAPI exporter", () => {
 });
 
 describe("SchemaGraph — utils", () => {
-  test("enum node lleva `enumValues` y `kind: 'enum'`", () => {
+  test("enum node carries `enumValues` and `kind: 'enum'`", () => {
     const node = createEnumNode(["a", "b", "c"], "n:0", { name: "Color" });
     expect(node.kind).toBe("enum");
     expect(node.enumValues).toEqual(["a", "b", "c"]);
     expect(node.name).toBe("Color");
   });
 
-  test("literal node lleva `literal` y `kind: 'literal'`", () => {
+  test("literal node carries `literal` and `kind: 'literal'`", () => {
     const node = createLiteralNode(42, "n:0");
     expect(node.kind).toBe("literal");
     expect(node.literal).toBe(42);
   });
 
-  test("scalar node con constraints lleva `format` y `minimum`", () => {
+  test("scalar node with constraints carries `format` and `minimum`", () => {
     const node = createScalarNode("integer", "n:0", {
       constraints: { format: "int32", minimum: 0, maximum: 120 },
       name: "Age",
@@ -351,10 +351,10 @@ describe("SchemaGraph — utils", () => {
 });
 
 describe("SchemaGraph — DTO round-trip (a00011 C-4)", () => {
-  // Construimos un grafo con tres nodos: un escalar `name`, un
-  // escalar `age`, y un object raíz que los une. Lo usamos para
-  // probar que `toDTO` y `fromDTO` preservan el contenido a través
-  // de la frontera JSON.
+  // We build a graph with three nodes: a `name` scalar, an `age`
+  // scalar, and a root object that joins them. We use it to verify
+  // that `toDTO` and `fromDTO` preserve content across the JSON
+  // frontier.
   function buildRoundTripGraph(): ISchemaGraph {
     const nameId: SchemaNodeId = "n:0";
     const ageId: SchemaNodeId = "n:1";
@@ -375,21 +375,21 @@ describe("SchemaGraph — DTO round-trip (a00011 C-4)", () => {
     );
   }
 
-  test("Map → DTO → Map preserva todos los nodos", () => {
+  test("Map → DTO → Map preserves all the nodes", () => {
     const graph = buildRoundTripGraph();
     const dto = toDTO(graph);
 
-    // El DTO es un objeto plano — no `Map`, sin métodos del interface.
-    // `Reflect.has` evita el cast: lo que el interface prohíbe en
-    // compilación, el runtime lo corrobora.
+    // The DTO is a plain object — not a `Map`, no interface methods.
+    // `Reflect.has` avoids the cast: what the interface forbids at
+    // compile time, runtime corroborates.
     expect(dto).not.toBeInstanceOf(Map);
     expect(Reflect.has(dto, "toDTO")).toBe(false);
 
-    // `nodes` es `ReadonlyArray<[id, node]>` con los tres nodos.
+    // `nodes` is `ReadonlyArray<[id, node]>` with the three nodes.
     expect(dto.nodes).toHaveLength(3);
     expect(dto.root).toBe("n:2");
 
-    // El round-trip reconstruye un grafo con los mismos ids y nodos.
+    // The round-trip rebuilds a graph with the same ids and nodes.
     const roundTripped = fromDTO(dto);
     expect(roundTripped.root).toBe(graph.root);
     expect(roundTripped.nodes.size).toBe(graph.nodes.size);
@@ -401,21 +401,21 @@ describe("SchemaGraph — DTO round-trip (a00011 C-4)", () => {
     }
   });
 
-  test("JSON.stringify(toDTO(graph)) → JSON.parse → fromDTO conserva el grafo", () => {
+  test("JSON.stringify(toDTO(graph)) → JSON.parse → fromDTO preserves the graph", () => {
     const graph = buildRoundTripGraph();
     const dto = toDTO(graph);
 
-    // Cruce JSON: si el contrato no exigiera DTO, este paso perdería
-    // todos los nodos (un Map se serializa como `{}`). Con DTO,
-    // sobrevive.
+    // JSON crossing: if the contract did not require DTO, this step
+    // would lose all the nodes (a Map serializes as `{}`). With DTO,
+    // they survive.
     const wire = JSON.stringify(dto);
     const parsed = JSON.parse(wire) as unknown;
 
-    // Sanity: el JSON no está vacío ni es `{}`.
+    // Sanity: the JSON is not empty nor `{}`.
     expect(wire).not.toBe("{}");
     expect(typeof parsed).toBe("object");
 
-    // Volvemos al grafo desde el JSON parseado.
+    // We come back to the graph from the parsed JSON.
     const restored = fromDTO(parsed as Parameters<typeof fromDTO>[0]);
     expect(restored.root).toBe(graph.root);
     expect(restored.nodes.size).toBe(3);
@@ -423,12 +423,12 @@ describe("SchemaGraph — DTO round-trip (a00011 C-4)", () => {
     expect(restored.nodes.get("n:1")?.scalarType).toBe("integer");
   });
 
-  test("el grafo reconstruido tiene `toDTO()` enlazado", () => {
+  test("the rebuilt graph has `toDTO()` bound", () => {
     const graph = buildRoundTripGraph();
     const restored = fromDTO(toDTO(graph));
 
-    // El interface exige `toDTO()`; el round-trip debe devolver un
-    // grafo que lo satisfaga.
+    // The interface requires `toDTO()`; the round-trip must return a
+    // graph that satisfies it.
     expect(typeof restored.toDTO).toBe("function");
     const dto = restored.toDTO();
     expect(dto.root).toBe(graph.root);

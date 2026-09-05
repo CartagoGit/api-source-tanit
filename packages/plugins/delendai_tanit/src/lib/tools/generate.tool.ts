@@ -38,7 +38,7 @@ import {
 } from "../helpers/runner.helper";
 import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
 
-/** Id estable del tool dentro del namespace del plugin. */
+/** Stable id of the tool inside the plugin's namespace. */
 const TOOL_ID = "generate";
 
 export function buildGenerateToolRegistration(

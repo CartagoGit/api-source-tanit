@@ -1,6 +1,6 @@
 /**
- * API de Hono que ejercita lo que la distingue de Express: rutas
- * encadenadas, montaje de sub-apps con `route()`, y validación con
+ * Hono API that exercises what distinguishes it from Express: chained
+ * routes, mounting sub-apps with `route()`, and validation with
  * `@hono/zod-validator`.
  */
 import { Hono } from "hono";
@@ -28,7 +28,7 @@ const app = new Hono();
 
 app.route("/api", app);
 
-// Encadenado: tres rutas en una expresión.
+// Chained: three routes in one expression.
 app
   .get("/health", (c) => c.json({ ok: true }))
   .get("/status", (c) => c.json({ up: true }))

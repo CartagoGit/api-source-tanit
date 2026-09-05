@@ -34,21 +34,21 @@ const ROOT = smokeFixtureDir("symfony");
 const COMPREHENSIVE = comprehensiveFixtureDir("symfony");
 
 describe("Symfony scanner", () => {
-  test("detect() > 0 cuando composer.json tiene symfony/framework-bundle", async () => {
+  test("detect() > 0 when composer.json contains symfony/framework-bundle", async () => {
     expect((await new SymfonyProjectScanner().detect(ROOT)).score).toBeGreaterThan(0);
   });
 
-  test("detect() === 0 en directorio sin composer.json", async () => {
+  test("detect() === 0 in a directory without composer.json", async () => {
     expect((await new SymfonyProjectScanner().detect("/tmp")).score).toBe(0);
   });
 
-  test("scan() devuelve las 3 rutas del mini-fixture (routes.yaml)", async () => {
+  test("scan() returns the 3 routes of the mini-fixture (routes.yaml)", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     expect(routes.length).toBeGreaterThanOrEqual(3);
   });
 
-  test("rutas incluyen GET y POST sobre /api/users", async () => {
+  test("routes include GET and POST on /api/users", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const uris = routes.map((r) => `${r.method} ${r.uri}`);
@@ -56,27 +56,27 @@ describe("Symfony scanner", () => {
     expect(uris).toContain("POST /api/users");
   });
 
-  test("path param {id} presente en la ruta show", async () => {
+  test("path param {id} present in the show route", async () => {
     const match = await new SymfonyProjectScanner().resolve(ROOT);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const show = routes.find((r) => r.method === "GET" && r.uri.includes("{id}"));
     expect(show).toBeDefined();
   });
 
-  test("comprehensive: detecta las 14 rutas con prefijos de controller class", async () => {
+  test("comprehensive: detects the 14 routes with controller class prefixes", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     expect(routes.length).toBe(14);
   });
 
-  test("no duplica endpoints declarados a la vez en YAML y en #[Route]", async () => {
+  test("does not duplicate endpoints declared in both YAML and #[Route]", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const keys = routes.map((r) => `${r.method} ${r.uri}`);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  test("sourceFile es siempre relativo al proyecto", async () => {
+  test("sourceFile is always relative to the project", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     for (const route of routes) {
@@ -85,7 +85,7 @@ describe("Symfony scanner", () => {
     }
   });
 
-  test("validation provider resuelve #[Assert\\NotBlank] para POST /users", async () => {
+  test("validation provider resolves #[Assert\\NotBlank] for POST /users", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const routes = (await new SymfonyRouteScanner().scan(match)).routes;
     const post = routes.find((r) => r.method === "POST" && r.uri === "/users");
@@ -99,7 +99,7 @@ describe("Symfony scanner", () => {
     expect(names).toContain("role");
   });
 
-  test("validation provider resuelve los Assert del login (otro controller)", async () => {
+  test("validation provider resolves the Assert from login (another controller)", async () => {
     const match = await new SymfonyProjectScanner().resolve(COMPREHENSIVE);
     const result = await new SymfonyRouteScanner().scan(match);
     const routes = result.routes;
@@ -118,21 +118,21 @@ describe("Symfony scanner", () => {
 // Detection: variantes de composer.json / marcadores.
 // ---------------------------------------------------------------------------
 
-describe("Symfony detect — variantes", () => {
-  test("require-dev también cuenta como Symfony", async () => {
+describe("Symfony detect — variants", () => {
+  test("require-dev also counts as Symfony", async () => {
     const project = await createTempProject({
       "composer.json": '{"require-dev":{"symfony/routing":"^7.0"}}',
       "config/routes.yaml": "vivo:\n  path: /vivo\n  controller: C::v\n  methods: [GET]\n",
     });
     try {
-      // Ni bin/console ni src/Controller pero sí routes.yaml → 0.8.
+      // No bin/console nor src/Controller but yes routes.yaml → 0.8.
       expect((await new SymfonyProjectScanner().detect(project.root)).score).toBe(0.7);
     } finally {
       await project.cleanup();
     }
   });
 
-  test("solo composer.json con Symfony da 0.4", async () => {
+  test("only composer.json with Symfony scores 0.4", async () => {
     const project = await createTempProject({
       "composer.json": '{"require":{"symfony/framework-bundle":"^7.0"}}',
     });
@@ -143,7 +143,7 @@ describe("Symfony detect — variantes", () => {
     }
   });
 
-  test("composer.json corrupto da 0", async () => {
+  test("corrupt composer.json scores 0", async () => {
     const project = await createTempProject({
       "composer.json": "{json roto",
     });
@@ -154,7 +154,7 @@ describe("Symfony detect — variantes", () => {
     }
   });
 
-  test("sin sección require en composer.json no lanza y da 0", async () => {
+  test("without a require section in composer.json does not throw and scores 0", async () => {
     const project = await createTempProject({
       "composer.json": '{"name":"sin-dependencias"}',
     });
@@ -172,8 +172,8 @@ describe("Symfony detect — variantes", () => {
 
 const COMPOSER = '{"require":{"symfony/framework-bundle":"^7.0"}}';
 
-describe("Symfony — rutas YAML", () => {
-  test("prefix se concatena y controller::action queda en actionName", async () => {
+describe("Symfony — YAML routes", () => {
+  test("prefix concatenates and controller::action goes into actionName", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -200,19 +200,19 @@ describe("Symfony — rutas YAML", () => {
       expect(prefijo?.displayName).toBe("con_prefijo");
       expect(prefijo?.controllerClass).toBe("App\\Controller\\C");
       expect(prefijo?.description).toBeUndefined();
-      // methods como string: se parte por | o , sin contaminar description.
+      // methods as string: split on | or , without leaking into description.
       const str = routes.find((r) => r.uri === "/s");
       expect(str?.method).toBe("GET");
       expect(str?.description).toBeUndefined();
       expect(str?.actionName).toBe("s");
-      // Ni controller ni entrada escalar producen nada.
+      // Neither a missing controller nor a scalar entry produce anything.
       expect(routes).toHaveLength(2);
     } finally {
       await project.cleanup();
     }
   });
 
-  test("methods string con varios verbos separados por |", async () => {
+  test("methods string with several verbs separated by |", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -230,7 +230,7 @@ describe("Symfony — rutas YAML", () => {
     }
   });
 
-  test("verbos no HTTP en un methods string se descartan", async () => {
+  test("non-HTTP verbs in a methods string are dropped", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -248,7 +248,7 @@ describe("Symfony — rutas YAML", () => {
     }
   });
 
-  test("resource: que apunta a un controller se parsea con prefix", async () => {
+  test("resource: pointing to a controller is parsed with prefix", async () => {
     const controller = [
       "<?php",
       "namespace App\\Controller;",
@@ -275,16 +275,16 @@ describe("Symfony — rutas YAML", () => {
       const { routes } = await scanProject("symfony", project.root);
       const uris = routes.map((r) => r.uri).sort();
       expect(uris).toEqual(["/api/widgets", "/api/widgets/{id}"]);
-      // El prefix viene del YAML más el #[Route] de clase.
+      // The prefix comes from the YAML plus the class-level #[Route].
       expect(routes[0]?.prefixChain).toEqual(["/api/widgets"]);
-      // sourceFile relativo: el bug histórico de Symfony.
+      // Relative sourceFile: the historic Symfony bug.
       expect(routes[0]?.sourceFile).toBe("src/Controller/WidgetController.php");
     } finally {
       await project.cleanup();
     }
   });
 
-  test("resource en config/routes se resuelve relativo al YAML", async () => {
+  test("resource in config/routes is resolved relative to the YAML", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": "imports:\n  resource: ./routes/api.yaml\n",
@@ -311,7 +311,7 @@ describe("Symfony — rutas YAML", () => {
     }
   });
 
-  test("resource que no es string y resource sin Controller.php no producen nada", async () => {
+  test("resource that is not a string and resource without Controller.php yield nothing", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -329,7 +329,7 @@ describe("Symfony — rutas YAML", () => {
     }
   });
 
-  test("config/routes/: solo .yaml/.yml, lo demás se ignora", async () => {
+  test("config/routes/: only .yaml/.yml, the rest is ignored", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": "raiz:\n  path: /raiz\n  controller: C::r\n  methods: [GET]\n",
@@ -344,7 +344,7 @@ describe("Symfony — rutas YAML", () => {
     }
   });
 
-  test("YAML sin mapping raíz no produce rutas ni lanza", async () => {
+  test("YAML without a root mapping produces no routes and does not throw", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": "- solo\n- lista\n",
@@ -359,10 +359,10 @@ describe("Symfony — rutas YAML", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Atributos #[Route]: variantes del método y dedupe con YAML.
+// #[Route] attributes: method variants and dedupe with YAML.
 // ---------------------------------------------------------------------------
 
-describe("Symfony — atributos #[Route]", () => {
+describe("Symfony — #[Route] attributes", () => {
   function controllerPhp(body: string): string {
     return [
       "<?php",
@@ -387,7 +387,7 @@ describe("Symfony — atributos #[Route]", () => {
     }
   }
 
-  test("name, methods de un solo string y verbs por defecto", async () => {
+  test("name, single-string methods, and default verbs", async () => {
     const { routes } = await escanear([
       "    #[Route('/n', methods: ['GET'], name: 'con_nombre')]",
       "    public function conNombre() {}",
@@ -404,12 +404,12 @@ describe("Symfony — atributos #[Route]", () => {
     expect(conNombre?.prefixChain).toEqual(["/base"]);
     const uno = routes.find((r) => r.uri === "/base/uno");
     expect(uno?.method).toBe("POST");
-    // Sin methods declarados: Symfony contesta a GET.
+    // Without declared methods: Symfony answers GET.
     const sinMetodo = routes.find((r) => r.method === "GET" && r.uri === "/base/sin-metodo");
     expect(sinMetodo).toBeDefined();
   });
 
-  test("verbo desconocido se descarta y la firma a +3 líneas sigue dando nombre", async () => {
+  test("unknown verb is dropped and the signature at +3 lines still yields a name", async () => {
     const { routes } = await escanear([
       "    #[Route('/purga', methods: ['PURGE'])]",
       "    public function purga() {}",
@@ -424,13 +424,13 @@ describe("Symfony — atributos #[Route]", () => {
     expect(routes.some((r) => r.uri === "/base/purga")).toBe(false);
     const lejana = routes.find((r) => r.uri === "/base/lejana");
     expect(lejana?.description).toBe("lejana");
-    // Sin firma en las 3 líneas siguientes: displayName derivado.
+    // Without a signature in the 3 lines that follow: derived displayName.
     const sinFirma = routes.find((r) => r.uri === "/base/sin-firma");
     expect(sinFirma?.displayName).toBe("GET /base/sin-firma");
     expect(sinFirma?.description).toBeUndefined();
   });
 
-  test("dedupe: YAML + #[Route] dejan la del atributo (más informativa)", async () => {
+  test("dedupe: YAML + #[Route] keep the attribute one (more informative)", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml":
@@ -454,7 +454,7 @@ describe("Symfony — atributos #[Route]", () => {
     }
   });
 
-  test("dedupe en la raíz ('/') no colapsa barras de más", async () => {
+  test("dedupe at the root ('/') does not collapse extra slashes", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": "raiz:\n  path: /\n  controller: C::root\n  methods: [GET]\n",
@@ -480,8 +480,8 @@ describe("Symfony — atributos #[Route]", () => {
 // SymfonyAttributesValidationProvider: ramas del extractor de #[Assert].
 // ---------------------------------------------------------------------------
 
-describe("Symfony — provider de assertions", () => {
-  test("YAML controller::action resuelve assertions del método", async () => {
+describe("Symfony — assertions provider", () => {
+  test("YAML controller::action resolves the method's assertions", async () => {
     const project = await createTempProject({
       "composer.json": COMPOSER,
       "config/routes.yaml": [
@@ -512,7 +512,7 @@ describe("Symfony — provider de assertions", () => {
   });
   const provider = new SymfonyAttributesValidationProvider();
 
-  test("todos los tipos de Assert: formato, cotas, enum y allowNull", async () => {
+  test("every Assert kind: format, bounds, enum and allowNull", async () => {
     const proyecto = await createTempProject({
       "composer.json": COMPOSER,
       "src/Controller/AssertController.php": [
@@ -544,14 +544,14 @@ describe("Symfony — provider de assertions", () => {
       expect(byName.get("role")).toMatchObject({ type: "enum", enumValues: ["a", "b"] });
       expect(byName.get("age")).toMatchObject({ type: "integer", minimum: 0, maximum: 100 });
       expect(byName.get("opt")).toMatchObject({ required: false });
-      // Un Assert desconocido no produce campo.
+      // An unknown Assert yields no field.
       expect(byName.has("raro")).toBe(false);
     } finally {
       await proyecto.cleanup();
     }
   });
 
-  test("Assert en línea separada del parámetro (búsqueda a 3 líneas)", async () => {
+  test("Assert on a separate line from the parameter (3-line search)", async () => {
     const proyecto = await createTempProject({
       "composer.json": COMPOSER,
       "src/Controller/SeparadoController.php": [
@@ -575,7 +575,7 @@ describe("Symfony — provider de assertions", () => {
     }
   });
 
-  test("ruta YAML sin #[Route]: localiza el método por description", async () => {
+  test("YAML route without #[Route]: locates the method by description", async () => {
     const proyecto = await createTempProject({
       "composer.json": COMPOSER,
       "src/Controller/YamlController.php": [
@@ -606,7 +606,7 @@ describe("Symfony — provider de assertions", () => {
     }
   });
 
-  test("sin sourceFile o con sourceFile inexistente devuelve fields vacías", async () => {
+  test("without sourceFile or with a non-existent sourceFile returns empty fields", async () => {
     const proyecto = await createTempProject({ "composer.json": COMPOSER });
     try {
       const match = await new SymfonyProjectScanner().resolve(proyecto.root);
@@ -625,7 +625,7 @@ describe("Symfony — provider de assertions", () => {
     }
   });
 
-  test("bloque sin signature cercana no cuelga y devuelve sin campos", async () => {
+  test("a block with no nearby signature does not hang and returns no fields", async () => {
     const proyecto = await createTempProject({
       "composer.json": COMPOSER,
       "src/Controller/RotoController.php": [

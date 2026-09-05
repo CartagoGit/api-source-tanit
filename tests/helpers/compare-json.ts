@@ -1,6 +1,6 @@
 /**
- * Helpers para comparar JSONs de collections Postman ignorando
- * campos volátiles (paths absolutos, IDs generados, timestamps).
+ * Helpers to compare Postman collection JSONs ignoring volatile
+ * fields (absolute paths, generated IDs, timestamps).
  */
 import { createHash } from "node:crypto";
 import { isRecord, readArray, readObject, readString } from "../../packages/core/helpers/parse-json.helper";
@@ -14,8 +14,8 @@ const VOLATILE_KEYS = new Set([
 ]);
 
 /**
- * Recorre un objeto y reemplaza campos volátiles con un placeholder.
- * Devuelve una copia profunda sin mutar el original.
+ * Walks an object and replaces volatile fields with a placeholder.
+ * Returns a deep copy without mutating the original.
  */
 export function normalizeCollection(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
@@ -35,8 +35,9 @@ export function normalizeCollection(obj: unknown): unknown {
 }
 
 /**
- * Compara dos collections de manera estructural ignorando volatile.
- * Devuelve una lista de diferencias (paths), vacía si son equivalentes.
+ * Compares two collections structurally ignoring volatile.
+ * Returns a list of differences (paths), empty if they are
+ * equivalent.
  */
 export function diffCollections(a: unknown, b: unknown, path = "$"): string[] {
   const diffs: string[] = [];
@@ -83,8 +84,8 @@ export function diffCollections(a: unknown, b: unknown, path = "$"): string[] {
 }
 
 /**
- * Hash SHA-256 de un objeto (post-normalize).
- * Útil para snapshots "did the output change?".
+ * SHA-256 hash of an object (post-normalize).
+ * Useful for "did the output change?" snapshots.
  */
 export function hashNormalized(obj: unknown): string {
   const normalized = normalizeCollection(obj);
@@ -94,7 +95,7 @@ export function hashNormalized(obj: unknown): string {
 }
 
 /**
- * Cuenta items (requests + folders) en una collection.
+ * Counts items (requests + folders) in a collection.
  */
 export function countItems(items: readonly unknown[]): { requests: number; folders: number } {
   let requests = 0;
@@ -114,7 +115,7 @@ export function countItems(items: readonly unknown[]): { requests: number; folde
 }
 
 /**
- * Encuentra un endpoint por (method, uri) en la collection.
+ * Finds an endpoint by (method, uri) in the collection.
  */
 export function findEndpoint(
   collection: unknown,
@@ -137,18 +138,19 @@ export function findEndpoint(
     return null;
   };
   const encontrado = walk(readArray(collection, "item") ?? []);
-  // El predicado comprueba de verdad la forma antes de afirmarla, así
-  // que esto no es un casting: es una comprobación con nombre. Devolver
-  // `unknown` obligaría a cada uno de los treinta tests que lo usan a
-  // volver a estrechar lo mismo.
+  // The predicate really checks the shape before asserting it, so
+  // this is not a cast: it is a check with a label. Returning
+  // `unknown` would force each of the thirty tests that use this
+  // to narrow the same thing again.
   return isPostmanItem(encontrado) ? encontrado : null;
 }
 
 /**
- * ¿Esto tiene la forma de un item de Postman?
+ * Does this have the shape of a Postman item?
  *
- * Se comprueba, no se afirma: un `as PostmanItem` sobre lo que salga de
- * recorrer un JSON ajeno es exactamente lo que este repo prohíbe.
+ * We check, we do not assert: an `as PostmanItem` over whatever
+ * comes out of walking a foreign JSON is exactly what this repo
+ * forbids.
  */
 function isPostmanItem(value: unknown): value is PostmanItem {
   if (!isRecord(value)) return false;
@@ -157,7 +159,7 @@ function isPostmanItem(value: unknown): value is PostmanItem {
 }
 
 /**
- * Comprueba invariantes de Postman v2.1.0.
+ * Checks Postman v2.1.0 invariants.
  */
 export function validatePostmanInvariants(collection: unknown): string[] {
   const issues: string[] = [];
@@ -165,7 +167,7 @@ export function validatePostmanInvariants(collection: unknown): string[] {
   if (!info) issues.push("missing .info");
   const schema = readString(info, "schema");
   if (!schema?.includes("2.1.0")) {
-    issues.push(`.info.schema should be Postman v2.1.0 (got: ${schema ?? "nada"})`);
+    issues.push(`.info.schema should be Postman v2.1.0 (got: ${schema ?? "nothing"})`);
   }
   const raiz = readArray(collection, "item");
   if (!raiz) issues.push("missing .item array");
@@ -176,16 +178,16 @@ export function validatePostmanInvariants(collection: unknown): string[] {
       const hijos = readArray(it, "item");
       if (hijos) {
         if (!nombre) issues.push(`${path}: folder missing name`);
-        walk(hijos, `${path}/${nombre ?? "(sin nombre)"}`);
+        walk(hijos, `${path}/${nombre ?? "(unnamed)"}`);
         continue;
       }
       if (!nombre) issues.push(`${path}: request missing name`);
       const request = readObject(it, "request");
       if (!readString(request, "method")) {
-        issues.push(`${path}/${nombre ?? "(sin nombre)"}: missing method`);
+        issues.push(`${path}/${nombre ?? "(unnamed)"}: missing method`);
       }
       if (!readString(readObject(request, "url"), "raw")) {
-        issues.push(`${path}/${nombre ?? "(sin nombre)"}: missing url.raw`);
+        issues.push(`${path}/${nombre ?? "(unnamed)"}: missing url.raw`);
       }
     }
   };
@@ -194,14 +196,15 @@ export function validatePostmanInvariants(collection: unknown): string[] {
 }
 
 /**
- * Todos los endpoints que casan con `method + uri`.
+ * All endpoints matching `method + uri`.
  *
- * A diferencia de `findEndpoint`, que devuelve el primero, este los
- * devuelve todos — que es lo que hace falta para **detectar
- * duplicados**: en Symfony el mismo endpoint declarado en YAML y con
- * `#[Route]` salía dos veces, y con el primero no se veía.
+ * Unlike `findEndpoint`, which returns the first, this one returns
+ * all of them — which is what is needed to **detect duplicates**:
+ * in Symfony the same endpoint declared in YAML and with
+ * `#[Route]` came out twice, and with the first one it was not
+ * visible.
  *
- * Estaba copiado en tres ficheros de test, cada uno con sus `any`.
+ * It was copied across three test files, each with its own `any`.
  */
 export function findAllEndpoints(
   collection: unknown,
@@ -228,7 +231,7 @@ export function findAllEndpoints(
   return out;
 }
 
-/** Las claves `MÉTODO url` de todas las requests, para detectar duplicados. */
+/** The `METHOD url` keys of every request, to detect duplicates. */
 export function collectRequestKeys(collection: unknown): string[] {
   const out: string[] = [];
   const walk = (items: readonly unknown[]): void => {
@@ -248,14 +251,14 @@ export function collectRequestKeys(collection: unknown): string[] {
   return out;
 }
 
-/** Los nombres de las carpetas de primer nivel. */
+/** The names of the first-level folders. */
 export function topFolderNames(collection: unknown): string[] {
   return (readArray(collection, "item") ?? [])
     .map((it) => readString(it, "name"))
     .filter((n): n is string => typeof n === "string");
 }
 
-/** Todas las requests de la colección, aplanadas. */
+/** All requests in the collection, flattened. */
 export function allRequests(collection: unknown): PostmanItem[] {
   const out: PostmanItem[] = [];
   const walk = (items: readonly unknown[]): void => {

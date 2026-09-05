@@ -1,23 +1,25 @@
 /**
- * `summary` — la evidencia textual del detector de framework.
+ * `summary` — the textual evidence of the framework detector.
  *
- * El usuario del CLI no abre Postman: abre el terminal y ejecuta
- * `expostman summary`. La línea que sigue a `→ Framework:` es la que
- * convierte "framework: express" en "porque `package.json` declara
- * express en dependencies". Esa línea la construye `summary.script.ts`
- * con los `evidence` que el detector de cada framework devuelve.
+ * The CLI user does not open Postman: they open the terminal and run
+ * `expostman summary`. The line that follows `→ Framework:` is the
+ * one that turns "framework: express" into "because `package.json`
+ * declares express in dependencies". That line is built by
+ * `summary.script.ts` from the `evidence` each framework's detector
+ * returns.
  *
- * Lo que se prueba aquí es que **cada framework soportado emite
- * evidencia legible**: el `signal` es una frase en castellano, el
- * `weight` está en [0..1] y el `artifact` apunta al fichero del que
- * salió la señal. Sin esto, la tarjeta "¿Por qué X?" en el resumen
- * saldría vacía para casi todos los frameworks, y un dashboard
- * siempre vacío no enseña nada.
+ * What is tested here is that **every supported framework emits
+ * readable evidence**: the `signal` is a sentence, the `weight` is
+ * in [0..1] and the `artifact` points to the file the signal came
+ * from. Without this, the "Why X?" card in the summary would come
+ * out empty for almost all frameworks, and a dashboard that is
+ * always empty teaches nothing.
  *
- * El detector es la fuente de verdad del peso —si el orquestador lo
- * acepta, aquí se acepta—; el test verifica la **forma** del payload,
- * no el valor concreto de cada peso, porque ese valor cambia con cada
- * detector que se enriquezca.
+ * The detector is the source of truth for the weight —if the
+ * orchestrator accepts it, here it is accepted—; the test verifies
+ * the **shape** of the payload, not the concrete value of each
+ * weight, because that value changes with each detector that gets
+ * enriched.
  */
 import { describe, expect, test } from "vitest";
 
@@ -25,15 +27,16 @@ import { summarizeWithAllFrameworks } from "../../packages/frameworks/index.js";
 import type { IProjectDetectionEvidence } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 
 /**
- * Raíz de las fixtures reales. Cada carpeta modela un framework
- * distinto y, según el detector, emite evidencia distinta.
+ * Root of the real fixtures. Each folder models a different
+ * framework and, depending on the detector, emits different
+ * evidence.
  *
- * No se enumeran los 21 frameworks del registro: algunos detectores
- * (Phoenix, Ktor, Fiber, Rust, Fiber, Hono, trpc, GraphQL) todavía no
- * se han enriquecido con `withEvidence` y su `evidence` es vacío. El
- * contrato a probar es el de los que sí emiten —los que el usuario
- * realmente ve en el `summary`—; los demás se cubren cuando se
- * migren.
+ * The 21 frameworks of the registry are not enumerated: some
+ * detectors (Phoenix, Ktor, Fiber, Rust, Fiber, Hono, trpc, GraphQL)
+ * have not yet been enriched with `withEvidence` and their
+ * `evidence` is empty. The contract to test is that of the ones
+ * that do emit —the ones the user actually sees in `summary`—; the
+ * rest are covered when they are migrated.
  */
 const FIXTURES = {
   express: "tests/fixtures/express-comprehensive",
@@ -47,12 +50,13 @@ const FIXTURES = {
 } as const;
 
 /**
- * Tipo `signal` con todas las claves contractuales obligatorias.
+ * `signal` type with all mandatory contractual keys.
  *
- * El test falla si el detector olvida `weight` o devuelve una señal
- * vacía, que es lo que pasaría si un `withEvidence(score, [])` se
- * colara al resumen por error: la línea `→ ¿Por qué X?` se imprimiría
- * sin bullets y el usuario se quedaría sin respuesta.
+ * The test fails if the detector forgets `weight` or returns an
+ * empty signal, which is what would happen if a
+ * `withEvidence(score, [])` slipped into the summary by mistake:
+ * the `→ Why X?` line would print without bullets and the user
+ * would be left without an answer.
  */
 function esEvidenciaLegible(e: unknown): e is IProjectDetectionEvidence {
   if (typeof e !== "object" || e === null) return false;
@@ -66,14 +70,14 @@ function esEvidenciaLegible(e: unknown): e is IProjectDetectionEvidence {
   return true;
 }
 
-describe("summary — evidence: cada framework conocido emite evidencia legible", () => {
+describe("summary — evidence: every known framework emits readable evidence", () => {
   /**
-   * Express: detector con un único `withEvidence` que anota la
-   * declaración de `express` (o un prefijo coincidente) en
-   * `package.json`. La señal debe mencionar el nombre del paquete y
-   * el fichero del que salió.
+   * Express: detector with a single `withEvidence` that notes the
+   * `express` declaration (or a matching prefix) in `package.json`.
+   * The signal must mention the package name and the file it came
+   * from.
    */
-  test("Express: la evidencia apunta a package.json y menciona 'express'", async () => {
+  test("Express: evidence points to package.json and mentions 'express'", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.express);
     expect(summary.framework).toBe("express");
     expect(summary.evidence.length).toBeGreaterThan(0);
@@ -84,11 +88,11 @@ describe("summary — evidence: cada framework conocido emite evidencia legible"
   });
 
   /**
-   * FastAPI: el detector escanea varios `requirements*` y `pyproject.toml`;
-   * al menos una señal debe mencionar `fastapi` y un artefacto de los
-   * que el detector inspecciona.
+   * FastAPI: the detector scans several `requirements*` and
+   * `pyproject.toml`; at least one signal must mention `fastapi`
+   * and an artifact of those the detector inspects.
    */
-  test("FastAPI: la evidencia menciona fastapi y un artefacto de dependencias", async () => {
+  test("FastAPI: evidence mentions fastapi and a dependency artifact", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.fastapi);
     expect(summary.framework).toBe("fastapi");
     expect(summary.evidence.length).toBeGreaterThan(0);
@@ -102,36 +106,36 @@ describe("summary — evidence: cada framework conocido emite evidencia legible"
   });
 
   /**
-   * Laravel: el detector suma varias señales (artisan, routes/, app/,
-   * composer.json) hasta cubrir el score. Aquí se valida que la suma
-   * de pesos **refleja** las señales (el peso del summary es la suma
-   * de los pesos individuales, modulada por el `withEvidence` que
-   * aplica `Math.min(score, 1)`).
+   * Laravel: the detector sums several signals (artisan, routes/,
+   * app/, composer.json) until it covers the score. Here we
+   * validate that the sum of weights **reflects** the signals (the
+   * summary weight is the sum of the individual weights, modulated
+   * by the `withEvidence` that applies `Math.min(score, 1)`).
    */
-  test("Laravel: la suma de pesos coincide con el score del detector (≤ 1)", async () => {
+  test("Laravel: the sum of weights matches the detector's score (≤ 1)", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.laravel);
     expect(summary.framework).toBe("laravel");
     expect(summary.evidence.length).toBeGreaterThanOrEqual(2);
     const sumaPesos = summary.evidence.reduce((acc, e) => acc + e.weight, 0);
-    // El detector usa `Math.min(suma, 1)`, así que la suma puede
-    // superar 1: lo que se garantiza es que **cada** peso está acotado
-    // y la suma es lo que el detector eligió reportar.
+    // The detector uses `Math.min(sum, 1)`, so the sum can exceed
+    // 1: what is guaranteed is that **each** weight is bounded and
+    // the sum is what the detector chose to report.
     for (const e of summary.evidence) {
       expect(esEvidenciaLegible(e)).toBe(true);
       expect(e.weight).toBeGreaterThanOrEqual(0);
       expect(e.weight).toBeLessThanOrEqual(1);
     }
     expect(sumaPesos).toBeGreaterThan(0);
-    expect(sumaPesos).toBeGreaterThanOrEqual(1); // Laravel típico detecta a 1
+    expect(sumaPesos).toBeGreaterThanOrEqual(1); // typical Laravel detects to 1
   });
 
   /**
-   * Django: detector con dos señales (manage.py + referencia a
-   * Django en requirements/pyproject). La primera debe mencionar
-   * `manage.py` (la segunda es opcional según cómo se monte la
-   * fixture).
+   * Django: detector with two signals (manage.py + reference to
+   * Django in requirements/pyproject). The first one must mention
+   * `manage.py` (the second is optional depending on how the
+   * fixture is built).
    */
-  test("Django: la evidencia principal menciona manage.py", async () => {
+  test("Django: the main evidence mentions manage.py", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.django);
     expect(summary.framework).toBe("django");
     expect(summary.evidence.length).toBeGreaterThan(0);
@@ -145,13 +149,13 @@ describe("summary — evidence: cada framework conocido emite evidencia legible"
   });
 
   /**
-   * Forma global: si sumamos la evidencia de **todas** las
-   * fixtures, ningún elemento infringe el contrato. Una sola señal
-   * mal formada por detector basta para que el CLI imprima basura o
-   * tire la línea, así que este test cubre al resto de detectores
-   * que comparten el helper `withEvidence`.
+   * Global shape: if we add up the evidence of **all** the
+   * fixtures, no element breaks the contract. A single malformed
+   * signal per detector is enough for the CLI to print garbage or
+   * drop the line, so this test covers the rest of the detectors
+   * that share the `withEvidence` helper.
    */
-  test("todas las señales de las fixtures son legibles y bounded", async () => {
+  test("all signals from the fixtures are readable and bounded", async () => {
     for (const fx of Object.values(FIXTURES)) {
       const summary = await summarizeWithAllFrameworks(fx);
       for (const e of summary.evidence) {
@@ -164,20 +168,21 @@ describe("summary — evidence: cada framework conocido emite evidencia legible"
   });
 });
 
-describe("summary — evidence: borde y composición", () => {
+describe("summary — evidence: edge and composition", () => {
   /**
-   * Sin framework detectado, `evidence` se queda en `[]` y la línea
-   * `→ ¿Por qué X?` se omite del todo (no imprime el bloque con
-   * cero bullets). Una fixture que no matchea ningún detector activa
-   * este camino: el CLI no debe inventar evidencia.
+   * Without a detected framework, `evidence` stays at `[]` and the
+   * `→ Why X?` line is omitted entirely (the block is not printed
+   * with zero bullets). A fixture that matches no detector
+   * triggers this path: the CLI must not invent evidence.
    *
-   * Se usa un directorio temporal con un `package.json` que no
-   * declara nada — el orquestador devuelve `{ score: 0, evidence: [] }`
-   * y el resumen propaga el vacío.
+   * A temporary directory with a `package.json` that declares
+   * nothing is used — the orchestrator returns
+   * `{ score: 0, evidence: [] }` and the summary propagates the
+   * empty.
    */
-  test("proyecto sin framework detectado: evidence es [] y no rompe el summary", async () => {
-    // `mkdtemp` con un nombre estable para el test; el contenido se
-    // borra en `afterEach` del spec hermano si aplica.
+  test("project with no detected framework: evidence is [] and does not break summary", async () => {
+    // `mkdtemp` with a stable name for the test; the contents are
+    // deleted in `afterEach` of the sibling spec if applicable.
     const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
     const { tmpdir } = await import("node:os");
     const { join } = await import("node:path");
@@ -185,13 +190,14 @@ describe("summary — evidence: borde y composición", () => {
     try {
       await writeFile(
         join(root, "package.json"),
-        JSON.stringify({ name: "vacio", version: "1.0.0" }),
+        JSON.stringify({ name: "empty", version: "1.0.0" }),
       );
       const summary = await summarizeWithAllFrameworks(root);
-      // El resumen cae al framework vacío: la línea `→ ¿Por qué X?`
-      // no se imprime (evidence vacío), y `routesInCode` queda a 0.
-      // Lo que se verifica es **el contrato del bloque evidence**:
-      // debe estar vacío y no inventar señales.
+      // The summary falls back to the empty framework: the
+      // `→ Why X?` line is not printed (empty evidence), and
+      // `routesInCode` stays at 0. What is verified is **the
+      // contract of the evidence block**: it must be empty and
+      // must not invent signals.
       expect(summary.evidence).toEqual([]);
       expect(summary.routesInCode).toBe(0);
     } finally {
@@ -200,13 +206,13 @@ describe("summary — evidence: borde y composición", () => {
   });
 
   /**
-   * Rails emite exactamente dos señales canónicas (config/routes.rb
-   * y Gemfile). El detector no añade más — un detector que empiece a
-   * inventar señales cambia el contrato del usuario: la línea
-   * `→ ¿Por qué Rails?` se alarga con cada cambio de detector y el
-   * usuario deja de saber qué mirar.
+   * Rails emits exactly two canonical signals (config/routes.rb
+   * and Gemfile). The detector does not add more — a detector that
+   * starts inventing signals changes the user's contract: the
+   * `→ Why Rails?` line grows with each detector change and the
+   * user stops knowing what to look at.
    */
-  test("Rails: emite exactamente las señales canónicas (routes.rb + Gemfile)", async () => {
+  test("Rails: emits exactly the canonical signals (routes.rb + Gemfile)", async () => {
     const summary = await summarizeWithAllFrameworks(FIXTURES.rails);
     expect(summary.framework).toBe("rails");
     expect(summary.evidence.length).toBe(2);

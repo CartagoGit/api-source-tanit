@@ -1,30 +1,31 @@
 /**
- * El historial de generaciones: append y lectura.
+ * Generation history: append and read.
  *
- * Cada vez que `generate` o `summary` termina bien, deja una línea en
- * `~/.tanit/history.jsonl`. La interfaz la lee al abrir el
- * dashboard, y el comando `history` la imprime entera o filtrada.
+ * Every time `generate` or `summary` finishes cleanly, it leaves a
+ * line in `~/.tanit/history.jsonl`. The interface reads it when
+ * opening the dashboard, and the `history` command prints it whole
+ * or filtered.
  *
- * ## Por qué append y no reescritura del fichero
+ * ## Why append and not rewriting the file
  *
- * Reescribir el fichero entero en cada generación obliga a leerlo
- * primero, lo que es un cliente del doble de caro (es I/O síncrono en
- * el path crítico) y abre una ventana en la que dos procesos —el
- * `watch` y la interfaz, por ejemplo— pueden pisarse el uno al otro.
+ * Rewriting the whole file on every generation forces reading it
+ * first, which is twice as costly (synchronous I/O on the critical
+ * path) and opens a window where two processes — the `watch` and
+ * the interface, for example — can trample each other.
  *
- * El append se hace con `writeFileAtomic` sobre un temporal + rename
- * solo cuando se construye una línea nueva. La escritura de cada línea
- * es atómica con respecto al lector: o se ve entera o no se ve. Si dos
- * procesos escriben a la vez, cada uno renombra su propio temporal y
- * el lector ve uno u otro, no una mezcla.
+ * The append uses `writeFileAtomic` on a tmp + rename, only when a
+ * new line is built. Each line's write is atomic with respect to the
+ * reader: either you see it whole or you do not see it. If two
+ * processes write at once, each renames its own tmp and the reader
+ * sees one or the other, not a mix.
  *
- * ## Por qué líneas malas no tiran la lectura
+ * ## Why bad lines do not kill the read
  *
- * El fichero lo escribe el propio programa, pero también lo podría
- * editar una persona con un editor de texto: una coma fuera de sitio,
- * y la línea entera queda inválida. Descartar **todo** el historial
- * por una línea rota es desproporcionado — se ignora esa línea, se
- * dice en la respuesta cuántas se descartaron, y se sigue.
+ * The file is written by the program itself, but it can also be
+ * edited by a person in a text editor: one stray comma, and the
+ * whole line becomes invalid. Discarding **all** the history for one
+ * broken line is disproportionate — we ignore that line, tell the
+ * response how many were discarded, and move on.
  */
 
 import { mkdir, readFile } from "node:fs/promises";
@@ -48,12 +49,12 @@ import {
 } from "../history-paths.helper.js";
 
 /**
- * Construye una entrada lista para serializar.
+ * Builds an entry ready to serialise.
  *
- * `timestamp` se calcula aquí y no en el llamador para que sea siempre
- * la del momento del append: dejar que el llamador la pase abre la
- * puerta a timestamps congelados (tests con `Date.now` mockeado,
- * reintentos con timestamp viejo).
+ * `timestamp` is computed here and not by the caller, so it is
+ * always the moment of the append: letting the caller pass it
+ * opens the door to frozen timestamps (tests with mocked `Date.now`,
+ * retries with a stale timestamp).
  */
 function buildEntry(
   input: IHistoryEntryInput,
@@ -79,28 +80,29 @@ function buildEntry(
 }
 
 /**
- * Resultado de un append, sea exitoso o no.
+ * Result of an append, success or failure.
  *
- * Los errores no se lanzan: `summary.script.ts` y `generate.script.ts`
- * llaman a esta función en su camino feliz, y un fallo de escritura
- * del historial no debe tumbar una generación que ya escribió su
- * colección. Se devuelve `{ ok: false, reason }` y quien llamó decide
- * si lo dice o se lo calla (en el CLI, lo segundo; en la UI, lo
- * primero, porque el usuario sí está mirando).
+ * Errors are not thrown: `summary.script.ts` and `generate.script.ts`
+ * call this function on their happy path, and a history-write failure
+ * must not take down a generation that already wrote its collection.
+ * We return `{ ok: false, reason }` and let the caller decide whether
+ * to say it (the CLI stays silent; the UI says it, because the user
+ * is looking).
  *
- * El tipo vive en `contracts/interfaces/cli/history.interface.ts` —
- * no aquí. Un tipo declarado al lado de la función que lo estrenó
- * obliga a importar esa función para usarlo, y `history.script.ts` lo
- * necesita sin tener que importar el servicio entero.
+ * The type lives in `contracts/interfaces/cli/history.interface.ts`
+ * — not here. A type declared next to the function that first used
+ * it forces importing that function to use it, and `history.script.ts`
+ * needs it without having to import the whole service.
  */
 export type { IHistoryAppendResult } from "../../contracts/interfaces/cli/history.interface.js";
 
 /**
- * Añade una entrada al historial.
+ * Appends an entry to the history.
  *
- * Si el directorio no existe, lo crea con `HISTORY_DIR_MODE`. Si la
- * escritura falla, devuelve `{ ok: false, reason }` y no lanza: el
- * llamador está en hot path.
+ * If the directory does not exist, it is created with
+ * `HISTORY_DIR_MODE`. If the write fails, it returns
+ * `{ ok: false, reason }` and does not throw: the caller is on the
+ * hot path.
  */
 export async function appendHistory(
   input: IHistoryEntryInput,
@@ -123,13 +125,13 @@ export async function appendHistory(
 }
 
 /**
- * ¿Es esto una entrada de historial bien formada?
+ * Is this a well-formed history entry?
  *
- * Comprueba solo la forma —los campos obligatorios y sus tipos— y deja
- * la validación semántica para quien use la entrada. El historial se
- * serializa a JSONL con `JSON.stringify`, así que cualquier objeto que
- * haya pasado por ahí tiene las claves que se le pusieron; lo único
- * que puede venir mal es una edición manual.
+ * It only checks shape — the required fields and their types — and
+ * leaves semantic validation to whoever uses the entry. The history
+ * is serialised to JSONL with `JSON.stringify`, so any object that
+ * went through it carries the keys it was given; the only thing
+ * that can be wrong is a manual edit.
  */
 function isHistoryEntry(value: unknown): value is IHistoryEntry {
   if (typeof value !== "object" || value === null) return false;
@@ -148,16 +150,16 @@ function isHistoryEntry(value: unknown): value is IHistoryEntry {
 }
 
 /**
- * Lee el historial y devuelve las entradas pedidas.
+ * Reads the history and returns the requested entries.
  *
- * `limit` recorta por la cola (las más recientes), no por la cabeza:
- * un historial que ya pasó de las N entradas enseñaría siempre las
- * mismas primeras, y eso es lo contrario de lo que un dashboard quiere.
+ * `limit` trims from the tail (the most recent), not from the head:
+ * a history that already passed N entries would always show the same
+ * first ones, which is the opposite of what a dashboard wants.
  *
- * Las líneas que no parsean o no pasan `isHistoryEntry` se devuelven en
- * `rejected` con su número de línea (1-indexed, que es lo que un
- * editor enseña). El fichero puede ser legítimo y aun así tener una
- * línea mala; eso no impide devolver el resto.
+ * Lines that fail to parse or to pass `isHistoryEntry` are returned
+ * in `rejected` with their 1-indexed line number (which is what an
+ * editor shows). The file can be legitimate and still have one bad
+ * line; that does not prevent returning the rest.
  */
 export async function readHistory(
   options: IHistoryReadOptions = {},
@@ -167,9 +169,9 @@ export async function readHistory(
   try {
     raw = await readFile(path, "utf8");
   } catch (error) {
-    // No hay fichero: no es un error, es que nadie ha generado todavía.
-    // Se devuelve un resultado vacío y `rejected` también vacío para
-    // que la UI enseñe "todavía nada" sin tener que distinguir.
+    // No file: not an error, just nobody has generated yet. We return
+    // an empty result and an empty `rejected` so the UI shows
+    // "nothing yet" without having to branch.
     const code = (error as { code?: string }).code;
     if (code === "ENOENT") {
       return { ok: true, entries: [], rejected: [], totalEntries: 0 };
@@ -198,10 +200,10 @@ export async function readHistory(
     todas.push(parsed.value);
   }
 
-  // Más recientes primero: `timestamp` es ISO 8601, así que el orden
-  // lexicográfico y el cronológico coinciden. `Array.prototype.sort`
-  // es estable en V8 desde 2018, así que dos entradas con el mismo
-  // timestamp conservan su orden de inserción.
+  // Most recent first: `timestamp` is ISO 8601, so lexicographic and
+  // chronological order coincide. `Array.prototype.sort` has been
+  // stable on V8 since 2018, so two entries with the same timestamp
+  // keep their insertion order.
   todas.sort((a, b) => (a.timestamp < b.timestamp ? 1 : a.timestamp > b.timestamp ? -1 : 0));
 
   let filtradas = todas;
@@ -223,7 +225,7 @@ export async function readHistory(
   };
 }
 
-/** Vuelca una lista de entradas como texto JSONL, una por línea. */
+/** Dumps a list of entries as JSONL text, one per line. */
 export function formatHistoryJsonl(
   entries: ReadonlyArray<IHistoryEntry>,
 ): string {
@@ -231,11 +233,11 @@ export function formatHistoryJsonl(
 }
 
 /**
- * Borra el historial completo.
+ * Clears the entire history.
  *
- * Devuelve `false` si el fichero no existía: borrarlo dos veces no es
- * un error. Lo usa el comando `history --clear`, y la UI nunca debería
- * llamarlo.
+ * Returns `false` if the file did not exist: deleting it twice is
+ * not an error. Used by the `history --clear` command; the UI
+ * should never call it.
  */
 export async function clearHistory(
   path: string = historyPath(),
@@ -251,5 +253,5 @@ export async function clearHistory(
   }
 }
 
-/** Re-export para los tests que prefieran construir la ruta a mano. */
+/** Re-export for tests that prefer to build the path by hand. */
 export { historyPath, userHistoryDir };

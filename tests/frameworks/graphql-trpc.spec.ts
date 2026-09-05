@@ -1,14 +1,15 @@
 /**
- * GraphQL y tRPC: dos protocolos sin rutas visibles.
+ * GraphQL and tRPC: two protocols with no visible routes.
  *
- * Los dos comparten el problema que los hace interesantes — el cliente
- * no escribe URLs, así que nadie sabe de memoria a qué se está llamando
- * — y los dos tienen una traducción a HTTP **exacta**, que es lo que
- * permite generar una colección que funciona al primer Send.
+ * Both share the problem that makes them interesting — the client
+ * does not write URLs, so nobody knows by heart what is being
+ * called — and both have an **exact** HTTP translation, which is
+ * what makes it possible to generate a collection that works on the
+ * first Send.
  *
- * Lo que se comprueba aquí es esa traducción, y las dos cosas que se
- * dejan fuera a propósito: las suscripciones de los dos, que van por
- * WebSocket y fallarían.
+ * What is checked here is that translation, and the two things that
+ * are deliberately left out: the subscriptions of both, which go
+ * over WebSocket and would fail.
  */
 import { describe, expect, test } from "vitest";
 
@@ -37,8 +38,8 @@ type Subscription {
 }
 `;
 
-describe("GraphQL: leer el esquema", () => {
-  test("saca las queries con sus argumentos", () => {
+describe("GraphQL: reading the schema", () => {
+  test("extracts the queries with their arguments", () => {
     const ops = parseOperations(SCHEMA, "query");
     expect(ops.map((o) => o.name)).toEqual(["users", "user"]);
     expect(ops[0]?.args).toEqual([
@@ -47,46 +48,46 @@ describe("GraphQL: leer el esquema", () => {
     ]);
   });
 
-  test("saca las mutaciones aparte", () => {
+  test("extracts the mutations separately", () => {
     expect(parseOperations(SCHEMA, "mutation").map((o) => o.name)).toEqual(["createUser"]);
   });
 
-  // Una descripción `"""…"""` puede contener cualquier cosa, incluido
-  // algo que parezca otro tipo.
-  test("las descripciones y los comentarios no cuentan", () => {
+  // A description `"""…"""` can contain anything, including
+  // something that looks like another type.
+  test("descriptions and comments do not count", () => {
     const clean = stripGraphQlComments(SCHEMA);
     expect(clean).not.toContain("falsa");
     expect(clean).not.toContain("un comentario");
   });
 
-  test("un esquema sin Query no revienta", () => {
+  test("a schema without Query does not blow up", () => {
     expect(parseOperations("type User { id: ID! }", "query")).toEqual([]);
   });
 });
 
-describe("GraphQL: la consulta que se manda", () => {
+describe("GraphQL: the query that is sent", () => {
   const [users] = parseOperations(SCHEMA, "query");
 
   /**
-   * Los argumentos van como **variables** y no incrustados en el texto:
-   * es lo que deja cambiarlos desde el panel de Postman sin editar la
-   * consulta, y lo que evita que un `String!` acabe sin comillas.
+   * Arguments go as **variables**, not embedded in the text: that
+   * lets you change them from the Postman panel without editing the
+   * query, and it keeps a `String!` from ending up unquoted.
    */
-  test("los argumentos van como variables declaradas", () => {
+  test("arguments go as declared variables", () => {
     const doc = buildQueryDocument(users!);
     expect(doc).toContain("$page: Int");
     expect(doc).toContain("$search: String");
     expect(doc).toContain("users(page: $page, search: $search)");
   });
 
-  // Sin conocer el tipo de retorno no se puede pedir su selección de
-  // campos, y una consulta sin selección no es válida. `__typename`
-  // siempre existe.
-  test("un tipo de objeto recibe una selección válida", () => {
+  // Without knowing the return type you cannot ask for its field
+  // selection, and a query with no selection is invalid. `__typename`
+  // always exists.
+  test("an object type receives a valid selection", () => {
     expect(buildQueryDocument(users!)).toContain("__typename");
   });
 
-  test("un escalar no lleva selección", () => {
+  test("a scalar carries no selection", () => {
     const doc = buildQueryDocument({
       kind: "query",
       name: "ping",
@@ -98,22 +99,22 @@ describe("GraphQL: la consulta que se manda", () => {
   });
 });
 
-describe("GraphQL: el proyecto de ejemplo", () => {
-  test("cada operación es una request, no una sola", async () => {
+describe("GraphQL: the example project", () => {
+  test("each operation is one request, not a single one", async () => {
     const result = await generateWithAllFrameworks(exampleDir("graphql"));
     expect(result.match?.framework).toBe("graphql");
-    // 3 queries + 2 mutations. Todas comparten `POST /graphql`, así que
-    // deduplicar por método y URI dejaría UNA.
+    // 3 queries + 2 mutations. They all share `POST /graphql`, so
+    // deduplicating by method and URI would leave just ONE.
     expect(result.specs).toHaveLength(5);
   });
 
-  test("todas van por POST al mismo endpoint", async () => {
+  test("all of them go via POST to the same endpoint", async () => {
     const result = await generateWithAllFrameworks(exampleDir("graphql"));
     expect(result.specs.every((s) => s.method === "POST")).toBe(true);
     expect(result.specs.every((s) => s.uri === "/graphql")).toBe(true);
   });
 
-  test("cada una lleva su consulta en el body", async () => {
+  test("each one carries its query in the body", async () => {
     const result = await generateWithAllFrameworks(exampleDir("graphql"));
     for (const spec of result.specs) {
       const body = spec.body as { query?: string };
@@ -121,14 +122,14 @@ describe("GraphQL: el proyecto de ejemplo", () => {
     }
   });
 
-  // Una `subscription` va por WebSocket: una petición HTTP a `/graphql`
-  // con una dentro contesta un error del servidor.
-  test("las suscripciones se quedan fuera", async () => {
+  // A `subscription` goes over WebSocket: an HTTP request to
+  // `/graphql` with one inside would get a server error.
+  test("subscriptions are left out", async () => {
     const result = await generateWithAllFrameworks(exampleDir("graphql"));
     expect(result.specs.some((s) => s.name.includes("orderPlaced"))).toBe(false);
   });
 
-  test("queries y mutaciones se separan en carpetas", async () => {
+  test("queries and mutations are separated into folders", async () => {
     const result = await generateWithAllFrameworks(exampleDir("graphql"));
     const folders = new Set(result.specs.map((s) => s.folder));
     expect(folders).toEqual(new Set(["Queries", "Mutations"]));
@@ -150,8 +151,8 @@ export const appRouter = t.router({
 });
 `;
 
-describe("tRPC: leer el router", () => {
-  test("encuentra los routers declarados con nombre", () => {
+describe("tRPC: reading the router", () => {
+  test("finds the routers declared with a name", () => {
     expect([...findNamedRouters(ROUTER_SOURCE).keys()]).toEqual([
       "usersRouter",
       "ordersRouter",
@@ -160,17 +161,17 @@ describe("tRPC: leer el router", () => {
   });
 
   /**
-   * Una raíz no es "el router sin nombre" — `appRouter` también tiene
-   * uno. Es el que **nadie referencia**.
+   * A root is not "the router without a name" — `appRouter` has one
+   * too. It is the one **nobody references**.
    */
-  test("distingue las ramas de la raíz por quién las referencia", () => {
+  test("distinguishes the root's branches by who references them", () => {
     const named = findNamedRouters(ROUTER_SOURCE);
     const referenced = referencedRouterNames(ROUTER_SOURCE, named);
     expect(referenced).toEqual(new Set(["usersRouter", "ordersRouter"]));
     expect(referenced.has("appRouter")).toBe(false);
   });
 
-  test("los procedimientos llevan el prefijo de su router", () => {
+  test("procedures carry their router's prefix", () => {
     const named = findNamedRouters(ROUTER_SOURCE);
     const procs = parseRouterObject(
       ROUTER_SOURCE,
@@ -186,17 +187,17 @@ describe("tRPC: leer el router", () => {
     ]);
   });
 
-  // Sin resolver la referencia, el `list` de un router pisa al del otro:
-  // desde fuera parecen el mismo.
-  test("dos `list` en routers distintos no colisionan", () => {
+  // Without resolving the reference, the `list` of one router would
+  // clash with the other's: from the outside they look the same.
+  test("two `list` in different routers do not collide", () => {
     const named = findNamedRouters(ROUTER_SOURCE);
     const procs = parseRouterObject(ROUTER_SOURCE, named.get("appRouter")!, "", named);
     expect(procs.filter((p) => p.path.endsWith(".list"))).toHaveLength(2);
   });
 });
 
-describe("tRPC: el proyecto de ejemplo", () => {
-  test("query → GET y mutation → POST, que es la regla de tRPC sobre HTTP", async () => {
+describe("tRPC: the example project", () => {
+  test("query → GET and mutation → POST, which is the tRPC rule over HTTP", async () => {
     const result = await generateWithAllFrameworks(exampleDir("trpc"));
     expect(result.match?.framework).toBe("trpc");
     const byUri = new Map(result.specs.map((s) => [s.uri, s.method]));
@@ -205,7 +206,7 @@ describe("tRPC: el proyecto de ejemplo", () => {
     expect(byUri.get("/trpc/orders.place")).toBe("POST");
   });
 
-  test("los procedimientos anidados conservan su ruta completa", async () => {
+  test("nested procedures preserve their full path", async () => {
     const result = await generateWithAllFrameworks(exampleDir("trpc"));
     const uris = result.specs.map((s) => s.uri).sort();
     expect(uris).toEqual([
@@ -218,24 +219,24 @@ describe("tRPC: el proyecto de ejemplo", () => {
     ]);
   });
 
-  test("las suscripciones se quedan fuera, igual que en GraphQL", async () => {
+  test("subscriptions are left out, same as in GraphQL", async () => {
     const result = await generateWithAllFrameworks(exampleDir("trpc"));
     expect(result.specs.some((s) => s.uri.includes("onOrder"))).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// f00011 S4 — lockfiles como bonus de scoring en detect().
+// f00011 S4 — lockfiles as scoring bonuses in detect().
 // ---------------------------------------------------------------------------
 
-describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
-  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
-  // +0.15 (bun). El detector de tRPC suele estar casi al tope
-  // (0.95 por la dependencia); el bonus aparece en `evidence`
-  // aunque el score visible apenas cambie — exactamente lo que se
-  // busca con esta propuesta: trazabilidad, no detección.
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+describe("tRPC — lockfiles as runtime bonuses (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` and `bun.lockb` sharpen the
+  // detector's confidence without being detection. Small weights:
+  // +0.1 (pnpm), +0.15 (bun). The tRPC detector usually sits near
+  // the cap (0.95 from the dependency); the bonus shows up in
+  // `evidence` even though the visible score barely changes —
+  // exactly what this proposal aims for: traceability, not detection.
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const { TrpcProjectScanner } = await import(
       "../../packages/frameworks/scanners/trpc.scanner"
     );
@@ -253,7 +254,7 @@ describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const { TrpcProjectScanner } = await import(
       "../../packages/frameworks/scanners/trpc.scanner"
     );
@@ -271,7 +272,7 @@ describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const { TrpcProjectScanner } = await import(
       "../../packages/frameworks/scanners/trpc.scanner"
     );
@@ -289,7 +290,7 @@ describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("without lockfiles no lockfile signal appears", async () => {
     const { TrpcProjectScanner } = await import(
       "../../packages/frameworks/scanners/trpc.scanner"
     );
@@ -306,14 +307,14 @@ describe("tRPC — lockfiles como bonus de runtime (f00011 S4)", () => {
   });
 });
 
-describe("GraphQL — lockfiles como bonus de runtime (f00011 S4)", () => {
-  // f00011 S4: `pnpm-lock.yaml` y `bun.lockb` afinan la confianza
-  // del detector sin ser detección. Pesos pequeños: +0.1 (pnpm),
-  // +0.15 (bun). El detector de GraphQL suma evidencia en todas
-  // sus ramas positivas (package.json, esquema, o ambas); el lockfile
-  // se añade en `signals` antes de cualquier `return`, así que
-  // aparece en `evidence` para todas las variantes.
-  test("pnpm-lock.yaml añade evidencia con peso 0.1", async () => {
+describe("GraphQL — lockfiles as runtime bonuses (f00011 S4)", () => {
+  // f00011 S4: `pnpm-lock.yaml` and `bun.lockb` sharpen the
+  // detector's confidence without being detection. Small weights:
+  // +0.1 (pnpm), +0.15 (bun). The GraphQL detector sums evidence
+  // across all positive branches (package.json, schema, or both);
+  // the lockfile is added to `signals` before any `return`, so it
+  // appears in `evidence` for every variant.
+  test("pnpm-lock.yaml adds evidence with weight 0.1", async () => {
     const { GraphQlProjectScanner } = await import(
       "../../packages/frameworks/scanners/graphql.scanner"
     );
@@ -331,7 +332,7 @@ describe("GraphQL — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("bun.lockb añade evidencia con peso 0.15", async () => {
+  test("bun.lockb adds evidence with weight 0.15", async () => {
     const { GraphQlProjectScanner } = await import(
       "../../packages/frameworks/scanners/graphql.scanner"
     );
@@ -349,7 +350,7 @@ describe("GraphQL — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("pnpm-lock.yaml + bun.lockb suman ambas señales", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const { GraphQlProjectScanner } = await import(
       "../../packages/frameworks/scanners/graphql.scanner"
     );
@@ -367,7 +368,7 @@ describe("GraphQL — lockfiles como bonus de runtime (f00011 S4)", () => {
     }
   });
 
-  test("sin lockfiles no aparece ninguna señal de lockfile", async () => {
+  test("pnpm-lock.yaml + bun.lockb add both signals", async () => {
     const { GraphQlProjectScanner } = await import(
       "../../packages/frameworks/scanners/graphql.scanner"
     );

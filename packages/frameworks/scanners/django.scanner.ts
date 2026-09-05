@@ -1,26 +1,29 @@
 /**
- * `DjangoScanner` — implementación de `IProjectScanner` + `IRouteScanner`
- * para proyectos Django (Python) y Django REST Framework.
+ * `DjangoScanner` — implementation of `IProjectScanner` + `IRouteScanner`
+ * for Django (Python) projects and Django REST Framework.
  *
- * Detección:
- *   - `manage.py` (heurístico fuerte).
- *   - `pyproject.toml` o `requirements.txt` con `django` o `djangorestframework`.
+ * Detection:
+ *   - `manage.py` (strong heuristic).
+ *   - `pyproject.toml` or `requirements.txt` with `django` or
+ *     `djangorestframework`.
  *
  * Parsing:
- *   - `urls.py`: regex sobre `path(...)` y `re_path(...)` y `include(...)`.
- *   - `views.py`: Para DRF, regex sobre `class XView(generics.ListAPIView)` /
- *     `ModelViewSet` con `queryset` y `serializer_class`.
- *   - Para vistas funcionales, regex sobre el decorador `@api_view(['GET', 'POST'])`
- *     o `@require_http_methods([...])`.
+ *   - `urls.py`: regex over `path(...)`, `re_path(...)` and `include(...)`.
+ *   - `views.py`: for DRF, regex over
+ *     `class XView(generics.ListAPIView)` / `ModelViewSet` with
+ *     `queryset` and `serializer_class`.
+ *   - For function views, regex over the decorator
+ *     `@api_view(['GET', 'POST'])` or `@require_http_methods([...])`.
  *
  * Validation:
- *   - `DjangoSerializerProvider` extrae fields de `serializers.Serializer` o
- *     `serializers.ModelSerializer` con `class Meta: model = X; fields = [...]`.
- *   - En DRF, los serializers se infieren desde `serializer_class` en la view.
+ *   - `DjangoSerializerProvider` extracts fields from
+ *     `serializers.Serializer` or `serializers.ModelSerializer` with
+ *     `class Meta: model = X; fields = [...]`.
+ *   - In DRF, serializers are inferred from `serializer_class` in the view.
  *
- * Limitaciones:
- *   - Vistas basadas en funciones sin `@api_view` no se detectan.
- *   - Includes anidados pueden no resolver el `urls.py` del sub-app.
+ * Limitations:
+ *   - Function-based views without `@api_view` are not detected.
+ *   - Nested includes may not resolve the sub-app's `urls.py`.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -41,8 +44,8 @@ import type {
 
 
 /**
- * Lee `pyproject.toml` y `requirements.txt` y devuelve true si
- * alguno contiene `django` o `djangorestframework`.
+ * Reads `pyproject.toml` and `requirements.txt` and returns true if
+ * either contains `django` or `djangorestframework`.
  */
 async function isDjangoProject(projectRoot: string): Promise<boolean> {
   for (const file of ["pyproject.toml", "requirements.txt", "Pipfile"]) {
@@ -97,14 +100,14 @@ export class DjangoProjectScanner implements IProjectScanner {
 // ---------------------------------------------------------------------------
 
 /**
- * Regex para `path('users/', views.list_users, name='list_users')` y
+ * Regex for `path('users/', views.list_users, name='list_users')` and
  * `path('users/<int:id>/', views.show_user)`.
  */
 const PATH_RE = /path\s*\(\s*r?['"]([^'"]*)['"]\s*,\s*([\w.]+?)\s*(?=\(|,|\))/g;
 const INCLUDE_RE = /include\s*\(\s*(?:\[([^\]]+)\]|r?['"]([^'"]+)['"])/g;
 
 /**
- * Decorator `@api_view(['GET', 'POST'])` para FBV de DRF.
+ * Decorator `@api_view(['GET', 'POST'])` for DRF FBVs.
  */
 
 export class DjangoRouteScanner implements IRouteScanner {
@@ -117,13 +120,13 @@ export class DjangoRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = effectiveProjectRoot(match);
-    const processed = new Set<string>(); // rutas absolutas ya procesadas.
-    // 1) urls.py raíz. Buscar tanto en root como en sub-app típico
+    const processed = new Set<string>(); // absolute paths already processed.
+    // 1) Root urls.py. Look at both root and the typical sub-app
     //    (`app/urls.py`, `config/urls.py`, `src/urls.py`, etc.).
     const candidatesRoot: string[] = [
       join(projectRoot, "urls.py"),
     ];
-    // Convención Django: `app/urls.py` si existe `manage.py` + `app/`.
+    // Django convention: `app/urls.py` if `manage.py` + `app/` exist.
     if (existsSync(join(projectRoot, "manage.py"))) {
       candidatesRoot.push(join(projectRoot, "app", "urls.py"));
       candidatesRoot.push(join(projectRoot, "config", "urls.py"));
@@ -139,8 +142,8 @@ export class DjangoRouteScanner implements IRouteScanner {
         out.push(...(await parseUrlsPy(rootUrls, rel, projectRoot, "", processed)));
       }
     }
-    // 2) Buscar urls.py en sub-apps (`<project>/<app>/urls.py`).
-    //    Solo procesar si NO fue ya incluido desde el root.
+    // 2) Look for urls.py in sub-apps (`<project>/<app>/urls.py`).
+    //    Only process if it was NOT already included from the root.
     const subUrls = await findSubUrlsPy(projectRoot);
     for (const abs of subUrls) {
       if (processed.has(abs)) continue;
@@ -197,15 +200,15 @@ async function parseUrlsPy(
   }
   const text = stripPyComments(raw);
   for (const line of text.split("\n")) {
-    // Detectar `path("prefix/", include(...))` en la misma línea:
-    // extraer el prefix y procesarlo como include.
+    // Detect `path("prefix/", include(...))` on the same line:
+    // extract the prefix and process it as include.
     for (const m of line.matchAll(PATH_RE)) {
       const pathTemplate = m[1] ?? "";
       const viewRef = m[2] ?? "";
-      // Si el viewRef es un `include(...)` (no una view), no es una ruta
-      // terminal: tratarla como include anidado con este path como prefix.
+      // If the viewRef is `include(...)` (not a view), it's not a
+      // terminal route: treat it as nested include with this path as prefix.
       if (viewRef.startsWith("include") || viewRef.startsWith("views.")) {
-        // `views.foo` es una FBV, no un include — seguir al bloque normal.
+        // `views.foo` is an FBV, not an include — fall through to the normal block.
         if (viewRef.startsWith("include")) {
           const includeMatch = ownRegex(INCLUDE_RE).exec(line);
           if (includeMatch) {
@@ -221,11 +224,11 @@ async function parseUrlsPy(
           continue;
         }
       }
-      // Limpiar `.as_view` para detectar la class base.
+      // Strip `.as_view` to detect the base class.
       const viewName = viewRef.replace(/\.as_view$/, "");
       const fullPath = joinRoutePath("/", parentPrefix, pathTemplate);
-      // Para views de DRF (ViewSet), expandimos a `{list, retrieve, create, ...}`.
-      // Detectamos la herencia de la class en el archivo views.py de su módulo.
+      // For DRF views (ViewSet), expand to `{list, retrieve, create, ...}`.
+      // Detect the class inheritance in the views.py file of its module.
       const expanded = await expandViewSetMethods(viewName, projectRoot);
       for (const method of expanded) {
         out.push({
@@ -239,9 +242,9 @@ async function parseUrlsPy(
         });
       }
     }
-    // Includes top-level (sin path-prefix).
+    // Top-level includes (without path-prefix).
     for (const m of line.matchAll(INCLUDE_RE)) {
-      // Solo procesar si no fue ya consumido por PATH_RE.
+      // Only process if it was not already consumed by PATH_RE.
       if (line.includes("path(") && line.indexOf("include(") > line.indexOf("path(")) {
         continue;
       }
@@ -252,8 +255,8 @@ async function parseUrlsPy(
 }
 
 /**
- * Procesa un include: resuelve el archivo sub-urls y lo parsea recursivamente
- * con el prefix acumulado.
+ * Processes an include: resolves the sub-urls file and parses it
+ * recursively with the accumulated prefix.
  */
 async function processInclude(
   m: RegExpExecArray,
@@ -275,12 +278,12 @@ async function processInclude(
     }
   } else if (includePath) {
     const parts = includePath.split(".");
-    // Convención: el último segmento es el nombre del archivo (típicamente
-    // `urls`); los anteriores son la jerarquía de directorios.
+    // Convention: the last segment is the file name (typically `urls`);
+    // the previous ones are the directory hierarchy.
     const candidates = [
       // e.g. `app.auth.urls` → `app/auth/urls.py`
       join(projectRoot, parts.join("/")) + ".py",
-      // e.g. `app.users.urls` → `apps/users/urls.py` (convención DRF)
+      // e.g. `app.users.urls` → `apps/users/urls.py` (DRF convention)
       join(projectRoot, "apps", ...parts.slice(1)) + ".py",
       // e.g. `users.urls` → `<project>/users/urls.py`
       join(projectRoot, parts[0] ?? "") + ".py",
@@ -301,8 +304,8 @@ async function processInclude(
 }
 
 /**
- * Para ViewSets de DRF, retorna todos los métodos HTTP estándar según
- * el tipo de clase base.
+ * For DRF ViewSets, returns all the standard HTTP methods according to
+ * the base class type.
  *
  * - `ModelViewSet` → GET (list, retrieve), POST (create), PUT/PATCH (update), DELETE.
  * - `ListCreateAPIView` → GET (list), POST (create).
@@ -312,28 +315,28 @@ async function processInclude(
  * - `CreateAPIView` → POST.
  * - `DestroyAPIView` → DELETE.
  *
- * Si el viewName es un nombre de class (e.g. `UserListCreateView`), busca
- * el archivo `views.py` que lo define y extrae la herencia.
+ * If the viewName is a class name (e.g. `UserListCreateView`), looks up
+ * the `views.py` file that defines it and extracts the inheritance.
  *
- * Para Function Based Views, retorna ["get"] como heurístico (se
- * sobreescribe con `@api_view([...])` si se detecta).
+ * For Function Based Views, returns ["get"] as a heuristic (overridden
+ * with `@api_view([...])` if detected).
  */
 async function expandViewSetMethods(
   viewName: string,
   projectRoot: string,
 ): Promise<string[]> {
-  // Class simple (e.g. `UserListCreateView`): buscar herencia en views.py.
+  // Plain class (e.g. `UserListCreateView`): look up inheritance in views.py.
   if (/^[A-Z][\w]*$/.test(viewName)) {
     const baseClass = await findBaseClass(viewName, projectRoot);
     return methodsFromBaseClass(baseClass);
   }
-  // Cualquier nombre con `.` (e.g. `views.foo`) o minúscula (e.g. `foo`):
-  // tratar como FBV y buscar `@api_view([...])` cerca de `def foo`.
+  // Any name with `.` (e.g. `views.foo`) or lowercase (e.g. `foo`):
+  // treat as FBV and look for `@api_view([...])` near `def foo`.
   const fnName = viewName.includes(".") ? viewName.split(".").pop() ?? "" : viewName;
   if (/^[a-z_][\w]*$/.test(fnName)) {
     return methodsFromFunctionView(fnName, projectRoot);
   }
-  // Default: heurístico.
+  // Default: heuristic.
   return ["get"];
 }
 
@@ -370,8 +373,8 @@ function methodsFromBaseClass(baseClass: string | null): string[] {
 }
 
 /**
- * Busca un archivo `views.py` en `app/<x>/views.py` o `apps/<x>/views.py`
- * y devuelve el nombre de la clase base de `className`.
+ * Looks up a `views.py` file in `app/<x>/views.py` or `apps/<x>/views.py`
+ * and returns the base class name of `className`.
  */
 async function findBaseClass(
   className: string,
@@ -411,8 +414,8 @@ async function findBaseClass(
 }
 
 /**
- * Busca un archivo `views.py` con `def fnName` y devuelve los métodos
- * del `@api_view([...])` adyacente.
+ * Looks up a `views.py` file with `def fnName` and returns the methods
+ * from the adjacent `@api_view([...])`.
  */
 async function methodsFromFunctionView(
   fnName: string,
@@ -432,7 +435,7 @@ async function methodsFromFunctionView(
       } catch {
         continue;
       }
-      // Buscar `@api_view(['POST'])` seguido de `def fnName`.
+      // Look for `@api_view(['POST'])` followed by `def fnName`.
       const re = new RegExp(
         `@api_view\\s*\\(\\s*\\[([^\\]]+)\\]\\s*\\)\\s*(?:\\n[\\s\\S]*?)?def\\s+${fnName}\\b`,
         "m",
@@ -515,24 +518,24 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
     if (!route.sourceFile) return { endpointKey, fields: [] };
     const abs = join(rawProjectRoot(match), route.sourceFile);
     const dir = abs.substring(0, abs.lastIndexOf("/"));
-    // 1) Encontrar el viewName para este URI leyendo el urls.py.
-    //    Pasamos también el prefixChain para desambiguar.
+    // 1) Find the viewName for this URI by reading urls.py.
+    //    Pass the prefixChain too to disambiguate.
     const viewName = await findViewNameForUri(
       abs,
       route.uri,
       route.prefixChain ?? [],
     );
     if (!viewName) return { endpointKey, fields: [] };
-    // 2) Leer views.py y encontrar `class viewName(...)` para extraer
-    //    el `serializer_class = XSerializer`.
+    // 2) Read views.py and find `class viewName(...)` to extract
+    //    `serializer_class = XSerializer`.
     const viewsPath = join(dir, "views.py");
     let serializerName: string | null = null;
     try {
       const viewsRaw = await readFile(viewsPath, "utf8");
       const viewsText = stripPyComments(viewsRaw);
-      // Encontrar el bloque de la class viewName. Estrategia: split en
-      // bloques de class (cada uno termina antes del próximo `^class`).
-      // Si es la última class, el bloque llega hasta el final del archivo.
+      // Find the block of the viewName class. Strategy: split into class
+      // blocks (each ends before the next `^class`). If it's the last
+      // class, the block reaches the end of the file.
       const classBlocks: Array<{ name: string; body: string }> = [];
       const classStartRe = /^class\s+(\w+)/gm;
       let m: RegExpExecArray | null;
@@ -553,13 +556,13 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
         const sm = /serializer_class\s*=\s*(\w+Serializer)/.exec(clsBlock.body);
         if (sm) serializerName = sm[1] ?? null;
       }
-      // FBV fallback: si viewName es minúscula (FBV), buscar serializers
-      // cuyo nombre contenga el funcName capitalized.
+      // FBV fallback: if viewName is lowercase (FBV), look for serializers
+      // whose name contains the capitalised funcName.
       if (!serializerName && /^[a-z][\w]*$/.test(viewName)) {
         const capitalized = viewName.charAt(0).toUpperCase() + viewName.slice(1);
         try {
           const serRaw = await readFile(join(dir, "serializers.py"), "utf8");
-          // Buscar `class XYZSerializer` donde XYZ contiene `capitalized`.
+          // Look for `class XYZSerializer` where XYZ contains `capitalized`.
           const match = new RegExp(
             `class\\s+(\\w*${capitalized}\\w*Serializer)\\b`,
             "m",
@@ -567,7 +570,7 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
           const m = match.exec(serRaw);
           if (m) serializerName = m[1] ?? null;
         } catch {
-          // serializers.py no existe.
+          // serializers.py doesn't exist.
         }
       }
     } catch {
@@ -581,8 +584,8 @@ export class DjangoSerializerProvider implements IValidationSpecProvider {
 }
 
 /**
- * Lee el archivo urls.py del dir y devuelve el nombre de la view
- * (class o función) que matchea el URI dado.
+ * Reads the urls.py file of the dir and returns the view name
+ * (class or function) matching the given URI.
  */
 async function findViewNameForUri(
   urlsAbs: string,
@@ -596,11 +599,11 @@ async function findViewNameForUri(
     return null;
   }
   const text = stripPyComments(raw);
-  // URI viene con prefix ya incluido. Quitar el primer prefix para
-  // comparar contra el pathTemplate del sub-urls.py.
-  // Ambos lados se comparan sin barra inicial: la URI la trae desde que
-  // los scanners emiten rutas absolutas, pero el prefixChain guarda el
-  // prefijo tal cual lo declara `include(...)`, sin ella.
+  // URI comes with the prefix already included. Strip the first prefix
+  // to compare against the sub-urls.py's pathTemplate.
+  // Both sides are compared without the leading slash: the URI comes in
+  // since scanners emit absolute routes, but prefixChain stores the
+  // prefix as declared by `include(...)`, without it.
   const stripLeadingSlash = (value: string): string => value.replace(/^\/+/, "");
   let relative = stripLeadingSlash(uri);
   if (prefixChain.length > 0) {
@@ -609,14 +612,14 @@ async function findViewNameForUri(
       relative = relative.slice(firstPrefix.length);
     }
   }
-  // `{{id}}` → `<id>` (sin `:` tipo) para comparar con Django.
+  // `{{id}}` → `<id>` (no `:` type) to compare with Django.
   relative = relative.replace(/\{\{(\w+)\}\}/g, "<$1>");
-  // También normalizar `<int:id>` → `<id>` (en caso de que uri aún tenga
-  // la forma Django porque viene directo del scanner).
+  // Also normalise `<int:id>` → `<id>` (in case the uri still has the
+  // Django form because it came directly from the scanner).
   relative = relative.replace(/<\w+:(\w+)>/g, "<$1>");
-  // Quitar trailing slash para comparar sin él.
+  // Strip the trailing slash for comparison.
   relative = relative.replace(/\/+$/, "");
-  // Si relative es vacío (lista), buscar path("").
+  // If relative is empty (list), look for path("").
   if (relative === "") {
     for (const line of text.split("\n")) {
       if (/path\s*\(\s*r?['"]['"]/.test(line)) {
@@ -632,9 +635,9 @@ async function findViewNameForUri(
     for (const m of line.matchAll(PATH_RE)) {
       const pathTemplate = (m[1] ?? "").replace(/^\/+|\/+$/g, "");
       const viewRef = (m[2] ?? "").replace(/\.as_view$/, "");
-      // Normalizar el pathTemplate: `<int:id>` → `<id>` para matchear.
+      // Normalise the pathTemplate: `<int:id>` → `<id>` to match.
       const pathNormalized = pathTemplate.replace(/<\w+:(\w+)>/g, "<$1>");
-      // Quitar trailing slash también en pathNormalized.
+      // Strip the trailing slash on pathNormalized too.
       const pathNoSlash = pathNormalized.replace(/\/+$/, "");
       if (pathNoSlash === relative || pathNormalized === relative) {
         return viewRef || null;
@@ -666,13 +669,13 @@ async function findSerializerDef(
     const text = stripPyComments(raw);
     const clsIdx = text.indexOf(`class ${className}`);
     if (clsIdx < 0) continue;
-    // Recortar el bloque hasta la siguiente `class` (o fin de archivo).
+    // Trim the block up to the next `class` (or end of file).
     const afterCls = text.slice(clsIdx);
     const nextClass = afterCls.search(/\nclass\s+\w+/);
     const block =
       nextClass > 0 ? afterCls.slice(0, nextClass) : afterCls;
     const fields: IValidationSpec[] = [];
-    // 1) `fields = [...]` en Meta.
+    // 1) `fields = [...]` in Meta.
     const metaFields = /Meta\s*:[\s\S]*?fields\s*=\s*\[([^\]]+)\]/.exec(block);
     let fieldNamesFromMeta: string[] = [];
     if (metaFields?.[1]) {
@@ -688,7 +691,7 @@ async function findSerializerDef(
     while ((m = fieldRe.exec(block)) !== null) {
       inlineDefs.set(m[1] ?? "", { type: m[2] ?? "", args: m[3] ?? "" });
     }
-    // 3) Emitir fields.
+    // 3) Emit fields.
     if (fieldNamesFromMeta.length > 0) {
       for (const name of fieldNamesFromMeta) {
         const def = inlineDefs.get(name);

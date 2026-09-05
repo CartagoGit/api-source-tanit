@@ -1,23 +1,23 @@
 /**
  * a00013 S4 — per-service auth + baseUrl.
  *
- * Cubre las cuatro garantías que el contrato del slice promete:
+ * Covers the four guarantees the slice contract promises:
  *
- *  1. `pickAuth` resuelve el override del descriptor o el fallback
- *     del proyecto, **sin colapsar el discriminante**.
- *  2. `toIEndpointAuth` mapea exhaustivamente las cuatro variantes
- *     de `IDetectedAuthScheme.type` (inversa de
- *     `authSchemeFromEndpointAuth` en el pipeline).
- *  3. `buildServiceConfig` aplica el `service.baseUrl` per-service
- *     sin mutar la `ProjectConfig` original. Eso es lo que mantiene
- *     estable `discovery.config.baseUrl` entre iteraciones del loop
- *     multi-service en `buildFor`.
- *  4. El pipeline no muta `discovery.config.baseUrl` en una
- *     generación multi-service — verificable de extremo a extremo
- *     llamando a `generateCollections` sobre un monorepo sintético.
+ *  1. `pickAuth` resolves the descriptor's override or the project's
+ *     fallback, **without collapsing the discriminant**.
+ *  2. `toIEndpointAuth` exhaustively maps the four variants of
+ *     `IDetectedAuthScheme.type` (inverse of `authSchemeFromEndpointAuth`
+ *     in the pipeline).
+ *  3. `buildServiceConfig` applies `service.baseUrl` per-service
+ *     without mutating the original `ProjectConfig`. That is what
+ *     keeps `discovery.config.baseUrl` stable across iterations of
+ *     the multi-service loop in `buildFor`.
+ *  4. The pipeline does not mutate `discovery.config.baseUrl` in a
+ *     multi-service generation — verifiable end-to-end by calling
+ *     `generateCollections` on a synthetic monorepo.
  *
- * Los tests 1-3 son unitarios sobre el helper puro. El 4 es de
- * integración y reproduce el invariante de aceptación #3 del slice.
+ * Tests 1-3 are unit tests over the pure helper. Test 4 is
+ * integration and reproduces the slice's acceptance invariant #3.
  */
 import { afterAll, beforeAll, describe, expect, it, test } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
@@ -40,7 +40,7 @@ import {
   type ITempProject,
 } from "../helpers/scanner-fixture";
 
-/** Construye un IServiceDescriptor mínimo para tests unitarios. */
+/** Builds a minimal IServiceDescriptor for unit tests. */
 function descriptor(
   serviceId: string,
   auth: IEndpointAuth | undefined = undefined,
@@ -62,7 +62,7 @@ function descriptor(
   };
 }
 
-/** ProjectConfig mínima para tests de `buildServiceConfig`. */
+/** Minimal ProjectConfig for `buildServiceConfig` tests. */
 function configFixture(baseUrl = "http://localhost"): ProjectConfig {
   return {
     name: "test",
@@ -105,12 +105,12 @@ describe("pickAuth", () => {
     expect(pickAuth(service, undefined)).toBeUndefined();
   });
 
-  it("NO colapsa { kind: 'scheme', scheme: 'bearer' } a { kind: 'none' }", () => {
-    // Audit 2ª revisión #16: la primera auditoría del 2026-09-04
-    // documentó que el discriminante se podía colapsar por
-    // conversión descuidada. pickAuth NO convierte nada: devuelve
-    // el mismo objeto que recibió. La garantía la lleva el contrato
-    // por construcción.
+  it("does NOT collapse { kind: 'scheme', scheme: 'bearer' } to { kind: 'none' }", () => {
+    // Audit 2nd review #16: the first 2026-09-04 audit documented
+    // that the discriminant could be collapsed by careless
+    // conversion. pickAuth does NOT convert anything: it returns
+    // the same object it received. The guarantee comes from the
+    // contract by construction.
     const service = descriptor(
       "a",
       { kind: "scheme", scheme: "bearer" } as const,
@@ -121,7 +121,7 @@ describe("pickAuth", () => {
     expect(result).not.toEqual({ kind: "none" });
   });
 
-  it("preserva { kind: 'scheme', scheme: 'apiKey' } cuando service.auth lo trae", () => {
+  it("preserves { kind: 'scheme', scheme: 'apiKey' } when service.auth carries it", () => {
     const service = descriptor("a", { kind: "scheme", scheme: "apiKey" });
     const fallback: IEndpointAuth = { kind: "none" };
     expect(pickAuth(service, fallback)).toEqual({
@@ -130,7 +130,7 @@ describe("pickAuth", () => {
     });
   });
 
-  it("preserva { kind: 'scheme', scheme: 'oauth2' } cuando service.auth lo trae", () => {
+  it("preserves { kind: 'scheme', scheme: 'oauth2' } when service.auth carries it", () => {
     const service = descriptor("a", { kind: "scheme", scheme: "oauth2" });
     const fallback: IEndpointAuth = { kind: "none" };
     expect(pickAuth(service, fallback)).toEqual({
@@ -139,19 +139,20 @@ describe("pickAuth", () => {
     });
   });
 
-  it("preserva { kind: 'none' } cuando service.auth lo trae explícitamente", () => {
-    // Caso inverso al colapso: el descriptor dice "este servicio es
-    // público aunque el resto del proyecto lleve bearer". pickAuth
-    // devuelve esa voluntad sin transformarla.
+  it("preserves { kind: 'none' } when service.auth carries it explicitly", () => {
+    // Inverse case to the collapse: the descriptor says "this
+    // service is public even though the rest of the project uses
+    // bearer". pickAuth returns that intent without transforming it.
     const service = descriptor("a", { kind: "none" });
     const fallback: IEndpointAuth = { kind: "scheme", scheme: "bearer" };
     expect(pickAuth(service, fallback)).toEqual({ kind: "none" });
   });
 
-  it("es determinista y no produce I/O (puro)", () => {
-    // 1000 invocaciones idénticas deben ser idénticas. No medimos
-    // tiempo: solo el determinismo. Si pickAuth leyera algo externo,
-    // dos llamadas seguidas con el mismo input podrían diferir.
+  it("is deterministic and produces no I/O (pure)", () => {
+    // 1000 identical invocations must be identical. We do not
+    // measure time, only determinism. If pickAuth read anything
+    // external, two consecutive calls with the same input could
+    // differ.
     const service = descriptor("a", { kind: "scheme", scheme: "bearer" });
     const first = pickAuth(service, { kind: "none" });
     for (let i = 0; i < 1000; i++) {
@@ -160,7 +161,7 @@ describe("pickAuth", () => {
     }
   });
 
-  it("el discriminante es exhaustivo: apiKey NO se confunde con bearer ni oauth2", () => {
+  it("the discriminant is exhaustive: apiKey is NOT confused with bearer or oauth2", () => {
     const cases: ReadonlyArray<IEndpointAuth> = [
       { kind: "none" },
       { kind: "scheme", scheme: "bearer" },
@@ -210,21 +211,21 @@ describe("toIEndpointAuth", () => {
 });
 
 describe("buildServiceConfig", () => {
-  it("aplica service.baseUrl cuando está definido y no es null", () => {
+  it("applies service.baseUrl when it is defined and not null", () => {
     const config = configFixture("http://localhost");
     const service = descriptor("a", undefined, "http://localhost:3001");
     const result = buildServiceConfig(config, service);
     expect(result.baseUrl).toBe("http://localhost:3001");
   });
 
-  it("cae al baseUrl del proyecto cuando service.baseUrl es null", () => {
+  it("falls back to the project's baseUrl when service.baseUrl is null", () => {
     const config = configFixture("http://localhost:5555");
     const service = descriptor("a", undefined, null);
     const result = buildServiceConfig(config, service);
     expect(result.baseUrl).toBe("http://localhost:5555");
   });
 
-  it("actualiza la variable {{baseUrl}} cuando hay un override per-service", () => {
+  it("updates the {{baseUrl}} variable when there is a per-service override", () => {
     const config = configFixture("http://localhost");
     const service = descriptor("a", undefined, "https://staging.example.com");
     const result = buildServiceConfig(config, service);
@@ -232,11 +233,12 @@ describe("buildServiceConfig", () => {
     expect(baseUrlVar?.value).toBe("https://staging.example.com");
   });
 
-  it("NO muta la ProjectConfig original", () => {
-    // Aceptación #3 del slice: `buildForService` no debe mutar
-    // `config.baseUrl` entre iteraciones del loop multi-service.
-    // Aquí se prueba el primitive que lo garantiza: `buildServiceConfig`
-    // devuelve una copia y deja el original intacto.
+  it("does NOT mutate the original ProjectConfig", () => {
+    // Slice acceptance #3: `buildForService` must not mutate
+    // `config.baseUrl` across iterations of the multi-service loop.
+    // Here we test the primitive that guarantees it:
+    // `buildServiceConfig` returns a copy and leaves the original
+    // intact.
     const config = configFixture("http://localhost");
     const originalBaseUrl = config.baseUrl;
     const originalVarValue = config.variables.find(
@@ -251,13 +253,13 @@ describe("buildServiceConfig", () => {
     expect(config.variables.find((v) => v.key === "baseUrl")?.value).toBe(
       originalVarValue,
     );
-    // El array `variables` del original es el mismo array: no se
-    // muta, y `buildServiceConfig` devuelve uno nuevo.
+    // The original `variables` array is the same array: it is not
+    // mutated, and `buildServiceConfig` returns a new one.
     expect(result.variables).not.toBe(originalVariablesRef);
     expect(config.variables).toBe(originalVariablesRef);
   });
 
-  it("preserva el resto de variables (token, etc.) sin tocarlas", () => {
+  it("preserves the rest of the variables (token, etc.) without touching them", () => {
     const config = configFixture("http://localhost");
     const service = descriptor("a", undefined, "http://override:9999");
     const result = buildServiceConfig(config, service);
@@ -267,10 +269,10 @@ describe("buildServiceConfig", () => {
 });
 
 // ───────────────────────────────────────────────────────────────────
-// Integración: el invariante "no cross-iteration mutation" del slice.
+// Integration: the slice's "no cross-iteration mutation" invariant.
 // ───────────────────────────────────────────────────────────────────
 
-/** Mini filesystem para un proyecto de un servicio. */
+/** Mini filesystem for a single-service project. */
 async function writeFiles(root: string, files: Record<string, string>): Promise<void> {
   for (const [rel, body] of Object.entries(files)) {
     const abs = join(root, rel);
@@ -290,8 +292,8 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-describe("generateCollections (multi-service): config.baseUrl no se muta entre iteraciones", () => {
-  test("monorepo express+nest con dos servicios: cada colección usa su propio descriptor", async () => {
+describe("generateCollections (multi-service): config.baseUrl is not mutated between iterations", () => {
+  test("monorepo express+nest with two services: each collection uses its own descriptor", async () => {
     const projectRoot = join(work, "monorepo-express-nest");
     await writeFiles(projectRoot, {
       "package.json": JSON.stringify({
@@ -320,54 +322,54 @@ app.listen(3000);
 `,
     });
 
-    // S4: con dos servicios detectados y combineServices=false, el
-    // pipeline emite dos colecciones separadas. Cada `result.config`
-    // sale de `buildServiceConfig(discovery.config, service)`.
+    // S4: with two services detected and combineServices=false, the
+    // pipeline emits two separate collections. Each `result.config`
+    // comes from `buildServiceConfig(discovery.config, service)`.
     const results = await generateCollections(projectRoot, {
       orchestrator: defaultOrchestrator(),
       combineServices: false,
     });
 
-    // Esperamos al menos una colección con endpoints detectados. Si
-    // el comando no detecta ninguno (p. ej. fallo de un scanner de
-    // ambiente CI), queremos fallar explícitamente — no dar un "ok"
-    // que enmascare una regresión silenciosa.
+    // We expect at least one collection with detected endpoints. If
+    // the command detects none (e.g. a scanner failure in a CI
+    // environment), we want to fail explicitly — not give an "ok"
+    // that hides a silent regression.
     expect(results.length).toBeGreaterThanOrEqual(1);
 
-    // Cada resultado lleva su propio `config` per-service. Ambos
-    // deben ser objetos distintos (cada iteración construyó su
-    // copia), aunque nazcan del mismo `discovery.config`.
+    // Each result carries its own per-service `config`. Both must be
+    // distinct objects (each iteration built its copy), even though
+    // they come from the same `discovery.config`.
     const configs = results.map((r) => r.config);
     const baseUrls = configs.map((c) => c.baseUrl);
 
-    // El invariant de aceptación #3: en multi-service, después de
-    // `generateCollections`, el `config.baseUrl` debe ser estable
-    // *entre iteraciones*. Comprobamos que todas las iteraciones
-    // vieron el mismo `baseUrl` (el del proyecto, porque hoy no hay
-    // auto-población de `service.baseUrl`). Si `buildForService`
-    // mutara `discovery.config.baseUrl` en una iteración, las
-    // siguientes empezarían con ese valor mutado — y `baseUrls`
-    // reflejaría la cadena de mutaciones, no un valor estable.
+    // Acceptance invariant #3: in multi-service, after
+    // `generateCollections`, `config.baseUrl` must be stable *across
+    // iterations*. We verify that all iterations saw the same
+    // `baseUrl` (the project's, since today there is no auto-population
+    // of `service.baseUrl`). If `buildForService` mutated
+    // `discovery.config.baseUrl` in one iteration, the next ones
+    // would start from that mutated value — and `baseUrls` would
+    // reflect the chain of mutations, not a stable value.
     const first = baseUrls[0];
     for (const url of baseUrls) {
       expect(url).toBe(first);
     }
 
-    // Cada `result.config` es un objeto independiente (no la misma
-    // referencia). Verifica que `buildServiceConfig` no devuelve
-    // `discovery.config` pelado: sería un bug de "comparten memoria"
-    // que podría contaminar la siguiente iteración vía `variables`
-    // compartida.
+    // Each `result.config` is an independent object (not the same
+    // reference). Verifies that `buildServiceConfig` does not return
+    // `discovery.config` bare: that would be a "shared memory" bug
+    // that could contaminate the next iteration via a shared
+    // `variables` array.
     for (let i = 0; i < configs.length; i++) {
       for (let j = i + 1; j < configs.length; j++) {
         expect(configs[i]).not.toBe(configs[j]);
       }
     }
 
-    // El array `variables` de cada config es su propia copia — no
-    // la misma referencia compartida con `discovery.config`. Si lo
-    // fuera, `inferCollectionVariables` o las adiciones de
-    // `authVariablesFor` se filtrarían entre servicios.
+    // The `variables` array of each config is its own copy — not the
+    // same reference shared with `discovery.config`. If it were,
+    // `inferCollectionVariables` or additions from
+    // `authVariablesFor` would leak across services.
     const resultsVars = results.map((r) =>
       r.collection.variable ?? [],
     );
@@ -380,22 +382,22 @@ app.listen(3000);
 // ───────────────────────────────────────────────────────────────────
 // x00028 — multi-service spec isolation.
 //
-// Bug original: `buildForService` consumía `discovery.specs` (el
-// catálogo global fusionado por el merger). En un monorepo con dos
-// servicios que exponen `GET /health` cada uno (típico: liveness
-// probes, ingress controllers, sidecar patterns), ambos servicios
-// veían ambos endpoints en su colección.
+// Original bug: `buildForService` consumed `discovery.specs` (the
+// global catalog merged by the merger). In a monorepo with two
+// services that each expose `GET /health` (typical: liveness
+// probes, ingress controllers, sidecar patterns), both services
+// saw both endpoints in their collection.
 //
-// Después del fix: `filterSpecsForService(discovery.specs, service)`
-// recorta el catálogo a los specs cuyo `(method, uri)` está en
-// `service.endpoints`. Cada servicio ve solo lo suyo. Este test
-// reproduce el escenario y verifica el invariante: dos servicios
-// con `GET /health` cada uno producen dos colecciones, cada una con
-// su propio `GET /health` apuntado al `baseUrl` correcto.
+// After the fix: `filterSpecsForService(discovery.specs, service)`
+// trims the catalog to the specs whose `(method, uri)` is in
+// `service.endpoints`. Each service sees only its own. This test
+// reproduces the scenario and verifies the invariant: two services
+// each with `GET /health` produce two collections, each with its
+// own `GET /health` pointing to the correct `baseUrl`.
 // ───────────────────────────────────────────────────────────────────
 
 describe("x00028 — multi-service spec isolation", () => {
-  test("dos servicios con mismo GET /health: cada colección ve solo su propio /health", async () => {
+  test("two services with the same GET /health: each collection sees only its own /health", async () => {
     // Express + NestJS in two workspaces of the same monorepo, each
     // exposing `GET /health` (liveness) plus one service-specific
     // route. Without the fix, both collections would contain

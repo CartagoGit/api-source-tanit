@@ -1,23 +1,25 @@
 /**
- * Contrato común que debe cumplir el scanner de CUALQUIER framework.
+ * Common contract that ANY framework's scanner must satisfy.
  *
- * Las 12 suites por framework tenían un número de tests parecido pero no
- * probaban lo mismo, y eso dejó pasar bugs reales:
+ * The 12 per-framework suites had a similar number of tests but did
+ * not test the same thing, and that let real bugs through:
  *
- *   - Solo Symfony tenía test de "no duplica endpoints"… y estaba escrito
- *     al revés, asertando que **sí** duplicaba.
- *   - Ningún scanner comprobaba que `sourceFile` fuese relativo al
- *     proyecto, que es exactamente lo que estaba roto en Symfony y hacía
- *     que su provider de validación no encontrase nunca el controlador.
- *   - Ninguno comprobaba que un endpoint comentado no acabase en la
- *     colección.
+ *   - Only Sym had a "no duplicated endpoints" test… and it was
+ *     written the wrong way, asserting that it **did** duplicate.
+ *   - No scanner checked that `sourceFile` was relative to the
+ *     project, which is exactly what was broken in Spring and
+ *     meant its validation provider never found the controller.
+ *   - None checked that a commented endpoint did not end up in
+ *     the collection.
  *
- * `describeScannerContract` genera esos casos a partir del registry, así
- * que un scanner nuevo los hereda sin escribir nada, y un bug de esta
- * familia falla en los 12 sitios a la vez en lugar de en ninguno.
+ * `describeScannerContract` generates those cases from the registry,
+ * so a new scanner inherits them without writing anything, and a
+ * bug of this family fails in all 12 places at once instead of
+ * in none.
  *
- * Lo que un framework no soporta se declara en `capabilities`. Declararlo
- * es una decisión visible en el código; omitir el test, no.
+ * What a framework does not support is declared in `capabilities`.
+ * Declaring it is a decision visible in the code; skipping the
+ * test, it is not.
  */
 import { describe, expect, test } from "vitest";
 import { existsSync } from "node:fs";
@@ -26,7 +28,7 @@ import type { FrameworkId, ParsedRoute } from "../../packages/contracts/interfac
 import { scannerBundleFor } from "../../packages/frameworks/framework.registry";
 import { createTempProject, scanProject } from "./scanner-fixture";
 
-/** Verbos que el pipeline sabe convertir en requests de Postman. */
+/** Verbs the pipeline knows how to turn into Postman requests. */
 const SUPPORTED_METHODS = new Set([
   "GET",
   "POST",
@@ -38,49 +40,51 @@ const SUPPORTED_METHODS = new Set([
   "TRACE",
 ]);
 
-/** Qué sabe hacer el scanner de este framework. */
+/** What this framework's scanner can do. */
 export interface IScannerCapabilities {
   /**
-   * Tiene `IValidationSpecProvider` que resuelve campos reales.
-   * `false` para los que dependan por completo de la inferencia
-   * heurística. Hoy los 12 lo cumplen.
+   * Has an `IValidationSpecProvider` that resolves real fields.
+   * `false` for those relying entirely on heuristic inference.
+   * All 12 satisfy it today.
    */
   readonly validation?: boolean;
-  /** Sus rutas incluyen parámetros de path. */
+  /** Its routes include path parameters. */
   readonly pathParams?: boolean;
   /**
-   * Un endpoint comentado en el fuente se descarta. `false` para los
-   * frameworks cuyas rutas viven en YAML/JSON en lugar de en código.
+   * A commented-out endpoint in source is discarded. `false` for
+   * frameworks whose routes live in YAML/JSON rather than code.
    */
   readonly stripsComments?: boolean;
   /**
-   * Las URIs conservan la barra final. `true` en Django, donde
-   * `path("users/", …)` la declara a propósito y `APPEND_SLASH` hace que
-   * llamar sin ella provoque un 301 que descarta el body de un POST.
+   * URIs keep the trailing slash. `true` in Django, where
+   * `path("users/", …)` declares it on purpose and `APPEND_SLASH`
+   * makes calling without it trigger a 301 that drops the body
+   * of a POST.
    */
   readonly trailingSlash?: boolean;
 }
 
-/** Configuración del contrato para un framework. */
+/** Contract configuration for a framework. */
 export interface IScannerContractOptions {
   readonly framework: FrameworkId;
-  /** Raíz del proyecto de referencia (normalmente el comprehensive). */
+  /** Root of the reference project (usually the comprehensive one). */
   readonly fixtureRoot: string;
-  /** Ficheros mínimos que hacen que `detect()` dispare, para el test de comentarios. */
+  /** Minimum files that make `detect()` fire, for the comments test. */
   readonly minimalProject?: Record<string, string>;
   /**
-   * Fichero del `minimalProject` donde inyectar el endpoint comentado, y
-   * el texto a inyectar. Solo se usa si `capabilities.stripsComments`.
+   * File inside the `minimalProject` where to inject the commented
+   * endpoint, and the text to inject. Only used if
+   * `capabilities.stripsComments`.
    */
   readonly commentedEndpoint?: { readonly file: string; readonly source: string };
   readonly capabilities?: IScannerCapabilities;
 }
 
 /**
- * Registra los casos comunes a todos los scanners.
+ * Registers the cases common to all scanners.
  *
- * Cada `*-scanner.spec.ts` lo invoca y añade debajo solo lo específico
- * de su framework.
+ * Each `*-scanner.spec.ts` invokes it and adds below only what is
+ * specific to its framework.
  */
 export function describeScannerContract(options: IScannerContractOptions): void {
   const { framework, fixtureRoot } = options;
@@ -127,8 +131,8 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       expect(routes.length).toBeGreaterThan(0);
     });
 
-    // El bug de Symfony: el mismo endpoint declarado en YAML y con
-    // #[Route] salía dos veces en la colección del usuario.
+    // The Symfony bug: the same endpoint declared in YAML and with
+    // #[Route] came out twice in the user's collection.
     test("no devuelve endpoints duplicados", async () => {
       const { routes } = await scanProject(framework, fixtureRoot);
       const keys = routes.map((r) => `${r.method} ${r.uri}`);
@@ -149,9 +153,9 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       for (const route of routes) {
         expect(route.uri.length).toBeGreaterThan(0);
         expect(route.uri).not.toContain("//");
-        // Tres scanners (laravel, nestjs, django) emitían sin barra
-        // inicial. El adapter lo tapaba, pero cualquier consumidor
-        // directo de `ParsedRoute` veía formatos distintos.
+        // Three scanners (laravel, nestjs, django) emitted without the
+        // leading slash. The adapter patched it, but any direct
+        // consumer of `ParsedRoute` saw different shapes.
         expect(route.uri.startsWith("/")).toBe(true);
         if (!capabilities.trailingSlash) {
           expect(route.uri.endsWith("/")).toBe(route.uri === "/");
@@ -159,14 +163,16 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       }
     });
 
-    // Fue el bug de Symfony: `sourceFile` absoluto hacía que el provider
-    // construyese `join(projectRoot, sourceFile)` y no encontrase nada.
+    // It was the Spring bug: an absolute `sourceFile` made the
+    // provider build `join(projectRoot, sourceFile)` and find
+    // nothing.
     test("sourceFile es relativo al proyecto y existe en disco", async () => {
       const { routes } = await scanProject(framework, fixtureRoot);
       for (const route of routes) {
         if (!route.sourceFile) continue;
-        // El scanner de OpenAPI apunta a un punto DENTRO del spec
-        // (`openapi.yaml#GET/health`); el fichero es la parte previa al `#`.
+        // The OpenAPI scanner points to a spot INSIDE the spec
+        // (`openapi.yaml#GET/health`); the file is the part before
+        // the `#`.
         const file = route.sourceFile.split("#")[0]!;
         expect(isAbsolute(file)).toBe(false);
         expect(file).not.toContain("..");
@@ -204,9 +210,9 @@ export function describeScannerContract(options: IScannerContractOptions): void 
 
         let resolved = 0;
         for (const post of posts) {
-          // El contrato exige `scanResult` como tercer argumento
-          // aunque la mayoría de providers no lo usen. Es el camino
-          // que evita el estado mutable en los scanners (a00010 S2).
+          // The contract requires `scanResult` as the third argument even
+          // though most providers do not use it. It is the path that
+          // avoids mutable state in the scanners (a00010 S2).
           const validation = await bundle.validationProvider!.resolve(
             post,
             match,
@@ -223,9 +229,10 @@ export function describeScannerContract(options: IScannerContractOptions): void 
       });
     }
 
-    // Se sacan del `options` ANTES del `test(...)`: el estrechamiento
-    // del `if` no sobrevive dentro del callback, porque TypeScript no
-    // puede saber que nadie ha reasignado `options` mientras tanto.
+    // Pulled out of `options` BEFORE the `test(...)`: the narrowing
+    // of the `if` does not survive inside the callback, because
+    // TypeScript cannot know that nobody reassigned `options` in
+    // the meantime.
     const commentedEndpoint = options.commentedEndpoint;
     const minimalProject = options.minimalProject;
 

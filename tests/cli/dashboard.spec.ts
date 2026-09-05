@@ -1,24 +1,24 @@
 /**
- * El dashboard multi-proyecto: lo que ve quien abre la UI raíz.
+ * The multi-project dashboard: what the person opening the root UI sees.
  *
- * El dashboard se monta sobre `~/.expostman/history.jsonl` (la
- * "huella" que `summary` y `generate` dejan al terminar) y muestra
- * las últimas generaciones cruzando varios proyectos. Tres
- * comportamientos importan y son los que se prueban aquí:
+ * The dashboard is built on top of `~/.expostman/history.jsonl` (the
+ * "trail" that `summary` and `generate` leave when they finish) and
+ * shows the latest generations across several projects. Three
+ * behaviours matter and are tested here:
  *
- *   · Multi-proyecto: la lista se construye a partir de entradas de
- *     raíces distintas, no de un único proyecto.
- *   · Orden por timestamp: la entrada más reciente va primero; si
- *     fuera al revés, el dashboard sería un listado de lo viejo.
- *   · Filtros: `limit` y `projectRoot` se aplican desde la página
- *     sin tener que reescanear nada.
+ *   · Multi-project: the list is built from entries of different
+ *     roots, not a single project.
+ *   · Order by timestamp: the most recent entry goes first; if it
+ *     were reversed, the dashboard would be a listing of the old.
+ *   · Filters: `limit` and `projectRoot` are applied from the page
+ *     without rescanning anything.
  *
- * La implementación actual expone estos datos por la ruta
- * `/api/history` (lo que llama el HTML en `index.html.constant.ts`).
- * Lo que se prueba aquí es el comportamiento del dashboard —multi-
- * proyecto, orden, filtros— independientemente de la ruta concreta,
- * porque el contrato del dashboard es su **forma de los datos**, no
- * el nombre del endpoint.
+ * The current implementation exposes this data through the
+ * `/api/history` route (what the HTML in `index.html.constant.ts`
+ * calls). What is tested here is the dashboard's behaviour —multi-
+ * project, order, filters— regardless of the specific route,
+ * because the dashboard's contract is the **shape of its data**, not
+ * the endpoint name.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -34,7 +34,7 @@ import type { IUiDeps } from "../../packages/contracts/interfaces/cli/ui.interfa
 import type { IHistoryReadResult } from "../../packages/contracts/interfaces/cli/history.interface.js";
 import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface.js";
 
-/** Raíz temporal donde vive el `history.jsonl` durante el test. */
+/** Temporary root where `history.jsonl` lives during the test. */
 let work = "";
 let historyFile = "";
 
@@ -50,7 +50,7 @@ afterEach(async () => {
   }
 });
 
-/** Resumen mínimo válido para construir entradas. */
+/** Minimum valid summary to build entries. */
 const RESUMEN_BASE: IProjectSummary = {
   framework: "express",
   frameworks: ["express"],
@@ -77,15 +77,14 @@ const RESUMEN_BASE: IProjectSummary = {
 };
 
 /**
- * Helper que escribe una entrada en el historial devolviendo los
- * argumentos necesarios para volver a leerla.
+ * Helper that writes an entry to the history returning the
+ * arguments needed to read it back.
  *
- * El timestamp se pasa como **tercer argumento** de `appendHistory`
- * (no dentro del input: `appendHistory(input, path, now)` lo recibe
- * por la cola para que el llamador no pueda congelar la hora). Los
- * tests que necesitan timestamps concretos lo enchufan aquí; los que
- * no usan el `new Date()` por defecto y se ordenan por orden de
- * inserción.
+ * The timestamp is passed as the **third argument** to
+ * `appendHistory` (not inside the input: `appendHistory(input, path,
+ * now)` receives it at the tail so the caller cannot freeze the
+ * time). Tests that need concrete timestamps plug it in here; tests
+ * that do not use the default `new Date()` and order by insertion.
  */
 async function appendEntrada(
   projectRoot: string,
@@ -114,10 +113,11 @@ async function appendEntrada(
 }
 
 /**
- * Dobla el servicio `history` por encima del `readHistory` real, con
- * `historyFile` inyectado: el dashboard escribe ahí en el test, y el
- * doble lo lee. Esto deja los tests sin tocar `process.env.HOME` y
- * deja al lector saber exactamente qué fichero está mirando.
+ * Doubles the `history` service on top of the real `readHistory`,
+ * with `historyFile` injected: the dashboard writes there in the
+ * test, and the double reads it. This keeps the tests from touching
+ * `process.env.HOME` and lets the reader know exactly which file is
+ * being looked at.
  */
 async function dashboardDeps(
   overrides: Partial<IUiDeps> = {},
@@ -153,9 +153,9 @@ async function dashboardDeps(
       warnings: [],
     }),
     /**
-     * El doble pasa por el servicio real con la ruta del test. La
-     * razón: queremos que el camino append → JSONL → read sea el
-     * mismo que en producción, sin reinventarlo aquí.
+     * The double goes through the real service with the test path.
+     * The reason: we want the append → JSONL → read path to be the
+     * same as in production, without reinventing it here.
      */
     history: async (params) => {
       historyCalls.push({ ...params });
@@ -171,14 +171,14 @@ async function dashboardDeps(
 const cuerpo = (r: { body: unknown }): Record<string, unknown> =>
   r.body as Record<string, unknown>;
 
-describe("dashboard — multi-proyecto desde history.jsonl", () => {
+describe("dashboard — multi-project from history.jsonl", () => {
   /**
-   * Tres proyectos distintos escriben tres entradas; el dashboard
-   * debe devolver las tres en una sola respuesta, sin agrupar ni
-   * deduplicar. Sin esto, un proyecto que genera muy a menudo tapa
-   * a los demás.
+   * Three different projects write three entries; the dashboard
+   * must return all three in a single response, without grouping
+   * or deduplicating. Without this, a project that generates very
+   * often hides the others.
    */
-  test("devuelve entradas de varios proyectos en la misma respuesta", async () => {
+  test("returns entries from several projects in the same response", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -208,18 +208,19 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
   });
 
   /**
-   * Orden: la entrada con timestamp más reciente va primero. Aquí
-   * el orden de inserción es inverso al cronológico: la segunda
-   * inserción tiene timestamp 11:00, así que la respuesta debe
-   * ponerla antes que la de 12:00 al revés del orden append.
+   * Order: the entry with the most recent timestamp goes first.
+   * Here the insertion order is reverse to chronological: the
+   * second insertion has timestamp 11:00, so the response must put
+   * it before the 12:00 one, reverse to the append order.
    *
-   * El test escribe explícitamente en orden cronológico inverso al
-   * de llegada, así que si el servicio no reordenara, el resultado
-   * sería `[c, b, a]` cuando el correcto es `[c, b, a]` ya con
-   * timestamps 12, 11, 10 — el orden **append** sí es correcto
-   * aquí; la verificación es que el más reciente queda arriba.
+   * The test explicitly writes in chronological order reversed from
+   * the arrival order, so if the service did not reorder, the
+   * result would be `[c, b, a]` when the correct one is also
+   * `[c, b, a]` already with timestamps 12, 11, 10 — the **append**
+   * order is correct here; the verification is that the most
+   * recent ends up on top.
    */
-  test("ordena de más reciente a más antiguo por timestamp ISO 8601", async () => {
+  test("sorts most recent to oldest by ISO 8601 timestamp", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -249,11 +250,11 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
   });
 
   /**
-   * Filtro por raíz exacta. Sin este filtro el dashboard sería un
-   * cajón desastre de todo lo generado, y un usuario con varios
-   * proyectos acabaría sin poder encontrar el suyo.
+   * Filter by exact root. Without this filter the dashboard would
+   * be a junk drawer of everything ever generated, and a user with
+   * several projects would end up unable to find theirs.
    */
-  test("el filtro por projectRoot reduce la lista a un único proyecto", async () => {
+  test("the projectRoot filter reduces the list to a single project", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -282,11 +283,11 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
   });
 
   /**
-   * `limit` recorta a las N más recientes. Sin cap, un historial
-   * largo inunda la respuesta y el dashboard se vuelve inutilizable
-   * antes de que el usuario llegue a hacer scroll.
+   * `limit` trims to the N most recent. Without a cap, a long
+   * history floods the response and the dashboard becomes
+   * unusable before the user even gets to scroll.
    */
-  test("limit N devuelve solo las N más recientes", async () => {
+  test("limit N returns only the N most recent", async () => {
     for (let i = 0; i < 5; i++) {
       await appendEntrada(
         `/p/${i}`,
@@ -301,19 +302,19 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
     expect(result.entries.length).toBe(2);
     expect(result.entries[0]?.projectName).toBe("p4");
     expect(result.entries[1]?.projectName).toBe("p3");
-    // El total no recorta: `limit` es sobre la respuesta, no sobre
-    // el conteo histórico que el dashboard también muestra.
+    // The total is not trimmed: `limit` is on the response, not on
+    // the historical count the dashboard also shows.
     expect(result.totalEntries).toBe(5);
   });
 
   /**
-   * Combinación: limit + projectRoot a la vez. Sin esta combinación,
-   * la página tendría que pedir las dos cosas en llamadas
-   * separadas — una para "todas las de este proyecto" y otra para
-   * "las 5 más recientes" — y la respuesta serían dos lecturas del
-   * mismo fichero.
+   * Combination: limit + projectRoot at the same time. Without this
+   * combination, the page would have to ask for the two things in
+   * separate calls — one for "all from this project" and another
+   * for "the 5 most recent" — and the response would be two reads
+   * of the same file.
    */
-  test("limit y projectRoot se aplican a la vez: filtro, luego cap", async () => {
+  test("limit and projectRoot apply together: filter, then cap", async () => {
     for (let i = 0; i < 4; i++) {
       await appendEntrada(
         "/p/a",
@@ -343,13 +344,13 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
   });
 
   /**
-   * Línea corrupta: el dashboard no se viene abajo. Esto ya está
-   * cubierto en `tests/cli/history.spec.ts`; aquí se reescribe
-   * enfocado al caso de uso del dashboard (varias entradas + una
-   * línea mala en medio), porque el dashboard lee un fichero que
-   * crece con el uso y una edición a mano deja líneas inválidas.
+   * Corrupt line: the dashboard does not break. This is already
+   * covered in `tests/cli/history.spec.ts`; here it is rewritten
+   * focused on the dashboard use case (several entries + one bad
+   * line in the middle), because the dashboard reads a file that
+   * grows with use and a manual edit leaves invalid lines.
    */
-  test("una línea corrupta entre entradas no rompe la lista del dashboard", async () => {
+  test("a corrupt line between entries does not break the dashboard list", async () => {
     await mkdir(work, { recursive: true });
     await writeFile(
       historyFile,
@@ -365,7 +366,7 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
           collectionPath: "/x.json",
           summary: { ...RESUMEN_BASE, projectName: "alpha", routesInCode: 1 },
         }),
-        "{ no es json válido",
+        "{ not valid json",
         JSON.stringify({
           version: 1,
           timestamp: "2026-09-03T12:00:00Z",
@@ -383,8 +384,9 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
     const result = await readHistory({}, historyFile);
     expect(result.entries.length).toBe(2);
     expect(result.rejected.length).toBe(1);
-    // El dashboard sigue enseñando las dos buenas, y la rechazada
-    // viaja en la respuesta para quien quiera avisar al usuario.
+    // The dashboard still shows the two good ones, and the
+    // rejected one travels in the response for whoever wants to
+    // warn the user.
     expect(result.entries.map((e) => e.projectName).sort()).toEqual([
       "alpha",
       "charlie",
@@ -392,14 +394,14 @@ describe("dashboard — multi-proyecto desde history.jsonl", () => {
   });
 });
 
-describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", () => {
+describe("dashboard — the HTTP route delivers multi-project, order, and filters", () => {
   /**
-   * El dashboard llega al navegador por una ruta HTTP. Lo que se
-   * prueba es que la ruta entrega multi-proyecto desde el
-   * `history.jsonl` real —es decir, el mismo fichero que `append`
-   * escribe— sin tener que reimplementar nada en la ruta.
+   * The dashboard reaches the browser via an HTTP route. What is
+   * tested is that the route delivers multi-project from the real
+   * `history.jsonl` —that is, the same file that `append` writes—
+   * without having to reimplement anything in the route.
    */
-  test("la ruta entrega entradas de varios proyectos desde history.jsonl", async () => {
+  test("the route delivers entries from several projects from history.jsonl", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -434,12 +436,12 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
   });
 
   /**
-   * La ruta propaga `limit` al servicio sin reescribirlo: el doble
-   * recibe el parámetro intacto. Si la ruta lo reinterpretara, el
-   * cap dependería de una segunda implementación que se desincroniza
-   * del servicio.
+   * The route propagates `limit` to the service without rewriting
+   * it: the double receives the parameter intact. If the route
+   * reinterpreted it, the cap would depend on a second
+   * implementation that drifts out of sync with the service.
    */
-  test("limit se propaga de la página al servicio sin reescritura", async () => {
+  test("limit is propagated from the page to the service without rewriting", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -470,11 +472,11 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
   });
 
   /**
-   * El filtro por raíz también se propaga. Es la mitad de "este
-   * proyecto en concreto" — sin ella, el dashboard no se puede
-   * acotar a un único repo cuando el usuario tiene varios.
+   * The root filter is also propagated. It is the other half of
+   * "this specific project" — without it, the dashboard cannot
+   * be narrowed to a single repo when the user has several.
    */
-  test("projectRoot se propaga al servicio y la respuesta se filtra", async () => {
+  test("projectRoot is propagated to the service and the response is filtered", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -509,12 +511,12 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
   });
 
   /**
-   * `totalEntries` también viaja en la respuesta: el dashboard
-   * puede enseñar "X de Y" si quiere. No es obligatorio, pero está
-   * en la respuesta para quien quiera mostrar el conteo completo
-   * sin tener que pedir otra vez el historial sin `limit`.
+   * `totalEntries` also travels in the response: the dashboard
+   * can show "X of Y" if it wants. It is not mandatory, but it is
+   * in the response for whoever wants to show the full count
+   * without having to ask again for the history without `limit`.
    */
-  test("la respuesta incluye el total sin truncar, aunque limit recorte", async () => {
+  test("the response includes the untrimmed total, even when limit trims", async () => {
     for (let i = 0; i < 5; i++) {
       await appendEntrada(
         `/p/${i}`,
@@ -533,12 +535,13 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
   });
 
   /**
-   * Dashboard sin historial: el dashboard responde 200 con lista
-   * vacía, no con un 500. La página, sin red, mostraría "todavía
-   * nada"; con 500, mostraría un error genérico que atribuye el
-   * fallo a la herramienta cuando en realidad nadie ha generado.
+   * Dashboard without history: the dashboard responds 200 with an
+   * empty list, not 500. The page, without the network, would show
+   * "nothing yet"; with 500, it would show a generic error that
+   * attributes the failure to the tool when nobody has actually
+   * generated anything.
    */
-  test("sin historial: 200 con entries vacío, no error", async () => {
+  test("without history: 200 with empty entries, not an error", async () => {
     const deps = await dashboardDeps();
     const r = await handleUiRequest("/api/history", {}, deps);
     expect(r.status).toBe(200);
@@ -549,13 +552,13 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
   });
 
   /**
-   * El append escribe físicamente al `history.jsonl`: si la ruta
-   * HTTP recibiera los datos sin pasar por el fichero, los reinicios
-   * del servidor vaciarían el dashboard. Esta verificación es
-   * pequeña pero decisiva: lee el fichero tras el append y confirma
-   * que las líneas llegaron.
+   * The append physically writes to `history.jsonl`: if the HTTP
+   * route received the data without going through the file, server
+   * restarts would empty the dashboard. This verification is small
+   * but decisive: it reads the file after the append and confirms
+   * the lines arrived.
    */
-  test("appendHistory deja huella en disco, no solo en memoria", async () => {
+  test("appendHistory leaves a trail on disk, not only in memory", async () => {
     await appendEntrada(
       "/p/a",
       "alpha",
@@ -571,9 +574,9 @@ describe("dashboard — la ruta HTTP entrega multi-proyecto, orden y filtros", (
 });
 
 /**
- * Type helper exportado: el dashboard distingue `entries` (la lista
- * visible) de `totalEntries` (lo que había en disco). Si alguien
- * añade un campo nuevo al servicio, este type lo deja ver sin tener
- * que importarlo de `history.interface`.
+ * Exported type helper: the dashboard distinguishes `entries` (the
+ * visible list) from `totalEntries` (what was on disk). If someone
+ * adds a new field to the service, this type lets it be seen without
+ * having to import it from `history.interface`.
  */
 export type IDashboardReadResult = IHistoryReadResult;

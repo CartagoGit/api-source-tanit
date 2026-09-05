@@ -1,19 +1,19 @@
 /**
- * x00024 S1 — `generateCollection()` lanza `MultipleServicesWithoutCombineError`
- * cuando detecta varios servicios sin `--combine-services`.
+ * x00024 S1 — `generateCollection()` throws `MultipleServicesWithoutCombineError`
+ * when it detects several services without `--combine-services`.
  *
- * Contrato verificado:
- *  1. Monorepo con 2 servicios + sin `combineServices` →
- *     `MultipleServicesWithoutCombineError` con `serviceCount === 2`
- *     y `serviceIds` poblado.
- *  2. Monorepo con 2 servicios + `combineServices: true` →
- *     1 `IGenerationResult` combinada (legacy intact).
- *  3. Single-service sin `combineServices` →
- *     1 `IGenerationResult` (legacy intact: cero endpoints permitidos).
+ * Contract verified:
+ *  1. Monorepo with 2 services + no `combineServices` →
+ *     `MultipleServicesWithoutCombineError` with `serviceCount === 2`
+ *     and `serviceIds` populated.
+ *  2. Monorepo with 2 services + `combineServices: true` →
+ *     1 combined `IGenerationResult` (legacy intact).
+ *  3. Single-service without `combineServices` →
+ *     1 `IGenerationResult` (legacy intact: zero endpoints allowed).
  *
- * Se usan fixtures sintéticos con `createTempProject` (mismo patrón
- * que `tests/core/monorepo-multi-workspace.spec.ts`) para no tocar
- * los fixtures reales de `examples/`.
+ * Synthetic fixtures are used with `createTempProject` (same pattern
+ * as `tests/core/monorepo-multi-workspace.spec.ts`) so we do not
+ * touch the real fixtures in `examples/`.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -40,7 +40,7 @@ afterAll(async () => {
 });
 
 describe("x00024 S1 — generateCollection() estricto en multi-service", () => {
-  test("monorepo con 2 servicios sin combineServices → throw MultipleServicesWithoutCombineError", async () => {
+  test("monorepo with 2 services without combineServices → throws MultipleServicesWithoutCombineError", async () => {
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -48,7 +48,7 @@ describe("x00024 S1 — generateCollection() estricto en multi-service", () => {
           private: true,
           workspaces: ["apps/*"],
         }),
-        // apps/api: NestJS — el scanner lo detecta por @nestjs/core.
+        // apps/api: NestJS — the scanner detects it by @nestjs/core.
         "apps/api/package.json": JSON.stringify({
           name: "@x24/api",
           dependencies: { "@nestjs/core": "^10.0.0" },
@@ -59,7 +59,7 @@ export class AppController {
   @Get() list() { return []; }
 }
 `,
-        // apps/web: Express — detectado por `express` en deps.
+        // apps/web: Express — detected by `express` in deps.
         "apps/web/package.json": JSON.stringify({
           name: "@x24/web",
           dependencies: { express: "^4.19.0" },
@@ -91,17 +91,17 @@ app.get("/pages", (_req, res) => res.json([]));
     };
     expect(err.serviceCount).toBe(2);
     expect(err.serviceIds).toHaveLength(2);
-    // El mensaje debe orientar al caller: combineServices o
-    // generateCollections. Si no aparece, la CLI no podría construir
-    // su sugerencia.
+    // The message must guide the caller: combineServices or
+    // generateCollections. If it does not appear, the CLI cannot
+    // build its suggestion.
     expect(err.message).toMatch(/--combine-services/);
     expect(err.message).toMatch(/generateCollections\(\)/);
   }, 30_000);
 
-  test("monorepo con 2 servicios + combineServices=true → 1 IGenerationResult combinada", async () => {
-    // Mismo fixture que el test anterior (mismo project). Reutilizar
-    // el path completo del helper lo hace lento, pero garantiza que
-    // NO hay estado residual entre tests (mismo beforeAll limpia).
+  test("monorepo with 2 services + combineServices=true → 1 combined IGenerationResult", async () => {
+    // Same fixture shape as the previous test. Reusing the helper's
+    // full path makes it slow, but guarantees there is NO residual
+    // state between tests (the same beforeAll cleans up).
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -137,26 +137,26 @@ app.get("/pages", (_req, res) => res.json([]));
       combineServices: true,
     });
 
-    // Legacy intact: cuando combineServices=true, buildFor devuelve
-    // un único IGenerationResult con los endpoints de ambos servicios.
+    // Legacy intact: when combineServices=true, buildFor returns a
+    // single IGenerationResult with the endpoints from both services.
     expect(result.collection).toBeDefined();
     const items = flattenItems(result.collection.item ?? []);
     const uris = items.map((i) => i.request?.url?.raw ?? "");
     expect(
       uris.some((u) => u.includes("/widgets")),
-      `esperaba /widgets de Nest, encontré: ${JSON.stringify(uris)}`,
+      `expected /widgets from Nest, found: ${JSON.stringify(uris)}`,
     ).toBe(true);
     expect(
       uris.some((u) => u.includes("/pages")),
-      `esperaba /pages de Express, encontré: ${JSON.stringify(uris)}`,
+      `expected /pages from Express, found: ${JSON.stringify(uris)}`,
     ).toBe(true);
   }, 30_000);
 
-  test("single-service sin combineServices → 1 IGenerationResult (legacy intact)", async () => {
-    // El legacy path más común: un proyecto Express plano. No es
-    // monorepo, no es multi-servicio. `generateCollection()` debe
-    // seguir devolviendo UN solo IGenerationResult, exactamente como
-    // antes de x00024.
+  test("single-service without combineServices → 1 IGenerationResult (legacy intact)", async () => {
+    // The most common legacy path: a plain Express project. Not a
+    // monorepo, not multi-service. `generateCollection()` must keep
+    // returning ONE single IGenerationResult, exactly as before
+    // x00024.
     const project = await createTempProject(
       {
         "package.json": JSON.stringify({
@@ -181,16 +181,16 @@ app.get("/health", (_req, res) => res.json({ ok: true }));
     const uris = items.map((i) => i.request?.url?.raw ?? "");
     expect(
       uris.some((u) => u.includes("/health")),
-      `esperaba /health del Express single-svc, encontré: ${JSON.stringify(uris)}`,
+      `expected /health from Express single-svc, found: ${JSON.stringify(uris)}`,
     ).toBe(true);
-    // serviceId viene poblado también en single-service (lo introduce
-    // buildForService). Validamos que está, aunque el id concreto no
-    // es contractual.
+    // serviceId is also populated in single-service (introduced by
+    // buildForService). We validate that it is present, although the
+    // concrete id is not contractual.
     expect(typeof result.serviceId === "string" || result.serviceId === undefined).toBe(true);
   }, 30_000);
 });
 
-/** Aplana el árbol de items de Postman (puede ser anidado por folders). */
+/** Flattens the Postman items tree (can be nested by folders). */
 function flattenItems(
   items: ReadonlyArray<{
     item?: ReadonlyArray<unknown>;

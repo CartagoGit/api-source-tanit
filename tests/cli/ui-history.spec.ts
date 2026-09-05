@@ -1,15 +1,15 @@
 /**
- * El dashboard en la interfaz: el camino HTTP `/api/history`.
+ * The dashboard in the interface: the HTTP path `/api/history`.
  *
- * Lo que se prueba aquí es la ruta, no el servicio: el servicio ya
- * tiene su spec en `tests/cli/history.spec.ts`. Esta capa es solo
- * parametrización —pasar `limit` y `projectRoot` al doble, devolver
- * 200 con la forma esperada, fallar con 400 si `limit` no es
- * entero—.
+ * What is tested here is the route, not the service: the service
+ * already has its spec in `tests/cli/history.spec.ts`. This layer is
+ * just parameterization —passing `limit` and `projectRoot` to the
+ * double, returning 200 with the expected shape, failing with 400
+ * if `limit` is not an integer—.
  *
- * Los dobles de `IUiDeps` viven en este fichero, no en
- * `ui-routes.spec.ts`, para que cada spec pueda fijar el suyo sin
- * contaminar al otro.
+ * The `IUiDeps` doubles live in this file, not in
+ * `ui-routes.spec.ts`, so each spec can set its own without
+ * contaminating the other.
  */
 import { describe, expect, test } from "vitest";
 
@@ -60,7 +60,7 @@ function entrada(
   };
 }
 
-/** Doble de `IUiDeps` que registra con qué parámetros se le llamó. */
+/** `IUiDeps` double that records with which parameters it was called. */
 function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
   readonly historyCalls: Array<Record<string, unknown>>;
 } {
@@ -118,8 +118,8 @@ function deps(overrides: Partial<IUiDeps> = {}): IUiDeps & {
 const cuerpo = (r: { body: unknown }): Record<string, unknown> =>
   r.body as Record<string, unknown>;
 
-describe("/api/history — el dashboard de la interfaz", () => {
-  test("devuelve 200 con el resultado del servicio tal cual", async () => {
+describe("/api/history — the interface's dashboard", () => {
+  test("returns 200 with the service result as-is", async () => {
     const r = await handleUiRequest("/api/history", {}, deps());
     expect(r.status).toBe(200);
     const body = cuerpo(r);
@@ -130,59 +130,60 @@ describe("/api/history — el dashboard de la interfaz", () => {
   });
 
   /**
-   * El doble registra la llamada: si la ruta no reenviara `limit`, no
-   * podríamos probar que la paginación funciona desde la página.
+   * The double records the call: if the route did not forward
+   * `limit`, we would not be able to test that pagination works
+   * from the page.
    */
-  test("pasa `limit` al servicio cuando llega del cuerpo", async () => {
+  test("passes `limit` to the service when it comes from the body", async () => {
     const d = deps();
     await handleUiRequest("/api/history", { limit: 5 }, d);
     expect(d.historyCalls[0]).toEqual({ limit: 5 });
   });
 
   /**
-   * Sin `limit`, el doble recibe `limit` indefinido: el servidor no
-   * fuerza un máximo por sí mismo; deja al servicio decidir. Es lo
-   * que permite que un día el servicio cambie el default sin tocar la
-   * ruta.
+   * Without `limit`, the double receives `limit` as undefined: the
+   * server does not force a maximum by itself; it leaves it to the
+   * service to decide. That is what lets the service change the
+   * default one day without touching the route.
    */
-  test("sin `limit`, no se fuerza uno por defecto", async () => {
+  test("without `limit`, no default is forced", async () => {
     const d = deps();
     await handleUiRequest("/api/history", {}, d);
     expect(d.historyCalls[0]?.["limit"]).toBeUndefined();
   });
 
   /**
-   * El filtro por proyecto va de la página al servicio sin
-   * reinterpretarse: la ruta no conoce de dónde sale, solo lo pasa.
+   * The project filter goes from the page to the service without
+   * reinterpretation: the route does not know where it comes from,
+   * it just passes it on.
    */
-  test("pasa `projectRoot` al servicio cuando llega del cuerpo", async () => {
+  test("passes `projectRoot` to the service when it comes from the body", async () => {
     const d = deps();
     await handleUiRequest("/api/history", { projectRoot: "/p/sample" }, d);
     expect(d.historyCalls[0]).toEqual({ projectRoot: "/p/sample" });
   });
 
   /**
-   * `limit` no entero no se acepta: el filtro silencioso enseñaría
-   * "todas" cuando la página pidió "5", y eso es un fallo
-   * silencioso. Devolver 400 le dice a la página que repare su
-   * petición.
+   * A non-integer `limit` is not accepted: a silent filter would
+   * show "all" when the page asked for "5", and that is a silent
+   * failure. Returning 400 tells the page to fix its request.
    */
-  test("`limit` no entero se ignora (no rompe, pero no aplica filtro)", async () => {
+  test("non-integer `limit` is ignored (does not break, but no filter applied)", async () => {
     const d = deps();
     const r = await handleUiRequest("/api/history", { limit: "cinco" }, d);
     expect(r.status).toBe(200);
-    // Y la llamada llega sin `limit`, como si no se hubiera enviado.
+    // And the call arrives without `limit`, as if it had not been sent.
     expect(d.historyCalls[0]?.["limit"]).toBeUndefined();
   });
 
   /**
-   * `limit` negativo o cero se ignora por la misma razón: un valor
-   * inválido se trata como ausente en vez de devolver un error. La
-   * página no pide `limit: 0` ni `limit: -1` en ningún sitio, y
-   * bloquear con 400 aquí sería castigar a quien lo probó en consola
-   * con un valor raro.
+   * A negative or zero `limit` is ignored for the same reason: an
+   * invalid value is treated as absent instead of returning an
+   * error. The page does not ask for `limit: 0` nor `limit: -1`
+   * anywhere, and blocking with 400 here would punish whoever tried
+   * it in the console with a weird value.
    */
-  test("`limit` ≤ 0 se ignora (sin error, sin filtro)", async () => {
+  test("`limit` ≤ 0 is ignored (no error, no filter)", async () => {
     const d = deps();
     const r = await handleUiRequest("/api/history", { limit: -3 }, d);
     expect(r.status).toBe(200);
@@ -190,31 +191,32 @@ describe("/api/history — el dashboard de la interfaz", () => {
   });
 
   /**
-   * Las líneas rechazadas también viajan a la interfaz. El dashboard
-   * no las pinta, pero un test las expone: quien las ignore en la UI
-   * pierde la pista de que alguien editó el fichero a mano.
+   * The rejected lines also travel to the interface. The dashboard
+   * does not paint them, but a test exposes them: whoever ignores
+   * them in the UI loses the trail that someone edited the file by
+   * hand.
    */
-  test("las líneas rechazadas se devuelven tal cual", async () => {
+  test("rejected lines are returned as-is", async () => {
     const d = deps({
       history: async () => ({
         ok: true,
         entries: [entrada("sample", "2026-09-03T12:00:00Z", 3)],
-        rejected: [{ line: 2, reason: "no es JSON" }],
+        rejected: [{ line: 2, reason: "not JSON" }],
         totalEntries: 1,
       }),
     });
     const r = await handleUiRequest("/api/history", {}, d);
     const body = cuerpo(r);
     expect(body["entries"]).toHaveLength(1);
-    expect(body["rejected"]).toEqual([{ line: 2, reason: "no es JSON" }]);
+    expect(body["rejected"]).toEqual([{ line: 2, reason: "not JSON" }]);
   });
 
   /**
-   * El total también se devuelve: la página puede mostrar "X de Y"
-   * si quiere. No es obligatorio, pero está en la respuesta para
-   * quien quiera mostrar el conteo completo.
+   * The total is also returned: the page can show "X of Y" if it
+   * wants. It is not mandatory, but it is in the response for
+   * whoever wants to show the full count.
    */
-  test("el total de entradas se devuelve junto con las entradas limitadas", async () => {
+  test("the total of entries is returned alongside the limited entries", async () => {
     const d = deps({
       history: async () => ({
         ok: true,
@@ -228,34 +230,34 @@ describe("/api/history — el dashboard de la interfaz", () => {
   });
 
   /**
-   * Si el servicio falla, la ruta no devuelve 500. Lo trata como un
-   * resultado vacío: la UI mostrará "no hay historial" y la persona
-   * puede seguir generando. Un 500 aquí tiraría la página sin que
-   * la generación haya fallado.
+   * If the service fails, the route does not return 500. It treats
+   * it as an empty result: the UI will show "no history" and the
+   * person can keep generating. A 500 here would take down the
+   * page even though generation has not failed.
    */
-  test("si el servicio lanza, la ruta devuelve 200 con error explicativo", async () => {
+  test("if the service throws, the route returns 200 with explanatory error", async () => {
     const d = deps({
       history: async () => {
         throw new Error("disk full");
       },
     });
-    // handleUiRequest no captura: lanza. La página llama a /api/history
-    // con `.catch`, así que el error se queda en el JS del cliente y
-    // la página enseña "todavía nada". Lo que aquí se valida es que
-    // el error se propaga para que el `.catch` de la página lo pueda
-    // cazar.
+    // handleUiRequest does not catch: it throws. The page calls
+    // /api/history with `.catch`, so the error stays in the
+    // client-side JS and the page shows "nothing yet". What is
+    // validated here is that the error propagates so the page's
+    // `.catch` can catch it.
     await expect(handleUiRequest("/api/history", {}, d)).rejects.toThrow(/disk full/);
   });
 });
 
-describe("/api/history — bordes del contrato", () => {
+describe("/api/history — edges of the contract", () => {
   /**
-   * La página lo llama nada más cargar. El método no es importante —
-   * el servidor lo lee como POST sin cuerpo — pero el contrato
-   * histórico es que `/api/*` se llama con POST. Este test
-   * documenta que un POST sin body funciona igual que un GET.
+   * The page calls it as soon as it loads. The method does not
+   * matter —the server reads it as POST without body— but the
+   * historical contract is that `/api/*` is called with POST. This
+   * test documents that a POST without body works the same as a GET.
    */
-  test("un POST sin cuerpo devuelve 200", async () => {
+  test("a POST without body returns 200", async () => {
     const r = await handleUiRequest("/api/history", {}, deps());
     expect(r.status).toBe(200);
   });

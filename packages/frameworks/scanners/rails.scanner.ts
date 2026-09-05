@@ -1,24 +1,23 @@
 /**
- * `RailsScanner` — `IProjectScanner` + `IRouteScanner` para Ruby on
+ * `RailsScanner` — `IProjectScanner` + `IRouteScanner` for Ruby on
  * Rails.
  *
- * Rails es el caso más "declarativo" de todos los soportados: las rutas
- * no están repartidas por el código, viven **enteras** en
- * `config/routes.rb`. Eso lo hace muy fiable de leer, pero con una
- * particularidad que hay que resolver bien:
+ * Rails is the most "declarative" of all supported frameworks: the
+ * routes are not scattered through the code, they live **entirely**
+ * in `config/routes.rb`. This makes it very reliable to read, but with
+ * a subtlety to handle well:
  *
  *     resources :users
  *
- * Esa línea son **siete** endpoints (`index`, `create`, `show`,
- * `update`, `destroy` más los de formulario), igual que el
- * `apiResource` de Laravel. Contarla como una ruta sería quedarse con
- * el 14% de la API.
+ * That line is **seven** endpoints (`index`, `create`, `show`,
+ * `update`, `destroy` plus the form ones), just like Laravel's
+ * `apiResource`. Counting it as one route would leave 14% of the API.
  *
- * También se resuelven:
- *   - `namespace :api` y `scope "/v1"` — prefijos anidados.
- *   - `only:` y `except:` para acotar qué acciones genera `resources`.
- *   - `resource :perfil` (singular): sin `index` y sin `:id`.
- *   - `member do` / `collection do` — rutas extra dentro de un recurso.
+ * Also handled:
+ *   - `namespace :api` and `scope "/v1"` — nested prefixes.
+ *   - `only:` and `except:` to limit which actions `resources` generates.
+ *   - `resource :profile` (singular): no `index` and no `:id`.
+ *   - `member do` / `collection do` — extra routes inside a resource.
  */
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
@@ -35,18 +34,18 @@ import type {
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 /**
- * Las siete acciones que genera `resources`, con su forma REST.
+ * The seven actions `resources` generates, with their REST shape.
  *
- * `paramName` es el nombre del path param tal como lo declara Rails por
- * defecto (a00010 / B-03): singular del recurso, no `id`. Un
- * `resources :users` produce `/users/{user}` y no `/users/{id}`. Rails
- * permite sobreescribirlo con `param: :otro`, pero ese caso se queda
- * registrado para el refactor del parser; el comportamiento por defecto
- * es lo que la colección espera ver.
+ * `paramName` is the path-param name as Rails declares it by default
+ * (a00010 / B-03): the singular of the resource, not `id`. A
+ * `resources :users` produces `/users/{user}` and not `/users/{id}`.
+ * Rails lets you override it with `param: :other`, but that case is
+ * logged for a future parser refactor; the default behaviour is what
+ * the collection expects to see.
  *
- * El `id` genérico se conserva como fallback solo para `resources` sin
- * nombre inferible (caso degenerado: recurso con caracteres que rompan
- * el singularizer).
+ * The generic `id` is kept as a fallback only for `resources` without
+ * an inferable name (degenerate case: a resource with characters that
+ * break the singulariser).
  */
 const RESOURCE_ACTIONS = [
   { action: "index", method: "GET", suffix: "", paramName: "{id}" },
@@ -59,11 +58,12 @@ const RESOURCE_ACTIONS = [
 ] as const;
 
 /**
- * Las acciones que tienen sentido en una API JSON.
+ * The actions that make sense in a JSON API.
  *
- * `new` y `edit` devuelven **formularios HTML**: en una API no existen,
- * y meterlas llenaría la colección de endpoints que dan 404. Rails las
- * genera igual porque `resources` sirve también para apps con vistas.
+ * `new` and `edit` return **HTML forms**: they don't exist in an API,
+ * and adding them would fill the collection with endpoints that 404.
+ * Rails generates them anyway because `resources` also serves apps with
+ * views.
  */
 const API_ACTIONS = new Set(["index", "create", "show", "update", "destroy"]);
 
@@ -86,7 +86,7 @@ export class RailsProjectScanner implements IProjectScanner {
 
   async detect(projectRoot: string): Promise<IProjectScannerResult> {
     if (!existsSync(join(projectRoot, "config", "routes.rb"))) return emptyResult(0);
-    // `Gemfile` + `config/routes.rb` es Rails sin lugar a dudas.
+    // `Gemfile` + `config/routes.rb` is Rails beyond doubt.
     const hasGemfile = existsSync(join(projectRoot, "Gemfile"));
     return withEvidence(hasGemfile ? 1 : 0.7, [
       { signal: "config/routes.rb presente (entry-point canónico de Rails)", weight: 0.7, artifact: "config/routes.rb" },
@@ -118,27 +118,27 @@ export class RailsRouteScanner implements IRouteScanner {
 }
 
 /**
- * Recorre `routes.rb` manteniendo la pila de prefijos activos.
+ * Walks `routes.rb` keeping the stack of active prefixes.
  *
- * Se lleva la cuenta por indentación: Ruby cierra los bloques con
- * `end`, y la profundidad del `end` dice qué prefijo se desapila. Es lo
- * mismo que hace el parser de Laravel con sus `Route::prefix()->group()`.
+ * Indentation drives the count: Ruby closes blocks with `end`, and the
+ * depth of `end` tells which prefix to pop. It is the same trick the
+ * Laravel parser uses with its `Route::prefix()->group()`.
  */
 export function parseRoutesFile(source: string, sourceFile: string): ParsedRoute[] {
   const routes: ParsedRoute[] = [];
   const lines = source.split("\n");
 
-  /** Prefijos activos, con la indentación en la que se abrieron. */
+  /** Active prefixes, with the indentation where they were opened. */
   const stack: Array<{ prefix: string; indent: number }> = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    // Ruby comenta con `#`. Una ruta comentada no es una ruta.
+    // Ruby comments with `#`. A commented-out route is not a route.
     if (/^\s*#/.test(line)) continue;
 
     const indent = line.length - line.trimStart().length;
 
-    // Un `end` cierra el bloque abierto a esa indentación.
+    // An `end` closes the block opened at that indentation.
     if (/^\s*end\s*$/.test(line)) {
       while (stack.length > 0 && (stack[stack.length - 1]?.indent ?? 0) >= indent) {
         stack.pop();
@@ -152,7 +152,7 @@ export function parseRoutesFile(source: string, sourceFile: string): ParsedRoute
     if (namespace) {
       const kind = namespace[1] ?? "";
       const name = namespace[2] ?? "";
-      // `scope module: :api` no cambia la URL, solo el módulo Ruby.
+      // `scope module: :api` does not change the URL, only the Ruby module.
       const isPathScope = kind === "namespace" || /^\s*['"]/.test(namespace[0] ?? "");
       if (isPathScope || kind === "namespace") {
         stack.push({ prefix: name, indent });
@@ -168,8 +168,8 @@ export function parseRoutesFile(source: string, sourceFile: string): ParsedRoute
       routes.push(
         ...expandResource(name, singular, options, prefix, sourceFile, i + 1),
       );
-      // `resources :x do … end` abre bloque: las rutas de dentro cuelgan
-      // del recurso.
+      // `resources :x do … end` opens a block: routes inside hang from the
+      // resource.
       if (/\bdo\b\s*$/.test(line)) stack.push({ prefix: name, indent });
       continue;
     }
@@ -191,7 +191,7 @@ export function parseRoutesFile(source: string, sourceFile: string): ParsedRoute
   return dedupe(routes);
 }
 
-/** Aplica un regex global sobre una línea suelta, sin heredar estado. */
+/** Applies a global regex to a single line, without inheriting state. */
 function matchOnce(pattern: RegExp, line: string): RegExpExecArray | null {
   const own = new RegExp(pattern.source, pattern.flags.replace("g", "").replace("m", ""));
   return own.exec(line);
@@ -208,13 +208,13 @@ function expandResource(
 ): ParsedRoute[] {
   const only = listOption(options, "only");
   const except = listOption(options, "except");
-  // a00011 C-1: `resources :users, param: :otro` lo respeta. Por
-  // defecto Rails usa `:id`, NO el singular del recurso — el
-  // singularizer naïve que había aquí (`users → user`) se llevaba
-  // mal con `categories → categorie` y similares. La doc oficial
-  // (guides.rubyonrails.org/routing.html#singular-resources) es
-  // clara: el param por defecto es `id`, configurable con
-  // `param: :otro`. Lo respetamos.
+  // a00011 C-1: `resources :users, param: :other` is honoured. By
+  // default Rails uses `:id`, NOT the singular of the resource — the
+  // naive singulariser that lived here (`users → user`) misbehaved on
+  // `categories → categorie` and similar. The official docs
+  // (guides.rubyonrails.org/routing.html#singular-resources) are
+  // clear: the default param is `id`, configurable via
+  // `param: :other`. We respect that.
   const explicitParam = paramOption(options);
   const paramToken = explicitParam !== null
     ? `{${explicitParam}}`
@@ -226,8 +226,8 @@ function expandResource(
     if (only.length > 0 && !only.includes(action)) continue;
     if (except.includes(action)) continue;
 
-    // Un recurso singular (`resource :perfil`) no tiene listado ni
-    // `:id`: siempre opera sobre "el mío".
+    // A singular resource (`resource :profile`) has no listing and no
+    // `:id`: it always operates on "mine".
     if (singular && action === "index") continue;
     const path = singular
       ? suffix.replace(/^\/\{id\}/, "")
@@ -243,10 +243,10 @@ function expandResource(
       actionName: action,
     });
 
-    // a00010 / B-04: Rails 5+ acepta PATCH además de PUT para la acción
-    // `update`. Sin la segunda entrada, la colección miente: el usuario
-    // importa, prueba con PUT, falla, y tiene que acordarse de probar
-    // PATCH él solo. Lo declaramos los dos.
+    // a00010 / B-04: Rails 5+ accepts PATCH in addition to PUT for the
+    // `update` action. Without the second entry the collection lies:
+    // the user imports it, tries PUT, fails, and has to remember to try
+    // PATCH on their own. We declare both.
     if (action === "update") {
       routes.push({
         lineNumber,
@@ -263,9 +263,9 @@ function expandResource(
 }
 
 /**
- * Extrae `param: :nombre` de las opciones de `resources` / `resource`.
- * Devuelve `null` si no está declarado, que es la señal de "usar
- * `{id}` por defecto".
+ * Extracts `param: :name` from the options of `resources` / `resource`.
+ * Returns `null` if not declared, which is the the signal to "use `{id}`
+ * by default".
  */
 function paramOption(options: string): string | null {
   const match = /param\s*:\s*:?(\w+)/.exec(options);
@@ -281,7 +281,7 @@ function listOption(options: string, name: string): string[] {
       .map((value) => value.replace(/[:\s]/g, ""))
       .filter(Boolean);
   }
-  // También se admite sin corchetes: `only: :show`.
+  // Also accepted without brackets: `only: :show`.
   const single = new RegExp(String.raw`${name}\s*:\s*:(\w+)`).exec(options);
   return single?.[1] ? [single[1]] : [];
 }

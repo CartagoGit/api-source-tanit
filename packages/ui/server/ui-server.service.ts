@@ -1,38 +1,39 @@
 /**
- * El transporte de `apisrc ui`: puerto, seguridad y apagado.
+ * The transport for `apisrc ui`: port, security and shutdown.
  *
- * Sobre `Bun.serve`, que **ya está en el runtime que el binario lleva
- * dentro**. Eso es lo que hace que la interfaz no añada ni una
- * dependencia, y lo que descartó Electron: 150 MB por plataforma para
- * envolver exactamente lo mismo.
+ * Built on top of `Bun.serve`, which is **already in the runtime
+ * the binary ships with**. That is what lets the interface add no
+ * dependency, and what ruled out Electron: 150 MB per platform to
+ * wrap exactly the same thing.
  *
- * Tres decisiones que no son negociables:
+ * Three decisions that are non-negotiable:
  *
- *   1. **Escucha solo en el bucle local** (`127.0.0.1`). Esto lee el
- *      código fuente del disco de quien lo usa; que sea alcanzable desde
- *      la red de la oficina no es una comodidad, es una filtración.
- *   2. **Busca un puerto libre** en vez de fallar. Un `EADDRINUSE` en
- *      una herramienta gráfica es un callejón sin salida para quien no
- *      sabe qué es un puerto.
- *   3. **Se apaga con SIGINT y SIGTERM.** Un servidor que no suelta el
- *      puerto obliga a buscar el proceso y matarlo a mano.
+ *   1. **Listens only on the local loopback** (`127.0.0.1`). This
+ *      reads source code from the user's disk; being reachable from
+ *      the office network is not a convenience, it is a leak.
+ *   2. **Picks a free port** instead of failing. An `EADDRINUSE` in
+ *      a graphical tool is a dead end for whoever does not know
+ *      what a port is.
+ *   3. **Shuts down on SIGINT and SIGTERM.** A server that does not
+ *      release the port forces you to track down the process and
+ *      kill it by hand.
  */
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
 
-/** Solo el bucle local. Ver §1 de arriba. */
+/** Local loopback only. See §1 above. */
 const HOST = "127.0.0.1";
 
-/** Cuántos puertos se prueban antes de rendirse. */
+/** How many ports we try before giving up. */
 const INTENTOS = 20;
 
 /**
- * ¿Es un error de "puerto ocupado"?
+ * Is this a "port already in use" error?
  *
- * Se mira por el código y no por el mensaje: el texto cambia entre
- * sistemas y versiones, y un `includes("EADDRINUSE")` es de las cosas
- * que funcionan hasta que alguien actualiza algo.
+ * We look at the code, not the message: the text changes across
+ * systems and versions, and `includes("EADDRINUSE")` is the kind of
+ * thing that works until somebody updates something.
  */
 function puertoOcupado(error: unknown): boolean {
   const code = (error as { code?: string }).code;
@@ -40,18 +41,18 @@ function puertoOcupado(error: unknown): boolean {
 }
 
 /**
- * Un testigo nuevo por ejecución.
+ * A fresh token per run.
  *
- * `randomUUID` y no un contador ni la hora: tiene que ser imposible de
- * adivinar desde fuera, porque adivinarlo es exactamente el ataque.
- * Nuevo en cada arranque, así que cerrar y volver a abrir la interfaz
- * invalida cualquier página que hubiera quedado con el anterior.
+ * `randomUUID`, not a counter nor the time: it must be impossible
+ * to guess from the outside, because guessing it is exactly the
+ * attack. New on every boot, so closing and reopening the interface
+ * invalidates any page that may have cached the previous one.
  */
 function nuevoTestigo(): string {
   return crypto.randomUUID();
 }
 
-/** Levanta la interfaz y devuelve dónde ha quedado escuchando. */
+/** Starts the interface and returns where it ended up listening. */
 export function startUiServer(options: IUiServerOptions): IUiServer {
   const desde = options.port ?? DEFAULT_UI_PORT;
   const testigo = nuevoTestigo();
@@ -65,14 +66,15 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
         fetch: async (request) => {
           const { pathname } = new URL(request.url);
 
-          // La interfaz, servida desde memoria, con el testigo dentro.
+          // The interface, served from memory, with the token embedded.
           //
-          // El testigo va como atributo del `<script>` en vez de en una
-          // cookie a propósito: una cookie la manda el navegador **sola**
-          // en cualquier petición a este origen, incluidas las que
-          // dispare otra web. Un atributo del HTML solo lo lee quien
-          // puede leer el HTML, y eso es justo lo que la política de
-          // mismo origen impide a un tercero.
+          // The token lives as an attribute of the `<script>` rather
+          // than in a cookie on purpose: a cookie is sent by the
+          // browser **on its own** on any request to this origin,
+          // including ones fired by another site. An HTML attribute
+          // is only read by whoever can read the HTML, and that is
+          // exactly what same-origin policy blocks for a third
+          // party.
           if (pathname === "/" || pathname === "/index.html") {
             return new Response(
               options.html.replace("<script>", `<script data-token="${testigo}">`),
@@ -80,8 +82,8 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
               status: 200,
               headers: {
                 "content-type": "text/html; charset=utf-8",
-                // Nada de esto sale de la máquina, pero una interfaz que
-                // ejecuta lo que le manden es una interfaz prestada.
+                // None of this leaves the machine, but an interface that runs
+                // whatever it is told is a borrowed interface.
                 "content-security-policy":
                   "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
               },
@@ -90,29 +92,33 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
           }
 
           /**
-           * Solo contesta a la propia interfaz.
+           * Only answers to the interface itself.
            *
-           * Escuchar en `127.0.0.1` **no** basta, y esa es la trampa: el
-           * servidor no es alcanzable desde la red, pero sí desde el
-           * navegador de quien lo ejecuta. Cualquier web que esa persona
-           * visite mientras la interfaz corre puede hacerle un POST aquí.
+           * Listening on `127.0.0.1` **is not** enough, and that is
+           * the trap: the server is not reachable from the network,
+           * but it is from the browser of whoever is running it.
+           * Any web page that person visits while the interface is
+           * up can POST here.
            *
-           * Se probó: con `content-type: text/plain` —una petición
-           * «simple», sin preflight— una página cualquiera conseguía que
-           * `/api/generate` **escribiera ficheros donde quisiera**, vía
-           * el `outputDir`. No podía leer la respuesta (eso sí lo corta
-           * el navegador), pero el efecto ya había ocurrido.
+           * It was tested: with `content-type: text/plain` — a
+           * "simple" request, no preflight — any page could get
+           * `/api/generate` to **write files wherever it wanted**,
+           * via `outputDir`. It could not read the response (the
+           * browser does block that), but the damage was already
+           * done.
            *
-           * Dos comprobaciones, y las dos hacen falta:
+           * Two checks, both needed:
            *
-           *   · El **testigo**, que solo está en el HTML servido. Un
-           *     tercero no puede leerlo.
-           *   · El **origen**, cuando viene. Corta el caso antes incluso
-           *     de mirar el cuerpo, y deja un mensaje que se entiende.
+           *   · The **token**, which only lives in the served HTML.
+           *     A third party cannot read it.
+           *   · The **origin**, when present. It cuts the case
+           *     before even looking at the body, and leaves a
+           *     message that makes sense.
            *
-           * Una petición sin `Origin` —curl, un test, un script— sí pasa:
-           * ahí no hay navegador al que engañar, y bloquearla rompería el
-           * uso legítimo desde la terminal sin ganar nada.
+           * A request without `Origin` — curl, a test, a script —
+           * does pass: there is no browser to fool there, and
+           * blocking it would break legitimate terminal use without
+           * gaining anything.
            */
           const origen = request.headers.get("origin");
           if (origen !== null && origen !== `http://${HOST}:${port}`) {
@@ -151,11 +157,11 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
 
           let body: Record<string, unknown> = {};
           if (request.method === "POST") {
-            // Se lee como texto y solo se parsea si hay algo. Un POST sin
-            // cuerpo es legítimo —`/api/capabilities` no necesita
-            // ninguno— y `json()` sobre un cuerpo vacío lanza: tratarlo
-            // como «JSON inválido» hacía que la interfaz fallara nada
-            // más cargar, en su primera petición.
+            // We read it as text and only parse if there is something. A POST
+            // without body is legitimate — `/api/capabilities` needs
+            // none — and `json()` over an empty body throws: treating
+            // it as "invalid JSON" made the interface fail on its
+            // very first request at load.
             const crudo = (await request.text()).trim();
             try {
               const parsed = crudo === "" ? {} : (JSON.parse(crudo) as unknown);

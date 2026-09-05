@@ -1,15 +1,15 @@
 /**
- * `expostman history` — el reverso del append.
+ * `expostman history` — the reverse of the append.
  *
- * El servicio escribe (`appendHistory`); este comando lee
- * (`readHistory`) y enseña. Lo que se comprueba es lo que importa de
- * verdad: que el comando dice lo que el fichero tiene y nada más, y
- * que `--limit`, `--project` y `--json` funcionan sin tener que
- * reorganizar el código del CLI.
+ * The service writes (`appendHistory`); this command reads
+ * (`readHistory`) and displays. What is checked is what truly
+ * matters: that the command says what the file contains and nothing
+ * else, and that `--limit`, `--project` and `--json` work without
+ * having to reorganise the CLI code.
  *
- * Los tests usan `path` y `home` inyectados para que el disco real no
- * se toque. Un test que escribe en `~/.expostman/history.jsonl` no es
- * un test: es un side-effect en la máquina de quien lo corre.
+ * The tests use injected `path` and `home` so the real disk is not
+ * touched. A test that writes to `~/.expostman/history.jsonl` is not
+ * a test: it is a side effect on whoever's machine runs it.
  */
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -25,7 +25,7 @@ import {
 } from "../../packages/cli/commands/history.script";
 import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface";
 
-/** Resumen mínimo para construir entradas. */
+/** Minimum summary to build entries. */
 const RESUMEN_BASE: IProjectSummary = {
   framework: "express",
   frameworks: ["express"],
@@ -51,7 +51,7 @@ const RESUMEN_BASE: IProjectSummary = {
   },
 };
 
-/** Una raíz temporal, y un fichero de historial dentro. */
+/** A temporary root, and a history file inside it. */
 let work = "";
 let historyFile = "";
 
@@ -64,13 +64,13 @@ afterEach(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-/** Helper para construir resúmenes con un proyecto y endpoints concretos. */
+/** Helper to build summaries with a concrete project and endpoints. */
 function resumen(projectName: string, endpoints: number): IProjectSummary {
   return { ...RESUMEN_BASE, projectName, routesInCode: endpoints };
 }
 
-describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
-  test("una entrada append+read vuelve igual", async () => {
+describe("appendHistory + readHistory — the cycle the CLI executes", () => {
+  test("an append+read entry comes back equal", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/sample", summary: resumen("sample", 9) },
       historyFile,
@@ -85,11 +85,12 @@ describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
   });
 
   /**
-   * Las dos escrituras van en líneas separadas y se preservan.
-   * Append concurrente en POSIX (`O_APPEND`) garantiza que cada `write`
-   * es atómico: dos procesos que escriben a la vez no se pisan.
+   * The two writes go on separate lines and are preserved. POSIX
+   * concurrent append (`O_APPEND`) guarantees that each `write` is
+   * atomic: two processes writing at once do not step on each
+   * other.
    */
-  test("dos appends en serie producen dos entradas", async () => {
+  test("two appends in series produce two entries", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/a", summary: resumen("a", 3) },
       historyFile,
@@ -106,10 +107,10 @@ describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
   });
 
   /**
-   * Orden: más reciente primero. Aquí la segunda entrada tiene
-   * timestamp posterior, así que debe ir antes.
+   * Order: most recent first. Here the second entry has a later
+   * timestamp, so it must come first.
    */
-  test("las entradas se devuelven de más reciente a más antigua", async () => {
+  test("entries are returned from most recent to oldest", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/a", summary: resumen("a", 3) },
       historyFile,
@@ -127,11 +128,11 @@ describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
   });
 
   /**
-   * Una línea corrupta no tira el resto: la lectura devuelve lo bueno
-   * y avisa de la línea mala. Sin esto, una edición manual con un
-   * carácter fuera de sitio borra el historial entero.
+   * A corrupt line does not break the rest: the read returns the
+   * good parts and reports the bad line. Without this, a manual
+   * edit with one out-of-place character erases the whole history.
    */
-  test("una línea corrupta se ignora y se reporta", async () => {
+  test("a corrupt line is ignored and reported", async () => {
     await mkdir(work, { recursive: true });
     await writeFile(historyFile, '{ "timestamp":"2026-09-03T09:00:00Z", "kind":"summary", no es json\n');
     await appendHistory(
@@ -147,7 +148,7 @@ describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
     expect(read.rejected[0]?.line).toBe(1);
   });
 
-  test("un fichero inexistente devuelve vacío, no error", async () => {
+  test("a non-existent file returns empty, not an error", async () => {
     const read = await readHistory({}, historyFile);
     expect(read.totalEntries).toBe(0);
     expect(read.entries).toEqual([]);
@@ -155,14 +156,14 @@ describe("appendHistory + readHistory — el ciclo que el CLI ejecuta", () => {
   });
 });
 
-describe("runHistory — el comando en sí", () => {
+describe("runHistory — the command itself", () => {
   /**
-   * El camino más normal: hay entradas y el comando las enseña.
-   * Lo que se mira es que la salida tiene el nombre del proyecto y el
-   * framework — lo que alguien que ejecuta `expostman history` viene
-   * a buscar—, y no solo un número.
+   * The most normal path: there are entries and the command shows
+   * them. What is checked is that the output has the project name
+   * and the framework — what someone running `expostman history`
+   * comes to look for —, not just a number.
    */
-  test("con dos entradas, las lista con proyecto y framework", async () => {
+  test("with two entries, lists them with project and framework", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/sample", summary: resumen("sample", 9) },
       historyFile,
@@ -178,17 +179,17 @@ describe("runHistory — el comando en sí", () => {
     expect(r.code).toBe(0);
     expect(r.output).toContain("sample");
     expect(r.output).toContain("express");
-    // Las dos entradas, en una línea cada una.
+    // The two entries, one line each.
     const lineas = r.output.split("\n").filter((l) => l.includes("endpoint"));
     expect(lineas.length).toBe(2);
   });
 
   /**
-   * `--limit N` recorta a las últimas N. Sin esto, un historial
-   * largo inunda la terminal y deja a quien lo mira igual de
-   * desinformado que sin historial.
+   * `--limit N` trims to the last N. Without this, a long history
+   * floods the terminal and leaves whoever is looking at it as
+   * uninformed as without history.
    */
-  test("--limit recorta las últimas N", async () => {
+  test("--limit trims to the last N", async () => {
     for (let i = 0; i < 5; i++) {
       await appendHistory(
         { kind: "summary", projectRoot: `/p/${i}`, summary: resumen(`p${i}`, i + 1) },
@@ -206,11 +207,11 @@ describe("runHistory — el comando en sí", () => {
   });
 
   /**
-   * `--project` filtra por raíz exacta. Una raíz distinta no debe
-   * aparecer — eso filtraría por "contiene" y dos proyectos con
-   * nombres similares colarían entradas del otro.
+   * `--project` filters by exact root. A different root must not
+   * appear — that would filter by "contains" and two projects with
+   * similar names would slip entries in from the other.
    */
-  test("--project filtra por raíz exacta", async () => {
+  test("--project filters by exact root", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/sample", summary: resumen("sample", 5) },
       historyFile,
@@ -229,11 +230,11 @@ describe("runHistory — el comando en sí", () => {
   });
 
   /**
-   * `--json` devuelve JSONL, una entrada por línea. Es el formato que
-   * se mete en `jq` o en otro script; cualquier otra cosa rompe la
-   * cadena.
+   * `--json` outputs JSONL, one entry per line. That is the format
+   * that goes into `jq` or another script; anything else breaks the
+   * chain.
    */
-  test("--json emite JSONL con una entrada por línea", async () => {
+  test("--json emits JSONL with one entry per line", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/a", summary: resumen("a", 3) },
       historyFile,
@@ -249,7 +250,7 @@ describe("runHistory — el comando en sí", () => {
     expect(r.code).toBe(0);
     const lineas = r.output.split("\n").filter((l) => l.trim() !== "");
     expect(lineas.length).toBe(2);
-    // Cada línea es un objeto JSON con los campos esperados.
+    // Each line is a JSON object with the expected fields.
     for (const l of lineas) {
       const o = JSON.parse(l) as Record<string, unknown>;
       expect(o["projectName"]).toBe("a");
@@ -258,42 +259,43 @@ describe("runHistory — el comando en sí", () => {
   });
 
   /**
-   * Sin entradas, el comando **no falla**. Devuelve un texto que dice
-   * "no hay historial todavía" y dice dónde se escribiría, que es lo
-   * que alguien que acaba de instalar la herramienta espera ver.
+   * Without entries, the command **does not fail**. It returns
+   * text that says "no history yet" and tells where it would be
+   * written, which is what someone who has just installed the tool
+   * expects to see.
    */
-  test("sin entradas devuelve un texto accionable, no vacío", async () => {
+  test("without entries returns an actionable text, not empty", async () => {
     const r = await runHistory([], { historyPath: historyFile });
     expect(r.code).toBe(0);
     expect(r.output).toMatch(/no history/i);
   });
 
   /**
-   * `--limit 0` o negativo: lo rechazamos con un mensaje claro. Si
-   * lo aceptáramos, alguien con un script mal puesto acabaría con
-   * un comando silencioso.
+   * `--limit 0` or negative: we reject it with a clear message.
+   * If we accepted it, someone with a misconfigured script would
+   * end up with a silent command.
    */
-  test("--limit no entero se rechaza", async () => {
+  test("non-integer --limit is rejected", async () => {
     const r = await runHistory(["--limit", "abc"], { historyPath: historyFile });
     expect(r.code).toBe(1);
     expect(r.output).toMatch(/integer/i);
   });
 
   /**
-   * `--limit 0` se rechaza: cero entradas no es lo que `--limit 0`
-   * significa en una herramienta que ya devuelve vacío sin él.
+   * `--limit 0` is rejected: zero entries is not what `--limit 0`
+   * means in a tool that already returns empty without it.
    */
-  test("--limit 0 se rechaza", async () => {
+  test("--limit 0 is rejected", async () => {
     const r = await runHistory(["--limit", "0"], { historyPath: historyFile });
     expect(r.code).toBe(1);
   });
 
   /**
-   * `--clear` borra el fichero. Lo que se mira es que después de
-   * borrarlo, una lectura subsiguiente devuelve vacío: la operación
-   * realmente ocurre.
+   * `--clear` deletes the file. What is checked is that after
+   * deleting it, a subsequent read returns empty: the operation
+   * actually happens.
    */
-  test("--clear borra el fichero y devuelve un mensaje", async () => {
+  test("--clear deletes the file and returns a message", async () => {
     await appendHistory(
       { kind: "summary", projectRoot: "/p/a", summary: resumen("a", 3) },
       historyFile,
@@ -314,32 +316,33 @@ describe("runHistory — el comando en sí", () => {
   });
 
   /**
-   * `--clear` sobre un fichero inexistente sale con 0 y dice "nada
-   * que borrar": borrarlo dos veces no es un error, y un mensaje de
-   * error en este caso asustaría sin motivo.
+   * `--clear` on a non-existent file exits with 0 and says
+   * "nothing to clear": clearing twice is not an error, and an
+   * error message in this case would scare without reason.
    */
-  test("--clear sin fichero dice 'nothing to clear'", async () => {
+  test("--clear without a file says 'nothing to clear'", async () => {
     const r = await runHistory(["--clear"], { historyPath: historyFile });
     expect(r.code).toBe(0);
     expect(r.output).toMatch(/nothing/i);
   });
 });
 
-describe("el camino real del CLI", () => {
+describe("the real CLI path", () => {
   /**
-   * El camino de uso: `summary` escribe, `history` lee.
+   * The use path: `summary` writes, `history` reads.
    *
-   * Como summary escribe con la ruta por defecto, este test redirige
-   * la variable `HOME` indirectamente pasando `home` a `runHistory`.
-   * El append real usa la ruta por defecto; para no tocar el disco
-   * de la máquina, aquí se ejercita por separado: un append con la
-   * ruta que el servicio habría usado si `HOME` apuntara a `work`.
+   * Since summary writes with the default path, this test redirects
+   * the `HOME` variable indirectly by passing `home` to
+   * `runHistory`. The real append uses the default path; to avoid
+   * touching the machine's disk, it is exercised separately here:
+   * an append with the path the service would have used if `HOME`
+   * pointed at `work`.
    *
-   * Lo que se valida es el contrato **de la capa de servicio**:
-   * append deja, read coge. La integración con la variable de
-   * entorno se cubre con `userHistoryDir()` en su propio spec.
+   * What is validated is the **service layer** contract: append
+   * puts, read takes. Integration with the environment variable
+   * is covered by `userHistoryDir()` in its own spec.
    */
-  test("append + read preserva timestamp ISO 8601", async () => {
+  test("append + read preserves ISO 8601 timestamp", async () => {
     const fecha = new Date("2026-09-03T15:30:45.123Z");
     await appendHistory(
       { kind: "summary", projectRoot: "/p/x", summary: resumen("x", 2) },
@@ -351,7 +354,7 @@ describe("el camino real del CLI", () => {
     expect(read.entries[0]?.timestamp).toBe("2026-09-03T15:30:45.123Z");
   });
 
-  test("la ruta que devuelve IAppendResult es la que después se lee", async () => {
+  test("the path returned by IAppendResult is the one read afterwards", async () => {
     const out = await appendHistory(
       { kind: "summary", projectRoot: "/p/y", summary: resumen("y", 1) },
       historyFile,

@@ -1,16 +1,17 @@
 /**
- * Qué esquema de autenticación usa la API.
+ * Which authentication scheme the API uses.
  *
- * La colección salía **siempre** con `auth: { type: "bearer" }`. Una API
- * que autentica con `X-API-Key` recibía un bearer con un `{{token}}` que
- * nadie rellena nunca; una API sin autenticación **ninguna**, también. Y
- * encima cada petición llevaba una cabecera `Authorization: Bearer` sin
- * resolver, así que la respuesta era un 401 que no tenía nada que ver
- * con lo que se estaba probando.
+ * The collection used to come out **always** with
+ * `auth: { type: "bearer" }`. An API that authenticates with
+ * `X-API-Key` got a bearer with a `{{token}}` that nobody ever fills
+ * in; an API with **no** authentication at all, also. And on top of
+ * that every request carried an unresolved `Authorization: Bearer`
+ * header, so the response was a 401 that had nothing to do with what
+ * was being tested.
  *
- * Este servicio es del núcleo: no puede mirar middlewares de Laravel ni
- * decoradores de NestJS. Deduce del resultado del escaneo, que es lo
- * único agnóstico que hay.
+ * This service lives in the core: it cannot inspect Laravel middleware
+ * or NestJS decorators. It infers from the scan result, which is the
+ * only agnostic thing available.
  */
 import { describe, expect, test } from "vitest";
 
@@ -28,24 +29,24 @@ function spec(partial: Partial<EndpointSpec> & { uri: string }): EndpointSpec {
 
 const header = (key: string) => ({ key, value: "", description: "" });
 
-describe("sin ninguna señal", () => {
-  test("no se inventa un esquema", () => {
+describe("with no signal at all", () => {
+  test("does not invent a scheme", () => {
     expect(detectAuthScheme([spec({ uri: "/users" })], false).type).toBe("none");
   });
 
-  // Una colección con bloque `auth` vacío hace que Postman mande una
-  // cabecera `Authorization` sin resolver en CADA petición.
-  test("`none` no produce bloque `auth`", () => {
+  // A collection with an empty `auth` block makes Postman send an
+  // unresolved `Authorization` header on EVERY request.
+  test("`none` does not produce an `auth` block", () => {
     expect(toPostmanAuth(detectAuthScheme([], false))).toBeNull();
   });
 
-  test("y no pide variables que rellenar", () => {
+  test("and does not ask for variables to fill in", () => {
     expect(authVariablesFor(detectAuthScheme([], false))).toEqual([]);
   });
 });
 
-describe("clave de API", () => {
-  test("una cabecera `X-API-Key` repetida la delata", () => {
+describe("API key", () => {
+  test("a repeated `X-API-Key` header gives it away", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/users", headers: [header("X-API-Key")] }),
@@ -58,9 +59,9 @@ describe("clave de API", () => {
     expect(detected.keyIn).toBe("header");
   });
 
-  // Un endpoint suelto puede estar hablando con un tercero; no es el
-  // esquema de esta API.
-  test("en un solo endpoint no cuenta", () => {
+  // A lone endpoint may be talking to a third party; it is not this
+  // API's scheme.
+  test("on a single endpoint it does not count", () => {
     const detected = detectAuthScheme(
       [spec({ uri: "/users", headers: [header("X-API-Key")] })],
       false,
@@ -68,7 +69,7 @@ describe("clave de API", () => {
     expect(detected.type).toBe("none");
   });
 
-  test("también la reconoce en query", () => {
+  test("also recognizes it in the query string", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", query: [{ key: "api_key", value: "" }] }),
@@ -81,10 +82,10 @@ describe("clave de API", () => {
   });
 
   /**
-   * `Authorization` es la del bearer. Confundirlas haría que una API con
-   * login normal saliera configurada como API key.
+   * `Authorization` is the bearer's. Confusing the two would make an
+   * API with normal login come out configured as an API key.
    */
-  test("`Authorization` NO es una clave de API", () => {
+  test("`Authorization` is NOT an API key", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", headers: [header("Authorization")] }),
@@ -95,7 +96,7 @@ describe("clave de API", () => {
     expect(detected.type).toBe("bearer");
   });
 
-  test("el bloque de Postman lleva nombre, variable y sitio", () => {
+  test("the Postman block carries name, variable, and location", () => {
     const auth = toPostmanAuth(
       detectAuthScheme(
         [
@@ -116,20 +117,20 @@ describe("clave de API", () => {
     expect(entries).toContainEqual({ key: "in", value: "header", type: "string" });
   });
 
-  test("pide la variable donde va la clave, y como secreto", () => {
+  test("asks for the variable where the key goes, and as a secret", () => {
     const vars = authVariablesFor({ type: "apikey", evidence: "" });
     expect(vars).toEqual([{ key: AUTH_API_KEY_VARIABLE, value: "", type: "secret" }]);
   });
 });
 
 describe("OAuth2", () => {
-  test("un endpoint de token lo delata", () => {
+  test("a token endpoint gives it away", () => {
     const detected = detectAuthScheme([spec({ uri: "/oauth/token", method: "POST" })], false);
     expect(detected.type).toBe("oauth2");
     expect(detected.tokenUrl).toBe("/oauth/token");
   });
 
-  test("recoge también el de autorización si está", () => {
+  test("also picks up the authorize endpoint if present", () => {
     const detected = detectAuthScheme(
       [spec({ uri: "/oauth2/token" }), spec({ uri: "/oauth2/authorize" })],
       false,
@@ -137,7 +138,7 @@ describe("OAuth2", () => {
     expect(detected.authorizeUrl).toBe("/oauth2/authorize");
   });
 
-  test("pide clientId y clientSecret, los dos secretos", () => {
+  test("asks for clientId and clientSecret, both as secrets", () => {
     const vars = authVariablesFor({ type: "oauth2", evidence: "" });
     expect(vars.map((v) => v.key)).toEqual(["clientId", "clientSecret"]);
     expect(vars.every((v) => v.type === "secret")).toBe(true);
@@ -145,20 +146,20 @@ describe("OAuth2", () => {
 });
 
 describe("bearer", () => {
-  test("un flujo de login reconocido lo determina", () => {
+  test("a recognized login flow determines it", () => {
     expect(detectAuthScheme([spec({ uri: "/users" })], true).type).toBe("bearer");
   });
 
-  test("las credenciales ya vienen del flujo de login, no de aquí", () => {
+  test("the credentials come from the login flow, not from here", () => {
     expect(authVariablesFor({ type: "bearer", evidence: "" })).toEqual([]);
   });
 });
 
-describe("prioridad entre señales", () => {
-  // La clave de API es la señal más concreta: un nombre de cabecera
-  // exacto repetido. Gana a la presencia de un login, que podría ser un
-  // endpoint de sesión para otra cosa.
-  test("la clave de API gana al flujo de login", () => {
+describe("priority between signals", () => {
+  // The API key is the most concrete signal: a repeated exact header
+  // name. It wins over the presence of a login, which could be a
+  // session endpoint for something else.
+  test("the API key wins over the login flow", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", headers: [header("X-API-Key")] }),
@@ -170,10 +171,10 @@ describe("prioridad entre señales", () => {
   });
 });
 
-describe("la evidencia", () => {
-  // Una detección automática que no se puede contrastar es una que hay
-  // que creerse a ciegas.
-  test("cada esquema dice por qué se ha decidido", () => {
+describe("the evidence", () => {
+  // An automatic detection that cannot be cross-checked is one you
+  // have to take on faith.
+  test("each scheme says why it was decided", () => {
     for (const detected of [
       detectAuthScheme([], false),
       detectAuthScheme([spec({ uri: "/users" })], true),
@@ -184,15 +185,15 @@ describe("la evidencia", () => {
   });
 });
 
-describe("toPostmanAuth — formatos de bloque", () => {
-  test("bearer produce el bloque con {{token}}", () => {
+describe("toPostmanAuth — block formats", () => {
+  test("bearer produces the block with {{token}}", () => {
     const auth = toPostmanAuth({ type: "bearer", evidence: "" });
     expect(auth?.type).toBe("bearer");
     const entries = auth?.["bearer"] as Array<{ key: string; value: string }>;
     expect(entries).toContainEqual({ key: "token", value: "{{token}}", type: "string" });
   });
 
-  test("oauth2 produce clientCredentials con tokenUrl", () => {
+  test("oauth2 produces clientCredentials with tokenUrl", () => {
     const auth = toPostmanAuth({ type: "oauth2", tokenUrl: "/oauth/token", evidence: "" });
     expect(auth?.type).toBe("oauth2");
     const entries = auth?.["oauth2"] as Array<{ key: string; value: string }>;
@@ -200,7 +201,7 @@ describe("toPostmanAuth — formatos de bloque", () => {
     expect(entries.some((e) => e.key === "accessTokenUrl")).toBe(true);
   });
 
-  test("oauth2 con authorizeUrl añade el campo authUrl", () => {
+  test("oauth2 with authorizeUrl adds the authUrl field", () => {
     const auth = toPostmanAuth({
       type: "oauth2",
       tokenUrl: "/oauth/token",
@@ -211,19 +212,20 @@ describe("toPostmanAuth — formatos de bloque", () => {
     expect(entries.some((e) => e.key === "authUrl" && e.value.includes("/oauth/authorize"))).toBe(true);
   });
 
-  test("none devuelve null — sin bloque auth", () => {
+  test("none returns null — no auth block", () => {
     expect(toPostmanAuth({ type: "none", evidence: "" })).toBeNull();
   });
 });
 
 describe("countKeyUsage — API-key casing (x00023)", () => {
-  // x00023: el bug era que `header.set(h.key, …)` guardaba por el case
-  // original del primer header. `X-API-Key` y `x-api-key` en endpoints
-  // distintos acababan en dos entradas de 1 cada una y el umbral de 2
-  // no se alcanzaba. La fix acumula por clave canónica lowercase y
-  // preserva aparte el primer nombre original como `displayName`.
+  // x00023: the bug was that `header.set(h.key, …)` stored by the
+  // original case of the first header. `X-API-Key` and `x-api-key`
+  // in different endpoints ended up in two entries of 1 each and the
+  // threshold of 2 was never reached. The fix accumulates by canonical
+  // lowercase key and separately preserves the first original name as
+  // `displayName`.
 
-  test("[X-API-Key, x-api-key] cuenta 2 bajo 'x-api-key' y conserva 'X-API-Key' como displayName", () => {
+  test("[X-API-Key, x-api-key] counts 2 under 'x-api-key' and keeps 'X-API-Key' as displayName", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", headers: [header("X-API-Key")] }),
@@ -237,7 +239,7 @@ describe("countKeyUsage — API-key casing (x00023)", () => {
     expect(detected.evidence).toContain("aparece en 2 endpoints");
   });
 
-  test("[x-api-key, X-API-KEY, X-Api-Key] mergea en una sola entrada con count 3", () => {
+  test("[x-api-key, X-API-KEY, X-Api-Key] merges into a single entry with count 3", () => {
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", headers: [header("x-api-key")] }),
@@ -248,15 +250,15 @@ describe("countKeyUsage — API-key casing (x00023)", () => {
     );
     expect(detected.type).toBe("apikey");
     expect(detected.keyIn).toBe("header");
-    // El primer nombre visto se queda como displayName.
+    // The first name seen is kept as the displayName.
     expect(detected.keyName).toBe("x-api-key");
     expect(detected.evidence).toContain("aparece en 3 endpoints");
   });
 
-  test("regresión: dos endpoints con case mixto confirman API-key auth (antes daba 'none')", () => {
-    // Antes del fix, este escenario terminaba en dos entradas de 1
-    // (X-API-Key → 1, x-api-key → 1) y el detector concluía 'none'
-    // porque ninguna llegaba al umbral de 2.
+  test("regression: two endpoints with mixed case confirm API-key auth (used to return 'none')", () => {
+    // Before the fix, this scenario ended up with two entries of 1
+    // (X-API-Key → 1, x-api-key → 1) and the detector concluded
+    // 'none' because neither reached the threshold of 2.
     const detected = detectAuthScheme(
       [
         spec({ uri: "/users", headers: [header("X-API-Key")] }),
@@ -269,9 +271,10 @@ describe("countKeyUsage — API-key casing (x00023)", () => {
     expect(detected.keyIn).toBe("header");
   });
 
-  test("query: [api_key, API_KEY, Api_Key] mergea en una sola entrada con count 3", () => {
-    // Mismo patrón aplicado a query params: case mixto en distintos
-    // endpoints contaba como 1 cada uno y no llegaba al umbral.
+  test("query: [api_key, API_KEY, Api_Key] merges into a single entry with count 3", () => {
+    // Same pattern applied to query params: mixed case across
+    // different endpoints counted as 1 each and never reached the
+    // threshold.
     const detected = detectAuthScheme(
       [
         spec({ uri: "/a", query: [{ key: "api_key", value: "" }] }),

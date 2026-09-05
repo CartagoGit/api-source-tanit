@@ -74,13 +74,13 @@ export class AspNetProjectScanner implements IProjectScanner {
 // ---------------------------------------------------------------------------
 
 /**
- * Atributos de clase: `[Route("api/v1")]`, `[ApiController]`.
+ * Class attributes: `[Route("api/v1")]`, `[ApiController]`.
  */
 const CLASS_ATTR_RE =
   /\[(Route|ApiController)\s*(\([^)]*\))?\]/g;
 
 /**
- * Atributos de método: `[HttpGet("users")]`, `[HttpPost]`, etc.
+ * Method attributes: `[HttpGet("users")]`, `[HttpPost]`, etc.
  */
 const METHOD_ATTR_RE =
   /\[(HttpGet|HttpPost|HttpPut|HttpDelete|HttpPatch|HttpHead|HttpOptions)\s*(\([^)]*\))?\]/g;
@@ -95,7 +95,7 @@ export class AspNetRouteScanner implements IRouteScanner {
   async scan(match: IProjectMatch): Promise<IScanResult> {
     const out: ParsedRoute[] = [];
     const projectRoot = effectiveProjectRoot(match);
-    // Buscar *.cs recursivamente.
+    // Search *.cs recursively.
     await walkCs(projectRoot, projectRoot, out);
     return { routes: out };
   }
@@ -126,19 +126,18 @@ async function walkCs(
 }
 
 /**
- * Normaliza la ruta de ASP.NET a la forma de la colección.
+ * Normalises the ASP.NET path to the collection's shape.
  *
- * Tres transformaciones:
+ * Three transformations:
  *
- *   1. Restricciones de path: `{id:int}`, `{id:guid}`, `{id:minlength(2)}`
- *      → `{id}`. La restricción es documentación de servidor; en la
- *      colección el token es lo que el usuario sustituye.
- *   2. `[controller]` / `[action]` → el nombre del controller/action
- *      cuando se puede derivar (`UsersController` → `users`). Antes
- *      el token literal `[controller]` acababa en la URL, que es justo
- *      el tipo de colección que el usuario tiene que arreglar a mano.
- *   3. Cualquier token residual entre llaves con `:` dentro se limpia
- *      por la regla 1.
+ *   1. Path constraints: `{id:int}`, `{id:guid}`, `{id:minlength(2)}`
+ *      → `{id}`. The constraint is server-side documentation; in the
+ *      collection the token is what the user substitutes.
+ *   2. `[controller]` / `[action]` → the controller/action name when it
+ *      can be derived (`UsersController` → `users`). Before, the
+ *      literal `[controller]` token ended up in the URL — which is
+ *      exactly the kind of collection the user has to fix by hand.
+ *   3. Any residual token with `:` inside braces is cleaned by rule 1.
  */
 function normalizeAspNetPath(path: string, fallbackAction: string, controllerToken?: string): string {
   return path
@@ -149,17 +148,17 @@ function normalizeAspNetPath(path: string, fallbackAction: string, controllerTok
 }
 
 /**
- * Deriva el token de `[controller]` mirando la propia ruta fuente.
+ * Derives the `[controller]` token by looking at the source path itself.
  *
- * ASP.NET lo resuelve al nombre del controller sin el sufijo
- * `Controller` en kebab/lower. No tenemos el nombre de la clase en
- * esta función (se procesa por línea), así que el caller lo pasa como
- * fallback; aquí solo limpiamos lo que venga en el propio path.
+ * ASP.NET resolves it to the controller name without the `Controller`
+ * suffix in kebab/lower. We don't have the class name in this function
+ * (processing happens line by line), so the caller passes it as a
+ * fallback; here we only clean whatever is in the path itself.
  */
 function deriveControllerToken(path: string): string | null {
-  // `[Route("[controller]/[action]")]` no lleva el nombre: sin la
-  // declaración de la clase no se puede derivar. Devolver null y que
-  // el caller decida su fallback.
+  // `[Route("[controller]/[action]")]` doesn't carry the name: without
+  // the class declaration it cannot be derived. Return null and let
+  // the caller decide on its fallback.
   const m = /\[controller\]\s*\/?\s*\[?([\w-]+)\]?/.exec(path);
   return m?.[1] ?? null;
 }
@@ -178,12 +177,12 @@ async function parseCsFile(
   const text = stripCsComments(raw);
   const lines = text.split("\n");
 
-  // 0) Minimal APIs. Es la forma por defecto desde .NET 6 y no usa
-  //    controladores, así que se detecta aparte y puede convivir con
-  //    ellos en el mismo proyecto.
+  // 0) Minimal APIs. This is the default form since .NET 6 and does
+  //    not use controllers, so it's detected separately and can
+  //    coexist with them in the same project.
   out.push(...parseMinimalApis(lines, relPath));
 
-  // 1) Detectar prefijo del controller.
+  // 1) Detect controller prefix.
   let classPrefix = "";
   let classStart = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -212,7 +211,7 @@ async function parseCsFile(
   }
 
 
-  // 2) Buscar method attributes.
+  // 2) Look for method attributes.
   for (let i = classStart + 1; i < lines.length; i++) {
     const line = lines[i] ?? "";
     let m: RegExpExecArray | null;
@@ -224,7 +223,7 @@ async function parseCsFile(
       const fullPath = joinRoutePath("/", classPrefix, subPath);
       const method = decorator.replace("Http", "").toLowerCase();
       if (!HTTP_METHODS.includes(method)) continue;
-      // Buscar signature del método.
+      // Look for the method signature.
       let methodName = "";
       for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
         const sig = /\b(?:public|private|protected|internal)?\s*(?:async\s+)?(?:Task<[^>]+>\s+)?([a-zA-Z_][\w]*)\s*\(/.exec(lines[j] ?? "");
@@ -249,32 +248,32 @@ async function parseCsFile(
 }
 
 /**
- * `app.MapGet("/users", handler)` — minimal APIs de .NET 6+.
+ * `app.MapGet("/users", handler)` — .NET 6+ minimal APIs.
  *
- * Captura: 1 = variable (`app`, `users`…), 2 = verbo, 3 = ruta.
+ * Captures: 1 = variable (`app`, `users`…), 2 = verb, 3 = path.
  */
 const MINIMAL_API_RE =
   /\b([a-zA-Z_][\w]*)\s*\.\s*Map(Get|Post|Put|Delete|Patch)\s*\(\s*(["'][^"']*["'])/g;
 
 /**
- * `var grupo = app.MapGroup("/api/users");` — prefijo de un grupo.
- * Captura: 1 = variable del grupo, 2 = prefijo.
+ * `var group = app.MapGroup("/api/users");` — group prefix.
+ * Captures: 1 = group variable, 2 = prefix.
  */
 const MAP_GROUP_RE =
   /\b(?:var|[A-Za-z_][\w<>,\s]*?)\s+([a-zA-Z_][\w]*)\s*=\s*[a-zA-Z_][\w]*\s*\.\s*MapGroup\s*\(\s*["']([^"']*)["']/g;
 
 /**
- * Extrae las rutas declaradas con minimal APIs.
+ * Extracts the routes declared with minimal APIs.
  *
- * Es lo idiomático en .NET 6+ y no lo cubría nada: un proyecto que las
- * usara (todo `Program.cs` generado por `dotnet new webapi` desde .NET 6)
- * producía una colección vacía.
+ * It's the idiomatic form in .NET 6+ and nothing covered it: a project
+ * using them (every `Program.cs` generated by `dotnet new webapi` since
+ * .NET 6) used to produce an empty collection.
  */
 function parseMinimalApis(lines: string[], relPath: string): ParsedRoute[] {
   const out: ParsedRoute[] = [];
   const text = lines.join("\n");
 
-  // Prefijos de los grupos declarados en el fichero.
+  // Prefixes of the groups declared in the file.
   const groupPrefix = new Map<string, string>();
   const groupRe = new RegExp(MAP_GROUP_RE.source, "g");
   let groupMatch: RegExpExecArray | null;
@@ -344,7 +343,7 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   ): Promise<{ endpointKey: string; fields: IValidationSpec[] }> {
     const endpointKey = `${route.method} ${route.uri}`.toLowerCase();
     if (!route.sourceFile) return { endpointKey, fields: [] };
-    // GET y DELETE no llevan body; sus parámetros ya salen de la URI.
+    // GET and DELETE don't carry a body; their parameters already come from the URI.
     if (route.method === "GET" || route.method === "DELETE") {
       return { endpointKey, fields: [] };
     }
@@ -366,35 +365,35 @@ export class AspNetDataAnnotationsProvider implements IValidationSpecProvider {
   }
 }
 
-/** Firmas de las que se puede sacar el tipo del body. */
+/** Signatures from which the body type can be extracted. */
 const BODY_TYPE_PATTERNS: ReadonlyArray<RegExp> = [
-  // Controlador: `public IActionResult Create([FromBody] CreateUserRequest body)`
+  // Controller: `public IActionResult Create([FromBody] CreateUserRequest body)`
   /\[FromBody\]\s+([A-Z]\w*)\s+\w+/,
   // Minimal API: `MapPost("/", (CreateProductRequest body) => …)`
   /Map(?:Post|Put|Patch)\s*\([^)]*?\(\s*(?:\[FromBody\]\s*)?([A-Z]\w*)\s+\w+/,
-  // Minimal API con param de ruta primero: `(int id, CreateProductRequest body)`
+  // Minimal API with a route param first: `(int id, CreateProductRequest body)`
   /Map(?:Post|Put|Patch)\s*\([^)]*?,\s*([A-Z]\w*)\s+\w+\s*\)\s*=>/,
-  // Controlador sin atributo: `public IActionResult Create(CreateUserRequest body)`
+  // Controller without attribute: `public IActionResult Create(CreateUserRequest body)`
   /\b(?:public|internal)\s+(?:async\s+)?[\w<>\[\]]+\s+\w+\s*\(\s*([A-Z]\w*)\s+\w+/,
 ];
 
-/** Tipos que nunca son un DTO de body. */
+/** Types that are never are a body DTO. */
 const NOT_A_DTO = new Set([
   "Task", "IActionResult", "ActionResult", "String", "Int32", "Guid",
   "Results", "IResult", "HttpContext", "CancellationToken",
 ]);
 
 /**
- * Tipo del DTO del body para ESTA ruta.
+ * DTO type of the body for THIS route.
  *
- * Se busca en la ventana de líneas que arranca en la declaración de la
- * ruta, no en todo el fichero: la versión anterior cogía el primer
- * `[FromBody]` del archivo, así que en un controlador con varios POST
- * todos recibían el body del primero.
+ * Searched in the window of lines starting at the route declaration,
+ * not across the whole file: the previous version grabbed the first
+ * `[FromBody]` of the file, so a controller with several POSTs would
+ * give all of them the first POST's body.
  *
- * Cubre las cuatro formas: `[FromBody]` en controlador, parámetro tipado
- * de un lambda de minimal API (con y sin param de ruta delante), y firma
- * de acción sin atributo.
+ * Covers all four forms: `[FromBody]` in controller, typed parameter
+ * of a minimal-API lambda (with and without a route param before it),
+ * and action signature without attribute.
  */
 function findDtoTypeForRoute(raw: string, route: ParsedRoute): string | null {
   const lines = stripCsComments(raw).split("\n");
@@ -408,16 +407,16 @@ function findDtoTypeForRoute(raw: string, route: ParsedRoute): string | null {
   return null;
 }
 
-/** Otra declaración de ruta: el final de la ventana de la actual. */
+/** Another route declaration: the end of the current window. */
 const NEXT_ROUTE_RE = /\[Http(?:Get|Post|Put|Delete|Patch)|\.\s*Map(?:Get|Post|Put|Delete|Patch)\s*\(/;
 
 /**
- * Cuántas líneas mirar desde la declaración de la ruta.
+ * How many lines to look at from the route declaration.
  *
- * Se corta en cuanto aparece la SIGUIENTE declaración: sin ese corte, un
- * endpoint sin body se llevaba el DTO del endpoint de debajo (en el
- * fixture, `PATCH /orders/{id}/status` acababa con los campos del DTO de
- * creación de pedidos).
+ * Stops as soon as the NEXT declaration appears: without that cut, an
+ * endpoint without a body would steal the DTO of the endpoint below it
+ * (in the fixture, `PATCH /orders/{id}/status` ended up with the
+ * fields of the order-creation DTO).
  */
 function windowLength(lines: ReadonlyArray<string>, start: number): number {
   const MAX = 6;
@@ -430,7 +429,7 @@ function windowLength(lines: ReadonlyArray<string>, start: number): number {
 }
 
 /**
- * Parsea una class C# del archivo y extrae properties con Data Annotations.
+ * Parses a C# class from the file and extracts properties with Data Annotations.
  */
 function parseCsDto(raw: string, dtoType: string): IValidationSpec[] {
   const out: IValidationSpec[] = [];
@@ -446,7 +445,7 @@ function parseCsDto(raw: string, dtoType: string): IValidationSpec[] {
     if (depth === 0) { end = i; break; }
   }
   const body = raw.slice(start, end);
-  // Capturar property con annotations:
+  // Capture property with annotations:
   //   [Required]
   //   [StringLength(100, MinimumLength = 1)]
   //   public string Name { get; set; }
