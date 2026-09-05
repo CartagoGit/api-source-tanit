@@ -2,7 +2,8 @@
 id: i00002
 title: "Desbloquear CI: el checkout delendai cae fuera del workspace del runner"
 kind: infra
-status: ready
+status: retired
+supersededBy: x00027
 type: proposal
 track: api-source-tanit
 date: 2026-09-05

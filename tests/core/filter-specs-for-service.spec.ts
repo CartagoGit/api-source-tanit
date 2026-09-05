@@ -24,7 +24,7 @@ import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scann
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 
 function spec(
-  method: "GET" | "POST" | "PUT" | "DELETE",
+  method: EndpointSpec["method"],
   uri: string,
   extras: Partial<EndpointSpec> = {},
 ): EndpointSpec {

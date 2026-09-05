@@ -460,7 +460,7 @@ describe("mergeEndpoints — pipeline-level", () => {
         scannerScore: 0.85,
         method: "GET",
         uri: "/users",
-        description: "B más larga",
+        description: "B longer",
       }),
       candidate({
         framework: "openapi",
