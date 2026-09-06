@@ -420,25 +420,29 @@ describe("audit 2026-09-06 §6 — `.all()` reaches Postman as `ANY`", () => {
       const specs = result.routes.map((route) => ({
         serviceId: "",
         name: `${route.method} ${route.uri}`,
-        method: route.method,
+        // `ParsedRoute.method` is `string`; the adapter narrows it
+        // to the EndpointSpec union before this test runs. The cast
+        // here mirrors the adapter's narrowing, not a license to
+        // invent new verbs — `route.method` only takes values the
+        // scanner actually emits.
+        method: route.method as "ALL" | "DELETE" | "GET" | "HEAD" | "OPTIONS" | "PATCH" | "POST" | "PUT" | "TRACE",
         uri: route.uri,
       }));
-      // Minimal ProjectConfig for the isolated test; cast keeps the
-      // contract clear without dragging the whole domain into this
-      // framework-level test file.
-      const collection = buildCollection(
-        specs as Parameters<typeof buildCollection>[0],
-        {
-          name: "hono-all",
-          collectionName: "hono-all",
-          collectionDescription: "",
-          baseUrl: "http://localhost",
-          variables: [],
-          auth: undefined,
-        } as unknown as Parameters<typeof buildCollection>[1],
-        // No auth scheme.
-        { type: "none", evidence: "" },
-      );
+      // Full `ProjectConfig` so the builder has every field it
+      // needs and no `as unknown as` escape (lint:no-type-escapes).
+      const collection = buildCollection(specs, {
+        name: "hono-all",
+        collectionName: "hono-all",
+        collectionDescription: "",
+        baseUrl: "http://localhost",
+        variables: [],
+        filePrefixes: {},
+        zones: [],
+        zoneOrder: [],
+        defaultZone: "Other",
+        authDescriptions: {},
+        loginEndpointName: "Login",
+      }, { type: "none", evidence: "" });
       // `item` can be a folder (group) or a leaf request. Walk the
       // tree to find the first leaf.
       const findFirstLeaf = (
