@@ -463,3 +463,66 @@ describe("OpenAPI exporter — cookie params (audit 2026-09-04 P2 #9)", () => {
     });
   });
 });
+
+/**
+ * `x-tanit-confidence` extension (audit 2026-09-06 §16, §17,
+ * proposal `r00015` S3+S4).
+ *
+ * When a scanner stamps an EndpointSpec with a confidence
+ * level (Next.js Pages Router for example — emits 5 verbs
+ * from `switch (req.method)` and stamps `low`), the
+ * OpenAPI exporter surfaces that stamp as an OpenAPI 3.x
+ * extension:
+ *
+ *   - `x-tanit-confidence: "low" | "medium" | "high"`
+ *   - `x-tanit-confidence-reasons: ["...", "..."]`
+ *
+ * Scanners that produce a precise signal (App Router `GET`
+ * named export, OpenAPI path+verb, Hono `.get/.post/...`)
+ * leave `confidence` undefined and the exporter omits the
+ * extension — the OpenAPI doc stays clean for those routes.
+ */
+describe("r00015 — x-tanit-confidence extension", () => {
+  test("spec without confidence emits no extension", () => {
+    const doc = buildOpenApiDocument(
+      baseInput([spec("/users", "GET")]),
+    );
+    const op = (doc.paths["/users"] as { get: Record<string, unknown> }).get;
+    expect(op["x-tanit-confidence"]).toBeUndefined();
+    expect(op["x-tanit-confidence-reasons"]).toBeUndefined();
+  });
+
+  test("low confidence is emitted with reasons", () => {
+    const doc = buildOpenApiDocument(
+      baseInput([
+        spec("/anything", "GET", {
+          confidence: {
+            level: "low",
+            reasons: ["Pages Router multi-verb dispatch"],
+          },
+        }),
+      ]),
+    );
+    const op = (doc.paths["/anything"] as { get: Record<string, unknown> }).get;
+    expect(op["x-tanit-confidence"]).toBe("low");
+    expect(op["x-tanit-confidence-reasons"]).toEqual([
+      "Pages Router multi-verb dispatch",
+    ]);
+  });
+
+  test("medium confidence is emitted without reasons when empty", () => {
+    const doc = buildOpenApiDocument(
+      baseInput([
+        spec("/x", "POST", {
+          confidence: {
+            level: "medium",
+            reasons: [],
+          },
+        }),
+      ]),
+    );
+    const op = (doc.paths["/x"] as { post: Record<string, unknown> }).post;
+    expect(op["x-tanit-confidence"]).toBe("medium");
+    expect(op["x-tanit-confidence-reasons"]).toBeUndefined();
+  });
+});

@@ -94,6 +94,23 @@ function buildOperation(spec: EndpointSpec, state: IBuildState, allMarker?: stri
   };
   if (spec.description) operation["description"] = spec.description;
 
+  // r00015 S3/S4 (audit 2026-09-06 §16, §17): emit the
+  // confidence stamp as an OpenAPI 3.x extension so external
+  // consumers (CI gates, the UI, post-processors) can
+  // programmatically filter or warn on low-confidence
+  // routes without re-deriving the scanner signal. The
+  // extension is omitted when the scanner didn't stamp a
+  // confidence (the scanners that produce high-confidence
+  // signals — App Router `GET` named exports, OpenAPI
+  // paths, Hono `.get(...)`, Fastify `fastify.get(...)` —
+  // leave `confidence` undefined to keep the spec clean).
+  if (spec.confidence) {
+    operation["x-tanit-confidence"] = spec.confidence.level;
+    if (spec.confidence.reasons.length > 0) {
+      operation["x-tanit-confidence-reasons"] = spec.confidence.reasons;
+    }
+  }
+
   // Parameters: path ones come from the URI itself (always required,
   // the spec says so), and query and header ones from the validation
   // rules.
