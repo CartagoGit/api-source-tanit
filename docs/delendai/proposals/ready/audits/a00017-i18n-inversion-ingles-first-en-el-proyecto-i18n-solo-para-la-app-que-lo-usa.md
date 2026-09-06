@@ -127,7 +127,8 @@ usuario final cuando corra la app).
     output** (los `examples/example-*/export-to-postman/*.postman_collection.json`
     y `tanit/*.postman_collection.json` quedan en inglés en `info.description`).
   - `bun run validate` verde end-to-end.
-
+- review-state: in_review
+- review-implementer: implementation_runner
 ### S1.5 — Source code: inglés-first (broad cleanup, deferred)
 
 > **Diferido respecto a S1**. Tras un análisis 2026-09-06, el resto del

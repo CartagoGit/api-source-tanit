@@ -2,8 +2,10 @@
 id: x00040
 kind: fix
 title: "x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió)"
-status: ready
+status: done
 priority: P1
+shippedIn:
+  - 3b7f1c1
 nonGoals:
   - Cambiar el gate `lint:i18n-completeness` (eso es x00037, cerrado).
   - Traducir los placeholders (tarea humana).

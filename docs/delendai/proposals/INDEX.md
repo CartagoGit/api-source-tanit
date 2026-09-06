@@ -8,7 +8,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00017` | `audit` | [`ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) |
-| `x00040` | `fix` | [`ready/fixes/x00040-x00040-el-selector-de-la-ui-oculta-los-locales-experimentales-cierra-el-comportamiento-que-x00037-s4-prometio.md`](ready/fixes/x00040-x00040-el-selector-de-la-ui-oculta-los-locales-experimentales-cierra-el-comportamiento-que-x00037-s4-prometio.md) |
 
 ## Bloqueadas
 
@@ -131,6 +130,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00037` — i18n completeness gate - bloquea locales placeholder de inglés — `59dc2f6`
 - `x00038` — Express bridge structured-call IR - eliminar call.callee.split('.') en favor de { receiver, method, computed } — `de45d02, ce3138a`
 - `x00039` — x00039: flat-hybrid pierde endpoints en groupByService cuando NO hay frameworkSearchRoot — `0223930, dbb459d`
+- `x00040` — x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió) — `3b7f1c1`
 
 ### infra
 
