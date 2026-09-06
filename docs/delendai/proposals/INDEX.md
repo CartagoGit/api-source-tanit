@@ -8,7 +8,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
-| `x00039` | `fix` | [`ready/fixes/x00039-flat-hybrid-routes-fix-express-graphql-mismo-projectroot-sin-frameworksearchroot-pierde-endpoints.md`](ready/fixes/x00039-flat-hybrid-routes-fix-express-graphql-mismo-projectroot-sin-frameworksearchroot-pierde-endpoints.md) |
 
 ## Bloqueadas
 
@@ -131,6 +130,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00036` — ASP.NET coverage: HttpHead y HttpOptions no se descartan — `9807255`
 - `x00037` — i18n completeness gate - bloquea locales placeholder de inglés — `59dc2f6`
 - `x00038` — Express bridge structured-call IR - eliminar call.callee.split('.') en favor de { receiver, method, computed } — `de45d02, ce3138a`
+- `x00039` — x00039: flat-hybrid pierde endpoints en groupByService cuando NO hay frameworkSearchRoot — `0223930, dbb459d`
 
 ### infra
 

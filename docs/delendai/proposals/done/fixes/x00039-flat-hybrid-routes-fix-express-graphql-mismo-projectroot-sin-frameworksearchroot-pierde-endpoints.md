@@ -2,7 +2,7 @@
 id: x00039
 kind: fix
 title: "x00039: flat-hybrid pierde endpoints en groupByService cuando NO hay frameworkSearchRoot"
-status: ready
+status: done
 priority: P1
 nonGoals:
   - Cambiar el contrato de IGroupByServiceInput.
@@ -10,7 +10,9 @@ nonGoals:
   - Resolver el bridge TypeScript multi-estilo (`const M = "get"`).
   - Tocar filterSpecsForService o el merger.
 globalGate: type
-shippedIn: []
+shippedIn:
+  - 0223930  # chore: helper + tests + propuesta
+  - dbb459d  # fix(x00039): flat-hybrid preserva endpoints en groupByService
 why: |
   El auditor externo (revisión 2026-09-05) y la propia auditoría
   interna detectaron que `groupByService` en modo `flatHybrid` siempre
