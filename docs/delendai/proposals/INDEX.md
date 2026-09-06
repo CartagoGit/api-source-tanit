@@ -7,8 +7,10 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00045` | `refactor` | [`ready/refactors/x00045-terminar-x00041-quitar-delendai-de-la-ci-y-de-paths-service-del-producto.md`](ready/refactors/x00045-terminar-x00041-quitar-delendai-de-la-ci-y-de-paths-service-del-producto.md) |
 | `x00046` | `test` | [`ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md`](ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md) |
+| `x00047` | `chore` | [`ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md`](ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md) |
+| `x00048` | `feat` | [`ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md`](ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md) |
+| `x00049` | `feat` | [`ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md`](ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md) |
 
 ## Bloqueadas
 
@@ -156,6 +158,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
+- `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 
 ### test
 

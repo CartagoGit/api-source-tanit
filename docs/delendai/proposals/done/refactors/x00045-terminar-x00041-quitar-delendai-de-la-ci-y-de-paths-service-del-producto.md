@@ -2,9 +2,11 @@
 id: x00045
 kind: refactor
 title: "x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto"
-status: ready
+status: done
 priority: P0
 globalGate: type
+shippedIn:
+  - 4776c2d
 why: |
   x00041 cerró prematuramente: el plugin SÍ se movió de
   `packages/plugins/delendai_tanit/` a `integrations/delendai/`
