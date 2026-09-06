@@ -153,6 +153,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00008` — contexto explicito en los lectores residuales del singleton — `0ac222e`
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
+- `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 
 ### test
 
