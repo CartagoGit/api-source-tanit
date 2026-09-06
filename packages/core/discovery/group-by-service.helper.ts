@@ -41,7 +41,10 @@
  * @see ./service-graph.interface.ts for the graph shape.
  */
 
-import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface.js";
+import type {
+  IProjectMatch,
+  ParsedRoute,
+} from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   IGroupByServiceInput,
   IServiceDescriptor,
@@ -76,6 +79,64 @@ export function deriveServiceId(match: IProjectMatch): string {
       ? match.frameworkSearchRoot
       : `${match.framework}@${match.projectRoot}`;
   return normalizeServiceId(base);
+}
+
+/**
+ * x00039: collect routes for a flat-hybrid match.
+ *
+ * In flat-hybrid mode, several matches share the same `projectRoot` and
+ * have no `frameworkSearchRoot`. The upstream pipeline keys
+ * `routesByMatch` by `deriveServiceId(match)` (i.e. one entry per
+ * `(framework, projectRoot)`), but the descriptor groups those matches
+ * under a single `serviceId = normalizeServiceId(projectRoot)`. Without
+ * this helper, `.get(serviceId)` always misses and the descriptor ends
+ * up with zero endpoints — the bug that x00039 closed.
+ *
+ * We look up every entry whose derived id maps to a match that
+ * shares the current match's `projectRoot`, dedupe by
+ * `(method, uri, sourceFile)` (the same identity
+ * `accumulateRoutesByService` uses), and return the union.
+ *
+ * Lives at module scope (not inside `groupByService`) so it is testable
+ * in isolation: the helper has no I/O, no `process.*`, and no
+ * `groupByService`-internal state — only the maps and the
+ * `IProjectMatch` array, both inputs to the function.
+ */
+export function collectFlatHybridRoutes(
+  routesByMatch: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>,
+  current: IProjectMatch,
+  matches: ReadonlyArray<IProjectMatch>,
+): ReadonlyArray<ParsedRoute> {
+  // Index matches by their derived id so we can do O(1) lookups per
+  // entry in `routesByMatch`. In flat-hybrid the derived id is
+  // `framework@projectRoot`; we only include matches that share
+  // `current.projectRoot`, so the index is bounded by the number of
+  // matches in the same hybrid set.
+  const flatHybridIds = new Set<string>();
+  for (const m of matches) {
+    if (m.projectRoot !== current.projectRoot) continue;
+    if (m.frameworkSearchRoot !== undefined && m.frameworkSearchRoot !== "") {
+      // `frameworkSearchRoot` is set — this is a monorepo / workspace,
+      // not a flat hybrid. Skip.
+      continue;
+    }
+    flatHybridIds.add(deriveServiceId(m));
+  }
+  // Walk every entry; if the key is one of the flat-hybrid ids, fold
+  // its routes in. Dedupe by `(method, uri, sourceFile)` to avoid
+  // double-counting when two scanners emit the same route.
+  const seen = new Set<string>();
+  const out: ParsedRoute[] = [];
+  for (const [key, routes] of routesByMatch) {
+    if (!flatHybridIds.has(key)) continue;
+    for (const route of routes) {
+      const k = `${route.method}|${route.uri}|${route.sourceFile}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(route);
+    }
+  }
+  return out;
 }
 
 /**
@@ -117,13 +178,61 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
     );
   const serviceKeyOf = (match: IProjectMatch): string =>
     flatHybrid ? normalizeServiceId(match.projectRoot) : deriveServiceId(match);
+  // x00039: tracks which per-match route entries have already been
+  // folded into a descriptor in flat-hybrid mode. The first match
+  // in the loop claims the full set; subsequent matches contribute
+  // only their own slice (the same entry already added in the
+  // previous iteration is skipped, so we don't double-count).
+  const claimedFlatHybridIds = new Set<string>();
   for (const match of input.matches) {
     const serviceId = serviceKeyOf(match);
-    // In the flat-hybrid case the per-framework entries of
-    // `routesByMatch` live under their derived ids, so this lookup
-    // misses by design: the routes arrive via the merge below, from
-    // every framework of the same root.
-    const routes = input.routesByMatch.get(serviceId) ?? [];
+    // x00039: in flat-hybrid the per-framework entries of
+    // `routesByMatch` are keyed by `deriveServiceId(match)`
+    // (e.g. `express_repo`) while `serviceId` here is keyed by
+    // `projectRoot` (e.g. `repo`). The two never collide, so a
+    // straight `.get(serviceId)` always returns `[]` and the
+    // descriptor comes out empty even though the pipelines's
+    // upstream (`accumulateRoutesByService`) filled the per-match
+    // map correctly.
+    //
+    // Two cases:
+    //   - First match of the flat-hybrid set: claim the full set
+    //     (every per-match entry that maps to a match sharing
+    //     this root) and stamp those ids as "claimed".
+    //   - Subsequent matches: only contribute their own
+    //     per-match entry (`deriveServiceId(match)`); if it's
+    //     already claimed, we still walk it (it brings in routes
+    //     from THIS match's specific entry), but we do NOT add
+    //     routes from the OTHER frameworks' entries again.
+    const matchDerivedId = deriveServiceId(match);
+    const routes: ReadonlyArray<ParsedRoute> = flatHybrid
+      ? (() => {
+          const own =
+            input.routesByMatch.get(matchDerivedId) ?? [];
+          if (!claimedFlatHybridIds.has(matchDerivedId)) {
+            // First match to walk this entry: claim it AND fold in
+            // the routes from the OTHER frameworks sharing the same
+            // root (so the descriptor ends up with everything in
+            // one shot). Subsequent iterations only fold their own.
+            const others = collectFlatHybridRoutes(
+              input.routesByMatch,
+              match,
+              input.matches,
+            );
+            // Mark every per-match id in this root as claimed.
+            for (const m of input.matches) {
+              if (m.projectRoot !== match.projectRoot) continue;
+              if (
+                m.frameworkSearchRoot !== undefined &&
+                m.frameworkSearchRoot !== ""
+              ) continue;
+              claimedFlatHybridIds.add(deriveServiceId(m));
+            }
+            return others;
+          }
+          return own;
+        })()
+      : (input.routesByMatch.get(serviceId) ?? []);
     if (!flatHybrid && !input.routesByMatch.has(serviceId)) {
       throw new Error(
         `groupByService is missing routes for service '${serviceId}' (framework=${match.framework})`,
