@@ -79,7 +79,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 | Parsear una librería de validación nueva | `packages/frameworks/parsers/<lib>-schema.helper.ts` |
 | Añadir un comando al CLI | `packages/cli/commands/<nombre>.script.ts` + entrada en `packages/cli/cli.script.ts` |
 | Añadir un formato de salida | `packages/core/exporters/<fmt>.exporter.ts` + registrarlo |
-| Añadir un tool MCP | `packages/plugins/delendai_tanit/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un tool MCP | `integrations/delendai/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -106,7 +106,7 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 Namespace `tanit` (el host los registra como
 `delendai_tanit_<tool>`), declarados en
-[`packages/plugins/delendai_tanit/src/index.ts`](../packages/plugins/delendai_tanit/src/index.ts):
+[`integrations/delendai/src/index.ts`](../integrations/delendai/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|

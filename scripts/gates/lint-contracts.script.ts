@@ -97,7 +97,7 @@ const EXCEPTIONS: readonly IException[] = [
  */
 const CONTRACT_DIRS = [
   "packages/contracts/",
-  "packages/plugins/delendai_tanit/src/lib/contracts/",
+  "integrations/delendai/src/lib/contracts/",
 ] as const;
 
 /** Lo que se busca: un tipo o una constante exportados. */

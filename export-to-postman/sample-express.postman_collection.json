@@ -1,9 +1,9 @@
 {
   "info": {
-    "name": "sample-express (Postman)",
-    "description": "Colección Postman generada automáticamente para sample-express.",
+    "name": "sample-express",
+    "description": "Postman collection auto-generated for sample-express.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_postman_id": "8843c959-3c50-528b-8a27-afcc54d96baa"
+    "_postman_id": "88733162-7b09-5a9a-8fa7-d1f79c565c7e"
   },
   "auth": {
     "type": "bearer",
@@ -18,7 +18,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost/api",
+      "value": "http://localhost",
       "type": "string"
     },
     {
@@ -79,10 +79,10 @@
                 "login"
               ]
             },
-            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `email` | string | sí | formato `email` |\n| `password` | string | sí | mín. 8 car. |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `refresh_token` | string | sí | mín. 32 car. |\n\n_Extraído de las reglas de validación declaradas en el código._",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{authUsername}}\",\n  \"password\": \"{{authPassword}}\"\n}",
+              "raw": "{\n  \"refresh_token\": \"sample_refresh_token\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -96,7 +96,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for POST\", function () {",
                   "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
@@ -203,10 +203,10 @@
                 "refresh"
               ]
             },
-            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `refresh_token` | string | sí | mín. 32 car. |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `customer_name` | string | sí | mín. 1 car. |\n| `customer_email` | string | sí | formato `email` |\n| `amount` | number | sí | — |\n| `items` | array | sí | — |\n\n_Extraído de las reglas de validación declaradas en el código._",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"sample_refresh_token\"\n}",
+              "raw": "{\n  \"customer_name\": \"sample_customer_name\",\n  \"customer_email\": \"user@example.com\",\n  \"amount\": 1,\n  \"items\": [\n    1\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -220,7 +220,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for POST\", function () {",
                   "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
@@ -334,7 +334,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for GET\", function () {",
                   "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
@@ -386,10 +386,10 @@
                 "users"
               ]
             },
-            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `name` | string | sí | mín. 1 car., máx. 100 car. |\n| `email` | string | sí | formato `email` |\n| `age` | number | no | ≥ 0, ≤ 120 |\n| `role` | enum | sí | uno de: `admin`, `user`, `guest` |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `customer_name` | string | sí | mín. 1 car. |\n| `customer_email` | string | sí | formato `email` |\n| `amount` | number | sí | — |\n| `items` | array | sí | — |\n\n_Extraído de las reglas de validación declaradas en el código._",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"sample_name\",\n  \"email\": \"user@example.com\",\n  \"role\": \"admin\"\n}",
+              "raw": "{\n  \"customer_name\": \"sample_customer_name\",\n  \"customer_email\": \"user@example.com\",\n  \"amount\": 1,\n  \"items\": [\n    1\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -403,7 +403,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for POST\", function () {",
                   "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
@@ -459,7 +459,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for GET\", function () {",
                   "    pm.expect([200, 204, 206]).to.include(pm.response.code);",
@@ -512,10 +512,10 @@
                 "{{id}}"
               ]
             },
-            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `name` | string | no | mín. 1 car., máx. 100 car. |\n| `age` | number | no | ≥ 0, ≤ 120 |\n\n_Extraído de las reglas de validación declaradas en el código._",
+            "description": "#### Body\n\n| Campo | Tipo | Obligatorio | Restricciones |\n| --- | --- | :-: | --- |\n| `customer_name` | string | sí | mín. 1 car. |\n| `customer_email` | string | sí | formato `email` |\n| `amount` | number | sí | — |\n| `items` | array | sí | — |\n\n_Extraído de las reglas de validación declaradas en el código._",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"sample_name\",\n  \"age\": 0\n}",
+              "raw": "{\n  \"customer_name\": \"sample_customer_name\",\n  \"customer_email\": \"user@example.com\",\n  \"amount\": 1,\n  \"items\": [\n    1\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -529,7 +529,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for PUT\", function () {",
                   "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
@@ -585,7 +585,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for DELETE\", function () {",
                   "    pm.expect([200, 202, 204]).to.include(pm.response.code);",
@@ -660,7 +660,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for POST\", function () {",
                   "    pm.expect([200, 201, 202, 204]).to.include(pm.response.code);",
@@ -715,7 +715,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Generado por export-to-postman. Se puede editar: no se",
+                  "// Generado por Tanit. Se puede editar: no se",
                   "// sobreescribe al regenerar si cambias el nombre del test.",
                   "pm.test(\"Status is a success for GET\", function () {",
                   "    pm.expect([200, 204, 206]).to.include(pm.response.code);",

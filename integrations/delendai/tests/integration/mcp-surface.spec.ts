@@ -50,9 +50,9 @@ import { describe, expect, test } from "vitest";
  * and it did, but half-installed, so the spec kept blowing up.
  * The disk said yes and reality said no.
  */
-const contratos = await import(
-  "../../packages/plugins/delendai_tanit/src/lib/contracts/plugin.interface"
-).catch(() => null);
+const contratos = await import("../../src/lib/contracts/plugin.interface").catch(
+  () => null,
+);
 
 const PLUGIN_DEPS = contratos !== null;
 

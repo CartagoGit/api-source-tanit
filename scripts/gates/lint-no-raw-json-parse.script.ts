@@ -42,7 +42,7 @@ import { collectFiles } from "../helpers/walk.helper.js";
  */
 const ROOTS = [
   "packages/frameworks/scanners",
-  "packages/plugins/delendai_tanit/src",
+  "integrations/delendai/src",
 ] as const;
 
 /**

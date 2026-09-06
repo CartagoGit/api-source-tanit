@@ -154,7 +154,7 @@ import type { ProjectConfig } from "../../contracts/interfaces/core/project-conf
 export const config: ProjectConfig = {
   name: "${projectName}",
   collectionName: "${projectName} (Postman)",  // TODO
-  collectionDescription: "Colección Postman de ${projectName}.",  // TODO
+  collectionDescription: "Postman collection for ${projectName}.",  // TODO
   baseUrl: "${baseUrl}",
 
   variables: [

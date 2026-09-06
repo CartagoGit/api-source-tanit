@@ -47,10 +47,10 @@ const ROOTS = ["packages", "scripts", "tests"] as const;
  * parece, en vez de copiar el patrón porque «ya había otro».
  */
 const PERMITIDOS: Readonly<Record<string, string>> = {
-  "packages/plugins/delendai_tanit/tests/helpers/plugin-context.ts":
+  "integrations/delendai/tests/helpers/plugin-context.ts":
     "doble de test contra el McpServer del SDK: un tipo de terceros con decenas " +
     "de miembros del que solo se usa `registerTool`",
-  "packages/plugins/delendai_tanit/src/lib/helpers/smoke-runner.helper.ts":
+  "integrations/delendai/src/lib/helpers/smoke-runner.helper.ts":
     "estrechez de un Record<string,unknown> validado a IExpectedFixture: el predicado " +
     "asExpectedFixture ya garantiza la forma, pero TS no puede inferir la estrechez " +
     "sin el cast",

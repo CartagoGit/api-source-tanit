@@ -263,7 +263,7 @@ export async function buildZeroConfig(
   return {
     name,
     collectionName: `${name} (Postman)`,
-    collectionDescription: `Colección Postman generada automáticamente para ${name}.`,
+    collectionDescription: `Postman collection auto-generated for ${name}.`,
     baseUrl,
     variables: [
       { key: "baseUrl", value: baseUrl, type: "string" },

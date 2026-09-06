@@ -156,7 +156,7 @@ export async function enrichCatalogWithFormRequests(
         raw: JSON.stringify(variant.body, null, 2),
         options: { raw: { language: "json" } },
       },
-      description: `${parent.description ?? ""}\n\n**Variante auto-generada**: ${variant.name}.`,
+      description: `${parent.description ?? ""}\n\n**Auto-generated variant**: ${variant.name}.`,
     };
   }
 
@@ -175,7 +175,7 @@ export async function enrichCatalogWithFormRequests(
         ...parent.url,
         query: [...existingQuery, ...newQuery],
       },
-      description: `${parent.description ?? ""}\n\n**Variante auto-generada**: ${variant.name}.`,
+      description: `${parent.description ?? ""}\n\n**Auto-generated variant**: ${variant.name}.`,
     };
   }
 
@@ -232,12 +232,12 @@ export async function enrichCatalogWithFormRequests(
       const childItems: PostmanItem[] = variants.map((v) => ({
         name: `Variante: ${v.name}${VARIANT_TAG}`,
         request: buildVariantWithQuery(req, v),
-        description: `Generada automáticamente desde ${rules.className}.`,
+        description: `Auto-generated from ${rules.className}.`,
       }));
       const wrapper: PostmanItem = {
         name: `Variantes (auto · ${rules.className})`,
         item: childItems,
-        description: `Variantes auto-generadas desde \`${rules.className}\`.`,
+        description: `Auto-generated variants from \`${rules.className}\`.`,
       };
       const folderItem: PostmanItem = {
         name: item.name,
@@ -262,12 +262,12 @@ export async function enrichCatalogWithFormRequests(
       const childItems: PostmanItem[] = variants.map((v) => ({
         name: `Variante: ${v.name}${VARIANT_TAG}`,
         request: buildVariantRequest(req, v),
-        description: `Generada automáticamente desde ${rules.className}.`,
+        description: `Auto-generated from ${rules.className}.`,
       }));
       const wrapper: PostmanItem = {
         name: `Variantes (auto · ${rules.className})`,
         item: childItems,
-        description: `Variantes auto-generadas desde \`${rules.className}\`.`,
+        description: `Auto-generated variants from \`${rules.className}\`.`,
       };
       const folderItem: PostmanItem = {
         name: item.name,

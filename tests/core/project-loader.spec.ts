@@ -78,6 +78,20 @@ describe("buildZeroConfig", () => {
     expect(keys).toContain("baseUrl");
     expect(keys).toContain("token");
   });
+
+  // a00017/S1: the auto-generated collection description must be in
+  // English so that the Postman artifact the user opens does not carry
+  // Spanish boilerplate that the project's own i18n layer cannot
+  // rewrite.
+  test("emits an English collection description (a00017/S1)", async () => {
+    const config = await inProject(
+      { ".env": "APP_NAME=Demo\n" },
+      (context) => buildZeroConfig(context),
+    );
+    expect(config.collectionDescription).toMatch(/^Postman collection auto-generated for /);
+    expect(config.collectionDescription).not.toContain("Colección");
+    expect(config.collectionDescription).not.toContain("generada automáticamente");
+  });
 });
 
 describe("loadProject", () => {

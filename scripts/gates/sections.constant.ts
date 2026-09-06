@@ -104,19 +104,11 @@ export const SECTIONS: readonly ISection[] = [
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks", "cli"],
   },
-  {
-    name: "plugin",
-    description: "Plugin de delendai — proyecto independiente, gates propios",
-    paths: ["packages/plugins/delendai_tanit/"],
-    tests: ["packages/plugins/delendai_tanit/tests/**/*.{spec,test}.ts"],
-    tsconfig: "packages/plugins/delendai_tanit/tsconfig.json",
-    ownTypecheck: { cwd: "packages/plugins/delendai_tanit", script: "typecheck" },
-    // El plugin necesita el catálogo de frameworks (lo expone en su
-    // tool `test` y en `summary`), así que la dependencia es real y se
-    // declara. Declararla no es relajar la regla: la regla es que
-    // `core` no dependa de `frameworks`, y eso sigue en pie.
-    dependsOn: ["contracts", "core", "frameworks", "cli"],
-  },
+  // El plugin de Delendai (`integrations/delendai/`) NO es sección
+  // del producto: vive como integración opcional mantenida aquí
+  // por conveniencia del usuario. Su typecheck + tests se corren
+  // en `.github/workflows/integration-delendai.yml` (opt-in +
+  // semanal), no en `validate.yml`. x00041.
 ] as const;
 
 /** Ficheros que no pertenecen a ninguna sección pero afectan a todas. */

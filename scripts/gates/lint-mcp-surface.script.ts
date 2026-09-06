@@ -37,7 +37,7 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
 /** Dónde viven los tools del plugin. */
 const TOOLS_DIR = join(
   REPO_ROOT,
-  "packages/plugins/delendai_tanit/src/lib/tools",
+  "integrations/delendai/src/lib/tools",
 );
 
 interface IProblem {

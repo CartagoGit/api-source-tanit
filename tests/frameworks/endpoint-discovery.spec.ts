@@ -743,4 +743,44 @@ test("dynamic rules accumulate in rulesWithUnknown", async () => {
     expect(stats.unresolved).toBe(1);
     expect(nodoEndpoint(collection)?.item).toBeUndefined();
   });
+
+  // a00017/S1: the descriptions the Laravel enricher injects into the
+  // Postman collection are part of the user-visible artifact. They
+  // must be in English; the project's i18n layer
+  // (`packages/ui/i18n/locales/*.json`) cannot translate strings the
+  // generator itself emitted in Spanish.
+  test("emits English descriptions for both POST and GET variants (a00017/S1)", async () => {
+    const collectionPost = buildCollection(
+      [spec({ name: "Crear Usuario", method: "POST", uri: "/usuarios" })],
+      { ...CONFIG },
+    );
+    await enrichCatalogWithFormRequests(
+      collectionPost,
+      new Map([["POST usuarios", "app/Http/Requests/StoreUsuarioRequest.php"]]),
+      contexto,
+    );
+    const variantesPost = nodoEndpoint(collectionPost)?.item?.[1]?.item ?? [];
+    expect(variantesPost.length).toBeGreaterThan(0);
+    const serializadoPost = JSON.stringify(variantesPost);
+    expect(serializadoPost).toContain("Auto-generated variant");
+    expect(serializadoPost).toContain("Auto-generated from StoreUsuarioRequest");
+    expect(serializadoPost).not.toContain("Variante auto-generada");
+    expect(serializadoPost).not.toContain("Generada automáticamente");
+    expect(serializadoPost).not.toContain("Variantes auto-generadas");
+
+    const collectionGet = buildCollection(
+      [spec({ name: "Listar Usuarios", method: "GET", uri: "/usuarios" })],
+      { ...CONFIG },
+    );
+    await enrichCatalogWithFormRequests(
+      collectionGet,
+      new Map([["GET usuarios", "app/Http/Requests/ListarUsuarioRequest.php"]]),
+      contexto,
+    );
+    const serializadoGet = JSON.stringify(nodoEndpoint(collectionGet));
+    expect(serializadoGet).toContain("Auto-generated variants from `ListarUsuarioRequest`");
+    expect(serializadoGet).not.toContain("Variantes auto-generadas");
+    expect(serializadoGet).not.toContain("Colecci");
+    expect(serializadoGet).not.toContain("Generada automáticamente");
+  });
 });
