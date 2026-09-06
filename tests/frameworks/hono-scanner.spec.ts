@@ -84,6 +84,56 @@ describe("Hono-specific shapes", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// audit 2026-09-06 §13 — `.all()` semantics
+// ---------------------------------------------------------------------------
+
+describe("audit 2026-09-06 §13 — `.all()` is emitted as method 'ALL', not collapsed to GET", () => {
+  test("`app.all('/x', h)` produces a route with method === 'ALL'", async () => {
+    const project = await createTempProject({
+      "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "index.ts":
+        'import { Hono } from "hono";\n' +
+        'const app = new Hono();\n' +
+        'app.all("/anything", (c) => c.json({}));\n' +
+        "export default app;\n",
+    }, "hono-all-semantics-");
+    try {
+      const match = await new HonoProjectScanner().resolve(project.root);
+      const result = await new HonoRouteScanner().scan(match);
+      const all = result.routes.find((r) => r.uri === "/anything");
+      expect(all, "no route for /anything").toBeDefined();
+      // The semantic contract: `.all()` is "every method", not "GET".
+      expect(all!.method).toBe("ALL");
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("`app.get('/x', h)` and `app.post('/y', h)` still resolve to GET and POST respectively", async () => {
+    // Regression guard: only `.all()` is special-cased.
+    const project = await createTempProject({
+      "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "index.ts":
+        'import { Hono } from "hono";\n' +
+        'const app = new Hono();\n' +
+        'app.get("/users", (c) => c.json([]));\n' +
+        'app.post("/users", (c) => c.json({}));\n' +
+        "export default app;\n",
+    }, "hono-all-semantics-getpost-");
+    try {
+      const match = await new HonoProjectScanner().resolve(project.root);
+      const result = await new HonoRouteScanner().scan(match);
+      const get = result.routes.find((r) => r.method === "GET");
+      const post = result.routes.find((r) => r.method === "POST");
+      expect(get).toBeDefined();
+      expect(post).toBeDefined();
+    } finally {
+      await project.cleanup();
+    }
+  });
+});
+
 describe("validation with @hono/zod-validator", () => {
   test("resolves the schema of a POST", async () => {
     const { match, result, routes } = await scanFixture();

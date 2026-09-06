@@ -241,9 +241,18 @@ export class HonoRouteScanner implements IRouteScanner {
         const rawUri = routeMatch[3] ?? "";
         if (!rawUri.startsWith("/")) continue;
 
-        // `.all()` answers to any method; emitted as GET, which is the one
-        // people will want to try first.
-        const method = rawMethod === "all" ? "GET" : rawMethod.toUpperCase();
+        // `.all()` answers to any HTTP method. We emit it as the
+        // sentinel method `"ALL"` so the semantic meaning survives
+        // through the pipeline and exporters can decide how to
+        // materialize it (Postman supports `ANY`; OpenAPI/HAR/Bruno
+        // get their own per-format treatment in follow-up slices).
+        //
+        // Audit 2026-09-06 §13: emitting `"GET"` here was wrong
+        // — `.all()` is not "the most common method", it is "every
+        // method". Collapsing it to GET made collections look
+        // complete while leaving 6 of 7 methods undocumented, and
+        // the user had no signal that anything was missing.
+        const method = rawMethod === "all" ? "ALL" : rawMethod.toUpperCase();
         const uri = joinRoutePath(prefix, rawUri);
 
         routes.push({
