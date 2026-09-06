@@ -7,8 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00050` | `fix` | [`ready/fixes/x00050-ci-roja-bun-1-3-no-lee-lockfile-v2-el-pin-de-la-ci-debe-seguir-al-lockfile.md`](ready/fixes/x00050-ci-roja-bun-1-3-no-lee-lockfile-v2-el-pin-de-la-ci-debe-seguir-al-lockfile.md) |
-| `x00051` | `fix` | [`ready/fixes/x00051-la-ci-realo-el-typecheck-por-primera-vez-en-limpio-92-errores-por-tipos-ambient-incompletos.md`](ready/fixes/x00051-la-ci-realo-el-typecheck-por-primera-vez-en-limpio-92-errores-por-tipos-ambient-incompletos.md) |
 
 ## Bloqueadas
 
@@ -136,6 +134,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00038` — Express bridge structured-call IR - eliminar call.callee.split('.') en favor de { receiver, method, computed } — `de45d02, ce3138a`
 - `x00039` — x00039: flat-hybrid pierde endpoints en groupByService cuando NO hay frameworkSearchRoot — `0223930, dbb459d`
 - `x00040` — x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió) — `3b7f1c1`
+- `x00050` — x00050: CI roja — Bun 1.3.14 no sabe leer el bun.lock v2; el pin de CI debe seguir al lockfile — `9043822`
+- `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
 
 ### infra
 

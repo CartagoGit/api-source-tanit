@@ -2,7 +2,8 @@
 id: x00050
 kind: fix
 title: "x00050: CI roja — Bun 1.3.14 no sabe leer el bun.lock v2; el pin de CI debe seguir al lockfile"
-status: ready
+status: done
+shippedIn: [9043822]
 priority: P0
 globalGate: type
 why: |

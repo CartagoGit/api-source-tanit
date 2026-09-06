@@ -2,7 +2,8 @@
 id: x00051
 kind: fix
 title: "x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local)"
-status: ready
+status: done
+shippedIn: [3a8ef7c, 980e514]
 priority: P0
 globalGate: type
 why: |
