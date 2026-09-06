@@ -24,6 +24,10 @@ import {
 } from "./scanners/websocket.scanner";
 import { SseProjectScanner, SseRouteScanner } from "./scanners/sse.scanner";
 import {
+  AsyncApiProjectScanner,
+  AsyncApiRouteScanner,
+} from "./scanners/asyncapi.scanner";
+import {
   ExpressProjectScanner,
   ExpressRouteScanner,
   ExpressZodValidationProvider,
@@ -138,6 +142,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new GrpcProjectScanner(),
     new WebSocketProjectScanner(),
     new SseProjectScanner(),
+    new AsyncApiProjectScanner(),
     new FastApiProjectScanner(),
     new SymfonyProjectScanner(),
     new NestJsProjectScanner(),
@@ -164,6 +169,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new GrpcRouteScanner(),
     new WebSocketRouteScanner(),
     new SseRouteScanner(),
+    new AsyncApiRouteScanner(),
     new FastApiRouteScanner(),
     new SymfonyRouteScanner(),
     new NestJsRouteScanner(),
