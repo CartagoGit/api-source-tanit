@@ -25,7 +25,7 @@
  * Uso:
  *   bun run lint:fixtures
  */
-import { readdir, readFile } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, relative } from "node:path";
 
