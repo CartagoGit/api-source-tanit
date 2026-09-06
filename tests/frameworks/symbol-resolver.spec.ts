@@ -111,12 +111,13 @@ R.get("/x", h);
 
     const calls = collectMethodCallsFromSource(source, "server.ts");
     expect(calls[0]?.callee).toBe("R.get");
-    // El resolver no modifica el `callee` cuando el nombre local
-    // ya es la representación canónica; lo que importa aquí es
-    // que `importedName` está disponible para los siguientes pasos
-    // (scanner bridge, route graph).
+    // x00054 S1: `resolveCallee` ahora usa `importedName`, así que
+    // el mapeo `R → Router` reescribe `R.get` al símbolo canónico
+    // `Router.get` que un scanner de Express puede enrutar. Antes
+    // este assert esperaba `R.get` porque `buildAliasIndex` mapeaba
+    // a sí mismo — bug documentado en la aceptación de x00048 S1.
     const resolved = resolveCallee(calls, [binding], []);
-    expect(resolved[0]?.callee).toBe("R.get");
+    expect(resolved[0]?.callee).toBe("Router.get");
   });
 
   test("x00048 S1: default + namespace imports carry their canonical importedName", () => {
@@ -144,6 +145,51 @@ R.get("/x", h);
     expect(defaultBinding.importedName).toBe("default");
     expect(nsBinding.importedName).toBe("*");
     expect(namedBinding.importedName).toBe("a");
+  });
+
+  test("x00054 S1: default import (`import x from 'm'`) is NOT rewritten by resolveCallee", () => {
+    // x00054 S1: el binding tiene `importedName === "default"`, que
+    // no es un símbolo canónico del módulo exportador (es el alias
+    // sintáctico del export por defecto). `buildAliasIndex` lo
+    // descarta, así que `x` no aparece en `importMap` y
+    // `resolveCallee` deja `x.get` intacto — no queremos un callee
+    // `default.get` porque ensucia el route graph.
+    const binding = {
+      name: "x",
+      importedName: "default",
+      source: "m",
+      range: { file: "server.ts", start: 0, end: 0 },
+    };
+    const source = `x.get("/x", h);
+`;
+    const calls = collectMethodCallsFromSource(source, "server.ts");
+    expect(calls[0]?.callee).toBe("x.get");
+
+    const resolved = resolveCallee(calls, [binding], []);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.callee).toBe("x.get");
+  });
+
+  test("x00054 S1: namespace import (`import * as ns from 'm'`) is NOT rewritten by resolveCallee", () => {
+    // x00054 S1: el binding tiene `importedName === "*"`, que es el
+    // namespace completo, no un símbolo concreto. Reescribir
+    // `ns.get` a `*.get` no aporta nada al scanner, así que la
+    // guarda lo deja en `importMap` y `resolveCallee` no toca el
+    // callee.
+    const binding = {
+      name: "ns",
+      importedName: "*",
+      source: "m",
+      range: { file: "server.ts", start: 0, end: 0 },
+    };
+    const source = `ns.get("/x", h);
+`;
+    const calls = collectMethodCallsFromSource(source, "server.ts");
+    expect(calls[0]?.callee).toBe("ns.get");
+
+    const resolved = resolveCallee(calls, [binding], []);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.callee).toBe("ns.get");
   });
 
   test("default + aliased + namespace in the same file: 3 aliases", () => {
@@ -224,8 +270,11 @@ r.get("/x", h);
       [{ name: "R", importedName: "Router", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
       [],
     );
-    // R is already the canonical name (its importMap points at itself).
-    expect(resolved[0]?.callee).toBe("R.get");
+    // x00054 S1: el canónico es el símbolo del módulo exportador
+    // (`Router`), no el alias local (`R`), así que `R.get` se
+    // reescribe a `Router.get`. Antes el assert esperaba `R.get`
+    // porque `buildAliasIndex` mapeaba `R → R`.
+    expect(resolved[0]?.callee).toBe("Router.get");
   });
 
   test("a non-identifier receiver is left untouched", () => {
