@@ -204,6 +204,50 @@ export function parse(source: string, filename: string): TSFile {
   });
 }
 
+/**
+ * Variante de `parse` que devuelve ADEMÁS el `Program` crudo de
+ * Babel (x00048 S3 / a00016 S6.d).
+ *
+ * El caso de uso: un scanner que necesita tanto el `TSFile` del
+ * frontend (assignments, decorators, classes…) como las primitivas
+ * del LanguageIR (`IRouteCallExpression[]`, `IConstantBinding[]`,
+ * `IImportBinding[]`, `IReexport[]`). Sin este helper, eso son 2+
+ * parses Babel del mismo fichero; con él, el scanner pasa
+ * `program` a `buildLanguageIRFromProgram` y el coste es 1 parse.
+ *
+ * `program` se tipa como `unknown` a propósito: el frontend no
+ * expone los tipos de `@babel/types` en su superficie pública
+ * (serían ~2500 tipos de dependencia), y los consumidores del IR
+ * ya castean de forma permissiva a su propio `BabelNode`, igual
+ * que hace este módulo internamente.
+ */
+export function parseWithProgram(
+  source: string,
+  filename: string,
+): { readonly tsFile: TSFile; readonly program: unknown } {
+  const plugins: ParserPlugin[] = ["typescript", "decorators"];
+  if (isJsxFile(filename)) plugins.push("jsx");
+  const ast = babelParse(source, {
+    sourceType: "module",
+    allowImportExportEverywhere: true,
+    plugins: [...plugins],
+    errorRecovery: true,
+  });
+
+  const body = asArray(ast.program["body"]);
+
+  const tsFile = sortTopDown({
+    imports: collectImports(body),
+    symbols: collectSymbols(body),
+    classes: collectClasses(body),
+    methodCalls: collectMethodCalls(body),
+    assignments: collectAssignments(body),
+    decorators: collectDecorators(body),
+    filename,
+  });
+  return { tsFile, program: ast.program };
+}
+
 // ---------------------------------------------------------------------------
 // Top-down ordering (a00011 C-7 / B-rev-11)
 // ---------------------------------------------------------------------------
@@ -719,6 +763,27 @@ export function parseModule(
 ): TSFile | null {
   try {
     return parse(source, filename);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    diagnostics?.push({ file: filename, severity: "error", reason });
+    return null;
+  }
+}
+
+/**
+ * Variante safe de `parseWithProgram` (x00048 S3): devuelve `null` y
+ * registra el diagnóstico si Babel rechaza el archivo, en vez de
+ * lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
+ * Express: un solo parse por archivo alimenta el `TSFile` del
+ * frontend Y las primitivas del LanguageIR.
+ */
+export function parseModuleWithProgram(
+  source: string,
+  filename: string,
+  diagnostics?: Array<IParseDiagnostic>,
+): { readonly tsFile: TSFile; readonly program: unknown } | null {
+  try {
+    return parseWithProgram(source, filename);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     diagnostics?.push({ file: filename, severity: "error", reason });

@@ -545,15 +545,32 @@ export function collectMethodCallsFromSource(
       plugins: [...plugins],
       errorRecovery: true,
     });
-    const body = asArray(ast.program["body"]);
-    const out: IRouteCallExpression[] = [];
-    walkBody(body, filename, out);
-    return out;
+    return collectMethodCallsFromProgram(ast.program, filename);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     diagnostics?.push({ file: filename, severity: "error", reason });
     return [];
   }
+}
+
+/**
+ * Versión AST-level del collector (x00048 S3). Toma un `Program`
+ * de Babel ya parseado — el que produce `buildLanguageIR` con su
+ * parse único — y devuelve las mismas `IRouteCallExpression[]` que
+ * `collectMethodCallsFromSource`.
+ *
+ * La regla de emisión vive sólo en `walkBody`; esta función es el
+ * mismo walker alimentado desde fuera. Los scanners que ya tienen
+ * el AST en la mano (vía `buildLanguageIR`) no pagan el re-parse.
+ */
+export function collectMethodCallsFromProgram(
+  program: unknown,
+  filename: string,
+): IRouteCallExpression[] {
+  const body = asArray(asBabelNode(program)["body"]);
+  const out: IRouteCallExpression[] = [];
+  walkBody(body, filename, out);
+  return out;
 }
 
 /**

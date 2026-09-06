@@ -169,7 +169,6 @@ export function collectConstantsFromSource(
   source: string,
   filename: string,
 ): IConstantBinding[] {
-  const out: IConstantBinding[] = [];
   let ast: { program: unknown } | undefined;
   try {
     ast = babelParse(source, {
@@ -178,10 +177,25 @@ export function collectConstantsFromSource(
       errorRecovery: true,
     });
   } catch {
-    return out;
+    return [];
   }
-  if (!ast || !ast.program) return out;
-  walkBindings(asBabelNode(ast.program), filename, out);
+  if (!ast || !ast.program) return [];
+  return collectConstantsFromProgram(ast.program, filename);
+}
+
+/**
+ * Versión AST-level del collector (x00048 S3). Toma un `Program`
+ * de Babel ya parseado y devuelve las mismas `IConstantBinding[]`
+ * que `collectConstantsFromSource`. La regla de emisión vive sólo
+ * en `walkBindings`; el parse lo pone quien llama (normalmente
+ * `buildLanguageIR`, que parsea una vez por archivo).
+ */
+export function collectConstantsFromProgram(
+  program: unknown,
+  filename: string,
+): IConstantBinding[] {
+  const out: IConstantBinding[] = [];
+  walkBindings(asBabelNode(program), filename, out);
   return out;
 }
 

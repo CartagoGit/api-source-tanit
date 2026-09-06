@@ -126,7 +126,7 @@ function bindingFromSpecifier(spec: BabelNode): { local: string; imported: strin
  * `range.file` is filled with `sourceFile` — the caller that wants
  * grouping by file can do that later.
  */
-function collectAliasesFromBody(
+export function collectAliasesFromBody(
   body: ReadonlyArray<BabelNode>,
   sourceFile: string,
   out: IImportBinding[],
@@ -172,7 +172,7 @@ function collectAliasesFromBody(
  * not reexports. If a scanner needs to detect them, it will look
  * elsewhere.
  */
-function collectReexportsFromBody(
+export function collectReexportsFromBody(
   body: ReadonlyArray<BabelNode>,
   sourceFile: string,
   out: IReexport[],

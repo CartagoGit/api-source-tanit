@@ -13,7 +13,12 @@
  * (a00010 S7 — TypeScript AST slice)
  */
 
-export { parse, parseModule } from "./typescript.parser.js";
+export {
+  parse,
+  parseModule,
+  parseModuleWithProgram,
+  parseWithProgram,
+} from "./typescript.parser.js";
 
 export type {
   TSAssignment,

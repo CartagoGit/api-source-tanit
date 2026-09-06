@@ -40,11 +40,8 @@ import { countLinesBefore, findAllBalanced, findNearestBalanced, stripJsComments
 import { joiFieldToSpec, parseJoiObjectLiteral } from "../parsers/joi-schema.helper.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type { IBalancedCall } from "../../contracts/interfaces/core/helpers.interface.js";
-import { parseModule } from "../../core/language-frontends/typescript/index.js";
-import {
-  collectMethodCallsFromSource,
-} from "../typescript/collect-method-calls.helper.js";
-import { collectConstantsFromSource } from "../typescript/collect-constants.helper.js";
+import { parseModuleWithProgram } from "../../core/language-frontends/typescript/index.js";
+import { buildLanguageIRFromProgram } from "../typescript/build-language-ir.helper.js";
 import { propagateConstants } from "../typescript/constant-propagation.helper.js";
 import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
@@ -244,13 +241,20 @@ function parseModuleSafe(
   raw: string,
   diagnostics: Array<IParseDiagnostic>,
 ): ParsedModule {
-  const ast = parseModule(raw, file, diagnostics);
-  if (!ast) {
+  // x00048 S3: single-parse. `parseModuleWithProgram` hace UN parse
+  // Babel y devuelve tanto el `TSFile` del frontend (assignments,
+  // decorators…) como el `Program` crudo, que alimenta
+  // `buildLanguageIRFromProgram` (calls, bindings, aliases,
+  // reexports). Antes: `parseModule` + `collectMethodCallsFromSource`
+  // + `collectConstantsFromSource` = 3 parses por archivo.
+  const parsed = parseModuleWithProgram(raw, file, diagnostics);
+  if (!parsed) {
     // The reason is already recorded in `diagnostics` by the frontend:
     // the scanner keeps working, it just doesn't find routes in
     // that file.
     return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
   }
+  const ast = parsed.tsFile;
   const routerPrefixes = new Map<string, string>();
   const appUsePrefixes = new Map<string, string>();
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
@@ -280,13 +284,14 @@ function parseModuleSafe(
   // `toTSMethodCalls` bridge converts `IRouteCallExpression[]` into
   // the `TSMethodCall[]` shape that the rest of this scanner keeps
   // consuming — without touching the extraction logic.
-  const irCalls = collectMethodCallsFromSource(raw, file, diagnostics);
-  // a00016 S6: feed the real `IConstantBinding[]` to propagation so
-  // `const M = "get"; app[M](...)` resolves to `app.get(...)`. Before
-  // this slice the scanner passed `[]` and the "const M" style was
-  // unreachable E2E (unit tests fabricated bindings by hand).
-  const bindings = collectConstantsFromSource(raw, file);
-  const propagated = propagateConstants(irCalls, bindings);
+  //
+  // x00048 S3: el LanguageIR se construye desde el MISMO `Program`
+  // que parseó `parseModuleWithProgram` arriba — un solo parse por
+  // archivo. Los bindings de constantes vienen en el mismo IR, así
+  // que `const M = "get"; app[M](...)` se propaga sin re-parsear
+  // (a00016 S6.c).
+  const ir = buildLanguageIRFromProgram(parsed.program, file);
+  const propagated = propagateConstants(ir.calls, ir.bindings);
   const methodCalls = toTSMethodCalls(propagated, raw);
   for (const call of methodCalls) {
     if (call.callee !== "app.use") continue;
