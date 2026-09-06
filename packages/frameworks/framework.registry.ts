@@ -22,6 +22,7 @@ import {
   WebSocketProjectScanner,
   WebSocketRouteScanner,
 } from "./scanners/websocket.scanner";
+import { SseProjectScanner, SseRouteScanner } from "./scanners/sse.scanner";
 import {
   ExpressProjectScanner,
   ExpressRouteScanner,
@@ -136,6 +137,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new OpenApiProjectScanner(),
     new GrpcProjectScanner(),
     new WebSocketProjectScanner(),
+    new SseProjectScanner(),
     new FastApiProjectScanner(),
     new SymfonyProjectScanner(),
     new NestJsProjectScanner(),
@@ -161,6 +163,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new OpenApiRouteScanner(),
     new GrpcRouteScanner(),
     new WebSocketRouteScanner(),
+    new SseRouteScanner(),
     new FastApiRouteScanner(),
     new SymfonyRouteScanner(),
     new NestJsRouteScanner(),
