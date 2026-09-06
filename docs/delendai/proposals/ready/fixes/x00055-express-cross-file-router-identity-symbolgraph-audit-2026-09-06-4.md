@@ -112,7 +112,6 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
 ### S1 — `SymbolTable` mínimo para routers Express
 
 - **Files**:
-  - `packages/frameworks/scanners/express.symbol-table.ts` (eliminar)
   - `packages/frameworks/scanners/express-symbol-table.helper.ts` (nuevo)
   - `packages/frameworks/scanners/express.scanner.ts`
   - `tests/frameworks/express-symbol-table.spec.ts` (nuevo)
@@ -126,8 +125,12 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
     para consumo posterior.
   - Tests: 2 routers con el mismo nombre en ficheros distintos →
     cada uno tiene su propio símbolo.
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator-cartago-2026-09-07
+- review-reviewer: finch
+- review-log: approved by finch — Independent review approved after focused validation of the naming repair and SymbolTable behavior.
+- **Status**: done
+- shipped-in: ["40a30c5"]
 ### S2 — `mountPrefixOf` resuelve por símbolo, no por nombre
 
 - **Files**:
