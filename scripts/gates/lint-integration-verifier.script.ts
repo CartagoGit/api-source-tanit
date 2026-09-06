@@ -117,6 +117,14 @@ const QUESTIONS: ReadonlyArray<IQuestion> = [
 
 async function checkObsoletePaths(): Promise<string[]> {
   // Paths que fueron movidos o borrados pero aún se referencian.
+  // Las exclusiones legítimas:
+  //   - `docs/delendai/proposals/` — el AGENT-BOOTSTRAP permite
+  //     retener paths históricos como arqueología en propuestas
+  //     archivadas.
+  //   - el propio gate — sus patrones de detección SON estas strings.
+  //   - `docs/delendai/AGENT-BOOTSTRAP.md` y `UNIVERSAL-...` — el
+  //     bootstrap documenta la migración y cita la ruta antigua
+  //     deliberadamente.
   const known = [
     "packages/plugins/delendai_tanit",
     "packages/plugins/delendai_expostman",
@@ -127,7 +135,19 @@ async function checkObsoletePaths(): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
         "grep",
-        ["-rln", "--include=*.ts", "--include=*.js", "--include=*.json", "--include=*.yml", path, "packages", "integrations", "scripts", "tests", "delendai.config.json", ".github", ".mcp.json", ".vscode"],
+        [
+          "-rln",
+          "--include=*.ts", "--include=*.js", "--include=*.json", "--include=*.yml",
+          "--include=*.md",
+          "--exclude=lint-integration-verifier.script.ts",
+          "--exclude-dir=proposals",
+          "--exclude-dir=node_modules",
+          "--exclude-dir=.git",
+          path,
+          "packages", "integrations", "scripts", "tests", "docs",
+          "CONTRIBUTING.md", "README.md", "AGENTS.md", "CLAUDE.md",
+          "delendai.config.json", ".github", ".mcp.json", ".vscode", ".docker",
+        ],
         { cwd: REPO_ROOT, maxBuffer: 4 * 1024 * 1024 },
       );
       for (const line of stdout.trim().split("\n")) {
@@ -145,28 +165,40 @@ async function checkObsoletePaths(): Promise<string[]> {
 }
 
 async function checkDuplicateProposalIds(): Promise<string[]> {
-  try {
-    const { stdout } = await execFileAsync(
-      "grep",
-      ["-rhE", "^id:\\s*[a-z]?[0-9]{5}", "docs/delendai/proposals"],
-      { cwd: REPO_ROOT, maxBuffer: 4 * 1024 * 1024 },
-    );
-    const counts = new Map<string, number>();
-    for (const line of stdout.split("\n")) {
-      const m = /^id:\s*([a-z]?[0-9]{5})/.exec(line);
+  // Lee el FRONTMATTER real de cada propuesta (primer bloque entre
+  // `---`), no el cuerpo — el cuerpo de una auditoría archivada puede
+  // citar el `id:` de otras propuestas como historia, y eso NO es
+  // duplicación. x00049.
+  const ids = new Map<string, string[]>(); // id → paths
+  const walkSync = (dir: string): void => {
+    const { readdirSync, statSync, readFileSync } = require("node:fs") as typeof import("node:fs");
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      const st = statSync(full);
+      if (st.isDirectory()) {
+        walkSync(full);
+        continue;
+      }
+      if (!entry.endsWith(".md") || entry === "INDEX.md" || entry === "README.md") continue;
+      const text = readFileSync(full, "utf8");
+      if (!text.startsWith("---")) continue;
+      const end = text.indexOf("\n---", 3);
+      if (end < 0) continue;
+      const frontmatter = text.slice(3, end);
+      const m = /^id:\s*([a-z]?[0-9]{5})\s*$/m.exec(frontmatter);
       if (!m) continue;
       const id = m[1]!;
-      counts.set(id, (counts.get(id) ?? 0) + 1);
+      const paths = ids.get(id) ?? [];
+      paths.push(full.replace(`${REPO_ROOT}/`, ""));
+      ids.set(id, paths);
     }
-    const dupes: string[] = [];
-    for (const [id, count] of counts) {
-      if (count > 1) dupes.push(`id '${id}' aparece ${count} veces`);
-    }
-    return dupes;
-  } catch (err) {
-    if ((err as { code?: number }).code === 1) return [];
-    throw err;
+  };
+  walkSync(join(REPO_ROOT, "docs/delendai/proposals"));
+  const dupes: string[] = [];
+  for (const [id, paths] of ids) {
+    if (paths.length > 1) dupes.push(`id '${id}' aparece ${paths.length} veces: ${paths.join(", ")}`);
   }
+  return dupes;
 }
 
 async function checkDanglingScripts(): Promise<string[]> {

@@ -46,7 +46,7 @@ x-toolchain: &toolchain
     # el directorio está vacío. El síntoma es un typecheck que falla
     # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
     # tiene nada que ver con los tipos.
-    - plugin_node_modules:/work/packages/plugins/delendai_tanit/node_modules
+    - plugin_node_modules:/work/integrations/delendai/node_modules
     - cargo_registry:/usr/local/cargo/registry
     # Fuera del árbol del repo, a propósito.
     #

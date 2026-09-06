@@ -14,7 +14,7 @@ esa puerta: el nombre ya describe la categoría completa del producto
 | Producto / repositorio | `api-source-tanit` | nombre del repo, `package.json` |
 | Bin canónico | **`apisrc`** | `package.json` → `bin` |
 | Plugin de delendai | `tanit` | `src/index.ts` → `plugin.name` |
-| Paquete del plugin (interno) | `delendai-plugin-tanit` | `packages/plugins/delendai_tanit/package.json` — `"private": true`, NO se publica |
+| Paquete del plugin (interno) | `tanit-delendai-integration` | `integrations/delendai/package.json` — `"private": true`, NO se publica |
 | Tools MCP | `delendai_tanit_<tool>` | los construye el host |
 | Carpeta de salida | `tanit/` | `OUTPUT_DIR_NAME` |
 | Prefijo de env vars | `TANIT_` | `TANIT_PROJECT_ROOT`, `TANIT_OUTPUT_DIR`… |
@@ -49,14 +49,13 @@ se hizo porque **Tanit ya no describe un exportador a Postman**: la
 categoría incluye Insomnia, OpenAPI, HAR y otros, así que el nombre del
 plugin debe ser la marca del producto, no la del bin histórico.
 
-## Por qué el plugin vive en `packages/plugins/delendai_tanit/`
+## Por qué el plugin vive en `integrations/delendai/`
 
-La carpeta dice **para qué host** es el plugin, no qué hace — eso ya lo
-dice el proyecto entero. Si algún día hay un plugin para otro host, su
-sitio es evidente: `packages/plugins/<host>/`.
-
-El plural sigue la regla del repo: una carpeta contenedora contiene
-varias cosas de ese tipo, aunque hoy haya una.
+Desde x00041 el plugin es una **integración externa** con el host
+MCP Delendai, no parte del producto Tanit. La CLI, el binario y la
+UI funcionan sin él. La carpeta bajo `integrations/` dice
+**para qué host** es la integración, y queda fuera de `workspaces`,
+de `files` y de la CI principal del producto (x00045).
 
 ## Sufijos por carpeta
 

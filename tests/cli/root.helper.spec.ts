@@ -57,8 +57,9 @@ describe("WELL_KNOWN_PATHS", () => {
 
 describe("REPO_ROOT", () => {
   // The search requires package.json AND delendai.config.json together:
-  // with only the first it would stop at `packages/plugins/delendai_tanit`,
-  // which also has its own.
+  // with only the first it would stop at the Delendai integration
+  // folder (`integrations/delendai/`, moved there by x00041), which
+  // also has its own.
   test("is the real root, not one of an inner package", () => {
     expect(existsSync(join(REPO_ROOT, "package.json"))).toBe(true);
     expect(existsSync(join(REPO_ROOT, "delendai.config.json"))).toBe(true);

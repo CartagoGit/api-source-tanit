@@ -20,7 +20,7 @@ importar; no hay paso de build):
 {
   "plugins": {
     "tanit": {
-      "path": "packages/plugins/delendai_tanit/src/index.ts"
+      "path": "integrations/delendai/src/index.ts"
     }
   }
 }

@@ -30,14 +30,18 @@ const EXPECTED_REQUESTS = 9;
  * el plugin depende de ese path: distribuirlo empaquetado rompe la
  * instalación del usuario sin que nada falle aquí.
  *
- * El prefijo incluye `packages/` porque `files` en el `package.json`
- * raíz lista `packages/` y npm lo preserva tal cual dentro del tarball;
- * el plugin acaba como `package/packages/plugins/delendai_expostman/`,
- * no como `package/plugins/...`.
+ * El prefijo NO incluye `packages/` desde x00041: el plugin vive en
+ * `integrations/delendai/` y `files` en el `package.json` raíz NO
+ * lista `integrations/`, así que dentro del tarball la ruta
+ * prohibida sería `package/integrations/delendai/`. Se mantiene la
+ * búsqueda de la ruta antigua también (`package/packages/plugins/`)
+ * porque el tarball de una versión vieja aún podía llevarla: si
+ * aparece cualquiera de las dos, es fuga.
  *
- * Slice S0 de la propuesta `a00012`.
+ * Slice S0 de la propuesta `a00012`. Actualizado por x00041/x00049.
  */
-const MCP_PLUGIN_TARBALL_PATH = "package/packages/plugins/delendai_expostman/";
+const MCP_PLUGIN_TARBALL_PATH = "package/integrations/delendai/";
+const MCP_PLUGIN_TARBALL_PATH_LEGACY = "package/packages/plugins/";
 
 interface IStep {
   readonly name: string;
@@ -61,7 +65,7 @@ async function main(): Promise<number> {
   const steps: IStep[] = [];
   const workDir = await mkdtemp(join(tmpdir(), "postman-package-"));
 
-  // El plugin de delendai (`packages/plugins/delendai_expostman`)
+    // La integración con Delendai (`integrations/delendai/`)
   // NO participa en este gate: es una pieza interna del repo
   // (`"private": true`), se carga directo desde su TS y no viaja en el
   // tarball. Empaquetarlo aquí era herencia de cuando se pensó como
@@ -82,18 +86,22 @@ async function main(): Promise<number> {
     });
     if (!tarball) return report(steps);
 
-    // 1.b Aserción de DoD de packaging (slice S0 de `a00012`):
-    // el plugin MCP es un workspace privado; confiar en `"private": true`
-    // no basta porque el `files` del `package.json` raíz lista
-    // `packages/` y npm incluye los workspaces que coincidan. Hay que
-    // leer el tarball real y confirmar que la ruta del plugin **no**
-    // aparece. Si aparece, fallamos con un mensaje explícito en vez de
-    // dejar que el siguiente paso lo descubra cuando ya es tarde.
+    // 1.b Aserción de DoD de packaging (slice S0 de `a00012`,
+    // actualizado por x00041/x00049): la integración con Delendai
+    // (`integrations/delendai/`) NO viaja en el tarball público
+    // porque `files` del `package.json` raíz no la lista. Confiar en
+    // `"private": true` no basta: hay que leer el tarball real y
+    // confirmar que ni la ruta nueva ni la antigua aparecen. Si
+    // aparece cualquiera, fallamos con un mensaje explícito.
     const listing = await run(["tar", "-tzf", join(workDir, tarball)], workDir);
     const leaked = listing.ok
       ? listing.output
           .split("\n")
-          .filter((line) => line.startsWith(MCP_PLUGIN_TARBALL_PATH))
+          .filter(
+            (line) =>
+              line.startsWith(MCP_PLUGIN_TARBALL_PATH) ||
+              line.startsWith(MCP_PLUGIN_TARBALL_PATH_LEGACY),
+          )
       : [];
     steps.push({
       name: "el plugin MCP no debe entrar en el tarball público",

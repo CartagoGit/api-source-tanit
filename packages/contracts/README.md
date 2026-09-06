@@ -103,10 +103,11 @@ Falla de dos maneras, las dos comprobadas reintroduciendo el fallo:
 
 ## Los contratos del plugin
 
-El plugin de delendai tiene **su propia** carpeta de contratos, en
-`packages/plugins/delendai_tanit/src/lib/contracts/`, con la misma
+La integración con Delendai tiene **su propia** carpeta de contratos, en
+`integrations/delendai/src/lib/contracts/`, con la misma
 estructura. No es una excepción a la regla: es un paquete independiente
-que se publica solo, compila con `@types/node` real mientras el resto del
+(`"private": true`, fuera de `workspaces` y de la CI del producto desde
+x00041/x00045), compila con `@types/node` real mientras el resto del
 repo usa declaraciones ambient escritas a mano, y sus esquemas zod son
 **código ejecutable** que no cabe en una sección que promete no tener
 implementación.
