@@ -47,6 +47,7 @@ import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
+import { makeSymbolId } from "../../core/discovery/symbol-id.js";
 
 /**
  * Node frameworks this scanner covers because they look like Express.
@@ -402,6 +403,63 @@ export class ExpressRouteScanner implements IRouteScanner {
       }
     }
 
+    // r00014 S4: build a SymbolGraph so cross-file consumers
+    // (e.g. future x00055 S2 / `r00014 S5`) can resolve
+    // `import { router } from "./routes/users"`-style
+    // aliases back to the **declaration** in any file
+    // without text-name collisions. Today the per-file
+    // router list below stays in this `scan()` for
+    // backwards compatibility — the SymbolGraph is
+    // emitted as a parallel structure on the result.
+    //
+    // We register two kinds of nodes:
+    // - `kind: "router"` for every `Router()` /
+    //   `Router({prefix: …})` declaration the parser
+    //   captured (the `routerPrefixes` map)
+    // - `kind: "router"` for every `app.use('/x', router)`
+    //   mount (the `appUsePrefixes` map, separate SymbolId
+    //   keyed by the file holding the `app.use` call)
+    const graphBuilder = SymbolGraph.builder();
+    for (const m of modules) {
+      // Detect `const X = Router()` declarations even when
+      // they have no `{prefix}` arg: the AST-detected
+      // `routerPrefixes` map only catches the prefix-bearing
+      // shape. We catch both via `ast.assignments`.
+      for (const varName of m.routerPrefixes.keys()) {
+        graphBuilder.addSymbol({
+          id: makeSymbolId(m.file, 0, varName),
+          kind: "router",
+          payload: { prefix: m.routerPrefixes.get(varName) ?? "" },
+        });
+      }
+      for (const varName of m.appUsePrefixes.keys()) {
+        graphBuilder.addSymbol({
+          id: makeSymbolId(m.file, 0, varName),
+          kind: "router",
+          payload: { mount: m.appUsePrefixes.get(varName) ?? "" },
+        });
+      }
+    }
+
+    // Walk every route in the modules: for each
+    // `router.get(...)` route, register a symbol for the
+    // receiver (the router declaration) **per file**. This
+    // makes `resolveByName(file, "router")` correct: two
+    // same-named routers in two files become two distinct
+    // nodes.
+    for (const m of modules) {
+      const receiverNames = new Set<string>();
+      for (const r of m.routes) {
+        if (r.routerName) receiverNames.add(r.routerName);
+      }
+      for (const name of receiverNames) {
+        graphBuilder.addSymbol({
+          id: makeSymbolId(m.file, 0, name),
+          kind: "router",
+        });
+      }
+    }
+
     const out: ParsedRoute[] = [];
     for (const m of modules) {
       for (const r of m.routes) {
@@ -442,7 +500,7 @@ export class ExpressRouteScanner implements IRouteScanner {
     // S4` (and `x00055 S2`); both consume this field.
     return {
       routes: out,
-      symbols: SymbolGraph.empty(),
+      symbols: graphBuilder.finalize(),
       ...(diagnostics.length > 0
         ? { diagnostics: diagnostics as ReadonlyArray<IParseDiagnostic> }
         : {}),
