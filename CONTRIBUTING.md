@@ -397,6 +397,46 @@ Each proposal owns its slices; each slice has its own gate. The
 orchestrator agent (`orchestrator`) drives the
 state machine.
 
+### `sync_proposals` NO se invoca automáticamente en Tanit
+
+El orquestador Delendai ofrece una herramienta `delendai_proposals_sync_proposals`
+que reescribe los nombres de archivo de las propuestas al arquetipo
+`<kind><NNNNN>-<slug>.md` y las mueve a la carpeta que coincide con
+su `status:`. Tanit **no la invoca** automáticamente y un agente
+que la llame está rompiendo una regla del proyecto. El motivo
+está en `c00007`:
+
+- **Bug actual del filename builder**: cuando el `title:` empieza
+  por `xNNNNN …` (patrón muy común en Tanit porque los ids se
+  derivan del título), el builder concatena el prefijo dos veces
+  y produce `<id>-<id>-<slug>.md`. En `done/<kind>/` eso significa
+  que el filename no empieza por su `id`, y `lint:proposals`
+  falla con "filename does not start with its id" — drift.
+- **Bug de mudanza a `done/fixes/`**: `sync_proposals` además
+  suele mover propuestas a `done/fixes/` aunque su `kind:` sea
+  `chore`, `feat`, `refactor` o `test`. Eso fuerza al agente a
+  restaurar manualmente las propuestas en su carpeta semántica,
+  y deja `INDEX.md` desincronizado hasta el siguiente
+  `gen-index`.
+
+La fuente de verdad local de las propuestas es:
+
+1. El filesystem: el `status:` del frontmatter y la carpeta
+   deben coincidir.
+2. [`docs/delendai/proposals/INDEX.md`](docs/delendai/proposals/INDEX.md):
+   regenerado a mano con `bun run lint:proposals:gen-index` (alias
+   `bun run lint:proposals:fix`). Cualquier propuesta que falte
+   del INDEX o apunte a un path que no existe es drift detectable
+   por `bun run lint:proposals` (regla x00032 S1).
+
+**Escape manual**: si un humano necesita renormalizar nombres de
+archivo, puede invocar la herramienta Delendai bajo su
+responsabilidad (`delendai_proposals_sync_proposals`) y
+posteriormente regenerar INDEX con `gen-index`. No es un flujo
+soportado para agentes y un commit que invoque `sync_proposals`
+sin regenerar INDEX a continuación se considera roto y se
+revierte.
+
 ---
 
 ## What is NOT negotiable
