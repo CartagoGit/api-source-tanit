@@ -13,7 +13,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `r00013` | `refactor` | [`ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md`](ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md) |
 | `r00014` | `refactor` | [`ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md`](ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md) |
 | `r00015` | `refactor` | [`ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md`](ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md) |
-| `r00016` | `refactor` | [`ready/refactors/r00016-schemagraph-view-derivation-endpointspec-fields-becomes-a-view-of-schemagraph-not-another-source-of-truth.md`](ready/refactors/r00016-schemagraph-view-derivation-endpointspec-fields-becomes-a-view-of-schemagraph-not-another-source-of-truth.md) |
 | `x00055` | `fix` | [`ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md`](ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md) |
 
 ## Bloqueadas
@@ -150,6 +149,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00053` — resolver lint:no-orphan-types — `6a8ecb0, 6bba56f, e5e1802`
 - `x00054` — resolveCallee usa importedName con guardas para default y namespace — `d891e8c, ade50f7`
 - `x00056` — Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13) — `79b0a3d, fdc0171, 15a477e`
+- `x00056` — Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13) — `79b0a3d, fdc0171, 15a477e`
 
 ### infra
 
@@ -173,6 +173,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
 - `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
+- `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `88a5dfe`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 
