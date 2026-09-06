@@ -8,8 +8,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
-| `x00027` | `fix` | [`ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md`](ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md) |
-| `x00032` | `fix` | [`ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md`](ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md) |
+| `x00039` | `fix` | [`ready/fixes/x00039-flat-hybrid-routes-fix-express-graphql-mismo-projectroot-sin-frameworksearchroot-pierde-endpoints.md`](ready/fixes/x00039-flat-hybrid-routes-fix-express-graphql-mismo-projectroot-sin-frameworksearchroot-pierde-endpoints.md) |
 
 ## Bloqueadas
 
@@ -122,8 +121,10 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00023` — API key casing en countKeyUsage — clave canónica lowercase + displayName original — `3f6b533`
 - `x00024` — generateCollection() estricto — error explícito cuando hay >1 servicio y no se pidió combinar — `ea904d4`
 - `x00025` — routesByService acumula en lugar de sobrescribir + dedupe por OperationId — `c6bfb3d, a1d3f0a, 7ea3a5d, 91334a8`
+- `x00027` — CI verde end-to-end - fix delendai sibling checkout en validate.yml — `6e68467, 1ee3942, c45fcb6, 1da0d10, 01aefd1, 0b313a3, b2a3cf2`
 - `x00028` — Multi-service spec isolation - buildForService() aísla specs por service.endpoints — `f780653`
 - `x00031` — IServiceGraph agrupa por serviceId: un servicio puede tener varios frameworks — `91334a8`
+- `x00032` — lint:proposals debe verificar cuerpo↔frontmatter↔INDEX: done es imposible con slices pendientes — `cff205b, 1e77230, 3a04800, 27edf70, 7abe72b`
 - `x00033` — lint:naming en rojo: los frontends TS de a00015/a00016 viven en frameworks/typescript/ fuera de la regla — `2b227ee, 7aa395b`
 - `x00034` — Generadores de scripts/build/ invisibles: el patrón build/ del .gitignore se comía los gates de docs — `beb26cd, 01aefd1`
 - `x00035` — Package manager detection - bun.lock también admitido (bun.lockb como fallback legacy) — `2c01974, cf2b319`

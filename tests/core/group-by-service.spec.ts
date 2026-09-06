@@ -207,4 +207,102 @@ describe("groupByService", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual(["apps_api", "apps_web"]);
   });
+
+  // x00039 S1: en modo flat-hybrid (varios frameworks, sin
+  // `frameworkSearchRoot`, sin monorepo), las rutas de TODOS los
+  // frameworks del mismo projectRoot deben quedar en el descriptor
+  // único. Antes del fix, `routesByMatch` se hidrata aguas arriba
+  // con claves `<framework>@<projectRoot>` y el lookup contra
+  // `normalizeServiceId(projectRoot)` fallaba siempre, dejando
+  // `endpoints: []`.
+  //
+  // `detectedMonorepo: false` es lo que pasa `toServiceGraph`
+  // cuando el caller no detectó un monorepo (línea 89 de
+  // to-service-graph.helper.ts). Es el escenario real.
+  it("flat-hybrid keeps every framework's routes under one descriptor (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/users")]],
+        ["graphql_repo", [route("POST", "/graphql")]],
+      ]),
+      detectedMonorepo: false,
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.serviceId).toBe("repo");
+    expect(graph.services[0]?.frameworks).toEqual(["express", "graphql"]);
+    // La suma de las rutas de ambos frameworks debe aparecer en el
+    // descriptor único. Antes del fix daba 0; tras el fix, 2.
+    expect(graph.services[0]?.endpoints).toHaveLength(2);
+    const uris = graph.services[0]?.endpoints.map((e) => e.uri).sort();
+    expect(uris).toEqual(["/graphql", "/users"]);
+  });
+
+  // x00039 S1: el flat-hybrid debe DEDUPLICAR rutas idénticas entre
+  // frameworks (mismo `method + uri + sourceFile`). El contrato de
+  // dedupe es por `(method, uri, sourceFile)`, igual que
+  // `accumulateRoutesByService`.
+  it("flat-hybrid deduplicates routes across frameworks (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/health")]],
+        ["graphql_repo", [route("GET", "/health")]],
+      ]),
+      detectedMonorepo: false,
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.endpoints).toHaveLength(1);
+    expect(graph.services[0]?.endpoints[0]?.uri).toBe("/health");
+  });
+
+  // x00039 S1: el flat-hybrid es robusto cuando SÓLO un framework
+  // tiene rutas (el otro contributes vacío). No debe perder
+  // accidentalmente las del primero.
+  it("flat-hybrid keeps the only populated framework's routes (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/a"), route("GET", "/b")]],
+        ["graphql_repo", []],
+      ]),
+      detectedMonorepo: false,
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.endpoints).toHaveLength(2);
+  });
+
+  // x00039 S1: el helper `collectFlatHybridRoutes` es exportado y
+  // testeable en aislamiento — sin `groupByService`, sin I/O. Cubre
+  // la condición "ningún match del projectRoot aparece en
+  // routesByMatch" (devuelve vacío, no falla).
+  it("collectFlatHybridRoutes returns empty when no match from the same root is keyed (x00039)", async () => {
+    const { collectFlatHybridRoutes } = await import(
+      "../../packages/core/discovery/group-by-service.helper.js"
+    );
+    const cur = match("express", "/repo");
+    const allMatches = [cur, match("graphql", "/repo")];
+    const routesByMatch = new Map<string, ParsedRoute[]>([
+      ["unrelated", [route("GET", "/x")]],
+    ]);
+    expect(collectFlatHybridRoutes(routesByMatch, cur, allMatches)).toEqual([]);
+  });
+
+  // x00039 S1: el helper ignora matches de OTRO projectRoot aunque
+  // sus derived ids estén en el mapa (escenario de workspaces
+  // paralelos: no son parte del mismo flat-hybrid).
+  it("collectFlatHybridRoutes ignores routes from a different projectRoot (x00039)", async () => {
+    const { collectFlatHybridRoutes } = await import(
+      "../../packages/core/discovery/group-by-service.helper.js"
+    );
+    const cur = match("express", "/repo");
+    const allMatches = [cur, match("graphql", "/repo"), match("fastify", "/other")];
+    const routesByMatch = new Map<string, ParsedRoute[]>([
+      ["express_repo", [route("GET", "/a")]],
+      ["graphql_repo", [route("GET", "/b")]],
+      ["fastify_other", [route("GET", "/c")]],
+    ]);
+    const result = collectFlatHybridRoutes(routesByMatch, cur, allMatches);
+    expect(result.map((r) => r.uri).sort()).toEqual(["/a", "/b"]);
+  });
 });
