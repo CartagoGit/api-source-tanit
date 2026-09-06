@@ -37,6 +37,7 @@
  */
 export const FRAMEWORK_IDS = [
   "aspnet",
+  "asyncapi",
   "django",
   "express",
   "fastapi",
@@ -45,6 +46,7 @@ export const FRAMEWORK_IDS = [
   "flask",
   "gin",
   "graphql",
+  "grpc",
   "hono",
   "ktor",
   "laravel",
@@ -55,8 +57,10 @@ export const FRAMEWORK_IDS = [
   "rails",
   "rust",
   "springboot",
+  "sse",
   "symfony",
   "trpc",
+  "websocket",
 ] as const;
 
 /**

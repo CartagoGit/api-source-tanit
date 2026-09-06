@@ -326,6 +326,27 @@ export interface EndpointSpec {
    * that applies (see `ITransportMeta`).
    */
   transportMeta?: ITransportMeta;
+  /**
+   * Inferred response entries (audit 2026-09-06 §10, proposal
+   * `f00012`).
+   *
+   * Populated by the response-inference dispatcher
+   * (`packages/frameworks/responses/infer-responses.ts`) after
+   * the scanner finished; each framework ships its own
+   * `IResponseInferrer` that decorates the spec with zero or
+   * more `IResponseInference` entries. Empty (or absent) when
+   * no inferrer produced signal — the user sees no `response[]`
+   * block in Postman and no `responses.<status>.content` in
+   * OpenAPI, which matches today's behaviour.
+   *
+   * Stable ordering: by `(status asc, confidence desc)`. The
+   * Postman exporter renders the first entry as the canonical
+   * example; OpenAPI emits `responses.<status>.content` for
+   * every entry.
+   *
+   * @see ./responses.interface.ts
+   */
+  responses?: ReadonlyArray<import("./responses.interface.js").IResponseInference>;
 }
 
 /**
