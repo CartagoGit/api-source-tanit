@@ -7,6 +7,8 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00045` | `refactor` | [`ready/refactors/x00045-terminar-x00041-quitar-delendai-de-la-ci-y-de-paths-service-del-producto.md`](ready/refactors/x00045-terminar-x00041-quitar-delendai-de-la-ci-y-de-paths-service-del-producto.md) |
+| `x00046` | `test` | [`ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md`](ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md) |
 
 ## Bloqueadas
 

@@ -168,7 +168,7 @@ a pointer.
 | `packages/core/exporters/` | `*.exporter.ts` | `packages/core/exporters/openapi.exporter.ts` |
 | `packages/frameworks/` | `*.scanner.ts` / `*.registry.ts` | `packages/frameworks/scanners/express.scanner.ts` |
 | `packages/cli/commands/` | `*.script.ts` | `packages/cli/commands/generate.script.ts` |
-| `packages/plugins/*/src/lib/tools/` | `*.tool.ts` | `integrations/delendai/src/lib/tools/generate.tool.ts` |
+| `integrations/*/src/lib/tools/` | `*.tool.ts` | `integrations/delendai/src/lib/tools/generate.tool.ts` |
 | `docs/delendai/proposals/ready/` | `<kind><NNNNN>-<slug>.md` directamente en `ready/` | `x00001-contratos-de-la-superficie-mcp.md` |
 
 The full table, derived from what `lint:naming` enforces, lives in
@@ -220,6 +220,14 @@ actualizado a `done` el 2026-09-03), **el flujo oficial** es consumir el
 enlace `file:` y arrancar el host desde su host-script. Esto no es
 deuda: es la forma soportada hasta que se publique la primera versión
 semver del paquete. Decisión del proyecto.
+
+**El plugin vive en `integrations/delendai/` y NO es parte del
+producto.** La CI principal (`.github/workflows/validate.yml`) ya no
+lo clona, compila ni enlaza — sólo `integration-delendai.yml` (opt-in,
+manual + semanal) lo valida contra un checkout pinneado de Delendai.
+`x00041` movió la carpeta; `x00045` cerró la CI. La frontera
+producto↔integración se mantiene por reducción, no por configuración
+adicional.
 
 **Forma published (referencia futura)** — úsala cuando
 `@delendai/cli` esté en npm:
