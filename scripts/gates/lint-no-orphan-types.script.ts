@@ -128,11 +128,6 @@ async function transitiveFromLockfile(): Promise<Set<string>> {
   return set;
 }
 
-/** Busca un paquete por nombre (sin scope) en el lockfile textual. */
-async function packageInLockfile(pkg: string, lockTransitives: Set<string>): Promise<boolean> {
-  return lockTransitives.has(pkg);
-}
-
 /**
  * Versión alternativa que usa `bun pm ls --all` (subshell) si Bun
  * está disponible. No se usa por defecto porque añade latencia;
