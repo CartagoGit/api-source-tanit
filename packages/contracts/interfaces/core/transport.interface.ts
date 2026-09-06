@@ -48,4 +48,5 @@ export interface ITransportMeta {
   readonly event?: string;
   readonly direction?: "in" | "out";
   readonly channel?: string;
+  readonly namespace?: string;
 }

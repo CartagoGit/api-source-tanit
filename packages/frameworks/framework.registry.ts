@@ -19,6 +19,10 @@ import { LaravelProjectScanner, LaravelRouteScanner, LaravelFormRequestValidatio
 import { OpenApiProjectScanner, OpenApiRouteScanner, OpenApiValidationProvider } from "./scanners/openapi.scanner";
 import { GrpcProjectScanner, GrpcRouteScanner } from "./scanners/grpc.scanner";
 import {
+  WebSocketProjectScanner,
+  WebSocketRouteScanner,
+} from "./scanners/websocket.scanner";
+import {
   ExpressProjectScanner,
   ExpressRouteScanner,
   ExpressZodValidationProvider,
@@ -131,6 +135,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new LaravelProjectScanner(),
     new OpenApiProjectScanner(),
     new GrpcProjectScanner(),
+    new WebSocketProjectScanner(),
     new FastApiProjectScanner(),
     new SymfonyProjectScanner(),
     new NestJsProjectScanner(),
@@ -155,6 +160,7 @@ export const DEFAULT_REGISTRY: DiscoveryRegistry = {
     new LaravelRouteScanner(),
     new OpenApiRouteScanner(),
     new GrpcRouteScanner(),
+    new WebSocketRouteScanner(),
     new FastApiRouteScanner(),
     new SymfonyRouteScanner(),
     new NestJsRouteScanner(),
