@@ -45,23 +45,9 @@ nonGoals:
     toolchain de CI).
 globalGate: type
 acceptance:
-  - Los 5 workflows (validate, integration-delendai,
-    release-binaries, release-desktop, release-npm) pinnean
-    `bun-version: 1.4.2` — la versión que genera el lockfile local.
-  - `.docker/Dockerfile` pinnea `ARG BUN_VERSION=1.4.2` con el
-    motivo escrito.
-  - `lint:bun-ci` extiende su contrato: lee el `lockfileVersion`
-    del `bun.lock` del repo y rechaza cualquier pin de workflow
-    por debajo del mínimo que sabe leerlo (v2 ⇒ ≥ 1.4.0). El mapa
-    `MIN_BUN_FOR_LOCKFILE` es la tabla versionada; si Bun saca
-    lockfile v3, se añade una fila.
-  - `tests/cli/lint-bun-ci.spec.ts` cubre: pin < mínimo rechazado,
-    pin ≥ mínimo aceptado, pin == mínimo aceptado, sin mínimo
-    cualquiera pasa, y `readLockfileVersion()` devuelve 2 en el
-    repo real.
-  - La CI de develop vuelve a verde (evidencia: `gh run list` con
-    conclusion != failure en el HEAD posterior).
-  - `bun run validate` verde local.
+  - "CI supera `Install dependencies` con Bun 1.4.2"
+  - "pinneado en workflows+Dockerfile"
+  - "gate lint:bun-ci exige `bun-version ≥ lockfileVersion`"
 slices:
   - sliceId: S1
     title: "fix(ci): bun-version 1.3.14 → 1.4.2 en los 5 workflows + Dockerfile"
