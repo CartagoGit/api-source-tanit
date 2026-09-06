@@ -35,6 +35,7 @@ import {
   FALLBACK_LOCALE,
 } from "../../contracts/constants/cli/locales.constant.js";
 import type {
+  Completitud as TCompletitud,
   II18nCatalog,
   ILoadedLocale,
   ITranslations,
@@ -106,32 +107,12 @@ function soloTextos(catalogo: Readonly<Record<string, unknown>>): ITranslations 
 }
 
 /**
- * Estados de completitud declarados por cada locale en su
- * `_meta._completeness`. El gate `lint:i18n-completeness` (x00037 S1)
- * exige que un locale placeholder lleve `experimental`; el selector
- * de la UI (x00040 S1) usa el mismo campo para decidir si el locale
- * entra o no en el catálogo que ve quien llega.
- *
- * El reference (inglés) siempre cuenta como "completo" — su contenido
- * ES la fuente de la que caen los demás cuando falta una clave.
- *
- * `unknown` cubre dos casos:
- *   1. Catalogos futuros que aún no anotan `_meta` (debería
- *      desaparecer según se vayan tocando).
- *   2. Catalogos externos sin metadata (los de la carpeta del
- *      usuario). Se les deja pasar — quien los puso ahí sabe lo que
- *      hace, y la UI prefiere mostrar un locale "no verificado" a
- *      ocultarlo sin decir nada.
- */
-export type Completitud = "reference" | "complete" | "experimental" | "unknown";
-
-/**
  * Lee `_meta._completeness` del catálogo crudo, normalizando a
  * uno de los cuatro estados del union. Un valor no reconocido
  * cae a `unknown` — el gate atrapa placeholders sin metadata;
  * aquí se prefiere mostrar a fallar.
  */
-export function completitud(catalogo: Readonly<Record<string, unknown>>): Completitud {
+export function completitud(catalogo: Readonly<Record<string, unknown>>): TCompletitud {
   const meta = catalogo["_meta"];
   if (typeof meta !== "object" || meta === null || Array.isArray(meta)) {
     return "unknown";
@@ -164,7 +145,7 @@ export function completitud(catalogo: Readonly<Record<string, unknown>>): Comple
  *   mostrar antes que esconder silenciosamente — el gate ya
  *   protege contra placeholders.
  */
-export function esVisible(completitud: Completitud): boolean {
+export function esVisible(completitud: TCompletitud): boolean {
   return completitud !== "experimental";
 }
 

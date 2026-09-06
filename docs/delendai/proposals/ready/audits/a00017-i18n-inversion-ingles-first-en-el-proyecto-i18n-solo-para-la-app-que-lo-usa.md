@@ -6,7 +6,6 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-04
-blockedReason: "Priorización: las revisiones de rama 2026-09-04/05 exigen cerrar antes CI (i00002) y multi-service (x00029/x00030/x00031). No traducir comentarios mientras los cimientos están abiertos. Retomar cuando validate.yml esté verde en Actions y x00029 S2 entre."
 dependsOn:
   - i00002
   - x00029
@@ -17,8 +16,13 @@ last-transition-id: orchestrator-2026-09-06-a00017-unblock
 last-correlation-id: orchestrator-2026-09-06-a00017-unblock
 last-transition-from: blocked
 last-idempotency-key: a00017-blocked-to-ready-2026-09-06
+last-edit-note: "2026-09-06: bloque eliminado (los dependsOn i00002 y x00029 están retired). S1 re-estructurado en S1 (narrow: 3 plantillas que auto-generan español dentro de la colección Postman) + S1.5 (broad cleanup, deferred por área)."
 ---
-blocked-by: [a00017]
+
+> **Bloque eliminado el 2026-09-06.** Las dependencias `i00002` y `x00029`
+> ahora viven en `retired/` (`i00002` superseded by `x00027`; `x00029`
+> retirado sin superseder). El `blockedReason` original (CI verde
+> primero, luego multi-service) ya no aplica.
 
 # a00017 — inversión i18n
 
@@ -269,7 +273,18 @@ usuario final cuando corra la app).
 
 ## acceptance
 
-Tras cerrar S1–S6:
+**Tras cerrar S1 (narrow):**
+
+1. Las 3 plantillas que auto-generan español dentro de la colección Postman
+   (`project-loader.service.ts`, `init.script.ts`,
+   `catalog-enricher.service.ts`) emiten texto en inglés.
+2. Las 21 colecciones Postman regeneradas desde `bun run validate:examples`
+   tienen `info.description` 100% en inglés.
+3. `grep -rE 'Colección|Colección|Generada automáticamente|auto-generada' packages/core packages/cli packages/frameworks`
+   devuelve **lista vacía**.
+4. `bun run validate` verde end-to-end.
+
+**Tras cerrar S1.5 + S2 + S3 + S4 + S5 + S6 (broad, deferred):**
 
 1. `grep -rEln '[áéíóúñÁÉÍÓÚÑ]' --include='*.ts' --include='*.md' --include='*.json' --exclude-dir=node_modules --exclude-dir=.cache --exclude-dir=dist --exclude-dir=build --exclude-dir=.git packages tests scripts docs examples README.md CONTRIBUTING.md CHANGELOG.md AGENTS.md CLAUDE.md` devuelve **sólo**:
    - matches en `packages/ui/i18n/locales/*.json` (la capa correcta de i18n),
