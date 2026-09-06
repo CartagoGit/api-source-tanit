@@ -463,3 +463,34 @@ describe("audit 2026-09-06 §6 — `.all()` reaches Postman as `ANY`", () => {
     }
   }, 30_000);
 });
+
+// ---------------------------------------------------------------------------
+// x00056 S4 — `tests/smoke-fixtures/hono-all/` covers the `.all()`
+// sentinel with a fixture that the fixtures gate considers "real":
+// manifest + source + expected output. Without it, the test surface
+// for `.all()` would be the synthetic project created inline in
+// the previous block, and any change to the scanner that broke
+// `.all()` would be caught only by accident.
+// ---------------------------------------------------------------------------
+
+import { SMOKE_FIXTURES_DIR } from "../../scripts/helpers/root.helper";
+
+const HONO_ALL_FIXTURE = `${SMOKE_FIXTURES_DIR}/hono-all`;
+
+describe("x00056 S4 — hono-all fixture (.all() smoke)", () => {
+  test("the fixture has a manifest and a source file (lint:fixtures gate)", async () => {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(HONO_ALL_FIXTURE);
+    expect(entries).toContain("package.json");
+    expect(entries).toContain("index.ts");
+  });
+
+  test("scanning the fixture produces exactly one route with method='ALL'", async () => {
+    const match = await new HonoProjectScanner().resolve(HONO_ALL_FIXTURE);
+    const result = await new HonoRouteScanner().scan(match);
+    expect(result.routes).toHaveLength(1);
+    const route = result.routes[0]!;
+    expect(route.method).toBe("ALL");
+    expect(route.uri).toBe("/anything");
+  });
+});

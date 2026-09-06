@@ -19,6 +19,7 @@ import type {
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { topGroupFor, prettyGroupName } from "../helpers/uri.helper.js";
+import { expandAllMethods } from "../helpers/all-method.helper.js";
 
 /**
  * Stable id from a seed.
@@ -96,7 +97,7 @@ export class InsomniaExporter implements IExportTarget {
   readonly summary = "Insomnia v4 (JSON) — the open-source alternative";
 
   serialize(input: IExportInput): IExportArtifact[] {
-    const { specs, config } = input;
+    const { config } = input;
     const workspaceId = stableId("wrk", config.name);
 
     const resources: Array<Record<string, unknown>> = [
@@ -125,9 +126,15 @@ export class InsomniaExporter implements IExportTarget {
     // One group per folder, with the same grouping as the Postman
     // collection: two formats of the same project must show the same
     // structure.
+    // x00056 S3: `ALL` is expanded into the seven standard verbs
+    // before grouping so each verb lives in its own resource. Group
+    // creation iterates over the expanded set so the seven operations
+    // share the folder of the original (the URI and the folder are
+    // preserved through expansion).
     const overrides = config.uriGroupOverrides ?? {};
+    const expanded = expandAllMethods(input.specs);
     const groups = new Map<string, string>();
-    for (const spec of specs) {
+    for (const { spec } of expanded) {
       const key = spec.folder ?? topGroupFor(spec.uri, overrides);
       if (groups.has(key)) continue;
       const id = stableId("fld", `${config.name}:${key}`);
@@ -142,7 +149,7 @@ export class InsomniaExporter implements IExportTarget {
       });
     }
 
-    for (const [index, spec] of specs.entries()) {
+    for (const [index, { spec }] of expanded.entries()) {
       const key = spec.folder ?? topGroupFor(spec.uri, overrides);
       resources.push(toRequest(spec, groups.get(key) ?? workspaceId, index, input));
     }

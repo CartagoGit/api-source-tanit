@@ -28,6 +28,7 @@ import {
   stripApiPrefix,
 } from "../../core/helpers/uri.helper.js";
 import { countItems, walkCollection } from "../../core/helpers/postman.helper.js";
+import { postmanMethodFor } from "../../core/domain/postman-method.helper.js";
 import {
   describeDiscoveredPaths,
   outputCollectionPath,
@@ -326,8 +327,16 @@ export async function runGenerate(
     // Only Laravel (legacy) strips the `api/` prefix. Other frameworks
     // have a real prefix (api/v1, etc.) and must keep it.
     const uri = pipeline.origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
-    const key = `${r.method} ${normalizeForComparison(uri)}`;
-    sourceRoutes.set(key, { method: r.method, uri });
+    // x00056 S1 follow-up: the source `method` is in Tanit's vocabulary
+    // (`ALL` for "any method") while the collection builder emits
+    // Postman's vocabulary (`ANY`). Translating here means the two
+    // sides of the bidirectional check agree on what an endpoint
+    // means. Without this, a Hono `app.all('/x')` aborts the CLI with
+    // `ALL /x in routes but NOT in collection` even though the
+    // collection has the request under the same key.
+    const method = postmanMethodFor(r.method);
+    const key = `${method} ${normalizeForComparison(uri)}`;
+    sourceRoutes.set(key, { method, uri });
   }
   const declared = walkCollection(collection);
   const collectionRoutes = new Map<

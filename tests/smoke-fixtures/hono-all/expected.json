@@ -1,0 +1,6 @@
+{
+  "framework": "hono",
+  "routes": [
+    { "method": "ALL", "uri": "/anything" }
+  ]
+}

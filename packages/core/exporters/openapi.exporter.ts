@@ -34,6 +34,7 @@ import type {
 } from "../../contracts/interfaces/core/schema.interface.js";
 import { toYaml } from "../helpers/yaml.helper.js";
 import type { YamlValue } from "../../contracts/interfaces/core/helpers.interface.js";
+import { expandAllMethods } from "../helpers/all-method.helper.js";
 
 /** `{{id}}` from Postman → `{id}` from OpenAPI. */
 function toOpenApiPath(uri: string): string {
@@ -82,7 +83,7 @@ function fieldSchema(field: IEndpointField): Record<string, unknown> {
   return schema;
 }
 
-function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, unknown> {
+function buildOperation(spec: EndpointSpec, state: IBuildState, allMarker?: string): Record<string, unknown> {
   const fields = spec.fields ?? [];
   const operation: Record<string, unknown> = {
     summary: spec.name,
@@ -210,6 +211,13 @@ function buildOperation(spec: EndpointSpec, state: IBuildState): Record<string, 
   operation["responses"] = {
     "200": { description: "OK" },
   };
+  // Audit 2026-09-06 §13 (x00056 S2): an operation that originated
+  // as `method: "ALL"` (Hono's `.all()`) is marked with
+  // `x-tanit-source`. The expansion into the seven standard verbs
+  // happens in `expandAllMethods`; this only adds the provenance
+  // hint that lets a downstream tool (Redoc, Swagger Editor) tell
+  // the seven operations apart from individually declared ones.
+  if (allMarker !== undefined) operation["x-tanit-source"] = allMarker;
   return operation;
 }
 
@@ -557,14 +565,21 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
     // An OpenAPI `path` groups its methods: `/users` with `get` and
     // `post` is ONE entry with two operations, not two entries.
     const paths: Record<string, Record<string, unknown>> = {};
-    for (const spec of specs) {
+    // x00056 S2: `method: "ALL"` (the Hono `.all()` sentinel) expands
+    // to the seven standard verbs here. Postman keeps the original
+    // and translates to `ANY`; OpenAPI has no equivalent verb, so the
+    // expansion is the only honest representation. The marker travels
+    // with each expanded spec and becomes `x-tanit-source` on the
+    // operation (see `buildOperation`).
+    const expanded = expandAllMethods(specs);
+    for (const { spec, allMarker } of expanded) {
       const path = toOpenApiPath(spec.uri);
       const bucket = paths[path] ?? (paths[path] = {});
       // The **first** wins, so it matches what the warning says. With
       // plain `=` the last won, and the warning lied about which one
       // had been kept.
       const verb = spec.method.toLowerCase();
-      if (!(verb in bucket)) bucket[verb] = buildOperation(spec, state);
+      if (!(verb in bucket)) bucket[verb] = buildOperation(spec, state, allMarker);
     }
 
     const security = buildSecurity(auth);
@@ -619,8 +634,14 @@ export class OpenApiExporter implements IExportTarget {
    * norm.
    */
   warnings(input: IExportInput): string[] {
+    // x00056 S2: warnings operate on the **expanded** set so the
+    // collision message matches what the document actually emits. An
+    // `ALL` spec expands to seven verbs and would otherwise look like
+    // a single non-colliding entry while actually colliding with any
+    // explicit verb on the same path.
+    const expanded = expandAllMethods(input.specs);
     const byKey = new Map<string, string[]>();
-    for (const spec of input.specs) {
+    for (const { spec } of expanded) {
       const key = `${spec.method} ${toOpenApiPath(spec.uri)}`;
       byKey.set(key, [...(byKey.get(key) ?? []), spec.name]);
     }

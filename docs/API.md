@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 175 símbolos en 61 módulos.
+> 178 símbolos en 63 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -1140,6 +1140,38 @@ export async function pushEnvironment( environment: IPostmanEnvironmentPayload, 
 export async function verifyApiKey( options: IPostmanApiOptions, ): Promise<
 ```
 
+### `packages/core/domain/postman-method.helper.ts`
+
+Maps a Tanit `EndpointSpec.method` (or any `string`) to the literal the Postman v2.1.0 schema accepts in `request.method`.
+
+#### `postmanMethodFor`
+
+```ts
+export function postmanMethodFor(method: string): string
+```
+
+Maps a Tanit `EndpointSpec.method` (or any `string`) to the literal
+the Postman v2.1.0 schema accepts in `request.method`.
+
+`ALL` (the Hono `.all()` sentinel — see `aad6376` and the audit
+2026-09-06 second pass §6) maps to `ANY`, the only Postman verb
+that captures "any HTTP method". Older Postman versions ignore
+`ANY` and fall back to a GET; that is acceptable — it is the
+same fallback the previous `app.all('/x', h) → GET` mapping
+produced, but with the original semantics preserved instead of
+lost.
+
+Exported (and given a stable name) so the CLI's bidirectional
+coverage check can use the same translation: without it, a source
+route with `method: "ALL"` and a collection request with
+`method: "ANY"` look like two different endpoints to the validator
+and it aborts the generation. Single helper, single source of
+truth.
+
+Accepts `string` (not `EndpointSpec["method"]`) so callers that
+only have the raw `ParsedRoute.method` can use it without
+casting.
+
 ### `packages/core/domain/project-health.service.ts`
 
 Health of a project's documentation: percentages by category.
@@ -1372,6 +1404,39 @@ covers it.
 ```ts
 export class OpenApiExporter implements IExportTarget
 ```
+
+### `packages/core/helpers/all-method.helper.ts`
+
+Expands `EndpointSpec.method === "ALL"` (the Hono `.all()` sentinel emitted by commit `aad6376`, audited again on 2026-09-06 §13) into the seven standard HTTP verbs that every exporter except Postman can represent directly.
+
+#### `isAllMethodSpec`
+
+```ts
+export function isAllMethodSpec(spec: EndpointSpec): boolean
+```
+
+Returns true iff the spec's method is the `ALL` sentinel.
+
+Pulled out as a named predicate so each exporter can decide whether
+to expand (`true`) or to translate (`false`, Postman). Keeping the
+`===` check here means adding a future sentinel is a single-file
+change.
+
+#### `expandAllMethods`
+
+```ts
+export function expandAllMethods( specs: ReadonlyArray<EndpointSpec>, ): IExpandedSpec[]
+```
+
+Expands every `method: "ALL"` spec into seven specs with the seven
+standard verbs. Non-`ALL` specs pass through unchanged.
+
+The expansion is shallow: `spec.fields`, `spec.body`, `spec.query`,
+`spec.headers`, `spec.description`, `spec.schemaGraph` and friends
+are carried over verbatim. `spec.method` is the only field that
+changes; `spec.name` and `spec.uri` are preserved so that the
+seven operations belong to the same endpoint and can be grouped
+together by downstream tooling.
 
 ### `packages/core/helpers/argv.helper.ts`
 

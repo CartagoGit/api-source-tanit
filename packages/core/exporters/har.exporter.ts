@@ -24,6 +24,7 @@ import type {
   IExportTarget,
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import { expandAllMethods } from "../helpers/all-method.helper.js";
 
 /** Headers carried by a request, per the auth scheme. */
 function headersFor(
@@ -52,9 +53,13 @@ export class HarExporter implements IExportTarget {
   readonly summary = "HAR 1.2 (JSON) — DevTools and replay tools";
 
   serialize(input: IExportInput): IExportArtifact[] {
-    const { specs, config, auth } = input;
+    const { config, auth } = input;
 
-    const entries = specs.map((spec) => {
+    // x00056 S3: HAR has no "all methods" verb. The expansion helper
+    // turns every `method: "ALL"` spec into seven entries, one per
+    // standard verb. The marker is dropped — HAR has no extension
+    // mechanism for provenance metadata.
+    const entries = expandAllMethods(input.specs).map(({ spec }) => {
       const headers = headersFor(spec, auth);
       const queryString = (spec.query ?? []).map((q) => ({
         name: q.key,
@@ -130,7 +135,7 @@ export class CurlExporter implements IExportTarget {
   readonly summary = "Shell script with one cURL per endpoint";
 
   serialize(input: IExportInput): IExportArtifact[] {
-    const { specs, config, auth } = input;
+    const { config, auth } = input;
     const lines: string[] = [
       "#!/usr/bin/env sh",
       `# ${config.collectionName || config.name}`,
@@ -145,7 +150,12 @@ export class CurlExporter implements IExportTarget {
     if (auth.type === "apikey") lines.push(`API_KEY="\${API_KEY:-}"`);
     lines.push("");
 
-    for (const spec of specs) {
+    // x00056 S3 (scope extension): curl doesn't have an `ALL` verb
+    // either. The helper expands the sentinel into seven lines, so
+    // each verb becomes its own `curl -X VERB …` invocation. The
+    // proposal lists five exporters; curl is the sixth and the same
+    // bug would have produced `-X ALL` (curl error). Same fix.
+    for (const { spec } of expandAllMethods(input.specs)) {
       // Postman variables become shell variables: a `{{id}}` in the URL
       // is not understood by curl.
       const uri = spec.uri.replace(/\{\{([^}]+)\}\}/g, (_, name: string) => `\${${name}}`);

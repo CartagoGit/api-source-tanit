@@ -128,4 +128,41 @@ describe("collection-builder.service", () => {
     });
   });
 
+  // x00056 S1 — Postman exporter materialises the Hono `.all()`
+  // sentinel as `ANY` (the only Postman verb that captures "any
+  // method"). The mapping lives in `postmanMethodFor` inside
+  // `collection-builder.service.ts`.
+  describe("Postman materialisation of `method: 'ALL'` (x00056 S1)", () => {
+    test("a spec with method='ALL' produces a Postman request with method='ANY'", () => {
+      const col = buildCollection(
+        [spec({ method: "ALL", uri: "/api/anything" })],
+        baseConfig,
+      );
+      const leaf = findFirstLeaf(col.item);
+      expect(leaf, "collection has at least one request").toBeDefined();
+      expect(leaf!.request.method).toBe("ANY");
+    });
+
+    test("non-ALL methods pass through unchanged (GET stays GET)", () => {
+      const col = buildCollection(
+        [spec({ method: "GET", uri: "/api/users" })],
+        baseConfig,
+      );
+      const leaf = findFirstLeaf(col.item);
+      expect(leaf!.request.method).toBe("GET");
+    });
+  });
 });
+
+/** Walks the item tree and returns the first leaf request found. */
+function findFirstLeaf(items: ReadonlyArray<unknown>): { request: { method: string } } | undefined {
+  for (const it of items) {
+    const item = it as { item?: unknown[]; request?: { method: string } };
+    if (item.request) return item as { request: { method: string } };
+    if (item.item) {
+      const found = findFirstLeaf(item.item);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
