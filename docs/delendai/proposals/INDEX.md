@@ -7,8 +7,14 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `a00018` | `audit` | [`ready/audits/a00018-audit-2026-09-06-findings-and-future-slices.md`](ready/audits/a00018-audit-2026-09-06-findings-and-future-slices.md) |
-| `x00055` | `fix` | [`ready/fixes/x00055-express-router-symbol-identity-cross-file.md`](ready/fixes/x00055-express-router-symbol-identity-cross-file.md) |
+| `a00018` | `audit` | [`ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md`](ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md) |
+| `f00012` | `feat` | [`ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md`](ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md) |
+| `f00013` | `feat` | [`ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md`](ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md) |
+| `r00013` | `refactor` | [`ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md`](ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md) |
+| `r00014` | `refactor` | [`ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md`](ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md) |
+| `r00015` | `refactor` | [`ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md`](ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md) |
+| `r00016` | `refactor` | [`ready/refactors/r00016-schemagraph-view-derivation-endpointspec-fields-becomes-a-view-of-schemagraph-not-another-source-of-truth.md`](ready/refactors/r00016-schemagraph-view-derivation-endpointspec-fields-becomes-a-view-of-schemagraph-not-another-source-of-truth.md) |
+| `x00055` | `fix` | [`ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md`](ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md) |
 
 ## Bloqueadas
 
