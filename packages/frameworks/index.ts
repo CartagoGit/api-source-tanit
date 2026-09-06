@@ -27,6 +27,16 @@ import { generateCollection } from "../core/discovery/generation.pipeline.js";
 import { summarizeProject } from "../core/discovery/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 import { defaultOrchestrator } from "./framework.registry.js";
+import { ensureResponseInferrersRegistered } from "./scanners/response-inferrers.js";
+
+// f00012 wiring: this barrel is the composition point where the
+// framework response inferrers register themselves. Importing it here
+// (side effect) is what turns the previously dead inference registry
+// into a populated one for every entry point that goes through
+// `frameworks/` (CLI, MCP plugin, UI, tests). `core` cannot import
+// this (`lint:boundaries`), which is exactly why the barrel lives on
+// this side of the line.
+ensureResponseInferrersRegistered();
 
 export { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 
