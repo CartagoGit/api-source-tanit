@@ -393,6 +393,39 @@ export async function main(): Promise<number> {
           }
         }
       }
+
+      // Regla 4 (x00032 S3): si el `acceptance` exige validate verde o
+      // un E2E como DoD, la propuesta debe llevar un campo
+      // `evidence:` con al menos un run de Actions. La regla NO
+      // verifica que el run siga verde: la verificación en vivo es
+      // trabajo del revisor humano/agente. Solo exige la presencia
+      // del campo. Si el campo existe, parseamos al menos un SHA
+      // o URL para que sea accionable (un string vacío no cuenta).
+      const acceptance = proposal.bodyAfter.match(
+        /## acceptance([\s\S]*?)(?=\n## |\n# |\Z)/,
+      )?.[1] ?? "";
+      const demandsEvidence =
+        /\bvalidate\b.*\bverde\b|\bE2E\b|\bCI verde\b/i.test(acceptance);
+      if (demandsEvidence) {
+        const evidenceRaw = readField(proposal.frontmatter, "evidence");
+        if (!evidenceRaw) {
+          problems.push(
+            `${rel}: el \`acceptance\` exige validate verde / E2E / CI verde pero falta \`evidence:\` en el frontmatter — x00032 S3`,
+          );
+        } else {
+          // Detectamos la forma del campo. Aceptamos una sola línea
+          // con SHA o URL, o la forma lista. Si el contenido no
+          // parece ninguno de los dos, falla con un mensaje claro:
+          // "esto no sirve como evidencia".
+          const hasUrl = /https?:\/\/\S+/.test(evidenceRaw);
+          const hasSha = /[0-9a-f]{7,40}/i.test(evidenceRaw);
+          if (!hasUrl && !hasSha) {
+            problems.push(
+              `${rel}: \`evidence:\` no contiene ni URL ni SHA reconocible — x00032 S3`,
+            );
+          }
+        }
+      }
     }
   }
 

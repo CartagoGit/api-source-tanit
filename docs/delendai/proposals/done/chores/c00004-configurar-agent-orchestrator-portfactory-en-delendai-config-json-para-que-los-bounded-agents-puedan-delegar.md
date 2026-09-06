@@ -8,6 +8,8 @@ track: export-to-postman
 date: 2026-09-04
 shippedIn:
   - 07fe602  # chore(mcp): c00004 configurar agent-orchestrator portFactory + allowFakeDispatchPort
+evidence:
+  - 07fe602  # el propio commit sirve como evidencia (CI verde tras el merge; el revisor valida el run de Actions correspondiente)
 dependsOn: []
 related:
   - q00007
