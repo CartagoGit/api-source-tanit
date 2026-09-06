@@ -146,7 +146,12 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
   - Tests: fixture nueva `tests/fixtures/express-multi-router`
     con 2 routers nombrados igual en 2 ficheros. Resultado:
     cada uno con su prefijo correcto.
-
+- review-state: done
+- review-implementer: implementation-runner
+- review-reviewer: finch
+- review-log: approved by finch — Independent review approved. Contextual symbol resolution fixes same-name cross-file mounts and preserves safe fallback on unresolved imports.
+- **Status**: done
+- shipped-in: not recorded (closed without a known delivering commit)
 ### S3 — fixtures e2e multi-router
 
 - **Files**:
