@@ -22,9 +22,15 @@
  *      que abren OTROS `kind: fix|chore|feat` — no trabajo de la propia
  *      auditoría.
  *   7. (x00032 S1) Una propuesta `status: done` debe llevar `shippedIn:`
- *      con al menos un SHA. Y cada SHA debe ser alcanzable en git
- *      (`git cat-file -e <sha>` responde 0). Un SHA falso es peor que
- *      no tener SHA, porque miente sobre la auditoría de evidencias.
+ *      con al menos un SHA. Y cada SHA debe ser alcanzable en git,
+ *      lo que exige DOS comprobaciones:
+ *        - `git cat-file -e <sha>`                         → el objeto existe.
+ *        - `git merge-base --is-ancestor <sha> HEAD`      → es ancestro de HEAD.
+ *      La primera sola no basta: un SHA puede existir como commit
+ *      huérfano (en una rama abandonada, en un reflog) y pasarla
+ *      sin ser parte real del historial auditado. Un SHA falso es
+ *      peor que no tener SHA, porque miente sobre la auditoría de
+ *      evidencias.
  *   8. (x00032 S1) El `INDEX.md` no lista propuestas `done` en la
  *      sección "Ready"; toda propuesta `ready` aparece en su tabla.
  *
@@ -251,16 +257,39 @@ async function checkSkeleton(): Promise<string[]> {
 }
 
 /**
- * Comprueba que un SHA es alcanzable en git. Devuelve true si
- * `git cat-file -e <sha>` responde 0.
+ * Ejecuta un comando git en `REPO_ROOT` y devuelve `true` si sale con
+ * código 0. Cualquier otra salida (incluido "el binario no existe" o
+ * "no es un repositorio") cuenta como `false`. Es la pieza que
+ * `isReachableSha` compone dos veces para exigir las dos condiciones.
  */
-async function isReachableSha(sha: string): Promise<boolean> {
+async function gitOk(args: readonly string[]): Promise<boolean> {
   try {
-    await execFileAsync("git", ["cat-file", "-e", sha], { cwd: REPO_ROOT });
+    await execFileAsync("git", [...args], { cwd: REPO_ROOT });
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Comprueba que un SHA es alcanzable en git, es decir, que cumple las
+ * DOS condiciones a la vez:
+ *
+ *   - `git cat-file -e <sha>`                         → el objeto existe.
+ *   - `git merge-base --is-ancestor <sha> HEAD`      → está en la historia.
+ *
+ * La segunda es la que protege contra el caso peor: un SHA puede
+ * existir como commit huérfano (en una rama abandonada, en un reflog,
+ * escrito a mano por accidente) y pasar el primer chequeo sin formar
+ * parte real del historial que se está auditando. Sin la segunda, una
+ * propuesta con `shippedIn: [fab4996]` mentiría sobre su auditoría de
+ * evidencias aunque el SHA "existiera".
+ */
+export async function isReachableSha(sha: string): Promise<boolean> {
+  return (
+    (await gitOk(["cat-file", "-e", sha])) &&
+    (await gitOk(["merge-base", "--is-ancestor", sha, "HEAD"]))
+  );
 }
 
 /**
