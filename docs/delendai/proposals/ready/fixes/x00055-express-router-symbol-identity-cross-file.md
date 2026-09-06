@@ -6,9 +6,11 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-06
+blockedReason: "Bloqueado en la práctica por r00014 (SymbolGraph cross-file). S2 solo resuelve dentro del mismo fichero; el caso cross-file (la motivación original de esta propuesta) necesita r00014 primero. Ver a00018 §6 (Lo que queda → 1. LanguageIR / 2. SymbolGraph)."
 dependsOn:
   - x00038
   - x00048
+  - r00014
 ---
 
 # x00055 — `const router = express.Router()` en dos ficheros colisiona en el mapa global

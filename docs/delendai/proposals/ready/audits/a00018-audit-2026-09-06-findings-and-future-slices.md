@@ -40,7 +40,18 @@ Estos P1 de la auditoría ya están shipped (HEAD actual):
   `service.endpoints`. (`787c13e`)
 - §3.2/§3.3 API plural + façade — `generateCollections()` ya
   existe, queda propagar al CLI como S1 de un slice posterior.
-- §13 Hono `.all()` — scanner emite `method: "ALL"`. (`aad6376`)
+- §13 Hono `.all()` — scanner emite `method: "ALL"` (`aad6376`)
+  **y las 5 exporters lo materializan correctamente** (`x00056`,
+  ships `79b0a3d` + `fdc0171` + `15a477e`):
+  - Postman: `request.method = "ANY"` (vía `postmanMethodFor`).
+  - OpenAPI: 7 operaciones con `x-tanit-source: "hono.all"`.
+  - HAR / Bruno / Insomnia / curl: 7 entradas / ficheros / recursos
+    / líneas, una por verbo estándar.
+  - Cobertura bidireccional del CLI ahora traduce `ALL → ANY` en la
+    clave de la izquierda para que las dos mitades del check
+    coincidan.
+  - Fixture `tests/smoke-fixtures/hono-all/` ejercita el camino
+    end-to-end.
 
 ## Lo que queda — backlog arquitectónico
 
@@ -159,16 +170,25 @@ Propuesta hija: `r00016-schemagraph-view-derivation.md`.
 Esta propuesta NO implementa nada por sí misma. Cada hijo es un
 slice cerrado. Orden recomendado:
 
-| # | id              | scope                       | dependencia              |
-| - | --------------- | --------------------------- | ------------------------ |
-| 1 | r00014          | SymbolGraph cross-file      | (foundation)             |
-| 2 | x00055          | Express router (consume #1) | r00014                   |
-| 3 | r00013          | LanguageIR Fastify + Hono   | r00014 (parcial)         |
-| 4 | x00056          | Hono `.all()` exporters     | aad6376 ✅               |
-| 5 | r00016          | SchemaGraph view derivation | (independiente)          |
-| 6 | r00015          | Confidence scoring          | (independiente)          |
-| 7 | f00012          | Response inference          | r00013, r00016           |
-| 8 | f00013          | Transport generalization    | (foundation)             |
+| # | id              | scope                       | dependencia              | estado |
+| - | --------------- | --------------------------- | ------------------------ | ------ |
+| 4 | x00056          | Hono `.all()` exporters     | aad6376 ✅               | **done** (2026-09-06) |
+| 1 | r00014          | SymbolGraph cross-file      | (foundation)             | pendiente de autoría |
+| 2 | x00055          | Express router (consume #1) | r00014                   | blocked (sin r00014 no hay cross-file) |
+| 3 | r00013          | LanguageIR Fastify + Hono   | r00014 (parcial)         | pendiente de autoría |
+| 5 | r00016          | SchemaGraph view derivation | (independiente)          | pendiente de autoría |
+| 6 | r00015          | Confidence scoring          | (independiente)          | pendiente de autoría |
+| 7 | f00012          | Response inference          | r00013, r00016           | pendiente de autoría |
+| 8 | f00013          | Transport generalization    | (foundation)             | pendiente de autoría |
+
+> **Estado 2026-09-06**: solo `x00056` se ha implementado. Las
+> propuestas `rNNNNN` y `fNNNNN` (hijos 1, 3, 5, 6, 7, 8) son
+>规划设计 — existen como dependencias declaradas pero todavía no
+> tienen archivo `.md` en `ready/`. `x00055` está en `ready/`
+> pero bloqueado en la práctica hasta que `r00014` aterrice: el
+> slice S2 solo resuelve dentro del mismo fichero, así que el
+> caso cross-file (la motivación original de `x00055`) queda sin
+> arreglar hasta que `r00014` exista.
 
 ## Acceptance
 
