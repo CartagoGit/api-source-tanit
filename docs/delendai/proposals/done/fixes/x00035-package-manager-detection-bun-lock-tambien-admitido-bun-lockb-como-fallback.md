@@ -2,7 +2,7 @@
 id: x00035
 title: "Package manager detection - bun.lock también admitido (bun.lockb como fallback legacy)"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: general
 date: 2026-09-05

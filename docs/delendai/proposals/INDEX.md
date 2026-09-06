@@ -8,12 +8,8 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
-| `c00005` | `chore` | [`ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md`](ready/chores/c00005-higiene-de-worktree-residuos-de-agencia-gate-de-arbol-limpio.md) |
 | `x00027` | `fix` | [`ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md`](ready/fixes/x00027-ci-verde-end-to-end-fix-delendai-sibling-checkout-en-validate-yml.md) |
-| `x00031` | `fix` | [`ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md`](ready/fixes/x00031-iservicegraph-agrupa-por-serviceid-un-servicio-varios-frameworks.md) |
 | `x00032` | `fix` | [`ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md`](ready/fixes/x00032-lint-proposals-exige-coherencia-status-cuerpo-slices-index.md) |
-| `x00035` | `fix` | [`ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md`](ready/fixes/x00035-package-manager-detection-bun-lock-tambien-admitido-bun-lockb-como-fallback.md) |
-| `x00036` | `fix` | [`ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md`](ready/fixes/x00036-aspnet-coverage-http-head-y-http-options-no-se-descartan.md) |
 
 ## Bloqueadas
 
@@ -56,6 +52,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `c00002` — release automatizada de npm desde CI — `adf267f`
 - `c00003` — Fijar Bun y hacer reproducible la CI — `fb8cfe5`
 - `c00004` — Configurar agent-orchestrator portFactory en delendai.config.json para que los bounded agents puedan delegar — `07fe602`
+- `c00005` — Higiene de worktree: residuos de agencia fuera del repo + gate de árbol limpio — `6de99fb`
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
@@ -126,8 +123,11 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00024` — generateCollection() estricto — error explícito cuando hay >1 servicio y no se pidió combinar — `ea904d4`
 - `x00025` — routesByService acumula en lugar de sobrescribir + dedupe por OperationId — `c6bfb3d, a1d3f0a, 7ea3a5d, 91334a8`
 - `x00028` — Multi-service spec isolation - buildForService() aísla specs por service.endpoints — `f780653`
+- `x00031` — IServiceGraph agrupa por serviceId: un servicio puede tener varios frameworks — `91334a8`
 - `x00033` — lint:naming en rojo: los frontends TS de a00015/a00016 viven en frameworks/typescript/ fuera de la regla — `2b227ee, 7aa395b`
 - `x00034` — Generadores de scripts/build/ invisibles: el patrón build/ del .gitignore se comía los gates de docs — `beb26cd, 01aefd1`
+- `x00035` — Package manager detection - bun.lock también admitido (bun.lockb como fallback legacy) — `2c01974, cf2b319`
+- `x00036` — ASP.NET coverage: HttpHead y HttpOptions no se descartan — `9807255`
 - `x00037` — i18n completeness gate - bloquea locales placeholder de inglés — `59dc2f6`
 - `x00038` — Express bridge structured-call IR - eliminar call.callee.split('.') en favor de { receiver, method, computed } — `de45d02, ce3138a`
 

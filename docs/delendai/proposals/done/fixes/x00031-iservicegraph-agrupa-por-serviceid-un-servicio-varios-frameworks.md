@@ -2,7 +2,7 @@
 id: x00031
 title: "IServiceGraph agrupa por serviceId: un servicio puede tener varios frameworks"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-05

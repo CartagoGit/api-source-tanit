@@ -2,7 +2,7 @@
 id: x00036
 title: "ASP.NET coverage: HttpHead y HttpOptions no se descartan"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: general
 date: 2026-09-05

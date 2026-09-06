@@ -2,7 +2,7 @@
 id: c00005
 title: "Higiene de worktree: residuos de agencia fuera del repo + gate de árbol limpio"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-05
