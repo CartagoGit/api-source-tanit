@@ -21,37 +21,28 @@ import {
 import type { ISchemaGraph } from "../../packages/contracts/interfaces/core/schema.interface";
 import type { IEndpointField } from "../../packages/contracts/interfaces/core/postman.interface";
 
-const GRAPH: ISchemaGraph = {
-  root: "root",
-  nodes: [
-    {
-      id: "root",
-      kind: "object",
-      objectShape: [
-        {
-          fieldName: "name",
-          required: true,
-          child: {
-            id: "name",
-            kind: "scalar",
-            scalarType: "string",
-          },
-        },
-        {
-          fieldName: "age",
-          required: false,
-          child: {
-            id: "age",
-            kind: "scalar",
-            scalarType: "integer",
-          },
-        },
-      ],
+function buildGraph(): ISchemaGraph {
+  const map = new Map<import("../../packages/contracts/interfaces/core/schema.interface").SchemaNodeId, import("../../packages/contracts/interfaces/core/schema.interface").ISchemaNode>();
+  map.set("root", {
+    id: "root",
+    kind: "object",
+    children: [
+      { name: "name", node: "name", required: true },
+      { name: "age", node: "age", required: false },
+    ],
+  });
+  map.set("name", { id: "name", kind: "scalar", scalarType: "string" });
+  map.set("age", { id: "age", kind: "scalar", scalarType: "integer" });
+  return {
+    nodes: map,
+    root: "root",
+    toDTO() {
+      return { nodes: Array.from(map.entries()), root: "root" };
     },
-    { id: "name", kind: "scalar", scalarType: "string" },
-    { id: "age", kind: "scalar", scalarType: "integer" },
-  ],
-};
+  };
+}
+
+const GRAPH = buildGraph();
 
 function field(name: string, type: string): IEndpointField {
   return {

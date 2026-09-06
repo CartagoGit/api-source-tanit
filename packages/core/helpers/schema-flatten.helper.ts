@@ -302,24 +302,32 @@ export function graphAndFieldsAreConsistent(
 ): boolean {
   const fields = spec.fields ?? [];
   const graph = spec.schemaGraph;
-  if (!graph) return true;
+
+  // The migration window allows ONE side to be missing:
+  //   - graph only: scanner has migrated, the consumer
+  //     (Postman / HAR / Bruno) will derive fields via
+  //     fieldsFromGraph at export time.
+  //   - fields only: scanner has not migrated yet — the
+  //     OpenAPI emitter consumes fields as it always has.
+  // We do not flag the missing side as a mismatch; the
+  // failing case below is when BOTH are present and they
+  // disagree.
+  if (!graph || fields.length === 0) return true;
+
   // Both present — derive the graph's flat view and check
-  // it matches. We allow the graph to be a SUPERSET of
-  // fields (more precise edges are fine); the failing case
-  // is when a flat-field maps to a different node kind in
-  // the graph.
+  // every graph-derived leaf has a matching (name, location,
+  // type) entry in `fields`. The graph is allowed a SUPERSET
+  // (more precise edges). Mismatches:
+  //   - graph has a leaf the legacy fields array doesn't know
+  //     about (drift, scanner is lying in fields)
+  //   - same name + location with different type
+  //   (`Postman says string, OpenAPI says integer`)
   const graphFields = fieldsFromGraph(graph, graph.root);
   for (const gf of graphFields) {
     const matching = fields.find(
       (f) => f.fieldName === gf.fieldName && f.location === gf.location,
     );
-    if (!matching) {
-      // Graph added a field the legacy fields array didn't
-      // know about. Mismatch — scanner should regenerate
-      // fields from graph on every emit.
-      return false;
-    }
-    // Same name + location: types must agree.
+    if (!matching) return false;
     if (matching.type !== gf.type) return false;
   }
   return true;
