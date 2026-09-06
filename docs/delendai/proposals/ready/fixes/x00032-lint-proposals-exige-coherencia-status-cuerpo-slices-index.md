@@ -76,11 +76,18 @@ si no es mecánico, no es regla.
 
 ### S2 — `INDEX.md` generado, no mantenido a mano
 
-- **Status**: pending
-- **Files**: `scripts/gates/gen-index.script.ts` (nuevo, o modo del lint) + `docs/delendai/proposals/INDEX.md`
+- **Status**: done
+- **Files**: `scripts/gates/gen-index.script.ts` (nuevo) + `tests/cli/gen-index.spec.ts` (nuevo) + `docs/delendai/proposals/INDEX.md` (regenerado) + `scripts/gates/lint-proposals.script.ts` (byte-check embebido) + `package.json` (`lint:proposals:fix` y `lint:proposals:fix:check`)
 - **Gate**: el mismo `lint:proposals` compara INDEX generado vs INDEX commiteado
 - **Detalle**: una sola fuente de verdad (el filesystem); el documento se
-  regenera con `bun run lint:proposals:fix` o es verificado byte a byte.
+  regenera con `bun run lint:proposals:fix` o es verificado byte a byte. El
+  byte-check se hace dentro de `lint:proposals` (última fase) — si
+  `gen-index --check` falla, el gate entero falla. Las dos
+  entradas `lint:proposals:fix` y `lint:proposals:fix:check` se exponen en
+  `package.json` para que la regeneración manual también sea un comando
+  corto. Tests cubren `render()` (3 secciones, determinismo), `main()`
+  en modo escritura y `--check` (paso y fallo), e integración contra
+  el árbol real (`PROPOSALS_DIR`).
 
 ### S3 — Regla de evidencia para gates de alto calibre
 

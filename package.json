@@ -82,6 +82,8 @@
     "build:binary": "bun run scripts/build/build-binary.script.ts",
     "push": "bun run packages/cli/commands/push.script.ts",
     "lint:proposals": "bun run scripts/gates/lint-proposals.script.ts",
+    "lint:proposals:fix": "bun run scripts/gates/gen-index.script.ts",
+    "lint:proposals:fix:check": "bun run scripts/gates/gen-index.script.ts --check",
     "test:watch": "bunx vitest",
     "test:contracts": "bunx vitest run --project contracts",
     "test:core": "bunx vitest run --project core",

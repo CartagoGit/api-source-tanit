@@ -404,6 +404,42 @@ export async function main(): Promise<number> {
     return 1;
   }
 
+  // x00032 S2: `INDEX.md` debe coincidir byte-a-byte con la versión
+  // regenerada por `gen-index.script.ts`. El check se hace aquí
+  // (en lugar de como gate separado) porque cualquier drift de
+  // INDEX es, por definición, una violación de `lint:proposals`:
+  // las reglas S1 no sirven si la lista humana de "ready" y la
+  // realidad del filesystem divergen. Si drift aparece, el
+  // mensaje apunta al comando para arreglarlo.
+  const { spawn } = await import("node:child_process");
+  const regen = await new Promise<{ code: number; out: string; err: string }>(
+    (resolve) => {
+      const child = spawn(
+        "bun",
+        ["run", "scripts/gates/gen-index.script.ts", "--check"],
+        { cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
+      );
+      const out: Uint8Array[] = [];
+      const err: Uint8Array[] = [];
+      child.stdout.on("data", (c: Uint8Array) => out.push(c));
+      child.stderr.on("data", (c: Uint8Array) => err.push(c));
+      child.on("close", (code) => {
+        const decoder = new TextDecoder();
+        resolve({
+          code: code ?? 1,
+          out: out.map((c) => decoder.decode(c)).join(""),
+          err: err.map((c) => decoder.decode(c)).join(""),
+        });
+      });
+    },
+  );
+  if (regen.code !== 0) {
+    problems.push(
+      `INDEX.md no coincide con la versión regenerada. Corre \`bun run lint:proposals:gen-index\` y commitea el resultado.` +
+        (regen.err ? `\n  · regenerador: ${regen.err.trim()}` : ""),
+    );
+  }
+
   const byState = new Map<string, number>();
   for (const p of proposals) byState.set(p.status, (byState.get(p.status) ?? 0) + 1);
   const summary = [...byState.entries()]
