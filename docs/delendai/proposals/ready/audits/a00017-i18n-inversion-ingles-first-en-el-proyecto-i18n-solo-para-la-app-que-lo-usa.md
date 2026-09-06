@@ -2,7 +2,7 @@
 id: a00017
 title: "i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa"
 kind: audit
-status: blocked
+status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-04
@@ -13,9 +13,10 @@ dependsOn:
 related:
   - a00009
   - b00001
-last-transition-id: cb906d1d-c5f1-4e25-8a1a-400a896b8b98
-last-correlation-id: cb906d1d-c5f1-4e25-8a1a-400a896b8b98
-last-transition-from: ready
+last-transition-id: orchestrator-2026-09-06-a00017-unblock
+last-correlation-id: orchestrator-2026-09-06-a00017-unblock
+last-transition-from: blocked
+last-idempotency-key: a00017-blocked-to-ready-2026-09-06
 ---
 blocked-by: [a00017]
 
