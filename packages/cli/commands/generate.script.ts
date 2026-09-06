@@ -12,7 +12,7 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import {
   writeFileAtomic,
   writeJsonAtomic,
@@ -20,6 +20,8 @@ import {
 import { dirname, join } from "node:path";
 import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
+import { inferResponses } from "../../core/responses/infer-responses.js";
+import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
 
 import { enrichCatalogWithFormRequests, LARAVEL_FORM_REQUEST_ENRICHER, enrichValidationSources } from "../../frameworks/laravel/catalog-enricher.service.js";
 import { registerValidationEnricher } from "../../core/validation/validation-enricher.service.js";
@@ -412,6 +414,53 @@ export async function runGenerate(
   // Extra formats are serialized from the SAME endpoint catalog as the
   // Postman collection: two formats from the same project cannot
   // disagree because each scanned on its own.
+  //
+  // f00012 wiring: response inference runs over the same catalog
+  // BEFORE any export so every format sees the same enriched specs.
+  // The inferrers need the raw source of each endpoint's file; the
+  // source file travels on the ParsedRoute, so specs and routes are
+  // paired by `METHOD uri` key. Routes without a sourceFile (manual/
+  // zero-config entries) skip silently.
+  const framework = pipeline.match?.framework ?? "";
+  if (framework) {
+    ensureResponseInferrersRegistered();
+    const sourceByEndpointKey = new Map<string, string>();
+    for (const r of pipeline.routes) {
+      if (!r.sourceFile) continue;
+      sourceByEndpointKey.set(
+        `${r.method.toUpperCase()} ${r.uri}`,
+        r.sourceFile,
+      );
+    }
+    const sourceCache = new Map<string, string>();
+    let inferredCount = 0;
+    for (const spec of discoveredSpecs) {
+      const rel = sourceByEndpointKey.get(`${spec.method} ${spec.uri}`);
+      if (!rel) continue;
+      let content = sourceCache.get(rel);
+      if (content === undefined) {
+        const abs = join(resolvedContext.projectRoot, rel);
+        try {
+          content = await readFile(abs, "utf8");
+        } catch {
+          content = ""; // unreadable source → no inference
+        }
+        sourceCache.set(rel, content);
+      }
+      if (!content) continue;
+      const entries = inferResponses(
+        spec,
+        { path: join(resolvedContext.projectRoot, rel), content, framework },
+      );
+      if (entries.length > 0) {
+        spec.responses = entries;
+        inferredCount++;
+      }
+    }
+    if (inferredCount > 0) {
+      console.log(`  · Responses inferred for ${inferredCount} endpoint(s).`);
+    }
+  }
   const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = resolvedContext.outputDir;

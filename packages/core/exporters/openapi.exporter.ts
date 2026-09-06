@@ -27,6 +27,7 @@ import type {
   IExportTarget,
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec, IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IResponseInference } from "../../contracts/interfaces/core/responses.interface.js";
 import type {
   ISchemaGraph,
   ISchemaNode,
@@ -81,6 +82,67 @@ function fieldSchema(field: IEndpointField): Record<string, unknown> {
   if (field.maxLength !== undefined) schema["maxLength"] = field.maxLength;
   if (field.type === "array") schema["items"] = { type: "string" };
   return schema;
+}
+
+/**
+ * f00012 wiring: render the spec's inferred responses as an OpenAPI
+ * `responses` block.
+ *
+ * Each `IResponseInference` becomes a `responses.<status>` entry. The
+ * schema part depends on the `IResponseSchema` kind:
+ *
+ * - `"ref"` → `{ $ref: ... }` (the referrer produced a named type).
+ * - `"empty"` → no `content` (204-style / void handlers).
+ * - `"schema-graph"` → the graph root emitted inline via
+ *   `emitSchemaGraph` (its `components` merge into the document's
+ *   sink inside `buildOperation`, keyed by status to stay unique).
+ *
+ * Entries with the same status keep the first (highest confidence —
+ * the dispatcher already sorts by `(status asc, confidence desc)`).
+ * Returns `undefined` when the spec carries no inference so the caller
+ * keeps the historical `200: OK` fallback.
+ */
+function renderInferredResponses(
+  spec: EndpointSpec,
+  componentsSink: Record<string, Record<string, unknown>>,
+): Record<string, unknown> | undefined {
+  const entries: ReadonlyArray<IResponseInference> | undefined = spec.responses;
+  if (!entries || entries.length === 0) return undefined;
+
+  const responses: Record<string, unknown> = {};
+  const seen = new Set<number>();
+  for (const entry of entries) {
+    if (seen.has(entry.status)) continue;
+    seen.add(entry.status);
+    const block: Record<string, unknown> = { description: entry.reason };
+    const schema = responseSchemaOf(entry, componentsSink);
+    if (schema !== undefined) {
+      block["content"] = { "application/json": { schema } };
+    }
+    responses[String(entry.status)] = block;
+  }
+  return responses;
+}
+
+/** Schema of one inference entry, dispatched by `IResponseSchema.kind`. */
+function responseSchemaOf(
+  entry: IResponseInference,
+  componentsSink: Record<string, Record<string, unknown>>,
+): Record<string, unknown> | undefined {
+  switch (entry.schema.kind) {
+    case "ref":
+      return { $ref: entry.schema.$ref };
+    case "empty":
+      return undefined;
+    case "schema-graph": {
+      const { schema, components } = emitSchemaGraph(
+        entry.schema.graph,
+        entry.schema.graph.root,
+      );
+      Object.assign(componentsSink, components);
+      return schema;
+    }
+  }
 }
 
 function buildOperation(spec: EndpointSpec, state: IBuildState, allMarker?: string): Record<string, unknown> {
@@ -224,8 +286,14 @@ function buildOperation(spec: EndpointSpec, state: IBuildState, allMarker?: stri
     operation["security"] = [];
   }
 
-  // No schema: we don't know what it returns. See the file header.
-  operation["responses"] = {
+  // f00012 wiring: inferred responses win over the default. When the
+  // response-inferrer dispatcher produced entries for this spec (they
+  // arrive pre-populated on `spec.responses`), they are rendered as
+  // OpenAPI `responses.<status>` blocks; the fallback below keeps the
+  // historical `200: OK` for specs without inference, so documents
+  // generated before f00012 don't regress.
+  const inferred = renderInferredResponses(spec, state.components);
+  operation["responses"] = inferred ?? {
     "200": { description: "OK" },
   };
   // Audit 2026-09-06 §13 (x00056 S2): an operation that originated
