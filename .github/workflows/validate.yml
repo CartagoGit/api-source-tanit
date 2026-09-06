@@ -46,11 +46,8 @@ jobs:
       # corre en local: si pasa aquí, pasa allí.
       #
       # El e2e multi-service-isolation de x00028 S4 corre dentro de
-      # `bun run test:e2e`. Localmente pasa; en CI su fix definitivo está
-      # en x00046 (pendiente de merge). Hasta entonces este e2e puede
-      # fallar en el runner por una diferencia de resolución de workspaces
-      # Bun entre local y GitHub Actions — ver el TODO al inicio de
-      # `tests/e2e/multi-service-isolation.spec.ts`.
+      # `bun run test:e2e`. Su fix (x00046) está cerrado; cualquier
+      # regresión aquí es trabajo de un nuevo fix, no del propio e2e.
       - name: Validate
         run: bun run validate
 
