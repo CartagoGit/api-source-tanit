@@ -140,7 +140,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00040` — x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió) — `3b7f1c1`
 - `x00050` — x00050: CI roja — Bun 1.3.14 no sabe leer el bun.lock v2; el pin de CI debe seguir al lockfile — `9043822`
 - `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
-- `x00054` — resolveCallee usa importedName con guardas para default y namespace — `—`
+- `x00054` — resolveCallee usa importedName con guardas para default y namespace — `fab4996, 2de0392`
 
 ### infra
 
