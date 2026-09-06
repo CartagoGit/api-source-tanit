@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `a00017` | `audit` | [`ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) |
 
 ## Bloqueadas
 
@@ -39,6 +38,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `a00014` — effectiveProjectRoot centralizado en core + migración de los 21 scanners — `3a1a4f9, 6a539e3, 070836c, f0a3aa5, 0269a94`
 - `a00015` — GraphQL embedded SDL por AST TS (no regex sobre source crudo) — `fcff35c, 71b535c, 1e5c339, 7080255, 3f7e972, ed0f230`
 - `a00016` — Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop) — `3fd6cfd, 2a635bd, c6850e6, 25d755d, 28e8bfc, 7f9ad90`
+- `a00017` — i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa — `fa98d36`
 
 ### breaking
 

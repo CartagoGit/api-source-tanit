@@ -2,8 +2,10 @@
 id: a00017
 title: "i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa"
 kind: audit
-status: ready
+status: done
 type: proposal
+shippedIn:
+  - fa98d36
 track: api-source-tanit
 date: 2026-09-04
 dependsOn:
