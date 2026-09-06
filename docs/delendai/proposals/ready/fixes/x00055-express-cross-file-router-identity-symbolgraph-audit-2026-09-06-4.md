@@ -125,7 +125,8 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
     para consumo posterior.
   - Tests: 2 routers con el mismo nombre en ficheros distintos →
     cada uno tiene su propio símbolo.
-
+- review-state: in_review
+- review-implementer: orchestrator-cartago-2026-09-07
 ### S2 — `mountPrefixOf` resuelve por símbolo, no por nombre
 
 - **Files**:
