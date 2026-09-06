@@ -78,3 +78,75 @@ describe("lint:bun-ci", () => {
     expect(problems[0]?.detail).toContain("--frozen-lockfile");
   });
 });
+
+/**
+ * x00050: la versión mínima la fija el `lockfileVersion` del
+ * `bun.lock` del repo. Bun 1.3.x no puede leer lockfile v2 y la CI
+ * moría en `bun install --frozen-lockfile` con "Unknown lockfile
+ * version" antes de correr ningún gate.
+ */
+describe("lint:bun-ci — versión mínima por lockfileVersion (x00050)", () => {
+  test("rechaza bun < mínimo cuando el lockfile lo exige", () => {
+    const problems = findBunCiProblems(
+      `
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+    `,
+      "1.4.0",
+    );
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.detail).toContain("no sabe leer el lockfile");
+    expect(problems[0]?.detail).toContain("1.4.0");
+  });
+
+  test("acepta bun ≥ mínimo", () => {
+    expect(
+      findBunCiProblems(
+        `
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+    `,
+        "1.4.0",
+      ),
+    ).toEqual([]);
+  });
+
+  test("acepta bun exactamente igual al mínimo", () => {
+    expect(
+      findBunCiProblems(
+        `
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+    `,
+        "1.4.0",
+      ),
+    ).toEqual([]);
+  });
+
+  test("sin mínimo declarado, cualquier versión concreta pasa", () => {
+    expect(
+      findBunCiProblems(`
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+    `),
+    ).toEqual([]);
+  });
+  test("readLockfileVersion lee la versión del bun.lock del repo", async () => {
+    const { readLockfileVersion } = await import(
+      "../../scripts/gates/lint-bun-ci.script"
+    );
+    // El repo tiene lockfile v2 (configVersion 1). Si un día se
+    // regenera a otra versión, el gate lo recoge automáticamente.
+    const version = await readLockfileVersion();
+    expect(version).toBe(2);
+  });
+});

@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00050` | `fix` | [`ready/fixes/x00050-ci-roja-bun-1-3-no-lee-lockfile-v2-el-pin-de-la-ci-debe-seguir-al-lockfile.md`](ready/fixes/x00050-ci-roja-bun-1-3-no-lee-lockfile-v2-el-pin-de-la-ci-debe-seguir-al-lockfile.md) |
 
 ## Bloqueadas
 
