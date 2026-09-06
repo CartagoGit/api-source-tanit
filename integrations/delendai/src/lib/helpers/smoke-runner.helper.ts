@@ -27,7 +27,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { isRecord, parseJson } from "../../../../../core/helpers/parse-json.helper";
-import type { ParsedRoute } from "../../../../../contracts/interfaces/core/scanner.interface";
+import type { ParsedRoute } from "../../../../contracts/interfaces/core/scanner.interface";
 import type {
   IExpectedFixture,
   IExpectedRoute,

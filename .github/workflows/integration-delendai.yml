@@ -1,0 +1,76 @@
+name: integration-delendai
+
+# Valida la integración opcional entre Tanit y Delendai
+# (`integrations/delendai/`). No es el camino crítico: si este
+# workflow falla, el producto Tanit sigue distribuible. Es opt-in
+# vía `workflow_dispatch` y se ejecuta semanalmente como red de
+# seguridad.
+#
+# Motivación: el plugin necesita `@delendai/core` por `file:` al
+# checkout hermano, y eso requiere clonar Delendai + compilar su
+# core + enlazar `jsonc-parser`. Es trabajo que NO tiene sentido
+# hacer en cada push a develop. x00041.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Cada lunes 06:00 UTC — el auditor externo y la gente de Delendai
+    # pueden ver los lunes qué rompió el fin de semana.
+    - cron: "0 6 * * 1"
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+
+      # Materializa el checkout hermano. `actions/checkout` no sirve
+      # aquí: exige que `path` esté dentro del workspace del runner,
+      # y el hermano vive en `../delendai` (fuera). Un `git clone` no
+      # tiene esa restricción.
+      - name: Clone delendai sibling
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/CartagoGit/DelendAI ../delendai
+          git -C ../delendai checkout "${DELENDAI_SHA:-develop}"
+
+      # El `exports` de `@delendai/core` apunta sus `types` a `dist/`,
+      # que NO viaja en git. El plugin tipa contra
+      # `@delendai/core/public`, así que sin compilar el core el
+      # typecheck muere con TS2307 "Cannot find module".
+      - name: Build delendai core
+        run: |
+          cd ../delendai
+          bun install --frozen-lockfile
+          bun tools/scripts/compile/build.script.ts packages/core
+
+      - name: Install plugin dependencies
+        working-directory: integrations/delendai
+        run: bun install --frozen-lockfile
+
+      # El core publica `jsonc-parser` como dependencia normal, pero
+      # con `file:` Bun no arrastra las transitivas. Hay que enlazar
+      # la que acaba de instalar el `bun install` del hermano.
+      - name: "Link jsonc-parser into the file: package store"
+        working-directory: integrations/delendai
+        run: |
+          set -euo pipefail
+          CORE="$(find node_modules/.bun -maxdepth 1 -type d -name '@delendai+core@file*' | head -n1)"
+          [ -n "$CORE" ] || { echo "::error::no existe el store de @delendai/core"; exit 1; }
+          SRC="$( ( cd ../../../delendai/packages/core \
+                     && bun -e 'process.stdout.write(require("node:path").dirname(require.resolve("jsonc-parser/package.json")))' ) )"
+          [ -d "$SRC" ] || { echo "::error::jsonc-parser no se resuelve desde el core del hermano"; exit 1; }
+          mkdir -p "$CORE/node_modules"
+          ln -sfn "$SRC" "$CORE/node_modules/jsonc-parser"
+          test -e "$CORE/node_modules/jsonc-parser/package.json" \
+            || { echo "::error::symlink dangling a $SRC"; exit 1; }
+
+      - name: Validate plugin
+        working-directory: integrations/delendai
+        run: bun run validate

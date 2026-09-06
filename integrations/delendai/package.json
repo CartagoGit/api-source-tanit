@@ -1,18 +1,17 @@
 {
-  "name": "delendai-plugin-tanit",
-  "version": "0.0.0",
+  "name": "tanit-delendai-integration",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
-  "description": "Plugin de delendai para tanit. Genera, valida e inspecciona colecciones Postman v2.1.0 desde las rutas de cualquier proyecto de API (Laravel, Symfony, Express, NestJS, FastAPI, Flask, Django, Next.js, Gin, Spring Boot, ASP.NET y OpenAPI).",
+  "description": "Integración de Tanit con Delendai (MCP). Expone Tanit como tools de Delendai. NO es parte del producto Tanit: el CLI, el binario y la UI de Tanit funcionan sin este paquete. Aquí vive por conveniencia del usuario.",
   "author": "Cartago",
   "license": "MIT",
   "keywords": [
     "mcp",
     "delendai",
-    "plugin",
+    "tanit",
+    "integration",
     "postman",
-    "api",
-    "collection",
     "agent",
     "ai"
   ],
@@ -21,10 +20,11 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "validate": "bun run typecheck && bun run test"
   },
   "dependencies": {
-    "@delendai/core": "file:../../../../delendai/packages/core",
+    "@delendai/core": "file:../../../delendai/packages/core",
     "zod": "^4.4.3"
   },
   "devDependencies": {

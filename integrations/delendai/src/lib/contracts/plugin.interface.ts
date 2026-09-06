@@ -9,14 +9,14 @@
 
 import { z } from "zod";
 
-import { FRAMEWORK_IDS } from "../../../../../contracts/constants/frameworks/framework-ids.constant";
-import { EXPORT_FORMATS } from "../../../../../contracts/constants/core/export-formats.constant";
-import type { IProjectSummary } from "../../../../../contracts/interfaces/core/domain.interface";
-import type { ICheckReport } from "../../../../../contracts/interfaces/cli/command-outcomes.interface";
-import type { IStatsOutcome } from "../../../../../contracts/interfaces/cli/stats-outcome.interface";
-import type { IScanOutcome } from "../../../../../contracts/interfaces/cli/scan-outcome.interface";
-import type { IPushOutcome } from "../../../../../contracts/interfaces/cli/push-outcome.interface";
-import type { IInitOutcome } from "../../../../../contracts/interfaces/cli/init-outcome.interface";
+import { FRAMEWORK_IDS } from "../../../../contracts/constants/frameworks/framework-ids.constant";
+import { EXPORT_FORMATS } from "../../../../contracts/constants/core/export-formats.constant";
+import type { IProjectSummary } from "../../../../contracts/interfaces/core/domain.interface";
+import type { ICheckReport } from "../../../../contracts/interfaces/cli/command-outcomes.interface";
+import type { IStatsOutcome } from "../../../../contracts/interfaces/cli/stats-outcome.interface";
+import type { IScanOutcome } from "../../../../contracts/interfaces/cli/scan-outcome.interface";
+import type { IPushOutcome } from "../../../../contracts/interfaces/cli/push-outcome.interface";
+import type { IInitOutcome } from "../../../../contracts/interfaces/cli/init-outcome.interface";
 
 // --- Plugin options (read from delendai.config.json) -----------------------
 
