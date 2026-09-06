@@ -2,10 +2,14 @@
 id: x00056
 title: "Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13)"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-06
+shippedIn:
+  - 79b0a3d  # Hono `.all()` → method: "ALL" (parent commit, S1 in this slice)
+  - fdc0171  # ALL-method helper + 4 exporters + OpenAPI marker + fixture + tests
+  - 15a477e  # SUPPORTED_METHODS contract test: include 'ALL'
 dependsOn:
   - aad6376
 ---

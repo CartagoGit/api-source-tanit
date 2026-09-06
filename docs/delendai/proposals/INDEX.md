@@ -9,7 +9,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | --- | --- | --- |
 | `a00018` | `audit` | [`ready/audits/a00018-audit-2026-09-06-findings-and-future-slices.md`](ready/audits/a00018-audit-2026-09-06-findings-and-future-slices.md) |
 | `x00055` | `fix` | [`ready/fixes/x00055-express-router-symbol-identity-cross-file.md`](ready/fixes/x00055-express-router-symbol-identity-cross-file.md) |
-| `x00056` | `fix` | [`ready/fixes/x00056-hono-all-method-exporter-handling.md`](ready/fixes/x00056-hono-all-method-exporter-handling.md) |
 
 ## Bloqueadas
 
@@ -144,6 +143,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
 - `x00053` — resolver lint:no-orphan-types — `6a8ecb0, 6bba56f, e5e1802`
 - `x00054` — resolveCallee usa importedName con guardas para default y namespace — `d891e8c, ade50f7`
+- `x00056` — Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13) — `79b0a3d, fdc0171, 15a477e`
 
 ### infra
 
