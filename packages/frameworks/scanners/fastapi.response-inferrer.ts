@@ -85,10 +85,10 @@ export class FastApiResponseInferrer implements IResponseInferrer {
       if (rms.length === 0) continue;
 
       const status =
-        scs.length > 0
-          ? Number.parseInt(scs[0][1] ?? "200", 10)
+        scs.length > 0 && scs[0] && scs[0][1]
+          ? Number.parseInt(scs[0][1], 10)
           : 200;
-      const statusConfidence = scs.length > 0 ? "high" : "high"; // explicit annotation
+      const statusConfidence = "high" as const; // explicit annotation
 
       for (const m of rms) {
         const ref = m[1] ?? "";
