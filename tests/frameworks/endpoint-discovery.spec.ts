@@ -577,7 +577,7 @@ class DinamicaRequest extends FormRequest
     expect(stats.queryVariants).toBe(2);
     expect(stats.bodyVariants).toBe(0);
 
-    // El nodo del endpoint queda convertido en carpeta [base, Variantes].
+    // The endpoint node becomes a folder [base, Variants].
     const nodo = nodoEndpoint(collection);
     expect(nodo?.item).toBeDefined();
     expect(nodo?.item?.[0]?.name).toBe("Listar Usuarios (base)");
@@ -604,8 +604,8 @@ class DinamicaRequest extends FormRequest
 
     const variantes = nodoEndpoint(collection)?.item?.[1]?.item ?? [];
     expect(variantes.map((v) => v.name)).toEqual([
-      "Variante: Mínimo (solo required)" + VARIANT_TAG,
-      "Variante: Enum estado=inactivo" + VARIANT_TAG,
+      "Variant: Mínimo (solo required)" + VARIANT_TAG,
+      "Variant: Enum estado=inactivo" + VARIANT_TAG,
     ]);
     const bodies = variantes.map((v) => JSON.parse(v.request?.body?.raw ?? "{}"));
     expect(bodies).toEqual([
@@ -766,7 +766,7 @@ test("dynamic rules accumulate in rulesWithUnknown", async () => {
     expect(serializadoPost).toContain("Auto-generated from StoreUsuarioRequest");
     expect(serializadoPost).not.toContain("Variante auto-generada");
     expect(serializadoPost).not.toContain("Generada automáticamente");
-    expect(serializadoPost).not.toContain("Variantes auto-generadas");
+    expect(serializadoPost).not.toContain("Variants auto-generadas");
 
     const collectionGet = buildCollection(
       [spec({ name: "Listar Usuarios", method: "GET", uri: "/usuarios" })],
@@ -779,7 +779,7 @@ test("dynamic rules accumulate in rulesWithUnknown", async () => {
     );
     const serializadoGet = JSON.stringify(nodoEndpoint(collectionGet));
     expect(serializadoGet).toContain("Auto-generated variants from `ListarUsuarioRequest`");
-    expect(serializadoGet).not.toContain("Variantes auto-generadas");
+    expect(serializadoGet).not.toContain("Variants auto-generadas");
     expect(serializadoGet).not.toContain("Colecci");
     expect(serializadoGet).not.toContain("Generada automáticamente");
   });

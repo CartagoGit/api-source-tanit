@@ -230,12 +230,12 @@ export async function enrichCatalogWithFormRequests(
       const variants = generateQueryVariants(rules);
       if (variants.length === 0) return;
       const childItems: PostmanItem[] = variants.map((v) => ({
-        name: `Variante: ${v.name}${VARIANT_TAG}`,
+        name: `Variant: ${v.name}${VARIANT_TAG}`,
         request: buildVariantWithQuery(req, v),
         description: `Auto-generated from ${rules.className}.`,
       }));
       const wrapper: PostmanItem = {
-        name: `Variantes (auto · ${rules.className})`,
+        name: `Variants (auto · ${rules.className})`,
         item: childItems,
         description: `Auto-generated variants from \`${rules.className}\`.`,
       };
@@ -260,12 +260,12 @@ export async function enrichCatalogWithFormRequests(
         request: req,
       };
       const childItems: PostmanItem[] = variants.map((v) => ({
-        name: `Variante: ${v.name}${VARIANT_TAG}`,
+        name: `Variant: ${v.name}${VARIANT_TAG}`,
         request: buildVariantRequest(req, v),
         description: `Auto-generated from ${rules.className}.`,
       }));
       const wrapper: PostmanItem = {
-        name: `Variantes (auto · ${rules.className})`,
+        name: `Variants (auto · ${rules.className})`,
         item: childItems,
         description: `Auto-generated variants from \`${rules.className}\`.`,
       };
