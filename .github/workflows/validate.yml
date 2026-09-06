@@ -66,7 +66,18 @@ jobs:
       # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
       # Caza lo que el repo no ve: un fichero que falta en `files`, un
       # `bin` mal apuntado, un import que se sale del tarball.
+      #
+      # `if: always()` (c00006): este step se ejecuta aunque `Validate`
+      # haya fallado. La razón es que `validate:package` diagnostica
+      # exactamente la clase de bug que escapa a `validate` (un bin
+      # mal apuntado, un `files` incompleto) — y esos son los bugs
+      # que un fallo de `validate` podría estar tapando. Sin
+      # `always()`, GitHub Actions salta el step y el developer se
+      # queda sin diagnóstico diferencial entre "validate rompió por
+      # un tipo" y "validate rompió porque el tarball no se puede
+      # construir".
       - name: Validate package
+        if: ${{ always() }}
         run: bun run validate:package
 
       # Integration verifier (x00049 S2): las preguntas mecánicas del
@@ -77,5 +88,16 @@ jobs:
       # explícitamente con `--audit` para que el reporte aparezca en
       # el log aunque `validate` haya pasado por cache o se haya
       # truncado.
+      #
+      # `if: always()` (c00006): corre también si `Validate` o
+      # `Validate package` fallaron. El integration verifier caza
+      # residuos cross-cutting (paths obsoletos, IDs duplicados,
+      # workflows solapados) — la clase de residuo que un agente
+      # pudo dejar al intentar arreglar el fallo que tumbó
+      # `validate`. Sin `always()`, este step se salta precisamente
+      # cuando más lo necesitas. Orden: corre el último para que vea
+      # el estado del árbol incluyendo los pasos previos que
+      # pudieron haber escrito a disco.
       - name: Integration verifier
+        if: ${{ always() }}
         run: bun run lint:integration-verifier --audit
