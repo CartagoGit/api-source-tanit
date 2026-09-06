@@ -95,25 +95,24 @@ todos los scanners TS consumen.
 
 ### S2 — Frontend collectMethodCalls multi-estilo
 
-- **Status**: done (2a635bd)
-- **Files**: packages/frameworks/typescript/collect-method-calls.ts
+- **Status**: done (2a635bd) — archivo renombrado por x00033 (2b227ee) a `collect-method-calls.helper.ts`
+- **Files**: packages/frameworks/typescript/collect-method-calls.helper.ts
 - **Gate**: bun run test:frameworks
 - **Detalle**: cubre los 6 estilos. Cada rama nueva con su test y
   fixture bajo tests/fixtures.
 
 ### S3 — Aliases y reexports
 
-- **Status**: done (c6850e6)
-- **Files**: packages/frameworks/typescript/symbol-resolver.ts (nuevo)
+- **Status**: done (c6850e6) — archivo renombrado por x00033 (2b227ee) a `symbol-resolver.helper.ts`
+- **Files**: packages/frameworks/typescript/symbol-resolver.helper.ts (nuevo)
 - **Gate**: bun run test:frameworks
 - **Detalle**: const r = app; r.get('/health') detectado. Reexports
   de router desde ./router registrados.
 
 ### S4 — Constant propagation en métodos
 
-- **Status**: done (25d755d)
-- **Files**: packages/frameworks/typescript/constant-propagation.ts
-  (nuevo)
+- **Status**: done (25d755d) — archivo renombrado por x00033 (2b227ee) a `constant-propagation.helper.ts`
+- **Files**: packages/frameworks/typescript/constant-propagation.helper.ts (nuevo)
 - **Gate**: bun run test:frameworks
 - **Detalle**: const M = 'get'; app[M]('/health') produce un
   IRouteCallExpression con method resuelto. Solo strings literales

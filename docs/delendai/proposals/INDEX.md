@@ -8,15 +8,15 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
+| `a00017` | `audit` | [`ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) |
+| `x00040` | `fix` | [`ready/fixes/x00040-ui-hide-experimental-locales-complement-runtime-de-x00037.md`](ready/fixes/x00040-ui-hide-experimental-locales-complement-runtime-de-x00037.md) |
 
 ## Bloqueadas
 
 `status: blocked` vive en `blocked/`, con `blockedReason` en el frontmatter
 que explica qué lo destraba.
 
-| id | kind | path | nota |
-| --- | --- | --- | --- |
-| `a00017` | `audit` | [`blocked/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](blocked/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) | Priorización: las revisiones de rama 2026-09-04/05 exigen cerrar antes CI (i00002) y multi-service (x00029/x00030/x00031). No traducir comentarios mientras los cimientos están abiertos. Retomar cuando validate.yml esté verde en Actions y x00029 S2 entre. |
+(ninguna)
 
 ## Done
 
