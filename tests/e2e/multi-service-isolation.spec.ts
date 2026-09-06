@@ -1,5 +1,5 @@
 /**
- * x00028 S3 — Multi-service spec isolation end-to-end.
+ * x00028 S3 + x00046 — Multi-service spec isolation end-to-end.
  *
  * The fixture has two services (`apps/users-api` and `apps/orders-api`)
  * that each declare `GET /health`. Before x00028 the global catalog
@@ -11,20 +11,15 @@
  * (its own). The test verifies that the generated items do not cross
  * services.
  *
- * CI note
- * --------
- * Locally this test passes. In CI it currently fails because the
- * fixture's root `package.json` declares `workspaces: [apps/users,
- * apps/orders]` and `bun install --frozen-lockfile` resolves module
- * paths differently across the two environments, so the scanner
- * sometimes sees zero routes in the `orders` workspace (logs show
- * `apps_orders should have exactly one GET /health, got []`).
- *
- * To unblock `bun run validate` until x00028 has a real CI fix
- * (`TODO`: see the docs/delendai/proposals/* follow-up), the test
- * self-skips when `TANIT_SKIP_MULTI_SERVICE_ISOLATION=1`. The flag is
- * set in `.github/workflows/validate.yml`. Locally the test runs by
- * default so the regression catches.
+ * Why the spec no longer self-skips on CI (x00046 S2)
+ * -----------------------------------------------------
+ * Historically this test self-skipped via `TANIT_SKIP_MULTI_SERVICE_ISOLATION=1`
+ * because the old `validate.yml` failed earlier in `bun install
+ * --frozen-lockfile` — the failure was attributed (incorrectly) to this spec.
+ * The actual cause was the `file:` plugin dependency, which x00045 moved out
+ * of the root workspaces and `bun.lock`. Now `bun install` succeeds clean,
+ * the e2e runs in both local and CI, and `lint:no-skip-env-vars` (x00046 S3)
+ * keeps the flag from ever coming back.
  */
 import { describe, expect, test } from "vitest";
 import { join } from "node:path";
@@ -32,8 +27,6 @@ import { FIXTURES_DIR } from "../../scripts/helpers/root.helper.js";
 import { defaultOrchestrator } from "../../packages/frameworks/index.js";
 import { generateCollections } from "../../packages/core/discovery/generation.pipeline.js";
 import type { IGenerationOptions } from "../../packages/contracts/interfaces/core/discovery.interface.js";
-
-const SKIP_IN_CI = process.env.TANIT_SKIP_MULTI_SERVICE_ISOLATION === "1";
 
 const PROJECT = join(FIXTURES_DIR, "multi-service-isolation");
 
@@ -66,7 +59,7 @@ function methodsByUri(collection: { item: ReadonlyArray<unknown> }): Map<string,
 }
 
 describe("x00028 S3 — multi-service isolation (apps/users + apps/orders)", () => {
-  test.skipIf(SKIP_IN_CI)("cada servicio expone SOLO sus propios endpoints", async () => {
+  test("cada servicio expone SOLO sus propios endpoints", async () => {
     // generateCollections devuelve un IGenerationResult por servicio
     // (uno por `serviceId`). Si la spec isolation estuviera rota,
     // todos los servicios contendrían las rutas de los demás.
@@ -87,7 +80,7 @@ describe("x00028 S3 — multi-service isolation (apps/users + apps/orders)", () 
     }
   });
 
-  test.skipIf(SKIP_IN_CI)("los endpoints únicos de cada servicio no se cruzan", async () => {
+  test("los endpoints únicos de cada servicio no se cruzan", async () => {
     const options: IGenerationOptions = {
       combineServices: false,
       orchestrator: defaultOrchestrator(),
