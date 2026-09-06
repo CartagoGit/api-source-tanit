@@ -2,9 +2,14 @@
 id: x00048
 kind: feat
 title: "x00048: a00016 S6 — LanguageIR completo (alias canonicalisation, bindings reales, single-parse, NestJS)"
-status: ready
+status: done
 priority: P1
 globalGate: type
+shippedIn:
+  - 9429895
+  - 4a3b4d7
+  - 180050a
+  - bf3aba8
 why: |
   La auditoría `a00016` (Frontend TypeScript multi-estilo →
   LanguageIR) está archivada como `done` desde el 2026-09-04, con
