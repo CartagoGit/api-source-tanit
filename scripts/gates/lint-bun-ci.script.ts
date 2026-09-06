@@ -22,6 +22,47 @@ const RUN_STEP = /^(\s*)(?:-\s*)?run:\s*(.*)$/;
 const WORKFLOW_STEP = /^\s*-\s+/;
 const BUN_INSTALL_COMMAND = /(?:^|&&\s*|[;&|]\s*)bun\s+install\b/;
 
+/**
+ * Versión mínima de Bun que sabe leer cada `lockfileVersion` del
+ * `bun.lock` del repo (x00050).
+ *
+ * Bun 1.3.x sólo entiende lockfile v1; la v2 (configVersion 1) llega
+ * con Bun 1.4. Un pin de CI por debajo de la mínima falla en
+ * `bun install --frozen-lockfile` con "Unknown lockfile version"
+ * ANTES de correr un solo gate — fue la causa de la CI roja
+ * persistente que el análisis 2026-09-05 reportaba sin explicar.
+ */
+const MIN_BUN_FOR_LOCKFILE: Readonly<Record<number, string>> = {
+  1: "1.0.0",
+  2: "1.4.0",
+};
+
+/** Compara versiones semver concretas; devuelve <0 si a<b. */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    const na = pa[i] ?? 0;
+    const nb = pb[i] ?? 0;
+    if (na !== nb) return na - nb;
+  }
+  return 0;
+}
+
+/**
+ * Lee el `lockfileVersion` del `bun.lock` del repo. Devuelve `null`
+ * si el lockfile no existe o no declara versión (lockfile antiguo).
+ */
+export async function readLockfileVersion(): Promise<number | null> {
+  try {
+    const raw = await readFile(join(REPO_ROOT, "bun.lock"), "utf8");
+    const m = /"lockfileVersion"\s*:\s*(\d+)/.exec(raw);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 function withoutYamlComment(line: string): string {
   let quote: "'" | '"' | null = null;
   for (let index = 0; index < line.length; index += 1) {
@@ -35,7 +76,7 @@ function withoutYamlComment(line: string): string {
   return line;
 }
 
-export function findBunCiProblems(source: string): IBunCiProblem[] {
+export function findBunCiProblems(source: string, minBunVersion?: string): IBunCiProblem[] {
   const problems: IBunCiProblem[] = [];
   const lines = source.split("\n");
   let runBlockIndent: number | null = null;
@@ -68,11 +109,20 @@ export function findBunCiProblems(source: string): IBunCiProblem[] {
 
     const versionMatch = BUN_VERSION.exec(line);
     if (versionMatch) {
+      const version = versionMatch[1] ?? "";
       if (pendingSetup !== null && indent > pendingSetup.indent) pendingSetup.hasVersion = true;
-      if (!FIXED_BUN_VERSION.test(versionMatch[1] ?? "")) {
+      if (!FIXED_BUN_VERSION.test(version)) {
         problems.push({
           line: index + 1,
           detail: "bun-version debe ser una versión concreta; usa semver concreta",
+        });
+      } else if (
+        minBunVersion !== undefined &&
+        compareVersions(version, minBunVersion) < 0
+      ) {
+        problems.push({
+          line: index + 1,
+          detail: `bun-version ${version} no sabe leer el lockfile del repo; mínimo ${minBunVersion}`,
         });
       }
     }
@@ -106,6 +156,11 @@ export function findBunCiProblems(source: string): IBunCiProblem[] {
 
 async function main(): Promise<number> {
   const { readdir } = await import("node:fs/promises");
+  const lockfileVersion = await readLockfileVersion();
+  const minBun =
+    lockfileVersion !== null
+      ? (MIN_BUN_FOR_LOCKFILE[lockfileVersion] ?? undefined)
+      : undefined;
   const entries = await readdir(WORKFLOWS_DIR, { withFileTypes: true });
   const workflows = entries
     .filter((entry) => entry.isFile() && WORKFLOW_FILE.test(entry.name))
@@ -116,7 +171,7 @@ async function main(): Promise<number> {
   for (const workflow of workflows) {
     const path = join(WORKFLOWS_DIR, workflow);
     const source = await readFile(path, "utf8");
-    for (const problem of findBunCiProblems(source)) {
+    for (const problem of findBunCiProblems(source, minBun)) {
       problems.push({ file: workflow, ...problem });
     }
   }
@@ -129,7 +184,10 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  console.log(`lint:bun-ci — ${workflows.length} workflow(s) revisado(s), sin deriva`);
+  console.log(
+    `lint:bun-ci — ${workflows.length} workflow(s) revisado(s), sin deriva` +
+      (minBun ? ` (lockfile v${lockfileVersion} ⇒ bun ≥ ${minBun})` : ""),
+  );
   return 0;
 }
 

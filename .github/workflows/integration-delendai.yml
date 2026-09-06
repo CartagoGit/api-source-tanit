@@ -26,9 +26,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Bun 1.4.2: lockfileVersion 2 requiere Bun ≥ 1.4 (x00050).
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.2
 
       # Materializa el checkout hermano. `actions/checkout` no sirve
       # aquí: exige que `path` esté dentro del workspace del runner,
