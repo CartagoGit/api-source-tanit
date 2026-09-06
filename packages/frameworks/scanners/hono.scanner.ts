@@ -26,6 +26,7 @@ import { findAllBalanced, findOutsideStrings, stripJsComments } from "../../core
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
+import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type {
   IEndpointValidation,
@@ -274,6 +275,11 @@ export class HonoRouteScanner implements IRouteScanner {
     const unique = dedupe(routes);
     return {
       routes: unique,
+      // r00014 S3: Hono's `route('/api', subApp)` cross-file
+      // resolution lands in `r00014 S4`+. Today we ship an
+      // empty SymbolGraph so consumers know "this framework
+      // will speak the language" without changing behaviour.
+      symbols: SymbolGraph.empty(),
       ...(validators.size > 0 ? { validators } : {}),
     };
   }

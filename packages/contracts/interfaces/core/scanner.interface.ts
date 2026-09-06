@@ -259,6 +259,25 @@ export interface IScanResult {
    * disappear without a trace.
    */
   readonly diagnostics?: ReadonlyArray<IParseDiagnostic>;
+  /**
+   * Cross-file symbol graph (audit 2026-09-06 §12,
+   * proposal `r00014` S3).
+   *
+   * Optional on purpose: scanners that have a single-file
+   * scope today leave it `undefined` and behave identically
+   * to before. Frameworks with cross-file scope (Express
+   * routers, Fastify plugins, Hono sub-apps) fill it in.
+   * The graph is built during the scanner's parse pass and
+   * frozen on return.
+   *
+   * Consumers that care (e.g. the Express cross-file
+   * resolver in `r00014 S4`) read it via
+   * `scan.symbols?.resolveByImportPath(...)`. Missing = no
+   * graph available; never required.
+   *
+   * @see ./symbol-graph.interface.ts
+   */
+  readonly symbols?: import("./symbol-graph.interface.js").ISymbolGraph;
 }
 
 /**

@@ -38,6 +38,7 @@ import { findAllBalanced, findOutsideStrings, findClosingParen, stripJsComments 
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
+import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
 import { relative } from "node:path";
 import type {
   IEndpointValidation,
@@ -209,6 +210,12 @@ export class FastifyRouteScanner implements IRouteScanner {
     const unique = dedupe(routes);
     return {
       routes: unique,
+      // r00014 S3: every JS/TS scanner carries an empty
+      // SymbolGraph today. The cross-file plugin / sub-app
+      // resolution lands in `r00014 S4`+; both consume
+      // this field. Empty is a valid value — it tells
+      // callers "this framework does not yet emit a graph".
+      symbols: SymbolGraph.empty(),
       // Only emits `schemas` when at least one exists: avoids an empty
       // `Map` in the `IScanResult` that the provider would have to
       // treat as "not found".

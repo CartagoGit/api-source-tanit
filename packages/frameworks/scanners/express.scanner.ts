@@ -46,6 +46,7 @@ import { propagateConstants } from "../typescript/constant-propagation.helper.js
 import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
+import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
 
 /**
  * Node frameworks this scanner covers because they look like Express.
@@ -435,7 +436,17 @@ export class ExpressRouteScanner implements IRouteScanner {
     // Files the frontend couldn't parse don't abort the scan, but
     // they don't disappear without a trace either: they go up as
     // diagnostics (a00011 C-7 / B-rev-13).
-    return diagnostics.length > 0 ? { routes: out, diagnostics } : { routes: out };
+    //
+    // r00014 S3: the Express scanner carries an empty SymbolGraph
+    // today. The cross-file router resolution lands in `r00014
+    // S4` (and `x00055 S2`); both consume this field.
+    return {
+      routes: out,
+      symbols: SymbolGraph.empty(),
+      ...(diagnostics.length > 0
+        ? { diagnostics: diagnostics as ReadonlyArray<IParseDiagnostic> }
+        : {}),
+    };
   }
 }
 

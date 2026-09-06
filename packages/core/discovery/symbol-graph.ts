@@ -32,6 +32,7 @@ import {
   type SymbolId,
   symbolIdToString,
 } from "./symbol-id.js";
+import type { ISymbolGraph } from "../../contracts/interfaces/core/symbol-graph.interface.js";
 
 /** Tags a node so consumers don't confuse a value with a type alias. */
 export type SymbolKind =
@@ -72,34 +73,6 @@ export interface IImportRecord {
   readonly importedName: string;
 }
 
-/** Graph state. Frozen on construction; never mutated. */
-export interface ISymbolGraph {
-  readonly nodes: ReadonlyArray<ISymbolNode>;
-  readonly imports: ReadonlyArray<IImportRecord>;
-  /**
-   * Look up a symbol by `localName` in a single file. Useful
-   * for the scanner's own intra-file pass; cross-file flows
-   * go through `resolveByImportPath`.
-   */
-  resolveByName(sourceFile: string, localName: string): ReadonlyArray<ISymbolNode>;
-  /**
-   * Follow an `import { name } from "specifier"` edge: find
-   * the `IImportRecord` matching `(specifier, name)`, then
-   * return nodes from the **destination file** whose
-   * `localName` matches the record's `importedName`.
-   *
-   * Returns `[]` when the import is unresolved, when the
-   * specifier is not in `imports`, or when the destination
-   * has no matching node. The caller (the framework scanner)
-   * decides what to do with the empty.
-   */
-  resolveByImportPath(
-    sourceFile: string,
-    specifier: string,
-    localName: string,
-  ): ReadonlyArray<ISymbolNode>;
-}
-
 /** Mutation surface — kept off the public `ISymbolGraph`. */
 interface IMutableSymbolGraph extends Omit<ISymbolGraph, "resolveByName" | "resolveByImportPath"> {
   byFile: Map<string, ISymbolNode[]>;
@@ -119,6 +92,17 @@ function newMutable(): IMutableSymbolGraph {
 export function empty(): ISymbolGraph {
   return finalize(newMutable());
 }
+
+/**
+ * Namespace alias so callers can write
+ *   `SymbolGraph.empty()`
+ * instead of importing two names. Mirrors the ergonomic
+ * shape of every other helper in `core/discovery/`.
+ */
+export const SymbolGraph = {
+  empty,
+  builder: () => new SymbolGraphBuilder(),
+};
 
 /** Mutable builder passed to scanners during the parse pass. */
 export class SymbolGraphBuilder {
