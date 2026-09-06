@@ -175,6 +175,64 @@ describe("Express — several mounts on the same line", () => {
       await project.cleanup();
     }
   });
+
+  test("x00055 S2: same-named routers in different files keep their own mounted prefix", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/users.ts": [
+        'import express from "express";',
+        "export const router = express.Router();",
+        'router.get("/list", (req, res) => res.json([]));',
+      ].join("\n"),
+      "src/orders.ts": [
+        'import express from "express";',
+        "export const router = express.Router();",
+        'router.get("/list", (req, res) => res.json([]));',
+      ].join("\n"),
+      "src/server.ts": [
+        'import express from "express";',
+        'import { router as usersRouter } from "./users";',
+        'import { router as ordersRouter } from "./orders";',
+        "const app = express();",
+        'app.use("/api/users", usersRouter);',
+        'app.use("/api/orders", ordersRouter);',
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      expect(routes.map((r) => `${r.method} ${r.uri}`).sort()).toEqual([
+        "GET /api/orders/list",
+        "GET /api/users/list",
+      ]);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("x00055 S2: unresolved mount does not leak its prefix to another file's router", async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { express: "^4.0.0" } }),
+      "src/users.ts": [
+        'import express from "express";',
+        "export const router = express.Router();",
+        'router.get("/list", (req, res) => res.json([]));',
+      ].join("\n"),
+      "src/server.ts": [
+        'import express from "express";',
+        "const app = express();",
+        "const router = makeRouter();",
+        'app.use("/ghost", router);',
+      ].join("\n"),
+    });
+    try {
+      const { routes } = await scanProject("express", project.root);
+      const uris = routes.map((route) => route.uri);
+      expect(uris).toContain("/list");
+      expect(uris).not.toContain("/ghost/list");
+    } finally {
+      await project.cleanup();
+    }
+  });
 });
 
 describe("Express — inline Joi validation provider", () => {

@@ -24,7 +24,7 @@
 import { existsSync } from "node:fs";
 import { emptyResult, withEvidence } from "./detect-result.helper";
 import { readFile } from "node:fs/promises";
-import { join, sep } from "node:path";
+import { dirname, join, resolve as resolvePath, sep } from "node:path";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import type {
@@ -47,7 +47,8 @@ import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
-import { makeSymbolId } from "../../core/discovery/symbol-id.js";
+import { makeSymbolId, symbolIdToString } from "../../core/discovery/symbol-id.js";
+import type { ISymbolTable, ISymbolTableEntry } from "../../contracts/interfaces/core/symbol-table.interface.js";
 import {
   emptySymbolTable,
   freezeSymbolTable,
@@ -223,6 +224,11 @@ interface ParsedModule {
   routes: Array<{ method: string; path: string; line: number; routerName?: string }>;
   routerPrefixes: Map<string, string>; // varName → prefix
   appUsePrefixes: Map<string, string>; // varName → prefix
+  importBindings: Array<{
+    localName: string;
+    importedName: string;
+    source: string;
+  }>;
   /**
    * x00055 S1: every `const X = Router(...)` declaration found in the
    * module, with its byte offset, so the per-file SymbolTable can keep
@@ -270,7 +276,14 @@ function parseModuleSafe(
     // The reason is already recorded in `diagnostics` by the frontend:
     // the scanner keeps working, it just doesn't find routes in
     // that file.
-    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map(), routerDeclarations: [] };
+    return {
+      file,
+      routes: [],
+      routerPrefixes: new Map(),
+      appUsePrefixes: new Map(),
+      importBindings: [],
+      routerDeclarations: [],
+    };
   }
   const ast = parsed.tsFile;
   const routerPrefixes = new Map<string, string>();
@@ -338,6 +351,11 @@ function parseModuleSafe(
   // que `const M = "get"; app[M](...)` se propaga sin re-parsear
   // (a00016 S6.c).
   const ir = buildLanguageIRFromProgram(parsed.program, file);
+  const importBindings = ir.aliases.map((alias) => ({
+    localName: alias.name,
+    importedName: alias.importedName,
+    source: alias.source,
+  }));
   const propagated = propagateConstants(ir.calls, ir.bindings);
   const methodCalls = toTSMethodCalls(propagated, raw);
   for (const call of methodCalls) {
@@ -405,7 +423,14 @@ function parseModuleSafe(
     routes.push({ method, path, line: call.line });
   }
 
-  return { file, routes, routerPrefixes, appUsePrefixes, routerDeclarations };
+  return {
+    file,
+    routes,
+    routerPrefixes,
+    appUsePrefixes,
+    importBindings,
+    routerDeclarations,
+  };
 }
 
 /**
@@ -432,6 +457,72 @@ function routerDeclarationOffsets(raw: string): ReadonlyMap<string, number> {
     out.set(name, offset);
   }
   return out;
+}
+
+function resolveImportedModuleFile(
+  sourceFile: string,
+  specifier: string,
+  knownFiles: ReadonlySet<string>,
+): string | undefined {
+  if (!specifier.startsWith(".")) return undefined;
+  const base = resolvePath(dirname(sourceFile), specifier);
+  const runtimeSourceAlternatives =
+    /\.(?:js|jsx|mjs|cjs)$/.test(base)
+      ? [
+          base.replace(/\.(?:js|jsx|mjs|cjs)$/, ".ts"),
+          base.replace(/\.(?:js|jsx|mjs|cjs)$/, ".tsx"),
+          base.replace(/\.(?:js|jsx|mjs|cjs)$/, ".js"),
+          base.replace(/\.(?:js|jsx|mjs|cjs)$/, ".jsx"),
+        ]
+      : [];
+  const candidates = [
+    base,
+    ...runtimeSourceAlternatives,
+    `${base}.ts`,
+    `${base}.tsx`,
+    `${base}.js`,
+    `${base}.jsx`,
+    join(base, "index.ts"),
+    join(base, "index.tsx"),
+    join(base, "index.js"),
+    join(base, "index.jsx"),
+  ];
+  return candidates.find((candidate) => knownFiles.has(candidate));
+}
+
+function resolveRouterDeclaration(
+  table: ISymbolTable,
+  modulesByFile: ReadonlyMap<string, ParsedModule>,
+  knownFiles: ReadonlySet<string>,
+  sourceFile: string,
+  localName: string,
+): ISymbolTableEntry | undefined {
+  const local = table.byFile.get(sourceFile)?.get(localName);
+  if (local) return local;
+  const module = modulesByFile.get(sourceFile);
+  if (!module) return undefined;
+  const matchingImports = module.importBindings.filter(
+    (binding) => binding.localName === localName,
+  );
+  if (matchingImports.length !== 1) return undefined;
+  const [binding] = matchingImports;
+  if (!binding) return undefined;
+  if (binding.importedName === "default" || binding.importedName === "*") {
+    return undefined;
+  }
+  const targetFile = resolveImportedModuleFile(
+    sourceFile,
+    binding.source,
+    knownFiles,
+  );
+  if (!targetFile) return undefined;
+  return table.byFile.get(targetFile)?.get(binding.importedName);
+}
+
+function routerSymbolKey(entry: ISymbolTableEntry): string {
+  return symbolIdToString(
+    makeSymbolId(entry.file, entry.declarationStart, entry.localName),
+  );
 }
 
 /**
@@ -463,14 +554,28 @@ export class ExpressRouteScanner implements IRouteScanner {
       modules.push(parseModuleSafe(path, text, diagnostics));
     }
 
-    // Map routerName → prefix (includes app.use prefixes).
-    const routerPrefixes = new Map<string, string>();
+    const routerTable = emptySymbolTable();
     for (const m of modules) {
-      for (const [varName, prefix] of m.routerPrefixes) {
-        routerPrefixes.set(varName, prefix);
-      }
+      if (m.routerDeclarations.length === 0) continue;
+      populateFromModule(routerTable, {
+        file: m.file,
+        declarations: m.routerDeclarations,
+      });
+    }
+    const modulesByFile = new Map(modules.map((m) => [m.file, m]));
+    const knownFiles = new Set(modules.map((m) => m.file));
+    const mountedPrefixesBySymbol = new Map<string, string>();
+    for (const m of modules) {
       for (const [varName, prefix] of m.appUsePrefixes) {
-        routerPrefixes.set(varName, prefix);
+        const mountedRouter = resolveRouterDeclaration(
+          routerTable,
+          modulesByFile,
+          knownFiles,
+          m.file,
+          varName,
+        );
+        if (!mountedRouter) continue;
+        mountedPrefixesBySymbol.set(routerSymbolKey(mountedRouter), prefix);
       }
     }
 
@@ -492,15 +597,23 @@ export class ExpressRouteScanner implements IRouteScanner {
     //   keyed by the file holding the `app.use` call)
     const graphBuilder = SymbolGraph.builder();
     for (const m of modules) {
-      // Detect `const X = Router()` declarations even when
-      // they have no `{prefix}` arg: the AST-detected
-      // `routerPrefixes` map only catches the prefix-bearing
-      // shape. We catch both via `ast.assignments`.
-      for (const varName of m.routerPrefixes.keys()) {
+      for (const binding of m.importBindings) {
+        graphBuilder.addImport({
+          sourceFile: m.file,
+          specifier: binding.source,
+          localName: binding.localName,
+          importedName: binding.importedName,
+        });
+      }
+      for (const declaration of m.routerDeclarations) {
         graphBuilder.addSymbol({
-          id: makeSymbolId(m.file, 0, varName),
+          id: makeSymbolId(
+            m.file,
+            declaration.declarationStart,
+            declaration.localName,
+          ),
           kind: "router",
-          payload: { prefix: m.routerPrefixes.get(varName) ?? "" },
+          payload: { prefix: declaration.prefix ?? "" },
         });
       }
       for (const varName of m.appUsePrefixes.keys()) {
@@ -512,32 +625,27 @@ export class ExpressRouteScanner implements IRouteScanner {
       }
     }
 
-    // Walk every route in the modules: for each
-    // `router.get(...)` route, register a symbol for the
-    // receiver (the router declaration) **per file**. This
-    // makes `resolveByName(file, "router")` correct: two
-    // same-named routers in two files become two distinct
-    // nodes.
-    for (const m of modules) {
-      const receiverNames = new Set<string>();
-      for (const r of m.routes) {
-        if (r.routerName) receiverNames.add(r.routerName);
-      }
-      for (const name of receiverNames) {
-        graphBuilder.addSymbol({
-          id: makeSymbolId(m.file, 0, name),
-          kind: "router",
-        });
-      }
-    }
-
     const out: ParsedRoute[] = [];
     for (const m of modules) {
       for (const r of m.routes) {
-        // If the route comes from a known router, apply its prefix.
         let prefix = "";
-        if (r.routerName && routerPrefixes.has(r.routerName)) {
-          prefix = routerPrefixes.get(r.routerName) ?? "";
+        if (r.routerName) {
+          const router = resolveRouterDeclaration(
+            routerTable,
+            modulesByFile,
+            knownFiles,
+            m.file,
+            r.routerName,
+          );
+          if (router) {
+            prefix = router.prefix ?? "";
+            const mountedPrefix = mountedPrefixesBySymbol.get(
+              routerSymbolKey(router),
+            );
+            if (mountedPrefix !== undefined) {
+              prefix = mountedPrefix;
+            }
+          }
         }
         // Normalise double slashes and trailing slash.
         const fullPath = (prefix + r.path)
@@ -566,20 +674,6 @@ export class ExpressRouteScanner implements IRouteScanner {
     // they don't disappear without a trace either: they go up as
     // diagnostics (a00011 C-7 / B-rev-13).
     //
-    // x00055 S1: per-file router SymbolTable. While `symbols` (the
-    // SymbolGraph) indexes cross-file nodes, `routerSymbols` keeps the
-    // intra-file declarations with their offsets — two same-named
-    // routers in two files are two rows. S2's `mountPrefixOf` joins
-    // this table with the graph to resolve
-    // `import { router } from "./users/router"` to the right file.
-    const routerTable = emptySymbolTable();
-    for (const m of modules) {
-      if (m.routerDeclarations.length === 0) continue;
-      populateFromModule(routerTable, {
-        file: m.file,
-        declarations: m.routerDeclarations,
-      });
-    }
     return {
       routes: out,
       symbols: graphBuilder.finalize(),
