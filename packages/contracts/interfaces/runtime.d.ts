@@ -25,7 +25,7 @@ declare module "node:fs/promises" {
   ): Promise<void>;
   export function mkdir(
     path: string,
-    options?: { recursive?: boolean },
+    options?: { recursive?: boolean; mode?: number },
   ): Promise<string | undefined>;
   // The order matters and was inverted. TypeScript keeps the
   // **first** overload that fits, and `{ withFileTypes: true }` matches
@@ -95,6 +95,14 @@ declare module "node:fs/promises" {
 // --- node:os -------------------------------------------------------------
 declare module "node:os" {
   export function tmpdir(): string;
+  /**
+   * Home directory of the current user. x00051 S1: `packages/ui`
+   * (config-dir, history-paths, browse.service) resolves
+   * `~/.tanit/...` from it. It was silently covered by a hoisted
+   * orphan `@types/node` locally; CI, with a clean install, exposed
+   * the gap.
+   */
+  export function homedir(): string;
 }
 
 // --- node:path -----------------------------------------------------------
@@ -113,6 +121,18 @@ declare module "node:path" {
    * variable.
    */
   export const delimiter: string;
+  /**
+   * Split a path into its parts. x00051 S1: `browse.service` (the
+   * file explorer of the desktop UI) uses `dir`/`base`/`name` to
+   * render breadcrumbs and file entries.
+   */
+  export function parse(p: string): {
+    root: string;
+    dir: string;
+    base: string;
+    ext: string;
+    name: string;
+  };
 }
 
 // --- node:fs (sync) ------------------------------------------------------
@@ -157,11 +177,11 @@ declare module "node:fs" {
   export function writeFileSync(
     path: string,
     data: string,
-    encoding: BufferEncoding,
+    encoding?: BufferEncoding,
   ): void;
   export function readFileSync(
     path: string,
-    encoding: BufferEncoding,
+    encoding?: BufferEncoding,
   ): string;
   // Same order as in the async version, and for the same reason.
   export function readdirSync(
@@ -256,6 +276,49 @@ declare module "node:child_process" {
     args: string[],
     options?: SpawnSyncOptions,
   ): SpawnSyncResult;
+  /**
+   * Buffered command execution with a callback. x00051 S1: the repo
+   * gates (`lint-clean-tree`, `lint-proposals`, `lint-root-allowlist`,
+   * `lint-no-skip-env-vars`, `lint-integration-verifier`) use it
+   * wrapped in `promisify` from `node:util` to run `git status`,
+   * `grep`, `git ls-files`. The callback form is declared because
+   * that is what `promisify` consumes; the promisified result shape
+   * is `{ stdout, stderr }` and `promisify` derives it from the
+   * last callback argument — for our uses the resolution value is
+   * read destructured, and the errors carry a numeric `code`
+   * (grep/git exit status) on the rejected value.
+   */
+  export function execFile(
+    file: string,
+    args: ReadonlyArray<string>,
+    options: { cwd?: string; maxBuffer?: number },
+    callback: (
+      error: (Error & { code?: number | string }) | null,
+      stdout: string,
+      stderr: string,
+    ) => void,
+  ): ChildProcess;
+}
+
+// --- node:util -----------------------------------------------------------
+declare module "node:util" {
+  /**
+   * Deliberately narrow: the ONLY function this repo promisifies is
+   * `execFile` (the gates: lint-clean-tree, lint-proposals,
+   * lint-root-allowlist, lint-no-skip-env-vars,
+   * lint-integration-verifier). A general `promisify` would need
+   * overloads for every callback convention — none is used here, and
+   * the declaration is typed with `typeof import(...)` exactly so a
+   * second promisify target forces this file to grow consciously.
+   * x00051 S1.
+   */
+  export function promisify(
+    fn: typeof import("node:child_process").execFile,
+  ): (
+    file: string,
+    args: ReadonlyArray<string>,
+    options?: { cwd?: string; maxBuffer?: number },
+  ) => Promise<{ stdout: string; stderr: string }>;
 }
 
 // --- node:url ------------------------------------------------------------
@@ -446,6 +509,14 @@ declare const Response: {
 interface IFetchResponse {
   readonly ok: boolean;
   readonly status: number;
+  /**
+   * Response headers. x00051 S1: `ui-server.test.ts` asserts
+   * `res.headers.get("content-security-policy")` — the test that a
+   * desktop-embedded UI loads nothing from outside. The real
+   * `Response.headers` is a `Headers` object; the repo needs only the
+   * `get(name)` case.
+   */
+  readonly headers: { get(name: string): string | null };
   text(): Promise<string>;
   json(): Promise<unknown>;
 }
