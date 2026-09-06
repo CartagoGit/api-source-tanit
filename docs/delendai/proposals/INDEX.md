@@ -7,9 +7,8 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `a00016` | `audit` | [`ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md`](ready/audits/a00016-frontend-typescript-multi-estilo-languageir-this-router-get-factory-get-aliases-reexports-constant-prop.md) |
 | `a00017` | `audit` | [`ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md`](ready/audits/a00017-i18n-inversion-ingles-first-en-el-proyecto-i18n-solo-para-la-app-que-lo-usa.md) |
-| `x00040` | `fix` | [`ready/fixes/x00040-ui-hide-experimental-locales-complement-runtime-de-x00037.md`](ready/fixes/x00040-ui-hide-experimental-locales-complement-runtime-de-x00037.md) |
+| `x00040` | `fix` | [`ready/fixes/x00040-x00040-el-selector-de-la-ui-oculta-los-locales-experimentales-cierra-el-comportamiento-que-x00037-s4-prometio.md`](ready/fixes/x00040-x00040-el-selector-de-la-ui-oculta-los-locales-experimentales-cierra-el-comportamiento-que-x00037-s4-prometio.md) |
 
 ## Bloqueadas
 
@@ -40,6 +39,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `a00013` — Multi-service para monorepos — ServiceGraph base + config/baseUrl/auth por workspace + --combine-services explícito — `d4a6d7c, 32d4677, 2f68240, 33df4ef`
 - `a00014` — effectiveProjectRoot centralizado en core + migración de los 21 scanners — `3a1a4f9, 6a539e3, 070836c, f0a3aa5, 0269a94`
 - `a00015` — GraphQL embedded SDL por AST TS (no regex sobre source crudo) — `fcff35c, 71b535c, 1e5c339, 7080255, 3f7e972, ed0f230`
+- `a00016` — Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop) — `3fd6cfd, 2a635bd, c6850e6, 25d755d, 28e8bfc, 7f9ad90`
 
 ### breaking
 
