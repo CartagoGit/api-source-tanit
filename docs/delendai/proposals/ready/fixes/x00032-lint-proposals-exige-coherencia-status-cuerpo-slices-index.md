@@ -9,6 +9,7 @@ date: 2026-09-05
 shippedIn:
   - cff205b  # mass-update de las 88 propuestas done que no cumplían las reglas nuevas
   - 1e77230  # gate extendido: 3 reglas de coherencia frontmatter↔cuerpo↔INDEX
+  - afe4952  # S2: scripts/gates/gen-index.script.ts (INDEX regenerado, byte-check en lint:proposals)
 related:
   - a00012
 ---
