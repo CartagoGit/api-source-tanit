@@ -31,6 +31,7 @@ import { collectionIdFor } from "../helpers/collection-identity.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
 import { detectAuthScheme, toPostmanAuth } from "./auth-scheme.service.js";
 import { buildRequestDescription } from "./request-doc.service.js";
+import { bodyFieldsFromGraph } from "../helpers/schema-flatten.helper.js";
 import { buildTestScript } from "./test-script.service.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 import { postmanMethodFor } from "./postman-method.helper.js";
@@ -81,6 +82,14 @@ function isEndpointAuthNone(auth: IEndpointAuth | undefined): boolean {
   return auth !== undefined && auth.kind === "none";
 }
 
+function descriptionFieldsFor(ep: EndpointSpec): EndpointSpec["fields"] {
+  const bodyFields = bodyFieldsFromGraph(ep);
+  if (!bodyFields) return ep.fields;
+
+  const nonBodyFields = (ep.fields ?? []).filter((field) => field.location !== "body");
+  return [...bodyFields, ...nonBodyFields];
+}
+
 function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest {
   const req: PostmanRequest = {
     method: postmanMethodFor(ep.method),
@@ -101,7 +110,7 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
     // description — the same place they read the field table.
     description: buildRequestDescription(
       ep.description,
-      ep.fields,
+      descriptionFieldsFor(ep),
       // Only forward `medium` / `low`. `high` is the default and
       // would otherwise pad every collection with a redundant block.
       ep.confidence?.level === "high"
