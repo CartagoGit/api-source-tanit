@@ -93,10 +93,44 @@ function listInstalledTypes(): string[] {
  * fue introducido en x00051 S3 y se cierra aquí (x00053 S2, tras la
  * revisión 2026-09-06).
  */
-function toBarePackageName(pkg: string): string {
+export function toBarePackageName(pkg: string): string {
   if (pkg.startsWith("@types/")) return pkg.slice("@types/".length);
   if (pkg.startsWith("@")) return pkg.slice(1);
   return pkg;
+}
+
+// Exported for the spec under `tests/cli/lint-no-orphan-types.spec.ts`
+// (x00053 S3). Pure: takes a list of installed bare names and a list
+// of declared full names (package.json style), returns the orphan
+// set — packages present in `installed` whose bare name is in
+// neither `declared` nor the lockfile transitives.
+//
+// Splitting it out keeps the gate logic testable without depending
+// on the filesystem layout of a real `node_modules/@types/`.
+export function computeOrphans(
+  installed: readonly string[],
+  declared: readonly string[],
+): readonly string[] {
+  const declaredBare = new Set(declared.map(toBarePackageName));
+  return installed.filter((t) => !declaredBare.has(t));
+}
+
+/**
+ * Lee los nombres de dependencies+devDependencies declarados en el
+ * package.json raíz (sin normalizar — son los nombres tal como
+ * aparecen en `package.json`).
+ */
+function readDeclaredKeys(): string[] {
+  const pkgPath = join(REPO_ROOT, "package.json");
+  if (!existsSync(pkgPath)) return [];
+  const raw = JSON.parse(readFileSync(pkgPath, "utf8")) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  return [
+    ...Object.keys(raw.dependencies ?? {}),
+    ...Object.keys(raw.devDependencies ?? {}),
+  ];
 }
 
 /**
@@ -105,16 +139,7 @@ function toBarePackageName(pkg: string): string {
  * comparables 1:1 con `listInstalledTypes()`.
  */
 function declaredInRoot(): Set<string> {
-  const pkgPath = join(REPO_ROOT, "package.json");
-  if (!existsSync(pkgPath)) return new Set();
-  const raw = JSON.parse(readFileSync(pkgPath, "utf8")) as {
-    dependencies?: Record<string, string>;
-    devDependencies?: Record<string, string>;
-  };
-  return new Set([
-    ...Object.keys(raw.dependencies ?? {}),
-    ...Object.keys(raw.devDependencies ?? {}),
-  ].map(toBarePackageName));
+  return new Set(readDeclaredKeys().map(toBarePackageName));
 }
 
 /**
@@ -200,9 +225,7 @@ export async function main(): Promise<number> {
     // El escape NO evita el cálculo: listamos los huérfanos que
     // estaríamos reportando para que el desarrollador vea qué
     // está ignorando. Sin esta lista, el escape es silencio puro.
-    const installedNow = listInstalledTypes();
-    const declaredNow = declaredInRoot();
-    const orphansNow = installedNow.filter((t) => !declaredNow.has(t));
+    const orphansNow = computeOrphans(listInstalledTypes(), readDeclaredKeys());
     if (orphansNow.length === 0) {
       console.log(
         "lint:no-orphan-types -- desactivado por TANIT_ALLOW_ORPHAN_TYPES=1 (sin huérfanos detectados)",
