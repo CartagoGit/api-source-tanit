@@ -114,7 +114,9 @@ describe("HTTP methods supported by Postman", () => {
   // adding a method to the type was useless until the other was also
   // updated. a00012 S3.c added TRACE because the OpenAPI scanner
   // recognizes it (`paths./y.trace`) but the adapter was silently
-  // filtering it out.
+  // filtering it out. x00056 added ALL for Hono's `.all()` — the
+  // exporter expands it into the seven standard verbs for every
+  // format except Postman (which translates it to `ANY`).
   test("the adapter list and the contract list are the same", () => {
     expect([...SUPPORTED_METHODS]).toEqual([
       "GET",
@@ -125,6 +127,7 @@ describe("HTTP methods supported by Postman", () => {
       "HEAD",
       "OPTIONS",
       "TRACE",
+      "ALL",
     ]);
   });
 });
