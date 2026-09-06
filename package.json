@@ -151,6 +151,7 @@
     "@babel/parser": "7.29.8"
   },
   "devDependencies": {
+    "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"
   },
