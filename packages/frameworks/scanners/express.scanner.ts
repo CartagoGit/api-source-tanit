@@ -48,6 +48,11 @@ import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.i
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
 import { makeSymbolId } from "../../core/discovery/symbol-id.js";
+import {
+  emptySymbolTable,
+  freezeSymbolTable,
+  populateFromModule,
+} from "./express.symbol-table.js";
 
 /**
  * Node frameworks this scanner covers because they look like Express.
@@ -218,6 +223,17 @@ interface ParsedModule {
   routes: Array<{ method: string; path: string; line: number; routerName?: string }>;
   routerPrefixes: Map<string, string>; // varName → prefix
   appUsePrefixes: Map<string, string>; // varName → prefix
+  /**
+   * x00055 S1: every `const X = Router(...)` declaration found in the
+   * module, with its byte offset, so the per-file SymbolTable can keep
+   * same-named routers apart. Empty for files without router
+   * declarations (or that could not be parsed).
+   */
+  routerDeclarations: Array<{
+    localName: string;
+    prefix?: string;
+    declarationStart: number;
+  }>;
 }
 
 /**
@@ -254,11 +270,12 @@ function parseModuleSafe(
     // The reason is already recorded in `diagnostics` by the frontend:
     // the scanner keeps working, it just doesn't find routes in
     // that file.
-    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map() };
+    return { file, routes: [], routerPrefixes: new Map(), appUsePrefixes: new Map(), routerDeclarations: [] };
   }
   const ast = parsed.tsFile;
   const routerPrefixes = new Map<string, string>();
   const appUsePrefixes = new Map<string, string>();
+  const routerDeclarations: ParsedModule["routerDeclarations"] = [];
   const routes: Array<{ method: string; path: string; line: number; routerName?: string }> = [];
 
   // (1) Router prefix declarations: `const r = Router({ prefix: '/api/v1' })`.
@@ -274,6 +291,34 @@ function parseModuleSafe(
     const prefix = prefixField.literal.value;
     if (typeof prefix !== "string") continue;
     routerPrefixes.set(assignment.name, prefix);
+  }
+
+  // (1b) x00055 S1: router DECLARATIONS with their byte offset —
+  // `const X = Router()`, `const X = Router({ prefix })` and
+  // `const X = express.Router(...)`. The parser collapses a single-
+  // argument call into its argument (transparent wrapper), so the
+  // authoritative factory check is the textual one from
+  // `routerDeclarationOffsets` — anything without an entry there is
+  // not a `Router(...)` init and is skipped, which keeps constants
+  // like `= { a: 1 }` out of the table.
+  const declOffsets = routerDeclarationOffsets(raw);
+  for (const assignment of ast.assignments) {
+    const offset = declOffsets.get(assignment.name);
+    if (offset === undefined) continue; // not a `Router(...)` init
+    const value = assignment.value;
+    const prefixField =
+      value.kind === "object"
+        ? value.objectShape?.find((p) => p.key === "prefix")
+        : undefined;
+    const prefix =
+      prefixField?.literal.kind === "string"
+        ? (prefixField.literal.value as string)
+        : undefined;
+    routerDeclarations.push({
+      localName: assignment.name,
+      ...(prefix !== undefined ? { prefix } : {}),
+      declarationStart: offset,
+    });
   }
 
   // (2) `app.use('/prefix', router)` and `app.use('/prefix')` —
@@ -360,7 +405,33 @@ function parseModuleSafe(
     routes.push({ method, path, line: call.line });
   }
 
-  return { file, routes, routerPrefixes, appUsePrefixes };
+  return { file, routes, routerPrefixes, appUsePrefixes, routerDeclarations };
+}
+
+/**
+ * x00055 S1: byte offset of each `const X = Router(...)` /
+ * `const X = express.Router(...)` declaration in `raw`.
+ *
+ * The parser's `assignments` deliberately do not expose the callee of
+ * the init call (the transparent-wrapper collapse), so the factory
+ * check runs over the source text: every `Router(` occurrence is
+ * walked back to its `const X =` binding and the declaration offset
+ * recorded. Offsets are the `SymbolId` anchors (`makeSymbolId`
+ * requires non-negative finite numbers), so the table's rows are
+ * join-able with the SymbolGraph nodes S2 will consume.
+ */
+function routerDeclarationOffsets(raw: string): ReadonlyMap<string, number> {
+  const out = new Map<string, number>();
+  const declRe = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:[A-Za-z_$][\w$]*\.)?Router\s*\(/g;
+  let m: RegExpExecArray | null;
+  while ((m = declRe.exec(raw)) !== null) {
+    const name = m[1];
+    if (!name || out.has(name)) continue;
+    const offset = m.index;
+    if (!Number.isFinite(offset) || offset < 0) continue;
+    out.set(name, offset);
+  }
+  return out;
 }
 
 /**
@@ -495,12 +566,24 @@ export class ExpressRouteScanner implements IRouteScanner {
     // they don't disappear without a trace either: they go up as
     // diagnostics (a00011 C-7 / B-rev-13).
     //
-    // r00014 S3: the Express scanner carries an empty SymbolGraph
-    // today. The cross-file router resolution lands in `r00014
-    // S4` (and `x00055 S2`); both consume this field.
+    // x00055 S1: per-file router SymbolTable. While `symbols` (the
+    // SymbolGraph) indexes cross-file nodes, `routerSymbols` keeps the
+    // intra-file declarations with their offsets — two same-named
+    // routers in two files are two rows. S2's `mountPrefixOf` joins
+    // this table with the graph to resolve
+    // `import { router } from "./users/router"` to the right file.
+    const routerTable = emptySymbolTable();
+    for (const m of modules) {
+      if (m.routerDeclarations.length === 0) continue;
+      populateFromModule(routerTable, {
+        file: m.file,
+        declarations: m.routerDeclarations,
+      });
+    }
     return {
       routes: out,
       symbols: graphBuilder.finalize(),
+      routerSymbols: freezeSymbolTable(routerTable),
       ...(diagnostics.length > 0
         ? { diagnostics: diagnostics as ReadonlyArray<IParseDiagnostic> }
         : {}),

@@ -38,12 +38,25 @@ describe("express multi-router (r00014 S4)", () => {
     const result = await new ExpressRouteScanner().scan(match);
     const graph = result.symbols;
     expect(graph).toBeDefined();
-    // Two `router` declarations, two sourceFiles.
+    // The fixture produces 4 router-kind nodes: 2 mount sites
+    // (`server.ts`: `app.use('/api/users', usersRouter)` +
+    // `app.use('/api/orders', ordersRouter)`) and 2 declaration
+    // sites (`users.ts` + `orders.ts`, both `const router =
+    // express.Router()`). The x00055 pin is that the two
+    // DECLARATIONS are distinct nodes in distinct files — the
+    // legacy Map collapsed them into one slot.
     const all = graph?.nodes ?? [];
     const routerNodes = all.filter((n) => n.kind === "router");
-    expect(routerNodes).toHaveLength(2);
-    const files = new Set(routerNodes.map((n) => n.id.sourceFile));
-    expect(files.size).toBe(2);
+    expect(routerNodes).toHaveLength(4);
+    const declarationNodes = routerNodes.filter((n) =>
+      n.id.sourceFile.endsWith("users.ts") ||
+      n.id.sourceFile.endsWith("orders.ts"),
+    );
+    expect(declarationNodes).toHaveLength(2);
+    const declarationFiles = new Set(
+      declarationNodes.map((n) => n.id.sourceFile),
+    );
+    expect(declarationFiles.size).toBe(2);
   });
 
   test("(3) resolveByName returns only the local file's node", async () => {
@@ -51,10 +64,19 @@ describe("express multi-router (r00014 S4)", () => {
     const result = await new ExpressRouteScanner().scan(match);
     const graph = result.symbols;
     expect(graph).toBeDefined();
+    // server.ts holds the 2 mount nodes; users.ts / orders.ts hold
+    // one `router` declaration each. resolveByName is file-scoped:
+    // asking for "router" in server.ts returns [] (its routers are
+    // mounts named usersRouter/ordersRouter), and asking in each
+    // router file returns exactly its own node.
     const files = [...new Set(graph!.nodes.map((n) => n.id.sourceFile))];
-    expect(files).toHaveLength(2);
+    expect(files).toHaveLength(3);
     for (const file of files) {
       const local = graph!.resolveByName(file, "router");
+      if (file.endsWith("server.ts")) {
+        expect(local).toHaveLength(0);
+        continue;
+      }
       expect(local).toHaveLength(1);
       expect(local[0]?.id.sourceFile).toBe(file);
     }

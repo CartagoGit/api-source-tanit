@@ -278,6 +278,24 @@ export interface IScanResult {
    * @see ./symbol-graph.interface.ts
    */
   readonly symbols?: import("./symbol-graph.interface.js").ISymbolGraph;
+  /**
+   * Per-file router declaration table (`x00055` S1).
+   *
+   * While `symbols` indexes router/mount nodes for the **cross-file**
+   * resolver (`r00014`), this table is the scanner's **intra-file**
+   * ground truth: every `const X = Router({ prefix })` declaration,
+   * keyed by the file that declares it. Two same-named routers in two
+   * files are two rows here — the legacy `Map<routerName, prefix>`
+   * merged them and gave one router the other's prefix (the original
+   * `x00055` bug).
+   *
+   * Optional on purpose: only scanners with file-scoped router
+   * declarations fill it in. The Express scanner does; everything else
+   * leaves it `undefined` and behaves identically to before.
+   *
+   * @see ./symbol-table.interface.ts
+   */
+  readonly routerSymbols?: import("./symbol-table.interface.js").ISymbolTable;
 }
 
 /**

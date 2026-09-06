@@ -30,7 +30,19 @@ export interface ISymbolTableEntry {
  * The two-level map is the fix for the `x00055` collision: a
  * `Map<string, prefix>` collapses two same-named routers in two files; a
  * per-file bucket keeps them apart.
+ *
+ * The map values are typed `ReadonlyMap` so consumers can't mutate a
+ * scanner's result; builders start from a `MutableSymbolTable` and
+ * widen on return.
  */
 export interface ISymbolTable {
-  readonly byFile: ReadonlyMap<string, ReadonlyMap<string, ISymbolTableEntry>>;
+  readonly byFile: ReadonlyMap<
+    string,
+    ReadonlyMap<string, ISymbolTableEntry>
+  >;
+}
+
+/** Writable counterpart used while the scanner populates the table. */
+export interface IMutableSymbolTable {
+  byFile: Map<string, Map<string, ISymbolTableEntry>>;
 }

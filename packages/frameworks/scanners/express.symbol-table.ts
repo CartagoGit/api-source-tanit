@@ -36,10 +36,14 @@
  * the scanner is stateless across `scan()` calls (a00010 S2), and the table
  * is one of the artifacts of the result, like `routes` or `symbols`.
  */
-import type { ISymbolTable, ISymbolTableEntry } from "../../contracts/interfaces/core/symbol-table.interface.js";
+import type {
+  IMutableSymbolTable,
+  ISymbolTable,
+  ISymbolTableEntry,
+} from "../../contracts/interfaces/core/symbol-table.interface.js";
 
 /** Empty table — every `scan()` starts here. */
-export function emptySymbolTable(): ISymbolTable {
+export function emptySymbolTable(): IMutableSymbolTable {
   return { byFile: new Map() };
 }
 
@@ -52,7 +56,7 @@ export function emptySymbolTable(): ISymbolTable {
  * is the whole point of the table.
  */
 export function registerRouter(
-  table: ISymbolTable,
+  table: IMutableSymbolTable,
   entry: ISymbolTableEntry,
 ): void {
   const fileBucket = table.byFile.get(entry.file) ?? new Map();
@@ -104,7 +108,7 @@ export function routerNamesInFile(
  * without a second lookup convention.
  */
 export function populateFromModule(
-  table: ISymbolTable,
+  table: IMutableSymbolTable,
   input: {
     readonly file: string;
     readonly declarations: ReadonlyArray<{
@@ -125,10 +129,12 @@ export function populateFromModule(
 }
 
 /** Frozen view for tests / consumers outside the scanner. */
-export function freezeSymbolTable(table: ISymbolTable): ISymbolTable {
-  const frozen: ISymbolTable = { byFile: new Map() };
+export function freezeSymbolTable(
+  table: ISymbolTable,
+): ISymbolTable {
+  const frozen: IMutableSymbolTable = { byFile: new Map() };
   for (const [file, bucket] of table.byFile) {
     frozen.byFile.set(file, new Map(bucket));
   }
-  return Object.freeze(frozen);
+  return Object.freeze(frozen) as ISymbolTable;
 }
