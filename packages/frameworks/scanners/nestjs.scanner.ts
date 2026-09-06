@@ -25,14 +25,9 @@ import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { declaredDependencies, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { join } from "node:path";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
-import type {
-  IProjectMatch,
-  IProjectScanner,
-  IRouteScanner,
-  IScanResult,
-  IValidationSpec,
-  IValidationSpecProvider,
-  ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
+import { parseModule } from "../../core/language-frontends/typescript/index.js";
+import type { TSDecorator } from "../../contracts/interfaces/core/language/typescript-frontend.interface.js";
+import type { IParseDiagnostic, IProjectMatch, IProjectScanner, IRouteScanner, IScanResult, IValidationSpec, IValidationSpecProvider, ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
 const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"];
 
@@ -230,13 +225,24 @@ export class NestJsRouteScanner implements IRouteScanner {
     absPath: string,
     relPath: string,
   ): Promise<ParsedRoute[]> {
-    const out: ParsedRoute[] = [];
     let raw: string;
     try {
       raw = await readFile(absPath, "utf8");
     } catch {
       return [];
     }
+    // Un diagnóstico de parseo no se propaga: el fallback regex de
+    // abajo cubre el fichero roto. La degradación es silenciosa por
+    // diseño (mismo contrato que Express).
+    const diagnostics: Array<IParseDiagnostic> = [];
+    const ast = parseModule(raw, absPath, diagnostics);
+    // x00048 S4: AST real (decorators del frontend TS). Si el parse
+    // falla (sintaxis que Babel no digiere), degradamos al fallback
+    // regex legacy de más abajo — el scan no aborta nunca.
+    if (ast) return routesFromDecorators(ast.decorators, relPath);
+
+    // --- Fallback legacy (sólo texto no parseable) --------------------
+    const out: ParsedRoute[] = [];
     const text = stripJsComments(raw);
     const lines = text.split("\n");
 
@@ -287,6 +293,86 @@ export class NestJsRouteScanner implements IRouteScanner {
     }
     return out;
   }
+}
+
+/**
+ * Convierte los decoradores del frontend TS en `ParsedRoute[]`
+ * (x00048 S4). Cubre:
+ *
+ *   - `@Controller('users')` y `@Controller({ path: 'users' })` en la
+ *     clase → prefijo del controller.
+ *   - `@Get()`, `@Get(':id')`, `@Post('items')`… en los métodos →
+ *     una ruta por decorador, con el prefijo del controller aplicado.
+ *
+ * `target` es el nombre del símbolo decorado: la clase para
+ * `@Controller`, el método para los verbos. `line` viene del
+ * decorador en el fuente (mejor que la heurística de "3 líneas
+ * después" del fallback regex).
+ *
+ * Un archivo SIN `@Controller` no es un controller: devuelve []
+ * (igual que la ruta legacy).
+ */
+function routesFromDecorators(
+  decorators: ReadonlyArray<TSDecorator>,
+  relPath: string,
+): ParsedRoute[] {
+  // 1) Prefijo del controller.
+  let controllerPath = "";
+  let hasController = false;
+  for (const dec of decorators) {
+    if (dec.name !== "Controller") continue;
+    hasController = true;
+    controllerPath = controllerPathFromArgs(dec);
+    break;
+  }
+  if (!hasController) return [];
+
+  // 2) Decoradores de verbo HTTP sobre métodos.
+  const out: ParsedRoute[] = [];
+  for (const dec of decorators) {
+    const method = dec.name.toLowerCase();
+    if (!HTTP_METHODS.includes(method)) continue;
+    const fullPath = joinRoutePath("/", controllerPath, stringArgOf(dec));
+    const methodName = dec.target;
+    out.push({
+      method: method.toUpperCase(),
+      uri: fullPath,
+      rawUri: fullPath,
+      sourceFile: relPath,
+      lineNumber: dec.line,
+      prefixChain: controllerPath ? [controllerPath] : [],
+      displayName: methodName || `${method.toUpperCase()} ${fullPath}`,
+      ...(methodName ? { description: methodName } : {}),
+    });
+  }
+  return out;
+}
+
+/**
+ * Path del `@Controller`: primer argumento string, o el campo `path`
+ * del objeto (`@Controller({ path: 'users', version: '1' })`). La
+ * forma objeto la cubre el frontend como `TSLiteral` con
+ * `objectShape` (literalFromNode desciende a propiedades).
+ */
+function controllerPathFromArgs(dec: TSDecorator): string {
+  const first = dec.args[0];
+  if (!first) return "";
+  if (first.kind === "string" && typeof first.value === "string") return first.value;
+  if (first.kind === "object" && first.objectShape) {
+    for (const prop of first.objectShape) {
+      if (prop.key === "path" && prop.literal.kind === "string" && typeof prop.literal.value === "string") {
+        return prop.literal.value;
+      }
+    }
+  }
+  return "";
+}
+
+/** Primer argumento string del decorador (`@Get(':id')` → `":id"`). */
+function stringArgOf(dec: TSDecorator): string {
+  const first = dec.args[0];
+  if (first?.kind === "string" && typeof first.value === "string") return first.value;
+  return "";
 }
 
 /** `app.setGlobalPrefix("api/v1")` in the application's bootstrap. */
