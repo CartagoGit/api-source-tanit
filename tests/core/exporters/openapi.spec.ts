@@ -487,7 +487,7 @@ describe("r00015 — x-tanit-confidence extension", () => {
     const doc = buildOpenApiDocument(
       baseInput([spec("/users", "GET")]),
     );
-    const op = (doc.paths["/users"] as { get: Record<string, unknown> }).get;
+    const op = ((doc.paths as Record<string, { get?: Record<string, unknown> }>)["/users"]!).get!;
     expect(op["x-tanit-confidence"]).toBeUndefined();
     expect(op["x-tanit-confidence-reasons"]).toBeUndefined();
   });
@@ -503,7 +503,7 @@ describe("r00015 — x-tanit-confidence extension", () => {
         }),
       ]),
     );
-    const op = (doc.paths["/anything"] as { get: Record<string, unknown> }).get;
+    const op = ((doc.paths as Record<string, { get?: Record<string, unknown> }>)["/anything"]!).get!;
     expect(op["x-tanit-confidence"]).toBe("low");
     expect(op["x-tanit-confidence-reasons"]).toEqual([
       "Pages Router multi-verb dispatch",
@@ -521,7 +521,7 @@ describe("r00015 — x-tanit-confidence extension", () => {
         }),
       ]),
     );
-    const op = (doc.paths["/x"] as { post: Record<string, unknown> }).post;
+    const op = ((doc.paths as Record<string, { post?: Record<string, unknown> }>)["/x"]!).post!;
     expect(op["x-tanit-confidence"]).toBe("medium");
     expect(op["x-tanit-confidence-reasons"]).toBeUndefined();
   });

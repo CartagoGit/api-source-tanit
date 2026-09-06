@@ -71,7 +71,7 @@ describe("x00055 S3 — express multi-router E2E", () => {
         "commands",
         "generate.script.ts",
       );
-      const { code, output } = await runProcess("bun", [
+      const { code } = await runProcess("bun", [
         cli,
         "--project-root",
         work,
