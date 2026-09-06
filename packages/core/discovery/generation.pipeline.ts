@@ -450,7 +450,7 @@ async function buildForService(
   return {
     collection,
     specs,
-    routes: discovery.routes,
+    routes: service.endpoints,
     config: localConfig,
     match: discovery.match,
     // x00024: we propagate the descriptor's serviceId so the multi-
@@ -468,14 +468,60 @@ async function buildForService(
     project: discovery.project,
     ...(discovery.provenance ? { provenance: discovery.provenance } : {}),
     metrics: {
-      routes: discovery.routes.length,
+      // Per-service metrics. Before this slice they came from
+      // `discovery.routes` / `discovery.withValidation` /
+      // `discovery.withoutValidation` -- the **global** catalog --
+      // and every collection in a multi-service project reported the
+      // same total count. UI, stats, MCP, integrations and any
+      // downstream tool that read `metrics.routes` saw the union of
+      // every service's endpoints attributed to the wrong service.
+      //
+      // Audit 2026-09-06, section 3.1: the `IServiceDescriptor` is
+      // the only authoritative source of "what belongs to this
+      // service", so every count is recomputed against `specs` (the
+      // per-service filtered list) and `service.endpoints` (the
+      // per-service route list).
+      routes: service.endpoints.length,
       specs: specs.length,
-      withValidation: discovery.withValidation,
-      withoutValidation: discovery.withoutValidation,
+      withValidation: countWithValidation(specs),
+      withoutValidation: specs.length - countWithValidation(specs),
       bodiesInferred: inference.bodiesAdded,
       queriesInferred: inference.queriesAdded,
     },
   };
+}
+
+/**
+ * Counts how many specs have at least one validated field — a body,
+ * a list of fields, query parameters or headers. This is the
+ * per-service counterpart of `withFormRequest` in
+ * `parsed-route-to-spec.adapter.ts`: that one is computed while
+ * adapters attach FormRequest rules, and only knows the global
+ * catalog. By the time `buildForService` runs, the rule attachment
+ * has already happened and the spec carries the result; recomputing
+ * from the spec is both correct and simpler.
+ */
+function countWithValidation(specs: ReadonlyArray<EndpointSpec>): number {
+  let n = 0;
+  for (const spec of specs) {
+    if (spec.body !== undefined) {
+      n += 1;
+      continue;
+    }
+    if (spec.fields !== undefined && spec.fields.length > 0) {
+      n += 1;
+      continue;
+    }
+    if (spec.query !== undefined && spec.query.length > 0) {
+      n += 1;
+      continue;
+    }
+    if (spec.headers !== undefined && spec.headers.length > 0) {
+      n += 1;
+      continue;
+    }
+  }
+  return n;
 }
 
 /**

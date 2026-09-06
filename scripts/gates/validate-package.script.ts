@@ -190,14 +190,47 @@ async function main(): Promise<number> {
     });
 
     // 5. Verificar que el tarball trae la documentación.
-    const pkgFolder = existsSync(join(consumer, "node_modules", "export-to-postman"))
-      ? join(consumer, "node_modules", "export-to-postman")
-      : join(consumer, "node_modules", "@export-to-postman", "cli");
+    //
+    // El nombre del paquete se lee del `package.json` raíz. Antes se
+    // hardcodeaba `export-to-postman` y `@export-to-postman/cli` (los
+    // nombres anteriores al rebranding a `api-source-tanit`): el gate
+    // empezaba a fallar siempre que se renombraba el proyecto y el
+    // mensaje decía `(sin docs/)` aunque el tarball fuese correcto.
+    // Auditoría 2026-09-06, sección 2.
+    const pkgName = (JSON.parse(await Bun.file(PACKAGE_JSON).text()) as {
+      name?: string;
+    }).name;
+    if (!pkgName) {
+      steps.push({
+        name: "documentación incluida en el paquete",
+        ok: false,
+        detail: "package.json sin `name`",
+      });
+      return report(steps);
+    }
+    // `pkgName` puede ser scoped (`@scope/name`) o plano (`name`).
+    // `node_modules` lo aplana a `@scope/name` tal cual.
+    const pkgFolder = join(consumer, "node_modules", pkgName);
     const installedDocs = join(pkgFolder, "docs");
+    // Inspección directa del tarball, además de la carpeta instalada:
+    // es lo que de verdad se publica, y la estructura que Bun deja en
+    // `node_modules` no es garantía (puede traer symlinks, `.bin`,
+    // carpetas generadas). Si el listado del tarball incluye
+    // `package/docs/POSTMAN.md`, el gate lo confirma sin depender de
+    // cómo se materializó la instalación.
+    const docsInTarball = listing.ok
+      ? listing.output
+          .split("\n")
+          .some((line) => line === "package/docs/POSTMAN.md")
+      : false;
     steps.push({
       name: "documentación incluida en el paquete",
-      ok: existsSync(join(installedDocs, "POSTMAN.md")),
-      detail: existsSync(installedDocs) ? (await readdir(installedDocs)).join(", ") : "(sin docs/)",
+      ok: existsSync(join(installedDocs, "POSTMAN.md")) || docsInTarball,
+      detail: existsSync(installedDocs)
+        ? `${(await readdir(installedDocs)).join(", ")}${docsInTarball ? " (también en el tarball)" : ""}`
+        : docsInTarball
+          ? "en el tarball pero no en node_modules"
+          : "(sin docs/)",
     });
 
     return report(steps);
