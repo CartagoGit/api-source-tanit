@@ -17,6 +17,28 @@
 #   4. Descargar el binario de la release que toque
 set -eu
 
+# Cuando nos invocan a través de un symlink (caso típico: `node_modules/.bin/apisrc`),
+# `$0` es la ruta del symlink, no del `bin/apisrc` real. Sin resolver aquí, el cálculo
+# posterior de HERE apuntaría a `node_modules/.bin` y la fuente LOCAL_CLI no existiría;
+# el lanzador caería a bunx/npx/red, que es justo lo que este wrapper debe evitar.
+if [ -L "$0" ]; then
+  _target="$(readlink "$0")"
+  case "$_target" in
+    /*) _resolved="$_target" ;;
+    *) _resolved="$(dirname "$0")/$_target" ;;
+  esac
+  # `readlink` no sigue cadenas en macOS — iterar hasta que deje de ser symlink.
+  while [ -L "$_resolved" ]; do
+    _next="$(readlink "$_resolved")"
+    case "$_next" in
+      /*) _resolved="$_next" ;;
+      *) _resolved="$(dirname "$_resolved")/$_next" ;;
+    esac
+  done
+  set -- "$_resolved" "$@"
+  unset _target _resolved _next
+fi
+
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 # 0. Dentro del propio repositorio: usar la fuente, no la red.
