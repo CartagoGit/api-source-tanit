@@ -34,8 +34,18 @@
  * Excepciones
  * ───────────
  * - `TANIT_ALLOW_ORPHAN_TYPES=1` desactiva el gate (modo dev).
- *   Pensado para sesiones donde el desarrollador sabe que hay un
- *   huérfano temporal y no quiere que le bloquee `validate`.
+ *   Pensado SOLO para dos casos:
+ *
+ *     1. Antes del primer `bun install` (node_modules/@types/ aún
+ *        no existe; el gate no tiene qué comprobar).
+ *     2. Entornos sin red donde `bun install` no puede materializar
+ *        dependencias legítimas (CI en air-gapped runner).
+ *
+ *   NO está pensado para "el gate me bloquea en local y no tengo
+ *   tiempo de arreglarlo". Un huérfano en CI es una señal real de
+ *   problema — o falta una dep en `package.json`, o falta ambient
+ *   en `runtime.d.ts`, o el `node_modules` está stale. El escape
+ *   oculta el síntoma; no arregla la causa.
  *
  * Uso
  * ───
@@ -68,8 +78,31 @@ function listInstalledTypes(): string[] {
 }
 
 /**
+ * Normaliza un nombre de paquete a su bare name (sin scope ni
+ * prefijo `@types/`):
+ *
+ *   `@types/node`  → `node`
+ *   `@types/chai`  → `chai`
+ *   `@scope/pkg`   → `scope/pkg`
+ *   `vitest`       → `vitest`
+ *
+ * Esta normalización es la canónica para los tres lados del gate
+ * (installed, declared, lockTransitives): todos deben compararse en
+ * bare name, si no un `@types/X` declarado en package.json nunca
+ * matchearía con el directorio `node_modules/@types/X/`. El bug
+ * fue introducido en x00051 S3 y se cierra aquí (x00053 S2, tras la
+ * revisión 2026-09-06).
+ */
+function toBarePackageName(pkg: string): string {
+  if (pkg.startsWith("@types/")) return pkg.slice("@types/".length);
+  if (pkg.startsWith("@")) return pkg.slice(1);
+  return pkg;
+}
+
+/**
  * Lee los nombres de dependencies+devDependencies declarados en el
- * package.json raíz.
+ * package.json raíz, normalizados a bare name para que sean
+ * comparables 1:1 con `listInstalledTypes()`.
  */
 function declaredInRoot(): Set<string> {
   const pkgPath = join(REPO_ROOT, "package.json");
@@ -81,7 +114,7 @@ function declaredInRoot(): Set<string> {
   return new Set([
     ...Object.keys(raw.dependencies ?? {}),
     ...Object.keys(raw.devDependencies ?? {}),
-  ]);
+  ].map(toBarePackageName));
 }
 
 /**
@@ -164,7 +197,25 @@ async function transitiveViaBunCli(): Promise<Set<string> | null> {
 
 export async function main(): Promise<number> {
   if (process.env.TANIT_ALLOW_ORPHAN_TYPES === "1") {
-    console.log("lint:no-orphan-types -- desactivado por TANIT_ALLOW_ORPHAN_TYPES=1");
+    // El escape NO evita el cálculo: listamos los huérfanos que
+    // estaríamos reportando para que el desarrollador vea qué
+    // está ignorando. Sin esta lista, el escape es silencio puro.
+    const installedNow = listInstalledTypes();
+    const declaredNow = declaredInRoot();
+    const orphansNow = installedNow.filter((t) => !declaredNow.has(t));
+    if (orphansNow.length === 0) {
+      console.log(
+        "lint:no-orphan-types -- desactivado por TANIT_ALLOW_ORPHAN_TYPES=1 (sin huérfanos detectados)",
+      );
+    } else {
+      console.warn(
+        `lint:no-orphan-types -- desactivado por TANIT_ALLOW_ORPHAN_TYPES=1; ${orphansNow.length} huérfano(s) ignorado(s):`,
+      );
+      for (const t of orphansNow) console.warn(`  - @types/${t}`);
+      console.warn(
+        "Esto enmascara tipos que faltan en package.json o en runtime.d.ts. Arregla la causa antes de mergear.",
+      );
+    }
     return 0;
   }
 
