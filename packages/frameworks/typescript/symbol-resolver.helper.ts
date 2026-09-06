@@ -444,10 +444,27 @@ function buildAliasIndex(
 ): IAliasIndex {
   const importMap: Record<string, string> = {};
   for (const alias of aliases) {
-    // For an `import { Router as R } from "express"`, the local binding
-    // is `R` and the original is `Router`. The canonical resolution
-    // of `R.get` → `Router.get` is what we want.
-    importMap[alias.name] = alias.name;
+    // Default and namespace imports (`import x from "m"` /
+    // `import * as ns from "m"`) carry no canonical symbol name —
+    // `default` is the synthetic export for the whole module and `*`
+    // is the namespace itself, not a named binding. Mapping them
+    // would rewrite `x.get` to `default.get` or `ns.get` to `*.get`,
+    // which is noise. Leave them unresolved: `resolveCallee` then
+    // keeps the original `callee` because the receiver is not in the
+    // map. The same applies to any aliased binding whose
+    // `importedName` happens to be `"default"` or `"*"` (which the
+    // parser does not currently emit, but the guard stays defensive).
+    if (alias.importedName === "default" || alias.importedName === "*") {
+      continue;
+    }
+    // For an `import { Router as R } from "express"`, the local
+    // binding is `R` and the canonical symbol in the source module is
+    // `Router`. Mapping `R → Router` is what makes `R.get` rewrite to
+    // `Router.get`. For `import { Router } from "express"` (no
+    // aliasing), `name === importedName === "Router"`, so the entry
+    // collapses to `Router → Router`, which is a no-op for
+    // `resolveCallee`.
+    importMap[alias.name] = alias.importedName;
   }
   // Reexports don't resolve to a different local name — `export
   // { router } from "./router"` means `router` is available in this
