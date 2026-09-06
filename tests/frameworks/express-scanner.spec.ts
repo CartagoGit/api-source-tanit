@@ -11,7 +11,7 @@ import {
   createTempProject,
   scanProject,
 } from "../helpers/scanner-fixture";
-import { comprehensiveFixtureDir, smokeFixtureDir } from "../../scripts/helpers/root.helper";
+import { comprehensiveFixtureDir, smokeFixtureDir, SMOKE_FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 
 import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 describeScannerContract({
@@ -34,6 +34,7 @@ describeScannerContract({
 
 const ROOT = smokeFixtureDir("express");
 const COMPREHENSIVE = comprehensiveFixtureDir("express");
+const CONST_METHOD_ROOT = `${SMOKE_FIXTURES_DIR}/express-const-method`;
 
 describe("Express scanner", () => {
   test("detect() > 0 when package.json contains 'express'", async () => {
@@ -83,6 +84,25 @@ describe("Express scanner", () => {
     const names = result.fields.map((f) => f.fieldName);
     expect(names).toContain("name");
     expect(names).toContain("email");
+  });
+
+  // a00016 S6: el scanner debe resolver `const M = "get"; app[M](...)` y
+  // producir los mismos 5 routes que `express-mini`. Sin S6 (bindings = [])
+  // el método caería a `"app[M]"` literal y se perderían todas las rutas.
+  test("a00016 S6: const M = 'get'; app[M](...) → 5 routes resolved", async () => {
+    const match = await new ExpressProjectScanner().resolve(CONST_METHOD_ROOT);
+    const routes = (await new ExpressRouteScanner().scan(match)).routes;
+    expect(routes).toHaveLength(5);
+    const pairs = routes.map((r) => `${r.method} ${r.uri}`).sort();
+    expect(pairs).toEqual(
+      [
+        "DELETE /api/users/:id",
+        "GET /api/users",
+        "GET /api/users/:id",
+        "GET /health",
+        "POST /api/users",
+      ].sort(),
+    );
   });
 });
 
