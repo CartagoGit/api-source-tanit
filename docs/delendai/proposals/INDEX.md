@@ -7,6 +7,11 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `c00006` | `chore` | [`ready/chores/c00006-integration-verifier-y-validate-package-con-if-always.md`](ready/chores/c00006-integration-verifier-y-validate-package-con-if-always.md) |
+| `c00007` | `chore` | [`ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md`](ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md) |
+| `d00003` | `docs` | [`ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md`](ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md) |
+| `r00012` | `refactor` | [`ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md`](ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md) |
+| `x00054` | `fix` | [`ready/fixes/x00054-resolvecallee-usa-importedname-con-guardas-para-default-y-namespace.md`](ready/fixes/x00054-resolvecallee-usa-importedname-con-guardas-para-default-y-namespace.md) |
 
 ## Bloqueadas
 
