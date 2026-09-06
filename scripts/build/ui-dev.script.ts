@@ -66,7 +66,7 @@ async function esperarPuertoLibre(port: number): Promise<void> {
   const limite = Date.now() + PUERTO_LIBRE_MS;
   while (Date.now() < limite) {
     if (!(await ocupado(port))) return;
-    await new Promise((r) => setTimeout(r, SONDEO_MS));
+    await new Promise((r) => { setTimeout(() => r(undefined), SONDEO_MS); });
   }
   console.warn(
     `⚠ Port ${port} is still busy after ${PUERTO_LIBRE_MS}ms; starting anyway.`,

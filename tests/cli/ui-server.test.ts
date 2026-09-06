@@ -47,7 +47,7 @@ async function esperarAlServidor(intentos = 60): Promise<void> {
     } catch {
       /* not listening yet */
     }
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => { setTimeout(() => r(undefined), 250); });
   }
   throw new Error(`The interface did not respond at ${BASE} after ${intentos} attempts`);
 }

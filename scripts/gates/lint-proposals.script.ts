@@ -454,8 +454,8 @@ export async function main(): Promise<number> {
       );
       const out: Uint8Array[] = [];
       const err: Uint8Array[] = [];
-      child.stdout.on("data", (c: Uint8Array) => out.push(c));
-      child.stderr.on("data", (c: Uint8Array) => err.push(c));
+      child.stdout?.on("data", (c: Uint8Array) => out.push(c));
+      child.stderr?.on("data", (c: Uint8Array) => err.push(c));
       child.on("close", (code) => {
         const decoder = new TextDecoder();
         resolve({

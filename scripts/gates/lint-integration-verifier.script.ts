@@ -75,7 +75,7 @@
  */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 
@@ -171,7 +171,6 @@ async function checkDuplicateProposalIds(): Promise<string[]> {
   // duplicación. x00049.
   const ids = new Map<string, string[]>(); // id → paths
   const walkSync = (dir: string): void => {
-    const { readdirSync, statSync, readFileSync } = require("node:fs") as typeof import("node:fs");
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
       const st = statSync(full);
@@ -204,7 +203,7 @@ async function checkDuplicateProposalIds(): Promise<string[]> {
 async function checkDanglingScripts(): Promise<string[]> {
   // Lee package.json raíz y comprueba cada script que use `--cwd <dir>`.
   const pkg = JSON.parse(
-    require("node:fs").readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
+    readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
   ) as { scripts: Record<string, string> };
   const offenders: string[] = [];
   for (const [name, cmd] of Object.entries(pkg.scripts ?? {})) {
@@ -229,7 +228,7 @@ async function checkWorkflowOverlap(): Promise<string[]> {
       ["-rl", "branches: \\[main, develop\\]", ".github/workflows"],
       { cwd: REPO_ROOT, maxBuffer: 4 * 1024 * 1024 },
     );
-    const matches = stdout.trim().split("\n").filter((p) => !p.endsWith("validate.yml"));
+    const matches = stdout.trim().split("\n").filter((p: string) => !p.endsWith("validate.yml"));
     for (const m of matches) {
       offenders.push(`${m} ⟵ mismo trigger que validate.yml`);
     }
@@ -247,12 +246,12 @@ async function checkLockfileSync(): Promise<string[]> {
   // comparar manualmente las deps de package.json contra las
   // entradas de bun.lock.
   const pkg = JSON.parse(
-    require("node:fs").readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
+    readFileSync(join(REPO_ROOT, "package.json"), "utf8"),
   ) as {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
   };
-  const lock = require("node:fs").readFileSync(join(REPO_ROOT, "bun.lock"), "utf8");
+  const lock = readFileSync(join(REPO_ROOT, "bun.lock"), "utf8");
 
   const offenders: string[] = [];
   const declared = new Set([

@@ -573,6 +573,58 @@ declare function setTimeout(
   timeout?: number,
 ): { readonly __timer: unique symbol };
 declare function clearTimeout(handle: ReturnType<typeof setTimeout>): void;
+
+/**
+ * `performance.now()` — the global clock (Web + Node ≥ 16 + Bun all
+ * expose it). x00051 S1: `bench-scan.script.ts` times 3 passes per
+ * size and computes medians from it. Was silently satisfied by a
+ * hoisted orphan `@types/node`; the CI-clean install exposed the gap.
+ *
+ * High-resolution monotonic clock — exactly what `Date.now()` is NOT
+ * (Date is adjustable and subject to NTP jumps), so declaring only
+ * `now()` is intentional: bench needs `now()`, nothing else from
+ * `Performance`.
+ */
+declare const performance: {
+  now(): number;
+};
+
+/**
+ * Namespace `NodeJS` — the pieces of it our code reads explicitly.
+ * x00051 S1: two usages in CI-clean typecheck:
+ *
+ *   - `NodeJS.Platform` — `process.platform` ("linux" | "darwin" | …);
+ *     used by validate-package and others to branch.
+ *   - `NodeJS.ErrnoException` — the `Error & { code?: string }` shape
+ *     `history.spec` uses to read `err.code === "ENOENT"` from
+ *     `readFile().catch(...)`.
+ *
+ * Only these two: the repo does NOT reference `NodeJS.Timeout`,
+ * `NodeJS.Process`, etc. Adding more invites code that depends on
+ * ambient types nobody verifies. Keep it narrow.
+ */
+declare namespace NodeJS {
+  type Platform =
+    | "aix"
+    | "android"
+    | "darwin"
+    | "freebsd"
+    | "haiku"
+    | "linux"
+    | "openbsd"
+    | "sunos"
+    | "win32"
+    | "cygwin"
+    | "netbsd";
+
+  interface ErrnoException extends Error {
+    /** System error code (`"ENOENT"`, `"EACCES"`, …). */
+    code?: string | undefined;
+    errno?: number | undefined;
+    syscall?: string | undefined;
+    path?: string | undefined;
+  }
+}
 declare function setInterval(
   handler: () => void,
   timeout?: number,

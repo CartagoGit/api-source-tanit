@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
@@ -44,7 +44,7 @@ describe("gen-index (x00032 S2)", () => {
     body: string,
   ): void {
     const dir = join(tempProposalsDir, relDir);
-    require("node:fs").mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true });
     const fmLines: string[] = ["---"];
     for (const [key, value] of Object.entries(frontmatter)) {
       if (Array.isArray(value)) {

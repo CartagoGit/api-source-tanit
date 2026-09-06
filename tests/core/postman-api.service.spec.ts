@@ -30,6 +30,11 @@ function fakeFetch(routes: Record<string, unknown>, status = 200) {
     return {
       ok: status >= 200 && status < 300,
       status,
+      // x00051 S1: `IFetchResponse` exige `headers` desde que la
+      // ambient cubre el caso real (`ui-server.test` lee
+      // `content-security-policy` y eso motivó la declaración). El
+      // stub devuelve un `Headers`-shape mínimo.
+      headers: { get: () => null },
       text: async () => "detalle del error",
       json: async () => (key ? routes[key] : {}),
     };
@@ -49,7 +54,13 @@ describe("verifyApiKey", () => {
     const calls: string[] = [];
     const impl = (async (_url: string, init?: { headers?: Record<string, string> }) => {
       calls.push(init?.headers?.["X-Api-Key"] ?? "");
-      return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        text: async () => "",
+        json: async () => ({}),
+      };
     });
     await verifyApiKey(options(impl));
     expect(calls[0]).toBe("pmak-test");
