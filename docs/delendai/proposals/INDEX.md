@@ -11,7 +11,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `c00007` | `chore` | [`ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md`](ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md) |
 | `d00003` | `docs` | [`ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md`](ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md) |
 | `r00012` | `refactor` | [`ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md`](ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md) |
-| `x00054` | `fix` | [`ready/fixes/x00054-resolvecallee-usa-importedname-con-guardas-para-default-y-namespace.md`](ready/fixes/x00054-resolvecallee-usa-importedname-con-guardas-para-default-y-namespace.md) |
 
 ## Bloqueadas
 
@@ -141,6 +140,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00040` — x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió) — `3b7f1c1`
 - `x00050` — x00050: CI roja — Bun 1.3.14 no sabe leer el bun.lock v2; el pin de CI debe seguir al lockfile — `9043822`
 - `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
+- `x00054` — resolveCallee usa importedName con guardas para default y namespace — `—`
 
 ### infra
 
