@@ -46,6 +46,28 @@ related:
 > - `IImportBinding` no guarda `importedName`: `import { Router as R }` resuelve
 >   `R→R`, no `R→Router`; el comentario de canonicalización no es realizable con
 >   el modelo de datos actual.
+>
+> **Cierre 2026-09-06 (x00048).** Los 4 sub-slices que quedaban
+> pendientes (S6.a, S6.c, S6.d, S6.e) fueron extraídos y ejecutados
+> en la propuesta `x00048` (archivada en `done/feats/`), sin reabrir
+> esta auditoría (los archivados están congelados; la salida era
+> extraer, no reabrir):
+>
+> - S6.a → x00048 S1 (`9429895`): `IImportBinding.importedName`;
+>   `import { Router as R }` ahora resuelve `R→Router`.
+> - S6.c → x00048 S2 (`9429895`): tests E2E del binding real de
+>   constantes (`const M="get"; app[M]` → `GET`; el wiring ya estaba
+>   desde a00016 S6 parcial).
+> - S6.d → x00048 S3 (`4a3b4d7`): `buildLanguageIR` + single-parse
+>   real en Express (3 parses/archivo → 1; spy lo verifica).
+> - S6.e → x00048 S4 (`180050a`): NestJS consume el AST del frontend
+>   TS (decorators) en vez de regex línea-a-línea, con 5 tests
+>   multi-estilo.
+>
+> El bullet `callee.split(".")` (S6.b) ya lo había cerrado x00038
+> (`de45d02`). La matriz E2E de 8/8 estilos está cubierta por
+> `express-multi-style.spec.ts` + `nestjs-multi-style.spec.ts` +
+> `build-language-ir.spec.ts`.
 
 ## Goal
 

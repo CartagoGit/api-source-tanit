@@ -52,33 +52,51 @@ import { parse as babelParse, type ParserPlugin } from "@babel/parser";
 
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
-  IConstantBinding,
   IImportBinding,
+  ILanguageIR,
   IReexport,
-  IRouteCallExpression,
 } from "../../contracts/interfaces/core/language-ir.interface.js";
 import { collectMethodCallsFromProgram } from "./collect-method-calls.helper.js";
 import { collectConstantsFromProgram } from "./collect-constants.helper.js";
 import { collectAliasesFromBody, collectReexportsFromBody } from "./symbol-resolver.helper.js";
 
-/** Resultado del parse único: las cuatro primitivas del LanguageIR. */
-export interface ILanguageIR {
-  /** Multi-style route calls (`app.get`, `this.router.get`, `app[M]`…). */
-  readonly calls: ReadonlyArray<IRouteCallExpression>;
-  /** `const X = <literal>` bindings for constant propagation. */
-  readonly bindings: ReadonlyArray<IConstantBinding>;
-  /** Import aliases with `importedName` (x00048 S1). */
-  readonly aliases: ReadonlyArray<IImportBinding>;
-  /** `export { x } from "./y"` reexports. */
-  readonly reexports: ReadonlyArray<IReexport>;
-}
+// `ILanguageIR` vive en contracts (r00007); se re-exporta aquí para
+// comodidad de los scanners, pero la fuente de verdad es el contrato.
+export type { ILanguageIR };
 
 function isJsxFile(filename: string): boolean {
-  return /\.[jt]sx$/.test(filename);
+  return /\.(tsx|jsx)$/.test(filename);
 }
 
+/**
+ * Nodo Babel mínimamente tipado. Estructuralmente compatible con el
+ * `BabelNode` interno de los collectors (`type: string` + índice
+ * permissivo): se puede pasar a `collectAliasesFromBody` /
+ * `collectReexportsFromBody` sin ningún cast.
+ *
+ * Es el mismo patrón documentado de `symbol-resolver.helper.ts` y
+ * `collect-method-calls.helper.ts`: no arrastramos `@babel/types`
+ * (~2500 tipos de dependencia); los walkers leen sólo los campos que
+ * inspeccionan y el índice permissivo deja el resto en `unknown`.
+ */
 interface BabelNodeLite {
+  readonly type: string;
   readonly [key: string]: unknown;
+}
+
+/**
+ * Cast permisivo de nodo Babel — el mismo patrón documentado de
+ * `symbol-resolver.helper.ts` y `collect-method-calls.helper.ts`:
+ * no arrastramos `@babel/types` (~2500 tipos de dependencia); los
+ * walkers leen sólo los campos que inspeccionan y el índice
+ * permissivo deja el resto en `unknown`.
+ */
+function asNode(value: unknown): BabelNodeLite {
+  return value as BabelNodeLite;
+}
+
+function asNodeArray(value: unknown): ReadonlyArray<BabelNodeLite> {
+  return Array.isArray(value) ? (value as ReadonlyArray<BabelNodeLite>) : [];
 }
 
 /**
@@ -133,8 +151,8 @@ export function buildLanguageIRFromProgram(
   program: unknown,
   filename: string,
 ): ILanguageIR {
-  const prog = program as BabelNodeLite;
-  const body = Array.isArray(prog["body"]) ? (prog["body"] as never[]) : [];
+  const prog = asNode(program);
+  const body = asNodeArray(prog["body"]);
 
   return {
     calls: collectMethodCallsFromProgram(prog, filename),
@@ -151,7 +169,7 @@ export function buildLanguageIRFromProgram(
  * siguen ejercitándolo directamente).
  */
 function runAliasesCollector(
-  body: ReadonlyArray<never>,
+  body: ReadonlyArray<BabelNodeLite>,
   filename: string,
 ): IImportBinding[] {
   const out: IImportBinding[] = [];
@@ -161,7 +179,7 @@ function runAliasesCollector(
 
 /** Análogo a `runAliasesCollector` para reexports. */
 function runReexportsCollector(
-  body: ReadonlyArray<never>,
+  body: ReadonlyArray<BabelNodeLite>,
   filename: string,
 ): IReexport[] {
   const out: IReexport[] = [];

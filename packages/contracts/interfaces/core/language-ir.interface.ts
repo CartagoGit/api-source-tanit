@@ -252,3 +252,25 @@ export interface IConstantBinding {
     readonly end: number;
   };
 }
+
+/**
+ * The four LanguageIR primitives for ONE file, produced by a single
+ * Babel parse (x00048 S3 / a00016 S6.d).
+ *
+ * `buildLanguageIR` / `buildLanguageIRFromProgram` (in
+ * `packages/frameworks/typescript/build-language-ir.helper.ts`) fill
+ * this shape; TS-flavored scanners consume it instead of re-parsing
+ * the file through three independent collectors. The type lives here
+ * (contracts) — not next to the helper — per r00007: typing against
+ * the IR must not drag the collector implementation in.
+ */
+export interface ILanguageIR {
+  /** Multi-style route calls (`app.get`, `this.router.get`, `app[M]`…). */
+  readonly calls: ReadonlyArray<IRouteCallExpression>;
+  /** `const X = <literal>` bindings for constant propagation. */
+  readonly bindings: ReadonlyArray<IConstantBinding>;
+  /** Import aliases with `importedName` (x00048 S1). */
+  readonly aliases: ReadonlyArray<IImportBinding>;
+  /** `export { x } from "./y"` reexports. */
+  readonly reexports: ReadonlyArray<IReexport>;
+}
