@@ -113,10 +113,10 @@ describe("Next.js scanner", () => {
       const match = await new NextJsProjectScanner().resolve(dir);
       const routes = (await new NextJsRouteScanner().scan(match)).routes;
       const pairs = routes.map((r) => `${r.method} ${r.uri}`);
-      expect(pairs).toContain("GET /api/users");
+      expect(pairs).toContain("ALL /api/users");
       expect(pairs).not.toContain("POST /api/users");
       expect(pairs).not.toContain("DELETE /api/users");
-      expect(pairs).toContain("GET /api/users/:id");
+      expect(pairs).toContain("ALL /api/users/:id");
       expect(pairs).not.toContain("DELETE /api/users/:id");
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -183,7 +183,7 @@ describe("Next.js — detect() branches for src/ and 0.5 score", () => {
     }
   });
 
-  test("Pages Router: switch/case on req.method generates multiple routes", async () => {
+  test("Pages Router: switch/case on req.method emits one ALL route with low confidence", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
@@ -201,33 +201,64 @@ describe("Next.js — detect() branches for src/ and 0.5 score", () => {
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
       const routes = (await new NextJsRouteScanner().scan(match)).routes;
-      const methods = routes.map((r) => r.method).sort();
-      expect(methods).toContain("GET");
-      expect(methods).toContain("POST");
-      expect(methods).toContain("DELETE");
+      expect(routes).toHaveLength(1);
+      expect(routes[0]?.method).toBe("ALL");
+      expect(routes[0]?.confidence).toEqual({
+        level: "low",
+        reasons: [
+          "Pages Router handler method dispatch not statically resolved",
+          "3 verbs detected in one Pages Router handler",
+        ],
+      });
     } finally {
       await project.cleanup();
     }
   });
 
-  test("Pages Router: req.method === comparison generates the route for that method", async () => {
+  test("Pages Router: one explicit req.method comparison keeps that concrete method", async () => {
     const { createTempProject } = await import("../helpers/scanner-fixture");
     const project = await createTempProject({
       "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
       "pages/api/items.ts": [
         "export default function handler(req, res) {",
         "  if (req.method === 'POST') return res.json({});",
-        "  if (req.method !== 'GET') return res.status(405).end();",
-        "  res.json([]);",
+        "  return res.status(405).end();",
         "}",
       ].join("\n"),
     });
     try {
       const match = await new NextJsProjectScanner().resolve(project.root);
       const routes = (await new NextJsRouteScanner().scan(match)).routes;
-      const methods = routes.map((r) => r.method).sort();
-      expect(methods).toContain("POST");
-      expect(methods).toContain("GET");
+      expect(routes).toHaveLength(1);
+      expect(routes[0]?.method).toBe("POST");
+      expect(routes[0]?.confidence).toBeUndefined();
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test("Pages Router: no explicit req.method guard emits ALL with low confidence", async () => {
+    const { createTempProject } = await import("../helpers/scanner-fixture");
+    const project = await createTempProject({
+      "package.json": JSON.stringify({ dependencies: { next: "^13.0.0" } }),
+      "pages/api/fallback.ts": [
+        "export default function handler(req, res) {",
+        "  return res.json({ ok: true });",
+        "}",
+      ].join("\n"),
+    });
+    try {
+      const match = await new NextJsProjectScanner().resolve(project.root);
+      const routes = (await new NextJsRouteScanner().scan(match)).routes;
+      expect(routes).toHaveLength(1);
+      expect(routes[0]?.method).toBe("ALL");
+      expect(routes[0]?.confidence).toEqual({
+        level: "low",
+        reasons: [
+          "Pages Router handler method dispatch not statically resolved",
+          "No explicit req.method guard found; emitted ALL instead of guessing GET",
+        ],
+      });
     } finally {
       await project.cleanup();
     }

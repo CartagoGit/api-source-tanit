@@ -382,17 +382,18 @@ async function parsePageRouteFile(
   )) {
     methods.add((methodMatch[1] ?? "").toUpperCase());
   }
-  if (methods.size === 0) methods.add("GET");
+  const detectedMethods = [...methods];
+  const unresolvedMethodDispatch = detectedMethods.length === 0 || detectedMethods.length > 1;
   // Audit 2026-09-06 §17, proposal r00015: when the scanner emits
   // MORE than one verb for the same URI from a Pages Router
-  // handler, it is because the same handler dispatches by
-  // `req.method` — there is no static signal for which verb the
-  // caller actually uses. Mark every emitted route `confidence:
-  // "low"` with a human-readable reason so the user sees it in
-  // Postman / OpenAPI. The single-verb path stays `high` (the
-  // default) because `req.method === "GET"` is a real signal.
-  const multiVerb = methods.size > 1;
-  for (const method of methods) {
+  // handler — or none at all and we would otherwise fall back to a
+  // guessed GET — there is no static signal for which verb the
+  // caller actually uses. Emit a single `ALL` sentinel with a low
+  // confidence reason instead of inventing several concrete routes
+  // (or a fake GET fallback). The single-verb path stays `high`
+  // (the default) because `req.method === "GET"` is a real signal.
+  const emittedMethods = unresolvedMethodDispatch ? ["ALL"] : detectedMethods;
+  for (const method of emittedMethods) {
     out.push({
       method,
       uri: routePath,
@@ -401,13 +402,15 @@ async function parsePageRouteFile(
       lineNumber: 0,
       prefixChain: [],
       displayName: `${method} ${routePath}`,
-      ...(multiVerb
+      ...(unresolvedMethodDispatch
         ? {
             confidence: {
               level: "low" as const,
               reasons: [
                 "Pages Router handler method dispatch not statically resolved",
-                `${methods.size} verbs emitted from one \`switch (req.method)\` block`,
+                detectedMethods.length === 0
+                  ? "No explicit req.method guard found; emitted ALL instead of guessing GET"
+                  : `${detectedMethods.length} verbs detected in one Pages Router handler`,
               ],
             },
           }
