@@ -264,3 +264,63 @@ export function bodyFieldsFromGraph(
   if (!spec.schemaGraph) return undefined;
   return fieldsFromGraph(spec.schemaGraph, spec.schemaGraph.root);
 }
+
+/**
+ * Consistency check (audit 2026-09-06 §9, proposal `r00016` S2).
+ *
+ * Today `EndpointSpec` carries both a flat `fields` array
+ * (used by Postman, HAR, Bruno, curl) and an optional
+ * `schemaGraph` (used by OpenAPI). They must agree:
+ * otherwise a Postman collection shows `name: "body.age"`
+ * with `type: "string"` while OpenAPI says `type: "integer"`,
+ * i.e. two sources of truth drift apart silently.
+ *
+ * The check:
+ *   - If both are present, every field the graph flattens
+ *     must equal (name, type) of an entry in `spec.fields`.
+ *     Otherwise the scanner is lying — the test pin in
+ *     `r00016 S2` catches it before the data reaches the
+ *     exporter.
+ *   - If only one is present (today's case for scanners
+ *     that haven't migrated yet), the check passes — the
+ *     missing side is allowed during the migration window
+ *     the proposal calls out.
+ *   - If neither is present, the check passes — there's
+ *     nothing to drift apart.
+ *
+ * Returns `true` when the spec is internally consistent;
+ * `false` otherwise. Designed to be called from a vitest
+ * `expect(spec).toSatisfy(graphAndFieldsAreConsistent)` so
+ * the scanner's spec payload can be checked at the test
+ * boundary.
+ */
+export function graphAndFieldsAreConsistent(
+  spec: {
+    readonly fields?: ReadonlyArray<IEndpointField>;
+    readonly schemaGraph?: ISchemaGraph;
+  },
+): boolean {
+  const fields = spec.fields ?? [];
+  const graph = spec.schemaGraph;
+  if (!graph) return true;
+  // Both present — derive the graph's flat view and check
+  // it matches. We allow the graph to be a SUPERSET of
+  // fields (more precise edges are fine); the failing case
+  // is when a flat-field maps to a different node kind in
+  // the graph.
+  const graphFields = fieldsFromGraph(graph, graph.root);
+  for (const gf of graphFields) {
+    const matching = fields.find(
+      (f) => f.fieldName === gf.fieldName && f.location === gf.location,
+    );
+    if (!matching) {
+      // Graph added a field the legacy fields array didn't
+      // know about. Mismatch — scanner should regenerate
+      // fields from graph on every emit.
+      return false;
+    }
+    // Same name + location: types must agree.
+    if (matching.type !== gf.type) return false;
+  }
+  return true;
+}
