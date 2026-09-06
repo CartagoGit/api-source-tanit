@@ -7,6 +7,9 @@ import type {
   EndpointSpec,
 } from "../../packages/contracts/interfaces/core/postman.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
+import { createObjectNode } from "../../packages/core/schema/build-schema-graph.helper";
+import { createScalarNode } from "../../packages/core/schema/scalar.helper";
+import { createSchemaGraph } from "../../packages/core/schema/serialize.helper";
 
 const baseConfig: ProjectConfig = {
   name: "t",
@@ -125,6 +128,53 @@ describe("collection-builder.service", () => {
       };
       const col = buildCollection([], config);
       expect(col.variable).toHaveLength(2);
+    });
+
+    test("derives body field documentation from schemaGraph when present", () => {
+      const graph = createSchemaGraph(
+        new Map([
+          [
+            "root",
+            createObjectNode("root", [
+              { name: "email", node: "email", required: true },
+            ]),
+          ],
+          [
+            "email",
+            createScalarNode("string", "email", {
+              constraints: { format: "email" },
+            }),
+          ],
+        ]),
+        "root",
+      );
+      const col = buildCollection(
+        [
+          spec({
+            method: "POST",
+            uri: "/users",
+            fields: [
+              {
+                fieldName: "page",
+                location: "query",
+                type: "integer",
+                required: false,
+              },
+            ],
+            schemaGraph: graph,
+          }),
+        ],
+        baseConfig,
+      );
+
+      const leaf = findFirstLeaf(col.item);
+      expect(leaf, "collection has at least one request").toBeDefined();
+      const description = leaf!.request.description;
+      expect(description).toContain("#### Body");
+      expect(description).toContain("`email`");
+      expect(description).toContain("formato `email`");
+      expect(description).toContain("#### Query");
+      expect(description).toContain("`page`");
     });
   });
 

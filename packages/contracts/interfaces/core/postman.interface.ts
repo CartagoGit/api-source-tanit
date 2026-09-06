@@ -269,6 +269,10 @@ export interface EndpointSpec {
    * It stays as the flat source of truth while the 21 scanners have
    * not been migrated to the graph (a00010 S6 introduces the graph
    * and leaves this list as a fallback); see `schemaGraph`.
+  *
+  * @deprecated Legacy flat view. Prefer `schemaGraph` as the source
+  * of truth and derive body fields with `bodyFieldsFromGraph()` when
+  * an exporter still needs the flat representation.
    */
   fields?: ReadonlyArray<IEndpointField>;
   /**
