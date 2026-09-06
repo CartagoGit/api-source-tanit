@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00047` | `chore` | [`ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md`](ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md) |
 | `x00048` | `feat` | [`ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md`](ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md) |
 | `x00049` | `feat` | [`ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md`](ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md) |
 
@@ -56,6 +55,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
+- `x00047` — x00047: allowlist de ficheros en la raíz del repo — anti-residuos (los agentes no pueden dejar basura) — `d554d1f`
 
 ### docs
 
