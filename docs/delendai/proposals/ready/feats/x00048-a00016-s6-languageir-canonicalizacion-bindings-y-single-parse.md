@@ -72,6 +72,8 @@ slices:
       - `bun run test:frameworks` verde.
     notes: |
       Era `a00016` S6.a. Size: S (2–3 h).
+      **Status: done (9429895).** Contrato + collector + 2 tests
+      (R→Router, default/namespace/named).
   - sliceId: S2
     title: "feat(language-ir): collect-constants.helper.ts + wiring real en express.scanner"
     files:
@@ -93,6 +95,10 @@ slices:
       - `bun run test:frameworks` verde.
     notes: |
       Era `a00016` S6.c. Size: M (4–6 h).
+      **Status: done (9429895).** El wiring ya existía
+      (collectConstantsFromSource en express.scanner); el slice
+      cerró los 2 tests E2E que fijan `const M="get"` /
+      `const M="post"` en express-multi-style.spec.ts.
   - sliceId: S3
     title: "feat(language-ir): build-language-ir.helper.ts single-parse (parsear una vez por archivo, no por scanner)"
     files:
@@ -116,6 +122,13 @@ slices:
     notes: |
       Era `a00016` S6.d. Size: M (4–6 h). Reduce el coste de
       scan cuando un proyecto activa varios frameworks TS.
+      **Status: done (4a3b4d7).** parseModuleWithProgram en el
+      frontend + buildLanguageIRFromProgram; Express migrado a
+      1 parse/archivo (antes 3). Test con spy sobre @babel/parser
+      verifica 1 llamada en el scan E2E. Hono/Fastify/Next/tRPC
+      no tocan Babel (regex helpers propios) — no hay parses
+      redundantes que consolidar ahí; el scope real de S3 es
+      Express, y está cerrado.
   - sliceId: S4
     title: "feat(scanner): NestJS consume LanguageIR (cierra la matriz E2E)"
     files:
@@ -131,6 +144,13 @@ slices:
       - `bun run validate:examples` verde.
     notes: |
       Era `a00016` S6.e. Size: M (3–4 h).
+      **Status: done (180050a).** nestjs.scanner consume
+      parseModule() + routesFromDecorators(ast.decorators) con
+      fallback regex si el parse falla. 5 tests multi-estilo
+      nuevos (verbo multi-línea, @Controller objeto multi-línea,
+      orden top-down, decorador comentado, fichero roto no rompe
+      el scan). validate:examples 21/21 (example-nestjs 7
+      endpoints intactos).
 ---
 
 # x00048 — a00016 S6 LanguageIR completo

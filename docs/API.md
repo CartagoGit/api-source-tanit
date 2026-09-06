@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 172 símbolos en 61 módulos.
+> 174 símbolos en 61 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2122,6 +2122,28 @@ Audit 2026-09-04 P2 #7: the `jsx` plugin is activated when
 syntax (`<Foo />`) with a syntax error and the scanner lost
 Next.js / React components.
 
+#### `parseWithProgram`
+
+```ts
+export function parseWithProgram( source: string, filename: string, ):
+```
+
+Variante de `parse` que devuelve ADEMÁS el `Program` crudo de
+Babel (x00048 S3 / a00016 S6.d).
+
+El caso de uso: un scanner que necesita tanto el `TSFile` del
+frontend (assignments, decorators, classes…) como las primitivas
+del LanguageIR (`IRouteCallExpression[]`, `IConstantBinding[]`,
+`IImportBinding[]`, `IReexport[]`). Sin este helper, eso son 2+
+parses Babel del mismo fichero; con él, el scanner pasa
+`program` a `buildLanguageIRFromProgram` y el coste es 1 parse.
+
+`program` se tipa como `unknown` a propósito: el frontend no
+expone los tipos de `@babel/types` en su superficie pública
+(serían ~2500 tipos de dependencia), y los consumidores del IR
+ya castean de forma permissiva a su propio `BabelNode`, igual
+que hace este módulo internamente.
+
 #### `parseModule`
 
 ```ts
@@ -2135,6 +2157,18 @@ in) instead of swallowing the error silently.
 The scanner keeps working — a file with invalid syntax does not
 abort the scan — but the failure stays visible to whoever wants to
 report it (today: `IScanResult.diagnostics`).
+
+#### `parseModuleWithProgram`
+
+```ts
+export function parseModuleWithProgram( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ):
+```
+
+Variante safe de `parseWithProgram` (x00048 S3): devuelve `null` y
+registra el diagnóstico si Babel rechaza el archivo, en vez de
+lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
+Express: un solo parse por archivo alimenta el `TSFile` del
+frontend Y las primitivas del LanguageIR.
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 
