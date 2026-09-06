@@ -11,37 +11,33 @@
  *   bun run test:frameworks      → solo los scanners
  *   bun run test:changed         → solo lo que toca tu diff
  *
- * El plugin queda fuera de esta lista a propósito: es un proyecto
- * independiente con su propio `vitest.config.ts`, y entra por el glob
- * `packages/plugins/delendai_tanit` como haría cualquier otro paquete del workspace.
+ * El plugin (integración opcional con Delendai) NO entra aquí: vive
+ * en `integrations/delendai/` con su propio `vitest.config.ts`. Sus
+ * tests se corren en `.github/workflows/integration-delendai.yml`
+ * (opt-in + semanal). x00041.
  */
 import { defineConfig } from "vitest/config";
 
 import { SECTIONS } from "./scripts/gates/sections.constant.js";
 
-const PLUGIN_SECTION = "plugin";
-
 export default defineConfig({
   test: {
-    projects: [
-      ...SECTIONS.filter((section) => section.name !== PLUGIN_SECTION).map(
-        (section) => ({
-          test: {
-            name: section.name,
-            include: [...section.tests],
-            exclude: ["**/node_modules/**", "**/dist/**", "**/build/**"],
-            environment: "node" as const,
-            globals: false,
-            // Los e2e generan colecciones enteras desde fixtures en
-            // disco; 30 s cubre el peor caso medido (~4 s) con margen
-            // para una máquina cargada.
-            testTimeout: 30_000,
-            hookTimeout: 30_000,
-          },
-        }),
-      ),
-      "packages/plugins/delendai_tanit",
-    ],
+    projects: SECTIONS.map(
+      (section) => ({
+        test: {
+          name: section.name,
+          include: [...section.tests],
+          exclude: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+          environment: "node" as const,
+          globals: false,
+          // Los e2e generan colecciones enteras desde fixtures en
+          // disco; 30 s cubre el peor caso medido (~4 s) con margen
+          // para una máquina cargada.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      }),
+    ),
 
     /**
      * Cobertura por líneas y ramas, con umbral.
@@ -72,7 +68,6 @@ export default defineConfig({
         "**/*.d.ts",
         "tests/**",
         "scripts/**",
-        "packages/plugins/**/tests/**",
       ],
       // Medido el 2026-08-08 sobre 2.000 tests:
       //   statements 73,88 · branches 62,38 · functions 82,89 · lines 75,65
