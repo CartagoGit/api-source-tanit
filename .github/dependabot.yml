@@ -1,53 +1,21 @@
-# Dependabot tiene dos mitades y esta configuración solo gobierna una.
+# Dependabot. Mantiene al día las dependencias de los paquetes que
+# **sí se instalan** en el flujo de desarrollo y CI.
 #
-#   · **Actualizaciones** (los PR "bump X from A to B") — se piden aquí,
-#     directorio a directorio. Lo que no se nombre, no se actualiza.
-#   · **Alertas de seguridad** — salen del *grafo de dependencias*, que
-#     GitHub construye escaneando **todos** los manifiestos del repo.
-#     Esta configuración **no** las filtra. No hay forma de filtrarlas:
-#     el grafo no admite exclusiones por ruta.
+# Solo entran aquí los directorios que contienen dependencias de
+# verdad:
 #
-# La distinción no es teórica, se pagó: al declarar aquí solo los dos
-# paquetes reales, las 67 alertas abiertas siguieron exactamente igual
-# de abiertas. Las actualizaciones dejaron de llegar; las alertas no.
+#   /                                      el paquete del producto
+#   /integrations/delendai              la integración opcional con Delendai
+#                                       (NO se publica; ver x00041)
 #
-# Y eso importa porque el repo contiene **50 manifiestos que no son
-# suyos**: cada proyecto de `examples/` y cada fixture de `tests/` trae
-# su `package.json`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml` o
-# `Cargo.toml`, porque es de ahí de donde los scanners deducen el
-# framework. Son proyectos de mentira, recortados a lo justo para
-# ejercitar un scanner, y **nadie los instala nunca**. Las 67 alertas
-# salían de ellos: las trece rutas señaladas estaban todas bajo
-# `examples/` o `tests/`, y ni una sola bajo un paquete real. Mientras
-# tanto `bun audit`, que mira lo que sí se instala, seguía en cero.
-#
-# Eso no es un aviso de seguridad: es ruido que **esconde** los avisos de
-# verdad. Sesenta y siete alertas de dependencias que no existen hacen
-# que nadie mire la lista, y el día que aparezca una real se pierde entre
-# ellas.
-#
-# Como el grafo no se puede filtrar, la única palanca que queda es lo que
-# los manifiestos falsos **declaran**. De ahí la política:
-#
-#   > Un manifiesto de ejemplo o de fixture declara la versión que
-#   > declararía hoy un proyecto real: la vigente y sin avisos abiertos.
-#
-# Cumplirla no cuesta nada —el código de ejemplo no se ejecuta y las
-# versiones no cambian su sintaxis— y a cambio el grafo no tiene nada que
-# señalar. `tests/cli/dependabot.spec.ts` la vigila: lleva el suelo de
-# versión de cada paquete que llegó a alertar y falla si alguno vuelve a
-# bajar de ahí.
-#
-# Aquí abajo, entonces, solo los directorios que contienen dependencias
-# de verdad:
-#
-#   /                                      el paquete
-#   /packages/plugins/delendai_tanit    el plugin, que se publica aparte
-#
+# El resto (plugins/, fixtures de e2e, ejemplos) no se instalan y por
+# tanto no producen PRs de Dependabot.
+
 version: 2
 
 updates:
-  # El paquete. Es donde viven las dependencias que sí se instalan.
+  # El paquete del producto (Tanit). Es donde viven las dependencias
+  # que sí se instalan.
   - package-ecosystem: npm
     directory: "/"
     schedule:
@@ -62,10 +30,12 @@ updates:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
 
-  # El plugin de delendai es un paquete independiente con su propio
-  # `package.json`, y ese sí se instala.
+  # La integración opcional con Delendai. Es un paquete independiente
+  # con su propio `package.json`, y mantiene `file:` hacia
+  # `@delendai/core` (p00007 sigue `done`). Dependabot lo vigila como
+  # cualquier otro paquete que se instala localmente.
   - package-ecosystem: npm
-    directory: "/packages/plugins/delendai_tanit"
+    directory: "/integrations/delendai"
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
