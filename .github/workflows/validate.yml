@@ -64,3 +64,14 @@ jobs:
       # `bin` mal apuntado, un import que se sale del tarball.
       - name: Validate package
         run: bun run validate:package
+
+      # Integration verifier (x00049 S2): las preguntas mecánicas del
+      # análisis multiagente — paths obsoletos, IDs de propuesta
+      # duplicados, scripts apuntando a rutas inexistentes, workflows
+      # con trigger duplicado, lockfile desincronizado. `bun run lint`
+      # ya lo corre como parte de `validate`; este step lo ejecuta
+      # explícitamente con `--audit` para que el reporte aparezca en
+      # el log aunque `validate` haya pasado por cache o se haya
+      # truncado.
+      - name: Integration verifier
+        run: bun run lint:integration-verifier --audit

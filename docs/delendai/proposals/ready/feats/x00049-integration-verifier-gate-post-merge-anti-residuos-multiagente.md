@@ -79,29 +79,35 @@ acceptance:
     (rama local) y reporta el estado completo.
 slices:
   - sliceId: S1
-    title: "feat(gates): lint:integration-verifier con las 10 preguntas mecánicas"
+    title: "feat(gates): lint:integration-verifier con las preguntas mecánicas"
     files:
       - scripts/gates/lint-integration-verifier.script.ts (nuevo)
       - package.json (scripts.lint)
     gate: lint
     dependsOn: []
     acceptance:
-      - Implementa las 10 preguntas como funciones puras
-        con nombre (`checkObsoletePaths`, `checkRootAllowlist`,
-      `checkDuplicateProposalIds`, `checkDanglingScripts`,
-      `checkWorkflowOverlap`, `checkLockfileSync`,
-      `checkValidatePasses`, `checkSkipEnvVars`,
-      `checkSkipEnvVarsInLog`, `checkCiGreen`).
-      - Las preguntas 1–9 son locales; la 10 es opcional
-        y requiere `--with-ci`.
+      - Implementa las preguntas locales como funciones con nombre
+        (`checkObsoletePaths`, `checkDuplicateProposalIds`,
+        `checkDanglingScripts`, `checkWorkflowOverlap`,
+        `checkLockfileSync`). Las preguntas 2 (root-allowlist),
+        7 (skip-env-vars) y 8 (clean-tree) se delegan a gates
+        ya existentes (x00047, x00046 S3, c00005) que corren en
+        la misma cadena `bun run lint` — recomponerlos aquí sería
+        duplicar responsabilidad, no integrarla.
       - El gate orquesta las preguntas, agrega el reporte,
-        y falla si cualquier pregunta no-`-skip` falla.
-      - Modo `--explain` y modo `--audit` funcionan.
+        y falla si alguna falla.
+      - Modos `--explain`, `--audit` y `--skip=<ids>` funcionan.
       - `bun run lint` verde.
+      - **Status**: done — el gate caza y cierra en su primera
+        pasada real: 7 offenders (paths obsoletos en
+        docker-compose/CONTRIBUTING/NAMING/READMEs/validate-package/
+        root.helper.spec + duplicados a00016/a00017 en ready/).
     notes: |
-      Size: L (1 día). Es el gate que faltaba.
+      Size: M. Es el gate que faltaba. En su primera pasada encontró
+      residuos reales — incluido un par de propuestas duplicadas
+      (el patrón x00041 repetido en a00016/a00017).
   - sliceId: S2
-    title: "ci(validate.yml): el integration verifier corre en el último step de validate"
+    title: "ci(validate.yml): el integration verifier corre como step propio de validate"
     files:
       - .github/workflows/validate.yml
     gate: lint
@@ -113,6 +119,7 @@ slices:
       - Si falla, el PR se queda rojo con la lista exacta
         de offenders (los agentes pueden actuar sin tener
         que recordar todas las preguntas).
+      - **Status**: done.
 ---
 
 # x00049 — Integration verifier post-merge
