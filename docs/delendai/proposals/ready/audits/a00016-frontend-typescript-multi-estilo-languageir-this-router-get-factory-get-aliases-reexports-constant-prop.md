@@ -132,49 +132,130 @@ todos los scanners TS consumen.
 
 ### S6 — Integración real: scanners consumen `method`/`resolvedMethod` del IR (CORRECTIVO — bloquea el cierre)
 
-- **Status**: pending (PARCIALMENTE hecho — el split se cerró vía x00038/de45d02; quedan bindings reales, single-parse y S6.a)
-- **Progreso 2026-09-05**: el primer bullet (eliminar `callee.split(".")` de
+- **Status**: pending (PARCIALMENTE hecho — el split se cerró vía x00038/de45d02; quedan S6.a, S6.c, S6.d, S6.e)
+- **Progreso 2026-09-05/06**: el primer bullet (eliminar `callee.split(".")` de
   `express.scanner.ts`) está HECHO con la propuesta hermana **x00038** (bridge
   puebla `receiver`/`method`/`receiverKind`, el scanner los consume, y el gate
   `lint:no-call-callee-split` lo fija). Los 6 multi-estilos con verbo literal ya
-  llegan a `ParsedRoute`. SIGUEN ABIERTOS en este slice: los `IConstantBinding`
-  reales (el estilo `const M="get"; app[M]`, que hoy pasa `propagateConstants(irCalls, [])`),
-  `buildLanguageIR` en un solo parse, y S6.a (`IImportBinding.importedName`).
-  Por eso a00016 NO se da por cerrada: faltaría uno de los siete patrones y el
-  single-parse.
+  llegan a `ParsedRoute`. Quedan abiertas 4 piezas, divididas en sub-slices
+  S6.a–S6.e (ver abajo) con orden estricto: S6.a → S6.d → S6.c → S6.e.
 - **Files**:
+  - `packages/contracts/interfaces/core/language-ir.interface.ts` (S6.a)
+  - `packages/frameworks/typescript/collect-constants.helper.ts` (S6.c, nuevo)
+  - `packages/frameworks/typescript/build-language-ir.helper.ts` (S6.d, nuevo)
   - `packages/frameworks/scanners/express.scanner.ts`
-  - `packages/frameworks/typescript/symbol-resolver.ts` (matriz → ParsedRoute)
+  - `packages/frameworks/typescript/symbol-resolver.ts`
+  - `packages/frameworks/typescript/symbol-resolver.helper.ts` (S6.a)
+  - `packages/frameworks/scanners/nestjs.scanner.ts` (S6.e)
   - `tests/fixtures/` + specs E2E por scanner
 - **Gate**: `bun run test:frameworks && bun run validate:examples` + matriz E2E abajo
-- **Detalle**:
-  - **Eliminar `call.callee.split(".")` como mecanismo semántico** (líneas
-    `express.scanner.ts:274` y `symbol-resolver.ts:521`). El split es la causa
-    de que `this.router.get`, `api.router.get`, `server["get"]`, `router?.get`,
-    `getRouter().get` se reconozcan en el IR y se pierdan al construir la ruta.
-  - Los scanners deben consumir directamente `IRouteCallExpression.method` y
-    (cuando haya constante) `.resolvedMethod`, más `receiverKind`; nada de
-    reconstruir el identificador separando por ".".
-  - **Constant bindings reales**: construir los `IConstantBinding` del fichero y
-    pasárselos a `propagateConstants(calls, bindings)` — hoy `[]` (`:259`) hace
-    el estilo "const M = 'get'" inalcanzable E2E. (El unit test pasa solo porque
-    fabrica `bindings` a mano.)
-  - **`buildLanguageIR(source)`** que en una sola pasada AST produzca
-    `{ calls, imports, reexports, aliases, constants }` — hoy cada collector
-    (calls/aliases/reexports/constants) vuelve a leer+parsear el fichero, con lo
-    que un proyecto TS grande puede parsearse 4×. Un archivo → un parse.
-  - **S6.a contrato**: `IImportBinding { localName, importedName, source }`
-    (hoy sólo `name`+`source`; `import { Router as R }` resuelve `R→R` no `R→Router`).
-    Alinear el JSDoc: para `server["get"]` decided entre `method=""` (doc actual)
-    o `method="get"` (test actual); contrato, implementación y tests deben decir
-    lo mismo.
-  - **Matriz E2E obligatoria** (fuente → endpoint final, NO comprobar el IR):
-    `app.get("/a")`→GET /a · `this.router.get("/b")`→GET /b ·
-    `api.router.get("/c")`→GET /c · `getRouter().get("/d")`→GET /d ·
-    `server["get"]("/e")`→GET /e · `router?.get("/f")`→GET /f ·
-    `const r=app; r.get("/g")`→GET /g · `const M="get"; app[M]("/h")`→GET /h.
-  - **Empezar por migrar NestJS** (hoy sigue con `split(".")`; sólo Express
-    consume el IR vía bridge). La aceptación original pedía los 6 scanners.
+
+### S6.a — `IImportBinding.importedName` + alias canonicalisation (contrato)
+
+- **Status**: pending
+- **Size**: S (2–3 h)
+- **Files**: `packages/contracts/interfaces/core/language-ir.interface.ts`,
+  `packages/frameworks/typescript/symbol-resolver.helper.ts:228-244`,
+  `tests/frameworks/symbol-resolver.spec.ts:99-122`
+- **Gate**: `bun run typecheck && bun run test:frameworks`
+- **Detalle**: añadir `importedName` a `IImportBinding` (hoy sólo
+  `name+source`); el collector en `symbol-resolver.helper.ts:228` ya
+  destructura `local`+`imported` pero descarta `imported`. Hoy
+  `import { Router as R }` resuelve `R→R`; tras el slice resuelve
+  `R→Router`. Alinear JSDoc + test para que el caso `R.get → Router.get`
+  se valide explícitamente (hoy el test pasa con `R→R`).
+
+### S6.b — Eliminar `call.callee.split(".")` como mecanismo semántico
+
+- **Status**: done (x00038, de45d02 + ce3138a)
+- **Detalle**: x00038 cerró el split en `express.scanner.ts:274` y
+  `symbol-resolver.ts:521` introduciendo el IR estructurado con
+  `receiver/method/receiverKind`. El gate `lint:no-call-callee-split`
+  lo fija. Los 6 multi-estilos con verbo literal (`app.get`,
+  `this.router.get`, `api.router.get`, `server["get"]`,
+  `router?.get`, `getRouter().get`) llegan a `ParsedRoute` ya.
+  El único `callee.split` superviviente en
+  `symbol-resolver.helper.ts:520` está dentro de `resolveCallee()`
+  y opera sobre el callee textual para reescritura de aliases
+  (`r.get` → `app.get`), con guarda `parts.length !== 2`; es la
+  ruta de reescritura, no de derivación semántica.
+
+### S6.c — `IConstantBinding[]` real (collector + wiring)
+
+- **Status**: pending
+- **Size**: M (4–6 h)
+- **Files**:
+  - NEW `packages/frameworks/typescript/collect-constants.helper.ts`
+    (walker Babel AST de `VariableDeclarator` con `init` literal;
+    emite `IConstantBinding[]`)
+  - EDIT `packages/frameworks/scanners/express.scanner.ts:282-283`
+    (`propagateConstants(irCalls, bindings)` deja de pasar `[]`)
+  - EDIT `tests/frameworks/constant-propagation.spec.ts` (1 caso
+    in-source + 1 E2E con fixture temporal)
+  - EDIT `tests/frameworks/express-multi-style.spec.ts` (añadir el
+    caso `const M="get"; app[M]("/h")` → `GET /h`)
+- **Gate**: `bun run test:frameworks` (matriz E2E 8/8)
+- **Detalle**: cierra el 8° patrón de la matriz. `propagateConstants`
+  ya funciona unit-tested; falta el productor de bindings. Es
+  estrictamente aditivo: ningún código que ya funcione cambia de
+  comportamiento, sólo se rellena el array que antes iba vacío.
+  **Highest-leverage sub-task**: cierra 1 patrón E2E sin tocar
+  contratos ni reescribir collectores.
+
+### S6.d — `buildLanguageIR(source)` single-parse refactor
+
+- **Status**: pending
+- **Size**: L (8–12 h)
+- **Files**:
+  - NEW `packages/frameworks/typescript/build-language-ir.helper.ts`
+    (top-level `buildLanguageIR(source) → { calls, imports,
+    reexports, aliases, constants }`)
+  - EDIT `packages/frameworks/typescript/collect-method-calls.helper.ts:531-555`
+    (acepta AST pre-parseado en vez de texto)
+  - EDIT `packages/frameworks/typescript/symbol-resolver.helper.ts:298-352`
+    (extrae `parseForSymbols(source, filename)`)
+  - NEW `packages/frameworks/typescript/build-language-ir.spec.ts`
+- **Gate**: `bun run typecheck && bun run test:frameworks` + nuevo
+  gate `lint:no-build-language-ir-multiple-parse` (espejo de
+  `lint:no-call-callee-split`) que prohíbe a los collectores re-parsear
+  texto crudo.
+- **Detalle**: hoy cada collector (`collect-method-calls`,
+  `aliases`, `reexports`, el futuro `constants`) llama
+  `babelParse(source, ...)` independientemente — un archivo se
+  parsea 3× hoy, 4× cuando S6.c aterrice. 1 parse → 1 AST compartido.
+  Depende de S6.a (el contrato del IR debe estar sellado antes de
+  consolidar la superficie).
+
+### S6.e — NestJS migrado a IR (con `IDecorator` o walker paralelo)
+
+- **Status**: pending
+- **Size**: L–XL (10–16 h)
+- **Files**: `packages/frameworks/scanners/nestjs.scanner.ts:241-272`,
+  posiblemente NEW `packages/frameworks/typescript/collect-decorators.helper.ts`
+  si se extiende el IR con `IDecorator`; fixture `examples/example-nestjs/`
+  debe seguir produciendo los mismos endpoints.
+- **Gate**: `bun run validate:examples` (nestjs fixture verde)
+- **Detalle**: NestJS detecta rutas por decoradores
+  (`@Controller`+`@Get`), no por `CallExpression`. Hoy usa regex
+  sobre `text.split("\n")` (`CLASS_CONTROLLER_RE` /
+  `METHOD_DECORATOR_RE`). Dos opciones: (a) extender `ILanguageIR`
+  con `IDecorator` (cambio de contrato, surface mayor), o (b) añadir
+  un `collectDecorators(source)` walker separado y alimentar IR
+  (calls) + decorators (NestJS) por separado. (b) es más seguro.
+  Riesgo alto: cualquier regresión rompe la fixture NestJS y la
+  collection Postman del ejemplo.
+
+### Orden estricto
+
+```
+S6.a (contrato) → S6.d (refactor) → S6.c (bindings) → S6.e (NestJS)
+```
+
+**Matriz E2E 8/8** depende de S6.c (último patrón). **Cierre de
+a00016** depende de matriz 8/8 + S6.d (single-parse) + S6.e
+(NestJS migrado), o de una decisión explícita de aceptar
+"Express-only IR" como cierre con NestJS/Hono/Fastify/Next.js/tRPC
+manteniendo regex (anotar como no-goal explícito).
 
 
 ## acceptance
