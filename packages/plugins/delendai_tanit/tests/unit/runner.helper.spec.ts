@@ -19,7 +19,7 @@ import {
   readGenerateReport,
   runBunCommand,
 } from "../../src/lib/helpers/runner.helper";
-import { SUPPORTED_REPORT_VERSION } from "../../src/lib/contracts/constants/runner.constant";
+import { SUPPORTED_REPORT_VERSION } from "../../../../packages/contracts/constants/integrations/delendai-report-version.constant";
 
 /** A valid report, with the fields `generate --json` emits. */
 function reportJson(overrides: Record<string, unknown> = {}): string {

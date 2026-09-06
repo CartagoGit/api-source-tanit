@@ -22,7 +22,7 @@ import {
   type IGenerateReport,
   type IRunScriptResult,
 } from "../contracts/interfaces/runner.interface";
-import { SUPPORTED_REPORT_VERSION } from "../contracts/constants/runner.constant";
+import { SUPPORTED_REPORT_VERSION } from "../../../../../../packages/contracts/constants/integrations/delendai-report-version.constant";
 import {
   type IRunnerContext,
 } from "../contracts/interfaces/runner-context.interface";

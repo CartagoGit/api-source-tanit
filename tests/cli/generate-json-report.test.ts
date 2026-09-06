@@ -22,7 +22,7 @@ import {
   type IGenerateReport,
 } from "../../packages/contracts/interfaces/core/generate-report.interface";
 import { CLI_COMMANDS_DIR, REPO_ROOT, exampleDir } from "../../scripts/helpers/root.helper";
-import { SUPPORTED_REPORT_VERSION } from "../../packages/plugins/delendai_tanit/src/lib/contracts/constants/runner.constant";
+import { SUPPORTED_REPORT_VERSION } from "../../packages/contracts/constants/integrations/delendai-report-version.constant";
 
 const GENERATE = join(CLI_COMMANDS_DIR, "generate.script.ts");
 const SOURCE_PROJECT = exampleDir("express");

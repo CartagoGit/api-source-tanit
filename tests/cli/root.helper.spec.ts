@@ -18,14 +18,14 @@ import { isAbsolute, join } from "node:path";
 import {
   CLI_ENTRYPOINT,
   EXAMPLES_DIR,
-  DELENDAI_PLUGIN_DIR,
+  DELENDAI_INTEGRATION_DIR,
   PROPOSALS_DIR,
   REPO_ROOT,
   WELL_KNOWN_PATHS,
   comprehensiveFixtureDir,
   exampleDir,
   fromRoot,
-  pluginDir,
+  integrationDir,
   smokeFixtureDir,
 } from "../../scripts/helpers/root.helper";
 import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant";
@@ -65,9 +65,11 @@ describe("REPO_ROOT", () => {
     expect(existsSync(join(REPO_ROOT, "packages"))).toBe(true);
   });
 
-  test("the plugin also has package.json, and it is not the root", () => {
-    expect(existsSync(join(DELENDAI_PLUGIN_DIR, "package.json"))).toBe(true);
-    expect(DELENDAI_PLUGIN_DIR).not.toBe(REPO_ROOT);
+  test("the Delendai integration also has package.json, and it is not the root", () => {
+    expect(
+      existsSync(join(DELENDAI_INTEGRATION_DIR, "package.json")),
+    ).toBe(true);
+    expect(DELENDAI_INTEGRATION_DIR).not.toBe(REPO_ROOT);
   });
 });
 
@@ -106,8 +108,8 @@ describe("parameterized paths", () => {
     expect(existsSync(expected), expected).toBe(true);
   });
 
-  test("pluginDir composes under plugins/", () => {
-    expect(pluginDir("delendai_tanit")).toBe(DELENDAI_PLUGIN_DIR);
+  test("integrationDir composes under integrations/", () => {
+    expect(integrationDir("delendai")).toBe(DELENDAI_INTEGRATION_DIR);
   });
 
   test("the proposals are where the registry says", () => {

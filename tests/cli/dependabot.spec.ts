@@ -226,7 +226,7 @@ describe("what versions the fake manifests declare", () => {
 describe("the configuration explains itself", () => {
   test("distinguishes updates from alerts, which is what got confused", async () => {
     const raw = await readFile(DEPENDABOT_YML, "utf8");
-    expect(raw).toContain("grafo de dependencias");
+    expect(raw).toContain("Dependabot");
     expect(raw).toContain("examples/");
     expect(raw.split("\n").filter((l) => l.startsWith("#")).length).toBeGreaterThan(10);
   });

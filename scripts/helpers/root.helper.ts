@@ -98,20 +98,31 @@ export const CLI_ENTRYPOINT = join(CLI_DIR, "cli.script.ts");
 /** Asistente interactivo. */
 export const UI_DIR = join(PACKAGES_DIR, "ui");
 
-/** Plugins, uno por host. */
-export const PLUGINS_DIR = join(PACKAGES_DIR, "plugins");
-/** El plugin de un host concreto. Hoy solo `delendai`. */
-export function pluginDir(host: string): string {
-  return join(PLUGINS_DIR, host);
+/**
+ * Integraciones opcionales con hosts externos (Delendai, etc.).
+ *
+ * Una integración NO es parte del producto Tanit: vive aquí por
+ * conveniencia del desarrollador que quiere enganchar Tanit a un
+ * host MCP, pero el CLI, el binario y la UI de Tanit funcionan
+ * sin ella. Cada integración es un paquete independiente con su
+ * propio `package.json` y se valida en su propio workflow
+ * (`integration-delendai.yml` para la integración con Delendai).
+ * x00041.
+ */
+export const INTEGRATIONS_DIR = fromRoot("integrations");
+/** La integración con un host concreto. Hoy solo `delendai`. */
+export function integrationDir(host: string): string {
+  return join(INTEGRATIONS_DIR, host);
 }
 /**
- * El plugin de delendai.
+ * La integración con Delendai.
  *
- * La carpeta se llama como el prefijo con el que el host registra sus
- * tools (`delendai_tanit_generate`), así que leyendo el árbol se
- * sabe de qué host es y qué producto expone.
+ * El plugin registra las tools con el prefijo `delendai_tanit_*`
+ * (lo declara el host leyendo `plugin.name === 'tanit'`); por
+ * tanto leyendo el árbol se sabe de qué host es y qué producto
+ * expone.
  */
-export const DELENDAI_PLUGIN_DIR = pluginDir("delendai_tanit");
+export const DELENDAI_INTEGRATION_DIR = integrationDir("delendai");
 
 // ---------------------------------------------------------------------------
 // Tooling del repo
@@ -201,8 +212,8 @@ export const WELL_KNOWN_PATHS: Readonly<Record<string, string>> = {
   CLI_COMMANDS_DIR,
   CLI_ENTRYPOINT,
   UI_DIR,
-  PLUGINS_DIR,
-  DELENDAI_PLUGIN_DIR,
+  INTEGRATIONS_DIR,
+  DELENDAI_INTEGRATION_DIR,
   SCRIPTS_DIR,
   GATES_DIR,
   BUILD_SCRIPTS_DIR,
