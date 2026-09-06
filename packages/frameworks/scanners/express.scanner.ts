@@ -44,6 +44,7 @@ import { parseModule } from "../../core/language-frontends/typescript/index.js";
 import {
   collectMethodCallsFromSource,
 } from "../typescript/collect-method-calls.helper.js";
+import { collectConstantsFromSource } from "../typescript/collect-constants.helper.js";
 import { propagateConstants } from "../typescript/constant-propagation.helper.js";
 import { toTSMethodCalls } from "../typescript/scanner-bridge.helper.js";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
@@ -280,7 +281,12 @@ function parseModuleSafe(
   // the `TSMethodCall[]` shape that the rest of this scanner keeps
   // consuming — without touching the extraction logic.
   const irCalls = collectMethodCallsFromSource(raw, file, diagnostics);
-  const propagated = propagateConstants(irCalls, []);
+  // a00016 S6: feed the real `IConstantBinding[]` to propagation so
+  // `const M = "get"; app[M](...)` resolves to `app.get(...)`. Before
+  // this slice the scanner passed `[]` and the "const M" style was
+  // unreachable E2E (unit tests fabricated bindings by hand).
+  const bindings = collectConstantsFromSource(raw, file);
+  const propagated = propagateConstants(irCalls, bindings);
   const methodCalls = toTSMethodCalls(propagated, raw);
   for (const call of methodCalls) {
     if (call.callee !== "app.use") continue;

@@ -105,6 +105,69 @@ function soloTextos(catalogo: Readonly<Record<string, unknown>>): ITranslations 
   return out;
 }
 
+/**
+ * Estados de completitud declarados por cada locale en su
+ * `_meta._completeness`. El gate `lint:i18n-completeness` (x00037 S1)
+ * exige que un locale placeholder lleve `experimental`; el selector
+ * de la UI (x00040 S1) usa el mismo campo para decidir si el locale
+ * entra o no en el catálogo que ve quien llega.
+ *
+ * El reference (inglés) siempre cuenta como "completo" — su contenido
+ * ES la fuente de la que caen los demás cuando falta una clave.
+ *
+ * `unknown` cubre dos casos:
+ *   1. Catalogos futuros que aún no anotan `_meta` (debería
+ *      desaparecer según se vayan tocando).
+ *   2. Catalogos externos sin metadata (los de la carpeta del
+ *      usuario). Se les deja pasar — quien los puso ahí sabe lo que
+ *      hace, y la UI prefiere mostrar un locale "no verificado" a
+ *      ocultarlo sin decir nada.
+ */
+export type Completitud = "reference" | "complete" | "experimental" | "unknown";
+
+/**
+ * Lee `_meta._completeness` del catálogo crudo, normalizando a
+ * uno de los cuatro estados del union. Un valor no reconocido
+ * cae a `unknown` — el gate atrapa placeholders sin metadata;
+ * aquí se prefiere mostrar a fallar.
+ */
+export function completitud(catalogo: Readonly<Record<string, unknown>>): Completitud {
+  const meta = catalogo["_meta"];
+  if (typeof meta !== "object" || meta === null || Array.isArray(meta)) {
+    return "unknown";
+  }
+  const valor = (meta as Record<string, unknown>)["_completeness"];
+  if (valor === "reference") return "reference";
+  if (valor === "complete") return "complete";
+  if (valor === "experimental") return "experimental";
+  return "unknown";
+}
+
+/**
+ * Decide si un locale empaquetado debe entrar en el catálogo
+ * visible. x00040 S1.
+ *
+ * Por qué filtramos y no dejamos pasar con un aviso:
+ *   El auditor 2026-09-05 señaló que la UI mostraba "Deutsch" pero
+ *   servía "Settings / Back / Project folder" en inglés. Eso es
+ *   mentir al usuario, no un detalle de i18n: alguien que
+ *   selecciona su idioma espera leer en su idioma, no en el de
+ *   otro. Filtramos los `experimental` directamente; el gate
+ *   `lint:i18n-completeness` ya validó que solo esos llevan la
+ *   marca, así que esta función es el complemento runtime de la
+ *   calidad de datos.
+ *
+ * Por qué no filtramos `unknown`:
+ *   Un locale futuro aún sin anotar pasaría a estar oculto, y el
+ *   error se manifestaría como "el selector no tiene mi idioma"
+ *   en lugar de "el locale no tiene metadata". Preferimos
+ *   mostrar antes que esconder silenciosamente — el gate ya
+ *   protege contra placeholders.
+ */
+export function esVisible(completitud: Completitud): boolean {
+  return completitud !== "experimental";
+}
+
 /** El catálogo de inglés, al que cae todo lo que falte. */
 const BASE: ITranslations = soloTextos(EMPAQUETADOS_CRUDOS["en"] ?? {});
 
@@ -228,15 +291,35 @@ export async function seedLocales(carpeta: string): Promise<void> {
  *
  * `externalDir` es opcional porque en el navegador no hay carpeta que
  * leer, y porque los tests necesitan apuntar a la suya.
+ *
+ * x00040 S1: los locales empaquetados marcados como `experimental`
+ * en su `_meta._completeness` se omiten del catálogo visible. El
+ * usuario no los ve en el selector, y por tanto no se le miente
+ * con un "Deutsch" que sirve "Settings / Back / Project folder"
+ * en inglés (lo que la auditoría 2026-09-05 señaló como bug de
+ * producto). Los locales externos (override) NO se filtran:
+ * quien los pone en su carpeta sabe que los está poniendo y
+ * prefiere ver un locale sin verificar a no verlo.
+ *
+ * El resultado es que el catálogo visible contiene solo:
+ *   - el locale `reference` (inglés, cae al que falte),
+ *   - los empaquetados `complete`,
+ *   - los externos sin importar su contenido.
  */
 export async function loadLocales(externalDir?: string): Promise<II18nCatalog> {
-  const empaquetados: ILoadedLocale[] = BUNDLED_LOCALES.map((l) => ({
-    code: l.code,
-    nativeName: l.nativeName,
-    rtl: l.rtl ?? false,
-    translations: conRespaldo(soloTextos(EMPAQUETADOS_CRUDOS[l.code] ?? {})),
-    origin: "bundled" as const,
-  }));
+  const empaquetados: ILoadedLocale[] = [];
+  for (const l of BUNDLED_LOCALES) {
+    const crudo = EMPAQUETADOS_CRUDOS[l.code];
+    if (crudo === undefined) continue;
+    if (!esVisible(completitud(crudo))) continue;
+    empaquetados.push({
+      code: l.code,
+      nativeName: l.nativeName,
+      rtl: l.rtl ?? false,
+      translations: conRespaldo(soloTextos(crudo)),
+      origin: "bundled" as const,
+    });
+  }
 
   if (externalDir === undefined) {
     return { locales: empaquetados, rejected: [] };
