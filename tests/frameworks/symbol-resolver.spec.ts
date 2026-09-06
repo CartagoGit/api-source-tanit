@@ -277,6 +277,36 @@ r.get("/x", h);
     expect(resolved[0]?.callee).toBe("Router.get");
   });
 
+  test("alias chain through import alias: const r = R; r.get → Router.get", () => {
+    // Combina los dos rewrites ya validados por separado en los
+    // tests previos:
+    //   1. `const r = R` → `followAliasChain` reescribe `r` a `R`
+    //      via `constAliases` (test "alias chain: const r = a; ...").
+    //   2. `R` viene de `import { Router as R }` → el `importMap`
+    //      reescribe `R` a `Router` (test "import alias: R.get ...").
+    // El callee final tiene que ser `Router.get`, el símbolo
+    // canónico del módulo `express`. Si `followAliasChain` se parara
+    // en la primera resolución y dejara `R.get`, el scanner de
+    // Express no podría enrutar la llamada porque `R` no es un
+    // método del framework — sólo lo es por coincidencia de
+    // nomenclatura.
+    const source = `import { Router as R } from "express";
+const r = R;
+r.get("/x", h);
+`;
+    const calls = collectMethodCallsFromSource(source, "server.ts");
+    expect(calls[0]?.callee).toBe("r.get");
+
+    const resolved = resolveCallee(
+      calls,
+      [{ name: "R", importedName: "Router", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
+      [],
+      { "server.ts": { r: "R" } },
+    );
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.callee).toBe("Router.get");
+  });
+
   test("a non-identifier receiver is left untouched", () => {
     const source = `this.router.get("/x", h);
 `;
