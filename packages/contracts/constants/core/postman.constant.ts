@@ -49,6 +49,11 @@ export const OUTPUT_DIR_NAME = "tanit";
  * recognized it (`paths./y.trace`) but the adapter filtered it; the
  * other frameworks do not emit it, so the entry only materializes
  * when the spec brings one.
+ *
+ * `ALL` is the sentinel emitted by Hono's `.all()` (commit
+ * `aad6376`); without it, the adapter dropped the route end-to-end
+ * (audit 2026-09-06 second pass §6). The exporters are responsible
+ * for materialising it in their own format.
  */
 export const SUPPORTED_METHODS = [
   "GET",
@@ -59,6 +64,7 @@ export const SUPPORTED_METHODS = [
   "HEAD",
   "OPTIONS",
   "TRACE",
+  "ALL",
 ] as const;
 
 

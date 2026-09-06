@@ -144,6 +144,13 @@ export interface EndpointSpec {
    * on an OpenAPI path scanned fine and disappeared in the adapter
    * without saying anything.
    *
+   * `ALL` is the sentinel emitted by Hono's `.all()` (commit
+   * `aad6376`): the scanner records the semantic meaning ("any
+   * method") and each exporter materialises it in its own format
+   * (Postman `ANY`, OpenAPI/HAR/Bruno expansion to the seven standard
+   * verbs). Without `ALL` in this union the adapter dropped the
+   * route end-to-end — the second audit 2026-09-06 §6 caught it.
+   *
    * The runtime list lives in `SUPPORTED_METHODS` (same package) and
    * is what the adapter consults to decide what to let through:
    * keeping both in sync is the guarantee that adding a verb here
@@ -157,7 +164,8 @@ export interface EndpointSpec {
     | "DELETE"
     | "HEAD"
     | "OPTIONS"
-    | "TRACE";
+    | "TRACE"
+    | "ALL";
   /** Relative URI without the `/api` prefix. Starts with `/`. */
   uri: string;
   description?: string;

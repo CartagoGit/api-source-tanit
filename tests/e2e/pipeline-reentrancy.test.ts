@@ -13,7 +13,25 @@
  */
 import { describe, expect, test } from "vitest";
 import { join, } from "node:path";
-import { generateWithAllFrameworks } from "../../packages/frameworks/index";
+import { generateCollectionsWithAllFrameworks } from "../../packages/frameworks/index";
+
+// Legacy helper: the old tests assumed the singular facade. We
+// switch to the plural one (audit 2026-09-06 §3.3) and unwrap the
+// single-service case here. If the fixture ever becomes a real
+// multi-service monorepo this helper must be removed and the
+// assertions updated.
+async function generateWithAllFrameworks(
+  root: string,
+  options: Parameters<typeof generateCollectionsWithAllFrameworks>[1] = {},
+) {
+  const results = await generateCollectionsWithAllFrameworks(root, options);
+  if (results.length !== 1) {
+    throw new Error(
+      `pipeline-reentrancy test helper expected exactly 1 result, got ${results.length}`,
+    );
+  }
+  return results[0]!;
+}
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper";
 
 const FIXTURES = FIXTURES_DIR;

@@ -59,6 +59,13 @@ import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanne
  * subconjunto (un test que solo debe ver un framework, un consumidor
  * que embebe la librería) llama a `generateCollection()` directamente y
  * le pasa el suyo.
+ *
+ * Multi-service contract (audit 2026-09-06 second pass §3.3):
+ *   - one service                       → `IGenerationResult` of that service
+ *   - N services + `combineServices:false` → throws
+ *     `MultipleServicesWithoutCombineError` (x00024). Callers that
+ *     want the array use `generateCollectionsWithAllFrameworks`.
+ *   - N services + `combineServices:true`  → one combined `IGenerationResult`.
  */
 export function generateWithAllFrameworks(
   projectRoot: string,
@@ -71,7 +78,30 @@ export function generateWithAllFrameworks(
     // existieran los scanners dependen de la heurística de Laravel
     // cuando su disposición no encaja con el scanner.
     legacyFallback: laravelLegacyDiscovery,
+  }) as Promise<IGenerationResult>;
+}
+
+/**
+ * Plural facade: ALWAYS returns a `ReadonlyArray<IGenerationResult>`,
+ * one entry per detected service. The single-service path returns a
+ * one-element array.
+ *
+ * Use this facade in CLI commands that must not silently drop the
+ * other services when `combineServices` is false (audit 2026-09-06
+ * §3.3 / §18 priority 7). The singular facade
+ * `generateWithAllFrameworks` is kept for callers that only handle
+ * the combined case.
+ */
+export async function generateCollectionsWithAllFrameworks(
+  projectRoot: string,
+  options: IGenerateOptions = {},
+): Promise<ReadonlyArray<IGenerationResult>> {
+  const result = await generateCollection(projectRoot, {
+    ...options,
+    orchestrator: defaultOrchestrator(),
+    legacyFallback: laravelLegacyDiscovery,
   });
+  return Array.isArray(result) ? result.slice() : [result];
 }
 
 /**

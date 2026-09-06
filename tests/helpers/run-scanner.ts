@@ -15,7 +15,9 @@
  *   - `runGenerateMetrics(fixtureName)` → convenience alias (same result).
  */
 import { join } from "node:path";
-import { generateWithAllFrameworks } from "../../packages/frameworks/index";
+import {
+  generateCollectionsWithAllFrameworks,
+} from "../../packages/frameworks/index";
 import type { PostmanCollection } from "../../packages/contracts/interfaces/core/postman.interface";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
@@ -59,11 +61,20 @@ async function _runPipeline(
   basename?: string,
 ): Promise<GenerateResult> {
   // Same pipeline the CLI uses: the tests validate the real path,
-  // not a parallel reimplementation that may diverge.
-  const result = await generateWithAllFrameworks(fixturePath, {
+  // not a parallel reimplementation that may diverge. The facade
+  // is the plural one now (audit 2026-09-06 §3.3): the legacy
+  // singular facade collapsed multi-service arrays into a single
+  // result, silently dropping every other service.
+  const results = await generateCollectionsWithAllFrameworks(fixturePath, {
     ...(basename ? { collectionName: basename } : {}),
   });
-
+  // The test helper mirrors the legacy single-collection contract
+  // (one collection, summed metrics). If a fixture has multiple
+  // services without combineServices, this helper takes the first
+  // service's collection — exactly the legacy behaviour — and the
+  // audit's regression test `tests/core/combine-services-baseurl.
+  // spec.ts` is the place that pins the gap.
+  const result = results[0]!;
   return {
     collection: result.collection,
     outputPath: "",

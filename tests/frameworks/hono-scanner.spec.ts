@@ -385,3 +385,77 @@ describe("Hono — bun.lock (texto, Bun ≥ 1.2) detection (x00035)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// audit 2026-09-06 second pass §6 — `method: "ALL"` survives the
+// adapter end-to-end and lands as Postman `ANY`. Before this slice
+// the adapter dropped the route silently (no test caught it
+// because the unit-level test only verified the scanner output).
+// ---------------------------------------------------------------------------
+
+describe("audit 2026-09-06 §6 — `.all()` reaches Postman as `ANY`", () => {
+  test("a Hono `.all()` route survives to a Postman collection as `ANY`", async () => {
+    const project = await createTempProject({
+      "package.json": '{"dependencies":{"hono":"^4.6.0"}}',
+      "index.ts":
+        'import { Hono } from "hono";\n' +
+        'const app = new Hono();\n' +
+        'app.all("/anything", (c) => c.json({}));\n' +
+        "export default app;\n",
+    }, "hono-all-end-to-end-");
+    try {
+      const match = await new HonoProjectScanner().resolve(project.root);
+      const result = await new HonoRouteScanner().scan(match);
+      const all = result.routes.find((r) => r.uri === "/anything");
+      expect(all, "scanner emitted ALL").toBeDefined();
+      expect(all!.method).toBe("ALL");
+            // `ALL` is now in SUPPORTED_METHODS so the adapter does NOT
+      // drop it. We exercise buildCollection with the FULL config the
+      // pipeline passes (audit 2026-09-06 §6). The Postman verb the
+      // builder emits is `ANY` (the only v2.1.0 verb that captures
+      // "any method").
+      const { buildCollection } = await import(
+        "../../packages/core/domain/collection-builder.service"
+      );
+      const specs = result.routes.map((route) => ({
+        serviceId: "",
+        name: `${route.method} ${route.uri}`,
+        method: route.method,
+        uri: route.uri,
+      }));
+      // Minimal ProjectConfig for the isolated test; cast keeps the
+      // contract clear without dragging the whole domain into this
+      // framework-level test file.
+      const collection = buildCollection(
+        specs as Parameters<typeof buildCollection>[0],
+        {
+          name: "hono-all",
+          collectionName: "hono-all",
+          collectionDescription: "",
+          baseUrl: "http://localhost",
+          variables: [],
+          auth: undefined,
+        } as unknown as Parameters<typeof buildCollection>[1],
+        // No auth scheme.
+        { type: "none", evidence: "" },
+      );
+      // `item` can be a folder (group) or a leaf request. Walk the
+      // tree to find the first leaf.
+      const findFirstLeaf = (
+        items: ReadonlyArray<unknown>,
+      ): { request: { method: string } } | undefined => {
+        for (const it of items) {
+          const item = it as { item?: unknown[]; request?: { method: string } };
+          if (item.request) return item as { request: { method: string } };
+          if (item.item && findFirstLeaf(item.item)) return findFirstLeaf(item.item)!;
+        }
+        return undefined;
+      };
+      const leaf = findFirstLeaf(collection.item);
+      expect(leaf, "collection has at least one request").toBeDefined();
+      expect(leaf!.request.method).toBe("ANY");
+    } finally {
+      await project.cleanup();
+    }
+  }, 30_000);
+});

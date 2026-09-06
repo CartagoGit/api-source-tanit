@@ -340,6 +340,19 @@ async function buildFor(
       additionalMatches: first.additionalMatches,
       frameworks: first.frameworks,
       endpoints: mergedEndpoints,
+      // LIMITATION (audit 2026-09-06 second pass §17): in combined
+      // mode the merged descriptor still inherits `baseUrl`,
+      // `auth` and `variables` from the FIRST service. The right
+      // fix is per-endpoint metadata so each endpoint carries the
+      // `baseUrl` of its origin service; the current shape lets
+      // callers mix baseUrls by accident when services disagree.
+      //
+      // This is documented as the open gap and pinned by the
+      // test `tests/core/combine-services-baseurl.spec.ts`
+      // (audit §18 priority 6). A dedicated proposal will fix it
+      // properly with `spec.serviceBaseUrl` and a per-endpoint
+      // override; for now we surface the limitation so the audit
+      // does not get forgotten.
       baseUrl: first.baseUrl,
       auth: first.auth,
       variables: first.variables,
@@ -492,34 +505,35 @@ async function buildForService(
 }
 
 /**
- * Counts how many specs have at least one validated field — a body,
- * a list of fields, query parameters or headers. This is the
- * per-service counterpart of `withFormRequest` in
- * `parsed-route-to-spec.adapter.ts`: that one is computed while
- * adapters attach FormRequest rules, and only knows the global
- * catalog. By the time `buildForService` runs, the rule attachment
- * has already happened and the spec carries the result; recomputing
- * from the spec is both correct and simpler.
+ * Counts how many specs had **real validation rules attached** by
+ * the scanner adapters.
+ *
+ * The previous version of this helper (introduced as part of
+ * `787c13e` for the per-service metrics fix) counted any spec that
+ * carried a body, fields, query or headers. The audit 2026-09-06
+ * (second pass §3, §4) caught the bug: `applyAgnosticInference()`
+ * synthesises bodies and queries heuristically for endpoints that
+ * had no rules at all, so the previous `countWithValidation()`
+ * misclassified inferred-heuristic endpoints as "with validation".
+ *
+ * The contract is now narrower: a spec counts as validated when
+ * the adapter set `formRequest` — the same condition that
+ * `project-health.service.ts` and `param-inferrer.service.ts`
+ * already use. `formRequest` is set only when the adapter found
+ * and resolved a real FormRequest / Zod / @hono/zod-validator /
+ * TypeBox / etc., not when `applyAgnosticInference` filled in
+ * defaults.
+ *
+ * Trade-off: `formRequest` is the legacy Laravel-shaped field; a
+ * future slice replaces it with a richer `validation: { resolved,
+ * provider, confidence }` block (already proposed as `r00015`).
+ * Until that lands, this is the most accurate signal available
+ * across every scanner.
  */
 function countWithValidation(specs: ReadonlyArray<EndpointSpec>): number {
   let n = 0;
   for (const spec of specs) {
-    if (spec.body !== undefined) {
-      n += 1;
-      continue;
-    }
-    if (spec.fields !== undefined && spec.fields.length > 0) {
-      n += 1;
-      continue;
-    }
-    if (spec.query !== undefined && spec.query.length > 0) {
-      n += 1;
-      continue;
-    }
-    if (spec.headers !== undefined && spec.headers.length > 0) {
-      n += 1;
-      continue;
-    }
+    if (spec.formRequest !== undefined) n += 1;
   }
   return n;
 }

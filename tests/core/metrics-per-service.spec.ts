@@ -173,3 +173,52 @@ describe("audit 2026-09-06 §3.1 — metrics are per-service, not global", () =>
     expect(result.metrics.specs).toBe(3);
   }, 30_000);
 });
+
+// ---------------------------------------------------------------------------
+// audit 2026-09-06 second pass §3, §4 — `withValidation` means REAL rules,
+// not inferred heuristics. The previous `countWithValidation()` counted any
+// spec carrying a body/fields/query/headers, which made
+// `applyAgnosticInference`'s heuristic-filled endpoints look like validated
+// ones. `metrics.withValidation` must now track `formRequest` exactly.
+// ---------------------------------------------------------------------------
+
+import {
+  defaultOrchestrator as _orchestrator,
+} from "../../packages/frameworks/framework.registry";
+import { createTempProject as _createTempProject } from "../helpers/scanner-fixture";
+
+describe("audit 2026-09-06 §3 — withValidation tracks real rules, not heuristics", () => {
+  test("Express without a validator: withValidation === 0 (NOT '1' from inferred query)", async () => {
+    // Express scanner attaches path params as fields, but without a
+    // zod/Joi/FormRequest source it does NOT set `formRequest`. The
+    // previous `countWithValidation()` mistakenly counted path-params
+    // fields as "with validation" — the audit's bug.
+    const project = await _createTempProject(
+      {
+        "package.json": JSON.stringify({
+          name: "express-no-validation",
+          dependencies: { express: "^4.19.0" },
+        }),
+        "server.js":
+          "const express = require('express');\n" +
+          "const app = express();\n" +
+          "app.get('/users/:id', (req, res) => res.json({}));\n" +
+          "app.get('/users', (_req, res) => res.json([]));\n" +
+          "module.exports = app;\n",
+      },
+      "metrics-no-validation-",
+    );
+    projects.push(project);
+
+    const result = await generateCollection(project.root, {
+      orchestrator: _orchestrator(),
+    });
+
+    // The audit's invariant: a path-param-only endpoint is NOT a
+    // validated endpoint. Without a real schema attached, the
+    // metric must reflect that.
+    expect(result.metrics.withValidation).toBe(0);
+    // And the negation must equal the spec count.
+    expect(result.metrics.withoutValidation).toBe(result.metrics.specs);
+  }, 30_000);
+});
