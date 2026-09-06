@@ -472,6 +472,19 @@ declare const Bun: {
     hostname?: string;
     fetch: (request: IServerRequest) => Response | Promise<Response>;
   }): { readonly port: number; stop(closeActiveConnections?: boolean): void };
+  /**
+   * Built-in YAML parser, used by `lint:integration-verifier`
+   * (r00012 S1) para detectar solapes de triggers entre
+   * workflows sin grep textual. Bun trae `Bun.YAML.parse` desde
+   * 1.1; este repo no depende de `@types/bun` ni del paquete
+   * `yaml` de npm, así que el subset que usamos se declara a
+   * mano. Devuelve `unknown` (no `any`) para que el consumidor
+   * estreche con sus propios predicados — `lint:integration-verifier`
+   * lo reduce a `{ on?: { push?: { branches?: string[] }, ... } }`.
+   */
+  readonly YAML: {
+    parse(text: string): unknown;
+  };
 };
 
 /** What this repo uses from an incoming request. */

@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 /**
- * `bun run lint:integration-verifier` — gate post-merge con las 10
- * preguntas mecánicas que el análisis 2026-09-05/06 enumeró como
- * residuos típicos del trabajo multiagente. x00049 S1.
+ * `bun run lint:integration-verifier` — gate post-merge con las
+ * 5 preguntas locales + 3 reusadas = 8 totales que el análisis
+ * 2026-09-05/06 enumeró como residuos típicos del trabajo
+ * multiagente. x00049 S1.
  *
  * Por qué existe
  * ──────────────
@@ -22,50 +23,61 @@
  *   - commits reintroduciendo TANIT_SKIP_* (x00046 S3 lo cubre
  *     parcialmente)
  *
- * El integration verifier responde a 8 preguntas mecánicas (las 2
- * restantes requieren red y se omiten por defecto). Cada pregunta
- * devuelve una lista de offenders (vacía = OK). El gate orquesta,
- * agrega el reporte y falla si alguna falla.
+ * El integration verifier responde a 8 preguntas en total: 5
+ * implementadas localmente en este script (las únicas que necesitan
+ * lógica cross-cutting propia) y 3 reutilizadas de gates que ya
+ * corren en `bun run lint`. Cada pregunta devuelve una lista de
+ * offenders (vacía = OK). El gate orquesta, agrega el reporte y
+ * falla si alguna falla.
  *
- * Las preguntas
- * ─────────────
+ * Las 5 preguntas locales (implementadas aquí)
+ * ────────────────────────────────────────────
  *
  *   1. paths-obsoletos
  *      ¿Hay paths antiguos referenciados en código, configs o
  *      workflows? Excluye proposals/ (la historia documenta el
  *      pasado).
  *
- *   2. root-allowlist
- *      ¿Hay ficheros no permitidos en la raíz? Wrapper sobre
- *      lint:root-allowlist.
- *
- *   3. duplicate-ids
+ *   2. duplicate-ids
  *      ¿Hay IDs duplicados en proposals/? Wrapper sobre
  *      lint:proposals.
  *
- *   4. dangling-scripts
+ *   3. dangling-scripts
  *      ¿Hay scripts `bun run --cwd <dir>` donde `<dir>` no existe?
  *      ¿Hay scripts con paths absolutos a directorios que no
  *      existen?
  *
- *   5. workflow-overlap
+ *   4. workflow-overlap
  *      ¿Hay workflows que duplican responsabilidad con
  *      validate.yml? Hoy sólo cubre el caso
  *      `packages/plugins/delendai_tanit` (la regresión real
  *      reciente); extensible.
  *
- *   6. lockfile-sync
+ *   5. lockfile-sync
  *      ¿Hay dependencias en package.json que NO están en bun.lock?
  *      ¿Hay entradas en bun.lock que NO están en package.json?
  *      Wrapper sobre `bun install --frozen-lockfile --dry-run`.
  *
- *   7. skip-env-vars
- *      ¿Hay env vars *_SKIP_* exportadas en workflows, specs o
- *      código? Cubierto por lint:no-skip-env-vars; aquí se reusa.
+ * Las 3 preguntas reusadas (las corre otro gate, este script NO
+ * las reimplementa — sólo las enuncia para que el developer sepa
+ * que están en el perímetro)
+ * ───────────────────────────────────────────────────────────────
  *
- *   8. clean-tree
- *      ¿El árbol tiene basura sin commitear? Cubierto por
- *      lint:clean-tree; aquí se reusa.
+ *   6. root-allowlist — reusada de `scripts/gates/lint-root-allowlist.script.ts`
+ *      (x00047). ¿Hay ficheros no permitidos en la raíz?
+ *
+ *   7. skip-env-vars — reusada de
+ *      `scripts/gates/lint-no-skip-env-vars.script.ts` (x00046 S3).
+ *      ¿Hay env vars `*_SKIP_*` exportadas en workflows, specs o
+ *      código del producto?
+ *
+ *   8. clean-tree — reusada de `scripts/gates/lint-clean-tree.script.ts`
+ *      (x00049). ¿El árbol tiene basura sin commitear?
+ *
+ * Las 2 preguntas restantes del diseño original (x00049 §why:
+ * nº 7 "bun run validate desde checkout limpio" y nº 10 "HEAD CI
+ * verde" vía `gh api`) requieren red o un subproceso de CI y se
+ * omiten por defecto; viven fuera del integration verifier.
  *
  * Uso
  * ───
@@ -216,25 +228,104 @@ async function checkDanglingScripts(): Promise<string[]> {
   return offenders;
 }
 
-async function checkWorkflowOverlap(): Promise<string[]> {
-  // Hoy: detecta si hay un workflow cuyo nombre `on:` cubre los
-  // mismos triggers que validate.yml (push a develop/main + PR).
-  // Si lo hay, el camino crítico está duplicado y un cambio de
-  // gates no se propaga.
-  const offenders: string[] = [];
+interface IWorkflowTriggers {
+  readonly push?: ReadonlyArray<string>;
+  readonly pull_request?: ReadonlyArray<string>;
+}
+
+/**
+ * Lee el set de triggers de un workflow de GitHub Actions.
+ *
+ * El formato YAML de `on:` permite tanto inline
+ * (`branches: [main, develop]`) como multilínea
+ * (`branches:\n  - main\n  - develop`) y la forma escalar
+ * (`branches: main`). `Bun.YAML.parse` normaliza las dos
+ * primeras a `string[]`; la escalar la reenvasamos a array
+ * para que el matcher sea simétrico. Bun lleva YAML built-in
+ * (Bun.YAML) — no requiere dependencia externa; la declaración
+ * ambient está en `runtime.d.ts`.
+ *
+ * Devuelve `null` si el workflow no se puede leer, está vacío,
+ * o no tiene sección `on:` parseable. Eso NO es un offender:
+ * un workflow sin triggers no es un duplicado de validate.yml.
+ */
+function readWorkflowTriggers(file: string): IWorkflowTriggers | null {
+  if (!existsSync(file)) return null;
+  const text = readFileSync(file, "utf8");
+  let parsed: unknown;
   try {
-    const { stdout } = await execFileAsync(
-      "grep",
-      ["-rl", "branches: \\[main, develop\\]", ".github/workflows"],
-      { cwd: REPO_ROOT, maxBuffer: 4 * 1024 * 1024 },
-    );
-    const matches = stdout.trim().split("\n").filter((p: string) => !p.endsWith("validate.yml"));
-    for (const m of matches) {
-      offenders.push(`${m} ⟵ mismo trigger que validate.yml`);
+    parsed = Bun.YAML.parse(text);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const on = (parsed as { on?: unknown }).on;
+  if (!on || typeof on !== "object") return null;
+  const onObj = on as Record<string, unknown>;
+  return {
+    push: extractBranches(onObj.push),
+    pull_request: extractBranches(onObj.pull_request),
+  };
+}
+
+function extractBranches(trigger: unknown): string[] | undefined {
+  if (!trigger || typeof trigger !== "object") return undefined;
+  const branches = (trigger as { branches?: unknown }).branches;
+  if (branches === undefined || branches === null) return undefined;
+  if (typeof branches === "string") return [branches];
+  if (Array.isArray(branches)) {
+    return branches.filter((b): b is string => typeof b === "string");
+  }
+  return undefined;
+}
+
+function branchSetsEqual(
+  a: ReadonlyArray<string>,
+  b: ReadonlyArray<string>,
+): boolean {
+  if (a.length !== b.length) return false;
+  const setA = new Set(a);
+  for (const branch of b) {
+    if (!setA.has(branch)) return false;
+  }
+  return true;
+}
+
+/**
+ * Decide si dos workflows cubren los mismos triggers. Un match
+ * requiere que **tanto** `push` como `pull_request` declaren
+ * exactamente el mismo set de ramas — si una de las dos
+ * dimensiones falta, el workflow hace una cosa distinta en esa
+ * dimensión y no es una duplicación real del camino crítico de
+ * validate.yml. Esto es más estricto que el grep textual previo
+ * (que mezclaba las dos dimensiones y daba falsos positivos si
+ * un workflow mencionaba `branches: [main, develop]` en una
+ * dimensión pero no en la otra).
+ */
+function triggersMatch(a: IWorkflowTriggers, b: IWorkflowTriggers): boolean {
+  if (!a.push || !a.pull_request || !b.push || !b.pull_request) return false;
+  return branchSetsEqual(a.push, b.push) && branchSetsEqual(a.pull_request, b.pull_request);
+}
+
+async function checkWorkflowOverlap(): Promise<string[]> {
+  // Parsea YAML real (Bun.YAML) para detectar workflows con los
+  // mismos triggers que `validate.yml`. Captura tanto el formato
+  // inline como el multilínea, y separa `push` de `pull_request`
+  // — el grep textual previo mezclaba ambas dimensiones.
+  const workflowDir = join(REPO_ROOT, ".github/workflows");
+  if (!existsSync(workflowDir)) return [];
+  const canonical = readWorkflowTriggers(join(workflowDir, "validate.yml"));
+  if (!canonical) return [];
+
+  const offenders: string[] = [];
+  for (const entry of readdirSync(workflowDir)) {
+    if (!entry.endsWith(".yml") && !entry.endsWith(".yaml")) continue;
+    if (entry === "validate.yml") continue;
+    const triggers = readWorkflowTriggers(join(workflowDir, entry));
+    if (!triggers) continue;
+    if (triggersMatch(canonical, triggers)) {
+      offenders.push(`.github/workflows/${entry} ⟵ mismo trigger que validate.yml`);
     }
-  } catch (err) {
-    if ((err as { code?: number }).code === 1) return [];
-    throw err;
   }
   return offenders;
 }
