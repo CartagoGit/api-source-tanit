@@ -383,6 +383,15 @@ async function parsePageRouteFile(
     methods.add((methodMatch[1] ?? "").toUpperCase());
   }
   if (methods.size === 0) methods.add("GET");
+  // Audit 2026-09-06 §17, proposal r00015: when the scanner emits
+  // MORE than one verb for the same URI from a Pages Router
+  // handler, it is because the same handler dispatches by
+  // `req.method` — there is no static signal for which verb the
+  // caller actually uses. Mark every emitted route `confidence:
+  // "low"` with a human-readable reason so the user sees it in
+  // Postman / OpenAPI. The single-verb path stays `high` (the
+  // default) because `req.method === "GET"` is a real signal.
+  const multiVerb = methods.size > 1;
   for (const method of methods) {
     out.push({
       method,
@@ -392,6 +401,17 @@ async function parsePageRouteFile(
       lineNumber: 0,
       prefixChain: [],
       displayName: `${method} ${routePath}`,
+      ...(multiVerb
+        ? {
+            confidence: {
+              level: "low" as const,
+              reasons: [
+                "Pages Router handler method dispatch not statically resolved",
+                `${methods.size} verbs emitted from one \`switch (req.method)\` block`,
+              ],
+            },
+          }
+        : {}),
     });
   }
   return out;

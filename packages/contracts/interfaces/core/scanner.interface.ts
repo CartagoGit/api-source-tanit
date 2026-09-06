@@ -26,7 +26,7 @@
  * @see ./postman.interface.ts for the Postman v2.1.0 types.
  */
 
-import type { IEndpointAuth } from "./postman.interface.js";
+import type { IEndpointAuth, IEndpointConfidence } from "./postman.interface.js";
 
 /** Stable framework id. Used as a key in config. */
 export type FrameworkId = "laravel" | "openapi" | "express" | "fastapi" | "symfony" | string;
@@ -163,7 +163,22 @@ export interface ParsedRoute {
    * bearer), it can declare the override here and the merger
    * respects it.
    */
-  auth?: IEndpointAuth;}
+  auth?: IEndpointAuth;
+  /**
+   * Confidence annotation the scanner attaches to this route.
+   *
+   * Optional on purpose: most scanners (OpenAPI, Hono, Fastify,
+   * NestJS, App Router, etc.) produce precise signals and leave it
+   * `undefined` — the adapter then defaults to `high` with no
+   * reason. The Next.js Pages Router scanner uses this to flag
+   * `switch (req.method)` multi-verb routes as `low` so the user
+   * sees the annotation in Postman / OpenAPI (audit 2026-09-06
+   * §16, §17; proposal `r00015`).
+   *
+   * Travels through the adapter into `EndpointSpec.confidence`.
+   */
+  confidence?: IEndpointConfidence;
+}
 
 /**
  * What `IRouteScanner.scan()` returns.

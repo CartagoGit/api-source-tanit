@@ -12,7 +12,10 @@
  * responses: see the p00031 note on why inventing them would have been worse
  * than having none.
  */
-import type { IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
+import type {
+  IEndpointConfidence,
+  IEndpointField,
+} from "../../contracts/interfaces/core/postman.interface.js";
 
 /** The locations where a parameter can go, and what to call them. */
 const LOCATION_TITLES: Readonly<Record<string, string>> = {
@@ -52,29 +55,49 @@ function constraintsOf(field: IEndpointField): string {
 export function buildRequestDescription(
   base: string | undefined,
   fields: ReadonlyArray<IEndpointField> | undefined,
+  confidence: IEndpointConfidence | undefined,
 ): string {
   const head = (base ?? "").trim();
-  if (!fields || fields.length === 0) return head;
-
   const sections: string[] = [];
-  for (const location of LOCATION_ORDER) {
-    const group = fields.filter((f) => f.location === location);
-    if (group.length === 0) continue;
 
-    const rows = group.map((f) => {
-      const required = f.required ? "sí" : "no";
-      return `| \`${f.fieldName}\` | ${f.type} | ${required} | ${constraintsOf(f)} |`;
-    });
+  // Audit 2026-09-06 §17, proposal r00015. The block lives at the
+  // very top so the user sees it before the table of fields; a
+  // low-confidence request is the kind of thing they should
+  // double-check before sending. Empty `reasons` is silently
+  // dropped — the level alone is not enough.
+  if (confidence && confidence.reasons.length > 0) {
+    const bullets = confidence.reasons.map((r) => `- ${r}`).join("\n");
     sections.push(
       [
-        `#### ${LOCATION_TITLES[location] ?? location}`,
+        `**Confianza: ${confidence.level}**`,
         "",
-        "| Campo | Tipo | Obligatorio | Restricciones |",
-        "| --- | --- | :-: | --- |",
-        ...rows,
+        bullets,
+        "",
       ].join("\n"),
     );
   }
+
+  if (fields && fields.length > 0) {
+    for (const location of LOCATION_ORDER) {
+      const group = fields.filter((f) => f.location === location);
+      if (group.length === 0) continue;
+
+      const rows = group.map((f) => {
+        const required = f.required ? "sí" : "no";
+        return `| \`${f.fieldName}\` | ${f.type} | ${required} | ${constraintsOf(f)} |`;
+      });
+      sections.push(
+        [
+          `#### ${LOCATION_TITLES[location] ?? location}`,
+          "",
+          "| Campo | Tipo | Obligatorio | Restricciones |",
+          "| --- | --- | :-: | --- |",
+          ...rows,
+        ].join("\n"),
+      );
+    }
+  }
+
   if (sections.length === 0) return head;
 
   // The note at the end is not decorative: without it, the reader cannot tell

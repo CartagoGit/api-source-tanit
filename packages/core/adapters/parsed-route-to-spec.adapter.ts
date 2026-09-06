@@ -268,6 +268,12 @@ export async function buildSpecsFromScanner(
     // / apiKey / oauth2 declare it on the route and the adapter
     // carries it to the spec without transformations.
     if (route.auth !== undefined) spec.auth = route.auth;
+    // Audit 2026-09-06 §17, proposal r00015: the scanner may stamp a
+    // confidence annotation on the route (Pages Router multi-verb,
+    // fixtures without types, future heuristics). Copy it across so
+    // exporters can render it. Scanners that leave it `undefined`
+    // get `high` by default — see Postman / OpenAPI exporters.
+    if (route.confidence !== undefined) spec.confidence = route.confidence;
 
     // Path parameters do NOT go in `spec.query`: that becomes a query
     // string, and `/users/{{id}}?id=1` is not what the route declares.

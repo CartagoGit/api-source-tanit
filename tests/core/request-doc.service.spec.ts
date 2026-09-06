@@ -17,15 +17,15 @@ const field = (partial: Partial<IEndpointField> & { fieldName: string }): IEndpo
 
 describe("without rules there is no table", () => {
   test("returns the original description unchanged", () => {
-    expect(buildRequestDescription("createUser", undefined)).toBe("createUser");
+    expect(buildRequestDescription("createUser", undefined, undefined)).toBe("createUser");
   });
 
   test("an empty list adds nothing either", () => {
-    expect(buildRequestDescription("createUser", [])).toBe("createUser");
+    expect(buildRequestDescription("createUser", [], undefined)).toBe("createUser");
   });
 
   test("with no description and no rules, an empty string", () => {
-    expect(buildRequestDescription(undefined, [])).toBe("");
+    expect(buildRequestDescription(undefined, [], undefined)).toBe("");
   });
 });
 
@@ -36,7 +36,7 @@ describe("the table", () => {
     field({ fieldName: "age", type: "integer", required: false, minimum: 0, maximum: 120 }),
     field({ fieldName: "role", type: "enum", required: false, enumValues: ["admin", "user"] }),
   ];
-  const doc = buildRequestDescription("createUser", fields);
+  const doc = buildRequestDescription("createUser", fields, undefined);
 
   test("preserves the description that was already there", () => {
     // It is what someone wrote on purpose; overwriting it with a
@@ -69,7 +69,7 @@ describe("the table", () => {
   });
 
   test("a field with no constraints does not leave an empty cell", () => {
-    expect(buildRequestDescription("x", [field({ fieldName: "plain" })])).toContain("—");
+    expect(buildRequestDescription("x", [field({ fieldName: "plain" })], undefined)).toContain("—");
   });
 
   // Without this, whoever reads the table cannot tell whether a person
@@ -85,14 +85,14 @@ describe("grouping by location", () => {
       field({ fieldName: "b", location: "body" }),
       field({ fieldName: "q", location: "query" }),
       field({ fieldName: "p", location: "path" }),
-    ]);
+    ], undefined);
     expect(doc).toContain("#### Body");
     expect(doc).toContain("#### Query");
     expect(doc).toContain("#### Path");
   });
 
   test("a location with no fields does not generate a section", () => {
-    const doc = buildRequestDescription("x", [field({ fieldName: "q", location: "query" })]);
+    const doc = buildRequestDescription("x", [field({ fieldName: "q", location: "query" })], undefined);
     expect(doc).toContain("#### Query");
     expect(doc).not.toContain("#### Body");
   });
@@ -101,7 +101,56 @@ describe("grouping by location", () => {
     const doc = buildRequestDescription("x", [
       field({ fieldName: "q", location: "query" }),
       field({ fieldName: "b", location: "body" }),
-    ]);
+    ], undefined);
     expect(doc.indexOf("#### Body")).toBeLessThan(doc.indexOf("#### Query"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// r00015 — confidence annotation (audit 2026-09-06 §17)
+// ---------------------------------------------------------------------------
+
+describe("r00015 — confidence annotation surfaces in the description", () => {
+  test("high confidence with no reasons is silently dropped", () => {
+    const doc = buildRequestDescription(
+      "createUser",
+      undefined,
+      { level: "high", reasons: [] },
+    );
+    expect(doc).not.toContain("Confianza");
+  });
+
+  test("low confidence renders as a labelled block at the top", () => {
+    const doc = buildRequestDescription(
+      "createUser",
+      undefined,
+      {
+        level: "low",
+        reasons: ["Pages Router handler method dispatch not statically resolved"],
+      },
+    );
+    expect(doc).toContain("**Confianza: low**");
+    // The block lives at the top, but the `head` (the user's own
+    // description) precedes it. The block still appears before any
+    // field table — and crucially, the `**Confianza**` label is
+    // visible in the doc so Postman renders it as a bold prefix.
+    expect(doc.indexOf("Confianza")).toBeGreaterThan(-1);
+    expect(doc).toContain(
+      "- Pages Router handler method dispatch not statically resolved",
+    );
+  });
+
+  test("medium confidence with reasons also renders", () => {
+    const doc = buildRequestDescription(
+      undefined,
+      undefined,
+      {
+        level: "medium",
+        reasons: ["two signals combined", "neither is unambiguous"],
+      },
+    );
+    expect(doc).toContain("**Confianza: medium**");
+    expect(doc).toContain("- two signals combined");
+    expect(doc).toContain("- neither is unambiguous");
   });
 });

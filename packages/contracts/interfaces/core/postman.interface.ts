@@ -292,6 +292,56 @@ export interface EndpointSpec {
    * @see ./schema.interface.ts
    */
   schemaGraph?: ISchemaGraph;
+  /**
+   * Confidence the scanner has in this endpoint (audit 2026-09-06
+   * §16, §17; proposal `r00015`).
+   *
+   * Optional on purpose: scanners that already produce a precise
+   * signal (App Router `export async function GET`, OpenAPI
+   * path+verb, Hono `.get/.post/...`, Fastify `fastify.get(...)`)
+   * leave it `undefined` and the exporters default to `high` with
+   * no reason. Scanners that combine multiple heuristics
+   * (Next.js Pages Router `switch (req.method)` multi-verb,
+   * fixtures without types) populate it with `level: "low"` and
+   * a human-readable reason so the user sees it in Postman /
+   * OpenAPI as `x-tanit-confidence: "low" reason: "..."`.
+   *
+   * The `IEndpointConfidence` shape lives next to the spec so the
+   * two are imported together; `lint:contracts` enforces this.
+   */
+  confidence?: IEndpointConfidence;
+}
+
+/**
+ * Confidence the scanner has in an endpoint.
+ *
+ * Categorical on purpose (`high` | `medium` | `low`). A numeric
+ * score already lives on `IProjectMatch`; here we want one
+ * categorical value per endpoint with a list of short reasons
+ * the user can read in Postman / OpenAPI.
+ *
+ * - `high`:   the scanner found a precise, unambiguous signal
+ *             (App Router `GET` named export, OpenAPI path+verb,
+ *             Hono `app.get`, Fastify `fastify.get`, ASP.NET
+ *             `[HttpGet]`).
+ * - `medium`: the scanner combined two or more signals but none
+ *             is unambiguous. Useful, but worth a second look.
+ * - `low`:    the scanner fell back to a wide heuristic — for
+ *             example Pages Router emitting five verbs from a
+ *             single handler's `switch (req.method)` block. The
+ *             `reasons` explain what happened.
+ */
+export interface IEndpointConfidence {
+  readonly level: "high" | "medium" | "low";
+  /**
+   * Short human-readable reasons, in stable order.
+   *
+   * One entry per independent signal that contributed to the
+   * confidence value. The Postman exporter renders them as
+   * bullet points in the request description; OpenAPI emits them
+   * as `x-tanit-confidence-reasons: [...]`.
+   */
+  readonly reasons: ReadonlyArray<string>;
 }
 
 /**

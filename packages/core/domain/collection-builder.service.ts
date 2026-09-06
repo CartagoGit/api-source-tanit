@@ -95,7 +95,19 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
     },
     // The description documents what the endpoint accepts, with the
     // rules already extracted to build the example.
-    description: buildRequestDescription(ep.description, ep.fields),
+    // Audit 2026-09-06 §17, proposal r00015: when the scanner stamps
+    // a `confidence: "low"` annotation on the spec, the user sees it
+    // as a `**Confidence: low**` block at the top of the request
+    // description — the same place they read the field table.
+    description: buildRequestDescription(
+      ep.description,
+      ep.fields,
+      // Only forward `medium` / `low`. `high` is the default and
+      // would otherwise pad every collection with a redundant block.
+      ep.confidence?.level === "high"
+        ? undefined
+        : ep.confidence,
+    ),
   };
   // Headers personalizados opcionales (X-API-Key, headers de OpenAPI, etc.)
   if (ep.headers && ep.headers.length > 0) {
