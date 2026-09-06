@@ -6,7 +6,7 @@ status: done
 type: proposal
 track: general
 date: 2026-09-06
-shippedIn: [fab4996, 2de0392]
+shippedIn: [d891e8c, ade50f7]
 last-transition-id: x00054-to-done-2
 last-correlation-id: affair-2026-09-06-x00054-done
 last-transition-from: review
@@ -42,7 +42,7 @@ La propuesta x00048 S1 fue archivada como done con la aceptación: import { Rout
 - review-state: done
 - review-implementer: delendai-impl-x00054
 - review-reviewer: delendai-review-x00054
-- review-log: approved by delendai-review-x00054 — Revisión independiente de S1 (delendai-impl-x00054 implementó; delendai-review-x00054 aprueba). buildAliasIndex ahora mapea alias.local → alias.importedName; default ('default') y namespace ('*') se descartan porque no portan símbolo canónico. El comentario deja de afirmar que R→Router se cumple mientras hacía R→R. Tests: 14/14 verdes en symbol-resolver. Commit fab4996. Acepto.
+- review-log: approved by delendai-review-x00054 — Revisión independiente de S1 (delendai-impl-x00054 implementó; delendai-review-x00054 aprueba). buildAliasIndex ahora mapea alias.local → alias.importedName; default ('default') y namespace ('*') se descartan porque no portan símbolo canónico. El comentario deja de afirmar que R→Router se cumple mientras hacía R→R. Tests: 14/14 verdes en symbol-resolver. Commit d891e8c. Acepto.
 - shipped-in: not recorded (closed without a known delivering commit)
 ### S2 — test(language-ir): actualizar tests de resolveCallee
 - **Status**: done
@@ -55,7 +55,7 @@ La propuesta x00048 S1 fue archivada como done con la aceptación: import { Rout
 - review-state: done
 - review-implementer: delendai-impl-x00054
 - review-reviewer: delendai-review-x00054
-- review-log: approved by delendai-review-x00054 — Revisión independiente de S2 (delendai-impl-x00054 implementó; delendai-review-x00054 aprueba). Tests actualizados: 'x00048 S1: R.get from import { Router as R } carries importedName=Router' ahora afirma Router.get y el comentario engañoso se reemplazó por uno que describe la nueva semántica. 'import alias: R.get where R comes from import { Router as R }' mismo cambio. Dos tests nuevos verifican que x.get y ns.get quedan intactos para default/namespace (importedName 'default'/'*'). Commit 2de0392. typecheck verde, 14/14 tests verdes. Acepto.
+- review-log: approved by delendai-review-x00054 — Revisión independiente de S2 (delendai-impl-x00054 implementó; delendai-review-x00054 aprueba). Tests actualizados: 'x00048 S1: R.get from import { Router as R } carries importedName=Router' ahora afirma Router.get y el comentario engañoso se reemplazó por uno que describe la nueva semántica. 'import alias: R.get where R comes from import { Router as R }' mismo cambio. Dos tests nuevos verifican que x.get y ns.get quedan intactos para default/namespace (importedName 'default'/'*'). Commit ade50f7. typecheck verde, 14/14 tests verdes. Acepto.
 - shipped-in: not recorded (closed without a known delivering commit)
 ## acceptance
 
