@@ -148,7 +148,27 @@ async function realPackages(): Promise<string[]> {
   };
   // The root plus each workspace member. A workspace is, by
   // definition, a package that `bun install` resolves.
-  return ["/", ...(pkg.workspaces ?? []).map((w) => `/${w}`)];
+  //
+  // x00041: el plugin de Delendai ya NO está en workspaces (vive en
+  // `integrations/delendai/` como integración externa con su propio
+  // `package.json`). Dependabot debe seguirlo igual porque tiene
+  // dependencias reales; se enumera explícitamente aquí para que
+  // añadir otra integración no requiera tocar este test.
+  const integrations: string[] = [];
+  try {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(join(REPO_ROOT, "integrations"), {
+      withFileTypes: true,
+    });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        integrations.push(`/integrations/${entry.name}`);
+      }
+    }
+  } catch {
+    // sin carpeta de integrations: nada que añadir
+  }
+  return ["/", ...(pkg.workspaces ?? []).map((w) => `/${w}`), ...integrations];
 }
 
 describe("which directories get updated", () => {

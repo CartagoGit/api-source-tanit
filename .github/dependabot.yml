@@ -4,12 +4,15 @@
 # Solo entran aquí los directorios que contienen dependencias de
 # verdad:
 #
-#   /                                      el paquete del producto
-#   /integrations/delendai              la integración opcional con Delendai
-#                                       (NO se publica; ver x00041)
+#   /                              el paquete del producto
+#   /integrations/delendai         la integración opcional con Delendai
+#                                  (NO se publica; ver x00041)
 #
-# El resto (plugins/, fixtures de e2e, ejemplos) no se instalan y por
-# tanto no producen PRs de Dependabot.
+# El resto (plugins/, fixtures de e2e, examples/) no se instalan y por
+# tanto no producen PRs de Dependabot. `examples/` es especialmente
+# ruidoso: 50+ proyectos de muestra traen cada uno su propio
+# `package.json`, y si Dependabot los siguiera abriría docenas de PRs
+# sobre dependencias que nadie instala.
 
 version: 2
 

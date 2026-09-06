@@ -89,9 +89,14 @@ describe("bestSectionFor — the most specific prefix wins", () => {
     ["packages/core/adapters/parsed-route-to-spec.adapter.ts", "core"],
     ["packages/cli/commands/generate.script.ts", "cli"],
     ["examples/example-express/src/index.js", "e2e"],
-    ["packages/plugins/delendai_tanit/src/index.ts", "plugin"],
   ])("%s → %s", (file, expected) => {
     expect(bestSectionFor(file)?.name).toBe(expected);
+  });
+
+  // x00041: el plugin de Delendai dejó de ser una sección del
+  // producto (vive en `integrations/delendai/` y se valida aparte).
+  test("integrations/* no cae en ninguna sección del producto", () => {
+    expect(bestSectionFor("integrations/delendai/src/index.ts")).toBeUndefined();
   });
 
   test("a file outside any section does not fall into any", () => {

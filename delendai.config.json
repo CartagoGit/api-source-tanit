@@ -71,7 +71,7 @@
         "roots": [
           "docs/delendai",
           "README.md",
-          "packages/plugins/delendai_tanit/README.md"
+          "integrations/delendai/README.md"
         ],
         "extensions": [
           "md",
@@ -302,7 +302,7 @@
       "options": {}
     },
     "tanit": {
-      "path": "packages/plugins/delendai_tanit/src/index.ts",
+      "path": "integrations/delendai/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}",
         "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts"
