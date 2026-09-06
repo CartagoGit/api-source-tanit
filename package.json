@@ -1,9 +1,7 @@
 {
   "name": "api-source-tanit",
   "version": "1.0.0",
-  "workspaces": [
-    "packages/plugins/delendai_tanit"
-  ],
+  "workspaces": [],
   "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
     "tanit",
@@ -49,7 +47,6 @@
   "files": [
     "bin/",
     "packages/",
-    "!packages/plugins/delendai_tanit/",
     "scripts/",
     "docs/INSTALL.md",
     "docs/FRAMEWORKS.md",
