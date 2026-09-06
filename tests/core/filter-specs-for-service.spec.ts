@@ -287,4 +287,88 @@ describe("filterSpecsForService (x00028)", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.uri).toBe("/health");
   });
+
+  // x00039 S2: en flat-hybrid el descriptor tiene
+  // `additionalMatches.length > 0` y su `serviceId` es
+  // `normalizeServiceId(projectRoot)`, mientras los specs conservan
+  // su `serviceId` derivado por framework. Una comprobación
+  // estricta `spec.serviceId === service.serviceId` rechazaría
+  // CADA spec. La solución correcta: en flat-hybrid la igualdad de
+  // `(method, uri)` ya basta porque solo hay un projectRoot.
+  it("x00039: flat-hybrid ignores spec.serviceId vs service.serviceId mismatch", () => {
+    const hybrid: IServiceDescriptor = {
+      serviceId: "repo",
+      match: { framework: "express", projectRoot: "/repo", artifacts: [] },
+      additionalMatches: [
+        { framework: "graphql", projectRoot: "/repo", artifacts: [] },
+      ],
+      frameworks: ["express", "graphql"],
+      endpoints: [
+        route("GET", "/users"),
+        route("POST", "/graphql"),
+      ],
+      baseUrl: null,
+      auth: undefined,
+      variables: [],
+    };
+    const catalog: EndpointSpec[] = [
+      // Cada spec conserva su serviceId derivado por framework.
+      // El descriptor los acepta aunque los serviceIds no coincidan.
+      spec("GET", "/users", { serviceId: "express_repo" }),
+      spec("POST", "/graphql", { serviceId: "graphql_repo" }),
+      // Spec ajeno al híbrido: NO debe entrar.
+      spec("GET", "/other", { serviceId: "fastify_other" }),
+    ];
+
+    const out = filterSpecsForService(catalog, hybrid);
+
+    expect(out).toHaveLength(2);
+    expect(out.map((s) => s.uri).sort()).toEqual(["/graphql", "/users"]);
+  });
+
+  // x00039 S2: en flat-hybrid los specs SIN serviceId también
+  // pasan (compatibilidad con callers que aún no estampean), igual
+  // que en el camino legacy.
+  it("x00039: flat-hybrid accepts specs without serviceId (legacy compat)", () => {
+    const hybrid: IServiceDescriptor = {
+      serviceId: "repo",
+      match: { framework: "express", projectRoot: "/repo", artifacts: [] },
+      additionalMatches: [{ framework: "graphql", projectRoot: "/repo", artifacts: [] }],
+      frameworks: ["express", "graphql"],
+      endpoints: [route("GET", "/users")],
+      baseUrl: null,
+      auth: undefined,
+      variables: [],
+    };
+    const catalog: EndpointSpec[] = [spec("GET", "/users")];
+
+    const out = filterSpecsForService(catalog, hybrid);
+
+    expect(out).toHaveLength(1);
+  });
+
+  // x00039 S2: en flat-hybrid, si dos specs comparten
+  // `(method, uri)` desde dos frameworks, ambos pasan (no hay
+  // discriminación por serviceId). El merger es el responsable de
+  // deduplicar si llega el caso.
+  it("x00039: flat-hybrid keeps specs that share (method, uri) from different frameworks", () => {
+    const hybrid: IServiceDescriptor = {
+      serviceId: "repo",
+      match: { framework: "express", projectRoot: "/repo", artifacts: [] },
+      additionalMatches: [{ framework: "graphql", projectRoot: "/repo", artifacts: [] }],
+      frameworks: ["express", "graphql"],
+      endpoints: [route("GET", "/health")],
+      baseUrl: null,
+      auth: undefined,
+      variables: [],
+    };
+    const catalog: EndpointSpec[] = [
+      spec("GET", "/health", { serviceId: "express_repo" }),
+      spec("GET", "/health", { serviceId: "graphql_repo" }),
+    ];
+
+    const out = filterSpecsForService(catalog, hybrid);
+
+    expect(out).toHaveLength(2);
+  });
 });

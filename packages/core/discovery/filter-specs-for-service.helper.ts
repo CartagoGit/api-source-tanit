@@ -149,12 +149,28 @@ export function filterSpecsForService(
   // Real monorepo data always stamps both ends, so the equality
   // branch is what runs there.
   const serviceId = service.serviceId ?? "";
+  // x00039 S1 / flat-hybrid: when the descriptor groups several
+  // frameworks under one service (`additionalMatches.length > 0`),
+  // its `serviceId` is `normalizeServiceId(projectRoot)` while each
+  // spec carries `deriveServiceId(match.framework@projectRoot)`.
+  // The two are not equal by construction — that's exactly what
+  // x00031 S1 set up — so a strict equality check would reject every
+  // spec and produce a zero-endpoint collection. The `(method, uri)`
+  // match above already proves the spec belongs to one of the
+  // descriptor's routes; flat-hybrid is a single project, so the
+  // `serviceId` discrimination (which exists to disambiguate two
+  // separate workspaces) is unnecessary here.
+  const isFlatHybrid = service.additionalMatches.length > 0;
   const filtered: EndpointSpec[] = [];
   for (const spec of discoverySpecs) {
     // Same normalization as `endpointIdentitySet`: the spec side
     // carries Postman form (`{{id}}`), the route side carries raw
     // framework form (`:id`). Both collapse to `:p` here.
     if (allowed.has(`${spec.method}|${normalizeForComparison(spec.uri)}`)) {
+      if (isFlatHybrid) {
+        filtered.push(spec);
+        continue;
+      }
       const specServiceId = spec.serviceId ?? "";
       // Belt-and-braces: even if `(method, uri)` collides with a
       // sibling service, we only keep the spec if it actually belongs
