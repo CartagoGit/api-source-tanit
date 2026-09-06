@@ -112,7 +112,8 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
 ### S1 — `SymbolTable` mínimo para routers Express
 
 - **Files**:
-  - `packages/frameworks/scanners/express.symbol-table.ts` (nuevo)
+  - `packages/frameworks/scanners/express.symbol-table.ts` (eliminar)
+  - `packages/frameworks/scanners/express-symbol-table.helper.ts` (nuevo)
   - `packages/frameworks/scanners/express.scanner.ts`
   - `tests/frameworks/express-symbol-table.spec.ts` (nuevo)
 - **Gate**: `bun run test:frameworks` + `bun run lint:naming`

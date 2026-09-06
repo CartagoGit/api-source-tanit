@@ -52,7 +52,7 @@ import {
   emptySymbolTable,
   freezeSymbolTable,
   populateFromModule,
-} from "./express.symbol-table.js";
+} from "./express-symbol-table.helper.js";
 
 /**
  * Node frameworks this scanner covers because they look like Express.

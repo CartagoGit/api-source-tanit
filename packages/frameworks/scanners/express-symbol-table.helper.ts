@@ -1,5 +1,5 @@
 /**
- * `express.symbol-table.ts` — minimal per-file router SymbolTable for the
+ * `express-symbol-table.helper.ts` — minimal per-file router SymbolTable for the
  * Express scanner (`x00055` S1).
  *
  * ## Why this exists

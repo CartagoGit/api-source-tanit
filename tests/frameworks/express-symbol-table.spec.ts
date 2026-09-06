@@ -9,7 +9,7 @@
  * it makes the scanner **record** the declarations without collapsing
  * them, so the data exists per file:
  *
- *   - `packages/frameworks/scanners/express.symbol-table.ts` (the table)
+ *   - `packages/frameworks/scanners/express-symbol-table.helper.ts` (the table)
  *   - `ExpressRouteScanner.scan()` populates `IScanResult.routerSymbols`
  *
  * Scope guard: these tests pin the table contract only — same-named
@@ -26,7 +26,7 @@ import {
   populateFromModule,
   prefixOf,
   routerNamesInFile,
-} from "../../packages/frameworks/scanners/express.symbol-table";
+} from "../../packages/frameworks/scanners/express-symbol-table.helper";
 import {
   ExpressProjectScanner,
   ExpressRouteScanner,
