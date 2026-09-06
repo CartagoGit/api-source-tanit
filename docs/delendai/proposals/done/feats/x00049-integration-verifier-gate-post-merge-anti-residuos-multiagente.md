@@ -2,9 +2,11 @@
 id: x00049
 kind: feat
 title: "x00049: integration verifier — gate post-merge que detecta residuos de trabajo multiagente"
-status: ready
+status: done
 priority: P1
 globalGate: lint
+shippedIn:
+  - dcd69b9
 why: |
   El análisis 2026-09-05/06 señaló un patrón recurrente en el
   trabajo multiagente de Tanit:

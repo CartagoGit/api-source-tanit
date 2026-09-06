@@ -8,7 +8,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `x00048` | `feat` | [`ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md`](ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md) |
-| `x00049` | `feat` | [`ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md`](ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md) |
 
 ## Bloqueadas
 
@@ -92,6 +91,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `p00039` — p00039 — soporte de tipos de autenticación avanzada: OAuth2, API Key y detección honesta — `6dca15a`
 - `p00040` — p00040 — documentación generada automáticamente: API docs site, JSDoc/TSDoc y CHANGELOG semántico — `868d16b`
 - `p00042` — p00042 — poder decirle de qué tipo es la API cuando no se autodetecta — `1397e54`
+- `x00049` — x00049: integration verifier — gate post-merge que detecta residuos de trabajo multiagente — `dcd69b9`
 
 ### fix
 
