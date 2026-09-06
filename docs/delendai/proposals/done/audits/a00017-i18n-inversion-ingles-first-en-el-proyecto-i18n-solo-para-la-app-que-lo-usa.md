@@ -92,7 +92,7 @@ usuario final cuando corra la app).
 > que motivó esta propuesta. El cleanup amplio de comentarios/identifiers/
 > JSDoc queda para S1.5 (slices posteriores por área).
 
-- **Status**: pending
+- **Status**: done
 - **Scope**: **3 archivos de plantilla + sus tests** + commit con los 21
   ejemplos regenerados.
 - **Files**:
@@ -129,8 +129,10 @@ usuario final cuando corra la app).
     output** (los `examples/example-*/export-to-postman/*.postman_collection.json`
     y `tanit/*.postman_collection.json` quedan en inglés en `info.description`).
   - `bun run validate` verde end-to-end.
-- review-state: in_review
+- review-state: done
 - review-implementer: implementation_runner
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — S1 verifies clean end-to-end. (1) Acceptance grep returns empty for the 3 source files (only the pre-flagged false positive `gin.scanner.ts:319` matches — comment, out of S1 scope). (2) All 5 spec'd string changes are present in `2ad691c` and the post-fix HEAD is `fa98d36`. (3) All 3 required tests are added and pass: `tests/core/project-loader.spec.ts` (13/13), `tests/frameworks/endpoint-discovery.spec.ts` (40/40), `tests/cli/init-command.test.ts` (1/1). (4) Regenerated collections at the 3 spec'd paths carry `"description": "Postman collection auto-generated for ..."`. (5) Gating green: typecheck EXIT=0, lint:output-language EXIT=0, lint:i18n-completeness EXIT=0, validate:examples EXIT=0 (21/21), full vitest (4 sections) 2690 passing / 1 skipped. Non-blocking concerns tracked in the report: (a) scope creep in `fa98d36` — the implementer translated 2 additional strings (`Variante:` → `Variant:` and `Variantes (auto ·` → `Variants (auto ·`) that are NOT in the S1 spec; consistent with the spirit but should be called out so future slices don't drift; (b) `lint:proposals` fails on a pre-existing duplicate `x00041` untracked file — unrelated to S1, came from x00041 archive work; (c) S5's dedicated `lint:i18n-drift` gate is still pending (separate slice).
 ### S1.5 — Source code: inglés-first (broad cleanup, deferred)
 
 > **Diferido respecto a S1**. Tras un análisis 2026-09-06, el resto del
