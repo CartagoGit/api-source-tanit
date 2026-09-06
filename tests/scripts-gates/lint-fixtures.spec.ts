@@ -1,19 +1,10 @@
 /**
- * `bun run lint:fixtures` — guard that the gate catches the very
- * failure modes the audit 2026-09-06 section 1 calls out.
+ * `bun run lint:fixtures` — guard that the gate catches every
+ * failure mode the audit 2026-09-06 (sections 1, 9, 10) calls out.
  *
- * Without this test, the gate could silently regress to "always pass"
- * and the failure mode would come back. The fixtures used here are
- * synthetic: we build a temp directory with a deliberately incomplete
- * fixture and assert the gate's source-scan logic flags it.
- *
- * The gate today is wired to `FIXTURES_DIR` / `SMOKE_FIXTURES_DIR`
- * (constants from `root.helper.ts`). To exercise it without
- * contaminating the real fixture roots, the test runs the gate once
- * against the real roots (baseline) AND replicates the source-scan
- * logic on synthetic fixtures. The replication is a literal copy of
- * the gate's helper, kept in lock-step by code review — if the gate
- * adds or removes an extension, this list must change with it.
+ * Imports the gate's helpers directly and drives them against
+ * synthetic temp fixtures (audit 2026-09-06 §12: no literal
+ * copies of the gate's lists).
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -24,6 +15,13 @@ import {
   REPO_ROOT,
   SMOKE_FIXTURES_DIR,
 } from "../../scripts/helpers/root.helper";
+import {
+  isFixtureSource,
+  isManifest,
+  isSpecFile,
+  lintFixture,
+  type IFixtureIssue,
+} from "../../scripts/gates/lint-fixtures.script";
 
 const SCRATCH = join(REPO_ROOT, "tests", "scripts-gates", ".scratch");
 
@@ -35,171 +33,204 @@ afterAll(async () => {
   await rm(SCRATCH, { recursive: true, force: true });
 });
 
-describe("lint-fixtures.script.ts — audit 2026-09-06 §1 fixture guards", () => {
-  async function runGate(): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-    const proc = Bun.spawn({
-      cmd: [
-        "bun",
-        "run",
-        join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts"),
-      ],
-      cwd: REPO_ROOT,
-      stdout: "pipe",
-      stderr: "pipe",
-    });
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-    return { exitCode: await proc.exited, stdout, stderr };
-  }
+async function tmpDir(prefix: string): Promise<string> {
+  return mkdtemp(join(SCRATCH, prefix));
+}
 
-  test("current real fixture roots pass", async () => {
-    const { exitCode, stdout } = await runGate();
+async function runGateCli(): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  const proc = Bun.spawn({
+    cmd: ["bun", "run", join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts")],
+    cwd: REPO_ROOT,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, stderr] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  return { exitCode: await proc.exited, stdout, stderr };
+}
+
+describe("isManifest / isSpecFile / isFixtureSource — unit", () => {
+  test("manifests are recognised and excluded from sources", () => {
+    expect(isManifest("package.json")).toBe(true);
+    expect(isManifest("composer.json")).toBe(true);
+    expect(isManifest("Foo.csproj")).toBe(true);
+    expect(isManifest("expected.json")).toBe(false);
+    expect(isManifest("tsconfig.json")).toBe(false);
+    expect(isFixtureSource("expected.json")).toBe(false);
+    expect(isFixtureSource("tsconfig.json")).toBe(false);
+  });
+
+  test("openapi/swagger/schema(.graphql)/proto/avsc are spec files", () => {
+    expect(isSpecFile("openapi.yaml")).toBe(true);
+    expect(isSpecFile("openapi.json")).toBe(true);
+    expect(isSpecFile("swagger.yaml")).toBe(true);
+    expect(isSpecFile("schema.graphql")).toBe(true);
+    expect(isSpecFile("schema/schema.graphql")).toBe(true);
+    expect(isSpecFile("schema/foo.proto")).toBe(true);
+    expect(isSpecFile("user.avsc")).toBe(true);
+  });
+
+  test("code extensions are fixture sources", () => {
+    expect(isFixtureSource("server.js")).toBe(true);
+    expect(isFixtureSource("server.ts")).toBe(true);
+    expect(isFixtureSource("app.py")).toBe(true);
+    expect(isFixtureSource("Foo.cs")).toBe(true);
+  });
+
+  test("Symfony routing config is recognised (regression for symfony-mini)", () => {
+    expect(isSpecFile("config/routes.yaml")).toBe(true);
+    expect(isFixtureSource("config/routes.yaml")).toBe(true);
+  });
+
+  test("Laravel routing files are recognised", () => {
+    expect(isSpecFile("routes/api.php")).toBe(true);
+    expect(isSpecFile("routes/web.php")).toBe(true);
+  });
+});
+
+describe("lintFixture — synthetic fixtures", () => {
+  test("manifest-only fixture is flagged", async () => {
+    const dir = await tmpDir("only-manifest-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"x"}');
+      const issues = await lintFixture(dir);
+      expect(issues.some((i) => i.kind === "no-sources")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("manifest + expected.json (the audit's exact bug) is flagged", async () => {
+    const dir = await tmpDir("manifest-plus-expected-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"x"}');
+      await writeFile(join(dir, "expected.json"), '{"routes":[]}');
+      const issues = await lintFixture(dir);
+      expect(issues.some((i) => i.kind === "no-sources")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("manifest + tsconfig.json is also flagged", async () => {
+    const dir = await tmpDir("manifest-plus-tsconfig-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"x"}');
+      await writeFile(join(dir, "tsconfig.json"), "{}");
+      const issues = await lintFixture(dir);
+      expect(issues.some((i) => i.kind === "no-sources")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("manifest + source code passes", async () => {
+    const dir = await tmpDir("manifest-plus-code-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"x"}');
+      await writeFile(join(dir, "index.ts"), "export const x = 1;\n");
+      const issues = await lintFixture(dir);
+      expect(issues).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("spec-only root (OpenAPI) passes", async () => {
+    const dir = await tmpDir("spec-only-");
+    try {
+      await writeFile(join(dir, "openapi.yaml"), "openapi: 3.1.0\n");
+      const issues = await lintFixture(dir);
+      expect(issues).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("multi-service fixture: empty apps/ is flagged", async () => {
+    const dir = await tmpDir("multi-empty-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"monorepo"}');
+      await mkdir(join(dir, "apps"));
+      const issues = await lintFixture(dir);
+      expect(issues.some((i) => i.kind === "no-sources")).toBe(true);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("multi-service fixture: child with manifest only is flagged at child level (audit §10)", async () => {
+    const dir = await tmpDir("multi-child-only-manifest-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"monorepo"}');
+      await mkdir(join(dir, "apps/api/src"), { recursive: true });
+      await writeFile(join(dir, "apps/api/package.json"), '{"name":"@m/api"}');
+      await writeFile(join(dir, "apps/api/src/index.ts"), "export const x = 1;\n");
+      await mkdir(join(dir, "apps/orders"));
+      await writeFile(join(dir, "apps/orders/package.json"), '{"name":"@m/orders"}');
+      const issues = await lintFixture(dir);
+      // The issue MUST exist (the failure mode the audit warns about),
+      // be of the right kind, and pin the child path under the
+      // multi-service subdir (the path includes the relative
+      // `.scratch/<tmp>/apps/orders`).
+      const childIssue = issues.find(
+        (i) =>
+          i.kind === "empty-multi-service-child" &&
+          i.fixture.endsWith("orders") &&
+          i.fixture.includes("/apps/"),
+      );
+      expect(
+        childIssue,
+        `expected a child-level issue for the orders child; got ${JSON.stringify(issues)}`,
+      ).toBeDefined();
+      // Root must NOT be flagged when the children explain the gap
+      // (audit §10 fix).
+      expect(issues.some((i) => i.kind === "no-sources")).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("multi-service fixture: two healthy children pass", async () => {
+    const dir = await tmpDir("multi-healthy-");
+    try {
+      await writeFile(join(dir, "package.json"), '{"name":"monorepo"}');
+      await mkdir(join(dir, "apps/api/src"), { recursive: true });
+      await writeFile(join(dir, "apps/api/package.json"), '{"name":"@m/api"}');
+      await writeFile(join(dir, "apps/api/src/index.ts"), "export const x = 1;\n");
+      await mkdir(join(dir, "apps/orders/src"), { recursive: true });
+      await writeFile(join(dir, "apps/orders/package.json"), '{"name":"@m/orders"}');
+      await writeFile(join(dir, "apps/orders/src/server.js"), "module.exports = {};\n");
+      const issues = await lintFixture(dir);
+      expect(issues).toHaveLength(0);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("lint:fixtures — exit code propagation (audit §8)", () => {
+  test("real fixture roots: exit 0 + ok message", async () => {
+    const { exitCode, stdout } = await runGateCli();
     expect(exitCode).toBe(0);
     expect(stdout).toMatch(/ok\s+fixtures/);
   });
 
-  test("synthetic fixture: only package.json (no source) is flagged", async () => {
-    const dir = await mkdtemp(join(SCRATCH, "no-sources-"));
-    try {
-      await writeFile(join(dir, "package.json"), '{"name":"x"}');
-      const hasSources = await scanSources(dir);
-      expect(hasSources, "manifest-only fixture must NOT have sources").toBe(false);
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
+  test("the gate exposes IFixtureIssue kind 'empty-multi-service-child'", () => {
+    const issue: IFixtureIssue = {
+      fixture: "x",
+      kind: "empty-multi-service-child",
+      detail: "x",
+    };
+    expect(issue.kind).toBe("empty-multi-service-child");
   });
+});
 
-  test("synthetic fixture: manifest + source passes the source scan", async () => {
-    const dir = await mkdtemp(join(SCRATCH, "complete-"));
-    try {
-      await writeFile(join(dir, "package.json"), '{"name":"x"}');
-      await writeFile(join(dir, "index.ts"), "export const x: number = 1;\n");
-      const hasSources = await scanSources(dir);
-      expect(hasSources).toBe(true);
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test("synthetic fixture: spec-only root (OpenAPI / GraphQL) is recognised as a source", async () => {
-    const dir = await mkdtemp(join(SCRATCH, "spec-only-"));
-    try {
-      await writeFile(join(dir, "openapi.yaml"), "openapi: 3.1.0\n");
-      const hasSources = await scanSources(dir);
-      expect(hasSources, ".yaml must be recognised as a source spec file").toBe(true);
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test("synthetic multi-service fixture: a child with manifest only (no source) is detected", async () => {
-    const dir = await mkdtemp(join(SCRATCH, "multi-empty-"));
-    try {
-      await mkdir(join(dir, "apps/api/src"), { recursive: true });
-      await writeFile(join(dir, "package.json"), '{"name":"monorepo"}');
-      await writeFile(join(dir, "apps/api/package.json"), '{"name":"@m/api"}');
-      await writeFile(join(dir, "apps/api/src/index.ts"), "export const x: number = 1;\n");
-      await mkdir(join(dir, "apps/orders"), { recursive: true });
-      await writeFile(join(dir, "apps/orders/package.json"), '{"name":"@m/orders"}');
-      // apps/orders has the manifest but NO source files — exactly
-      // the failure mode the audit warns about.
-      const ordersHasSources = await scanSources(join(dir, "apps/orders"));
-      expect(
-        ordersHasSources,
-        "apps/orders must NOT have sources (the bug we're catching)",
-      ).toBe(false);
-    } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test("the fixture roots used by the gate exist on disk", () => {
-    // Sanity: catches accidental renames of `tests/fixtures` /
-    // `tests/smoke-fixtures` that would silently disable the gate.
+describe("fixture roots are wired correctly (sanity)", () => {
+  test("the real fixture roots exist on disk", () => {
     expect(FIXTURES_DIR.endsWith("tests/fixtures")).toBe(true);
     expect(SMOKE_FIXTURES_DIR.endsWith("tests/smoke-fixtures")).toBe(true);
   });
 });
-
-/**
- * Literal copy of the gate's source-scan helper. If the gate
- * changes its SOURCE_EXTENSIONS list, this list must change with it
- * — and vice versa. Reviewers: any PR that touches one should
- * touch the other.
- */
-const SOURCE_EXTENSIONS_LITERAL = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
-  ".py", ".php", ".rb", ".cs", ".go", ".rs",
-  ".java", ".kt", ".kts", ".swift",
-  ".ex", ".exs", ".scala", ".groovy",
-  ".yaml", ".yml", ".json", ".graphql", ".gql", ".proto", ".avsc",
-] as const;
-
-async function scanSources(dir: string): Promise<boolean> {
-  const stack: string[] = [dir];
-  while (stack.length > 0) {
-    const current = stack.pop()!;
-    let entries;
-    try {
-      entries = await readDir(current);
-    } catch {
-      continue;
-    }
-    for (const entry of entries) {
-      const full = join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name === ".git") continue;
-        stack.push(full);
-        continue;
-      }
-      if (!entry.isFile()) continue;
-      // Manifests are NOT sources: `package.json` ends in `.json`
-      // and would otherwise count. Must stay in lock-step with the
-      // gate's `isManifest` helper.
-      if (isManifestLiteral(entry.name)) continue;
-      for (const ext of SOURCE_EXTENSIONS_LITERAL) {
-        if (entry.name.endsWith(ext)) return true;
-      }
-    }
-  }
-  return false;
-}
-
-const MANIFEST_NAMES_LITERAL = [
-  "package.json",
-  "composer.json",
-  "Cargo.toml",
-  "go.mod",
-  "pyproject.toml",
-  "requirements.txt",
-  "*.csproj",
-  "build.gradle",
-  "build.gradle.kts",
-  "pom.xml",
-  "mix.exs",
-  "Gemfile",
-] as const;
-
-function isManifestLiteral(name: string): boolean {
-  for (const pattern of MANIFEST_NAMES_LITERAL) {
-    if (pattern.startsWith("*.")) {
-      if (name.endsWith(pattern.slice(1))) return true;
-    } else if (name === pattern) {
-      return true;
-    }
-  }
-  return false;
-}
-
-interface IEntry {
-  readonly name: string;
-  readonly isDirectory(): boolean;
-  readonly isFile(): boolean;
-}
-
-async function readDir(dir: string): Promise<ReadonlyArray<IEntry>> {
-  const { readdir } = await import("node:fs/promises");
-  return (await readdir(dir, { withFileTypes: true })) as unknown as ReadonlyArray<IEntry>;
-}
