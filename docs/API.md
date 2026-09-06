@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 171 símbolos en 61 módulos.
+> 172 símbolos en 61 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -440,6 +440,32 @@ Derives a stable id from a match. Two matches with the same
   introduced by a00010.
 - Otherwise, fall back to `<framework>@<projectRoot>` to avoid collisions
   between single-framework services in different roots.
+
+#### `collectFlatHybridRoutes`
+
+```ts
+export function collectFlatHybridRoutes( routesByMatch: ReadonlyMap<string, ReadonlyArray<ParsedRoute>>, current: IProjectMatch, matches: ReadonlyArray<IProjectMatch>, ): ReadonlyArray<ParsedRoute>
+```
+
+x00039: collect routes for a flat-hybrid match.
+
+In flat-hybrid mode, several matches share the same `projectRoot` and
+have no `frameworkSearchRoot`. The upstream pipeline keys
+`routesByMatch` by `deriveServiceId(match)` (i.e. one entry per
+`(framework, projectRoot)`), but the descriptor groups those matches
+under a single `serviceId = normalizeServiceId(projectRoot)`. Without
+this helper, `.get(serviceId)` always misses and the descriptor ends
+up with zero endpoints — the bug that x00039 closed.
+
+We look up every entry whose derived id maps to a match that
+shares the current match's `projectRoot`, dedupe by
+`(method, uri, sourceFile)` (the same identity
+`accumulateRoutesByService` uses), and return the union.
+
+Lives at module scope (not inside `groupByService`) so it is testable
+in isolation: the helper has no I/O, no `process.*`, and no
+`groupByService`-internal state — only the maps and the
+`IProjectMatch` array, both inputs to the function.
 
 #### `groupByService`
 
