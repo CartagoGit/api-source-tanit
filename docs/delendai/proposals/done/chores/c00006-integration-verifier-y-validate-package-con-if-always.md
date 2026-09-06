@@ -2,14 +2,16 @@
 id: c00006
 title: "integration verifier y validate package con if always"
 kind: chore
-status: in-progress
+status: done
 type: proposal
 track: general
 date: 2026-09-06
-last-transition-id: c00006-in-progress
-last-correlation-id: affair-2026-09-06-c00006-in-progress
-last-transition-from: ready
-last-idempotency-key: affair-2026-09-06-c00006-in-progress
+last-transition-id: c00006-done
+shippedIn:
+  - 9afed13
+last-correlation-id: affair-2026-09-06-c00006-done
+last-transition-from: review
+last-idempotency-key: affair-2026-09-06-c00006-done
 ---
 
 # c00006 — integration verifier y validate package con if always
@@ -24,7 +26,8 @@ GitHub Actions salta los steps posteriores cuando uno falla. El step Integration
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Tocar el resto del workflow `validate.yml` (solo los dos steps post-Validate).
+- Cambiar la lógica del integration verifier — solo el `if: ${{ always() }}`.
 
 ## Slices
 

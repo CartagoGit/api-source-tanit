@@ -7,10 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `c00006` | `chore` | [`ready/chores/c00006-integration-verifier-y-validate-package-con-if-always.md`](ready/chores/c00006-integration-verifier-y-validate-package-con-if-always.md) |
-| `c00007` | `chore` | [`ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md`](ready/chores/c00007-prohibir-sync-proposals-automatico-en-tanit.md) |
-| `d00003` | `docs` | [`ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md`](ready/docs/d00003-corregir-acceptance-de-x00050-a-install-dependencies-supera-con-bun-1-4-2.md) |
-| `r00012` | `refactor` | [`ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md`](ready/refactors/r00012-integration-verifier-v2-yaml-real-y-header-correcto.md) |
 
 ## Bloqueadas
 
@@ -54,6 +50,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `c00003` — Fijar Bun y hacer reproducible la CI — `fb8cfe5`
 - `c00004` — Configurar agent-orchestrator portFactory en delendai.config.json para que los bounded agents puedan delegar — `07fe602`
 - `c00005` — Higiene de worktree: residuos de agencia fuera del repo + gate de árbol limpio — `6de99fb`
+- `c00006` — integration verifier y validate package con if always — `9afed13`
+- `c00007` — prohibir sync_proposals automático en Tanit — `eb6981c`
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
@@ -63,6 +61,7 @@ propuesta con sus SHAs (`shippedIn`).
 
 - `d00001` — Documentación y configuración al día con el código que existe — `2f5fe5f`
 - `d00002` — Corregir enlaces rotos tras renombrar auditorías archivadas — `52042da`
+- `d00003` — corregir acceptance de x00050 a Install dependencies supera con Bun 1.4.2 — `a1e8ad8`
 - `p00019` — p00019 — documentación de instalación, uso e import en Postman — `a758c22`
 
 ### feat
@@ -138,8 +137,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00038` — Express bridge structured-call IR - eliminar call.callee.split('.') en favor de { receiver, method, computed } — `de45d02, ce3138a`
 - `x00039` — x00039: flat-hybrid pierde endpoints en groupByService cuando NO hay frameworkSearchRoot — `0223930, dbb459d`
 - `x00040` — x00040: el selector de la UI oculta los locales experimentales (cierra el comportamiento que x00037 S4 prometió) — `3b7f1c1`
-- `x00050` — x00050: CI roja — Bun 1.3.14 no sabe leer el bun.lock v2; el pin de CI debe seguir al lockfile — `9043822`
 - `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
+- `x00053` — resolver lint:no-orphan-types — `6a8ecb0, 6bba56f, e5e1802`
 - `x00054` — resolveCallee usa importedName con guardas para default y namespace — `fab4996, 2de0392`
 
 ### infra
@@ -163,6 +162,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00008` — contexto explicito en los lectores residuales del singleton — `0ac222e`
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
+- `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 

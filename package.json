@@ -75,6 +75,7 @@
     "lint:effective-project-root": "bun run scripts/gates/lint-effective-project-root.script.ts",
     "validate:examples": "bun run scripts/gates/validate.script.ts",
     "validate": "bun run typecheck && bun run lint && bun run test:coverage && bun run validate:examples && bun run bench:check",
+    "validate:run": "bun run typecheck && bun run lint && bun run test:coverage && bun run validate:examples && bun run bench:check",
     "validate:package": "bun run scripts/gates/validate-package.script.ts",
     "build:binary": "bun run scripts/build/build-binary.script.ts",
     "push": "bun run packages/cli/commands/push.script.ts",

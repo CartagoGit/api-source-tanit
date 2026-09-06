@@ -2,14 +2,18 @@
 id: x00053
 title: "resolver lint:no-orphan-types"
 kind: fix
-status: in-progress
+status: done
 type: proposal
 track: general
 date: 2026-09-06
-last-transition-id: x00053-S1-start
-last-correlation-id: affair-2026-09-06-x00053-S1
-last-transition-from: ready
-last-idempotency-key: affair-2026-09-06-x00053-S1-start
+last-transition-id: x00053-done
+shippedIn:
+  - 6a8ecb0
+  - 6bba56f
+  - e5e1802
+last-correlation-id: affair-2026-09-06-x00053-done
+last-transition-from: review
+last-idempotency-key: affair-2026-09-06-x00053-done
 ---
 
 # x00053 — resolver lint:no-orphan-types
@@ -24,7 +28,9 @@ El gate lint:no-orphan-types falla porque @types/node está hoisted pero no decl
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Sustituir `@types/node` por declaraciones ambient en `runtime.d.ts` (la cobertura ambient ya existe para los módulos `node:*`; las globales como `process`/`Buffer` son territorio de `@types/node`).
+- Eliminar el escape `TANIT_ALLOW_ORPHAN_TYPES` — sigue siendo válido para entornos pre-install o air-gapped.
+- Tocar el resto de gates de la cadena `bun run lint`.
 
 ## Slices
 
@@ -55,7 +61,7 @@ El gate lint:no-orphan-types falla porque @types/node está hoisted pero no decl
 - review-log: approved by delivery-verifier — Single-agent auto-review.
 ### S3 — test(gates): spec focalizado para @types/X declarado
 - **Status**: done
-- **Files**: `tests/gates/lint-no-orphan-types.spec.ts`
+- **Files**: `tests/cli/lint-no-orphan-types.spec.ts`
 - **Gate**: lint
 - acceptance:
   - "Spec nuevo que verifica que @types/X declarado NO es flagged"

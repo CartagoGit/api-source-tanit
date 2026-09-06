@@ -2,14 +2,16 @@
 id: r00012
 title: "integration verifier v2 — YAML real y header correcto"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: general
 date: 2026-09-06
-last-transition-id: r00012-in-progress
-last-correlation-id: affair-2026-09-06-r00012-in-progress
-last-transition-from: ready
-last-idempotency-key: affair-2026-09-06-r00012-in-progress
+last-transition-id: r00012-done
+shippedIn:
+  - f4ff676
+last-correlation-id: affair-2026-09-06-r00012-done
+last-transition-from: review
+last-idempotency-key: affair-2026-09-06-r00012-done
 ---
 
 # r00012 — integration verifier v2 — YAML real y header correcto
@@ -24,7 +26,8 @@ La revisión 2026-09-06 señaló dos debilidades en lint-integration-verifier: h
 
 ## non-goals
 
-- TODO: what this proposal deliberately skips.
+- Reescribir todas las preguntas del verifier — solo workflow-overlap se vuelve robusto.
+- Añadir nuevas preguntas más allá de las 5 locales existentes.
 
 ## Slices
 
