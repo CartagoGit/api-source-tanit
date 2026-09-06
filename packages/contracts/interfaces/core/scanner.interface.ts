@@ -26,7 +26,11 @@
  * @see ./postman.interface.ts for the Postman v2.1.0 types.
  */
 
-import type { IEndpointAuth, IEndpointConfidence } from "./postman.interface.js";
+import type {
+  IEndpointAuth,
+  IEndpointConfidence,
+} from "./postman.interface.js";
+import type { ITransportMeta, TransportKind } from "./transport.interface.js";
 
 /** Stable framework id. Used as a key in config. */
 export type FrameworkId = "laravel" | "openapi" | "express" | "fastapi" | "symfony" | string;
@@ -164,6 +168,20 @@ export interface ParsedRoute {
    * respects it.
    */
   auth?: IEndpointAuth;
+  /**
+   * Transport discriminator (audit 2026-09-06 §11, proposal `f00013`).
+   *
+   * HTTP scanners leave this `undefined`; non-HTTP scanners
+   * (gRPC, WebSocket, SSE, AsyncAPI) fill it in. The adapter copies
+   * it to `EndpointSpec.transport`.
+   */
+  transport?: TransportKind;
+  /**
+   * Transport metadata, populated when `transport` is not
+   * `"http"`. Loose on purpose: each scanner fills the subset
+   * that applies (see `ITransportMeta`).
+   */
+  transportMeta?: ITransportMeta;
   /**
    * Confidence annotation the scanner attaches to this route.
    *

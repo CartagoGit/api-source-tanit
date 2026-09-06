@@ -274,6 +274,18 @@ export async function buildSpecsFromScanner(
     // exporters can render it. Scanners that leave it `undefined`
     // get `high` by default — see Postman / OpenAPI exporters.
     if (route.confidence !== undefined) spec.confidence = route.confidence;
+    // Audit 2026-09-06 §11, proposal f00013: scanners for non-HTTP
+    // transports (gRPC today, WebSocket/SSE/AsyncAPI later) emit
+    // `transport` + `transportMeta` on the route. The adapter copies
+    // them through so the spec is recognised downstream. HTTP routes
+    // leave both `undefined` and the Postman/OpenAPI exporters
+    // default to `"http"` behaviour.
+    if (route.transport !== undefined) {
+      spec.transport = route.transport;
+      if (route.transportMeta !== undefined) {
+        spec.transportMeta = route.transportMeta;
+      }
+    }
 
     // Path parameters do NOT go in `spec.query`: that becomes a query
     // string, and `/users/{{id}}?id=1` is not what the route declares.

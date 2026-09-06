@@ -4,6 +4,7 @@
  */
 import type { ISchemaGraph } from "./schema.interface.js";
 import type { IValidationSource } from "./validation-source.interface.js";
+import type { ITransportMeta, TransportKind } from "./transport.interface.js";
 
 export interface PostmanUrl {
   raw: string;
@@ -310,6 +311,21 @@ export interface EndpointSpec {
    * two are imported together; `lint:contracts` enforces this.
    */
   confidence?: IEndpointConfidence;
+  /**
+   * Transport discriminator (audit 2026-09-06 §11, proposal `f00013`).
+   *
+   * Defaults to `"http"` when absent. Scanners for non-HTTP
+   * transports (gRPC today, WebSocket/SSE/AsyncAPI later) fill this
+   * in. HTTP-only exporters ignore every spec whose `transport` is
+   * not `"http"`; future exporters own the rest.
+   */
+  transport?: TransportKind;
+  /**
+   * Transport metadata, populated when `transport` is not
+   * `"http"`. Loose on purpose: each scanner fills the subset
+   * that applies (see `ITransportMeta`).
+   */
+  transportMeta?: ITransportMeta;
 }
 
 /**
@@ -343,6 +359,16 @@ export interface IEndpointConfidence {
    */
   readonly reasons: ReadonlyArray<string>;
 }
+
+/**
+ * Re-export the transport types so callers that already import from
+ * `./postman.interface.js` get them transitively. Keeps the
+ * public surface stable when a downstream consumer adds a new
+ * transport later (no need to touch every importer).
+ */
+export type { TransportKind, ITransportMeta } from "./transport.interface.js";
+
+
 
 /**
  * Per-operation override of the collection's auth scheme.
