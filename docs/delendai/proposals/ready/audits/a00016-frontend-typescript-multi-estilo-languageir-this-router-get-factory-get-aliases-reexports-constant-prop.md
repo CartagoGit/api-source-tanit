@@ -83,7 +83,7 @@ todos los scanners TS consumen.
 
 ### S1 — ILanguageIR shape en contracts/
 
-- **Status**: pending
+- **Status**: done (3fd6cfd)
 - **Files**:
   - packages/contracts/interfaces/core/language-ir.interface.ts (nuevo)
 - **Gate**: bun run typecheck
@@ -95,7 +95,7 @@ todos los scanners TS consumen.
 
 ### S2 — Frontend collectMethodCalls multi-estilo
 
-- **Status**: pending
+- **Status**: done (2a635bd)
 - **Files**: packages/frameworks/typescript/collect-method-calls.ts
 - **Gate**: bun run test:frameworks
 - **Detalle**: cubre los 6 estilos. Cada rama nueva con su test y
@@ -103,7 +103,7 @@ todos los scanners TS consumen.
 
 ### S3 — Aliases y reexports
 
-- **Status**: pending
+- **Status**: done (c6850e6)
 - **Files**: packages/frameworks/typescript/symbol-resolver.ts (nuevo)
 - **Gate**: bun run test:frameworks
 - **Detalle**: const r = app; r.get('/health') detectado. Reexports
@@ -111,7 +111,7 @@ todos los scanners TS consumen.
 
 ### S4 — Constant propagation en métodos
 
-- **Status**: pending
+- **Status**: done (25d755d)
 - **Files**: packages/frameworks/typescript/constant-propagation.ts
   (nuevo)
 - **Gate**: bun run test:frameworks
@@ -121,7 +121,7 @@ todos los scanners TS consumen.
 
 ### S5 — Migración de los 6 scanners TS-flavored
 
-- **Status**: pending
+- **Status**: done (28e8bfc) + merge 7f9ad90
 - **Files**: express.scanner.ts, nestjs.scanner.ts, hono.scanner.ts,
   nextjs.scanner.ts, fastify.scanner.ts, trpc.scanner.ts.
 - **Gate**: bun run test:frameworks && bun run validate:examples
