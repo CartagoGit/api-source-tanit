@@ -170,10 +170,27 @@ export interface IRouteCallExpression {
  * `name` is the **local binding** (what appears in the rest of the
  * file). The scanner that wants to resolve the origin uses `source`
  * to ask the next step to look at that module.
+ *
+ * `importedName` (x00048 S1) is the **original name in the exporting
+ * module** — distinct from `name` only when the import was renamed:
+ *
+ *   - `import { Router } from "x"`        → name = "Router", importedName = "Router"
+ *   - `import { Router as R } from "x"`  → name = "R",       importedName = "Router"
+ *   - `import x from "x"`                → name = "x",       importedName = "default"
+ *   - `import * as ns from "x"`          → name = "ns",      importedName = "*"
+ *
+ * Scanners that previously couldn't resolve `R.get` to `Router.get`
+ * because they only stored the local name now can ask for
+ * `importedName` to recover the canonical symbol.
  */
 export interface IImportBinding {
   /** Local binding the rest of the file refers to. */
   readonly name: string;
+  /**
+   * Original name in the exporting module. `"default"` for default
+   * imports, `"*"` for namespace imports. x00048 S1.
+   */
+  readonly importedName: string;
   /** Module imported from, as it appears in source. */
   readonly source: string;
   /** Byte range of the specifier. */

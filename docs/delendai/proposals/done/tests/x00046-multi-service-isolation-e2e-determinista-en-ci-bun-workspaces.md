@@ -2,9 +2,11 @@
 id: x00046
 kind: test
 title: "x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local)"
-status: ready
+status: done
 priority: P1
 globalGate: e2e
+shippedIn:
+  - 1f42832
 why: |
   El e2e de x00028 S4 (`tests/e2e/multi-service-isolation.spec.ts`)
   verifica que dos workspaces Bun (`apps/users-api` y

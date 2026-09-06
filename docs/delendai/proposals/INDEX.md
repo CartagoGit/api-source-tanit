@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00046` | `test` | [`ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md`](ready/tests/x00046-multi-service-isolation-e2e-determinista-en-ci-bun-workspaces.md) |
 | `x00047` | `chore` | [`ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md`](ready/chores/x00047-allowlist-de-ficheros-en-la-raiz-del-repo-anti-residuos-de-agentes.md) |
 | `x00048` | `feat` | [`ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md`](ready/feats/x00048-a00016-s6-languageir-canonicalizacion-bindings-y-single-parse.md) |
 | `x00049` | `feat` | [`ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md`](ready/feats/x00049-integration-verifier-gate-post-merge-anti-residuos-multiagente.md) |
@@ -167,4 +166,5 @@ propuesta con sus SHAs (`shippedIn`).
 - `t00002` — Cobertura cuantitativa por scopes y presupuesto basico de rendimiento — `6d37cca`
 - `t00003` — El presupuesto de forma del scan, vigilado de verdad — `f967468`
 - `t00004` — branches de scanners: fixtures dirigidos para subir el suelo (62→70) — `0ac222e`
+- `x00046` — x00046: el e2e multi-service-isolation debe pasar también en CI (no sólo en local) — `1f42832`
 

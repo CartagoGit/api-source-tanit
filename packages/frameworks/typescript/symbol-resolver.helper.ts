@@ -142,8 +142,13 @@ function collectAliasesFromBody(
       if (!binding) continue;
       const start = typeof spec.start === "number" ? spec.start : 0;
       const end = typeof spec.end === "number" ? spec.end : start;
+      // x00048 S1: guardar también el nombre ORIGINAL en el módulo
+      // exportador. `binding.imported` ya lo traía pero el contrato
+      // `IImportBinding` lo descartaba; sin él, `import { Router as R }`
+      // no podía resolverse a `Router.get` desde `R.get`.
       out.push({
         name: binding.local,
+        importedName: binding.imported,
         source: sourceValue,
         range: { file: sourceFile, start, end },
       });

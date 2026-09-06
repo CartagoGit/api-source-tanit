@@ -102,3 +102,65 @@ describe("Express multi-estilo con prefijo de router (x00038 S3)", () => {
     }
   });
 });
+
+/**
+ * x00048 S2 — `const M = "get"; app[M](...)` debe producir una ruta real,
+ * no perderse. Es el último multi-estilo de la matriz de a00016: el
+ * IR reconoce el shape `app[M]` como `receiverKind: "computed"`,
+ * `method: ""`, y `propagateConstants` resuelve `M` a la literal. Si el
+ * wiring de collect-constants en express.scanner.ts pasa `[]` o no se
+ * llama, este test falla — que es exactamente lo que x00048 S2 cierra.
+ */
+describe("Express constant propagation E2E (x00048 S2)", () => {
+  test('`const M = "get"; app[M]("/h", h)` produce GET /h', async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({
+        name: "constant-method",
+        dependencies: { express: "^4.19.2" },
+      }),
+      "app.js": [
+        'const express = require("express");',
+        "const app = express();",
+        'const M = "get";',
+        'app[M]("/h", h);',
+        "app.listen(3000);",
+      ].join("\n"),
+    });
+    try {
+      const routes = (await scanProject("express", project.root)).routes;
+      const found = routes.some((r) => r.method === "GET" && r.uri === "/h");
+      expect(
+        found,
+        `esperado GET /h, obtuve:\n${routes.map((r) => `${r.method} ${r.uri}`).join("\n")}`,
+      ).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+
+  test('`const M = "post"; app[M]("/items", h)` produce POST /items', async () => {
+    const project = await createTempProject({
+      "package.json": JSON.stringify({
+        name: "constant-method-post",
+        dependencies: { express: "^4.19.2" },
+      }),
+      "app.js": [
+        'const express = require("express");',
+        "const app = express();",
+        'const M = "post";',
+        'app[M]("/items", h);',
+        "app.listen(3000);",
+      ].join("\n"),
+    });
+    try {
+      const routes = (await scanProject("express", project.root)).routes;
+      const found = routes.some((r) => r.method === "POST" && r.uri === "/items");
+      expect(
+        found,
+        `esperado POST /items, obtuve:\n${routes.map((r) => `${r.method} ${r.uri}`).join("\n")}`,
+      ).toBe(true);
+    } finally {
+      await project.cleanup();
+    }
+  });
+});

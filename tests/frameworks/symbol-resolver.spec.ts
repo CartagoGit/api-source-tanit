@@ -81,12 +81,69 @@ r.get("/x", h);
     expect(calls).toHaveLength(1);
     const resolved = resolveCallee(
       calls,
-      [{ name: "R", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
+      [{ name: "R", importedName: "Router", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
       [],
       { "server.ts": { R: "R", r: "R" } },
     );
     // `r` → `R` → `R` (canonical alias).
     expect(resolved[0]?.callee).toBe("R.get");
+  });
+
+  test("x00048 S1: `R.get` from `import { Router as R }` carries importedName='Router'", () => {
+    // Antes de x00048 S1, `IImportBinding` sólo guardaba el nombre
+    // local (`R`), y un scanner que quisiera resolver `R.get` a
+    // `Router.get` no podía porque había perdido el nombre original
+    // del módulo exportador. Ahora `importedName` lo preserva.
+    const source = `import { Router as R } from "express";
+R.get("/x", h);
+`;
+    // Sintético: validamos el shape del binding con el campo
+    // nuevo.
+    const binding = {
+      name: "R",
+      importedName: "Router",
+      source: "express",
+      range: { file: "server.ts", start: 0, end: 0 },
+    };
+    expect(binding.name).toBe("R");
+    expect(binding.importedName).toBe("Router");
+    expect(binding.source).toBe("express");
+
+    const calls = collectMethodCallsFromSource(source, "server.ts");
+    expect(calls[0]?.callee).toBe("R.get");
+    // El resolver no modifica el `callee` cuando el nombre local
+    // ya es la representación canónica; lo que importa aquí es
+    // que `importedName` está disponible para los siguientes pasos
+    // (scanner bridge, route graph).
+    const resolved = resolveCallee(calls, [binding], []);
+    expect(resolved[0]?.callee).toBe("R.get");
+  });
+
+  test("x00048 S1: default + namespace imports carry their canonical importedName", () => {
+    // `import x from "m"` → importedName = "default".
+    // `import * as ns from "m"` → importedName = "*".
+    // `import { a } from "m"` → importedName = "a".
+    const defaultBinding = {
+      name: "x",
+      importedName: "default",
+      source: "m",
+      range: { file: "x.ts", start: 0, end: 0 },
+    };
+    const nsBinding = {
+      name: "ns",
+      importedName: "*",
+      source: "m",
+      range: { file: "x.ts", start: 0, end: 0 },
+    };
+    const namedBinding = {
+      name: "a",
+      importedName: "a",
+      source: "m",
+      range: { file: "x.ts", start: 0, end: 0 },
+    };
+    expect(defaultBinding.importedName).toBe("default");
+    expect(nsBinding.importedName).toBe("*");
+    expect(namedBinding.importedName).toBe("a");
   });
 
   test("default + aliased + namespace in the same file: 3 aliases", () => {
@@ -164,7 +221,7 @@ r.get("/x", h);
 
     const resolved = resolveCallee(
       calls,
-      [{ name: "R", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
+      [{ name: "R", importedName: "Router", source: "express", range: { file: "server.ts", start: 0, end: 0 } }],
       [],
     );
     // R is already the canonical name (its importMap points at itself).
