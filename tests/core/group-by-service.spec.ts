@@ -207,4 +207,61 @@ describe("groupByService", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual(["apps_api", "apps_web"]);
   });
+
+  // x00039 S1: en modo flat-hybrid (varios frameworks, sin
+  // `frameworkSearchRoot`, sin monorepo), las rutas de TODOS los
+  // frameworks del mismo projectRoot deben quedar en el descriptor
+  // único. Antes del fix, `routesByMatch` se hidrata aguas arriba
+  // con claves `<framework>@<projectRoot>` y el lookup contra
+  // `normalizeServiceId(projectRoot)` fallaba siempre, dejando
+  // `endpoints: []`.
+  it("flat-hybrid keeps every framework's routes under one descriptor (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/users")]],
+        ["graphql_repo", [route("POST", "/graphql")]],
+      ]),
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.serviceId).toBe("repo");
+    expect(graph.services[0]?.frameworks).toEqual(["express", "graphql"]);
+    // La suma de las rutas de ambos frameworks debe aparecer en el
+    // descriptor único. Antes del fix daba 0; tras el fix, 2.
+    expect(graph.services[0]?.endpoints).toHaveLength(2);
+    const uris = graph.services[0]?.endpoints.map((e) => e.uri).sort();
+    expect(uris).toEqual(["/graphql", "/users"]);
+  });
+
+  // x00039 S1: el flat-hybrid debe DEDUPLICAR rutas idénticas entre
+  // frameworks (mismo `method + uri + sourceFile`). El contrato de
+  // dedupe es por `(method, uri, sourceFile)`, igual que
+  // `accumulateRoutesByService`.
+  it("flat-hybrid deduplicates routes across frameworks (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/health")]],
+        ["graphql_repo", [route("GET", "/health")]],
+      ]),
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.endpoints).toHaveLength(1);
+    expect(graph.services[0]?.endpoints[0]?.uri).toBe("/health");
+  });
+
+  // x00039 S1: el flat-hybrid es robusto cuando SÓLO un framework
+  // tiene rutas (el otro contributes vacío). No debe perder
+  // accidentalmente las del primero.
+  it("flat-hybrid keeps the only populated framework's routes (x00039)", () => {
+    const graph = groupByService({
+      matches: [match("express", "/repo"), match("graphql", "/repo")],
+      routesByMatch: new Map([
+        ["express_repo", [route("GET", "/a"), route("GET", "/b")]],
+        ["graphql_repo", []],
+      ]),
+    });
+    expect(graph.services).toHaveLength(1);
+    expect(graph.services[0]?.endpoints).toHaveLength(2);
+  });
 });
