@@ -116,6 +116,15 @@ export class NestJsResponseInferrer implements IResponseInferrer {
     const txt = source.content;
     const entries: IResponseInference[] = [];
 
+    // Module-level RegExp objects keep their `lastIndex`
+    // state across calls. We reset explicitly so the regex
+    // state is local to one `infer()` call. (f00012 S3 fix.)
+    HTTP_CODE_RE.lastIndex = 0;
+    API_RESPONSE_RE.lastIndex = 0;
+    API_OK_RE.lastIndex = 0;
+    API_CREATED_RE.lastIndex = 0;
+    PROMISE_TYPE_RE.lastIndex = 0;
+
     // 1) Explicit @HttpCode → bare status (no schema)
     const code = findHttpCodeStatus(txt);
     if (code !== null) {
