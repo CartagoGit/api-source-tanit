@@ -21,6 +21,7 @@ import type {
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { topGroupFor } from "../helpers/uri.helper.js";
 import { expandAllMethods } from "../helpers/all-method.helper.js";
+import { partitionHttpSpecs, warnSkippedNonHttpExports } from "../helpers/http-export-filter.helper.js";
 
 /**
  * Converts a name into something that works as a file name.
@@ -121,6 +122,8 @@ export class BrunoExporter implements IExportTarget {
 
   serialize(input: IExportInput): IExportArtifact[] {
     const { config } = input;
+    const { httpSpecs, skippedSpecs } = partitionHttpSpecs(input.specs);
+    warnSkippedNonHttpExports(this.format, skippedSpecs);
     const root = `${config.name}.bruno`;
     const artifacts: IExportArtifact[] = [];
 
@@ -161,7 +164,7 @@ export class BrunoExporter implements IExportTarget {
     // verbs. `ALL` is expanded by the helper into one entry per verb.
     // The existing dedup loop (the `-2`, `-3`, … suffix) handles the
     // case where an expansion collides with an existing entry.
-    for (const { spec } of expandAllMethods(input.specs)) {
+    for (const { spec } of expandAllMethods(httpSpecs)) {
       const folder = toFileName(spec.folder ?? topGroupFor(spec.uri, overrides));
       const seq = (seqByFolder.get(folder) ?? 0) + 1;
       seqByFolder.set(folder, seq);

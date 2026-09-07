@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   buildCollection,
@@ -175,6 +175,38 @@ describe("collection-builder.service", () => {
       expect(description).toContain("formato `email`");
       expect(description).toContain("#### Query");
       expect(description).toContain("`page`");
+    });
+
+    test("skips non-http specs and warns structurally (f00013 S1)", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const col = buildCollection(
+          [
+            spec({ name: "List Users", method: "GET", uri: "/users" }),
+            spec({
+              name: "Greeter/SayHello",
+              method: "POST",
+              uri: "/Greeter/SayHello",
+              transport: "grpc",
+            }),
+          ],
+          baseConfig,
+        );
+
+        const leaf = findFirstLeaf(col.item);
+        expect(leaf).toBeDefined();
+        expect(leaf!.request.method).toBe("GET");
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(JSON.parse(String(warn.mock.calls[0]?.[0]))).toMatchObject({
+          kind: "skipped-non-http-export",
+          format: "postman",
+          transport: "grpc",
+          endpoint: "POST /Greeter/SayHello",
+          name: "Greeter/SayHello",
+        });
+      } finally {
+        warn.mockRestore();
+      }
     });
   });
 

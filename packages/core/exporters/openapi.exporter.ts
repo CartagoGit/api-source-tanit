@@ -35,6 +35,7 @@ import type {
 import { toYaml } from "../helpers/yaml.helper.js";
 import type { YamlValue } from "../../contracts/interfaces/core/helpers.interface.js";
 import { expandAllMethods } from "../helpers/all-method.helper.js";
+import { partitionHttpSpecs, warnSkippedNonHttpExports } from "../helpers/http-export-filter.helper.js";
 
 /** `{{id}}` from Postman → `{id}` from OpenAPI. */
 function toOpenApiPath(uri: string): string {
@@ -588,7 +589,8 @@ export function buildOpenApiDocument(input: IExportInput): Record<string, unknow
     // expansion is the only honest representation. The marker travels
     // with each expanded spec and becomes `x-tanit-source` on the
     // operation (see `buildOperation`).
-    const expanded = expandAllMethods(specs);
+    const { httpSpecs } = partitionHttpSpecs(input.specs);
+    const expanded = expandAllMethods(httpSpecs);
     for (const { spec, allMarker } of expanded) {
       const path = toOpenApiPath(spec.uri);
       const bucket = paths[path] ?? (paths[path] = {});
@@ -651,12 +653,13 @@ export class OpenApiExporter implements IExportTarget {
    * norm.
    */
   warnings(input: IExportInput): string[] {
+    const { httpSpecs } = partitionHttpSpecs(input.specs);
     // x00056 S2: warnings operate on the **expanded** set so the
     // collision message matches what the document actually emits. An
     // `ALL` spec expands to seven verbs and would otherwise look like
     // a single non-colliding entry while actually colliding with any
     // explicit verb on the same path.
-    const expanded = expandAllMethods(input.specs);
+    const expanded = expandAllMethods(httpSpecs);
     const byKey = new Map<string, string[]>();
     for (const { spec } of expanded) {
       const key = `${spec.method} ${toOpenApiPath(spec.uri)}`;
@@ -676,6 +679,8 @@ export class OpenApiExporter implements IExportTarget {
   }
 
   serialize(input: IExportInput): IExportArtifact[] {
+    const { skippedSpecs } = partitionHttpSpecs(input.specs);
+    warnSkippedNonHttpExports(this.format, skippedSpecs);
     return [
       {
         path: `${input.config.name}.openapi.yaml`,

@@ -25,6 +25,7 @@ import type {
 } from "../../contracts/interfaces/core/export-target.interface.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { expandAllMethods } from "../helpers/all-method.helper.js";
+import { partitionHttpSpecs, warnSkippedNonHttpExports } from "../helpers/http-export-filter.helper.js";
 
 /** Headers carried by a request, per the auth scheme. */
 function headersFor(
@@ -54,12 +55,14 @@ export class HarExporter implements IExportTarget {
 
   serialize(input: IExportInput): IExportArtifact[] {
     const { config, auth } = input;
+    const { httpSpecs, skippedSpecs } = partitionHttpSpecs(input.specs);
+    warnSkippedNonHttpExports(this.format, skippedSpecs);
 
     // x00056 S3: HAR has no "all methods" verb. The expansion helper
     // turns every `method: "ALL"` spec into seven entries, one per
     // standard verb. The marker is dropped — HAR has no extension
     // mechanism for provenance metadata.
-    const entries = expandAllMethods(input.specs).map(({ spec }) => {
+    const entries = expandAllMethods(httpSpecs).map(({ spec }) => {
       const headers = headersFor(spec, auth);
       const queryString = (spec.query ?? []).map((q) => ({
         name: q.key,
@@ -136,6 +139,8 @@ export class CurlExporter implements IExportTarget {
 
   serialize(input: IExportInput): IExportArtifact[] {
     const { config, auth } = input;
+    const { httpSpecs, skippedSpecs } = partitionHttpSpecs(input.specs);
+    warnSkippedNonHttpExports(this.format, skippedSpecs);
     const lines: string[] = [
       "#!/usr/bin/env sh",
       `# ${config.collectionName || config.name}`,
@@ -155,7 +160,7 @@ export class CurlExporter implements IExportTarget {
     // each verb becomes its own `curl -X VERB …` invocation. The
     // proposal lists five exporters; curl is the sixth and the same
     // bug would have produced `-X ALL` (curl error). Same fix.
-    for (const { spec } of expandAllMethods(input.specs)) {
+    for (const { spec } of expandAllMethods(httpSpecs)) {
       // Postman variables become shell variables: a `{{id}}` in the URL
       // is not understood by curl.
       const uri = spec.uri.replace(/\{\{([^}]+)\}\}/g, (_, name: string) => `\${${name}}`);

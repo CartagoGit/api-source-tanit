@@ -20,6 +20,7 @@ import type {
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { topGroupFor, prettyGroupName } from "../helpers/uri.helper.js";
 import { expandAllMethods } from "../helpers/all-method.helper.js";
+import { partitionHttpSpecs, warnSkippedNonHttpExports } from "../helpers/http-export-filter.helper.js";
 
 /**
  * Stable id from a seed.
@@ -98,6 +99,8 @@ export class InsomniaExporter implements IExportTarget {
 
   serialize(input: IExportInput): IExportArtifact[] {
     const { config } = input;
+    const { httpSpecs, skippedSpecs } = partitionHttpSpecs(input.specs);
+    warnSkippedNonHttpExports(this.format, skippedSpecs);
     const workspaceId = stableId("wrk", config.name);
 
     const resources: Array<Record<string, unknown>> = [
@@ -132,7 +135,7 @@ export class InsomniaExporter implements IExportTarget {
     // share the folder of the original (the URI and the folder are
     // preserved through expansion).
     const overrides = config.uriGroupOverrides ?? {};
-    const expanded = expandAllMethods(input.specs);
+    const expanded = expandAllMethods(httpSpecs);
     const groups = new Map<string, string>();
     for (const { spec } of expanded) {
       const key = spec.folder ?? topGroupFor(spec.uri, overrides);

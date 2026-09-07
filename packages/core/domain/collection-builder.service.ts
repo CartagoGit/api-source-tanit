@@ -28,6 +28,7 @@ import type {
 } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { collectionIdFor } from "../helpers/collection-identity.helper.js";
+import { partitionHttpSpecs, warnSkippedNonHttpExports } from "../helpers/http-export-filter.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";
 import { detectAuthScheme, toPostmanAuth } from "./auth-scheme.service.js";
 import { buildRequestDescription } from "./request-doc.service.js";
@@ -336,13 +337,16 @@ export function buildCollection(
    */
   authScheme?: IDetectedAuthScheme,
 ): PostmanCollection {
+  const { httpSpecs, skippedSpecs } = partitionHttpSpecs(specs);
+  warnSkippedNonHttpExports("postman", skippedSpecs);
+
   const overrides = config.uriGroupOverrides ?? {};
   // Without an explicit scheme we infer it from the endpoints.
   // `hasLoginFlow` is false because from here we cannot see it: whoever
   // knows it passes it in already resolved.
-  const scheme = authScheme ?? detectAuthScheme(specs, false);
+  const scheme = authScheme ?? detectAuthScheme(httpSpecs, false);
   const auth = toPostmanAuth(scheme);
-  const groups = groupByFolder(specs, overrides, scheme.type);
+  const groups = groupByFolder(httpSpecs, overrides, scheme.type);
   const hierarchical = toHierarchical(groups, overrides);
 
   const topFolders: PostmanItem[] = hierarchical.map((h) => {
