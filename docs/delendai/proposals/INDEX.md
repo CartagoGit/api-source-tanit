@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `a00018` | `audit` | [`ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md`](ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md) |
 | `f00014` | `feat` | [`ready/feats/f00014-postman-exporter-emits-inferred-responses.md`](ready/feats/f00014-postman-exporter-emits-inferred-responses.md) |
 | `r00018` | `refactor` | [`ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md`](ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md) |
 | `x00058` | `fix` | [`ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md`](ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md) |
@@ -54,6 +53,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `a00015` — GraphQL embedded SDL por AST TS (no regex sobre source crudo) — `fcff35c, 71b535c, 1e5c339, 7080255, 3f7e972, ed0f230`
 - `a00016` — Frontend TypeScript multi-estilo — LanguageIR (this.router.get/factory().get/aliases/reexports/constant-prop) — `3fd6cfd, 2a635bd, c6850e6, 25d755d, 28e8bfc, 7f9ad90`
 - `a00017` — i18n inversion — Inglés-first en el proyecto, i18n solo para la app que lo usa — `fa98d36`
+- `a00018` — Auditoría exhaustiva 2026-09-06 — LanguageIR universal, transport generalization, SymbolGraph y response inference — `2994687, 6b2fcda, 728abea, 1b4c1af, bda0c14, 0285f7f, 13676c4, ef73349`
 
 ### breaking
 

@@ -2,10 +2,19 @@
 id: a00018
 title: "Auditoría exhaustiva 2026-09-06 — LanguageIR universal, transport generalization, SymbolGraph y response inference"
 kind: audit
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-06
+shippedIn:
+  - 2994687  # r00013 S3 — unified extractRoutes dispatcher
+  - 6b2fcda  # r00013 S4 — fastify/hono multi-router fixtures + e2e
+  - 728abea  # f00013 — transport generalization (gRPC, WS, SSE, AsyncAPI scanners + HTTP exporter filter)
+  - 1b4c1af  # r00015 — confidence scoring end-to-end
+  - bda0c14  # r00016 — HTTP exporters filter non-http transports (last pre-loop)
+  - 0285f7f  # f00012 — Postman + OpenAPI materialise inferred response examples
+  - 13676c4  # x00055 — express cross-file router identity
+  - ef73349  # r00014 — SymbolGraph cross-file resolver foundation
 dependsOn:
   - a00013
   - a00016
