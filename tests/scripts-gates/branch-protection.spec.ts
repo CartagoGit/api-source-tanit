@@ -37,10 +37,10 @@ describe("branch-protection gate", () => {
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: true,
-          protection: {
-            required_status_checks: {
-              contexts: [...REQUIRED_CHECKS],
-            },
+        }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
+          required_status_checks: {
+            contexts: [...REQUIRED_CHECKS],
           },
         }),
       }),
@@ -66,10 +66,10 @@ describe("branch-protection gate", () => {
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: true,
-          protection: {
-            required_status_checks: {
-              contexts: REQUIRED_CHECKS.filter((check) => check !== "integration-verifier"),
-            },
+        }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
+          required_status_checks: {
+            contexts: REQUIRED_CHECKS.filter((check) => check !== "integration-verifier"),
           },
         }),
       }),
@@ -93,7 +93,6 @@ describe("branch-protection gate", () => {
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: false,
-          protection: null,
         }),
       }),
     });

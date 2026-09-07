@@ -71,10 +71,8 @@ interface IGitHubBranchSummary {
 interface IGitHubBranchDetails {
   readonly name?: string;
   readonly protected?: boolean;
-  readonly protection?: {
-    readonly required_status_checks?: {
-      readonly contexts?: ReadonlyArray<string> | null;
-    } | null;
+  readonly required_status_checks?: {
+    readonly contexts?: ReadonlyArray<string> | null;
   } | null;
 }
 
@@ -177,9 +175,9 @@ async function checkBranchProtection(
     `/repos/${options.repository}/branches/${encodeURIComponent(options.branch)}`,
     `${options.baseUrl}/`,
   );
-  const response = await fetchImplWithAuth(options.fetchImpl, branchUrl, options.token);
+  const branchResponse = await fetchImplWithAuth(options.fetchImpl, branchUrl, options.token);
 
-  if (response.status === 404) {
+  if (branchResponse.status === 404) {
     return {
       branch: options.branch,
       ok: false,
@@ -187,16 +185,19 @@ async function checkBranchProtection(
     };
   }
 
-  if (!response.ok) {
+  if (!branchResponse.ok) {
     return {
       branch: options.branch,
       ok: false,
-      detail: await formatGitHubError(response, `GitHub rechazó la consulta de ${options.branch}`),
+      detail: await formatGitHubError(
+        branchResponse,
+        `GitHub rechazó la consulta de ${options.branch}`,
+      ),
     };
   }
 
-  const payload = (await response.json()) as IGitHubBranchDetails;
-  if (payload.protected !== true) {
+  const branchPayload = (await branchResponse.json()) as IGitHubBranchDetails;
+  if (branchPayload.protected !== true) {
     return {
       branch: options.branch,
       ok: false,
@@ -204,7 +205,35 @@ async function checkBranchProtection(
     };
   }
 
-  const contexts = payload.protection?.required_status_checks?.contexts;
+  const protectionUrl = new URL(
+    `/repos/${options.repository}/branches/${encodeURIComponent(options.branch)}/protection`,
+    `${options.baseUrl}/`,
+  );
+  const protectionResponse = await fetchImplWithAuth(
+    options.fetchImpl,
+    protectionUrl,
+    options.token,
+  );
+  if (protectionResponse.status === 404) {
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: `required_status_checks.contexts ausente`,
+    };
+  }
+  if (!protectionResponse.ok) {
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: await formatGitHubError(
+        protectionResponse,
+        `GitHub rechazó la protección de ${options.branch}`,
+      ),
+    };
+  }
+
+  const payload = (await protectionResponse.json()) as IGitHubBranchDetails;
+  const contexts = payload.required_status_checks?.contexts;
   if (!Array.isArray(contexts) || contexts.length === 0) {
     return {
       branch: options.branch,
