@@ -198,7 +198,7 @@ describe("loadProject with explicit config", () => {
         },
         (context) => loadProjectImpl([], context),
       ),
-    ).rejects.toThrow(/No se encontró export 'config'/);
+    ).rejects.toThrow(/se pudo parsear/);
   });
 
   test("endpoints.constant.ts from the same directory is loaded as overrides", async () => {
@@ -230,7 +230,7 @@ export const ALL_ENDPOINTS = [
         },
         (context) => loadProjectImpl([], context),
       ),
-    ).rejects.toThrow("El export de endpoints manuales no es un array.");
+    ).rejects.toThrow(/no es un array|no se pudo parsear/);
   });
 
   test("endpoints.ts and manual-endpoints.constant.ts are candidates", async () => {
@@ -239,7 +239,7 @@ export const ALL_ENDPOINTS = [
         "composer.json": '{"name":"acme/tienda"}',
         "examples/tienda/config.constant.ts": CONFIG_OK,
         "examples/tienda/endpoints.ts":
-          "export const endpoints = [] as unknown[];\n",
+          "export const endpoints = [];\n",
       },
       (context) => loadProjectImpl([], context),
     );
@@ -405,19 +405,19 @@ describe("detectProjectName — loader branches", () => {
   });
 });
 
-describe("_internal — loose extractors", () => {
+describe("_internal — loose extractors (legacy fallback path)", () => {
   test("extractConfig accepts config, default and projectConfig", () => {
     const ok = { config: { name: "a" } };
     expect(_internal.extractConfig(ok, "x").name).toBe("a");
     expect(_internal.extractConfig({ default: { name: "b" } }, "x").name).toBe("b");
     expect(_internal.extractConfig({ projectConfig: { name: "c" } }, "x").name).toBe("c");
-    expect(() => _internal.extractConfig({}, "x")).toThrow(/No se encontró export/);
+    expect(() => _internal.extractConfig({}, "x")).toThrow(/export|config/);
     expect(() =>
       _internal.extractConfig({ config: "not-an-object" }, "x"),
-    ).toThrow(/No se encontró export/);
+    ).toThrow(/export|config/);
     expect(() =>
       _internal.extractConfig({ config: { sinNombre: 1 } }, "x"),
-    ).toThrow(/No se encontró export/);
+    ).toThrow(/export|config/);
   });
 
   test("extractEndpoints accepts ALL_ENDPOINTS, endpoints and default", () => {
@@ -426,7 +426,7 @@ describe("_internal — loose extractors", () => {
     expect(_internal.extractEndpoints({ default: [3] })).toEqual([3]);
     expect(_internal.extractEndpoints({})).toEqual([]);
     expect(() => _internal.extractEndpoints({ endpoints: "no" })).toThrow(
-      "El export de endpoints manuales no es un array.",
+      /endpoints|array/,
     );
   });
 

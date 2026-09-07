@@ -33,6 +33,7 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";
+import { parseHostConfigFile } from "./host-config-parser.js";
 import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
 import {
   BASE_PATH_ENV_VAR,
@@ -428,8 +429,37 @@ export async function loadProject(
   if (!existsSync(configPath)) {
     throw new Error(`Config no encontrado: ${configPath}`);
   }
-  const configMod = await importTsModule(configPath);
-  const config = extractConfig(configMod, configPath);
+
+  // x00058: AST parser reads the host config WITHOUT executing it.
+  // The previous path used `await import(url)` which evaluated arbitrary
+  // TypeScript/JavaScript code in Tanit's process — a security boundary
+  // violation for agents / CI / MCP / web UI analysing third-party repos.
+  //
+  // The escape hatch `--allow-config-execution` falls back to the legacy
+  // `import()` path so projects that genuinely compute config values
+  // (rare, and always the developer's own project) keep working.
+  const allowExecution = argv.includes("--allow-config-execution");
+  const configResult = await parseHostConfigFile(configPath, "project-config");
+  if (!configResult.ok) {
+    if (!allowExecution) {
+      const lines = configResult.diagnostics
+        .map(
+          (d) =>
+            `${d.file}:${d.line ?? "?"}:${d.column ?? "?"} ${d.kind}: ${d.message}` +
+            (d.hint ? ` (${d.hint})` : ""),
+        )
+        .join("\n");
+      throw new Error(
+        `Config no se pudo parsear sin ejecutar: ${configPath}\n${lines}\n` +
+          `Use --allow-config-execution para evaluar computed configs.`,
+      );
+    }
+    // Fall through to the legacy path below.
+    const configMod = await importTsModule(configPath);
+    const config = extractConfig(configMod, configPath);
+    return finishLoadProject(configPath, config, []);
+  }
+  const config = configResult.value as ProjectConfig;
 
   const dir = dirname(configPath);
   const candidates = [
@@ -442,8 +472,26 @@ export async function loadProject(
   for (const c of candidates) {
     if (!existsSync(c)) continue;
     endpointsPath = c;
-    const mod = await importTsModule(c);
-    manualEndpoints = extractEndpoints(mod);
+    if (!allowExecution) {
+      const endpointsResult = await parseHostConfigFile(c, "manual-endpoints");
+      if (!endpointsResult.ok) {
+        const lines = endpointsResult.diagnostics
+          .map(
+            (d) =>
+              `${d.file}:${d.line ?? "?"}:${d.column ?? "?"} ${d.kind}: ${d.message}` +
+              (d.hint ? ` (${d.hint})` : ""),
+          )
+          .join("\n");
+        throw new Error(
+          `endpoints.constant.ts no se pudo parsear sin ejecutar: ${c}\n${lines}\n` +
+            `Use --allow-config-execution para evaluar configs computados.`,
+        );
+      }
+      manualEndpoints = endpointsResult.value as EndpointSpec[];
+    } else {
+      const mod = await importTsModule(c);
+      manualEndpoints = extractEndpoints(mod);
+    }
     break;
   }
 
@@ -452,6 +500,22 @@ export async function loadProject(
     manualEndpoints,
     configPath,
     endpointsPath,
+    zeroConfig: false,
+  };
+}
+
+async function finishLoadProject(
+  _configPath: string,
+  _config: ProjectConfig,
+  _manualEndpoints: EndpointSpec[],
+): Promise<LoadedProject> {
+  // Reserved for tests + the legacy fallback branch above.
+  // (The actual return shape mirrors the non-fallback return below.)
+  return {
+    config: _config,
+    manualEndpoints: _manualEndpoints,
+    configPath: _configPath,
+    endpointsPath: null,
     zeroConfig: false,
   };
 }
