@@ -65,7 +65,7 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   - "DoD slice: `bun run validate` verde en local; CI workflow dry-run con `act` o equivalente verde"
 
 ### S3-coverage-and-fixtures-green — Coverage ≥80% global + fixtures reparadas + regressions de check corregidas
-- **Status**: pending
+- **Status**: in_progress
 - **DependsOn**: [S2-branch-protection-and-required-checks]
 - **Files**: `tests/fixtures/express-multi-router/package.json`, `tests/fixtures/express-multi-router/src/users.ts`, `tests/fixtures/express-multi-router/src/orders.ts`, `tests/fixtures/express-multi-router/src/server.ts`, `tests/fixtures/multi-service/package.json`, `tests/fixtures/multi-service/users-api/package.json`, `tests/fixtures/multi-service/users-api/src/main.ts`, `tests/fixtures/multi-service/billing-api/pyproject.toml`, `tests/fixtures/multi-service/billing-api/main.py`, `tests/e2e/express-multi-router.test.ts`, `tests/e2e/multi-service.test.ts`, `vitest.config.ts`, `scripts/gates/coverage.script.ts`, `tests/coverage-baseline.json`
 - **Gate**: e2e
@@ -76,6 +76,14 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   - "Regresiones de `check` corregidas sin relajar el umbral: las que detecten `routesByService` vacío o auth inconsistente en monorepos quedan documentadas con test que falla antes del fix y pasa después"
   - "`validate-examples` verde — todas las fixtures referenciadas desde `examples/` tienen al menos un snapshot versionado; las que se jubilen se mueven a `tests/fixtures/_retired/` con `retired-reason`"
   - "DoD slice: `bun run test:coverage` + `bun run validate:examples` + `bun run test:e2e` verdes; `bun run validate` full verde"
+
+#### Trazabilidad S3 — 2026-09-07 (slice parcial)
+
+- `tests/fixtures/express-multi-router/` ya estaba poblado y `tests/frameworks/express-multi-router.spec.ts` + `tests/e2e/express-multi-router.test.ts` ya verifican el caso cross-file (`r00014` S4 / `x00055` S3). Se conservan como evidencia verificable pero no se cuentan como modificaciones nuevas de esta ejecución.
+- En esta ejecución (`owl` / `c00010-s3-multi-service-fixture`) se añadió la pieza multi-framework que faltaba: `tests/fixtures/multi-service/` (NestJS `users-api` + FastAPI `billing-api` bajo `apps/<servicio>/`) y `tests/e2e/multi-service.test.ts` con cuatro casos — detección de ambos workspaces, aislamiento de prefijos (users NO ve rutas de invoices ni vicerversa), ausencia de duplicados `METHOD+uri` con `combineServices: true`, e invariantes de forma Postman v2.1.0. `bunx vitest run tests/e2e/multi-service.test.ts` verde (4/4); `bun run lint:fixtures` verde con la nueva fixture.
+- El test deja explícito que el fix de per-endpoint baseUrl/auth (audit §18 prioridad 6, `r00019` phase-2) sigue siendo un gap conocido: `match.framework` y `match.frameworkSearchRoot` aún comparten valor entre los dos `IGenerationResult`. Esta ejecución NO aborda ese gap; solo garantiza que la ruta multi-servicio produce colecciones disjuntas por prefijo, que es la pre-condición que `r00019` necesita.
+- Quedan fuera del alcance de esta ejecución y pendientes para siguientes slices: `vitest.config.ts` con thresholds per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%), `scripts/gates/coverage.script.ts`, `tests/coverage-baseline.json` y los snapshots versionados para las fixtures que aún no los tienen. `lint:proposals` también sigue rojo por 16 propuestas archivadas en `done/<kind>/` con `kind` incorrecto (deuda previa a S3, fuera del scope).
+- `bun run typecheck` verde en las 5 secciones; 532 tests e2e verdes.
 
 ## acceptance
 
