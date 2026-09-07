@@ -35,6 +35,16 @@ export default defineConfig({
           // para una máquina cargada.
           testTimeout: 30_000,
           hookTimeout: 30_000,
+          // El gate `coverage.script.ts` agrega exactamente estos perfiles
+          // por prefijo; mantenerlos aquí hace visible el contrato en Vitest.
+          coverage:
+            section.name === "core"
+              ? { thresholds: { lines: 90, statements: 90, functions: 90, branches: 90 } }
+              : section.name === "frameworks"
+                ? { thresholds: { lines: 75, statements: 75, functions: 75, branches: 75 } }
+                : section.name === "cli"
+                  ? { thresholds: { lines: 70, statements: 70, functions: 70, branches: 70 } }
+                  : undefined,
         },
       }),
     ),
@@ -82,10 +92,10 @@ export default defineConfig({
       // 2026-08-30): el lote laravel/django/openapi + core subió la
       // medida a 72,0 % y el umbral pasa de 62 a 70.
       thresholds: {
-        statements: 73,
-        branches: 70,
-        functions: 82,
-        lines: 75,
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
       },
     },
   },

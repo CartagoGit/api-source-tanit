@@ -90,8 +90,6 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - El test deja explícito que el fix de per-endpoint baseUrl/auth (audit §18 prioridad 6, `r00019` phase-2) sigue siendo un gap conocido: `match.framework` y `match.frameworkSearchRoot` aún comparten valor entre los dos `IGenerationResult`. Esta ejecución NO aborda ese gap; solo garantiza que la ruta multi-servicio produce colecciones disjuntas por prefijo, que es la pre-condición que `r00019` necesita.
 - Quedan fuera del alcance de esta ejecución y pendientes para siguientes slices: `vitest.config.ts` con thresholds per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%), `scripts/gates/coverage.script.ts`, `tests/coverage-baseline.json` y los snapshots versionados para las fixtures que aún no los tienen. `lint:proposals` también sigue rojo por 16 propuestas archivadas en `done/<kind>/` con `kind` incorrecto (deuda previa a S3, fuera del scope).
 - `bun run typecheck` verde en las 5 secciones; 532 tests e2e verdes.
-- review-state: superseded — la aceptación S3 NO se cumple en 2026-09-07 (sigue parcial). Ver Trazabilidad 2026-09-08 abajo.
-- review-implementer: owl
 
 #### Trazabilidad S3 — 2026-09-08 (verificación independiente — slice sigue parcial)
 
@@ -111,9 +109,11 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - `review-state` se revierte a `in_progress` (NO `in_review`) porque la aceptación S3 no se cumple: el gate `coverage.script.ts`, el `coverage-baseline.json` y los thresholds per-proyecto siguen sin existir en HEAD. La revisión previa marcada como `in_review` queda en el log pero NO equivale a aprobación.
 - c00010 NO se archiva a `done/chores/` porque: (1) el gate de coverage no existe, (2) el baseline no existe, (3) los thresholds per-proyecto no están declarados, (4) `lint:proposals` no cierra por la deuda previa de done/<kind>. El archivo permanece en `in-progress/`.
 - `a00019` slice `phase-1-hygiene-ci` queda con `Status: pending` en el cuerpo del doc padre — no se mueve a `in_progress` desde `pending` porque su acceptance exige c00010 cerrado, lo cual no es cierto todavía.
-- review-state: in_progress
-- review-implementer: copilot-editor-sandbox-impl-20260908
 - review-blocker: scripts/gates/coverage.script.ts ausente; tests/coverage-baseline.json ausente; vitest.config.ts sin thresholds per-proyecto
+- review-state: changes_requested
+- review-implementer: implementation-runner
+- review-reviewer: delivery-verifier-20260908
+- review-log: requested_changes by delivery-verifier-20260908 — REPAIR-NEEDED. Verificación independiente en HEAD fda5835: los E2E focalizados de fixtures pasan, pero S3 no satisface su acceptance. (1) faltan scripts/gates/coverage.script.ts y tests/coverage-baseline.json; el intento bun run scripts/gates/coverage.script.ts termina Module not found. (2) vitest.config.ts solo tiene thresholds globales antiguos (statements 73, branches 70, functions 82, lines 75), no global 80/core 90/frameworks 75/cli 70. (3) tests/e2e/multi-service.test.ts llama generateCollections en proceso, no el binario; no comprueba la no-herencia de baseUrl/auth, y el pipeline documenta que combineServices=true hereda match/baseUrl/auth del primer servicio. (4) validate:examples pasa 25/25 pero no verifica snapshots de tests/fixtures ni retired-reason. (5) test:coverage queda bloqueado por lint:proposals (16 propuestas done/<kind> con kind incorrecto), deuda previa que impide el DoD full validate. Implementer debe aterrizar el gate, baseline, thresholds y regresiones/binario; después reenviar para revisión.
 ## acceptance
 
 - `bun run lint:naming` verde tras renombrar `host-config-parser.ts` → `host-config-parser.service.ts` y `postman-inferred-response.ts` → `postman-inferred-response.exporter.ts` (cabecera de doc actualizada, ningún import externo queda roto)
