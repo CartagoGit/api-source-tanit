@@ -204,6 +204,27 @@ jobs:
       - name: Integration verifier
         run: bun run lint:integration-verifier --audit
 
+  # Verifica que la protección de `develop` exige los mismos checks que
+  # este workflow publica. Si GitHub devuelve una divergencia, el CI falla
+  # antes de que la rama pueda seguir considerándose protegida.
+  branch-protection:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify develop branch protection
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bun run ci:branch-protection
+
   # ─────────────────── ci-summary汇总 ───────────────────
 
   # El汇总 lee `${{ needs.<job>.result }}` de cada job upstream.

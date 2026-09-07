@@ -31,7 +31,7 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - global_gate: e2e
 
 ### S1-lint-renames-and-monkey-patches — Renombres lint:naming + eliminación de monkey-patches + inyección de dependencias en generate
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/discovery/host-config-parser.service.ts`, `packages/core/exporters/postman-inferred-response.exporter.ts`, `packages/cli/commands/generate.script.ts`, `packages/core/discovery/output-paths.helper.ts`, `packages/core/services/output-sink.service.ts`, `packages/contracts/interfaces/core/output-sink.interface.ts`, `tests/core/output-paths.helper.spec.ts`, `tests/core/output-sink.service.spec.ts`, `scripts/gates/lint-no-monkey-patch.script.ts`, `tests/scripts-gates/lint-no-monkey-patch.spec.ts`, `package.json`
 - **Gate**: lint
 - acceptance:
@@ -52,7 +52,7 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - `lint:contracts` permanece como deuda previa: `host-config-parser.service.ts` (3 tipos), `import-resolver.ts` (1), `symbol-graph.ts` (2), `symbol-id.ts` (1), `postman-inferred-response.exporter.ts` (1), `extract-routes-fastify.helper.ts` (3), `language-frontends/typescript/index.ts` (1) e `infer-responses.ts` (3). Absorberla queda fuera del alcance de S1.
 
 ### S2-branch-protection-and-required-checks — Branch protection real + required checks + ci-summary exit-on-deps + rulesets
-- **Status**: pending
+- **Status**: in_progress
 - **DependsOn**: [S1-lint-renames-and-monkey-patches]
 - **Files**: `.github/workflows/validate.yml`, `.github/workflows/integration-delendai.yml`, `.github/workflows/ci-summary.yml`, `scripts/gates/branch-protection.script.ts`, `scripts/gates/ci-summary.script.ts`, `docs/CI.md`, `delendai.config.json`, `tests/scripts-gates/branch-protection.spec.ts`
 - **Gate**: e2e
