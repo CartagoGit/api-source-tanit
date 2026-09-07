@@ -421,21 +421,32 @@ export async function runGenerate(
   // source file travels on the ParsedRoute, so specs and routes are
   // paired by `METHOD uri` key. Routes without a sourceFile (manual/
   // zero-config entries) skip silently.
-  const framework = pipeline.match?.framework ?? "";
-  if (framework) {
+  //
+  // x00061: hybrid project support. The dispatcher needs the
+  // PER-SPEC framework, not the global winner. We build a
+  // route-by-key map so each spec can look up its own
+  // `route.framework`, and pass it as `frameworkHint` to the
+  // dispatcher. If the route has no framework (legacy scanner
+  // output) we fall back to the global match — exactly the
+  // legacy behaviour, preserved.
+  const globalFramework = pipeline.match?.framework ?? "";
+  if (globalFramework) {
     ensureResponseInferrersRegistered();
-    const sourceByEndpointKey = new Map<string, string>();
+    const routeByKey = new Map<
+      string,
+      { sourceFile: string | null; framework: string | null }
+    >();
     for (const r of pipeline.routes) {
-      if (!r.sourceFile) continue;
-      sourceByEndpointKey.set(
-        `${r.method.toUpperCase()} ${r.uri}`,
-        r.sourceFile,
-      );
+      routeByKey.set(`${r.method.toUpperCase()} ${r.uri}`, {
+        sourceFile: r.sourceFile ?? null,
+        framework: (r as { framework?: string }).framework ?? null,
+      });
     }
     const sourceCache = new Map<string, string>();
     let inferredCount = 0;
     for (const spec of discoveredSpecs) {
-      const rel = sourceByEndpointKey.get(`${spec.method} ${spec.uri}`);
+      const info = routeByKey.get(`${spec.method} ${spec.uri}`);
+      const rel = info?.sourceFile;
       if (!rel) continue;
       let content = sourceCache.get(rel);
       if (content === undefined) {
@@ -448,9 +459,16 @@ export async function runGenerate(
         sourceCache.set(rel, content);
       }
       if (!content) continue;
+      // Per-spec framework (x00061): if the route carries its own
+      // framework, use that; otherwise fall back to the global match.
+      const frameworkHint =
+        info?.framework && info.framework.length > 0
+          ? info.framework
+          : globalFramework;
       const entries = inferResponses(
         spec,
-        { path: join(resolvedContext.projectRoot, rel), content, framework },
+        { path: join(resolvedContext.projectRoot, rel), content, framework: frameworkHint },
+        { frameworkHint },
       );
       if (entries.length > 0) {
         spec.responses = entries;

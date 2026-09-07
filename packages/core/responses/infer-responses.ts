@@ -87,6 +87,21 @@ function isValidEntry(e: IResponseInference): e is IResponseInference {
 }
 
 /**
+ * Optional overrides for `inferResponses()`.
+ *
+ * - `frameworkHint`: lets the caller override the framework used to
+ *   select which inferrer runs. Used by `x00061` to dispatch on the
+ *   per-spec framework (e.g. a NestJS+FastAPI hybrid project where
+ *   the global `pipeline.match?.framework` is the winner and a FastAPI
+ *   endpoint would otherwise get the NestJS inferrer by mistake).
+ *   When omitted, falls back to `source.framework`.
+ */
+export interface InferResponsesOptions {
+  /** Force the dispatcher to pick the inferrer for this framework. */
+  readonly frameworkHint?: string;
+}
+
+/**
  * Run every registered inferrer against `spec`/`source`,
  * concatenate and dedupe the entries, sort stably. The result
  * is the array that will land in `EndpointSpec.responses`.
@@ -95,14 +110,24 @@ function isValidEntry(e: IResponseInference): e is IResponseInference {
  * `console.warn`) and is otherwise invisible. We never bubble
  * errors out of here; that would block generation on a single
  * malformed handler.
+ *
+ * Framework selection (x00061): the dispatcher picks the inferrer
+ * whose `framework` matches `options.frameworkHint ?? source.framework`.
+ * The hint lets the caller override the discriminator when the
+ * source is from a hybrid project where `source.framework` may not
+ * be the right signal (e.g. the source file is a generic
+ * controller that the per-spec route originated from a different
+ * framework).
  */
 export function inferResponses(
   spec: EndpointSpecLike,
   source: IFrameworkSourceFileLike,
+  options: InferResponsesOptions = {},
 ): ReadonlyArray<IResponseInference> {
+  const framework = options.frameworkHint ?? source.framework;
   const out: IResponseInference[] = [];
   for (const inf of inferrers) {
-    if (inf.framework !== source.framework) continue;
+    if (inf.framework !== framework) continue;
     let produced: ReadonlyArray<IResponseInference>;
     try {
       produced = inf.infer(spec, source);

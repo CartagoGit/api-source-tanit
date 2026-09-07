@@ -143,3 +143,80 @@ describe("inferResponses dispatcher (f00012 S1)", () => {
     expect(result[0]?.status).toBe(201);
   });
 });
+
+describe("inferResponses dispatcher — x00061 per-spec framework", () => {
+  beforeEach(() => {
+    __setInferrersForTest([]);
+  });
+
+  test("(1) frameworkHint overrides source.framework for the dispatcher", () => {
+    // SOURCE says nestjs, but the route actually comes from a fastapi
+    // handler. The hint must select the fastapi inferrer, not nestjs.
+    __setInferrersForTest([
+      stubInferrer("nestjs", [
+        {
+          status: 200,
+          schema: { kind: "ref", $ref: "NestUserDto" },
+          confidence: "high",
+          reason: "NestJS return type",
+        },
+      ]),
+      stubInferrer("fastapi", [
+        {
+          status: 200,
+          schema: { kind: "ref", $ref: "FastAPIUserSchema" },
+          confidence: "high",
+          reason: "FastAPI return annotation",
+        },
+      ]),
+    ]);
+    const result = inferResponses(
+      SPEC,
+      { ...SOURCE, framework: "nestjs" },
+      { frameworkHint: "fastapi" },
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.reason).toBe("FastAPI return annotation");
+    expect(result[0]?.schema).toEqual({ kind: "ref", $ref: "FastAPIUserSchema" });
+  });
+
+  test("(2) no hint → falls back to source.framework (legacy parity)", () => {
+    __setInferrersForTest([
+      stubInferrer("nestjs", [
+        {
+          status: 200,
+          schema: { kind: "ref", $ref: "NestUserDto" },
+          confidence: "high",
+          reason: "NestJS return type",
+        },
+      ]),
+      stubInferrer("fastapi", [
+        {
+          status: 200,
+          schema: { kind: "ref", $ref: "FastAPIUserSchema" },
+          confidence: "high",
+          reason: "FastAPI return annotation",
+        },
+      ]),
+    ]);
+    const result = inferResponses(SPEC, { ...SOURCE, framework: "nestjs" });
+    expect(result).toHaveLength(1);
+    expect(result[0]?.reason).toBe("NestJS return type");
+  });
+
+  test("(3) unknown framework → empty result (no fallback to other inferrers)", () => {
+    __setInferrersForTest([
+      stubInferrer("nestjs", [
+        {
+          status: 200,
+          schema: { kind: "empty" },
+          confidence: "high",
+          reason: "NestJS",
+        },
+      ]),
+    ]);
+    // Empty hint + empty source.framework → no inferrer matches → []
+    const result = inferResponses(SPEC, { ...SOURCE, framework: "" });
+    expect(result).toEqual([]);
+  });
+});
