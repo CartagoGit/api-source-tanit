@@ -23,6 +23,8 @@
 import type {
   IDetectedFramework,
   IDiscoveryOrchestrator,
+  IDiscoveryResult,
+  IDetectorDiagnostic,
   IProjectMatch,
   IProjectScanner,
   IRouteScanner,
@@ -31,6 +33,34 @@ import type {
 import type {
   DiscoveryRegistry,
 } from "../../contracts/interfaces/core/discovery.interface.js";
+
+/**
+ * Builds a diagnostic for a crashing detector (x00065).
+ */
+function buildDiagnostic(args: {
+  component: string;
+  phase: "detect" | "resolve";
+  sourceFile: string | null;
+  err: unknown;
+  durationMs: number;
+}): IDetectorDiagnostic {
+  const reason =
+    args.err instanceof Error
+      ? `${args.err.name}: ${args.err.message}`
+      : typeof args.err === "string"
+        ? args.err
+        : "unknown detector error";
+  return {
+    component: args.component,
+    phase: args.phase,
+    severity: "error",
+    sourceFile: args.sourceFile,
+    reason,
+    recoverable: true,
+    durationMs: args.durationMs,
+    timestamp: new Date().toISOString(),
+  };
+}
 
 /**
  * Decides which framework the project uses and which collaborators scan it.
@@ -89,20 +119,41 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     return this.registry.detectors.map((detector) => detector.framework);
   }
 
-  async detectAll(projectRoot: string): Promise<IDetectedFramework[]> {
+  async detectAll(projectRoot: string): Promise<ReadonlyArray<IDetectedFramework>> {
+    const { detected } = await this.detectAllWithDiagnostics(projectRoot);
+    return detected;
+  }
+
+  /**
+   * x00065 — same as `detectAll()` but also surfaces detector crashes
+   * via `diagnostics`. Today the legacy `detectAll()` swallows them
+   * silently (score 0, no record). The diagnostic stream lets a
+   * caller — CLI, MCP, UI — distinguish "framework not present"
+   * from "detector threw".
+   */
+  async detectAllWithDiagnostics(
+    projectRoot: string,
+  ): Promise<IDiscoveryResult> {
+    const diagnostics: IDetectorDiagnostic[] = [];
     const scored: Array<{ detector: IProjectScanner; score: number; evidence: IDetectedFramework["evidence"] }> = [];
     for (const detector of this.registry.detectors) {
+      const start = Date.now();
       let result: { score: number; evidence: ReadonlyArray<IDetectedFramework["evidence"][number]> };
       try {
         result = await detector.detect(projectRoot);
       } catch (error) {
-        // A crashing detector must not take down the other eleven. Audit
-        // 2026-09-04 P2 #4 (detect error resolution): this used to be silently
-        // swallowed without a trace. The caller can now learn why it failed
-        // through `failedDetectors` (not implemented here—the audit requires
-        // preserving the signal without coupling to console). For now, preserve
-        // the contract: `score: 0` and remove the detector from the pipeline.
-        void error;
+        // A crashing detector must not take down the other twenty-four.
+        // x00065: surface the crash via `diagnostics` so callers can tell
+        // "the framework is not present" from "the detector threw".
+        diagnostics.push(
+          buildDiagnostic({
+            component: detector.framework,
+            phase: "detect",
+            sourceFile: projectRoot,
+            err: error,
+            durationMs: Date.now() - start,
+          }),
+        );
         result = { score: 0, evidence: [] };
       }
       if (result.score > 0) {
@@ -111,22 +162,26 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     }
     scored.sort((a, b) => b.score - a.score);
 
-    const detected: IDetectedFramework[] = [];
+    const detectedOut: IDetectedFramework[] = [];
     for (const { detector, score, evidence } of scored) {
-      // Audit 2026-09-04 P2 #5: `resolve()` can also crash. Previously only
-      // `detect()` was protected—a defective resolve took down the entire
-      // discovery. Isolate it now: the problematic detector falls to the
-      // pipeline with a warning instead of aborting everything.
+      // x00065: `resolve()` can also crash; surface it on `diagnostics`.
+      const start = Date.now();
       let match;
       try {
         match = await detector.resolve(projectRoot);
       } catch (error) {
-        // Reset the score to 0 so `expandMonorepoDetection` and the rest of
-        // the pipeline treat it as undetected.
-        void error;
+        diagnostics.push(
+          buildDiagnostic({
+            component: detector.framework,
+            phase: "resolve",
+            sourceFile: projectRoot,
+            err: error,
+            durationMs: Date.now() - start,
+          }),
+        );
         continue;
       }
-      detected.push({
+      detectedOut.push({
         match,
         score,
         evidence,
@@ -136,7 +191,10 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
           null,
       });
     }
-    return detected;
+    return Object.freeze({
+      detected: Object.freeze(detectedOut),
+      diagnostics: Object.freeze(diagnostics),
+    });
   }
 
   /** The most likely framework. Shortcut over `detectAll()`. */
@@ -145,7 +203,8 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
     scanner: IRouteScanner | null;
     validation: IValidationSpecProvider | null;
   }> {
-    const winner = (await this.detectAll(projectRoot))[0];
+    const detected = await this.detectAll(projectRoot);
+    const winner = detected[0];
     if (!winner) return { match: null, scanner: null, validation: null };
     return {
       match: winner.match,

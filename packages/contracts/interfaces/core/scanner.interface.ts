@@ -465,12 +465,74 @@ export interface IDetectedFramework {
  * the bug: the key, not the position, decides the role.
  */
 export interface IDiscoveryOrchestrator {
-  /** Everyone who recognises the project, ordered by confidence. */
-  detectAll(projectRoot: string): Promise<IDetectedFramework[]>;
+  /**
+   * Everyone who recognises the project, ordered by confidence.
+   *
+   * Array-only contract — the diagnostics (x00065) are NOT surfaced
+   * here. Callers that need the diagnostic stream use
+   * `detectAllWithDiagnostics()`.
+   *
+   * (x00065) Preserved as the simple array shape for backwards
+   * compatibility with the existing pipeline; new code should
+   * prefer `detectAllWithDiagnostics()` so detector crashes are
+   * not silently absorbed.
+   */
+  detectAll(projectRoot: string): Promise<ReadonlyArray<IDetectedFramework>>;
+  /**
+   * Same as `detectAll()` but also surfaces detector crashes
+   * (broken `detect()` or `resolve()`) on the returned
+   * `diagnostics` array. Use this when the caller wants to
+   * distinguish "the framework is not present" (score 0, no
+   * diagnostic) from "the detector threw" (x00065).
+   */
+  detectAllWithDiagnostics(
+    projectRoot: string,
+  ): Promise<IDiscoveryResult>;
   /** Force a specific framework, skipping detection. */
   forceFramework(
     args: { projectRoot: string; framework: string },
   ): Promise<IDetectedFramework | null>;
   /** The identifiers this catalogue knows how to recognise. */
   supportedFrameworks(): string[];
+}
+
+/**
+ * Result of `detectAll()`. Carries the scored detectors plus the
+ * diagnostic stream for the ones that crashed.
+ *
+ * x00065 — broken detectors ≠ undetected framework. A throwing
+ * detector produces an entry in `diagnostics` (with phase, reason,
+ * duration) instead of silently looking like "score 0".
+ */
+export interface IDiscoveryResult {
+  /** Detectors that scored > 0, ordered by confidence desc. */
+  readonly detected: ReadonlyArray<IDetectedFramework>;
+  /**
+   * Detectors that crashed during `detect()` or `resolve()`.
+   * Empty when every detector ran cleanly.
+   */
+  readonly diagnostics: ReadonlyArray<IDetectorDiagnostic>;
+}
+
+/**
+ * One detector crash record. Surfaces the framework, the phase
+ * (`detect` / `resolve`), the reason, the duration, and whether the
+ * error is recoverable (so the caller can decide whether to retry).
+ */
+export interface IDetectorDiagnostic {
+  /** The framework slug whose detector failed. */
+  readonly component: string;
+  /** Which phase produced the crash. */
+  readonly phase: "detect" | "resolve";
+  readonly severity: "error" | "warning";
+  /** Path the failing detector was reading (projectRoot or file). */
+  readonly sourceFile: string | null;
+  /** The error message or a summary; never empty. */
+  readonly reason: string;
+  /** Whether a future run could plausibly succeed (default true). */
+  readonly recoverable: boolean;
+  /** Wall-clock duration of the failed phase, in ms. */
+  readonly durationMs: number;
+  /** ISO 8601 timestamp at the moment the diagnostic was produced. */
+  readonly timestamp: string;
 }
