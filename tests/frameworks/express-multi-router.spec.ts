@@ -29,7 +29,9 @@ describe("express multi-router (r00014 S4)", () => {
   test("(1) emits one route per file", async () => {
     const match = await new ExpressProjectScanner().resolve(FIXTURE);
     const result = await new ExpressRouteScanner().scan(match);
-    const routes = result.routes.filter((r) => r.uri === "/list");
+    const routes = result.routes.filter(
+      (route) => route.uri === "/profile" || route.uri === "/history",
+    );
     expect(routes).toHaveLength(2);
   });
 
