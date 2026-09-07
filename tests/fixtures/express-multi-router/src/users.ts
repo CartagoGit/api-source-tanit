@@ -10,4 +10,4 @@ router.post("/invite", (_req, res) => {
   res.json({ from: "users", invited: true });
 });
 
-export { router as usersRouter };
+export { router };

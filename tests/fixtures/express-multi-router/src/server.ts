@@ -1,6 +1,6 @@
 import express from "express";
-import { usersRouter } from "./users.js";
-import { ordersRouter } from "./orders.js";
+import { router as usersRouter } from "./users.js";
+import { router as ordersRouter } from "./orders.js";
 
 const app = express();
 

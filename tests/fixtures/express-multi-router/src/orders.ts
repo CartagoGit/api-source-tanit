@@ -10,4 +10,4 @@ router.post("/checkout", (_req, res) => {
   res.json({ from: "orders", created: true });
 });
 
-export { router as ordersRouter };
+export { router };
