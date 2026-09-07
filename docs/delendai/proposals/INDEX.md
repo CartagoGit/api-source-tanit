@@ -7,8 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `f00014` | `feat` | [`ready/feats/f00014-postman-exporter-emits-inferred-responses.md`](ready/feats/f00014-postman-exporter-emits-inferred-responses.md) |
-| `r00018` | `refactor` | [`ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md`](ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md) |
 
 ## Bloqueadas
 
@@ -78,6 +76,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00011` — feat(core): más vias de detección de lenguajes + heurísticas de scoring mejoradas (FEAT-010 + L-U07) — `9ea4da6, f1298fc, 298831a, 0ff53ec, 6c9a150, e344647, d96eaf8, cad24f3`
 - `f00012` — Response inference — infer request/response schemas from handlers, signatures, decorators, and explicit annotations — `2b8ea3d, f000bc0, 2e596ff, 243ef07, 68a8e87, cbe9b19`
 - `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
+- `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
@@ -180,9 +179,11 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
 - `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
+- `r00013` — LanguageIR universal — migrate Fastify and Hono scanners off regex/balanced-text — `a6f40f6`
 - `r00014` — SymbolGraph cross-file resolver — foundation for Express/Fastify/Hono mounts and TS imports — `2a602bc, 77c9cf3, 610953e, d63aedc`
 - `r00015` — Confidence scoring end-to-end — cada endpoint y cada campo lleva confianza + razón — `171f6ad, c3f92d7`
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `cd191dd`
+- `r00018` — Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4 — `e00a395`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 - `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`

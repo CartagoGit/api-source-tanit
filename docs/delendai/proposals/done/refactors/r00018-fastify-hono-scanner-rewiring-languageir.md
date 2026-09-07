@@ -6,6 +6,7 @@ status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
+shippedIn: ["e00a395"]
 dependsOn:
   - r00013
   - r00014
