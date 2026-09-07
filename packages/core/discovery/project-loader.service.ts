@@ -34,7 +34,7 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";
-import { parseHostConfigFile } from "./host-config-parser.js";
+import { parseHostConfigFile } from "./host-config-parser.service.js";
 import type { LoadedProject } from "../../contracts/interfaces/core/discovery.interface.js";
 import {
   BASE_PATH_ENV_VAR,

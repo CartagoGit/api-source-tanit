@@ -60,6 +60,12 @@ export interface IRouterMount {
   readonly range: { readonly file: string; readonly start: number; readonly end: number };
 }
 
+/**
+ * What `extractFastifyRoutesFromIR` emits: the flat route list plus
+ * the `.register(plugin, { prefix })` mount signals. Consumers
+ * (scanners, MCP, UI) read both fields — `routes` for the catalog,
+ * `mounts` for cross-file expansion (`r00014` S4).
+ */
 export interface IExtractRoutesResult {
   readonly routes: IExtractedRoute[];
   readonly mounts: IRouterMount[];

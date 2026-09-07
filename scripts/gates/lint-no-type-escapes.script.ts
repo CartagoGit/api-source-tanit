@@ -57,6 +57,14 @@ const PERMITIDOS: Readonly<Record<string, string>> = {
   "tests/helpers/postman-builders.ts":
     "construye items inválidos a propósito para los tests de invariantes, y " +
     "declara qué le falta a cada uno",
+  // f00014 follow-up + x00058 — parser AST del host config. La
+  // metadata de `@babel/types` se cruza con nuestros tipos y la
+  // única forma limpia de saltar es declarar la estrechez a mano.
+  // El helper ya valida cada assertion en su propio guard, así que
+  // el cast es de compatibilidad, no de corrección.
+  "packages/core/discovery/host-config-parser.service.ts":
+    "parser AST de @babel/types: los tipos del paquete son más anchos que los " +
+    "nuestros y la estrechez está validada por guards previos a cada cast",
 };
 
 /** Las formas de apagar el compilador. */

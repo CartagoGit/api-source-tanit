@@ -18,6 +18,7 @@
  */
 import { mkdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { arch as osArch } from "node:os";
 import { join, resolve } from "node:path";
 import { BIN_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 import { CLI_ENTRYPOINT, DIST_DIR, REPO_ROOT } from "../helpers/root.helper.js";
@@ -33,9 +34,23 @@ const TARGETS: ReadonlyArray<{ readonly target: string; readonly suffix: string 
 
 function currentTarget(): (typeof TARGETS)[number] {
   const platform = process.platform;
+  // `os.arch()` returns the same values Node and Bun both
+  // understand (`x64`, `arm64`, `ia32`, ...). We use it because
+  // Bun's `process.arch` typing is incomplete — `process.platform`
+  // is fine, but `process.arch` is missing in the global namespace
+  // for the Bun runtime.
+  const arch = osArch();
+  // macOS — Intel vs Apple Silicon must be distinguished by
+  // `process.arch`, not just the platform. Without this branch an
+  // Intel Mac would pick up the arm64 binary and silently fail at
+  // boot (`Bad CPU type in executable`). Windows and Linux are
+  // single-arch today; expand this branch if Bun ever ships a
+  // second Windows / Linux target.
   const suffix =
     platform === "darwin"
-      ? "darwin-arm64"
+      ? arch === "x64"
+        ? "darwin-x64"
+        : "darwin-arm64"
       : platform === "win32"
         ? "windows-x64.exe"
         : "linux-x64";

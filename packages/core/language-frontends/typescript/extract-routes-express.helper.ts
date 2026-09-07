@@ -22,6 +22,14 @@ const RESERVED_RECEIVERS: ReadonlySet<string> = new Set([
   "koa",
 ]);
 
+/**
+ * Walk the already-built LanguageIR's `IRouteCallExpression[]` and
+ * emit the Express subset: HTTP-verb calls (`app.get/post/...`) and
+ * `app.use(prefix, router)` mount signals. Express uses the same
+ * receiver heuristic (`app` / `server` / `fastify` / `koa`) as a
+ * convention-without-scope-guard — the caller's import surface
+ * decides. Originally introduced in x00048; Fastify/Hono followed.
+ */
 export function extractExpressRoutesFromIR(
   calls: ReadonlyArray<IRouteCallExpression>,
 ): IExtractRoutesResult {

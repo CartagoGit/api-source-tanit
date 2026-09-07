@@ -9,7 +9,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   renderInferredPostmanResponses,
-} from "../../packages/core/exporters/postman-inferred-response";
+} from "../../packages/core/exporters/postman-inferred-response.exporter";
 import type {
   IResponseInference,
 } from "../../packages/contracts/interfaces/core/responses.interface";

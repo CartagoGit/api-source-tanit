@@ -33,6 +33,13 @@ import {
 import { extractHonoRoutesFromIR } from "./extract-routes-hono.helper.js";
 import { parseModuleWithProgram as parseTsModuleWithProgram } from "./typescript.parser.js";
 
+/**
+ * The three frameworks whose route shape the LanguageIR can fully
+ * decode. Express was the first to land (x00048); Fastify and Hono
+ * were wired in r00013 S1+S2 and r00018. Other frameworks either
+ * still go through their own scanner (Django, Gin, Spring) or have
+ * no scanner yet.
+ */
 export type SupportedRouteFramework = "express" | "fastify" | "hono";
 
 export type {
@@ -41,6 +48,14 @@ export type {
   IRouterMount,
 };
 
+/**
+ * Parse a TS/JS source string and emit the framework-aware route
+ * catalog + mount signals. The `program` option lets callers that
+ * already hold a Babel AST skip a second parse — the scanners
+ * cache their own AST and pass it here, so we never re-walk the
+ * tree just to extract routes. When `program` is omitted the
+ * helper parses internally.
+ */
 export function extractRoutes(
   source: string,
   filename: string,

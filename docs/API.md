@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 201 símbolos en 70 módulos.
+> 241 símbolos en 83 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -483,6 +483,51 @@ Throws `Error` if:
   `detectedMonorepo === true` with an empty array—the "declared monorepo
   with no enumerated workspaces" case.
 
+### `packages/core/discovery/host-config-parser.service.ts`
+
+`host-config-parser.ts` — AST-only parser for `config.constant.ts` and `endpoints.constant.ts` (x00058).
+
+#### `HostConfigKind`
+
+```ts
+export type HostConfigKind = "project-config" | "manual-endpoints"
+```
+
+#### `IHostConfigDiagnostic`
+
+```ts
+export interface IHostConfigDiagnostic
+```
+
+#### `HostConfigParseResult`
+
+```ts
+export type HostConfigParseResult<T> = |
+```
+
+#### `parseHostConfigFile`
+
+```ts
+export async function parseHostConfigFile<T>( absPath: string, kind: HostConfigKind, ): Promise<HostConfigParseResult<T>>
+```
+
+Reads `absPath` and parses the host constant. Pure I/O + AST —
+no execution.
+
+- `kind: "project-config"` returns the exported object under one of
+  `config` / `projectConfig` / `default`.
+- `kind: "manual-endpoints"` returns the array exported under one of
+  `ALL_ENDPOINTS` / `endpoints` / `default`.
+
+#### `parseHostConfigSource`
+
+```ts
+export function parseHostConfigSource<T>( source: string, file: string, kind: HostConfigKind, ): HostConfigParseResult<T>
+```
+
+Pure-AST parse (no I/O). Exposed so tests can hand the parser a
+literal source string without touching the filesystem.
+
 ### `packages/core/discovery/import-resolver.ts`
 
 Import-path resolver (audit 2026-09-06 §12, proposal `r00014` S2).
@@ -552,7 +597,7 @@ Output path resolution from an explicit `IProjectContext`.
 #### `resolveOutputDir`
 
 ```ts
-export function resolveOutputDir( context: IProjectContext | undefined, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): string
+export function resolveOutputDir( context: IProjectContext | undefined, argv: ReadonlyArray<string> = process.argv, ): string
 ```
 
 Directory where artifacts are written, using the same precedence as the
@@ -573,7 +618,7 @@ reads globals when no context is supplied.
 #### `outputCollectionPath`
 
 ```ts
-export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): Promise<string>
+export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): Promise<string>
 ```
 
 Ruta absoluta al JSON principal. Crea el directorio si no existe.
@@ -585,7 +630,7 @@ proceso. Por defecto son los globales.
 #### `outputEnvironmentPath`
 
 ```ts
-export async function outputEnvironmentPath( context: IProjectContext | undefined, envName: string, projectName?: string, argv: ReadonlyArray<string> = process.argv, env: Readonly<Record<string, string | undefined>> = process.env, ): Promise<string>
+export async function outputEnvironmentPath( context: IProjectContext | undefined, envName: string, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): Promise<string>
 ```
 
 Absolute path to the Postman environment for a given environment.
@@ -836,18 +881,6 @@ export type SymbolKind = | "value" | "type" | "router" | "plugin" | "sub-app" | 
 ```ts
 export interface ISymbolNode
 ```
-
-#### `IImportRecord`
-
-```ts
-export interface IImportRecord
-```
-
-One import edge — `import { router as usersRouter } from
-"./users/routes"`. The graph does **not** resolve
-`"./users/routes"` to a file path (that's S2). It just
-records the specifier and the local names so the resolver
-can later walk the edge.
 
 #### `empty`
 
@@ -1554,6 +1587,47 @@ covers it.
 export class OpenApiExporter implements IExportTarget
 ```
 
+### `packages/core/exporters/postman-inferred-response.exporter.ts`
+
+`postman-inferred-response.ts` — Postman response[] rendering (f00014).
+
+#### `IPostmanInferredResponse`
+
+```ts
+export interface IPostmanInferredResponse
+```
+
+#### `renderInferredPostmanResponses`
+
+```ts
+export function renderInferredPostmanResponses( spec: EndpointSpec, ): ReadonlyArray<IPostmanInferredResponse> | undefined
+```
+
+Materializes a spec's inferred responses as a Postman `response[]`.
+
+Returns `undefined` when `spec.responses` is empty or absent so the
+caller can keep the historical shape (no `response[]` block). When
+the inferrer produced entries, the result has one entry per
+`(status, reason)` pair, deduplicated by the dispatcher.
+
+#### `__labelForStatusForTest`
+
+```ts
+export function __labelForStatusForTest(status: number): string
+```
+
+#### `__bodyForEntryForTest`
+
+```ts
+export function __bodyForEntryForTest(entry: IResponseInference): string
+```
+
+#### `__confidenceShapeForTest`
+
+```ts
+export function __confidenceShapeForTest(c: IResponseInferenceConfidence): string
+```
+
 ### `packages/core/helpers/all-method.helper.ts`
 
 Expands `EndpointSpec.method === "ALL"` (the Hono `.all()` sentinel emitted by commit `aad6376`, audited again on 2026-09-06 §13) into the seven standard HTTP verbs that every exporter except Postman can represent directly.
@@ -1609,6 +1683,39 @@ the flag looked like it wasn't there.
 ```ts
 export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean
 ```
+
+#### `readFlags`
+
+```ts
+export function readFlags<T extends Record<string, string>>( argv: ReadonlyArray<string>, names: T, ):
+```
+
+Reads a list of `name → result` mappings in one pass over `argv`.
+
+For each entry:
+  - if `name` is `string`: returns the value (`undefined` if absent)
+    under the same key in the result object.
+  - if `name` is `string[]`: same shape, batch-friendly.
+
+Names with `=` (e.g. `--json`) are read with `hasFlag` semantics.
+
+The helper replaces the manual `args.indexOf(name)` blocks in the
+CLI commands (audit 2026-09-06 §9, x00066 S1).
+
+#### `readBooleanFlags`
+
+```ts
+export function readBooleanFlags<T extends Record<string, string>>( argv: ReadonlyArray<string>, names: T, ):
+```
+
+#### `readFlagList`
+
+```ts
+export function readFlagList( argv: ReadonlyArray<string>, name: string, ): string[]
+```
+
+Parse a `--flag a,b,c` style comma-separated list. Returns an empty
+array when the flag is absent.
 
 ### `packages/core/helpers/atomic-write.helper.ts`
 
@@ -1747,6 +1854,40 @@ collection is correct.
 
 ```ts
 export function collectionErrors(collection: PostmanCollection): ICollectionIssue[]
+```
+
+### `packages/core/helpers/concurrency.helper.ts`
+
+Bounded-promise-pool helpers — `runWithConcurrency()`.
+
+#### `runWithConcurrency`
+
+```ts
+export async function runWithConcurrency<T>( tasks: ReadonlyArray<() => Promise<T>>, limit: number = DISCOVERY_CONCURRENCY, ): Promise<T[]>
+```
+
+Run `tasks` in parallel with at most `limit` in flight, returning
+the results in input order. Each `task` is a factory returning a
+Promise — the factory is called immediately so the helper can
+populate the window before awaiting.
+
+### `packages/core/helpers/env-or-alias.helper.ts`
+
+Centralized environment-variable resolver (x00067).
+
+#### `envOrAlias`
+
+```ts
+export function envOrAlias( canonical: string, deprecated: string, ): string | undefined
+```
+
+Resolves `canonical` (preferred) with `deprecated` (alias) as
+fallback. Returns the trimmed value or `undefined`.
+
+#### `__resetEnvAliasWarningsForTest`
+
+```ts
+export function __resetEnvAliasWarningsForTest(): void
 ```
 
 ### `packages/core/helpers/fs-walk.helper.ts`
@@ -2375,6 +2516,21 @@ Here we return the zones actually present: first those that
 alphabetically so two runs produce the same. Empty zones are omitted,
 which is what the previous code did right.
 
+### `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`
+
+#### `extractExpressRoutesFromIR`
+
+```ts
+export function extractExpressRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, ): IExtractRoutesResult
+```
+
+Walk the already-built LanguageIR's `IRouteCallExpression[]` and
+emit the Express subset: HTTP-verb calls (`app.get/post/...`) and
+`app.use(prefix, router)` mount signals. Express uses the same
+receiver heuristic (`app` / `server` / `fastify` / `koa`) as a
+convention-without-scope-guard — the caller's import surface
+decides. Originally introduced in x00048; Fastify/Hono followed.
+
 ### `packages/core/language-frontends/typescript/extract-routes-fastify.helper.ts`
 
 Fastify route extractor (audit 2026-09-06 §12, proposal `r00013` S1).
@@ -2391,10 +2547,21 @@ export interface IExtractedRoute
 export interface IRouterMount
 ```
 
+#### `IExtractRoutesResult`
+
+```ts
+export interface IExtractRoutesResult
+```
+
+What `extractFastifyRoutesFromIR` emits: the flat route list plus
+the `.register(plugin, { prefix })` mount signals. Consumers
+(scanners, MCP, UI) read both fields — `routes` for the catalog,
+`mounts` for cross-file expansion (`r00014` S4).
+
 #### `extractFastifyRoutesFromIR`
 
 ```ts
-export function extractFastifyRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, file: string, ):
+export function extractFastifyRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, _file: string, ): IExtractRoutesResult
 ```
 
 Extrae las rutas Fastify del IR de un fichero ya parseado.
@@ -2417,7 +2584,7 @@ Hono route extractor (audit 2026-09-06 §12, proposal `r00013` S2).
 #### `extractHonoRoutesFromIR`
 
 ```ts
-export function extractHonoRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, file: string, ):
+export function extractHonoRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, _file: string, ): IExtractRoutesResult
 ```
 
 Extrae las rutas Hono del IR de un fichero ya parseado.
@@ -2433,6 +2600,35 @@ interpreta.
 @param bindings - Import bindings del mismo fichero (filtra receivers).
 @param file - Ruta del fichero fuente, para anclar cada ruta.
 @returns Rutas extraídas y mounts con prefijo, en orden de aparición.
+
+### `packages/core/language-frontends/typescript/index.ts`
+
+TypeScript frontend barrel.
+
+#### `SupportedRouteFramework`
+
+```ts
+export type SupportedRouteFramework = "express" | "fastify" | "hono"
+```
+
+The three frameworks whose route shape the LanguageIR can fully
+decode. Express was the first to land (x00048); Fastify and Hono
+were wired in r00013 S1+S2 and r00018. Other frameworks either
+still go through their own scanner (Django, Gin, Spring) or have
+no scanner yet.
+
+#### `extractRoutes`
+
+```ts
+export function extractRoutes( source: string, filename: string, framework: SupportedRouteFramework, options?:
+```
+
+Parse a TS/JS source string and emit the framework-aware route
+catalog + mount signals. The `program` option lets callers that
+already hold a Babel AST skip a second parse — the scanners
+cache their own AST and pass it here, so we never re-walk the
+tree just to extract routes. When `program` is omitted the
+helper parses internally.
 
 ### `packages/core/language-frontends/typescript/typescript.parser.ts`
 
@@ -2512,6 +2708,290 @@ lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
 Express: un solo parse por archivo alimenta el `TSFile` del
 frontend Y las primitivas del LanguageIR.
 
+### `packages/core/language-ir/build-language-ir.helper.ts`
+
+`buildLanguageIR(source, filename)` — x00048 S3 (a00016 S6.d).
+
+#### `buildLanguageIR`
+
+```ts
+export function buildLanguageIR( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): ILanguageIR
+```
+
+Parsea `source` una vez y corre los cuatro collectors AST-level
+sobre el mismo `Program`.
+
+La configuración de Babel (plugins `typescript` + `decorators`,
+`jsx` condicional, `errorRecovery`, `sourceType: module`) es la
+MISMA que usa `collectMethodCallsFromSource` — el único de los
+cuatro que históricamente añadía `jsx` por extensión. Los otros
+three aceptan el mismo superset sin problema: plugins extra no
+cambian el AST de un fichero que no los usa.
+
+#### `buildLanguageIRFromProgram`
+
+```ts
+export function buildLanguageIRFromProgram( program: unknown, filename: string, ): ILanguageIR
+```
+
+Variante AST-level (x00048 S3): toma un `Program` de Babel ya
+parseado — el que devuelve `parseModuleWithProgram` del frontend —
+y corre los cuatro collectors sin volver a parsear.
+
+Este es el camino del single-parse REAL en los scanners: el
+frontend parsea una vez (`parseModuleWithProgram`), consume su
+cuerpo para el `TSFile` (assignments, decorators, classes…) y
+entrega el mismo `Program` a este helper, que alimenta los
+walkers del LanguageIR. Un archivo = un parse, punto.
+
+### `packages/core/language-ir/collect-constants.helper.ts`
+
+`collectConstantsFromSource` — a00016 S6 (constant bindings reales).
+
+#### `collectConstantsFromSource`
+
+```ts
+export function collectConstantsFromSource( source: string, filename: string, ): IConstantBinding[]
+```
+
+Parses `source` and returns every top-level `const X = <literal>`
+binding in the file. Returns `[]` on parse failure — the parser
+failure is already reported by `collectMethodCallsFromSource`
+upstream; this helper does not duplicate the diagnostic channel.
+
+#### `collectConstantsFromProgram`
+
+```ts
+export function collectConstantsFromProgram( program: unknown, filename: string, ): IConstantBinding[]
+```
+
+Versión AST-level del collector (x00048 S3). Toma un `Program`
+de Babel ya parseado y devuelve las mismas `IConstantBinding[]`
+que `collectConstantsFromSource`. La regla de emisión vive sólo
+en `walkBindings`; el parse lo pone quien llama (normalmente
+`buildLanguageIR`, que parsea una vez por archivo).
+
+### `packages/core/language-ir/collect-method-calls.helper.ts`
+
+`collectMethodCalls` — a `CallExpression` from the TS AST viewed from the multi-style frameworks adapter.
+
+#### `collectMethodCallsFromSource`
+
+```ts
+export function collectMethodCallsFromSource( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): IRouteCallExpression[]
+```
+
+Parsea un archivo TS/JS y devuelve sus `IRouteCallExpression`.
+
+Si Babel no puede parsear el archivo, registra el motivo en
+`diagnostics` (si vino) y devuelve `[]`. Mismo contrato que
+`collectTaggedTemplatesFromSource` y `parseModule`: degradar sin
+ruido en vez de abortar el scan.
+
+#### `collectMethodCallsFromProgram`
+
+```ts
+export function collectMethodCallsFromProgram( program: unknown, filename: string, ): IRouteCallExpression[]
+```
+
+Versión AST-level del collector (x00048 S3). Toma un `Program`
+de Babel ya parseado — el que produce `buildLanguageIR` con su
+parse único — y devuelve las mismas `IRouteCallExpression[]` que
+`collectMethodCallsFromSource`.
+
+La regla de emisión vive sólo en `walkBody`; esta función es el
+mismo walker alimentado desde fuera. Los scanners que ya tienen
+el AST en la mano (vía `buildLanguageIR`) no pagan el re-parse.
+
+#### `collectMethodCalls`
+
+```ts
+export async function collectMethodCalls( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IRouteCallExpression[]>
+```
+
+Walks the TS/JS source under `projectRoot` and returns all the
+`IRouteCallExpression`s it finds.
+
+Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+as `tagged-template.ts`, `express.scanner.ts`, and
+`graphql.scanner.ts` — so it honours the same excludes
+(`node_modules`, `dist`, etc.).
+
+`diagnostics` (optional) receives the files the parser could not
+digest. If not passed, failures are swallowed silently.
+
+### `packages/core/language-ir/constant-propagation.helper.ts`
+
+`propagateConstants` — intraprocedural constant propagation.
+
+#### `propagateConstants`
+
+```ts
+export function propagateConstants( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IConstantBinding>, ): IRouteCallExpression[]
+```
+
+Resolves computed properties against a map of literal constants.
+
+For each `IRouteCallExpression`:
+
+  - If the `callee` has the shape `receiver[X]` (with X an
+    identifier) and an `IConstantBinding` exists with
+    `name: "X"` and a literal value (`string | number | boolean`),
+    `resolvedMethod = String(value)` is filled in.
+  - Otherwise, the call passes through as-is (the scanner discards it).
+
+Returns a NEW array — does not mutate the input.
+
+### `packages/core/language-ir/scanner-bridge.helper.ts`
+
+`scanner-bridge` — adapts the LanguageIR (S2+S3+S4) to the `TSMethodCall` shape consumed by the 6 TS-flavored scanners.
+
+#### `toTSMethodCalls`
+
+```ts
+export function toTSMethodCalls( calls: ReadonlyArray<IRouteCallExpression>, source: string, ): TSMethodCall[]
+```
+
+Converts `IRouteCallExpression[]` into the `TSMethodCall[]` shape
+that the TS-flavored scanners consume.
+
+The output order matches the input (top-down per file), preserved
+by S2. Scanners that sort by line can use the resulting `line`
+directly.
+
+### `packages/core/language-ir/symbol-resolver.helper.ts`
+
+`symbol-resolver` — aliases, reexports, and resolution of `const r = app`.
+
+#### `collectAliasesFromBody`
+
+```ts
+export function collectAliasesFromBody( body: ReadonlyArray<BabelNode>, sourceFile: string, out: IImportBinding[], ): void
+```
+
+Walks the AST and emits one `IImportBinding` per `ImportDeclaration`.
+
+Covers:
+  - `import x from "m"` — `name = "x"`.
+  - `import * as ns from "m"` — `name = "ns"`.
+  - `import { a, b as c } from "m"` — emits 2 bindings: `a` and `c`.
+  - `import "m"` (side-effect) — emits nothing.
+
+`range.file` is filled with `sourceFile` — the caller that wants
+grouping by file can do that later.
+
+#### `collectReexportsFromBody`
+
+```ts
+export function collectReexportsFromBody( body: ReadonlyArray<BabelNode>, sourceFile: string, out: IReexport[], ): void
+```
+
+Emits one `IReexport` per node that represents a reexport.
+
+Covers:
+  - `export { a, b as c } from "./x"` — emits 1 binding per specifier.
+  - `export * from "./x"` — emits 1 binding with `name = "*"`.
+
+Does NOT cover `export { a }` (local declaration) or
+`export const a = ...` (local declaration) — those are definitions,
+not reexports. If a scanner needs to detect them, it will look
+elsewhere.
+
+#### `collectAliases`
+
+```ts
+export async function collectAliases( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IImportBinding[]>
+```
+
+Recorre los TS/JS fuente de `projectRoot` y devuelve todos los
+`IImportBinding`.
+
+#### `collectReexports`
+
+```ts
+export async function collectReexports( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<IReexport[]>
+```
+
+Recorre los TS/JS fuente de `projectRoot` y devuelve todos los
+`IReexport`.
+
+#### `resolveCallee`
+
+```ts
+export function resolveCallee( calls: ReadonlyArray<IRouteCallExpression>, aliases: ReadonlyArray<IImportBinding>, reexports: ReadonlyArray<IReexport>, constAliasesByFile: Readonly<Record<string, Readonly<Record<string, string>>>> =
+```
+
+Resolves the `callee` of the calls to its canonical form.
+
+For each `IRouteCallExpression`:
+
+  1. If the receiver is an identifier (`r.get`, `app.get`, etc.)
+     and `r` appears as `const r = X` in the same file, rewrites
+     the callee to `X.get` (keeping the same `method` and `args`).
+  2. If the receiver is an identifier and `r` appears as
+     `import { R as r }`, rewrites to `R.get`.
+  3. Calls that are already canonical (`app.get`, `this.router.get`)
+     are returned as-is.
+
+Returns a NEW array — does not mutate the input. Scanners that want
+to keep the original can compare references.
+
+Documented limitation (a00016 non-goals): does not resolve
+`import { Router } from "./router"` by following the `./router`
+module to get the real binding. That is cross-file and out of scope.
+
+#### `collectConstAliasesByFile`
+
+```ts
+export async function collectConstAliasesByFile( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<Record<string, Readonly<Record<string, string>>>>
+```
+
+Builds `constAliasesByFile` by walking `projectRoot`. Useful for
+callers that invoke `resolveCallee(calls, aliases, reexports)`.
+
+It is NOT invoked automatically from `resolveCallee` because the
+latter is pure over its arguments: the caller decides whether to
+re-read disk. Scanners that already have the sources in memory can
+skip this helper.
+
+### `packages/core/language-ir/tagged-template.helper.ts`
+
+`collectTaggedTemplates` — a `TaggedTemplateExpression` from the TS AST, viewed from the frameworks adapter.
+
+#### `collectTaggedTemplatesFromSource`
+
+```ts
+export function collectTaggedTemplatesFromSource( source: string, filename: string, diagnostics?: Array<IParseDiagnostic>, ): ITaggedTemplate[]
+```
+
+Parses a TS/JS file and returns its `TaggedTemplateExpression`s.
+
+If Babel cannot parse the file, logs the reason in `diagnostics`
+(if the array was passed) and returns `[]` — the caller decides
+what to do. This is the same contract as `parseModule` in the
+frontend (a00011 C-7 / B-rev-13): a file with weird syntax does not
+abort the scan, but the failure stays visible for whoever wants to
+report it.
+
+#### `collectTaggedTemplates`
+
+```ts
+export async function collectTaggedTemplates( projectRoot: string, diagnostics?: Array<IParseDiagnostic>, ): Promise<ITaggedTemplate[]>
+```
+
+Walks the TS/JS source under `projectRoot` and returns all the
+`TaggedTemplateExpression`s it finds.
+
+Uses `collectFiles(projectRoot, isSourceJsTsFile)` — the same helper
+that `express.scanner.ts` and `graphql.scanner.ts` already use to
+locate TS/JS files — so it honours the same excludes
+(`node_modules`, `dist`, etc.) without reinventing the wheel.
+
+`diagnostics` (optional) receives the files the parser could not
+digest. If not passed, failures are swallowed silently — the
+"degradable" form used by tests that only want to verify the
+tree shape.
+
 ### `packages/core/responses/infer-responses.ts`
 
 Response inference dispatcher (audit 2026-09-06 §10, proposal `f00012` S1).
@@ -2545,10 +3025,25 @@ Tests run `__setInferrersForTest([])` to start from a clean
 state and call `registerResponseInferrer` to compose the
 scenarios they want. Production code never uses this.
 
+#### `InferResponsesOptions`
+
+```ts
+export interface InferResponsesOptions
+```
+
+Optional overrides for `inferResponses()`.
+
+- `frameworkHint`: lets the caller override the framework used to
+  select which inferrer runs. Used by `x00061` to dispatch on the
+  per-spec framework (e.g. a NestJS+FastAPI hybrid project where
+  the global `pipeline.match?.framework` is the winner and a FastAPI
+  endpoint would otherwise get the NestJS inferrer by mistake).
+  When omitted, falls back to `source.framework`.
+
 #### `inferResponses`
 
 ```ts
-export function inferResponses( spec: EndpointSpecLike, source: IFrameworkSourceFileLike, ): ReadonlyArray<IResponseInference>
+export function inferResponses( spec: EndpointSpecLike, source: IFrameworkSourceFileLike, options: InferResponsesOptions =
 ```
 
 Run every registered inferrer against `spec`/`source`,
@@ -2559,6 +3054,58 @@ Fail-soft: a thrown inferrer logs a warning (via
 `console.warn`) and is otherwise invisible. We never bubble
 errors out of here; that would block generation on a single
 malformed handler.
+
+Framework selection (x00061): the dispatcher picks the inferrer
+whose `framework` matches `options.frameworkHint ?? source.framework`.
+The hint lets the caller override the discriminator when the
+source is from a hybrid project where `source.framework` may not
+be the right signal (e.g. the source file is a generic
+controller that the per-spec route originated from a different
+framework).
+
+#### `IRouteForInference`
+
+```ts
+export interface IRouteForInference
+```
+
+Per-route metadata used by `inferResponsesIntoSpecs` to dispatch
+the right framework inferrer and read the right source file. We
+accept the bare projection here so the function does not have to
+depend on `IProjectMatch` (which lives in the scanner contract).
+
+#### `IInferResponsesIntoSpecsResult`
+
+```ts
+export interface IInferResponsesIntoSpecsResult
+```
+
+Pipeline entry point: run the dispatcher against every spec,
+cache the source reads, and mutate `spec.responses` in place.
+See `IInferResponsesIntoSpecsResult` for the return shape. The
+CLI is the composition root that populates the inferrer
+registry before calling the pipeline.
+
+#### `inferResponsesIntoSpecs`
+
+```ts
+export async function inferResponsesIntoSpecs( specs: ReadonlyArray<EndpointSpecLike>, projectRoot: string, routes: ReadonlyArray<IRouteForInference>, options:
+```
+
+Pipeline entry point: read every spec's source file, dispatch
+the right framework inferrer, and write the entries onto
+`spec.responses`. Mutating in place is intentional — every
+downstream exporter (Postman, OpenAPI, Bruno, HAR) reads from
+the same spec catalog and must see the same enriched data, so
+producing a new array would only duplicate state.
+
+The function exists because the **only** place that should
+mutate `EndpointSpec.responses` is the pipeline, not the
+script. Before it landed, the CLI ran the inference loop after
+`buildCollection()` had already serialised the Postman
+collection, which meant the inferred `response[]` block never
+made it into the JSON the user saw. See the `f00014` follow-up
+for the full bug history.
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 
@@ -2941,6 +3488,13 @@ other services when `combineServices` is false (audit 2026-09-06
 §3.3 / §18 priority 7). The singular facade
 `generateWithAllFrameworks` is kept for callers that only handle
 the combined case.
+
+Implementation note (x00059): this used to call the singular
+`generateCollection()`, which throws
+`MultipleServicesWithoutCombineError` (x00024) on a multi-service
+project without `--combine-services`. The contract is "ALWAYS an
+array"; the singular call broke the contract silently. Switched to
+the plural primitive so the facade actually returns the array.
 
 #### `summarizeWithAllFrameworks`
 

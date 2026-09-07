@@ -40,12 +40,6 @@
 import { parse as babelParse, type ParserPlugin } from "@babel/parser";
 import type { IConstantBinding } from "../../contracts/interfaces/core/language-ir.interface.js";
 
-const LITERAL_TYPES = new Set([
-  "StringLiteral",
-  "NumericLiteral",
-  "BooleanLiteral",
-]);
-
 interface BabelNode {
   readonly type: string;
   readonly start?: number | null;
@@ -198,7 +192,3 @@ export function collectConstantsFromProgram(
   walkBindings(asBabelNode(program), filename, out);
   return out;
 }
-
-// Re-export so the import is consumed and the symbol is reachable
-// from tests / docs (avoids the "unused export" lint).
-export const _LITERAL_TYPES = LITERAL_TYPES;

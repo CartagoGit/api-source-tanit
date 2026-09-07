@@ -33,7 +33,7 @@ import { detectAuthScheme, toPostmanAuth } from "./auth-scheme.service.js";
 import { buildRequestDescription } from "./request-doc.service.js";
 import { bodyFieldsFromGraph } from "../helpers/schema-flatten.helper.js";
 import { buildTestScript } from "./test-script.service.js";
-import { renderInferredPostmanResponses } from "../exporters/postman-inferred-response.js";
+import { renderInferredPostmanResponses } from "../exporters/postman-inferred-response.exporter.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 import { postmanMethodFor } from "./postman-method.helper.js";
 import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";

@@ -17,7 +17,7 @@ import { join } from "node:path";
 import {
   parseHostConfigSource,
   parseHostConfigFile,
-} from "../../packages/core/discovery/host-config-parser";
+} from "../../packages/core/discovery/host-config-parser.service";
 
 describe("x00058 — host-config-parser (AST, no execution)", () => {
   describe("project-config extraction", () => {

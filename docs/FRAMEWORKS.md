@@ -34,9 +34,13 @@ heurísticamente.
 | [Rust](#rust-actix-web--rocket) | 7 | 2 |
 | [tRPC](#trpc) | 6 | 0 |
 | [GraphQL](#graphql) | 5 | 0 |
+| [Sse](#sse) | 4 | 0 |
+| [Grpc](#grpc) | 3 | 0 |
+| [Asyncapi](#asyncapi) | 0 | 0 |
+| [Websocket](#websocket) | 0 | 0 |
 
 _Generado por `bun run docs:frameworks` ejecutando cada scanner contra_
-_su fixture. 21 frameworks._
+_su fixture. 25 frameworks._
 
 <!-- /generado:tabla-frameworks -->
 
