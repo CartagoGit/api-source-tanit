@@ -9,18 +9,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | --- | --- | --- |
 | `f00014` | `feat` | [`ready/feats/f00014-postman-exporter-emits-inferred-responses.md`](ready/feats/f00014-postman-exporter-emits-inferred-responses.md) |
 | `r00018` | `refactor` | [`ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md`](ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md) |
-| `x00058` | `fix` | [`ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md`](ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md) |
-| `x00059` | `fix` | [`ready/fixes/x00059-generate-collections-with-all-frameworks-facade-actually-returns-array.md`](ready/fixes/x00059-generate-collections-with-all-frameworks-facade-actually-returns-array.md) |
-| `x00060` | `fix` | [`ready/fixes/x00060-generate-transaction-no-write-before-empty-validation.md`](ready/fixes/x00060-generate-transaction-no-write-before-empty-validation.md) |
-| `x00061` | `fix` | [`ready/fixes/x00061-per-spec-framework-for-response-inference.md`](ready/fixes/x00061-per-spec-framework-for-response-inference.md) |
-| `x00062` | `refactor` | [`ready/refactors/x00062-fix-core-frameworks-architectural-regression-language-ir.md`](ready/refactors/x00062-fix-core-frameworks-architectural-regression-language-ir.md) |
-| `x00063` | `refactor` | [`ready/refactors/x00063-symbolgraph-resolved-import-edge.md`](ready/refactors/x00063-symbolgraph-resolved-import-edge.md) |
-| `x00064` | `feat` | [`ready/feats/x00064-parallel-detector-execution-bounded-promise-pool.md`](ready/feats/x00064-parallel-detector-execution-bounded-promise-pool.md) |
-| `x00065` | `feat` | [`ready/feats/x00065-failed-detectors-diagnostics-in-discovery.md`](ready/feats/x00065-failed-detectors-diagnostics-in-discovery.md) |
-| `x00066` | `refactor` | [`ready/refactors/x00066-unified-cli-flag-parser-parsecli.md`](ready/refactors/x00066-unified-cli-flag-parser-parsecli.md) |
-| `x00067` | `chore` | [`ready/chores/x00067-tanit-env-vars-with-postman-deprecated-alias.md`](ready/chores/x00067-tanit-env-vars-with-postman-deprecated-alias.md) |
-| `x00068` | `chore` | [`ready/chores/x00068-ci-parallel-jobs-and-develop-branch-protection.md`](ready/chores/x00068-ci-parallel-jobs-and-develop-branch-protection.md) |
-| `x00069` | `chore` | [`ready/chores/x00069-intel-mac-darwin-x64-binary.md`](ready/chores/x00069-intel-mac-darwin-x64-binary.md) |
 
 ## Bloqueadas
 
@@ -71,6 +59,9 @@ propuesta con sus SHAs (`shippedIn`).
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
 - `x00047` — x00047: allowlist de ficheros en la raíz del repo — anti-residuos (los agentes no pueden dejar basura) — `d554d1f`
+- `x00067` — TANIT_* env vars are canonical; POSTMAN_* kept as deprecated alias — `befa555`
+- `x00068` — CI: parallel jobs, always-on security audit, develop branch protection — `9712c9c`
+- `x00069` — Intel Mac (darwin-x64) single-binary launcher — `a4e5fe2`
 
 ### docs
 
@@ -112,6 +103,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `p00042` — p00042 — poder decirle de qué tipo es la API cuando no se autodetecta — `1397e54`
 - `x00048` — x00048: a00016 S6 — LanguageIR completo (alias canonicalisation, bindings reales, single-parse, NestJS) — `9429895, 4a3b4d7, 180050a, bf3aba8`
 - `x00049` — x00049: integration verifier — gate post-merge que detecta residuos de trabajo multiagente — `dcd69b9`
+- `x00064` — Parallel detector execution with bounded Promise pool — `e1b3c98`
+- `x00065` — `failedDetectors` diagnostics — broken detectors ≠ undetected framework — `5cfb7cd`
 
 ### fix
 
@@ -160,6 +153,10 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00054` — resolveCallee usa importedName con guardas para default y namespace — `d891e8c, ade50f7`
 - `x00055` — Express cross-file router identity — SymbolGraph (audit 2026-09-06 §4) — `40a30c5, 38cb29a, eea465c`
 - `x00056` — Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13) — `79b0a3d, fdc0171, 15a477e`
+- `x00058` — No execution of host TypeScript config by default — security by construction — `48a9a53`
+- `x00059` — `generateCollectionsWithAllFrameworks()` actually returns the array — closes the `monorepo` P1 facade bug — `6450a2d, 6450a2d`
+- `x00060` — Generate is a transaction — no write before 0-endpoint validation, atomic commit — `5645bcf`
+- `x00061` — Per-spec framework discriminator for response inference — closes the hybrid-project dispatcher bug — `22bcd73`
 
 ### infra
 
@@ -188,6 +185,9 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `cd191dd`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
+- `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`
+- `x00063` — SymbolGraph carries resolved import edges — closes the cross-file `import → module` lookup — `181b55a`
+- `x00066` — Unified CLI flag parser — single source of truth, no manual `args.indexOf` — `0d765bb`
 
 ### test
 

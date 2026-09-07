@@ -2,12 +2,16 @@
 id: x00067
 title: "TANIT_* env vars are canonical; POSTMAN_* kept as deprecated alias"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - b00001
+shippedIn:
+  - befa555
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00067 — Tanit env vars: canonical `TANIT_*`, deprecated `POSTMAN_*` alias

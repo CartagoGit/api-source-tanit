@@ -2,12 +2,16 @@
 id: x00060
 title: "Generate is a transaction — no write before 0-endpoint validation, atomic commit"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - 5645bcf
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00060 — Generate runs as a single transaction: validate before any write

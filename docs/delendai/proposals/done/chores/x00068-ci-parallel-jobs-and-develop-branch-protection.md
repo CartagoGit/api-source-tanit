@@ -2,12 +2,16 @@
 id: x00068
 title: "CI: parallel jobs, always-on security audit, develop branch protection"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - 9712c9c
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00068 — CI parallelization + branch protection + always-on security

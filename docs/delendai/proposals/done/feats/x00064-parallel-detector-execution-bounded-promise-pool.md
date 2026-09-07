@@ -2,12 +2,16 @@
 id: x00064
 title: "Parallel detector execution with bounded Promise pool"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - e1b3c98
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00064 — DiscoveryOrchestrator detects in parallel (concurrency = 8)

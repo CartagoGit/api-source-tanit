@@ -2,13 +2,18 @@
 id: x00059
 title: "`generateCollectionsWithAllFrameworks()` actually returns the array — closes the `monorepo` P1 facade bug"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - x00024
   - a00018
+shippedIn:
+  - 6450a2d
+  - 6450a2d
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00059 — `generateCollectionsWithAllFrameworks()` returns the array, not the first

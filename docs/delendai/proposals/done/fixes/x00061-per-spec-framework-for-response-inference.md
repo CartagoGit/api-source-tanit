@@ -2,13 +2,17 @@
 id: x00061
 title: "Per-spec framework discriminator for response inference — closes the hybrid-project dispatcher bug"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - f00012
   - x00060
+shippedIn:
+  - 22bcd73
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00061 — `inferResponses()` uses the spec's framework, not the global winner

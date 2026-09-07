@@ -2,12 +2,16 @@
 id: x00063
 title: "SymbolGraph carries resolved import edges — closes the cross-file `import → module` lookup"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - r00014
+shippedIn:
+  - 181b55a
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00063 — `IImportEdge` carries the resolved target file; `SymbolGraph` no longer searches globally

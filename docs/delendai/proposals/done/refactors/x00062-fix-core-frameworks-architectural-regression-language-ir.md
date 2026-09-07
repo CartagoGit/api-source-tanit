@@ -2,13 +2,17 @@
 id: x00062
 title: "Fix core → frameworks architectural regression — LanguageIR primitives belong in core"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00016
   - a00018
+shippedIn:
+  - 506ed06
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00062 — LanguageIR primitives belong in `core/language-ir`, not in `frameworks/typescript`

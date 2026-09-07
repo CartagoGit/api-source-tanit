@@ -2,12 +2,16 @@
 id: x00066
 title: "Unified CLI flag parser — single source of truth, no manual `args.indexOf`"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - 0d765bb
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00066 — `parseCli(argv)` replaces every manual `args.indexOf` call

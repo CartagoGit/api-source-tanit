@@ -2,12 +2,16 @@
 id: x00065
 title: "`failedDetectors` diagnostics — broken detectors ≠ undetected framework"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - 5cfb7cd
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00065 — Surface detector crashes via `IDiscovery.diagnostics.failedDetectors`

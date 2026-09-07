@@ -2,12 +2,16 @@
 id: x00069
 title: "Intel Mac (darwin-x64) single-binary launcher"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - a4e5fe2
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00069 — `darwin-x64` binary ships from CI (Intel Mac users can run the launcher)

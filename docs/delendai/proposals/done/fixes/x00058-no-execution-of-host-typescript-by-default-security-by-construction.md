@@ -2,12 +2,16 @@
 id: x00058
 title: "No execution of host TypeScript config by default — security by construction"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - a00018
+shippedIn:
+  - 48a9a53
+last-transition-id: batch-close-2026-09-07
+last-transition-from: ready
 ---
 
 # x00058 — `loadProject()` must NOT execute host TypeScript by default
