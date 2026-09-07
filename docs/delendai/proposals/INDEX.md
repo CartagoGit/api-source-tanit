@@ -9,7 +9,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | --- | --- | --- |
 | `a00018` | `audit` | [`ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md`](ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md) |
 | `f00012` | `feat` | [`ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md`](ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md) |
-| `f00013` | `feat` | [`ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md`](ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md) |
 | `r00013` | `refactor` | [`ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md`](ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md) |
 | `r00014` | `refactor` | [`ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md`](ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md) |
 | `x00055` | `fix` | [`ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md`](ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md) |
@@ -76,6 +75,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00002` — La interfaz completa: ajustes persistentes, idiomas, tema, explorador y dry run — `af9ff56`
 - `f00010` — feat(ui): explainer de detección + health score + dashboard multi-proyecto (FEAT-001/002/003 + L-U02/L-U03 + I-U01) — `42bb339, acf1c2e, 957bebe, f1298fc, 9ea4da6, 1f526e8, ce9c141, 0da42da, cad24f3, bd685ee, 382a7b7, e2c8ea8`
 - `f00011` — feat(core): más vias de detección de lenguajes + heurísticas de scoring mejoradas (FEAT-010 + L-U07) — `9ea4da6, f1298fc, 298831a, 0ff53ec, 6c9a150, e344647, d96eaf8, cad24f3`
+- `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e, bda0c14`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`

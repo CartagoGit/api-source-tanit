@@ -2,10 +2,16 @@
 id: f00013
 title: "Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI"
 kind: feat
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-06
+shippedIn:
+  - a0f0ad2  # f00013 S1+S2 — gRPC scanner + transport contracts
+  - 263b8ba  # f00013 S3 — WebSocket scanner
+  - a20fcc2  # f00013 S4 — SSE scanner
+  - ef1350e  # f00013 S5 — AsyncAPI scanner
+  - bda0c14  # HTTP exporters filter non-http transports with structured warnings
 dependsOn:
   - a00018
 ---
