@@ -23,7 +23,16 @@
     ],
     "branchProtection": {
       "branches": ["develop", "release/*"],
-      "rulesetName": "develop-required-checks"
+      "rulesetName": "develop-required-checks",
+      "requiredStatusChecksStrict": true,
+      "enforceAdmins": true,
+      "requiredApprovingReviewCount": 1,
+      "dismissStaleReviews": true,
+      "requireCodeOwnerReviews": false,
+      "requiredLinearHistory": true,
+      "allowForcePushes": false,
+      "allowDeletions": false,
+      "requiredConversationResolution": true
     }
   },
   "filesystem": {

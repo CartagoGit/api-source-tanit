@@ -1,7 +1,7 @@
 name: protect-develop
 
-# Aplica y mantiene branch protection en `develop` con los 8 checks
-# que la CI ejecuta en paralelo (x00071 S2).
+# Aplica y mantiene branch protection en `develop` con la política
+# declarada en `delendai.config.json`.
 #
 # Por qué un workflow y no un comando manual
 # ──────────────────────────────────────────
@@ -27,12 +27,8 @@ name: protect-develop
 #
 # Por qué falla sin secret
 # ────────────────────────
-# El primer step verifica que `REPO_ADMIN_TOKEN` exista; si no, el
-# workflow termina con un `::warning::` en el log y exit 0. Eso
-# permite que el workflow esté en el repo sin secretos: aparece
-# como "passed" pero documenta lo que faltaría configurar. Cuando
-# el operador añada el secret, el siguiente run aplica la
-# protección.
+# El workflow falla si `REPO_ADMIN_TOKEN` no existe. Una ejecución
+# verde sin permisos no es evidencia de protección aplicada.
 on:
   workflow_dispatch:
     inputs:
@@ -41,12 +37,6 @@ on:
         required: false
         default: "develop"
         type: string
-      context_count:
-        description: "Number of required status checks"
-        required: false
-        default: "8"
-        type: string
-
 permissions:
   # `contents: read` viene del default; lo que NECESITAMOS es
   # `administration: write`, pero GITHUB_TOKEN no la tiene. Por eso
@@ -57,19 +47,17 @@ jobs:
   protect:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
       - name: Verify required secret
         env:
           TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
         run: |
           if [ -z "$TOKEN" ]; then
-            echo "::warning::REPO_ADMIN_TOKEN is not set. Add a PAT or GitHub App" \
-                 "with `admin:repo` scope as a repository secret to enable" \
-                 "automatic branch protection."
-            echo "Skipping the API call. The workflow passes so the absence" \
-                 "of the secret is documented; the protection has to be" \
-                 "configured manually via the GitHub UI until the secret" \
-                 "is wired up."
-            exit 0
+            echo "::error::REPO_ADMIN_TOKEN is required to apply branch protection."
+            exit 1
           fi
           echo "→ REPO_ADMIN_TOKEN present; proceeding with the API call."
 
@@ -80,14 +68,8 @@ jobs:
           REPO: ${{ github.repository }}
           API_BASE: ${{ github.api_url }}
         run: |
-          if [ -z "$TOKEN" ]; then
-            echo "→ No token: skipping API call (see Verify step)."
-            exit 0
-          fi
-          # Construye la lista de required_status_checks con los
-          # nombres literales que la CI emite. El orden no importa;
-          # GitHub los renderiza alfabéticamente en la UI.
-          CONTEXTS='["typecheck","lint","test-coverage","validate-examples","bench-check","security-audit","validate-package","integration-verifier","ci-summary"]'
+          CONTEXTS=$(jq -c '.ci.requiredChecks' delendai.config.json)
+          POLICY=$(jq -c '.ci.branchProtection' delendai.config.json)
 
           # Strict = true → la rama no se puede mergear si algún
           # required check está pendiente o falló. Strict = false →
@@ -105,31 +87,25 @@ jobs:
           # Required reviews = 1 → al menos una aprobación humana
           # antes de mergear. Para un proyecto mantenido por un equipo
           # pequeño sigue siendo útil como red de seguridad.
-          PAYLOAD=$(cat <<EOF
-          {
-            "required_status_checks": {
-              "strict": true,
-              "contexts": ${CONTEXTS}
+          PAYLOAD=$(jq -n --argjson contexts "$CONTEXTS" --argjson policy "$POLICY" '{
+            required_status_checks: { strict: $policy.requiredStatusChecksStrict, contexts: $contexts },
+            enforce_admins: $policy.enforceAdmins,
+            required_pull_request_reviews: {
+              dismiss_stale_reviews: $policy.dismissStaleReviews,
+              require_code_owner_reviews: $policy.requireCodeOwnerReviews,
+              required_approving_review_count: $policy.requiredApprovingReviewCount
             },
-            "enforce_admins": true,
-            "required_pull_request_reviews": {
-              "dismiss_stale_reviews": true,
-              "require_code_owner_reviews": false,
-              "required_approving_review_count": 1
-            },
-            "restrictions": null,
-            "required_linear_history": true,
-            "allow_force_pushes": false,
-            "allow_deletions": false,
-            "block_creations": false,
-            "required_conversation_resolution": true
-          }
-          EOF
-          )
+            restrictions: null,
+            required_linear_history: $policy.requiredLinearHistory,
+            allow_force_pushes: $policy.allowForcePushes,
+            allow_deletions: $policy.allowDeletions,
+            block_creations: false,
+            required_conversation_resolution: $policy.requiredConversationResolution
+          }')
 
           echo "→ PATCH ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
           HTTP_CODE=$(curl -sS -o /tmp/protect-response.json -w "%{http_code}" \
-            -X PATCH \
+            -X PUT \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -157,9 +133,6 @@ jobs:
           REPO: ${{ github.repository }}
           API_BASE: ${{ github.api_url }}
         run: |
-          if [ -z "$TOKEN" ]; then
-            exit 0
-          fi
           RESPONSE=$(curl -sS \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github+json" \
@@ -177,8 +150,33 @@ jobs:
           " 2>/dev/null || echo "0")
 
           echo "→ branch='${{ inputs.branch || 'develop' }}' protected=${PROTECTED} required_checks=${CONTEXTS}"
-          if [ "$PROTECTED" != "yes" ] || [ "$CONTEXTS" -lt 8 ]; then
+          EXPECTED=$(jq '.ci.requiredChecks | length' delendai.config.json)
+          if [ "$PROTECTED" != "yes" ] || [ "$CONTEXTS" -ne "$EXPECTED" ]; then
             echo "✗ Verification failed."
             exit 1
           fi
           echo "✓ Verification OK."
+
+      - name: Apply required-checks ruleset
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          RULESET_NAME=$(jq -r '.ci.branchProtection.rulesetName' delendai.config.json)
+          PAYLOAD=$(jq -c --arg name "$RULESET_NAME" '{
+            name: $name,
+            target: "branch",
+            enforcement: "active",
+            conditions: { ref_name: { include: ["refs/heads/develop"] } },
+            rules: [{ type: "required_status_checks", parameters: {
+              required_status_checks: ([.ci.requiredChecks[] | { context: . }]),
+              strict_required_status_checks_policy: .ci.branchProtection.requiredStatusChecksStrict
+            } }]
+          }' delendai.config.json)
+          RULESET_ID=$(gh api "/repos/${REPO}/rulesets?per_page=100" --jq ".[] | select(.name == \"${RULESET_NAME}\") | .id" | head -n1)
+          if [ -n "$RULESET_ID" ]; then
+            gh api --method PUT "/repos/${REPO}/rulesets/${RULESET_ID}" --input - <<<"$PAYLOAD"
+          else
+            gh api --method POST "/repos/${REPO}/rulesets" --input - <<<"$PAYLOAD"
+          fi

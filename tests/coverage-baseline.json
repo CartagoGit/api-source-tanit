@@ -6,9 +6,9 @@
     "cli": { "lines": 70, "statements": 70, "functions": 70, "branches": 70 }
   },
   "baseline": {
-    "global": { "lines": 80.28, "statements": 78.26, "functions": 81.7, "branches": 68.5 },
-    "core": { "lines": 91.75, "statements": 88.52, "functions": 92.56, "branches": 78.06 },
-    "frameworks": { "lines": 94.73, "statements": 91.54, "functions": 97.31, "branches": 79.35 },
-    "cli": { "lines": 0, "statements": 0, "functions": 0, "branches": 0 }
+    "global": { "lines": 86.12, "statements": 83.87, "functions": 87.99, "branches": 73.54 },
+    "core": { "lines": 92.58985721319547, "statements": 89.35483870967742, "functions": 93.67977528089888, "branches": 78.67883995703545 },
+    "frameworks": { "lines": 94.77069931521062, "statements": 91.72155955136193, "functions": 97.62282091917591, "branches": 79.60732984293195 },
+    "cli": { "lines": 38.56345885634588, "statements": 38.70967741935484, "functions": 41.1214953271028, "branches": 35.94306049822064 }
   }
 }
