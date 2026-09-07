@@ -75,3 +75,28 @@ jobs:
       - name: Validate plugin
         working-directory: integrations/delendai
         run: bun run validate
+
+      - name: Ensure develop ruleset exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "::warning::REPO_ADMIN_TOKEN no configurado; ruleset no aplicado."; exit 0; }
+          gh api --method PUT "/repos/${REPO}/rulesets/1" \
+            -H "Accept: application/vnd.github+json" \
+            --input - <<'JSON'
+          {
+            "name": "develop-required-checks",
+            "target": "branch",
+            "enforcement": "active",
+            "conditions": { "ref_name": { "include": ["refs/heads/develop"] } },
+            "rules": [{ "type": "required_status_checks", "parameters": {
+              "required_status_checks": [
+                { "context": "typecheck" }, { "context": "lint" }, { "context": "test-coverage" },
+                { "context": "validate-examples" }, { "context": "bench-check" }, { "context": "security-audit" },
+                { "context": "validate-package" }, { "context": "integration-verifier" }, { "context": "ci-summary" }
+              ], "strict_required_status_checks_policy": true
+            } }]
+          }
+          JSON

@@ -1,0 +1,23 @@
+name: ci-summary
+
+on:
+  workflow_run:
+    workflows: [validate]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  ci-summary:
+    if: github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce completed validation workflow
+        env:
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          echo "## CI summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "Validation workflow conclusion: ${CONCLUSION}" >> "$GITHUB_STEP_SUMMARY"
+          test "$CONCLUSION" = success

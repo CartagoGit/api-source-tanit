@@ -42,7 +42,15 @@ describe("branch-protection gate", () => {
           required_status_checks: {
             contexts: [...REQUIRED_CHECKS],
           },
+          required_pull_request_reviews: {
+            required_approving_review_count: 1,
+          },
         }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/rulesets?includes_parents=true&per_page=100`]: jsonResponse([{
+          target: "branch",
+          enforcement: "active",
+          conditions: { ref_name: { include: ["develop"] } },
+        }]),
       }),
     });
 
@@ -51,7 +59,7 @@ describe("branch-protection gate", () => {
       {
         branch: "develop",
         ok: true,
-        detail: `protected=true y ${REQUIRED_CHECKS.length} checks requeridos presentes`,
+        detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, PR review y ruleset activo presentes`,
       },
     ]);
   });
@@ -70,6 +78,9 @@ describe("branch-protection gate", () => {
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
           required_status_checks: {
             contexts: REQUIRED_CHECKS.filter((check) => check !== "integration-verifier"),
+          },
+          required_pull_request_reviews: {
+            required_approving_review_count: 1,
           },
         }),
       }),

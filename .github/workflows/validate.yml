@@ -225,7 +225,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: bun run ci:branch-protection
 
-  # ─────────────────── ci-summary汇总 ───────────────────
+  # ─────────────────── ci-summary ───────────────────
 
   # El汇总 lee `${{ needs.<job>.result }}` de cada job upstream.
   # Esos atributos están siempre disponibles, incluso si el job
@@ -245,7 +245,7 @@ jobs:
       - integration-verifier
     runs-on: ubuntu-latest
     steps:
-      - name: Render CI summary
+      - name: Render CI summary and enforce verdict
         env:
           TYPECHECK_RESULT: ${{ needs.typecheck.result }}
           LINT_RESULT: ${{ needs.lint.result }}
@@ -255,32 +255,4 @@ jobs:
           SECURITY_AUDIT_RESULT: ${{ needs.security-audit.result }}
           VALIDATE_PACKAGE_RESULT: ${{ needs.validate-package.result }}
           INTEGRATION_VERIFIER_RESULT: ${{ needs.integration-verifier.result }}
-        run: |
-          {
-            echo "## CI summary"
-            echo ""
-            echo "| Job | Result |"
-            echo "|-----|--------|"
-            echo "| \`typecheck\` | $TYPECHECK_RESULT |"
-            echo "| \`lint\` | $LINT_RESULT |"
-            echo "| \`test-coverage\` | $TEST_COVERAGE_RESULT |"
-            echo "| \`validate-examples\` | $VALIDATE_EXAMPLES_RESULT |"
-            echo "| \`bench-check\` | $BENCH_CHECK_RESULT |"
-            echo "| \`security-audit\` | $SECURITY_AUDIT_RESULT |"
-            echo "| \`validate-package\` | $VALIDATE_PACKAGE_RESULT |"
-            echo "| \`integration-verifier\` | $INTEGRATION_VERIFIER_RESULT |"
-            echo ""
-            FAILED=0
-            for r in "$TYPECHECK_RESULT" "$LINT_RESULT" "$TEST_COVERAGE_RESULT" \
-                     "$VALIDATE_EXAMPLES_RESULT" "$BENCH_CHECK_RESULT" \
-                     "$SECURITY_AUDIT_RESULT" "$VALIDATE_PACKAGE_RESULT" \
-                     "$INTEGRATION_VERIFIER_RESULT"; do
-              [ "$r" = "success" ] || FAILED=1
-            done
-            if [ "$FAILED" = "1" ]; then
-              echo "> ⚠ One or more jobs did not pass. See the per-job logs above for details."
-            else
-              echo "> ✓ All 8 jobs green."
-            fi
-            exit "$FAILED"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: bun run scripts/gates/ci-summary.script.ts

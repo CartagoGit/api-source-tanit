@@ -9,6 +9,23 @@
     "maxWarmPlugins": 8
   },
   "agentWorktree": false,
+  "ci": {
+    "requiredChecks": [
+      "typecheck",
+      "lint",
+      "test-coverage",
+      "validate-examples",
+      "bench-check",
+      "security-audit",
+      "validate-package",
+      "integration-verifier",
+      "ci-summary"
+    ],
+    "branchProtection": {
+      "branches": ["develop", "release/*"],
+      "rulesetName": "develop-required-checks"
+    }
+  },
   "filesystem": {
     "authorizedRoots": [
       "packages",

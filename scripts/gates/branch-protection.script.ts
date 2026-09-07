@@ -25,6 +25,7 @@ export const REQUIRED_CHECKS = [
   "security-audit",
   "validate-package",
   "integration-verifier",
+  "ci-summary",
 ] as const;
 
 export type FetchLike = typeof fetch;
@@ -41,6 +42,7 @@ interface IRequestUrlLike {
   readonly protocol: string;
   readonly port: string;
   readonly pathname: string;
+  readonly search: string;
 }
 
 export interface IBranchProtectionOptions {
@@ -74,6 +76,20 @@ interface IGitHubBranchDetails {
   readonly required_status_checks?: {
     readonly contexts?: ReadonlyArray<string> | null;
   } | null;
+  readonly required_pull_request_reviews?: {
+    readonly required_approving_review_count?: number;
+  } | null;
+}
+
+interface IGitHubRuleset {
+  readonly name?: string;
+  readonly target?: string;
+  readonly enforcement?: string;
+  readonly conditions?: {
+    readonly ref_name?: {
+      readonly include?: ReadonlyArray<string>;
+    };
+  };
 }
 
 interface IGitHubErrorPayload {
@@ -251,10 +267,43 @@ async function checkBranchProtection(
     };
   }
 
+  if ((payload.required_pull_request_reviews?.required_approving_review_count ?? 0) < 1) {
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: `required_pull_request_reviews ausente o sin aprobaciones requeridas`,
+    };
+  }
+
+  const rulesetsUrl = new URL(
+    `/repos/${options.repository}/rulesets?includes_parents=true&per_page=100`,
+    `${options.baseUrl}/`,
+  );
+  const rulesetsResponse = await fetchImplWithAuth(options.fetchImpl, rulesetsUrl, options.token);
+  if (!rulesetsResponse.ok) {
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: await formatGitHubError(rulesetsResponse, `GitHub rechazó la consulta de rulesets`),
+    };
+  }
+  const rulesets = (await rulesetsResponse.json()) as unknown;
+  if (!Array.isArray(rulesets) || !rulesets.some((ruleset) => {
+    const candidate = ruleset as IGitHubRuleset;
+    return candidate.target === "branch" && candidate.enforcement === "active" &&
+      candidate.conditions?.ref_name?.include?.some((pattern) => pattern === options.branch || pattern === "refs/heads/*");
+  })) {
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: `ruleset activo ausente para ${options.branch}`,
+    };
+  }
+
   return {
     branch: options.branch,
     ok: true,
-    detail: `protected=true y ${REQUIRED_CHECKS.length} checks requeridos presentes`,
+    detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, PR review y ruleset activo presentes`,
   };
 }
 
@@ -290,7 +339,7 @@ async function fetchImplWithAuth(
   }
   const port = url.port ? `:${url.port}` : "";
   return fetchImpl(
-    `${url.protocol}//${url.hostname}${port}${url.pathname}`,
+    `${url.protocol}//${url.hostname}${port}${url.pathname}${url.search}`,
     { headers },
   ) as Promise<IResponseLike>;
 }

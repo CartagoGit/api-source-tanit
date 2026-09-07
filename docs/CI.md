@@ -14,6 +14,23 @@ El gate [scripts/gates/branch-protection.script.ts](../scripts/gates/branch-prot
    - `security-audit`
    - `validate-package`
    - `integration-verifier`
+   - `ci-summary`
+
+El job `ci-summary` usa [scripts/gates/ci-summary.script.ts](../scripts/gates/ci-summary.script.ts)
+y devuelve `exit 1` cuando cualquier job requerido termina en `failure`, `cancelled` o `skipped`.
+También existe el workflow [ci-summary.yml](../.github/workflows/ci-summary.yml), que conserva un
+check visible para la conclusión final del workflow `validate`.
+
+## Ruleset
+
+El workflow manual `integration-delendai` puede crear o actualizar el ruleset
+`develop-required-checks` mediante `gh api`. Requiere el secreto `REPO_ADMIN_TOKEN` con permiso
+de administración del repositorio. Sin ese secreto sólo emite un warning y no cambia GitHub.
+
+Para promover la protección: ejecuta `integration-delendai` con `workflow_dispatch`, verifica
+`bun run ci:branch-protection` y confirma que `develop` exige los nueve checks. En una emergencia
+(rotación de secretos o incidente de infraestructura), un administrador puede usar el bypass
+temporal del ruleset, documentar el motivo y retirarlo inmediatamente después del arreglo.
 
 Si falta la protección, si faltan checks o si la rama o la API responden `404`, el gate falla con un mensaje explícito.
 
