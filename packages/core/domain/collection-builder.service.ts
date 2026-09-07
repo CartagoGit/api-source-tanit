@@ -33,6 +33,7 @@ import { detectAuthScheme, toPostmanAuth } from "./auth-scheme.service.js";
 import { buildRequestDescription } from "./request-doc.service.js";
 import { bodyFieldsFromGraph } from "../helpers/schema-flatten.helper.js";
 import { buildTestScript } from "./test-script.service.js";
+import { renderInferredPostmanResponses } from "../exporters/postman-inferred-response.js";
 import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
 import { postmanMethodFor } from "./postman-method.helper.js";
 import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
@@ -145,12 +146,18 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
 }
 
 function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
+  // f00014 wiring: when the response-inference dispatcher produced
+  // entries for this spec, materialise them as Postman v2.1.0
+  // `response[]`. Without this, the collection is silent on the
+  // response shape — the user sees the request but no preview.
+  const inferredResponses = renderInferredPostmanResponses(spec);
   return {
     name: spec.name,
     request: buildRequest(spec, scheme),
     // Assertions are included on every request: a collection that only
     // carries URLs pushes the verification work onto whoever hits Send.
     event: [buildTestScript(spec)],
+    ...(inferredResponses ? { response: [...inferredResponses] } : {}),
   };
 }
 
