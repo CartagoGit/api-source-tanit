@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { zoneForUri } from "../../packages/core/helpers/zone.helper";
+import {
+  zoneForUri,
+  zonesToDisplay,
+} from "../../packages/core/helpers/zone.helper";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {
@@ -48,6 +51,45 @@ describe("zone.helper", () => {
 
     test("empty URI → defaultZone", () => {
       expect(zoneForUri("", baseConfig)).toBe("Other");
+    });
+  });
+
+  describe("zonesToDisplay", () => {
+    test("returns only zones that actually have content", () => {
+      expect(
+        zonesToDisplay(new Set(["Auth", "Other"]), baseConfig),
+      ).toEqual(["Auth", "Other"]);
+    });
+
+    test("preserves the order from zoneOrder", () => {
+      const cfg: ProjectConfig = {
+        ...baseConfig,
+        zoneOrder: ["Users", "Auth"],
+      };
+      expect(zonesToDisplay(new Set(["Auth", "Users"]), cfg)).toEqual([
+        "Users",
+        "Auth",
+      ]);
+    });
+
+    test("appends zones not in zoneOrder, sorted alphabetically", () => {
+      const cfg: ProjectConfig = {
+        ...baseConfig,
+        zoneOrder: ["Auth"],
+      };
+      expect(
+        zonesToDisplay(new Set(["Auth", "Zeta", "Bravo"]), cfg),
+      ).toEqual(["Auth", "Bravo", "Zeta"]);
+    });
+
+    test("returns an empty array when nothing is present", () => {
+      expect(zonesToDisplay(new Set(), baseConfig)).toEqual([]);
+    });
+
+    test("drops zones from zoneOrder that have no content", () => {
+      expect(
+        zonesToDisplay(new Set(["Other"]), baseConfig),
+      ).toEqual(["Other"]);
     });
   });
 });
