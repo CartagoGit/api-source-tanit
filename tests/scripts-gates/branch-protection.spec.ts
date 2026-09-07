@@ -6,14 +6,16 @@ import {
   type FetchLike,
 } from "../../scripts/gates/branch-protection.script";
 
-function jsonResponse(body: unknown, init?: ResponseInit): Response {
+function jsonResponse(body: unknown, init?: ResponseInit): InstanceType<typeof Response> {
   return new Response(JSON.stringify(body), {
     status: init?.status ?? 200,
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
 }
 
-function createFetchStub(routes: Record<string, Response>): FetchLike {
+function createFetchStub(
+  routes: Record<string, InstanceType<typeof Response>>,
+): FetchLike {
   return (async (input: RequestInfo | URL) => {
     const url = typeof input === "string"
       ? input

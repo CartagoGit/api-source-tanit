@@ -29,38 +29,17 @@
  */
 import {
   makeSymbolId,
-  type SymbolId,
   symbolIdToString,
 } from "./symbol-id.js";
 import type {
   ISymbolGraph,
   IImportRecord,
+  ISymbolNode,
 } from "../../contracts/interfaces/core/symbol-graph.interface.js";
+import type { SymbolKind } from "../../contracts/interfaces/core/symbol-id.interface.js";
 
-/** Tags a node so consumers don't confuse a value with a type alias. */
-export type SymbolKind =
-  | "value"
-  | "type"
-  | "router"
-  | "plugin"
-  | "sub-app"
-  | "handler";
-
-/** Single symbol in the graph. */
-export interface ISymbolNode {
-  readonly id: SymbolId;
-  readonly kind: SymbolKind;
-  /**
-   * Opaque payload — the scanner fills it with whatever
-   * cross-file consumers need (router prefix, plugin prefix,
-   * sub-app mount path, …). Typed as `unknown` here on
-   * purpose so the graph stays framework-agnostic.
-   */
-  readonly payload?: unknown;
-}
-
-// Re-export the contract type so existing importers keep working.
-export type { IImportRecord };
+// Re-export the contract types so existing importers keep working.
+export type { IImportRecord, ISymbolNode, SymbolKind };
 
 /** Mutation surface — kept off the public `ISymbolGraph`. */
 interface IMutableSymbolGraph extends Omit<ISymbolGraph, "resolveByName" | "resolveByImportPath"> {

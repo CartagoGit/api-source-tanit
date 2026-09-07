@@ -30,20 +30,13 @@ import type {
   IResponseInferenceConfidence,
 } from "../../contracts/interfaces/core/responses.interface.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IPostmanInferredResponse } from "../../contracts/interfaces/core/postman-inferred-response.interface.js";
 
-/** Single Postman v2.1.0 `response` entry. */
-export interface IPostmanInferredResponse {
-  readonly name: string;
-  readonly status: string;
-  readonly code: number;
-  readonly _postman_previewlanguage?: string;
-  readonly header: ReadonlyArray<{
-    readonly key: string;
-    readonly value: string;
-    readonly type: "text";
-  }>;
-  readonly body: string;
-}
+/**
+ * Re-export the contract type so existing importers keep working
+ * with `import type { IPostmanInferredResponse } from "./postman-inferred-response.exporter.js"`.
+ */
+export type { IPostmanInferredResponse };
 
 /**
  * Materializes a spec's inferred responses as a Postman `response[]`.

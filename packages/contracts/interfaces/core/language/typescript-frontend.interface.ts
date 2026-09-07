@@ -85,6 +85,17 @@ export interface TSImport {
 export type TSSymbolKind = "function" | "class" | "variable" | "method";
 
 /**
+ * The three frameworks whose route shape the TypeScript frontend can
+ * fully decode (audit 2026-09-06 §12, proposal `r00013`).
+ *
+ * Express was the first to land (x00048); Fastify and Hono were
+ * wired in r00013 S1+S2 and r00018. Other frameworks either still
+ * go through their own scanner (Django, Gin, Spring) or have no
+ * scanner yet.
+ */
+export type SupportedRouteFramework = "express" | "fastify" | "hono";
+
+/**
  * A symbol declared at module level or inside a class.
  *
  * `kind: 'method'` appears in `methods` of a `TSClass` (not in the

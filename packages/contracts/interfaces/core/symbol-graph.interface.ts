@@ -8,18 +8,7 @@
  * validation providers) can depend on **types only** —
  * matching how `ISchemaGraph` is published.
  */
-import type { SymbolKind } from "./symbol-id.interface.js";
-
-/**
- * Stable cross-file symbol identity. Anchored to the
- * declaration position so two `const router = …` in
- * different files never collide.
- */
-export interface SymbolId {
-  readonly sourceFile: string;
-  readonly declarationStart: number;
-  readonly localName: string;
-}
+import type { SymbolKind, SymbolId } from "./symbol-id.interface.js";
 
 /** One symbol in the graph. */
 export interface ISymbolNode {

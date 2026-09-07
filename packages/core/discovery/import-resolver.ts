@@ -35,18 +35,17 @@ const SUBDIR_INDEX = "/index";
  * - `path`: posix-shaped path. Always starts with `/` when
  *   the input `fromFile` was absolute.
  * - `kind`: why this candidate was generated (extension
- *   fallback, `/index.{ext}` fallback, or literal). The
- *   caller can decide to log a warning for, say, a
- *   `/index.js` fallback in a TS project.
+ *   fallback, `/index/{ext}` fallback, or literal). The caller
+ *   can decide to log a warning for, say, a `/index.js`
+ *   fallback in a TS project.
  */
-export interface IImportCandidate {
-  /** Absolute, posix-separated path. */
-  readonly path: string;
-  readonly kind:
-    | "literal"
-    | "extension-fallback"
-    | "index-fallback";
-}
+import type { IImportCandidate } from "../../contracts/interfaces/core/import-resolver.interface.js";
+
+/**
+ * Re-export so existing importers keep working with
+ * `import { IImportCandidate } from "./import-resolver.js"`.
+ */
+export type { IImportCandidate };
 
 /**
  * Resolve an import specifier against a source file.

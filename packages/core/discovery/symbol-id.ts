@@ -13,24 +13,16 @@
  * Fastify plugin prefix, Hono sub-app mount) keys on
  * `SymbolId`, so the key never collides across files even when
  * the local name is the same.
+ *
+ * The interface itself lives in
+ * `packages/contracts/interfaces/core/symbol-id.interface.ts`
+ * (the canonical contract); this module owns the constructor
+ * and the string form so callers keep importing them from
+ * `./symbol-id.js`.
  */
-export interface SymbolId {
-  /**
-   * File the symbol is declared in. **Absolute** path —
-   * relative paths are normalised by the resolver (S2) so
-   * `SymbolGraph.addSymbol` can require absolute paths and
-   * reject anything ambiguous.
-   */
-  readonly sourceFile: string;
-  /**
-   * 0-based byte offset of the declaration start. Computed
-   * by the scanner when it visits the AST node; the resolver
-   * never recomputes it.
-   */
-  readonly declarationStart: number;
-  /** Name in the declaration scope (`router`, `usersPlugin`, …). */
-  readonly localName: string;
-}
+export type { SymbolId } from "../../contracts/interfaces/core/symbol-id.interface.js";
+
+import type { SymbolId } from "../../contracts/interfaces/core/symbol-id.interface.js";
 
 /**
  * Build a `SymbolId`. Not much code on purpose — centralising

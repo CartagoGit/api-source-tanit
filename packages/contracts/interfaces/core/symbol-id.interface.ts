@@ -15,5 +15,13 @@ export type SymbolKind =
   | "sub-app"
   | "handler";
 
-/** Nothing to live here yet — re-exported from the discovery package. */
-export type { SymbolId } from "./symbol-graph.interface.js";
+/**
+ * Stable cross-file symbol identity. Anchored to the declaration
+ * position so two `const router = …` in different files never
+ * collide.
+ */
+export interface SymbolId {
+  readonly sourceFile: string;
+  readonly declarationStart: number;
+  readonly localName: string;
+}

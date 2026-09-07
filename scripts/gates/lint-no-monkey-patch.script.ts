@@ -96,16 +96,18 @@ for (const root of ROOTS) {
   }
 }
 
-if (violations.length === 0) {
-  console.log(`lint:no-monkey-patch — clean (${ROOTS.join(", ")})`);
-  process.exit(0);
-}
+if (import.meta.main) {
+  if (violations.length === 0) {
+    console.log(`lint:no-monkey-patch — clean (${ROOTS.join(", ")})`);
+    process.exit(0);
+  }
 
-console.error(`lint:no-monkey-patch — ${violations.length} violation(s):\n`);
-for (const v of violations) {
-  console.error(`  ${v.file}:${v.line}  ${v.match.trim()}`);
+  console.error(`lint:no-monkey-patch — ${violations.length} violation(s):\n`);
+  for (const v of violations) {
+    console.error(`  ${v.file}:${v.line}  ${v.match.trim()}`);
+  }
+  console.error(
+    "\nReplace these with IOutputSink (CLI output) or explicit override arguments on the helper (path/env resolution).",
+  );
+  process.exit(1);
 }
-console.error(
-  "\nReplace these with IOutputSink (CLI output) or explicit override arguments on the helper (path/env resolution).",
-);
-process.exit(1);

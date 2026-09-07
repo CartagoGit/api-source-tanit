@@ -23,24 +23,18 @@ export {
 import { buildLanguageIRFromProgram } from "../../language-ir/build-language-ir.helper.js";
 import { propagateConstants } from "../../language-ir/constant-propagation.helper.js";
 import type { IImportBinding } from "../../../contracts/interfaces/core/language-ir.interface.js";
+import type { SupportedRouteFramework } from "../../../contracts/interfaces/core/language/typescript-frontend.interface.js";
+import type {
+  IExtractRoutesResult,
+  IExtractedRoute,
+  IRouterMount,
+} from "../../../contracts/interfaces/core/extract-routes-fastify.interface.js";
 import { extractExpressRoutesFromIR } from "./extract-routes-express.helper.js";
-import {
-  extractFastifyRoutesFromIR,
-  type IExtractRoutesResult,
-  type IExtractedRoute,
-  type IRouterMount,
-} from "./extract-routes-fastify.helper.js";
+import { extractFastifyRoutesFromIR } from "./extract-routes-fastify.helper.js";
 import { extractHonoRoutesFromIR } from "./extract-routes-hono.helper.js";
 import { parseModuleWithProgram as parseTsModuleWithProgram } from "./typescript.parser.js";
 
-/**
- * The three frameworks whose route shape the LanguageIR can fully
- * decode. Express was the first to land (x00048); Fastify and Hono
- * were wired in r00013 S1+S2 and r00018. Other frameworks either
- * still go through their own scanner (Django, Gin, Spring) or have
- * no scanner yet.
- */
-export type SupportedRouteFramework = "express" | "fastify" | "hono";
+export type { SupportedRouteFramework };
 
 export type {
   IExtractRoutesResult,

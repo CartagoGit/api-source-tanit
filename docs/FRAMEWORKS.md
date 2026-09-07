@@ -32,12 +32,12 @@ heurísticamente.
 | [Fiber](#fiber) | 7 | 2 |
 | [Ktor](#ktor) | 7 | 0 |
 | [Rust](#rust-actix-web--rocket) | 7 | 2 |
+| [Websocket](#websocket) | 7 | 0 |
 | [tRPC](#trpc) | 6 | 0 |
 | [GraphQL](#graphql) | 5 | 0 |
 | [Sse](#sse) | 4 | 0 |
 | [Grpc](#grpc) | 3 | 0 |
-| [Asyncapi](#asyncapi) | 0 | 0 |
-| [Websocket](#websocket) | 0 | 0 |
+| [Asyncapi](#asyncapi) | 2 | 0 |
 
 _Generado por `bun run docs:frameworks` ejecutando cada scanner contra_
 _su fixture. 25 frameworks._

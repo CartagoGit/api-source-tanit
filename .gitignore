@@ -33,3 +33,6 @@ tests/**/*.js
 # --- orquestador: mensajes de slice transitorios (c00005) ---
 .s*-msg.txt
 packages/core/domain/test-script.service.js
+
+# tsc --build info files (regenerated on every typecheck).
+tsconfig.tsbuildinfo

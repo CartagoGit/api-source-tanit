@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 241 símbolos en 83 módulos.
+> 229 símbolos en 84 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -487,24 +487,6 @@ Throws `Error` if:
 
 `host-config-parser.ts` — AST-only parser for `config.constant.ts` and `endpoints.constant.ts` (x00058).
 
-#### `HostConfigKind`
-
-```ts
-export type HostConfigKind = "project-config" | "manual-endpoints"
-```
-
-#### `IHostConfigDiagnostic`
-
-```ts
-export interface IHostConfigDiagnostic
-```
-
-#### `HostConfigParseResult`
-
-```ts
-export type HostConfigParseResult<T> = |
-```
-
 #### `parseHostConfigFile`
 
 ```ts
@@ -531,21 +513,6 @@ literal source string without touching the filesystem.
 ### `packages/core/discovery/import-resolver.ts`
 
 Import-path resolver (audit 2026-09-06 §12, proposal `r00014` S2).
-
-#### `IImportCandidate`
-
-```ts
-export interface IImportCandidate
-```
-
-One candidate the resolver can return.
-
-- `path`: posix-shaped path. Always starts with `/` when
-  the input `fromFile` was absolute.
-- `kind`: why this candidate was generated (extension
-  fallback, `/index.{ext}` fallback, or literal). The
-  caller can decide to log a warning for, say, a
-  `/index.js` fallback in a TS project.
 
 #### `resolveImportPath`
 
@@ -618,14 +585,16 @@ reads globals when no context is supplied.
 #### `outputCollectionPath`
 
 ```ts
-export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): Promise<string>
+export async function outputCollectionPath( context: IProjectContext | undefined, projectName?: string, argv: ReadonlyArray<string> = process.argv, basenameOverride?: string, ): Promise<string>
 ```
 
 Ruta absoluta al JSON principal. Crea el directorio si no existe.
 
-Acepta `argv` y `env` igual que `resolveOutputDir` para que tests y
-procesos de vida larga puedan inyectar el contexto sin mutar el
-proceso. Por defecto son los globales.
+Acepta `argv` igual que `resolveOutputDir` para que tests y procesos de
+vida larga puedan inyectar el contexto sin mutar el proceso. Por defecto
+es `process.argv`. El parámetro `basenameOverride` (c00010 S1) sustituye
+la variable de entorno `POSTMAN_OUTPUT_BASENAME` — los callers que antes
+monkey-patcheaban `process.env` pasan el valor directamente aquí.
 
 #### `outputEnvironmentPath`
 
@@ -642,7 +611,7 @@ pass an already-normalized `projectName`.
 #### `describeDiscoveredPaths`
 
 ```ts
-export function describeDiscoveredPaths( context: IProjectContext, projectName?: string, argv: ReadonlyArray<string> = process.argv, ): string
+export function describeDiscoveredPaths( context: IProjectContext, projectName?: string, argv: ReadonlyArray<string> = process.argv, basenameOverride?: string, ): string
 ```
 
 The trace the CLI prints before scanning, as text.
@@ -870,18 +839,6 @@ catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
 
 `SymbolGraph` — Tanit's cross-file symbol resolver (audit 2026-09-06 §12, proposal `r00014` S1).
 
-#### `SymbolKind`
-
-```ts
-export type SymbolKind = | "value" | "type" | "router" | "plugin" | "sub-app" | "handler"
-```
-
-#### `ISymbolNode`
-
-```ts
-export interface ISymbolNode
-```
-
 #### `empty`
 
 ```ts
@@ -908,27 +865,6 @@ export class SymbolGraphBuilder
 ### `packages/core/discovery/symbol-id.ts`
 
 `SymbolId` helper (audit 2026-09-06 §12, proposal `r00014` S1).
-
-#### `SymbolId`
-
-```ts
-export interface SymbolId
-```
-
-`SymbolId` helper (audit 2026-09-06 §12, proposal `r00014`
-S1).
-
-A `SymbolId` is the **stable identity** of a symbol in
-Tanit's cross-file resolver. Identity is anchored to the
-declaration position, not to the textual name — two
-`const router = …` declarations in different files have the
-same `localName === "router"` but different `SymbolId`s.
-
-Stability is important: every cross-file reference the
-scanners carry in their aux maps (Express router prefix,
-Fastify plugin prefix, Hono sub-app mount) keys on
-`SymbolId`, so the key never collides across files even when
-the local name is the same.
 
 #### `makeSymbolId`
 
@@ -1590,12 +1526,6 @@ export class OpenApiExporter implements IExportTarget
 ### `packages/core/exporters/postman-inferred-response.exporter.ts`
 
 `postman-inferred-response.ts` — Postman response[] rendering (f00014).
-
-#### `IPostmanInferredResponse`
-
-```ts
-export interface IPostmanInferredResponse
-```
 
 #### `renderInferredPostmanResponses`
 
@@ -2535,29 +2465,6 @@ decides. Originally introduced in x00048; Fastify/Hono followed.
 
 Fastify route extractor (audit 2026-09-06 §12, proposal `r00013` S1).
 
-#### `IExtractedRoute`
-
-```ts
-export interface IExtractedRoute
-```
-
-#### `IRouterMount`
-
-```ts
-export interface IRouterMount
-```
-
-#### `IExtractRoutesResult`
-
-```ts
-export interface IExtractRoutesResult
-```
-
-What `extractFastifyRoutesFromIR` emits: the flat route list plus
-the `.register(plugin, { prefix })` mount signals. Consumers
-(scanners, MCP, UI) read both fields — `routes` for the catalog,
-`mounts` for cross-file expansion (`r00014` S4).
-
 #### `extractFastifyRoutesFromIR`
 
 ```ts
@@ -2604,18 +2511,6 @@ interpreta.
 ### `packages/core/language-frontends/typescript/index.ts`
 
 TypeScript frontend barrel.
-
-#### `SupportedRouteFramework`
-
-```ts
-export type SupportedRouteFramework = "express" | "fastify" | "hono"
-```
-
-The three frameworks whose route shape the LanguageIR can fully
-decode. Express was the first to land (x00048); Fastify and Hono
-were wired in r00013 S1+S2 and r00018. Other frameworks either
-still go through their own scanner (Django, Gin, Spring) or have
-no scanner yet.
 
 #### `extractRoutes`
 
@@ -3025,21 +2920,6 @@ Tests run `__setInferrersForTest([])` to start from a clean
 state and call `registerResponseInferrer` to compose the
 scenarios they want. Production code never uses this.
 
-#### `InferResponsesOptions`
-
-```ts
-export interface InferResponsesOptions
-```
-
-Optional overrides for `inferResponses()`.
-
-- `frameworkHint`: lets the caller override the framework used to
-  select which inferrer runs. Used by `x00061` to dispatch on the
-  per-spec framework (e.g. a NestJS+FastAPI hybrid project where
-  the global `pipeline.match?.framework` is the winner and a FastAPI
-  endpoint would otherwise get the NestJS inferrer by mistake).
-  When omitted, falls back to `source.framework`.
-
 #### `inferResponses`
 
 ```ts
@@ -3062,29 +2942,6 @@ source is from a hybrid project where `source.framework` may not
 be the right signal (e.g. the source file is a generic
 controller that the per-spec route originated from a different
 framework).
-
-#### `IRouteForInference`
-
-```ts
-export interface IRouteForInference
-```
-
-Per-route metadata used by `inferResponsesIntoSpecs` to dispatch
-the right framework inferrer and read the right source file. We
-accept the bare projection here so the function does not have to
-depend on `IProjectMatch` (which lives in the scanner contract).
-
-#### `IInferResponsesIntoSpecsResult`
-
-```ts
-export interface IInferResponsesIntoSpecsResult
-```
-
-Pipeline entry point: run the dispatcher against every spec,
-cache the source reads, and mutate `spec.responses` in place.
-See `IInferResponsesIntoSpecsResult` for the return shape. The
-CLI is the composition root that populates the inferrer
-registry before calling the pipeline.
 
 #### `inferResponsesIntoSpecs`
 
@@ -3397,6 +3254,37 @@ Empty: an `allOf` without candidates equals `true` in JSON Schema,
 which is a pathological case. The caller decides whether to pass an
 empty list (the helper respects it without error) or reject it before
 calling.
+
+### `packages/core/services/output-sink.service.ts`
+
+Concrete output sinks used by the CLI commands.
+
+#### `ConsoleOutputSink`
+
+```ts
+export class ConsoleOutputSink implements IOutputSink
+```
+
+#### `JsonModeConsoleSink`
+
+```ts
+export class JsonModeConsoleSink implements IOutputSink
+```
+
+Sink for `--json` mode: human traces go to stderr (stdout is reserved
+for the JSON report), errors go to stderr, JSON report goes to stdout.
+
+#### `selectOutputSink`
+
+```ts
+export function selectOutputSink(options:
+```
+
+Pick a sink based on whether `--json` is present.
+
+Callers (the CLI scripts) call this once with the parsed flags and
+pass the sink down. There is no global state — two CLI invocations in
+the same process can pick different sinks without interference.
 
 ### `packages/core/validation/validation-enricher.service.ts`
 

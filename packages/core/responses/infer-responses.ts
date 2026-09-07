@@ -99,10 +99,8 @@ function isValidEntry(e: IResponseInference): e is IResponseInference {
  *   endpoint would otherwise get the NestJS inferrer by mistake).
  *   When omitted, falls back to `source.framework`.
  */
-export interface InferResponsesOptions {
-  /** Force the dispatcher to pick the inferrer for this framework. */
-  readonly frameworkHint?: string;
-}
+export type { InferResponsesOptions } from "../../contracts/interfaces/core/infer-responses.interface.js";
+import type { InferResponsesOptions } from "../../contracts/interfaces/core/infer-responses.interface.js";
 
 /**
  * Run every registered inferrer against `spec`/`source`,
@@ -169,12 +167,8 @@ export function inferResponses(
  * accept the bare projection here so the function does not have to
  * depend on `IProjectMatch` (which lives in the scanner contract).
  */
-export interface IRouteForInference {
-  readonly method: string;
-  readonly uri: string;
-  readonly sourceFile?: string | null;
-  readonly framework?: string | null;
-}
+export type { IRouteForInference } from "../../contracts/interfaces/core/infer-responses.interface.js";
+import type { IRouteForInference } from "../../contracts/interfaces/core/infer-responses.interface.js";
 
 /**
  * Pipeline entry point: run the dispatcher against every spec,
@@ -183,17 +177,8 @@ export interface IRouteForInference {
  * CLI is the composition root that populates the inferrer
  * registry before calling the pipeline.
  */
-export interface IInferResponsesIntoSpecsResult {
-  /** How many specs ended up with at least one inferred entry. */
-  readonly enrichedCount: number;
-  /**
-   * True when the dispatcher registry had zero inferrers at the
-   * time of the call. Production calls `inferResponsesIntoSpecs()`
-   * after `ensureResponseInferrersRegistered()`; tests may pass an
-   * empty registry intentionally.
-   */
-  readonly registryEmpty: boolean;
-}
+export type { IInferResponsesIntoSpecsResult } from "../../contracts/interfaces/core/infer-responses.interface.js";
+import type { IInferResponsesIntoSpecsResult } from "../../contracts/interfaces/core/infer-responses.interface.js";
 
 /**
  * Pipeline entry point: read every spec's source file, dispatch

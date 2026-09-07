@@ -62,28 +62,17 @@ import type {
 
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
+import type {
+  HostConfigKind,
+  HostConfigParseResult,
+  IHostConfigDiagnostic,
+} from "../../contracts/interfaces/core/host-config.interface.js";
 
-/** What kind of object the parser is reading. */
-export type HostConfigKind = "project-config" | "manual-endpoints";
-
-/** Diagnostic the parser can produce for a parse failure. */
-export interface IHostConfigDiagnostic {
-  readonly kind:
-    | "syntax-error"
-    | "missing-export"
-    | "unsupported-expression"
-    | "type-mismatch";
-  readonly file: string;
-  readonly line: number | null;
-  readonly column: number | null;
-  readonly message: string;
-  readonly hint?: string;
-}
-
-/** Result of parsing a single host file. */
-export type HostConfigParseResult<T> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly diagnostics: ReadonlyArray<IHostConfigDiagnostic> };
+/**
+ * Re-export the contract types so existing importers keep working
+ * with `import type { … } from "./host-config-parser.service.js"`.
+ */
+export type { HostConfigKind, HostConfigParseResult, IHostConfigDiagnostic };
 
 const BABEL_PLUGINS: ReadonlyArray<ParserPlugin> = [
   "typescript",

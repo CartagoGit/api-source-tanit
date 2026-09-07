@@ -65,6 +65,31 @@ const PERMITIDOS: Readonly<Record<string, string>> = {
   "packages/core/discovery/host-config-parser.service.ts":
     "parser AST de @babel/types: los tipos del paquete son más anchos que los " +
     "nuestros y la estrechez está validada por guards previos a cada cast",
+  // Stubs de fetch: la firma real exige `headers.get`, `text()`, `json()`,
+  // `ok`, `status` y el `RequestInit`; los tests verifican parte del
+  // contrato y TS no puede estrechar una lambda parcial sin el cast.
+  // La alternativa (declarar un IFetchLike) ya existe en runtime, pero
+  // los tests siguen la firma pública de la API.
+  "tests/core/postman-api.service.spec.ts":
+    "stubs de fetch que implementan sólo los miembros que verifica cada test; " +
+    "la forma completa la declara IPostmanFetchLike en runtime",
+  // Builder de IRouteCallExpression con `args` parcial: los tests sólo
+  // necesitan los campos que el extractor bajo prueba consume. El
+  // helper ya marca con `as` los campos exigidos por IRouteCallExpression.
+  "tests/frameworks/extract-routes.spec.ts":
+    "builder de IRouteCallExpression con args parciales: el helper construye " +
+    "sólo los campos consumidos por el extractor y los marca explícitamente",
+  // Source text de un handler NestJS en string: el inferrer parsea el
+  // contenido, no ejecuta; el `as any` vive dentro del literal.
+  "tests/frameworks/nestjs-response-inferrer.spec.ts":
+    "literal TS dentro de un string que el inferrer parsea; el cast vive " +
+    "en el código de test, no se ejecuta",
+  // El `config` parcial cubre sólo los campos que el exporter de OpenAPI
+  // bajo prueba consume; los demás se rellenan con defaults al pasar por
+  // exportOpenApiCollection.
+  "tests/frameworks/response-inferrers-wiring.spec.ts":
+    "IExportInput.config con los campos que el exporter bajo prueba consume; " +
+    "los demás los rellena exportOpenApiCollection con defaults",
 };
 
 /** Las formas de apagar el compilador. */

@@ -24,6 +24,17 @@ import type {
   IImportBinding,
   IRouteCallExpression,
 } from "../../../contracts/interfaces/core/language-ir.interface.js";
+import type {
+  IExtractedRoute,
+  IRouterMount,
+  IExtractRoutesResult,
+} from "../../../contracts/interfaces/core/extract-routes-fastify.interface.js";
+
+/**
+ * Re-export the contract types so existing importers keep working
+ * with `import type { … } from "./extract-routes-fastify.helper.js"`.
+ */
+export type { IExtractedRoute, IRouterMount, IExtractRoutesResult };
 
 /** HTTP methods recognised as Fastify verbs. */
 const HTTP_VERBS = [
@@ -36,40 +47,6 @@ const HTTP_VERBS = [
   "head",
   "all",
 ] as const;
-
-/** The single route the extractor emits. */
-export interface IExtractedRoute {
-  readonly method: string;
-  readonly path: string;
-  readonly handler?: string;
-  readonly range: { readonly file: string; readonly start: number; readonly end: number };
-  /**
-   * True when the receiver is an `import Fastify from 'fastify'`
-   * default import (so downstream can mark the route as
-   * root-level). Sub-router roots receive `false`.
-   */
-  readonly isApp: boolean;
-  /** Receiver identifier, e.g. `app`, `usersRouter`. */
-  readonly receiver: string;
-}
-
-/** Mount signal: `.register(plugin, { prefix })`. */
-export interface IRouterMount {
-  readonly plugin: string;
-  readonly prefix: string;
-  readonly range: { readonly file: string; readonly start: number; readonly end: number };
-}
-
-/**
- * What `extractFastifyRoutesFromIR` emits: the flat route list plus
- * the `.register(plugin, { prefix })` mount signals. Consumers
- * (scanners, MCP, UI) read both fields — `routes` for the catalog,
- * `mounts` for cross-file expansion (`r00014` S4).
- */
-export interface IExtractRoutesResult {
-  readonly routes: IExtractedRoute[];
-  readonly mounts: IRouterMount[];
-}
 
 /** Detection: which local names receive Fastify-style calls. */
 function buildFastifyReceiverSet(
