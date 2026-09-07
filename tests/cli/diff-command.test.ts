@@ -19,7 +19,7 @@
  *     an entry to `missingInCollection`.
  *   - The `inSync` flag flips back to false when either side drifts.
  */
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";

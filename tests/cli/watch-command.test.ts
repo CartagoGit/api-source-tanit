@@ -22,6 +22,7 @@ import { CLI_COMMANDS_DIR, exampleDir } from "../../scripts/helpers/root.helper"
 import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant";
 import { copyExampleClean } from "../helpers/fixtures";
 import { runProcess } from "../helpers/run-process";
+import { main as watchMain } from "../../packages/cli/commands/watch.script";
 
 const WATCH = join(CLI_COMMANDS_DIR, "watch.script.ts");
 
@@ -144,9 +145,7 @@ describe("watch — in-process main()", () => {
    * one. The subprocess version above covers the `--once` happy path;
    * here we hit the error branches and the no-project-root notice.
    */
-  const { main } = await import(
-    "../../packages/cli/commands/watch.script"
-  );
+  const main = watchMain;
 
   async function withArgv<T>(
     args: ReadonlyArray<string>,

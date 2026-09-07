@@ -1,4 +1,12 @@
 {
+  "_comment": [
+    "`thresholds` is the aspirational floor; the gate fails when actual < threshold.",
+    "`baseline` is the frozen current measurement; the gate fails when actual < baseline",
+    "(i.e. the suite can never silently regress).",
+    "Both numbers were captured with `bun run test:coverage` on 2026-09-08.",
+    "Raising the aspirational thresholds above the baseline requires a deliberate",
+    "decision (see c00010 S3 acceptance)."
+  ],
   "thresholds": {
     "global": { "lines": 80, "statements": 80, "functions": 80, "branches": 80 },
     "core": { "lines": 90, "statements": 90, "functions": 90, "branches": 90 },
@@ -6,9 +14,9 @@
     "cli": { "lines": 70, "statements": 70, "functions": 70, "branches": 70 }
   },
   "baseline": {
-    "global": { "lines": 86.12, "statements": 83.87, "functions": 87.99, "branches": 73.54 },
-    "core": { "lines": 92.58985721319547, "statements": 89.35483870967742, "functions": 93.67977528089888, "branches": 78.67883995703545 },
-    "frameworks": { "lines": 94.77069931521062, "statements": 91.72155955136193, "functions": 97.62282091917591, "branches": 79.60732984293195 },
-    "cli": { "lines": 38.56345885634588, "statements": 38.70967741935484, "functions": 41.1214953271028, "branches": 35.94306049822064 }
+    "global": { "lines": 89.98, "statements": 87.46, "functions": 91.89, "branches": 76.32 },
+    "core": { "lines": 93.58, "statements": 90.47, "functions": 95.49, "branches": 79.68 },
+    "frameworks": { "lines": 94.85, "statements": 91.79, "functions": 97.6, "branches": 79.59 },
+    "cli": { "lines": 63.3, "statements": 62.56, "functions": 63.53, "branches": 54.16 }
   }
 }
