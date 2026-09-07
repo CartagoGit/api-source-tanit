@@ -136,3 +136,58 @@ describe("watch rejects what it cannot do", () => {
     expect(output).not.toMatch(/at <anonymous>/);
   });
 });
+
+describe("watch — in-process main()", () => {
+  /**
+   * `main()` is exported so we can exercise the branches that exit
+   * before any watching starts without spawning a process for each
+   * one. The subprocess version above covers the `--once` happy path;
+   * here we hit the error branches and the no-project-root notice.
+   */
+  const { main } = await import(
+    "../../packages/cli/commands/watch.script"
+  );
+
+  async function withArgv<T>(
+    args: ReadonlyArray<string>,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    const saved = [...process.argv];
+    try {
+      process.argv = ["node", "watch.script.ts", ...args];
+      return await fn();
+    } finally {
+      process.argv = saved;
+    }
+  }
+
+  test("--once in-process returns 0", { timeout: 120_000 }, async () => {
+    const root = await proyecto("inproc-once");
+    const code = await withArgv(
+      ["--project-root", root, "--once"],
+      () => main(),
+    );
+    expect(code).toBe(0);
+  });
+
+  test("a negative --debounce returns 1", async () => {
+    const root = await proyecto("inproc-debounce");
+    const code = await withArgv(
+      ["--project-root", root, "--debounce", "-5"],
+      () => main(),
+    );
+    expect(code).toBe(1);
+  });
+
+  test("--format postman,openapi writes both files", { timeout: 120_000 }, async () => {
+    const root = await proyecto("inproc-format");
+    const code = await withArgv(
+      ["--project-root", root, "--once", "--format", "postman,openapi"],
+      () => main(),
+    );
+    expect(code).toBe(0);
+    const files = await readdir(join(root, OUTPUT_DIR_NAME));
+    expect(files.some((f) => f.endsWith(".postman_collection.json"))).toBe(true);
+    expect(files.some((f) => f.endsWith(".openapi.yaml"))).toBe(true);
+  });
+});
