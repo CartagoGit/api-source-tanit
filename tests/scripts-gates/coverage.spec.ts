@@ -47,10 +47,10 @@ describe("coverage gate", () => {
     };
 
     expect(evaluateCoverage(summary, baseline)).toEqual([
-      "coverage — core.lines 89% < baseline 90% o threshold 90%",
-      "coverage — core.statements 89% < baseline 90% o threshold 90%",
-      "coverage — core.functions 89% < baseline 90% o threshold 90%",
-      "coverage — core.branches 89% < baseline 90% o threshold 90%",
+      "coverage — core.lines 89% retrocedió del baseline 90% (tol 0.3)",
+      "coverage — core.statements 89% retrocedió del baseline 90% (tol 0.3)",
+      "coverage — core.functions 89% retrocedió del baseline 90% (tol 0.3)",
+      "coverage — core.branches 89% retrocedió del baseline 90% (tol 0.3)",
       "coverage — frameworks.lines no tiene métricas completas",
       "coverage — frameworks.statements no tiene métricas completas",
       "coverage — frameworks.functions no tiene métricas completas",

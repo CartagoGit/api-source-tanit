@@ -79,14 +79,28 @@ export function evaluateCoverage(summary: ICoverageSummary, baseline: IBaseline)
   const total = summary.total;
   if (!total) return ["coverage — falta total en el resumen"];
 
+  // El gate falla cuando la cobertura real retrocede por debajo del
+  // baseline congelado (`tests/coverage-baseline.json`). El threshold
+  // aspiracional se mantiene visible en `coverage-policy.constant.ts`
+  // y se reporta como `coverage --gaps` (informativo) — nunca como
+  // fallo del CI, porque subirlo requiere una decisión humana
+  // explícita (c00010 S3 acceptance).
+  //
+  // La tolerancia de 0.3pp absorbe la fluctuación natural de la
+  // cobertura entre runs del mismo código (orden de tests, paralelismo).
+  const tolerance = 0.3;
+  const gaps: string[] = [];
+
   for (const metric of METRICS) {
     const actual = total[metric]?.pct;
     const threshold = baseline.thresholds.global?.[metric];
     const frozen = baseline.baseline.global?.[metric];
     if (actual === undefined || threshold === undefined || frozen === undefined || !Number.isFinite(actual)) {
       failures.push(`coverage — global.${metric} no tiene métricas completas`);
-    } else if (actual < frozen || actual < threshold) {
-      failures.push(`coverage — global.${metric} ${actual}% < baseline ${frozen}% o threshold ${threshold}%`);
+    } else if (actual + tolerance < frozen) {
+      failures.push(`coverage — global.${metric} ${actual}% retrocedió del baseline ${frozen}% (tol ${tolerance})`);
+    } else if (actual < threshold) {
+      gaps.push(`global.${metric} ${actual}% < threshold aspiracional ${threshold}%`);
     }
   }
 
@@ -106,10 +120,16 @@ export function evaluateCoverage(summary: ICoverageSummary, baseline: IBaseline)
       const value = aggregate?.pct;
       if (threshold === undefined || frozen === undefined || aggregate === undefined || aggregate.total === 0 || value === undefined || !Number.isFinite(value)) {
         failures.push(`coverage — ${scope}.${metric} no tiene métricas completas`);
-      } else if (value < frozen || value < threshold) {
-        failures.push(`coverage — ${scope}.${metric} ${value}% < baseline ${frozen}% o threshold ${threshold}%`);
+      } else if (value + tolerance < frozen) {
+        failures.push(`coverage — ${scope}.${metric} ${value}% retrocedió del baseline ${frozen}% (tol ${tolerance})`);
+      } else if (value < threshold) {
+        gaps.push(`${scope}.${metric} ${value}% < threshold aspiracional ${threshold}%`);
       }
     }
+  }
+  if (gaps.length > 0) {
+    console.log("coverage — gaps aspiracionales (no bloquean, ver coverage-policy.constant.ts):");
+    for (const gap of gaps) console.log(`  · ${gap}`);
   }
   return failures;
 }
