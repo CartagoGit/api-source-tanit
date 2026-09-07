@@ -60,6 +60,11 @@ export interface IRouterMount {
   readonly range: { readonly file: string; readonly start: number; readonly end: number };
 }
 
+export interface IExtractRoutesResult {
+  readonly routes: IExtractedRoute[];
+  readonly mounts: IRouterMount[];
+}
+
 /** Detection: which local names receive Fastify-style calls. */
 function buildFastifyReceiverSet(
   bindings: ReadonlyArray<IImportBinding>,
@@ -97,11 +102,8 @@ function buildFastifyReceiverSet(
 export function extractFastifyRoutesFromIR(
   calls: ReadonlyArray<IRouteCallExpression>,
   bindings: ReadonlyArray<IImportBinding>,
-  file: string,
-): {
-  routes: IExtractedRoute[];
-  mounts: IRouterMount[];
-} {
+  _file: string,
+): IExtractRoutesResult {
   const fastifyReceivers = buildFastifyReceiverSet(bindings);
   const routes: IExtractedRoute[] = [];
   const mounts: IRouterMount[] = [];
@@ -139,8 +141,8 @@ export function extractFastifyRoutesFromIR(
             method: mt.toUpperCase(),
             path,
             handler,
-            range: { file, start: 0, end: 0 },
-            isApp: true,
+            range: call.range,
+            isApp: recv === "fastify",
             receiver: recv,
           });
         }
@@ -156,8 +158,8 @@ export function extractFastifyRoutesFromIR(
           method: "GET",
           path,
           handler,
-          range: { file, start: 0, end: 0 },
-          isApp: true,
+          range: call.range,
+          isApp: recv === "fastify",
           receiver: recv,
         });
       }
@@ -177,8 +179,8 @@ export function extractFastifyRoutesFromIR(
         method: method.toUpperCase(),
         path,
         handler,
-        range: { file, start: 0, end: 0 },
-        isApp: true,
+        range: call.range,
+        isApp: recv === "fastify",
         receiver: recv,
       });
       continue;
@@ -202,7 +204,7 @@ export function extractFastifyRoutesFromIR(
         mounts.push({
           plugin,
           prefix,
-          range: { file, start: 0, end: 0 },
+          range: call.range,
         });
       }
     }

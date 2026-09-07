@@ -27,6 +27,7 @@ import type {
   IRouteCallExpression,
 } from "../../../contracts/interfaces/core/language-ir.interface.js";
 import type {
+  IExtractRoutesResult,
   IExtractedRoute,
   IRouterMount,
 } from "./extract-routes-fastify.helper.js";
@@ -73,11 +74,8 @@ function buildHonoReceiverSet(
 export function extractHonoRoutesFromIR(
   calls: ReadonlyArray<IRouteCallExpression>,
   bindings: ReadonlyArray<IImportBinding>,
-  file: string,
-): {
-  routes: IExtractedRoute[];
-  mounts: IRouterMount[];
-} {
+  _file: string,
+): IExtractRoutesResult {
   const honoReceivers = buildHonoReceiverSet(bindings);
   const routes: IExtractedRoute[] = [];
   const mounts: IRouterMount[] = [];
@@ -104,7 +102,7 @@ export function extractHonoRoutesFromIR(
             ? (sub as { identifierName?: string }).identifierName ?? ""
             : "",
         prefix: pathArg.value as string,
-        range: { file, start: 0, end: 0 },
+        range: call.range,
       });
       continue;
     }
@@ -120,7 +118,7 @@ export function extractHonoRoutesFromIR(
       method: method.toUpperCase(),
       path,
       handler,
-      range: { file, start: 0, end: 0 },
+      range: call.range,
       isApp: true,
       receiver: recv,
     });

@@ -14,6 +14,10 @@ import {
 import {
   extractHonoRoutesFromIR,
 } from "../../packages/core/language-frontends/typescript/extract-routes-hono.helper";
+import {
+  extractRoutes,
+} from "../../packages/core/language-frontends/typescript";
+import type { IExtractedRoute } from "../../packages/core/language-frontends/typescript";
 import type {
   IImportBinding,
   IRouteCallExpression,
@@ -34,7 +38,7 @@ function mkCall(
     receiver,
     method,
     args: args as unknown as IRouteCallExpression["args"],
-    range: { file: FILE, start: 0, end: 0 },
+    range: { file: FILE, start: 10, end: 30 },
   };
 }
 
@@ -51,6 +55,11 @@ const HONO_BINDING: IImportBinding = {
   source: "hono",
   range: { file: FILE, start: 0, end: 0 },
 };
+
+function expectRealRange(route: IExtractedRoute | undefined) {
+  expect(route?.range.file).toBe(FILE);
+  expect((route?.range.end ?? 0) > (route?.range.start ?? 0)).toBe(true);
+}
 
 describe("extractFastifyRoutesFromIR (r00013 S1)", () => {
   test("verb shorthand emits one route per verb call", () => {
@@ -69,6 +78,7 @@ describe("extractFastifyRoutesFromIR (r00013 S1)", () => {
     expect(routes[0]?.method).toBe("GET");
     expect(routes[0]?.path).toBe("/users");
     expect(routes[0]?.receiver).toBe("fastify");
+    expectRealRange(routes[0]);
   });
 
   test(".route({method, url}) object form", () => {
@@ -91,6 +101,7 @@ describe("extractFastifyRoutesFromIR (r00013 S1)", () => {
     expect(routes).toHaveLength(1);
     expect(routes[0]?.method).toBe("GET");
     expect(routes[0]?.path).toBe("/x");
+    expectRealRange(routes[0]);
   });
 
   test(".register(plugin, {prefix}) → IRouterMount", () => {
@@ -114,6 +125,7 @@ describe("extractFastifyRoutesFromIR (r00013 S1)", () => {
     expect(mounts).toHaveLength(1);
     expect(mounts[0]?.plugin).toBe("usersPlugin");
     expect(mounts[0]?.prefix).toBe("/v1");
+    expect((mounts[0]?.range.end ?? 0) > (mounts[0]?.range.start ?? 0)).toBe(true);
   });
 
   test("non-fastify receiver is filtered out", () => {
@@ -175,6 +187,7 @@ describe("extractHonoRoutesFromIR (r00013 S2)", () => {
     expect(routes).toHaveLength(1);
     expect(routes[0]?.method).toBe("GET");
     expect(routes[0]?.path).toBe("/a");
+    expectRealRange(routes[0]);
   });
 
   test(".route('/api', subApp) → IRouterMount with subApp name + prefix", () => {
@@ -193,6 +206,7 @@ describe("extractHonoRoutesFromIR (r00013 S2)", () => {
     expect(mounts).toHaveLength(1);
     expect(mounts[0]?.plugin).toBe("sub");
     expect(mounts[0]?.prefix).toBe("/api");
+    expect((mounts[0]?.range.end ?? 0) > (mounts[0]?.range.start ?? 0)).toBe(true);
   });
 
   test(".all() route carries the verb", () => {
@@ -208,6 +222,7 @@ describe("extractHonoRoutesFromIR (r00013 S2)", () => {
     );
     expect(routes).toHaveLength(1);
     expect(routes[0]?.method).toBe("ALL");
+    expectRealRange(routes[0]);
   });
 
   test("non-hono receiver is filtered out", () => {
@@ -229,5 +244,49 @@ describe("extractHonoRoutesFromIR (r00013 S2)", () => {
       FILE,
     );
     expect(routes).toHaveLength(0);
+  });
+});
+
+describe("extractRoutes (r00013 S3)", () => {
+  test("dispatches Fastify source through the unified API", () => {
+    const source = [
+      'import fastify from "fastify";',
+      'const app = fastify();',
+      'app.get("/health", handler);',
+    ].join("\n");
+    const result = extractRoutes(source, FILE, "fastify");
+    expect(result.routes).toHaveLength(1);
+    expect(result.routes[0]?.method).toBe("GET");
+    expect(result.routes[0]?.path).toBe("/health");
+    expectRealRange(result.routes[0]);
+  });
+
+  test("dispatches Hono source through the unified API", () => {
+    const source = [
+      'import { Hono } from "hono";',
+      'const app = new Hono();',
+      'app.all("/any", handler);',
+    ].join("\n");
+    const result = extractRoutes(source, FILE, "hono");
+    expect(result.routes).toHaveLength(1);
+    expect(result.routes[0]?.method).toBe("ALL");
+    expect(result.routes[0]?.path).toBe("/any");
+    expectRealRange(result.routes[0]);
+  });
+
+  test("dispatches Express source through the unified API", () => {
+    const source = [
+      'import express from "express";',
+      'const app = express();',
+      'app.get("/health", handler);',
+      'const router = express.Router();',
+      'app.use("/api", router);',
+    ].join("\n");
+    const result = extractRoutes(source, FILE, "express");
+    expect(result.routes).toHaveLength(1);
+    expect(result.routes[0]?.method).toBe("GET");
+    expect(result.mounts).toHaveLength(1);
+    expect(result.mounts[0]?.prefix).toBe("/api");
+    expectRealRange(result.routes[0]);
   });
 });
