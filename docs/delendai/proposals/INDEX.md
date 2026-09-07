@@ -12,7 +12,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `f00013` | `feat` | [`ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md`](ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md) |
 | `r00013` | `refactor` | [`ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md`](ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md) |
 | `r00014` | `refactor` | [`ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md`](ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md) |
-| `r00015` | `refactor` | [`ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md`](ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md) |
 | `x00055` | `fix` | [`ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md`](ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md) |
 
 ## Bloqueadas
@@ -173,6 +172,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
 - `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
+- `r00015` — Confidence scoring end-to-end — cada endpoint y cada campo lleva confianza + razón — `171f6ad, c3f92d7, bf2259b`
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `88a5dfe`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
