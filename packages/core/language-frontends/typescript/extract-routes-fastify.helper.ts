@@ -80,6 +80,20 @@ function buildFastifyReceiverSet(
   return set;
 }
 
+/**
+ * Extrae las rutas Fastify del IR de un fichero ya parseado.
+ *
+ * Cubre la forma corta (`fastify.get('/path', h)`, incluida la
+ * expansión de `method: ['GET', 'POST']` en `fastify.route({...})` a
+ * una ruta por verbo) y los mounts de plugins
+ * (`fastify.register(sub, { prefix })`). El receiver se valida contra
+ * bindings de `fastify`/`Fastify` para no confundir llamadas ajenas.
+ *
+ * @param calls - Route calls del LanguageIR (propagadas y resueltas).
+ * @param bindings - Import bindings del mismo fichero.
+ * @param file - Ruta del fichero fuente, para anclar cada ruta.
+ * @returns Rutas extraídas (una por verbo) y mounts con prefijo.
+ */
 export function extractFastifyRoutesFromIR(
   calls: ReadonlyArray<IRouteCallExpression>,
   bindings: ReadonlyArray<IImportBinding>,

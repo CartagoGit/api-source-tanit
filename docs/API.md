@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 178 símbolos en 63 módulos.
+> 201 símbolos en 70 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -483,6 +483,51 @@ Throws `Error` if:
   `detectedMonorepo === true` with an empty array—the "declared monorepo
   with no enumerated workspaces" case.
 
+### `packages/core/discovery/import-resolver.ts`
+
+Import-path resolver (audit 2026-09-06 §12, proposal `r00014` S2).
+
+#### `IImportCandidate`
+
+```ts
+export interface IImportCandidate
+```
+
+One candidate the resolver can return.
+
+- `path`: posix-shaped path. Always starts with `/` when
+  the input `fromFile` was absolute.
+- `kind`: why this candidate was generated (extension
+  fallback, `/index.{ext}` fallback, or literal). The
+  caller can decide to log a warning for, say, a
+  `/index.js` fallback in a TS project.
+
+#### `resolveImportPath`
+
+```ts
+export function resolveImportPath( fromFile: string, specifier: string, projectRoot: string, ): ReadonlyArray<IImportCandidate>
+```
+
+Resolve an import specifier against a source file.
+
+@param fromFile    Absolute path of the file containing the
+                   `import … from "…"` statement.
+@param specifier   The raw specifier (between the quotes).
+                   Bare specifiers like `"lodash"` are
+                   rejected — they reference `node_modules`
+                   which the resolver does not own.
+@param projectRoot Absolute path of the project root. Today
+                   the resolver works off `fromFile`'s
+                   dirname only — `projectRoot` is part of
+                   the signature so a future version can
+                   canonicalise the result back to a
+                   project-relative path without breaking
+                   call sites.
+@returns           Zero or more `IImportCandidate`s. Always
+                   `[]` when the input is empty or the
+                   specifier is a bare module name (no
+                   leading `.` or `/`).
+
 ### `packages/core/discovery/monorepo-detector.helper.ts`
 
 Monorepo workspace detection — f00011 S3.
@@ -775,6 +820,110 @@ warning—an honest response rather than an error.
 The framework catalog and fallback are injected, as in the pipeline: this
 is a core service and cannot know the concrete scanners. For the complete
 catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
+
+### `packages/core/discovery/symbol-graph.ts`
+
+`SymbolGraph` — Tanit's cross-file symbol resolver (audit 2026-09-06 §12, proposal `r00014` S1).
+
+#### `SymbolKind`
+
+```ts
+export type SymbolKind = | "value" | "type" | "router" | "plugin" | "sub-app" | "handler"
+```
+
+#### `ISymbolNode`
+
+```ts
+export interface ISymbolNode
+```
+
+#### `IImportRecord`
+
+```ts
+export interface IImportRecord
+```
+
+One import edge — `import { router as usersRouter } from
+"./users/routes"`. The graph does **not** resolve
+`"./users/routes"` to a file path (that's S2). It just
+records the specifier and the local names so the resolver
+can later walk the edge.
+
+#### `empty`
+
+```ts
+export function empty(): ISymbolGraph
+```
+
+#### `SymbolGraph`
+
+```ts
+export const SymbolGraph =
+```
+
+Namespace alias so callers can write
+  `SymbolGraph.empty()`
+instead of importing two names. Mirrors the ergonomic
+shape of every other helper in `core/discovery/`.
+
+#### `SymbolGraphBuilder`
+
+```ts
+export class SymbolGraphBuilder
+```
+
+### `packages/core/discovery/symbol-id.ts`
+
+`SymbolId` helper (audit 2026-09-06 §12, proposal `r00014` S1).
+
+#### `SymbolId`
+
+```ts
+export interface SymbolId
+```
+
+`SymbolId` helper (audit 2026-09-06 §12, proposal `r00014`
+S1).
+
+A `SymbolId` is the **stable identity** of a symbol in
+Tanit's cross-file resolver. Identity is anchored to the
+declaration position, not to the textual name — two
+`const router = …` declarations in different files have the
+same `localName === "router"` but different `SymbolId`s.
+
+Stability is important: every cross-file reference the
+scanners carry in their aux maps (Express router prefix,
+Fastify plugin prefix, Hono sub-app mount) keys on
+`SymbolId`, so the key never collides across files even when
+the local name is the same.
+
+#### `makeSymbolId`
+
+```ts
+export function makeSymbolId( sourceFile: string, declarationStart: number, localName: string, ): SymbolId
+```
+
+Build a `SymbolId`. Not much code on purpose — centralising
+the construction lets the resolver assert invariants (non-empty
+`sourceFile`, non-negative offset, non-empty `localName`)
+from a single place instead of every scanner duplicating the
+checks.
+
+#### `symbolIdToString`
+
+```ts
+export function symbolIdToString(id: SymbolId): string
+```
+
+#### `parseSymbolId`
+
+```ts
+export function parseSymbolId(serialized: string): SymbolId | null
+```
+
+Parse a string produced by `symbolIdToString`. Inverse
+operation; returns `null` when the input isn't shaped like
+a serialised `SymbolId`.
 
 ### `packages/core/discovery/to-service-graph.helper.ts`
 
@@ -1202,7 +1351,7 @@ Description of a request: what the endpoint accepts, in a table.
 #### `buildRequestDescription`
 
 ```ts
-export function buildRequestDescription( base: string | undefined, fields: ReadonlyArray<IEndpointField> | undefined, ): string
+export function buildRequestDescription( base: string | undefined, fields: ReadonlyArray<IEndpointField> | undefined, confidence: IEndpointConfidence | undefined, ): string
 ```
 
 Builds the Markdown description that Postman renders in the
@@ -1902,6 +2051,75 @@ left — and it does not matter whether it is GraphQL, tRPC, or a
 hand-written JSON-RPC. Asking this way avoids a list that has to be
 maintained every time a new framework is supported.
 
+### `packages/core/helpers/schema-flatten.helper.ts`
+
+SchemaGraph → flat field list (audit 2026-09-06 §9, proposal `r00016`).
+
+#### `fieldsFromGraph`
+
+```ts
+export function fieldsFromGraph( graph: ISchemaGraph, root: SchemaNodeId = graph.root, ): ReadonlyArray<IEndpointField>
+```
+
+Flatten a `SchemaGraph` into a list of `IEndpointField`.
+
+The first entry corresponds to the root node; the order is
+stable across runs (Babel-friendly: children, alternatives,
+and constraints are read in declaration order). The same input
+always produces the same output, which keeps diffs between two
+runs stable.
+
+`root` is the node the request hangs from. When the spec
+already declares its own root via `spec.schemaGraph.root`,
+`flattenBody` calls this helper with that root.
+
+#### `bodyFieldsFromGraph`
+
+```ts
+export function bodyFieldsFromGraph( spec:
+```
+
+Convenience: derive the body's flat fields from the spec.
+
+Equivalent to `fieldsFromGraph(spec.schemaGraph, spec.schemaGraph.root)`
+with an empty guard for the legacy path (no graph attached —
+returns `undefined`, the existing `fields` field is the source
+of truth).
+
+#### `graphAndFieldsAreConsistent`
+
+```ts
+export function graphAndFieldsAreConsistent( spec:
+```
+
+Consistency check (audit 2026-09-06 §9, proposal `r00016` S2).
+
+Today `EndpointSpec` carries both a flat `fields` array
+(used by Postman, HAR, Bruno, curl) and an optional
+`schemaGraph` (used by OpenAPI). They must agree:
+otherwise a Postman collection shows `name: "body.age"`
+with `type: "string"` while OpenAPI says `type: "integer"`,
+i.e. two sources of truth drift apart silently.
+
+The check:
+  - If both are present, every field the graph flattens
+    must equal (name, type) of an entry in `spec.fields`.
+    Otherwise the scanner is lying — the test pin in
+    `r00016 S2` catches it before the data reaches the
+    exporter.
+  - If only one is present (today's case for scanners
+    that haven't migrated yet), the check passes — the
+    missing side is allowed during the migration window
+    the proposal calls out.
+  - If neither is present, the check passes — there's
+    nothing to drift apart.
+
+Returns `true` when the spec is internally consistent;
+`false` otherwise. Designed to be called from a vitest
+`expect(spec).toSatisfy(graphAndFieldsAreConsistent)` so
+the scanner's spec payload can be checked at the test
+boundary.
+
 ### `packages/core/helpers/source-scan.helper.ts`
 
 Source-code scanning primitives shared by the scanners.
@@ -2157,6 +2375,65 @@ Here we return the zones actually present: first those that
 alphabetically so two runs produce the same. Empty zones are omitted,
 which is what the previous code did right.
 
+### `packages/core/language-frontends/typescript/extract-routes-fastify.helper.ts`
+
+Fastify route extractor (audit 2026-09-06 §12, proposal `r00013` S1).
+
+#### `IExtractedRoute`
+
+```ts
+export interface IExtractedRoute
+```
+
+#### `IRouterMount`
+
+```ts
+export interface IRouterMount
+```
+
+#### `extractFastifyRoutesFromIR`
+
+```ts
+export function extractFastifyRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, file: string, ):
+```
+
+Extrae las rutas Fastify del IR de un fichero ya parseado.
+
+Cubre la forma corta (`fastify.get('/path', h)`, incluida la
+expansión de `method: ['GET', 'POST']` en `fastify.route({...})` a
+una ruta por verbo) y los mounts de plugins
+(`fastify.register(sub, { prefix })`). El receiver se valida contra
+bindings de `fastify`/`Fastify` para no confundir llamadas ajenas.
+
+@param calls - Route calls del LanguageIR (propagadas y resueltas).
+@param bindings - Import bindings del mismo fichero.
+@param file - Ruta del fichero fuente, para anclar cada ruta.
+@returns Rutas extraídas (una por verbo) y mounts con prefijo.
+
+### `packages/core/language-frontends/typescript/extract-routes-hono.helper.ts`
+
+Hono route extractor (audit 2026-09-06 §12, proposal `r00013` S2).
+
+#### `extractHonoRoutesFromIR`
+
+```ts
+export function extractHonoRoutesFromIR( calls: ReadonlyArray<IRouteCallExpression>, bindings: ReadonlyArray<IImportBinding>, file: string, ):
+```
+
+Extrae las rutas Hono del IR de un fichero ya parseado.
+
+Reconoce `app.get/post/...('/path', h)`, `app.all('/path', h)`
+(emite `method: "ALL"`) y los mounts `app.route('/prefix', sub)`,
+resolviendo el receiver solo contra routers Hono importados
+(`hono`, `@hono/*`), no contra cualquier identificador. Un solo
+pase sobre `calls` — el AST ya lo produjo el frontend; aquí solo se
+interpreta.
+
+@param calls - Route calls del LanguageIR (propagadas y resueltas).
+@param bindings - Import bindings del mismo fichero (filtra receivers).
+@param file - Ruta del fichero fuente, para anclar cada ruta.
+@returns Rutas extraídas y mounts con prefijo, en orden de aparición.
+
 ### `packages/core/language-frontends/typescript/typescript.parser.ts`
 
 `parse(source, filename): TSFile` — the TypeScript frontend.
@@ -2234,6 +2511,54 @@ registra el diagnóstico si Babel rechaza el archivo, en vez de
 lanzar. Es la entrada que usa `parseModuleSafe` del scanner de
 Express: un solo parse por archivo alimenta el `TSFile` del
 frontend Y las primitivas del LanguageIR.
+
+### `packages/core/responses/infer-responses.ts`
+
+Response inference dispatcher (audit 2026-09-06 §10, proposal `f00012` S1).
+
+#### `listRegisteredInferrers`
+
+```ts
+export function listRegisteredInferrers(): ReadonlyArray<IResponseInferrer>
+```
+
+#### `registerResponseInferrer`
+
+```ts
+export function registerResponseInferrer( inferrer: IResponseInferrer, ): void
+```
+
+Register an inferrer. No-op if an inferrer for the same
+framework is already registered (last-write-wins would be a
+recipe for accidental overwrites — explicit replace is what
+tests want).
+
+#### `__setInferrersForTest`
+
+```ts
+export function __setInferrersForTest( list: ReadonlyArray<IResponseInferrer>, ): void
+```
+
+Replace the entire registry — test-only escape hatch.
+
+Tests run `__setInferrersForTest([])` to start from a clean
+state and call `registerResponseInferrer` to compose the
+scenarios they want. Production code never uses this.
+
+#### `inferResponses`
+
+```ts
+export function inferResponses( spec: EndpointSpecLike, source: IFrameworkSourceFileLike, ): ReadonlyArray<IResponseInference>
+```
+
+Run every registered inferrer against `spec`/`source`,
+concatenate and dedupe the entries, sort stably. The result
+is the array that will land in `EndpointSpec.responses`.
+
+Fail-soft: a thrown inferrer logs a warning (via
+`console.warn`) and is otherwise invisible. We never bubble
+errors out of here; that would block generation on a single
+malformed handler.
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 

@@ -55,6 +55,21 @@ function buildHonoReceiverSet(
   return set;
 }
 
+/**
+ * Extrae las rutas Hono del IR de un fichero ya parseado.
+ *
+ * Reconoce `app.get/post/...('/path', h)`, `app.all('/path', h)`
+ * (emite `method: "ALL"`) y los mounts `app.route('/prefix', sub)`,
+ * resolviendo el receiver solo contra routers Hono importados
+ * (`hono`, `@hono/*`), no contra cualquier identificador. Un solo
+ * pase sobre `calls` — el AST ya lo produjo el frontend; aquí solo se
+ * interpreta.
+ *
+ * @param calls - Route calls del LanguageIR (propagadas y resueltas).
+ * @param bindings - Import bindings del mismo fichero (filtra receivers).
+ * @param file - Ruta del fichero fuente, para anclar cada ruta.
+ * @returns Rutas extraídas y mounts con prefijo, en orden de aparición.
+ */
 export function extractHonoRoutesFromIR(
   calls: ReadonlyArray<IRouteCallExpression>,
   bindings: ReadonlyArray<IImportBinding>,
