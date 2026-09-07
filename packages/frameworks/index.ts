@@ -23,7 +23,10 @@
  * Este fichero es la puerta: quien quiera "el producto entero" importa
  * de aquí y se lleva el catálogo completo cableado.
  */
-import { generateCollection } from "../core/discovery/generation.pipeline.js";
+import {
+  generateCollection,
+  generateCollections,
+} from "../core/discovery/generation.pipeline.js";
 import { summarizeProject } from "../core/discovery/summary.service.js";
 import { laravelLegacyDiscovery } from "./laravel/legacy-discovery.js";
 import { defaultOrchestrator } from "./framework.registry.js";
@@ -101,17 +104,23 @@ export function generateWithAllFrameworks(
  * §3.3 / §18 priority 7). The singular facade
  * `generateWithAllFrameworks` is kept for callers that only handle
  * the combined case.
+ *
+ * Implementation note (x00059): this used to call the singular
+ * `generateCollection()`, which throws
+ * `MultipleServicesWithoutCombineError` (x00024) on a multi-service
+ * project without `--combine-services`. The contract is "ALWAYS an
+ * array"; the singular call broke the contract silently. Switched to
+ * the plural primitive so the facade actually returns the array.
  */
 export async function generateCollectionsWithAllFrameworks(
   projectRoot: string,
   options: IGenerateOptions = {},
 ): Promise<ReadonlyArray<IGenerationResult>> {
-  const result = await generateCollection(projectRoot, {
+  return generateCollections(projectRoot, {
     ...options,
     orchestrator: defaultOrchestrator(),
     legacyFallback: laravelLegacyDiscovery,
   });
-  return Array.isArray(result) ? result.slice() : [result];
 }
 
 /**
