@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package mini.v1;
+
+// Minimal gRPC service — the scanner emits one route per rpc.
+service MiniService {
+  rpc GetUser (GetUserRequest) returns (User);
+  rpc ListUsers (ListUsersRequest) returns (stream User);
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message ListUsersRequest {
+  int32 limit = 1;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+}

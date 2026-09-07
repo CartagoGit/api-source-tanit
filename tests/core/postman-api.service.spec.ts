@@ -38,7 +38,7 @@ function fakeFetch(routes: Record<string, unknown>, status = 200) {
       text: async () => "detalle del error",
       json: async () => (key ? routes[key] : {}),
     };
-  });
+  }) as unknown as typeof fetch;
   return { impl, calls };
 }
 
@@ -61,7 +61,7 @@ describe("verifyApiKey", () => {
         text: async () => "",
         json: async () => ({}),
       };
-    });
+    }) as unknown as typeof fetch;
     await verifyApiKey(options(impl));
     expect(calls[0]).toBe("pmak-test");
   });

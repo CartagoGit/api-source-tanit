@@ -27,6 +27,7 @@
  * has the same shape and the same cost ceiling). Migration to AST
  * is left for a follow-up.
  */
+import { ownRegex } from "../../core/helpers/regex.helper";
 import {
   inferResponses,
   registerResponseInferrer,
@@ -68,7 +69,7 @@ const PROMISE_TYPE_RE =
 function findHttpCodeStatus(source: string): number | null {
   let m: RegExpExecArray | null;
   HTTP_CODE_RE.lastIndex = 0;
-  m = HTTP_CODE_RE.exec(source);
+  m = ownRegex(HTTP_CODE_RE).exec(source);
   if (!m) return null;
   const inside = m[1]?.trim() ?? "";
   // Numeric — easy.
@@ -143,7 +144,7 @@ export class NestJsResponseInferrer implements IResponseInferrer {
     }
     API_RESPONSE_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
-    while ((m = API_RESPONSE_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(API_RESPONSE_RE).exec(txt)) !== null) {
       const statusStr = m[1] ?? "200";
       const ref = m[2] ?? "";
       entries.push({
@@ -156,7 +157,7 @@ export class NestJsResponseInferrer implements IResponseInferrer {
 
     // 3) @ApiOkResponse → status 200
     API_OK_RE.lastIndex = 0;
-    while ((m = API_OK_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(API_OK_RE).exec(txt)) !== null) {
       entries.push({
         status: 200,
         schema: { kind: "ref", $ref: m[1] ?? "" },
@@ -167,7 +168,7 @@ export class NestJsResponseInferrer implements IResponseInferrer {
 
     // 4) @ApiCreatedResponse → status 201
     API_CREATED_RE.lastIndex = 0;
-    while ((m = API_CREATED_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(API_CREATED_RE).exec(txt)) !== null) {
       entries.push({
         status: 201,
         schema: { kind: "ref", $ref: m[1] ?? "" },
@@ -178,7 +179,7 @@ export class NestJsResponseInferrer implements IResponseInferrer {
 
     // 5) Return type → status 200 medium-confidence
     PROMISE_TYPE_RE.lastIndex = 0;
-    const ret = PROMISE_TYPE_RE.exec(txt);
+    const ret = ownRegex(PROMISE_TYPE_RE).exec(txt);
     if (ret) {
       entries.push({
         status: 200,

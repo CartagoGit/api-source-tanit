@@ -89,10 +89,57 @@ const RULES: readonly INamingRule[] = [
     exact: ["index.ts"],
   },
   {
+    // r00013: los extractores de rutas por framework consumen el IR
+    // del frontend; no son parsers (no parsean) ni helpers genéricos.
+    path: "packages/core/language-frontends/typescript/",
+    what: "extractores de rutas sobre el IR del frontend TS",
+    suffixes: [".parser.ts", ".helper.ts"],
+    exact: ["index.ts"],
+  },
+  {
+    // r00014: la familia del SymbolGraph (grafo, resolver de imports,
+    // SymbolId) es infraestructura de grafo — ni servicios ni helpers.
+    // El nombre canónico usa guion (`symbol-graph.ts`), así que los
+    // sufijos específicos también se declaran con guion.
+    path: "packages/core/discovery/",
+    what: "servicios y grafos del discovery",
+    suffixes: [
+      ".service.ts",
+      ".pipeline.ts",
+      ".orchestrator.ts",
+      ".adapter.ts",
+      ".helper.ts",
+      "-graph.ts",
+      "-resolver.ts",
+      "-id.ts",
+    ],
+  },
+  {
     path: "packages/frameworks/",
     what: "lo concreto de cada framework",
-    suffixes: [".scanner.ts", ".service.ts", ".helper.ts", ".registry.ts"],
-    exact: ["index.ts", "legacy-discovery.ts"],
+    // f00012: `.response-inferrer.ts` es vocabulario arquitectónico
+    // legítimo (un inferrer por framework, junto a su scanner) — el
+    // audit 2026-09-06 §18 lo señalaba como ejemplo de gate demasiado
+    // rígido. `response-inferrers.ts` es el barrel de registro.
+    suffixes: [
+      ".scanner.ts",
+      ".service.ts",
+      ".helper.ts",
+      ".registry.ts",
+      ".response-inferrer.ts",
+    ],
+    exact: ["index.ts", "legacy-discovery.ts", "response-inferrers.ts"],
+  },
+  {
+    // f00012: el dispatcher de inferencia de respuestas no es un
+    // servicio (sin estado propio más allá del registry) ni un
+    // pipeline; su nombre describe el verbo que hace. Regla más
+    // específica que la de `packages/core/` — ruleFor elige por
+    // prefijo más largo.
+    path: "packages/core/responses/",
+    what: "el dispatcher de inferencia de respuestas (agnóstico)",
+    suffixes: [".ts"],
+    exact: ["infer-responses.ts"],
   },
   {
     path: "packages/cli/",

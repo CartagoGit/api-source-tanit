@@ -205,10 +205,17 @@ describe("collection-builder.service", () => {
 });
 
 /** Walks the item tree and returns the first leaf request found. */
-function findFirstLeaf(items: ReadonlyArray<unknown>): { request: { method: string } } | undefined {
+function findFirstLeaf(
+  items: ReadonlyArray<unknown>,
+): { request: { method: string; description?: unknown } } | undefined {
   for (const it of items) {
-    const item = it as { item?: unknown[]; request?: { method: string } };
-    if (item.request) return item as { request: { method: string } };
+    const item = it as {
+      item?: unknown[];
+      request?: { method: string; description?: unknown };
+    };
+    if (item.request) {
+      return item as { request: { method: string; description?: unknown } };
+    }
     if (item.item) {
       const found = findFirstLeaf(item.item);
       if (found) return found;

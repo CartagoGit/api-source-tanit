@@ -15,6 +15,7 @@
  * Regex-based. Same `lastIndex` hygiene as the other
  * f00012 inferrers.
  */
+import { ownRegex } from "../../core/helpers/regex.helper";
 import {
   registerResponseInferrer,
 } from "../../core/responses/infer-responses";
@@ -58,7 +59,7 @@ export class AspNetResponseInferrer implements IResponseInferrer {
 
     // (1) ProducesResponseType(typeof(X), 200) → high
     let m: RegExpExecArray | null;
-    while ((m = PRODUCES_TYPEOF_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(PRODUCES_TYPEOF_RE).exec(txt)) !== null) {
       const ref = m[1] ?? m[2] ?? "";
       const status = Number.parseInt(m[3] ?? "200", 10);
       if (ref.length === 0) continue;
@@ -71,7 +72,7 @@ export class AspNetResponseInferrer implements IResponseInferrer {
     }
 
     // (1b) ProducesResponseType(200) without a body — status code only
-    while ((m = PRODUCES_NO_TYPE_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(PRODUCES_NO_TYPE_RE).exec(txt)) !== null) {
       const status = Number.parseInt(m[1] ?? "200", 10);
       entries.push({
         status,
@@ -82,7 +83,7 @@ export class AspNetResponseInferrer implements IResponseInferrer {
     }
 
     // (2) SwaggerResponse(200, typeof(X))
-    while ((m = SWAGGER_RESPONSE_RE.exec(txt)) !== null) {
+    while ((m = ownRegex(SWAGGER_RESPONSE_RE).exec(txt)) !== null) {
       const status = Number.parseInt(m[1] ?? "200", 10);
       const ref = m[2] ?? "";
       if (ref.length === 0) continue;

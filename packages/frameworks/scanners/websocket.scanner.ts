@@ -24,6 +24,7 @@
  * exporters own the WS rendering (the v2.1 schema has a
  * `protocolProfileBehavior` block that already supports WS).
  */
+import { effectiveProjectRoot } from "../../core/discovery/effective-project-root.helper";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -211,10 +212,10 @@ export class WebSocketRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await listSourceFiles(match.projectRoot);
+    const files = await listSourceFiles(effectiveProjectRoot(match));
     const routes: ParsedRoute[] = [];
     for (const f of files) {
-      const candidates = await extractCandidatesFromFile(f, match.projectRoot);
+      const candidates = await extractCandidatesFromFile(f, effectiveProjectRoot(match));
       for (const c of candidates) {
         const description =
           `Socket.IO event \`${c.event}\` (direction ${c.direction}` +

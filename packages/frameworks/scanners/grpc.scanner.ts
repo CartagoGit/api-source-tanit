@@ -23,9 +23,12 @@
  * with `method: "POST"` so a user importing the collection
  * never gets an empty folder.
  */
+import { effectiveProjectRoot } from "../../core/discovery/effective-project-root.helper";
 import { readFile } from "node:fs/promises";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { join } from "node:path";
 
+import type { IProjectMatch } from "../../contracts/interfaces/core/scanner.interface";
 import type {
   IProjectScanner,
   IProjectScannerResult,
@@ -112,13 +115,13 @@ export class GrpcRouteScanner implements IRouteScanner {
   
   readonly framework = "grpc" as const;
 
-  async scan(match: { readonly projectRoot: string }): Promise<{
+  async scan(match: IProjectMatch): Promise<{
     routes: ReadonlyArray<ParsedRoute>;
     validators?: Map<string, never>;
     fields?: Map<string, never>;
     raw?: Map<string, never>;
   }> {
-    const protoFiles = await listProtoFiles(match.projectRoot);
+    const protoFiles = await listProtoFiles(effectiveProjectRoot(match));
     const routes: ParsedRoute[] = [];
 
     for (const file of protoFiles) {
@@ -128,14 +131,15 @@ export class GrpcRouteScanner implements IRouteScanner {
       } catch {
         continue;
       }
-      const relativeFile = file.startsWith(match.projectRoot)
-        ? file.slice(match.projectRoot.length).replace(/^\/+/, "")
+      const root = effectiveProjectRoot(match);
+      const relativeFile = file.startsWith(root)
+        ? file.slice(root.length).replace(/^\/+/, "")
         : file;
 
       let serviceMatch: RegExpExecArray | null;
       // Reset the regex per file.
       SERVICE_RE.lastIndex = 0;
-      while ((serviceMatch = SERVICE_RE.exec(text)) !== null) {
+      while ((serviceMatch = ownRegex(SERVICE_RE).exec(text)) !== null) {
         const service = serviceMatch[1]!;
         const blockStart = serviceMatch.index + serviceMatch[0].length;
         const blockEnd = text.indexOf("}", blockStart);

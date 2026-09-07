@@ -27,7 +27,9 @@
  *   - **declarative** — `addEventSource(path, config)` /
  *     Hono's `streamSSE()` (we keep both literals for now).
  */
+import { effectiveProjectRoot } from "../../core/discovery/effective-project-root.helper";
 import { readFile, readdir } from "node:fs/promises";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { join } from "node:path";
 
 import type {
@@ -123,7 +125,7 @@ async function extractCandidatesFromFile(
   // matter for SSE — most SSE endpoints use GET — but we
   // record it in `transportMeta` for completeness.
   let m: RegExpExecArray | null;
-  while ((m = ROUTE_RE.exec(text)) !== null) {
+  while ((m = ownRegex(ROUTE_RE).exec(text)) !== null) {
     const path = m[2]!;
     if (!path.startsWith("/")) continue;
     const key = `${path}|__default__`;
@@ -148,7 +150,7 @@ async function extractCandidatesFromFile(
     const eventNames = new Set<string>();
     let em: RegExpExecArray | null;
     EVENT_NAME_RE.lastIndex = 0;
-    while ((em = EVENT_NAME_RE.exec(text)) !== null) {
+    while ((em = ownRegex(EVENT_NAME_RE).exec(text)) !== null) {
       eventNames.add(em[1]!);
     }
     for (const ev of eventNames) {
@@ -220,10 +222,10 @@ export class SseRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await listSourceFiles(match.projectRoot);
+    const files = await listSourceFiles(effectiveProjectRoot(match));
     const routes: ParsedRoute[] = [];
     for (const f of files) {
-      const candidates = await extractCandidatesFromFile(f, match.projectRoot);
+      const candidates = await extractCandidatesFromFile(f, effectiveProjectRoot(match));
       for (const c of candidates) {
         routes.push({
           framework: this.framework,

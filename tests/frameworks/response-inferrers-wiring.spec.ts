@@ -76,7 +76,7 @@ describe("OpenAPI exporter — inferred responses (f00012 wiring)", () => {
         collectionDescription: "Una API de tests",
         baseUrl: "http://localhost:3000",
         variables: [],
-      } as IExportInput["config"],
+      } as unknown as IExportInput["config"],
       auth: { type: "none" },
     };
   }
@@ -116,19 +116,24 @@ describe("OpenAPI exporter — inferred responses (f00012 wiring)", () => {
       ]),
     );
     const responses = responsesOf(doc, "/users", "get");
-    expect(responses["200"]).toBeDefined();
-    expect((responses["200"] as Record<string, unknown>)["description"]).toBe(
+    const created = responses["200"];
+    if (!created) throw new Error("missing 200 response block");
+    expect(created["description"]).toBe(
       "NestJS return type Promise<User>",
     );
-    const content = (responses["200"] as Record<string, unknown>)[
-      "content"
-    ] as Record<string, Record<string, unknown>>;
-    expect(content["application/json"]["schema"]).toEqual({
+    const content = created["content"] as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const json = content["application/json"];
+    if (!json) throw new Error("missing application/json content");
+    expect(json["schema"]).toEqual({
       $ref: "#/components/schemas/User",
     });
     // `empty` schema → status block without content.
-    expect(responses["404"]).toBeDefined();
-    expect((responses["404"] as Record<string, unknown>)["content"]).toBeUndefined();
+    const notFound = responses["404"];
+    if (!notFound) throw new Error("missing 404 response block");
+    expect(notFound["content"]).toBeUndefined();
   });
 
   test("spec without inference keeps the historical 200: OK fallback", () => {

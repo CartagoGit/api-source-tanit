@@ -38,8 +38,9 @@ async function tmpDir(prefix: string): Promise<string> {
 }
 
 async function runGateCli(): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const proc = Bun.spawn({
-    cmd: ["bun", "run", join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts")],
+  const proc = Bun.spawn([
+    "bun", "run", join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts"),
+  ], {
     cwd: REPO_ROOT,
     stdout: "pipe",
     stderr: "pipe",

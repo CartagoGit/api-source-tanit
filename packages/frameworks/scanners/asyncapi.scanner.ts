@@ -29,7 +29,9 @@
  * follow-up slice (`f00013.b` if it lands) and keep S5
  * focused on 2.6 today.
  */
+import { effectiveProjectRoot } from "../../core/discovery/effective-project-root.helper";
 import { readFile, readdir } from "node:fs/promises";
+import { ownRegex } from "../../core/helpers/regex.helper.js";
 import { join } from "node:path";
 
 import type {
@@ -151,7 +153,7 @@ export class AsyncApiRouteScanner implements IRouteScanner {
   }
 
   async scan(match: IProjectMatch): Promise<IScanResult> {
-    const files = await listAsyncApiFiles(match.projectRoot);
+    const files = await listAsyncApiFiles(effectiveProjectRoot(match));
     const routes: ParsedRoute[] = [];
 
     for (const f of files) {
@@ -161,8 +163,9 @@ export class AsyncApiRouteScanner implements IRouteScanner {
       } catch {
         continue;
       }
-      const rel = f.startsWith(match.projectRoot)
-        ? f.slice(match.projectRoot.length + 1)
+      const root = effectiveProjectRoot(match);
+      const rel = f.startsWith(root)
+        ? f.slice(root.length + 1)
         : f;
 
       // Resolve the FIRST non-HTTP server protocol — most
@@ -173,7 +176,7 @@ export class AsyncApiRouteScanner implements IRouteScanner {
       const protocols: AsyncApiServerProtocol[] = [];
       SERVER_PROTOCOL_RE.lastIndex = 0;
       let pm: RegExpExecArray | null;
-      while ((pm = SERVER_PROTOCOL_RE.exec(text)) !== null) {
+      while ((pm = ownRegex(SERVER_PROTOCOL_RE).exec(text)) !== null) {
         if (pm[1]) {
           const normalised = normaliseProtocol(pm[1]);
           if (normalised) protocols.push({ name: "default", protocol: pm[1], transport: normalised });

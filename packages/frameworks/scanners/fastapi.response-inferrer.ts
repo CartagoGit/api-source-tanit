@@ -20,6 +20,7 @@
  * shared runtime). Future slices can swap regex for a real
  * Python AST once one is in Tanit's deps.
  */
+import { ownRegex } from "../../core/helpers/regex.helper";
 import {
   registerResponseInferrer,
 } from "../../core/responses/infer-responses";
@@ -111,13 +112,12 @@ export class FastApiResponseInferrer implements IResponseInferrer {
     // before each `.test()` so the global RegExp object's state
     // doesn't bleed across lines.
     const hasResponseModel = lines.some((l) => {
-      RESPONSE_MODEL_RE.lastIndex = 0;
-      return RESPONSE_MODEL_RE.test(l);
+      return ownRegex(RESPONSE_MODEL_RE).test(l);
     });
     if (!hasResponseModel) {
       RETURN_TYPE_RE.lastIndex = 0;
       let m: RegExpExecArray | null;
-      while ((m = RETURN_TYPE_RE.exec(txt)) !== null) {
+      while ((m = ownRegex(RETURN_TYPE_RE).exec(txt)) !== null) {
         const ret = m[1] ?? "";
         if (ret.length === 0) continue;
         // Skip the common `-> None` / `-> dict` primitives —
