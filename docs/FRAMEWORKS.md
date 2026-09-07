@@ -529,6 +529,78 @@ Ejemplo: [`examples/example-trpc/`](../examples/example-trpc/)
 
 ---
 
+## gRPC
+
+**Detecta por**: al menos un fichero `.proto` en el proyecto
+(`tests/smoke-fixtures/grpc-mini/` muestra el mínimo). El score es
+cap — un proyecto con `.proto` es gRPC.
+
+**Entiende**: cada `rpc` de un `service` sale como una entrada con su
+mensaje de petición como ruta y el patrón de streaming en la metadata
+(`unary`, `server-streaming`, …). No se resuelven `import` de protos ni
+se parsea protobuf: es lectura de superficie, no compilación.
+
+**Limitaciones**: el `transport` del endpoint es `grpc`, así que los
+exporters HTTP-only lo dejan fuera de las colecciones REST hasta que
+exista un exporter gRPC destino.
+
+Ejemplo: [`examples/example-grpc/`](../examples/example-grpc/) —
+fixture: [`tests/fixtures/grpc-comprehensive/`](../tests/fixtures/grpc-comprehensive/)
+
+---
+
+## SSE
+
+**Detecta por**: fuentes JS/TS con un handler de ruta
+(`app.get('/events', …)`) que escribe `text/event-stream`.
+
+**Entiende**: cada handler SSE sale como una ruta `GET` con
+`transport: "sse"` y el nombre del evento si el handler escribe un
+marker `event: <nombre>`.
+
+**Limitaciones**: no distingue el momento de apertura del stream ni
+reconecta; solo documenta la superficie del canal.
+
+Ejemplo: [`examples/example-sse/`](../examples/example-sse/) —
+fixture: [`tests/fixtures/sse-comprehensive/`](../tests/fixtures/sse-comprehensive/)
+
+---
+
+## WebSocket
+
+**Detecta por**: fuentes JS/TS con `socket.on/emit/once/send` (Socket.IO
+o `ws`). El namespace sale de `io.of("/admin")` cuando existe.
+
+**Entiende**: cada par evento + dirección (`in` para `on/once`,
+`out` para `emit/send`) sale como una entrada con `transport: "ws"`.
+
+**Limitaciones**: el handshake HTTP inicial no se documenta como ruta
+propia; solo los eventos del canal.
+
+Ejemplo: [`examples/example-websocket/`](../examples/example-websocket/) —
+fixture: [`tests/fixtures/websocket-comprehensive/`](../tests/fixtures/websocket-comprehensive/)
+
+---
+
+## AsyncAPI
+
+**Detecta por**: un `asyncapi.yaml` / `asyncapi.yml` / `asyncapi.json`
+en el proyecto. Es el único scanner que no lee código: lee el
+documento.
+
+**Entiende**: cada canal del documento sale como una entrada; el
+protocolo del primer servidor no-HTTP (`kafka`, `amqp`, `mqtt`, …)
+puebla `transportMeta`. `publish` y `subscribe` se distinguen en la
+descripción.
+
+**Limitaciones**: no valida los payloads contra los schemas del
+documento; solo los referencia.
+
+Ejemplo: [`examples/example-asyncapi/`](../examples/example-asyncapi/) —
+fixture: [`tests/fixtures/asyncapi-comprehensive/`](../tests/fixtures/asyncapi-comprehensive/)
+
+---
+
 ## Si está soportado pero no lo detecta
 
 La detección va por manifiestos: `composer.json` con `laravel`, `go.mod`

@@ -31,7 +31,7 @@ bun run validate
 ```
 
 Encadena `typecheck` → `lint:tools` → `bun test` → `validate:examples`
-(genera de verdad los 21 proyectos de `examples/` y valida cada
+(genera de verdad los 25 proyectos de `examples/` y valida cada
 colección). Corre igual en CI.
 
 Aparte, antes de publicar:

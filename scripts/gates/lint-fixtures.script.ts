@@ -73,6 +73,9 @@ const CODE_EXTENSIONS = [
 const SPEC_PATTERNS: ReadonlyArray<RegExp> = [
   /^openapi.*\.(json|ya?ml)$/i,
   /^swagger.*\.(json|ya?ml)$/i,
+  // f00013: AsyncAPI documents are the primary source the AsyncAPI
+  // scanner walks — same family as the OpenAPI/Swagger patterns above.
+  /^asyncapi.*\.(json|ya?ml)$/i,
   /(^|\/)(schema|schemas?)\.(graphql|gql|sdl)$/i,
   /\.proto$/i,
   /\.avsc$/i,

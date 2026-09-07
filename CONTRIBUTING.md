@@ -325,7 +325,7 @@ en este orden:
 | Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `integrations/delendai/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
-| Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
+| Generación real | `bun run validate:examples` | Genera los 25 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
 
 Se ejecuta en CI (`.github/workflows/validate.yml`) con el mismo comando,
 así que lo que pasa en local pasa en CI.

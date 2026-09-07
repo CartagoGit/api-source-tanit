@@ -5,7 +5,7 @@ artefactos y sincroniza con Postman y otros. Sin anotaciones, sin
 decoradores extra, sin levantar el servidor. Apuntas al directorio del
 proyecto y sale un `.json` listo para importar.
 
-Detecta el framework solo. Funciona con **21**:
+Detecta el framework solo. Funciona con **25**:
 
 | Framework | Detecta por | De dónde saca los bodies |
 |---|---|---|
@@ -199,7 +199,7 @@ bun run validate     # el gate: typecheck + lint + tests + generación real
 | `typecheck` | `tsc --noEmit` |
 | `lint:tools` | los tools del plugin MCP no leen `process.env` |
 | `test` | la suite completa |
-| `validate:examples` | genera de verdad los 21 proyectos de `examples/` y valida cada colección |
+| `validate:examples` | genera de verdad los 25 proyectos de `examples/` y valida cada colección |
 
 Y aparte, antes de publicar:
 

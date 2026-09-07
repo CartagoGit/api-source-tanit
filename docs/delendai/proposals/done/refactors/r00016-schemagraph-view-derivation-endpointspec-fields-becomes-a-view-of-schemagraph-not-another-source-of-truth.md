@@ -7,7 +7,7 @@ type: proposal
 track: api-source-tanit
 date: 2026-09-06
 shippedIn:
-  - 88a5dfe
+  - cd191dd
 dependsOn: []
 ---
 
