@@ -393,16 +393,14 @@ export async function runGenerate(
     : await outputCollectionPath(resolvedContext, config.name);
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
-  await writeFileAtomic(OUTPUT_PATH, json + "\n");
-  collectionPath = OUTPUT_PATH;
+  // x00060 — generate runs as a single transaction: validate BEFORE any
+  // write so a regression / scanner crash cannot destroy yesterday's
+  // collection. The previous order wrote first and then refused if
+  // requests === 0, which left an empty file on disk and overwrote a
+  // valid previous collection with an empty one.
   const { requests, folders } = countItems(collection);
-
-  // Zero endpoints with exit 0 is a non-success: a CI step running
-  // this would pass even if nothing was found, and someone would
-  // import an empty collection without noticing. The opposite can be
-  // requested with --allow-empty (useful for a project that does not
-  // have routes yet).
-  if (requests === 0 && !args.includes("--allow-empty")) {
+  const allowEmpty = args.includes("--allow-empty");
+  if (requests === 0 && !allowEmpty) {
     console.error(
       "\n✗ No endpoints were found, so nothing was written.\n" +
         "  · Check that `--project-root` points at your API's root.\n" +
@@ -411,6 +409,8 @@ export async function runGenerate(
     );
     return { code: 1, report: null };
   }
+  await writeFileAtomic(OUTPUT_PATH, json + "\n");
+  collectionPath = OUTPUT_PATH;
   // Extra formats are serialized from the SAME endpoint catalog as the
   // Postman collection: two formats from the same project cannot
   // disagree because each scanned on its own.
