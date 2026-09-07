@@ -384,37 +384,6 @@ export async function runGenerate(
     return { code: 1, report: null };
   }
 
-  // --output / --basename respect environment variables + flags.
-  if (basenameFlag) {
-    process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag;
-  }
-  const OUTPUT_PATH = outputFlag
-    ? outputFlag
-    : await outputCollectionPath(resolvedContext, config.name);
-  await warnOnIdentityClash(OUTPUT_PATH, collection);
-  const json = JSON.stringify(collection, null, 2);
-  // x00060 — generate runs as a single transaction: validate BEFORE any
-  // write so a regression / scanner crash cannot destroy yesterday's
-  // collection. The previous order wrote first and then refused if
-  // requests === 0, which left an empty file on disk and overwrote a
-  // valid previous collection with an empty one.
-  const { requests, folders } = countItems(collection);
-  const allowEmpty = args.includes("--allow-empty");
-  if (requests === 0 && !allowEmpty) {
-    console.error(
-      "\n✗ No endpoints were found, so nothing was written.\n" +
-        "  · Check that `--project-root` points at your API's root.\n" +
-        "  · See docs/FRAMEWORKS.md for what each scanner looks for.\n" +
-        "  · If the project genuinely has no routes yet, use `--allow-empty`.",
-    );
-    return { code: 1, report: null };
-  }
-  await writeFileAtomic(OUTPUT_PATH, json + "\n");
-  collectionPath = OUTPUT_PATH;
-  // Extra formats are serialized from the SAME endpoint catalog as the
-  // Postman collection: two formats from the same project cannot
-  // disagree because each scanned on its own.
-  //
   // f00012 wiring: response inference runs over the same catalog
   // BEFORE any export so every format sees the same enriched specs.
   // The inferrers need the raw source of each endpoint's file; the
@@ -478,7 +447,38 @@ export async function runGenerate(
     if (inferredCount > 0) {
       console.log(`  · Responses inferred for ${inferredCount} endpoint(s).`);
     }
+  }  // --output / --basename respect environment variables + flags.
+  if (basenameFlag) {
+    process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag;
   }
+  const OUTPUT_PATH = outputFlag
+    ? outputFlag
+    : await outputCollectionPath(resolvedContext, config.name);
+  await warnOnIdentityClash(OUTPUT_PATH, collection);
+  const json = JSON.stringify(collection, null, 2);
+  // x00060 — generate runs as a single transaction: validate BEFORE any
+  // write so a regression / scanner crash cannot destroy yesterday's
+  // collection. The previous order wrote first and then refused if
+  // requests === 0, which left an empty file on disk and overwrote a
+  // valid previous collection with an empty one.
+  const { requests, folders } = countItems(collection);
+  const allowEmpty = args.includes("--allow-empty");
+  if (requests === 0 && !allowEmpty) {
+    console.error(
+      "\n✗ No endpoints were found, so nothing was written.\n" +
+        "  · Check that `--project-root` points at your API's root.\n" +
+        "  · See docs/FRAMEWORKS.md for what each scanner looks for.\n" +
+        "  · If the project genuinely has no routes yet, use `--allow-empty`.",
+    );
+    return { code: 1, report: null };
+  }
+  await writeFileAtomic(OUTPUT_PATH, json + "\n");
+  collectionPath = OUTPUT_PATH;
+  // Extra formats are serialized from the SAME endpoint catalog as the
+  // Postman collection: two formats from the same project cannot
+  // disagree because each scanned on its own.
+  //
+
   const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
   if (extraFormats.length > 0) {
     const dir = resolvedContext.outputDir;
