@@ -560,6 +560,7 @@ declare const URL: {
     protocol: string;
     port: string;
     pathname: string;
+    search: string;
   };
 };
 
