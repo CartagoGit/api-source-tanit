@@ -36,6 +36,7 @@ import { SUPPORTED_METHODS } from "../../contracts/constants/core/postman.consta
 import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import { deriveServiceId } from "../discovery/group-by-service.helper.js";
+import { postmanMethodFor } from "../domain/postman-method.helper.js";
 import type {
   IProjectMatch,
   IRouteScanner,
@@ -239,7 +240,7 @@ export async function buildSpecsFromScanner(
     // Methods that Postman cannot represent are dropped. The list comes
     // from the contract itself, so adding one there does not require
     // remembering this line: it was what made HEADs disappear.
-    const m = route.method.toUpperCase();
+    const m = postmanMethodFor(route.method.toUpperCase());
     if (!(SUPPORTED_METHODS as readonly string[]).includes(m)) continue;
 
     const postmanUri = toPostmanUri(route.uri);

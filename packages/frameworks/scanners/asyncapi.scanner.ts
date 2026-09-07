@@ -192,11 +192,11 @@ export class AsyncApiRouteScanner implements IRouteScanner {
         const operationKey = m[1]!;
         const action = m[2]!;
         // AsyncAPI / JSON Pointer escape: ~1 -> /
-            const channelRef = m[3]!.trim().replace(/~1/g, "/");
+        const channelRef = m[3]!.trim().replace(/~1/g, "/");
         routes.push({
           framework: this.framework,
           method: action === "send" ? "PUBLISH" : "SUBSCRIBE",
-          uri: `/${channelRef.replace(/~/g, "~1").replace(/\//g, "~1")}`,
+          uri: channelRef,
           rawUri: channelRef,
           sourceFile: rel,
           lineNumber: text.slice(0, m.index).split("\n").length,

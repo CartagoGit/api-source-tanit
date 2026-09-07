@@ -323,7 +323,9 @@ export async function runGenerate(
   }
 
   // Cobertura bidireccional
-  const sourceRoutes = new Map<string, DiscoveredRoute>();
+  type CheckRoute = DiscoveredRoute & { name?: string };
+  const sourceRoutes = new Map<string, CheckRoute>();
+  const sourceRouteCounts = new Map<string, number>();
   for (const r of pipeline.routes) {
     // Only Laravel (legacy) strips the `api/` prefix. Other frameworks
     // have a real prefix (api/v1, etc.) and must keep it.
@@ -336,16 +338,24 @@ export async function runGenerate(
     // `ALL /x in routes but NOT in collection` even though the
     // collection has the request under the same key.
     const method = postmanMethodFor(r.method);
-    const key = `${method} ${normalizeForComparison(uri)}`;
-    sourceRoutes.set(key, { method, uri });
+    const baseKey = `${method} ${normalizeForComparison(uri)}`;
+    const count = (sourceRouteCounts.get(baseKey) ?? 0) + 1;
+    sourceRouteCounts.set(baseKey, count);
+    const name = r.displayName;
+    const key = `${baseKey} ${count > 1 && name ? name : ""}`;
+    sourceRoutes.set(key, { method, uri, ...(name ? { name } : {}) });
   }
   const declared = walkCollection(collection);
   const collectionRoutes = new Map<
     string,
     { method: string; uri: string; name: string }
   >();
+  const collectionRouteCounts = new Map<string, number>();
   for (const r of declared) {
-    const key = `${r.method} ${normalizeForComparison(r.uri)}`;
+    const baseKey = `${r.method} ${normalizeForComparison(r.uri)}`;
+    const count = (collectionRouteCounts.get(baseKey) ?? 0) + 1;
+    collectionRouteCounts.set(baseKey, count);
+    const key = `${baseKey} ${count > 1 ? r.name : ""}`;
     collectionRoutes.set(key, r);
   }
   humanLog(
@@ -357,7 +367,7 @@ export async function runGenerate(
   for (const [key, info] of collectionRoutes) {
     if (!sourceRoutes.has(key)) missingInSource.push(info);
   }
-  const missingInCollection: DiscoveredRoute[] = [];
+  const missingInCollection: CheckRoute[] = [];
   for (const [key, info] of sourceRoutes) {
     if (info.uri === "auth-test") continue;
     if (!collectionRoutes.has(key)) missingInCollection.push(info);

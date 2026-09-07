@@ -22,5 +22,7 @@
  * casting.
  */
 export function postmanMethodFor(method: string): string {
-  return method === "ALL" ? "ANY" : method;
+  if (method === "ALL") return "ANY";
+  if (method === "PUBLISH" || method === "SUBSCRIBE") return "POST";
+  return method;
 }
