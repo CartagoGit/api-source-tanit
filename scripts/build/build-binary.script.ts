@@ -26,6 +26,7 @@ import { CLI_ENTRYPOINT, DIST_DIR, REPO_ROOT } from "../helpers/root.helper.js";
 const TARGETS: ReadonlyArray<{ readonly target: string; readonly suffix: string }> = [
   { target: "bun-linux-x64", suffix: "linux-x64" },
   { target: "bun-linux-arm64", suffix: "linux-arm64" },
+  { target: "bun-darwin-x64", suffix: "darwin-x64" },
   { target: "bun-darwin-arm64", suffix: "darwin-arm64" },
   { target: "bun-windows-x64", suffix: "windows-x64.exe" },
 ];
