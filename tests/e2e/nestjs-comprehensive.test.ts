@@ -148,3 +148,40 @@ describe("NestJS — comprehensive fixture", () => {
     expect(body === "{}" || body === "" || body === undefined).toBe(true);
   });
 });
+/**
+ * f00014 follow-up: response inference must run BEFORE
+ * `buildCollection()` so the inferred `response[]` block ends up in
+ * the Postman JSON. Before this fix, the CLI called
+ * `inferResponses()` AFTER `pipeline.collection` had already been
+ * serialised, so the block never made it into the user's output.
+ * The e2e fixture below pins the new contract: at least one
+ * endpoint must have `response[]` populated by the NestJS inferrer.
+ */
+describe("f00014 follow-up — response[] in the Postman output", () => {
+  // The `nestjs-response-inference` fixture is small and dedicated:
+  // two endpoints (`GET /users`, `POST /users`) decorated with
+  // `@ApiOkResponse` / `@ApiCreatedResponse` so the NestJS inferrer
+  // has something concrete to emit. The big `nestjs-comprehensive`
+  // fixture does not declare those decorators, which is realistic
+  // for a hand-written API but means the inferrer correctly returns
+  // `[]` — not a bug, just nothing to infer.
+  test("metrics.responsesInferred > 0 for the response-inference fixture", async () => {
+    const { metrics } = await runGenerate("nestjs-response-inference");
+    expect(metrics.responsesInferred).toBeGreaterThan(0);
+  });
+
+  test("the Postman collection has response[] entries (not after buildCollection)", async () => {
+    const { collection } = await runGenerate("nestjs-response-inference");
+    let found = 0;
+    const walk = (items: ReadonlyArray<{ item?: ReadonlyArray<unknown>; response?: ReadonlyArray<unknown> }>) => {
+      for (const item of items) {
+        if (Array.isArray(item.response) && item.response.length > 0) {
+          found++;
+        }
+        if (Array.isArray(item.item)) walk(item.item as ReadonlyArray<{ item?: ReadonlyArray<unknown>; response?: ReadonlyArray<unknown> }>);
+      }
+    };
+    walk(collection.item as ReadonlyArray<{ item?: ReadonlyArray<unknown>; response?: ReadonlyArray<unknown> }>);
+    expect(found).toBeGreaterThan(0);
+  });
+});

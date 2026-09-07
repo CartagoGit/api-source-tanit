@@ -177,29 +177,11 @@ export interface IRouteForInference {
 }
 
 /**
- * Run `inferResponses` against every spec and write the result onto
- * `spec.responses`. Returns the number of specs that gained at
- * least one entry.
- *
- * The helper exists because the **only** place that should mutate
- * `EndpointSpec.responses` is the pipeline, not the script. Before
- * it landed, the CLI ran the loop after `buildCollection()` had
- * already serialised the Postman collection, which meant the
- * inferred `response[]` block never made it into the JSON the user
- * saw. Moving the loop into the pipeline — and calling it
- * **before** `buildCollection()` — closes that bug.
- *
- * Source files are read **once** and cached in a Map keyed by
- * relative path so the helper does not hit the disk N times for an
- * N-endpoint project that lives in one file (the common case). A
- * spec whose route has no `sourceFile` (a manual override) is
- * silently skipped — same behaviour as the previous CLI loop.
- *
- * Failures inside the per-spec loop are caught and logged so a
- * single malformed handler cannot abort the whole run. Failures
- * outside the loop (e.g. the registry being empty) are reported in
- * `registryEmpty` so the caller can decide whether to surface a
- * warning.
+ * Pipeline entry point: run the dispatcher against every spec,
+ * cache the source reads, and mutate `spec.responses` in place.
+ * See `IInferResponsesIntoSpecsResult` for the return shape. The
+ * CLI is the composition root that populates the inferrer
+ * registry before calling the pipeline.
  */
 export interface IInferResponsesIntoSpecsResult {
   /** How many specs ended up with at least one inferred entry. */
@@ -213,6 +195,22 @@ export interface IInferResponsesIntoSpecsResult {
   readonly registryEmpty: boolean;
 }
 
+/**
+ * Pipeline entry point: read every spec's source file, dispatch
+ * the right framework inferrer, and write the entries onto
+ * `spec.responses`. Mutating in place is intentional — every
+ * downstream exporter (Postman, OpenAPI, Bruno, HAR) reads from
+ * the same spec catalog and must see the same enriched data, so
+ * producing a new array would only duplicate state.
+ *
+ * The function exists because the **only** place that should
+ * mutate `EndpointSpec.responses` is the pipeline, not the
+ * script. Before it landed, the CLI ran the inference loop after
+ * `buildCollection()` had already serialised the Postman
+ * collection, which meant the inferred `response[]` block never
+ * made it into the JSON the user saw. See the `f00014` follow-up
+ * for the full bug history.
+ */
 export async function inferResponsesIntoSpecs(
   specs: ReadonlyArray<EndpointSpecLike>,
   projectRoot: string,

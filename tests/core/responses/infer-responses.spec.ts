@@ -220,3 +220,132 @@ describe("inferResponses dispatcher — x00061 per-spec framework", () => {
     expect(result).toEqual([]);
   });
 });
+
+describe("inferResponsesIntoSpecs (f00014 follow-up)", () => {
+  // f00014 follow-up: the helper that moves response inference from
+  // the CLI loop (where it ran AFTER buildCollection and never made
+  // it into the Postman output) into the pipeline. The new contract:
+  //   - empty registry → registryEmpty=true, no spec is mutated
+  //   - per-route framework wins over global framework (x00061)
+  //   - global framework is the fallback for legacy routes
+  //   - source file is read once and cached per (projectRoot, rel)
+  //   - spec.responses is set on each enriched spec
+  //   - routes with no sourceFile (manual / zero-config) skip silently
+
+  beforeEach(() => {
+    __setInferrersForTest([]);
+  });
+
+  test("(1) empty registry returns registryEmpty=true", async () => {
+    __setInferrersForTest([]);
+    const {
+      inferResponsesIntoSpecs,
+    } = await import("../../../packages/core/responses/infer-responses");
+    const result = await inferResponsesIntoSpecs(
+      [{ method: "GET", uri: "/users" }],
+      "/tmp/nonexistent-project",
+      [{ method: "GET", uri: "/users", sourceFile: "users.controller.ts" }],
+      { globalFramework: "nestjs" },
+    );
+    expect(result.enrichedCount).toBe(0);
+    expect(result.registryEmpty).toBe(true);
+  });
+
+  test("(2) no sourceFile → spec skipped silently", async () => {
+    __setInferrersForTest([
+      {
+        framework: "nestjs",
+        infer: () => [
+          { status: 200, schema: { kind: "empty" }, confidence: "high", reason: "r" },
+        ],
+      },
+    ]);
+    const {
+      inferResponsesIntoSpecs,
+    } = await import("../../../packages/core/responses/infer-responses");
+    const result = await inferResponsesIntoSpecs(
+      [{ method: "GET", uri: "/users" }],
+      "/tmp/nonexistent-project",
+      [{ method: "GET", uri: "/users", sourceFile: null }],
+      { globalFramework: "nestjs" },
+    );
+    expect(result.enrichedCount).toBe(0);
+    expect(result.registryEmpty).toBe(false);
+  });
+
+  test("(3) per-route framework wins over global (x00061)", async () => {
+    __setInferrersForTest([
+      {
+        framework: "nestjs",
+        infer: () => [
+          { status: 200, schema: { kind: "empty" }, confidence: "high", reason: "nestjs" },
+        ],
+      },
+      {
+        framework: "fastapi",
+        infer: () => [
+          { status: 200, schema: { kind: "empty" }, confidence: "high", reason: "fastapi" },
+        ],
+      },
+    ]);
+    const {
+      inferResponsesIntoSpecs,
+    } = await import("../../../packages/core/responses/infer-responses");
+    const spec: { method: string; uri: string; sourceFile: string; responses?: unknown } = {
+      method: "GET",
+      uri: "/users",
+      sourceFile: "test-source-for-per-route-fw.ts",
+    };
+    // The helper reads the source from disk, so we point at a
+    // file we control. Tests live under tests/ and are committed.
+    const result = await inferResponsesIntoSpecs(
+      [spec],
+      process.cwd(),
+      [
+        {
+          method: "GET",
+          uri: "/users",
+          sourceFile: "tests/core/responses/infer-responses.spec.ts",
+          framework: "nestjs",
+        },
+      ],
+      { globalFramework: "fastapi" },
+    );
+    expect(result.enrichedCount).toBe(1);
+    expect((spec.responses as Array<{ reason: string }>)[0]?.reason).toBe("nestjs");
+  });
+
+  test("(4) global framework is the fallback when route.framework is empty", async () => {
+    __setInferrersForTest([
+      {
+        framework: "fastapi",
+        infer: () => [
+          { status: 200, schema: { kind: "empty" }, confidence: "high", reason: "fastapi-fallback" },
+        ],
+      },
+    ]);
+    const {
+      inferResponsesIntoSpecs,
+    } = await import("../../../packages/core/responses/infer-responses");
+    const spec: { method: string; uri: string; sourceFile: string; responses?: unknown } = {
+      method: "POST",
+      uri: "/items",
+      sourceFile: "test-source-for-global-fallback.ts",
+    };
+    const result = await inferResponsesIntoSpecs(
+      [spec],
+      process.cwd(),
+      [
+        {
+          method: "POST",
+          uri: "/items",
+          sourceFile: "tests/core/responses/infer-responses.spec.ts",
+          framework: null,
+        },
+      ],
+      { globalFramework: "fastapi" },
+    );
+    expect(result.enrichedCount).toBe(1);
+    expect((spec.responses as Array<{ reason: string }>)[0]?.reason).toBe("fastapi-fallback");
+  });
+});

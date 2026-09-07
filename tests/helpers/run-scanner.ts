@@ -30,6 +30,8 @@ export interface GenerateMetrics {
   sinFR: number;
   bodiesAuto: number;
   queriesAuto: number;
+  /** f00014 follow-up: number of specs that gained response[] entries. */
+  responsesInferred: number;
 }
 
 export interface GenerateResult {
@@ -85,6 +87,7 @@ async function _runPipeline(
       sinFR: result.metrics.withoutValidation,
       bodiesAuto: result.metrics.bodiesInferred,
       queriesAuto: result.metrics.queriesInferred,
+      responsesInferred: result.metrics.responsesInferred,
     },
   };
 }
@@ -117,6 +120,7 @@ export function parseMetrics(stdout: string): GenerateMetrics {
     sinFR: grab("Sin FR"),
     bodiesAuto: grab("Bodies auto"),
     queriesAuto: grab("Queries auto"),
+    responsesInferred: 0,
   };
 }
 
@@ -134,6 +138,7 @@ export function parseMetricsFromCollection(
     sinFR: counts.requests,
     bodiesAuto: 0,
     queriesAuto: 0,
+    responsesInferred: 0,
   };
 }
 
