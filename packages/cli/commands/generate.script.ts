@@ -12,7 +12,7 @@
  *   bun scripts/generate.script.ts --config ./examples/example-app/config.constant.ts
  *   bun run build
  */
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import {
   writeFileAtomic,
   writeJsonAtomic,
@@ -21,7 +21,6 @@ import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/ar
 import { dirname, join } from "node:path";
 import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import { inferResponses } from "../../core/responses/infer-responses.js";
 import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
 
 import { enrichCatalogWithFormRequests, LARAVEL_FORM_REQUEST_ENRICHER, enrichValidationSources } from "../../frameworks/laravel/catalog-enricher.service.js";
@@ -367,70 +366,31 @@ export async function runGenerate(
     return { code: 1, report: null };
   }
 
-  // f00012 wiring: response inference runs over the same catalog
-  // BEFORE any export so every format sees the same enriched specs.
-  // The inferrers need the raw source of each endpoint's file; the
-  // source file travels on the ParsedRoute, so specs and routes are
-  // paired by `METHOD uri` key. Routes without a sourceFile (manual/
-  // zero-config entries) skip silently.
+  // f00012 + f00014 wiring: response inference now lives inside
+  // `buildForService()` in the pipeline (see generation.pipeline.ts),
+  // not here. Before, this script ran the inference loop AFTER
+  // `buildCollection()` had already serialised the Postman
+  // collection, which meant the inferred `response[]` block never
+  // made it into the JSON the user saw. The pipeline runs the
+  // dispatcher **before** `buildCollection()` and mutates
+  // `spec.responses` in place, so every exporter (Postman, OpenAPI,
+  // Bruno, HAR, ...) sees the same enriched catalog.
   //
-  // x00061: hybrid project support. The dispatcher needs the
-  // PER-SPEC framework, not the global winner. We build a
-  // route-by-key map so each spec can look up its own
-  // `route.framework`, and pass it as `frameworkHint` to the
-  // dispatcher. If the route has no framework (legacy scanner
-  // output) we fall back to the global match — exactly the
-  // legacy behaviour, preserved.
-  const globalFramework = pipeline.match?.framework ?? "";
-  if (globalFramework) {
-    ensureResponseInferrersRegistered();
-    const routeByKey = new Map<
-      string,
-      { sourceFile: string | null; framework: string | null }
-    >();
-    for (const r of pipeline.routes) {
-      routeByKey.set(`${r.method.toUpperCase()} ${r.uri}`, {
-        sourceFile: r.sourceFile ?? null,
-        framework: (r as { framework?: string }).framework ?? null,
-      });
-    }
-    const sourceCache = new Map<string, string>();
-    let inferredCount = 0;
-    for (const spec of discoveredSpecs) {
-      const info = routeByKey.get(`${spec.method} ${spec.uri}`);
-      const rel = info?.sourceFile;
-      if (!rel) continue;
-      let content = sourceCache.get(rel);
-      if (content === undefined) {
-        const abs = join(resolvedContext.projectRoot, rel);
-        try {
-          content = await readFile(abs, "utf8");
-        } catch {
-          content = ""; // unreadable source → no inference
-        }
-        sourceCache.set(rel, content);
-      }
-      if (!content) continue;
-      // Per-spec framework (x00061): if the route carries its own
-      // framework, use that; otherwise fall back to the global match.
-      const frameworkHint =
-        info?.framework && info.framework.length > 0
-          ? info.framework
-          : globalFramework;
-      const entries = inferResponses(
-        spec,
-        { path: join(resolvedContext.projectRoot, rel), content, framework: frameworkHint },
-        { frameworkHint },
-      );
-      if (entries.length > 0) {
-        spec.responses = entries;
-        inferredCount++;
-      }
-    }
-    if (inferredCount > 0) {
-      console.log(`  · Responses inferred for ${inferredCount} endpoint(s).`);
-    }
-  }  // --output / --basename respect environment variables + flags.
+  // The CLI's only remaining responsibility is the **composition
+  // root**: import the inferrer barrel so the dispatcher's registry
+  // is populated before the pipeline runs. Empty registry = no
+  // inferrer registered for the matched framework (e.g. an Express
+  // project), which is a valid state — the pipeline's
+  // `inferResponsesIntoSpecs()` returns `registryEmpty: true` and
+  // the collection is built without response entries.
+  ensureResponseInferrersRegistered();
+  if (pipeline.metrics.responsesInferred > 0) {
+    console.log(
+      `  · Responses inferred for ${pipeline.metrics.responsesInferred} endpoint(s).`,
+    );
+  }
+
+  // --output / --basename respect environment variables + flags.
   if (basenameFlag) {
     process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag;
   }

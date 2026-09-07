@@ -37,6 +37,7 @@ import { authVariablesFor, detectAuthScheme } from "../domain/auth-scheme.servic
 import { hasLoginEndpoint, applyAuthFlow, authEnvironmentVariables, detectLaravelTokenPath } from "../domain/auth-flow.service.js";
 import { buildCollection } from "../domain/collection-builder.service.js";
 import { applyAgnosticInference, inferCollectionVariables } from "../domain/param-inferrer.service.js";
+import { inferResponsesIntoSpecs } from "../responses/infer-responses.js";
 import { loadProject } from "./project-loader.service.js";
 
 import { resolveProjectContext } from "./project-context.service.js";
@@ -429,6 +430,28 @@ async function buildForService(
     effectiveAuth !== undefined
       ? authSchemeFromEndpointAuth(effectiveAuth, service.match.framework)
       : detectedFromSpecs;
+
+  // f00014 follow-up: response inference now lives in the pipeline,
+  // not the CLI. Before, the script ran `inferResponses()` AFTER
+  // `buildCollection()` had already serialised the Postman
+  // collection, so the inferred `response[]` block never made it
+  // into the JSON the user saw. Running the dispatcher here — and
+  // mutating `spec.responses` before `buildCollection()` reads it —
+  // is what closes the bug. The CLI composition root still calls
+  // `ensureResponseInferrersRegistered()` to populate the registry
+  // before the pipeline runs.
+  //
+  // Empty registry is a valid state (no inferrer registered for the
+  // matched framework, e.g. an Express project), so we do not throw
+  // — the helper just returns `registryEmpty: true` and the
+  // collection is built without response entries.
+  const responseResult = await inferResponsesIntoSpecs(
+    specs,
+    projectRoot,
+    service.endpoints,
+    { globalFramework: service.match.framework },
+  );
+
   const collection = buildCollection(specs, localConfig, authScheme);
 
   // The auth flow is part of the pipeline, not the script: if it
@@ -500,6 +523,13 @@ async function buildForService(
       withoutValidation: specs.length - countWithValidation(specs),
       bodiesInferred: inference.bodiesAdded,
       queriesInferred: inference.queriesAdded,
+      // f00014 follow-up: number of specs that gained at least one
+      // `response[]` entry from the framework inferrer. Replaces
+      // the counter that used to live in the CLI loop (which ran
+      // AFTER `buildCollection()` and never reflected in the
+      // output). Surfaced here so the UI / inspect mode / MCP
+      // surface the same number the user sees on the console.
+      responsesInferred: responseResult.enrichedCount,
     },
   };
 }

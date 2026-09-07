@@ -40,6 +40,15 @@ export interface IGenerationMetrics {
   readonly withoutValidation: number;
   readonly bodiesInferred: number;
   readonly queriesInferred: number;
+  /**
+   * Specs that gained at least one entry in `EndpointSpec.responses`
+   * from the framework-specific response inferrer (NestJS / FastAPI /
+   * Spring / ASP.NET). Surfaced in `--inspect` mode and propagated to
+   * the MCP / UI surfaces so they all see the same number the
+   * generator console reports. Populated by the pipeline, not the
+   * script — see `f00014` follow-up.
+   */
+  readonly responsesInferred: number;
 }
 
 /** Authentication forms the scanner can recognize. */

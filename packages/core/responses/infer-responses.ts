@@ -27,6 +27,9 @@ import type {
   IResponseInferrer,
   IResponseInferenceConfidence,
 } from "../../contracts/interfaces/core/responses.interface.js";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 
 /**
  * Mutable, test-friendly registry. Production reads through
@@ -159,3 +162,133 @@ export function inferResponses(
   });
   return Object.freeze(deduped);
 }
+
+/**
+ * Per-route metadata used by `inferResponsesIntoSpecs` to dispatch
+ * the right framework inferrer and read the right source file. We
+ * accept the bare projection here so the function does not have to
+ * depend on `IProjectMatch` (which lives in the scanner contract).
+ */
+export interface IRouteForInference {
+  readonly method: string;
+  readonly uri: string;
+  readonly sourceFile?: string | null;
+  readonly framework?: string | null;
+}
+
+/**
+ * Run `inferResponses` against every spec and write the result onto
+ * `spec.responses`. Returns the number of specs that gained at
+ * least one entry.
+ *
+ * The helper exists because the **only** place that should mutate
+ * `EndpointSpec.responses` is the pipeline, not the script. Before
+ * it landed, the CLI ran the loop after `buildCollection()` had
+ * already serialised the Postman collection, which meant the
+ * inferred `response[]` block never made it into the JSON the user
+ * saw. Moving the loop into the pipeline — and calling it
+ * **before** `buildCollection()` — closes that bug.
+ *
+ * Source files are read **once** and cached in a Map keyed by
+ * relative path so the helper does not hit the disk N times for an
+ * N-endpoint project that lives in one file (the common case). A
+ * spec whose route has no `sourceFile` (a manual override) is
+ * silently skipped — same behaviour as the previous CLI loop.
+ *
+ * Failures inside the per-spec loop are caught and logged so a
+ * single malformed handler cannot abort the whole run. Failures
+ * outside the loop (e.g. the registry being empty) are reported in
+ * `registryEmpty` so the caller can decide whether to surface a
+ * warning.
+ */
+export interface IInferResponsesIntoSpecsResult {
+  /** How many specs ended up with at least one inferred entry. */
+  readonly enrichedCount: number;
+  /**
+   * True when the dispatcher registry had zero inferrers at the
+   * time of the call. Production calls `inferResponsesIntoSpecs()`
+   * after `ensureResponseInferrersRegistered()`; tests may pass an
+   * empty registry intentionally.
+   */
+  readonly registryEmpty: boolean;
+}
+
+export async function inferResponsesIntoSpecs(
+  specs: ReadonlyArray<EndpointSpecLike>,
+  projectRoot: string,
+  routes: ReadonlyArray<IRouteForInference>,
+  options: {
+    /**
+     * Fallback framework when a route has no per-route
+     * `framework` (e.g. a legacy scanner that doesn't tag the
+     * ParsedRoute). Pass the global match winner here.
+     */
+    readonly globalFramework?: string;
+  } = {},
+): Promise<IInferResponsesIntoSpecsResult> {
+  const registryEmpty = inferrers.length === 0;
+  if (registryEmpty) {
+    return { enrichedCount: 0, registryEmpty: true };
+  }
+  const globalFramework = options.globalFramework ?? "";
+  // Pre-bucket routes by (METHOD uri) once. The key is identical to
+  // the one used inside the loop so spec→route pairing does not
+  // depend on ParsedRoute's exact casing — the dispatcher normalises
+  // on its side.
+  const routeByKey = new Map<string, IRouteForInference>();
+  for (const r of routes) {
+    routeByKey.set(`${r.method.toUpperCase()} ${r.uri}`, r);
+  }
+  const sourceCache = new Map<string, string>();
+  let enriched = 0;
+  for (const spec of specs) {
+    const info = routeByKey.get(`${spec.method} ${spec.uri}`);
+    const rel = info?.sourceFile ?? null;
+    if (!rel) continue;
+    let content = sourceCache.get(rel);
+    if (content === undefined) {
+      const abs = join(projectRoot, rel);
+      try {
+        content = await readFile(abs, "utf8");
+      } catch {
+        content = ""; // unreadable source → skip silently
+      }
+      sourceCache.set(rel, content);
+    }
+    if (!content) continue;
+    const frameworkHint =
+      info && info.framework && info.framework.length > 0
+        ? info.framework
+        : globalFramework;
+    if (!frameworkHint) continue;
+    let entries: ReadonlyArray<IResponseInference>;
+    try {
+      entries = inferResponses(
+        spec,
+        {
+          path: join(projectRoot, rel),
+          content,
+          framework: frameworkHint,
+        },
+        { frameworkHint },
+      );
+    } catch (err) {
+      console.warn(
+        `[responses] inferrer for framework "${frameworkHint}" threw on ${spec.method} ${spec.uri}:`,
+        err,
+      );
+      continue;
+    }
+    if (entries.length > 0) {
+      // EndpointSpec is structurally compatible with EndpointSpecLike,
+      // but TS doesn't narrow through the union — cast at the
+      // assignment site to keep the helper usable for both shapes.
+      (spec as { responses?: ReadonlyArray<IResponseInference> }).responses = entries;
+      enriched++;
+    }
+  }
+  return { enrichedCount: enriched, registryEmpty: false };
+}
+
+// Re-export so the pipeline does not have to chase the scanner type.
+export type { ParsedRoute };
