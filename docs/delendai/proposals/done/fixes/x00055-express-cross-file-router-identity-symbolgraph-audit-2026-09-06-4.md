@@ -2,7 +2,7 @@
 id: x00055
 title: "Express cross-file router identity — SymbolGraph (audit 2026-09-06 §4)"
 kind: fix
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-06
@@ -11,6 +11,13 @@ dependsOn:
   - x00038
   - x00048
   - r00014
+shipped-in:
+  - "40a30c5"
+  - "38cb29a"
+  - "eea465c"
+last-transition-id: 4ba44ec6-b18b-4ab0-8e5b-19eef53934cb
+last-correlation-id: 4ba44ec6-b18b-4ab0-8e5b-19eef53934cb
+last-transition-from: review
 ---
 
 # x00055 — `const router = express.Router()` en dos ficheros colisiona en el mapa global
@@ -166,7 +173,12 @@ en ficheros distintos tienen `symbolId` distintos y no colisionan.
     `lint:fixtures` no se queje.
   - E2E: ejecuta el binario contra la fixture, valida que las
     rutas de cada router acaban en el prefijo correcto.
-
+- review-state: done
+- review-implementer: falcon
+- review-reviewer: finch
+- review-log: approved by finch — Independent review approved. The fixture now matches the S2 contract and the dedicated E2E proves there is no cross-prefix contamination.
+- **Status**: done
+- shipped-in: not recorded (closed without a known delivering commit)
 ## Acceptance
 
 `bun run validate` verde.
