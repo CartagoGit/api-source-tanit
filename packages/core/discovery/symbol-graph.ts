@@ -32,7 +32,10 @@ import {
   type SymbolId,
   symbolIdToString,
 } from "./symbol-id.js";
-import type { ISymbolGraph } from "../../contracts/interfaces/core/symbol-graph.interface.js";
+import type {
+  ISymbolGraph,
+  IImportRecord,
+} from "../../contracts/interfaces/core/symbol-graph.interface.js";
 
 /** Tags a node so consumers don't confuse a value with a type alias. */
 export type SymbolKind =
@@ -56,22 +59,8 @@ export interface ISymbolNode {
   readonly payload?: unknown;
 }
 
-/**
- * One import edge — `import { router as usersRouter } from
- * "./users/routes"`. The graph does **not** resolve
- * `"./users/routes"` to a file path (that's S2). It just
- * records the specifier and the local names so the resolver
- * can later walk the edge.
- */
-export interface IImportRecord {
-  readonly sourceFile: string;
-  /** Raw specifier as written in `from "..."`. */
-  readonly specifier: string;
-  /** Local name in the importing file. */
-  readonly localName: string;
-  /** Original imported name (different from `localName` on `as` renames). */
-  readonly importedName: string;
-}
+// Re-export the contract type so existing importers keep working.
+export type { IImportRecord };
 
 /** Mutation surface — kept off the public `ISymbolGraph`. */
 interface IMutableSymbolGraph extends Omit<ISymbolGraph, "resolveByName" | "resolveByImportPath"> {
@@ -184,12 +173,34 @@ function finalize(state: IMutableSymbolGraph): ISymbolGraph {
         (r) => r.specifier === specifier && r.localName === localName,
       );
       if (!matching) return Object.freeze([]);
-      // The destination file is whatever the resolver
-      // (S2) joined up; the graph doesn't track that
-      // here, so the framework scanner's call to
-      // S2 supplies it. Today, callers also look in
-      // `state.byFile` for any node that imports
-      // `specifier` and matches the importedName.
+      // x00063: the import record may carry a `targetFile`
+      // (resolved by the caller's import-resolver) and/or a
+      // `targetSymbol` (the SymbolId of the destination binding).
+      // Use them when present; fall back to the legacy
+      // global-name search only when nothing was resolved.
+      if (matching.targetSymbol) {
+        const key = symbolIdToString(matching.targetSymbol);
+        const direct = state.byFile.get(matching.targetSymbol.sourceFile);
+        const found = direct?.find(
+          (n) => symbolIdToString(n.id) === key,
+        );
+        return Object.freeze(found ? [found] : []);
+      }
+      if (matching.targetFile) {
+        const bucket = state.byFile.get(matching.targetFile);
+        if (!bucket) return Object.freeze([]);
+        const out = bucket.filter(
+          (n) => n.id.localName === matching.importedName,
+        );
+        return Object.freeze(out);
+      }
+      // Legacy fallback: search every other file for a node
+      // with the right importedName. Used when the resolver
+      // returned no concrete file (e.g. node_modules, a
+      // misspelling). Two routers named "router" in two files
+      // would still produce multiple candidates here — exactly
+      // the audit's "search globally" footgun. New callers
+      // should populate `targetFile` / `targetSymbol`.
       const targetBucket = [...state.byFile.entries()];
       const out: ISymbolNode[] = [];
       for (const [targetFile, bucket] of targetBucket) {

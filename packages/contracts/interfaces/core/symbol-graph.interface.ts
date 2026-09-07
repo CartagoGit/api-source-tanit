@@ -32,12 +32,34 @@ export interface ISymbolNode {
 /**
  * Import edge — `import { router as usersRouter } from
  * "./users/routes"`.
+ *
+ * x00063 adds two optional fields that close the cross-file
+ * "search every file" ambiguity in `SymbolGraph.resolveByImportPath()`:
+ *
+ * - `targetFile`: the **resolved** destination file, picked by
+ *   the import resolver (with the `.ts/.tsx/.js` extension
+ *   fallback and the `index.{ext}` fallback). When `null`, the
+ *   resolver returned no concrete file (e.g. `node_modules`,
+ *   a misspelling). The SymbolGraph then falls back to the
+ *   legacy global-name search for backwards compatibility.
+ * - `targetSymbol`: the SymbolId of the destination binding,
+ *   already resolved. When set, the SymbolGraph skips the
+ *   lookup entirely.
+ *
+ * Both fields are populated by `SymbolGraphBuilder.addImport()`
+ * when the caller passes them in (the express scanner already
+ * uses the import-resolver to compute them; the SymbolGraph
+ * generic path now consumes the same output).
  */
 export interface IImportRecord {
   readonly sourceFile: string;
   readonly specifier: string;
   readonly localName: string;
   readonly importedName: string;
+  /** Resolved target file (x00063), or `null` when unresolvable. */
+  readonly targetFile?: string | null;
+  /** Resolved target SymbolId (x00063), or `null` when unresolvable. */
+  readonly targetSymbol?: SymbolId | null;
 }
 
 /** Frozen, queryable symbol graph. */
