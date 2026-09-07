@@ -49,7 +49,7 @@ describe("branch-protection gate", () => {
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/rulesets?includes_parents=true&per_page=100`]: jsonResponse([{
           target: "branch",
           enforcement: "active",
-          conditions: { ref_name: { include: ["develop"] } },
+          conditions: { ref_name: { include: ["refs/heads/develop"] } },
         }]),
       }),
     });

@@ -83,9 +83,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           test -n "$GH_TOKEN" || { echo "::warning::REPO_ADMIN_TOKEN no configurado; ruleset no aplicado."; exit 0; }
-          gh api --method PUT "/repos/${REPO}/rulesets/1" \
-            -H "Accept: application/vnd.github+json" \
-            --input - <<'JSON'
+          PAYLOAD=$(cat <<'JSON'
           {
             "name": "develop-required-checks",
             "target": "branch",
@@ -100,3 +98,13 @@ jobs:
             } }]
           }
           JSON
+          )
+          RULESET_ID=$(gh api "/repos/${REPO}/rulesets?per_page=100" \
+            --jq '.[] | select(.name == "develop-required-checks") | .id' | head -n1)
+          if [ -n "$RULESET_ID" ]; then
+            gh api --method PUT "/repos/${REPO}/rulesets/${RULESET_ID}" \
+              -H "Accept: application/vnd.github+json" --input - <<<"$PAYLOAD"
+          else
+            gh api --method POST "/repos/${REPO}/rulesets" \
+              -H "Accept: application/vnd.github+json" --input - <<<"$PAYLOAD"
+          fi

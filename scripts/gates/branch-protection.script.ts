@@ -290,8 +290,10 @@ async function checkBranchProtection(
   const rulesets = (await rulesetsResponse.json()) as unknown;
   if (!Array.isArray(rulesets) || !rulesets.some((ruleset) => {
     const candidate = ruleset as IGitHubRuleset;
+    const branchRef = `refs/heads/${options.branch}`;
     return candidate.target === "branch" && candidate.enforcement === "active" &&
-      candidate.conditions?.ref_name?.include?.some((pattern) => pattern === options.branch || pattern === "refs/heads/*");
+      candidate.conditions?.ref_name?.include?.some((pattern) =>
+        pattern === options.branch || pattern === branchRef || pattern === "refs/heads/*");
   })) {
     return {
       branch: options.branch,
