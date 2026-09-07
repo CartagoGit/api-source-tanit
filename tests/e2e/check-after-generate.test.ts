@@ -55,11 +55,16 @@ beforeAll(async () => {
   for (const framework of EJEMPLOS) {
     const root = join(work, framework);
     await copyExampleClean(exampleDir(framework), root);
-    await runProcess("bun", [
+    const generated = await runProcess("bun", [
       join(CLI_COMMANDS_DIR, "generate.script.ts"),
       "--project-root",
       root,
+      "--allow-empty",
     ]);
+    expect(
+      generated.code,
+      `${framework}: generate failed before check\n${generated.output}`,
+    ).toBe(0);
     raiz.set(framework, root);
   }
 }, 900_000);
