@@ -129,7 +129,8 @@ describe("init.command — detection branches", () => {
     const context = resolveProjectContext({ projectRoot: project.root });
     const outcome = await runInit([], context);
     expect(outcome.code).toBe(0);
-    const endpointsBody = await readFile(outcome.endpointsPath, "utf8");
+    expect(outcome.endpointsPath).not.toBeNull();
+    const endpointsBody = await readFile(outcome.endpointsPath ?? "", "utf8");
     expect(endpointsBody).toContain("ALL_ENDPOINTS");
   });
 });

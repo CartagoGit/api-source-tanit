@@ -99,4 +99,30 @@ describe("open-postman — main()", () => {
     );
     expect(code).toBe(0);
   });
+
+  test("non-web branch prints the path being opened", async () => {
+    // The non-`--web` branch in `main()` prints the path it is
+    // about to open and then attempts `xdg-open` / `gio open` /
+    // `open` / the web importer fallback depending on the
+    // platform. We pin the output rather than the exit code
+    // because the CI environment may or may not have a desktop
+    // helper installed.
+    const root = await generatedProject("linux-fallback");
+    const logs: string[] = [];
+    const saved = console.log;
+    console.log = (...values: ReadonlyArray<unknown>): void => {
+      for (const v of values) logs.push(String(v));
+    };
+    try {
+      const code = await withArgv(
+        ["--project-root", root],
+        () => main(),
+      );
+      expect([0, 1]).toContain(code);
+    } finally {
+      console.log = saved;
+    }
+    expect(logs.join("\n")).toContain("Opening Postman with:");
+    expect(logs.join("\n")).toContain("Platform:");
+  });
 });
