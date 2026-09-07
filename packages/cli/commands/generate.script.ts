@@ -17,6 +17,7 @@ import {
   writeFileAtomic,
   writeJsonAtomic,
 } from "../../core/helpers/atomic-write.helper.js";
+import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/argv.helper.js";
 import { dirname, join } from "node:path";
 import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
@@ -167,48 +168,35 @@ export async function runGenerate(
   const extraPaths: string[] = [];
   let collectionPath: string | null = null;
 
-  const openAfter = args.includes("--open");
-  const inspectMode = args.includes("--inspect");
-  const outputIdx = args.indexOf("--output");
-  const outputFlag = outputIdx !== -1 ? args[outputIdx + 1] ?? null : null;
-  const basenameIdx = args.indexOf("--basename");
-  const basenameFlag =
-    basenameIdx !== -1 ? args[basenameIdx + 1] ?? null : null;
-  // `--framework <id>` skips detection. It is the escape hatch for
-  // projects where autodetection CANNOT be right: monorepos whose
-  // manifest lives at the root, dependencies with aliases, manifests
-  // generated at build time. Whoever runs this knows what their API
-  // is.
-  const frameworkIdx = args.indexOf("--framework");
-  const frameworkFlag = frameworkIdx !== -1 ? (args[frameworkIdx + 1] ?? null) : null;
-
-  // `--framework-search-root <subdir>` points at the specific workspace
-  // of the framework inside the project. It has two uses:
-  //   1. Force a subdir that the monorepo detection would miss
-  //      (several workspaces with a single manifest at the root).
-  //   2. Point at a subdir when autodetection does not either
-  //      (manifest at root, dependency with an alias, ...).
-  //
-  // If it is omitted and the project is a monorepo with a single
-  // workspace, the orchestrator fills it in automatically. Path
-  // validation (no leading `/`, no `..`) lives in the pipeline; here
-  // it is only read.
-  const searchRootIdx = args.indexOf("--framework-search-root");
-  const frameworkSearchRoot =
-    searchRootIdx !== -1 ? (args[searchRootIdx + 1] ?? null) : null;
-
-  // a00013 S3: `--combine-services` merges the services of a monorepo
-  // into a single collection (legacy mode). Default false: one
-  // collection per service. For flat projects (a single service) the
-  // flag is ignored.
-  const combineServicesFlag = args.includes("--combine-services");
-
+  // x00066: every CLI flag goes through one of three batch helpers
+  // (`readFlags`, `readBooleanFlags`, `readFlagList`). Both
+  // `--flag value` and `--flag=value` work; the audit's P2 #9 (mixed
+  // parsing) is gone.
+  const flags = readFlags(args, {
+    output: "--output",
+    basename: "--basename",
+    framework: "--framework",
+    frameworkSearchRoot: "--framework-search-root",
+    format: "--format",
+    envs: "--envs",
+  });
+  const bools = readBooleanFlags(args, {
+    openAfter: "--open",
+    inspectMode: "--inspect",
+    combineServicesFlag: "--combine-services",
+  });
+  const outputFlag = flags.output ?? null;
+  const basenameFlag = flags.basename ?? null;
+  const frameworkFlag = flags.framework ?? null;
+  const frameworkSearchRoot = flags.frameworkSearchRoot ?? null;
+  const combineServicesFlag = bools.combineServicesFlag;
+  const openAfter = bools.openAfter;
+  const inspectMode = bools.inspectMode;
   // `--format a,b,c`. Validated BEFORE scanning: a misspelled format
   // name discovered at the end, after walking the project and having
   // not written the file that was asked for, says nothing about what
   // happened.
-  const formatIdx = args.indexOf("--format");
-  const parsedFormats = parseFormats(formatIdx !== -1 ? (args[formatIdx + 1] ?? null) : null);
+  const parsedFormats = parseFormats(flags.format ?? null);
   if (!parsedFormats.ok) {
     console.error(
       `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
@@ -217,12 +205,7 @@ export async function runGenerate(
     return { code: 1, report: null };
   }
   const formats = parsedFormats.formats;
-
-  const envsIdx = args.indexOf("--envs");
-  const envsFlag =
-    envsIdx !== -1
-      ? (args[envsIdx + 1] ?? "").split(",").map((s) => s.trim()).filter(Boolean)
-      : null;
+  const envsFlag = flags.envs ? readFlagList(args, "--envs") : null;
 
   const pipeline = await runPipeline(
     basenameFlag,

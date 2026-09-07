@@ -56,3 +56,53 @@ export function readFlag(
 export function hasFlag(argv: ReadonlyArray<string>, name: string): boolean {
   return argv.includes(name) || argv.some((arg) => arg.startsWith(`${name}=`));
 }
+
+
+/**
+ * Reads a list of `name → result` mappings in one pass over `argv`.
+ *
+ * For each entry:
+ *   - if `name` is `string`: returns the value (`undefined` if absent)
+ *     under the same key in the result object.
+ *   - if `name` is `string[]`: same shape, batch-friendly.
+ *
+ * Names with `=` (e.g. `--json`) are read with `hasFlag` semantics.
+ *
+ * The helper replaces the manual `args.indexOf(name)` blocks in the
+ * CLI commands (audit 2026-09-06 §9, x00066 S1).
+ */
+export function readFlags<T extends Record<string, string>>(
+  argv: ReadonlyArray<string>,
+  names: T,
+): { [K in keyof T]: string | undefined } {
+  const result: Record<string, string | undefined> = {};
+  for (const [key, name] of Object.entries(names)) {
+    result[key] = readFlag(argv, name);
+  }
+  return result as { [K in keyof T]: string | undefined };
+}
+
+/** Reads multiple boolean flags in one pass. */
+export function readBooleanFlags<T extends Record<string, string>>(
+  argv: ReadonlyArray<string>,
+  names: T,
+): { [K in keyof T]: boolean } {
+  const result: Record<string, boolean> = {};
+  for (const [key, name] of Object.entries(names)) {
+    result[key] = hasFlag(argv, name);
+  }
+  return result as { [K in keyof T]: boolean };
+}
+
+/**
+ * Parse a `--flag a,b,c` style comma-separated list. Returns an empty
+ * array when the flag is absent.
+ */
+export function readFlagList(
+  argv: ReadonlyArray<string>,
+  name: string,
+): string[] {
+  const value = readFlag(argv, name);
+  if (!value) return [];
+  return value.split(",").map((s) => s.trim()).filter(Boolean);
+}
