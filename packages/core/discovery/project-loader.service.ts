@@ -25,6 +25,7 @@
  * searches the host project for the config or generates a zero-config.
  */
 import { existsSync } from "node:fs";
+import { envOrAlias } from "../helpers/env-or-alias.helper.js";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
@@ -381,12 +382,12 @@ export async function resolveConfigPath(
   const cli = readFlag(argv, "--config");
   if (cli) return resolveMaybeRelative(cli, root);
 
-  const env = process.env.POSTMAN_CONFIG?.trim();
+  const env = envOrAlias("TANIT_CONFIG", "POSTMAN_CONFIG")?.trim();
   if (env) return resolveMaybeRelative(env, root);
 
   // LEGACY: examples inside the package itself (for compatibility with this
   // repository only). It is NOT used in external projects.
-  const forced = process.env.POSTMAN_EXAMPLE?.trim();
+  const forced = envOrAlias("TANIT_EXAMPLE", "POSTMAN_EXAMPLE")?.trim();
   if (forced) {
     const legacy = join(context.packageRoot, "examples", forced, "config.constant.ts");
     if (existsSync(legacy)) return legacy;

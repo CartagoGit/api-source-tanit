@@ -32,6 +32,7 @@
  * Moving either one to an argument is trivial; see `// TODO r00011+` below.
  */
 import { existsSync } from "node:fs";
+import { envOrAlias } from "../helpers/env-or-alias.helper.js";
 import { delimiter, dirname, join, resolve } from "node:path";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-limits.constant.js";
@@ -56,7 +57,6 @@ import { projectDirs } from "./project-context.service.js";
 export function resolveOutputDir(
   context: IProjectContext | undefined,
   argv: ReadonlyArray<string> = process.argv,
-  env: Readonly<Record<string, string | undefined>> = process.env,
 ): string {
   // 1. CLI `--output-dir <path>`.
   //    Distinguish "missing" from "present with an empty value": if
@@ -80,7 +80,7 @@ export function resolveOutputDir(
   }
 
   // 3. Env `POSTMAN_OUTPUT_DIR`.
-  const envDir = env["POSTMAN_OUTPUT_DIR"];
+  const envDir = envOrAlias("TANIT_OUTPUT_DIR", "POSTMAN_OUTPUT_DIR");
   if (envDir) return resolve(envDir);
 
   // 4. If there is a context, use what `resolveProjectContext` already
@@ -120,7 +120,7 @@ function outputBasename(
   context: IProjectContext | undefined,
   projectName?: string,
 ): string {
-  const env = process.env["POSTMAN_OUTPUT_BASENAME"];
+  const env = envOrAlias("TANIT_OUTPUT_BASENAME", "POSTMAN_OUTPUT_BASENAME");
   if (env) {
     return env.endsWith(".postman_collection")
       ? env
@@ -141,10 +141,9 @@ function outputBasename(
 async function ensureOutputDir(
   context: IProjectContext | undefined,
   argv: ReadonlyArray<string>,
-  env: Readonly<Record<string, string | undefined>>,
 ): Promise<string> {
   const fs = await import("node:fs/promises");
-  const dir = resolveOutputDir(context, argv, env);
+  const dir = resolveOutputDir(context, argv);
 
   const contain = process.env[CONTAINMENT_ROOT_VAR];
   if (contain) {
@@ -182,9 +181,8 @@ export async function outputCollectionPath(
   context: IProjectContext | undefined,
   projectName?: string,
   argv: ReadonlyArray<string> = process.argv,
-  env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<string> {
-  const dir = await ensureOutputDir(context, argv, env);
+  const dir = await ensureOutputDir(context, argv);
   return join(dir, `${outputBasename(context, projectName)}.json`);
 }
 
@@ -200,9 +198,8 @@ export async function outputEnvironmentPath(
   envName: string,
   projectName?: string,
   argv: ReadonlyArray<string> = process.argv,
-  env: Readonly<Record<string, string | undefined>> = process.env,
 ): Promise<string> {
-  const dir = await ensureOutputDir(context, argv, env);
+  const dir = await ensureOutputDir(context, argv);
   const base = (projectName?.trim() || context?.projectBasename || "postman");
   const slug = envName
     .toLowerCase()

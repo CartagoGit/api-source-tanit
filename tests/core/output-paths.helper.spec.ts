@@ -49,13 +49,19 @@ describe("resolveOutputDir — precedence", () => {
   });
 
   test("env POSTMAN_OUTPUT_DIR wins when there is no flag", () => {
-    expect(
-      resolveOutputDir(
-        makeContext({ outputDir: "/tmp/contexto" }),
-        [],
-        { POSTMAN_OUTPUT_DIR: "/tmp/env-dir" },
-      ),
-    ).toBe("/tmp/env-dir");
+    const previous = process.env["TANIT_OUTPUT_DIR"];
+    process.env["TANIT_OUTPUT_DIR"] = "/tmp/env-dir";
+    try {
+      expect(
+        resolveOutputDir(
+          makeContext({ outputDir: "/tmp/contexto" }),
+          [],
+        ),
+      ).toBe("/tmp/env-dir");
+    } finally {
+      if (previous === undefined) delete process.env["TANIT_OUTPUT_DIR"];
+      else process.env["TANIT_OUTPUT_DIR"] = previous;
+    }
   });
 
   test("CLI wins over env", () => {
@@ -63,25 +69,24 @@ describe("resolveOutputDir — precedence", () => {
       resolveOutputDir(
         makeContext({ outputDir: "/tmp/contexto" }),
         ["--output-dir", "/tmp/cli-dir"],
-        { POSTMAN_OUTPUT_DIR: "/tmp/env-dir" },
       ),
     ).toBe("/tmp/cli-dir");
   });
 
   test("without flag or env, falls back to context.outputDir", () => {
-    expect(resolveOutputDir(makeContext({ outputDir: "/tmp/contexto" }), [], {})).toBe(
+    expect(resolveOutputDir(makeContext({ outputDir: "/tmp/contexto" }), [])).toBe(
       "/tmp/contexto",
     );
   });
 
   test("without context, flag, or env: throws with an actionable message", () => {
-    expect(() => resolveOutputDir(undefined, [], {})).toThrow(
+    expect(() => resolveOutputDir(undefined, [])).toThrow(
       /output-dir|POSTMAN_OUTPUT_DIR|project-root/,
     );
   });
 
   test("without context but with --output-dir in argv: works", () => {
-    expect(resolveOutputDir(undefined, ["--output-dir", "/tmp/cli-dir"], {})).toBe(
+    expect(resolveOutputDir(undefined, ["--output-dir", "/tmp/cli-dir"])).toBe(
       "/tmp/cli-dir",
     );
   });
@@ -93,7 +98,7 @@ describe("resolveOutputDir — precedence", () => {
    * be named `--json` on disk.
    */
   test("--output-dir with no value does not swallow the next flag", () => {
-    expect(resolveOutputDir(makeContext({ outputDir: "/tmp/fallback" }), ["--output-dir", "--json"], {})).toBe(
+    expect(resolveOutputDir(makeContext({ outputDir: "/tmp/fallback" }), ["--output-dir", "--json"])).toBe(
       "/tmp/fallback",
     );
   });
@@ -103,7 +108,6 @@ describe("resolveOutputDir — precedence", () => {
       resolveOutputDir(
         makeContext({ outputDir: "/tmp/fallback" }),
         ["--output", "--json"],
-        {},
       ),
     ).toBe("/tmp/fallback");
   });
@@ -120,13 +124,13 @@ describe("outputCollectionPath — path composition", () => {
 
   test("joins outputDir + basename + .json", async () => {
     const out = work;
-    const path = await outputCollectionPath(makeContext({ outputDir: out }), "mi-api", [], {});
+    const path = await outputCollectionPath(makeContext({ outputDir: out }), "mi-api", []);
     expect(path).toBe(join(out, "mi-api.postman_collection.json"));
   });
 
   test("without projectName uses the projectBasename from the context", async () => {
     const out = work;
-    const path = await outputCollectionPath(makeContext({ outputDir: out, projectBasename: "api" }), undefined, [], {});
+    const path = await outputCollectionPath(makeContext({ outputDir: out, projectBasename: "api" }), undefined, []);
     expect(path).toBe(join(out, "api.postman_collection.json"));
   });
 
@@ -141,13 +145,13 @@ describe("outputCollectionPath — path composition", () => {
       projectBasename: "proyecto",
       outputDir: "/tmp/proyecto/" + OUTPUT_DIR_NAME,
     };
-    expect(resolveOutputDir(ctx, [], {})).toBe("/tmp/proyecto/" + OUTPUT_DIR_NAME);
+    expect(resolveOutputDir(ctx, [])).toBe("/tmp/proyecto/" + OUTPUT_DIR_NAME);
   });
 
   test("respects --output-dir over the context", async () => {
     const ctx = makeContext({ outputDir: "/tmp/contexto" });
     const argv = ["--output-dir", work];
-    const path = await outputCollectionPath(ctx, "x", argv, {});
+    const path = await outputCollectionPath(ctx, "x", argv);
     expect(path).toBe(join(work, "x.postman_collection.json"));
   });
 });
