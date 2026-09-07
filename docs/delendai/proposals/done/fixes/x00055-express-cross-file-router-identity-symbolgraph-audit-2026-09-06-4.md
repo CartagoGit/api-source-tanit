@@ -11,10 +11,10 @@ dependsOn:
   - x00038
   - x00048
   - r00014
-shipped-in:
-  - "40a30c5"
-  - "38cb29a"
-  - "eea465c"
+shippedIn:
+  - 40a30c5
+  - 38cb29a
+  - eea465c
 last-transition-id: 4ba44ec6-b18b-4ab0-8e5b-19eef53934cb
 last-correlation-id: 4ba44ec6-b18b-4ab0-8e5b-19eef53934cb
 last-transition-from: review

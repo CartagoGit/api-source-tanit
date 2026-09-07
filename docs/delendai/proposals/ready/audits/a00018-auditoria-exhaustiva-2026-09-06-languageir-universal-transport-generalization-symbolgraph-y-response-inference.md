@@ -173,22 +173,20 @@ slice cerrado. Orden recomendado:
 | # | id              | scope                       | dependencia              | estado |
 | - | --------------- | --------------------------- | ------------------------ | ------ |
 | 4 | x00056          | Hono `.all()` exporters     | aad6376 ✅               | **done** (2026-09-06) |
-| 1 | r00014          | SymbolGraph cross-file      | (foundation)             | pendiente de autoría |
-| 2 | x00055          | Express router (consume #1) | r00014                   | blocked (sin r00014 no hay cross-file) |
-| 3 | r00013          | LanguageIR Fastify + Hono   | r00014 (parcial)         | pendiente de autoría |
-| 5 | r00016          | SchemaGraph view derivation | (independiente)          | pendiente de autoría |
-| 6 | r00015          | Confidence scoring          | (independiente)          | pendiente de autoría |
-| 7 | f00012          | Response inference          | r00013, r00016           | pendiente de autoría |
-| 8 | f00013          | Transport generalization    | (foundation)             | pendiente de autoría |
+| 1 | r00014          | SymbolGraph cross-file      | x00048 ✅                | **done** (2026-09-07) — SHAs `2a602bc`, `77c9cf3`, `610953e`, `d63aedc` |
+| 2 | x00055          | Express router (consume #1) | r00014                   | **done** (2026-09-07) — SHAs `40a30c5`, `38cb29a`, `eea465c` |
+| 5 | r00016          | SchemaGraph view derivation | (independiente)          | **done** (2026-09-07) — SHA `cd191dd` |
+| 6 | r00015          | Confidence scoring          | a00018                   | **done** (2026-09-07) — SHAs `171f6ad`, `c3f92d7`. **Deviation**: NestJS `@Body() any` heuristic deferred; Pages Router emits N endpoints instead of collapsing to single `method: ALL` |
+| 7 | f00012          | Response inference          | r00013, r00016           | **done** (2026-09-07) — SHAs `2b8ea3d`, `f000bc0`, `2e596ff`, `243ef07`, `68a8e87`, `cbe9b19`. **Deviation**: Postman exporter side (S4 Postman half) not implemented. Follow-up `f00014` |
+| 8 | f00013          | Transport generalization    | a00018                   | **done** (2026-09-07) — SHAs `a0f0ad2`, `263b8ba`, `a20fcc2`, `ef1350e` |
+| 3 | r00013          | LanguageIR Fastify + Hono   | x00048, r00014           | **in-progress** — S1+S2 done (`a6f40f6`); S3+S4 pending. Follow-up `r00018` |
+| 9 | r00018          | Fastify+Hono scanner rewiring + multi-router fixtures (closes r00013 S3+S4) | r00013, r00014 | **ready** |
+| 10 | f00014         | Postman exporter emits inferred responses (closes f00012 S4 Postman half) | f00012 | **ready** |
 
-> **Estado 2026-09-06**: solo `x00056` se ha implementado. Las
-> propuestas `rNNNNN` y `fNNNNN` (hijos 1, 3, 5, 6, 7, 8) son
->规划设计 — existen como dependencias declaradas pero todavía no
-> tienen archivo `.md` en `ready/`. `x00055` está en `ready/`
-> pero bloqueado en la práctica hasta que `r00014` aterrice: el
-> slice S2 solo resuelve dentro del mismo fichero, así que el
-> caso cross-file (la motivación original de `x00055`) queda sin
-> arreglar hasta que `r00014` exista.
+> **Estado 2026-09-07**: 7 de los 8 hijos originales están
+> cerrados (4 sin deviation, 2 con deviation documentada, 1
+> parcialmente completado). Las 2 follow-ups (`r00018`, `f00014`)
+> son trabajo pendiente pero están correctamente scopeadas.
 
 ## Acceptance
 
@@ -198,6 +196,11 @@ regenerado). Esta propuesta padre se cierra cuando:
 - los 5 hijos están en `done/`, o
 - los que quedan se han movido a `paused/` con `pausedReason`
   explícito.
+
+**Estado 2026-09-07**: 7 de 8 hijos en `done/`, 1 en
+`in-progress/` con follow-up. Esta propuesta padre puede
+moverse a `done/` cuando `r00013` cierre (vía `r00018`) — o
+permanecer en `ready/` como índice de la familia hasta entonces.
 
 ## Por qué una sola propuesta padre
 
@@ -212,8 +215,16 @@ dependencias; aquí están declaradas de una vez.
 
 - El orden de los slices depende de `r00014` (SymbolGraph) para
   tres de los hijos. Si `r00014` resulta ser más caro de lo
-  esperado, los hijos 2, 3, 7 se bloquean.
+  esperado, los hijos 2, 3, 7 se bloquean. — **Mitigado**: r00014
+  cerró antes que sus consumidores.
 - `f00013` (transport generalization) es la apuesta más
   ambiciosa. Si el producto decide que REST es suficiente,
   mover este hijo a `paused/` con `pausedReason: "scope
-  reducido en v1.0"` y reevaluar para v2.
+  reducido en v1.0"` y reevaluar para v2. — **Cerrado**: f00013
+  shipped (4 scanners + transport.interface.ts).
+- **Riesgo residual**: `r00013` no está 100% cerrado (S3+S4
+  pendientes). Mientras no se implemente `r00018`, los scanners
+  Fastify y Hono siguen siendo regex/balanced-text. Si el
+  usuario descubre un patrón que Babel maneja y el regex no,
+  Fastify/Hono lo pierden. El coste: perder 1-2 patrones de
+  syntax moderna por framework hasta que `r00018` cierre.

@@ -8,12 +8,8 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | id | kind | path |
 | --- | --- | --- |
 | `a00018` | `audit` | [`ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md`](ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md) |
-| `f00012` | `feat` | [`ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md`](ready/feats/f00012-response-inference-infer-request-response-schemas-from-handlers-signatures-decorators-and-explicit-annotations.md) |
-| `f00013` | `feat` | [`ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md`](ready/feats/f00013-transport-generalization-endpointspec-carries-a-transport-discriminator-scanners-for-grpc-websockets-sse-and-asyncapi.md) |
-| `r00013` | `refactor` | [`ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md`](ready/refactors/r00013-languageir-universal-migrate-fastify-and-hono-scanners-off-regex-balanced-text.md) |
-| `r00014` | `refactor` | [`ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md`](ready/refactors/r00014-symbolgraph-cross-file-resolver-foundation-for-express-fastify-hono-mounts-and-ts-imports.md) |
-| `r00015` | `refactor` | [`ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md`](ready/refactors/r00015-confidence-scoring-end-to-end-cada-endpoint-y-cada-campo-lleva-confianza-razon.md) |
-| `x00055` | `fix` | [`ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md`](ready/fixes/x00055-express-cross-file-router-identity-symbolgraph-audit-2026-09-06-4.md) |
+| `f00014` | `feat` | [`ready/feats/f00014-postman-exporter-emits-inferred-responses.md`](ready/feats/f00014-postman-exporter-emits-inferred-responses.md) |
+| `r00018` | `refactor` | [`ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md`](ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md) |
 
 ## Bloqueadas
 
@@ -77,6 +73,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00002` — La interfaz completa: ajustes persistentes, idiomas, tema, explorador y dry run — `af9ff56`
 - `f00010` — feat(ui): explainer de detección + health score + dashboard multi-proyecto (FEAT-001/002/003 + L-U02/L-U03 + I-U01) — `42bb339, acf1c2e, 957bebe, f1298fc, 9ea4da6, 1f526e8, ce9c141, 0da42da, cad24f3, bd685ee, 382a7b7, e2c8ea8`
 - `f00011` — feat(core): más vias de detección de lenguajes + heurísticas de scoring mejoradas (FEAT-010 + L-U07) — `9ea4da6, f1298fc, 298831a, 0ff53ec, 6c9a150, e344647, d96eaf8, cad24f3`
+- `f00012` — Response inference — infer request/response schemas from handlers, signatures, decorators, and explicit annotations — `2b8ea3d, f000bc0, 2e596ff, 243ef07, 68a8e87, cbe9b19`
+- `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
@@ -148,6 +146,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `x00051` — x00051: la CI corrió el typecheck por primera vez en limpio — 92 errores por ambient types incompletos (@types/node huérfano en local) — `3a8ef7c, 980e514`
 - `x00053` — resolver lint:no-orphan-types — `6a8ecb0, 6bba56f, e5e1802`
 - `x00054` — resolveCallee usa importedName con guardas para default y namespace — `d891e8c, ade50f7`
+- `x00055` — Express cross-file router identity — SymbolGraph (audit 2026-09-06 §4) — `40a30c5, 38cb29a, eea465c`
 - `x00056` — Hono `.all()` → exporters materializan el método 'ALL' (audit 2026-09-06 §13) — `79b0a3d, fdc0171, 15a477e`
 
 ### infra
@@ -172,6 +171,8 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00009` — Eliminar estado global de rutas para soportar concurrencia multi-proyecto — `52042da`
 - `r00010` — Eliminar el singleton de paths.service y cerrar la F-006 del DoD — `39e5042`
 - `r00012` — integration verifier v2 — YAML real y header correcto — `f4ff676`
+- `r00014` — SymbolGraph cross-file resolver — foundation for Express/Fastify/Hono mounts and TS imports — `2a602bc, 77c9cf3, 610953e, d63aedc`
+- `r00015` — Confidence scoring end-to-end — cada endpoint y cada campo lleva confianza + razón — `171f6ad, c3f92d7`
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `cd191dd`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
