@@ -50,7 +50,7 @@ import { relative } from "node:path";
 
 import { parse as babelParse, type ParserPlugin } from "@babel/parser";
 import type { IParseDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
-import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { collectFiles, isSourceJsTsFile } from "../helpers/fs-walk.helper.js";
 
 /**
  * `ITaggedTemplate` is imported from

@@ -20,8 +20,8 @@ export {
   parseWithProgram,
 } from "./typescript.parser.js";
 
-import { buildLanguageIRFromProgram } from "../../../frameworks/typescript/build-language-ir.helper.js";
-import { propagateConstants } from "../../../frameworks/typescript/constant-propagation.helper.js";
+import { buildLanguageIRFromProgram } from "../../language-ir/build-language-ir.helper.js";
+import { propagateConstants } from "../../language-ir/constant-propagation.helper.js";
 import type { IImportBinding } from "../../../contracts/interfaces/core/language-ir.interface.js";
 import { extractExpressRoutesFromIR } from "./extract-routes-express.helper.js";
 import {

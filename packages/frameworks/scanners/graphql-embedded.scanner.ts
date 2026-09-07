@@ -50,7 +50,7 @@
  * of swallowing it. Default behaviour aligned with the current
  * scanner.
  */
-import type { ITaggedTemplate } from "../typescript/tagged-template.helper.js";
+import type { ITaggedTemplate } from "../../core/language-ir/tagged-template.helper.js";
 
 /** Tags the scanner recognises as embedded-SDL labels. */
 const DEFAULT_TAGS: ReadonlyArray<string> = ["gql", "graphql"];

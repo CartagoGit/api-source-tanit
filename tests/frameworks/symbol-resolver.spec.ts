@@ -21,8 +21,8 @@ import {
   collectAliases,
   collectReexports,
   resolveCallee,
-} from "../../packages/frameworks/typescript/symbol-resolver.helper";
-import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper";
+} from "../../packages/core/language-ir/symbol-resolver.helper";
+import { collectMethodCallsFromSource } from "../../packages/core/language-ir/collect-method-calls.helper";
 
 /** Path to the temporary directory shared by the disk tests. */
 let tmpRoot = "";

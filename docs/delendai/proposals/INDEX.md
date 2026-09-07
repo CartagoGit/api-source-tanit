@@ -10,6 +10,18 @@ any change will be detected by `bun run lint:proposals` and rejected.
 | `a00018` | `audit` | [`ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md`](ready/audits/a00018-auditoria-exhaustiva-2026-09-06-languageir-universal-transport-generalization-symbolgraph-y-response-inference.md) |
 | `f00014` | `feat` | [`ready/feats/f00014-postman-exporter-emits-inferred-responses.md`](ready/feats/f00014-postman-exporter-emits-inferred-responses.md) |
 | `r00018` | `refactor` | [`ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md`](ready/refactors/r00018-fastify-hono-scanner-rewiring-languageir.md) |
+| `x00058` | `fix` | [`ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md`](ready/fixes/x00058-no-execution-of-host-typescript-by-default-security-by-construction.md) |
+| `x00059` | `fix` | [`ready/fixes/x00059-generate-collections-with-all-frameworks-facade-actually-returns-array.md`](ready/fixes/x00059-generate-collections-with-all-frameworks-facade-actually-returns-array.md) |
+| `x00060` | `fix` | [`ready/fixes/x00060-generate-transaction-no-write-before-empty-validation.md`](ready/fixes/x00060-generate-transaction-no-write-before-empty-validation.md) |
+| `x00061` | `fix` | [`ready/fixes/x00061-per-spec-framework-for-response-inference.md`](ready/fixes/x00061-per-spec-framework-for-response-inference.md) |
+| `x00062` | `refactor` | [`ready/refactors/x00062-fix-core-frameworks-architectural-regression-language-ir.md`](ready/refactors/x00062-fix-core-frameworks-architectural-regression-language-ir.md) |
+| `x00063` | `refactor` | [`ready/refactors/x00063-symbolgraph-resolved-import-edge.md`](ready/refactors/x00063-symbolgraph-resolved-import-edge.md) |
+| `x00064` | `feat` | [`ready/feats/x00064-parallel-detector-execution-bounded-promise-pool.md`](ready/feats/x00064-parallel-detector-execution-bounded-promise-pool.md) |
+| `x00065` | `feat` | [`ready/feats/x00065-failed-detectors-diagnostics-in-discovery.md`](ready/feats/x00065-failed-detectors-diagnostics-in-discovery.md) |
+| `x00066` | `refactor` | [`ready/refactors/x00066-unified-cli-flag-parser-parsecli.md`](ready/refactors/x00066-unified-cli-flag-parser-parsecli.md) |
+| `x00067` | `chore` | [`ready/chores/x00067-tanit-env-vars-with-postman-deprecated-alias.md`](ready/chores/x00067-tanit-env-vars-with-postman-deprecated-alias.md) |
+| `x00068` | `chore` | [`ready/chores/x00068-ci-parallel-jobs-and-develop-branch-protection.md`](ready/chores/x00068-ci-parallel-jobs-and-develop-branch-protection.md) |
+| `x00069` | `chore` | [`ready/chores/x00069-intel-mac-darwin-x64-binary.md`](ready/chores/x00069-intel-mac-darwin-x64-binary.md) |
 
 ## Bloqueadas
 

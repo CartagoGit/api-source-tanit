@@ -19,7 +19,7 @@ import { describe, expect, test } from "vitest";
 import {
   collectTaggedTemplatesFromSource,
   type ITaggedTemplate,
-} from "../../packages/frameworks/typescript/tagged-template.helper";
+} from "../../packages/core/language-ir/tagged-template.helper";
 
 describe("collectTaggedTemplatesFromSource — positive shape", () => {
   test("a simple gql`...` is recognized as a TaggedTemplateExpression", () => {

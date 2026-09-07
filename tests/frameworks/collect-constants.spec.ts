@@ -9,7 +9,7 @@
  * (unit tests fabricated bindings by hand).
  */
 import { describe, expect, it } from "vitest";
-import { collectConstantsFromSource } from "../../packages/frameworks/typescript/collect-constants.helper.js";
+import { collectConstantsFromSource } from "../../packages/core/language-ir/collect-constants.helper.js";
 
 const FILE = "src/server.ts";
 

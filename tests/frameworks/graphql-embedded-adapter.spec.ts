@@ -13,7 +13,7 @@ import { describe, expect, test } from "vitest";
 
 import { collectEmbeddedSdl } from "../../packages/frameworks/scanners/graphql-embedded.scanner";
 import type { IParseDiagnostic } from "../../packages/contracts/interfaces/core/scanner.interface";
-import type { ITaggedTemplate } from "../../packages/frameworks/typescript/tagged-template.helper";
+import type { ITaggedTemplate } from "../../packages/core/language-ir/tagged-template.helper";
 
 /** Helper: builds a minimal ITaggedTemplate with `raw` and `tag`. */
 function tpl(tag: string, raw: string): ITaggedTemplate {

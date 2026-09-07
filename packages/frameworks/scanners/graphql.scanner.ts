@@ -33,7 +33,7 @@ import { collectFiles } from "../../core/helpers/fs-walk.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
-import { collectTaggedTemplates } from "../typescript/tagged-template.helper.js";
+import { collectTaggedTemplates } from "../../core/language-ir/tagged-template.helper.js";
 import { collectEmbeddedSdl } from "./graphql-embedded.scanner.js";
 
 /** Packages that give away a GraphQL server. */

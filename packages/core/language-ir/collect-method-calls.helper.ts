@@ -53,7 +53,7 @@ import type {
   ReceiverKind,
 } from "../../contracts/interfaces/core/language-ir.interface.js";
 import type { TSLiteral } from "../../contracts/interfaces/core/language/typescript-frontend-literal.interface.js";
-import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { collectFiles, isSourceJsTsFile } from "../helpers/fs-walk.helper.js";
 
 // ---------------------------------------------------------------------------
 // Babel node helpers — same pattern as `tagged-template.ts` and the TS

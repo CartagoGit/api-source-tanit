@@ -55,11 +55,18 @@ export {
 // expone. Re-export aquí para que los adapters del paquete
 // `frameworks` (hoy el scanner GraphQL en S2) importen del barrel
 // de su capa en vez de conocer la ruta interna al módulo.
+//
+// x00062: as of this slice the helper actually lives in
+// `core/language-ir/tagged-template.helper.ts` (the LanguageIR
+// primitives belong with the language frontend, not the
+// framework adapters). The re-export here is a temporary
+// compatibility bridge — consumers in `frameworks/` can still
+// import from this barrel until they migrate.
 export {
   collectTaggedTemplates,
   collectTaggedTemplatesFromSource,
   type ITaggedTemplate,
-} from "./typescript/tagged-template.helper.js";
+} from "../core/language-ir/tagged-template.helper.js";
 import type { IGenerationResult } from "../contracts/interfaces/core/discovery.interface.js";
 import type { IProjectSummary } from "../contracts/interfaces/core/domain.interface.js";
 import type { IGenerateOptions } from "../contracts/interfaces/frameworks/scanners.interface.js";

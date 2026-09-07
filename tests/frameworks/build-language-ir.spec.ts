@@ -14,9 +14,9 @@
 import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
 import * as babelParser from "@babel/parser";
 
-import { buildLanguageIR } from "../../packages/frameworks/typescript/build-language-ir.helper.js";
-import { collectMethodCallsFromSource } from "../../packages/frameworks/typescript/collect-method-calls.helper.js";
-import { collectConstantsFromSource } from "../../packages/frameworks/typescript/collect-constants.helper.js";
+import { buildLanguageIR } from "../../packages/core/language-ir/build-language-ir.helper.js";
+import { collectMethodCallsFromSource } from "../../packages/core/language-ir/collect-method-calls.helper.js";
+import { collectConstantsFromSource } from "../../packages/core/language-ir/collect-constants.helper.js";
 import { createTempProject, scanProject } from "../helpers/scanner-fixture";
 
 /** Fixture que ejercita las cuatro primitivas a la vez. */

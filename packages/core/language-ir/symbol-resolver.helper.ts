@@ -44,7 +44,7 @@ import type {
   IReexport,
   IRouteCallExpression,
 } from "../../contracts/interfaces/core/language-ir.interface.js";
-import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
+import { collectFiles, isSourceJsTsFile } from "../helpers/fs-walk.helper.js";
 
 // ---------------------------------------------------------------------------
 // Babel node helpers — same permissive pattern as S2 and the frontend.
