@@ -90,8 +90,30 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - El test deja explícito que el fix de per-endpoint baseUrl/auth (audit §18 prioridad 6, `r00019` phase-2) sigue siendo un gap conocido: `match.framework` y `match.frameworkSearchRoot` aún comparten valor entre los dos `IGenerationResult`. Esta ejecución NO aborda ese gap; solo garantiza que la ruta multi-servicio produce colecciones disjuntas por prefijo, que es la pre-condición que `r00019` necesita.
 - Quedan fuera del alcance de esta ejecución y pendientes para siguientes slices: `vitest.config.ts` con thresholds per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%), `scripts/gates/coverage.script.ts`, `tests/coverage-baseline.json` y los snapshots versionados para las fixtures que aún no los tienen. `lint:proposals` también sigue rojo por 16 propuestas archivadas en `done/<kind>/` con `kind` incorrecto (deuda previa a S3, fuera del scope).
 - `bun run typecheck` verde en las 5 secciones; 532 tests e2e verdes.
-- review-state: in_review
+- review-state: superseded — la aceptación S3 NO se cumple en 2026-09-07 (sigue parcial). Ver Trazabilidad 2026-09-08 abajo.
 - review-implementer: owl
+
+#### Trazabilidad S3 — 2026-09-08 (verificación independiente — slice sigue parcial)
+
+- Verificación en `HEAD` `fda5835` (lock `a00019-phase-1-hygiene-ci` reclamado por `copilot-editor-sandbox-impl-20260908`):
+  - `bun run scripts/gates/lint-naming.script.ts` → verde (503 ficheros, 31 carpetas con regla).
+  - `bun run scripts/gates/lint-no-monkey-patch.script.ts` → clean (S1 sigue cumpliéndose).
+  - `bunx vitest run tests/scripts-gates/branch-protection.spec.ts` → verde (4/4 casos; S2 verificable end-to-end con `validateBranchProtection()` mockeada).
+  - `bunx vitest run tests/scripts-gates/lint-no-monkey-patch.spec.ts` → verde (1/1; gate S1 con cobertura).
+  - `bunx vitest run tests/e2e/multi-service.test.ts` → verde (4/4; aislamiento de prefijos + duplicados METHOD+uri + invariantes Postman v2.1.0).
+  - `bunx vitest run tests/e2e/express-multi-router.test.ts` → verde (1/1; cross-file SymbolGraph).
+  - `bun run scripts/gates/validate.script.ts` → 25/25 ejemplos generan colección válida (con 2 advisories no-bloqueantes en `example-asyncapi` y `example-sse` por duplicación de ruta prefijada; pre-existente).
+- S3 acceptance **NO cerrada** — piezas pendientes verificadas por ausencia en disco:
+  - `scripts/gates/coverage.script.ts` → no existe (`bun run scripts/gates/coverage.script.ts` falla con `error: Module not found`).
+  - `tests/coverage-baseline.json` → no existe.
+  - `vitest.config.ts` declara **un único threshold global** (`statements:73, branches:70, functions:82, lines:75`), NO per-proyecto (`global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%`) como exige S3.
+  - `lint:proposals` rojo por 16 propuestas en `done/<kind>/` con `kind` incorrecto (deuda previa; no introducida por S3).
+- `review-state` se revierte a `in_progress` (NO `in_review`) porque la aceptación S3 no se cumple: el gate `coverage.script.ts`, el `coverage-baseline.json` y los thresholds per-proyecto siguen sin existir en HEAD. La revisión previa marcada como `in_review` queda en el log pero NO equivale a aprobación.
+- c00010 NO se archiva a `done/chores/` porque: (1) el gate de coverage no existe, (2) el baseline no existe, (3) los thresholds per-proyecto no están declarados, (4) `lint:proposals` no cierra por la deuda previa de done/<kind>. El archivo permanece en `in-progress/`.
+- `a00019` slice `phase-1-hygiene-ci` queda con `Status: pending` en el cuerpo del doc padre — no se mueve a `in_progress` desde `pending` porque su acceptance exige c00010 cerrado, lo cual no es cierto todavía.
+- review-state: in_progress
+- review-implementer: copilot-editor-sandbox-impl-20260908
+- review-blocker: scripts/gates/coverage.script.ts ausente; tests/coverage-baseline.json ausente; vitest.config.ts sin thresholds per-proyecto
 ## acceptance
 
 - `bun run lint:naming` verde tras renombrar `host-config-parser.ts` → `host-config-parser.service.ts` y `postman-inferred-response.ts` → `postman-inferred-response.exporter.ts` (cabecera de doc actualizada, ningún import externo queda roto)
