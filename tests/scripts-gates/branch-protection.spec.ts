@@ -40,13 +40,22 @@ describe("branch-protection gate", () => {
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
           required_status_checks: {
+            strict: true,
             contexts: [...REQUIRED_CHECKS],
           },
+          enforce_admins: { enabled: true },
           required_pull_request_reviews: {
             required_approving_review_count: 1,
+            dismiss_stale_reviews: true,
+            require_code_owner_reviews: false,
           },
+          required_linear_history: true,
+          allow_force_pushes: false,
+          allow_deletions: false,
+          required_conversation_resolution: true,
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/rulesets?includes_parents=true&per_page=100`]: jsonResponse([{
+          name: "develop-required-checks",
           target: "branch",
           enforcement: "active",
           conditions: { ref_name: { include: ["refs/heads/develop"] } },

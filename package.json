@@ -89,7 +89,7 @@
     "test:frameworks": "bunx vitest run --project frameworks",
     "test:cli": "bunx vitest run --project cli",
     "test:e2e": "bunx vitest run --project e2e",
-    "test:coverage": "bunx vitest run --coverage",
+    "test:coverage": "bunx vitest run --coverage --coverage.reportOnFailure --coverage.thresholds=false; vitest_status=$?; bun run scripts/gates/coverage.script.ts; coverage_status=$?; if [[ $vitest_status -ne 0 ]]; then exit $vitest_status; fi; exit $coverage_status",
     "test:changed": "bun run scripts/gates/changed.script.ts",
     "typecheck:contracts": "bun run scripts/gates/typecheck.script.ts contracts",
     "typecheck:core": "bun run scripts/gates/typecheck.script.ts core",

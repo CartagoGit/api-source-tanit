@@ -14,19 +14,32 @@
  * inyectables desde `validateBranchProtection()`.
  */
 
-const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const REQUIRED_CHECKS = [
-  "typecheck",
-  "lint",
-  "test-coverage",
-  "validate-examples",
-  "bench-check",
-  "security-audit",
-  "validate-package",
-  "integration-verifier",
-  "ci-summary",
-] as const;
+const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const CI_CONFIG = JSON.parse(readFileSync(resolve(ROOT, "delendai.config.json"), "utf8")) as {
+  ci: {
+    requiredChecks: ReadonlyArray<string>;
+    branchProtection: {
+      rulesetName: string;
+      requiredStatusChecksStrict: boolean;
+      enforceAdmins: boolean;
+      requiredApprovingReviewCount: number;
+      dismissStaleReviews: boolean;
+      requireCodeOwnerReviews: boolean;
+      requiredLinearHistory: boolean;
+      allowForcePushes: boolean;
+      allowDeletions: boolean;
+      requiredConversationResolution: boolean;
+    };
+  };
+};
+
+export const REQUIRED_CHECKS = CI_CONFIG.ci.requiredChecks;
+export const BRANCH_PROTECTION_POLICY = CI_CONFIG.ci.branchProtection;
 
 export type FetchLike = typeof fetch;
 
@@ -74,11 +87,19 @@ interface IGitHubBranchDetails {
   readonly name?: string;
   readonly protected?: boolean;
   readonly required_status_checks?: {
+    readonly strict?: boolean;
     readonly contexts?: ReadonlyArray<string> | null;
   } | null;
+  readonly enforce_admins?: { readonly enabled?: boolean } | null;
   readonly required_pull_request_reviews?: {
     readonly required_approving_review_count?: number;
+    readonly dismiss_stale_reviews?: boolean;
+    readonly require_code_owner_reviews?: boolean;
   } | null;
+  readonly required_linear_history?: boolean;
+  readonly allow_force_pushes?: boolean;
+  readonly allow_deletions?: boolean;
+  readonly required_conversation_resolution?: boolean;
 }
 
 interface IGitHubRuleset {
@@ -267,12 +288,27 @@ async function checkBranchProtection(
     };
   }
 
-  if ((payload.required_pull_request_reviews?.required_approving_review_count ?? 0) < 1) {
+  if (payload.required_status_checks?.strict !== BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict ||
+      payload.enforce_admins?.enabled !== BRANCH_PROTECTION_POLICY.enforceAdmins) {
+    return { branch: options.branch, ok: false, detail: "strict o enforce_admins divergen de la política" };
+  }
+
+  const reviews = payload.required_pull_request_reviews;
+  if (reviews?.required_approving_review_count !== BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount ||
+      reviews.dismiss_stale_reviews !== BRANCH_PROTECTION_POLICY.dismissStaleReviews ||
+      reviews.require_code_owner_reviews !== BRANCH_PROTECTION_POLICY.requireCodeOwnerReviews) {
     return {
       branch: options.branch,
       ok: false,
-      detail: `required_pull_request_reviews ausente o sin aprobaciones requeridas`,
+      detail: `required_pull_request_reviews diverge de la política`,
     };
+  }
+
+  if (payload.required_linear_history !== BRANCH_PROTECTION_POLICY.requiredLinearHistory ||
+      payload.allow_force_pushes !== BRANCH_PROTECTION_POLICY.allowForcePushes ||
+      payload.allow_deletions !== BRANCH_PROTECTION_POLICY.allowDeletions ||
+      payload.required_conversation_resolution !== BRANCH_PROTECTION_POLICY.requiredConversationResolution) {
+    return { branch: options.branch, ok: false, detail: "historial, force-push, borrado o conversaciones divergen de la política" };
   }
 
   const rulesetsUrl = new URL(
@@ -291,7 +327,7 @@ async function checkBranchProtection(
   if (!Array.isArray(rulesets) || !rulesets.some((ruleset) => {
     const candidate = ruleset as IGitHubRuleset;
     const branchRef = `refs/heads/${options.branch}`;
-    return candidate.target === "branch" && candidate.enforcement === "active" &&
+    return candidate.name === BRANCH_PROTECTION_POLICY.rulesetName && candidate.target === "branch" && candidate.enforcement === "active" &&
       candidate.conditions?.ref_name?.include?.some((pattern) =>
         pattern === options.branch || pattern === branchRef || pattern === "refs/heads/*");
   })) {
