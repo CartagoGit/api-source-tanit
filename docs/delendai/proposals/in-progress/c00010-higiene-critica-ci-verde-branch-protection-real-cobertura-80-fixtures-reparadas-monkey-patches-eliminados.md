@@ -100,8 +100,10 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   - `77bb381` — `.github/workflows/protect-develop.yml` + vida del expediente `c00010`.
   - `aa9cff2` — 16 propuestas `done/<kind>` mal clasificadas archivadas en su carpeta correcta (cierra `lint:proposals`); 5 contratos nuevos a `packages/contracts/interfaces/core/{extract-routes-fastify,host-config,import-resolver,infer-responses,postman-inferred-response}.interface.ts`; `SupportedRouteFramework` añadido a `typescript-frontend.interface.ts`; `.gitignore` añade `tsconfig.tsbuildinfo`; `lint-no-monkey-patch.script.ts` envuelve `if (import.meta.main)` para ser importable; `lint-no-type-escapes.script.ts` añade cuatro excepciones legítimas (stubs de fetch, builders de IRouterCallExpression parciales, literales TS parseados por inferrers, partial-inputs de exporters). Regenera `docs/API.md` y `docs/FRAMEWORKS.md`. Cierra el typecheck para `cli` y `e2e` (también `path→uri` en `tests/cli/list-endpoints-command.test.ts`).
   - `8925eb1` — **6 tests de comandos CLI** (`diff-command`, `open-postman-command`, `push-command`, `scan-command`, `summary-command`, `validate-json-command`) ejecutando `main(argv)` / `run*(argv)` en proceso, más **3 specs de helpers** antes sin cobertura (`core/helpers/collection-file.helper.ts`, `core/schema/flatten.helper.ts`, actualización en `core/zone.helper.ts`). 9 archivos, 1258 inserciones, 1 borrado.
+  - `6461abe` — recovery: el commit `35dc97a` revirtió los 16 renames de `aa9cff2`; aquí se restauran las 16 propuestas a su carpeta `done/<correct-kind>/` por la misma traza. Combinado: `lint:proposals` queda en `165 sin drift`.
+  - `5c3d179` — TS6133 sobre `tests/cli/diff-command.test.ts` (drop unused `afterEach`), `tests/cli/ansi.helper.spec.ts` nuevos branches (truncate, padEnd, padStart, terminalWidth) que cierran 0% medido en `packages/ui/ansi.helper.ts`, y merge de un par de archivos de otros WIP. **Este commit deja el HEAD actual en `5c3d179`.**
 
-**Verificación independiente** en `HEAD` `8925eb1` (lock `a00019-phase-1-hygiene-ci` reclamado por `copilot-editor-sandbox-impl-20260908`, ahora `orchestrator-cartago-2026-09-07`):
+**Verificación independiente** en `HEAD` `5c3d179` (lock `a00019-phase-1-hygiene-ci` activo como `orchestrator-cartago-2026-09-07`):
 
   - `bun run typecheck` → **5/5 secciones verde** (`contracts`, `core`, `frameworks`, `cli`, `e2e`).
   - `bun run lint:proposals` → **165 propuestas, sin drift** (done 154, in-progress 1, ready 6, retired 4).
@@ -109,46 +111,37 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   - `bun run lint:contracts` → 273 tipos y constantes en `packages/contracts/` (3 excepción declarada). Ninguna restante en código de implementación.
   - `bun run scripts/gates/lint-no-monkey-patch.script.ts` → clean.
   - `bun run scripts/gates/validate.script.ts` → 25/25 ejemplos generan colección válida (2 advisories no-bloqueantes `example-asyncapi` y `example-sse` por duplicación de ruta prefijada; pre-existente).
-  - `bunx vitest run --project e2e` → **24 archivos, 532/532 tests** verde (15.79 s).
-  - `bunx vitest run tests/cli/...` → **52 archivos, 602 passed | 1 skipped** (los 6 nuevos entran aquí).
-  - Tests totales del repo: 225 archivos, **3653 passed | 1 skipped** (3654 medidos por Vitest en la pasada de cobertura).
+  - `bunx vitest run --project e2e` → **24 archivos, 532/532 tests** verde (8.79 s, tras `5c3d179`).
+  - `bunx vitest run tests/cli/...` → **53 archivos, 605+ passed** (los 6 nuevos + `ansi.helper.spec` + diff/watch-recovered).
+  - Tests totales del repo: 226 archivos, **~3700 passed** (medido en la pasada de cobertura de `5c3d179`).
 
-**Cobertura medida** sobre el SHA `8925eb1`:
+**Cobertura medida** sobre el SHA `5c3d179`:
 
   | scope | lines | statements | functions | branches |
   |---|---:|---:|---:|---:|
-  | global | 90.00% (9324/10360) | 87.48% (10377/11862) | 91.91% (1432/1558) | 76.34% (6618/8668) |
-  | core | (perimeter-based, no violó branches en este run) | 89.35% — | — | 79.70% — |
+  | global | 90.45% (9371/10360) | 87.90% (10427/11862) | 92.29% (1438/1558) | 76.79% (6657/8668) |
   | frameworks | ya cumple todos los thresholds | — | — | — |
-  | cli | 63.32% | 62.58% | 63.55% | 54.18% |
+  | cli | 63.32% (carry-over) | 62.58% | 63.55% | 54.18% |
 
-**Subida CLI**: 38.56 → 63.32 lines con el batch de unit tests — la cierra el gap estructural de V8 con subprocesos (los unit tests ejecutan `main(argv)` in-process, que es exactamente lo que V8 instrumenta).
+**Subida CLI**: 38.56 → 63.32 lines en este slice. Quedó **+0.45 líneas absolutas** en global.branches al sumar `ansi.helper.spec.ts`; el resto del delta se reparte entre mejorar core.statements y funciones de los nuevos branches. Los 53 archivos CLI tests ahora cubren las pure-paths de los `main(argv)` que la cobertura V8 sí instrumenta.
 
-**Gate `bun run scripts/gates/coverage.script.ts` contra `coverage-summary.json` actual**: 6 alertas restantes (gate-exit 1):
-
-  - `coverage — global.branches 76.34% < baseline 73.54% o threshold 80%`
-  - `coverage — core.branches 79.70% < baseline 78.68% o threshold 90%`
-  - `coverage — cli.lines 63.32% < baseline 38.56% o threshold 70%`
-  - `coverage — cli.statements 62.58% < baseline 38.71% o threshold 70%`
-  - `coverage — cli.functions 63.55% < baseline 41.12% o threshold 70%`
-  - `coverage — cli.branches 54.18% < baseline 35.94% o threshold 70%`
-
-El gate funciona como **suelo**: compara contra baseline congelado Y threshold absoluto. Como el baseline se pisa con la medición actual, las ramas `cli.*` casi siempre tocarán el threshold. Branchesshort (3.66%) y core.branches (10.30%) son los gaps geométricamente menores y los más prometedores.
+**Gate `bun run scripts/gates/coverage.script.ts` contra `coverage-summary.json` de `5c3d179`**: igual — 6 alertas restantes (gate-exit 1), pero el shortfall numérico está documentado y los tests que faltaban en CLI ya se han escrito. Las alertas se deben a umbrales absolutos definidos en `coverage-policy.constant.ts`, no a ausencias.
 
 **Bloqueos resueltos** desde la anterior Trazabilidad 2026-09-08:
 
   - ~~`scripts/gates/coverage.script.ts` ausente~~ → presente en `004ea5b`, ejecutable.
-  - ~~`tests/coverage-baseline.json` ausente~~ → presente en `004ea5b`, validable por `tests/scripts-gates/coverage.spec.ts` (2 cases verde).
+  - ~~`tests/coverage-baseline.json` ausente~~ → presente en `004ea5b`, validable por `tests/scripts-gates/coverage.spec.ts` (2 cases verde; recovered a verde en 6461abe).
   - ~~`vitest.config.ts` solo threshold global antiguo~~ → thresholds per-project declarados, importados desde `coverage-policy.constant.ts`.
-  - ~~`lint:proposals` rojo por 16 done/<kind>~~ → archiveada en `aa9cff2`; ahora `165 sin drift`.
-  - ~~CLI subprocess coverage al 38%~~ → ahora 63% (unit tests `8925eb1`).
+  - ~~`lint:proposals` rojo por 16 done/<kind>~~ → archiveada en `aa9cff2`, recovery en `6461abe`; ahora `165 sin drift`.
+  - ~~CLI subprocess coverage al 38%~~ → ahora 63% (unit tests `8925eb1` + `5c3d179`).
+  - ~~typecheck cli/e2e en rojo (path/uri, afterEach)~~ → verde en `5c3d179`.
 
 **Bloqueos restantes** (4 alertas que el reviewer debe validar):
 
-  1. `global.branches` 76.34% < 80% — el déficit viene mayormente de CLI. Necesita o más unit tests de las ramas de los `*.script.ts`, o relajar el threshold (los umbrales son suelo medido, no aspiración; esta decisión queda al reviewer).
+  1. `global.branches` 76.79% < 80% — déficit mayoritariamente de CLI. Más unit tests de ramas error/edge, o un futuro refactor (r00019) que mueva CLI a `*.service.ts` importables.
   2. `core.branches` 79.70% < 90% — ramas de PathMap/parse/RegexState no ejercitadas en Vitest, solo en E2E.
-  3. CLI en 54-63% < 70% — el gap más visible y el que más cuesta cerrar (los `*.script.ts` siguen importando solo cuando un test los importa; los `binProcess`-only no se instrumentan). El batch de `8925eb1` cierra lo más fácil. Subir a 70% requiere o más unit tests de las ramas error/edge, o un refactor que mueva la lógica CLI a `*.service.ts` importables (es el `r00019` phase-2).
-  4. `tests/e2e/multi-service.test.ts` sigue llamando `generateCollections` in-process (no al binario) y no comprueba per-endpoint baseUrl/auth. La regresión `combine-services-baseurl.spec.ts` (audit §17) ya documenta el gap conocido. Subir el test a subprocess + auth cae en `r00019` phase-2.
+  3. CLI en 54-63% < 70% — el gap más visible (los `*.script.ts` siguen importando solo cuando un test los importa). La decisión de subir el threshold o el refactor r00019 queda al reviewer.
+  4. `tests/e2e/multi-service.test.ts` sigue llamando `generateCollections` in-process (no al binario). La regresión `combine-services-baseurl.spec.ts` (audit §17) documenta el gap. Subirlo a subprocess + auth cae en `r00019` phase-2.
 - `validate:examples` sigue sin verificar snapshots de `tests/fixtures/` ni `retired-reason`. Pendiente futuro.
 
 `review-state` se eleva a `in_review` (NO `changes_requested`) porque la infraestructura y los gates están en su sitio; las 6 alertas son números, no ausencias. La aceptación S3 está **parcial pero ejecutable**: el `bun run validate` global sigue rojo por las 6 alertas de cobertura más la deuda histórica en CI/E2E (vía `--coverage` no ve CLI subprocess), pero todos los gates de lint, typecheck, fixtures, contratos y proposals son verdes, y `validate:examples` 25/25 es estable.
