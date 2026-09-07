@@ -22,6 +22,7 @@ import {
 } from "../../core/helpers/route-identity.helper.js";
 import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
+import { postmanMethodFor } from "../../core/domain/postman-method.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
@@ -98,11 +99,24 @@ export async function runCheck(
     // heuristic. That is the same divergence `summary` once had, and
     // `check` cannot have an exception for one of the twenty-one
     // frameworks.
+    const seenPhysicalRoutes = new Set<string>();
     for (const r of (await scanner.scan(match)).routes) {
+      // SSE event markers describe one physical HTTP endpoint. Postman
+      // stores that endpoint once; event details remain in transportMeta.
+      const method = postmanMethodFor(r.method);
+      const physicalKey = `${method} ${r.uri}`;
+      if (r.transport === "sse") {
+        if (seenPhysicalRoutes.has(physicalKey)) continue;
+        seenPhysicalRoutes.add(physicalKey);
+      }
       sourceRoutes.push({
-        method: r.method,
+        method,
         uri: r.uri,
-        ...(r.displayName ? { name: r.displayName } : {}),
+        ...(r.transport === "sse"
+          ? {}
+          : r.displayName
+            ? { name: r.displayName }
+            : {}),
       });
     }
     console.log(`(source: ${match.framework} via orchestrator)`);
@@ -126,7 +140,7 @@ export async function runCheck(
   const raw = await readFile(COLLECTION_PATH, "utf8");
   const collection = JSON.parse(raw) as PostmanCollection;
   const collRequests = [...walkCollection(collection)].map((r) => ({
-    method: r.method,
+    method: postmanMethodFor(r.method),
     uri: r.uri,
     name: r.name,
   }));

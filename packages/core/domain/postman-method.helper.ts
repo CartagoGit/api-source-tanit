@@ -23,6 +23,11 @@
  */
 export function postmanMethodFor(method: string): string {
   if (method === "ALL") return "ANY";
-  if (method === "PUBLISH" || method === "SUBSCRIBE") return "POST";
+  if (
+    method === "PUBLISH" ||
+    method === "SUBSCRIBE" ||
+    method === "IN" ||
+    method === "OUT"
+  ) return "POST";
   return method;
 }

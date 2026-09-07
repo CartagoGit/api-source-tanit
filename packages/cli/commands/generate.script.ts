@@ -326,9 +326,10 @@ export async function runGenerate(
   type CheckRoute = DiscoveredRoute & { name?: string };
   const sourceRoutes = new Map<string, CheckRoute>();
   const sourceRouteCounts = new Map<string, number>();
-  for (const r of pipeline.routes) {
-    // Only Laravel (legacy) strips the `api/` prefix. Other frameworks
-    // have a real prefix (api/v1, etc.) and must keep it.
+  for (const r of discoveredSpecs) {
+    // The final specs are the source of truth for this check: one physical
+    // route can expand into several logical operations (GraphQL and broker
+    // transports), while `pipeline.routes` only contains the physical route.
     const uri = pipeline.origin === "legacy" ? stripApiPrefix(r.uri) : r.uri;
     // x00056 S1 follow-up: the source `method` is in Tanit's vocabulary
     // (`ALL` for "any method") while the collection builder emits
@@ -341,11 +342,16 @@ export async function runGenerate(
     const baseKey = `${method} ${normalizeForComparison(uri)}`;
     const count = (sourceRouteCounts.get(baseKey) ?? 0) + 1;
     sourceRouteCounts.set(baseKey, count);
-    const name = r.displayName;
+    const name = r.name;
     const key = `${baseKey} ${count > 1 && name ? name : ""}`;
     sourceRoutes.set(key, { method, uri, ...(name ? { name } : {}) });
   }
-  const declared = walkCollection(collection);
+  const declared = walkCollection(collection)
+    .filter((route) => !route.name.startsWith("Variant:"))
+    .map((route) => ({
+      ...route,
+      name: route.name.replace(/ \(base\)$/, ""),
+    }));
   const collectionRoutes = new Map<
     string,
     { method: string; uri: string; name: string }

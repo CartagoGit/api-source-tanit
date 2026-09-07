@@ -69,6 +69,7 @@
 import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import { postmanMethodFor } from "../domain/postman-method.helper.js";
 import { normalizeForComparison } from "../helpers/uri.helper.js";
 
 /**
@@ -93,7 +94,9 @@ function endpointIdentitySet(
 ): Set<string> {
   const set = new Set<string>();
   for (const route of endpoints) {
-    set.add(`${route.method}|${normalizeForComparison(route.uri)}`);
+    set.add(
+      `${postmanMethodFor(route.method.toUpperCase())}|${normalizeForComparison(route.uri)}`,
+    );
   }
   return set;
 }
