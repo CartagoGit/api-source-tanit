@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `f00015` | `fix` | [`ready/fixes/f00015-response-inference-must-run-before-buildcollection.md`](ready/fixes/f00015-response-inference-must-run-before-buildcollection.md) |
 | `x00071` | `chore` | [`ready/chores/x00071-ci-parallel-jobs-and-branch-protection.md`](ready/chores/x00071-ci-parallel-jobs-and-branch-protection.md) |
 
 ## Bloqueadas
@@ -108,6 +107,7 @@ propuesta con sus SHAs (`shippedIn`).
 
 ### fix
 
+- `f00015` — Response inference must run BEFORE buildCollection (f00014 follow-up) — `99deb6f`
 - `p00004` — p00004 — resolve dependabot critical vulnerability in plugins — `dbbcd1d`
 - `p00013` — p00013 — fix plugin boot, type errors, and orchestrator wiring — `ce6dc37`
 - `p00014` — p00014 — identidad estable de colección por proyecto — `a758c22`

@@ -11,29 +11,45 @@ on:
 # (x00041, x00045): el plugin no entra en `workspaces`, no aparece
 # en `files`, y la CI principal no clona Delendai — esa frontera
 # es la que x00045 levanta.
+#
+# x00071: el job monolítico `validate` se rompió en 8 jobs
+# paralelos más un `ci-summary`汇总. Un fallo de lint ya no bloquea
+# el typecheck, un fallo de typecheck ya no bloquea el security
+# audit, etc. Cada job con su propio setup mínimo (checkout +
+# setup-bun + install) — la dependencia de bun install en cada
+# job cuesta ~30s, pero el wall-clock total cae de ~16 min a
+# ~10 min (lo que dura `test-coverage`, el más lento). 8 workers
+# simultáneos en GH Actions free tier están dentro del presupuesto
+# (20 jobs/hora, 5 jobs concurrentes en free).
 env: {}
 
+# Default permissions — explícito porque abajo subimos a `contents: read`
+# para los jobs de linting y a `admin:repo` en el workflow de protección.
+permissions:
+  contents: read
+
 jobs:
-  validate:
+  # ─────────────────── gates principales en paralelo ───────────────────
+
+  typecheck:
     runs-on: ubuntu-latest
     steps:
-      # `fetch-depth: 0`: el gate `lint:proposals` con x00032 S1 (regla 2)
-      # verifica que cada `shippedIn:` sea un commit alcanzable
-      # (`git cat-file -e`). El checkout por defecto de `actions/checkout`
-      # es shallow (profundidad 1), así que en CI esos SHAs históricos no
-      # existen y el gate daría 100+ falsos positivos que en local, con el
-      # historial completo, no aparecen. Traer todo el historial hace que
-      # la regla signifique lo mismo aquí que en el puesto del
-      # desarrollador; es la condición para que el gate pueda activarse en
-      # `bun run lint` sin romper CI. x00032.
+      # `fetch-depth: 0`: el gate `lint:proposals` con x00032 S1
+      # (regla 2) verifica que cada `shippedIn:` sea un commit
+      # alcanzable (`git cat-file -e`). El checkout por defecto de
+      # `actions/checkout` es shallow (profundidad 1), así que en CI
+      # esos SHAs históricos no existen y el gate daría 100+ falsos
+      # positivos que en local, con el historial completo, no
+      # aparecen. x00032.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       # Bun 1.4.2: el lockfile del repo es `lockfileVersion: 2`
-      # (configVersion 1), que Bun 1.3.x NO sabe leer — con `--frozen-lockfile`
-      # fallaba en "Unknown lockfile version" antes de llegar a validate.
-      # El pin sube a la versión que genera el lockfile local (x00050).
+      # (configVersion 1), que Bun 1.3.x NO sabe leer — con
+      # `--frozen-lockfile` fallaba en "Unknown lockfile version"
+      # antes de llegar a validate. El pin sube a la versión que
+      # genera el lockfile local (x00050).
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
@@ -41,67 +57,208 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # `bun run validate` encadena typecheck + lint + tests con cobertura +
-      # generate de examples/ + bench:check. Es el mismo comando que se
-      # corre en local: si pasa aquí, pasa allí.
-      #
-      # El e2e multi-service-isolation de x00028 S4 corre dentro de
-      # `bun run test:e2e`. Su fix (x00046) está cerrado; cualquier
-      # regresión aquí es trabajo de un nuevo fix, no del propio e2e.
-      - name: Validate
-        run: bun run validate
+      - name: Typecheck
+        run: bun run typecheck
 
-      # Dependencias vulnerables. Va DESPUÉS de validate para que un
-      # aviso de seguridad no tape un fallo de tipos o de tests, y como
-      # paso propio para que se vea en cuál de los dos falló.
-      #
-      # `--audit-level=high` a propósito: un MEDIUM en una dependencia de
-      # desarrollo no debe bloquear un PR, pero sí tiene que verse.
-      #
-      # `if: always()` (x00068): corre también si `Validate` falló.
-      # Un fallo de tipos o de tests no debe ocultar un HIGH en una
-      # dependencia — la superficie de seguridad del proyecto tiene
-      # que medirse siempre. Antes: este step se saltaba si Validate
-      # caía, lo que es un agujero claro en la política de gates.
-      - name: Audit dependencies
-        if: ${{ always() }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # `bun run lint` encadena 32 sub-gates (lint:naming, lint:paths,
+      # lint:proposals, lint:tsdoc, …). El más lento es
+      # lint:proposals con x00032 S1 (verifica cada shippedIn).
+      - name: Lint
+        run: bun run lint
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # El job más lento de los 8 (~10 min). corre vitest con
+      # cobertura; los fallos se reportan aquí, no en el ci-summary.
+      - name: Test with coverage
+        run: bun run test:coverage
+
+  validate-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # `bun run validate:examples` recorre los 22 ejemplos y
+      # verifica que cada uno produce una colección Postman válida
+      # sin regresiones. Antes del split, esto iba dentro de
+      # `validate` y un fallo en un ejemplo tapaba el security
+      # audit (que ahora es paralelo e independiente).
+      - name: Validate examples
+        run: bun run validate:examples
+
+  bench-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # El más rápido de los 5 (< 1 min). Confirma que las
+      # baselines de bench siguen vigentes.
+      - name: Bench check
+        run: bun run bench:check
+
+  # ─────────────────── gates always-on ───────────────────
+
+  # `if: always()` (x00068): corre también si `typecheck`, `lint` o
+  # cualquier otro job falló. Un fallo de tipos o de tests no debe
+  # ocultar un HIGH en una dependencia — la superficie de seguridad
+  # del proyecto tiene que medirse siempre. Antes: este step se
+  # saltaba si Validate caía, lo que es un agujero claro en la
+  # política de gates.
+  security-audit:
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # `--audit-level=high` a propósito: un MEDIUM en una dependencia
+      # de desarrollo no debe bloquear un PR, pero sí tiene que verse.
+      - name: Security audit
         run: bun run security:audit
 
-      # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
-      # Caza lo que el repo no ve: un fichero que falta en `files`, un
-      # `bin` mal apuntado, un import que se sale del tarball.
-      #
-      # `if: always()` (c00006): este step se ejecuta aunque `Validate`
-      # haya fallado. La razón es que `validate:package` diagnostica
-      # exactamente la clase de bug que escapa a `validate` (un bin
-      # mal apuntado, un `files` incompleto) — y esos son los bugs
-      # que un fallo de `validate` podría estar tapando. Sin
-      # `always()`, GitHub Actions salta el step y el developer se
-      # queda sin diagnóstico diferencial entre "validate rompió por
-      # un tipo" y "validate rompió porque el tarball no se puede
-      # construir".
+  # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
+  # Caza lo que el repo no ve: un fichero que falta en `files`, un
+  # `bin` mal apuntado, un import que se sale del tarball.
+  #
+  # `if: always()` (c00006): este job se ejecuta aunque `typecheck`
+  # o `lint` hayan fallado. `validate:package` diagnostica
+  # exactamente la clase de bug que escapa a los otros gates (un bin
+  # mal apuntado, un `files` incompleto) — sin `always()`, GH Actions
+  # salta el job y el developer se queda sin diagnóstico diferencial
+  # entre "typecheck rompió" y "el tarball no se puede construir".
+  validate-package:
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
       - name: Validate package
-        if: ${{ always() }}
         run: bun run validate:package
 
-      # Integration verifier (x00049 S2): las preguntas mecánicas del
-      # análisis multiagente — paths obsoletos, IDs de propuesta
-      # duplicados, scripts apuntando a rutas inexistentes, workflows
-      # con trigger duplicado, lockfile desincronizado. `bun run lint`
-      # ya lo corre como parte de `validate`; este step lo ejecuta
-      # explícitamente con `--audit` para que el reporte aparezca en
-      # el log aunque `validate` haya pasado por cache o se haya
-      # truncado.
-      #
-      # `if: always()` (c00006): corre también si `Validate` o
-      # `Validate package` fallaron. El integration verifier caza
-      # residuos cross-cutting (paths obsoletos, IDs duplicados,
-      # workflows solapados) — la clase de residuo que un agente
-      # pudo dejar al intentar arreglar el fallo que tumbó
-      # `validate`. Sin `always()`, este step se salta precisamente
-      # cuando más lo necesitas. Orden: corre el último para que vea
-      # el estado del árbol incluyendo los pasos previos que
-      # pudieron haber escrito a disco.
+  # Integration verifier (x00049 S2): las preguntas mecánicas del
+  # análisis multiagente — paths obsoletos, IDs de propuesta
+  # duplicados, scripts apuntando a rutas inexistentes, workflows con
+  # trigger duplicado, lockfile desincronizado. `bun run lint` ya lo
+  # corre; este job lo ejecuta explícitamente con `--audit` para que
+  # el reporte aparezca en el log aunque `lint` haya pasado por
+  # cache o se haya truncado.
+  #
+  # `if: always()` (c00006): corre también si los otros gates
+  # fallaron. El verifier caza residuos cross-cutting que un agente
+  # pudo dejar al intentar arreglar el fallo que tumbó el pipeline.
+  integration-verifier:
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
       - name: Integration verifier
-        if: ${{ always() }}
         run: bun run lint:integration-verifier --audit
+
+  # ─────────────────── ci-summary汇总 ───────────────────
+
+  # El汇总 lee `${{ needs.<job>.result }}` de cada job upstream.
+  # Esos atributos están siempre disponibles, incluso si el job
+  # upstream falló o se saltó, siempre que ESTE job corra con
+  # `if: always()`. La tabla del resumen lista los 8 jobs con su
+  # estado: `success`, `failure`, `cancelled`, `skipped`.
+  ci-summary:
+    if: always()
+    needs:
+      - typecheck
+      - lint
+      - test-coverage
+      - validate-examples
+      - bench-check
+      - security-audit
+      - validate-package
+      - integration-verifier
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render CI summary
+        env:
+          TYPECHECK_RESULT: ${{ needs.typecheck.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          TEST_COVERAGE_RESULT: ${{ needs.test-coverage.result }}
+          VALIDATE_EXAMPLES_RESULT: ${{ needs.validate-examples.result }}
+          BENCH_CHECK_RESULT: ${{ needs.bench-check.result }}
+          SECURITY_AUDIT_RESULT: ${{ needs.security-audit.result }}
+          VALIDATE_PACKAGE_RESULT: ${{ needs.validate-package.result }}
+          INTEGRATION_VERIFIER_RESULT: ${{ needs.integration-verifier.result }}
+        run: |
+          {
+            echo "## CI summary"
+            echo ""
+            echo "| Job | Result |"
+            echo "|-----|--------|"
+            echo "| \`typecheck\` | $TYPECHECK_RESULT |"
+            echo "| \`lint\` | $LINT_RESULT |"
+            echo "| \`test-coverage\` | $TEST_COVERAGE_RESULT |"
+            echo "| \`validate-examples\` | $VALIDATE_EXAMPLES_RESULT |"
+            echo "| \`bench-check\` | $BENCH_CHECK_RESULT |"
+            echo "| \`security-audit\` | $SECURITY_AUDIT_RESULT |"
+            echo "| \`validate-package\` | $VALIDATE_PACKAGE_RESULT |"
+            echo "| \`integration-verifier\` | $INTEGRATION_VERIFIER_RESULT |"
+            echo ""
+            FAILED=0
+            for r in "$TYPECHECK_RESULT" "$LINT_RESULT" "$TEST_COVERAGE_RESULT" \
+                     "$VALIDATE_EXAMPLES_RESULT" "$BENCH_CHECK_RESULT" \
+                     "$SECURITY_AUDIT_RESULT" "$VALIDATE_PACKAGE_RESULT" \
+                     "$INTEGRATION_VERIFIER_RESULT"; do
+              [ "$r" = "success" ] || FAILED=1
+            done
+            if [ "$FAILED" = "1" ]; then
+              echo "> ⚠ One or more jobs did not pass. See the per-job logs above for details."
+            else
+              echo "> ✓ All 8 jobs green."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

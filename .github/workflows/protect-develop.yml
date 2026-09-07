@@ -1,0 +1,184 @@
+name: protect-develop
+
+# Aplica y mantiene branch protection en `develop` con los 8 checks
+# que la CI ejecuta en paralelo (x00071 S2).
+#
+# Por qué un workflow y no un comando manual
+# ──────────────────────────────────────────
+# La protección de rama en GitHub se configura vía la REST API
+# (`PUT /repos/:owner/:repo/branches/:branch/protection`). El CLI
+# `gh` también puede, pero requiere un token con scope `admin:repo`
+# (PAT o GitHub App) — el `GITHUB_TOKEN` que viene por defecto en
+# los workflows NO tiene ese scope. La forma estándar de la
+# plataforma es mantener un workflow con un secret dedicado
+# (`REPO_ADMIN_TOKEN` o el equivalente desde GitHub Apps).
+#
+# Por qué workflow_dispatch y no automático
+# ────────────────────────────────────────
+# Aplicar protección en cada push crea un loop:
+#   push → workflow → API call → push (??)
+# GitHub lo previene pero el workflow se vuelve ruidoso y la
+# intención se pierde. La forma sensata es:
+#   - manual (workflow_dispatch) cuando el catálogo de checks cambia
+#   - automática (repository_dispatch) cuando se publica un release,
+#     para mantener `enforce_admins` alineado con la política.
+# Aquí dejamos el manual por ahora; el auto-trigger es una segunda
+# iteración si el equipo decide que vale la pena.
+#
+# Por qué falla sin secret
+# ────────────────────────
+# El primer step verifica que `REPO_ADMIN_TOKEN` exista; si no, el
+# workflow termina con un `::warning::` en el log y exit 0. Eso
+# permite que el workflow esté en el repo sin secretos: aparece
+# como "passed" pero documenta lo que faltaría configurar. Cuando
+# el operador añada el secret, el siguiente run aplica la
+# protección.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to protect"
+        required: false
+        default: "develop"
+        type: string
+      context_count:
+        description: "Number of required status checks"
+        required: false
+        default: "8"
+        type: string
+
+permissions:
+  # `contents: read` viene del default; lo que NECESITAMOS es
+  # `administration: write`, pero GITHUB_TOKEN no la tiene. Por eso
+  # este workflow usa un PAT/GitHub App explícito.
+  contents: read
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required secret
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::REPO_ADMIN_TOKEN is not set. Add a PAT or GitHub App" \
+                 "with `admin:repo` scope as a repository secret to enable" \
+                 "automatic branch protection."
+            echo "Skipping the API call. The workflow passes so the absence" \
+                 "of the secret is documented; the protection has to be" \
+                 "configured manually via the GitHub UI until the secret" \
+                 "is wired up."
+            exit 0
+          fi
+          echo "→ REPO_ADMIN_TOKEN present; proceeding with the API call."
+
+      - name: Apply branch protection
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          BRANCH: ${{ inputs.branch || 'develop' }}
+          REPO: ${{ github.repository }}
+          API_BASE: ${{ github.api_url }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "→ No token: skipping API call (see Verify step)."
+            exit 0
+          fi
+          # Construye la lista de required_status_checks con los
+          # nombres literales que la CI emite. El orden no importa;
+          # GitHub los renderiza alfabéticamente en la UI.
+          CONTEXTS='["typecheck","lint","test-coverage","validate-examples","bench-check","security-audit","validate-package","integration-verifier","ci-summary"]'
+
+          # Strict = true → la rama no se puede mergear si algún
+          # required check está pendiente o falló. Strict = false →
+          # sólo bloquea si hay fallo explícito. Para develop usamos
+          # strict: la rama debe estar verde antes de mergear.
+          #
+          # Enforce admins = true → ni los admins del repo pueden
+          # pushear sin pasar los checks. Es la diferencia entre "el
+          # CI informa" y "el CI bloquea".
+          #
+          # Required linear history = true → no se permiten merge
+          # commits (sólo squash / rebase). Reduce la entropía del
+          # log.
+          #
+          # Required reviews = 1 → al menos una aprobación humana
+          # antes de mergear. Para un proyecto mantenido por un equipo
+          # pequeño sigue siendo útil como red de seguridad.
+          PAYLOAD=$(cat <<EOF
+          {
+            "required_status_checks": {
+              "strict": true,
+              "contexts": ${CONTEXTS}
+            },
+            "enforce_admins": true,
+            "required_pull_request_reviews": {
+              "dismiss_stale_reviews": true,
+              "require_code_owner_reviews": false,
+              "required_approving_review_count": 1
+            },
+            "restrictions": null,
+            "required_linear_history": true,
+            "allow_force_pushes": false,
+            "allow_deletions": false,
+            "block_creations": false,
+            "required_conversation_resolution": true
+          }
+          EOF
+          )
+
+          echo "→ PATCH ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
+          HTTP_CODE=$(curl -sS -o /tmp/protect-response.json -w "%{http_code}" \
+            -X PATCH \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection" \
+            -d "${PAYLOAD}")
+
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "✓ Branch protection applied to '${BRANCH}'."
+            echo "→ Required checks:"
+            echo "${CONTEXTS}" | tr ',' '\n' | sed 's/[]"[]//g' | sed 's/^/  - /'
+            echo ""
+            echo "→ Verify with:"
+            echo "  curl -H \"Authorization: Bearer \${TOKEN}\" \\"
+            echo "    ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
+          else
+            echo "✗ API call failed with HTTP ${HTTP_CODE}."
+            cat /tmp/protect-response.json
+            exit 1
+          fi
+
+      - name: Verify the protection is in place
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          BRANCH: ${{ inputs.branch || 'develop' }}
+          REPO: ${{ github.repository }}
+          API_BASE: ${{ github.api_url }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            exit 0
+          fi
+          RESPONSE=$(curl -sS \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection")
+
+          PROTECTED=$(echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print('yes' if data.get('enabled') is True or 'required_status_checks' in data else 'no')
+          ")
+          CONTEXTS=$(echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print(len(data.get('required_status_checks', {}).get('contexts', [])))
+          " 2>/dev/null || echo "0")
+
+          echo "→ branch='${{ inputs.branch || 'develop' }}' protected=${PROTECTED} required_checks=${CONTEXTS}"
+          if [ "$PROTECTED" != "yes" ] || [ "$CONTEXTS" -lt 8 ]; then
+            echo "✗ Verification failed."
+            exit 1
+          fi
+          echo "✓ Verification OK."

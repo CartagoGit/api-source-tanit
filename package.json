@@ -135,6 +135,7 @@
     "docker:shell": "docker compose -f .docker/docker-compose.yml run --rm --entrypoint bash shell",
     "bench:scan": "bun run scripts/gates/bench-scan.script.ts",
     "bench:check": "bun run scripts/gates/bench-scan.script.ts --check",
+    "ci:summary": "bun run scripts/build/ci-summary.script.ts",
     "lint:secrets": "bun run scripts/gates/lint-secrets.script.ts",
     "lint:sast": "bun run scripts/gates/lint-sast.script.ts",
     "security:audit": "bun audit --audit-level=high",

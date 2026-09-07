@@ -135,7 +135,7 @@ function renderMarkdown(results: ReadonlyArray<IJobResult>): string {
 function renderStdout(results: ReadonlyArray<IJobResult>): string {
   if (results.length === 0) {
     console.log("→ ci-summary: no result files found (dry-run?).");
-    return;
+    return "";
   }
   console.log("→ CI summary:\n");
   const ordered = [...results].sort((a, b) => a.name.localeCompare(b.name));
@@ -153,6 +153,7 @@ function renderStdout(results: ReadonlyArray<IJobResult>): string {
   } else {
     console.log(`\n  ${ANSI_RED}✗ ${failed} job(s) failed${ANSI_RESET}`);
   }
+  return "";
 }
 
 function main(): number {
