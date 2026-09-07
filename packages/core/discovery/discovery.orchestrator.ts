@@ -33,6 +33,10 @@ import type {
 import type {
   DiscoveryRegistry,
 } from "../../contracts/interfaces/core/discovery.interface.js";
+import { runWithConcurrency } from "../helpers/concurrency.helper.js";
+import {
+  DISCOVERY_CONCURRENCY,
+} from "../../contracts/constants/core/runtime-limits.constant.js";
 
 /**
  * Builds a diagnostic for a crashing detector (x00065).
@@ -130,65 +134,118 @@ export class DiscoveryOrchestrator implements IDiscoveryOrchestrator {
    * silently (score 0, no record). The diagnostic stream lets a
    * caller — CLI, MCP, UI — distinguish "framework not present"
    * from "detector threw".
+   *
+   * x00064 — `detect()` and `resolve()` run in parallel with
+   * `DISCOVERY_CONCURRENCY` (8). The detectors are independent; the
+   * score-sort tie-breaker is preserved by the input-order guarantee
+   * of `runWithConcurrency`.
    */
   async detectAllWithDiagnostics(
     projectRoot: string,
   ): Promise<IDiscoveryResult> {
     const diagnostics: IDetectorDiagnostic[] = [];
-    const scored: Array<{ detector: IProjectScanner; score: number; evidence: IDetectedFramework["evidence"] }> = [];
-    for (const detector of this.registry.detectors) {
-      const start = Date.now();
-      let result: { score: number; evidence: ReadonlyArray<IDetectedFramework["evidence"][number]> };
-      try {
-        result = await detector.detect(projectRoot);
-      } catch (error) {
-        // A crashing detector must not take down the other twenty-four.
-        // x00065: surface the crash via `diagnostics` so callers can tell
-        // "the framework is not present" from "the detector threw".
-        diagnostics.push(
-          buildDiagnostic({
-            component: detector.framework,
-            phase: "detect",
-            sourceFile: projectRoot,
-            err: error,
-            durationMs: Date.now() - start,
-          }),
-        );
-        result = { score: 0, evidence: [] };
+    // x00064: detect() runs in parallel for all 25 detectors.
+    // The factories capture each detector so `runWithConcurrency`
+    // keeps the (detector, score, evidence) association intact.
+    const detectTasks = this.registry.detectors.map(
+      (detector) => async () => {
+        const start = Date.now();
+        try {
+          const result = await detector.detect(projectRoot);
+          return {
+            detector,
+            score: result.score,
+            evidence: result.evidence,
+            crashed: false as const,
+          };
+        } catch (error) {
+          diagnostics.push(
+            buildDiagnostic({
+              component: detector.framework,
+              phase: "detect",
+              sourceFile: projectRoot,
+              err: error,
+              durationMs: Date.now() - start,
+            }),
+          );
+          return {
+            detector,
+            score: 0,
+            evidence: [] as ReadonlyArray<IDetectedFramework["evidence"][number]>,
+            crashed: true as const,
+          };
+        }
+      },
+    );
+    const detectResults = await runWithConcurrency(
+      detectTasks,
+      DISCOVERY_CONCURRENCY,
+    );
+    const scored: Array<{
+      detector: IProjectScanner;
+      score: number;
+      evidence: IDetectedFramework["evidence"];
+      originalIndex: number;
+    }> = [];
+    detectResults.forEach((r, originalIndex) => {
+      if (!r.crashed && r.score > 0) {
+        scored.push({
+          detector: r.detector,
+          score: r.score,
+          evidence: r.evidence,
+          originalIndex,
+        });
       }
-      if (result.score > 0) {
-        scored.push({ detector, score: result.score, evidence: result.evidence });
-      }
-    }
-    scored.sort((a, b) => b.score - a.score);
+    });
+    // Stable sort: score desc, then input-order tie-breaker so the
+    // previous list-order invariant is preserved.
+    scored.sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score;
+      return a.originalIndex - b.originalIndex;
+    });
 
+    // x00064: resolve() also parallelised.
+    const resolveTasks = scored.map(
+      (entry) => async () => {
+        const start = Date.now();
+        try {
+          const match = await entry.detector.resolve(projectRoot);
+          return {
+            entry,
+            match,
+            crashed: false as const,
+          };
+        } catch (error) {
+          diagnostics.push(
+            buildDiagnostic({
+              component: entry.detector.framework,
+              phase: "resolve",
+              sourceFile: projectRoot,
+              err: error,
+              durationMs: Date.now() - start,
+            }),
+          );
+          return { entry, match: null, crashed: true as const };
+        }
+      },
+    );
+    const resolveResults = await runWithConcurrency(
+      resolveTasks,
+      DISCOVERY_CONCURRENCY,
+    );
     const detectedOut: IDetectedFramework[] = [];
-    for (const { detector, score, evidence } of scored) {
-      // x00065: `resolve()` can also crash; surface it on `diagnostics`.
-      const start = Date.now();
-      let match;
-      try {
-        match = await detector.resolve(projectRoot);
-      } catch (error) {
-        diagnostics.push(
-          buildDiagnostic({
-            component: detector.framework,
-            phase: "resolve",
-            sourceFile: projectRoot,
-            err: error,
-            durationMs: Date.now() - start,
-          }),
-        );
-        continue;
-      }
+    for (const r of resolveResults) {
+      if (r.crashed || !r.match) continue;
       detectedOut.push({
-        match,
-        score,
-        evidence,
-        scanner: this.registry.routeScanners.find((r) => r.matches(match)) ?? null,
+        match: r.match,
+        score: r.entry.score,
+        evidence: r.entry.evidence,
+        scanner:
+          this.registry.routeScanners.find((s) => s.matches(r.match!)) ?? null,
         validation:
-          this.registry.validationProviders.find((v) => v.framework === match.framework) ??
-          null,
+          this.registry.validationProviders.find(
+            (v) => v.framework === r.match!.framework,
+          ) ?? null,
       });
     }
     return Object.freeze({

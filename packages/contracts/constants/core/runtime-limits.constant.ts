@@ -16,6 +16,18 @@
 export const READ_CONCURRENCY = 16;
 
 /**
+ * How many detectors run in parallel inside
+ * `DiscoveryOrchestrator.detectAllWithDiagnostics()` (x00064).
+ *
+ * 8 is the measured sweet spot for cold-cache project analysis:
+ * the bulk of detector cost is filesystem-bound, and going higher
+ * saturates the SSD queue. Lower than `READ_CONCURRENCY` (16)
+ * because each detector does its own manifest reads internally
+ * — 8 detectors × 2 reads each ≈ 16 in-flight reads.
+ */
+export const DISCOVERY_CONCURRENCY = 8;
+
+/**
  * How long `watch` waits before regenerating after a change.
  *
  * A save in an editor fires several events in quick succession;
