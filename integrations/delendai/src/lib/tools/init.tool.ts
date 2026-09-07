@@ -39,8 +39,8 @@ import {
   InitOutputSchema,
   type IInitOutput,
 } from "../contracts/plugin.interface";
-import { runInit } from "../../../../../cli/commands/init.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runInit } from "../../../../../packages/cli/commands/init.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "init";
 

@@ -41,8 +41,8 @@ import {
   PushOutputSchema,
   type IPushOutput,
 } from "../contracts/plugin.interface";
-import { runPush } from "../../../../../cli/commands/push.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runPush } from "../../../../../packages/cli/commands/push.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "push";
 

@@ -37,8 +37,8 @@ import {
 } from "../contracts/plugin.interface";
 import { normalizeCwd, runBunCommand } from "../helpers/runner.helper";
 import { runSmoke } from "../helpers/smoke-runner.helper";
-import { scannerBundleFor } from "../../../../../frameworks/framework.registry";
-import { FRAMEWORK_IDS } from "../../../../contracts/constants/frameworks/framework-ids.constant";
+import { scannerBundleFor } from "../../../../../packages/frameworks/framework.registry";
+import { FRAMEWORK_IDS } from "../../../../../packages/contracts/constants/frameworks/framework-ids.constant";
 
 const TOOL_ID = "test";
 

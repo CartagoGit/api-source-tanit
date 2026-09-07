@@ -22,8 +22,8 @@ import {
   ListOutputSchema,
   type IListOutput,
 } from "../contracts/plugin.interface";
-import { runList } from "../../../../../cli/commands/list-endpoints.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runList } from "../../../../../packages/cli/commands/list-endpoints.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "list";
 

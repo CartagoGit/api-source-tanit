@@ -7,6 +7,13 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `a00019` | `audit` | [`ready/audits/a00019-auditoria-2026-09-07-consolidacion-post-158-propuestas-y-plan-de-productizacion-tanit.md`](ready/audits/a00019-auditoria-2026-09-07-consolidacion-post-158-propuestas-y-plan-de-productizacion-tanit.md) |
+| `c00010` | `chore` | [`ready/chores/c00010-higiene-critica-ci-verde-branch-protection-real-cobertura-80-fixtures-reparadas-monkey-patches-eliminados.md`](ready/chores/c00010-higiene-critica-ci-verde-branch-protection-real-cobertura-80-fixtures-reparadas-monkey-patches-eliminados.md) |
+| `f00016` | `feat` | [`ready/feats/f00016-projectsession-projectindex-application-api-un-scan-por-proyecto-snapshot-inmutable-bridge-host-agnostic.md`](ready/feats/f00016-projectsession-projectindex-application-api-un-scan-por-proyecto-snapshot-inmutable-bridge-host-agnostic.md) |
+| `f00017` | `feat` | [`ready/feats/f00017-tanit-desktop-angular-app-selector-nativo-de-carpetas-endpoints-explorer-export-center-history-diff-paridad-cli-secure-storage.md`](ready/feats/f00017-tanit-desktop-angular-app-selector-nativo-de-carpetas-endpoints-explorer-export-center-history-diff-paridad-cli-secure-storage.md) |
+| `i00003` | `infra` | [`ready/infras/i00003-release-industrial-desktop-ci-por-plataforma-signing-notarization-secure-updater-firmado-sbom-cyclonedx-checksums-firmados.md`](ready/infras/i00003-release-industrial-desktop-ci-por-plataforma-signing-notarization-secure-updater-firmado-sbom-cyclonedx-checksums-firmados.md) |
+| `r00019` | `refactor` | [`ready/refactors/r00019-universal-api-model-v2-operationid-universal-per-operation-serverref-authref-postman-como-exporter-mas.md`](ready/refactors/r00019-universal-api-model-v2-operationid-universal-per-operation-serverref-authref-postman-como-exporter-mas.md) |
+| `r00020` | `refactor` | [`ready/refactors/r00020-multi-lenguaje-precision-moduleresolver-completo-languageir-foundation-agnostica-response-inference-expandida-4-10-inferrers.md`](ready/refactors/r00020-multi-lenguaje-precision-moduleresolver-completo-languageir-foundation-agnostica-response-inference-expandida-4-10-inferrers.md) |
 
 ## Bloqueadas
 

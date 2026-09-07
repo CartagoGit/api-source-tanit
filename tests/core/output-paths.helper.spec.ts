@@ -213,6 +213,12 @@ describe("describeDiscoveredPaths — the trace does not lie", () => {
     expect(traza).toContain("mi-api.postman_collection.json");
   });
 
+  test("with basename override announces exactly the file that will be written", () => {
+    const traza = describeDiscoveredPaths(makeContext(), "mi-api", [], "custom");
+    expect(traza).toContain("custom.postman_collection.json");
+    expect(traza).not.toContain("mi-api.postman_collection.json");
+  });
+
   test("lists the resolved projectRoot and outputDir", () => {
     const traza = describeDiscoveredPaths(
       makeContext({

@@ -92,7 +92,10 @@ export const SECTIONS: readonly ISection[] = [
     name: "cli",
     description: "Comandos, asistente interactivo y binario compilado",
     paths: ["packages/cli/", "packages/ui/", "scripts/"],
-    tests: ["tests/cli/**/*.{spec,test}.ts"],
+    tests: [
+      "tests/cli/**/*.{spec,test}.ts",
+      "tests/scripts-gates/**/*.{spec,test}.ts",
+    ],
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks"],
   },

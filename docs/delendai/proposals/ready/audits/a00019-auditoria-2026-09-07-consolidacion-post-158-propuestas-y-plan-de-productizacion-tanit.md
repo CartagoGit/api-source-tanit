@@ -32,17 +32,17 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 
 ### phase-1-hygiene-ci — Fase 1 — Higiene crítica + branch protection real + fixtures + coverage
 - **Status**: pending
-- **Files**: `docs/delendai/proposals/ready/chores/x00072-higiene-critica-ci-verde-branch-protection-coverage-fixtures.md`
+- **Files**: `docs/delendai/proposals/ready/chores/c00010-higiene-critica-ci-verde-branch-protection-real-cobertura-80-fixtures-reparadas-monkey-patches-eliminados.md`
 - **Gate**: e2e
 - acceptance:
-  - "x00072 cerrado y archivado: CI verde end-to-end, develop protegido con required checks, fixtures reparadas, coverage ≥ 80% global"
+  - "c00010 cerrado y archivado: CI verde end-to-end, develop protegido con required checks, fixtures reparadas, coverage ≥ 80% global"
   - "INDEX.md regenerado y commiteado"
   - "El DoD de a00019 se cumple para el bloque (a)"
 
 ### phase-2-universal-api-model — Fase 2 — Universal API Model v2: OperationId universal, per-operation serverRef/authRef, Postman como exporter más
 - **Status**: pending
 - **DependsOn**: [phase-1-hygiene-ci]
-- **Files**: `docs/delendai/proposals/ready/refactors/r00019-universal-api-model-v2-operationid-per-operation-server-auth-postman-as-exporter.md`
+- **Files**: `docs/delendai/proposals/ready/refactors/r00019-universal-api-model-v2-operationid-universal-per-operation-serverref-authref-postman-como-exporter-mas.md`
 - **Gate**: e2e
 - acceptance:
   - "r00019 cerrado: TransportKind es discriminated union; OperationId universal; per-operation serverRef/authRef; combineServices ya no hereda del primer servicio; PostmanExporter consume IProjectSnapshot como los demás"
@@ -51,7 +51,7 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 ### phase-3-project-session-index — Fase 3 — ProjectSession + ProjectIndex + Application API host-agnostic
 - **Status**: pending
 - **DependsOn**: [phase-2-universal-api-model]
-- **Files**: `docs/delendai/proposals/ready/feats/f00016-projectsession-projectindex-application-api.md`
+- **Files**: `docs/delendai/proposals/ready/feats/f00016-projectsession-projectindex-application-api-un-scan-por-proyecto-snapshot-inmutable-bridge-host-agnostic.md`
 - **Gate**: e2e
 - acceptance:
   - "f00016 cerrado: ProjectSession open() una vez por proyecto; ProjectIndex cachea files/AST/manifests; Application API host-agnostic con bridge stdio (Desktop) y HTTP preservado (browser)"
@@ -60,7 +60,7 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 ### phase-4-desktop-app — Fase 4 — Nueva aplicación Angular Desktop: shell, folder picker, Endpoints Explorer, Export Center, History diff, paridad CLI
 - **Status**: pending
 - **DependsOn**: [phase-3-project-session-index]
-- **Files**: `docs/delendai/proposals/ready/feats/f00017-tanit-desktop-angular-app.md`
+- **Files**: `docs/delendai/proposals/ready/feats/f00017-tanit-desktop-angular-app-selector-nativo-de-carpetas-endpoints-explorer-export-center-history-diff-paridad-cli-secure-storage.md`
 - **Gate**: e2e
 - acceptance:
   - "f00017 cerrado: packages/app compila, design system tokens.scss, folder picker nativo + drag&drop, Endpoints Explorer con virtual scroll, Export Center con capabilities, History diff, Live mode, push-to-Postman con secure storage"
@@ -69,7 +69,7 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 ### phase-5-multi-language-precision — Fase 5 — Multi-lenguaje precision: ModuleResolver completo, LanguageIR foundation, response inference expandida
 - **Status**: pending
 - **DependsOn**: [phase-4-desktop-app]
-- **Files**: `docs/delendai/proposals/ready/refactors/r00020-multi-language-precision-moduleresolver-languageir-response-coverage.md`
+- **Files**: `docs/delendai/proposals/ready/refactors/r00020-multi-lenguaje-precision-moduleresolver-completo-languageir-foundation-agnostica-response-inference-expandida-4-10-inferrers.md`
 - **Gate**: e2e
 - acceptance:
   - "r00020 cerrado: ModuleResolver entiende tsconfig paths, package.json exports/imports, workspaces, Windows paths; LanguageIR conceptual agnóstico del lenguaje (TS migrado); barrel de response-inference de 4 → 10 inferrers"
@@ -78,10 +78,10 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 ### phase-6-industrial-release — Fase 6 — Release industrial: desktop CI por plataforma, signing/notarization, secure updater, SBOM
 - **Status**: pending
 - **DependsOn**: [phase-5-multi-language-precision]
-- **Files**: `docs/delendai/proposals/ready/infras/i00002-release-industrial-desktop-ci-firma-secure-updater-sbom.md`
+- **Files**: `docs/delendai/proposals/ready/infras/i00003-release-industrial-desktop-ci-por-plataforma-signing-notarization-secure-updater-firmado-sbom-cyclonedx-checksums-firmados.md`
 - **Gate**: e2e
 - acceptance:
-  - "i00002 cerrado: desktop CI verde en macOS/Windows/Linux; signing + notarization macOS, Authenticode Windows, checksums firmados Linux; updater firmado; SBOM CycloneDX en cada release; SECURITY.md documenta threat model"
+  - "i00003 cerrado: desktop CI verde en macOS/Windows/Linux; signing + notarization macOS, Authenticode Windows, checksums firmados Linux; updater firmado; SBOM CycloneDX en cada release; SECURITY.md documenta threat model"
   - "El DoD de a00019 se cumple para el bloque (f)"
 
 ## acceptance

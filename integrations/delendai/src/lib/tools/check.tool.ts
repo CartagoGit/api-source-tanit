@@ -28,8 +28,8 @@ import {
   CheckOutputSchema,
   type ICheckOutput,
 } from "../contracts/plugin.interface";
-import { runCheck } from "../../../../../cli/commands/diff.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runCheck } from "../../../../../packages/cli/commands/diff.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "check";
 

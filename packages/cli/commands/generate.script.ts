@@ -36,6 +36,8 @@ import {
   outputCollectionPath,
   outputEnvironmentPath,
 } from "../../core/discovery/output-paths.helper.js";
+import { selectOutputSink } from "../../core/services/output-sink.service.js";
+import type { IOutputSink } from "../../contracts/interfaces/core/output-sink.interface.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { main as runOpenPostman } from "./open-postman.script.js";
@@ -67,9 +69,22 @@ async function runPipeline(
   context: IProjectContext,
   frameworkSearchRoot: string | null,
   combineServices: boolean,
+  sink: IOutputSink,
+  basenameOverride: string | null,
+  argv: ReadonlyArray<string>,
 ): Promise<IGenerationResult> {
-  console.log("→ Resolved paths:");
-  console.log(describeDiscoveredPaths(context));
+  // c00010 S1: `sink` is injected so the early traces (before the JSON
+  // mode redirect kicks in) still honour the JSON-mode channel policy.
+  const humanLog = (message: string) => sink.write(message);
+  humanLog("→ Resolved paths:");
+  humanLog(
+    describeDiscoveredPaths(
+      context,
+      basename ?? undefined,
+      argv,
+      basenameOverride ?? undefined,
+    ),
+  );
 
   // WARNING: do NOT use `process.cwd()` or `"."`. The CLI spawns this
   // script with `cwd` = package root, so a relative path points at
@@ -86,16 +101,16 @@ async function runPipeline(
     ...(combineServices ? { combineServices: true } : {}),
   });
 
-  console.log(
+  humanLog(
     result.match
       ? `→ Orchestrator: framework=${result.match.framework}`
       : "→ Orchestrator: no match → legacy zero-config flow.",
   );
-  console.log(
+  humanLog(
     `  · ${result.metrics.routes} routes in code, ${result.metrics.specs} specs ` +
       `(with rules: ${result.metrics.withValidation}, without: ${result.metrics.withoutValidation}).`,
   );
-  console.log(
+  humanLog(
     `→ Framework-agnostic inference: ${result.metrics.bodiesInferred} bodies + ` +
       `${result.metrics.queriesInferred} query params filled in.`,
   );
@@ -153,15 +168,14 @@ export async function runGenerate(
   const startedAt = Date.now();
   const jsonMode = args.includes("--json");
 
-  // In `--json` mode stdout belongs to the report and no one else. The
-  // human-readable trace is not lost: it goes to stderr, which is
-  // where what accompanies a result without being part of it belongs.
-  const humanLog = console.log;
-  if (jsonMode) {
-    console.log = (...parts: unknown[]) => {
-      process.stderr.write(`${parts.map(String).join(" ")}\n`);
-    };
-  }
+  // c00010 S1: human output goes through an injectable sink (stdout in
+  // normal mode, stderr in `--json` mode). No more monkey-patching of
+  // `console.log` — the rule "no `process.stdout` from engines"
+  // (universal §6) is preserved and tests no longer need to restore
+  // any global in their teardown.
+  const sink: IOutputSink = selectOutputSink({ jsonMode });
+  const humanLog = (message: string) => sink.write(message);
+  const humanErr = (message: string) => sink.writeError(message);
   const environmentPaths: string[] = [];
   /** Files in formats other than Postman. */
   const extraPaths: string[] = [];
@@ -197,7 +211,7 @@ export async function runGenerate(
   // happened.
   const parsedFormats = parseFormats(flags.format ?? null);
   if (!parsedFormats.ok) {
-    console.error(
+    humanErr(
       `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
         `  Válidos: ${parsedFormats.valid.join(", ")}`,
     );
@@ -212,16 +226,19 @@ export async function runGenerate(
     resolvedContext,
     frameworkSearchRoot,
     combineServicesFlag,
+    sink,
+    basenameFlag,
+    args,
   );
   const discoveredSpecs = pipeline.specs;
 
   // Warnings go BEFORE writing anything: if someone aborts the run on
   // seeing half an API is missing, better they find out here.
   for (const warning of pipeline.warnings) {
-    console.log(`\n⚠ ${warning}`);
+    humanLog(`\n⚠ ${warning}`);
   }
   if (pipeline.frameworks.length > 1) {
-    console.log(`  · Frameworks escaneados: ${pipeline.frameworks.join(", ")}`);
+    humanLog(`  · Frameworks escaneados: ${pipeline.frameworks.join(", ")}`);
   }
   const config = pipeline.config;
   const origin = pipeline.match?.framework ?? "legacy";
@@ -230,15 +247,15 @@ export async function runGenerate(
   // Designed so that `summary` (and similar tools) can query the
   // project state without producing artifacts.
   if (inspectMode) {
-    console.log("\n→ --inspect mode (no files written)");
-    console.log(`  · Framework:      ${origin}`);
-    console.log(`  · Project name:   ${config.name}`);
-    console.log(`  · Routes:         ${pipeline.metrics.routes}`);
-    console.log(`  · Specs:          ${pipeline.metrics.specs}`);
-    console.log(`  · With rules:     ${pipeline.metrics.withValidation}`);
-    console.log(`  · Without rules:  ${pipeline.metrics.withoutValidation}`);
+    humanLog("\n→ --inspect mode (no files written)");
+    humanLog(`  · Framework:      ${origin}`);
+    humanLog(`  · Project name:   ${config.name}`);
+    humanLog(`  · Routes:         ${pipeline.metrics.routes}`);
+    humanLog(`  · Specs:          ${pipeline.metrics.specs}`);
+    humanLog(`  · With rules:     ${pipeline.metrics.withValidation}`);
+    humanLog(`  · Without rules:  ${pipeline.metrics.withoutValidation}`);
     if (pipeline.match?.frameworkSearchRoot) {
-      console.log(
+      humanLog(
         `  · Search root:    ${pipeline.match.frameworkSearchRoot}` +
           (frameworkSearchRoot ? " (--framework-search-root)" : " (auto-detected)"),
       );
@@ -249,13 +266,13 @@ export async function runGenerate(
       // frameworkSearchRoot and the row is skipped. But the user DID
       // pass the flag and deserves to see it in `--inspect`. It is
       // printed whenever the flag is present.
-      console.log(
+      humanLog(
         `  · Search root:    ${frameworkSearchRoot} (--framework-search-root, no framework matched)`,
       );
     }
-    console.log(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
-    console.log(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
-    console.log(`  · Base URL:       ${config.baseUrl}`);
+    humanLog(`  · Bodies inferred:${pipeline.metrics.bodiesInferred}`);
+    humanLog(`  · Query inferred: ${pipeline.metrics.queriesInferred}`);
+    humanLog(`  · Base URL:       ${config.baseUrl}`);
     return { code: 0, report: null };
   }
 
@@ -270,17 +287,17 @@ export async function runGenerate(
   const collection = pipeline.collection;
   const authFlow = pipeline.authFlow;
   if (authFlow?.login) {
-    console.log(
+    humanLog(
       `→ Auth: login at "${authFlow.login.name}" stores the token automatically` +
         (authFlow.refresh ? ", refresh wired" : "") +
         (authFlow.logout ? ", logout clears the token" : "") +
         ".",
     );
   } else {
-    console.log("→ Auth: no login endpoint found (collection has no session flow).");
+    humanLog("→ Auth: no login endpoint found (collection has no session flow).");
   }
 
-  console.log("→ Enriching with validation-rule variants…");
+  humanLog("→ Enriching with validation-rule variants…");
   // S5 (a00012): side-effect registration of the Laravel enricher. The
   // registry is process-global; registering it here guarantees that
   // any tool/test importing `runValidationEnrichers` after `generate`
@@ -295,12 +312,12 @@ export async function runGenerate(
   // `enrichCatalogWithFormRequests`, called just below.
   enrichValidationSources(discoveredSpecs);
   const stats = await enrichCatalogWithFormRequests(collection, frIndex, pipeline.context);
-  console.log(`  · Body variants:   ${stats.bodyVariants}`);
-  console.log(`  · Query variants:  ${stats.queryVariants}`);
-  console.log(`  · Rules resolved:  ${stats.resolved}`);
-  console.log(`  · Rules missing:   ${stats.unresolved}`);
+  humanLog(`  · Body variants:   ${stats.bodyVariants}`);
+  humanLog(`  · Query variants:  ${stats.queryVariants}`);
+  humanLog(`  · Rules resolved:  ${stats.resolved}`);
+  humanLog(`  · Rules missing:   ${stats.unresolved}`);
   if (stats.rulesWithUnknown.length > 0) {
-    console.log(
+    humanLog(
       `  · Dynamic rules skipped: ${stats.rulesWithUnknown.length}`,
     );
   }
@@ -331,7 +348,7 @@ export async function runGenerate(
     const key = `${r.method} ${normalizeForComparison(r.uri)}`;
     collectionRoutes.set(key, r);
   }
-  console.log(
+  humanLog(
     `  · ${declared.length} final requests (${collectionRoutes.size} unique method+uri).`,
   );
 
@@ -346,23 +363,23 @@ export async function runGenerate(
     if (!collectionRoutes.has(key)) missingInCollection.push(info);
   }
   if (missingInSource.length) {
-    console.error(
+    humanErr(
       `\n✘ ${missingInSource.length} in the collection but NOT in the routes:`,
     );
     for (const m of missingInSource.slice(0, 20)) {
-      console.error(`    ${m.method.padEnd(6)} /${m.uri} (${m.name})`);
+      humanErr(`    ${m.method.padEnd(6)} /${m.uri} (${m.name})`);
     }
   }
   if (missingInCollection.length) {
-    console.error(
+    humanErr(
       `\n✘ ${missingInCollection.length} in the routes but NOT in the collection:`,
     );
     for (const m of missingInCollection.slice(0, 20)) {
-      console.error(`    ${m.method.padEnd(6)} /${m.uri}`);
+      humanErr(`    ${m.method.padEnd(6)} /${m.uri}`);
     }
   }
   if (missingInSource.length || missingInCollection.length) {
-    console.error("\n→ Generation aborted.");
+    humanErr("\n→ Generation aborted.");
     return { code: 1, report: null };
   }
 
@@ -385,18 +402,23 @@ export async function runGenerate(
   // the collection is built without response entries.
   ensureResponseInferrersRegistered();
   if (pipeline.metrics.responsesInferred > 0) {
-    console.log(
+    humanLog(
       `  · Responses inferred for ${pipeline.metrics.responsesInferred} endpoint(s).`,
     );
   }
 
   // --output / --basename respect environment variables + flags.
-  if (basenameFlag) {
-    process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag;
-  }
+  // c00010 S1: `basenameFlag` se pasa directamente al helper en lugar de
+  // monkey-patchear `process.env.POSTMAN_OUTPUT_BASENAME`. El helper
+  // resuelve la precedencia (override > env > projectName > projectBasename).
   const OUTPUT_PATH = outputFlag
     ? outputFlag
-    : await outputCollectionPath(resolvedContext, config.name);
+    : await outputCollectionPath(
+        resolvedContext,
+        config.name,
+        args,
+        basenameFlag ?? undefined,
+      );
   await warnOnIdentityClash(OUTPUT_PATH, collection);
   const json = JSON.stringify(collection, null, 2);
   // x00060 — generate runs as a single transaction: validate BEFORE any
@@ -407,7 +429,7 @@ export async function runGenerate(
   const { requests, folders } = countItems(collection);
   const allowEmpty = args.includes("--allow-empty");
   if (requests === 0 && !allowEmpty) {
-    console.error(
+    humanErr(
       "\n✗ No endpoints were found, so nothing was written.\n" +
         "  · Check that `--project-root` points at your API's root.\n" +
         "  · See docs/FRAMEWORKS.md for what each scanner looks for.\n" +
@@ -441,7 +463,7 @@ export async function runGenerate(
       await writeFileAtomic(target, artifact.content);
       extraPaths.push(target);
     }
-    console.log(`  · ${artifacts.length} file(s) in ${extraFormats.join(", ")}`);
+    humanLog(`  · ${artifacts.length} file(s) in ${extraFormats.join(", ")}`);
     // A format that does not represent everything says so: the file
     // comes out the same, but incomplete.
     for (const warning of exportWarnings(extraFormats, exportInput)) {
@@ -450,8 +472,8 @@ export async function runGenerate(
   }
 
   const sizeKb = (json.length / 1024).toFixed(1);
-  console.log(`\n✔ Collection written to ${OUTPUT_PATH}`);
-  console.log(
+  humanLog(`\n✔ Collection written to ${OUTPUT_PATH}`);
+  humanLog(
     `  · ${requests} requests in ${folders} folders (${sizeKb} KB).`,
   );
 
@@ -486,7 +508,7 @@ export async function runGenerate(
     const envPath = await outputEnvironmentPath(resolvedContext, env.name, config.name);
     await writeJsonAtomic(envPath, env);
     environmentPaths.push(envPath);
-    console.log(
+    humanLog(
       `  · Environment "${env.name}" → ${envPath} (${env.values.length} vars)`,
     );
   }
@@ -501,10 +523,10 @@ export async function runGenerate(
     // `packages/` reorg. Calling the sibling module's `main` in
     // process is the correct version: same exit code, no spawn, no
     // globals.
-    console.log("\n→ --open: launching open-postman…");
+    humanLog("\n→ --open: launching open-postman…");
     const exit = await runOpenPostman();
     if (exit !== 0) {
-      console.error("✘ open-postman.script.ts falló.");
+      humanErr("✘ open-postman.script.ts falló.");
       return { code: exit, report: null };
     }
   }
@@ -535,7 +557,7 @@ export async function runGenerate(
         : null,
     durationMs: Date.now() - startedAt,
   };
-  if (jsonMode) humanLog(JSON.stringify(report, null, 2));
+  if (jsonMode) sink.writeJson(JSON.stringify(report, null, 2));
   return { code: 0, report };
 }
 
@@ -575,6 +597,21 @@ function explainWriteError(error: unknown): string {
 }
 
 if (import.meta.main) {
+  // c00010 S1: the CLI entry point uses a dedicated error sink (stderr
+  // only). Even in `--json` mode the catch block runs after `main()`
+  // returns, so the report cannot be polluted.
+  const cliErrSink = new (class implements IOutputSink {
+    write(message: string): void {
+      process.stderr.write(`${message}\n`);
+    }
+    writeError(message: string): void {
+      process.stderr.write(`${message}\n`);
+    }
+    writeJson(payload: string): void {
+      process.stderr.write(`${payload}\n`);
+    }
+  })();
+  const humanErr = (message: string) => cliErrSink.writeError(message);
   try {
     process.exit(await main());
   } catch (error) {
@@ -585,16 +622,16 @@ if (import.meta.main) {
     // reading it on screen sees which services were detected and how
     // to resolve it.
     if (error instanceof MultipleServicesWithoutCombineError) {
-      console.error(`\n✗ ${error.message}`);
+      humanErr(`\n✗ ${error.message}`);
       if (error.serviceIds.length > 0) {
-        console.error(`\n  Detected services:`);
-        for (const id of error.serviceIds) console.error(`    - ${id}`);
+        humanErr(`\n  Detected services:`);
+        for (const id of error.serviceIds) humanErr(`    - ${id}`);
       }
-      console.error(`\n  Re-run with --combine-services to merge them into one collection,`);
-      console.error(`  or omit --combine-services to emit one collection per service.`);
+      humanErr(`\n  Re-run with --combine-services to merge them into one collection,`);
+      humanErr(`  or omit --combine-services to emit one collection per service.`);
       process.exit(64); // EX_USAGE
     }
-    console.error(`\n✗ ${explainWriteError(error)}`);
+    humanErr(`\n✗ ${explainWriteError(error)}`);
     process.exit(1);
   }
 }

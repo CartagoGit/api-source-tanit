@@ -33,8 +33,8 @@ import {
   ScanOutputSchema,
   type IScanOutput,
 } from "../contracts/plugin.interface";
-import { runScan } from "../../../../../cli/commands/scan.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runScan } from "../../../../../packages/cli/commands/scan.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "scan";
 

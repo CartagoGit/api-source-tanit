@@ -103,23 +103,26 @@ export function resolveOutputDir(
 /**
  * Base name of the output JSON (without the extension).
  *
- * Priority: `POSTMAN_OUTPUT_BASENAME` in `process.env` → `projectName` →
- * `context.projectBasename`.
+ * Priority: `override` argument (passed by CLI when `--basename` is
+ * present) → `TANIT_OUTPUT_BASENAME` / `POSTMAN_OUTPUT_BASENAME` env var
+ * → `projectName` → `context.projectBasename` → `"postman"`.
  *
- * `POSTMAN_OUTPUT_BASENAME` is intentionally read from the **process**
- * environment: it is a project-wide override, not a command argument.
- * Parameterizing it adds nothing because no caller injects it outside the CLI,
- * and `generate.script.ts` rewrites it immediately before calling this helper
- * (when `--basename` is passed). Moving it to an argument belongs in r00011+
- * if anyone needs finer-grained test control.
- *
- * TODO r00011+: accept optional `env` for tests that cannot mutate
- * `process.env`.
+ * The `override` parameter replaces the historical
+ * `process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag` monkey-patch in
+ * `generate.script.ts` (c00010 S1). Callers that need finer-grained
+ * control inject the value here instead of mutating `process.env`.
  */
 function outputBasename(
   context: IProjectContext | undefined,
   projectName?: string,
+  basenameOverride?: string,
 ): string {
+  const explicit = basenameOverride?.trim();
+  if (explicit) {
+    return explicit.endsWith(".postman_collection")
+      ? explicit
+      : `${explicit}.postman_collection`;
+  }
   const env = envOrAlias("TANIT_OUTPUT_BASENAME", "POSTMAN_OUTPUT_BASENAME");
   if (env) {
     return env.endsWith(".postman_collection")
@@ -173,17 +176,20 @@ async function ensureOutputDir(
 /**
  * Ruta absoluta al JSON principal. Crea el directorio si no existe.
  *
- * Acepta `argv` y `env` igual que `resolveOutputDir` para que tests y
- * procesos de vida larga puedan inyectar el contexto sin mutar el
- * proceso. Por defecto son los globales.
+ * Acepta `argv` igual que `resolveOutputDir` para que tests y procesos de
+ * vida larga puedan inyectar el contexto sin mutar el proceso. Por defecto
+ * es `process.argv`. El parámetro `basenameOverride` (c00010 S1) sustituye
+ * la variable de entorno `POSTMAN_OUTPUT_BASENAME` — los callers que antes
+ * monkey-patcheaban `process.env` pasan el valor directamente aquí.
  */
 export async function outputCollectionPath(
   context: IProjectContext | undefined,
   projectName?: string,
   argv: ReadonlyArray<string> = process.argv,
+  basenameOverride?: string,
 ): Promise<string> {
   const dir = await ensureOutputDir(context, argv);
-  return join(dir, `${outputBasename(context, projectName)}.json`);
+  return join(dir, `${outputBasename(context, projectName, basenameOverride)}.json`);
 }
 
 /**
@@ -227,11 +233,12 @@ export function describeDiscoveredPaths(
   context: IProjectContext,
   projectName?: string,
   argv: ReadonlyArray<string> = process.argv,
+  basenameOverride?: string,
 ): string {
   const dirs = projectDirs(context);
   const outputDir = resolveOutputDir(context, argv);
   const coleccion = projectName
-    ? join(outputDir, `${outputBasename(context, projectName)}.json`)
+    ? join(outputDir, `${outputBasename(context, projectName, basenameOverride)}.json`)
     : `${outputDir}/<nombre-del-proyecto>.postman_collection.json`;
   return [
     `  · Package root:   ${context.packageRoot}`,

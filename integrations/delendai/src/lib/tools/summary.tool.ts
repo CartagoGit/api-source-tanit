@@ -29,7 +29,7 @@ import {
 } from "../contracts/plugin.interface";
 import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { summarizeWithAllFrameworks } from "../../../../../frameworks/index";
+import { summarizeWithAllFrameworks } from "../../../../../packages/frameworks/index";
 
 const TOOL_ID = "summary";
 

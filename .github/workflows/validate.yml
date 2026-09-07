@@ -261,4 +261,5 @@ jobs:
             else
               echo "> ✓ All 8 jobs green."
             fi
+            exit "$FAILED"
           } >> "$GITHUB_STEP_SUMMARY"

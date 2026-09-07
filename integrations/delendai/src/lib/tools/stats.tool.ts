@@ -27,8 +27,8 @@ import {
   StatsOutputSchema,
   type IStatsOutput,
 } from "../contracts/plugin.interface";
-import { runStats } from "../../../../../cli/commands/stats.script";
-import { resolveProjectContext } from "../../../../../core/discovery/project-context.service";
+import { runStats } from "../../../../../packages/cli/commands/stats.script";
+import { resolveProjectContext } from "../../../../../packages/core/discovery/project-context.service";
 
 const TOOL_ID = "stats";
 
