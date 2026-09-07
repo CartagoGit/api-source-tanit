@@ -115,9 +115,9 @@ export class FastApiResponseInferrer implements IResponseInferrer {
       return ownRegex(RESPONSE_MODEL_RE).test(l);
     });
     if (!hasResponseModel) {
-      RETURN_TYPE_RE.lastIndex = 0;
+      const returnTypeRe = ownRegex(RETURN_TYPE_RE);
       let m: RegExpExecArray | null;
-      while ((m = ownRegex(RETURN_TYPE_RE).exec(txt)) !== null) {
+      while ((m = returnTypeRe.exec(txt)) !== null) {
         const ret = m[1] ?? "";
         if (ret.length === 0) continue;
         // Skip the common `-> None` / `-> dict` primitives —

@@ -175,8 +175,9 @@ export class AsyncApiRouteScanner implements IRouteScanner {
       // server.
       const protocols: AsyncApiServerProtocol[] = [];
       SERVER_PROTOCOL_RE.lastIndex = 0;
+      const serverProtocolRe = ownRegex(SERVER_PROTOCOL_RE);
       let pm: RegExpExecArray | null;
-      while ((pm = ownRegex(SERVER_PROTOCOL_RE).exec(text)) !== null) {
+      while ((pm = serverProtocolRe.exec(text)) !== null) {
         if (pm[1]) {
           const normalised = normaliseProtocol(pm[1]);
           if (normalised) protocols.push({ name: "default", protocol: pm[1], transport: normalised });
@@ -185,9 +186,9 @@ export class AsyncApiRouteScanner implements IRouteScanner {
       if (protocols.length === 0) continue;
       const protocol = protocols[0]!;
 
+      const operationRe = ownRegex(OPERATION_RE);
       let m: RegExpExecArray | null;
-      OPERATION_RE.lastIndex = 0;
-      while ((m = OPERATION_RE.exec(text)) !== null) {
+      while ((m = operationRe.exec(text)) !== null) {
         const operationKey = m[1]!;
         const action = m[2]!;
         // AsyncAPI / JSON Pointer escape: ~1 -> /

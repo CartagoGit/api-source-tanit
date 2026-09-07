@@ -58,8 +58,9 @@ export class AspNetResponseInferrer implements IResponseInferrer {
     PRODUCES_NO_TYPE_RE.lastIndex = 0;
 
     // (1) ProducesResponseType(typeof(X), 200) → high
+    const producesTypeofRe = ownRegex(PRODUCES_TYPEOF_RE);
     let m: RegExpExecArray | null;
-    while ((m = ownRegex(PRODUCES_TYPEOF_RE).exec(txt)) !== null) {
+    while ((m = producesTypeofRe.exec(txt)) !== null) {
       const ref = m[1] ?? m[2] ?? "";
       const status = Number.parseInt(m[3] ?? "200", 10);
       if (ref.length === 0) continue;
@@ -72,7 +73,8 @@ export class AspNetResponseInferrer implements IResponseInferrer {
     }
 
     // (1b) ProducesResponseType(200) without a body — status code only
-    while ((m = ownRegex(PRODUCES_NO_TYPE_RE).exec(txt)) !== null) {
+    const producesNoTypeRe = ownRegex(PRODUCES_NO_TYPE_RE);
+    while ((m = producesNoTypeRe.exec(txt)) !== null) {
       const status = Number.parseInt(m[1] ?? "200", 10);
       entries.push({
         status,
@@ -83,7 +85,8 @@ export class AspNetResponseInferrer implements IResponseInferrer {
     }
 
     // (2) SwaggerResponse(200, typeof(X))
-    while ((m = ownRegex(SWAGGER_RESPONSE_RE).exec(txt)) !== null) {
+    const swaggerResponseRe = ownRegex(SWAGGER_RESPONSE_RE);
+    while ((m = swaggerResponseRe.exec(txt)) !== null) {
       const status = Number.parseInt(m[1] ?? "200", 10);
       const ref = m[2] ?? "";
       if (ref.length === 0) continue;

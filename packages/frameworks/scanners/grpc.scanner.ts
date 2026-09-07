@@ -136,10 +136,9 @@ export class GrpcRouteScanner implements IRouteScanner {
         ? file.slice(root.length).replace(/^\/+/, "")
         : file;
 
+      const serviceRe = ownRegex(SERVICE_RE);
       let serviceMatch: RegExpExecArray | null;
-      // Reset the regex per file.
-      SERVICE_RE.lastIndex = 0;
-      while ((serviceMatch = ownRegex(SERVICE_RE).exec(text)) !== null) {
+      while ((serviceMatch = serviceRe.exec(text)) !== null) {
         const service = serviceMatch[1]!;
         const blockStart = serviceMatch.index + serviceMatch[0].length;
         const blockEnd = text.indexOf("}", blockStart);

@@ -124,8 +124,9 @@ async function extractCandidatesFromFile(
   // Find every route declaration. The method/verb doesn't
   // matter for SSE — most SSE endpoints use GET — but we
   // record it in `transportMeta` for completeness.
+  const routeRe = ownRegex(ROUTE_RE);
   let m: RegExpExecArray | null;
-  while ((m = ownRegex(ROUTE_RE).exec(text)) !== null) {
+  while ((m = routeRe.exec(text)) !== null) {
     const path = m[2]!;
     if (!path.startsWith("/")) continue;
     const key = `${path}|__default__`;
@@ -148,9 +149,9 @@ async function extractCandidatesFromFile(
   if (out.length > 0) {
     const firstPath = out[0]!.path;
     const eventNames = new Set<string>();
+    const eventNameRe = ownRegex(EVENT_NAME_RE);
     let em: RegExpExecArray | null;
-    EVENT_NAME_RE.lastIndex = 0;
-    while ((em = ownRegex(EVENT_NAME_RE).exec(text)) !== null) {
+    while ((em = eventNameRe.exec(text)) !== null) {
       eventNames.add(em[1]!);
     }
     for (const ev of eventNames) {

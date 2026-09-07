@@ -59,8 +59,9 @@ export class SpringResponseInferrer implements IResponseInferrer {
     RESPONSE_ENTITY_RE.lastIndex = 0;
 
     // (1)+(2) @ApiResponse / @ApiResponses(... @ApiResponse(...) ...)
+    const apiResponseRe = ownRegex(API_RESPONSE_RE);
     let m: RegExpExecArray | null;
-    while ((m = ownRegex(API_RESPONSE_RE).exec(txt)) !== null) {
+    while ((m = apiResponseRe.exec(txt)) !== null) {
       const code = Number.parseInt(m[1] ?? "200", 10);
       // Java: `UserDTO.class` → drop the `.class` suffix
       // so the $ref is the bare type name; matches the
@@ -76,7 +77,8 @@ export class SpringResponseInferrer implements IResponseInferrer {
     }
 
     // (3) ResponseEntity<X> return type (medium confidence)
-    while ((m = ownRegex(RESPONSE_ENTITY_RE).exec(txt)) !== null) {
+    const responseEntityRe = ownRegex(RESPONSE_ENTITY_RE);
+    while ((m = responseEntityRe.exec(txt)) !== null) {
       const ref = m[1] ?? "";
       if (ref.length === 0) continue;
       entries.push({

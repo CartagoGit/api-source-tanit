@@ -143,8 +143,9 @@ export class NestJsResponseInferrer implements IResponseInferrer {
       // Status comes from the captured group
     }
     API_RESPONSE_RE.lastIndex = 0;
+    const apiResponseRe = ownRegex(API_RESPONSE_RE);
     let m: RegExpExecArray | null;
-    while ((m = ownRegex(API_RESPONSE_RE).exec(txt)) !== null) {
+    while ((m = apiResponseRe.exec(txt)) !== null) {
       const statusStr = m[1] ?? "200";
       const ref = m[2] ?? "";
       entries.push({
@@ -157,7 +158,8 @@ export class NestJsResponseInferrer implements IResponseInferrer {
 
     // 3) @ApiOkResponse → status 200
     API_OK_RE.lastIndex = 0;
-    while ((m = ownRegex(API_OK_RE).exec(txt)) !== null) {
+    const apiOkRe = ownRegex(API_OK_RE);
+    while ((m = apiOkRe.exec(txt)) !== null) {
       entries.push({
         status: 200,
         schema: { kind: "ref", $ref: m[1] ?? "" },
@@ -168,7 +170,8 @@ export class NestJsResponseInferrer implements IResponseInferrer {
 
     // 4) @ApiCreatedResponse → status 201
     API_CREATED_RE.lastIndex = 0;
-    while ((m = ownRegex(API_CREATED_RE).exec(txt)) !== null) {
+    const apiCreatedRe = ownRegex(API_CREATED_RE);
+    while ((m = apiCreatedRe.exec(txt)) !== null) {
       entries.push({
         status: 201,
         schema: { kind: "ref", $ref: m[1] ?? "" },
