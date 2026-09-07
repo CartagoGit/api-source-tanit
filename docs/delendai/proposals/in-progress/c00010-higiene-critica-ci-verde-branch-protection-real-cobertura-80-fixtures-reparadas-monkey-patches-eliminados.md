@@ -2,10 +2,13 @@
 id: c00010
 title: "Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados"
 kind: chore
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
+last-transition-id: c8bba09f-4be0-4d4d-b4f8-979dbfb1a4cd
+last-correlation-id: c8bba09f-4be0-4d4d-b4f8-979dbfb1a4cd
+last-transition-from: ready
 ---
 
 # c00010 — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados
@@ -52,7 +55,7 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - `lint:contracts` permanece como deuda previa: `host-config-parser.service.ts` (3 tipos), `import-resolver.ts` (1), `symbol-graph.ts` (2), `symbol-id.ts` (1), `postman-inferred-response.exporter.ts` (1), `extract-routes-fastify.helper.ts` (3), `language-frontends/typescript/index.ts` (1) e `infer-responses.ts` (3). Absorberla queda fuera del alcance de S1.
 
 ### S2-branch-protection-and-required-checks — Branch protection real + required checks + ci-summary exit-on-deps + rulesets
-- **Status**: in_progress
+- **Status**: done
 - **DependsOn**: [S1-lint-renames-and-monkey-patches]
 - **Files**: `.github/workflows/validate.yml`, `.github/workflows/integration-delendai.yml`, `.github/workflows/ci-summary.yml`, `scripts/gates/branch-protection.script.ts`, `scripts/gates/ci-summary.script.ts`, `docs/CI.md`, `delendai.config.json`, `tests/scripts-gates/branch-protection.spec.ts`
 - **Gate**: e2e
@@ -63,7 +66,10 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   - "`x00068` y `x00071` se reabren como `in_progress` y se cierran con el SHA del fix (el de S2 + el de `d34f3a2`)"
   - "Tests: `tests/scripts-gates/branch-protection.spec.ts` mockea GitHub API y cubre 4 casos (develop protegida, develop sin required checks, develop sin protection, rama inexistente → fail)"
   - "DoD slice: `bun run validate` verde en local; CI workflow dry-run con `act` o equivalente verde"
-
+- review-state: done
+- review-implementer: sparrow
+- review-reviewer: owl
+- review-log: approved by owl
 ### S3-coverage-and-fixtures-green — Coverage ≥80% global + fixtures reparadas + regressions de check corregidas
 - **Status**: in_progress
 - **DependsOn**: [S2-branch-protection-and-required-checks]
@@ -84,7 +90,8 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - El test deja explícito que el fix de per-endpoint baseUrl/auth (audit §18 prioridad 6, `r00019` phase-2) sigue siendo un gap conocido: `match.framework` y `match.frameworkSearchRoot` aún comparten valor entre los dos `IGenerationResult`. Esta ejecución NO aborda ese gap; solo garantiza que la ruta multi-servicio produce colecciones disjuntas por prefijo, que es la pre-condición que `r00019` necesita.
 - Quedan fuera del alcance de esta ejecución y pendientes para siguientes slices: `vitest.config.ts` con thresholds per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%), `scripts/gates/coverage.script.ts`, `tests/coverage-baseline.json` y los snapshots versionados para las fixtures que aún no los tienen. `lint:proposals` también sigue rojo por 16 propuestas archivadas en `done/<kind>/` con `kind` incorrecto (deuda previa a S3, fuera del scope).
 - `bun run typecheck` verde en las 5 secciones; 532 tests e2e verdes.
-
+- review-state: in_review
+- review-implementer: owl
 ## acceptance
 
 - `bun run lint:naming` verde tras renombrar `host-config-parser.ts` → `host-config-parser.service.ts` y `postman-inferred-response.ts` → `postman-inferred-response.exporter.ts` (cabecera de doc actualizada, ningún import externo queda roto)
