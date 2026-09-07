@@ -2,7 +2,7 @@
 // Los servidores MCP se declaran una sola vez, en .mcp.json de la raíz.
 {
   "servers": {
-    "delendai": {
+    "DelendAI:Tanit": {
       "type": "stdio",
       "command": "bun",
       "args": [
