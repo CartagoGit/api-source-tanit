@@ -57,7 +57,14 @@ jobs:
       #
       # `--audit-level=high` a propósito: un MEDIUM en una dependencia de
       # desarrollo no debe bloquear un PR, pero sí tiene que verse.
+      #
+      # `if: always()` (x00068): corre también si `Validate` falló.
+      # Un fallo de tipos o de tests no debe ocultar un HIGH en una
+      # dependencia — la superficie de seguridad del proyecto tiene
+      # que medirse siempre. Antes: este step se saltaba si Validate
+      # caía, lo que es un agujero claro en la política de gates.
       - name: Audit dependencies
+        if: ${{ always() }}
         run: bun run security:audit
 
       # Empaqueta, instala en un proyecto limpio y ejecuta el binario.
