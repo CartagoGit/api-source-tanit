@@ -1,23 +1,22 @@
 #!/usr/bin/env bun
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-interface IMetric {
+export interface IMetric {
   total: number;
   covered: number;
   pct: number;
 }
 
-interface ICoverageSummary {
+export interface ICoverageSummary {
   readonly total?: Record<string, IMetric>;
   readonly [file: string]: Record<string, IMetric> | undefined;
 }
 
-interface IBaseline {
-  readonly global: Record<string, number>;
-  readonly core: Record<string, number>;
-  readonly frameworks: Record<string, number>;
-  readonly cli: Record<string, number>;
+export interface IBaseline {
+  readonly thresholds: Record<string, Record<string, number>>;
+  readonly baseline: Record<string, Record<string, number>>;
 }
 
 const METRICS = ["lines", "statements", "functions", "branches"] as const;
@@ -27,9 +26,13 @@ const PREFIXES: Record<Exclude<(typeof SCOPES)[number], "global">, readonly stri
   frameworks: ["/packages/frameworks/", "packages/frameworks/"],
   cli: ["/packages/cli/", "packages/cli/", "/packages/ui/", "packages/ui/", "/scripts/", "scripts/"],
 };
-const ROOT = resolve(import.meta.dir, "../..");
-const SUMMARY_PATH = resolve(ROOT, "build/coverage/coverage-summary.json");
-const BASELINE_PATH = resolve(ROOT, "tests/coverage-baseline.json");
+function getPaths(): { readonly summaryPath: string; readonly baselinePath: string } {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  return {
+    summaryPath: resolve(root, "build/coverage/coverage-summary.json"),
+    baselinePath: resolve(root, "tests/coverage-baseline.json"),
+  };
+}
 
 function readJson<T>(path: string): T {
   if (!existsSync(path)) throw new Error(`coverage — falta ${path}`);
@@ -52,7 +55,7 @@ function emptyMetrics(): Record<string, IMetric> {
   >;
 }
 
-function aggregateScope(summary: ICoverageSummary, scope: Exclude<(typeof SCOPES)[number], "global">): Record<string, IMetric> {
+export function aggregateScope(summary: ICoverageSummary, scope: Exclude<(typeof SCOPES)[number], "global">): Record<string, IMetric> {
   const aggregate = emptyMetrics();
   for (const [file, metrics] of Object.entries(summary)) {
     if (file === "total" || !metrics || !PREFIXES[scope].some((prefix) => file.includes(prefix))) continue;
@@ -71,34 +74,60 @@ function aggregateScope(summary: ICoverageSummary, scope: Exclude<(typeof SCOPES
   return aggregate;
 }
 
+export function evaluateCoverage(summary: ICoverageSummary, baseline: IBaseline): ReadonlyArray<string> {
+  const failures: string[] = [];
+  const total = summary.total;
+  if (!total) return ["coverage — falta total en el resumen"];
+
+  for (const metric of METRICS) {
+    const actual = total[metric]?.pct;
+    const threshold = baseline.thresholds.global?.[metric];
+    const frozen = baseline.baseline.global?.[metric];
+    if (actual === undefined || threshold === undefined || frozen === undefined || !Number.isFinite(actual)) {
+      failures.push(`coverage — global.${metric} no tiene métricas completas`);
+    } else if (actual < frozen || actual < threshold) {
+      failures.push(`coverage — global.${metric} ${actual}% < baseline ${frozen}% o threshold ${threshold}%`);
+    }
+  }
+
+  for (const scope of SCOPES) {
+    if (scope === "global") continue;
+    const thresholds = baseline.thresholds[scope];
+    const frozenMetrics = baseline.baseline[scope];
+    if (!thresholds || !frozenMetrics) {
+      failures.push(`coverage — falta baseline para ${scope}`);
+      continue;
+    }
+    const actual = aggregateScope(summary, scope);
+    for (const metric of METRICS) {
+      const aggregate = actual[metric];
+      const threshold = thresholds[metric];
+      const frozen = frozenMetrics[metric];
+      const value = aggregate?.pct;
+      if (threshold === undefined || frozen === undefined || aggregate === undefined || aggregate.total === 0 || value === undefined || !Number.isFinite(value)) {
+        failures.push(`coverage — ${scope}.${metric} no tiene métricas completas`);
+      } else if (value < frozen || value < threshold) {
+        failures.push(`coverage — ${scope}.${metric} ${value}% < baseline ${frozen}% o threshold ${threshold}%`);
+      }
+    }
+  }
+  return failures;
+}
+
 function main(): number {
   try {
-    const summary = readJson<ICoverageSummary>(SUMMARY_PATH);
-    const baseline = readJson<IBaseline>(BASELINE_PATH);
-    const total = summary.total;
-    if (!total) throw new Error(`coverage — falta total en ${SUMMARY_PATH}`);
-
-    for (const metric of METRICS) {
-      const actual = total[metric]?.pct;
-      const expected = baseline.global[metric];
-      if (actual === undefined || expected === undefined || !Number.isFinite(actual) || actual < expected) {
-        throw new Error(`coverage — global.${metric} ${actual ?? "missing"}% < baseline ${expected}%`);
-      }
-    }
-
+    const { summaryPath, baselinePath } = getPaths();
+    const summary = readJson<ICoverageSummary>(summaryPath);
+    const baseline = readJson<IBaseline>(baselinePath);
     for (const scope of SCOPES) {
-      validateMetricRecord(scope, baseline[scope]);
-      if (scope === "global") continue;
-      const actual = aggregateScope(summary, scope);
-      for (const metric of METRICS) {
-        const aggregate = actual[metric];
-        const expected = baseline[scope][metric];
-        const value = aggregate?.pct;
-        if (expected === undefined || aggregate === undefined || aggregate.total === 0 || value === undefined || !Number.isFinite(value) || value < expected) {
-          throw new Error(`coverage — ${scope}.${metric} ${value ?? "missing"}% < baseline ${expected}%`);
-        }
-      }
+      const thresholds = baseline.thresholds[scope];
+      const frozenMetrics = baseline.baseline[scope];
+      if (!thresholds || !frozenMetrics) throw new Error(`coverage — falta baseline para ${scope}`);
+      validateMetricRecord(`${scope}.thresholds`, thresholds);
+      validateMetricRecord(`${scope}.baseline`, frozenMetrics);
     }
+    const failures = evaluateCoverage(summary, baseline);
+    if (failures.length > 0) throw new Error(failures.join("\n"));
 
     console.log("coverage — global, core, frameworks y cli cumplen el baseline congelado");
     return 0;

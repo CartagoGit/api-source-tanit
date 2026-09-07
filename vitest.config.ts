@@ -18,6 +18,7 @@
  */
 import { defineConfig } from "vitest/config";
 
+import { COVERAGE_THRESHOLDS } from "./scripts/gates/coverage-policy.constant.js";
 import { SECTIONS } from "./scripts/gates/sections.constant.js";
 
 export default defineConfig({
@@ -39,11 +40,23 @@ export default defineConfig({
           // por prefijo; mantenerlos aquí hace visible el contrato en Vitest.
           coverage:
             section.name === "core"
-              ? { thresholds: { lines: 90, statements: 90, functions: 90, branches: 90 } }
+              ? {
+                  include: ["packages/core/**/*.ts"],
+                  exclude: ["**/*.d.ts"],
+                  thresholds: COVERAGE_THRESHOLDS.core,
+                }
               : section.name === "frameworks"
-                ? { thresholds: { lines: 75, statements: 75, functions: 75, branches: 75 } }
+                ? {
+                    include: ["packages/frameworks/**/*.ts"],
+                    exclude: ["**/*.d.ts"],
+                    thresholds: COVERAGE_THRESHOLDS.frameworks,
+                  }
                 : section.name === "cli"
-                  ? { thresholds: { lines: 70, statements: 70, functions: 70, branches: 70 } }
+                  ? {
+                      include: ["packages/cli/**/*.ts"],
+                      exclude: ["**/*.d.ts"],
+                      thresholds: COVERAGE_THRESHOLDS.cli,
+                    }
                   : undefined,
         },
       }),
@@ -91,12 +104,7 @@ export default defineConfig({
       // que las provoque. La deuda se pagó con fixtures (t00004,
       // 2026-08-30): el lote laravel/django/openapi + core subió la
       // medida a 72,0 % y el umbral pasa de 62 a 70.
-      thresholds: {
-        statements: 80,
-        branches: 80,
-        functions: 80,
-        lines: 80,
-      },
+      thresholds: COVERAGE_THRESHOLDS.global,
     },
   },
 });
