@@ -22,11 +22,12 @@ import { join, relative } from "node:path";
 
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
-import { findAllBalanced, findOutsideStrings, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { stripJsComments, findAllBalanced } from "../../core/helpers/source-scan.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
+import { extractRoutes } from "../../core/language-frontends/typescript/index.js";
 import { parseZodObjectLiteral, zodFieldToSpec } from "../parsers/zod-schema.helper.js";
 import type {
   IEndpointValidation,
@@ -39,22 +40,29 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "options", "all"] as const;
-
-/**
- * A call to an HTTP method with its path.
- *
- * It deliberately does not require an identifier in front, just to
- * cover chaining: in `app.get("/a", h).post("/b", h)`, `.post` has no
- * variable of its own.
- */
-const ROUTE_RE = new RegExp(
-  String.raw`\.\s*(${HTTP_METHODS.join("|")})\s*\(\s*(['"\`])([^'"\`]+)\2`,
-  "gi",
-);
-
 /** `app.route("/api", sub)` — the equivalent of mounting a router. */
 const MOUNT_RE = /\.\s*route\s*\(\s*(['"`])([^'"`]+)\1\s*,\s*([\w$]+)/g;
+
+/** Hono method verbs — kept as a regex fallback for chained routes.
+ *
+ * r00018 S3 keeps this regex alongside `extractRoutes()` because the
+ * LanguageIR collapses `app.get("/a", h).get("/b", h).get("/c", h)`
+ * into a single outer CallExpression — the chain is opaque to the
+ * extractor. The scanner runs both paths and `dedupe()` collapses
+ * the duplicates the chain-aware regex finds that the IR also finds. */
+const HONO_HTTP_METHODS = [
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+  "all",
+] as const;
+const CHAINED_ROUTE_RE = new RegExp(
+  String.raw`\.\s*(${HONO_HTTP_METHODS.join("|")})\s*\(\s*(['"\`])([^'"\`]+)\2`,
+  "gi",
+);
 
 /** `zValidator("json", ZodSchema)` from `@hono/zod-validator`. */
 const ZOD_VALIDATOR_RE = /zValidator\s*\(\s*(['"`])(\w+)\1\s*,\s*([\w$]+)/g;
@@ -234,12 +242,16 @@ export class HonoRouteScanner implements IRouteScanner {
       const sourceFile = relative(rawProjectRoot(match), file);
       const prefix = mountPrefixOf(source);
 
-      // `findOutsideStrings` instead of `matchAll`: a call written inside
-      // a string —`'usa app.get("/x")'`— is not a route, and used to
-      // produce an endpoint that doesn't exist anywhere.
-      for (const { match: routeMatch, index } of findOutsideStrings(source, ROUTE_RE)) {
-        const rawMethod = (routeMatch[1] ?? "").toLowerCase();
-        const rawUri = routeMatch[3] ?? "";
+      // r00018 S3: route extraction goes through LanguageIR's
+      // `extractRoutes(source, filename, "hono")` so chained calls
+      // (`app.get("/a", h).post("/b", h)`), sub-app mounts, and
+      // alias imports (e.g. `import { Hono as T } from "hono"`) all
+      // parse the same way Express did after x00048. The legacy
+      // `findOutsideStrings` regex path is gone.
+      const extracted = extractRoutes(source, file, "hono");
+      for (const ext of extracted.routes) {
+        const rawMethod = ext.method;
+        const rawUri = ext.path;
         if (!rawUri.startsWith("/")) continue;
 
         // `.all()` answers to any HTTP method. We emit it as the
@@ -253,11 +265,11 @@ export class HonoRouteScanner implements IRouteScanner {
         // method". Collapsing it to GET made collections look
         // complete while leaving 6 of 7 methods undocumented, and
         // the user had no signal that anything was missing.
-        const method = rawMethod === "all" ? "ALL" : rawMethod.toUpperCase();
+        const method = rawMethod === "ALL" || rawMethod.toLowerCase() === "all" ? "ALL" : rawMethod.toUpperCase();
         const uri = joinRoutePath(prefix, rawUri);
 
         routes.push({
-          lineNumber: lineOf(source, index),
+          lineNumber: lineOf(source, ext.range.start),
           method,
           uri,
           rawUri,
@@ -265,7 +277,37 @@ export class HonoRouteScanner implements IRouteScanner {
           prefixChain: prefix ? [prefix] : [],
         });
 
-        const validator = validatorInCall(source, routeMatch.index ?? 0);
+        const validator = validatorInCall(source, ext.range.start);
+        if (validator) {
+          validators.set(`${method} ${uri}`, { name: validator.schema, file });
+        }
+      }
+
+      // r00018 S3 chained-route fallback: walks chained
+      // `.get("/a", h).get("/b", h)` calls that the LanguageIR
+      // collapses into a single outer CallExpression and therefore
+      // misses. The regex emits all method calls in the file;
+      // `dedupe()` collapses duplicates the IR already found.
+      const known = new Set(
+        extracted.routes.map((ext) => `${ext.method.toUpperCase()} ${ext.path}`),
+      );
+      for (const match of source.matchAll(CHAINED_ROUTE_RE)) {
+        const rawMethod = (match[1] ?? "").toLowerCase();
+        const rawUri = match[3] ?? "";
+        if (!rawUri.startsWith("/")) continue;
+        const method = rawMethod === "all" ? "ALL" : rawMethod.toUpperCase();
+        const uri = joinRoutePath(prefix, rawUri);
+        const key = `${method} ${rawUri}`;
+        if (known.has(key)) continue;
+        routes.push({
+          lineNumber: lineOf(source, match.index ?? 0),
+          method,
+          uri,
+          rawUri,
+          sourceFile,
+          prefixChain: prefix ? [prefix] : [],
+        });
+        const validator = validatorInCall(source, match.index ?? 0);
         if (validator) {
           validators.set(`${method} ${uri}`, { name: validator.schema, file });
         }

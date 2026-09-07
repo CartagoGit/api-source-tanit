@@ -2,7 +2,7 @@
 id: r00018
 title: "Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4"
 kind: refactor
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07

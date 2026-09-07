@@ -34,11 +34,12 @@ import { join } from "node:path";
 
 import { collectFiles, isSourceJsTsFile } from "../../core/helpers/fs-walk.helper.js";
 import { readFilesInOrder } from "../../core/helpers/read-files.helper.js";
-import { findAllBalanced, findOutsideStrings, findClosingParen, stripJsComments } from "../../core/helpers/source-scan.helper.js";
+import { findAllBalanced, stripJsComments } from "../../core/helpers/source-scan.helper.js";
 import { isRecord, parseJson } from "../../core/helpers/parse-json.helper.js";
 import { joinRoutePath } from "../../core/helpers/uri.helper.js";
 import { effectiveProjectRoot, rawProjectRoot } from "../../core/discovery/effective-project-root.helper.js";
 import { SymbolGraph } from "../../core/discovery/symbol-graph.js";
+import { extractRoutes } from "../../core/language-frontends/typescript/index.js";
 import { relative } from "node:path";
 import type {
   IEndpointValidation,
@@ -50,22 +51,22 @@ import type {
   IValidationSpecProvider,
   ParsedRoute, IProjectScannerResult} from "../../contracts/interfaces/core/scanner.interface";
 
-const HTTP_METHODS = ["get", "post", "put", "delete", "patch", "head", "options"] as const;
+/** `app.register(x, { prefix: "/api" })`. */
+const REGISTER_PREFIX_RE = /\.register\s*\([^)]*?prefix\s*:\s*(['"`])([^'"`]+)\1/g;
 
-/** `app.get("/x"` and friends. */
-const SHORT_ROUTE_RE = new RegExp(
-  String.raw`\b[\w$]+\s*\.\s*(${HTTP_METHODS.join("|")})\s*\(\s*(['"\`])([^'"\`]+)\2`,
-  "gi",
-);
-
-/** `app.route({ method: "GET", url: "/x" })`, en cualquier orden. */
+/** `app.route({ method: "GET", url: "/x" })` — the long form.
+ *
+ * r00018 S3 keeps a regex fallback for this one shape because the
+ * LanguageIR collapses multi-line object literals (the form used
+ * in fastify-comprehensive/src/server.js) to `{ kind: "unknown" }`,
+ * which means `extractRoutes()` cannot enumerate the `method` /
+ * `url` fields. Promoting the IR to expose `objectShape` belongs to
+ * a follow-up slice (`p00030`); until then the scanner runs both
+ * paths and dedupes the result. */
 const ROUTE_OBJECT_RE = /\.route\s*\(\s*\{/g;
 const METHOD_FIELD_RE = /method\s*:\s*(['"`])(\w+)\1/i;
 const METHOD_ARRAY_RE = /method\s*:\s*\[([^\]]+)\]/i;
 const URL_FIELD_RE = /url\s*:\s*(['"`])([^'"`]+)\1/i;
-
-/** `app.register(x, { prefix: "/api" })`. */
-const REGISTER_PREFIX_RE = /\.register\s*\([^)]*?prefix\s*:\s*(['"`])([^'"`]+)\1/g;
 
 /**
  * Reads the project's `package.json` and returns the parsed object, or
@@ -187,22 +188,47 @@ export class FastifyRouteScanner implements IRouteScanner {
       const sourceFile = relative(rawProjectRoot(match), file);
       const prefix = prefixOf(source);
 
-      for (const { route, callStart, callEnd } of parseShortRoutes(
-        source,
-        prefix,
-        sourceFile,
-      )) {
+      // r00018 S3: route extraction goes through LanguageIR's
+      // `extractRoutes(source, filename, "fastify")` so chained
+      // calls, multi-router files and alias imports (Fastify default
+      // export vs. `@fastify/*` plugins) all parse the same way as
+      // Express already did under x00048. The legacy `findOutsideStrings`
+      // short-form path is gone.
+      const extracted = extractRoutes(source, file, "fastify");
+      for (const ext of extracted.routes) {
+        const rawUri = ext.path;
+        if (!rawUri.startsWith("/")) continue;
+        const uri = joinRoutePath(prefix, rawUri);
+        const route: ParsedRoute = {
+          lineNumber: lineOf(source, ext.range.start),
+          method: ext.method,
+          uri,
+          rawUri,
+          sourceFile,
+          prefixChain: prefix ? [prefix] : [],
+        };
         routes.push(route);
-        const schema = schemaInCall(source, callStart, callEnd);
+        const schema = schemaInCall(source, ext.range.start, ext.range.end);
         if (schema) schemas.set(`${route.method} ${route.uri}`, schema);
       }
-      for (const { route, callStart, callEnd } of parseRouteObjects(
-        source,
-        prefix,
-        sourceFile,
-      )) {
+
+      // r00018 S3 fallback: the long form (`app.route({ method, url })`)
+      // is still scanned with the old `findAllBalanced` regex because
+      // LanguageIR collapses multi-line object literals to
+      // `{ kind: "unknown" }`, which the extractor cannot enumerate.
+      // The slice's `r00018 S3 / `p00030` is the IR upgrade; until
+      // then both paths run and `dedupe()` collapses duplicates.
+      for (const long of parseRouteObjects(source, prefix)) {
+        const route: ParsedRoute = {
+          lineNumber: lineOf(source, long.callStart),
+          method: long.method,
+          uri: long.uri,
+          rawUri: long.rawUri,
+          sourceFile,
+          prefixChain: prefix ? [prefix] : [],
+        };
         routes.push(route);
-        const schema = schemaInCall(source, callStart, callEnd);
+        const schema = schemaInCall(source, long.callStart, long.callEnd);
         if (schema) schemas.set(`${route.method} ${route.uri}`, schema);
       }
     }
@@ -238,50 +264,28 @@ function prefixOf(source: string): string {
   return prefixes.length === 1 ? (prefixes[0] ?? "") : "";
 }
 
-/** A short route with the bounds of its call, to scope the schema. */
-interface IShortRoute {
-  readonly route: ParsedRoute;
+/** A long-form route (object version) with its call bounds. */
+interface ILongRoute {
+  readonly method: string;
+  readonly rawUri: string;
+  readonly uri: string;
   readonly callStart: number;
   readonly callEnd: number;
 }
 
-function parseShortRoutes(
-  source: string,
-  prefix: string,
-  sourceFile: string,
-): IShortRoute[] {
-  const out: IShortRoute[] = [];
-  // See the Hono comment: a call inside a string is not a route.
-  for (const { match, index } of findOutsideStrings(source, SHORT_ROUTE_RE)) {
-    const method = (match[1] ?? "").toUpperCase();
-    const rawUri = match[3] ?? "";
-    if (!rawUri.startsWith("/")) continue;
-
-    const parenAt = source.indexOf("(", index);
-    const callEnd = findClosingParen(source, parenAt);
-    out.push({
-      route: {
-        lineNumber: lineOf(source, match.index ?? 0),
-        method,
-        uri: joinRoutePath(prefix, rawUri),
-        rawUri,
-        sourceFile,
-        prefixChain: prefix ? [prefix] : [],
-      },
-      callStart: parenAt,
-      callEnd: callEnd === -1 ? parenAt : callEnd,
-    });
-  }
-  return out;
-}
-
+/**
+ * Long-form `app.route({ method, url })` extraction.
+ *
+ * r00018 S3 keeps this regex path while the LanguageIR's
+ * `objectShape` coverage for multi-line objects is closed in a
+ * follow-up (`p00030`). The scanner runs both extractors and
+ * dedupes — same `(method, uri)` key gets dropped on the second pass.
+ */
 function parseRouteObjects(
   source: string,
   prefix: string,
-  sourceFile: string,
-): IShortRoute[] {
-  const routes: IShortRoute[] = [];
-
+): ILongRoute[] {
+  const routes: ILongRoute[] = [];
   for (const call of findAllBalanced(source, ROUTE_OBJECT_RE)) {
     const body = source.slice(call.callStart, call.callEnd);
     const rawUri = URL_FIELD_RE.exec(body)?.[2];
@@ -301,14 +305,9 @@ function parseRouteObjects(
 
     for (const method of methods) {
       routes.push({
-        route: {
-          lineNumber: lineOf(source, call.callStart),
-          method: method.toUpperCase(),
-          uri: joinRoutePath(prefix, rawUri),
-          rawUri,
-          sourceFile,
-          prefixChain: prefix ? [prefix] : [],
-        },
+        method: method.toUpperCase(),
+        rawUri,
+        uri: joinRoutePath(prefix, rawUri),
         callStart: call.callStart,
         callEnd: call.callEnd,
       });

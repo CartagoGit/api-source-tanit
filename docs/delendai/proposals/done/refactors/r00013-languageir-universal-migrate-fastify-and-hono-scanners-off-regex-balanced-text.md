@@ -2,7 +2,7 @@
 id: r00013
 title: "LanguageIR universal — migrate Fastify and Hono scanners off regex/balanced-text"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-06

@@ -14,10 +14,12 @@ import type {
   IResponseInference,
 } from "../../packages/contracts/interfaces/core/responses.interface";
 import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { ISchemaGraph } from "../../packages/contracts/interfaces/core/schema.interface";
 
 const BASE_SPEC: EndpointSpec = {
   method: "GET",
   uri: "/users",
+  name: "GET /users",
 };
 
 function entry(
@@ -27,6 +29,19 @@ function entry(
   schema: IResponseInference["schema"] = { kind: "empty" },
 ): IResponseInference {
   return { status, reason, confidence, schema };
+}
+
+/**
+ * `ISchemaGraph` requires a `toDTO()` method that the exporter never
+ * calls. The test only needs `nodes` + `root`, so we wrap the Map in
+ * a stub that satisfies the contract without polluting every fixture.
+ */
+function stubGraph(nodes: ReadonlyMap<string, unknown>): ISchemaGraph {
+  return {
+    nodes: nodes as ReadonlyMap<string, never>,
+    root: "root",
+    toDTO: () => ({ nodes: [], root: "root" }),
+  };
 }
 
 describe("f00014 — renderInferredPostmanResponses", () => {
@@ -91,26 +106,23 @@ describe("f00014 — renderInferredPostmanResponses", () => {
           confidence: "high",
           schema: {
             kind: "schema-graph",
-            graph: {
-              nodes: new Map<string, any>([
-                [
-                  "root",
-                  {
-                    id: "root",
-                    kind: "array",
-                    element: {
-                      id: "item",
-                      kind: "object",
-                      fields: [
-                        { key: "id", value: { id: "f1", kind: "scalar", scalarType: "number" } },
-                        { key: "name", value: { id: "f2", kind: "scalar", scalarType: "string" } },
-                      ],
-                    },
+            graph: stubGraph(new Map<string, any>([
+              [
+                "root",
+                {
+                  id: "root",
+                  kind: "array",
+                  element: {
+                    id: "item",
+                    kind: "object",
+                    fields: [
+                      { key: "id", value: { id: "f1", kind: "scalar", scalarType: "number" } },
+                      { key: "name", value: { id: "f2", kind: "scalar", scalarType: "string" } },
+                    ],
                   },
-                ],
-              ]),
-              root: "root",
-            },
+                },
+              ],
+            ])),
           },
         },
       ],
