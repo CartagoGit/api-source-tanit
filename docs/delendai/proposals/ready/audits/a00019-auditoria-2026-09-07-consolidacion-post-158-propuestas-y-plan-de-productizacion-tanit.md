@@ -38,9 +38,8 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
   - "c00010 cerrado y archivado: CI verde end-to-end, develop protegido con required checks, fixtures reparadas, coverage ≥ 80% global"
   - "INDEX.md regenerado y commiteado"
   - "El DoD de a00019 se cumple para el bloque (a)"
-- review-state: changes_requested
-- review-implementer: copilot-editor-sandbox-impl-20260908
-- review-reviewer: delivery-verifier-20260908
+- review-state: in_review
+- review-implementer: orchestrator-cartago-2026-09-07
 - review-log: requested_changes by delivery-verifier-20260908 — la aceptación phase-1-hygiene-ci exige 'c00010 cerrado y archivado' pero c00010 permanece en in-progress/ con S3 parcial. Bloqueos verificados por el implementer sobre HEAD fda5835: (1) scripts/gates/coverage.script.ts ausente (error: Module not found al ejecutar el gate); (2) tests/coverage-baseline.json ausente; (3) vitest.config.ts declara un único threshold global (statements:73, branches:70, functions:82, lines:75), no los per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%) que exige S3 acceptance; (4) lint:proposals sigue rojo por 16 propuestas en done/<kind> con kind incorrecto (deuda previa, NO introducida por c00010). Decisión: c00010 NO cierra, slice phase-1-hygiene-ci NO se aprueba, queda in_review con blockers documentados en el doc canónico. El implementer ha hecho trabajo honesto: actualizó c00010 con Trazabilidad 2026-09-08 explícita y revirtió review-state de in_review (premauro de la sesión previa) a in_progress. El próximo paso es una nueva slice que aterrice los 3 entregables de S3: coverage.script.ts, coverage-baseline.json, y thresholds per-proyecto en vitest.config.ts — preferiblemente como c00010 S3-prórroga o como una nueva c00011 con archivos disjuntos.
 ### phase-2-universal-api-model — Fase 2 — Universal API Model v2: OperationId universal, per-operation serverRef/authRef, Postman como exporter más
 - **Status**: pending
