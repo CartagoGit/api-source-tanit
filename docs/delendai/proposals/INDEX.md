@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00071` | `chore` | [`ready/chores/x00071-ci-parallel-jobs-and-branch-protection.md`](ready/chores/x00071-ci-parallel-jobs-and-branch-protection.md) |
 
 ## Bloqueadas
 
@@ -59,7 +58,9 @@ propuesta con sus SHAs (`shippedIn`).
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
 - `x00047` — x00047: allowlist de ficheros en la raíz del repo — anti-residuos (los agentes no pueden dejar basura) — `d554d1f`
 - `x00067` — TANIT_* env vars are canonical; POSTMAN_* kept as deprecated alias — `befa555`
+- `x00068` — CI: parallel jobs, always-on security audit, develop branch protection — `9712c9c`
 - `x00069` — Intel Mac (darwin-x64) single-binary launcher — `a4e5fe2`
+- `x00071` — x00068 follow-up: split CI into parallel jobs + apply develop branch protection — `d34f3a2`
 
 ### docs
 

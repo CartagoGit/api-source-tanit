@@ -2,13 +2,13 @@
 id: x00071
 title: "x00068 follow-up: split CI into parallel jobs + apply develop branch protection"
 kind: chore
-status: ready
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependsOn:
   - x00068
-shippedIn: []
+shippedIn: ["d34f3a2"]
 ---
 
 # x00069 — CI parallelization + branch protection
