@@ -7,6 +7,7 @@
  * copies of the gate's lists).
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -38,18 +39,25 @@ async function tmpDir(prefix: string): Promise<string> {
 }
 
 async function runGateCli(): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const proc = Bun.spawn([
-    "bun", "run", join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts"),
-  ], {
-    cwd: REPO_ROOT,
-    stdout: "pipe",
-    stderr: "pipe",
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "bun",
+      ["run", join(REPO_ROOT, "scripts/gates/lint-fixtures.script.ts")],
+      { cwd: REPO_ROOT },
+    );
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("close", (exitCode) => {
+      resolve({ exitCode: exitCode ?? 1, stdout, stderr });
+    });
   });
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-  return { exitCode: await proc.exited, stdout, stderr };
 }
 
 describe("isManifest / isSpecFile / isFixtureSource — unit", () => {
