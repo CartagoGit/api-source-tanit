@@ -233,6 +233,8 @@ quieras versionar la colección para revisarla en los PRs.
 | `push` | Sube la colección **directamente** a tu workspace de Postman, sin pasar por el fichero. |
 | `ui` | Abre la interfaz gráfica en el navegador. Para quien no quiere aprenderse los flags. |
 | `history` | Lista las generaciones previas guardadas en `~/.tanit/history.jsonl` con `--limit N`, filtro por `--project`, salida `--json` y `--clear`. |
+| `sync` | Reutiliza la pipeline de generación para sincronizar el estado; con `--dry-run` inspecciona sin escribir archivos. |
+| `serve` | Inicia el host local para servir la interfaz y sus operaciones de aplicación. |
 
 ### `history` — ver qué se ha generado antes
 
@@ -240,6 +242,19 @@ quieras versionar la colección para revisarla en los PRs.
 apisrc history --limit 20
 apisrc history --project <ruta> --json
 apisrc history --clear
+```
+
+Para sincronizar usando la misma pipeline de generación:
+
+```sh
+apisrc sync --project-root .
+apisrc sync --project-root . --dry-run
+```
+
+Para iniciar el host local de la interfaz y sus operaciones:
+
+```sh
+apisrc serve --project-root .
 ```
 
 ```sh

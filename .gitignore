@@ -36,3 +36,6 @@ packages/core/domain/test-script.service.js
 
 # tsc --build info files (regenerated on every typecheck).
 tsconfig.tsbuildinfo
+
+# angular cache
+.angular

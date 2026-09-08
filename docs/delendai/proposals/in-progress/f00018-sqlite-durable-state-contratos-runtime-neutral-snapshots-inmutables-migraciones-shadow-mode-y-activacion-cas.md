@@ -2,10 +2,13 @@
 id: f00018
 title: "SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS"
 kind: feat
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
+last-transition-id: b6fcfac2-271f-46aa-86a9-1b9599ae8dd5
+last-correlation-id: b6fcfac2-271f-46aa-86a9-1b9599ae8dd5
+last-transition-from: ready
 ---
 
 # f00018 — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS
@@ -31,7 +34,7 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 - global_gate: e2e
 
 ### S1-state-contracts-and-canonical-serialization — S1 — Contratos de estado, IDs estables y serialización canónica
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/contracts/interfaces/core/state-store.interface.ts`, `packages/contracts/interfaces/core/project-state.interface.ts`, `packages/contracts/interfaces/core/snapshot-store.interface.ts`, `packages/contracts/interfaces/core/stable-ids.interface.ts`, `packages/core/state/canonical-snapshot.serializer.ts`, `packages/core/state/stable-id.service.ts`, `tests/core/state/canonical-snapshot.serializer.spec.ts`, `tests/contracts/state-store.contract.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -40,7 +43,10 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
   - "La serialización canónica es determinista, redacts secretos y produce un digest estable para el mismo snapshot semántico."
   - "El estado persistible distingue snapshot building, complete y failed, y no permite activar uno incompleto."
   - "Tests cubren IDs, orden determinista, redacción de credenciales y round-trip del snapshot canónico."
-
+- review-state: done
+- review-implementer: delendai-impl-20260908
+- review-reviewer: delivery_verifier
+- review-log: approved by delivery_verifier — Revisión independiente completada. S1 implementa contratos runtime-neutral, IDs explícitos, serializer determinista con redacción/digest, estados y activación sólo complete. Naming gate queda bloqueado por regla preexistente que no contempla el path obligatorio packages/core/state/canonical-snapshot.serializer.ts.
 ### S2-sqlite-schema-and-migrations — S2 — Esquema SQLite versionado, migraciones y configuración de ubicación
 - **Status**: pending
 - **DependsOn**: [S1-state-contracts-and-canonical-serialization]

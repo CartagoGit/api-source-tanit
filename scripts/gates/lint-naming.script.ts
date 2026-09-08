@@ -66,6 +66,26 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".exporter.ts", ".service.ts"],
   },
   {
+    path: "packages/core/application-api/",
+    what: "handlers y contratos de la Application API",
+    suffixes: [".handler.ts", ".service.ts", ".schema.ts", ".ts"],
+  },
+  {
+    path: "packages/core/session/",
+    what: "sesión y snapshots del proyecto",
+    suffixes: [".service.ts", ".helper.ts", ".interface.ts", ".ts"],
+  },
+  {
+    path: "packages/core/transport/",
+    what: "transportes de la Application API",
+    suffixes: [".server.ts", ".protocol.ts", ".error.ts", ".service.ts", "-protocol.ts", "-error.ts"],
+  },
+  {
+    path: "packages/core/state/",
+    what: "estado persistible y serialización canónica",
+    suffixes: [".service.ts", ".serializer.ts", ".adapter.ts", ".helper.ts"],
+  },
+  {
     path: "packages/core/",
     what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con
@@ -177,7 +197,7 @@ const RULES: readonly INamingRule[] = [
   {
     path: "tests/core/",
     what: "tests del núcleo",
-    suffixes: [".spec.ts", ".test.ts"],
+    suffixes: [".spec.ts", ".test.ts", ".bench.ts"],
   },
   {
     path: "tests/frameworks/",

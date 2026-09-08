@@ -2,11 +2,14 @@
 id: i00003
 title: "Release industrial — desktop CI por plataforma, signing + notarization, secure updater firmado, SBOM CycloneDX, checksums firmados"
 kind: infra
-status: review
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
 dependencies: [a00019#phase-5-multi-language-precision]
+last-transition-id: de79e50f-7952-4ca9-a1e1-a2bd2992d197
+last-correlation-id: de79e50f-7952-4ca9-a1e1-a2bd2992d197
+last-transition-from: review
 ---
 
 # i00003 — Release industrial — desktop CI por plataforma, signing + notarization, secure updater firmado, SBOM CycloneDX, checksums firmados

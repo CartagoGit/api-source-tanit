@@ -2,12 +2,15 @@
 id: r00019
 title: "Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más"
 kind: refactor
-status: review
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependencies:
   - a00019#phase-1-hygiene-ci
+last-transition-id: 05bef354-44f9-4fa2-b45d-59d80b6eb09d
+last-correlation-id: 05bef354-44f9-4fa2-b45d-59d80b6eb09d
+last-transition-from: review
 ---
 
 # r00019 — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más
