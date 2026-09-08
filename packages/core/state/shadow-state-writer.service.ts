@@ -1,0 +1,50 @@
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/project-state.interface.js";
+import type { ProjectId } from "../../contracts/interfaces/core/stable-ids.interface.js";
+import { SnapshotTransactionService } from "./snapshot-transaction.service.js";
+
+export interface IShadowWriteDiagnostic {
+  readonly ok: boolean;
+  readonly enabled: boolean;
+  readonly persisted: boolean;
+  readonly activated: false;
+  readonly snapshotId: string;
+  readonly error?: string;
+}
+
+export interface IShadowProjectRepository {
+  ensure(projectId: ProjectId, rootPath: string, now: string): void;
+}
+
+export class ShadowStateWriterService {
+  public constructor(
+    private readonly transactions: SnapshotTransactionService,
+    private readonly projects: IShadowProjectRepository,
+    private readonly now: () => string = () => new Date().toISOString(),
+  ) {}
+
+  public write(
+    snapshot: IProjectSnapshot,
+    rootPath: string,
+    enabled: boolean,
+  ): IShadowWriteDiagnostic {
+    const base = {
+      enabled,
+      activated: false as const,
+      snapshotId: snapshot.snapshotId.value,
+    };
+    if (!enabled) return { ...base, ok: true, persisted: false };
+
+    try {
+      this.projects.ensure(snapshot.projectId, rootPath, this.now());
+      const complete = this.transactions.write(snapshot);
+      return { ...base, ok: true, persisted: complete.status === "complete" };
+    } catch (error) {
+      return {
+        ...base,
+        ok: false,
+        persisted: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}

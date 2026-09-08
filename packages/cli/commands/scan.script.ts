@@ -29,11 +29,59 @@ import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import { guessedRootNotice, resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.interface.js";
+import { hasFlag } from "../../core/helpers/argv.helper.js";
+import { StableIdService } from "../../core/state/stable-id.service.js";
+import { ShadowStateWriterService, type IShadowWriteDiagnostic } from "../../core/state/shadow-state-writer.service.js";
+
+export interface IScanOptions {
+  readonly shadow?: boolean;
+  readonly stateDatabasePath?: string;
+}
+
+async function writeShadowSnapshot(root: string, framework: string, routes: ReadonlyArray<{ method: string; uri: string }>, path?: string): Promise<IShadowWriteDiagnostic> {
+  const [{ SnapshotTransactionService }, { SqliteProjectRepository }, { SqliteSnapshotRepository }, { openStateDatabase }] = await Promise.all([
+    import("../../core/state/snapshot-transaction.service.js"),
+    import("../../core/state/sqlite/sqlite-project.repository.js"),
+    import("../../core/state/sqlite/sqlite-snapshot.repository.js"),
+    import("../../core/state/sqlite/sqlite-connection.adapter.js"),
+  ]);
+  const ids = new StableIdService();
+  const capturedAt = new Date().toISOString();
+  const projectId = ids.project(root);
+  const snapshot = {
+    projectId,
+    snapshotId: ids.snapshot(`${root}\0${capturedAt}`),
+    status: "building" as const,
+    revision: Date.now(),
+    capturedAt,
+    diagnostics: [],
+    metadata: { framework, routeCount: routes.length },
+    services: [{
+      serviceId: ids.service(`${root}\0${framework}`),
+      name: framework,
+      operations: routes.map((route) => ({
+        operationId: ids.operation(`${framework}\0${route.method}\0${route.uri}`),
+        method: route.method,
+        path: route.uri,
+      })),
+    }],
+  };
+  const connection = openStateDatabase(path);
+  try {
+    const snapshots = new SqliteSnapshotRepository(connection.database as never);
+    const projects = new SqliteProjectRepository(connection.database as never);
+    const transactions = new SnapshotTransactionService(connection.database as never, snapshots);
+    return new ShadowStateWriterService(transactions, projects).write(snapshot, root, true);
+  } finally {
+    connection.close();
+  }
+}
 
 /** Scans the project and returns what was found, printing it along the way. */
 export async function runScan(
   argv: string[] = process.argv.slice(2),
   context?: IProjectContext,
+  options: IScanOptions = {},
 ): Promise<IScanOutcome> {
   const root = context?.projectRoot ?? resolveRoot({ argv }).root;
 
@@ -83,6 +131,16 @@ export async function runScan(
     const tags = r.tags?.length ? ` [${r.tags.join(", ")}]` : "";
     const desc = r.description ? ` — ${r.description}` : "";
     console.log(`  ${r.method.padEnd(6)} ${r.uri}${tags}${desc}`);
+  }
+
+  if (options.shadow ?? hasFlag(argv, "--shadow")) {
+    try {
+      const shadow = await writeShadowSnapshot(root, match.framework, routes, options.stateDatabasePath);
+      if (!shadow.ok) console.error(`⚠ Shadow state write failed: ${shadow.error}`);
+      else console.log("✔ Shadow state snapshot persisted (legacy remains authoritative)");
+    } catch (error) {
+      console.error(`⚠ Shadow state unavailable: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   return {
