@@ -45,4 +45,21 @@ describe("ui command branch surfaces", () => {
       error.mockRestore();
     }
   });
+
+  test("uses the server-selected port when no port flag is supplied", async () => {
+    const stop = vi.fn();
+    startUiServer.mockReset();
+    startUiServer.mockReturnValue({ url: "http://127.0.0.1:4318", stop });
+    const signal = vi.spyOn(process, "once").mockImplementation((event, listener) => {
+      if (event === "SIGINT") listener();
+      return process;
+    });
+    try {
+      expect(await uiMain(["--no-open"])).toBe(0);
+      expect(startUiServer).toHaveBeenCalledWith(expect.not.objectContaining({ port: expect.anything() }));
+      expect(stop).toHaveBeenCalledOnce();
+    } finally {
+      signal.mockRestore();
+    }
+  });
 });
