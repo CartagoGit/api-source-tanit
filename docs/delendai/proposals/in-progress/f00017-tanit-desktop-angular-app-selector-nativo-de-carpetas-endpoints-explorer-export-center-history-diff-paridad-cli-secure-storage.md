@@ -88,7 +88,7 @@ packages/core/session/
   history-recorder.service.ts
   snapshot-hash.service.ts
 
-packages/desktop/src-tauri/
+packages/desktop/src/
   dialogs.rs
   drag_drop.rs
   secure_storage.rs
@@ -106,7 +106,7 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
 
 ### S1-app-angular-foundation — S1 — Angular standalone foundation, design system, shared shell e i18n
 - **Status**: pending
-- **Files**: `package.json`, `vitest.config.ts`, `tsconfig.app.json`, `packages/app/package.json`, `packages/app/angular.json`, `packages/app/tsconfig.json`, `packages/app/src/main.ts`, `packages/app/src/app/app.config.ts`, `packages/app/src/styles/tokens.scss`, `packages/app/src/styles/typography.scss`, `packages/app/src/styles/motion.scss`, `packages/app/src/app/shell/app-shell.component.ts`, `packages/app/src/app/shell/sidebar.component.ts`, `packages/app/src/app/shell/command-palette.component.ts`, `packages/app/src/app/shared/button/button.component.ts`, `packages/app/src/app/shared/badge/badge.component.ts`, `packages/app/src/app/shared/empty-state/empty-state.component.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/state/command.store.ts`, `packages/app/src/app/core/i18n/i18n.service.ts`, `packages/app/src/app/core/i18n/locales/en.json`, `packages/app/src/app/core/i18n/locales/es.json`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/desktop/src-tauri/Cargo.toml`, `tests/app/shell.spec.ts`
+- **Files**: `package.json`, `vitest.config.ts`, `tsconfig.app.json`, `packages/app/package.json`, `packages/app/angular.json`, `packages/app/tsconfig.json`, `packages/app/src/main.ts`, `packages/app/src/app/app.config.ts`, `packages/app/src/styles/tokens.scss`, `packages/app/src/styles/typography.scss`, `packages/app/src/styles/motion.scss`, `packages/app/src/app/shell/app-shell.component.ts`, `packages/app/src/app/shell/sidebar.component.ts`, `packages/app/src/app/shell/command-palette.component.ts`, `packages/app/src/app/shared/button/button.component.ts`, `packages/app/src/app/shared/badge/badge.component.ts`, `packages/app/src/app/shared/empty-state/empty-state.component.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/state/command.store.ts`, `packages/app/src/app/core/i18n/i18n.service.ts`, `packages/app/src/app/core/i18n/locales/en.json`, `packages/app/src/app/core/i18n/locales/es.json`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/desktop/Cargo.toml`, `tests/app/shell.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "`packages/app/` compila con Angular standalone components, signals y control flow; no usa Angular Material y `@angular/cdk` queda limitado a overlay, focus trap, a11y y virtual scroll"
@@ -119,14 +119,10 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
   - "`apisrc ui` sirve `packages/app/dist/`; el script desktop empaqueta exactamente ese mismo artefacto"
   - "Tests de `tests/app/shell.spec.ts` cubren render, ocho acciones del palette, i18n, theme y foco"
   - "DoD slice: `bun run typecheck && bun run test:app && bun run build:app` verdes"
-- review-state: done
-- review-implementer: finch
-- review-reviewer: delivery-verifier
-- review-log: approved by delivery-verifier — f00017 S1 (consolidacion documental) — Angular foundation, 6 slices atomicas, dependencias declaradas con a00019 phase-3 y entre slices. Gates verdes. Aprobada por delivery-verifier, distinto del implementador (finch).
 ### S2-folder-picker-dragdrop — S2 — Folder picker nativo, drag&drop, recents y browse browser
 - **Status**: pending
 - **DependsOn**: [S1-app-angular-foundation]
-- **Files**: `packages/desktop/src-tauri/src/dialogs.rs`, `packages/desktop/src-tauri/src/drag_drop.rs`, `packages/desktop/src-tauri/capabilities/main.json`, `packages/app/src/app/features/home/folder-picker.component.ts`, `packages/app/src/app/features/home/recent-projects.component.ts`, `packages/app/src/app/features/home/home.component.ts`, `packages/app/src/app/core/host/dialog.service.ts`, `packages/app/src/app/core/host/drag-drop.service.ts`, `packages/app/src/app/core/state/recent-projects.store.ts`, `packages/app/src/app/core/api/recent-projects.client.ts`, `tests/app/folder-picker.spec.ts`, `tests/app/recent-projects.spec.ts`
+- **Files**: `packages/desktop/src/dialogs.rs`, `packages/desktop/src/drag_drop.rs`, `packages/desktop/capabilities/main.json`, `packages/app/src/app/features/home/folder-picker.component.ts`, `packages/app/src/app/features/home/recent-projects.component.ts`, `packages/app/src/app/features/home/home.component.ts`, `packages/app/src/app/core/host/dialog.service.ts`, `packages/app/src/app/core/host/drag-drop.service.ts`, `packages/app/src/app/core/state/recent-projects.store.ts`, `packages/app/src/app/core/api/recent-projects.client.ts`, `tests/app/folder-picker.spec.ts`, `tests/app/recent-projects.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Tauri instala `tauri-plugin-dialog` y declara la capability mínima; Desktop selecciona carpeta con NSOpenPanel en macOS, IFileOpenDialog en Windows y XDG Portal chooser en Linux"
@@ -183,7 +179,7 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
 ### S6-cli-parity-secure-storage-live — S6 — Paridad CLI, Live mode, secure storage y push-to-Postman
 - **Status**: pending
 - **DependsOn**: [S5-services-and-history-diff]
-- **Files**: `packages/cli/cli.script.ts`, `packages/cli/commands/sync.script.ts`, `docs/CLI.md`, `packages/app/src/app/features/check/check.component.ts`, `packages/app/src/app/features/sync/sync.component.ts`, `packages/app/src/app/features/validate/validate.component.ts`, `packages/app/src/app/features/push/push-to-postman.component.ts`, `packages/app/src/app/features/settings/settings.component.ts`, `packages/app/src/app/features/live/live-toggle.component.ts`, `packages/app/src/app/core/host/secure-storage.service.ts`, `packages/app/src/app/core/state/live.store.ts`, `packages/app/src/app/core/api/check.client.ts`, `packages/app/src/app/core/api/push.client.ts`, `packages/desktop/src-tauri/src/secure_storage.rs`, `tests/app/cli-parity.spec.ts`, `tests/app/secure-storage.spec.ts`
+- **Files**: `packages/cli/cli.script.ts`, `packages/cli/commands/sync.script.ts`, `docs/CLI.md`, `packages/app/src/app/features/check/check.component.ts`, `packages/app/src/app/features/sync/sync.component.ts`, `packages/app/src/app/features/validate/validate.component.ts`, `packages/app/src/app/features/push/push-to-postman.component.ts`, `packages/app/src/app/features/settings/settings.component.ts`, `packages/app/src/app/features/live/live-toggle.component.ts`, `packages/app/src/app/core/host/secure-storage.service.ts`, `packages/app/src/app/core/state/live.store.ts`, `packages/app/src/app/core/api/check.client.ts`, `packages/app/src/app/core/api/push.client.ts`, `packages/desktop/src/secure_storage.rs`, `tests/app/cli-parity.spec.ts`, `tests/app/secure-storage.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "Desktop guarda la API key de Postman mediante `keyring` (Keychain/Credential Manager/Secret Service), muestra solo masked value y permite 'Use for this session only' solo en memoria; browser no persiste el secreto"
