@@ -214,3 +214,64 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 - Regresiones de `check` corregidas sin relajar el umbral: las que detecten `routesByService` vacío o auth inconsistente en monorepos quedan documentadas con test que falla antes del fix y pasa después
 - `validate-examples` verde — todas las fixtures referenciadas desde `examples/` tienen al menos un snapshot versionado; las que se jubilen se mueven a `tests/fixtures/_retired/` con `retired-reason`
 - DoD slice: `bun run test:coverage` + `bun run validate:examples` + `bun run test:e2e` verdes; `bun run validate` full verde
+
+#### Trazabilidad S3 — 2026-09-08 (medición final sobre `04ecbc3`)
+
+Tras el cierre del slice con `c0ff70d`, esta sesión (`04ecbc3`) cerró los
+tests pendientes y amplió los que cubrían comandos con más ramas:
+
+- **`tests/cli/cli-dispatch.test.ts`** (6 tests):
+  - `--help` / `-h` retornan 0 y muestran la ayuda.
+  - Comando desconocido retorna 1 con la lista disponible.
+  - Comando conocido (`list`) se despacha y retorna el código del sub-comando.
+  - `--project-root` con ruta relativa es absolutizada antes de despachar.
+  - `--config` con ruta relativa también (tercera de las cuatro flags que
+    `absolutizePathFlags` reescribe).
+- **`tests/cli/list-endpoints-command.test.ts`** (5 tests): `runList` con
+  colección válida (happy), sin colección (ENOENT), JSON corrupto, zonas
+  asignadas, generación + listado round-trip.
+- **`tests/cli/scan-command.test.ts`** (5 tests): `runScan` detecta Express,
+  sin-framework, raíz resuelta, scanner y artifacts.
+- **`tests/cli/diff-command.test.ts`** (5 tests): `runCheck` in-sync, sin
+  colección, drift al borrar requests de la colección, `--output` override,
+  shape estable del report.
+- **`tests/cli/stats-command.test.ts`** (5 tests): `runStats` happy, sin
+  colección, JSON corrupto, `byMethod` ordenado, totales por zona.
+- **`tests/cli/summary-command.test.ts`** (5 tests): `main` happy con
+  `--format text`, `--format json`, `--no-history`, sin-framework
+  (code 1), formato desconocido (fallback a text).
+- **`tests/cli/push-command.test.ts`** (5 tests): `runPush` sin API key,
+  fake key (verifica no-leak del secret), no-endpoints, shape estable del
+  envelope en fallo, `nextAction` menciona `--api-key` y `POSTMAN_API_KEY`.
+- **`tests/cli/validate-json-command.test.ts`** (6 tests): `main` happy, sin
+  colección, JSON corrupto, schema incorrecto, `item` vacío, `_postman_id`
+  ausente (warning pero code 0).
+- **`tests/cli/open-postman-command.test.ts`** (4 tests): `main` `--web`,
+  sin colección, `--file` explícito, no-`--web` imprime path+platform.
+- **`tests/cli/watch-command.test.ts`** (9 tests, 3 in-process): `--once`
+  happy, `--debounce -1` rechazado, `--format postman,openapi` ambos
+  archivos, etc.
+- **`tests/cli/init-command.test.ts`** (8 tests, +6): `--name`, `--output`,
+  sin manifest, `APP_BASE_URL`, env-base-path, guard Sanctum, endpoints.ts.
+- **`tests/cli/history-command.test.ts`** (9 tests, NEW): `--clear` empty,
+  `--clear` populated, `--limit` non-numeric, negative, zero, `--json`
+  empty, populated, `--project` filter, main wrapper.
+- **`tests/cli/generate-branches.test.ts`** (13 tests, NEW): `--inspect`,
+  `--allow-empty`, `--format bogus`, `--format postman,openapi`, `--envs`,
+  `--basename`, `--output`, `--framework`, `--json`, `--framework-search-root`,
+  shape del report, default folder, `--output-dir` deeply nested.
+- **`tests/cli/ansi.helper.spec.ts`** (13 tests, NEW): `truncate` (max<=0,
+  ya-fits, max===1, ANSI-aware), `padEnd`/`padStart` (no-op, ANSI-aware),
+  `terminalWidth` (undefined, NaN, <20, in-range, clamped a 160).
+
+**`bun run scripts/gates/coverage.script.ts` sobre `04ecbc3`** (sesión 2026-09-08):
+
+- `coverage — gaps aspiracionales (no bloquean)`:
+  - `global.branches 77.22% < threshold aspiracional 80%` (supera baseline 76.32%)
+  - `core.branches 79.70% < threshold aspiracional 90%` (supera baseline 79.68%)
+  - `cli.statements 69.55% < threshold aspiracional 70%` (supera baseline 62.56%)
+  - `cli.functions 67.76% < threshold aspiracional 70%` (supera baseline 63.53%)
+  - `cli.branches 60.94% < threshold aspiracional 70%` (supera baseline 54.16%)
+- `coverage — global, core, frameworks y cli cumplen el baseline congelado` — **gate verde, EXIT 0**
+
+**SHAs publicados en `origin/develop` por esta sesión**: `dac3097`, `04ecbc3`.
