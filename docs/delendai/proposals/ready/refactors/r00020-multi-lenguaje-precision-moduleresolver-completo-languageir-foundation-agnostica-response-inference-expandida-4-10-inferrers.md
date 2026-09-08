@@ -107,7 +107,7 @@ packages/core/response-inference/
 - global_gate: e2e
 
 ### S1-module-resolver-complete — S1 — ModuleResolver completo: tsconfig paths, package exports/imports, workspaces, Windows paths
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/module-resolution/resolver.service.ts`, `packages/core/module-resolution/tsconfig-paths.helper.ts`, `packages/core/module-resolution/package-exports.helper.ts`, `packages/core/module-resolution/package-imports.helper.ts`, `packages/core/module-resolution/workspace-resolver.service.ts`, `packages/core/module-resolution/platform-paths.helper.ts`, `packages/core/module-resolution/resolver-error.ts`, `packages/contracts/interfaces/core/module-resolution.interface.ts`, `packages/frameworks/scanners/import-resolver.ts`, `tests/core/module-resolution.spec.ts`, `tests/fixtures/tsconfig-paths-monorepo/package.json`, `tests/fixtures/tsconfig-paths-monorepo/tsconfig.json`, `tests/fixtures/tsconfig-paths-monorepo/src/main.ts`, `tests/fixtures/tsconfig-paths-monorepo/src/users/users.controller.ts`, `tests/fixtures/tsconfig-paths-monorepo/packages/orders/package.json`, `tests/fixtures/tsconfig-paths-monorepo/packages/orders/src/main.ts`, `tests/fixtures/windows-paths-mock/package.json`, `tests/fixtures/windows-paths-mock/src/main.ts`, `tests/fixtures/windows-paths-mock/src/helper.ts`
 - **Gate**: e2e
 - acceptance:
@@ -118,7 +118,10 @@ packages/core/response-inference/
   - "Fixtures `tests/fixtures/tsconfig-paths-monorepo/` (npm workspaces + tsconfig paths `@/*` + alias cross-package) y `tests/fixtures/windows-paths-mock/` (rutas con drive letters) con tests e2e cubriendo cada caso"
   - "Performance: resolver 1k imports < 100ms (warm cache); bench reproducible en `tests/core/module-resolution.bench.ts` con umbral duro"
   - "DoD slice: `bun run typecheck && bun run test:core && bun run validate:examples` verdes"
-
+- review-state: done
+- review-implementer: finch
+- review-reviewer: delivery-verifier
+- review-log: approved by delivery-verifier — r00020 S1 (consolidacion documental phase-5) — ModuleResolver completo, LanguageIR agnóstico, response inference 4→10 inferrers, dependencias declaradas con a00019 phase-4. Gates verdes. Aprobada por delivery-verifier (distinto de finch).
 ### S2-LanguageIR-agnostic-frontend — S2 — LanguageIR agnóstico del lenguaje: contrato conceptual + migración TS
 - **Status**: pending
 - **DependsOn**: [S1-module-resolver-complete]

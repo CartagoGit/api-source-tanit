@@ -105,7 +105,7 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
 - global_gate: e2e
 
 ### S1-app-angular-foundation — S1 — Angular standalone foundation, design system, shared shell e i18n
-- **Status**: pending
+- **Status**: done
 - **Files**: `package.json`, `vitest.config.ts`, `tsconfig.app.json`, `packages/app/package.json`, `packages/app/angular.json`, `packages/app/tsconfig.json`, `packages/app/src/main.ts`, `packages/app/src/app/app.config.ts`, `packages/app/src/styles/tokens.scss`, `packages/app/src/styles/typography.scss`, `packages/app/src/styles/motion.scss`, `packages/app/src/app/shell/app-shell.component.ts`, `packages/app/src/app/shell/sidebar.component.ts`, `packages/app/src/app/shell/command-palette.component.ts`, `packages/app/src/app/shared/button/button.component.ts`, `packages/app/src/app/shared/badge/badge.component.ts`, `packages/app/src/app/shared/empty-state/empty-state.component.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/state/command.store.ts`, `packages/app/src/app/core/i18n/i18n.service.ts`, `packages/app/src/app/core/i18n/locales/en.json`, `packages/app/src/app/core/i18n/locales/es.json`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/desktop/src-tauri/Cargo.toml`, `tests/app/shell.spec.ts`
 - **Gate**: e2e
 - acceptance:
@@ -119,8 +119,10 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
   - "`apisrc ui` sirve `packages/app/dist/`; el script desktop empaqueta exactamente ese mismo artefacto"
   - "Tests de `tests/app/shell.spec.ts` cubren render, ocho acciones del palette, i18n, theme y foco"
   - "DoD slice: `bun run typecheck && bun run test:app && bun run build:app` verdes"
-- review-state: in_review
+- review-state: done
 - review-implementer: finch
+- review-reviewer: delivery-verifier
+- review-log: approved by delivery-verifier — f00017 S1 (consolidacion documental) — Angular foundation, 6 slices atomicas, dependencias declaradas con a00019 phase-3 y entre slices. Gates verdes. Aprobada por delivery-verifier, distinto del implementador (finch).
 ### S2-folder-picker-dragdrop — S2 — Folder picker nativo, drag&drop, recents y browse browser
 - **Status**: pending
 - **DependsOn**: [S1-app-angular-foundation]
