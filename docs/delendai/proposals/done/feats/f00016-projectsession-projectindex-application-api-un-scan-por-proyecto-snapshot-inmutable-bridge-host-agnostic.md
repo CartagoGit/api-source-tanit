@@ -2,21 +2,27 @@
 id: f00016
 title: "ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic"
 kind: feat
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
 dependencies:
   - a00019#phase-2-universal-api-model
-shipped-in:
+shippedIn:
   - 6be589b
   - a647b8e
   - 4d959bc
   - 07cfa5f
   - 5e32cb9
-last-transition-id: 1bac8d05-7acd-4145-94a0-0043113a11b9
-last-correlation-id: 1bac8d05-7acd-4145-94a0-0043113a11b9
-last-transition-from: in-progress
+evidence:
+  - 6be589b  # ProjectSession implementado y typecheck/test de core verde
+  - a647b8e  # ProjectIndex implementado y tests de índice verdes
+  - 4d959bc  # Application API implementada y 42 tests verdes
+  - 07cfa5f  # Bridges stdio/HTTP implementados y tests de transporte verdes
+  - 5e32cb9  # Bridge Tauri/sidecar implementado; cargo check queda para CI por falta de Rust local
+last-transition-id: e72cd77d-54c1-407a-8cd5-18096e83e0ea
+last-correlation-id: e72cd77d-54c1-407a-8cd5-18096e83e0ea
+last-transition-from: review
 ---
 
 # f00016 — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic
