@@ -56,7 +56,7 @@ function postmanFetch(overrides: {
   readonly collections?: { status: number; body: unknown };
   readonly environments?: { status: number; body: unknown };
 }): typeof fetch {
-  return (async (input: string | URL, init?: { method?: string; headers?: Record<string, string>; body?: string }) => {
+  return (async (input: string | URL, _init?: { method?: string; headers?: Record<string, string>; body?: string }) => {
     const pathname = new URL(String(input)).pathname;
     if (pathname === "/me") {
       return jsonResponse(overrides.me?.status ?? 200, overrides.me?.body ?? {
