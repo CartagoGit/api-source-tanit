@@ -107,7 +107,7 @@ packages/core/response-inference/
 - global_gate: e2e
 
 ### S1-module-resolver-complete — S1 — ModuleResolver completo: tsconfig paths, package exports/imports, workspaces, Windows paths
-- **Status**: done
+- **Status**: pending
 - **Files**: `packages/core/module-resolution/resolver.service.ts`, `packages/core/module-resolution/tsconfig-paths.helper.ts`, `packages/core/module-resolution/package-exports.helper.ts`, `packages/core/module-resolution/package-imports.helper.ts`, `packages/core/module-resolution/workspace-resolver.service.ts`, `packages/core/module-resolution/platform-paths.helper.ts`, `packages/core/module-resolution/resolver-error.ts`, `packages/contracts/interfaces/core/module-resolution.interface.ts`, `packages/frameworks/scanners/import-resolver.ts`, `tests/core/module-resolution.spec.ts`, `tests/fixtures/tsconfig-paths-monorepo/package.json`, `tests/fixtures/tsconfig-paths-monorepo/tsconfig.json`, `tests/fixtures/tsconfig-paths-monorepo/src/main.ts`, `tests/fixtures/tsconfig-paths-monorepo/src/users/users.controller.ts`, `tests/fixtures/tsconfig-paths-monorepo/packages/orders/package.json`, `tests/fixtures/tsconfig-paths-monorepo/packages/orders/src/main.ts`, `tests/fixtures/windows-paths-mock/package.json`, `tests/fixtures/windows-paths-mock/src/main.ts`, `tests/fixtures/windows-paths-mock/src/helper.ts`
 - **Gate**: e2e
 - acceptance:

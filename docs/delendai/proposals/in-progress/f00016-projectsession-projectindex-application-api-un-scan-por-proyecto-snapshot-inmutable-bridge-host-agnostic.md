@@ -218,7 +218,7 @@ interna del core.
 - global_gate: e2e
 
 ### S1-ProjectSession-single-scan — S1 — ProjectSession: open() una vez, snapshot inmutable, AbortSignal, watch incremental stub
-- **Status**: done
+- **Status**: pending
 - **Files**: `packages/core/session/project-session.service.ts`, `packages/core/session/project-snapshot.ts`, `packages/core/session/session-events.ts`, `packages/core/session/session-id.ts`, `packages/core/session/session-error.ts`, `packages/cli/commands/inspect.script.ts`, `packages/cli/commands/generate.script.ts`, `packages/cli/commands/list-endpoints.script.ts`, `packages/cli/commands/check.script.ts`, `tests/core/session/project-session.spec.ts`, `tests/cli/session-flow.test.ts`
 - **Gate**: e2e
 - acceptance:

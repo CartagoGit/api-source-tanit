@@ -105,7 +105,7 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
 - global_gate: e2e
 
 ### S1-app-angular-foundation — S1 — Angular standalone foundation, design system, shared shell e i18n
-- **Status**: done
+- **Status**: pending
 - **Files**: `package.json`, `vitest.config.ts`, `tsconfig.app.json`, `packages/app/package.json`, `packages/app/angular.json`, `packages/app/tsconfig.json`, `packages/app/src/main.ts`, `packages/app/src/app/app.config.ts`, `packages/app/src/styles/tokens.scss`, `packages/app/src/styles/typography.scss`, `packages/app/src/styles/motion.scss`, `packages/app/src/app/shell/app-shell.component.ts`, `packages/app/src/app/shell/sidebar.component.ts`, `packages/app/src/app/shell/command-palette.component.ts`, `packages/app/src/app/shared/button/button.component.ts`, `packages/app/src/app/shared/badge/badge.component.ts`, `packages/app/src/app/shared/empty-state/empty-state.component.ts`, `packages/app/src/app/core/api/host-bridge.client.ts`, `packages/app/src/app/core/state/project.store.ts`, `packages/app/src/app/core/state/command.store.ts`, `packages/app/src/app/core/i18n/i18n.service.ts`, `packages/app/src/app/core/i18n/locales/en.json`, `packages/app/src/app/core/i18n/locales/es.json`, `packages/contracts/interfaces/ui/host-bridge.interface.ts`, `packages/desktop/src-tauri/Cargo.toml`, `tests/app/shell.spec.ts`
 - **Gate**: e2e
 - acceptance:

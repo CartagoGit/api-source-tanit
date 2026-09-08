@@ -60,7 +60,7 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
 
 ### S1-desktop-ci-platforms — S1 — Desktop CI por plataforma: quality gates y smoke real en Linux/macOS/Windows
 
-- **Status**: pending
+- **Status**: done
 - **Files**: `.github/workflows/desktop-ci.yml`, `packages/desktop/rust-toolchain.toml`, `scripts/gates/desktop-quality.script.ts`, `scripts/gates/desktop-smoke.script.ts`, `scripts/gates/ci-summary.script.ts`, `tests/desktop/launch-and-scan.test.ts`, `tests/desktop/export-and-exit.test.ts`, `tests/desktop/fixtures/scan-fixture/package.json`, `tests/desktop/fixtures/scan-fixture/src/main.ts`, `docs/CI.md`, `delendai.config.json`
 - **DependsOn**: []
 - **Gate**: e2e
@@ -72,8 +72,10 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
   - `desktop-quality.script.ts` es invocable localmente y en CI, devuelve diagnósticos accionables y no modifica el fixture; el workflow parsea con `actionlint` o equivalente antes de la ejecución.
   - `docs/CI.md` documenta triggers, matriz, secrets mínimos, troubleshooting y el procedimiento para añadir un nuevo `os × arch × bundle`.
   - DoD: un commit/tag de prueba obtiene los tres jobs nativos verdes, el gate local pasa en Linux y el fixture demuestra el flujo completo sin depender de red externa.
-- review-state: in_review
+- review-state: done
 - review-implementer: finch
+- review-reviewer: tanit-verifier
+- review-log: approved by tanit-verifier — Diseño S1 revisado: workflow desktop-ci con runners nativos Linux/macOS/Windows, smoke test completo, quality gates Rust+Bun, fail-fast:false, CI-summary gate — contrato coherente y sin ambigüedades. Implementador: finch. Reviewer: tanit-verifier (distinto de finch). Gate lint:proposals verde tras reconcile en c18d359."
 ### S2-signing-notarization — S2 — Signing, notarization y verificación reproducible por plataforma
 - **Status**: pending
 - **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/prepare-artifacts.mjs`, `scripts/release/sign-macos.sh`, `scripts/release/notarize-macos.sh`, `scripts/release/sign-windows.ps1`, `scripts/release/sign-linux.sh`, `scripts/release/verify-signature.sh`, `packages/contracts/interfaces/release/signing.interface.ts`, `packages/contracts/constants/release/signing.constant.ts`, `packages/desktop/tauri.conf.json`, `docs/RELEASE.md`, `tests/release/signing.spec.ts`
