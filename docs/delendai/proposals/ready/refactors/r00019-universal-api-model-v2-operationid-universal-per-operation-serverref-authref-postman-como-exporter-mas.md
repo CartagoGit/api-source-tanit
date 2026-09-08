@@ -6,6 +6,8 @@ status: ready
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
+dependencies:
+  - a00019#phase-1-hygiene-ci
 ---
 
 # r00019 — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más
@@ -18,6 +20,15 @@ Desacoplar Tanit del modelo Postman-centric. Hoy `EndpointSpec` vive en `package
 
 El agente externo señala tres síntomas de acoplamiento: (a) `EndpointSpec` requiere `method` y `uri` incluso cuando conceptualmente se representa otra cosa (un `GrpcTransport` con `service` + `rpc` no debería tener `method: "POST"` por defecto); (b) `combineServices({ services: [users:OAuth+https://users.example.com, orders:APIKey+https://orders.example.com] })` produce una colección combinada donde todas las operaciones heredan el `baseUrl` y `auth` del primer servicio — el audit confirma que el propio `generation.pipeline.ts` reconoce este comportamiento y que el bug de monorepo real (users+orders con auths distintos) sigue abierto; (c) Postman se genera por un camino distinto al de OpenAPI/Bruno/HAR/Insomnia/cURL (los últimos van por el registry de exporters declarativo). Mientras el modelo siga Postman-centric, los exporters no pueden ser ciudadanos de primera, los transports no pueden ser discriminated (los `opcionales` los dejan en un estado malformado legal), y combinar servicios en un monorepo real sigue siendo unsafe.
 
+## Why this design
+
+Cuatro principios guían esta propuesta:
+
+- **Discriminated union > union con opcionales**. `Transport = HttpTransport | GraphQlTransport | ...` con `kind: literal` impide en compilación que un `GrpcTransport` carezca de `service` o que un `HttpTransport` pierda `path`. El typecheck deja de mentir. El exhaustive switch en `operationIdFor()` obliga a cubrir cada rama al añadir un transport — añadir uno nuevo sin implementar rompe el typecheck y se detecta antes del CI.
+- **OperationId como función pura universal**. `operationIdFor(transport, ctx)` es determinista y testeable: el mismo `transport` + el mismo `ctx` produce siempre el mismo `OperationId`, independientemente del scanner que lo detectó. Esto es lo que necesitan los IDs estables para Postman / Bruno / OpenAPI.
+- **Per-operation `serverRef` y `authRef`**. La raíz del bug "combineServices hereda del primer servicio" es estructural: los servicios compartían descriptor y las operaciones no tenían su propio `serverRef`/`authRef`. Subir estos campos a `IOperation` los hace per-instance y elimina la herencia. El `perOperationResolver.resolve(operation, services)` materializa la asociación a partir de `operation.serviceId`, no del orden del array.
+- **PostmanExporter = un exporter más**. Hoy Postman tiene un camino especial (`generateArtifacts()` estático, sin `IExporter`, sin `ExportCapabilities`). Esa asimetría es el síntoma; el remedio es alinear la firma con OpenAPI / Bruno / HAR / Insomnia / cURL. `ExportCapabilities.schemas: 'partial'` documenta honestamente que Postman no expresa todas las capacidades que el modelo universal tiene — sin pretender lo contrario.
+
 ## non-goals
 
 - Reescribir los scanners para que devuelvan directamente discriminated unions — los scanners siguen devolviendo `ParsedRoute[]` neutro; la discriminated narrow ocurre en la capa de transport-detection al cruzar al modelo universal.
@@ -25,6 +36,52 @@ El agente externo señala tres síntomas de acoplamiento: (a) `EndpointSpec` req
 - Añadir nuevos transports (e.g. GraphQL federation, gRPC bidi-streaming) — se modela el discriminador para que entren sin cambios arquitectónicos, pero la implementación completa de cada transport es trabajo posterior por transport.
 - Cambiar el comportamiento de los flags del CLI — los flags actuales (`--combine-services`, `--output`, etc.) se preservan; solo cambia la capa interna que los consume.
 - Tocar `f00013` (transport generalization actual) — sus 6 transports viven como union actual; aquí se elevan a discriminated unions, pero los scanners siguen emitiendo el union neutral.
+
+## Architecture
+
+Cuatro capas que separan el problema en transiciones pequenas y verificables:
+
+1. **Scanner → `ParsedRoute[]`** (sin cambios). Los 25 detectores siguen emitiendo `ParsedRoute` neutro. Refactor invisible para `packages/frameworks/`.
+2. **Transport-detection → discriminated `Transport`**. `transport-narrow.guard.ts` y `operation-id.service.ts` cruzan `ParsedRoute` al `Transport` con `kind` literal. Aquí se concentra la complejidad de la discriminated union: type guards exhaustivos, función pura `operationIdFor()`, contratos `IHttpTransport | IGraphQlTransport | IGrpcTransport | IWebSocketTransport | ISseTransport | IMessageBrokerTransport` con todos los campos requeridos.
+3. **`IOperation` con `serverRef`/`authRef`/`transport`/`provenance` per-instance**. La combinación `combineServices` deja de ser "el primero gana" y pasa a `perOperationResolver` que asigna refs por `operation.serviceId`. `ICombinedDescriptor.variables` emite `{{baseUrl_<serviceId>}}` por servicio, no una sola `{{baseUrl}}` global.
+4. **`IExporter[]` registry + `buildArtifacts` declarativo**. `PostmanExporter implements IExporter<IPostmanCollectionV21>` con la misma firma que OpenAPI / Bruno / HAR / Insomnia / cURL. `generation.pipeline.ts` termina en `buildArtifacts(snapshot, exporters): Promise<IExportResult[]>`; el CLI itera el registry por flag (`--formats postman,openapi,...`).
+
+### Dependency on `a00019#phase-1-hygiene-ci`
+
+r00019 aterriza sobre la baseline de [phase-1-hygiene-ci](./a00019-auditoria-2026-09-07-consolidacion-post-158-propuestas-y-plan-de-productizacion-tanit.md) (CI verde end-to-end, branch protection real en `develop`, coverage ≥ 80% global, fixtures reparadas, monkey-patches eliminados, `INDEX.md` regenerado). Sin esa baseline, las Slices no pueden validarse de forma reproducible — `bun run validate` no sería el DoD confiable que esta propuesta declara en cada slice. Esta dependencia se declara en el frontmatter (`dependencies: [a00019#phase-1-hygiene-ci]`) para que el orchestrator la respete al planificar; mientras esa slice no cierre, r00019 NO se aprueba.
+
+### Files layout (resultado de S1)
+
+```text
+packages/contracts/interfaces/core/
+  operation.interface.ts                 # IOperation
+  server-ref.interface.ts                 # IServerRef
+  auth-ref.interface.ts                   # IAuthRef
+  provenance.interface.ts                 # IProvenance
+  transport/
+    http-transport.interface.ts               # IHttpTransport
+    graphql-transport.interface.ts            # IGraphQlTransport
+    grpc-transport.interface.ts                # IGrpcTransport
+    websocket-transport.interface.ts           # IWebSocketTransport
+    sse-transport.interface.ts                 # ISseTransport
+    message-broker-transport.interface.ts      # IMessageBrokerTransport
+    index.ts                                   # barrel
+    operation-id.service.ts                    # operationIdFor() pura
+    transport-narrow.guard.ts                  # isHttpTransport(t): t is IHttpTransport, ...
+```
+
+### Files layout (resultado de S4)
+
+```text
+packages/core/exporters/
+  i-exporter.interface.ts        # IExporter<TArtifact>, ExportCapabilities, IExportResult
+  registry.ts                    # EXPORTER_IDS union + selectExporters(formats)
+  result.ts                      # IExportResult<TArtifact>
+  postman.exporter.ts            # PostmanExporter implements IExporter<IPostmanCollectionV21>
+
+packages/core/discovery/
+  generation.pipeline.ts         # buildArtifacts(snapshot, exporters)
+```
 
 ## Slices
 
@@ -107,3 +164,12 @@ El agente externo señala tres síntomas de acoplamiento: (a) `EndpointSpec` req
 - `generate.script.ts` consume `buildArtifacts` con los exporters seleccionados por flag; el writer sigue siendo atómico (los artefactos se escriben todos o ninguno, via `writeFileAtomic` por artefacto)
 - Tests: `tests/core/exporters/postman-universal.spec.ts` cubre PostmanExporter con snapshot vacío / 1 operación / multi-service / per-operation serverRef/authRef divergentes; `tests/core/generation-pipeline.spec.ts` verifica que la lista de exporters se ejecuta declarativamente y que un exporter que lanza no aborta el resto (errores se acumulan en diagnostics)
 - DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core && bun run validate:examples` verdes; ningún consumer del CLI nota diferencia observable; snapshot regression tests verde
+- Validación post-cambio: `bun run lint:proposals:gen-index` produce `INDEX.md` byte-idéntico al committed (sin diff); r00019 sigue en `ready/refactors/` y no se mueve a `done/` hasta que phase-1-hygiene-ci cierre (ver `dependencies:` en frontmatter)
+
+## Risks
+
+- **Broken cross-proposal link**. r00019 enlaza a `[a00019](./a00019-...)` que apunta a `ready/refactors/a00019-...` (no existe); la ruta correcta es `../../in-progress/a00019-...`. El mismo patrón roto existe en `f00016` / `f00017` / `r00020` / `i00003` desde sus respectivas subcarpetas. Corregir el link de r00019 es trivial; los otros cuatro requieren tocar archivos fuera del scope de esta slice y se documentan aquí para una propuesta cross-cutting de hygiene de docs. Alternativamente, mover los hijos a `ready/<kind>/` con el path ya correcto lo resuelve de raíz.
+- **`f00013` shape drift**. `f00013` introdujo los 6 transports como union con opcionales. S1 los eleva a discriminated unions. Si el shape en `f00013` y el shape declarado en r00019 S1 divergen en implementación, el typecheck fallará al cerrar S1. Detectado por `bun run typecheck`; no es bloqueante pero requiere atención del implementer.
+- **Consumers externos de `generateArtifacts()` estático**. S4 convierte el método estático `PostmanExporter.generateArtifacts()` en método de instancia. Cualquier consumer fuera de `packages/core/` (e.g. `packages/cli/`, `integrations/`) que invoque el estático rompe en silencio. Mitigación: `bun run lint:no-orphan-types` + `grep -rn 'generateArtifacts' packages/ integrations/` antes de cerrar S4.
+- **Limit del schema Postman V2.1**. Postman espera un único `{{baseUrl}}` por request; el `serverRef` per-operation se materializa en variables por carpeta (`{{baseUrl_<serviceId>}}`) que PostmanExporter emite. Documentado en `ExportCapabilities.schemas: 'partial'`. No es bug; es el techo del formato Postman. Si en el futuro Postman soporta `server.url` por item, el exporter pasa a `schemas: 'full'` sin cambios estructurales.
+- **Cobertura de los nuevos transports**. S1 modela los 6 transports como discriminador, pero la implementación completa de cada uno (e.g. GraphQL federation, gRPC bidi-streaming real) queda para propuestas posteriores por transport. La forma del discriminador permite entrada incremental sin re-arquitectura.
