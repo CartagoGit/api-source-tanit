@@ -168,7 +168,7 @@ describe("CLI command branches", () => {
     expect(outcome.projectName).toBe("init-no-manifest");
     expect(outcome.authGuards).toEqual(["token"]);
     expect(outcome.routeFiles).toEqual(["routes/api.php"]);
-    await expect(readFile(outcome.configPath ?? "", "utf8")).resolves.toContain("routeFiles");
+    await expect(readFile(outcome.configPath ?? "", "utf8")).resolves.toContain("filePrefixes");
   });
 
   test("summary uses its default text and history path", async () => {
