@@ -1,11 +1,11 @@
 import { NgTemplateOutlet } from "@angular/common";
-import { ScrollingModule } from "@angular/cdk/scrolling";
+import { CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport } from "@angular/cdk/scrolling";
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from "@angular/core";
 
 @Component({
   selector: "tanit-virtual-scroller",
   standalone: true,
-  imports: [NgTemplateOutlet, ScrollingModule],
+  imports: [NgTemplateOutlet, CdkFixedSizeVirtualScroll, CdkVirtualForOf, CdkVirtualScrollViewport],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <cdk-virtual-scroll-viewport class="viewport" [itemSize]="itemHeight()" [style.height.px]="height()" role="listbox" aria-label="Virtualized items">

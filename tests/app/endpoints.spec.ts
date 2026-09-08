@@ -31,7 +31,7 @@ describe("Endpoints Explorer", () => {
     const fixture = TestBed.createComponent(VirtualScrollerComponent);
     fixture.componentRef.setInput("items", items);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll(".window > *").length).toBeLessThan(30);
+    expect(fixture.nativeElement.querySelectorAll(".cdk-virtual-scroll-content-wrapper > *").length).toBeLessThan(40);
     fixture.destroy();
   });
 

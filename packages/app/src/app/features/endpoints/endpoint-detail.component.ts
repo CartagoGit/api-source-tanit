@@ -18,7 +18,7 @@ import { TransportInspectorDirective } from "./transport-inspector.directive";
         <header><div><span class="method">{{ item.method }}</span><h2>{{ item.path }}</h2><p>{{ item.description }}</p></div><button type="button" (click)="closed.emit()" aria-label="Close detail">×</button></header>
         <nav class="tabs" aria-label="Endpoint detail tabs">@for (tab of tabs; track tab) { <button type="button" [class.active]="tab === activeTab()" (click)="activeTab.set(tab)">{{ tab }}</button> }</nav>
         @switch (activeTab()) {
-          @case ('Overview') { <dl><dt>Operation</dt><dd>{{ item.operationId }}</dd><dt>Service</dt><dd>{{ item.service }} · {{ item.framework }}</dd><dt>Transport</dt><dd>{{ item.transport }}</dd></dl><div class="transport" tanitTransportInspector [diagnostic]="item.transport" (filter)="filter.emit($event)"><strong>{{ transportTitle(item.transport) }}</strong><p>{{ transportDescription(item) }}</p></div>@for (diagnostic of item.diagnostics; track diagnostic.code) { <button class="diagnostic" type="button" (click)="filter.emit(diagnostic.code)"><strong>{{ diagnostic.code }}</strong> {{ diagnostic.message }}</button> } }
+          @case ('Overview') { <dl><dt>Operation</dt><dd>{{ item.operationId }}</dd><dt>Service</dt><dd>{{ item.service }} · {{ item.framework }}</dd><dt>Transport</dt><dd>{{ item.transport }}</dd></dl><div class="transport" tanitTransportInspector [diagnostic]="item.transport" (filter)="transportFilter.emit($event)"><strong>{{ transportTitle(item.transport) }}</strong><p>{{ transportDescription(item) }}</p></div>@for (diagnostic of item.diagnostics; track diagnostic.code) { <button class="diagnostic" type="button" (click)="filter.emit(diagnostic.code)"><strong>{{ diagnostic.code }}</strong> {{ diagnostic.message }}</button> } }
           @case ('Request') { <dl><dt>Parameters</dt><dd>@for (parameter of item.parameters; track parameter.name) { <span class="chip">{{ parameter.name }} · {{ parameter.location }}</span> }</dd></dl><tanit-schema-viewer [schema]="item.requestSchema" /> }
           @case ('Responses') { @for (response of item.responses; track response.status) { <article class="response"><strong>{{ response.status }}</strong><span>{{ response.description }}</span></article> } }
           @case ('Validation') { <p>Validation: <strong>{{ item.validation }}</strong></p> }
@@ -44,6 +44,7 @@ export class EndpointDetailComponent {
   readonly endpoint = input<EndpointRecord | null>(null);
   readonly closed = output<void>();
   readonly filter = output<string>();
+  readonly transportFilter = output<string>();
   readonly open = output<{ file: string; line: number; column: number }>();
   readonly width = signal(460);
   readonly activeTab = signal("Overview");

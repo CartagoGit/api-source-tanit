@@ -21,7 +21,7 @@ import { FiltersComponent } from "./filters.component";
           <tanit-virtual-scroller [items]="store.filtered()" [itemHeight]="72" [height]="560" [itemTemplate]="endpointTemplate" [trackBy]="trackBy" />
           <ng-template #endpointTemplate let-item let-index="index"><button class="endpoint-row" type="button" [class.selected]="item.id === store.selectedId()" (click)="select(item.id)" [attr.aria-label]="item.method + ' ' + item.path"><span class="index">{{ index + 1 }}</span><span class="verb">{{ item.method }}</span><span class="path"><strong>{{ item.path }}</strong><small>{{ item.service }} · {{ item.transport }} · {{ item.description }}</small></span><span class="confidence">{{ item.evidence[0]?.confidence | percent }}</span></button></ng-template>
         </div>
-        <tanit-endpoint-detail [endpoint]="store.selected()" (closed)="clearSelection()" (filter)="filterDiagnostic($event)" (open)="openLocation($event)" />
+        <tanit-endpoint-detail [endpoint]="store.selected()" (closed)="clearSelection()" (filter)="filterDiagnostic($event)" (transportFilter)="filterTransport($event)" (open)="openLocation($event)" />
       </div>
     </section>
   `,
@@ -36,8 +36,11 @@ export class EndpointsListComponent {
 
   constructor() {
     effect(() => {
-      const search = new URLSearchParams(typeof location === "undefined" ? "" : location.search).get("search");
-      if (search && search !== this.store.query().search) this.store.selectFromUrl(search);
+      const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+      const query = this.queryFromUrl(params);
+      if (JSON.stringify(query) !== JSON.stringify(this.store.query())) this.store.setQuery(query);
+      const endpoint = params.get("endpoint");
+      if (endpoint && endpoint !== this.store.selectedId()) this.store.select(endpoint);
     });
   }
 
@@ -45,6 +48,24 @@ export class EndpointsListComponent {
   select(id: string): void { this.store.select(id); this.updateUrl({ ...this.store.query(), endpoint: id } as EndpointQuery & { endpoint: string }); }
   clearSelection(): void { this.store.select(null); this.updateUrl(this.store.query()); }
   filterDiagnostic(value: string): void { this.apply({ ...this.store.query(), diagnosticCode: value }); }
+  filterTransport(value: string): void { this.apply({ ...this.store.query(), transport: value as EndpointQuery["transport"] }); }
   openLocation(location: { file: string; line: number; column: number }): void { if (typeof window !== "undefined") window.open(`tanit://open?file=${encodeURIComponent(location.file)}&line=${location.line}&column=${location.column}`, "_blank"); }
   private updateUrl(query: EndpointQuery & { endpoint?: string }): void { if (typeof history === "undefined") return; const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== "") params.set(key, String(value)); history.replaceState(null, "", `${location.pathname}?${params.toString()}`); }
+  private queryFromUrl(params: URLSearchParams): EndpointQuery {
+    const transport = params.get("transport");
+    const confidence = params.get("confidence");
+    return {
+      service: params.get("service") ?? undefined,
+      framework: params.get("framework") ?? undefined,
+      transport: transport && ["http", "grpc", "graphql", "websocket", "sse", "message-broker"].includes(transport) ? transport as EndpointQuery["transport"] : undefined,
+      method: params.get("method") ?? undefined,
+      auth: params.get("auth") ?? undefined,
+      validation: params.get("validation") ?? undefined,
+      responses: params.get("responses") ?? undefined,
+      confidence: confidence ? Number(confidence) : undefined,
+      sourceFile: params.get("sourceFile") ?? undefined,
+      diagnosticCode: params.get("diagnosticCode") ?? undefined,
+      search: params.get("search") ?? undefined,
+    };
+  }
 }
