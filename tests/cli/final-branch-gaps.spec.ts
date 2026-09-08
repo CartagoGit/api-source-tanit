@@ -8,6 +8,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { URL } from "node:url";
 import { generateWithAllFrameworks } from "../../packages/frameworks/index.js";
 import { runPush } from "../../packages/cli/commands/push.script";
 import { main as openPostman } from "../../packages/cli/commands/open-postman.script";
@@ -96,8 +97,8 @@ describe("push environment and option branches", () => {
       specs: [],
       config: { baseUrl: "http://x", variables: [], environments: null },
       match: { framework: "express" },
-    } as Awaited<ReturnType<typeof generateWithAllFrameworks>>);
-    vi.stubGlobal("fetch", (async (input: string | URL) => {
+    } as unknown as Awaited<ReturnType<typeof generateWithAllFrameworks>>);
+    vi.stubGlobal("fetch", (async (input: string | globalThis.URL) => {
       const pathname = new URL(String(input)).pathname;
       if (pathname === "/me") return fetchResponse(200, { user: { id: 1, username: "gap-user" } });
       if (pathname === "/collections") return fetchResponse(200, { collections: [], collection: {} });
