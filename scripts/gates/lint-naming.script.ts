@@ -4,7 +4,7 @@
  *
  * El repo ya tenía una convención de sufijos (`.service.ts`,
  * `.helper.ts`, `.interface.ts`, `.scanner.ts`…) pero nada la
- * comprobaba, así que había ficheros que no la seguían y no había forma
+    suffixes: [".service.ts", ".serializer.ts", ".adapter.ts", ".helper.ts", ".repository.ts"],
  * de saberlo sin mirar uno a uno: `lint-tool-no-process.ts` era un
  * script sin decirlo, y `sections.ts` no era un script y vivía entre
  * ellos.
@@ -79,6 +79,12 @@ const RULES: readonly INamingRule[] = [
     path: "packages/core/transport/",
     what: "transportes de la Application API",
     suffixes: [".server.ts", ".protocol.ts", ".error.ts", ".service.ts", "-protocol.ts", "-error.ts"],
+  },
+  {
+    path: "packages/core/state/sqlite/",
+    what: "adaptadores y repositorios SQLite del estado persistible",
+    suffixes: [".repository.ts", ".adapter.ts", ".service.ts"],
+    exact: ["migrations.ts"],
   },
   {
     path: "packages/core/state/",
