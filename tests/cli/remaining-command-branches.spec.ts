@@ -8,6 +8,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { URL } from "node:url";
 
 import { runPush } from "../../packages/cli/commands/push.script";
 import { main as watchMain } from "../../packages/cli/commands/watch.script";
@@ -38,14 +39,16 @@ async function generatedProject(name: string): Promise<string> {
   return root;
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+type FetchResponse = Awaited<ReturnType<typeof fetch>>;
+
+function jsonResponse(status: number, body: unknown): FetchResponse {
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: new Headers(),
+    headers: { get: () => null },
     text: async () => (typeof body === "string" ? body : JSON.stringify(body)),
     json: async () => body,
-  } as unknown as Response;
+  } as unknown as FetchResponse;
 }
 
 function postmanFetch(overrides: {
@@ -53,9 +56,8 @@ function postmanFetch(overrides: {
   readonly collections?: { status: number; body: unknown };
   readonly environments?: { status: number; body: unknown };
 }): typeof fetch {
-  return (async (input: string | URL | Request, init?: RequestInit) => {
+  return (async (input: string | URL, init?: { method?: string; headers?: Record<string, string>; body?: string }) => {
     const pathname = new URL(String(input)).pathname;
-    const method = init?.method ?? "GET";
     if (pathname === "/me") {
       return jsonResponse(overrides.me?.status ?? 200, overrides.me?.body ?? {
         user: { id: 7, username: "coverage-user" },

@@ -22,7 +22,9 @@ describe("ui command branch surfaces", () => {
     const running = uiMain(["--no-open", "--port", "4317"]);
     // Let the async seed/load phase reach the server's SIGINT listener.
     await new Promise((resolve) => setTimeout(resolve, 25));
-    process.emit("SIGINT");
+    const listener = process.listeners("SIGINT").at(-1);
+    expect(listener).toBeDefined();
+    if (listener) listener();
     expect(await running).toBe(0);
     expect(stop).toHaveBeenCalledOnce();
   });
