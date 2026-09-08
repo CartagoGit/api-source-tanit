@@ -3,6 +3,18 @@ import { ChangeDetectionStrategy, Component, ElementRef, HostListener, inject, i
 import { CommandStore, PaletteCommand } from "../core/state/command.store";
 import { I18nService } from "../core/i18n/i18n.service";
 
+export function fuzzyMatch(query: string, candidate: string): boolean {
+  let queryIndex = 0;
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedCandidate = candidate.toLowerCase();
+
+  for (const character of normalizedCandidate) {
+    if (character === normalizedQuery[queryIndex]) queryIndex += 1;
+    if (queryIndex === normalizedQuery.length) return true;
+  }
+  return normalizedQuery.length === 0;
+}
+
 @Component({
   selector: "tanit-command-palette",
   standalone: true,
@@ -11,7 +23,7 @@ import { I18nService } from "../core/i18n/i18n.service";
     @if (open()) {
       <div class="scrim" (click)="close.emit()"></div>
       <section class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')">
-        <input #search autofocus [value]="query()" (input)="query.set(search.value)" [placeholder]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)" />
+        <input #search autofocus [value]="query()" (input)="updateQuery(search.value)" [placeholder]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)" />
         <div role="listbox">
           @for (command of filteredCommands(); track command.id; let index = $index) {
             <button type="button" role="option" [attr.aria-selected]="index === selectedIndex()" [class.selected]="index === selectedIndex()" (click)="choose(command)">
@@ -47,7 +59,12 @@ export class CommandPaletteComponent {
 
   filteredCommands(): ReadonlyArray<PaletteCommand> {
     const query = this.query().trim().toLowerCase();
-    return this.commands.commands().filter((command) => this.i18n.translate(command.labelKey).toLowerCase().includes(query));
+    return this.commands.commands().filter((command) => fuzzyMatch(query, `${this.i18n.translate(command.labelKey)} ${command.id} ${command.shortcut ?? ""}`));
+  }
+
+  updateQuery(value: string): void {
+    this.query.set(value);
+    this.selectedIndex.set(0);
   }
 
   choose(command: PaletteCommand): void {
@@ -61,6 +78,10 @@ export class CommandPaletteComponent {
     if (event.key === "ArrowUp") { event.preventDefault(); this.selectedIndex.set(Math.max(0, this.selectedIndex() - 1)); }
     if (event.key === "Enter") { event.preventDefault(); const command = this.filteredCommands()[this.selectedIndex()]; if (command) this.choose(command); }
     if (event.key === "Escape") { event.preventDefault(); this.close.emit(); }
+    if (event.key === "Tab") {
+      event.preventDefault();
+      this.search?.nativeElement.focus();
+    }
   }
 
   @HostListener("document:keydown", ["$event"])

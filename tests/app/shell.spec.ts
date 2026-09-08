@@ -4,6 +4,7 @@ import en from "../../packages/app/src/app/core/i18n/locales/en.json";
 import es from "../../packages/app/src/app/core/i18n/locales/es.json";
 import { I18nService } from "../../packages/app/src/app/core/i18n/i18n.service";
 import { CommandStore } from "../../packages/app/src/app/core/state/command.store";
+import { fuzzyMatch } from "../../packages/app/src/app/shell/command-palette.component";
 
 describe("Angular shell foundation", () => {
   it("keeps English as the reference catalog and Spanish translated", () => {
@@ -35,5 +36,12 @@ describe("Angular shell foundation", () => {
       "theme",
       "recent",
     ]);
+  });
+
+  it("matches commands by ordered fuzzy characters and resets on empty input", () => {
+    expect(fuzzyMatch("ope", "Open project")).toBe(true);
+    expect(fuzzyMatch("prj", "Open project")).toBe(true);
+    expect(fuzzyMatch("xyz", "Open project")).toBe(false);
+    expect(fuzzyMatch("", "anything")).toBe(true);
   });
 });
