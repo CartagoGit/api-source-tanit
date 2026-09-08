@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `f00018` | `feat` | [`ready/feats/f00018-sqlite-durable-state-contratos-runtime-neutral-snapshots-inmutables-migraciones-shadow-mode-y-activacion-cas.md`](ready/feats/f00018-sqlite-durable-state-contratos-runtime-neutral-snapshots-inmutables-migraciones-shadow-mode-y-activacion-cas.md) |
 
 ## Bloqueadas
 
