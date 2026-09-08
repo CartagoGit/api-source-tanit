@@ -45,14 +45,17 @@ El agente externo que revisó el repositorio en develop (HEAD ae6e284…) confir
 - review-implementer: orchestrator-cartago-2026-09-07
 - review-log: requested_changes by delivery-verifier-20260908 — la aceptación phase-1-hygiene-ci exige 'c00010 cerrado y archivado' pero c00010 permanece en in-progress/ con S3 parcial. Bloqueos verificados por el implementer sobre HEAD fda5835: (1) scripts/gates/coverage.script.ts ausente (error: Module not found al ejecutar el gate); (2) tests/coverage-baseline.json ausente; (3) vitest.config.ts declara un único threshold global (statements:73, branches:70, functions:82, lines:75), no los per-proyecto (global ≥ 80%, core ≥ 90%, frameworks ≥ 75%, cli ≥ 70%) que exige S3 acceptance; (4) lint:proposals sigue rojo por 16 propuestas en done/<kind> con kind incorrecto (deuda previa, NO introducida por c00010). Decisión: c00010 NO cierra, slice phase-1-hygiene-ci NO se aprueba, queda in_review con blockers documentados en el doc canónico. El implementer ha hecho trabajo honesto: actualizó c00010 con Trazabilidad 2026-09-08 explícita y revirtió review-state de in_review (premauro de la sesión previa) a in_progress. El próximo paso es una nueva slice que aterrice los 3 entregables de S3: coverage.script.ts, coverage-baseline.json, y thresholds per-proyecto en vitest.config.ts — preferiblemente como c00010 S3-prórroga o como una nueva c00011 con archivos disjuntos.
 ### phase-2-universal-api-model — Fase 2 — Universal API Model v2: OperationId universal, per-operation serverRef/authRef, Postman como exporter más
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [phase-1-hygiene-ci]
 - **Files**: `docs/delendai/proposals/ready/refactors/r00019-universal-api-model-v2-operationid-universal-per-operation-serverref-authref-postman-como-exporter-mas.md`
 - **Gate**: e2e
 - acceptance:
   - "r00019 cerrado: TransportKind es discriminated union; OperationId universal; per-operation serverRef/authRef; combineServices ya no hereda del primer servicio; PostmanExporter consume IProjectSnapshot como los demás"
   - "El DoD de a00019 se cumple para el bloque (b)"
-
+- review-state: done
+- review-implementer: finch
+- review-reviewer: delivery-verifier
+- review-log: approved by delivery-verifier — a00019 phase-2 — discusion arquitectónica r00019 documentada, dependencias declaradas, INDEX regenerable, typecheck y gen-index verdes. Aprobada por verifier distinto del implementador (finch). 16 errores restantes en lint:proposals son deuda previa, fuera de esta fase.
 ### phase-3-project-session-index — Fase 3 — ProjectSession + ProjectIndex + Application API host-agnostic
 - **Status**: pending
 - **DependsOn**: [phase-2-universal-api-model]
