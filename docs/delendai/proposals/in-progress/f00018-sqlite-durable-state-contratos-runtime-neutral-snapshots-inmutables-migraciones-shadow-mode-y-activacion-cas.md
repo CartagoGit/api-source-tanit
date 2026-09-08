@@ -58,7 +58,8 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
   - "La ubicación por defecto es global por usuario y admite TANIT_STATE_DB para tests, CI, Docker y modo portable."
   - "La conexión activa foreign_keys, WAL y busy_timeout sin guardar secretos."
   - "Tests cubren base vacía, migración v1 a v2, versión futura desconocida, base corrupta y rollback de migración."
-
+- review-state: in_review
+- review-implementer: delendai-impl-20260909
 ### S3-immutable-snapshot-repository-and-cas — S3 — Repositorio SQLite de snapshots inmutables, transacciones y activación CAS
 - **Status**: pending
 - **DependsOn**: [S2-sqlite-schema-and-migrations]
