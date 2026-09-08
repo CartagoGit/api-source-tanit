@@ -5,96 +5,143 @@ kind: infra
 status: ready
 type: proposal
 track: api-source-tanit
-date: 2026-09-07
+date: 2026-09-08
+dependencies: [a00019#phase-5-multi-language-precision]
 ---
 
 # i00003 — Release industrial — desktop CI por plataforma, signing + notarization, secure updater firmado, SBOM CycloneDX, checksums firmados
 
 ## Goal
 
-Llevar la release pipeline de Tanit al nivel de un producto de escritorio distribuido en producción: (1) desktop CI corre `cargo fmt --check` + `cargo clippy -- -D warnings` + `cargo test` + smoke launch/scan/export en ubuntu-latest + macos-latest + windows-latest; (2) signing + notarization macOS (codesign + notarytool), Authenticode Windows, checksums firmados Linux; (3) updater firmado (Tauri updater con public key versionada, auto-update transparente); (4) SBOM CycloneDX generado por release + attestation subida al GitHub release; (5) `SECURITY.md` documenta threat model + proceso de reporte + supported versions; (6) backwards compat: el signing se introduce opt-in via `delendai.config.json#release.sign=true`; sin flag se mantiene el binario sin firma (dev-friendly). El cierre del bloque (f) de [a00019](./a00019-auditoria-2026-09-07-consolidacion-post-158-propuestas-y-plan-de-productizacion-tanit.md).
+Consolidar la fase 6 de [a00019](../../in-progress/a00019-auditoria-2026-09-07-consolidacion-post-158-propuestas-y-plan-de-productizacion-tanit.md) como una pipeline de release industrial para Tanit. El resultado exige: desktop CI verde y reproducible en Linux, macOS y Windows; signing endurecido y notarization de macOS; Authenticode con trusted timestamp en Windows; checksums y firmas verificables en Linux; updater firmado con clave pública versionada; un SBOM CycloneDX y provenance attestation adjuntos a cada release; y un `SECURITY.md` con threat model, proceso privado de reporte y política de versiones soportadas.
 
-## why
+El signing continúa siendo opt-in para desarrollo mediante `delendai.config.json#release.sign` con default `false`; una release production exige `release.sign=true` y no puede publicar artefactos sin verificar todas las firmas disponibles. Ninguna clave, certificado, password, token de notarization o firma privada se persiste en el repositorio.
 
-El agente externo confirmó que el workflow actual `validate.yml` no incluye ningún job Rust/Tauri — los cambios en `packages/desktop/src-tauri/` (main.rs, capabilities, Cargo.toml) llegan a `develop` sin que la CI valide que compilan o que el sidecar arranca; los releases existentes no están firmados ni notarizados (Apple Gatekeeper rechazará el .dmg, Windows SmartScreen el .exe, distros Linux exigirán checksums verificables); no hay SBOM (requisito creciente en supply chain security y EU CRA); no hay updater (los usuarios tienen que descargar manualmente cada release). Hasta que esto se cierre, Tanit no puede pasar de "release aficionado" a "release industrial", y muchos consumidores potenciales (empresas, equipos de seguridad) lo rechazan por defecto.
+## Why
 
-## non-goals
+El workflow actual `validate.yml` no contiene un job Rust/Tauri específico. Los cambios en `packages/desktop/` pueden llegar a `develop` sin demostrar que el shell Tauri compila, que el sidecar arranca o que scan/export funcionan. Los releases existentes tampoco ofrecen una cadena verificable: macOS no pasa por codesign + notarytool + staple, Windows no tiene Authenticode ni trusted timestamp, Linux no publica checksums firmados, y falta un updater que rechace artefactos sin confianza. Sin SBOM, provenance y threat model no es posible operar el producto con equipos de seguridad ni responder con evidencia a un incidente de supply chain.
 
-- Migrar de Tauri 1.x a Tauri 2.0 si requiere reescritura significativa — los plugins oficiales se añaden sobre la versión actual; si un plugin requiere Tauri 2.0, se documenta como work item separado.
-- Añadir Windows ARM64 o Linux ARM64 al matrix de release — inicialmente x64 + macOS arm64; ARM Linux entra en una propuesta posterior.
-- Soporte de canales de release múltiples (alpha/beta/stable) — un solo canal (stable) con tags semver; canales múltiples son work item posterior.
-- Generar binarios para todas las distribuciones Linux — al menos .deb + .AppImage; Flatpak/Snap son work items separados.
-- Implementar el reporte de vulnerabilidades coordinado — `SECURITY.md` documenta el proceso, pero el trabajo real de triaging es del equipo de seguridad.
+## Why this design
+
+- **Capas verificables, no un flag único**. CI demuestra que cada plataforma compila y arranca; signing demuestra identidad e integridad; el updater repite la verificación antes de instalar; SBOM y threat model hacen auditables los componentes y supuestos de seguridad.
+- **Fallo cerrado en release**. Un job de publicación solo continúa cuando build, firma, verificación, SBOM y attestation están presentes. La ausencia de credenciales de signing falla antes de publicar; no se compensa con un artefacto unsigned.
+- **Compatibilidad development-first**. `release.sign=false` mantiene el flujo local actual; `release.sign=true` habilita los proveedores de credenciales definidos por plataforma sin obligar a cada desarrollador a configurar certificados.
+- **Un único release contract**. La matriz usa pares explícitos `OS × architecture × bundle`, con SHA-256, versión semver, signer y provenance asociados al mismo tag. El manifest no puede describir instaladores sin identidad.
+- **Seguridad documentada y operable**. `SECURITY.md` describe límites de confianza, activos protegidos, mitigaciones, reporte, soporte y recuperación para que un auditor pueda reproducir la cadena de confianza.
+
+## Non-goals
+
+- Migrar Tauri ni sustituir el sidecar `apisrc`: la release valida y empaqueta el shell Tauri existente y el CLI autocontenido.
+- Añadir canales alpha/beta/stable, staged rollout, downgrade o distribución corporativa; el primer contrato es stable semver.
+- Añadir Windows ARM64 o Linux ARM64; la matriz inicial es Linux x64, Windows x64, macOS x64 y macOS arm64. Nuevos targets entran por extensión del mismo manifest.
+- Publicar Flatpak, Snap, App Store ni Microsoft Store; esta propuesta cubre instaladores nativos y sus pruebas de trust.
+- Implementar disclosure management ni un programa de recompensas; `SECURITY.md` define el canal y el equipo conserva el triaging.
+
+## Architecture
+
+La propuesta se divide en cuatro controles independientes pero encadenados por sus artefactos:
+
+1. **Desktop CI por plataforma (S1)**. `.github/workflows/desktop-ci.yml` construye la misma revisión en hosted runners nativos, corre quality gates Rust y Bun, empaqueta sin publicar y ejecuta un smoke real: sidecar handshake → scan → export → exit code 0. `ci-summary` exige el check `desktop-ci` y la branch protection lo incorpora a `develop`.
+2. **Signing y verificación (S2)**. Un contrato de configuración selecciona credenciales por `os`/`arch` y construye un manifest efímero de artefactos. macOS usa hardened runtime + timestamp + notarization + staple; Windows usa Authenticode SHA-256 + trusted timestamp; Linux genera `SHA256SUMS` y detached signatures GPG. Un job `verify-signatures` pasa antes de que `gh release` publique.
+3. **Updater firmado (S3)**. El updater Tauri consume un manifest versionado desde un endpoint HTTPS, verifica firma y hash del instalador antes de descargarlo o instalarlo y aborta con un error visible si la prueba criptográfica falla. El instalador actualizado contiene el sidecar de la misma versión.
+4. **Supply-chain transparency (S4)**. Tras verificar los artefactos finales, se genera un CycloneDX JSON 1.6 desde el grafo real, se valida su schema, se attesta la provenance de los assets y se publican SBOM, attestation y checksums firmados junto a la release. `SECURITY.md` documenta la cadena de confianza, supported versions, disclosure y límites de cada control.
+
+### Dependency on `a00019#phase-5-multi-language-precision`
+
+La dependencia del frontmatter es deliberada: la release se apoya en la precisión multi-lenguaje y en el snapshot/Application API que preceden a la fase 6. La comprobación no vuelve a implementar `ModuleResolver` ni la detección de frameworks; verifica que el artefacto Desktop contiene el contrato vigente y que el smoke usa un fixture representativo. Mientras `a00019#phase-5-multi-language-precision` no esté cerrada, esta propuesta queda `ready` pero no se puede declarar `done`.
+
+### Artifact contract
+
+Cada instalador publicado se describe por versión semver, nombre, plataforma, arquitectura, formato, SHA-256, firma, signer/key id, referencia de SBOM y referencia de provenance. El manifest se genera en un workspace limpio a partir de los archivos finales; no se aceptan rutas, nombres o hashes hardcodeados. La verificación final vuelve a calcular los hashes desde el staging de release y falla si encuentra drift.
 
 ## Slices
 
 - global_gate: e2e
 
-### S1-desktop-ci-platforms — S1 — Desktop CI por plataforma: cargo fmt/clippy/test + smoke en macOS/Windows/Linux
-- **Status**: pending
-- **Files**: `.github/workflows/desktop-ci.yml`, `scripts/gates/desktop-quality.script.ts`, `scripts/gates/desktop-smoke.script.ts`, `packages/desktop/tests/smoke/launch-and-scan.test.ts`, `packages/desktop/tests/smoke/export-and-exit.test.ts`, `packages/desktop/tests/fixtures/scan-fixture/package.json`, `packages/desktop/tests/fixtures/scan-fixture/src/main.ts`, `docs/CI.md`, `delendai.config.json`
-- **Gate**: e2e
-- acceptance:
-  - "Job `desktop-ci` corre en ubuntu-latest + macos-latest + windows-latest con matrix (Rust 1.80+, Node 20+); pasos: checkout, setup-rust, setup-bun, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, build Tauri, smoke launch"
-  - "Smoke: lanzar binario compilado, abrir fixture `scan-fixture`, esperar sidecar handshake, ejecutar scan, ejecutar export, exit cleanly; assertion en output JSON y exit code 0"
-  - "`scripts/gates/desktop-quality.script.ts` corre como parte de `bun run validate` (gate local) y como paso del job CI"
-  - "`docs/CI.md` documenta el flujo: develop → desktop-ci → tests/coverage → required checks; cómo añadir un nuevo platform target"
-  - "El job forma parte de los required checks de develop (configurado en `c00010` S2 si ya cerrado, o en este slice si todavía no)"
-  - "Regresión cerrada: cambios en `packages/desktop/src-tauri/` sin PR que pase `desktop-ci` no llegan a develop"
-  - "DoD slice: workflow dry-run verde con `act` (o equivalente); `cargo check` verde en local en Linux"
+### S1-desktop-ci-platforms — S1 — Desktop CI por plataforma: quality gates y smoke real en Linux/macOS/Windows
 
-### S2-signing-notarization — S2 — Signing + notarization macOS/Windows/Linux + checksums firmados
 - **Status**: pending
+- **Files**: `.github/workflows/desktop-ci.yml`, `packages/desktop/rust-toolchain.toml`, `scripts/gates/desktop-quality.script.ts`, `scripts/gates/desktop-smoke.script.ts`, `scripts/gates/ci-summary.script.ts`, `tests/desktop/launch-and-scan.test.ts`, `tests/desktop/export-and-exit.test.ts`, `tests/desktop/fixtures/scan-fixture/package.json`, `tests/desktop/fixtures/scan-fixture/src/main.ts`, `docs/CI.md`, `delendai.config.json`
+- **DependsOn**: []
+- **Gate**: e2e
+- acceptanceCriteria:
+  - El workflow `desktop-ci` usa hosted runners nativos `ubuntu-latest`, `macos-latest` y `windows-latest`, fija Bun 1.4.2+, Node 20+ y el MSRV Rust 1.80+ en `rust-toolchain.toml`, y mantiene `fail-fast: false` para que un fallo no oculte los targets restantes.
+  - En cada OS se ejecutan, como mínimo, `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test --all-targets --all-features`, el quality gate Bun, un build Tauri sin publicar y el smoke del sidecar.
+  - El smoke compila el sidecar para el target nativo, arranca Tanit, espera un handshake/URL real, abre un fixture de scan representativo, ejecuta scan, ejecuta export Postman, valida el JSON de salida y termina con exit code 0.
+  - `desktop-ci` aparece en `ci-summary` y en los required checks de `develop`; un cambio en `packages/desktop/` no puede mergearse con ese check fallido o skipped.
+  - `desktop-quality.script.ts` es invocable localmente y en CI, devuelve diagnósticos accionables y no modifica el fixture; el workflow parsea con `actionlint` o equivalente antes de la ejecución.
+  - `docs/CI.md` documenta triggers, matriz, secrets mínimos, troubleshooting y el procedimiento para añadir un nuevo `os × arch × bundle`.
+  - DoD: un commit/tag de prueba obtiene los tres jobs nativos verdes, el gate local pasa en Linux y el fixture demuestra el flujo completo sin depender de red externa.
+
+### S2-signing-notarization — S2 — Signing, notarization y verificación reproducible por plataforma
+- **Status**: pending
+- **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/prepare-artifacts.mjs`, `scripts/release/sign-macos.sh`, `scripts/release/notarize-macos.sh`, `scripts/release/sign-windows.ps1`, `scripts/release/sign-linux.sh`, `scripts/release/verify-signature.sh`, `packages/contracts/interfaces/release/signing.interface.ts`, `packages/contracts/constants/release/signing.constant.ts`, `packages/desktop/tauri.conf.json`, `docs/RELEASE.md`, `tests/release/signing.spec.ts`
 - **DependsOn**: [S1-desktop-ci-platforms]
-- **Files**: `scripts/release/sign-macos.sh`, `scripts/release/notarize-macos.sh`, `scripts/release/sign-windows.ps1`, `scripts/release/sign-linux.sh`, `scripts/release/verify-signature.sh`, `.github/workflows/release.yml`, `packages/desktop/src-tauri/tauri.conf.json`, `docs/RELEASE.md`
 - **Gate**: e2e
-- acceptance:
-  - "macOS: `sign-macos.sh` invoca `codesign --deep --strict --options=runtime --timestamp` con Developer ID Application + `--entitlements`; `notarize-macos.sh` usa `xcrun notarytool submit --wait --keychain-profile` con Apple ID + app-specific password desde GitHub Secrets; resultado: `xcrun stapler staple` aplicado al .dmg y .app"
-  - "Windows: `sign-windows.ps1` usa `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx /p <password>` con Azure Trusted Signing o certificado EV; `.msi` y `.exe` firmados"
-  - "Linux: `sign-linux.sh` genera `.sig` files con GPG (`gpg --detach-sign --armor`); SHA256SUMS con `sha256sum -b`; verificación reproducible"
-  - "`packages/desktop/src-tauri/tauri.conf.json` actualizado con `bundle.macOS.signingIdentity`, `bundle.windows.certificateThumbprint`, etc. — todo opcional, default `null` (dev-friendly)"
-  - "Release workflow produce artefactos firmados: `.dmg` + `.app` notarizado, `.msi`/`.exe` Authenticode, `.deb`/`.AppImage` + `.sig` + `SHA256SUMS`"
-  - "`scripts/release/verify-signature.sh` valida cada artefacto contra su firma correspondiente; usado en CI para verificar el output antes de publicar"
-  - "`docs/RELEASE.md` documenta el flujo de signing, las claves requeridas via GitHub Secrets, y el comando de verificación"
-  - "DoD slice: release dry-run (sin publicar) genera todos los artefactos firmados; CI workflow dry-run verde"
+- acceptanceCriteria:
+  - "`delendai.config.json#release.sign` tiene default `false`; `release.sign=true` habilita signing y hace que la pipeline production assertion falle si falta cualquier credencial o target requerido."
+  - "macOS genera `.app` y `.dmg` por x64/arm64, aplica `codesign` hardened runtime, entitlements mínimos, secure timestamp y Developer ID; `notarytool` espera la aceptación, se staplan ambos artefactos y el runner ejecuta una comprobación de Gatekeeper antes de publicar."
+  - "Windows firma `.msi` y NSIS `.exe` x64 con Authenticode SHA-256, certificado EV/Azure Trusted Signing y trusted timestamp RFC 3161; el verifier confirma signer, digest y timestamp desde el artefacto real."
+  - "Linux produce `.deb`/`.AppImage` x64, un `SHA256SUMS` generado con `sha256sum` y firmas detached GPG por artefacto/checksum; la verificación usa el keyring publicado y no depende de firmas no verificadas."
+  - "El manifest efímero incluye semver, `os`, `arch`, bundle, ruta relativa, SHA-256, firma, signer/key id y referencias de SBOM/provenance; `verify-signature.sh` vuelve a calcular todo desde el manifest y los assets."
+  - "El release job adjunta solo artefactos verificados: `.app`/`.dmg` notarizados macOS, `.msi`/`.exe` Authenticode Windows y `.deb`/`.AppImage` con `SHA256SUMS` y `.sig` Linux. La publicación de cualquier target no firmado falla cerrada."
+  - "`docs/RELEASE.md` enumera secrets por proveedor, responsabilidades de rotación, troubleshooting, comandos de verificación y la política explícita de que una release es reproducible en identidad, no bit a bit."
+  - "DoD: un dry-run sin publicar produce todos los artefactos esperados, cada verificador pasa para su OS y la matriz de credenciales faltantes se prueba sin exponer valores."
 
-### S3-secure-updater-sbom — S3 — Secure updater firmado + SBOM CycloneDX + provenance attestation
+### S3-secure-updater — S3 — Updater firmado con manifest versionado y verificación antes de instalar
+
 - **Status**: pending
+- **Files**: `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/src/updater.rs`, `packages/desktop/capabilities/updater.json`, `packages/desktop/keys/tanit-updater-public-key-v1.pem`, `scripts/release/build-update-manifest.mjs`, `scripts/release/verify-update.sh`, `tests/desktop/updater-contract.rs`, `docs/UPDATER.md`
 - **DependsOn**: [S2-signing-notarization]
-- **Files**: `packages/desktop/src-tauri/src/updater.rs`, `packages/desktop/src-tauri/capabilities/updater.json`, `scripts/release/build-sbom.sh`, `scripts/release/verify-update.sh`, `docs/SBOM.md`, `docs/UPDATER.md`, `SECURITY.md`
 - **Gate**: e2e
-- acceptance:
-  - "Tauri updater activo (`packages/desktop/src-tauri/src/updater.rs`); public key versionada; el manifest firmado se publica en `https://<owner>.github.io/<repo>/release.json` (o equivalente)"
-  - "Auto-update transparente: el binario verifica la firma antes de instalar; si la firma falla, aborta con mensaje claro (no silent fallback a unsigned)"
-  - "`scripts/release/build-sbom.sh` genera CycloneDX SBOM por release (TypeScript via `cdxgen`, Rust via `cargo-cyclonedx`); subido al GitHub release como asset `tanit-<version>-sbom.cdx.json`"
-  - "Provenance attestation via `actions/attest` o `in-toto` para cada binario; subido al GitHub release como `attestation.jsonl`"
-  - "`scripts/release/verify-update.sh`: dado un binario y un manifest URL, verifica firma + hash + provenance; documentado en `docs/UPDATER.md` como comando para auditores externos"
-  - "`docs/SBOM.md` explica cómo consumir el SBOM (formatos, tools, queries comunes)"
-  - "`SECURITY.md` documenta: threat model (qué protege cada capa), supported versions (N-1 minor), proceso de reporte (`security@tanit.dev` con GPG key), ventana de respuesta (90 días para high/critical)"
-  - "DoD slice: SBOM generado para release actual + attestation válida; updater manifest firmado y verificable en staging"
+- acceptanceCriteria:
+  - Tauri updater queda inicializado desde un contrato explícito de endpoint, public key versionada, versión actual, timeout y política de reintento; la clave privada nunca entra en la app, el repositorio ni los build logs.
+  - El manifest HTTPS incluye versión semver, target `os/arch/bundle`, URL, SHA-256, firma, public-key id, versión mínima soportada y provenance; el cliente verifica firma, hash, versión y plataforma antes de descargar o instalar.
+  - Una firma inválida, hash alterado, target incompatible, manifest ausente o respuesta no válida aborta con un mensaje visible y un evento de seguridad; no existe fallback a unsigned ni descarga HTTP.
+  - El instalador candidato incluye un sidecar `apisrc` compatible y la misma versión semver; un smoke posterior al update comprueba handshake, scan y export antes de cerrar la operación.
+  - Se prueba al menos actualización válida, versión anterior, target incorrecto, firma corrupta, hash corrupto, endpoint no disponible y rollback; las pruebas no requieren una cuenta real ni una red externa.
+  - `docs/UPDATER.md` explica la rotación de claves, la compatibilidad de manifests, la verificación independiente y el procedimiento de rollback para usuarios y auditores.
+  - DoD: el manifest staging se firma y verifica con fixtures locales, la versión anterior se rechaza de forma determinista y el instalador actualizado supera el smoke Desktop.
+
+### S4-sbom-security — S4 — SBOM CycloneDX, provenance attestation y threat model en cada release
+
+- **Status**: pending
+- **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/build-sbom.mjs`, `scripts/release/verify-sbom.mjs`, `tests/release/sbom.spec.ts`, `docs/SBOM.md`, `SECURITY.md`
+- **DependsOn**: [S2-signing-notarization, S3-secure-updater]
+- **Gate**: e2e
+- acceptanceCriteria:
+  - Cada release genera, a partir de los artefactos finales verificados por S2/S3, un SBOM CycloneDX JSON 1.6 válido con `bomFormat`, `specVersion`, `serialNumber`, version, components, dependencias, hashes y supplier cuando esté disponible.
+  - El SBOM cubre Tanit Desktop, el sidecar `apisrc` y el grafo de dependencias Rust/Bun/nativas realmente empaquetado; excluye secretos, certificados privados, credenciales y archivos temporales. El manifest de S3 y el SBOM se validan mutuamente por versión y hash.
+  - El workflow ejecuta `actions/attest-build-provenance` o equivalente SLSA-compatible sobre los assets firmados y publica la attestation/provenance junto a la release; una attestation ausente o no verificable impide publicar.
+  - `verify-sbom.mjs` valida schema, componentes requeridos, hashes, firma, signer/key id y provenance; sus fixtures cubren SBOM válido, dependencia faltante, hash alterado y provenance no relacionada.
+  - `SECURITY.md` incluye threat model con activos, adversaries, trust boundaries, controles por capa (CI, release credentials, signing, updater, endpoint, sidecar y usuario), riesgos aceptados, proceso privado de reporte, GPG/contacto de seguridad, supported versions y ventana de respuesta high/critical.
+  - `docs/SBOM.md` explica consumidores, CycloneDX 1.6, consultas comunes, correlación con manifest/checksums, retención y pasos de revalidación para auditores.
+  - DoD: un dry-run staging adjunta SBOM, provenance y attestation verificables, y la release real no se puede crear sin esos assets; `bun run lint:proposals:gen-index` y `bun run typecheck` permanecen verdes.
 
 ## acceptance
 
-- Job `desktop-ci` corre en ubuntu-latest + macos-latest + windows-latest con matrix (Rust 1.80+, Node 20+); pasos: checkout, setup-rust, setup-bun, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, build Tauri, smoke launch
-- Smoke: lanzar binario compilado, abrir fixture `scan-fixture`, esperar sidecar handshake, ejecutar scan, ejecutar export, exit cleanly; assertion en output JSON y exit code 0
-- `scripts/gates/desktop-quality.script.ts` corre como parte de `bun run validate` (gate local) y como paso del job CI
-- `docs/CI.md` documenta el flujo: develop → desktop-ci → tests/coverage → required checks; cómo añadir un nuevo platform target
-- El job forma parte de los required checks de develop (configurado en `c00010` S2 si ya cerrado, o en este slice si todavía no)
-- Regresión cerrada: cambios en `packages/desktop/src-tauri/` sin PR que pase `desktop-ci` no llegan a develop
-- DoD slice: workflow dry-run verde con `act` (o equivalente); `cargo check` verde en local en Linux
-- macOS: `sign-macos.sh` invoca `codesign --deep --strict --options=runtime --timestamp` con Developer ID Application + `--entitlements`; `notarize-macos.sh` usa `xcrun notarytool submit --wait --keychain-profile` con Apple ID + app-specific password desde GitHub Secrets; resultado: `xcrun stapler staple` aplicado al .dmg y .app
-- Windows: `sign-windows.ps1` usa `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx /p <password>` con Azure Trusted Signing o certificado EV; `.msi` y `.exe` firmados
-- Linux: `sign-linux.sh` genera `.sig` files con GPG (`gpg --detach-sign --armor`); SHA256SUMS con `sha256sum -b`; verificación reproducible
-- `packages/desktop/src-tauri/tauri.conf.json` actualizado con `bundle.macOS.signingIdentity`, `bundle.windows.certificateThumbprint`, etc. — todo opcional, default `null` (dev-friendly)
-- Release workflow produce artefactos firmados: `.dmg` + `.app` notarizado, `.msi`/`.exe` Authenticode, `.deb`/`.AppImage` + `.sig` + `SHA256SUMS`
-- `scripts/release/verify-signature.sh` valida cada artefacto contra su firma correspondiente; usado en CI para verificar el output antes de publicar
-- `docs/RELEASE.md` documenta el flujo de signing, las claves requeridas via GitHub Secrets, y el comando de verificación
-- DoD slice: release dry-run (sin publicar) genera todos los artefactos firmados; CI workflow dry-run verde
-- Tauri updater activo (`packages/desktop/src-tauri/src/updater.rs`); public key versionada; el manifest firmado se publica en `https://<owner>.github.io/<repo>/release.json` (o equivalente)
-- Auto-update transparente: el binario verifica la firma antes de instalar; si la firma falla, aborta con mensaje claro (no silent fallback a unsigned)
-- `scripts/release/build-sbom.sh` genera CycloneDX SBOM por release (TypeScript via `cdxgen`, Rust via `cargo-cyclonedx`); subido al GitHub release como asset `tanit-<version>-sbom.cdx.json`
-- Provenance attestation via `actions/attest` o `in-toto` para cada binario; subido al GitHub release como `attestation.jsonl`
-- `scripts/release/verify-update.sh`: dado un binario y un manifest URL, verifica firma + hash + provenance; documentado en `docs/UPDATER.md` como comando para auditores externos
-- `docs/SBOM.md` explica cómo consumir el SBOM (formatos, tools, queries comunes)
-- `SECURITY.md` documenta: threat model (qué protege cada capa), supported versions (N-1 minor), proceso de reporte (`security@tanit.dev` con GPG key), ventana de respuesta (90 días para high/critical)
-- DoD slice: SBOM generado para release actual + attestation válida; updater manifest firmado y verificable en staging
+- `desktop-ci` está verde en hosted runners Linux, macOS y Windows y sus smoke tests ejecutan scan/export reales.
+- `desktop-ci` forma parte de los required checks y bloquea cambios Desktop no validados.
+- macOS publica `.app`/`.dmg` firmados, notarizados y stapled; Windows publica `.msi`/`.exe` Authenticode con timestamp; Linux publica `.deb`/`.AppImage`, `SHA256SUMS` y firmas verificables.
+- `release.sign=false` mantiene releases development unsigned y `release.sign=true` convierte la publicación en un flujo fail-closed con credenciales solo en GitHub Secrets.
+- El updater verifica firma, hash, target y versión antes de instalar; no instala un artefacto sin confianza y el sidecar permanece compatible.
+- Cada release incluye SBOM CycloneDX 1.6, provenance attestation y documentación de auditoría.
+- `SECURITY.md` documenta threat model, disclosure privado, supported versions y proceso de respuesta.
+- `bun run lint:proposals:gen-index` y `bun run typecheck` están verdes; la proposal permanece en estado de revisión hasta que un verificador independiente apruebe el diseño.
+
+## Risks
+
+- **Credenciales externas ausentes**. El pipeline puede construir artefactos unsigned, pero un job production con `release.sign=true` debe fallar antes de publicar si Apple, Windows o GPG no están configurados. Es un resultado correcto, no un motivo para relajar la trust chain.
+- **Rotación de claves**. La pérdida o exposición de una signing key requiere revocación, nueva public key versionada, re-firma de los manifests y una ventana de soporte documentada; no se puede sobrescribir silenciosamente la clave activa.
+- **Drift entre artefactos**. El manifest, hashes, SBOM, provenance y assets deben derivarse del mismo staging directory. Cualquier cambio posterior a la verificación obliga a regenerar toda la cadena y repetir la attestation.
+- **Entornos hosted**. macOS y Windows solo se construyen en sus runners nativos; la validación local Linux no pretende cross-compilar instaladores firmados. La matriz y el dry-run deben documentar esta limitación.
+- **Disponibilidad del updater**. Un endpoint caído no puede forzar una descarga sin firma. El cliente conserva la versión instalada, muestra el fallo y permite reintentar o descargar la release verificada manualmente.
+- **Cobertura SBOM incompleta**. Si una dependencia bundled no aparece, el verificador falla la release; el riesgo de publicar un SBOM incompleto es mayor que el coste de regenerarlo.
+- **Cambios de APIs de terceros**. `notarytool`, Authenticode, `actions/attest` y Tauri updater pueden cambiar; se fijan versiones/pines y se prueba el flujo en una release de staging antes de actualizar la toolchain.
+
+## Definition of done
+
+- Todos los criterios de S1–S4 están implementados, probados y aprobados por un verificador distinto de quien implementó esta consolidación.
+- La release industrial pasa los gates de S1–S4 y el slice queda en `in_review` hasta la peer review; no se cierra desde esta tarea.
+- La propuesta enlaza correctamente con `a00019#phase-5-multi-language-precision` y su frontmatter declara `kind: infra` y la dependencia de fase 5.
+- Solo se edita este documento de diseño en esta slice; la implementación de CI, scripts, workflows, manifests, claves, SBOM, attestation y documentación corresponde a los slices de ejecución posteriores.
