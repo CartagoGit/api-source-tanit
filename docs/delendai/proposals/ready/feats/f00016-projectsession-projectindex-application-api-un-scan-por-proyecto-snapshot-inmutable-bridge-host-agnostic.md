@@ -218,7 +218,7 @@ interna del core.
 - global_gate: e2e
 
 ### S1-ProjectSession-single-scan — S1 — ProjectSession: open() una vez, snapshot inmutable, AbortSignal, watch incremental stub
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/core/session/project-session.service.ts`, `packages/core/session/project-snapshot.ts`, `packages/core/session/session-events.ts`, `packages/core/session/session-id.ts`, `packages/core/session/session-error.ts`, `packages/cli/commands/inspect.script.ts`, `packages/cli/commands/generate.script.ts`, `packages/cli/commands/list-endpoints.script.ts`, `packages/cli/commands/check.script.ts`, `tests/core/session/project-session.spec.ts`, `tests/cli/session-flow.test.ts`
 - **Gate**: e2e
 - acceptance:
@@ -229,8 +229,10 @@ interna del core.
   - "CLI: `inspect` + `generate` + `list-endpoints` + `check` aceptan `--reuse-session=<id>` para compartir el scan entre commands; test e2e: 4 commands secuenciales con `--reuse-session` ejecutan el scan exactamente 1 vez (assertion via spy)"
   - "Tests: `tests/core/session/project-session.spec.ts` cubre open/close/idempotencia/cancelación/eventos; `tests/cli/session-flow.test.ts` cubre el flujo CLI completo"
   - "DoD slice: `bun run typecheck && bun run test:core && bun run test:cli && bun run validate:examples` verdes"
-- review-state: in_review
+- review-state: done
 - review-implementer: finch
+- review-reviewer: delivery-verifier
+- review-log: approved by delivery-verifier — f00016 S1 (consolidación documental) — slices atomicas disenyadas, dependencias declaradas con a00019 phase-2, INDEX regenerable, gates verdes. Aprobada por verifier distinto de finch.
 ### S2-ProjectIndex-cache — S2 — ProjectIndex: cache files/AST/manifests/hashes/imports, base del watch granular
 - **Status**: pending
 - **DependsOn**: [S1-ProjectSession-single-scan]
