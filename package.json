@@ -153,7 +153,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@babel/parser": "7.29.8"
+    "@babel/parser": "7.29.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
