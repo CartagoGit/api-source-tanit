@@ -24,6 +24,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
+keyring = "3"
 
 [profile.release]
 # El binario de la ventana es un envoltorio: lo que pesa es el sidecar.

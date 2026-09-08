@@ -54,10 +54,10 @@ export function canonicalSnapshotJson(snapshot: ICanonicalSnapshot): string {
 
 export function snapshotSha256(snapshot: ICanonicalSnapshot): string {
   return createHash("sha256")
-    .update(canonicalSnapshotJson(snapshot), "utf8")
+    .update(canonicalSnapshotJson(snapshot))
     .digest("hex");
 }
 
 export function snapshotHashFromJson(json: string): string {
-  return createHash("sha256").update(json, "utf8").digest("hex");
+  return createHash("sha256").update(json).digest("hex");
 }

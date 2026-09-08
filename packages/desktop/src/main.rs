@@ -22,6 +22,7 @@ mod bridge;
 mod dialogs;
 mod drag_drop;
 mod sidecar;
+mod secure_storage;
 
 use std::process::Child;
 use std::sync::Mutex;
@@ -29,6 +30,7 @@ use std::sync::Mutex;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 use bridge::Bridge;
+use secure_storage::SecureStorage;
 use sidecar::spawn as spawn_sidecar;
 
 /// Posee el `Child` del sidecar para matarlo al destruirse la
@@ -40,8 +42,9 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![bridge::send_to_sidecar])
+        .invoke_handler(tauri::generate_handler![bridge::send_to_sidecar, secure_storage_save, secure_storage_retrieve, secure_storage_delete])
         .manage(Sidecar(Mutex::new(None)))
+        .manage(SecureStorage::default())
         .setup(|app| {
             // 1. Sidecar: `apisrc serve --stdio`, stdin/stdout para
             //    el bridge; stderr va a un hilo logger propio
@@ -84,6 +87,21 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("no se pudo arrancar la ventana");
+}
+
+#[tauri::command]
+fn secure_storage_save(storage: tauri::State<'_, SecureStorage>, service: String, value: String) -> Result<(), String> {
+    storage.save(service, value)
+}
+
+#[tauri::command]
+fn secure_storage_retrieve(storage: tauri::State<'_, SecureStorage>, service: String) -> Result<Option<String>, String> {
+    storage.retrieve(&service)
+}
+
+#[tauri::command]
+fn secure_storage_delete(storage: tauri::State<'_, SecureStorage>, service: String) -> Result<(), String> {
+    storage.delete(&service)
 }
 
 #[cfg(test)]

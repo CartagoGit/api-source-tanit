@@ -12,7 +12,7 @@ export interface IHostRequestMap {
   validate: { readonly projectRoot: string };
   check: { readonly projectRoot: string };
   sync: { readonly projectRoot: string };
-  push: { readonly projectRoot: string };
+  push: { readonly projectRoot: string; readonly workspace?: string; readonly dryRun?: boolean; readonly apiKey?: string };
   settings: undefined;
 }
 
@@ -28,7 +28,7 @@ export interface IHostResponseMap {
   validate: { readonly valid: boolean; readonly issues: ReadonlyArray<string> };
   check: { readonly passed: boolean; readonly issues: ReadonlyArray<string> };
   sync: { readonly synced: boolean };
-  push: { readonly pushed: boolean };
+  push: { readonly pushed: boolean; readonly diagnostics?: ReadonlyArray<string> };
   settings: { readonly saved: boolean };
 }
 
