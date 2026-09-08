@@ -252,3 +252,63 @@ export function scannerBundleFor(framework: FrameworkId): IScannerBundle | null 
       DEFAULT_REGISTRY.validationProviders.find((v) => v.framework === framework) ?? null,
   };
 }
+
+/**
+ * Symbol key under which `defaultOrchestratorWithIndex()` attaches an
+ * `IProjectIndex` to the orchestrator instance.
+ *
+ * The index layer (f00016 S2) is delivered without breaking changes
+ * to the existing scanners: today none of them reads an index, and
+ * the future scanner refactor (S5+) will reach it through this
+ * symbol. Exporting the symbol keeps the surface tiny — one
+ * `Symbol.for(...)` key — without changing the
+ * `DiscoveryOrchestrator` constructor signature.
+ */
+export const PROJECT_INDEX_SLOT: unique symbol = Symbol.for(
+  "@api-source-tanit/project-index-slot",
+);
+
+/**
+ * `IProjectIndex` is the slice's public type; declared lazily here
+ * via a type-only import so the registry file does not depend on
+ * `@delendai/core` (which it never did before and the linter would
+ * catch on a wrong import).
+ */
+export type IProjectIndexForRegistry = import("../core/index/project-index.service.js").IProjectIndex;
+
+/**
+ * Returns an orchestrator with the same registry but with the given
+ * `index` attached at `PROJECT_INDEX_SLOT`.
+ *
+ * Scanners that want to opt into the index can read it with
+ * `(this.orchestrator as { [PROJECT_INDEX_SLOT]?: IProjectIndex })[PROJECT_INDEX_SLOT]`.
+ * Scanners that do not opt in keep their current behaviour — the
+ * index is attached, but unused.
+ */
+export function defaultOrchestratorWithIndex(
+  index: IProjectIndexForRegistry | undefined,
+): DiscoveryOrchestrator {
+  const orchestrator = defaultOrchestrator();
+  if (index) {
+    Object.defineProperty(orchestrator, PROJECT_INDEX_SLOT, {
+      value: index as unknown as object,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
+  }
+  return orchestrator;
+}
+
+/**
+ * Reads the index slot on an orchestrator. Returns `undefined` when
+ * the orchestrator was built without an index, which is the default
+ * — none of the existing code paths call
+ * `defaultOrchestratorWithIndex()` yet.
+ */
+export function projectIndexOf(
+  orchestrator: DiscoveryOrchestrator,
+): IProjectIndexForRegistry | undefined {
+  const raw = (orchestrator as unknown as Record<symbol, unknown>)[PROJECT_INDEX_SLOT];
+  return raw as IProjectIndexForRegistry | undefined;
+}
