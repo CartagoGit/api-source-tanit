@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 229 símbolos en 84 módulos.
+> 443 símbolos en 130 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -56,6 +56,760 @@ shape as the legacy `discoverEndpoints`.
 
 ```ts
 export async function _peekSpec(projectRoot: string): Promise<string | null>
+```
+
+### `packages/core/application-api/cancel.handler.ts`
+
+`cancel.handler.ts` — cancel a scan or a watch subscription.
+
+#### `CancelOutput`
+
+```ts
+export interface CancelOutput
+```
+
+#### `createCancelHandler`
+
+```ts
+export function createCancelHandler(): IHandler<CancelInput, CancelOutput>
+```
+
+### `packages/core/application-api/close.handler.ts`
+
+`close.handler.ts` — release a session (or all sessions).
+
+#### `CloseOutput`
+
+```ts
+export interface CloseOutput
+```
+
+#### `createCloseHandler`
+
+```ts
+export function createCloseHandler(): IHandler<CloseInput, CloseOutput>
+```
+
+### `packages/core/application-api/dispatcher.ts`
+
+`dispatcher.ts` — the request router for the Application API (f00016 S3).
+
+#### `IAbortSignalLike`
+
+```ts
+export interface IAbortSignalLike
+```
+
+Caller-provided context that travels with every request.
+
+The dispatcher never reads `workspace` / `signal` / `caller` —
+handlers do. Splitting the surface here keeps the dispatcher
+agnostic of who is calling (Web UI vs CLI vs Tauri) while still
+giving handlers everything they need.
+
+`AbortSignal` lives on the global `lib.dom.d.ts` in modern TS,
+but the project's tsconfig.base.json pins `lib: ["ES2022"]` —
+declared by hand to keep the binary free of `@types/node` at
+runtime. The minimum subset we need is the `aborted` boolean.
+
+#### `IRequestContext`
+
+```ts
+export interface IRequestContext
+```
+
+#### `IHandler`
+
+```ts
+export interface IHandler<TIn, TOut>
+```
+
+#### `HandlerRegistry`
+
+```ts
+export type HandlerRegistry = Readonly<Record<string, IHandler<unknown, unknown>>>
+```
+
+#### `dispatch`
+
+```ts
+export async function dispatch<TOut = unknown>( registry: HandlerRegistry, name: string, rawInput: unknown, ctx: IRequestContext, ): Promise<ApiResult<TOut>>
+```
+
+Routes a request through the registered handler.
+
+On any non-recoverable failure (unknown handler, invalid input,
+handler threw) the dispatcher returns the typed error envelope
+— it never throws. The bridge author wraps this in the wire
+shape; the CLI prints it; the Web UI surfaces it.
+
+### `packages/core/application-api/dry-run.handler.ts`
+
+`dry-run.handler.ts` — re-run the pipeline without writing.
+
+#### `DryRunOutput`
+
+```ts
+export interface DryRunOutput
+```
+
+#### `createDryRunHandler`
+
+```ts
+export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput>
+```
+
+### `packages/core/application-api/error.ts`
+
+`error.ts` — typed errors for the Application API (f00016 S3).
+
+#### `ApiErrorCode`
+
+```ts
+export type ApiErrorCode = /** Caller-supplied input did not match the handler's zod schema. */ | "INVALID_INPUT" /** The named handler is not registered with the dispatcher. */ | "UNKNOWN_HANDLER" /** The session for the requested project is not open. */ | "SESSION_NOT_FOUND" /** The requested operation / endpoint does not exist on the snapshot. */
+```
+
+Stable error codes the API may return. Keep additions additive —
+callers match on these strings, so a renumbering would be a
+silent break.
+
+#### `IApiError`
+
+```ts
+export interface IApiError
+```
+
+#### `apiError`
+
+```ts
+export function apiError( code: ApiErrorCode, message: string, details?: Readonly<Record<string, unknown>>, ): IApiError
+```
+
+#### `isApiError`
+
+```ts
+export function isApiError(value: unknown): value is IApiError
+```
+
+#### `fromZodError`
+
+```ts
+export function fromZodError(err: ZodError): IApiError
+```
+
+Converts a Zod parse failure into the `INVALID_INPUT` envelope.
+
+The `details` carry the flattened field map — `{ "<path>": "<msg>" }` —
+so a UI can highlight the offending input directly without a
+second round-trip.
+
+#### `ApiResult`
+
+```ts
+export type ApiResult<T> =
+```
+
+Discriminated union the dispatcher returns: either the handler's
+success payload (typed via the generic) or an `IApiError`.
+
+The bridges treat this union the same way: success on `ok=true`,
+error on `ok=false`. The bridge-side wrapper is **not** part of
+the API surface — handlers and dispatcher speak this union.
+
+#### `ok`
+
+```ts
+export function ok<T>(value: T):
+```
+
+#### `fail`
+
+```ts
+export function fail(err: IApiError): IApiErrorAsFail
+```
+
+#### `toApiError`
+
+```ts
+export function toApiError(err: unknown): IApiError
+```
+
+Standard `unknown` catcher: turns thrown errors into typed
+envelopes. `ApiError` already-shaped values pass through with
+their envelope; everything else becomes `EXECUTION_FAILED`.
+
+### `packages/core/application-api/export.handler.ts`
+
+`export.handler.ts` — render the collection to a target on disk.
+
+#### `ExportOutput`
+
+```ts
+export interface ExportOutput
+```
+
+#### `createExportHandler`
+
+```ts
+export function createExportHandler(): IHandler<ExportInput, ExportOutput>
+```
+
+### `packages/core/application-api/get-endpoint.handler.ts`
+
+`get-endpoint.handler.ts` — fetch a single endpoint from a snapshot.
+
+#### `GetEndpointOutput`
+
+```ts
+export interface GetEndpointOutput
+```
+
+The full `EndpointSpec` shape is wider than `IEndpointSummary` —
+callers that need every field (e.g. an OpenAPI exporter)
+receive it here. The dispatcher does not validate against a
+zod schema for the success output: passing an opaque object
+through zod would lock down the underlying type and forbid
+additive fields later.
+
+#### `createGetEndpointHandler`
+
+```ts
+export function createGetEndpointHandler(): IHandler<GetEndpointInput, GetEndpointOutput>
+```
+
+### `packages/core/application-api/get-schema.handler.ts`
+
+`get-schema.handler.ts` — request schema for a single endpoint.
+
+#### `IRequestSchema`
+
+```ts
+export type IRequestSchema = |
+```
+
+#### `GetSchemaOutput`
+
+```ts
+export interface GetSchemaOutput
+```
+
+#### `createGetSchemaHandler`
+
+```ts
+export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutput>
+```
+
+### `packages/core/application-api/handlers.ts`
+
+`handlers.ts` — barrel for the 14 Application API handlers.
+
+#### `HANDLER_NAMES`
+
+```ts
+export const HANDLER_NAMES = [ "open-project", "snapshot", "list-endpoints", "get-endpoint", "get-schema", "list-services", "dry-run",
+```
+
+The 14 handler names — the canonical enumeration the dispatcher
+and the bridges share.
+
+Order is informational; the dispatcher looks up by name. The
+list lives here (not duplicated in each handler file) so a
+future lint gate that cross-references "every handler name
+appears in handlers.ts" has one source.
+
+#### `buildRegistry`
+
+```ts
+export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unknown>>>
+```
+
+### `packages/core/application-api/history.handlers.ts`
+
+`history.handlers.ts` — read the snapshot deltas the session recorded since it opened.
+
+#### `IHistoryEntry`
+
+```ts
+export type IHistoryEntry = |
+```
+
+#### `recordHistoryEntry`
+
+```ts
+export function recordHistoryEntry( sessionId: string, entry: IHistoryEntry, limit = 100, ): void
+```
+
+#### `HistoryOutput`
+
+```ts
+export interface HistoryOutput
+```
+
+#### `createHistoryHandlers`
+
+```ts
+export function createHistoryHandlers():
+```
+
+### `packages/core/application-api/list-endpoints.handler.ts`
+
+`list-endpoints.handler.ts` — list the endpoints of a snapshot.
+
+#### `ListEndpointsOutput`
+
+```ts
+export interface ListEndpointsOutput
+```
+
+#### `createListEndpointsHandler`
+
+```ts
+export function createListEndpointsHandler(): IHandler<ListEndpointsInput, ListEndpointsOutput>
+```
+
+### `packages/core/application-api/list-projects.handler.ts`
+
+`list-projects.handler.ts` — every open session in this process.
+
+#### `ListProjectsOutput`
+
+```ts
+export interface ListProjectsOutput
+```
+
+#### `createListProjectsHandler`
+
+```ts
+export function createListProjectsHandler(): IHandler<ListProjectsInput, ListProjectsOutput>
+```
+
+### `packages/core/application-api/list-services.handler.ts`
+
+`list-services.handler.ts` — every service the snapshot discovered.
+
+#### `ListServicesOutput`
+
+```ts
+export interface ListServicesOutput
+```
+
+#### `createListServicesHandler`
+
+```ts
+export function createListServicesHandler(): IHandler<ListServicesInput, ListServicesOutput>
+```
+
+### `packages/core/application-api/open-project.handler.ts`
+
+`open-project.handler.ts` — opens a session for a project root.
+
+#### `OpenProjectOutput`
+
+```ts
+export interface OpenProjectOutput
+```
+
+#### `createOpenProjectHandler`
+
+```ts
+export function createOpenProjectHandler(): IHandler<OpenProjectInput, OpenProjectOutput>
+```
+
+Factory that captures the dependencies. The default export
+returns the bare handler; tests can override the orchestrator by
+passing their own factory.
+
+### `packages/core/application-api/settings.handlers.ts`
+
+`settings.handlers.ts` — get / patch per-session options.
+
+#### `SettingsOutput`
+
+```ts
+export interface SettingsOutput
+```
+
+#### `createSettingsHandler`
+
+```ts
+export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput>
+```
+
+### `packages/core/application-api/snapshot.handlers.ts`
+
+`snapshot.handlers.ts` — current snapshot accessor.
+
+#### `SnapshotOutput`
+
+```ts
+export interface SnapshotOutput
+```
+
+#### `createSnapshotHandlers`
+
+```ts
+export function createSnapshotHandlers():
+```
+
+### `packages/core/application-api/watch.handlers.ts`
+
+`watch.handlers.ts` — subscribe to live snapshot deltas.
+
+#### `WatchSubscription`
+
+```ts
+export interface WatchSubscription
+```
+
+#### `registerSubscription`
+
+```ts
+export function registerSubscription( projectRoot: string, onlyPaths: ReadonlyArray<string> | null, ): WatchSubscription
+```
+
+#### `clearSubscriptions`
+
+```ts
+export function clearSubscriptions(): void
+```
+
+#### `dropSubscriptionById`
+
+```ts
+export function dropSubscriptionById(id: string): boolean
+```
+
+#### `listSubscriptions`
+
+```ts
+export function listSubscriptions(): ReadonlyArray<WatchSubscription>
+```
+
+#### `WatchOutput`
+
+```ts
+export interface WatchOutput
+```
+
+#### `createWatchHandlers`
+
+```ts
+export function createWatchHandlers():
+```
+
+### `packages/core/application-api/zod-schemas.ts`
+
+`zod-schemas.ts` — input/output schemas for the 14 Application API handlers (f00016 S3).
+
+#### `ProjectRootSchema`
+
+```ts
+export const ProjectRootSchema = z .string() .min(1, "projectRoot must not be empty")
+```
+
+#### `SessionIdSchema`
+
+```ts
+export const SessionIdSchema = z.string().min(1, "sessionId must not be empty")
+```
+
+#### `CallerSchema`
+
+```ts
+export const CallerSchema = z.enum(["desktop", "browser", "cli"])
+```
+
+Caller side: where the request originated. Used by handlers that
+want to format messages differently (`desktop` is verbose, `cli`
+is terse, `browser` is human-readable). Optional; defaults to
+`"cli"` when missing.
+
+#### `OpenProjectInputSchema`
+
+```ts
+export const OpenProjectInputSchema = z.object(
+```
+
+`open-project` — opens a session for a project root.
+
+`orchestrator` is a structural projection of the discovery
+orchestrator: the dispatcher never instantiates one, only the
+caller does, so the schema is the minimal "what you must pass"
+and the dispatcher treats it as opaque (the application-api
+shares the orchestrator between `openSession()` and the
+handlers).
+
+#### `OpenProjectInput`
+
+```ts
+export type OpenProjectInput = z.infer<typeof OpenProjectInputSchema>
+```
+
+#### `SnapshotInputSchema`
+
+```ts
+export const SnapshotInputSchema = z.object(
+```
+
+`snapshot` — the current immutable snapshot of a project.
+
+#### `SnapshotInput`
+
+```ts
+export type SnapshotInput = z.infer<typeof SnapshotInputSchema>
+```
+
+#### `ListEndpointsInputSchema`
+
+```ts
+export const ListEndpointsInputSchema = z.object(
+```
+
+`list-endpoints` — paginated list of the endpoints in a snapshot.
+
+`limit` is bounded so a hostile caller cannot ask for the whole
+world in one shot. `cursor` is opaque: handlers treat it as a
+base64-ish key, the consumer treats it as an opaque string.
+
+#### `ListEndpointsInput`
+
+```ts
+export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>
+```
+
+#### `GetEndpointInputSchema`
+
+```ts
+export const GetEndpointInputSchema = z.object(
+```
+
+`get-endpoint` — one endpoint, identified by `method + uri`.
+
+`endpointId` is the composite key a UI would render: it is
+whatever the dispatcher decides; the wire shape stays a stable
+pair of fields.
+
+#### `GetEndpointInput`
+
+```ts
+export type GetEndpointInput = z.infer<typeof GetEndpointInputSchema>
+```
+
+#### `GetSchemaInputSchema`
+
+```ts
+export const GetSchemaInputSchema = z.object(
+```
+
+`get-schema` — the request schema for one endpoint.
+
+#### `GetSchemaInput`
+
+```ts
+export type GetSchemaInput = z.infer<typeof GetSchemaInputSchema>
+```
+
+#### `ListServicesInputSchema`
+
+```ts
+export const ListServicesInputSchema = z.object(
+```
+
+`list-services` — every service the snapshot discovered.
+
+#### `ListServicesInput`
+
+```ts
+export type ListServicesInput = z.infer<typeof ListServicesInputSchema>
+```
+
+#### `DryRunInputSchema`
+
+```ts
+export const DryRunInputSchema = z.object(
+```
+
+`dry-run` — re-run the pipeline without writing a collection to
+disk. Returns the in-memory result the real export would have
+produced.
+
+#### `DryRunInput`
+
+```ts
+export type DryRunInput = z.infer<typeof DryRunInputSchema>
+```
+
+#### `ExportInputSchema`
+
+```ts
+export const ExportInputSchema = z.object(
+```
+
+`export` — render the collection to a target on disk.
+
+`target` is a free-form string today; the dispatcher knows the
+canonical set (`postman`, `openapi`, `har`, `insomnia`,
+`bruno`, `curl`). Keeping it as `string` keeps the schema
+forward-compatible with future targets without a contract bump.
+
+#### `ExportInput`
+
+```ts
+export type ExportInput = z.infer<typeof ExportInputSchema>
+```
+
+#### `HistoryInputSchema`
+
+```ts
+export const HistoryInputSchema = z.object(
+```
+
+`history` — the snapshot deltas recorded since the session opened.
+
+Today this is the union of `snapshot-ready` events the session
+emitted while open. The future event-sourcing slice will replace
+it with a log-backed feed.
+
+#### `HistoryInput`
+
+```ts
+export type HistoryInput = z.infer<typeof HistoryInputSchema>
+```
+
+#### `WatchInputSchema`
+
+```ts
+export const WatchInputSchema = z.object(
+```
+
+`watch` — subscribe to live snapshot deltas.
+
+`subscriptionId` is what the caller passes back into `cancel()` to
+stop receiving. The dispatcher is responsible for the underlying
+bookkeeping; the schema is just the surface.
+
+#### `WatchInput`
+
+```ts
+export type WatchInput = z.infer<typeof WatchInputSchema>
+```
+
+#### `CancelInputSchema`
+
+```ts
+export const CancelInputSchema = z.object(
+```
+
+`cancel` — cancel a running scan or a watch subscription.
+
+#### `CancelInput`
+
+```ts
+export type CancelInput = z.infer<typeof CancelInputSchema>
+```
+
+#### `SettingsInputSchema`
+
+```ts
+export const SettingsInputSchema = z.object(
+```
+
+`settings` — get/set per-session options.
+
+`patch` is `Partial<IProjectSessionOptions>`: each key is
+optional, omitted keys are left alone, present keys overwrite.
+
+#### `SettingsInput`
+
+```ts
+export type SettingsInput = z.infer<typeof SettingsInputSchema>
+```
+
+#### `ListProjectsInputSchema`
+
+```ts
+export const ListProjectsInputSchema = z.object(
+```
+
+`list-projects` — every open session.
+
+No `projectRoot` argument: the caller wants the global list.
+
+#### `ListProjectsInput`
+
+```ts
+export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>
+```
+
+#### `CloseInputSchema`
+
+```ts
+export const CloseInputSchema = z.object(
+```
+
+`close` — release one (or all) sessions.
+
+#### `CloseInput`
+
+```ts
+export type CloseInput = z.infer<typeof CloseInputSchema>
+```
+
+#### `EndpointSummarySchema`
+
+```ts
+export const EndpointSummarySchema = z.object(
+```
+
+Output schemas — typed projections of the snapshots and results
+the core layers produce.
+
+We do **not** mirror the entire `EndpointSpec` (it has 20+ fields
+and the UI only renders a subset). The dispatcher passes the raw
+value back through `unknown` so the bridge can serialize it
+faithfully, but the application code that consumes the API gets
+the trimmed shape.
+
+#### `IEndpointSummary`
+
+```ts
+export type IEndpointSummary = z.infer<typeof EndpointSummarySchema>
+```
+
+#### `ServiceSummarySchema`
+
+```ts
+export const ServiceSummarySchema = z.object(
+```
+
+#### `IServiceSummary`
+
+```ts
+export type IServiceSummary = z.infer<typeof ServiceSummarySchema>
+```
+
+#### `SnapshotSummarySchema`
+
+```ts
+export const SnapshotSummarySchema = z.object(
+```
+
+#### `ISnapshotSummary`
+
+```ts
+export type ISnapshotSummary = z.infer<typeof SnapshotSummarySchema>
+```
+
+#### `ProjectEntrySchema`
+
+```ts
+export const ProjectEntrySchema = z.object(
+```
+
+#### `IProjectEntry`
+
+```ts
+export type IProjectEntry = z.infer<typeof ProjectEntrySchema>
 ```
 
 ### `packages/core/discovery/accumulate-routes-by-service.helper.ts`
@@ -2446,6 +3200,396 @@ Here we return the zones actually present: first those that
 alphabetically so two runs produce the same. Empty zones are omitted,
 which is what the previous code did right.
 
+### `packages/core/index/ast-cache.service.ts`
+
+AST cache — single source of truth for parsed source files (f00016 S2).
+
+#### `AstCapableLanguage`
+
+```ts
+export type AstCapableLanguage = Extract< IndexedLanguage, "typescript" | "javascript" | "tsx" | "jsx" >
+```
+
+#### `ICachedAst`
+
+```ts
+export interface ICachedAst
+```
+
+#### `parseAst`
+
+```ts
+export function parseAst(args:
+```
+
+#### `loadAst`
+
+```ts
+export async function loadAst(args:
+```
+
+Reads a file from disk and parses it into the cache, replacing any
+previous entry. Returns the new record or `null` when the file is
+gone. The cache is mutated by side-effect so the caller does not
+need to reassign.
+
+#### `cachedAst`
+
+```ts
+export function cachedAst( cache: ReadonlyMap<string, ICachedAst>, file: IIndexedFile, ): ICachedAst | undefined
+```
+
+Cache lookup that respects the hash: if the file on disk has
+changed since the cache was filled, the entry is dropped and the
+cache reports a miss. Callers that want the new value call
+`loadAst` afterwards.
+
+#### `loadAsts`
+
+```ts
+export async function loadAsts(args:
+```
+
+Eagerly fills the cache for every file the index knows about.
+Uses a bounded concurrency (`READ_CONCURRENCY`) so the bench
+reproduces the same shape as `readAllFiles`.
+
+#### `invalidateAstsFor`
+
+```ts
+export function invalidateAstsFor( cache: Map<string, ICachedAst>, relPaths: ReadonlyArray<string>, ): void
+```
+
+Drops every cached AST that depends on `relPath`. The inverse
+graph the invalidator carries is the source of truth — this
+helper exists so callers do not have to spell out the closure.
+
+#### `isAstCapable`
+
+```ts
+export function isAstCapable(language: IndexedLanguage): language is AstCapableLanguage
+```
+
+### `packages/core/index/file-cache.service.ts`
+
+File cache — single source of truth for "what files exist under projectRoot" (f00016 S2).
+
+#### `IndexedLanguage`
+
+```ts
+export type IndexedLanguage = | "typescript" | "javascript" | "tsx" | "jsx" | "go" | "rust" | "php"
+```
+
+#### `IIndexedFile`
+
+```ts
+export interface IIndexedFile
+```
+
+A file the index knows about. `absPath` is the on-disk path;
+`relPath` is posix-separated and relative to `projectRoot` so the
+rest of the index can build stable keys across platforms.
+
+Note: `mtimeMs` is intentionally absent. The runtime ambient
+declarations (`packages/contracts/interfaces/runtime.d.ts`) do
+not surface it, and the **SHA-256 hash** is the invalidation key
+that matters — if the bytes change, the hash changes, and the
+AST/manifest cache drops. Keeping the surface small keeps the
+index free of `mtime`-flaky behaviour.
+
+#### `detectLanguage`
+
+```ts
+export function detectLanguage(filename: string): IndexedLanguage
+```
+
+Identifies a file's language from its extension. Returns
+`unknown` when nothing matches — the index never throws on a
+weird file, it just tags it `unknown` and the consumer decides
+what to do.
+
+#### `readIndexedFile`
+
+```ts
+export async function readIndexedFile( absPath: string, projectRoot: string, workspaces: ReadonlyArray<IWorkspace>, ): Promise<IIndexedFile | null>
+```
+
+Lazily read + hash a single file. Returns `null` when the file
+cannot be read (permissions, broken symlink, disappeared between
+listing and reading) — those failures are recorded silently in the
+listing so the cache stays truthful.
+
+#### `indexFiles`
+
+```ts
+export async function indexFiles(args:
+```
+
+Walks `projectRoot` and returns the index for every file under it.
+Files inside `skipVendorDirs` directories are excluded (same rule
+as `collectFiles`). Returns a fresh map; the caller decides whether
+to merge it into an existing index.
+
+#### `refreshIndexedFile`
+
+```ts
+export async function refreshIndexedFile( cache: Map<string, IIndexedFile>, absPath: string, projectRoot: string, workspaces: ReadonlyArray<IWorkspace>, ): Promise<IIndexedFile | null>
+```
+
+Re-hashes a single file in place, returning the new record (or
+`null` if the file disappeared). The map is mutated by side-effect
+so the AST / manifest caches can see the new hash without a
+second walk.
+
+#### `sha256Of`
+
+```ts
+export function sha256Of(text: string): string
+```
+
+Computes the SHA-256 of a string. Used by callers that already
+have the content (e.g. the AST cache after parsing) and want to
+match it against the file cache without going through the disk
+again.
+
+#### `toPosix`
+
+```ts
+export function toPosix(p: string): string
+```
+
+#### `joinPosix`
+
+```ts
+export function joinPosix(...parts: ReadonlyArray<string>): string
+```
+
+#### `SKIP_VENDOR_DIRS_DEFAULT`
+
+```ts
+export const SKIP_VENDOR_DIRS_DEFAULT = true
+```
+
+#### `absPathOf`
+
+```ts
+export function absPathOf(root: string, relPath: string): string
+```
+
+#### `keyOf`
+
+```ts
+export function keyOf(relPath: string): string
+```
+
+#### `snapshotFiles`
+
+```ts
+export function snapshotFiles( cache: Map<string, IIndexedFile>, ): ReadonlyArray<IIndexedFile>
+```
+
+#### `filesByLanguage`
+
+```ts
+export function filesByLanguage( cache: ReadonlyMap<string, IIndexedFile>, ): ReadonlyMap<IndexedLanguage, number>
+```
+
+Counts how many files the cache holds by language. Used in
+diagnostics; the bench reuses it to assert that the second pass
+produced the same shape as the first.
+
+#### `_FileCacheWorkspaces`
+
+```ts
+export type _FileCacheWorkspaces = ReadonlyArray<IWorkspace>
+```
+
+### `packages/core/index/incremental-invalidator.service.ts`
+
+Incremental invalidator — "change one file, re-process only that file and its importers" (f00016 S2).
+
+#### `IImportEdge`
+
+```ts
+export interface IImportEdge
+```
+
+#### `IncrementalInvalidator`
+
+```ts
+export class IncrementalInvalidator
+```
+
+Holds the inverse dependency graph and answers "what else must I
+re-process when this file changes?".
+
+### `packages/core/index/manifest-reader.service.ts`
+
+Manifest reader — parses + caches the per-framework manifest files the index knows about (f00016 S2).
+
+#### `ManifestFormat`
+
+```ts
+export type ManifestFormat = "json" | "yaml" | "toml" | "text"
+```
+
+#### `ManifestType`
+
+```ts
+export type ManifestType = | "package.json" | "tsconfig.json" | "go.mod" | "Cargo.toml" | "composer.json" | "pyproject.toml" | "Gemfile"
+```
+
+#### `IManifest`
+
+```ts
+export interface IManifest
+```
+
+A parsed manifest. `parsed` is `unknown` by design: each consumer
+(`declaredDependencies`, the project loader, the workspace
+resolver) asks the shape it needs and the reader does not invent a
+second source of truth.
+
+#### `isManifestFile`
+
+```ts
+export function isManifestFile(relPath: string): boolean
+```
+
+#### `readManifest`
+
+```ts
+export async function readManifest(args:
+```
+
+Reads + parses a single manifest. Returns `null` when the file is
+missing or unreadable, **or** when the file is not one of the
+recognised manifest basenames — the caller passes a list of
+candidate relPaths and the reader skips the rest.
+
+#### `readManifests`
+
+```ts
+export async function readManifests(args:
+```
+
+Builds the initial manifest cache from a list of candidate
+relPaths. Files that aren't manifests are silently dropped — that
+is what the `isManifestFile` guard in `readManifest` guarantees.
+
+#### `declaredDependenciesFromManifest`
+
+```ts
+export function declaredDependenciesFromManifest( manifest: IManifest, ): Record<string, string>
+```
+
+Reads the manifest dependencies (the union of `dependencies`,
+`devDependencies`, `peerDependencies`). Lives here because the
+cache that already knows the parsed structure is the cheapest
+source — the alternative was three different scanners parsing
+`package.json` three different ways.
+
+### `packages/core/index/project-index.service.ts`
+
+`ProjectIndex` — the public facade of the index layer (f00016 S2).
+
+#### `IProjectIndex`
+
+```ts
+export interface IProjectIndex
+```
+
+#### `IProjectIndexOptions`
+
+```ts
+export interface IProjectIndexOptions
+```
+
+#### `ProjectIndex`
+
+```ts
+export class ProjectIndex implements IProjectIndex
+```
+
+#### `ProjectIndexFactory`
+
+```ts
+export const ProjectIndexFactory =
+```
+
+#### `_IndexImportsAsyncReadFile`
+
+```ts
+export type _IndexImportsAsyncReadFile = typeof readFile
+```
+
+#### `_IndexImportsJoin`
+
+```ts
+export type _IndexImportsJoin = typeof join
+```
+
+### `packages/core/index/workspace-resolver.service.ts`
+
+Workspace resolver — detects monorepo workspaces (f00016 S2).
+
+#### `WorkspaceManager`
+
+```ts
+export type WorkspaceManager = | "npm" | "yarn" | "pnpm" | "bun" | "turbo" | "cargo" | "go"
+```
+
+What kind of monorepo we found. `unknown` is the safe default —
+the caller treats it as a single-workspace project.
+
+#### `IWorkspace`
+
+```ts
+export interface IWorkspace
+```
+
+#### `WorkspaceLookup`
+
+```ts
+export type WorkspaceLookup = ReadonlyMap<string, IWorkspace>
+```
+
+#### `detectWorkspaces`
+
+```ts
+export function detectWorkspaces(args:
+```
+
+Resolves the list of workspaces under `projectRoot`.
+
+Pure on purpose — the function does not read files itself, the
+caller passes the parsed contents. That keeps the resolver easy
+to test (no fixtures, no tmpdirs) and decoupled from the index's
+filesystem access.
+
+#### `workspaceFor`
+
+```ts
+export function workspaceFor( workspaces: ReadonlyArray<IWorkspace>, projectRoot: string, absPath: string, ): IWorkspace | undefined
+```
+
+Returns the workspace that owns a file (`absPath`), or `undefined`
+if the path is outside every known workspace. The root workspace
+matches anything inside `projectRoot` whose relPath starts with one
+of the known workspace prefixes.
+
+#### `buildWorkspaceLookup`
+
+```ts
+export function buildWorkspaceLookup( workspaces: ReadonlyArray<IWorkspace>, ): WorkspaceLookup
+```
+
+#### `_IWorkspaceReadonlyShape`
+
+```ts
+export type _IWorkspaceReadonlyShape = Pick<IWorkspace, "relPath" | "absPath" | "manager">
+```
+
 ### `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`
 
 #### `extractExpressRoutesFromIR`
@@ -3285,6 +4429,726 @@ Pick a sink based on whether `--json` is present.
 Callers (the CLI scripts) call this once with the parsed flags and
 pass the sink down. There is no global state — two CLI invocations in
 the same process can pick different sinks without interference.
+
+### `packages/core/session/history-recorder.service.ts`
+
+#### `IHistoryRecord`
+
+```ts
+export interface IHistoryRecord
+```
+
+#### `IHistoryDiff`
+
+```ts
+export interface IHistoryDiff
+```
+
+#### `IHistoryChange`
+
+```ts
+export interface IHistoryChange
+```
+
+#### `diffSnapshots`
+
+```ts
+export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
+```
+
+#### `HistoryRecorderService`
+
+```ts
+export class HistoryRecorderService
+```
+
+### `packages/core/session/project-session.service.ts`
+
+ProjectSession — single scan per project, immutable snapshot, watch stub.
+
+#### `IProjectSessionOptions`
+
+```ts
+export interface IProjectSessionOptions
+```
+
+#### `IProjectSession`
+
+```ts
+export interface IProjectSession
+```
+
+#### `openSession`
+
+```ts
+export async function openSession( projectRoot: string, options: IProjectSessionOptions, ): Promise<IProjectSession>
+```
+
+Opens (or returns) a session for `projectRoot`.
+
+The first call triggers a full scan. Subsequent calls for the same
+root return the existing session without scanning again.
+
+#### `getSession`
+
+```ts
+export function getSession(projectRoot: string): IProjectSession | null
+```
+
+Returns the open session for `projectRoot`, or `null` if none exists.
+
+Useful for CLI commands that want to reuse an existing session without
+starting a new scan.
+
+#### `closeAllSessions`
+
+```ts
+export function closeAllSessions(): void
+```
+
+Closes all active sessions and resets the registry.
+
+Intended for use in tests.
+
+### `packages/core/session/project-snapshot.ts`
+
+Immutable snapshot produced by a ProjectSession scan.
+
+#### `IProjectSnapshot`
+
+```ts
+export interface IProjectSnapshot
+```
+
+#### `makeSnapshot`
+
+```ts
+export function makeSnapshot(opts:
+```
+
+### `packages/core/session/session-error.ts`
+
+Typed errors emitted by the session layer.
+
+#### `SessionClosedError`
+
+```ts
+export class SessionClosedError extends Error
+```
+
+#### `SessionAlreadyOpenError`
+
+```ts
+export class SessionAlreadyOpenError extends Error
+```
+
+#### `SessionAbortedError`
+
+```ts
+export class SessionAbortedError extends Error
+```
+
+### `packages/core/session/session-events.ts`
+
+Event types emitted by `ProjectSession`.
+
+#### `SnapshotReadyEvent`
+
+```ts
+export interface SnapshotReadyEvent
+```
+
+#### `SnapshotStaleEvent`
+
+```ts
+export interface SnapshotStaleEvent
+```
+
+#### `ISessionEventMap`
+
+```ts
+export interface ISessionEventMap
+```
+
+#### `SessionEventName`
+
+```ts
+export type SessionEventName = keyof ISessionEventMap
+```
+
+#### `SessionEventPayload`
+
+```ts
+export type SessionEventPayload<K extends SessionEventName> = ISessionEventMap[K]
+```
+
+### `packages/core/session/session-id.ts`
+
+Generates stable, unique session identifiers.
+
+#### `newSessionId`
+
+```ts
+export function newSessionId(projectRoot: string): string
+```
+
+Returns a new session id for the given `projectRoot`.
+
+The id is stable enough to log but is NOT a cryptographic token.
+
+### `packages/core/session/snapshot-hash.service.ts`
+
+#### `ICanonicalSnapshot`
+
+```ts
+export interface ICanonicalSnapshot
+```
+
+#### `ICombinedExport`
+
+```ts
+export interface ICombinedExport
+```
+
+#### `ICanonicalService`
+
+```ts
+export interface ICanonicalService
+```
+
+#### `ICanonicalOperation`
+
+```ts
+export interface ICanonicalOperation
+```
+
+#### `canonicalSnapshotJson`
+
+```ts
+export function canonicalSnapshotJson(snapshot: ICanonicalSnapshot): string
+```
+
+#### `snapshotSha256`
+
+```ts
+export function snapshotSha256(snapshot: ICanonicalSnapshot): string
+```
+
+#### `snapshotHashFromJson`
+
+```ts
+export function snapshotHashFromJson(json: string): string
+```
+
+### `packages/core/state/canonical-snapshot.serializer.ts`
+
+#### `canonicalSnapshotJson`
+
+```ts
+export function canonicalSnapshotJson(snapshot: IProjectSnapshot): string
+```
+
+#### `canonicalSnapshotDigest`
+
+```ts
+export function canonicalSnapshotDigest(snapshot: IProjectSnapshot): string
+```
+
+#### `serializeCanonicalSnapshot`
+
+```ts
+export function serializeCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonicalSnapshot
+```
+
+#### `parseCanonicalSnapshot`
+
+```ts
+export function parseCanonicalSnapshot(json: string): IProjectSnapshot
+```
+
+### `packages/core/state/shadow-state-writer.service.ts`
+
+#### `IShadowWriteDiagnostic`
+
+```ts
+export interface IShadowWriteDiagnostic
+```
+
+#### `IShadowProjectRepository`
+
+```ts
+export interface IShadowProjectRepository
+```
+
+#### `ShadowStateWriterService`
+
+```ts
+export class ShadowStateWriterService
+```
+
+### `packages/core/state/snapshot-activation.service.ts`
+
+#### `SnapshotActivationConflictError`
+
+```ts
+export class SnapshotActivationConflictError extends Error
+```
+
+#### `SnapshotActivationService`
+
+```ts
+export class SnapshotActivationService
+```
+
+### `packages/core/state/snapshot-transaction.service.ts`
+
+#### `SnapshotTransactionService`
+
+```ts
+export class SnapshotTransactionService
+```
+
+### `packages/core/state/sqlite/migrations.ts`
+
+#### `IStateMigrationDatabase`
+
+```ts
+export interface IStateMigrationDatabase
+```
+
+#### `IStateMigration`
+
+```ts
+export interface IStateMigration
+```
+
+#### `StateDatabaseMigrationError`
+
+```ts
+export class StateDatabaseMigrationError extends Error
+```
+
+#### `STATE_DATABASE_MIGRATIONS`
+
+```ts
+export const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
+```
+
+#### `migrateStateDatabase`
+
+```ts
+export function migrateStateDatabase(database: IStateMigrationDatabase): number
+```
+
+### `packages/core/state/sqlite/sqlite-connection.adapter.ts`
+
+#### `IStateDatabaseConnection`
+
+```ts
+export interface IStateDatabaseConnection
+```
+
+#### `openStateDatabase`
+
+```ts
+export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection
+```
+
+### `packages/core/state/sqlite/sqlite-project.repository.ts`
+
+#### `SqliteProjectRepository`
+
+```ts
+export class SqliteProjectRepository
+```
+
+### `packages/core/state/sqlite/sqlite-snapshot.repository.ts`
+
+#### `SqliteSnapshotRepository`
+
+```ts
+export class SqliteSnapshotRepository
+```
+
+### `packages/core/state/sqlite/state-db-path.service.ts`
+
+#### `resolveStateDatabasePath`
+
+```ts
+export function resolveStateDatabasePath(environment: Record<string, string | undefined> = process.env): string
+```
+
+### `packages/core/state/stable-id.service.ts`
+
+#### `StableIdService`
+
+```ts
+export class StableIdService implements IStableIdFactory
+```
+
+### `packages/core/state/state-parity.service.ts`
+
+#### `StateParityStatus`
+
+```ts
+export type StateParityStatus = "match" | "mismatch" | "unavailable"
+```
+
+#### `IStateParityDiagnostic`
+
+```ts
+export interface IStateParityDiagnostic
+```
+
+#### `IParitySnapshotRepository`
+
+```ts
+export interface IParitySnapshotRepository
+```
+
+#### `StateParityService`
+
+```ts
+export class StateParityService
+```
+
+### `packages/core/transport/bridge-error.ts`
+
+`bridge-error.ts` — typed errors shared by every transport bridge.
+
+#### `BridgeError`
+
+```ts
+export class BridgeError extends Error
+```
+
+A carrier-level failure the bridge raises when it cannot reach
+the dispatcher.
+
+`public` — the JSON-RPC code the wire surface uses (typically
+`INVALID_PARAMS` or `INTERNAL_ERROR`).
+`app` — the `IApiError` envelope to embed into `data`.
+
+The constructor is the only sanctioned path. Bridges catch this
+type and emit a JSON-RPC error response without ever re-throwing
+to the client.
+
+#### `bridgeError`
+
+```ts
+export function bridgeError( publicCode: number, appError: IApiError, ): BridgeError
+```
+
+#### `bridgeFailure`
+
+```ts
+export function bridgeFailure( publicCode: number, code: ApiErrorCode, message: string, details?: Readonly<Record<string, unknown>>, ): BridgeError
+```
+
+#### `httpStatusFromApi`
+
+```ts
+export function httpStatusFromApi(app: IApiError): number
+```
+
+Picks the HTTP status the `http-bridge.server.ts` returns for an
+`IApiError`. The bridge always emits the JSON-RPC error envelope
+in the body too — the status is for HTTP-aware callers.
+
+  - `INVALID_INPUT`        → 400 (caller sent malformed data).
+  - `UNKNOWN_HANDLER`      → 404 (the path is unknown).
+  - `SESSION_NOT_FOUND`    → 404 (the session is unknown).
+  - `SERVICE_NOT_FOUND`    → 404.
+  - `OPERATION_NOT_FOUND`  → 404.
+  - `CANCELED`             → 499 (client closed request; nginx-style).
+  - `EXPORT_FAILED`        → 422 (semantically unprocessable).
+  - `EXECUTION_FAILED`     → 500.
+
+#### `httpStatusFromBridge`
+
+```ts
+export function httpStatusFromBridge(err: BridgeError): number
+```
+
+### `packages/core/transport/http-bridge.server.ts`
+
+#### `IHttpBridgeOptions`
+
+```ts
+export interface IHttpBridgeOptions
+```
+
+`http-bridge.server.ts` — Application API over HTTP/1.1.
+
+Bridges the same handler registry (`packages/core/application-api/handlers.ts`)
+to a `Bun.serve` instance. Preserves the security posture the
+existing UI server enforces (`packages/ui/server/ui-server.service.ts`):
+
+  1. **Loopback only** — listens on `127.0.0.1`. Reading source
+     code from the user's disk must not be reachable from the
+     office network.
+  2. **Token per run** — a fresh UUID on every boot. The
+     `X-Tanit-Token` header must match it. The token is
+     unguessable: `crypto.randomUUID`, not a counter nor the
+     time.
+  3. **Origin validation** — if `Origin` is set, it must be the
+     loopback URL the server itself is bound to. Any third-party
+     page gets `403` before the body is read.
+
+The token requirement is for the **browser** carrier — the same
+one `apisrc ui` already protects. The stdio bridge does not need
+any of this (IPC is local). Both bridges share the handler
+registry; only the security envelope differs.
+
+## Wire shape
+
+The HTTP body is JSON-RPC 2.0 over a single endpoint — `POST /api`
+— so the same request format works over both bridges. The
+response body is the same JSON-RPC envelope. A successful call
+has status `200`; an application error has the status the
+`IApiError` code maps to (`httpStatusFromApi()` in
+`bridge-error.ts`).
+/
+
+import type {
+  HandlerRegistry,
+  IRequestContext,
+} from "../application-api/dispatcher.js";
+import { dispatch } from "../application-api/dispatcher.js";
+import type {
+  IJsonRpcRequest,
+  IJsonRpcResponse,
+} from "./json-rpc-protocol.js";
+import {
+  JSON_RPC_ERROR_CODES,
+  jsonRpcError,
+  parseFrames,
+  wrapApiError,
+  wrapApiResult,
+} from "./json-rpc-protocol.js";
+import {
+  BridgeError,
+  bridgeFailure,
+  httpStatusFromApi,
+} from "./bridge-error.js";
+// `IServerRequest` and `IFetchResponse` are declared ambiently by
+// the project's `runtime.d.ts` (no `@types/node` / `bun-types`).
+// We use them as global types — no `import` here.
+
+/* ────────────────────────────────────────────────────────────────────── *
+Public surface                                                         *
+
+#### `IHttpBridge`
+
+```ts
+export interface IHttpBridge
+```
+
+#### `startHttpBridge`
+
+```ts
+export function startHttpBridge(options: IHttpBridgeOptions): IHttpBridge
+```
+
+Starts the HTTP bridge.
+
+Returns the URL + port + token so the caller can print them and
+(optionally) embed the token into the served HTML — exactly the
+way `startUiServer` does today.
+
+### `packages/core/transport/json-rpc-protocol.ts`
+
+`json-rpc-protocol.ts` — the wire shape shared by every bridge.
+
+#### `JsonRpcId`
+
+```ts
+export type JsonRpcId = number | string
+```
+
+A JSON-RPC 2.0 identifier.
+
+The spec allows numbers and strings; we accept both because the
+Application API's watch subscriptions already mint opaque ids
+(`sub:xxx`), and a future caller may want numeric ids.
+
+#### `IJsonRpcRequest`
+
+```ts
+export interface IJsonRpcRequest
+```
+
+A JSON-RPC 2.0 request from the client.
+
+Either `params` (object) or no `params` is accepted; the protocol
+is lenient on the wire shape and strict on the Application API's
+zod schemas.
+
+#### `IJsonRpcNotification`
+
+```ts
+export interface IJsonRpcNotification
+```
+
+A JSON-RPC 2.0 notification (no id, no response expected).
+
+The stdio bridge emits `$/cancelRequest` notifications from the
+client to cancel an in-flight request; the server emits
+`snapshot-ready` / `snapshot-stale` notifications back to the
+client once the watch layer is wired.
+
+#### `IJsonRpcSuccessResponse`
+
+```ts
+export interface IJsonRpcSuccessResponse
+```
+
+A JSON-RPC 2.0 success response.
+
+#### `IJsonRpcErrorResponse`
+
+```ts
+export interface IJsonRpcErrorResponse
+```
+
+A JSON-RPC 2.0 error response.
+
+`code` is one of the standard JSON-RPC codes OR a stable
+`ApiErrorCode` mirrored into the JSON-RPC `data.code` slot so the
+caller can pattern-match on it without parsing `message`.
+
+#### `IJsonRpcResponse`
+
+```ts
+export type IJsonRpcResponse = | IJsonRpcSuccessResponse | IJsonRpcErrorResponse
+```
+
+#### `IJsonRpcFrame`
+
+```ts
+export type IJsonRpcFrame = | IJsonRpcRequest | IJsonRpcNotification | IJsonRpcResponse
+```
+
+#### `JSON_RPC_ERROR_CODES`
+
+```ts
+export const JSON_RPC_ERROR_CODES =
+```
+
+export type IJsonRpcFrame =
+  | IJsonRpcRequest
+  | IJsonRpcNotification
+  | IJsonRpcResponse;
+
+/* ────────────────────────────────────────────────────────────────────── *
+JSON-RPC 2.0 standard error codes                                     *
+────────────────────────────────────────────────────────────────────── *
+Negative matches the spec; positive is for application-specific    *
+codes mirrored in `data.code` (see `bridge-error.ts`).              *
+
+#### `StandardJsonRpcErrorCode`
+
+```ts
+export type StandardJsonRpcErrorCode = (typeof JSON_RPC_ERROR_CODES)[keyof typeof JSON_RPC_ERROR_CODES]
+```
+
+#### `jsonRpcSuccess`
+
+```ts
+export function jsonRpcSuccess( id: JsonRpcId, result: unknown, ): IJsonRpcSuccessResponse
+```
+
+#### `jsonRpcError`
+
+```ts
+export function jsonRpcError( id: JsonRpcId | null, code: number, message: string, data?: Readonly<Record<string, unknown>>, ): IJsonRpcErrorResponse
+```
+
+Builds a typed error response.
+
+`data` carries the application's `IApiError` envelope so the
+caller can recover `code` + `details` without re-parsing
+`message`. `code` is the JSON-RPC standard code; the
+application-specific code lives at `data.code`.
+
+Accepts a `number` (not narrowed to `StandardJsonRpcErrorCode`)
+so bridges that propagate carrier-specific HTTP statuses (403,
+499, ...) can still emit a JSON-RPC envelope without casting.
+
+#### `jsonRpcCancel`
+
+```ts
+export function jsonRpcCancel(requestId: JsonRpcId): IJsonRpcNotification
+```
+
+#### `isJsonRpcFrame`
+
+```ts
+export function isJsonRpcFrame(value: unknown): value is IJsonRpcFrame
+```
+
+Type guard for the wire shape.
+
+We accept both requests (`id` present, `method` present) and
+notifications (`method` present, `id` absent), as well as
+responses (`id` + `result` OR `id` + `error`). Anything that does
+not match one of those shapes is rejected; the bridge surfaces a
+`PARSE_ERROR` to the caller.
+
+#### `wrapApiResult`
+
+```ts
+export function wrapApiResult( id: JsonRpcId, result: ApiResult<unknown>, ): IJsonRpcResponse
+```
+
+Wraps an `ApiResult` (the Application API's discriminated union)
+into the JSON-RPC response shape for a given `id`.
+
+On success: a `{ result: value }` response — the value is the
+`ApiResult` itself so the bridge author does not have to unwrap.
+On failure: a JSON-RPC error whose `data.code` mirrors the
+application code (`INVALID_INPUT`, `SESSION_NOT_FOUND`, ...).
+
+#### `wrapApiError`
+
+```ts
+export function wrapApiError( id: JsonRpcId | null, error: IApiError, ): IJsonRpcErrorResponse
+```
+
+Wraps an `IApiError` directly (used when the bridge fails before
+reaching the dispatcher — wrong path, malformed input, ...).
+
+### `packages/core/transport/stdio-bridge.server.ts`
+
+#### `IStdioBridgeOptions`
+
+```ts
+export interface IStdioBridgeOptions
+```
+
+Options the caller hands to `serveStdio`.
+
+`input` / `output` are injected so the test suite can drive the
+bridge with a fake carrier (the real sidecar uses
+`Bun.stdin.stream()` + `process.stdout.write`).
+
+`caller` is always `"desktop"` for the stdio bridge — the
+Application API's caller discriminator is a contract; the bridge
+pins it to avoid accidentally emitting `caller: "cli"` over an
+IPC channel.
+
+#### `serveStdio`
+
+```ts
+export function serveStdio(opts: IStdioBridgeOptions):
+```
+
+Runs the bridge until the input is exhausted.
+
+Resolves once the input iterator ends (EOF on stdin) or the
+caller calls the returned `close()`. Returns a `close()` function
+the CLI / tests call to drain pending responses and release the
+controller map.
 
 ### `packages/core/validation/validation-enricher.service.ts`
 
