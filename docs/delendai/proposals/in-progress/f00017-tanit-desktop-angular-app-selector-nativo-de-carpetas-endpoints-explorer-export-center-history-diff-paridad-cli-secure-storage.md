@@ -116,9 +116,12 @@ docs/CLI.md                    # comandos y ejemplos equivalentes a la GUI
   - "`apisrc ui` sirve `packages/app/dist/`; el script desktop empaqueta exactamente ese mismo artefacto"
   - "Tests de `tests/app/shell.spec.ts` cubren render, ocho acciones del palette, i18n, theme y foco"
   - "DoD slice: `bun run typecheck && bun run test:app && bun run build:app` verdes"
-- review-state: in_review
+- review-state: done
 - review-implementer: orchestrator
+- review-reviewer: technical_investigator
 - review-log: requested_changes by delivery_verifier — La revisión inicial queda parcialmente atendida: builder Angular moderno produce bundle real en packages/app/dist; Tauri y apisrc ui ya se alinean. Siguen pendientes cobertura DOM/render/tema/foco en tests/app/shell.spec.ts y una verificación del serving estático del index Angular. Solicito cambios antes de aprobar.
+- review-log: approved by technical_investigator — Revisión fresca aprobada. f89d897 mueve IPaletteCommand a packages/contracts/interfaces/ui/palette-command.interface.ts y actualiza ambos consumidores; imports resuelven. Branch develop limpio y alineado con origin/develop. Gates confirmados: typecheck app/contracts/cli, test:app 6/6 y build:app con bundle real en packages/app/dist. No quedan blockers dentro del alcance de S1.
+- **Status**: done
 ### S2-folder-picker-dragdrop — S2 — Folder picker nativo, drag&drop, recents y browse browser
 - **Status**: pending
 - **DependsOn**: [S1-app-angular-foundation]
