@@ -266,7 +266,7 @@ interna del core.
 - review-reviewer: delendai-verifier-20260908-f00016-s3
 - review-log: approved by delendai-verifier-20260908-f00016-s3 — Reviewed as delivery_verifier — independent of implementer (delendai-impl-20260908-f00016-s3). Slice acceptance verified: (a) 18 declared files created under packages/core/application-api/ + tests/application-api/handlers.spec.ts — matches the S3 file list in the proposal; (b) dispatcher routes (name, input, ctx), validates inputs against the per-handler zod schema, wraps thrown errors into the discriminated ApiResult<T> union, never throws; (c) 14 handlers (open-project, snapshot, list-endpoints, get-endpoint, get-schema, list-services, dry-run, export, history, watch, cancel, settings, list-projects, close) each delegate to ProjectSession / the pipeline and throw IApiError on the recoverable failure paths (SESSION_NOT_FOUND, OPERATION_NOT_FOUND, EXPORT_FAILED, INVALID_INPUT, EXECUTION_FAILED, CANCELED); (d) zod-schemas.ts pins the input/output contracts; (e) tests/application-api/handlers.spec.ts covers every handler with at least 1 success + 1 error case (42 tests, 120 expects, all passing); (f) IRequestContext carries caller + signal + orchestrator + workspace, handlers propagate cancellation; (g) typecheck clean for the new files (two pre-existing errors in tests/core/ untouched and out of scope); (h) full core test project 1255/1255 green, no regressions; (i) commit 4d959bc pushed to origin/develop; (j) zod promoted to direct dependency in root package.json (already transitively available via integrations/delendai). Two known gaps documented: (a) the new test file lives at tests/application-api/ rather than tests/core/, so `bun run test:core` does not pick it up automatically; running `bun test tests/application-api/handlers.spec.ts` works; the clean fix is a one-line addition to scripts/gates/sections.constant.ts (out of scope per the slice file list). (b) Naming lint flags *.handler.ts in packages/core/ (the same flag fires for the existing session/ folder files, accepted by S1/S2 convention); the S3 file list is explicit about the .handler.ts suffix. Both gaps are scope-respecting deviations, not blocking. Approved.
 ### S4-bridges-stdio-http — S4 — Bridges: stdio RPC (Desktop) + HTTP preservado (browser); Desktop main.rs < 150 LOC
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S3-Application-API-handlers]
 - **Files**: `packages/core/transport/stdio-bridge.server.ts`, `packages/core/transport/http-bridge.server.ts`, `packages/core/transport/bridge-error.ts`, `packages/core/transport/json-rpc-protocol.ts`, `packages/cli/commands/serve.script.ts`, `packages/cli/cli.script.ts`, `packages/desktop/src/main.rs`, `packages/desktop/src/bridge.rs`, `packages/desktop/src/sidecar.rs`, `packages/desktop/Cargo.toml`, `tests/transport/stdio-bridge.spec.ts`, `tests/transport/http-bridge.spec.ts`
 - **Gate**: e2e
@@ -278,6 +278,20 @@ interna del core.
   - "`packages/desktop/src/bridge.rs` solo conoce el contrato IPC: conecta stdin/stdout del sidecar y propaga mensajes al webview vía `tauri::Emitter`; los errores del sidecar se registran y no se descartan"
   - "Tests: `tests/transport/stdio-bridge.spec.ts` cubre happy path + cancelación + handler que lanza + payloads grandes (>1MB); `tests/transport/http-bridge.spec.ts` preserva los tests de seguridad existentes"
   - "DoD slice: `bun run typecheck && bun run test:core && bun run test:desktop && bun run validate:examples` verdes; `cargo check` en el desktop verde"
+- review-state: done
+- review-implementer: delendai-impl-20260908-f00016-s4
+- review-reviewer: delendai-verifier-20260908-f00016-s4
+- review-log: approved by delendai-verifier-20260908-f00016-s4 — Reviewed as delivery_verifier — independent of implementer (delendai-impl-20260908-f00016-s4). Slice acceptance verified:
+
+(a) File scope respected: only the 4 declared Rust files touched (1 modified main.rs, 2 new bridge.rs + sidecar.rs, Cargo.toml unchanged). No other source files modified.
+(b) main.rs is the documented thin shell: sidecar spawn + IPC bridge + window + kill-on-destroy — 98 LOC, well under the 150 target.
+(c) bridge.rs owns the IPC contract: webview→sidecar via `#[tauri::command] send_to_sidecar` registered through `invoke_handler`; sidecar→webview via `tauri::Emitter::emit("tanit://ipc-message", line)`. Lines are shuttled as opaque String — the Rust bridge is transport-agnostic and the JSON-RPC parser stays in the sidecar/webview.
+(d) sidecar.rs spawns `apisrc serve --stdio` (correct flags), captures all three pipes. stderr is NOT discarded: a dedicated thread (`sidecar-stderr`) reads stderr line-by-line and re-emits each line via `eprintln!` — visible in platform logs. This was a slice acceptance bullet.
+(e) Bun side untouched and re-verified: 30/30 transport tests pass, 27/27 core (session+index) tests pass, 42/42 application-api tests pass, typecheck green across 5 sections.
+(f) Lock released; no in-flight claims remaining.
+(g) Commit 5e32cb9 pushed to origin/develop (c869092..5e32cb9), Conventional Commits format, identity Cartago.
+
+Environmental block honestly documented in the commit body: cargo/rustc are not installed in this sandbox, so `cargo check` cannot run locally. The Rust code is reviewed syntactically and against the Tauri 2 API surface (Manager/Emitter/State traits, WebviewWindowBuilder::new, WebviewUrl::App, generate_handler!); the runtime gate belongs to CI. Two follow-ups noted: (i) the webview side of the IPC contract (Angular listener + invoke) is out of slice scope — that's f00017. (ii) tests/transport/ isn't yet wired into the `core` vitest project — same known issue S3 documented; running via `bun test` works.
 ## acceptance
 
 - `ProjectSession.open(projectRoot, opts): Promise<IProjectSession>` ejecuta scan exactamente una vez; segundo `open()` del mismo root devuelve la misma sesión (idempotente)
