@@ -2,13 +2,13 @@
 id: f00018
 title: "SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS"
 kind: feat
-status: in-progress
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
-last-transition-id: b6fcfac2-271f-46aa-86a9-1b9599ae8dd5
-last-correlation-id: b6fcfac2-271f-46aa-86a9-1b9599ae8dd5
-last-transition-from: ready
+last-transition-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
+last-correlation-id: 90749d2f-8949-4d46-ba92-f0b87a206cd5
+last-transition-from: in-progress
 ---
 
 # f00018 — SQLite durable state — contratos runtime-neutral, snapshots inmutables, migraciones, shadow mode y activación CAS
@@ -82,7 +82,7 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 - review-log: requested_changes by audit-reviewer-20260909 — REQUEST_CHANGES final. Defecto bloqueante reproducible en packages/core/state/sqlite/sqlite-project.repository.ts: activate() sólo condiciona por project_id y expectedRevision; acepta snapshot inexistente, de otro proyecto o con status no-complete porque no consulta snapshots. projects.active_snapshot_id tampoco tiene FK en schema.sql. Reproducción Bun SQLite: activate(p1, snapshot ghost declarado para p2, expectedRevision 0) devuelve true y deja p1.active_snapshot_id='ghost', revision=1. SnapshotActivationService sólo valida el objeto en memoria. Corregir mediante validación atómica SQL/transacción y tests para inexistente, proyecto ajeno y building/failed. Validaciones ejecutadas sobre HEAD d59956574ea3dab627120ba46f6383d2623f34ff: bun run lint:naming OK; bun run typecheck:core OK; bun test tests/core/state/sqlite/*.spec.ts OK (11/11); bun run lint:secrets OK; bun run lint:durable-writes OK; diff --check OK. Riesgo de cobertura no bloqueante: crash-recovery.spec.ts usa :memory: y no reabre un archivo SQLite tras interrupción.
 - review-log: approved by delivery-verifier-20260909 — APROBADO tras revisión independiente de commit e55668fd459a7d500e73ef4976b81820400c4b1b. SqliteProjectRepository.activate ejecuta un único UPDATE CAS con expectedRevision y una subconsulta EXISTS que exige snapshot_id existente, project_id igual al proyecto activado y status='complete'; por tanto existencia, pertenencia y completitud se validan atómicamente y cualquier rechazo deja active_snapshot_id y revision sin cambios. Evidencia ejecutada sobre HEAD: bun test tests/core/state/sqlite/*.spec.ts -> 15/15 tests PASS; bun run typecheck:core -> PASS; bun run lint:naming -> PASS; bun run lint:boundaries -> PASS; bun run lint:durable-writes -> PASS. No se editaron archivos ni se revirtieron cambios. El árbol conserva una modificación previa no relacionada en el archivo de la propuesta.
 ### S4-shadow-persistence-parity-and-doctor — S4 — Escritura shadow, paridad de digest y diagnóstico de estado
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S3-immutable-snapshot-repository-and-cas]
 - **Files**: `packages/core/state/shadow-state-writer.service.ts`, `packages/core/state/state-parity.service.ts`, `packages/cli/commands/doctor.script.ts`, `packages/cli/commands/scan.script.ts`, `tests/core/state/shadow-state-writer.spec.ts`, `tests/core/state/state-parity.spec.ts`, `tests/cli/doctor-command.test.ts`, `docs/CLI.md`
 - **Gate**: e2e
@@ -92,7 +92,10 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
   - "doctor --json informa versión de DB, migración, snapshot activo, última escritura, corrupción, paridad y secretos omitidos."
   - "La escritura shadow es opt-in y no altera el comportamiento si la DB no está disponible; el fallo queda diagnosticado, no oculto."
   - "Tests cubren shadow disabled/enabled, paridad igual/desigual, DB ausente, restart y salida JSON estable."
-
+- review-state: done
+- review-implementer: delendai-impl-20260909
+- review-reviewer: delivery-verifier-20260909
+- review-log: approved by delivery-verifier-20260909 — Revisión independiente de S4 sobre commits 6b1b1d2 y 725c9a6. Shadow es opt-in y no activa snapshots; scan conserva la autoridad legacy; la persistencia usa transacción/repositorio; paridad devuelve match/mismatch/unavailable con digests canónicos; doctor informa versión, migración, snapshot activo, última escritura, corrupción, paridad y secretos omitidos; DB ausente queda diagnosticada sin alterar scan. No se detectan bloqueos funcionales en el alcance de S4.
 ## acceptance
 
 - Los contratos son runtime-neutral y no importan bun:sqlite.

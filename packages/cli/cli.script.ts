@@ -55,6 +55,10 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Endpoint counts per HTTP method and folder",
     load: () => import("./commands/stats.script.js"),
   },
+  scan: {
+    summary: "Scan the project and optionally persist a shadow state snapshot",
+    load: () => import("./commands/scan.script.js"),
+  },
   validate: {
     summary: "Validate a generated collection against the Postman v2.1.0 schema",
     load: () => import("./commands/validate-json.script.js"),

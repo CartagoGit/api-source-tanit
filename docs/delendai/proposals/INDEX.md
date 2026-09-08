@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `f00018` | `feat` | [`ready/feats/f00018-sqlite-durable-state-contratos-runtime-neutral-snapshots-inmutables-migraciones-shadow-mode-y-activacion-cas.md`](ready/feats/f00018-sqlite-durable-state-contratos-runtime-neutral-snapshots-inmutables-migraciones-shadow-mode-y-activacion-cas.md) |
 
 ## Bloqueadas
 
@@ -81,6 +80,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00012` — Response inference — infer request/response schemas from handlers, signatures, decorators, and explicit annotations — `2b8ea3d, f000bc0, 2e596ff, 243ef07, 68a8e87, cbe9b19`
 - `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
 - `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
+- `f00016` — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic — `6be589b, a647b8e, 4d959bc, 07cfa5f, 5e32cb9`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
