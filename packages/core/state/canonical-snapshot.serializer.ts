@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 
 import type {
-  ICompleteProjectSnapshot,
   IProjectSnapshot,
 } from "../../contracts/interfaces/core/project-state.interface.js";
 
@@ -9,6 +8,13 @@ const SECRET_KEY = /(pass(word)?|secret|token|api[-_]?key|private[-_]?key|creden
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isProjectSnapshot(value: unknown): value is IProjectSnapshot {
+  if (!isRecord(value) || !isRecord(value.projectId) || value.projectId.kind !== "project" || typeof value.projectId.value !== "string") return false;
+  if (!isRecord(value.snapshotId) || value.snapshotId.kind !== "snapshot" || typeof value.snapshotId.value !== "string") return false;
+  if (value.status !== "building" && value.status !== "complete" && value.status !== "failed") return false;
+  return typeof value.revision === "number" && typeof value.capturedAt === "string" && Array.isArray(value.services) && Array.isArray(value.diagnostics);
 }
 
 function canonicalize(value: unknown, key?: string): unknown {
@@ -58,8 +64,8 @@ export function serializeCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonic
 /** Analiza y valida mínimamente un snapshot serializado de forma canónica. */
 export function parseCanonicalSnapshot(json: string): IProjectSnapshot {
   const parsed: unknown = JSON.parse(json);
-  if (!isRecord(parsed) || !isRecord(parsed.projectId) || !isRecord(parsed.snapshotId)) {
+  if (!isProjectSnapshot(parsed)) {
     throw new Error("Invalid canonical snapshot");
   }
-  return parsed as unknown as ICompleteProjectSnapshot | IProjectSnapshot;
+  return parsed;
 }

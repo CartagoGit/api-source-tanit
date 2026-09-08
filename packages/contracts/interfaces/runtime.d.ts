@@ -211,10 +211,15 @@ declare module "bun:sqlite" {
     run(...params: unknown[]): { changes: number; lastInsertRowid: number };
   }
 
+  export interface PreparedStatement {
+    run(...params: unknown[]): { changes: number; lastInsertRowid: number };
+  }
+
   export class Database {
     constructor(filename: string, options?: { create?: boolean; strict?: boolean });
     exec(sql: string): void;
     query<T = Record<string, unknown>>(sql: string): Statement<T>;
+    prepare(sql: string): PreparedStatement;
     transaction<T extends (...args: never[]) => unknown>(callback: T): T;
     close(): void;
   }

@@ -1,6 +1,5 @@
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/project-state.interface.js";
 import type { ProjectId } from "../../contracts/interfaces/core/stable-ids.interface.js";
-import { SnapshotTransactionService } from "./snapshot-transaction.service.js";
 
 /** Resultado de intentar persistir un snapshot en modo shadow. */
 export interface IShadowWriteDiagnostic {
@@ -17,10 +16,14 @@ export interface IShadowProjectRepository {
   ensure(projectId: ProjectId, rootPath: string, now: string): void;
 }
 
+export interface IShadowTransactionService {
+  write(snapshot: IProjectSnapshot): IProjectSnapshot;
+}
+
 /** Persiste snapshots opcionalmente sin activar autoridad durable. */
 export class ShadowStateWriterService {
   public constructor(
-    private readonly transactions: SnapshotTransactionService,
+    private readonly transactions: IShadowTransactionService,
     private readonly projects: IShadowProjectRepository,
     private readonly now: () => string = () => new Date().toISOString(),
   ) {}

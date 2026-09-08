@@ -32,6 +32,9 @@ import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.i
 import { hasFlag } from "../../core/helpers/argv.helper.js";
 import { StableIdService } from "../../core/state/stable-id.service.js";
 import { ShadowStateWriterService, type IShadowWriteDiagnostic } from "../../core/state/shadow-state-writer.service.js";
+import type { IProjectDatabase } from "../../core/state/sqlite/sqlite-project.repository.js";
+import type { IQueryDatabase } from "../../core/state/sqlite/sqlite-snapshot.repository.js";
+import type { ITransactionDatabase } from "../../core/state/snapshot-transaction.service.js";
 
 export interface IScanOptions {
   readonly shadow?: boolean;
@@ -68,9 +71,10 @@ async function writeShadowSnapshot(root: string, framework: string, routes: Read
   };
   const connection = openStateDatabase(path);
   try {
-    const snapshots = new SqliteSnapshotRepository(connection.database as never);
-    const projects = new SqliteProjectRepository(connection.database as never);
-    const transactions = new SnapshotTransactionService(connection.database as never, snapshots);
+    const database = connection.database;
+    const snapshots = new SqliteSnapshotRepository(database satisfies IQueryDatabase);
+    const projects = new SqliteProjectRepository(database satisfies IProjectDatabase);
+    const transactions = new SnapshotTransactionService(database satisfies ITransactionDatabase, snapshots);
     return new ShadowStateWriterService(transactions, projects).write(snapshot, root, true);
   } finally {
     connection.close();
