@@ -43,6 +43,10 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "Check that an already generated collection is still in sync",
     load: () => import("./commands/diff.script.js"),
   },
+  sync: {
+    summary: "Generate the collection using the same pipeline as the GUI",
+    load: () => import("./commands/sync.script.js"),
+  },
   list: {
     summary: "List the detected endpoints, grouped by folder",
     load: () => import("./commands/list-endpoints.script.js"),
@@ -154,6 +158,10 @@ WATCH FLAGS
   --debounce <ms>         Wait after the last change. Defaults to 300.
   --once                  Generate once and exit (for CI).
   (--format and --framework work here too.)
+
+SYNC FLAGS
+  --dry-run               Report the planned sync without writing files.
+  (--format, --framework and common project flags work here too.)
 
 PUSH FLAGS
   --api-key <key>         Postman API key. Or set POSTMAN_API_KEY.
