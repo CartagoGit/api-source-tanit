@@ -21,7 +21,9 @@ export class SqliteProjectRepository {
   public history(projectId: ProjectId, snapshots: { list(id: ProjectId): ReadonlyArray<IProjectSnapshot> }): ReadonlyArray<IProjectSnapshot> { return snapshots.list(projectId); }
 
   public activate(projectId: ProjectId, snapshot: ICompleteProjectSnapshot, expectedRevision: number, now: string): boolean {
-    const result = this.database.prepare("UPDATE projects SET active_snapshot_id = ?, revision = revision + 1, updated_at = ? WHERE project_id = ? AND revision = ?").run(snapshot.snapshotId.value, now, projectId.value, expectedRevision) as { changes?: number };
+    const result = this.database.prepare(
+      "UPDATE projects SET active_snapshot_id = ?, revision = revision + 1, updated_at = ? WHERE project_id = ? AND revision = ? AND EXISTS (SELECT 1 FROM snapshots WHERE snapshot_id = ? AND project_id = ? AND status = 'complete')",
+    ).run(snapshot.snapshotId.value, now, projectId.value, expectedRevision, snapshot.snapshotId.value, projectId.value) as { changes?: number };
     return result.changes === 1;
   }
 
