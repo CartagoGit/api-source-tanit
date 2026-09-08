@@ -72,7 +72,8 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
   - `desktop-quality.script.ts` es invocable localmente y en CI, devuelve diagnósticos accionables y no modifica el fixture; el workflow parsea con `actionlint` o equivalente antes de la ejecución.
   - `docs/CI.md` documenta triggers, matriz, secrets mínimos, troubleshooting y el procedimiento para añadir un nuevo `os × arch × bundle`.
   - DoD: un commit/tag de prueba obtiene los tres jobs nativos verdes, el gate local pasa en Linux y el fixture demuestra el flujo completo sin depender de red externa.
-
+- review-state: in_review
+- review-implementer: finch
 ### S2-signing-notarization — S2 — Signing, notarization y verificación reproducible por plataforma
 - **Status**: pending
 - **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/prepare-artifacts.mjs`, `scripts/release/sign-macos.sh`, `scripts/release/notarize-macos.sh`, `scripts/release/sign-windows.ps1`, `scripts/release/sign-linux.sh`, `scripts/release/verify-signature.sh`, `packages/contracts/interfaces/release/signing.interface.ts`, `packages/contracts/constants/release/signing.constant.ts`, `packages/desktop/tauri.conf.json`, `docs/RELEASE.md`, `tests/release/signing.spec.ts`
