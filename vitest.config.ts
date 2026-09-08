@@ -29,7 +29,8 @@ export default defineConfig({
           name: section.name,
           include: [...section.tests],
           exclude: ["**/node_modules/**", "**/dist/**", "**/build/**"],
-          environment: "node" as const,
+          environment: section.name === "app" ? ("jsdom" as const) : ("node" as const),
+          ...(section.name === "app" ? { environmentOptions: { jsdom: { url: "http://tanit.test" } } } : {}),
           globals: false,
           // Los e2e generan colecciones enteras desde fixtures en
           // disco; 30 s cubre el peor caso medido (~4 s) con margen

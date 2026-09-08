@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
 
 import { CommandStore, PaletteCommand } from "../core/state/command.store";
 import { I18nService } from "../core/i18n/i18n.service";
@@ -57,6 +57,12 @@ export class CommandPaletteComponent {
   readonly selectedIndex = signal(0);
   @ViewChild("palette") palette?: ElementRef<HTMLElement>;
   @ViewChild("search") search?: ElementRef<HTMLInputElement>;
+
+  constructor() {
+    effect(() => {
+      if (this.open()) queueMicrotask(() => this.search?.nativeElement.focus());
+    });
+  }
 
   filteredCommands(): ReadonlyArray<PaletteCommand> {
     const query = this.query().trim().toLowerCase();
