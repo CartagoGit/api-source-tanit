@@ -1,14 +1,9 @@
 import { Injectable, signal } from "@angular/core";
-
-export interface PaletteCommand {
-  readonly id: string;
-  readonly labelKey: string;
-  readonly shortcut?: string;
-}
+import type { IPaletteCommand } from "../../../../../contracts/interfaces/ui/palette-command.interface";
 
 @Injectable({ providedIn: "root" })
 export class CommandStore {
-  readonly commands = signal<ReadonlyArray<PaletteCommand>>([
+  readonly commands = signal<ReadonlyArray<IPaletteCommand>>([
     { id: "open", labelKey: "palette.open", shortcut: "O" },
     { id: "rescan", labelKey: "palette.rescan", shortcut: "R" },
     { id: "search", labelKey: "palette.search", shortcut: "/" },

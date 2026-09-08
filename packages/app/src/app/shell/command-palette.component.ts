@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
 
-import { CommandStore, PaletteCommand } from "../core/state/command.store";
+import { CommandStore } from "../core/state/command.store";
+import type { IPaletteCommand } from "../../../../contracts/interfaces/ui/palette-command.interface";
 import { I18nService } from "../core/i18n/i18n.service";
 
 export function fuzzyMatch(query: string, candidate: string): boolean {
@@ -64,7 +65,7 @@ export class CommandPaletteComponent {
     });
   }
 
-  filteredCommands(): ReadonlyArray<PaletteCommand> {
+  filteredCommands(): ReadonlyArray<IPaletteCommand> {
     const query = this.query().trim().toLowerCase();
     return this.commands.commands().filter((command) => fuzzyMatch(query, `${this.i18n.translate(command.labelKey)} ${command.id} ${command.shortcut ?? ""}`));
   }
@@ -74,7 +75,7 @@ export class CommandPaletteComponent {
     this.selectedIndex.set(0);
   }
 
-  choose(command: PaletteCommand): void {
+  choose(command: IPaletteCommand): void {
     this.chosen.emit(command.id);
     this.close.emit();
   }
