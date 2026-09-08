@@ -2,7 +2,7 @@
 id: r00019
 title: "Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más"
 kind: refactor
-status: ready
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-09-07

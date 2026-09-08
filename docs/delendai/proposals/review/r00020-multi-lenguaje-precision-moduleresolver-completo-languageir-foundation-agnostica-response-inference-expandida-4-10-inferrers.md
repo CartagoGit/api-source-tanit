@@ -2,7 +2,7 @@
 id: r00020
 title: "Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)"
 kind: refactor
-status: ready
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-09-07

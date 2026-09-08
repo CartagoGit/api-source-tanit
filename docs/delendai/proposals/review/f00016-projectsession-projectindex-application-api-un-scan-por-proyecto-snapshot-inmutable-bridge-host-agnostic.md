@@ -2,7 +2,7 @@
 id: f00016
 title: "ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic"
 kind: feat
-status: ready
+status: review
 type: proposal
 track: api-source-tanit
 date: 2026-09-08
