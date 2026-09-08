@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import { STATE_DB_BUSY_TIMEOUT_MS, STATE_DB_SCHEMA_VERSION } from "../../../../packages/contracts/constants/core/state-store.constant.js";
 import { openStateDatabase } from "../../../../packages/core/state/sqlite/sqlite-connection.adapter.js";

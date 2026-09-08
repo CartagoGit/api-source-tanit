@@ -88,6 +88,3 @@ CREATE TABLE IF NOT EXISTS source_files (
   UNIQUE (snapshot_id, path)
 );
 
-CREATE INDEX IF NOT EXISTS snapshots_project_idx ON snapshots(project_id, revision DESC);
-CREATE INDEX IF NOT EXISTS diagnostics_snapshot_idx ON diagnostics(snapshot_id);
-CREATE INDEX IF NOT EXISTS source_files_snapshot_idx ON source_files(snapshot_id);

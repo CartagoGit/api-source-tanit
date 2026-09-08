@@ -50,16 +50,18 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 ### S2-sqlite-schema-and-migrations — S2 — Esquema SQLite versionado, migraciones y configuración de ubicación
 - **Status**: pending
 - **DependsOn**: [S1-state-contracts-and-canonical-serialization]
-- **Files**: `packages/core/state/sqlite/schema.sql`, `packages/core/state/sqlite/migrations.ts`, `packages/core/state/sqlite/sqlite-connection.adapter.ts`, `packages/core/state/sqlite/state-db-path.service.ts`, `packages/contracts/constants/core/state-store.constant.ts`, `tests/core/state/sqlite/migrations.spec.ts`, `tests/core/state/sqlite/connection.spec.ts`, `docs/STATE.md`
+- **Files**: `packages/core/state/sqlite/schema.sql`, `packages/core/state/sqlite/migrations.ts`, `packages/core/state/sqlite/sqlite-connection.adapter.ts`, `packages/core/state/sqlite/state-db-path.service.ts`, `packages/contracts/constants/core/state-store.constant.ts`, `tests/core/state/sqlite/migrations.spec.ts`, `tests/core/state/sqlite/connection.spec.ts`, `docs/STATE.md`, `vitest.config.ts`, `package.json`
 - **Gate**: e2e
 - acceptance:
   - "El esquema usa PRAGMA user_version o equivalente y migraciones forward-only reproducibles."
   - "Existen tablas separadas para projects, snapshots, services, operations, servers, auth_profiles, schemas, diagnostics, provenance y source_files; las partes variables usan JSON solo donde el contrato lo permite."
   - "La ubicación por defecto es global por usuario y admite TANIT_STATE_DB para tests, CI, Docker y modo portable."
   - "La conexión activa foreign_keys, WAL y busy_timeout sin guardar secretos."
+  - "Los tests Bun-native de SQLite quedan fuera del proyecto Vitest de core y se ejecutan con bun test mediante un script explícito incluido en test:core y validate."
   - "Tests cubren base vacía, migración v1 a v2, versión futura desconocida, base corrupta y rollback de migración."
 - review-state: in_review
 - review-implementer: delendai-impl-20260909
+- review-log: requested_changes by delivery_verifier — Revisión independiente del commit 3426e5b. Solicito cambios antes de aprobar S2. Hallazgo bloqueante: packages/core/state/sqlite/migrations.ts:55-64 valida únicamente la existencia de los diez nombres de tabla; no verifica columnas, constraints, índices esenciales ni compatibilidad estructural. Reproducción: una DB con las diez tablas creadas como CREATE TABLE <name> (broken TEXT) y user_version=2 hace que migrateStateDatabase devuelva 2 sin error, contradiciendo docs/STATE.md, que afirma que un schema corrupto no se repara silenciosamente. Hallazgo de cobertura: tests/core/state/sqlite/migrations.spec.ts:17-25 crea primero el schema actual, fuerza user_version=1 y ejecuta v2; no prueba una base v1 histórica. Una base v1 mínima real falla como State database migration failed y hace rollback, por lo que debe definirse/probarse el schema v1 real o retirarse la afirmación. Riesgo adicional a cubrir: schema.sql se carga con readFileSync(join(import.meta.dir, schema.sql)); añadir chequeo de artefacto si se distribuye compilado. Sin hallazgos en runtime neutrality, secrets, naming o boundaries. Gates: 7/7 tests SQLite, lint:naming PASS, lint:secrets PASS, lint:boundaries PASS, typecheck core PASS. lint:contracts falla por baseline preexistente con 129 declaraciones, incluidas las nuevas interfaces de S2. No se editó código.
 ### S3-immutable-snapshot-repository-and-cas — S3 — Repositorio SQLite de snapshots inmutables, transacciones y activación CAS
 - **Status**: pending
 - **DependsOn**: [S2-sqlite-schema-and-migrations]
@@ -95,6 +97,7 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 - Existen tablas separadas para projects, snapshots, services, operations, servers, auth_profiles, schemas, diagnostics, provenance y source_files; las partes variables usan JSON solo donde el contrato lo permite.
 - La ubicación por defecto es global por usuario y admite TANIT_STATE_DB para tests, CI, Docker y modo portable.
 - La conexión activa foreign_keys, WAL y busy_timeout sin guardar secretos.
+- Los tests Bun-native de SQLite quedan fuera del proyecto Vitest de core y se ejecutan con bun test mediante un script explícito incluido en test:core y validate.
 - Tests cubren base vacía, migración v1 a v2, versión futura desconocida, base corrupta y rollback de migración.
 - Cada scan escribe un snapshot completo dentro de una transacción; un fallo deja intacto el active_snapshot_id anterior.
 - Los snapshots completos son inmutables y la activación usa revision optimista: una ejecución vieja no puede sustituir una más nueva.

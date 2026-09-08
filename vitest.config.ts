@@ -28,7 +28,12 @@ export default defineConfig({
         test: {
           name: section.name,
           include: [...section.tests],
-          exclude: ["**/node_modules/**", "**/dist/**", "**/build/**"],
+          exclude: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            ...(section.name === "core" ? ["tests/core/state/sqlite/**"] : []),
+          ],
           environment: section.name === "app" ? ("jsdom" as const) : ("node" as const),
           ...(section.name === "app" ? { environmentOptions: { jsdom: { url: "http://tanit.test" } } } : {}),
           globals: false,
