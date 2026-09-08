@@ -19,6 +19,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod bridge;
+mod dialogs;
+mod drag_drop;
 mod sidecar;
 
 use std::process::Child;
@@ -36,6 +38,7 @@ struct Sidecar(Mutex<Option<Child>>);
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![bridge::send_to_sidecar])
         .manage(Sidecar(Mutex::new(None)))
