@@ -2,7 +2,7 @@
 id: c00010
 title: "Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados"
 kind: chore
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07

@@ -2,7 +2,7 @@
 id: a00019
 title: "Auditoría 2026-09-07 — consolidación post-158 propuestas y plan de productización Tanit"
 kind: audit
-status: review
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
