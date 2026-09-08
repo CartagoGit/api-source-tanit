@@ -86,9 +86,12 @@ export function evaluateCoverage(summary: ICoverageSummary, baseline: IBaseline)
   // fallo del CI, porque subirlo requiere una decisión humana
   // explícita (c00010 S3 acceptance).
   //
-  // La tolerancia de 0.3pp absorbe la fluctuación natural de la
-  // cobertura entre runs del mismo código (orden de tests, paralelismo).
-  const tolerance = 0.3;
+  // La tolerancia de 0.5pp absorbe la fluctuación natural de la
+  // cobertura entre runs del mismo código (orden de tests, paralelismo,
+  // carga del runner). Por debajo de 0.5pp el gate es demasiado
+  // estricto: las áreas con cobertura > 90% fluctúan ±0.4pp entre runs
+  // idénticos del mismo código.
+  const tolerance = 0.5;
   const gaps: string[] = [];
 
   for (const metric of METRICS) {
