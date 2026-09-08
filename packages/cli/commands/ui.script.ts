@@ -44,6 +44,7 @@ import { browseDirectory } from "../../ui/server/browse.service.js";
 import { planDryRun } from "../../ui/server/dry-run.service.js";
 import { readHistory } from "../../ui/server/history.service.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
+import { fromRoot } from "../../../scripts/helpers/root.helper.js";
 
 /** Opens the browser, and if it cannot, stays quiet: the URL is already printed. */
 function abrirNavegador(url: string): void {
@@ -200,6 +201,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     server = startUiServer({
       deps: dependencias(catalogo),
       html: UI_HTML,
+      staticDir: fromRoot("packages", "app", "dist"),
       ...(puerto !== undefined ? { port: puerto } : {}),
     });
   } catch (error) {

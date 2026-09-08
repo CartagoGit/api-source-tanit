@@ -186,7 +186,9 @@ export interface IUiServer {
 /** What is needed to start the server. */
 export interface IUiServerOptions {
   readonly deps: IUiDeps;
-  /** The UI HTML, already embedded: the binary does not read files. */
+  /** Legacy fallback HTML, already embedded in the binary. */
   readonly html: string;
+  /** Optional compiled UI directory used by the workspace command. */
+  readonly staticDir?: string | undefined;
   readonly port?: number | undefined;
 }
