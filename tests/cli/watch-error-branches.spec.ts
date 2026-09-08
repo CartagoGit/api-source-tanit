@@ -45,4 +45,15 @@ describe("watch error and empty-option branches", () => {
       error.mockRestore();
     }
   });
+
+  test("rejects a negative debounce before regenerating", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect(await watchMain(["--project-root", process.cwd(), "--once", "--debounce", "-5"])).toBe(1);
+      expect(error).toHaveBeenCalledWith(expect.stringContaining("`--debounce` espera"));
+      expect(vi.mocked(generateWithAllFrameworks)).not.toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
+  });
 });
