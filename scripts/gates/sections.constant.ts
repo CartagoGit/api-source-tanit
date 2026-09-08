@@ -100,6 +100,14 @@ export const SECTIONS: readonly ISection[] = [
     dependsOn: ["contracts", "core", "frameworks"],
   },
   {
+    name: "app",
+    description: "Aplicación Angular standalone y shell de escritorio",
+    paths: ["packages/app/", "tests/app/"],
+    tests: ["tests/app/**/*.{spec,test}.ts"],
+    tsconfig: "tsconfig.app.json",
+    dependsOn: ["contracts", "core"],
+  },
+  {
     name: "e2e",
     description: "Pipeline completo por framework, de fuente a colección",
     paths: ["tests/e2e/", "tests/fixtures/", "examples/"],

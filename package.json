@@ -1,7 +1,7 @@
 {
   "name": "api-source-tanit",
   "version": "1.0.0",
-  "workspaces": [],
+  "workspaces": ["packages/app"],
   "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
     "tanit",
@@ -65,6 +65,8 @@
     "scan": "bun run packages/cli/commands/scan.script.ts",
     "ui": "bun run packages/cli/commands/ui.script.ts",
     "ui:dev": "bun run scripts/build/ui-dev.script.ts",
+    "build:app": "ng build tanit-app --configuration production",
+    "test:app": "bunx vitest run --project app",
     "open": "bun run packages/cli/commands/open-postman.script.ts",
     "init": "bun run packages/cli/commands/init.script.ts",
     "clean": "rm -f build/*.json",
@@ -157,6 +159,16 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@angular-devkit/build-angular": "^20.2.0",
+    "@angular/cli": "^20.2.0",
+    "@angular/common": "^20.2.0",
+    "@angular/compiler": "^20.2.0",
+    "@angular/compiler-cli": "^20.2.0",
+    "@angular/core": "^20.2.0",
+    "@angular/platform-browser": "^20.2.0",
+    "@angular/platform-browser-dynamic": "^20.2.0",
+    "@angular/router": "^20.2.0",
+    "zone.js": "^0.15.1",
     "@types/node": "^22.10.0",
     "@vitest/coverage-v8": "^4.1.10",
     "vitest": "^4.1.10"
