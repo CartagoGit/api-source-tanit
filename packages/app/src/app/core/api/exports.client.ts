@@ -100,7 +100,7 @@ export class ExportsClient {
   dryRun(request: ExportRequest): ExportDryRun {
     const operations = request.operations ?? createOperations(request.endpointCount);
     const files = request.formats.map((format) => {
-      const path = joinPath(request.outputDirectory, `tanit-${format}.${format === "curl" ? "sh" : "json"}`);
+      const path = joinPath(request.outputDirectory, `tanit-${format}.${format === "curl" ? "sh" : format === "bruno" ? "bru" : "json"}`);
       const content = renderArtifact(format, operations);
       const existing = request.existingFiles?.find((file) => normalizePath(file.path) === normalizePath(path));
       const outsideWorkspace = !isContainedPath(request.workspaceRoot, request.outputDirectory);
@@ -155,5 +155,15 @@ function renderArtifact(format: ExportFormat, operations: readonly ExportOperati
   if (format === "openapi") return JSON.stringify({ openapi: "3.1.0", info: { title: "Tanit export", version: "1.0.0" }, paths: Object.fromEntries(operations.map((operation) => [operation.path, { [operation.method.toLowerCase()]: { operationId: operation.id, responses: { "200": { description: "Success" } } } }])) }, null, 2);
   if (format === "postman") return JSON.stringify({ info: { name: "Tanit export", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" }, item: operations.map((operation) => ({ name: operation.id, request: { method: operation.method, url: `http://localhost${operation.path}` } })) }, null, 2);
   if (format === "insomnia") return JSON.stringify({ _type: "export", __export_format: 4, resources: operations.map((operation) => ({ _type: "request", name: operation.id, method: operation.method, url: `http://localhost${operation.path}` })) }, null, 2);
-  return JSON.stringify({ version: "1", name: "Tanit export", requests: operations.map((operation) => ({ name: operation.id, request: { method: operation.method, url: `http://localhost${operation.path}` } })) }, null, 2);
+  return operations.map((operation) => `meta {
+  name: ${operation.id}
+  type: http
+  seq: ${operations.indexOf(operation) + 1}
+}
+
+get {
+  url: http://localhost${operation.path}
+  body: none
+  auth: none
+}`).join("\n\n");
 }

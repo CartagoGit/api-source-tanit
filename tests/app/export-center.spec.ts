@@ -73,7 +73,7 @@ describe("Export Center", () => {
     expect(writer.written.get("/workspace/out/tanit-curl.sh")).toContain("curl -X GET");
     expect(writer.written.get("/workspace/out/tanit-har.json")).toContain('"version": "1.2"');
     expect(writer.written.get("/workspace/out/tanit-insomnia.json")).toContain('"__export_format": 4');
-    expect(writer.written.get("/workspace/out/tanit-bruno.json")).toContain('"requests"');
+    expect(writer.written.get("/workspace/out/tanit-bruno.bru")).toContain("meta {");
   });
 
   it("preserves operation diagnostics and supports several diagnostics", () => {
@@ -107,5 +107,16 @@ describe("Export Center", () => {
     const writeText = vi.fn(); Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     await center.copyPaths(["/workspace/out/postman.json"]);
     expect(writeText).toHaveBeenCalledWith("/workspace/out/postman.json");
+  });
+
+  it("uses native success actions before the browser fallback", async () => {
+    const invoke = vi.fn().mockResolvedValue(undefined);
+    Object.assign(globalThis, { __TAURI__: { invoke } });
+    const center = TestBed.runInInjectionContext(() => new ExportCenterComponent());
+    await center.openFolder("/workspace/out");
+    await center.openPostman();
+    expect(invoke).toHaveBeenNthCalledWith(1, "open_folder", { path: "/workspace/out" });
+    expect(invoke).toHaveBeenNthCalledWith(2, "open_postman");
+    delete (globalThis as { __TAURI__?: unknown }).__TAURI__;
   });
 });

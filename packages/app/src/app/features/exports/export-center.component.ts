@@ -37,10 +37,20 @@ export interface ExportSuccessActionsPort {
 @Injectable({ providedIn: "root" })
 export class ExportSuccessActions implements ExportSuccessActionsPort {
   async openFolder(path: string): Promise<void> {
+    const tauri = (globalThis as { __TAURI__?: { invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown> } }).__TAURI__;
+    if (tauri?.invoke) {
+      await tauri.invoke("open_folder", { path });
+      return;
+    }
     if (typeof window !== "undefined") window.open(`tanit://open-folder?path=${encodeURIComponent(path)}`, "_blank");
   }
 
   async openPostman(): Promise<void> {
+    const tauri = (globalThis as { __TAURI__?: { invoke?: (command: string) => Promise<unknown> } }).__TAURI__;
+    if (tauri?.invoke) {
+      await tauri.invoke("open_postman");
+      return;
+    }
     if (typeof window !== "undefined") window.open("tanit://open-postman", "_blank");
   }
 }
