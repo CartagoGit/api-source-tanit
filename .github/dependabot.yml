@@ -5,6 +5,8 @@
 # verdad:
 #
 #   /                              el paquete del producto
+#   /packages/app                  la aplicación Angular que se instala como
+#                                  workspace
 #   /integrations/delendai         la integración opcional con Delendai
 #                                  (NO se publica; ver x00041)
 #
@@ -32,6 +34,15 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
+
+  # La aplicación Angular es un workspace real con dependencias propias.
+  - package-ecosystem: npm
+    directory: "/packages/app"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
 
   # La integración opcional con Delendai. Es un paquete independiente
   # con su propio `package.json`, y mantiene `file:` hacia

@@ -137,7 +137,7 @@ describe("sectionsForFiles", () => {
 describe("withDependents", () => {
   test("touching the core drags along all its consumers", () => {
     const names = withDependents([sectionByName("core")!]).map((s) => s.name);
-    expect(names).toEqual(["core", "frameworks", "cli", "e2e"]);
+    expect(names).toEqual(["core", "frameworks", "cli", "app", "e2e"]);
   });
 
   test("touching a scanner does not drag along the core", () => {
