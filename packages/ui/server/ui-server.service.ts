@@ -63,7 +63,7 @@ function nuevoTestigo(): string {
   return crypto.randomUUID();
 }
 
-async function staticAsset(
+export async function staticAsset(
   directory: string,
   pathname: string,
   testigo: string,
@@ -77,7 +77,11 @@ async function staticAsset(
     const contents = await readFile(file, "utf8");
     const type = CONTENT_TYPES[file.slice(file.lastIndexOf("."))] ?? "application/octet-stream";
     if (file.endsWith("index.html")) {
-      return new Response(contents.replace("<script>", `<script data-token="${testigo}">`), {
+      const html = contents.replace(/<script(\s[^>]*)?>/, (tag) => {
+        const attributes = tag.slice("<script".length, -1).trim();
+        return `<script${attributes ? ` ${attributes}` : ""} data-token="${testigo}">`;
+      });
+      return new Response(html, {
         status: 200,
         headers: {
           "content-type": type,
