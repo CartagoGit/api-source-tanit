@@ -67,6 +67,15 @@ const COMMANDS: Record<string, ICommand> = {
     summary: "List past generations and inspections, most recent first",
     load: () => import("./commands/history.script.js"),
   },
+  // f00016 S4 — Application API as a long-lived service. Same
+  // handler registry as the HTTP/UI carrier; the carrier flag
+  // (--stdio / --http) lives inside the command. See
+  // `serve.script.ts` for the bridge implementation.
+  serve: {
+    summary:
+      "Run the Application API as a long-lived service (--stdio sidecar or --http browser bridge)",
+    load: () => import("./commands/serve.script.js"),
+  },
 };
 
 /**
