@@ -54,7 +54,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `c00005` — Higiene de worktree: residuos de agencia fuera del repo + gate de árbol limpio — `6de99fb`
 - `c00006` — integration verifier y validate package con if always — `9afed13`
 - `c00007` — prohibir sync_proposals automático en Tanit — `eb6981c`
-- `c00010` — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados — `—`
+- `c00010` — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados — `f77f8e1`
 - `p00007` — p00007 — consumir `@delendai/core` publicado en vez del enlace local — `6fb52e4`
 - `p00018` — p00018 — gate de calidad autocontenido (`bun run validate`) — `a758c22`
 - `p00021` — p00021 — retirar `runtime/`: 1231 líneas muertas y solo-Laravel — `2f7b465`
@@ -80,8 +80,6 @@ propuesta con sus SHAs (`shippedIn`).
 - `f00012` — Response inference — infer request/response schemas from handlers, signatures, decorators, and explicit annotations — `2b8ea3d, f000bc0, 2e596ff, 243ef07, 68a8e87, cbe9b19`
 - `f00013` — Transport generalization — EndpointSpec carries a transport discriminator; scanners for gRPC, WebSockets, SSE and AsyncAPI — `a0f0ad2, 263b8ba, a20fcc2, ef1350e`
 - `f00014` — Postman exporter emits inferred responses — closes f00012 S4 Postman half — `6a281d5`
-- `f00016` — ProjectSession + ProjectIndex + Application API — un scan por proyecto, snapshot inmutable, bridge host-agnostic — `—`
-- `f00017` — Tanit Desktop Angular app — selector nativo de carpetas, Endpoints Explorer, Export Center, History diff, paridad CLI, secure storage — `—`
 - `p00001` — p00001 — finish postman-exporter v0.1: polish + harden the agnostic baseline — `a99c280`
 - `p00002` — p00002 — multi-framework router layer: Laravel / Symfony / Express / FastAPI / Django — `a99c280`
 - `p00003` — p00003 — internal testing plugin: `postman_exporter_test` tool — `a99c280`
@@ -190,7 +188,6 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00015` — Confidence scoring end-to-end — cada endpoint y cada campo lleva confianza + razón — `171f6ad, c3f92d7`
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `cd191dd`
 - `r00018` — Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4 — `e00a395`
-- `r00020` — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers) — `—`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 - `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`

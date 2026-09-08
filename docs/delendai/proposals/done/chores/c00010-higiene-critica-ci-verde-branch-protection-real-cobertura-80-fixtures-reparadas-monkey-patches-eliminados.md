@@ -9,6 +9,7 @@ date: 2026-09-07
 last-transition-id: e608d0c3-32b3-4d21-8dcf-a509ac6a7480
 last-correlation-id: e608d0c3-32b3-4d21-8dcf-a509ac6a7480
 last-transition-from: in-progress
+shippedIn: [f77f8e1]
 ---
 
 # c00010 — Higiene crítica — CI verde, branch protection real, cobertura ≥80%, fixtures reparadas, monkey-patches eliminados
