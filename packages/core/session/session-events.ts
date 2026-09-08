@@ -22,6 +22,8 @@ export interface ISessionEventMap {
   "snapshot-stale": SnapshotStaleEvent;
 }
 
+/** Nombre de un evento que puede emitir una sesión de proyecto. */
 export type SessionEventName = keyof ISessionEventMap;
+/** Payload asociado al nombre de evento indicado. */
 export type SessionEventPayload<K extends SessionEventName> =
   ISessionEventMap[K];

@@ -22,10 +22,12 @@ import {
 import { apiError } from "./error.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
+/** Resultado de aplicar cambios de configuración a una sesión. */
 export interface SettingsOutput {
   readonly applied: Readonly<Record<string, unknown>>;
 }
 
+/** Crea el handler que aplica cambios de configuración de una sesión. */
 export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput> {
   return {
     name: "settings",

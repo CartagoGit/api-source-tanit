@@ -331,7 +331,9 @@ export type {
 
 // `readFile` is re-exported for the future scanner refactor; today
 // no caller uses it.
+/** Mantiene una importación tipada para futuras extensiones del índice. */
 export type _IndexImportsAsyncReadFile = typeof readFile;
 // `join` is re-exported to give the future scanner refactor a single
 // import site; today it is only used inside `ensureAst`.
+/** Mantiene una importación tipada para el punto único de utilidades de ruta. */
 export type _IndexImportsJoin = typeof join;

@@ -355,4 +355,5 @@ export function buildWorkspaceLookup(
 /** Re-export the JSON helpers used by callers. */
 export { isRecord, parseJson, readArray, readString };
 // Quiet the unused-symbol lint on the no-arg helper re-export.
+/** Forma mínima de workspace expuesta para consumidores del índice. */
 export type _IWorkspaceReadonlyShape = Pick<IWorkspace, "relPath" | "absPath" | "manager">;

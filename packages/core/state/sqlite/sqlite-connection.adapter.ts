@@ -9,6 +9,7 @@ import {
 import { migrateStateDatabase } from "./migrations.js";
 import { resolveStateDatabasePath } from "./state-db-path.service.js";
 
+/** Conexión SQLite inicializada para el almacén durable de estado. */
 export interface IStateDatabaseConnection {
   readonly path: string;
   readonly version: number;
@@ -16,6 +17,7 @@ export interface IStateDatabaseConnection {
   close(): void;
 }
 
+/** Abre la base de estado, aplica migraciones y configura SQLite. */
 export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection {
   mkdirSync(dirname(path), { recursive: true });
   const database = new Database(path, { create: true, strict: true });

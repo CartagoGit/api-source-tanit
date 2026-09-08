@@ -6,17 +6,20 @@ import {
   STATE_DB_TABLES,
 } from "../../../contracts/constants/core/state-store.constant.js";
 
+/** Operaciones mínimas de base de datos necesarias para una migración. */
 export interface IStateMigrationDatabase {
   exec(sql: string): void;
   query(sql: string): { get(): unknown; all?(): unknown[] };
 }
 
+/** Migración versionada con operaciones de avance y reversión. */
 export interface IStateMigration {
   readonly version: number;
   readonly up: (database: IStateMigrationDatabase) => void;
   readonly down: (database: IStateMigrationDatabase) => void;
 }
 
+/** Error producido al detectar una base incompatible o corrupta. */
 export class StateDatabaseMigrationError extends Error {
   public constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
@@ -46,6 +49,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   source_files: ["source_file_id", "snapshot_id", "path", "content_digest", "metadata_json"],
 };
 
+/** Migraciones ordenadas que llevan la base al esquema vigente. */
 export const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
   {
     version: 1,
@@ -93,6 +97,7 @@ function validateSchema(database: IStateMigrationDatabase): void {
   }
 }
 
+/** Migra y valida una base de estado dentro de una transacción SQLite. */
 export function migrateStateDatabase(database: IStateMigrationDatabase): number {
   const currentVersion = readVersion(database);
   if (currentVersion > STATE_DB_SCHEMA_VERSION) {

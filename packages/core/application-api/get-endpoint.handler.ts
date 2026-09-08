@@ -27,6 +27,7 @@ export interface GetEndpointOutput {
   readonly serviceId: string;
 }
 
+/** Crea el handler que obtiene un endpoint por método y URI. */
 export function createGetEndpointHandler(): IHandler<GetEndpointInput, GetEndpointOutput> {
   return {
     name: "get-endpoint",

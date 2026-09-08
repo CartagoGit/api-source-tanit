@@ -46,6 +46,7 @@ export function recordHistoryEntry(
   _history.set(sessionId, list);
 }
 
+/** Resultado de consultar el historial de eventos de una sesión. */
 export interface HistoryOutput {
   readonly entries: ReadonlyArray<IHistoryEntry>;
   /** Total entries the buffer holds for this session. */
@@ -54,6 +55,7 @@ export interface HistoryOutput {
 
 const DEFAULT_HISTORY_LIMIT = 100;
 
+/** Crea el handler que lista el historial reciente de una sesión. */
 export function createHistoryHandlers(): {
   list: IHandler<HistoryInput, HistoryOutput>;
 } {

@@ -35,14 +35,17 @@ interface ICanonicalSnapshot {
   readonly digest: string;
 }
 
+/** Serializa un snapshot de estado con orden determinista de claves. */
 export function canonicalSnapshotJson(snapshot: IProjectSnapshot): string {
   return JSON.stringify(canonicalize(snapshot));
 }
 
+/** Calcula el digest SHA-256 de un snapshot canónicamente serializado. */
 export function canonicalSnapshotDigest(snapshot: IProjectSnapshot): string {
   return createHash("sha256").update(canonicalSnapshotJson(snapshot)).digest("hex");
 }
 
+/** Devuelve el snapshot, JSON y digest en una representación consistente. */
 export function serializeCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonicalSnapshot {
   const json = canonicalSnapshotJson(snapshot);
   return Object.freeze({
@@ -52,6 +55,7 @@ export function serializeCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonic
   });
 }
 
+/** Analiza y valida mínimamente un snapshot serializado de forma canónica. */
 export function parseCanonicalSnapshot(json: string): IProjectSnapshot {
   const parsed: unknown = JSON.parse(json);
   if (!isRecord(parsed) || !isRecord(parsed.projectId) || !isRecord(parsed.snapshotId)) {

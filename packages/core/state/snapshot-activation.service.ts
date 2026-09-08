@@ -2,8 +2,10 @@ import type { ICompleteProjectSnapshot } from "../../contracts/interfaces/core/p
 import type { ProjectId } from "../../contracts/interfaces/core/stable-ids.interface.js";
 import { SqliteProjectRepository } from "./sqlite/sqlite-project.repository.js";
 
+/** Indica que la revisión del proyecto cambió antes de activar el snapshot. */
 export class SnapshotActivationConflictError extends Error { public constructor() { super("Snapshot activation lost its revision race"); this.name = "SnapshotActivationConflictError"; } }
 
+/** Activa snapshots completos mediante control optimista de revisiones. */
 export class SnapshotActivationService {
   public constructor(private readonly projects: SqliteProjectRepository, private readonly now: () => string = () => new Date().toISOString()) {}
 

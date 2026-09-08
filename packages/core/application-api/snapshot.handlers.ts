@@ -23,10 +23,12 @@ import {
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado de resumir el snapshot actual de una sesión. */
 export interface SnapshotOutput {
   readonly summary: ISnapshotSummary;
 }
 
+/** Crea los handlers para consultar el snapshot actual. */
 export function createSnapshotHandlers(): {
   current: IHandler<SnapshotInput, SnapshotOutput>;
 } {

@@ -23,6 +23,7 @@ import {
 } from "../helpers/parse-json.helper.js";
 import { sha256Of } from "./file-cache.service.js";
 
+/** Formato de serialización detectado para un archivo de manifiesto. */
 export type ManifestFormat = "json" | "yaml" | "toml" | "text";
 
 /** Stable list of manifest file basenames the index recognises. */

@@ -14,11 +14,13 @@ import { CloseInputSchema, type CloseInput } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado de cerrar sesiones de proyecto. */
 export interface CloseOutput {
   /** Number of sessions actually closed. */
   readonly closed: number;
 }
 
+/** Crea el handler que cierra la sesión indicada. */
 export function createCloseHandler(): IHandler<CloseInput, CloseOutput> {
   return {
     name: "close",

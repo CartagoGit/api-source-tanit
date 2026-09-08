@@ -1,6 +1,7 @@
 import type { ICanonicalSnapshot } from "./snapshot-hash.service.js";
 import { canonicalSnapshotJson, snapshotSha256 } from "./snapshot-hash.service.js";
 
+/** Registro persistible de un snapshot emitido por una sesión. */
 export interface IHistoryRecord {
   readonly id: string;
   readonly timestamp: string;
@@ -17,6 +18,7 @@ export interface IHistoryRecord {
   readonly configuration: Readonly<Record<string, unknown>>;
 }
 
+/** Diferencias estructurales entre dos snapshots del historial. */
 export interface IHistoryDiff {
   readonly services: ReadonlyArray<string>;
   readonly operations: ReadonlyArray<string>;
@@ -30,6 +32,7 @@ export interface IHistoryDiff {
   readonly configuration?: { readonly before?: unknown; readonly after?: unknown };
 }
 
+/** Cambio individual incluido en un diff de historial. */
 export interface IHistoryChange { readonly key: string; readonly serviceId: string; readonly operationId?: string; readonly before?: unknown; readonly after?: unknown; }
 
 function fingerprint(value: unknown): string {
@@ -39,6 +42,7 @@ function fingerprint(value: unknown): string {
   });
 }
 
+/** Compara dos snapshots y clasifica sus cambios de servicios y operaciones. */
 export function diffSnapshots(
   left: ICanonicalSnapshot,
   right: ICanonicalSnapshot,
@@ -93,6 +97,7 @@ export function diffSnapshots(
   };
 }
 
+/** Mantiene registros de snapshots y sus configuraciones por proyecto. */
 export class HistoryRecorderService {
   private readonly records = new Map<string, IHistoryRecord[]>();
 

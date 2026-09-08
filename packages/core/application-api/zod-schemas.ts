@@ -58,6 +58,7 @@ export const OpenProjectInputSchema = z.object({
   /** Override the collection basename. Passed to the pipeline. */
   collectionName: z.string().min(1).optional(),
 });
+  /** Entrada inferida para abrir una sesión de proyecto. */
 export type OpenProjectInput = z.infer<typeof OpenProjectInputSchema>;
 
 /**
@@ -66,6 +67,7 @@ export type OpenProjectInput = z.infer<typeof OpenProjectInputSchema>;
 export const SnapshotInputSchema = z.object({
   projectRoot: ProjectRootSchema,
 });
+  /** Entrada inferida para obtener el snapshot actual. */
 export type SnapshotInput = z.infer<typeof SnapshotInputSchema>;
 
 /**
@@ -84,6 +86,7 @@ export const ListEndpointsInputSchema = z.object({
   limit: z.number().int().positive().max(1000).optional(),
   cursor: z.string().optional(),
 });
+  /** Entrada inferida para listar endpoints de un proyecto. */
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 
 /**
@@ -98,6 +101,7 @@ export const GetEndpointInputSchema = z.object({
   method: z.string().min(1),
   uri: z.string().min(1),
 });
+  /** Entrada inferida para obtener un endpoint concreto. */
 export type GetEndpointInput = z.infer<typeof GetEndpointInputSchema>;
 
 /**
@@ -108,6 +112,7 @@ export const GetSchemaInputSchema = z.object({
   method: z.string().min(1),
   uri: z.string().min(1),
 });
+  /** Entrada inferida para obtener el esquema de un endpoint. */
 export type GetSchemaInput = z.infer<typeof GetSchemaInputSchema>;
 
 /**
@@ -116,6 +121,7 @@ export type GetSchemaInput = z.infer<typeof GetSchemaInputSchema>;
 export const ListServicesInputSchema = z.object({
   projectRoot: ProjectRootSchema,
 });
+  /** Entrada inferida para listar los servicios descubiertos. */
 export type ListServicesInput = z.infer<typeof ListServicesInputSchema>;
 
 /**
@@ -128,6 +134,7 @@ export const DryRunInputSchema = z.object({
   /** Override the collection basename for this run only. */
   collectionName: z.string().min(1).optional(),
 });
+  /** Entrada inferida para ejecutar una generación de prueba. */
 export type DryRunInput = z.infer<typeof DryRunInputSchema>;
 
 /**
@@ -144,6 +151,7 @@ export const ExportInputSchema = z.object({
   /** Optional override of the output file path. */
   outputPath: z.string().min(1).optional(),
 });
+  /** Entrada inferida para exportar una colección. */
 export type ExportInput = z.infer<typeof ExportInputSchema>;
 
 /**
@@ -158,6 +166,7 @@ export const HistoryInputSchema = z.object({
   /** Max events to return; defaults to 100. */
   limit: z.number().int().positive().max(1000).optional(),
 });
+  /** Entrada inferida para consultar el historial de una sesión. */
 export type HistoryInput = z.infer<typeof HistoryInputSchema>;
 
 /**
@@ -172,6 +181,7 @@ export const WatchInputSchema = z.object({
   /** Optional filter — only `snapshot-stale` events with these changed files. */
   onlyPaths: z.array(z.string().min(1)).optional(),
 });
+  /** Entrada inferida para suscribirse a cambios de un proyecto. */
 export type WatchInput = z.infer<typeof WatchInputSchema>;
 
 /**
@@ -186,6 +196,7 @@ export const CancelInputSchema = z.object({
   (v) => v.projectRoot !== undefined || v.subscriptionId !== undefined,
   { message: "cancel requires at least one of projectRoot or subscriptionId" },
 );
+  /** Entrada inferida para cancelar una sesión o suscripción. */
 export type CancelInput = z.infer<typeof CancelInputSchema>;
 
 /**
@@ -204,6 +215,7 @@ export const SettingsInputSchema = z.object({
     })
     .optional(),
 });
+  /** Entrada inferida para aplicar cambios de configuración. */
 export type SettingsInput = z.infer<typeof SettingsInputSchema>;
 
 /**
@@ -212,6 +224,7 @@ export type SettingsInput = z.infer<typeof SettingsInputSchema>;
  * No `projectRoot` argument: the caller wants the global list.
  */
 export const ListProjectsInputSchema = z.object({});
+/** Entrada inferida para listar los proyectos abiertos. */
 export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>;
 
 /**
@@ -222,6 +235,7 @@ export const CloseInputSchema = z.object({
 }).refine((v) => v.projectRoot !== undefined, {
   message: "close requires a projectRoot (use close-all for the global close)",
 });
+  /** Entrada inferida para cerrar una sesión de proyecto. */
 export type CloseInput = z.infer<typeof CloseInputSchema>;
 
 /**
@@ -240,15 +254,19 @@ export const EndpointSummarySchema = z.object({
   name: z.string(),
   serviceId: z.string().optional(),
 });
+  /** Resumen validado de un endpoint descubierto. */
 export type IEndpointSummary = z.infer<typeof EndpointSummarySchema>;
 
+  /** Schema del resumen de un servicio descubierto. */
 export const ServiceSummarySchema = z.object({
   serviceId: z.string(),
   framework: z.string(),
   endpointCount: z.number().int().nonnegative(),
 });
+  /** Resumen validado de un servicio descubierto. */
 export type IServiceSummary = z.infer<typeof ServiceSummarySchema>;
 
+  /** Schema del resumen de un snapshot de proyecto. */
 export const SnapshotSummarySchema = z.object({
   sessionId: z.string(),
   projectRoot: z.string(),
@@ -257,8 +275,10 @@ export const SnapshotSummarySchema = z.object({
   endpointCount: z.number().int().nonnegative(),
   serviceCount: z.number().int().nonnegative(),
 });
+  /** Resumen validado de un snapshot de proyecto. */
 export type ISnapshotSummary = z.infer<typeof SnapshotSummarySchema>;
 
+  /** Schema de una entrada de proyecto abierto. */
 export const ProjectEntrySchema = z.object({
   projectRoot: z.string(),
   sessionId: z.string(),
@@ -266,4 +286,5 @@ export const ProjectEntrySchema = z.object({
   endpointCount: z.number().int().nonnegative(),
   frameworks: z.array(z.string()),
 });
+  /** Entrada validada de un proyecto abierto. */
 export type IProjectEntry = z.infer<typeof ProjectEntrySchema>;

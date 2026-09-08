@@ -21,6 +21,7 @@ function makeId<K extends StableIdKind>(kind: K, seed: string): IStableId<K> {
   return Object.freeze({ kind, value });
 }
 
+/** Genera identificadores estables por tipo a partir de una semilla. */
 export class StableIdService implements IStableIdFactory {
   project(seed: string): ProjectId {
     return makeId("project", seed);

@@ -4,6 +4,7 @@ import { SqliteSnapshotRepository } from "./sqlite/sqlite-snapshot.repository.js
 
 interface ITransactionDatabase { exec(sql: string): void; }
 
+/** Escribe snapshots completos dentro de una transacción SQLite. */
 export class SnapshotTransactionService {
   public constructor(private readonly database: ITransactionDatabase, private readonly snapshots: SqliteSnapshotRepository) {}
 

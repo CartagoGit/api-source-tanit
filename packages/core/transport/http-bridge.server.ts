@@ -75,6 +75,7 @@ export interface IHttpBridgeOptions {
   readonly skipSecurity?: boolean;
 }
 
+/** Estado observable del bridge HTTP iniciado para la API de aplicación. */
 export interface IHttpBridge {
   readonly url: string;
   readonly port: number;

@@ -4,6 +4,7 @@ import type { ProjectId, SnapshotId } from "../../../contracts/interfaces/core/s
 interface IProjectRow { project_id: string; root_path: string; active_snapshot_id: string | null; revision: number; }
 interface IProjectDatabase { query(sql: string): { get(...parameters: unknown[]): unknown }; prepare(sql: string): { run(...parameters: unknown[]): unknown }; }
 
+/** Repositorio SQLite para proyectos, revisiones y snapshot activo. */
 export class SqliteProjectRepository {
   public constructor(private readonly database: IProjectDatabase) {}
 

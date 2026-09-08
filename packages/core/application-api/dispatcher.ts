@@ -57,6 +57,7 @@ export interface IAbortSignalLike {
   readonly aborted: boolean;
 }
 
+/** Contexto común que el dispatcher entrega a cada handler. */
 export interface IRequestContext {
   /** Identifier of the open session this request is scoped to. */
   readonly sessionId?: string;

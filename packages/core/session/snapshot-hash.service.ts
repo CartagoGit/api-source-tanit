@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+/** Representación estable de un snapshot usada para serialización y hashing. */
 export interface ICanonicalSnapshot {
   readonly capturedAt: string;
   readonly formats: ReadonlyArray<string>;
@@ -7,6 +8,7 @@ export interface ICanonicalSnapshot {
   readonly combinedExport?: ICombinedExport;
 }
 
+/** Metadatos de una exportación combinada parcial o completa. */
 export interface ICombinedExport {
   readonly partial: boolean;
   readonly explanation: string;
@@ -14,6 +16,7 @@ export interface ICombinedExport {
   readonly operationRefs: Readonly<Record<string, { readonly serverRef?: string; readonly authRef?: string }>>;
 }
 
+/** Representación canónica de un servicio y sus operaciones. */
 export interface ICanonicalService {
   readonly serviceId: string;
   readonly framework: string;
@@ -25,6 +28,7 @@ export interface ICanonicalService {
   readonly operations: ReadonlyArray<ICanonicalOperation>;
 }
 
+/** Representación canónica de una operación exportable. */
 export interface ICanonicalOperation {
   readonly operationId: string;
   readonly method: string;
@@ -48,16 +52,19 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
+/** Serializa un snapshot con sus claves ordenadas de forma estable. */
 export function canonicalSnapshotJson(snapshot: ICanonicalSnapshot): string {
   return JSON.stringify(canonicalize(snapshot));
 }
 
+/** Calcula el SHA-256 de la serialización canónica de un snapshot. */
 export function snapshotSha256(snapshot: ICanonicalSnapshot): string {
   return createHash("sha256")
     .update(canonicalSnapshotJson(snapshot))
     .digest("hex");
 }
 
+/** Calcula el SHA-256 de un JSON canónico ya serializado. */
 export function snapshotHashFromJson(json: string): string {
   return createHash("sha256").update(json).digest("hex");
 }

@@ -25,6 +25,7 @@ interface ISnapshotRow {
 const idValue = (id: { value: string }): string => id.value;
 const parseJson = <T>(value: string | null, fallback: T): T => (value === null ? fallback : JSON.parse(value) as T);
 
+/** Repositorio SQLite para snapshots en construcción, completos o fallidos. */
 export class SqliteSnapshotRepository {
   public constructor(private readonly database: IQueryDatabase) {}
 

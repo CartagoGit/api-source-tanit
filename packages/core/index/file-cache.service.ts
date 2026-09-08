@@ -278,4 +278,5 @@ export function filesByLanguage(
 
 // Quiet unused-arg warning when callers omit `workspaces` (tests do
 // that — they pass a single-workspace fake).
+/** Forma de workspace usada por los helpers de caché de archivos. */
 export type _FileCacheWorkspaces = ReadonlyArray<IWorkspace>;

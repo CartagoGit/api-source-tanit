@@ -14,6 +14,7 @@ import { ExportInputSchema, type ExportInput } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado de escribir una colección exportada. */
 export interface ExportOutput {
   /** Absolute path the collection was written to. */
   readonly outputPath: string;
@@ -30,6 +31,7 @@ const KNOWN_TARGETS = new Set([
   "curl",
 ]);
 
+/** Crea el handler que exporta el snapshot actual a un destino. */
 export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
   return {
     name: "export",

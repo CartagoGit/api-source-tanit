@@ -2,8 +2,10 @@ import type { IProjectSnapshot } from "../../contracts/interfaces/core/project-s
 import type { SnapshotId } from "../../contracts/interfaces/core/stable-ids.interface.js";
 import { canonicalSnapshotDigest } from "./canonical-snapshot.serializer.js";
 
+/** Resultado posible de comparar memoria con el snapshot almacenado. */
 export type StateParityStatus = "match" | "mismatch" | "unavailable";
 
+/** Diagnóstico de paridad entre el estado en memoria y SQLite. */
 export interface IStateParityDiagnostic {
   readonly status: StateParityStatus;
   readonly projectId: string;
@@ -13,10 +15,12 @@ export interface IStateParityDiagnostic {
   readonly message: string;
 }
 
+/** Acceso mínimo al snapshot durable usado por la comprobación de paridad. */
 export interface IParitySnapshotRepository {
   get(snapshotId: SnapshotId): IProjectSnapshot | null;
 }
 
+/** Compara el digest del snapshot en memoria con su copia durable. */
 export class StateParityService {
   public constructor(private readonly snapshots: IParitySnapshotRepository) {}
 
