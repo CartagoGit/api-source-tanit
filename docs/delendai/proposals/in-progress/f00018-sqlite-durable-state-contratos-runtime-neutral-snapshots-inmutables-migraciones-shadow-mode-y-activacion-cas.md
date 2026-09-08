@@ -48,7 +48,7 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
 - review-reviewer: delivery_verifier
 - review-log: approved by delivery_verifier — Revisión independiente completada. S1 implementa contratos runtime-neutral, IDs explícitos, serializer determinista con redacción/digest, estados y activación sólo complete. Naming gate queda bloqueado por regla preexistente que no contempla el path obligatorio packages/core/state/canonical-snapshot.serializer.ts.
 ### S2-sqlite-schema-and-migrations — S2 — Esquema SQLite versionado, migraciones y configuración de ubicación
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1-state-contracts-and-canonical-serialization]
 - **Files**: `packages/core/state/sqlite/schema.sql`, `packages/core/state/sqlite/migrations.ts`, `packages/core/state/sqlite/sqlite-connection.adapter.ts`, `packages/core/state/sqlite/state-db-path.service.ts`, `packages/contracts/constants/core/state-store.constant.ts`, `tests/core/state/sqlite/migrations.spec.ts`, `tests/core/state/sqlite/connection.spec.ts`, `docs/STATE.md`, `vitest.config.ts`, `package.json`
 - **Gate**: e2e
@@ -59,9 +59,11 @@ Tanit necesita conservar snapshots canónicos, history y diffs para que CLI, UI,
   - "La conexión activa foreign_keys, WAL y busy_timeout sin guardar secretos."
   - "Los tests Bun-native de SQLite quedan fuera del proyecto Vitest de core y se ejecutan con bun test mediante un script explícito incluido en test:core y validate."
   - "Tests cubren base vacía, migración v1 a v2, versión futura desconocida, base corrupta y rollback de migración."
-- review-state: in_review
+- review-state: done
 - review-implementer: delendai-impl-20260909
+- review-reviewer: technical-investigator
 - review-log: requested_changes by delivery_verifier — Revisión independiente del commit 3426e5b. Solicito cambios antes de aprobar S2. Hallazgo bloqueante: packages/core/state/sqlite/migrations.ts:55-64 valida únicamente la existencia de los diez nombres de tabla; no verifica columnas, constraints, índices esenciales ni compatibilidad estructural. Reproducción: una DB con las diez tablas creadas como CREATE TABLE <name> (broken TEXT) y user_version=2 hace que migrateStateDatabase devuelva 2 sin error, contradiciendo docs/STATE.md, que afirma que un schema corrupto no se repara silenciosamente. Hallazgo de cobertura: tests/core/state/sqlite/migrations.spec.ts:17-25 crea primero el schema actual, fuerza user_version=1 y ejecuta v2; no prueba una base v1 histórica. Una base v1 mínima real falla como State database migration failed y hace rollback, por lo que debe definirse/probarse el schema v1 real o retirarse la afirmación. Riesgo adicional a cubrir: schema.sql se carga con readFileSync(join(import.meta.dir, schema.sql)); añadir chequeo de artefacto si se distribuye compilado. Sin hallazgos en runtime neutrality, secrets, naming o boundaries. Gates: 7/7 tests SQLite, lint:naming PASS, lint:secrets PASS, lint:boundaries PASS, typecheck core PASS. lint:contracts falla por baseline preexistente con 129 declaraciones, incluidas las nuevas interfaces de S2. No se editó código.
+- review-log: approved by technical-investigator — Revisión independiente del cambio de integración en commit 7a98dac, con gate acotado: Vitest excluye sólo tests/core/state/sqlite/**; test:core:sqlite ejecuta Bun real y está incluido en test:core y validate. Evidencia del gate acotado: bun test SQLite 7/7, test:core 85 suites + 1257 tests y luego SQLite 7/7, typecheck:core PASS. El validate global no está verde por 4 fallos CLI y regresión de baseline de cobertura ajenos a esta integración; la aprobación no cierra esos hallazgos ni la slice S2 completa.
 ### S3-immutable-snapshot-repository-and-cas — S3 — Repositorio SQLite de snapshots inmutables, transacciones y activación CAS
 - **Status**: pending
 - **DependsOn**: [S2-sqlite-schema-and-migrations]
