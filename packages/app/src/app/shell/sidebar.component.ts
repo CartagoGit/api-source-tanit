@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, input, output } from "@angular/core";
 
 import { I18nService } from "../core/i18n/i18n.service";
 
@@ -47,7 +47,7 @@ interface NavigationItem {
 export class SidebarComponent {
   readonly select = output<string>();
   readonly theme = output<void>();
-  readonly i18n = new I18nService();
+  readonly i18n = inject(I18nService);
   readonly items: ReadonlyArray<NavigationItem> = [
     { id: "overview", labelKey: "nav.overview" },
     { id: "endpoints", labelKey: "nav.endpoints" },
@@ -62,6 +62,6 @@ export class SidebarComponent {
   themeLabel = this.i18n.translate("theme.toggle");
 
   iconFor(id: string): string {
-    return ({ overview: "○", endpoints: "↗", schemas: "◇", services: "□", exports: "↓", history: "↺", diagnostics: "!", settings: "⚙" } as Record<string, string>)[id] ?? "·";
+    return ({ overview: "O", endpoints: "E", schemas: "S", services: "V", exports: "X", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
   }
 }

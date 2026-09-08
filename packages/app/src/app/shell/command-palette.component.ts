@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, inject, input, output, signal, ViewChild } from "@angular/core";
+import { ChangeDetectionStrategy, Component, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
 
 import { CommandStore, PaletteCommand } from "../core/state/command.store";
 import { I18nService } from "../core/i18n/i18n.service";
@@ -22,7 +22,7 @@ export function fuzzyMatch(query: string, candidate: string): boolean {
   template: `
     @if (open()) {
       <div class="scrim" (click)="close.emit()"></div>
-      <section class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')">
+      <section #palette class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)">
         <input #search autofocus [value]="query()" (input)="updateQuery(search.value)" [placeholder]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)" />
         <div role="listbox">
           @for (command of filteredCommands(); track command.id; let index = $index) {
@@ -55,6 +55,7 @@ export class CommandPaletteComponent {
   readonly chosen = output<string>();
   readonly query = signal("");
   readonly selectedIndex = signal(0);
+  @ViewChild("palette") palette?: ElementRef<HTMLElement>;
   @ViewChild("search") search?: ElementRef<HTMLInputElement>;
 
   filteredCommands(): ReadonlyArray<PaletteCommand> {
@@ -80,12 +81,11 @@ export class CommandPaletteComponent {
     if (event.key === "Escape") { event.preventDefault(); this.close.emit(); }
     if (event.key === "Tab") {
       event.preventDefault();
-      this.search?.nativeElement.focus();
+      const focusable = this.palette?.nativeElement.querySelectorAll<HTMLElement>("input, button:not([disabled])");
+      if (!focusable?.length) return;
+      const current = Array.from(focusable).indexOf(document.activeElement as HTMLElement);
+      const next = (current + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length;
+      focusable[next]?.focus();
     }
-  }
-
-  @HostListener("document:keydown", ["$event"])
-  onGlobalKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); this.open() ? this.close.emit() : undefined; }
   }
 }

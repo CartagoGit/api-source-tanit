@@ -19,7 +19,7 @@ describe("Angular shell foundation", () => {
     const service = new I18nService();
 
     expect(service.translate("app.name")).toBe("Tanit");
-    expect(service.translate("missing.key")).toBe("missing.key");
+    expect(service.translate("missing.key")).toBe("—");
   });
 
   it("registers the eight command-palette actions", () => {

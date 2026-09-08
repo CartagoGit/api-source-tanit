@@ -12,7 +12,7 @@ export class I18nService {
   readonly locale = signal<Locale>(this.readLocale());
 
   translate(key: string): string {
-    return this.catalogs[this.locale()][key] ?? this.catalogs.en[key] ?? key;
+    return this.catalogs[this.locale()][key] ?? this.catalogs.en[key] ?? "—";
   }
 
   setLocale(locale: Locale): void {
