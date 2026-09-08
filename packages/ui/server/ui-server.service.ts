@@ -18,6 +18,9 @@
  *      release the port forces you to track down the process and
  *      kill it by hand.
  */
+import { readFile, stat } from "node:fs/promises";
+import { resolve, sep } from "node:path";
+
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
@@ -27,6 +30,14 @@ const HOST = "127.0.0.1";
 
 /** How many ports we try before giving up. */
 const INTENTOS = 20;
+const CONTENT_TYPES: Readonly<Record<string, string>> = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".map": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+};
 
 /**
  * Is this a "port already in use" error?
@@ -52,6 +63,34 @@ function nuevoTestigo(): string {
   return crypto.randomUUID();
 }
 
+async function staticAsset(
+  directory: string,
+  pathname: string,
+  testigo: string,
+) {
+  const root = resolve(directory);
+  const relative = pathname === "/" || pathname === "/index.html" ? "index.html" : pathname.slice(1);
+  const file = resolve(root, relative);
+  if (file !== root && !file.startsWith(`${root}${sep}`)) return new Response("no encontrado", { status: 404 });
+  try {
+    if (!(await stat(file)).isFile()) return null;
+    const contents = await readFile(file, "utf8");
+    const type = CONTENT_TYPES[file.slice(file.lastIndexOf("."))] ?? "application/octet-stream";
+    if (file.endsWith("index.html")) {
+      return new Response(contents.replace("<script>", `<script data-token="${testigo}">`), {
+        status: 200,
+        headers: {
+          "content-type": type,
+          "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
+        },
+      });
+    }
+    return new Response(contents, { status: 200, headers: { "content-type": type } });
+  } catch {
+    return null;
+  }
+}
+
 /** Starts the interface and returns where it ended up listening. */
 export function startUiServer(options: IUiServerOptions): IUiServer {
   const desde = options.port ?? DEFAULT_UI_PORT;
@@ -75,6 +114,11 @@ export function startUiServer(options: IUiServerOptions): IUiServer {
           // is only read by whoever can read the HTML, and that is
           // exactly what same-origin policy blocks for a third
           // party.
+          if (options.staticDir && !pathname.startsWith("/api/")) {
+            const asset = await staticAsset(options.staticDir, pathname, testigo);
+            if (asset) return asset;
+          }
+
           if (pathname === "/" || pathname === "/index.html") {
             return new Response(
               options.html.replace("<script>", `<script data-token="${testigo}">`),
