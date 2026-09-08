@@ -98,7 +98,7 @@ describe("push environment and option branches", () => {
       config: { baseUrl: "http://x", variables: [], environments: null },
       match: { framework: "express" },
     } as unknown as Awaited<ReturnType<typeof generateWithAllFrameworks>>);
-    vi.stubGlobal("fetch", (async (input: string | globalThis.URL) => {
+    vi.stubGlobal("fetch", (async (input: string | URL) => {
       const pathname = new URL(String(input)).pathname;
       if (pathname === "/me") return fetchResponse(200, { user: { id: 1, username: "gap-user" } });
       if (pathname === "/collections") return fetchResponse(200, { collections: [], collection: {} });
