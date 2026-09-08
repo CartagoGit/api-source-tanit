@@ -19,15 +19,12 @@ describe("ui command branch surfaces", () => {
     const stop = vi.fn();
     startUiServer.mockReset();
     startUiServer.mockReturnValue({ url: "http://127.0.0.1:4317", stop });
-    const running = uiMain(["--no-open", "--port", "4317"]);
-    // Let the async seed/load phase reach the server's SIGINT listener.
-    await new Promise((resolve) => setTimeout(resolve, 25));
     const onceSpy = vi.spyOn(process, "once").mockImplementation((event, listener) => {
       if (event === "SIGINT") listener();
       return process;
     });
     try {
-      expect(await running).toBe(0);
+      expect(await uiMain(["--no-open", "--port", "4317"])).toBe(0);
       expect(onceSpy).toHaveBeenCalledWith("SIGINT", expect.any(Function));
     } finally {
       onceSpy.mockRestore();
