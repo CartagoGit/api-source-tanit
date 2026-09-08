@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test } from "vitest";
 import { runHistory } from "../../packages/cli/commands/history.script";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -23,6 +23,6 @@ describe("runHistory edge branches", () => {
   });
 });
 
-globalThis.addEventListener?.("unload", async () => {
+afterAll(async () => {
   await rm(tempHome, { recursive: true, force: true });
 });

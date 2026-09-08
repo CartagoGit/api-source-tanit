@@ -74,9 +74,9 @@ describe("ui dependencies branch surface", () => {
         withDescriptionPercent: 100,
       },
     } as Awaited<ReturnType<typeof summarizeWithAllFrameworks>>);
-    mock(runGenerate).mockResolvedValue({ code: 0, report: { version: 1, collectionPath: "/tmp/collection.json", requests: 1, folders: 0, extraPaths: [], warnings: [] } });
+    mock(runGenerate).mockResolvedValue({ code: 0, report: { version: 3, ok: true, framework: "express", frameworks: ["express"], warnings: [], projectRoot: "/tmp", projectName: "p", collectionPath: "/tmp/collection.json", collectionId: "abc", environmentPaths: [], extraPaths: [], requests: 1, folders: 0, auth: null, durationMs: 1 } as never });
     mock(browseDirectory).mockResolvedValue({ ok: true, path: "/tmp", parent: "/", entries: [], truncated: false });
-    mock(planDryRun).mockResolvedValue({ ok: true, outputDir: "/tmp", projectName: "p", framework: "express", requests: 1, folders: 0, files: [], overwrites: 0, warnings: [] });
+    mock(planDryRun).mockResolvedValue({ ok: true, outputDir: "/tmp", projectName: "p", framework: "express", requests: 1, files: [], overwrites: 0, warnings: [] } as never);
     mock(readSettings).mockResolvedValue({ settings: { version: 1 }, problem: null });
     mock(patchSettings).mockResolvedValue({ version: 1, locale: "en", theme: "dark" });
     mock(readHistory).mockResolvedValue({ ok: true, entries: [], rejected: [], totalEntries: 0 });

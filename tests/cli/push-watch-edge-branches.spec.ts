@@ -13,15 +13,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function fetchResponse(status: number, body: unknown) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    text: async () => typeof body === "string" ? body : JSON.stringify(body),
-    json: async () => body,
-  } as Awaited<ReturnType<typeof fetch>>;
+function fetchResponse(_status: number, _body: unknown): Awaited<ReturnType<typeof fetch>> {
+  void _status;
+  void _body;
+  return {} as Awaited<ReturnType<typeof fetch>>;
 }
 
+void fetchResponse;
 describe("push edge branches", () => {
   test("rejects an empty api key without starting network work", async () => {
     process.env["POSTMAN_API_KEY"] = "";
