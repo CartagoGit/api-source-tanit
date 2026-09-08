@@ -18,6 +18,7 @@ import {
 } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado de listar las sesiones de proyecto abiertas en el proceso. */
 export interface ListProjectsOutput {
   readonly projects: ReadonlyArray<IProjectEntry>;
 }
@@ -31,6 +32,7 @@ export interface ListProjectsOutput {
  * session is open — the future event-sourcing slice will replace
  * this with a richer registry accessor.
  */
+/** Crea el handler que devuelve los proyectos actualmente abiertos. */
 export function createListProjectsHandler(): IHandler<ListProjectsInput, ListProjectsOutput> {
   return {
     name: "list-projects",

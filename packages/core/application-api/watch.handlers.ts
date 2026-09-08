@@ -95,10 +95,12 @@ export function listSubscriptions(): ReadonlyArray<WatchSubscription> {
   return [..._subscriptions.values()];
 }
 
+/** Resultado de crear una suscripción de vigilancia. */
 export interface WatchOutput {
   readonly subscription: WatchSubscription;
 }
 
+/** Crea los handlers para suscribirse a cambios de un proyecto. */
 export function createWatchHandlers(): {
   subscribe: IHandler<WatchInput, WatchOutput>;
 } {

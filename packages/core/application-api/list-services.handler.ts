@@ -17,10 +17,12 @@ import {
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado de listar los servicios descubiertos en un snapshot. */
 export interface ListServicesOutput {
   readonly services: ReadonlyArray<IServiceSummary>;
 }
 
+/** Crea el handler que resume los servicios descubiertos en un snapshot. */
 export function createListServicesHandler(): IHandler<ListServicesInput, ListServicesOutput> {
   return {
     name: "list-services",

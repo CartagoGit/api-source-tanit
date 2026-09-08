@@ -23,11 +23,13 @@ import {
   dropSubscriptionById,
 } from "./watch.handlers.js";
 
+/** Resultado de cancelar sesiones o suscripciones activas. */
 export interface CancelOutput {
   /** Number of resources that were cancelled. */
   readonly cancelled: number;
 }
 
+/** Crea el handler idempotente para cancelar sesiones o suscripciones. */
 export function createCancelHandler(): IHandler<CancelInput, CancelOutput> {
   return {
     name: "cancel",

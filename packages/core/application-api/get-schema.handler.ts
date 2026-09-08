@@ -23,10 +23,12 @@ export type IRequestSchema =
   | { readonly kind: "body"; readonly body: unknown }
   | { readonly kind: "none" };
 
+/** Resultado de obtener el esquema de solicitud de un endpoint. */
 export interface GetSchemaOutput {
   readonly schema: IRequestSchema;
 }
 
+/** Crea el handler que obtiene el esquema de solicitud de un endpoint. */
 export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutput> {
   return {
     name: "get-schema",

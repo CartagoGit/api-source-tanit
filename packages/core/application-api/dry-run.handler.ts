@@ -17,6 +17,7 @@ import { generateCollections } from "../discovery/generation.pipeline.js";
 import { apiError } from "./error.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
+/** Resultado de ejecutar la generación sin escribir una colección. */
 export interface DryRunOutput {
   /** Endpoint count the dry run produced. */
   readonly endpointCount: number;
@@ -28,6 +29,7 @@ export interface DryRunOutput {
   readonly durationMs: number;
 }
 
+/** Crea el handler que ejecuta la generación sin escribir una colección. */
 export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
   return {
     name: "dry-run",

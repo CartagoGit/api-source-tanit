@@ -17,6 +17,7 @@ import {
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
+/** Resultado paginado de listar endpoints de un snapshot. */
 export interface ListEndpointsOutput {
   readonly endpoints: ReadonlyArray<IEndpointSummary>;
   /** Next cursor; absent when the last page was returned. */
@@ -27,6 +28,7 @@ export interface ListEndpointsOutput {
 
 const DEFAULT_LIMIT = 100;
 
+/** Crea el handler paginado para consultar endpoints del snapshot actual. */
 export function createListEndpointsHandler(): IHandler<ListEndpointsInput, ListEndpointsOutput> {
   return {
     name: "list-endpoints",
