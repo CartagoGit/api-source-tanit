@@ -119,4 +119,15 @@ describe("Export Center", () => {
     expect(invoke).toHaveBeenNthCalledWith(2, "open_postman");
     delete (globalThis as { __TAURI__?: unknown }).__TAURI__;
   });
+
+  it("surfaces partial combined export status and operation references", () => {
+    const client = new ExportsClient();
+    const preview = client.dryRun({
+      formats: ["postman"], outputDirectory: "/workspace/out", workspaceRoot: "/workspace", endpointCount: 1,
+      combinedExport: { partial: true, explanation: "GraphQL auth cannot be represented per operation.", services: [{ serviceId: "catalog", reason: "Mixed auth references." }], operationRefs: { "catalog.list": { serverRef: "server-catalog", authRef: "auth-catalog" } } },
+    });
+    expect(preview.combinedExport?.partial).toBe(true);
+    expect(preview.diagnostics.at(-1)?.code).toBe("COMBINED_EXPORT_PARTIAL");
+    expect(preview.diagnostics.at(-1)?.operationIds).toContain("catalog.list");
+  });
 });

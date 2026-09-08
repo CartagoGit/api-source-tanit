@@ -36,6 +36,14 @@ export interface ExportDryRun {
   readonly canGenerate: boolean;
   readonly requiresOverwriteConfirmation: boolean;
   readonly requiresOutsideWorkspaceConfirmation: boolean;
+  readonly combinedExport?: CombinedExportStatus;
+}
+
+export interface CombinedExportStatus {
+  readonly partial: boolean;
+  readonly explanation: string;
+  readonly services: ReadonlyArray<{ readonly serviceId: string; readonly reason: string }>;
+  readonly operationRefs: Readonly<Record<string, { readonly serverRef?: string; readonly authRef?: string }>>;
 }
 
 export interface ExportRequest {
@@ -47,6 +55,7 @@ export interface ExportRequest {
   readonly existingFiles?: readonly ExportExistingFile[];
   readonly overwriteConfirmed?: boolean;
   readonly outsideWorkspaceConfirmed?: boolean;
+  readonly combinedExport?: CombinedExportStatus;
 }
 
 export interface ExportOperation {
@@ -116,7 +125,15 @@ export class ExportsClient {
     }] : operations.flatMap((operation) => operation.diagnostics ?? []);
     const requiresOverwriteConfirmation = files.some((file) => file.overwriteRisk) && request.overwriteConfirmed !== true;
     const requiresOutsideWorkspaceConfirmation = files.some((file) => file.outsideWorkspace) && request.outsideWorkspaceConfirmed !== true;
-    return { files, diagnostics, canGenerate: diagnostics.every((item) => item.severity !== "error") && !requiresOverwriteConfirmation && !requiresOutsideWorkspaceConfirmation, requiresOverwriteConfirmation, requiresOutsideWorkspaceConfirmation };
+    const combinedExport = request.combinedExport;
+    const partialDiagnostic = combinedExport?.partial ? {
+      code: "COMBINED_EXPORT_PARTIAL",
+      severity: "warning" as const,
+      operationIds: Object.keys(combinedExport.operationRefs),
+      message: combinedExport.explanation,
+      suggestion: "Export each affected service separately to preserve its server and auth references.",
+    } : null;
+    return { files, diagnostics: partialDiagnostic ? [...diagnostics, partialDiagnostic] : diagnostics, canGenerate: diagnostics.every((item) => item.severity !== "error") && !requiresOverwriteConfirmation && !requiresOutsideWorkspaceConfirmation, requiresOverwriteConfirmation, requiresOutsideWorkspaceConfirmation, combinedExport };
   }
 
   generate(request: ExportRequest): Promise<ExportResult> {

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
 
-import { EXPORT_FORMATS, ExportCapabilities, ExportDiagnostic, ExportDryRun, ExportExistingFile, ExportFormat, ExportOperation, ExportResult, ExportRequest, ExportsClient } from "../api/exports.client";
+import { EXPORT_FORMATS, CombinedExportStatus, ExportCapabilities, ExportDiagnostic, ExportDryRun, ExportExistingFile, ExportFormat, ExportOperation, ExportResult, ExportRequest, ExportsClient } from "../api/exports.client";
 
 @Injectable({ providedIn: "root" })
 export class ExportsStore {
@@ -11,6 +11,7 @@ export class ExportsStore {
   readonly endpointCount = signal(12);
   readonly operations = signal<readonly ExportOperation[]>([]);
   readonly existingFiles = signal<readonly ExportExistingFile[]>([]);
+  readonly combinedExport = signal<CombinedExportStatus | undefined>(undefined);
   readonly overwriteConfirmed = signal(false);
   readonly outsideWorkspaceConfirmed = signal(false);
   readonly capabilities = computed<readonly ExportCapabilities[]>(() => this.client.capabilities(this.endpointCount()));
@@ -31,9 +32,10 @@ export class ExportsStore {
   setEndpointCount(count: number): void { this.endpointCount.set(count); }
   setOperations(operations: readonly ExportOperation[]): void { this.operations.set(operations); this.endpointCount.set(operations.length); this.result.set(null); }
   setExistingFiles(files: readonly ExportExistingFile[]): void { this.existingFiles.set(files); this.overwriteConfirmed.set(false); this.result.set(null); }
+  setCombinedExport(status: CombinedExportStatus | undefined): void { this.combinedExport.set(status); this.result.set(null); }
   async generate(): Promise<void> {
     this.error.set(null);
     try { this.result.set(await this.client.generate(this.request())); } catch (error) { this.error.set((error as Error).message); }
   }
-  private request(): ExportRequest { return { formats: this.formats(), outputDirectory: this.outputDirectory(), workspaceRoot: this.workspaceRoot(), endpointCount: this.endpointCount(), operations: this.operations(), existingFiles: this.existingFiles(), overwriteConfirmed: this.overwriteConfirmed(), outsideWorkspaceConfirmed: this.outsideWorkspaceConfirmed() }; }
+  private request(): ExportRequest { return { formats: this.formats(), outputDirectory: this.outputDirectory(), workspaceRoot: this.workspaceRoot(), endpointCount: this.endpointCount(), operations: this.operations(), existingFiles: this.existingFiles(), combinedExport: this.combinedExport(), overwriteConfirmed: this.overwriteConfirmed(), outsideWorkspaceConfirmed: this.outsideWorkspaceConfirmed() }; }
 }
