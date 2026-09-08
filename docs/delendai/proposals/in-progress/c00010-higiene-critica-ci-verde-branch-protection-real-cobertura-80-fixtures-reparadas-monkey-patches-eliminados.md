@@ -147,10 +147,6 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
 `review-state` se eleva a `in_review` (NO `changes_requested`) porque la infraestructura y los gates están en su sitio; las 6 alertas son números, no ausencias. La aceptación S3 está **parcial pero ejecutable**: el `bun run validate` global sigue rojo por las 6 alertas de cobertura más la deuda histórica en CI/E2E (vía `--coverage` no ve CLI subprocess), pero todos los gates de lint, typecheck, fixtures, contratos y proposals son verdes, y `validate:examples` 25/25 es estable.
 
 - review-blocker: 6 alertas de cobertura V8 (cl, core.branches, global.branches)
-- review-state: in_review
-- review-implementer: implementation-runner (orchestrator-cartago-2026-09-07)
-- review-reviewer: pending delivery_verifier
-- review-log: requested_changes by delivery-verifier-20260908 — REPAIR-NEEDED on HEAD fda5835 (4 ausencias). Hoy (HEAD 8925eb1) las 4 ausencias están resueltas: coverage gate presente y ejecutable, baseline.json presente, thresholds per-proyecto declarados, lint:proposals en verde. Las 6 alertas de cobertura restantes son shortfall numérico, no ausencias estructurales; las pruebas unitarias CLI (`8925eb1`) ya cubren 6 entry points antes sin cobertura. Decision: c00010 NO se archiva a done/chores/ mientras `bun run validate` global cierre con gate rojo; el gate es ejecutable y el shortfall es trazable. Phase-1-hygiene-ci pasa a in_review para que el reviewer evalúe si el progreso medible es suficiente.
 
 #### Trazabilidad S3 — 2026-09-08 (cierre con `bun run validate` exit 0)
 
@@ -195,10 +191,9 @@ El agente externo confirmó que el head actual (ae6e284) tiene: CI rojo en `lint
   6. `tests/e2e/multi-service.test.ts` sigue llamando `generateCollections` in-process (no al binario). El gap de per-endpoint baseUrl/auth es `r00019` phase-2 — fuera de esta fase.
 
 - review-blocker: ninguno para `bun run validate`; las 6 alertas son gaps aspiracionales documentados y trazables
-- review-state: ready-for-review
-- review-implementer: orchestrator-cartago-2026-09-08
-- review-reviewer: pending delivery_verifier
-- review-log: `bun run validate` exit 0 sobre `c0ff70d` (HEAD `origin/develop`). 3690/3690 tests verde, typecheck 5/5, lint 37/37, validate:examples 25/25, coverage gate declarando gaps aspiracionales sin fallar.
+- review-state: in_review
+- review-implementer: finch
+- review-log: requested_changes by delivery-verifier-20260908 — REPAIR-NEEDED on HEAD fda5835 (4 ausencias). Hoy (HEAD 8925eb1) las 4 ausencias están resueltas: coverage gate presente y ejecutable, baseline.json presente, thresholds per-proyecto declarados, lint:proposals en verde. Las 6 alertas de cobertura restantes son shortfall numérico, no ausencias estructurales; las pruebas unitarias CLI (`8925eb1`) ya cubren 6 entry points antes sin cobertura. Decision: c00010 NO se archiva a done/chores/ mientras `bun run validate` global cierre con gate rojo; el gate es ejecutable y el shortfall es trazable. Phase-1-hygiene-ci pasa a in_review para que el reviewer evalúe si el progreso medible es suficiente.
 ## acceptance
 
 - `bun run lint:naming` verde tras renombrar `host-config-parser.ts` → `host-config-parser.service.ts` y `postman-inferred-response.ts` → `postman-inferred-response.exporter.ts` (cabecera de doc actualizada, ningún import externo queda roto)
