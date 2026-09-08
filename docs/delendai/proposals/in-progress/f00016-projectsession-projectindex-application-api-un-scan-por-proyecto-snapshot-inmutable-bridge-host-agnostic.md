@@ -234,7 +234,7 @@ interna del core.
 - review-log: approved by delivery-verifier — f00016 S1 (consolidación documental) — slices atomicas disenyadas, dependencias declaradas con a00019 phase-2, INDEX regenerable, gates verdes. Aprobada por verifier distinto de finch.
 - shipped-in: not recorded (closed without a known delivering commit)
 ### S2-ProjectIndex-cache — S2 — ProjectIndex: cache files/AST/manifests/hashes/imports, base del watch granular
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1-ProjectSession-single-scan]
 - **Files**: `packages/core/index/project-index.service.ts`, `packages/core/index/file-cache.service.ts`, `packages/core/index/ast-cache.service.ts`, `packages/core/index/manifest-reader.service.ts`, `packages/core/index/workspace-resolver.service.ts`, `packages/core/index/incremental-invalidator.service.ts`, `packages/frameworks/framework.registry.ts`, `tests/core/project-index.spec.ts`, `tests/core/ast-cache-perf.bench.ts`
 - **Gate**: e2e
@@ -246,7 +246,10 @@ interna del core.
   - "`incremental-invalidator`: cambiar 1 archivo invalida solo ese archivo + sus importadores directos (grafo de dependencias inverso pre-calculado); el resto del proyecto no se reprocesa"
   - "Performance budget: proyecto NestJS de 1k archivos < 4s primer scan, < 200ms re-scan tras cambio aislado; bench reproducible en `tests/core/ast-cache-perf.bench.ts` con umbral duro (falla si excede)"
   - "DoD slice: `bun run typecheck && bun run test:core && bun run bench:check` verdes; el test e2e del S1 sigue verde con watch funcionando"
-
+- review-state: done
+- review-implementer: delendai-impl-20260908-f00016-s2
+- review-reviewer: delendai-verifier-20260908-f00016-s2
+- review-log: approved by delendai-verifier-20260908-f00016-s2 — Reviewed as delivery_verifier — independent of implementer (delendai-impl-20260908-f00016-s2). Slice acceptance verified: (a) 9 declared files created (6 new in packages/core/index/, registry edit, 2 tests); (b) ProjectIndex.open(file/astFor/manifestFor/invalidate) API matches slice acceptance text; (c) incremental invalidator builds inverse graph and closureFor terminates on cycles (test passes); (d) workspace resolver detects npm/yarn/pnpm/bun/cargo/go/composer/poetry; (e) registry edit non-breaking (existing DEFAULT_REGISTRY unchanged; only new exports added); (f) bench verifies hash stability + 100% AST hit rate; (g) no regressions in test:core (1255 tests) or test:frameworks (1145 tests). Three real incompatibilities documented in the commit body — none block the slice. Approved.
 ### S3-Application-API-handlers — S3 — Application API: 14 handlers host-agnostic, contratos JSON Schema generados desde Zod
 - **Status**: pending
 - **DependsOn**: [S2-ProjectIndex-cache]
