@@ -101,19 +101,6 @@ async function openTimed(root: string): Promise<{ index: ProjectIndex; ms: numbe
 }
 
 /**
- * Returns the number of TS files in the snapshot. The bench
- * receives `files()` output as a parameter so the second pass does
- * not re-call `index.files()` (which would be O(n)).
- */
-function tsFilesIn(files: ReadonlyArray<IIndexedFile>): number {
-  let count = 0;
-  for (const file of files) {
-    if (file.language === "typescript") count++;
-  }
-  return count;
-}
-
-/**
  * Computes a hit/miss rate for the AST cache by counting how many
  * `ensureAst()` calls return immediately vs. require parsing. The
  * bench does not patch the cache to count internally — it inspects
