@@ -4,6 +4,7 @@
     "lib": ["ES2022", "DOM"],
     "rootDir": ".",
     "outDir": "./dist/app/tsc",
+    "noEmit": false,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
     "types": ["node"],

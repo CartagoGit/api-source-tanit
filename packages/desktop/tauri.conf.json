@@ -4,7 +4,7 @@
   "identifier": "dev.cartago.tanit",
   "version": "0.1.0",
   "build": {
-    "frontendDist": "./dist"
+    "frontendDist": "../../packages/app/dist"
   },
   "app": {
     "windows": [],
