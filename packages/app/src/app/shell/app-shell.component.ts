@@ -14,7 +14,7 @@ import { CommandPaletteComponent } from "./command-palette.component";
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.dark]="theme() === 'dark'">
-      <tanit-sidebar (theme)="toggleTheme()" (select)="activeSection.set($event)" />
+      <tanit-sidebar [activeId]="activeSection()" (theme)="toggleTheme()" (select)="activeSection.set($event)" />
       <main class="content reveal">
         <header>
           <div><span class="eyebrow">{{ project.projectName() }}</span><h1>{{ i18n.translate('home.title') }}</h1></div>
@@ -53,7 +53,15 @@ export class AppComponent {
 
   chooseProject(): void { this.project.open("example-project"); }
 
-  runCommand(command: string): void { if (command === "theme") this.toggleTheme(); if (command === "open") this.chooseProject(); }
+  runCommand(command: string): void {
+    if (command === "theme") this.toggleTheme();
+    if (command === "open" || command === "recent") this.chooseProject();
+    if (command === "settings") this.activeSection.set("settings");
+    if (command === "search") this.activeSection.set("endpoints");
+    if (command === "export") this.activeSection.set("exports");
+    if (command === "rescan") this.activeSection.set("overview");
+    if (command === "help") this.activeSection.set("diagnostics");
+  }
 
   sectionLabel(): string { return this.i18n.translate(`nav.${this.activeSection()}`); }
 

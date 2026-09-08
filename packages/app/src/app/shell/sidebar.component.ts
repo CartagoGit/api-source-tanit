@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, input, output } from "@angular/core";
 
 import { I18nService } from "../core/i18n/i18n.service";
 
@@ -19,7 +19,7 @@ interface NavigationItem {
       </div>
       <nav>
         @for (item of items; track item.id) {
-          <button type="button" [class.active]="activeId === item.id" (click)="select.emit(item.id)">
+          <button type="button" [class.active]="activeId() === item.id" (click)="select.emit(item.id)">
             <span aria-hidden="true">{{ iconFor(item.id) }}</span>
             {{ i18n.translate(item.labelKey) }}
           </button>
@@ -58,7 +58,7 @@ export class SidebarComponent {
     { id: "diagnostics", labelKey: "nav.diagnostics" },
     { id: "settings", labelKey: "nav.settings" },
   ];
-  activeId = "overview";
+  readonly activeId = input("overview");
   themeLabel = this.i18n.translate("theme.toggle");
 
   iconFor(id: string): string {

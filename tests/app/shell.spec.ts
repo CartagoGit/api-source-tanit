@@ -44,4 +44,17 @@ describe("Angular shell foundation", () => {
     expect(fuzzyMatch("xyz", "Open project")).toBe(false);
     expect(fuzzyMatch("", "anything")).toBe(true);
   });
+
+  it("keeps the shell navigation destinations explicit", () => {
+    expect(new CommandStore().commands().map(({ id }) => id)).toEqual([
+      "open",
+      "rescan",
+      "search",
+      "export",
+      "settings",
+      "help",
+      "theme",
+      "recent",
+    ]);
+  });
 });
