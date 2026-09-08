@@ -19,7 +19,7 @@ export interface IStateDatabaseConnection {
 export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection {
   mkdirSync(dirname(path), { recursive: true });
   const database = new Database(path, { create: true, strict: true });
-  database.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = ${STATE_DB_BUSY_TIMEOUT_MS};`);
+  database.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = ${STATE_DB_BUSY_TIMEOUT_MS};`); // lint:sast ignore — timeout es una constante numérica interna.
   const version = migrateStateDatabase(database);
   if (version !== STATE_DB_SCHEMA_VERSION) {
     database.close();

@@ -51,7 +51,7 @@ export const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
     version: 1,
     up: (database) => database.exec(SCHEMA_SQL),
     down: (database) => {
-      for (const table of [...STATE_DB_TABLES].reverse()) database.exec(`DROP TABLE IF EXISTS ${table};`);
+      for (const table of [...STATE_DB_TABLES].reverse()) database.exec(`DROP TABLE IF EXISTS ${table};`); // lint:sast ignore — table procede exclusivamente de STATE_DB_TABLES.
     },
   },
   {
@@ -70,7 +70,7 @@ function readVersion(database: IStateMigrationDatabase): number {
 }
 
 function setVersion(database: IStateMigrationDatabase, version: number): void {
-  database.exec(`PRAGMA user_version = ${version}`);
+  database.exec(`PRAGMA user_version = ${version}`); // lint:sast ignore — version es numérica y procede de migraciones internas.
 }
 
 function validateSchema(database: IStateMigrationDatabase): void {

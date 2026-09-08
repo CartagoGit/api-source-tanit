@@ -235,6 +235,7 @@ quieras versionar la colección para revisarla en los PRs.
 | `history` | Lista las generaciones previas guardadas en `~/.tanit/history.jsonl` con `--limit N`, filtro por `--project`, salida `--json` y `--clear`. |
 | `sync` | Reutiliza la pipeline de generación para sincronizar el estado; con `--dry-run` inspecciona sin escribir archivos. |
 | `serve` | Inicia el host local para servir la interfaz y sus operaciones de aplicación. |
+| `scan` | Escanea el proyecto y, con `--shadow`, persiste opcionalmente un snapshot de estado sin cambiar la autoridad de lectura. |
 
 ### `history` — ver qué se ha generado antes
 
@@ -249,6 +250,12 @@ Para sincronizar usando la misma pipeline de generación:
 ```sh
 apisrc sync --project-root .
 apisrc sync --project-root . --dry-run
+```
+
+Para inspeccionar rutas y escribir el estado durable en modo shadow:
+
+```sh
+apisrc scan --project-root . --shadow
 ```
 
 Para iniciar el host local de la interfaz y sus operaciones:

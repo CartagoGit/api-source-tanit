@@ -45,7 +45,7 @@ describe("state database migrations", () => {
 
   it("rejects an unknown future version", () => {
     const database = new Database(":memory:");
-    database.exec(`PRAGMA user_version = ${STATE_DB_SCHEMA_VERSION + 1}`);
+    database.exec(`PRAGMA user_version = ${STATE_DB_SCHEMA_VERSION + 1}`); // lint:sast ignore — version derivada de una constante numérica.
     expect(() => migrateStateDatabase(database)).toThrow(StateDatabaseMigrationError);
     database.close();
   });
@@ -54,7 +54,7 @@ describe("state database migrations", () => {
     const database = new Database(":memory:");
     database.exec("PRAGMA user_version = 2; CREATE TABLE projects (broken TEXT)");
     for (const table of ["snapshots", "services", "operations", "servers", "auth_profiles", "schemas", "diagnostics", "provenance", "source_files"]) {
-      database.exec(`CREATE TABLE ${table} (placeholder TEXT)`);
+      database.exec(`CREATE TABLE ${table} (placeholder TEXT)`); // lint:sast ignore — table es una lista literal cerrada del test.
     }
     expect(() => migrateStateDatabase(database)).toThrow(StateDatabaseMigrationError);
     database.close();
