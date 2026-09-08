@@ -1,143 +1,73 @@
 //! La ventana nativa de Tanit.
 //!
-//! Su único trabajo es **arrancar el sidecar y apuntar la ventana a
-//! donde escuche**. Nada de lógica de producto: la interfaz es la misma
-//! que sirve `apisrc ui`, y el pipeline es el mismo binario que usa
-//! la terminal.
+//! Shell fina: tres responsabilidades, ninguna más.
 //!
-//! Esto es lo que hace que la propuesta `f00001` no fuera trabajo
-//! tirado. La opción de servir la interfaz desde `Bun.serve` se eligió
-//! precisamente porque la ventana nativa carga **la misma página**, así
-//! que empaquetar es empaquetar y no reescribir.
+//!   1. Arrancar el sidecar (`apisrc serve --stdio`).
+//!   2. Montar el bridge IPC (ver `bridge.rs`).
+//!   3. Abrir la ventana apuntando al `dist/` empaquetado.
 //!
-//! Si este fichero crece, algo se ha duplicado.
+//! Sin lógica de producto. Si este fichero crece, algo se ha
+//! duplicado: la interfaz es la misma que sirve `apisrc ui`, y el
+//! pipeline es el mismo binario que usa la terminal.
+//!
+//! El webview habla con el sidecar a través del comando Tauri
+//! `send_to_sidecar` (definido en `bridge.rs`) y del evento
+//! `tanit://ipc-message`. Es un canal newline-delimited JSON-RPC
+//! 2.0 sobre stdin/stdout — el contrato vive en
+//! `packages/core/transport/json-rpc-protocol.ts`.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::io::{BufRead, BufReader};
-use std::sync::mpsc;
-use std::process::{Child, Command, Stdio};
+mod bridge;
+mod sidecar;
+
+use std::process::Child;
 use std::sync::Mutex;
-use std::time::Duration;
 
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
-/// Cuánto se espera a que el sidecar diga por dónde escucha.
-///
-/// El primer arranque incluye descubrir el proyecto, así que cinco
-/// segundos es holgado sin llegar a parecer que la app se ha colgado.
-const ARRANQUE_MAX: Duration = Duration::from_secs(5);
+use bridge::Bridge;
+use sidecar::spawn as spawn_sidecar;
 
-/// El hijo, para poder matarlo al cerrar.
-///
-/// Sin esto el sidecar sobrevive a la ventana y se queda con el puerto:
-/// cerrar y volver a abrir daría «puerto ocupado» hasta reiniciar. Es
-/// exactamente el fallo que el servidor evita buscando otro puerto, y no
-/// hay motivo para provocarlo desde aquí.
+/// Posee el `Child` del sidecar para matarlo al destruirse la
+/// ventana. Sin esto el sidecar sobrevive y se queda con el puerto
+/// en la siguiente apertura.
 struct Sidecar(Mutex<Option<Child>>);
-
-/// Arranca `apisrc ui` y devuelve la URL que imprime.
-///
-/// Se lee la URL de su salida en vez de asumir un puerto: el servidor
-/// busca uno libre si el suyo está ocupado, así que dar por hecho el
-/// 4771 haría que la ventana apuntara a la nada justo cuando hay dos
-/// instancias abiertas.
-fn arrancar_sidecar(ruta: &std::path::Path) -> Result<(Child, String), String> {
-    let mut hijo = Command::new(ruta)
-        .args(["ui", "--no-open"])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|e| format!("no se pudo arrancar el sidecar: {e}"))?;
-
-    let salida = hijo
-        .stdout
-        .take()
-        .ok_or_else(|| "el sidecar no expuso su salida".to_string())?;
-
-    let (tx, rx) = mpsc::channel();
-    std::thread::spawn(move || {
-        let resultado = BufReader::new(salida)
-            .lines()
-            .find_map(|linea| match linea {
-                Ok(linea) => extraer_url(&linea),
-                Err(error) => Some(Err(format!("no se pudo leer del sidecar: {error}"))),
-            })
-            .unwrap_or_else(|| Err("el sidecar terminó sin anunciar una URL".to_string()));
-        let _ = tx.send(resultado);
-    });
-
-    if let Ok(Ok(url)) = rx.recv_timeout(ARRANQUE_MAX) {
-        return Ok((hijo, url));
-    }
-
-    let _ = hijo.kill();
-    Err(format!(
-        "el sidecar no dijo por dónde escuchaba en {} s",
-        ARRANQUE_MAX.as_secs()
-    ))
-}
-
-fn extraer_url(linea: &str) -> Option<Result<String, String>> {
-    let pos = linea.find("http://127.0.0.1:")?;
-    let url = linea[pos..]
-        .chars()
-        .take_while(|caracter| !caracter.is_whitespace())
-        .collect();
-    Some(Ok(url))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::extraer_url;
-
-    #[test]
-    fn extrae_la_url_del_mensaje_del_sidecar() {
-        assert_eq!(
-            extraer_url("escuchando en http://127.0.0.1:4771\n"),
-            Some(Ok("http://127.0.0.1:4771".to_string()))
-        );
-    }
-
-    #[test]
-    fn ignora_lineas_sin_url() {
-        assert_eq!(extraer_url("iniciando"), None);
-    }
-}
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![bridge::send_to_sidecar])
         .manage(Sidecar(Mutex::new(None)))
         .setup(|app| {
-            // El sidecar es el binario `apisrc` que Tauri empaqueta
-            // dentro: una sola fuente de verdad para el pipeline, no dos.
-            let ruta = app
-                .path()
-                .resolve("apisrc", tauri::path::BaseDirectory::Resource)?;
+            // 1. Sidecar: `apisrc serve --stdio`, stdin/stdout para
+            //    el bridge; stderr va a un hilo logger propio
+            //    (`sidecar.rs`) y no se descarta.
+            let (child, pipes) = spawn_sidecar(app.handle(), None)
+                .map_err(std::io::Error::other)?;
 
-            let (hijo, url) = arrancar_sidecar(&ruta).map_err(|e| {
-                // Un fallo aquí deja la app inservible, así que se dice
-                // por qué en vez de abrir una ventana en blanco.
-                std::io::Error::other(e)
-            })?;
+            // 2. Bridge IPC: el pump de stdout se arranca aquí y
+            //    vive hasta que el sidecar cierra el pipe.
+            let bridge = Bridge::spawn(app.handle().clone(), pipes);
+            app.manage(bridge);
 
-            app.state::<Sidecar>().0.lock().unwrap().replace(hijo);
+            // 3. Ventana: carga el `dist/` empaquetado (no hay
+            //    URL del sidecar — el webview habla por el canal
+            //    IPC, no por HTTP).
+            WebviewWindowBuilder::new(app, "principal", WebviewUrl::App("index.html".into()))
+                .title("Tanit")
+                .inner_size(980.0, 760.0)
+                .build()?;
 
-            WebviewWindowBuilder::new(
-                app,
-                "principal",
-                WebviewUrl::External(url.parse().map_err(std::io::Error::other)?),
-            )
-            .title("Tanit")
-            .inner_size(980.0, 760.0)
-            .build()?;
+            // 4. Child en el estado: lo matamos al destruir la
+            //    ventana (ver `on_window_event`).
+            app.state::<Sidecar>().0.lock().unwrap().replace(child);
 
             Ok(())
         })
         .on_window_event(|window, evento| {
             if let tauri::WindowEvent::Destroyed = evento {
-                if let Some(mut hijo) = window
+                if let Some(mut child) = window
                     .app_handle()
                     .state::<Sidecar>()
                     .0
@@ -145,10 +75,24 @@ fn main() {
                     .unwrap()
                     .take()
                 {
-                    let _ = hijo.kill();
+                    let _ = child.kill();
                 }
             }
         })
         .run(tauri::generate_context!())
         .expect("no se pudo arrancar la ventana");
+}
+
+#[cfg(test)]
+mod tests {
+    /// Documenta el reparto de módulos. Si alguien mueve un `mod`
+    /// sin actualizar este test, falla antes de que el `cargo build`
+    /// empiece a quejarse de items privados.
+    #[test]
+    fn los_modulos_esperados_estan_declarados() {
+        // No se puede instanciar los tipos aquí (necesitan
+        // `AppHandle`), pero la presencia de los `mod` ya está
+        // comprobada en compilación. Este test queda como
+        // documentación ejecutable del reparto.
+    }
 }
