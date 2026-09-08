@@ -39,7 +39,12 @@ function fingerprint(value: unknown): string {
   });
 }
 
-export function diffSnapshots(left: ICanonicalSnapshot, right: ICanonicalSnapshot): IHistoryDiff {
+export function diffSnapshots(
+  left: ICanonicalSnapshot,
+  right: ICanonicalSnapshot,
+  leftConfiguration?: Readonly<Record<string, unknown>>,
+  rightConfiguration?: Readonly<Record<string, unknown>>,
+): IHistoryDiff {
   const leftServices = new Map(left.services.map((service) => [service.serviceId, service]));
   const rightServices = new Map(right.services.map((service) => [service.serviceId, service]));
   const services = new Set<string>();
@@ -84,6 +89,7 @@ export function diffSnapshots(left: ICanonicalSnapshot, right: ICanonicalSnapsho
     serviceChanges: serviceChanges.sort((left, right) => left.key.localeCompare(right.key)),
     operationChanges: operationChanges.sort((left, right) => left.key.localeCompare(right.key)),
     schemaChanges: schemaChangeDetails.sort((left, right) => left.key.localeCompare(right.key)),
+    configuration: { before: leftConfiguration ?? {}, after: rightConfiguration ?? {} },
   };
 }
 
@@ -138,7 +144,7 @@ export class HistoryRecorderService {
     const left = this.get(projectRoot, leftId);
     const right = this.get(projectRoot, rightId);
     if (!left || !right) throw new Error("Both history records are required for comparison");
-    return diffSnapshots(left.snapshot, right.snapshot);
+    return diffSnapshots(left.snapshot, right.snapshot, left.configuration, right.configuration);
   }
 
   serialize(record: IHistoryRecord): string {

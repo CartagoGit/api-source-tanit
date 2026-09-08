@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
 import { ServicesClient, type IServiceDetail } from "../../core/api/services.client";
 import { ProjectStore } from "../../core/state/project.store";
 
@@ -23,8 +23,12 @@ export class ServiceDetailComponent {
   private readonly project = inject(ProjectStore);
   private readonly client = inject(ServicesClient);
 
-  async load(): Promise<void> {
+  constructor() {
+    effect(() => { void this.load(this.serviceId()); });
+  }
+
+  async load(serviceId = this.serviceId()): Promise<void> {
     const root = this.project.projectRoot();
-    if (root) this.service.set(await this.client.detail(root, this.serviceId()));
+    if (root) this.service.set(await this.client.detail(root, serviceId));
   }
 }

@@ -130,4 +130,15 @@ describe("Export Center", () => {
     expect(preview.diagnostics.at(-1)?.code).toBe("COMBINED_EXPORT_PARTIAL");
     expect(preview.diagnostics.at(-1)?.operationIds).toContain("catalog.list");
   });
+
+  it("renders operation references in the preview", () => {
+    TestBed.resetTestingModule();
+    const fixture = TestBed.configureTestingModule({ imports: [ExportPreviewComponent] }).createComponent(ExportPreviewComponent);
+    fixture.componentRef.setInput("preview", {
+      files: [], diagnostics: [], canGenerate: true, requiresOverwriteConfirmation: false, requiresOutsideWorkspaceConfirmation: false,
+      combinedExport: { partial: true, explanation: "Partial", services: [], operationRefs: { "catalog.list": { serverRef: "server-catalog", authRef: "auth-catalog" } } },
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain("catalog.list: server server-catalog · auth auth-catalog");
+  });
 });

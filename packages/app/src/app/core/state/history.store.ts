@@ -10,6 +10,7 @@ export class HistoryStore {
   readonly error = signal<string | null>(null);
   readonly lastRestore = signal<IHistoryRestoreResult | null>(null);
   readonly lastExport = signal<unknown>(null);
+  readonly compareConfiguration = signal<IHistoryConfiguration>({});
 
   constructor(private readonly client: HistoryClient) {}
 
@@ -21,7 +22,13 @@ export class HistoryStore {
 
   async compare(projectRoot: string, leftId: string, rightId: string, configuration?: IHistoryConfiguration): Promise<void> {
     this.error.set(null);
+    this.compareConfiguration.set(configuration ?? {});
     try { this.diff.set(await this.client.compare(projectRoot, leftId, rightId, configuration)); } catch (error) { this.error.set(error instanceof Error ? error.message : String(error)); }
+  }
+
+  async compareConfig(projectRoot: string, leftId: string, rightId: string): Promise<void> {
+    this.error.set(null);
+    try { this.compareConfiguration.set(await this.client.compareConfig(projectRoot, leftId, rightId) ?? {}); } catch (error) { this.error.set(error instanceof Error ? error.message : String(error)); }
   }
 
   async reExport(projectRoot: string, historyId: string, configuration?: IHistoryConfiguration): Promise<void> {

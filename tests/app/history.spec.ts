@@ -43,6 +43,16 @@ describe("canonical history", () => {
     expect(entry.snapshot.combinedExport?.operationRefs["api/get"]?.serverRef).toBe("server-api");
   });
 
+  it("diffs the recorded configuration before and after", () => {
+    const recorder = new HistoryRecorderService();
+    const left = recorder.record("/workspace", snapshot, { configuration: { formats: ["postman"], outputDirectory: "/workspace/one" } });
+    const right = recorder.record("/workspace", { ...snapshot, capturedAt: "2026-09-08T00:01:00.000Z" }, { configuration: { formats: ["openapi"], outputDirectory: "/workspace/two" } });
+    expect(recorder.compare("/workspace", left.id, right.id).configuration).toEqual({
+      before: { formats: ["postman"], outputDirectory: "/workspace/one" },
+      after: { formats: ["openapi"], outputDirectory: "/workspace/two" },
+    });
+  });
+
   it("keeps divergent services scoped in detailed diffs", () => {
     const left: ICanonicalSnapshot = {
       ...snapshot,

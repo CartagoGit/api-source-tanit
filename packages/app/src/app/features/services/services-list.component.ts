@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
 import { ServicesClient, type IServiceDetail } from "../../core/api/services.client";
 import { ProjectStore } from "../../core/state/project.store";
+import { ServiceDetailComponent } from "./service-detail.component";
 
 @Component({
   selector: "tanit-services-list",
+  standalone: true,
+  imports: [ServiceDetailComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="services-list">
@@ -13,7 +16,7 @@ import { ProjectStore } from "../../core/state/project.store";
           <strong>{{ service.serviceId }}</strong><span>{{ service.framework }}</span>
           <small>{{ service.operationCount }} operations · {{ service.transports.join(", ") }} · {{ service.baseUrl || "No base URL" }} · auth {{ service.auth ? "configured" : "none" }}</small>
         </button>
-      } @empty { <p>No services discovered.</p> }
+      } @empty { <p>No services discovered.</p> }@if (selected(); as serviceId) { <tanit-service-detail [serviceId]="serviceId" /> }
     </section>
   `,
 })
