@@ -17,7 +17,7 @@ export class PushClient {
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
       try {
-        return await this.bridge.request("push", { projectRoot: request.projectRoot });
+        return await this.bridge.request("push", { projectRoot: request.projectRoot, workspace: request.workspace, dryRun: request.dryRun });
       } catch (error) {
         if (!isRateLimit(error) || attempt === attempts - 1) throw new Error(redactSecret(error));
         await waitForRetry(attempt, signal);
