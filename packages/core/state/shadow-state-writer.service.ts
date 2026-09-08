@@ -16,6 +16,7 @@ export interface IShadowProjectRepository {
   ensure(projectId: ProjectId, rootPath: string, now: string): void;
 }
 
+/** Transaction boundary used to persist a complete shadow snapshot atomically. */
 export interface IShadowTransactionService {
   write(snapshot: IProjectSnapshot): IProjectSnapshot;
 }

@@ -2,6 +2,7 @@ import type { ICompleteProjectSnapshot, IProjectSnapshot } from "../../contracts
 import type { SnapshotId } from "../../contracts/interfaces/core/stable-ids.interface.js";
 import { SqliteSnapshotRepository } from "./sqlite/sqlite-snapshot.repository.js";
 
+/** Database operations needed to bracket a snapshot write in one transaction. */
 export interface ITransactionDatabase { exec(sql: string): void; }
 
 /** Escribe snapshots completos dentro de una transacción SQLite. */

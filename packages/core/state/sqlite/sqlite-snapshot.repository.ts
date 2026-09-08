@@ -6,6 +6,7 @@ import type {
 import type { ProjectId, SnapshotId } from "../../../contracts/interfaces/core/stable-ids.interface.js";
 import { canonicalSnapshotDigest, serializeCanonicalSnapshot } from "../canonical-snapshot.serializer.js";
 
+/** Minimal query and prepared-statement surface used by snapshot persistence. */
 export interface IQueryDatabase {
   query(sql: string): { get(...parameters: unknown[]): unknown; all(...parameters: unknown[]): unknown[] };
   prepare(sql: string): { run(...parameters: unknown[]): unknown };

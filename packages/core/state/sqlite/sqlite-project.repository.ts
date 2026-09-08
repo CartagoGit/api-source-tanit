@@ -2,6 +2,7 @@ import type { ICompleteProjectSnapshot, IProjectSnapshot } from "../../../contra
 import type { ProjectId, SnapshotId } from "../../../contracts/interfaces/core/stable-ids.interface.js";
 
 interface IProjectRow { project_id: string; root_path: string; active_snapshot_id: string | null; revision: number; }
+/** Minimal database surface required by the project state repository. */
 export interface IProjectDatabase { query(sql: string): { get(...parameters: unknown[]): unknown }; prepare(sql: string): { run(...parameters: unknown[]): unknown }; }
 
 /** Repositorio SQLite para proyectos, revisiones y snapshot activo. */

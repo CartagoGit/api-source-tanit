@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 443 símbolos en 130 módulos.
+> 447 símbolos en 130 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -4680,6 +4680,12 @@ export interface IShadowWriteDiagnostic
 export interface IShadowProjectRepository
 ```
 
+#### `IShadowTransactionService`
+
+```ts
+export interface IShadowTransactionService
+```
+
 #### `ShadowStateWriterService`
 
 ```ts
@@ -4701,6 +4707,12 @@ export class SnapshotActivationService
 ```
 
 ### `packages/core/state/snapshot-transaction.service.ts`
+
+#### `ITransactionDatabase`
+
+```ts
+export interface ITransactionDatabase
+```
 
 #### `SnapshotTransactionService`
 
@@ -4756,6 +4768,12 @@ export function openStateDatabase(path = resolveStateDatabasePath()): IStateData
 
 ### `packages/core/state/sqlite/sqlite-project.repository.ts`
 
+#### `IProjectDatabase`
+
+```ts
+export interface IProjectDatabase
+```
+
 #### `SqliteProjectRepository`
 
 ```ts
@@ -4763,6 +4781,12 @@ export class SqliteProjectRepository
 ```
 
 ### `packages/core/state/sqlite/sqlite-snapshot.repository.ts`
+
+#### `IQueryDatabase`
+
+```ts
+export interface IQueryDatabase
+```
 
 #### `SqliteSnapshotRepository`
 
