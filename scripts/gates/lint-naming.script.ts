@@ -84,6 +84,7 @@ const RULES: readonly INamingRule[] = [
     path: "packages/core/state/",
     what: "estado persistible y serialización canónica",
     suffixes: [".service.ts", ".serializer.ts", ".adapter.ts", ".helper.ts"],
+    exact: ["migrations.ts"],
   },
   {
     path: "packages/core/",

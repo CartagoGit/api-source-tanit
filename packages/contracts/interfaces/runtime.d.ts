@@ -201,6 +201,39 @@ declare module "node:fs" {
   }
 }
 
+// --- bun:sqlite ---------------------------------------------------------
+// The product is typechecked without bun-types, but the SQLite adapter is
+// intentionally Bun-only infrastructure.
+declare module "bun:sqlite" {
+  export interface Statement<T = Record<string, unknown>> {
+    get(...params: unknown[]): T | undefined;
+    all(...params: unknown[]): T[];
+    run(...params: unknown[]): { changes: number; lastInsertRowid: number };
+  }
+
+  export class Database {
+    constructor(filename: string, options?: { create?: boolean; strict?: boolean });
+    exec(sql: string): void;
+    query<T = Record<string, unknown>>(sql: string): Statement<T>;
+    transaction<T extends (...args: never[]) => unknown>(callback: T): T;
+    close(): void;
+  }
+}
+
+declare module "bun:test" {
+  export function describe(name: string, callback: () => void): void;
+  export function it(name: string, callback: () => void): void;
+  export function expect<T>(value: T): {
+    toBe(expected: unknown): void;
+    toEqual(expected: unknown): void;
+    toContain(expected: unknown): void;
+    toThrow(expected?: unknown): void;
+  };
+  export namespace expect {
+    function arrayContaining(values: unknown[]): unknown;
+  }
+}
+
 // --- node:child_process --------------------------------------------------
 declare module "node:child_process" {
   /** Output stream of a child, in what this repo uses of it. */
