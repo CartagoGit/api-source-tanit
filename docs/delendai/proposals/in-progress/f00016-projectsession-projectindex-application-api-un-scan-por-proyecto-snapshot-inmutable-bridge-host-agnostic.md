@@ -198,10 +198,9 @@ packages/core/transport/                         # S4 (core)
   bridge-error.ts
   json-rpc-protocol.ts
 
-packages/desktop/src-tauri/src/                  # S4 (rust)
-  main.rs                                         # < 150 LOC
-  bridge.rs                                       # IPC contract only
-  sidecar.rs                                      # spawn + stderr log
+packages/desktop/                                  # S4 (Rust/Tauri)
+  src/main.rs                                     # native shell + sidecar spawn
+  Cargo.toml                                      # desktop package manifest
 ```
 
 Los CLI commands que ya están migrados (`inspect`, `generate`,
@@ -269,14 +268,14 @@ interna del core.
 ### S4-bridges-stdio-http — S4 — Bridges: stdio RPC (Desktop) + HTTP preservado (browser); Desktop main.rs < 150 LOC
 - **Status**: pending
 - **DependsOn**: [S3-Application-API-handlers]
-- **Files**: `packages/core/transport/stdio-bridge.server.ts`, `packages/core/transport/http-bridge.server.ts`, `packages/core/transport/bridge-error.ts`, `packages/core/transport/json-rpc-protocol.ts`, `packages/cli/commands/serve.script.ts`, `packages/desktop/src-tauri/src/main.rs`, `packages/desktop/src-tauri/src/bridge.rs`, `packages/desktop/src-tauri/src/sidecar.rs`, `packages/desktop/src-tauri/Cargo.toml`, `tests/transport/stdio-bridge.spec.ts`, `tests/transport/http-bridge.spec.ts`
+- **Files**: `packages/core/transport/stdio-bridge.server.ts`, `packages/core/transport/http-bridge.server.ts`, `packages/core/transport/bridge-error.ts`, `packages/core/transport/json-rpc-protocol.ts`, `packages/cli/commands/serve.script.ts`, `packages/cli/cli.script.ts`, `packages/desktop/src/main.rs`, `packages/desktop/src/bridge.rs`, `packages/desktop/src/sidecar.rs`, `packages/desktop/Cargo.toml`, `tests/transport/stdio-bridge.spec.ts`, `tests/transport/http-bridge.spec.ts`
 - **Gate**: e2e
 - acceptance:
   - "`stdio-bridge.server.ts`: protocolo newline-delimited JSON-RPC 2.0 sobre stdin/stdout — Desktop sidecar = `bun run bin/apisrc serve --stdio`; cada request = una línea JSON parseada, cada response = una línea JSON serializada; cancel via método `$/cancelRequest` con el `requestId`"
   - "`http-bridge.server.ts`: preserva la seguridad actual (loopback only, token por ejecución, Origin validation) — ambos bridges importan los mismos handlers de `packages/core/application-api/handlers.ts`; zero duplicación de lógica"
   - "`bin/apisrc serve` acepta `--stdio` o `--http` (default); `--stdio` no requiere token (la IPC ya es local); `--http` mantiene la seguridad existente"
-  - "`packages/desktop/src-tauri/src/main.rs` < 150 LOC: solo bridge + window creation + sidecar spawn (no lógica de producto)"
-  - "`bridge.rs` solo conoce el contrato IPC: spawn child process, conectar stdin/stdout, propagar mensajes al webview vía `tauri::Emitter`; sidecar errors se loggean a archivo rotativo (no se descartan)"
+  - "`packages/desktop/src/main.rs` es la shell nativa: solo bridge + window creation + sidecar spawn (sin lógica de producto)"
+  - "`packages/desktop/src/bridge.rs` solo conoce el contrato IPC: conecta stdin/stdout del sidecar y propaga mensajes al webview vía `tauri::Emitter`; los errores del sidecar se registran y no se descartan"
   - "Tests: `tests/transport/stdio-bridge.spec.ts` cubre happy path + cancelación + handler que lanza + payloads grandes (>1MB); `tests/transport/http-bridge.spec.ts` preserva los tests de seguridad existentes"
   - "DoD slice: `bun run typecheck && bun run test:core && bun run test:desktop && bun run validate:examples` verdes; `cargo check` en el desktop verde"
 ## acceptance
@@ -302,12 +301,8 @@ interna del core.
 - Tests `tests/application-api/handlers.spec.ts` cubren los 14 handlers con al menos 1 caso de éxito + 1 caso de error; dispatcher valida inputs inválidos
 - DoD slice: `bun run typecheck && bun run test:core` verdes; ningún CLI command existente queda roto (los handlers se usan internamente desde los CLI commands que ya están migrados)
 - `stdio-bridge.server.ts`: protocolo newline-delimited JSON-RPC 2.0 sobre stdin/stdout — Desktop sidecar = `bun run bin/apisrc serve --stdio`; cada request = una línea JSON parseada, cada response = una línea JSON serializada; cancel via método `$/cancelRequest` con el `requestId`
-- `http-bridge.server.ts`: preserva la seguridad actual (loopback only, token por ejecución, Origin validation) — ambos bridges importan los mismos handlers de `packages/core/application-api/handlers.ts`; zero duplicación de lógica
-- `bin/apisrc serve` acepta `--stdio` o `--http` (default); `--stdio` no requiere token (la IPC ya es local); `--http` mantiene la seguridad existente
-- `packages/desktop/src-tauri/src/main.rs` < 150 LOC: solo bridge + window creation + sidecar spawn (no lógica de producto)
-- `bridge.rs` solo conoce el contrato IPC: spawn child process, conectar stdin/stdout, propagar mensajes al webview vía `tauri::Emitter`; sidecar errors se loggean a archivo rotativo (no se descartan)
-- Tests: `tests/transport/stdio-bridge.spec.ts` cubre happy path + cancelación + handler que lanza + payloads grandes (>1MB); `tests/transport/http-bridge.spec.ts` preserva los tests de seguridad existentes
-- DoD slice: `bun run typecheck && bun run test:core && bun run test:desktop && bun run validate:examples` verdes; `cargo check` en el desktop verde
+- `packages/desktop/src/main.rs` es la shell nativa: solo bridge + window creation + sidecar spawn (sin lógica de producto)
+- `packages/desktop/src/bridge.rs` solo conoce el contrato IPC: conecta stdin/stdout del sidecar y propaga mensajes al webview vía `tauri::Emitter`; los errores del sidecar se registran y no se descartan
 
 ## Risks
 

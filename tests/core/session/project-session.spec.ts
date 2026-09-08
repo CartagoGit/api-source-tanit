@@ -25,12 +25,13 @@ let fakeProjectRoot: string;
 
 function makeStubOrchestrator(): IDiscoveryOrchestrator {
   return {
-    detectProject: vi.fn().mockResolvedValue({
-      match: null,
-      scanner: null,
-      validation: null,
-    }),
     detectAll: vi.fn().mockResolvedValue([]),
+    detectAllWithDiagnostics: vi.fn().mockResolvedValue({
+      detected: [],
+      diagnostics: [],
+    }),
+    forceFramework: vi.fn().mockResolvedValue(null),
+    supportedFrameworks: vi.fn().mockReturnValue([]),
   };
 }
 
