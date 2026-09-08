@@ -124,4 +124,42 @@ describe("push — runPush", () => {
       else process.env["POSTMAN_API_KEY"] = previousKey;
     }
   });
+
+  test("the user-friendly error carries a next-action when the key is missing", async () => {
+    const previousKey = process.env["POSTMAN_API_KEY"];
+    process.env["POSTMAN_API_KEY"] = "";
+    try {
+      const outcome = await runPush([]);
+      expect(outcome.code).toBe(1);
+      expect(outcome.error?.reason).toMatch(/api.?key/i);
+      // The next-action line is what the human reads; it must say
+      // how to get the key. We pin both the flag and the env var.
+      expect(outcome.error?.nextAction).toContain("--api-key");
+      expect(outcome.error?.nextAction).toContain("POSTMAN_API_KEY");
+    } finally {
+      if (previousKey === undefined) delete process.env["POSTMAN_API_KEY"];
+      else process.env["POSTMAN_API_KEY"] = previousKey;
+    }
+  });
+
+  test("the outcome envelope shape is stable even when the upload fails", async () => {
+    // Push always returns an `IPushOutcome` with `error` populated
+    // on failure; we verify the envelope shape regardless of the
+    // specific failure mode.
+    const previousKey = process.env["POSTMAN_API_KEY"];
+    process.env["POSTMAN_API_KEY"] = "";
+    try {
+      const outcome = await runPush([]);
+      expect(typeof outcome.code).toBe("number");
+      expect(outcome.user).toBeNull();
+      expect(outcome.framework).toBeNull();
+      expect(outcome.requests).toBe(0);
+      expect(outcome.collection).toBeNull();
+      expect(outcome.environments).toEqual([]);
+      expect(outcome.error).not.toBeNull();
+    } finally {
+      if (previousKey === undefined) delete process.env["POSTMAN_API_KEY"];
+      else process.env["POSTMAN_API_KEY"] = previousKey;
+    }
+  });
 });

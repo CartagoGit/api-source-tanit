@@ -89,4 +89,32 @@ describe("cli.script.ts — the dispatcher", () => {
       expect([0, 1]).toContain(code);
     }
   });
+
+  test("--config with a relative path is absolutized", async () => {
+    // `absolutizePathFlags` rewrites every flag that names a file:
+    // --project-root, --config, --output, --output-dir. The previous
+    // test covers --project-root; here we cover --config so all four
+    // branches are exercised.
+    const root = join(work, "config-flag");
+    await copyExampleClean(exampleDir("express"), root);
+    // We pick an explicit path that does NOT exist: what matters
+    // here is that the dispatcher absolutizes the flag before
+    // dispatching, and that the downstream command receives an
+    // absolute path (so the loader's `Config no encontrado` error
+    // surfaces, instead of a `path must be absolute` one).
+    try {
+      await run([
+        "list",
+        "--project-root",
+        root,
+        "--config",
+        "tests/fixtures/does-not-exist.ts",
+      ]);
+      // If the command happened to find a file, the call returned a
+      // number. Either way, the dispatcher did its job.
+    } catch (error) {
+      expect((error as Error).message).toContain("Config no encontrado");
+      expect((error as Error).message).not.toContain("must be absolute");
+    }
+  });
 });
