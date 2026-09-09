@@ -21,23 +21,51 @@
  * against the same types.
  */
 
-import { z } from "zod";
+export {
+  CallerSchema,
+  CloseInputSchema,
+  DryRunInputSchema,
+  EndpointSummarySchema,
+  ExportInputSchema,
+  GetEndpointInputSchema,
+  GetSchemaInputSchema,
+  HistoryInputSchema,
+  ListEndpointsInputSchema,
+  ListProjectsInputSchema,
+  ListServicesInputSchema,
+  OpenProjectInputSchema,
+  ProjectEntrySchema,
+  ProjectRootSchema,
+  SessionIdSchema,
+  ServiceSummarySchema,
+  SettingsInputSchema,
+  SnapshotInputSchema,
+  SnapshotSummarySchema,
+  WatchInputSchema,
+} from "../../contracts/constants/core/application-api.constant.js";
+export type {
+  CancelInput,
+  CloseInput,
+  DryRunInput,
+  ExportInput,
+  GetEndpointInput,
+  GetSchemaInput,
+  HistoryInput,
+  IEndpointSummary,
+  IProjectEntry,
+  IServiceSummary,
+  ISnapshotSummary,
+  ListEndpointsInput,
+  ListProjectsInput,
+  ListServicesInput,
+  OpenProjectInput,
+  SettingsInput,
+  SnapshotInput,
+  WatchInput,
+} from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Common: the identity of a project root (always absolute, never `..`). */
-export const ProjectRootSchema = z
-  .string()
-  .min(1, "projectRoot must not be empty");
-
-/** Common: the id of an open session (whatever `ProjectSession.id` returned). */
-export const SessionIdSchema = z.string().min(1, "sessionId must not be empty");
-
-/**
- * Caller side: where the request originated. Used by handlers that
- * want to format messages differently (`desktop` is verbose, `cli`
- * is terse, `browser` is human-readable). Optional; defaults to
- * `"cli"` when missing.
- */
-export const CallerSchema = z.enum(["desktop", "browser", "cli"]);
+/* Schemas and inferred types are defined in packages/contracts. */
 
 /**
  * `open-project` — opens a session for a project root.
