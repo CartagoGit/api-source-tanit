@@ -1,10 +1,9 @@
 import { Injectable, signal } from "@angular/core";
 import type { HostBridgeClient } from "../api/host-bridge.client";
 
-export interface LiveChange {
-  readonly kind: "added" | "modified" | "removed";
-  readonly path: string;
-}
+import type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
+
+export type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
 
 @Injectable({ providedIn: "root" })
 export class LiveStore {

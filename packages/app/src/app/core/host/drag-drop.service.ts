@@ -1,8 +1,8 @@
 import { Injectable, signal } from "@angular/core";
 
-export interface IDropEvent {
-  readonly path: string;
-}
+import type { IDropEvent } from "../../../../../contracts/interfaces/core/drag-drop.interface";
+
+export type { IDropEvent } from "../../../../../contracts/interfaces/core/drag-drop.interface";
 
 interface TauriEventApi {
   listen(event: string, handler: (event: { payload?: unknown }) => void): Promise<() => void>;

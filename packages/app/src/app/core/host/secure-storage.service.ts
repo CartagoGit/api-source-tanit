@@ -1,11 +1,8 @@
 import { Injectable } from "@angular/core";
 
-export interface SecureStoragePort {
-  save(service: string, value: string): Promise<void>;
-  saveSession(service: string, value: string): void;
-  retrieve(service: string): Promise<string | null>;
-  delete(service: string): Promise<void>;
-}
+import type { SecureStoragePort } from "../../../../../contracts/interfaces/core/secure-storage.interface";
+
+export type { SecureStoragePort } from "../../../../../contracts/interfaces/core/secure-storage.interface";
 
 type TauriStorage = {
   invoke?: (command: string, args?: Record<string, unknown>) => Promise<unknown>;

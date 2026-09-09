@@ -1,9 +1,8 @@
 import { Injectable, signal } from "@angular/core";
 
-export interface IRecentProject {
-  readonly path: string;
-  readonly lastOpened: number;
-}
+import type { IRecentProject } from "../../../../../contracts/interfaces/core/recent-projects.interface";
+
+export type { IRecentProject } from "../../../../../contracts/interfaces/core/recent-projects.interface";
 
 const MAX_RECENTS = 10;
 
