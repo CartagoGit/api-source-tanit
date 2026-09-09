@@ -269,6 +269,7 @@ export function candidatesFromSpecs(
     name: string;
     method: string;
     uri: string;
+    serviceId?: string;
     framework?: string;
     body?: unknown;
     fields?: ReadonlyArray<IValidationSpec>;
@@ -284,6 +285,7 @@ export function candidatesFromSpecs(
         scannerScore: scannerScore.get(framework) ?? 0.5,
         method: spec.method,
         uri: spec.uri,
+        ...(spec.serviceId !== undefined ? { serviceId: spec.serviceId } : {}),
         ...(spec.name !== undefined && spec.name !== ""
           ? { name: spec.name }
           : {}),

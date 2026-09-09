@@ -21,16 +21,24 @@
  * per-endpoint fix has nothing to read.
  */
 import { describe, expect, test } from "vitest";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper.js";
 import { defaultOrchestrator } from "../../packages/frameworks/index.js";
 import { generateCollections } from "../../packages/core/discovery/generation.pipeline.js";
-import type { IGenerationOptions } from "../../packages/contracts/interfaces/core/discovery.interface.js";
+import type {
+  IGenerationOptions,
+  IGenerationResult,
+} from "../../packages/contracts/interfaces/core/discovery.interface.js";
 import type { IOperation } from "../../packages/contracts/interfaces/core/operation.interface.js";
 import type { PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
 import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service.interface.js";
+import type { IServiceGraphNode } from "../../packages/contracts/interfaces/core/service-graph.interface.js";
+import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface.js";
+import { operationIdFor } from "../../packages/core/transport/operation-id.service.js";
+import { toServiceDescriptor } from "../../packages/core/merge/service-descriptor.adapter.js";
 import { combineServices } from "../../packages/core/merge/combine-services.service.js";
+import { deriveServiceId } from "../../packages/core/discovery/group-by-service.helper.js";
 
 const PROJECT = join(FIXTURES_DIR, "multi-service");
 
@@ -77,55 +85,127 @@ function asPostmanItem(value: unknown): PostmanItem | null {
   return value as PostmanItem;
 }
 
-function operation(serviceId: string, id: string): IOperation {
+interface IFixtureMetadata {
+  readonly canonicalId: string;
+  readonly serviceId: string;
+  readonly baseUrl: string;
+  readonly auth: IServiceDescriptor["auth"];
+}
+
+async function readFixtureMetadata(): Promise<ReadonlyMap<string, IFixtureMetadata>> {
+  const services = new Map<string, IFixtureMetadata>();
+  for (const directory of await readdir(join(PROJECT, "apps"), { withFileTypes: true })) {
+    if (!directory.isDirectory()) continue;
+    const serviceRoot = join(PROJECT, "apps", directory.name);
+    try {
+      const manifest = JSON.parse(await readFile(join(serviceRoot, "package.json"), "utf8")) as {
+        tanit?: { serviceId?: string; baseUrl?: string; auth?: IServiceDescriptor["auth"] };
+      };
+      if (manifest.tanit?.serviceId && manifest.tanit.baseUrl && manifest.tanit.auth) {
+        const canonicalId = deriveServiceId({
+          framework: "unknown",
+          projectRoot: PROJECT,
+          frameworkSearchRoot: `apps/${directory.name}`,
+          artifacts: [],
+        });
+        services.set(canonicalId, {
+          canonicalId,
+          serviceId: manifest.tanit.serviceId,
+          baseUrl: manifest.tanit.baseUrl,
+          auth: manifest.tanit.auth,
+        });
+        continue;
+      }
+    } catch {
+      // Try the Python metadata format below.
+    }
+
+    const pyproject = await readFile(join(serviceRoot, "pyproject.toml"), "utf8");
+    const serviceId = pyproject.match(/^service_id\s*=\s*["']([^"']+)["']/m)?.[1];
+    const baseUrl = pyproject.match(/^base_url\s*=\s*["']([^"']+)["']/m)?.[1];
+    const authKind = pyproject.match(/^auth_kind\s*=\s*["']([^"']+)["']/m)?.[1];
+    if (!serviceId || !baseUrl || !authKind) continue;
+    const canonicalId = deriveServiceId({
+      framework: "unknown",
+      projectRoot: PROJECT,
+      frameworkSearchRoot: `apps/${directory.name}`,
+      artifacts: [],
+    });
+    services.set(canonicalId, {
+      canonicalId,
+      serviceId,
+      baseUrl,
+      auth: { kind: "scheme", scheme: authKind === "apiKey" ? "apiKey" : "oauth2" },
+    });
+  }
+  return services;
+}
+
+function operationFromSpec(serviceId: string, spec: IGenerationResult["specs"][number]): IOperation {
+  const transport = { kind: "http" as const, method: spec.method === "ALL" ? "GET" : spec.method, path: spec.uri };
   return {
-    id: { kind: "operation", value: id },
+    id: operationIdFor(transport, { serviceId, operationName: spec.name }),
     serviceId,
-    transport: { kind: "http", method: "GET", path: "/" },
-    serverRef: { id: { kind: "server", value: "legacy" }, url: "http://legacy" },
-    authRef: { id: { kind: "auth", value: "legacy" }, type: "none" },
+    transport,
+    serverRef: { id: { kind: "server", value: "pending" }, url: "pending" },
+    authRef: { id: { kind: "auth", value: "pending" }, type: "none" },
     request: {},
     responses: [],
-    provenance: { sourceFile: "fixture-metadata" },
+    provenance: { sourceFile: "pipeline" },
+  };
+}
+
+function graphNode(service: IFixtureMetadata, match: IProjectMatch): IServiceGraphNode {
+  return {
+    serviceId: service.canonicalId,
+    match,
+    additionalMatches: [],
+    frameworks: [match.framework],
+    endpoints: [],
+    baseUrl: service.baseUrl,
+    auth: service.auth && "kind" in service.auth ? service.auth : undefined,
+    variables: [],
   };
 }
 
 describe("c00010 S3 — multi-service monorepo (NestJS users-api + FastAPI billing-api)", () => {
-  test("carga metadata declarativa real y conserva serviceId, serverRef y authRef", async () => {
-    const usersManifest = JSON.parse(await readFile(join(PROJECT, "apps/users-api/package.json"), "utf8")) as {
-      tanit: { serviceId: string; baseUrl: string; auth: IServiceDescriptor["auth"] };
+  test("fixtures -> discovery -> pipeline combinado conserva refs por servicio", async () => {
+    const metadata = await readFixtureMetadata();
+    const options: IGenerationOptions = {
+      combineServices: true,
+      orchestrator: defaultOrchestrator(),
     };
-    const billingManifest = await readFile(join(PROJECT, "apps/billing-api/pyproject.toml"), "utf8");
-    expect(billingManifest).toContain('service_id = "billing"');
-    expect(billingManifest).toContain('base_url = "https://billing.example.com"');
-    expect(billingManifest).toContain('auth_kind = "apiKey"');
+    const results = await generateCollections(PROJECT, options);
+    expect(results).toHaveLength(1);
 
-    const result = combineServices([
-      {
-        id: usersManifest.tanit.serviceId,
-        baseUrl: usersManifest.tanit.baseUrl,
-        auth: usersManifest.tanit.auth,
-        variables: [],
-        transport: { kind: "http", method: "GET", path: "/users" },
-        endpoints: [operation("users", "users-list")],
-      },
-      {
-        id: "billing",
-        baseUrl: "https://billing.example.com",
-        auth: { kind: "scheme", scheme: "apiKey" },
-        variables: [],
-        transport: { kind: "http", method: "GET", path: "/invoices" },
-        endpoints: [operation("billing", "billing-list")],
-      },
-    ]);
-    expect(result.operations.map((item) => ({
-      serviceId: item.serviceId,
-      server: item.serverRef,
-      auth: item.authRef.type,
-    }))).toEqual([
-      { serviceId: "users", server: { id: { kind: "server", value: "users" }, url: "https://users.example.com" }, auth: "oauth2" },
-      { serviceId: "billing", server: { id: { kind: "server", value: "billing" }, url: "https://billing.example.com" }, auth: "apiKey" },
-    ]);
+    const result = results[0]!;
+    const match = result.match ?? {
+      framework: "unknown",
+      projectRoot: PROJECT,
+      artifacts: [],
+    };
+    const descriptors = [...metadata.values()].map((service) => {
+      const endpoints = result.specs
+        .filter((spec) => spec.serviceId === service.canonicalId)
+        .map((spec) => operationFromSpec(service.canonicalId, spec));
+      return toServiceDescriptor(graphNode(service, match), endpoints);
+    });
+    const combined = combineServices(descriptors);
+
+    expect(combined.operations.length).toBeGreaterThan(1);
+    expect(new Set(combined.operations.map((operation) => operation.serviceId))).toEqual(
+      new Set(metadata.keys()),
+    );
+    for (const operation of combined.operations) {
+      const service = metadata.get(operation.serviceId);
+      expect(service).toBeDefined();
+      expect(operation.serverRef.url).toBe(service!.baseUrl);
+      expect(operation.authRef.type).toBe(
+        service!.auth && "kind" in service!.auth && service!.auth.kind === "scheme"
+          ? service!.auth.scheme
+          : "none",
+      );
+    }
   });
 
   test("el detector descubre ambos workspaces (users + invoices)", async () => {
