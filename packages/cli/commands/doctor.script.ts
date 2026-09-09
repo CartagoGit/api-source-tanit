@@ -1,26 +1,11 @@
 #!/usr/bin/env bun
 import { existsSync } from "node:fs";
 import { STATE_DB_SCHEMA_VERSION } from "../../contracts/constants/core/state-store.constant.js";
+import type { IDoctorOutcome, IDoctorReport } from "../../contracts/interfaces/core/doctor.interface.js";
+
+export type { IDoctorOutcome, IDoctorReport } from "../../contracts/interfaces/core/doctor.interface.js";
 import { hasFlag, readFlag } from "../../core/helpers/argv.helper.js";
 import { resolveStateDatabasePath } from "../../core/state/sqlite/state-db-path.service.js";
-
-export interface IDoctorReport {
-  readonly databasePath: string;
-  readonly database: "available" | "missing" | "corrupt";
-  readonly dbVersion: number | null;
-  readonly migration: "current" | "unavailable";
-  readonly activeSnapshot: string | null;
-  readonly lastWrite: string | null;
-  readonly corruption: string | null;
-  readonly parity: "not-run" | "unavailable";
-  readonly secretsOmitted: true;
-}
-
-export interface IDoctorOutcome {
-  readonly code: number;
-  readonly output: string;
-  readonly report: IDoctorReport;
-}
 
 function missingReport(databasePath: string, reason: string): IDoctorReport {
   return {

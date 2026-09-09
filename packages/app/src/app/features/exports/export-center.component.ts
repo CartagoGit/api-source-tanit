@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, Injectable, inject } from "@angular/core";
 
+import type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
+export type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
 import { DialogService } from "../../core/host/dialog.service";
 import { ExportDiagnostic, ExportFormat } from "../../core/api/exports.client";
 import { ExportsStore } from "../../core/state/exports.store";
@@ -27,11 +29,6 @@ export class ExportCenterComponent {
   async openFolder(path: string): Promise<void> { await this.actions.openFolder(path); }
   async openPostman(): Promise<void> { await this.actions.openPostman(); }
   async copyPaths(paths: readonly string[]): Promise<void> { if (typeof navigator !== "undefined" && navigator.clipboard) await navigator.clipboard.writeText(paths.join("\n")); }
-}
-
-export interface ExportSuccessActionsPort {
-  openFolder(path: string): Promise<void>;
-  openPostman(): Promise<void>;
 }
 
 @Injectable({ providedIn: "root" })

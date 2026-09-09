@@ -29,17 +29,14 @@ import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
 import { guessedRootNotice, resolveRoot } from "../../core/helpers/resolve-root.helper.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { IScanOutcome } from "../../contracts/interfaces/cli/scan-outcome.interface.js";
+import type { IScanOptions } from "../../contracts/interfaces/core/scan-options.interface.js";
+export type { IScanOptions } from "../../contracts/interfaces/core/scan-options.interface.js";
 import { hasFlag } from "../../core/helpers/argv.helper.js";
 import { StableIdService } from "../../core/state/stable-id.service.js";
 import { ShadowStateWriterService, type IShadowWriteDiagnostic } from "../../core/state/shadow-state-writer.service.js";
 import type { IProjectDatabase } from "../../core/state/sqlite/sqlite-project.repository.js";
 import type { IQueryDatabase } from "../../core/state/sqlite/sqlite-snapshot.repository.js";
 import type { ITransactionDatabase } from "../../core/state/snapshot-transaction.service.js";
-
-export interface IScanOptions {
-  readonly shadow?: boolean;
-  readonly stateDatabasePath?: string;
-}
 
 async function writeShadowSnapshot(root: string, framework: string, routes: ReadonlyArray<{ method: string; uri: string }>, path?: string): Promise<IShadowWriteDiagnostic> {
   const [{ SnapshotTransactionService }, { SqliteProjectRepository }, { SqliteSnapshotRepository }, { openStateDatabase }] = await Promise.all([
