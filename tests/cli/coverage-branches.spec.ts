@@ -137,12 +137,10 @@ describe("CLI command branches", () => {
     delete process.env["POSTMAN_WORKSPACE"];
     vi.stubGlobal(
       "fetch",
-      (async () => ({
-        ok: false,
+      async () => new Response("private server detail containing pmak-FAKE-401", {
         status: 401,
-        text: async () => "private server detail containing pmak-FAKE-401",
-        json: async () => ({}),
-      })) as unknown as typeof fetch,
+        headers: { "content-type": "text/plain" },
+      }),
     );
 
     const outcome = await runPush(["--project-root", root, "--no-environments"]);

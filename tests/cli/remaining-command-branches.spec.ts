@@ -39,23 +39,30 @@ async function generatedProject(name: string): Promise<string> {
   return root;
 }
 
-type FetchResponse = Awaited<ReturnType<typeof fetch>>;
+interface ITestFetchResponse {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly headers: { get(name: string): string | null };
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+}
 
-function jsonResponse(status: number, body: unknown): FetchResponse {
+function jsonResponse(status: number, body: unknown): ITestFetchResponse {
+  const text = typeof body === "string" ? body : JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: { get: () => null },
-    text: async () => (typeof body === "string" ? body : JSON.stringify(body)),
+    headers: { get: () => "application/json" },
+    text: async () => text,
     json: async () => body,
-  } as unknown as FetchResponse;
+  };
 }
 
 function postmanFetch(overrides: {
   readonly me?: { status: number; body: unknown };
   readonly collections?: { status: number; body: unknown };
   readonly environments?: { status: number; body: unknown };
-}): typeof fetch {
+}): (input: string | URL, init?: { method?: string; headers?: Record<string, string>; body?: string }) => Promise<ITestFetchResponse> {
   return (async (input: string | URL, _init?: { method?: string; headers?: Record<string, string>; body?: string }) => {
     const pathname = new URL(String(input)).pathname;
     if (pathname === "/me") {

@@ -1,17 +1,21 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { generateWithAllFrameworks } from "../../packages/frameworks/index.js";
 import { main as watchMain } from "../../packages/cli/commands/watch.script";
+import type { IGenerationResult } from "../../packages/contracts/interfaces/core/discovery.interface.js";
 
 vi.mock("../../packages/frameworks/index.js", () => ({ generateWithAllFrameworks: vi.fn() }));
 
-const result = {
+const result: IGenerationResult = {
   collection: {
-    info: { name: "watch" },
+    info: { name: "watch", description: "", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
     item: [{ name: "health", request: { method: "GET", header: [], url: { raw: "http://x/health", host: ["x"], path: ["/health"] } } }],
+    variable: [],
   },
   specs: [],
   config: {
     name: "watch",
+    collectionName: "watch",
+    collectionDescription: "",
     baseUrl: "http://x",
     variables: [],
     filePrefixes: {},
@@ -22,8 +26,30 @@ const result = {
     loginEndpointName: "Login",
     environments: [],
   },
+  routes: [],
   match: null,
-} as never;
+  origin: "scanner",
+  authFlow: null,
+  authScheme: { type: "none", evidence: "test" },
+  context: {
+    projectRoot: process.cwd(),
+    packageRoot: process.cwd(),
+    projectBasename: "watch",
+    outputDir: process.cwd(),
+  },
+  warnings: [],
+  frameworks: ["express"],
+  project: { zeroConfig: true, configPath: "<zero-config>", manualEndpoints: 0 },
+  metrics: {
+    routes: 0,
+    specs: 0,
+    withValidation: 0,
+    withoutValidation: 0,
+    bodiesInferred: 0,
+    queriesInferred: 0,
+    responsesInferred: 0,
+  },
+};
 
 afterEach(() => vi.mocked(generateWithAllFrameworks).mockReset());
 

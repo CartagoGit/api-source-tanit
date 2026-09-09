@@ -13,6 +13,7 @@ import { generateWithAllFrameworks } from "../../packages/frameworks/index.js";
 import { runPush } from "../../packages/cli/commands/push.script";
 import { main as openPostman } from "../../packages/cli/commands/open-postman.script";
 import { main as watchMain } from "../../packages/cli/commands/watch.script";
+import type { IGenerationResult } from "../../packages/contracts/interfaces/core/discovery.interface.js";
 
 vi.mock("../../packages/frameworks/index.js", () => ({
   generateWithAllFrameworks: vi.fn(),
@@ -92,12 +93,38 @@ describe("push environment and option branches", () => {
       info: { name: "custom" },
       item: [{ name: "health", request: { method: "GET", header: [], url: { raw: "http://x/health", host: ["x"], path: ["/health"] } } }],
     };
-    vi.mocked(generateWithAllFrameworks).mockResolvedValue({
-      collection: collection as never,
+    const generated: IGenerationResult = {
+      collection: {
+        info: { name: collection.info.name, description: "", schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+        item: collection.item,
+        variable: [],
+      },
       specs: [],
-      config: { baseUrl: "http://x", variables: [], environments: null },
-      match: { framework: "express" },
-    } as unknown as Awaited<ReturnType<typeof generateWithAllFrameworks>>);
+      routes: [],
+      config: {
+        name: "custom",
+        collectionName: "custom",
+        collectionDescription: "",
+        baseUrl: "http://x",
+        variables: [],
+        filePrefixes: {},
+        zones: [],
+        zoneOrder: [],
+        defaultZone: "Other",
+        authDescriptions: {},
+        loginEndpointName: "Login",
+      },
+      match: { framework: "express", projectRoot: root, artifacts: [] },
+      origin: "scanner",
+      authFlow: null,
+      authScheme: { type: "none", evidence: "test" },
+      context: { projectRoot: root, packageRoot: root, projectBasename: "custom", outputDir: root },
+      warnings: [],
+      frameworks: ["express"],
+      project: { zeroConfig: true, configPath: "<zero-config>", manualEndpoints: 0 },
+      metrics: { routes: 0, specs: 0, withValidation: 0, withoutValidation: 0, bodiesInferred: 0, queriesInferred: 0, responsesInferred: 0 },
+    };
+    vi.mocked(generateWithAllFrameworks).mockResolvedValue(generated);
     vi.stubGlobal("fetch", (async (input: string | URL) => {
       const pathname = new URL(String(input)).pathname;
       if (pathname === "/me") return fetchResponse(200, { user: { id: 1, username: "gap-user" } });

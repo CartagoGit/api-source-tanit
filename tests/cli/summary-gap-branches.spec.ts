@@ -8,6 +8,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { main as summaryMain } from "../../packages/cli/commands/summary.script";
 import { summarizeWithAllFrameworks } from "../../packages/frameworks/index.js";
 import { appendHistory } from "../../packages/ui/server/history.service.js";
+import type { IProjectSummary } from "../../packages/contracts/interfaces/core/domain.interface.js";
 
 vi.mock("../../packages/frameworks/index.js", () => ({
   summarizeWithAllFrameworks: vi.fn(),
@@ -35,7 +36,7 @@ function withArgv<T>(args: ReadonlyArray<string>, fn: () => Promise<T>): Promise
   }
 }
 
-function summary(overrides: Record<string, unknown> = {}) {
+function summary(overrides: Partial<IProjectSummary> = {}): IProjectSummary {
   return {
     framework: "express",
     frameworks: ["express", "graphql"],
@@ -60,7 +61,7 @@ function summary(overrides: Record<string, unknown> = {}) {
       withDescriptionPercent: 65,
     },
     ...overrides,
-  } as never;
+  };
 }
 
 describe("summary text and history branches", () => {
