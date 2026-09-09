@@ -113,16 +113,11 @@ async function astHitRate(
 ): Promise<number> {
   let hits = 0;
   let misses = 0;
-  // `_asts` is private — the bench reaches it through the same
-  // Symbol-keyed escape hatch the registry exposes for the future
-  // scanner refactor. Today there is no other consumer of the
-  // internal map.
-  const internal = index as unknown as { _asts: Map<string, unknown> };
   for (const file of files) {
     if (file.language !== "typescript") continue;
-    const before = internal._asts.size;
+    const before = index.astCount;
     await index.ensureAst(file.relPath);
-    const after = internal._asts.size;
+    const after = index.astCount;
     if (after > before) misses++;
     else hits++;
   }

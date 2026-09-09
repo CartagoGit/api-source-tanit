@@ -83,7 +83,7 @@ describe("canonical history", () => {
       .mockResolvedValueOnce({ before: { formats: ["postman"] }, after: { formats: ["openapi"] } })
       .mockResolvedValueOnce({ output: "/workspace/out", configuration: { formats: ["postman"], outputDirectory: "/workspace/out" } })
       .mockResolvedValueOnce({ restored: true, historyId: "h1", provenance: { source: "restore", restoredFrom: "h1" }, settings: { formats: ["postman"] } }) };
-    const client = new HistoryClient(bridge as never);
+      const client = new HistoryClient(bridge);
 
     await expect(client.compareConfig("/workspace", "h0", "h1")).resolves.toEqual({ before: { formats: ["postman"] }, after: { formats: ["openapi"] } });
     await expect(client.reExport("/workspace", "h1", { formats: ["postman"], outputDirectory: "/workspace/out" })).resolves.toMatchObject({ output: "/workspace/out" });

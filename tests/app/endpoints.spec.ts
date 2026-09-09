@@ -76,7 +76,11 @@ describe("Endpoints Explorer", () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({ imports: [EndpointDetailComponent] });
     const detail = TestBed.runInInjectionContext(() => new EndpointDetailComponent());
-    const event = { clientX: 0, pointerId: 1, currentTarget: { setPointerCapture: vi.fn() } } as unknown as PointerEvent;
+    const event: Parameters<typeof detail.startResize>[0] = {
+      clientX: 0,
+      pointerId: 1,
+      currentTarget: { setPointerCapture: vi.fn() } as HTMLElement,
+    };
     detail.startResize(event);
     detail.onMove({ clientX: -1000 } as PointerEvent);
     expect(detail.width()).toBe(720);

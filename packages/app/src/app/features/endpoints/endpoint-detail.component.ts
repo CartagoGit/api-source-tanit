@@ -53,7 +53,7 @@ export class EndpointDetailComponent {
   private startX = 0;
   private startWidth = 0;
 
-  startResize(event: PointerEvent): void { this.resizing = true; this.startX = event.clientX; this.startWidth = this.width(); (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); }
+  startResize(event: Pick<PointerEvent, "clientX" | "pointerId" | "currentTarget">): void { this.resizing = true; this.startX = event.clientX; this.startWidth = this.width(); (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); }
   @HostListener("document:pointermove", ["$event"]) onMove(event: PointerEvent): void { if (this.resizing) this.width.set(Math.min(720, Math.max(300, this.startWidth - event.clientX + this.startX))); }
   @HostListener("document:pointerup") onUp(): void { this.resizing = false; }
   openLocation(file: string, line: number, column: number): void { this.open.emit({ file, line, column }); }

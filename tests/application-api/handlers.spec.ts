@@ -13,6 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { z } from "zod";
 
 import { dispatch, type IRequestContext } from "../../packages/core/application-api/dispatcher.js";
 import { buildRegistry } from "../../packages/core/application-api/handlers.js";
@@ -174,11 +175,9 @@ describe("error helpers", () => {
   });
 
   test("fromZodError() flattens a parse failure into INVALID_INPUT", () => {
-    const err = {
-      flatten: () => ({ fieldErrors: { name: ["required"] }, formErrors: [] }),
-      issues: [],
-    };
-    const envelope = fromZodError(err as unknown as Parameters<typeof fromZodError>[0]);
+    const err = z.object({ name: z.string() }).safeParse({}).error;
+    if (!err) throw new Error("expected a Zod validation error");
+    const envelope = fromZodError(err);
     expect(envelope.code).toBe("INVALID_INPUT");
     expect(envelope.details).toEqual({
       fieldErrors: { name: ["required"] },
@@ -226,7 +225,7 @@ describe("dispatch() — error paths", () => {
     const fakeReg = {
       thrower: {
         name: "thrower",
-        input: { parse: (x: unknown) => x } as never,
+          input: z.object({}),
         handle: async () => {
           throw apiError("EXECUTION_FAILED", "boom");
         },
