@@ -25,7 +25,7 @@
  * to honour the repo's invariant: reading an enricher's type must
  * never cost importing the registry (which drags in runtime logic).
  */
-import type { EndpointSpec } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { ValidationProvider } from "../../constants/core/validation-provider.constant.js";
 
 export interface IValidationEnricher {

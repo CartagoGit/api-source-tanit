@@ -6,7 +6,7 @@
  * lets the manual spec win field by field. It works the same way regardless
  * of which scanner returns the data, so it belongs in core.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 
 /**
  * Merges auto-discovered specs with an optional manual catalog.

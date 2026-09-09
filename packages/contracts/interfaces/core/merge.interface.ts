@@ -22,7 +22,7 @@
  */
 import type { IDetectedAuthScheme } from "./discovery.interface.js";
 import type { IValidationSpec } from "./scanner.interface.js";
-import type { IEndpointField } from "./postman.interface.js";
+import type { IEndpointField } from "./endpoint-legacy.interface.js";
 
 /**
  * Per-piece confidence — a number between 0 and 1.

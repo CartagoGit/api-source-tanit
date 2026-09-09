@@ -54,7 +54,7 @@
  */
 import type {
   IEndpointField,
-} from "../../contracts/interfaces/core/postman.interface.js";
+} from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type {
   ISchemaGraph,
   ISchemaNode,

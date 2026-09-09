@@ -5,7 +5,7 @@ import {
 } from "../../packages/core/domain/collection-builder.service";
 import type {
   EndpointSpec,
-} from "../../packages/contracts/interfaces/core/postman.interface";
+} from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 import { createObjectNode } from "../../packages/core/schema/build-schema-graph.helper";
 import { createScalarNode } from "../../packages/core/schema/scalar.helper";

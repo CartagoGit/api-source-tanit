@@ -22,7 +22,7 @@
  * now a wrapper that dispatches by provider. Moving the full logic to
  * the enricher is an explicit follow-up.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
 import type { IValidationEnricher } from "../../contracts/interfaces/core/validation-enricher.interface.js";
 

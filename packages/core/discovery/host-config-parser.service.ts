@@ -60,7 +60,7 @@ import type {
   VariableDeclaration,
 } from "@babel/types";
 
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type {
   HostConfigKind,

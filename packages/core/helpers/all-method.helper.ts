@@ -26,7 +26,7 @@
  * they belong to the public contract rather than this helper.
  * `lint:contracts` enforces the split.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IExpandedSpec } from "../../contracts/interfaces/core/all-method.interface.js";
 import {
   ALL_METHOD_MARKER,

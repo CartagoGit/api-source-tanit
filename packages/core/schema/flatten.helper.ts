@@ -29,7 +29,7 @@
  * `required: false` and keep going. Without that, a recursive model
  * (`User.parent: User`) would exhaust the stack.
  */
-import type { IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IEndpointField } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type {
   ISchemaConstraints,
   ISchemaGraph,

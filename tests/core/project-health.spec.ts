@@ -16,7 +16,7 @@
 import { describe, expect, test } from "vitest";
 
 import { computeProjectHealth } from "../../packages/core/domain/project-health.service";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 
 /** Helper to build a minimal EndpointSpec in tests. */
 function spec(partial: Partial<EndpointSpec>): EndpointSpec {

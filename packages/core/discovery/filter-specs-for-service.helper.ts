@@ -66,7 +66,7 @@
  *    6. Specs with `name` overrides survive filtering (the helper
  *       doesn't accidentally drop them).
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { postmanMethodFor } from "../domain/postman-method.helper.js";

@@ -26,7 +26,7 @@
  * can import `LARAVEL_FORM_REQUEST_ENRICHER` without dragging the
  * registry along for whoever only wants the name.
  */
-import type { EndpointSpec } from "../../interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../interfaces/core/endpoint-legacy.interface.js";
 import type { IValidationEnricher } from "../../interfaces/core/validation-enricher.interface.js";
 
 export const LARAVEL_FORM_REQUEST_ENRICHER: IValidationEnricher = {

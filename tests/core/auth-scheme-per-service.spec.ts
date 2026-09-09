@@ -29,7 +29,7 @@ import {
   pickAuth,
   toIEndpointAuth,
 } from "../../packages/core/discovery/auth-scheme.helper";
-import type { IEndpointAuth } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { IEndpointAuth } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
 import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service-graph.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";

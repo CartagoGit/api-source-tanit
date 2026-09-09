@@ -11,7 +11,7 @@
  * no new heuristics: each category is measured against a piece already
  * carried by the spec, so what the health says is what `generate` produces.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IProjectHealth } from "../../contracts/interfaces/core/domain.interface.js";
 
 /**

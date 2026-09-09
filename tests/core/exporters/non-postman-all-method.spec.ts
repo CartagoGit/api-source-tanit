@@ -10,7 +10,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import type { EndpointSpec } from "../../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { IExportInput } from "../../../packages/contracts/interfaces/core/export-target.interface";
 import { HarExporter } from "../../../packages/core/exporters/har.exporter";
 import { BrunoExporter } from "../../../packages/core/exporters/bruno.exporter";

@@ -42,7 +42,7 @@ import { resolveProjectContext } from "../../core/discovery/project-context.serv
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { main as runOpenPostman } from "./open-postman.script.js";
 import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
-import type { DiscoveredRoute } from "../../contracts/interfaces/core/postman.interface.js";
+import type { DiscoveredRoute } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import {
   GENERATE_REPORT_VERSION,
   type IGenerateReport,

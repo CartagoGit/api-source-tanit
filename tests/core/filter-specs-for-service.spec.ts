@@ -18,7 +18,7 @@
 import { describe, expect, it } from "vitest";
 
 import { filterSpecsForService } from "../../packages/core/discovery/filter-specs-for-service.helper.js";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service-graph.interface.js";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface.js";

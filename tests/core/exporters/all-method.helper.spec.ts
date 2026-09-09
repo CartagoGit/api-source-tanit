@@ -14,7 +14,7 @@ import {
   expandAllMethods,
   isAllMethodSpec,
 } from "../../../packages/core/helpers/all-method.helper";
-import type { EndpointSpec } from "../../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 
 function spec(partial: Partial<EndpointSpec> & Pick<EndpointSpec, "method" | "uri">): EndpointSpec {
   return {

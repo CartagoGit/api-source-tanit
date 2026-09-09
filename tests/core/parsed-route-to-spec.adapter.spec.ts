@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { buildSpecsFromScanner, toPostmanUri } from "../../packages/core/adapters/parsed-route-to-spec.adapter";
 import { SUPPORTED_METHODS } from "../../packages/contracts/constants/core/postman.constant";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type {
   IProjectMatch,
   IRouteScanner,

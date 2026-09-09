@@ -321,7 +321,7 @@ export function candidatesFromSpecs(
  */
 export function endpointSpecFromMerged(m: IMergedEndpoint): {
   name: string;
-  method: import("../../contracts/interfaces/core/postman.interface.js").EndpointSpec["method"];
+  method: import("../../contracts/interfaces/core/endpoint-legacy.interface.js").EndpointSpec["method"];
   uri: string;
   /**
    * x00028 S3: the merged endpoint carries the workspace identity
@@ -337,15 +337,15 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
   serviceId?: string;
   body?: unknown;
   fields?: ReadonlyArray<
-    IValidationSpec | import("../../contracts/interfaces/core/postman.interface.js").IEndpointField
+    IValidationSpec | import("../../contracts/interfaces/core/endpoint-legacy.interface.js").IEndpointField
   >;
   description?: string;
   /** Per-op override derived from the merger. Present only when applicable. */
-  auth?: import("../../contracts/interfaces/core/postman.interface.js").IEndpointAuth;
+  auth?: import("../../contracts/interfaces/core/endpoint-legacy.interface.js").IEndpointAuth;
 } {
   return {
     name: m.name ?? "",
-    method: m.method as import("../../contracts/interfaces/core/postman.interface.js").EndpointSpec["method"],
+    method: m.method as import("../../contracts/interfaces/core/endpoint-legacy.interface.js").EndpointSpec["method"],
     uri: m.uri,
     ...(m.serviceId !== undefined ? { serviceId: m.serviceId } : {}),
     ...(m.body !== undefined ? { body: m.body } : {}),
@@ -363,7 +363,7 @@ export function endpointSpecFromMerged(m: IMergedEndpoint): {
  */
 function authFromAuthScheme(
   scheme: NonNullable<import("../../contracts/interfaces/core/discovery.interface.js").IDetectedAuthScheme>,
-): import("../../contracts/interfaces/core/postman.interface.js").IEndpointAuth {
+): import("../../contracts/interfaces/core/endpoint-legacy.interface.js").IEndpointAuth {
   switch (scheme.type) {
     case "none":
       return { kind: "none" };

@@ -143,7 +143,7 @@ export interface IResponseInferrer {
 /**
  * Minimal `EndpointSpec` projection the inferrer needs. We
  * don't import `EndpointSpec` directly to avoid a circular
- * import (`EndpointSpec` lives in `postman.interface.ts`, which
+ * import (`EndpointSpec` lives in `endpoint-legacy.interface.ts`, which
  * imports `IResponseInference` from this file). The inferrer
  * receives whatever it needs through this structural type and
  * the caller is responsible for the shape.

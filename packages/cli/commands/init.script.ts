@@ -209,7 +209,7 @@ export const config: ProjectConfig = {
  *
  * Ejemplo:
  * \`\`\`ts
- * import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+ * import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
  *
  * export const ALL_ENDPOINTS: EndpointSpec[] = [
  *   {
@@ -221,7 +221,7 @@ export const config: ProjectConfig = {
  * ];
  * \`\`\`
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [
   // TODO añade aquí tus overrides

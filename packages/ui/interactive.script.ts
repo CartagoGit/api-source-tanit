@@ -21,7 +21,7 @@ import { describeFormats } from "../core/exporters/export-registry.service.js";
 import { defaultPainter } from "./ansi.helper.js";
 import { renderTable } from "./table.helper.js";
 import { renderDashboard } from "./dashboard.helper.js";
-import type { EndpointSpec } from "../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../contracts/interfaces/core/endpoint-legacy.interface.js";
 import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
 import type { IPainter, IQualityMetrics } from "../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_EXPORT_FORMAT } from "../contracts/constants/core/export-formats.constant.js";

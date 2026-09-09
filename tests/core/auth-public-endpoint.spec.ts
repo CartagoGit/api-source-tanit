@@ -23,7 +23,7 @@ import {
 } from "../../packages/core/domain/collection-builder.service";
 import type {
   EndpointSpec,
-} from "../../packages/contracts/interfaces/core/postman.interface";
+} from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {

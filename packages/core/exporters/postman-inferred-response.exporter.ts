@@ -29,7 +29,7 @@ import type {
   IResponseInference,
   IResponseInferenceConfidence,
 } from "../../contracts/interfaces/core/responses.interface.js";
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IPostmanInferredResponse } from "../../contracts/interfaces/core/postman-inferred-response.interface.js";
 
 /**

@@ -7,7 +7,7 @@
  * would drag the helper into every exporter module; `lint:contracts`
  * enforces the split.
  */
-import type { EndpointSpec } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 
 /** A spec paired with an optional marker if it came from an `ALL` expansion. */
 export interface IExpandedSpec {

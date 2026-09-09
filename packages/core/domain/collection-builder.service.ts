@@ -19,13 +19,15 @@
  *   3. The folder's display name is computed with `prettyGroupName()`.
  */
 import type {
-  EndpointSpec,
-  IEndpointAuth,
   PostmanCollection,
   PostmanHeader,
   PostmanItem,
   PostmanRequest,
 } from "../../contracts/interfaces/core/postman.interface.js";
+import type {
+  EndpointSpec,
+  IEndpointAuth,
+} from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import { collectionIdFor } from "../helpers/collection-identity.helper.js";
 import { POSTMAN_SCHEMA_URL } from "../../contracts/constants/core/postman.constant.js";

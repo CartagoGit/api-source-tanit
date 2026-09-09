@@ -19,11 +19,11 @@
  * of the frameworks stay as they are.
  */
 import type {
-  EndpointSpec,
   PostmanCollection,
   PostmanItem,
   PostmanRequest,
 } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { projectDirs, toProjectRelative as toContextRelative } from "../../core/discovery/project-context.service.js";
 import { VARIANT_TAG } from "../../contracts/constants/core/postman.constant.js";

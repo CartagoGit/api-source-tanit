@@ -14,7 +14,7 @@ import type {
   ILegacyDiscovery,
   ILegacyDiscoveryResult,
 } from "../../contracts/interfaces/core/legacy-discovery.interface.js";
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { discoverEndpoints } from "./endpoint-discovery.service.js";

@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 import { decorateServices, toServiceGraph } from "../../packages/core/discovery/to-service-graph.helper.js";
 import type {
   IEndpointAuth,
-} from "../../packages/contracts/interfaces/core/postman.interface.js";
+} from "../../packages/contracts/interfaces/core/endpoint-legacy.interface.js";
 import type {
   IProjectMatch,
   ParsedRoute,

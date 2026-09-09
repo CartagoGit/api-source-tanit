@@ -15,7 +15,7 @@
  * and which one. Without a fallback, an unrecognized project returns
  * zero endpoints — which is an honest answer, not an error.
  */
-import type { EndpointSpec } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { ParsedRoute } from "./scanner.interface.js";
 import type { ProjectConfig } from "./project-config.interface.js";
 import type { IProjectContext } from "./project-context.interface.js";

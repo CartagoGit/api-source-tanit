@@ -24,9 +24,9 @@ import { describe, expect, test } from "vitest";
 
 import { buildCollection } from "../../packages/core/domain/collection-builder.service";
 import type {
-  EndpointSpec,
   PostmanItem,
 } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 
 const baseConfig: ProjectConfig = {

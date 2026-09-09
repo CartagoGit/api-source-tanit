@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import type { EndpointSpec, IEndpointField } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec, IEndpointField } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type {
   ISchemaGraph,
   ISchemaNode,

@@ -14,7 +14,7 @@
  * format in the batch that is Git-friendly, which is precisely its
  * point.
  */
-import type { EndpointSpec } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { ProjectConfig } from "./project-config.interface.js";
 
 /** A file to write, with its path relative to the output directory. */

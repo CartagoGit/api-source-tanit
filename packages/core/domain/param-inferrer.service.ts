@@ -10,7 +10,7 @@
  * safe, it simply adds nothing. Postman remains useful; we only lose
  * automatic examples for those cases.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { BodyInference, InferApplyStats } from "../../contracts/interfaces/core/domain.interface.js";
 import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 

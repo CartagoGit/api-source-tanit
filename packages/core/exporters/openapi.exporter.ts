@@ -26,7 +26,7 @@ import type {
   IExportInput,
   IExportTarget,
 } from "../../contracts/interfaces/core/export-target.interface.js";
-import type { EndpointSpec, IEndpointField } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec, IEndpointField } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IResponseInference } from "../../contracts/interfaces/core/responses.interface.js";
 import type {
   ISchemaGraph,

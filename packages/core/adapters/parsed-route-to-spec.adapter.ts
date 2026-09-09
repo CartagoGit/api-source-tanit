@@ -34,7 +34,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SUPPORTED_METHODS } from "../../contracts/constants/core/postman.constant.js";
 import type { ValidationProvider } from "../../contracts/constants/core/validation-provider.constant.js";
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import { deriveServiceId } from "../discovery/group-by-service.helper.js";
 import { postmanMethodFor } from "../domain/postman-method.helper.js";
 import type {

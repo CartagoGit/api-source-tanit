@@ -18,10 +18,10 @@
  */
 import { environmentIdFor } from "../helpers/collection-identity.helper.js";
 import type {
-  EndpointSpec,
   PostmanEnvironment,
   PostmanVariable,
 } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { EnvironmentDef } from "../../contracts/interfaces/core/domain.interface.js";
 import { DEFAULT_BASE_URL } from "../../contracts/constants/core/base-url.constant.js";
 

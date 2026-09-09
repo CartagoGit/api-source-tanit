@@ -16,7 +16,7 @@
 import { describe, expect, test } from "vitest";
 
 import { authVariablesFor, detectAuthScheme, toPostmanAuth } from "../../packages/core/domain/auth-scheme.service";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import { AUTH_API_KEY_VARIABLE } from "../../packages/contracts/constants/core/auth.constant";
 
 function spec(partial: Partial<EndpointSpec> & { uri: string }): EndpointSpec {

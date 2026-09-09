@@ -13,7 +13,7 @@ import {
 import type {
   IResponseInference,
 } from "../../packages/contracts/interfaces/core/responses.interface";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { ISchemaGraph } from "../../packages/contracts/interfaces/core/schema.interface";
 
 const BASE_SPEC: EndpointSpec = {

@@ -19,7 +19,7 @@ import {
   graphAndFieldsAreConsistent,
 } from "../../packages/core/helpers/schema-flatten.helper";
 import type { ISchemaGraph } from "../../packages/contracts/interfaces/core/schema.interface";
-import type { IEndpointField } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { IEndpointField } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 
 function buildGraph(): ISchemaGraph {
   const map = new Map<import("../../packages/contracts/interfaces/core/schema.interface").SchemaNodeId, import("../../packages/contracts/interfaces/core/schema.interface").ISchemaNode>();

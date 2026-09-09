@@ -16,10 +16,10 @@ import type {
   ParsedRoute,
 } from "./scanner.interface.js";
 import type {
-  EndpointSpec,
   PostmanCollection,
   PostmanItem,
 } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { ProjectConfig } from "./project-config.interface.js";
 import type { IProjectContext } from "./project-context.interface.js";
 import type { ILegacyDiscovery } from "./legacy-discovery.interface.js";

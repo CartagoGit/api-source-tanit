@@ -30,7 +30,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { detectProjectNameIn } from "./project-name.service.js";
 import { pathToFileURL } from "node:url";
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { readFlag } from "../helpers/argv.helper.js";

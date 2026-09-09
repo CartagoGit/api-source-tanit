@@ -29,11 +29,11 @@
  * @see ./generation.pipeline.ts for the `buildForService` call site.
  * @see ./group-by-service.helper.ts for the `IServiceDescriptor` source passed
  *   to these helpers.
- * @see ../../contracts/interfaces/core/postman.interface.ts for the
+ * @see ../../contracts/interfaces/core/endpoint-legacy.interface.ts for the
  *   `IEndpointAuth` shape.
  */
 
-import type { IEndpointAuth } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IEndpointAuth } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";

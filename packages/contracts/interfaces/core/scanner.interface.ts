@@ -23,13 +23,13 @@
  * The `ParsedRoute` shape is designed to be 1-1 translatable to
  * `EndpointSpec` (URI already normalized to Postman `{{x}}`).
  *
- * @see ./postman.interface.ts for the Postman v2.1.0 types.
+ * @see ./endpoint-legacy.interface.ts for the Postman v2.1.0 types.
  */
 
 import type {
   IEndpointAuth,
   IEndpointConfidence,
-} from "./postman.interface.js";
+} from "./endpoint-legacy.interface.js";
 import type { ITransportMeta, TransportKind } from "./transport.interface.js";
 
 /** Stable framework id. Used as a key in config. */

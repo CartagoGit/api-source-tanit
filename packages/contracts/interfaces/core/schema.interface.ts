@@ -47,7 +47,7 @@
  * and gives the compiler room for optimizations.
  */
 
-import type { IEndpointField } from "./postman.interface.js";
+import type { IEndpointField } from "./endpoint-legacy.interface.js";
 
 /** Node kinds in the graph. */
 export type SchemaNodeKind =

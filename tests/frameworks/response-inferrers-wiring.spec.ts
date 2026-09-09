@@ -24,7 +24,7 @@ import {
 import { buildOpenApiDocument } from "../../packages/core/exporters/openapi.exporter";
 import type {
   EndpointSpec,
-} from "../../packages/contracts/interfaces/core/postman.interface";
+} from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { IExportInput } from "../../packages/contracts/interfaces/core/export-target.interface";
 
 describe("response inferrers — production registration (f00012 wiring)", () => {

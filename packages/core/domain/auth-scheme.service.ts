@@ -22,7 +22,7 @@
  * without an `auth` block, which is the honest answer and also prevents
  * Postman from sending an empty `Authorization` header on every request.
  */
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IDetectedAuthScheme, IPostmanAuth } from "../../contracts/interfaces/core/discovery.interface.js";
 import { AUTH_API_KEY_VARIABLE, AUTH_CLIENT_ID_VARIABLE, AUTH_CLIENT_SECRET_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
 

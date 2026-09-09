@@ -37,7 +37,7 @@
  */
 
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
-import type { IEndpointAuth } from "../../contracts/interfaces/core/postman.interface.js";
+import type { IEndpointAuth } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type {
   IServiceDescriptor,
   IServiceGraph,

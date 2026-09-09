@@ -23,7 +23,8 @@
  *     the API **receives**; it does not know what it returns, and asserting
  *     that `GET /users` returns an array would be guessing.
  */
-import type { EndpointSpec, PostmanEvent } from "../../contracts/interfaces/core/postman.interface.js";
+import type { PostmanEvent } from "../../contracts/interfaces/core/postman.interface.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 
 /**
  * Status codes that count as a success for the verb.

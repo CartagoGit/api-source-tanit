@@ -26,7 +26,7 @@
  */
 
 import type { IProjectMatch, ParsedRoute } from "./scanner.interface.js";
-import type { IEndpointAuth } from "./postman.interface.js";
+import type { IEndpointAuth } from "./endpoint-legacy.interface.js";
 import type { IMonorepoDetection } from "./discovery.interface.js";
 
 /**

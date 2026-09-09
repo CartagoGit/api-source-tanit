@@ -4,7 +4,7 @@ import { VARIANT_TAG } from "../../packages/contracts/constants/core/postman.con
 import { enrichCatalogWithFormRequests } from "../../packages/frameworks/laravel/catalog-enricher.service";
 import { discoverEndpoints, toPostmanUri } from "../../packages/frameworks/laravel/endpoint-discovery.service";
 import { buildCollection } from "../../packages/core/domain/collection-builder.service";
-import type { EndpointSpec } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 import { mergeWithManual } from "../../packages/core/domain/endpoint-merge.service";
 import { resolveProjectContext } from "../../packages/core/discovery/project-context.service";

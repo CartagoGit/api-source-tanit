@@ -19,7 +19,7 @@ import type {
   ServiceSummarySchema,
   WatchInputSchema,
 } from "../../constants/core/application-api.constant.js";
-import type { EndpointSpec } from "./postman.interface.js";
+import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 
 export interface IAbortSignalLike { readonly aborted: boolean; }
 export interface IRequestContext {

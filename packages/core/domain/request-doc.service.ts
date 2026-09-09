@@ -15,7 +15,7 @@
 import type {
   IEndpointConfidence,
   IEndpointField,
-} from "../../contracts/interfaces/core/postman.interface.js";
+} from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 
 /** The locations where a parameter can go, and what to call them. */
 const LOCATION_TITLES: Readonly<Record<string, string>> = {
