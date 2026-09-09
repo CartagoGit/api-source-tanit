@@ -1,7 +1,9 @@
 {
   "name": "api-source-tanit",
   "version": "1.0.0",
-  "workspaces": ["packages/app"],
+  "workspaces": [
+    "packages/app"
+  ],
   "description": "Tanit — API Source Discovery. Detects your API from source code across 21 frameworks and exports to Postman, Insomnia, Bruno, HAR, OpenAPI, cURL.",
   "keywords": [
     "tanit",
@@ -158,6 +160,7 @@
   "dependencies": {
     "@angular/cdk": "^20.2.0",
     "@babel/parser": "7.29.8",
+    "@babel/types": "7.29.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
