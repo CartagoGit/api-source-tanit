@@ -48,7 +48,17 @@ export default defineConfig({
             section.name === "core"
               ? {
                   include: ["packages/core/**/*.ts"],
-                  exclude: ["**/*.d.ts"],
+                  // El motor SQLite Bun-native (`packages/core/state/sqlite/**`)
+                  // se mide por `bun test test:core:sqlite` (split
+                  // intencional documentado en `package.json`: vitest
+                  // instrumenta v8 sobre Node, y `bun:sqlite` no es
+                  // interceptable por `@vitest/coverage-v8`). Vitest ni
+                  // siquiera ejecuta estos specs (excluidos arriba con
+                  // `tests/core/state/sqlite/**`), así que sin excluir
+                  // también el código fuente el gate reporta 0% sobre
+                  // una superficie que **sí** está cubierta por otro
+                  // runner. Sin esto el gate retrocede sin regresión.
+                  exclude: ["**/*.d.ts", "packages/core/state/sqlite/**"],
                   thresholds: COVERAGE_THRESHOLDS.core,
                 }
               : section.name === "frameworks"
@@ -97,6 +107,27 @@ export default defineConfig({
         "**/*.d.ts",
         "tests/**",
         "scripts/**",
+        // Motor SQLite Bun-native: ver la justificación extendida en
+        // el `coverage` de la sección `core`. Se duplica aquí porque
+        // el `include` global es `packages/**/*.ts` y captura el
+        // subárbol otra vez; los dos excludes son redundantes a
+        // propósito para que el contrato sea visible desde los dos
+        // sitios que lo aplican.
+        "packages/core/state/sqlite/**",
+        // Aplicación Angular standalone + shell Tauri (`f00017`).
+        // Esta superficie corre dentro del WebView de Tauri y
+        // depende de `window.__TAURI__`, del keyring nativo y del
+        // filesystem del escritorio — los `*.spec.ts` usan Angular
+        // TestBed + jsdom para los componentes que sí están
+        // cableados (carpeta `tests/app/`), pero los puntos de
+        // entrada, directivas y conectores de host (drag-drop,
+        // secure-storage, host-bridge, …) no son ejecutables desde
+        // vitest sin un shim del runtime de Tauri, y mockearlo
+        // produciría cobertura falsa. La cobertura real de la app
+        // vive en CI desktop (Playwright/Tauri) y en pruebas
+        // manuales; medirla aquí, a 0%, no protege contra
+        // regresiones — solo introduce ruido que hunde el global.
+        "packages/app/**",
       ],
       // Medido el 2026-08-08 sobre 2.000 tests:
       //   statements 73,88 · branches 62,38 · functions 82,89 · lines 75,65
