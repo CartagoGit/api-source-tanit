@@ -48,17 +48,28 @@ export default defineConfig({
             section.name === "core"
               ? {
                   include: ["packages/core/**/*.ts"],
-                  // El motor SQLite Bun-native (`packages/core/state/sqlite/**`)
-                  // se mide por `bun test test:core:sqlite` (split
-                  // intencional documentado en `package.json`: vitest
-                  // instrumenta v8 sobre Node, y `bun:sqlite` no es
-                  // interceptable por `@vitest/coverage-v8`). Vitest ni
-                  // siquiera ejecuta estos specs (excluidos arriba con
-                  // `tests/core/state/sqlite/**`), así que sin excluir
-                  // también el código fuente el gate reporta 0% sobre
-                  // una superficie que **sí** está cubierta por otro
-                  // runner. Sin esto el gate retrocede sin regresión.
-                  exclude: ["**/*.d.ts", "packages/core/state/sqlite/**"],
+                  // Dos subárboles Bun-nativos del núcleo no son
+                  // instrumentables por `@vitest/coverage-v8` y por
+                  // tanto no entran en la cobertura per-project de
+                  // core. Ambos se ejecutan con `bun test` (split
+                  // intencional documentado en `package.json` —
+                  // `bun test test:core:sqlite`, y `bun test
+                  // tests/transport/` es el paralelo para el bridge).
+                  //
+                  // - `state/sqlite/**`: importa `bun:sqlite`, que
+                  //   v8 sobre Node no puede perfilar.
+                  // - `transport/**`: arranca `Bun.serve` y depende
+                  //   del runtime de Bun para el carrier HTTP.
+                  //
+                  // Sin excluir también el código fuente, vitest
+                  // reporta 0% sobre superficies que **sí** tienen
+                  // cobertura en otro runner — y eso hunde el gate
+                  // sin que sea una regresión del código.
+                  exclude: [
+                    "**/*.d.ts",
+                    "packages/core/state/sqlite/**",
+                    "packages/core/transport/**",
+                  ],
                   thresholds: COVERAGE_THRESHOLDS.core,
                 }
               : section.name === "frameworks"
@@ -107,13 +118,14 @@ export default defineConfig({
         "**/*.d.ts",
         "tests/**",
         "scripts/**",
-        // Motor SQLite Bun-native: ver la justificación extendida en
-        // el `coverage` de la sección `core`. Se duplica aquí porque
-        // el `include` global es `packages/**/*.ts` y captura el
-        // subárbol otra vez; los dos excludes son redundantes a
-        // propósito para que el contrato sea visible desde los dos
-        // sitios que lo aplican.
+        // Subárboles Bun-nativos del núcleo: justificación completa
+        // en el `coverage` de la sección `core` arriba. Se repiten
+        // aquí porque el `include` global (`packages/**/*.ts`) los
+        // capturaría otra vez; los dos sitios deben coincidir para
+        // que el contrato sea visible desde cada uno de los dos
+        // configs.
         "packages/core/state/sqlite/**",
+        "packages/core/transport/**",
         // Aplicación Angular standalone + shell Tauri (`f00017`).
         // Esta superficie corre dentro del WebView de Tauri y
         // depende de `window.__TAURI__`, del keyring nativo y del

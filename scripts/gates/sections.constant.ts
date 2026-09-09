@@ -74,19 +74,7 @@ export const SECTIONS: readonly ISection[] = [
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
     paths: ["packages/core/"],
-    // `tests/transport/**` es la suite del bridge de Application API
-    // (`packages/core/transport/`), añadida por f00016 S4. No es un
-    // subdirectorio de `tests/core/` porque el bridge tiene su propia
-    // carpeta de tests al nivel raíz (paralela a `tests/core/` y
-    // `tests/cli/`), pero pertenece a esta sección: el código vive
-    // bajo `packages/core/transport/` y la cobertura per-project del
-    // núcleo ya lo recoge (`packages/core/**/*.ts`). Sin esta entrada,
-    // vitest no ejecuta los specs y la cobertura del bridge cae a 0%,
-    // haciendo retroceder el gate sin que sea una regresión del código.
-    tests: [
-      "tests/core/**/*.{spec,test}.ts",
-      "tests/transport/**/*.{spec,test}.ts",
-    ],
+    tests: ["tests/core/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.core.json",
     dependsOn: ["contracts"],
   },
