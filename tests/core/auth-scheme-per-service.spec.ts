@@ -31,7 +31,7 @@ import {
 } from "../../packages/core/discovery/auth-scheme.helper";
 import type { IEndpointAuth } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface";
-import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service-graph.interface";
+import type { IServiceGraphNode } from "../../packages/contracts/interfaces/core/service-graph.interface";
 import type { ProjectConfig } from "../../packages/contracts/interfaces/core/project-config.interface";
 import { generateCollections } from "../../packages/core/discovery/generation.pipeline";
 import { defaultOrchestrator } from "../../packages/frameworks/framework.registry";
@@ -40,12 +40,12 @@ import {
   type ITempProject,
 } from "../helpers/scanner-fixture";
 
-/** Builds a minimal IServiceDescriptor for unit tests. */
+/** Builds a minimal IServiceGraphNode for unit tests. */
 function descriptor(
   serviceId: string,
   auth: IEndpointAuth | undefined = undefined,
   baseUrl: string | null = null,
-): IServiceDescriptor {
+): IServiceGraphNode {
   const match: IProjectMatch = {
     framework: "express",
     projectRoot: "/repo",

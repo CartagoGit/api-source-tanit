@@ -34,5 +34,4 @@ export type {
   IServiceGraph,
   IServiceGraphNode,
   IToServiceGraphInput,
-  IServiceDescriptor as LegacyServiceGraphDescriptor,
 } from "./interfaces/core/service-graph.interface.js";

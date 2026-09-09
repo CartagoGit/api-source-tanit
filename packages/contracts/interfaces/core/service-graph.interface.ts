@@ -10,7 +10,7 @@
  * first-class model so that the pipeline —not only the merger— can
  * honour it.
  *
- * Why **here** and not next to the orchestrator: `IServiceDescriptor`
+ * Why **here** and not next to the orchestrator: `IServiceGraphNode`
  * reuses `IProjectMatch`, `ParsedRoute` and `IEndpointAuth`, three
  * types that already live in `contracts/`. If this lived in `core/`,
  * any MCP plugin consumer that wanted to import it would drag the
@@ -50,7 +50,7 @@ import type { IMonorepoDetection } from "./discovery.interface.js";
  * `match.frameworkSearchRoot` (a00010 already introduced it that
  * way). When the caller wants to force an explicit one (e.g. to
  * keep a stable identity across folder renames), they can
- * override it via `IServiceDescriptor.serviceId`. What the helper
+ * override it via `IServiceGraphNode.serviceId`. What the helper
  * will never invent are characters outside `[A-Za-z0-9_-]`,
  * because the id shows up in collection names and Postman
  * environment variables.
@@ -117,14 +117,14 @@ export interface IServiceGraphNode {
 
 /**
  * @deprecated Use `IServiceGraphNode` for discovery graphs. The export
- * descriptor with the same old name lives in `service.interface.ts` and has
- * `IOperation[]` endpoints; this alias preserves legacy graph consumers.
+ * descriptor is `IServiceDescriptor` from `service.interface.ts`; this alias
+ * preserves legacy graph consumers without defining a second descriptor.
  */
 export type IServiceDescriptor = IServiceGraphNode;
 
 /**
  * Inputs of the `groupByService` helper. It lives here for the
- * same reason as `IServiceDescriptor`: the helper is generic, but
+ * same reason as `IServiceGraphNode`: the helper is generic, but
  * its inputs are contracts shared across every caller (CLI, plugin,
  * tests). Moving them inside `core/` would reintroduce the bug this
  * contract is fighting: having to drag the implementation in just
@@ -165,7 +165,7 @@ export interface IGroupByServiceInput {
  * not by this contract.
  */
 export interface IServiceGraph {
-  readonly services: ReadonlyArray<IServiceDescriptor>;
+  readonly services: ReadonlyArray<IServiceGraphNode>;
   /** Did the user ask to combine the services into a single collection? */
   readonly combined: boolean;
 }

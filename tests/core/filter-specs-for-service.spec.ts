@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 
 import { filterSpecsForService } from "../../packages/core/discovery/filter-specs-for-service.helper.js";
 import type { EndpointSpec } from "../../packages/contracts/interfaces/core/endpoint-legacy.interface.js";
-import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service-graph.interface.js";
+import type { IServiceGraphNode } from "../../packages/contracts/interfaces/core/service-graph.interface.js";
 import type { ParsedRoute } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 import type { IProjectMatch } from "../../packages/contracts/interfaces/core/scanner.interface.js";
 
@@ -52,7 +52,7 @@ const dummyMatch: IProjectMatch = {
 function service(
   serviceId: string,
   endpoints: ReadonlyArray<ParsedRoute>,
-): IServiceDescriptor {
+): IServiceGraphNode {
   return {
     serviceId,
     match: dummyMatch,
@@ -296,7 +296,7 @@ describe("filterSpecsForService (x00028)", () => {
   // CADA spec. La solución correcta: en flat-hybrid la igualdad de
   // `(method, uri)` ya basta porque solo hay un projectRoot.
   it("x00039: flat-hybrid ignores spec.serviceId vs service.serviceId mismatch", () => {
-    const hybrid: IServiceDescriptor = {
+    const hybrid: IServiceGraphNode = {
       serviceId: "repo",
       match: { framework: "express", projectRoot: "/repo", artifacts: [] },
       additionalMatches: [
@@ -330,7 +330,7 @@ describe("filterSpecsForService (x00028)", () => {
   // pasan (compatibilidad con callers que aún no estampean), igual
   // que en el camino legacy.
   it("x00039: flat-hybrid accepts specs without serviceId (legacy compat)", () => {
-    const hybrid: IServiceDescriptor = {
+    const hybrid: IServiceGraphNode = {
       serviceId: "repo",
       match: { framework: "express", projectRoot: "/repo", artifacts: [] },
       additionalMatches: [{ framework: "graphql", projectRoot: "/repo", artifacts: [] }],
@@ -352,7 +352,7 @@ describe("filterSpecsForService (x00028)", () => {
   // discriminación por serviceId). El merger es el responsable de
   // deduplicar si llega el caso.
   it("x00039: flat-hybrid keeps specs that share (method, uri) from different frameworks", () => {
-    const hybrid: IServiceDescriptor = {
+    const hybrid: IServiceGraphNode = {
       serviceId: "repo",
       match: { framework: "express", projectRoot: "/repo", artifacts: [] },
       additionalMatches: [{ framework: "graphql", projectRoot: "/repo", artifacts: [] }],
