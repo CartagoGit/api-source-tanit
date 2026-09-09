@@ -9,6 +9,12 @@ this module is the only FastAPI source the scanner walks there.
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+SERVICE_METADATA = {
+    "serviceId": "billing",
+    "baseUrl": "https://billing.example.com",
+    "auth": {"kind": "scheme", "scheme": "apiKey"},
+}
+
 app = FastAPI(title="Billing API", version="1.0.0")
 
 

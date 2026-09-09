@@ -21,12 +21,16 @@
  * per-endpoint fix has nothing to read.
  */
 import { describe, expect, test } from "vitest";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper.js";
 import { defaultOrchestrator } from "../../packages/frameworks/index.js";
 import { generateCollections } from "../../packages/core/discovery/generation.pipeline.js";
 import type { IGenerationOptions } from "../../packages/contracts/interfaces/core/discovery.interface.js";
+import type { IOperation } from "../../packages/contracts/interfaces/core/operation.interface.js";
 import type { PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
+import type { IServiceDescriptor } from "../../packages/contracts/interfaces/core/service.interface.js";
+import { combineServices } from "../../packages/core/merge/combine-services.service.js";
 
 const PROJECT = join(FIXTURES_DIR, "multi-service");
 
@@ -73,7 +77,57 @@ function asPostmanItem(value: unknown): PostmanItem | null {
   return value as PostmanItem;
 }
 
+function operation(serviceId: string, id: string): IOperation {
+  return {
+    id: { kind: "operation", value: id },
+    serviceId,
+    transport: { kind: "http", method: "GET", path: "/" },
+    serverRef: { id: { kind: "server", value: "legacy" }, url: "http://legacy" },
+    authRef: { id: { kind: "auth", value: "legacy" }, type: "none" },
+    request: {},
+    responses: [],
+    provenance: { sourceFile: "fixture-metadata" },
+  };
+}
+
 describe("c00010 S3 — multi-service monorepo (NestJS users-api + FastAPI billing-api)", () => {
+  test("carga metadata declarativa real y conserva serviceId, serverRef y authRef", async () => {
+    const usersManifest = JSON.parse(await readFile(join(PROJECT, "apps/users-api/package.json"), "utf8")) as {
+      tanit: { serviceId: string; baseUrl: string; auth: IServiceDescriptor["auth"] };
+    };
+    const billingManifest = await readFile(join(PROJECT, "apps/billing-api/pyproject.toml"), "utf8");
+    expect(billingManifest).toContain('service_id = "billing"');
+    expect(billingManifest).toContain('base_url = "https://billing.example.com"');
+    expect(billingManifest).toContain('auth_kind = "apiKey"');
+
+    const result = combineServices([
+      {
+        id: usersManifest.tanit.serviceId,
+        baseUrl: usersManifest.tanit.baseUrl,
+        auth: usersManifest.tanit.auth,
+        variables: [],
+        transport: { kind: "http", method: "GET", path: "/users" },
+        endpoints: [operation("users", "users-list")],
+      },
+      {
+        id: "billing",
+        baseUrl: "https://billing.example.com",
+        auth: { kind: "scheme", scheme: "apiKey" },
+        variables: [],
+        transport: { kind: "http", method: "GET", path: "/invoices" },
+        endpoints: [operation("billing", "billing-list")],
+      },
+    ]);
+    expect(result.operations.map((item) => ({
+      serviceId: item.serviceId,
+      server: item.serverRef,
+      auth: item.authRef.type,
+    }))).toEqual([
+      { serviceId: "users", server: { id: { kind: "server", value: "users" }, url: "https://users.example.com" }, auth: "oauth2" },
+      { serviceId: "billing", server: { id: { kind: "server", value: "billing" }, url: "https://billing.example.com" }, auth: "apiKey" },
+    ]);
+  });
+
   test("el detector descubre ambos workspaces (users + invoices)", async () => {
     const options: IGenerationOptions = {
       combineServices: false,

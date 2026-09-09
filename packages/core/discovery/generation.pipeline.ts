@@ -63,7 +63,7 @@ import {
   detectMonorepo,
 } from "./monorepo-detector.helper.js";
 import type { IMonorepoDetection } from "../../contracts/interfaces/core/discovery.interface.js";
-import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import type { IServiceGraphNode } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { toServiceGraph } from "./to-service-graph.helper.js";
 import { deriveServiceId } from "./group-by-service.helper.js";
 import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper.js";
@@ -323,7 +323,7 @@ async function buildFor(
       }
     }
     const first = graph.services[0]!;
-    const mergedService: IServiceDescriptor = {
+    const mergedService: IServiceGraphNode = {
       // x00028 S3: the combined service is a synthetic descriptor
       // whose `endpoints` is the union of every contributing
       // service. It does NOT have a workspace identity of its own
@@ -369,7 +369,7 @@ async function buildFor(
 
 async function buildForService(
   discovery: IDiscovery,
-  service: IServiceDescriptor,
+  service: IServiceGraphNode,
   context: IProjectContext,
   options: IGenerationOptions,
 ): Promise<IGenerationResult> {

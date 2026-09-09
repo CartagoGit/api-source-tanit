@@ -10,6 +10,12 @@
  */
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 
+export const serviceMetadata = {
+  serviceId: "users",
+  baseUrl: "https://users.example.com",
+  auth: { kind: "scheme", scheme: "oauth2" as const },
+} as const;
+
 class CreateUserDto {
   name!: string;
   email!: string;

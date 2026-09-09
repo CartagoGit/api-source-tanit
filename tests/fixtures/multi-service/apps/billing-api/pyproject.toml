@@ -6,3 +6,8 @@ dependencies = [
     "fastapi>=0.110",
     "pydantic>=2.5",
 ]
+
+[tool.tanit]
+service_id = "billing"
+base_url = "https://billing.example.com"
+auth_kind = "apiKey"
