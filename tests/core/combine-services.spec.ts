@@ -65,4 +65,25 @@ describe("combineServices", () => {
     expect(perOperationResolver.resolve(operation("billing", "billing-invoices"), services).serverRef.url).toBe("https://billing.example.com");
     expect(() => perOperationResolver.resolve(operation("missing", "missing"), services)).toThrow("Unknown serviceId: missing");
   });
+
+  test("rejects duplicate service IDs and duplicate variable keys", () => {
+    const users = service("users", "https://users.example.com", { kind: "none" }, operation("users", "users-list"));
+    expect(() => combineServices([users, users])).toThrow("Duplicate service id: users");
+
+    const withDuplicateVariable = {
+      ...users,
+      variables: [{ key: "baseUrl_users", value: "other" }],
+    };
+    expect(() => combineServices([withDuplicateVariable])).toThrow("Duplicate variable key: baseUrl_users");
+  });
+
+  test("keeps services without endpoints in the combined descriptor", () => {
+    const empty = {
+      ...service("empty", "https://empty.example.com", { kind: "none" }, operation("empty", "unused")),
+      endpoints: [],
+    };
+    const result = combineServices([empty]);
+    expect(result.operations).toEqual([]);
+    expect(result.variables).toEqual([{ key: "baseUrl_empty", value: "https://empty.example.com" }]);
+  });
 });

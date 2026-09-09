@@ -36,7 +36,7 @@
 import type { IEndpointAuth } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { ProjectConfig } from "../../contracts/interfaces/core/project-config.interface.js";
-import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import type { IServiceGraphNode } from "../../contracts/interfaces/core/service-graph.interface.js";
 
 /**
  * Resolves service auth: the descriptor's override when present (as placed by
@@ -62,7 +62,7 @@ import type { IServiceDescriptor } from "../../contracts/interfaces/core/service
  *   has no auth signal either.
  */
 export function pickAuth(
-  service: IServiceDescriptor,
+  service: IServiceGraphNode,
   fallback: IEndpointAuth | undefined,
 ): IEndpointAuth | undefined {
   if (service.auth !== undefined) return service.auth;
@@ -117,7 +117,7 @@ export function toIEndpointAuth(detected: IDetectedAuthScheme): IEndpointAuth {
  */
 export function buildServiceConfig(
   config: ProjectConfig,
-  service: IServiceDescriptor,
+  service: IServiceGraphNode,
 ): ProjectConfig {
   const baseUrl = service.baseUrl ?? config.baseUrl;
   const variables = config.variables.map((v) =>

@@ -68,7 +68,7 @@
  */
 import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
-import type { IServiceDescriptor } from "../../contracts/interfaces/core/service-graph.interface.js";
+import type { IServiceGraphNode } from "../../contracts/interfaces/core/service-graph.interface.js";
 import { postmanMethodFor } from "../domain/postman-method.helper.js";
 import { normalizeForComparison } from "../helpers/uri.helper.js";
 
@@ -121,7 +121,7 @@ function endpointIdentitySet(
  */
 export function filterSpecsForService(
   discoverySpecs: ReadonlyArray<EndpointSpec>,
-  service: IServiceDescriptor,
+  service: IServiceGraphNode,
 ): EndpointSpec[] {
   // Legacy path: `service.endpoints` is empty when the helper is
   // running on a flat project. In that case `buildForService()` is

@@ -47,7 +47,7 @@ import type {
 } from "../../contracts/interfaces/core/scanner.interface.js";
 import type {
   IGroupByServiceInput,
-  IServiceDescriptor,
+  IServiceGraphNode,
   IServiceGraph,
 } from "../../contracts/interfaces/core/service-graph.interface.js";
 
@@ -161,8 +161,8 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
     );
   }
 
-  const services: IServiceDescriptor[] = [];
-  const byId = new Map<string, IServiceDescriptor>();
+  const services: IServiceGraphNode[] = [];
+  const byId = new Map<string, IServiceGraphNode>();
   // Flat hybrid project: several frameworks over the SAME root (no
   // monorepo, no `frameworkSearchRoot`). They are ONE service with
   // several capabilities, not N services — the legacy
@@ -247,7 +247,7 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
       // map with a new one carrying the merged endpoints (and copy
       // `baseUrl`, `auth`, `variables` from the previous entry -- the
       // first match wins for those, consistent with a00013 S3).
-      const merged: IServiceDescriptor = {
+      const merged: IServiceGraphNode = {
         serviceId: existing.serviceId,
         match: existing.match,
         // x00031 S1: append the new match to `additionalMatches` and
@@ -279,7 +279,7 @@ export function groupByService(input: IGroupByServiceInput): IServiceGraph {
       if (slot !== -1) services[slot] = merged;
       continue;
     }
-    const descriptor: IServiceDescriptor = {
+    const descriptor: IServiceGraphNode = {
       serviceId,
       match,
       // x00031 S1: populate the new additive fields for first-match

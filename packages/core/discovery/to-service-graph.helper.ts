@@ -39,7 +39,7 @@
 import type { ParsedRoute } from "../../contracts/interfaces/core/scanner.interface.js";
 import type { IEndpointAuth } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type {
-  IServiceDescriptor,
+  IServiceGraphNode,
   IServiceGraph,
   IToServiceGraphInput,
 } from "../../contracts/interfaces/core/service-graph.interface.js";
@@ -111,7 +111,7 @@ export function decorateServices(
       | undefined;
   },
 ): IServiceGraph {
-  const services: IServiceDescriptor[] = graph.services.map((service) => ({
+  const services: IServiceGraphNode[] = graph.services.map((service) => ({
     serviceId: service.serviceId,
     match: service.match,
     // x00031 S1: preserve the hybrid metadata.
