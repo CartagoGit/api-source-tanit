@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import type { HostBridgeClient } from "./host-bridge.client";
-import type { IServiceDetail, IServiceOperation } from "../../../../../contracts/interfaces/core/services.interface";
+import type { IServiceDetail } from "../../../../../contracts/interfaces/core/services.interface";
 
 interface IServiceBridge {
   request(operation: string, input: unknown): Promise<unknown>;

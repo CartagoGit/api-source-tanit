@@ -2,14 +2,9 @@ import { Injectable } from "@angular/core";
 
 import {
   ENDPOINT_TRANSPORTS,
-  type EndpointDiagnostic,
-  type EndpointEvidence,
   type EndpointListResponse,
-  type EndpointParameter,
   type EndpointQuery,
   type EndpointRecord,
-  type EndpointResponse,
-  type EndpointTransport,
 } from "../../../../../contracts/interfaces/core/endpoint.interface";
 
 export {

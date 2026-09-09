@@ -69,10 +69,15 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   // TypeScript configs.
   { path: "tsconfig.json", reason: "Aggregator del typecheck" },
   { path: "tsconfig.base.json", reason: "Base del typecheck" },
+  { path: "tsconfig.app.json", reason: "Configuración de compilación Angular" },
   { path: "tsconfig.contracts.json", reason: "Sección contracts" },
   { path: "tsconfig.core.json", reason: "Sección core" },
+  { path: "tsconfig.core.tsbuildinfo", reason: "Metadatos incrementales del typecheck core" },
   { path: "tsconfig.frameworks.json", reason: "Sección frameworks" },
   { path: "tsconfig.cli.json", reason: "Sección cli" },
+
+  // Configuración del workspace Angular.
+  { path: "angular.json", reason: "Workspace y targets de compilación Angular" },
 
   // Test runner.
   { path: "vitest.config.ts", reason: "Config de vitest" },

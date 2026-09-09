@@ -1,7 +1,6 @@
 import { Injectable } from "@angular/core";
 import type { HostBridgeClient } from "./host-bridge.client";
 import type {
-  IHistoryChange,
   IHistoryConfiguration,
   IHistoryDiff,
   IHistoryEntry,

@@ -2,14 +2,11 @@ import { Injectable } from "@angular/core";
 
 import { EXPORT_FORMATS, type ExportFormat } from "../../../../../contracts/constants/core/export-formats.constant";
 import type {
-  CombinedExportStatus,
   ExportArtifactWriter,
   ExportCapabilities,
+  ExportChange,
   ExportDiagnostic,
-  ExportDiagnosticSeverity,
   ExportDryRun,
-  ExportExistingFile,
-  ExportFilePreview,
   ExportOperation,
   ExportRequest,
   ExportResult,

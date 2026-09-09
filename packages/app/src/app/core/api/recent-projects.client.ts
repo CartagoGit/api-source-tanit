@@ -1,9 +1,5 @@
 import type { IBrowseListing } from "../../../../../contracts/interfaces/cli/browse.interface";
 
-interface IDirectoryPicker {
-  readonly pick: () => Promise<string | null>;
-}
-
 export class RecentProjectsClient {
   async browse(path?: string): Promise<IBrowseListing> {
     const response = await fetch("/api/browse", {
