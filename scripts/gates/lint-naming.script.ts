@@ -84,7 +84,7 @@ const RULES: readonly INamingRule[] = [
   {
     path: "packages/core/transport/",
     what: "transportes de la Application API",
-    suffixes: [".server.ts", ".protocol.ts", ".error.ts", ".service.ts", "-protocol.ts", "-error.ts"],
+    suffixes: [".server.ts", ".protocol.ts", ".error.ts", ".service.ts", ".guard.ts", "-protocol.ts", "-error.ts"],
   },
   {
     path: "packages/core/state/sqlite/",

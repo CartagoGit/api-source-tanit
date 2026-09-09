@@ -6,8 +6,8 @@ import {
   isMessageBrokerTransport,
   isSseTransport,
   isWebSocketTransport,
-  type Transport,
-} from "../../packages/contracts/index.js";
+} from "../../packages/core/transport/transport-narrow.guard.js";
+import type { Transport } from "../../packages/contracts/index.js";
 
 describe("transport contracts", () => {
   it("narrows every discriminated transport", () => {

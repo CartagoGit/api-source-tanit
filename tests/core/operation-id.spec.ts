@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { operationIdFor, type Transport } from "../../packages/contracts/index.js";
+import type { Transport } from "../../packages/contracts/index.js";
+import { operationIdFor } from "../../packages/core/transport/operation-id.service.js";
 
 describe("operationIdFor", () => {
   const transports: Transport[] = [

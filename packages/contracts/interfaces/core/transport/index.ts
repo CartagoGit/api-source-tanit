@@ -24,12 +24,3 @@ export type TransportKind = Transport["kind"];
 
 export type { OperationId } from "../stable-ids.interface.js";
 export type { IOperationIdContext } from "./operation-id.service.js";
-export { operationIdFor } from "./operation-id.service.js";
-export {
-  isHttpTransport,
-  isGraphQlTransport,
-  isGrpcTransport,
-  isWebSocketTransport,
-  isSseTransport,
-  isMessageBrokerTransport,
-} from "./transport-narrow.guard.js";
