@@ -19,38 +19,13 @@
  */
 
 import type { ZodError } from "zod";
+import type { ApiErrorCode, ApiResult, IApiError } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /**
  * Stable error codes the API may return. Keep additions additive —
  * callers match on these strings, so a renumbering would be a
  * silent break.
  */
-export type ApiErrorCode =
-  /** Caller-supplied input did not match the handler's zod schema. */
-  | "INVALID_INPUT"
-  /** The named handler is not registered with the dispatcher. */
-  | "UNKNOWN_HANDLER"
-  /** The session for the requested project is not open. */
-  | "SESSION_NOT_FOUND"
-  /** The requested operation / endpoint does not exist on the snapshot. */
-  | "OPERATION_NOT_FOUND"
-  /** The requested service does not exist on the snapshot. */
-  | "SERVICE_NOT_FOUND"
-  /** The cancel signal was already aborted before the handler ran. */
-  | "CANCELED"
-  /** A scan / pipeline execution failed. */
-  | "EXECUTION_FAILED"
-  /** An export target is unsupported or the export write failed. */
-  | "EXPORT_FAILED";
-
-/** A typed error envelope. The dispatcher turns this into the wire shape. */
-export interface IApiError {
-  readonly code: ApiErrorCode;
-  readonly message: string;
-  /** Stable, machine-readable sub-details. Optional; never required. */
-  readonly details?: Readonly<Record<string, unknown>>;
-}
-
 /** Builds an `IApiError` — the only sanctioned constructor. */
 export function apiError(
   code: ApiErrorCode,
@@ -96,22 +71,17 @@ export function fromZodError(err: ZodError): IApiError {
  * error on `ok=false`. The bridge-side wrapper is **not** part of
  * the API surface — handlers and dispatcher speak this union.
  */
-export type ApiResult<T> = { readonly ok: true; readonly value: T } | IApiErrorAsFail;
-
-interface IApiErrorAsFail {
-  readonly ok: false;
-  readonly error: IApiError;
-}
-
 /** Wraps a successful value into the union. */
 export function ok<T>(value: T): { ok: true; value: T } {
   return { ok: true, value };
 }
 
 /** Wraps an error into the union. */
-export function fail(err: IApiError): IApiErrorAsFail {
+export function fail(err: IApiError): ApiResult<never> {
   return { ok: false, error: err };
 }
+
+export type { ApiErrorCode, ApiResult, IApiError } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /**
  * Standard `unknown` catcher: turns thrown errors into typed

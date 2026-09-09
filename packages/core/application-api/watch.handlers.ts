@@ -24,12 +24,8 @@ import { apiError } from "./error.js";
 import { recordHistoryEntry } from "./history.handlers.js";
 
 /** Public metadata about a live subscription. */
-export interface WatchSubscription {
-  readonly subscriptionId: string;
-  readonly projectRoot: string;
-  /** Filters the subscription declared at registration. */
-  readonly onlyPaths: ReadonlyArray<string> | null;
-}
+import type { WatchOutput, WatchSubscription } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { WatchOutput, WatchSubscription } from "../../contracts/interfaces/core/application-api.interface.js";
 
 const _subscriptions = new Map<string, WatchSubscription>();
 
@@ -96,10 +92,6 @@ export function listSubscriptions(): ReadonlyArray<WatchSubscription> {
 }
 
 /** Resultado de crear una suscripción de vigilancia. */
-export interface WatchOutput {
-  readonly subscription: WatchSubscription;
-}
-
 /** Crea los handlers para suscribirse a cambios de un proyecto. */
 export function createWatchHandlers(): {
   subscribe: IHandler<WatchInput, WatchOutput>;

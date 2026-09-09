@@ -22,10 +22,8 @@ import { apiError } from "./error.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Public output shape — a stable contract for the bridges. */
-export interface OpenProjectOutput {
-  readonly sessionId: string;
-  readonly summary: ISnapshotSummary;
-}
+import type { OpenProjectOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { OpenProjectOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /**
  * Factory that captures the dependencies. The default export

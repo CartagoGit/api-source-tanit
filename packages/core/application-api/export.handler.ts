@@ -15,12 +15,8 @@ import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
 /** Resultado de escribir una colección exportada. */
-export interface ExportOutput {
-  /** Absolute path the collection was written to. */
-  readonly outputPath: string;
-  /** Bytes written. */
-  readonly bytes: number;
-}
+import type { ExportOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { ExportOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 const KNOWN_TARGETS = new Set([
   "postman",

@@ -24,9 +24,8 @@ import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
 /** Resultado de resumir el snapshot actual de una sesión. */
-export interface SnapshotOutput {
-  readonly summary: ISnapshotSummary;
-}
+import type { SnapshotOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { SnapshotOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea los handlers para consultar el snapshot actual. */
 export function createSnapshotHandlers(): {

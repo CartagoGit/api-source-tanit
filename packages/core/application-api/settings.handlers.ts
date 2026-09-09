@@ -23,9 +23,8 @@ import { apiError } from "./error.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Resultado de aplicar cambios de configuración a una sesión. */
-export interface SettingsOutput {
-  readonly applied: Readonly<Record<string, unknown>>;
-}
+import type { SettingsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { SettingsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea el handler que aplica cambios de configuración de una sesión. */
 export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput> {

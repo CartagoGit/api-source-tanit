@@ -24,10 +24,8 @@ import {
 } from "./watch.handlers.js";
 
 /** Resultado de cancelar sesiones o suscripciones activas. */
-export interface CancelOutput {
-  /** Number of resources that were cancelled. */
-  readonly cancelled: number;
-}
+import type { CancelOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { CancelOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea el handler idempotente para cancelar sesiones o suscripciones. */
 export function createCancelHandler(): IHandler<CancelInput, CancelOutput> {

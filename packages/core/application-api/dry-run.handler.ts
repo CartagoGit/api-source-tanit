@@ -18,16 +18,8 @@ import { apiError } from "./error.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Resultado de ejecutar la generación sin escribir una colección. */
-export interface DryRunOutput {
-  /** Endpoint count the dry run produced. */
-  readonly endpointCount: number;
-  /** Frameworks that recognised the project. */
-  readonly frameworks: ReadonlyArray<string>;
-  /** Warnings emitted by the pipeline during the dry run. */
-  readonly warnings: ReadonlyArray<string>;
-  /** Wall-clock duration of the dry run, in ms. */
-  readonly durationMs: number;
-}
+import type { DryRunOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { DryRunOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea el handler que ejecuta la generación sin escribir una colección. */
 export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {

@@ -41,22 +41,7 @@ import { createCloseHandler } from "./close.handler.js";
  * future lint gate that cross-references "every handler name
  * appears in handlers.ts" has one source.
  */
-export const HANDLER_NAMES = [
-  "open-project",
-  "snapshot",
-  "list-endpoints",
-  "get-endpoint",
-  "get-schema",
-  "list-services",
-  "dry-run",
-  "export",
-  "history",
-  "watch",
-  "cancel",
-  "settings",
-  "list-projects",
-  "close",
-] as const;
+export { HANDLER_NAMES } from "../../contracts/constants/core/application-api.constant.js";
 
 function widenHandler<TInput, TOutput>(handler: IHandler<TInput, TOutput>): IHandler<unknown, unknown> {
   return {

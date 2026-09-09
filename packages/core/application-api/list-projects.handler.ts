@@ -19,9 +19,8 @@ import {
 import { apiError } from "./error.js";
 
 /** Resultado de listar las sesiones de proyecto abiertas en el proceso. */
-export interface ListProjectsOutput {
-  readonly projects: ReadonlyArray<IProjectEntry>;
-}
+import type { ListProjectsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { ListProjectsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /**
  * Walks the session registry by repeatedly asking `getSession()`

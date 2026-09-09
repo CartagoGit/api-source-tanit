@@ -15,10 +15,8 @@ import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
 /** Resultado de cerrar sesiones de proyecto. */
-export interface CloseOutput {
-  /** Number of sessions actually closed. */
-  readonly closed: number;
-}
+import type { CloseOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { CloseOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea el handler que cierra la sesión indicada. */
 export function createCloseHandler(): IHandler<CloseInput, CloseOutput> {

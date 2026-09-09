@@ -12,19 +12,13 @@ import type { IHandler } from "./dispatcher.js";
 import {
   ListEndpointsInputSchema,
   type ListEndpointsInput,
-  type IEndpointSummary,
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
 /** Resultado paginado de listar endpoints de un snapshot. */
-export interface ListEndpointsOutput {
-  readonly endpoints: ReadonlyArray<IEndpointSummary>;
-  /** Next cursor; absent when the last page was returned. */
-  readonly nextCursor: string | null;
-  /** Total count after filtering — useful for "showing X of N" UIs. */
-  readonly total: number;
-}
+import type { ListEndpointsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { ListEndpointsOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 const DEFAULT_LIMIT = 100;
 

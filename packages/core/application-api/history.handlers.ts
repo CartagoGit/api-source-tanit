@@ -19,17 +19,8 @@ import { apiError } from "./error.js";
 import type { IProjectSnapshot } from "../session/project-snapshot.js";
 
 /** A single history entry — what the session emitted. */
-export type IHistoryEntry =
-  | {
-      readonly kind: "snapshot-ready";
-      readonly capturedAt: string;
-      readonly sessionId: string;
-    }
-  | {
-      readonly kind: "snapshot-stale";
-      readonly capturedAt: string;
-      readonly changedPaths: ReadonlyArray<string>;
-    };
+import type { HistoryOutput, IHistoryEntry } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { HistoryOutput, IHistoryEntry } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Per-session ring buffer. Module-private — only `history.handlers.ts` writes. */
 const _history = new Map<string, IHistoryEntry[]>();
@@ -47,12 +38,6 @@ export function recordHistoryEntry(
 }
 
 /** Resultado de consultar el historial de eventos de una sesión. */
-export interface HistoryOutput {
-  readonly entries: ReadonlyArray<IHistoryEntry>;
-  /** Total entries the buffer holds for this session. */
-  readonly total: number;
-}
-
 const DEFAULT_HISTORY_LIMIT = 100;
 
 /** Crea el handler que lista el historial reciente de una sesión. */

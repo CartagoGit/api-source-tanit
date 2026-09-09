@@ -28,7 +28,8 @@
  *   path — handlers cannot return raw values to the bridge.
  */
 
-import { ZodError, type ZodType } from "zod";
+import { ZodError } from "zod";
+import type { HandlerRegistry, IHandler, IRequestContext } from "../../contracts/interfaces/core/application-api.interface.js";
 
 import {
   apiError,
@@ -37,8 +38,8 @@ import {
   isApiError,
   ok,
   toApiError,
-  type ApiResult,
 } from "./error.js";
+import type { ApiResult } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /**
  * Caller-provided context that travels with every request.
@@ -53,45 +54,8 @@ import {
  * declared by hand to keep the binary free of `@types/node` at
  * runtime. The minimum subset we need is the `aborted` boolean.
  */
-export interface IAbortSignalLike {
-  readonly aborted: boolean;
-}
-
 /** Contexto común que el dispatcher entrega a cada handler. */
-export interface IRequestContext {
-  /** Identifier of the open session this request is scoped to. */
-  readonly sessionId?: string;
-  /**
-   * Abort signal — handlers should pass this to any I/O that
-   * supports cancellation.
-   */
-  readonly signal?: IAbortSignalLike;
-  /** Origin of the call. */
-  readonly caller: "desktop" | "browser" | "cli";
-  /** Workspace folder the call is anchored to. Optional. */
-  readonly workspace?: string;
-  /**
-   * Optional injected orchestrator — bridges that already have one
-   * open pass it through so the handlers do not have to
-   * re-instantiate the 21 scanners. The session layer keeps the
-   * default registry.
-   */
-  readonly orchestrator?: unknown;
-}
-
 /** The shape every handler must conform to. */
-export interface IHandler<TIn, TOut> {
-  /** Symbolic name the dispatcher maps to. */
-  readonly name: string;
-  /** Zod schema for the input payload. */
-  readonly input: ZodType<TIn>;
-  /** The handler — pure async, no globals. */
-  readonly handle: (input: TIn, ctx: IRequestContext) => Promise<TOut>;
-}
-
-/** A typed map of name → handler. */
-export type HandlerRegistry = Readonly<Record<string, IHandler<unknown, unknown>>>;
-
 /**
  * Routes a request through the registered handler.
  *
@@ -147,5 +111,6 @@ async function invokeHandler(
 }
 
 /** Re-export the public error surface for handler consumers. */
-export type { IApiError, ApiResult } from "./error.js";
+export type { ApiResult, HandlerRegistry, IHandler, IRequestContext, IAbortSignalLike } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { IApiError } from "../../contracts/interfaces/core/application-api.interface.js";
 export { apiError, fail, ok, toApiError, fromZodError, isApiError } from "./error.js";

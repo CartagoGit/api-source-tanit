@@ -18,15 +18,10 @@ import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
 
 /** Schema kind — the most useful discrimination the UI / exporter can make. */
-export type IRequestSchema =
-  | { readonly kind: "fields"; readonly fields: ReadonlyArray<unknown> }
-  | { readonly kind: "body"; readonly body: unknown }
-  | { readonly kind: "none" };
+import type { GetSchemaOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { IRequestSchema, GetSchemaOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Resultado de obtener el esquema de solicitud de un endpoint. */
-export interface GetSchemaOutput {
-  readonly schema: IRequestSchema;
-}
 
 /** Crea el handler que obtiene el esquema de solicitud de un endpoint. */
 export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutput> {

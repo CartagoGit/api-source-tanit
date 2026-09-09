@@ -13,7 +13,6 @@ import {
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
-import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 /**
  * The full `EndpointSpec` shape is wider than `IEndpointSummary` —
@@ -23,10 +22,8 @@ import type { EndpointSpec } from "../../contracts/interfaces/core/postman.inter
  * through zod would lock down the underlying type and forbid
  * additive fields later.
  */
-export interface GetEndpointOutput {
-  readonly endpoint: EndpointSpec;
-  readonly serviceId: string;
-}
+import type { GetEndpointOutput } from "../../contracts/interfaces/core/application-api.interface.js";
+export type { GetEndpointOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
 /** Crea el handler que obtiene un endpoint por método y URI. */
 export function createGetEndpointHandler(): IHandler<GetEndpointInput, GetEndpointOutput> {
