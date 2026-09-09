@@ -29,7 +29,8 @@ import {
 } from "../../packages/core/index/workspace-resolver.service.js";
 import { IncrementalInvalidator } from "../../packages/core/index/incremental-invalidator.service.js";
 import { ProjectIndex } from "../../packages/core/index/project-index.service.js";
-import type { IWorkspace } from "../../packages/contracts/interfaces/core/index.interface.js";
+import type { IIndexedFile, IWorkspace } from "../../packages/contracts/interfaces/core/index.interface.js";
+import type { ISymbolGraph } from "../../packages/contracts/interfaces/core/symbol-graph.interface.js";
 
 async function withTempProject(
   files: Record<string, string>,
@@ -56,18 +57,18 @@ const rootWorkspace: IWorkspace = {
 
 describe("index file cache utilities", () => {
   test("normalizes paths, hashes text, snapshots files, and groups languages", () => {
-    const files = new Map([
-      ["src/a.ts", { relPath: "src/a.ts", language: "typescript" as const }],
-      ["README", { relPath: "README", language: "unknown" as const }],
-      ["data.json", { relPath: "data.json", language: "json" as const }],
+    const files = new Map<string, IIndexedFile>([
+      ["src/a.ts", { relPath: "src/a.ts", absPath: "/project/src/a.ts", size: 1, hashSha256: "a", language: "typescript", workspace: rootWorkspace }],
+      ["README", { relPath: "README", absPath: "/project/README", size: 1, hashSha256: "b", language: "unknown", workspace: rootWorkspace }],
+      ["data.json", { relPath: "data.json", absPath: "/project/data.json", size: 1, hashSha256: "c", language: "json", workspace: rootWorkspace }],
     ]);
     expect(toPosix("src\\a.ts")).toBe("src/a.ts");
     expect(joinPosix("/src/", "/a.ts/")).toBe("src/a.ts");
     expect(absPathOf("/project", "src/a.ts")).toBe("/project/src/a.ts");
     expect(keyOf("/src\\a.ts")).toBe("src/a.ts");
     expect(sha256Of("hello")).toHaveLength(64);
-    expect(snapshotFiles(files as never)).toHaveLength(3);
-    expect(filesByLanguage(files as never)).toEqual(new Map([
+    expect(snapshotFiles(files)).toHaveLength(3);
+    expect(filesByLanguage(files)).toEqual(new Map([
       ["typescript", 1],
       ["unknown", 1],
       ["json", 1],
@@ -77,7 +78,7 @@ describe("index file cache utilities", () => {
   test("reads files, skips directories, refreshes and removes disappeared files", async () => {
     await withTempProject({ "src/a.ts": "export const a = 1;", "src/dir": "not a dir" }, async (root) => {
       const absPath = join(root, "src/a.ts");
-      const files = new Map<string, never>();
+      const files = new Map<string, IIndexedFile>();
       const indexed = await readIndexedFile(absPath, root, [rootWorkspace]);
       expect(indexed?.language).toBe("typescript");
       expect(await readIndexedFile(join(root, "missing.ts"), root, [rootWorkspace])).toBeNull();
@@ -192,11 +193,17 @@ describe("incremental invalidator", () => {
 
   test("seeds only resolved symbol-graph imports and terminates cycles", () => {
     const invalidator = new IncrementalInvalidator();
-    invalidator.populateFromSymbolGraph({ imports: [
-      { sourceFile: "/project/a.ts", specifier: "./b", localName: "b", targetFile: "/project/b.ts" },
-      { sourceFile: "b.ts", specifier: "./a", localName: "a", targetFile: "a.ts" },
-      { sourceFile: "external.ts", specifier: "x", localName: "x", targetFile: null },
-    ] } as never);
+    const graph: ISymbolGraph = {
+      nodes: [],
+      imports: [
+        { sourceFile: "/project/a.ts", specifier: "./b", localName: "b", importedName: "b", targetFile: "/project/b.ts" },
+        { sourceFile: "b.ts", specifier: "./a", localName: "a", importedName: "a", targetFile: "a.ts" },
+        { sourceFile: "external.ts", specifier: "x", localName: "x", importedName: "x", targetFile: null },
+      ],
+      resolveByName: () => [],
+      resolveByImportPath: () => [],
+    };
+    invalidator.populateFromSymbolGraph(graph);
     expect(invalidator.closureFor("a.ts")).toEqual(["a.ts", "b.ts"]);
     expect(invalidator.importersOf("external.ts")).toEqual([]);
   });
@@ -205,9 +212,13 @@ describe("incremental invalidator", () => {
 describe("ProjectIndex additional branches", () => {
   test("exposes files/imports/diagnostics and symbol graph imports", async () => {
     await withTempProject({ "package.json": "{}", "src/a.ts": "export const a = 1;" }, async (root) => {
-      const index = await ProjectIndex.open(root, {
-        symbolGraph: { imports: [{ sourceFile: "src/a.ts", specifier: "x", localName: "x", targetFile: "src/b.ts" }] } as never,
-      });
+      const graph: ISymbolGraph = {
+        nodes: [],
+        imports: [{ sourceFile: "src/a.ts", specifier: "x", localName: "x", importedName: "x", targetFile: "src/b.ts" }],
+        resolveByName: () => [],
+        resolveByImportPath: () => [],
+      };
+      const index = await ProjectIndex.open(root, { symbolGraph: graph });
       try {
         expect(index.files()).not.toHaveLength(0);
         expect(index.importsFor("src/a.ts")).toHaveLength(1);
