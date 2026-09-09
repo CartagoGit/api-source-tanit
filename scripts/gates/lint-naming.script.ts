@@ -48,6 +48,12 @@ const RULES: readonly INamingRule[] = [
     suffixes: [".constant.ts"],
   },
   {
+    path: "packages/contracts/interfaces/core/transport/",
+    what: "contratos y helpers runtime-neutral de transporte",
+    suffixes: [".interface.ts", ".service.ts", ".guard.ts", ".d.ts"],
+    exact: ["index.ts"],
+  },
+  {
     path: "packages/core/contracts/",
     what: "tipos y constantes compartidas",
     suffixes: [".interface.ts", ".constant.ts", ".d.ts"],
