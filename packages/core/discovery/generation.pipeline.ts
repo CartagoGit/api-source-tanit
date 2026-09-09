@@ -48,6 +48,7 @@ import {
   toIEndpointAuth,
 } from "./auth-scheme.helper.js";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   IDetectedAuthScheme,
@@ -68,6 +69,12 @@ import { toServiceGraph } from "./to-service-graph.helper.js";
 import { deriveServiceId } from "./group-by-service.helper.js";
 import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper.js";
 import { filterSpecsForService } from "./filter-specs-for-service.helper.js";
+import { toServiceDescriptor } from "../merge/service-descriptor.adapter.js";
+import { combineServices } from "../merge/combine-services.service.js";
+import type { IOperation } from "../../contracts/interfaces/core/operation.interface.js";
+import type { IServiceDescriptor } from "../../contracts/interfaces/core/service.interface.js";
+import { operationIdFor } from "../transport/operation-id.service.js";
+import { collectFiles } from "../helpers/fs-walk.helper.js";
 
 /**
  * Discovers the endpoints of a project and builds its collection.
@@ -299,19 +306,15 @@ async function buildFor(
     routesByService: discovery.routesByService,
     monorepoDetection: discovery.monorepoDetection,
     combined,
+    ...(await serviceOverridesFromWorkspaces(discovery.matches)),
   });
 
   if (graph.services.length === 1) {
     return buildForService(discovery, graph.services[0]!, context, options);
   }
   if (combined) {
-    // Combined mode: merge every service's endpoints into a single
-    // descriptor and pass it to `buildForService`. The endpoint
-    // filter inside `buildForService` is then a no-op (it filters by
-    // the descriptor's own `endpoints` list, which already contains
-    // every contribution). `match` / `baseUrl` / `auth` come from
-    // the first service; the merged `endpoints` is what produces
-    // the single combined collection the caller expects.
+    // Combined mode keeps one collection while retaining the service
+    // context on every operation/spec.
     const seen = new Set<string>();
     const mergedEndpoints: ParsedRoute[] = [];
     for (const s of graph.services) {
@@ -322,6 +325,38 @@ async function buildFor(
         mergedEndpoints.push(r);
       }
     }
+    const descriptors: IServiceDescriptor[] = graph.services.map((service) => {
+      const operations: IOperation[] = discovery.specs
+        .filter((spec) => spec.serviceId === service.serviceId)
+        .map((spec) => {
+          const transport = {
+            kind: "http" as const,
+            method: spec.method === "ALL" ? "GET" : spec.method,
+            path: spec.uri,
+          };
+          return {
+            id: operationIdFor(transport, {
+              serviceId: service.serviceId,
+              operationName: spec.name,
+            }),
+            serviceId: service.serviceId,
+            transport,
+            serverRef: { id: { kind: "server", value: "pending" }, url: "pending" },
+            authRef: { id: { kind: "auth", value: "pending" }, type: "none" },
+            request: {},
+            responses: [],
+            provenance: { sourceFile: "generation.pipeline" },
+          };
+        });
+      return toServiceDescriptor(service, operations);
+    });
+    const combinedDescriptor = combineServices(descriptors);
+    const operationByKey = new Map(
+      combinedDescriptor.operations.map((operation) => [
+        `${operation.serviceId}:${operation.transport.kind === "http" ? operation.transport.method : ""}:${operation.transport.kind === "http" ? operation.transport.path : ""}`,
+        operation,
+      ]),
+    );
     const first = graph.services[0]!;
     const mergedService: IServiceGraphNode = {
       // x00028 S3: the combined service is a synthetic descriptor
@@ -336,35 +371,79 @@ async function buildFor(
       // first.serviceId` would fail for every other service.
       serviceId: "",
       match: first.match,
-      // x00031 S1: propagate the hybrid metadata from the first service
-      // (which is the only one with the merged endpoints anyway).
-      additionalMatches: first.additionalMatches,
-      frameworks: first.frameworks,
+      additionalMatches: graph.services.flatMap((service) => service.additionalMatches),
+      frameworks: [...new Set(graph.services.flatMap((service) => service.frameworks))],
       endpoints: mergedEndpoints,
-      // LIMITATION (audit 2026-09-06 second pass §17): in combined
-      // mode the merged descriptor still inherits `baseUrl`,
-      // `auth` and `variables` from the FIRST service. The right
-      // fix is per-endpoint metadata so each endpoint carries the
-      // `baseUrl` of its origin service; the current shape lets
-      // callers mix baseUrls by accident when services disagree.
-      //
-      // This is documented as the open gap and pinned by the
-      // test `tests/core/combine-services-baseurl.spec.ts`
-      // (audit §18 priority 6). A dedicated proposal will fix it
-      // properly with `spec.serviceBaseUrl` and a per-endpoint
-      // override; for now we surface the limitation so the audit
-      // does not get forgotten.
-      baseUrl: first.baseUrl,
-      auth: first.auth,
-      variables: first.variables,
+      baseUrl: null,
+      auth: undefined,
+      variables: combinedDescriptor.variables,
     };
-    return buildForService(discovery, mergedService, context, options);
+    const combinedDiscovery = {
+      ...discovery,
+      specs: discovery.specs.map((spec) => {
+        const operation = operationByKey.get(
+          `${spec.serviceId ?? ""}:${spec.method === "ALL" ? "GET" : spec.method}:${spec.uri}`,
+        );
+        return operation
+          ? { ...spec, serverRef: operation.serverRef, authRef: operation.authRef }
+          : spec;
+      }),
+    };
+    return buildForService(combinedDiscovery, mergedService, context, options);
   }
   const out: IGenerationResult[] = [];
   for (const service of graph.services) {
     out.push(await buildForService(discovery, service, context, options));
   }
   return out;
+}
+
+interface IServiceOverrides {
+  readonly baseUrlByService?: ReadonlyMap<string, string | null>;
+  readonly authByService?: ReadonlyMap<string, IEndpointAuth | undefined>;
+}
+
+async function serviceOverridesFromWorkspaces(
+  matches: ReadonlyArray<IProjectMatch>,
+): Promise<IServiceOverrides> {
+  const baseUrlByService = new Map<string, string | null>();
+  const authByService = new Map<string, IEndpointAuth | undefined>();
+
+  for (const match of matches) {
+    const serviceId = deriveServiceId(match);
+    const root = match.frameworkSearchRoot
+      ? join(match.projectRoot, match.frameworkSearchRoot)
+      : match.projectRoot;
+    const sourceFiles = await collectFiles(
+      root,
+      (name) => name.endsWith(".ts") || name.endsWith(".py"),
+    );
+    const files = match.framework === "fastapi"
+      ? [join(root, "pyproject.toml"), join(root, "main.py"), ...sourceFiles]
+      : [join(root, "package.json"), ...sourceFiles];
+
+    let text = "";
+    for (const file of files) {
+      try {
+        text += `\n${await readFile(file, "utf8")}`;
+      } catch {
+        // A missing metadata file is a normal legacy case.
+      }
+    }
+
+    const baseUrl = /(?:baseUrl|base_url)\s*[=:]\s*["']([^"']+)["']/.exec(text)?.[1];
+    if (baseUrl) baseUrlByService.set(serviceId, baseUrl);
+
+    const authScheme = /(?:scheme|auth_kind)\s*[=:]\s*["'](oauth2|apiKey|bearer)["']/.exec(text)?.[1];
+    if (authScheme) {
+      authByService.set(serviceId, {
+        kind: "scheme",
+        scheme: authScheme as "oauth2" | "apiKey" | "bearer",
+      });
+    }
+  }
+
+  return { baseUrlByService, authByService };
 }
 
 async function buildForService(
