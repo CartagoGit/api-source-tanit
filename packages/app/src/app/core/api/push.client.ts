@@ -1,12 +1,8 @@
 import { Injectable, inject } from "@angular/core";
 import { HostBridgeClient } from "./host-bridge.client";
+import type { PushRequest } from "../../../../../contracts/interfaces/core/push.interface";
 
-export interface PushRequest {
-  readonly projectRoot: string;
-  readonly workspace?: string;
-  readonly dryRun?: boolean;
-  readonly apiKey?: string;
-}
+export type { PushRequest } from "../../../../../contracts/interfaces/core/push.interface";
 
 @Injectable({ providedIn: "root" })
 export class PushClient {

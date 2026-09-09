@@ -1,6 +1,6 @@
 import type { IBrowseListing } from "../../../../../contracts/interfaces/cli/browse.interface";
 
-export interface IDirectoryPicker {
+interface IDirectoryPicker {
   readonly pick: () => Promise<string | null>;
 }
 
