@@ -34,7 +34,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { parse as babelParse } from "@babel/parser";
+import { parse as babelParse, type ParserPlugin, type ParserOptions } from "@babel/parser";
 
 import { sha256Of } from "./file-cache.service.js";
 import type { IndexedLanguage, IIndexedFile } from "./file-cache.service.js";
@@ -61,7 +61,7 @@ export function parseAst(args: {
   readonly language: AstCapableLanguage;
   readonly relPath: string;
 }): unknown {
-  const plugins: string[] = [];
+  const plugins: ParserPlugin[] = [];
   if (args.language === "typescript" || args.language === "tsx") {
     plugins.push("typescript");
   }
@@ -69,17 +69,14 @@ export function parseAst(args: {
     plugins.push("jsx");
   }
   try {
-    // The Babel plugin-list types in `@babel/parser` are wider than
-    // what this slice needs; cast through `unknown` so the local
-    // ambient declaration's `string[]` shape survives.
-    const opts = {
+    const opts: ParserOptions = {
       sourceType: "module" as const,
       allowImportExportEverywhere: true,
       allowReturnOutsideFunction: true,
       errorRecovery: true,
-      plugins: plugins as unknown as Array<unknown>,
+      plugins,
     };
-    return babelParse(args.source, opts as unknown as Parameters<typeof babelParse>[1]);
+    return babelParse(args.source, opts);
   } catch {
     // Same shape as the TS frontend's `parseModule`: errors degrade
     // to `null` so the cache stays truthful ("we tried, it did not

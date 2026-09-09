@@ -291,7 +291,7 @@ export function defaultOrchestratorWithIndex(
   const orchestrator = defaultOrchestrator();
   if (index) {
     Object.defineProperty(orchestrator, PROJECT_INDEX_SLOT, {
-      value: index as unknown as object,
+      value: index,
       enumerable: false,
       writable: false,
       configurable: false,
@@ -309,6 +309,8 @@ export function defaultOrchestratorWithIndex(
 export function projectIndexOf(
   orchestrator: DiscoveryOrchestrator,
 ): IProjectIndexForRegistry | undefined {
-  const raw = (orchestrator as unknown as Record<symbol, unknown>)[PROJECT_INDEX_SLOT];
-  return raw as IProjectIndexForRegistry | undefined;
+  const withIndex = orchestrator as DiscoveryOrchestrator & {
+    readonly [PROJECT_INDEX_SLOT]?: IProjectIndexForRegistry;
+  };
+  return withIndex[PROJECT_INDEX_SLOT];
 }

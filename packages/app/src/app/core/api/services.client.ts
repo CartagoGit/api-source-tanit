@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { HostBridgeClient } from "./host-bridge.client";
+import type { HostBridgeClient } from "./host-bridge.client";
 
 interface IServiceBridge {
   request(operation: string, input: unknown): Promise<unknown>;
@@ -32,8 +32,8 @@ export interface IServiceDetail {
 export class ServicesClient {
   private readonly serviceBridge: IServiceBridge;
 
-  constructor(bridge: HostBridgeClient) {
-    this.serviceBridge = bridge as unknown as IServiceBridge;
+  constructor(bridge: Pick<HostBridgeClient, "request"> | IServiceBridge) {
+    this.serviceBridge = bridge;
   }
 
   list(projectRoot: string): Promise<ReadonlyArray<IServiceDetail>> {

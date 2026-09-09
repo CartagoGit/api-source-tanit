@@ -47,18 +47,14 @@ export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutp
       for (const result of snap.results) {
         for (const spec of result.specs) {
           if (spec.method.toUpperCase() === method && spec.uri === input.uri) {
-            const specRecord = spec as unknown as {
-              fields?: ReadonlyArray<unknown>;
-              body?: unknown;
-            };
-            if (specRecord.fields && specRecord.fields.length > 0) {
+            if (spec.fields && spec.fields.length > 0) {
               return {
-                schema: { kind: "fields", fields: specRecord.fields },
+                schema: { kind: "fields", fields: spec.fields },
               };
             }
-            if (specRecord.body !== undefined && specRecord.body !== null) {
+            if (spec.body !== undefined && spec.body !== null) {
               return {
-                schema: { kind: "body", body: specRecord.body },
+                schema: { kind: "body", body: spec.body },
               };
             }
             return { schema: { kind: "none" } };

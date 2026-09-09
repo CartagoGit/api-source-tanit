@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { HostBridgeClient } from "./host-bridge.client";
+import type { HostBridgeClient } from "./host-bridge.client";
 
 interface IHistoryBridge {
   request(operation: string, input: unknown): Promise<unknown>;
@@ -52,8 +52,8 @@ export interface IHistoryRestoreResult {
 export class HistoryClient {
   private readonly historyBridge: IHistoryBridge;
 
-  constructor(bridge: HostBridgeClient) {
-    this.historyBridge = bridge as unknown as IHistoryBridge;
+  constructor(bridge: Pick<HostBridgeClient, "request"> | IHistoryBridge) {
+    this.historyBridge = bridge;
   }
 
   list(projectRoot: string): Promise<ReadonlyArray<IHistoryEntry>> {

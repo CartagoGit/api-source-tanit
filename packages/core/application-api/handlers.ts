@@ -58,29 +58,34 @@ export const HANDLER_NAMES = [
   "close",
 ] as const;
 
+function widenHandler<TInput, TOutput>(handler: IHandler<TInput, TOutput>): IHandler<unknown, unknown> {
+  return {
+    name: handler.name,
+    input: handler.input as IHandler<unknown, unknown>["input"],
+    handle: async (input, ctx) => handler.handle(input as TInput, ctx),
+  };
+}
+
 /** A static, read-only registry the dispatcher consumes. */
 export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unknown>>> {
   const snap = createSnapshotHandlers();
   const hist = createHistoryHandlers();
   const watch = createWatchHandlers();
-  // Each typed handler is widened to `IHandler<unknown, unknown>`
-  // at the registry boundary; the dispatcher's `.parse()` call
-  // narrows back to the typed input before invoking `handle()`.
   const map: Record<string, IHandler<unknown, unknown>> = {
-    "open-project": createOpenProjectHandler() as unknown as IHandler<unknown, unknown>,
-    "snapshot": snap.current as unknown as IHandler<unknown, unknown>,
-    "list-endpoints": createListEndpointsHandler() as unknown as IHandler<unknown, unknown>,
-    "get-endpoint": createGetEndpointHandler() as unknown as IHandler<unknown, unknown>,
-    "get-schema": createGetSchemaHandler() as unknown as IHandler<unknown, unknown>,
-    "list-services": createListServicesHandler() as unknown as IHandler<unknown, unknown>,
-    "dry-run": createDryRunHandler() as unknown as IHandler<unknown, unknown>,
-    "export": createExportHandler() as unknown as IHandler<unknown, unknown>,
-    "history": hist.list as unknown as IHandler<unknown, unknown>,
-    "watch": watch.subscribe as unknown as IHandler<unknown, unknown>,
-    "cancel": createCancelHandler() as unknown as IHandler<unknown, unknown>,
-    "settings": createSettingsHandler() as unknown as IHandler<unknown, unknown>,
-    "list-projects": createListProjectsHandler() as unknown as IHandler<unknown, unknown>,
-    "close": createCloseHandler() as unknown as IHandler<unknown, unknown>,
+    "open-project": widenHandler(createOpenProjectHandler()),
+    "snapshot": widenHandler(snap.current),
+    "list-endpoints": widenHandler(createListEndpointsHandler()),
+    "get-endpoint": widenHandler(createGetEndpointHandler()),
+    "get-schema": widenHandler(createGetSchemaHandler()),
+    "list-services": widenHandler(createListServicesHandler()),
+    "dry-run": widenHandler(createDryRunHandler()),
+    "export": widenHandler(createExportHandler()),
+    "history": widenHandler(hist.list),
+    "watch": widenHandler(watch.subscribe),
+    "cancel": widenHandler(createCancelHandler()),
+    "settings": widenHandler(createSettingsHandler()),
+    "list-projects": widenHandler(createListProjectsHandler()),
+    "close": widenHandler(createCloseHandler()),
   };
   // Note: `snapshot`, `history` and `watch` each ship two
   // sub-handlers in their respective files (`.current` /

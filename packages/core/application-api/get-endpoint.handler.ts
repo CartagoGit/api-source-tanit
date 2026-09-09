@@ -13,6 +13,7 @@ import {
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
 import { apiError } from "./error.js";
+import type { EndpointSpec } from "../../contracts/interfaces/core/postman.interface.js";
 
 /**
  * The full `EndpointSpec` shape is wider than `IEndpointSummary` —
@@ -23,7 +24,7 @@ import { apiError } from "./error.js";
  * additive fields later.
  */
 export interface GetEndpointOutput {
-  readonly endpoint: Readonly<Record<string, unknown>>;
+  readonly endpoint: EndpointSpec;
   readonly serviceId: string;
 }
 
@@ -47,7 +48,7 @@ export function createGetEndpointHandler(): IHandler<GetEndpointInput, GetEndpoi
         for (const spec of result.specs) {
           if (spec.method.toUpperCase() === method && spec.uri === input.uri) {
             return {
-              endpoint: spec as unknown as Readonly<Record<string, unknown>>,
+              endpoint: spec,
               serviceId: spec.serviceId ?? result.serviceId ?? "default",
             };
           }
