@@ -1,6 +1,12 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import { makeSnapshot } from "../../packages/core/session/project-snapshot.js";
+import { closeAllSessions, getSession, openSession } from "../../packages/core/session/project-session.service.js";
+import { generateCollections } from "../../packages/core/discovery/generation.pipeline.js";
+import { readManifest } from "../../packages/core/index/manifest-reader.service.js";
 import {
   canonicalSnapshotJson,
   snapshotHashFromJson,
@@ -8,6 +14,21 @@ import {
 } from "../../packages/core/session/snapshot-hash.service.js";
 import { HistoryRecorderService } from "../../packages/core/session/history-recorder.service.js";
 import type { ICanonicalSnapshot } from "../../packages/core/session/snapshot-hash.service.js";
+
+const watchState = vi.hoisted(() => ({
+  callback: null as ((eventType: string, filename: string) => void) | null,
+}));
+
+vi.mock("../../packages/core/discovery/generation.pipeline.js", () => ({
+  generateCollections: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("node:fs", () => ({
+  watch: vi.fn((_path: string, _options: unknown, callback: (eventType: string, filename: string) => void) => {
+    watchState.callback = callback;
+    return { close: vi.fn() };
+  }),
+}));
 
 function canonical(overrides: Partial<ICanonicalSnapshot> = {}): ICanonicalSnapshot {
   return {
@@ -99,5 +120,80 @@ describe("history recorder", () => {
     const right = recorder.record("/project", canonical({ services: [] }));
     expect(recorder.compare("/project", left.id, right.id).removed).toEqual(["service:api"]);
     expect(() => recorder.compare("/project", left.id, "missing")).toThrow("Both history records are required");
+  });
+});
+
+describe("session and manifest edge branches", () => {
+  test("emits stale and ready events after a debounced watched change", async () => {
+    const root = await mkdtemp(join(tmpdir(), "core-session-watch-"));
+    try {
+      const session = await openSession(root, {
+        watch: true,
+        watchDebounceMs: 1,
+        generationOptions: {
+          orchestrator: {
+            detectAll: async () => [],
+            detectAllWithDiagnostics: async () => ({ detected: [], diagnostics: [] }),
+            forceFramework: async () => null,
+            supportedFrameworks: () => [],
+          },
+        },
+      });
+      const stale = vi.fn();
+      const ready = vi.fn();
+      session.on("snapshot-stale", stale);
+      session.on("snapshot-ready", ready);
+      watchState.callback?.("change", "src/changed.ts");
+      expect(stale).toHaveBeenCalledWith({ changedPaths: ["src/changed.ts"] });
+      await new Promise<void>((resolve) => setTimeout(resolve, 10));
+      expect(ready).toHaveBeenCalledOnce();
+      expect(getSession(root)?.id).toBe(session.id);
+      session.close();
+      expect(getSession(root)).toBeNull();
+    } finally {
+      closeAllSessions();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("reports an aborted scan after generation completes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "core-session-abort-"));
+    const signal = { aborted: false };
+    try {
+      vi.mocked(generateCollections).mockImplementationOnce(async () => {
+        signal.aborted = true;
+        return [];
+      });
+      await expect(openSession(root, {
+        signal,
+        generationOptions: {
+          orchestrator: {
+            detectAll: async () => [],
+            detectAllWithDiagnostics: async () => ({ detected: [], diagnostics: [] }),
+            forceFramework: async () => null,
+            supportedFrameworks: () => [],
+          },
+        },
+      })).rejects.toThrow("was aborted");
+    } finally {
+      closeAllSessions();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("reads TOML sections, quoted scalars, arrays, and text manifests", async () => {
+    const root = await mkdtemp(join(tmpdir(), "core-manifest-"));
+    try {
+      const { writeFile } = await import("node:fs/promises");
+      await writeFile(join(root, "pyproject.toml"), "[tool.poetry]\nname = \"demo\"\npackages = [\"demo\", \"shared\"]\n", "utf8");
+      await writeFile(join(root, "Gemfile"), "source \"https://rubygems.org\"\n", "utf8");
+      const toml = await readManifest({ projectRoot: root, relPath: "pyproject.toml" });
+      expect(toml?.parsed).toEqual({ tool: { poetry: { name: "demo", packages: ["demo", "shared"] } } });
+      const text = await readManifest({ projectRoot: root, relPath: "Gemfile" });
+      expect(text?.format).toBe("text");
+      expect(text?.parsed).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
