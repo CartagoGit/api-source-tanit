@@ -71,6 +71,18 @@ describe("cli.script.ts — the dispatcher", () => {
     expect(code).toBe(0);
   });
 
+  test("serve is dispatched and rejects an invalid HTTP port", async () => {
+    const code = await run([
+      "serve",
+      "--http",
+      "--port",
+      "not-a-port",
+      "--project-root",
+      process.cwd(),
+    ]);
+    expect(code).toBe(2);
+  });
+
   test("--project-root with a relative path becomes absolute before reaching the command", async () => {
     const root = join(work, "absolutize");
     await copyExampleClean(exampleDir("express"), root);
