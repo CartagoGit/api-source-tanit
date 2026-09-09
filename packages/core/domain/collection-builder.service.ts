@@ -93,13 +93,27 @@ function descriptionFieldsFor(ep: EndpointSpec): EndpointSpec["fields"] {
   return [...bodyFields, ...nonBodyFields];
 }
 
+function baseUrlVariableFor(ep: EndpointSpec): string {
+  return ep.serviceId ? `{{baseUrl_${ep.serviceId}}}` : "{{baseUrl}}";
+}
+
+function requestSchemeFor(ep: EndpointSpec, scheme: AuthSchemeType): AuthSchemeType {
+  if (!ep.authRef) return scheme;
+  if (ep.authRef.type === "apiKey") return "apikey";
+  if (ep.authRef.type === "oauth2") return "oauth2";
+  if (ep.authRef.type === "bearer") return "bearer";
+  return "none";
+}
+
 function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest {
+  const requestScheme = requestSchemeFor(ep, scheme);
+  const baseUrlVariable = baseUrlVariableFor(ep);
   const req: PostmanRequest = {
     method: postmanMethodFor(ep.method),
-    header: defaultHeaders(ep, scheme),
+    header: defaultHeaders(ep, requestScheme),
     url: {
-      raw: "{{baseUrl}}" + ep.uri,
-      host: ["{{baseUrl}}"],
+      raw: baseUrlVariable + ep.uri,
+      host: [baseUrlVariable],
       path: ep.uri.split("/").filter(Boolean),
       ...(ep.query
         ? { query: ep.query.map((q) => ({ ...q, disabled: false })) }

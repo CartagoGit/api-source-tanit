@@ -1,10 +1,15 @@
 import type { ISchemaGraph } from "./schema.interface.js";
 import type { IValidationSource } from "./validation-source.interface.js";
 import type { ITransportMeta, TransportKind } from "./transport.interface.js";
+import type { IAuthRef } from "./auth-ref.interface.js";
+import type { IServerRef } from "./server-ref.interface.js";
 
 /** Endpoint declared in the legacy discovery and exporter pipeline. */
 export interface EndpointSpec {
   serviceId?: string;
+  /** Per-operation context produced by the universal service adapter. */
+  serverRef?: IServerRef;
+  authRef?: IAuthRef;
   name: string;
   method:
     | "GET"
