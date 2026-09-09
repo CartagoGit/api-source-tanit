@@ -1,13 +1,18 @@
-export interface IHistoryEntry {
+import type { ICanonicalSnapshot } from "./snapshot-hash.interface.js";
+
+export interface IHistoryRecord {
   readonly id: string;
   readonly timestamp: string;
   readonly formats: ReadonlyArray<string>;
   readonly count: number;
   readonly output: string;
   readonly sha256: string;
-  readonly provenance: { readonly source: string; readonly projectRoot?: string; readonly parentId?: string; readonly restoredFrom?: string };
-  readonly configuration?: Readonly<Record<string, unknown>>;
+  readonly provenance: { readonly source: "scan" | "import" | "restore" | "export"; readonly projectRoot?: string; readonly parentId?: string };
+  readonly snapshot: ICanonicalSnapshot;
+  readonly configuration: Readonly<Record<string, unknown>>;
 }
+
+export type IHistoryEntry = IHistoryRecord;
 
 export interface IHistoryChange {
   readonly key: string;
@@ -18,6 +23,8 @@ export interface IHistoryChange {
 }
 
 export interface IHistoryDiff {
+  readonly services: ReadonlyArray<string>;
+  readonly operations: ReadonlyArray<string>;
   readonly added: ReadonlyArray<string>;
   readonly removed: ReadonlyArray<string>;
   readonly changed: ReadonlyArray<string>;

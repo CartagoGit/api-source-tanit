@@ -1,10 +1,10 @@
 import type { ICompleteProjectSnapshot, IProjectSnapshot } from "../../../contracts/interfaces/core/project-state.interface.js";
 import type { ProjectId, SnapshotId } from "../../../contracts/interfaces/core/stable-ids.interface.js";
+import type { IProjectDatabase } from "../../../contracts/interfaces/core/state-persistence.interface.js";
+
+export type { IProjectDatabase } from "../../../contracts/interfaces/core/state-persistence.interface.js";
 
 interface IProjectRow { project_id: string; root_path: string; active_snapshot_id: string | null; revision: number; }
-/** Minimal database surface required by the project state repository. */
-export interface IProjectDatabase { query(sql: string): { get(...parameters: unknown[]): unknown }; prepare(sql: string): { run(...parameters: unknown[]): unknown }; }
-
 /** Repositorio SQLite para proyectos, revisiones y snapshot activo. */
 export class SqliteProjectRepository {
   public constructor(private readonly database: IProjectDatabase) {}

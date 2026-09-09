@@ -1,44 +1,14 @@
 import { createHash } from "node:crypto";
+import type {
+  ICanonicalSnapshot,
+} from "../../contracts/interfaces/core/snapshot-hash.interface.js";
 
-/** Representación estable de un snapshot usada para serialización y hashing. */
-export interface ICanonicalSnapshot {
-  readonly capturedAt: string;
-  readonly formats: ReadonlyArray<string>;
-  readonly services: ReadonlyArray<ICanonicalService>;
-  readonly combinedExport?: ICombinedExport;
-}
-
-/** Metadatos de una exportación combinada parcial o completa. */
-export interface ICombinedExport {
-  readonly partial: boolean;
-  readonly explanation: string;
-  readonly services: ReadonlyArray<{ readonly serviceId: string; readonly reason: string }>;
-  readonly operationRefs: Readonly<Record<string, { readonly serverRef?: string; readonly authRef?: string }>>;
-}
-
-/** Representación canónica de un servicio y sus operaciones. */
-export interface ICanonicalService {
-  readonly serviceId: string;
-  readonly framework: string;
-  readonly transports: ReadonlyArray<string>;
-  readonly auth: unknown;
-  readonly baseUrl?: string;
-  readonly serverRef?: string;
-  readonly authRef?: string;
-  readonly operations: ReadonlyArray<ICanonicalOperation>;
-}
-
-/** Representación canónica de una operación exportable. */
-export interface ICanonicalOperation {
-  readonly operationId: string;
-  readonly method: string;
-  readonly path: string;
-  readonly requestSchema?: unknown;
-  readonly responseSchema?: unknown;
-  readonly auth?: unknown;
-  readonly serverRef?: string;
-  readonly authRef?: string;
-}
+export type {
+  ICanonicalOperation,
+  ICanonicalService,
+  ICanonicalSnapshot,
+  ICombinedExport,
+} from "../../contracts/interfaces/core/snapshot-hash.interface.js";
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);

@@ -8,17 +8,12 @@ import {
 } from "../../../contracts/constants/core/state-store.constant.js";
 import { migrateStateDatabase } from "./migrations.js";
 import { resolveStateDatabasePath } from "./state-db-path.service.js";
+import type { IStateDatabaseConnection } from "../../../contracts/interfaces/core/state-persistence.interface.js";
 
-/** Conexión SQLite inicializada para el almacén durable de estado. */
-export interface IStateDatabaseConnection {
-  readonly path: string;
-  readonly version: number;
-  readonly database: Database;
-  close(): void;
-}
+export type { IStateDatabaseConnection } from "../../../contracts/interfaces/core/state-persistence.interface.js";
 
 /** Abre la base de estado, aplica migraciones y configura SQLite. */
-export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection {
+export function openStateDatabase(path = resolveStateDatabasePath()): IStateDatabaseConnection<Database> {
   mkdirSync(dirname(path), { recursive: true });
   const database = new Database(path, { create: true, strict: true });
   database.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = ${STATE_DB_BUSY_TIMEOUT_MS};`); // lint:sast ignore — timeout es una constante numérica interna.

@@ -5,19 +5,9 @@ import {
   STATE_DB_SCHEMA_VERSION,
   STATE_DB_TABLES,
 } from "../../../contracts/constants/core/state-store.constant.js";
+import type { IStateMigration, IStateMigrationDatabase } from "../../../contracts/interfaces/core/state-persistence.interface.js";
 
-/** Operaciones mínimas de base de datos necesarias para una migración. */
-export interface IStateMigrationDatabase {
-  exec(sql: string): void;
-  query(sql: string): { get(): unknown; all?(): unknown[] };
-}
-
-/** Migración versionada con operaciones de avance y reversión. */
-export interface IStateMigration {
-  readonly version: number;
-  readonly up: (database: IStateMigrationDatabase) => void;
-  readonly down: (database: IStateMigrationDatabase) => void;
-}
+export type { IStateMigration, IStateMigrationDatabase } from "../../../contracts/interfaces/core/state-persistence.interface.js";
 
 /** Error producido al detectar una base incompatible o corrupta. */
 export class StateDatabaseMigrationError extends Error {
@@ -50,7 +40,7 @@ const REQUIRED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** Migraciones ordenadas que llevan la base al esquema vigente. */
-export const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
+const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
   {
     version: 1,
     up: (database) => database.exec(SCHEMA_SQL),
@@ -67,6 +57,8 @@ export const STATE_DATABASE_MIGRATIONS: readonly IStateMigration[] = [
     ),
   },
 ];
+
+export { STATE_DATABASE_MIGRATIONS };
 
 function readVersion(database: IStateMigrationDatabase): number {
   const row = database.query("PRAGMA user_version").get() as { user_version?: number } | undefined;

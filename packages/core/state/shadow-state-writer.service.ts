@@ -1,25 +1,15 @@
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/project-state.interface.js";
-import type { ProjectId } from "../../contracts/interfaces/core/stable-ids.interface.js";
+import type {
+  IShadowProjectRepository,
+  IShadowTransactionService,
+  IShadowWriteDiagnostic,
+} from "../../contracts/interfaces/core/state-persistence.interface.js";
 
-/** Resultado de intentar persistir un snapshot en modo shadow. */
-export interface IShadowWriteDiagnostic {
-  readonly ok: boolean;
-  readonly enabled: boolean;
-  readonly persisted: boolean;
-  readonly activated: false;
-  readonly snapshotId: string;
-  readonly error?: string;
-}
-
-/** Operación mínima de proyectos requerida por el escritor shadow. */
-export interface IShadowProjectRepository {
-  ensure(projectId: ProjectId, rootPath: string, now: string): void;
-}
-
-/** Transaction boundary used to persist a complete shadow snapshot atomically. */
-export interface IShadowTransactionService {
-  write(snapshot: IProjectSnapshot): IProjectSnapshot;
-}
+export type {
+  IShadowProjectRepository,
+  IShadowTransactionService,
+  IShadowWriteDiagnostic,
+} from "../../contracts/interfaces/core/state-persistence.interface.js";
 
 /** Persiste snapshots opcionalmente sin activar autoridad durable. */
 export class ShadowStateWriterService {

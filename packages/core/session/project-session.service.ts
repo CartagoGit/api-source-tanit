@@ -29,62 +29,15 @@ import {
   SessionClosedError,
 } from "./session-error.js";
 import { makeSnapshot, type IProjectSnapshot } from "./project-snapshot.js";
-import type {
-  SessionEventName,
-  SessionEventPayload,
-} from "./session-events.js";
+import type { SessionEventName, SessionEventPayload } from "./session-events.js";
 import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
-/** Minimal AbortSignal interface required by the session layer. */
-interface IAbortSignal {
-  readonly aborted: boolean;
-}
-
-/** Options for `ProjectSession.open()`. */
-export interface IProjectSessionOptions {
-  /** If provided, the scan can be cancelled. */
-  readonly signal?: IAbortSignal;
-  /** Passed through to `generateCollections`. */
-  readonly generationOptions: IGenerationOptions;
-  /**
-   * Enable file-system watch. When `true`, the session subscribes to
-   * source-file changes and emits `snapshot-stale` / `snapshot-ready`.
-   * Defaults to `false`.
-   */
-  readonly watch?: boolean;
-  /**
-   * Debounce window in milliseconds for watch re-scans.
-   * Defaults to 500.
-   */
-  readonly watchDebounceMs?: number;
-}
+export type { IProjectSessionOptions, IProjectSession } from "../../contracts/interfaces/core/session.interface.js";
+import type { IProjectSession, IProjectSessionOptions } from "../../contracts/interfaces/core/session.interface.js";
 
 type EventHandler<K extends SessionEventName> = (
   payload: SessionEventPayload<K>,
 ) => void;
-
-/** A live session for a single project root. */
-export interface IProjectSession {
-  readonly id: string;
-  readonly projectRoot: string;
-  /** Returns the latest snapshot. Throws `SessionClosedError` if closed. */
-  current(): IProjectSnapshot;
-  /** Subscribe to session events. */
-  on<K extends SessionEventName>(
-    event: K,
-    handler: EventHandler<K>,
-  ): void;
-  /** Unsubscribe. */
-  off<K extends SessionEventName>(
-    event: K,
-    handler: EventHandler<K>,
-  ): void;
-  /**
-   * Release resources (file watchers).
-   * After `close()`, `current()` throws `SessionClosedError`.
-   */
-  close(): void;
-}
 
 /** Module-level registry: root → session (one per process). */
 const _sessions = new Map<string, ProjectSessionImpl>();

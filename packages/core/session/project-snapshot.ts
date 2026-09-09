@@ -5,21 +5,11 @@
  * and then frozen — callers may not mutate it after construction.
  */
 
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type { IDetectorDiagnostic } from "../../contracts/interfaces/core/scanner.interface.js";
 
-/** Immutable snapshot of a single project scan. */
-export interface IProjectSnapshot {
-  readonly sessionId: string;
-  readonly projectRoot: string;
-  readonly capturedAt: Date;
-  /** All generation results (one per service in multi-service projects). */
-  readonly results: ReadonlyArray<IGenerationResult>;
-  /** Detector-level diagnostics emitted during the scan. */
-  readonly diagnostics: ReadonlyArray<IDetectorDiagnostic>;
-  /** Frameworks that recognized the project. */
-  readonly frameworks: ReadonlyArray<string>;
-}
+export type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 
 /** Creates an immutable snapshot from the scan output. */
 export function makeSnapshot(opts: {

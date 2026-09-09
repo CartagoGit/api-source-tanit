@@ -1,39 +1,7 @@
 import type { ICanonicalSnapshot } from "./snapshot-hash.service.js";
 import { canonicalSnapshotJson, snapshotSha256 } from "./snapshot-hash.service.js";
-
-/** Registro persistible de un snapshot emitido por una sesión. */
-export interface IHistoryRecord {
-  readonly id: string;
-  readonly timestamp: string;
-  readonly formats: ReadonlyArray<string>;
-  readonly count: number;
-  readonly output: string;
-  readonly sha256: string;
-  readonly provenance: {
-    readonly source: "scan" | "import" | "restore" | "export";
-    readonly projectRoot?: string;
-    readonly parentId?: string;
-  };
-  readonly snapshot: ICanonicalSnapshot;
-  readonly configuration: Readonly<Record<string, unknown>>;
-}
-
-/** Diferencias estructurales entre dos snapshots del historial. */
-export interface IHistoryDiff {
-  readonly services: ReadonlyArray<string>;
-  readonly operations: ReadonlyArray<string>;
-  readonly added: ReadonlyArray<string>;
-  readonly removed: ReadonlyArray<string>;
-  readonly changed: ReadonlyArray<string>;
-  readonly schemaChanges: ReadonlyArray<IHistoryChange>;
-  readonly authChanges: ReadonlyArray<IHistoryChange>;
-  readonly serviceChanges: ReadonlyArray<IHistoryChange>;
-  readonly operationChanges: ReadonlyArray<IHistoryChange>;
-  readonly configuration?: { readonly before?: unknown; readonly after?: unknown };
-}
-
-/** Cambio individual incluido en un diff de historial. */
-export interface IHistoryChange { readonly key: string; readonly serviceId: string; readonly operationId?: string; readonly before?: unknown; readonly after?: unknown; }
+export type { IHistoryChange, IHistoryDiff, IHistoryRecord } from "../../contracts/interfaces/core/history.interface.js";
+import type { IHistoryChange, IHistoryDiff, IHistoryRecord } from "../../contracts/interfaces/core/history.interface.js";
 
 function fingerprint(value: unknown): string {
   return JSON.stringify(value, (_, entry) => {
