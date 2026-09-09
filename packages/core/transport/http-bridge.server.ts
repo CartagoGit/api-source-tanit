@@ -36,18 +36,22 @@ import type {
   HandlerRegistry,
   IRequestContext,
 } from "../application-api/dispatcher.js";
+import type {
+  IHttpBridge,
+  IHttpBridgeOptions,
+} from "../../contracts/interfaces/core/bridge.interface.js";
 import { dispatch } from "../application-api/dispatcher.js";
 import type {
   IJsonRpcRequest,
   IJsonRpcResponse,
-} from "./json-rpc-protocol.js";
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
 import {
-  JSON_RPC_ERROR_CODES,
   jsonRpcError,
   parseFrames,
   wrapApiError,
   wrapApiResult,
 } from "./json-rpc-protocol.js";
+import { JSON_RPC_ERROR_CODES } from "../../contracts/constants/core/json-rpc.constant.js";
 import {
   BridgeError,
   bridgeFailure,
@@ -61,27 +65,11 @@ import {
  * Public surface                                                         *
  * ────────────────────────────────────────────────────────────────────── */
 
-export interface IHttpBridgeOptions {
-  readonly registry: HandlerRegistry;
-  /** First port to try; the server walks up if it is busy. */
-  readonly port?: number;
-  /** Workspace root to forward as `IRequestContext.workspace`. */
-  readonly workspace?: string;
-  /** Optional orchestrator the registry handlers expect. */
-  readonly orchestrator?: unknown;
-  /** What the bridges pass as `IRequestContext.caller`. */
-  readonly caller?: "browser" | "desktop" | "cli";
-  /** Disable Origin / token checks (loopback + token stay). */
-  readonly skipSecurity?: boolean;
-}
-
-/** Estado observable del bridge HTTP iniciado para la API de aplicación. */
-export interface IHttpBridge {
-  readonly url: string;
-  readonly port: number;
-  readonly token: string;
-  stop(): void;
-}
+export type { IHttpBridge, IHttpBridgeOptions } from "../../contracts/interfaces/core/bridge.interface.js";
+export type {
+  IJsonRpcRequest,
+  IJsonRpcResponse,
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
 
 /**
  * Minimal per-request abort controller.
@@ -306,7 +294,7 @@ async function dispatchFrame(
 
   try {
     const result = await dispatch<unknown>(
-      options.registry,
+      options.registry as HandlerRegistry,
       frame.method,
       frame.params ?? {},
       ctx,

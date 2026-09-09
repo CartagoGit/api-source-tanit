@@ -37,20 +37,21 @@ import type {
   HandlerRegistry,
   IRequestContext,
 } from "../application-api/dispatcher.js";
+import type { IStdioBridgeOptions } from "../../contracts/interfaces/core/bridge.interface.js";
 import { dispatch } from "../application-api/dispatcher.js";
 import type {
   IJsonRpcFrame,
   IJsonRpcRequest,
   JsonRpcId,
-} from "./json-rpc-protocol.js";
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
 import {
-  JSON_RPC_ERROR_CODES,
   jsonRpcError,
   jsonRpcSuccess,
   parseFrames,
   wrapApiError,
   wrapApiResult,
 } from "./json-rpc-protocol.js";
+import { JSON_RPC_ERROR_CODES } from "../../contracts/constants/core/json-rpc.constant.js";
 import { BridgeError } from "./bridge-error.js";
 
 /* ────────────────────────────────────────────────────────────────────── *
@@ -102,19 +103,12 @@ class BridgeAbortController {
  * pins it to avoid accidentally emitting `caller: "cli"` over an
  * IPC channel.
  */
-export interface IStdioBridgeOptions {
-  readonly registry: HandlerRegistry;
-  readonly input: AsyncIterable<string> | Iterable<string>;
-  readonly output: { write(line: string): void };
-  /** What the bridges pass as `IRequestContext.caller`. Always `"desktop"`. */
-  readonly caller?: "desktop";
-  /** Workspace root to forward into `IRequestContext.workspace`. */
-  readonly workspace?: string;
-  /** Optional orchestrator the registry handlers expect. */
-  readonly orchestrator?: unknown;
-  /** Surface fatal startup errors (e.g. malformed frame). */
-  readonly onError?: (err: unknown) => void;
-}
+export type { IStdioBridgeOptions } from "../../contracts/interfaces/core/bridge.interface.js";
+export type {
+  IJsonRpcFrame,
+  IJsonRpcRequest,
+  JsonRpcId,
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
 
 interface IInFlight {
   readonly id: JsonRpcId;
@@ -271,7 +265,7 @@ async function handleRequest(
     }
 
     const result = await dispatch<unknown>(
-      opts.registry,
+      opts.registry as HandlerRegistry,
       frame.method,
       frame.params ?? {},
       ctx,

@@ -34,80 +34,29 @@
  */
 
 import type { IApiError, ApiResult } from "../application-api/error.js";
+import {
+  JSON_RPC_ERROR_CODES,
+} from "../../contracts/constants/core/json-rpc.constant.js";
+import type {
+  IJsonRpcErrorResponse,
+  IJsonRpcFrame,
+  IJsonRpcNotification,
+  IJsonRpcResponse,
+  IJsonRpcSuccessResponse,
+  JsonRpcId,
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
 
-/**
- * A JSON-RPC 2.0 identifier.
- *
- * The spec allows numbers and strings; we accept both because the
- * Application API's watch subscriptions already mint opaque ids
- * (`sub:xxx`), and a future caller may want numeric ids.
- */
-export type JsonRpcId = number | string;
-
-/**
- * A JSON-RPC 2.0 request from the client.
- *
- * Either `params` (object) or no `params` is accepted; the protocol
- * is lenient on the wire shape and strict on the Application API's
- * zod schemas.
- */
-export interface IJsonRpcRequest {
-  readonly jsonrpc: "2.0";
-  readonly id: JsonRpcId;
-  readonly method: string;
-  readonly params?: Readonly<Record<string, unknown>>;
-}
-
-/**
- * A JSON-RPC 2.0 notification (no id, no response expected).
- *
- * The stdio bridge emits `$/cancelRequest` notifications from the
- * client to cancel an in-flight request; the server emits
- * `snapshot-ready` / `snapshot-stale` notifications back to the
- * client once the watch layer is wired.
- */
-export interface IJsonRpcNotification {
-  readonly jsonrpc: "2.0";
-  readonly method: string;
-  readonly params?: Readonly<Record<string, unknown>>;
-}
-
-/**
- * A JSON-RPC 2.0 success response.
- */
-export interface IJsonRpcSuccessResponse {
-  readonly jsonrpc: "2.0";
-  readonly id: JsonRpcId;
-  readonly result: unknown;
-}
-
-/**
- * A JSON-RPC 2.0 error response.
- *
- * `code` is one of the standard JSON-RPC codes OR a stable
- * `ApiErrorCode` mirrored into the JSON-RPC `data.code` slot so the
- * caller can pattern-match on it without parsing `message`.
- */
-export interface IJsonRpcErrorResponse {
-  readonly jsonrpc: "2.0";
-  readonly id: JsonRpcId | null;
-  readonly error: {
-    readonly code: number;
-    readonly message: string;
-    readonly data?: Readonly<Record<string, unknown>>;
-  };
-}
-
-/** The discriminator the wire uses. */
-export type IJsonRpcResponse =
-  | IJsonRpcSuccessResponse
-  | IJsonRpcErrorResponse;
-
-/** Anything the wire can carry. */
-export type IJsonRpcFrame =
-  | IJsonRpcRequest
-  | IJsonRpcNotification
-  | IJsonRpcResponse;
+export type {
+  IJsonRpcErrorResponse,
+  IJsonRpcFrame,
+  IJsonRpcNotification,
+  IJsonRpcRequest,
+  IJsonRpcResponse,
+  IJsonRpcSuccessResponse,
+  JsonRpcId,
+  StandardJsonRpcErrorCode,
+} from "../../contracts/interfaces/core/json-rpc.interface.js";
+export { JSON_RPC_ERROR_CODES } from "../../contracts/constants/core/json-rpc.constant.js";
 
 /* ────────────────────────────────────────────────────────────────────── *
  * JSON-RPC 2.0 standard error codes                                     *
@@ -115,18 +64,6 @@ export type IJsonRpcFrame =
  * Negative matches the spec; positive is for application-specific    *
  * codes mirrored in `data.code` (see `bridge-error.ts`).              *
  * ────────────────────────────────────────────────────────────────────── */
-
-export const JSON_RPC_ERROR_CODES = {
-  PARSE_ERROR: -32700,
-  INVALID_REQUEST: -32600,
-  METHOD_NOT_FOUND: -32601,
-  INVALID_PARAMS: -32602,
-  INTERNAL_ERROR: -32603,
-} as const;
-
-/** Standard JSON-RPC error code — see the spec. */
-export type StandardJsonRpcErrorCode =
-  (typeof JSON_RPC_ERROR_CODES)[keyof typeof JSON_RPC_ERROR_CODES];
 
 /* ────────────────────────────────────────────────────────────────────── *
  * Builders — typed helpers so callers never spell out the literals.    *
