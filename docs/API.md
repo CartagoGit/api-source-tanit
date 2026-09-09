@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 325 símbolos en 128 módulos.
+> 332 símbolos en 130 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -4176,6 +4176,14 @@ export function wrapApiError( id: JsonRpcId | null, error: IApiError, ): IJsonRp
 Wraps an `IApiError` directly (used when the bridge fails before
 reaching the dispatcher — wrong path, malformed input, ...).
 
+### `packages/core/transport/operation-id.service.ts`
+
+#### `operationIdFor`
+
+```ts
+export function operationIdFor( transport: Transport, context: IOperationIdContext =
+```
+
 ### `packages/core/transport/stdio-bridge.server.ts`
 
 #### `serveStdio`
@@ -4190,6 +4198,44 @@ Resolves once the input iterator ends (EOF on stdin) or the
 caller calls the returned `close()`. Returns a `close()` function
 the CLI / tests call to drain pending responses and release the
 controller map.
+
+### `packages/core/transport/transport-narrow.guard.ts`
+
+#### `isHttpTransport`
+
+```ts
+export function isHttpTransport(transport: unknown): transport is IHttpTransport
+```
+
+#### `isGraphQlTransport`
+
+```ts
+export function isGraphQlTransport(transport: unknown): transport is IGraphQlTransport
+```
+
+#### `isGrpcTransport`
+
+```ts
+export function isGrpcTransport(transport: unknown): transport is IGrpcTransport
+```
+
+#### `isWebSocketTransport`
+
+```ts
+export function isWebSocketTransport(transport: unknown): transport is IWebSocketTransport
+```
+
+#### `isSseTransport`
+
+```ts
+export function isSseTransport(transport: unknown): transport is ISseTransport
+```
+
+#### `isMessageBrokerTransport`
+
+```ts
+export function isMessageBrokerTransport(transport: unknown): transport is IMessageBrokerTransport
+```
 
 ### `packages/core/validation/validation-enricher.service.ts`
 
