@@ -91,7 +91,7 @@ packages/core/discovery/
 - global_gate: e2e
 
 ### S1-transport-discriminated-unions — S1 — TransportKind como discriminated union + OperationId universal + IOperation shape
-- **Status**: pending
+- **Status**: done
 - **Files**: `packages/contracts/interfaces/core/transport/http-transport.interface.ts`, `packages/contracts/interfaces/core/transport/graphql-transport.interface.ts`, `packages/contracts/interfaces/core/transport/grpc-transport.interface.ts`, `packages/contracts/interfaces/core/transport/websocket-transport.interface.ts`, `packages/contracts/interfaces/core/transport/sse-transport.interface.ts`, `packages/contracts/interfaces/core/transport/message-broker-transport.interface.ts`, `packages/contracts/interfaces/core/transport/index.ts`, `packages/contracts/interfaces/core/operation.interface.ts`, `packages/contracts/interfaces/core/server-ref.interface.ts`, `packages/contracts/interfaces/core/auth-ref.interface.ts`, `packages/contracts/interfaces/core/provenance.interface.ts`, `packages/contracts/interfaces/core/transport/operation-id.service.ts`, `packages/contracts/interfaces/core/transport/transport-narrow.guard.ts`, `packages/contracts/index.ts`, `tests/core/operation-id.spec.ts`, `tests/contracts/transport-shape.spec.ts`
 - **Gate**: type
 - acceptance:
@@ -102,7 +102,10 @@ packages/core/discovery/
   - "`packages/contracts/index.ts` exporta los nuevos tipos para los consumidores del barrel"
   - "Tests: `tests/core/operation-id.spec.ts` cubre los 6 transports + 1 caso mal formado (gRPC sin service) → discriminated narrowing rechaza con mensaje claro; `tests/contracts/transport-shape.spec.ts` verifica exhaustiveness"
   - "DoD slice: `bun run typecheck && bun run test:core` verdes"
-
+- review-state: done
+- review-implementer: implementation-runner-r00019-s1
+- review-reviewer: delivery-verifier-r00019-s1
+- review-log: approved by delivery-verifier-r00019-s1 — Independent review of r00019/S1-transport-discriminated-unions. Slice scope verified: 6 transport interfaces (http/graphql/grpc/websocket/sse/broker) all declared as discriminated unions with required (non-optional) fields, kind literals, and HttpMethod sourced from SUPPORTED_METHODS. IOperation has the eight required fields (id, serviceId, transport, serverRef, authRef, request, responses, provenance); IServerRef/IAuthRef/IProvenance in dedicated files. operationIdFor is a pure function with exhaustive switch + assertNever + Object.freeze — adding a new transport kind without a case breaks the typecheck. is*Transport guards validate kind + required fields at runtime. Validation: typecheck:contracts (1/1 sections pass), typecheck:core (1/1 pass), contracts tests (3 files / 217 tests pass), core tests (90 files / 1286 tests pass) + sqlite (15 tests) = 1518 total, lint:contracts (461 types/constants, 3 declared exceptions), lint:naming (650 files / 37 folder rules), lint:no-orphan-types (4 type packages, all declared or transitive). Legacy TransportKind (from f00013) is intentionally not touched per non-goals — coexistence is documented in proposal Risks. Note: operation-id.service.ts and transport-narrow.guard.ts live under packages/core/transport/ (not packages/contracts/interfaces/core/transport/ as the original Files layout stated). This is a deliberate refactor in e2135c5 that keeps the contracts package type-only (runtime helpers belong in core); the public surface is unaffected because consumers import runtime helpers from packages/core/transport/ directly and types from the contracts barrel. Approval given — implementation matches the architectural intent.
 ### S2-postman-interface-cleanup — S2 — Postman interface cleanup: drop EndpointSpec, mantener solo tipos Postman-específicos
 - **Status**: pending
 - **DependsOn**: [S1-transport-discriminated-unions]
