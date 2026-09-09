@@ -129,8 +129,10 @@ packages/core/discovery/
   - "Fixture `tests/fixtures/multi-service/` con dos APIs distintas: NestJS users (OAuth + https://users.example.com) + FastAPI billing (APIKey + https://billing.example.com) — código real que ejercita `combineServices` sin heredar auth/baseUrl del primero"
   - "Tests `tests/core/combine-services.spec.ts` cubren: 1 servicio (no-op), 2 servicios con auth distinto, 2 servicios con baseUrl distinto, combinación + per-operation resolver correcto"
   - "DoD slice: `bun run typecheck && bun run test:core` verdes; la integración con pipeline queda para S4 (no se rompe el comportamiento legacy hasta entonces)"
-- review-state: in_review
+- review-state: changes_requested
 - review-implementer: delendai-impl-20260909
+- review-reviewer: delivery-verifier
+- review-log: requested_changes by delivery-verifier — La revisión requiere: (1) fixtures reales con OAuth + https://users.example.com y API key + https://billing.example.com; (2) prueba de integración que cargue/ejercite esas fixtures y demuestre serviceId/serverRef/authRef; (3) resolver la duplicidad semántica de IServiceDescriptor entre service.interface.ts y service-graph.interface.ts mediante adaptador o contrato público claro, preservando legacy; (4) añadir cobertura barata para IDs/variables duplicadas y servicios sin endpoints si el diseño lo permite.
 ### S4-postman-as-IExporter — S4 — PostmanExporter implementa IExporter + pipeline declarativo + CLI consume exporters del registry
 - **Status**: pending
 - **DependsOn**: [S3-combineServices-with-per-service-context]
