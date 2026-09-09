@@ -40,44 +40,11 @@ import {
   readArray,
   readString,
 } from "../helpers/parse-json.helper.js";
-
-/**
- * What kind of monorepo we found. `unknown` is the safe default —
- * the caller treats it as a single-workspace project.
- */
-export type WorkspaceManager =
-  | "npm"
-  | "yarn"
-  | "pnpm"
-  | "bun"
-  | "turbo"
-  | "cargo"
-  | "go"
-  | "composer"
-  | "poetry"
-  | "unknown";
-
-/** A workspace the index recognises inside `projectRoot`. */
-export interface IWorkspace {
-  /**
-   * Path relative to `projectRoot`. Empty string for the root
-   * workspace itself.
-   */
-  readonly relPath: string;
-  /** Absolute path on disk. */
-  readonly absPath: string;
-  /** Which manager declared it (npm / yarn / pnpm / bun / cargo / go). */
-  readonly manager: WorkspaceManager;
-  /**
-   * Marker file that proved this workspace exists (e.g.
-   * `<workspace>/package.json`). Optional: a `go.work` workspace
-   * has no marker, only the central file.
-   */
-  readonly markerRelPath?: string;
-}
-
-/** Shape of the dependency graph for one workspace. */
-export type WorkspaceLookup = ReadonlyMap<string, IWorkspace>;
+import type {
+  IWorkspace,
+  WorkspaceLookup,
+  WorkspaceManager,
+} from "../../contracts/interfaces/core/index.interface.js";
 
 /**
  * Reads the small bits of the YAML we need. A full YAML parser is
@@ -354,6 +321,3 @@ export function buildWorkspaceLookup(
 
 /** Re-export the JSON helpers used by callers. */
 export { isRecord, parseJson, readArray, readString };
-// Quiet the unused-symbol lint on the no-arg helper re-export.
-/** Forma mínima de workspace expuesta para consumidores del índice. */
-export type _IWorkspaceReadonlyShape = Pick<IWorkspace, "relPath" | "absPath" | "manager">;

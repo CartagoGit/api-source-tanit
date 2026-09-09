@@ -24,55 +24,18 @@
 
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
+import type {
+  IIndexedFile,
+  IndexedLanguage,
+  IWorkspace,
+} from "../../contracts/interfaces/core/index.interface.js";
+import { SKIP_VENDOR_DIRS_DEFAULT } from "../../contracts/constants/core/index.constant.js";
 import { join, relative } from "node:path";
-
 import { collectFiles } from "../helpers/fs-walk.helper.js";
-import type { IWorkspace } from "./workspace-resolver.service.js";
 import { workspaceFor } from "./workspace-resolver.service.js";
 
-/** Recognised languages. `unknown` is the safe default. */
-export type IndexedLanguage =
-  | "typescript"
-  | "javascript"
-  | "tsx"
-  | "jsx"
-  | "go"
-  | "rust"
-  | "php"
-  | "python"
-  | "ruby"
-  | "elixir"
-  | "kotlin"
-  | "csharp"
-  | "json"
-  | "yaml"
-  | "toml"
-  | "lock"
-  | "graphql"
-  | "unknown";
-
-/**
- * A file the index knows about. `absPath` is the on-disk path;
- * `relPath` is posix-separated and relative to `projectRoot` so the
- * rest of the index can build stable keys across platforms.
- *
- * Note: `mtimeMs` is intentionally absent. The runtime ambient
- * declarations (`packages/contracts/interfaces/runtime.d.ts`) do
- * not surface it, and the **SHA-256 hash** is the invalidation key
- * that matters — if the bytes change, the hash changes, and the
- * AST/manifest cache drops. Keeping the surface small keeps the
- * index free of `mtime`-flaky behaviour.
- */
-export interface IIndexedFile {
-  readonly relPath: string;
-  readonly absPath: string;
-  readonly size: number;
-  /** Lowercase hex SHA-256 of the file content. */
-  readonly hashSha256: string;
-  readonly language: IndexedLanguage;
-  /** Workspace this file belongs to (root workspace when none). */
-  readonly workspace: IWorkspace;
-}
+export type { IIndexedFile, IndexedLanguage } from "../../contracts/interfaces/core/index.interface.js";
+export { SKIP_VENDOR_DIRS_DEFAULT } from "../../contracts/constants/core/index.constant.js";
 
 const LANGUAGE_BY_EXT: Record<string, IndexedLanguage> = {
   ts: "typescript",
@@ -182,7 +145,11 @@ export async function indexFiles(args: {
   readonly workspaces: ReadonlyArray<IWorkspace>;
   readonly skipVendorDirs?: boolean;
 }): Promise<Map<string, IIndexedFile>> {
-  const { projectRoot, workspaces, skipVendorDirs = true } = args;
+  const {
+    projectRoot,
+    workspaces,
+    skipVendorDirs = SKIP_VENDOR_DIRS_DEFAULT,
+  } = args;
   const root = projectRoot.replace(/[\\/]+$/, "");
   const paths = await collectFiles(root, () => true, { skipVendorDirs });
   const out = new Map<string, IIndexedFile>();
@@ -241,9 +208,6 @@ export function joinPosix(...parts: ReadonlyArray<string>): string {
     .join("/");
 }
 
-/** Re-export the helper used by callers that need the same skip list. */
-export const SKIP_VENDOR_DIRS_DEFAULT = true;
-
 /** Internal: build the absolute path of `relPath` under `root`. */
 export function absPathOf(root: string, relPath: string): string {
   return join(root, ...relPath.split("/"));
@@ -275,8 +239,3 @@ export function filesByLanguage(
   }
   return out;
 }
-
-// Quiet unused-arg warning when callers omit `workspaces` (tests do
-// that — they pass a single-workspace fake).
-/** Forma de workspace usada por los helpers de caché de archivos. */
-export type _FileCacheWorkspaces = ReadonlyArray<IWorkspace>;

@@ -27,12 +27,7 @@
  */
 
 import type { ISymbolGraph } from "../../contracts/interfaces/core/symbol-graph.interface.js";
-
-/** A file's import set. The key is the importer, the value the imported. */
-export interface IImportEdge {
-  readonly importer: string;
-  readonly imported: string;
-}
+import type { IImportEdge } from "../../contracts/interfaces/core/index.interface.js";
 
 /**
  * Holds the inverse dependency graph and answers "what else must I

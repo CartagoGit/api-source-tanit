@@ -36,24 +36,13 @@ import { join } from "node:path";
 
 import { parse as babelParse, type ParserPlugin, type ParserOptions } from "@babel/parser";
 
-import { sha256Of } from "./file-cache.service.js";
-import type { IndexedLanguage, IIndexedFile } from "./file-cache.service.js";
-
-/** Languages the AST cache can parse. */
-export type AstCapableLanguage = Extract<
+import type {
+  AstCapableLanguage,
+  ICachedAst,
+  IIndexedFile,
   IndexedLanguage,
-  "typescript" | "javascript" | "tsx" | "jsx"
->;
-
-/** A cached parse result, with the hash that produced it. */
-export interface ICachedAst {
-  /** SHA-256 of the source text the parser saw. */
-  readonly hashSha256: string;
-  /** The Babel AST (or, in a future TS-aware version, a `ts.Program`). */
-  readonly ast: unknown;
-  /** Language the parser ran in. */
-  readonly language: AstCapableLanguage;
-}
+} from "../../contracts/interfaces/core/index.interface.js";
+import { sha256Of } from "./file-cache.service.js";
 
 /** Parses source text with the parser that matches `language`. */
 export function parseAst(args: {

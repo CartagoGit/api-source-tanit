@@ -21,21 +21,12 @@ import {
   isRecord,
   parseJson,
 } from "../helpers/parse-json.helper.js";
+import type {
+  IManifest,
+  ManifestFormat,
+  ManifestType,
+} from "../../contracts/interfaces/core/index.interface.js";
 import { sha256Of } from "./file-cache.service.js";
-
-/** Formato de serialización detectado para un archivo de manifiesto. */
-export type ManifestFormat = "json" | "yaml" | "toml" | "text";
-
-/** Stable list of manifest file basenames the index recognises. */
-export type ManifestType =
-  | "package.json"
-  | "tsconfig.json"
-  | "go.mod"
-  | "Cargo.toml"
-  | "composer.json"
-  | "pyproject.toml"
-  | "Gemfile"
-  | "mix.exs";
 
 const MANIFEST_FILENAMES = new Set<string>([
   "package.json",
@@ -48,23 +39,6 @@ const MANIFEST_FILENAMES = new Set<string>([
   "mix.exs",
 ]);
 
-/**
- * A parsed manifest. `parsed` is `unknown` by design: each consumer
- * (`declaredDependencies`, the project loader, the workspace
- * resolver) asks the shape it needs and the reader does not invent a
- * second source of truth.
- */
-export interface IManifest {
-  readonly relPath: string;
-  readonly absPath: string;
-  readonly format: ManifestFormat;
-  readonly type: ManifestType;
-  readonly raw: string;
-  /** Structured value when `format` is JSON / YAML / TOML; `undefined` otherwise. */
-  readonly parsed?: unknown;
-  /** SHA-256 of `raw` — used by the invalidator to drop stale entries. */
-  readonly hashSha256: string;
-}
 
 const FORMAT_BY_FILENAME: Record<string, ManifestFormat> = {
   "package.json": "json",

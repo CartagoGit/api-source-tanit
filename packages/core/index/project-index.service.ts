@@ -25,80 +25,39 @@
  */
 
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
-import type { IImportRecord, ISymbolGraph } from "../../contracts/interfaces/core/symbol-graph.interface.js";
+import type { IImportRecord } from "../../contracts/interfaces/core/symbol-graph.interface.js";
+import type {
+  ICachedAst,
+  IImportEdge,
+  IIndexedFile,
+  IManifest,
+  IProjectIndex,
+  IProjectIndexOptions,
+  IWorkspace,
+} from "../../contracts/interfaces/core/index.interface.js";
 
 import {
   cachedAst,
   invalidateAstsFor,
   loadAst,
   loadAsts,
-  type ICachedAst,
 } from "./ast-cache.service.js";
 import {
   filesByLanguage,
   indexFiles,
   refreshIndexedFile,
-  type IIndexedFile,
 } from "./file-cache.service.js";
 import {
   IncrementalInvalidator,
-  type IImportEdge,
 } from "./incremental-invalidator.service.js";
 import {
   isManifestFile,
   readManifest,
-  type IManifest,
 } from "./manifest-reader.service.js";
 import {
   detectWorkspaces,
-  type IWorkspace,
 } from "./workspace-resolver.service.js";
-
-/** Public interface of a project index. */
-export interface IProjectIndex {
-  readonly root: string;
-  readonly workspaces: ReadonlyArray<IWorkspace>;
-  /** Number of files the index currently knows about. */
-  readonly fileCount: number;
-  /** Number of ASTs the cache currently holds. */
-  readonly astCount: number;
-  /** Number of manifests the cache currently holds. */
-  readonly manifestCount: number;
-
-  file(relPath: string): IIndexedFile | undefined;
-  /** All files, as a readonly snapshot — useful for tests and diagnostics. */
-  files(): ReadonlyArray<IIndexedFile>;
-  astFor(relPath: string): unknown | undefined;
-  manifestFor(relPath: string): IManifest | undefined;
-  importsFor(relPath: string): ReadonlyArray<IImportRecord> | undefined;
-
-  /**
-   * Mark `relPath` as changed. Returns the closure (the file itself
-   * plus every importer) that must be re-processed.
-   */
-  invalidate(relPath: string): ReadonlyArray<string>;
-  invalidateAll(): void;
-  close(): void;
-}
-
-/** Options for `ProjectIndex.open()`. */
-export interface IProjectIndexOptions {
-  /** Skip vendor directories during the initial walk (default: true). */
-  readonly skipVendorDirs?: boolean;
-  /** Pre-fill the AST cache during `open()`. Default: false. */
-  readonly eagerAst?: boolean;
-  /** Concurrency for the eager AST fill (default: 16). */
-  readonly astConcurrency?: number;
-  /**
-   * Pre-seed the inverse graph from a `SymbolGraph`. Default: none.
-   * The scanners still populate imports in their own time; this
-   * option is for tests and the future scanner refactor.
-   */
-  readonly symbolGraph?: ISymbolGraph;
-}
 
 /** Default implementation of `IProjectIndex`. */
 export class ProjectIndex implements IProjectIndex {
@@ -314,26 +273,20 @@ function safeRead(abs: string): string | null {
 /** Namespace alias so callers can write `ProjectIndex.open(...)`. */
 export const ProjectIndexFactory = { open: ProjectIndex.open };
 
-/** Re-export the supporting types. */
 export type {
-  IIndexedFile,
-  IndexedLanguage,
-} from "./file-cache.service.js";
-export type { IManifest, ManifestType, ManifestFormat } from "./manifest-reader.service.js";
-export type {
-  IWorkspace,
-  WorkspaceManager,
-} from "./workspace-resolver.service.js";
-export type {
-  IncrementalInvalidator,
+  AstCapableLanguage,
+  ICachedAst,
   IImportEdge,
-} from "./incremental-invalidator.service.js";
-
-// `readFile` is re-exported for the future scanner refactor; today
-// no caller uses it.
-/** Mantiene una importación tipada para futuras extensiones del índice. */
-export type _IndexImportsAsyncReadFile = typeof readFile;
-// `join` is re-exported to give the future scanner refactor a single
-// import site; today it is only used inside `ensureAst`.
-/** Mantiene una importación tipada para el punto único de utilidades de ruta. */
-export type _IndexImportsJoin = typeof join;
+  IIndexedFile,
+  IManifest,
+  IProjectIndex,
+  IProjectIndexOptions,
+  IWorkspace,
+  IndexedLanguage,
+  ManifestFormat,
+  ManifestType,
+  WorkspaceLookup,
+  WorkspaceManager,
+} from "../../contracts/interfaces/core/index.interface.js";
+export { SKIP_VENDOR_DIRS_DEFAULT } from "../../contracts/constants/core/index.constant.js";
+export type { IncrementalInvalidator } from "./incremental-invalidator.service.js";
