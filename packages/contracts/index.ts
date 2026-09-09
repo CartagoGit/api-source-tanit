@@ -24,3 +24,15 @@ export type {
   MessageBrokerTransport,
   IOperationIdContext,
 } from "./interfaces/core/transport/index.js";
+export type {
+  ICombinedDescriptor,
+  IResolvedOperationContext,
+  IServiceDescriptor,
+} from "./interfaces/core/service.interface.js";
+export type {
+  IGroupByServiceInput,
+  IServiceGraph,
+  IServiceGraphNode,
+  IToServiceGraphInput,
+  IServiceDescriptor as LegacyServiceGraphDescriptor,
+} from "./interfaces/core/service-graph.interface.js";

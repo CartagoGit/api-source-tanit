@@ -55,7 +55,7 @@ import type { IMonorepoDetection } from "./discovery.interface.js";
  * because the id shows up in collection names and Postman
  * environment variables.
  */
-export interface IServiceDescriptor {
+export interface IServiceGraphNode {
   /** Stable identity of the service; used as the merge key and as the name. */
   readonly serviceId: string;
   /**
@@ -114,6 +114,13 @@ export interface IServiceDescriptor {
    */
   readonly variables: ReadonlyArray<{ readonly key: string; readonly value: string }>;
 }
+
+/**
+ * @deprecated Use `IServiceGraphNode` for discovery graphs. The export
+ * descriptor with the same old name lives in `service.interface.ts` and has
+ * `IOperation[]` endpoints; this alias preserves legacy graph consumers.
+ */
+export type IServiceDescriptor = IServiceGraphNode;
 
 /**
  * Inputs of the `groupByService` helper. It lives here for the
