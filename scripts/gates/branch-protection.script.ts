@@ -252,10 +252,26 @@ async function checkBranchProtection(
     options.token,
   );
   if (protectionResponse.status === 404) {
+    // 404 en `/protection` significa "la rama no tiene regla", no
+    // "faltan contexts". Decirlo mal manda a corregir un campo dentro
+    // de una protección que no existe.
     return {
       branch: options.branch,
       ok: false,
-      detail: `required_status_checks.contexts ausente`,
+      detail: `la rama no tiene ninguna regla de protección`,
+    };
+  }
+  if (protectionResponse.status === 401 || protectionResponse.status === 403) {
+    // NO es lo mismo que "la protección está mal". No se ha leído nada,
+    // así que no se concluye nada sobre ella: leer branch protection
+    // exige Administration: read, y el token por defecto de Actions no
+    // lo tiene. Un check que no pudo verificar una propiedad tampoco
+    // puede certificarla, así que sigue siendo un fallo — pero con el
+    // motivo correcto y el remedio a mano.
+    return {
+      branch: options.branch,
+      ok: false,
+      detail: `no se pudo leer la protección (HTTP ${protectionResponse.status}); nada se concluye de ello. Configura BRANCH_PROTECTION_TOKEN con Administration: read`,
     };
   }
   if (!protectionResponse.ok) {

@@ -1,5 +1,14 @@
 {
   "coreVersion": "0.1.0",
+  "development": {
+    "profile": "shared-checkout-pr",
+    "branches": { "integration": "develop", "release": "main" },
+    "integration": {
+      "requiredChecks": ["ci-summary"],
+      "requiredApprovals": 0,
+      "releaseRequiredApprovals": 1
+    }
+  },
   "cacheDir": ".cache/delendai",
   "docsDir": "docs/delendai",
   "surfaceMode": "managed",
