@@ -245,6 +245,20 @@ jobs:
       - integration-verifier
     runs-on: ubuntu-latest
     steps:
+      # x00071 split validate into 8 parallel jobs and gave this one the
+      # verdict, but not the toolchain it needs to render it: the step
+      # runs `bun run …` on a runner where nothing installed bun, so the
+      # job died with `bun: command not found` (exit 127) on every run —
+      # including runs where all eight dependencies reported `success`.
+      #
+      # `ci-summary` is the required status check on `develop` AND on
+      # `main`. A required check that cannot succeed does not protect a
+      # branch, it closes it. Same shape as the `ci-complete` context
+      # that no workflow produced.
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
       - name: Render CI summary and enforce verdict
         env:
           TYPECHECK_RESULT: ${{ needs.typecheck.result }}
