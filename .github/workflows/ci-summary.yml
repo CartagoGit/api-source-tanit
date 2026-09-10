@@ -1,4 +1,19 @@
-name: ci-summary
+# Mirrors the `validate` workflow's conclusion after the fact.
+#
+# INERT TODAY, and deliberately named so it cannot become a trap. A
+# `workflow_run` trigger only fires from the DEFAULT branch, and this
+# file exists on `develop` only — `main` carries just release-binaries,
+# release-desktop and validate. So it has never executed.
+#
+# Its job used to be called `ci-summary`, the same name as the job
+# INSIDE `validate.yml`. That job is the required status check on
+# `develop` and `main`. Had this file ever reached the default branch,
+# two different workflows would have published the same context name and
+# the required check would have become ambiguous — a branch protected by
+# a check nobody could point at. Renaming the job removes that outcome
+# without discarding the author's intent.
+
+name: validate-conclusion
 
 on:
   workflow_run:
@@ -10,7 +25,7 @@ permissions:
   contents: read
 
 jobs:
-  ci-summary:
+  validate-conclusion:
     if: github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:

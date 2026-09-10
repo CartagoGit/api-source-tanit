@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../packages/core/helpers/postman.helper";
+import { stripBaseUrlVariable } from "../../packages/core/helpers/uri.helper";
 import type {
   PostmanCollection,
   PostmanItem,
@@ -158,5 +159,50 @@ describe("postman.helper", () => {
       };
       expect(countItems(empty)).toEqual({ requests: 0, folders: 0 });
     });
+  });
+});
+
+describe("pathToSegments — per-service base URLs (r00019)", () => {
+  test("strips the per-service {{baseUrl_<serviceId>}}, not just {{baseUrl}}", () => {
+    // The regression this exists for: `validate:package` aborted with
+    // "9 in the routes but NOT in the collection" because the
+    // per-service variable survived as a literal path segment, so no
+    // generated request ever matched a discovered route.
+    expect(uriFromRaw("{{baseUrl_svc_a}}/api/users")).toBe("api/users");
+    expect(uriFromRaw("{{baseUrl}}/api/users")).toBe("api/users");
+  });
+
+  test("strips a service id containing separators and hyphens", () => {
+    // Service ids are derived from the framework search root, so they
+    // carry path-shaped text — including, in CI, the temp directory the
+    // fixture project was generated in.
+    expect(
+      uriFromRaw("{{baseUrl_tmp_postman-package-abc123_consumer_mi-api}}/api/auth/refresh"),
+    ).toBe("api/auth/refresh");
+  });
+
+  test("leaves every OTHER variable in place", () => {
+    // Only the base URL is a prefix to remove; a path parameter is part
+    // of the route and the comparison normaliser handles it later.
+    expect(uriFromRaw("{{baseUrl}}/api/users/{{id}}")).toBe("api/users/{{id}}");
+    expect(pathToSegments("{{baseUrl_a}}/x/{{y}}")).toEqual(["x", "{{y}}"]);
+  });
+
+  test("still strips an absolute origin", () => {
+    expect(uriFromRaw("https://api.example.test/api/users")).toBe("api/users");
+  });
+});
+
+describe("stripBaseUrlVariable — one definition of the base-URL prefix", () => {
+  test("removes both spellings, and only at the start", () => {
+    expect(stripBaseUrlVariable("{{baseUrl}}/api/users")).toBe("/api/users");
+    expect(stripBaseUrlVariable("{{baseUrl_svc}}/api/users")).toBe("/api/users");
+    // Not a prefix → untouched. A variable in the middle of a path is a
+    // path parameter, not a host.
+    expect(stripBaseUrlVariable("/api/{{baseUrl}}/x")).toBe("/api/{{baseUrl}}/x");
+  });
+
+  test("does not eat a variable that merely starts with the same letters", () => {
+    expect(stripBaseUrlVariable("{{baseUrlOther}}/x")).toBe("{{baseUrlOther}}/x");
   });
 });

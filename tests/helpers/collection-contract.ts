@@ -12,6 +12,7 @@
  * adds below only its specific checks.
  */
 import { describe, expect, test } from "vitest";
+import { BASE_URL_VARIABLE } from "../../packages/core/helpers/uri.helper.js";
 import { checkCollectionInvariants } from "../../packages/core/helpers/collection-invariants.helper";
 import type { PostmanCollection, PostmanItem } from "../../packages/contracts/interfaces/core/postman.interface";
 import { runGenerate } from "./run-scanner";
@@ -93,7 +94,11 @@ export function describeCollectionContract(options: ICollectionContractOptions):
     test("todas las urls arrancan en {{baseUrl}}", async () => {
       const { collection } = await runGenerate(fixtureName);
       for (const item of eachRequest(collection.item)) {
-        expect(item.request?.url?.raw?.startsWith("{{baseUrl}}")).toBe(true);
+        // A COMBINED collection legitimately uses the per-service
+        // `{{baseUrl_<serviceId>}}`; what the contract requires is that
+        // the URL hangs off the collection's base variable, whichever
+        // spelling this project generates.
+        expect(item.request?.url?.raw ?? "").toMatch(BASE_URL_VARIABLE);
       }
     });
 

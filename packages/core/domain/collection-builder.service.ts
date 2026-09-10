@@ -36,7 +36,11 @@ import { buildRequestDescription } from "./request-doc.service.js";
 import { bodyFieldsFromGraph } from "../helpers/schema-flatten.helper.js";
 import { buildTestScript } from "./test-script.service.js";
 import { renderInferredPostmanResponses } from "../exporters/postman-inferred-response.exporter.js";
-import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
+import {
+  prettyGroupName,
+  stripBaseUrlVariable,
+  topGroupFor,
+} from "../helpers/uri.helper.js";
 import { postmanMethodFor } from "./postman-method.helper.js";
 import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
 
@@ -93,8 +97,31 @@ function descriptionFieldsFor(ep: EndpointSpec): EndpointSpec["fields"] {
   return [...bodyFields, ...nonBodyFields];
 }
 
-function baseUrlVariableFor(ep: EndpointSpec): string {
-  return ep.serviceId ? `{{baseUrl_${ep.serviceId}}}` : "{{baseUrl}}";
+/**
+ * The base-URL variable a request should hang off.
+ *
+ * The per-service `{{baseUrl_<serviceId>}}` form only exists in a
+ * COMBINED collection, where `combineServices` declares one variable per
+ * service so each request can point at its own host. A single-service
+ * collection declares plain `baseUrl` and nothing else.
+ *
+ * Choosing the per-service name whenever `serviceId` happened to be set
+ * therefore produced collections referencing a variable that was never
+ * declared: the express example came out with
+ * `{{baseUrl_express_tmp_tmp_FIqkC9ZZW4_mi-api}}` in every URL while the
+ * collection declared only `baseUrl`, so importing it into Postman gave
+ * nine requests pointed at an undefined variable. Deriving the choice
+ * from what is actually DECLARED makes "every variable used is declared"
+ * true by construction rather than by convention.
+ */
+function baseUrlVariableFor(
+  ep: EndpointSpec,
+  declaredVariables: ReadonlySet<string>,
+): string {
+  const perService = ep.serviceId ? `baseUrl_${ep.serviceId}` : "";
+  return perService && declaredVariables.has(perService)
+    ? `{{${perService}}}`
+    : "{{baseUrl}}";
 }
 
 function requestSchemeFor(ep: EndpointSpec, scheme: AuthSchemeType): AuthSchemeType {
@@ -105,9 +132,13 @@ function requestSchemeFor(ep: EndpointSpec, scheme: AuthSchemeType): AuthSchemeT
   return "none";
 }
 
-function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest {
+function buildRequest(
+  ep: EndpointSpec,
+  scheme: AuthSchemeType,
+  declaredVariables: ReadonlySet<string>,
+): PostmanRequest {
   const requestScheme = requestSchemeFor(ep, scheme);
-  const baseUrlVariable = baseUrlVariableFor(ep);
+  const baseUrlVariable = baseUrlVariableFor(ep, declaredVariables);
   const req: PostmanRequest = {
     method: postmanMethodFor(ep.method),
     header: defaultHeaders(ep, requestScheme),
@@ -161,7 +192,11 @@ function buildRequest(ep: EndpointSpec, scheme: AuthSchemeType): PostmanRequest 
   return req;
 }
 
-function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
+function ep(
+  spec: EndpointSpec,
+  scheme: AuthSchemeType,
+  declaredVariables: ReadonlySet<string>,
+): PostmanItem {
   // f00014 wiring: when the response-inference dispatcher produced
   // entries for this spec, materialise them as Postman v2.1.0
   // `response[]`. Without this, the collection is silent on the
@@ -169,7 +204,7 @@ function ep(spec: EndpointSpec, scheme: AuthSchemeType): PostmanItem {
   const inferredResponses = renderInferredPostmanResponses(spec);
   return {
     name: spec.name,
-    request: buildRequest(spec, scheme),
+    request: buildRequest(spec, scheme, declaredVariables),
     // Assertions are included on every request: a collection that only
     // carries URLs pushes the verification work onto whoever hits Send.
     event: [buildTestScript(spec)],
@@ -231,6 +266,7 @@ function groupByFolder(
   specs: EndpointSpec[],
   uriGroupOverrides: Record<string, string>,
   scheme: AuthSchemeType,
+  declaredVariables: ReadonlySet<string>,
 ): FolderGroup[] {
   const order: string[] = [];
   const groups = new Map<string, FolderGroup>();
@@ -252,7 +288,7 @@ function groupByFolder(
       order.push(compositeKey);
     }
     if (hasExplicit) g.explicit = true;
-    g.items.push(ep(spec, scheme));
+    g.items.push(ep(spec, scheme, declaredVariables));
   }
 
   return order.map((k) => groups.get(k)!);
@@ -275,7 +311,11 @@ function toHierarchical(
   }
   const annotated: GroupWithMain[] = groups.map((g) => {
     const firstUrl = g.items[0]?.request?.url.raw ?? "";
-    const uriForGroup = firstUrl.replace(/^\{\{baseUrl\}\}/, "");
+    // Strips the per-service `{{baseUrl_<id>}}` as well. Matching only
+    // the bare name left the variable as the first path segment, so
+    // `topGroupFor` returned IT as the folder key and every request in
+    // the collection collapsed into one folder named after the variable.
+    const uriForGroup = stripBaseUrlVariable(firstUrl);
     return {
       g,
       autoMainKey: topGroupFor(uriForGroup, uriGroupOverrides),
@@ -365,7 +405,17 @@ export function buildCollection(
   // knows it passes it in already resolved.
   const scheme = authScheme ?? detectAuthScheme(specs, false);
   const auth = toPostmanAuth(scheme);
-  const groups = groupByFolder(specs, overrides, scheme.type);
+  // What the collection actually declares decides which base-URL
+  // variable its requests may reference.
+  const declaredVariables = new Set(
+    (config.variables ?? []).map((variable) => variable.key),
+  );
+  const groups = groupByFolder(
+    specs,
+    overrides,
+    scheme.type,
+    declaredVariables,
+  );
   const hierarchical = toHierarchical(groups, overrides);
 
   const topFolders: PostmanItem[] = hierarchical.map((h) => {

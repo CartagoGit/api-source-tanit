@@ -37,6 +37,20 @@ function assertUniqueVariableKeys(
   }
 }
 
+/**
+ * Merges several services into one descriptor whose operations each carry
+ * their own server and auth.
+ *
+ * Both uniqueness checks THROW rather than de-duplicating. A duplicate
+ * `serviceId` or variable key means two services disagree about a name
+ * that has to be unique for the merge to mean anything, and silently
+ * keeping one of them would produce a collection that looks complete
+ * while quietly dropping half of somebody's endpoints. Refusing names
+ * the collision while the caller can still fix it.
+ *
+ * `endpoints` mirrors `operations` for the older consumers that have not
+ * moved to the r00019 vocabulary yet; both refer to the same array.
+ */
 export function combineServices(
   services: ReadonlyArray<IServiceDescriptor>,
 ): ICombinedDescriptor {

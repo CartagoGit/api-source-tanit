@@ -4,6 +4,7 @@
  * Centralizes the duplicated pathToSegments / walk / count logic that
  * used to live in each script.
  */
+import { BASE_URL_VARIABLE } from "./uri.helper.js";
 import type {
   PostmanCollection,
   PostmanItem,
@@ -14,7 +15,7 @@ import type { CollectionRequest } from "../../contracts/interfaces/core/helpers.
 /** Extract the path segments from a raw Postman URL. */
 export function pathToSegments(rawUrl: string): string[] {
   return rawUrl
-    .replace(/\{\{baseUrl\}\}/, "")
+    .replace(BASE_URL_VARIABLE, "")
     .replace(/^https?:\/\/[^/]+/, "")
     .split("/")
     .filter(Boolean);

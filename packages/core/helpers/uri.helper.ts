@@ -16,6 +16,24 @@
  * the catalog with different names and the generation script reports
  * them as separate requests even though they normalize the same.
  */
+
+import { BASE_URL_VARIABLE } from "../../contracts/constants/core/base-url.constant.js";
+
+export { BASE_URL_VARIABLE };
+
+/** Remove a leading base-URL variable, leaving the path. */
+export function stripBaseUrlVariable(raw: string): string {
+  return raw.replace(BASE_URL_VARIABLE, "");
+}
+
+/**
+ * Reduce a URI to the shape used for comparing routes across frameworks.
+ *
+ * Every parameterized token — Laravel `{id}`, Express `:id`, Django
+ * `<int:id>`, Postman `{{id}}` — collapses to the same `:p` marker, and
+ * redundant slashes go, so a route discovered in source and the request
+ * generated from it compare equal regardless of who spelled it.
+ */
 export function normalizeForComparison(uri: string): string {
   return uri
     .replace(/\{\{[^}]+\}\}/g, ":p") // {{something}} → :p
