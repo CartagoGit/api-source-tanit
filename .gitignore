@@ -30,6 +30,14 @@ packages/desktop/target/
 packages/**/*.js
 scripts/**/*.js
 tests/**/*.js
+# ...and the exception the comment above already promised, which the
+# rules never actually implemented: a fixture's `server.js` is the SOURCE
+# the scanner reads, not emitted output. Without these negations the
+# broad rule swallowed them, so four smoke fixtures reached `develop`
+# carrying a manifest and no code — `lint:fixtures` failed in CI while
+# passing locally, because locally the files were sitting on disk.
+!tests/smoke-fixtures/**/server.js
+!tests/**/examples/**/server.js
 # --- orquestador: mensajes de slice transitorios (c00005) ---
 .s*-msg.txt
 packages/core/domain/test-script.service.js
