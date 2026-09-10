@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 332 símbolos en 130 módulos.
+> 336 símbolos en 133 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -344,7 +344,7 @@ Per-service auth and baseUrl wiring — a00013 S4.
 #### `pickAuth`
 
 ```ts
-export function pickAuth( service: IServiceDescriptor, fallback: IEndpointAuth | undefined, ): IEndpointAuth | undefined
+export function pickAuth( service: IServiceGraphNode, fallback: IEndpointAuth | undefined, ): IEndpointAuth | undefined
 ```
 
 Resolves service auth: the descriptor's override when present (as placed by
@@ -390,7 +390,7 @@ same pattern in the opposite direction.
 #### `buildServiceConfig`
 
 ```ts
-export function buildServiceConfig( config: ProjectConfig, service: IServiceDescriptor, ): ProjectConfig
+export function buildServiceConfig( config: ProjectConfig, service: IServiceGraphNode, ): ProjectConfig
 ```
 
 Applies per-service overrides to `ProjectConfig` **without mutating the
@@ -555,7 +555,7 @@ Filters the global `discovery.specs` down to the specs that belong to a single `
 #### `filterSpecsForService`
 
 ```ts
-export function filterSpecsForService( discoverySpecs: ReadonlyArray<EndpointSpec>, service: IServiceDescriptor, ): EndpointSpec[]
+export function filterSpecsForService( discoverySpecs: ReadonlyArray<EndpointSpec>, service: IServiceGraphNode, ): EndpointSpec[]
 ```
 
 Returns the subset of `discovery.specs` whose `(method, uri)`
@@ -3400,6 +3400,67 @@ locate TS/JS files — so it honours the same excludes
 digest. If not passed, failures are swallowed silently — the
 "degradable" form used by tests that only want to verify the
 tree shape.
+
+### `packages/core/merge/combine-services.service.ts`
+
+#### `combineServices`
+
+```ts
+export function combineServices( services: ReadonlyArray<IServiceDescriptor>, ): ICombinedDescriptor
+```
+
+Merges several services into one descriptor whose operations each carry
+their own server and auth.
+
+Both uniqueness checks THROW rather than de-duplicating. A duplicate
+`serviceId` or variable key means two services disagree about a name
+that has to be unique for the merge to mean anything, and silently
+keeping one of them would produce a collection that looks complete
+while quietly dropping half of somebody's endpoints. Refusing names
+the collision while the caller can still fix it.
+
+`endpoints` mirrors `operations` for the older consumers that have not
+moved to the r00019 vocabulary yet; both refer to the same array.
+
+### `packages/core/merge/per-operation-resolver.service.ts`
+
+#### `perOperationResolver`
+
+```ts
+export const perOperationResolver =
+```
+
+Resolves the server and auth an operation actually runs against.
+
+The r00019 model moved these from collection-level defaults to
+per-operation refs, because a merged collection draws operations from
+several services and a single shared `baseUrl`/auth silently sends half
+of them to the wrong host. Every operation therefore names its own
+service, and this is where that name becomes a concrete `serverRef` and
+`authRef`.
+
+An unknown `serviceId` THROWS rather than falling back to a default:
+inventing a server for an operation whose own service is missing is how
+a request ends up authenticated against the wrong API.
+
+#### `resolvePerOperationContext`
+
+```ts
+export function resolvePerOperationContext( operation: Pick<IOperation, "serviceId">, services: ReadonlyArray<IServiceDescriptor>, ): IResolvedOperationContext
+```
+
+Function form of `perOperationResolver.resolve`, for callers that want
+the behaviour without taking a dependency on the object — the object
+exists so a host can swap the resolution strategy, and most callers
+never need to.
+
+### `packages/core/merge/service-descriptor.adapter.ts`
+
+#### `toServiceDescriptor`
+
+```ts
+export function toServiceDescriptor( node: IServiceGraphNode, endpoints: ReadonlyArray<IOperation>, ): IServiceDescriptor
+```
 
 ### `packages/core/responses/infer-responses.ts`
 
