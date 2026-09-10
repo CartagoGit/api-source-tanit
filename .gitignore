@@ -37,6 +37,7 @@ tests/**/*.js
 # carrying a manifest and no code — `lint:fixtures` failed in CI while
 # passing locally, because locally the files were sitting on disk.
 !tests/smoke-fixtures/**/server.js
+!tests/fixtures/**/server.js
 !tests/**/examples/**/server.js
 # --- orquestador: mensajes de slice transitorios (c00005) ---
 .s*-msg.txt

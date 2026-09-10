@@ -22,6 +22,7 @@
  * keeps the flag from ever coming back.
  */
 import { describe, expect, test } from "vitest";
+import { stripBaseUrlVariable } from "../../packages/core/helpers/uri.helper.js";
 import { join } from "node:path";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper.js";
 import { defaultOrchestrator } from "../../packages/frameworks/index.js";
@@ -46,7 +47,7 @@ function methodsByUri(collection: { item: ReadonlyArray<unknown> }): Map<string,
       const rawUrl = it.request?.url?.raw ?? "";
       // La url viene como {{baseUrl}}/api/...; nos quedamos con el
       // path para emparejar.
-      const path = rawUrl.replace(/^\{\{baseUrl\}\}/, "");
+      const path = stripBaseUrlVariable(rawUrl);
       if (method && path) {
         const list = out.get(path) ?? [];
         list.push(method);

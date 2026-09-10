@@ -21,6 +21,7 @@
  * per-endpoint fix has nothing to read.
  */
 import { describe, expect, test } from "vitest";
+import { stripBaseUrlVariable } from "../../packages/core/helpers/uri.helper.js";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { FIXTURES_DIR } from "../../scripts/helpers/root.helper.js";
@@ -58,7 +59,7 @@ function methodsByUri(collection: { item: ReadonlyArray<unknown> }): Map<string,
       }
       const method = it.request?.method;
       const rawUrl = it.request?.url?.raw ?? "";
-      const path = rawUrl.replace(/^\{\{baseUrl\}\}/, "");
+      const path = stripBaseUrlVariable(rawUrl);
       if (method && path) {
         const list = out.get(path) ?? [];
         list.push(method);
@@ -274,7 +275,7 @@ describe("c00010 S3 — multi-service monorepo (NestJS users-api + FastAPI billi
         const method = it.request?.method ?? "";
         const rawUrl = it.request?.url?.raw ?? "";
         if (!method || !rawUrl) continue;
-        const key = `${method} ${rawUrl.replace(/^\{\{baseUrl\}\}/, "")}`;
+        const key = `${method} ${stripBaseUrlVariable(rawUrl)}`;
         seen.set(key, (seen.get(key) ?? 0) + 1);
       }
     }
