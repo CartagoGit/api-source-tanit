@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 338 símbolos en 133 módulos.
+> 337 símbolos en 133 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2569,26 +2569,6 @@ one by one without anything saying so.
 ### `packages/core/helpers/uri.helper.ts`
 
 Helpers to normalize URIs before comparing.
-
-#### `BASE_URL_VARIABLE`
-
-```ts
-export const BASE_URL_VARIABLE = /^\
-```
-
-The collection's base-URL variable, in both spellings.
-
-`{{baseUrl}}` is the single-service form; r00019 added the
-per-operation `{{baseUrl_<serviceId>}}` so a merged collection can
-point each request at its own service.
-
-ONE definition, because matching only the bare name was a real bug in
-two separate places at once — `pathToSegments` and the collection
-builder's folder grouping — and the two failed differently: the first
-made every route miss the generator's parity check, the second
-collapsed nine requests into a single folder named after the
-variable. A third copy in `auth-flow` happened to use a broader
-pattern and escaped. A prefix this load-bearing gets described once.
 
 #### `stripBaseUrlVariable`
 

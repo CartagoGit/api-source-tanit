@@ -40,3 +40,22 @@ export const DEFAULT_BASE_URL = "http://localhost";
  * prefix; renaming the variable would silently regress those projects.
  */
 export const BASE_PATH_ENV_VAR = "POSTMAN_BASE_PATH";
+/**
+ * The collection's base-URL VARIABLE, in both spellings.
+ *
+ * `{{baseUrl}}` is the single-service form; r00019 added the
+ * per-operation `{{baseUrl_<serviceId>}}` so a merged collection can
+ * point each request at its own service.
+ *
+ * One definition, because matching only the bare name was a live bug in
+ * two places at once, and the two failed differently: `pathToSegments`
+ * left the variable in the path, so every route missed the generator's
+ * parity check and generation aborted; the collection builder's folder
+ * grouping returned the variable as the folder KEY, collapsing nine
+ * requests into a single folder named after a temp directory. A third
+ * copy in `auth-flow` used a broader pattern and happened to escape.
+ *
+ * Anchored at the start on purpose: a variable in the MIDDLE of a path
+ * is a path parameter, not a host, and must survive.
+ */
+export const BASE_URL_VARIABLE = /^\{\{baseUrl(?:_[^}]*)?\}\}/;
