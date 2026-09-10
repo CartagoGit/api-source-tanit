@@ -4,6 +4,7 @@
  * Centralizes the duplicated pathToSegments / walk / count logic that
  * used to live in each script.
  */
+import { BASE_URL_VARIABLE } from "./uri.helper.js";
 import type {
   PostmanCollection,
   PostmanItem,
@@ -14,14 +15,7 @@ import type { CollectionRequest } from "../../contracts/interfaces/core/helpers.
 /** Extract the path segments from a raw Postman URL. */
 export function pathToSegments(rawUrl: string): string[] {
   return rawUrl
-    // `{{baseUrl}}` OR the per-service `{{baseUrl_<serviceId>}}` that
-    // r00019 introduced. Matching only the bare name left the
-    // per-service variable in the path as a literal segment, so every
-    // route in a multi-service collection failed the generator's own
-    // parity check against the discovered routes and generation aborted
-    // — with the temp directory the service id was derived from visible
-    // in the error, which is what made it look like a path bug.
-    .replace(/\{\{baseUrl(?:_[^}]*)?\}\}/, "")
+    .replace(BASE_URL_VARIABLE, "")
     .replace(/^https?:\/\/[^/]+/, "")
     .split("/")
     .filter(Boolean);

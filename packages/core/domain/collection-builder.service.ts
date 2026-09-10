@@ -36,7 +36,11 @@ import { buildRequestDescription } from "./request-doc.service.js";
 import { bodyFieldsFromGraph } from "../helpers/schema-flatten.helper.js";
 import { buildTestScript } from "./test-script.service.js";
 import { renderInferredPostmanResponses } from "../exporters/postman-inferred-response.exporter.js";
-import { prettyGroupName, topGroupFor } from "../helpers/uri.helper.js";
+import {
+  prettyGroupName,
+  stripBaseUrlVariable,
+  topGroupFor,
+} from "../helpers/uri.helper.js";
 import { postmanMethodFor } from "./postman-method.helper.js";
 import type { AuthSchemeType, IDetectedAuthScheme } from "../../contracts/interfaces/core/discovery.interface.js";
 
@@ -275,7 +279,11 @@ function toHierarchical(
   }
   const annotated: GroupWithMain[] = groups.map((g) => {
     const firstUrl = g.items[0]?.request?.url.raw ?? "";
-    const uriForGroup = firstUrl.replace(/^\{\{baseUrl\}\}/, "");
+    // Strips the per-service `{{baseUrl_<id>}}` as well. Matching only
+    // the bare name left the variable as the first path segment, so
+    // `topGroupFor` returned IT as the folder key and every request in
+    // the collection collapsed into one folder named after the variable.
+    const uriForGroup = stripBaseUrlVariable(firstUrl);
     return {
       g,
       autoMainKey: topGroupFor(uriForGroup, uriGroupOverrides),

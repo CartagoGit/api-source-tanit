@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../packages/core/helpers/postman.helper";
+import { stripBaseUrlVariable } from "../../packages/core/helpers/uri.helper";
 import type {
   PostmanCollection,
   PostmanItem,
@@ -189,5 +190,19 @@ describe("pathToSegments — per-service base URLs (r00019)", () => {
 
   test("still strips an absolute origin", () => {
     expect(uriFromRaw("https://api.example.test/api/users")).toBe("api/users");
+  });
+});
+
+describe("stripBaseUrlVariable — one definition of the base-URL prefix", () => {
+  test("removes both spellings, and only at the start", () => {
+    expect(stripBaseUrlVariable("{{baseUrl}}/api/users")).toBe("/api/users");
+    expect(stripBaseUrlVariable("{{baseUrl_svc}}/api/users")).toBe("/api/users");
+    // Not a prefix → untouched. A variable in the middle of a path is a
+    // path parameter, not a host.
+    expect(stripBaseUrlVariable("/api/{{baseUrl}}/x")).toBe("/api/{{baseUrl}}/x");
+  });
+
+  test("does not eat a variable that merely starts with the same letters", () => {
+    expect(stripBaseUrlVariable("{{baseUrlOther}}/x")).toBe("{{baseUrlOther}}/x");
   });
 });
