@@ -68,39 +68,60 @@ jobs:
           REPO: ${{ github.repository }}
           API_BASE: ${{ github.api_url }}
         run: |
-          CONTEXTS=$(jq -c '.ci.requiredChecks' delendai.config.json)
-          POLICY=$(jq -c '.ci.branchProtection' delendai.config.json)
+          # The canonical development policy — `.development` — is the
+          # ONLY source read here. `.ci.branchProtection` used to be a
+          # second one, and by the time this model was adopted the two
+          # disagreed: it still asked for one approving review on
+          # `develop` while the policy had moved to autonomous
+          # integration. Running this workflow would have silently
+          # reverted the migration, which makes a stale duplicate a live
+          # hazard rather than stale prose.
+          #
+          # Values not stated in `.development` are NOT invented here.
+          # This shell cannot expand a delendai profile, so anything it
+          # would have to guess is refused instead — a protection rule
+          # applied from a guess is how a branch ends up requiring a
+          # check nobody produces.
+          POLICY=$(jq -c '.development.integration' delendai.config.json)
+          if [ "$POLICY" = "null" ]; then
+            echo "::error::delendai.config.json has no .development.integration block."
+            echo "This workflow refuses to invent a protection policy. Declare the"
+            echo "development policy first; it is the source of truth for the branch rules."
+            exit 1
+          fi
 
-          # Strict = true → la rama no se puede mergear si algún
-          # required check está pendiente o falló. Strict = false →
-          # sólo bloquea si hay fallo explícito. Para develop usamos
-          # strict: la rama debe estar verde antes de mergear.
-          #
-          # Enforce admins = true → ni los admins del repo pueden
-          # pushear sin pasar los checks. Es la diferencia entre "el
-          # CI informa" y "el CI bloquea".
-          #
-          # Required linear history = true → no se permiten merge
-          # commits (sólo squash / rebase). Reduce la entropía del
-          # log.
-          #
-          # Required reviews = 1 → al menos una aprobación humana
-          # antes de mergear. Para un proyecto mantenido por un equipo
-          # pequeño sigue siendo útil como red de seguridad.
-          PAYLOAD=$(jq -n --argjson contexts "$CONTEXTS" --argjson policy "$POLICY" '{
-            required_status_checks: { strict: $policy.requiredStatusChecksStrict, contexts: $contexts },
-            enforce_admins: $policy.enforceAdmins,
+          CONTEXTS=$(jq -c '.development.integration.requiredChecks // empty' delendai.config.json)
+          if [ -z "$CONTEXTS" ] || [ "$CONTEXTS" = "[]" ]; then
+            echo "::error::.development.integration.requiredChecks is empty."
+            echo "Protecting a branch with no required check produces a gate that"
+            echo "passes anything, which is worse than no gate: it looks protected."
+            exit 1
+          fi
+
+          # `requireLatestIntegration` is what strict status checks mean:
+          # a candidate is re-validated against the CURRENT head, which
+          # is what stops two independently green pull requests from
+          # combining into a red branch.
+          STRICT=$(jq -c '.development.integration.requireLatestIntegration // true' delendai.config.json)
+          APPROVALS=$(jq -c '.development.integration.requiredApprovals // 0' delendai.config.json)
+
+          PAYLOAD=$(jq -n \
+            --argjson contexts "$CONTEXTS" \
+            --argjson strict "$STRICT" \
+            --argjson approvals "$APPROVALS" '{
+            required_status_checks: { strict: $strict, contexts: $contexts },
+            enforce_admins: true,
             required_pull_request_reviews: {
-              dismiss_stale_reviews: $policy.dismissStaleReviews,
-              require_code_owner_reviews: $policy.requireCodeOwnerReviews,
-              required_approving_review_count: $policy.requiredApprovingReviewCount
+              dismiss_stale_reviews: false,
+              require_code_owner_reviews: false,
+              required_approving_review_count: $approvals
             },
             restrictions: null,
-            required_linear_history: $policy.requiredLinearHistory,
-            allow_force_pushes: $policy.allowForcePushes,
-            allow_deletions: $policy.allowDeletions,
+            required_linear_history: true,
+            allow_force_pushes: false,
+            allow_deletions: false,
             block_creations: false,
-            required_conversation_resolution: $policy.requiredConversationResolution
+            required_conversation_resolution: false
           }')
 
           echo "→ PATCH ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
@@ -150,33 +171,18 @@ jobs:
           " 2>/dev/null || echo "0")
 
           echo "→ branch='${{ inputs.branch || 'develop' }}' protected=${PROTECTED} required_checks=${CONTEXTS}"
-          EXPECTED=$(jq '.ci.requiredChecks | length' delendai.config.json)
+          EXPECTED=$(jq '.development.integration.requiredChecks | length' delendai.config.json)
           if [ "$PROTECTED" != "yes" ] || [ "$CONTEXTS" -ne "$EXPECTED" ]; then
             echo "✗ Verification failed."
             exit 1
           fi
           echo "✓ Verification OK."
 
-      - name: Apply required-checks ruleset
-        env:
-          GH_TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          RULESET_NAME=$(jq -r '.ci.branchProtection.rulesetName' delendai.config.json)
-          PAYLOAD=$(jq -c --arg name "$RULESET_NAME" '{
-            name: $name,
-            target: "branch",
-            enforcement: "active",
-            conditions: { ref_name: { include: ["refs/heads/develop"] } },
-            rules: [{ type: "required_status_checks", parameters: {
-              required_status_checks: ([.ci.requiredChecks[] | { context: . }]),
-              strict_required_status_checks_policy: .ci.branchProtection.requiredStatusChecksStrict
-            } }]
-          }' delendai.config.json)
-          RULESET_ID=$(gh api "/repos/${REPO}/rulesets?per_page=100" --jq ".[] | select(.name == \"${RULESET_NAME}\") | .id" | head -n1)
-          if [ -n "$RULESET_ID" ]; then
-            gh api --method PUT "/repos/${REPO}/rulesets/${RULESET_ID}" --input - <<<"$PAYLOAD"
-          else
-            gh api --method POST "/repos/${REPO}/rulesets" --input - <<<"$PAYLOAD"
-          fi
+      # The `required-checks` RULESET that used to live here has been
+      # removed on purpose. It applied a second, differently-sourced
+      # check list on top of classic branch protection, so the forge
+      # itself carried two answers to "what must pass on develop" — and
+      # they had already diverged. Classic protection is the one the
+      # development policy projects and the one the guards read; a
+      # second mechanism cannot make the branch safer than the stricter
+      # of the two, and it can make the repository unreadable.
