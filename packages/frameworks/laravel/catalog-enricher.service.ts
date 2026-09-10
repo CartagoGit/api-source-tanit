@@ -23,6 +23,7 @@ import type {
   PostmanItem,
   PostmanRequest,
 } from "../../contracts/interfaces/core/postman.interface.js";
+import { stripBaseUrlVariable } from "../../core/helpers/uri.helper.js";
 import type { EndpointSpec } from "../../contracts/interfaces/core/endpoint-legacy.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import { projectDirs, toProjectRelative as toContextRelative } from "../../core/discovery/project-context.service.js";
@@ -33,8 +34,7 @@ import type { FormRequestRules } from "../../contracts/interfaces/frameworks/sca
 import { runValidationEnrichers } from "../../core/validation/validation-enricher.service.js";
 
 function normalizeKey(method: string, uri: string): string {
-  const u = uri
-    .replace(/^\{\{baseUrl\}\}/, "")
+  const u = stripBaseUrlVariable(uri)
     .replace(/^\/+/, "")
     .replace(/\{\{[^}]+\}\}/g, ":p")
     .replace(/\{[^}]+\}/g, ":p");

@@ -10,6 +10,7 @@
  * without anyone having to remember.
  */
 import { describe, expect, test } from "vitest";
+import { BASE_URL_VARIABLE } from "../../packages/core/helpers/uri.helper.js";
 
 import { generateWithAllFrameworks } from "../../packages/frameworks/index";
 import { comprehensiveFixtureDir } from "../../scripts/helpers/root.helper";
@@ -41,7 +42,11 @@ describe.each([...FRAMEWORK_IDS])("colección de %s", (framework) => {
       comprehensiveFixtureDir(framework),
     );
     for (const request of requestsOf(collection.item)) {
-      expect(request.request?.url?.raw, request.name).toMatch(/^\{\{baseUrl\}\}/);
+      // `BASE_URL_VARIABLE` rather than a literal: r00019 made the
+      // prefix per-service (`{{baseUrl_<serviceId>}}`), and this
+      // assertion is about the URL hanging off the collection's base
+      // variable, not about which spelling of it a given project uses.
+      expect(request.request?.url?.raw, request.name).toMatch(BASE_URL_VARIABLE);
     }
   });
 
