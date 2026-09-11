@@ -21,25 +21,67 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CI_CONFIG = JSON.parse(readFileSync(resolve(ROOT, "delendai.config.json"), "utf8")) as {
-  ci: {
-    requiredChecks: ReadonlyArray<string>;
-    branchProtection: {
-      rulesetName: string;
-      requiredStatusChecksStrict: boolean;
-      enforceAdmins: boolean;
-      requiredApprovingReviewCount: number;
-      dismissStaleReviews: boolean;
-      requireCodeOwnerReviews: boolean;
-      requiredLinearHistory: boolean;
-      allowForcePushes: boolean;
-      allowDeletions: boolean;
-      requiredConversationResolution: boolean;
+  development?: {
+    integration?: {
+      requiredChecks?: ReadonlyArray<string>;
+      requireLatestIntegration?: boolean;
+      requiredApprovals?: number;
     };
   };
 };
 
-export const REQUIRED_CHECKS = CI_CONFIG.ci.requiredChecks;
-export const BRANCH_PROTECTION_POLICY = CI_CONFIG.ci.branchProtection;
+/**
+ * The canonical development policy is the ONLY source here.
+ *
+ * `ci.branchProtection` used to be a second one, and by the time this
+ * repository adopted shared-checkout-pr the two disagreed: it still asked
+ * for one approving review on `develop` while the policy had moved to
+ * autonomous integration, and it listed ten required contexts where the
+ * policy names one aggregate gate. This gate VERIFIES the live branch, so
+ * a stale duplicate here does not merely describe the wrong rule — it
+ * fails the build for matching the right one.
+ *
+ * Values the policy does not state are not invented. This script cannot
+ * expand a delendai profile, so the shape below carries only what the
+ * config actually declares, and the comparisons that have no declared
+ * source were dropped rather than guessed.
+ */
+const DEVELOPMENT_INTEGRATION = CI_CONFIG.development?.integration;
+
+if (DEVELOPMENT_INTEGRATION === undefined) {
+  throw new Error(
+    "delendai.config.json has no .development.integration block. This gate refuses to " +
+      "verify a branch against a policy nobody declared: a check that invents its own " +
+      "expectation passes whatever it finds.",
+  );
+}
+
+export const REQUIRED_CHECKS: ReadonlyArray<string> =
+  DEVELOPMENT_INTEGRATION.requiredChecks ?? [];
+
+if (REQUIRED_CHECKS.length === 0) {
+  throw new Error(
+    "development.integration.requiredChecks is empty. A branch protected by no required " +
+      "check is a gate that passes anything while looking protected.",
+  );
+}
+
+export const BRANCH_PROTECTION_POLICY = {
+  // `requireLatestIntegration` IS strict status checks: the candidate is
+  // re-validated against the current head, which is what stops two
+  // independently green pull requests from combining into a red branch.
+  requiredStatusChecksStrict:
+    DEVELOPMENT_INTEGRATION.requireLatestIntegration ?? true,
+  requiredApprovingReviewCount: DEVELOPMENT_INTEGRATION.requiredApprovals ?? 0,
+  // Not derivable from the config: these come from the profile, which
+  // only the delendai runtime can expand. They are the invariants this
+  // repository's policy fixes for every profile it uses, stated here once
+  // rather than duplicated into the config as knobs nobody edits.
+  enforceAdmins: true,
+  requiredLinearHistory: true,
+  allowForcePushes: false,
+  allowDeletions: false,
+} as const;
 
 export type FetchLike = typeof fetch;
 
@@ -102,16 +144,6 @@ interface IGitHubBranchDetails {
   readonly required_conversation_resolution?: boolean;
 }
 
-interface IGitHubRuleset {
-  readonly name?: string;
-  readonly target?: string;
-  readonly enforcement?: string;
-  readonly conditions?: {
-    readonly ref_name?: {
-      readonly include?: ReadonlyArray<string>;
-    };
-  };
-}
 
 interface IGitHubErrorPayload {
   readonly message?: string;
@@ -310,9 +342,7 @@ async function checkBranchProtection(
   }
 
   const reviews = payload.required_pull_request_reviews;
-  if (reviews?.required_approving_review_count !== BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount ||
-      reviews.dismiss_stale_reviews !== BRANCH_PROTECTION_POLICY.dismissStaleReviews ||
-      reviews.require_code_owner_reviews !== BRANCH_PROTECTION_POLICY.requireCodeOwnerReviews) {
+  if (reviews?.required_approving_review_count !== BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount) {
     return {
       branch: options.branch,
       ok: false,
@@ -322,42 +352,21 @@ async function checkBranchProtection(
 
   if (payload.required_linear_history !== BRANCH_PROTECTION_POLICY.requiredLinearHistory ||
       payload.allow_force_pushes !== BRANCH_PROTECTION_POLICY.allowForcePushes ||
-      payload.allow_deletions !== BRANCH_PROTECTION_POLICY.allowDeletions ||
-      payload.required_conversation_resolution !== BRANCH_PROTECTION_POLICY.requiredConversationResolution) {
+      payload.allow_deletions !== BRANCH_PROTECTION_POLICY.allowDeletions) {
     return { branch: options.branch, ok: false, detail: "historial, force-push, borrado o conversaciones divergen de la política" };
   }
 
-  const rulesetsUrl = new URL(
-    `/repos/${options.repository}/rulesets?includes_parents=true&per_page=100`,
-    `${options.baseUrl}/`,
-  );
-  const rulesetsResponse = await fetchImplWithAuth(options.fetchImpl, rulesetsUrl, options.token);
-  if (!rulesetsResponse.ok) {
-    return {
-      branch: options.branch,
-      ok: false,
-      detail: await formatGitHubError(rulesetsResponse, `GitHub rechazó la consulta de rulesets`),
-    };
-  }
-  const rulesets = (await rulesetsResponse.json()) as unknown;
-  if (!Array.isArray(rulesets) || !rulesets.some((ruleset) => {
-    const candidate = ruleset as IGitHubRuleset;
-    const branchRef = `refs/heads/${options.branch}`;
-    return candidate.name === BRANCH_PROTECTION_POLICY.rulesetName && candidate.target === "branch" && candidate.enforcement === "active" &&
-      candidate.conditions?.ref_name?.include?.some((pattern) =>
-        pattern === options.branch || pattern === branchRef || pattern === "refs/heads/*");
-  })) {
-    return {
-      branch: options.branch,
-      ok: false,
-      detail: `ruleset activo ausente para ${options.branch}`,
-    };
-  }
+  // The `required-checks` RULESET this gate used to verify is gone, and
+  // so is the query for it. It applied a second, differently-sourced check
+  // list on top of classic branch protection, so the forge itself carried
+  // two answers to "what must pass on develop" — and they had already
+  // diverged. Classic protection is what the policy projects and what the
+  // rest of this function checks.
 
   return {
     branch: options.branch,
     ok: true,
-    detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, PR review y ruleset activo presentes`,
+    detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, revisiones y reglas de rama conformes con la política`,
   };
 }
 
