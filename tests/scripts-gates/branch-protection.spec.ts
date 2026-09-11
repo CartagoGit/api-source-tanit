@@ -47,21 +47,16 @@ describe("branch-protection gate", () => {
           },
           enforce_admins: { enabled: true },
           required_pull_request_reviews: {
-            required_approving_review_count: 1,
-            dismiss_stale_reviews: true,
-            require_code_owner_reviews: false,
+            // 0 — the policy integrates autonomously. The fixture used
+            // to say 1, which is what `ci.branchProtection` asked for
+            // before it was removed as a second source of truth.
+            required_approving_review_count: 0,
           },
           required_linear_history: true,
           allow_force_pushes: false,
           allow_deletions: false,
           required_conversation_resolution: true,
         }),
-        [`${baseUrl}/repos/CartagoGit/api-source-tanit/rulesets?includes_parents=true&per_page=100`]: jsonResponse([{
-          name: "develop-required-checks",
-          target: "branch",
-          enforcement: "active",
-          conditions: { ref_name: { include: ["refs/heads/develop"] } },
-        }]),
       }),
     });
 
@@ -70,7 +65,7 @@ describe("branch-protection gate", () => {
       {
         branch: "develop",
         ok: true,
-        detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, PR review y ruleset activo presentes`,
+        detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, revisiones y reglas de rama conformes con la política`,
       },
     ]);
   });
@@ -87,12 +82,23 @@ describe("branch-protection gate", () => {
           protected: true,
         }),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
+          // Everything else conforms, so the ONLY thing this fixture can
+          // fail on is the missing check. It names a DIFFERENT context
+          // rather than an empty list, because an empty list is its own
+          // refusal ("contexts ausente") and would not exercise the
+          // "this specific check is missing" message. It used to drop a
+          // check by name; the policy now names its own checks.
           required_status_checks: {
-            contexts: REQUIRED_CHECKS.filter((check) => check !== "integration-verifier"),
+            strict: true,
+            contexts: ["some-other-check"],
           },
+          enforce_admins: { enabled: true },
           required_pull_request_reviews: {
-            required_approving_review_count: 1,
+            required_approving_review_count: 0,
           },
+          required_linear_history: true,
+          allow_force_pushes: false,
+          allow_deletions: false,
         }),
       }),
     });
@@ -101,7 +107,7 @@ describe("branch-protection gate", () => {
     expect(result.results[0]).toMatchObject({
       branch: "develop",
       ok: false,
-      detail: "faltan required checks: integration-verifier",
+      detail: `faltan required checks: ${REQUIRED_CHECKS[0]}`,
     });
   });
 
