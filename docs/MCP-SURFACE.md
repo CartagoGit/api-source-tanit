@@ -26,18 +26,31 @@ Un comando merece ser tool cuando cumple **las tres**:
 
 ## Los diez que sí
 
-| Tool | Efectos | Por qué |
-|---|---|---|
-| `generate` | `write` | Es el producto. Devuelve rutas, cifras y avisos. |
-| `init` | `write` | Escribe una configuración **válida** sin que el agente tenga que inventarse la forma de `ProjectConfig`. |
-| `push` | `network`, `write` | Publica en Postman. Devuelve qué se creó o actualizó, con su UID. |
-| `scan` | — | Qué ve el discovery, antes de generar nada. La respuesta a «¿por qué no encuentra mis rutas?». |
-| `summary` | — | El proyecto ya interpretado, sin escribir. |
-| `check` | — | ¿Se ha desincronizado la colección del código? Con las dos listas de deriva. |
-| `list` | — | Los endpoints de la colección, en datos. |
-| `stats` | — | El tamaño y la forma, para dimensionar sin leerse el JSON. |
-| `validate` | — | Si la colección cumple el esquema de Postman. |
-| `test` | `spawn` | Ejecuta la suite y devuelve pasos con su resultado. |
+| Tool | Efectos | Dónde escribe | Por qué |
+|---|---|---|---|
+| `generate` | `write` | `server` | Es el producto. Devuelve rutas, cifras y avisos. |
+| `init` | `write` | `server` | Escribe una configuración **válida** sin que el agente tenga que inventarse la forma de `ProjectConfig`. |
+| `push` | `network`, `write` | `remote` | Publica en Postman. Devuelve qué se creó o actualizó, con su UID. |
+| `scan` | — | — | Qué ve el discovery, antes de generar nada. La respuesta a «¿por qué no encuentra mis rutas?». |
+| `summary` | — | — | El proyecto ya interpretado, sin escribir. |
+| `check` | — | — | ¿Se ha desincronizado la colección del código? Con las dos listas de deriva. |
+| `list` | — | — | Los endpoints de la colección, en datos. |
+| `stats` | — | — | El tamaño y la forma, para dimensionar sin leerse el JSON. |
+| `validate` | — | — | Si la colección cumple el esquema de Postman. |
+| `test` | `spawn` | — | Ejecuta la suite y devuelve pasos con su resultado. |
+
+La columna **Dónde escribe** no es adorno: es el `writeRoot` que el
+host lee al arrancar. Un tool que declara `write` y no dice dónde
+escribe **hace que el servidor MCP no arranque** — el editor muestra
+«the server stopped while handling this request» y el motivo queda
+escondido en el stderr del servidor. Lo comprueba
+`bun run lint:mcp-surface` antes de que llegue ahí.
+
+`generate` e `init` escriben en el proyecto que documentan: la raíz
+del propio servidor, salvo que quien llame nombre otro. `push` no
+escribe nada aquí: la colección aterriza en el workspace de Postman.
+El detalle y el porqué de cada uno viven en
+[`docs/delendai/AGENT-BOOTSTRAP.md`](delendai/AGENT-BOOTSTRAP.md#321-effects-and-write-root--the-registration-contract).
 
 ## Los que no, y por qué
 

@@ -5,6 +5,7 @@ icon: $(tools)
 model: MiniMax M3 (minimax)
 description: |
     Root orchestrator for @api-source-tanit/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server.
+tools: [read, search, execute, todo, edit, agent, delendai/*]
 user-invocable: true
 ---
 

@@ -12,6 +12,24 @@
  *   - D: depends on `runBunScript` (abstraction), not on Bun
  *     directly.
  *
+ * ## Where the writes land
+ *
+ * `writeRoot: "server"`. The host refuses to start a tool that
+ * declares a `write` effect and no root, and the root is not
+ * decoration: it says which tree the writes belong to.
+ *
+ * The generated collection lands in the project tanit documents —
+ * `projectRoot`, which is the server's own root unless the caller
+ * names another one. That is the server's tree, on purpose, so
+ * `"server"` is what it declares.
+ *
+ * Not `"caller-checkout"`: that root promises the writes follow the
+ * working tree of whoever calls, and these do not. The output path
+ * comes from the plugin's options and the call's arguments, and the
+ * runner spawns in the server's root. The host's own rule is that a
+ * root which does not follow is not declared — such a tool declares
+ * where it writes today, until a change makes it follow.
+ *
  * Canonical `IToolRegistration` shape: the `id` is stable inside the
  * plugin (`tanit_generate`); the core qualifies it with the host's
  * `namespacePrefix`. The MCP tool name registered in the SDK is
@@ -54,6 +72,7 @@ export function buildGenerateToolRegistration(
       "además OpenAPI, Insomnia, Bruno, HAR o cURL.",
     tags: ["postman", "api", "generate", "spawn"],
     effects: ["spawn", "write"],
+    writeRoot: "server",
     register: async (server) => {
       server.registerTool(
         `${ctx.namespacePrefix}_${TOOL_ID}`,
