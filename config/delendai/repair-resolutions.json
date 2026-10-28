@@ -16,6 +16,14 @@
 			"reason": "The same ref was recreated on top of the current work (tip c4dd841, whose parent is ad3e907, the commit that carries the same configuration), so the recorded checkpoint 77ce214d is no longer an ancestor of it. Nothing was lost: the ref's content today is a superset of what the old checkpoint held — `git show c4dd841:delendai.config.json` shows the same profile, the same merge settings and the guard block on top. The old checkpoint is still in the object store. The ref was rewritten to sit on the current branch, not to discard work.",
 			"decidedBy": "copilot",
 			"decidedAt": "2026-10-28T17:30:00.000Z"
+		},
+		{
+			"taskId": "f50f0d23e3e6a51d9be3970a749a9942",
+			"evidenceDigest": "0e643f1ec7c20c9229f778f682c308a7",
+			"decision": "resolved-elsewhere",
+			"reason": "La ref wip/minimax-m3/implement/workspace-interval-g1/work se reescribio sobre el trabajo actual: su unico contenido propio era 't2' (basura de un pager) y el .md de r00019, ya mergeado en develop. El checkpoint 385ed49 sigue en el object store (git cat-file -t -> commit) y su contenido real ya esta mergeado en develop. Nada se perdio.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-28T20:54:26.323Z"
 		}
 	]
 }
