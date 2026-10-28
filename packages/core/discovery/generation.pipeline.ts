@@ -71,8 +71,14 @@ import { accumulateRoutesByService } from "./accumulate-routes-by-service.helper
 import { filterSpecsForService } from "./filter-specs-for-service.helper.js";
 import { toServiceDescriptor } from "../merge/service-descriptor.adapter.js";
 import { combineServices } from "../merge/combine-services.service.js";
+import { perOperationResolver } from "../merge/per-operation-resolver.service.js";
 import type { IOperation } from "../../contracts/interfaces/core/operation.interface.js";
 import type { IServiceDescriptor } from "../../contracts/interfaces/core/service.interface.js";
+import type {
+  IExporter,
+  IExportResult,
+} from "../../contracts/interfaces/core/exporter.interface.js";
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 import { operationIdFor } from "../transport/operation-id.service.js";
 import { collectFiles } from "../helpers/fs-walk.helper.js";
 
@@ -351,8 +357,20 @@ async function buildFor(
       return toServiceDescriptor(service, operations);
     });
     const combinedDescriptor = combineServices(descriptors);
+    // `combineServices` already resolves every operation against the
+    // service it belongs to. The explicit resolver call here keeps the
+    // pipeline's contract visible: no operation inherits the first
+    // service's server or credentials.
+    const resolvedOperations = combinedDescriptor.operations.map((operation) => {
+      const context = perOperationResolver.resolve(operation, descriptors);
+      return {
+        ...operation,
+        serverRef: context.serverRef,
+        authRef: context.authRef,
+      };
+    });
     const operationByKey = new Map(
-      combinedDescriptor.operations.map((operation) => [
+      resolvedOperations.map((operation) => [
         `${operation.serviceId}:${operation.transport.kind === "http" ? operation.transport.method : ""}:${operation.transport.kind === "http" ? operation.transport.path : ""}`,
         operation,
       ]),
@@ -1358,3 +1376,42 @@ function dedupeSpecs(specs: ReadonlyArray<EndpointSpec>): EndpointSpec[] {
   }
   return out;
 }
+
+/**
+ * Builds every requested artifact from one project snapshot.
+ *
+ * Exporters are independent: one that throws becomes an error
+ * diagnostic in its own result, and the remaining exporters still run.
+ * The caller can therefore decide whether to write a partial export or
+ * reject the whole transaction without losing the other diagnostics.
+ */
+async function buildArtifacts(
+  snapshot: IProjectSnapshot,
+  exporters: IExporter[],
+): Promise<IExportResult[]> {
+  const results: IExportResult[] = [];
+
+  for (const exporter of exporters) {
+    try {
+      results.push(await exporter.build(snapshot));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      results.push({
+        format: exporter.id,
+        files: [],
+        diagnostics: [
+          {
+            code: "exporter_failed",
+            severity: "error",
+            message: `Exporter ${exporter.id} failed: ${message}`,
+            exporterId: exporter.id,
+          },
+        ],
+      });
+    }
+  }
+
+  return results;
+}
+
+export { buildArtifacts };

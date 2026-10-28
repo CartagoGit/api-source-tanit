@@ -19,7 +19,8 @@ import {
 } from "../../core/helpers/atomic-write.helper.js";
 import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/argv.helper.js";
 import { dirname, join } from "node:path";
-import { exportTo, exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
+import { exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
+import { selectExporters } from "../../core/exporters/registry.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
 
@@ -49,10 +50,26 @@ import {
 } from "../../contracts/interfaces/core/generate-report.interface.js";
 
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
+import type { ExportFormatId } from "../../contracts/interfaces/core/exporter.interface.js";
+import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
+import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import type { IGenerateOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 import { DEFAULT_EXPORT_FORMAT } from "../../contracts/constants/core/export-formats.constant.js";
 import { AUTH_TOKEN_VARIABLE } from "../../contracts/constants/core/auth.constant.js";
-import { MultipleServicesWithoutCombineError } from "../../core/discovery/generation.pipeline.js";
+import {
+  buildArtifacts,
+  MultipleServicesWithoutCombineError,
+} from "../../core/discovery/generation.pipeline.js";
+
+/** Narrows an exporter artifact to the Postman collection shape. */
+function isPostmanCollection(value: unknown): value is PostmanCollection {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "info" in value &&
+    "item" in value
+  );
+}
 
 /**
  * Discovers endpoints and builds the collection using the shared
@@ -191,6 +208,7 @@ export async function runGenerate(
     framework: "--framework",
     frameworkSearchRoot: "--framework-search-root",
     format: "--format",
+    formats: "--formats",
     envs: "--envs",
   });
   const bools = readBooleanFlags(args, {
@@ -205,11 +223,15 @@ export async function runGenerate(
   const combineServicesFlag = bools.combineServicesFlag;
   const openAfter = bools.openAfter;
   const inspectMode = bools.inspectMode;
-  // `--format a,b,c`. Validated BEFORE scanning: a misspelled format
-  // name discovered at the end, after walking the project and having
-  // not written the file that was asked for, says nothing about what
+  // `--format a,b,c` (legacy) and `--formats a,b,c` (universal). The
+  // plural spelling is accepted by the r00019 pipeline; the singular
+  // one remains valid so existing commands do not change.
+  //
+  // Formats are validated BEFORE scanning: a misspelled format name
+  // discovered at the end, after walking the project and having not
+  // written the file that was asked for, says nothing about what
   // happened.
-  const parsedFormats = parseFormats(flags.format ?? null);
+  const parsedFormats = parseFormats(flags.formats ?? flags.format ?? null);
   if (!parsedFormats.ok) {
     humanErr(
       `\n✗ Formato desconocido: ${parsedFormats.invalid.join(", ")}\n` +
@@ -217,7 +239,17 @@ export async function runGenerate(
     );
     return { code: 1, report: null };
   }
-  const formats = parsedFormats.formats;
+  const requestedFormats = parsedFormats.formats as ExportFormatId[];
+  // The legacy CLI always wrote the Postman collection and treated the
+  // format flag as the list of EXTRA formats. Preserve that observable
+  // behaviour while selecting the exporters through the universal
+  // registry.
+  const selectedFormats: ExportFormatId[] = requestedFormats.includes(
+    DEFAULT_EXPORT_FORMAT,
+  )
+    ? requestedFormats
+    : [DEFAULT_EXPORT_FORMAT, ...requestedFormats];
+  const exporters = selectExporters(selectedFormats);
   const envsFlag = flags.envs ? readFlagList(args, "--envs") : null;
 
   const pipeline = await runPipeline(
@@ -436,7 +468,6 @@ export async function runGenerate(
         basenameFlag ?? undefined,
       );
   await warnOnIdentityClash(OUTPUT_PATH, collection);
-  const json = JSON.stringify(collection, null, 2);
   // x00060 — generate runs as a single transaction: validate BEFORE any
   // write so a regression / scanner crash cannot destroy yesterday's
   // collection. The previous order wrote first and then refused if
@@ -453,16 +484,63 @@ export async function runGenerate(
     );
     return { code: 1, report: null };
   }
+
+  // Every selected exporter consumes the SAME snapshot. The pipeline
+  // builds all results before the writer touches the filesystem, so a
+  // broken exporter is reported as a diagnostic instead of leaving a
+  // half-written export behind.
+  const snapshot: IProjectSnapshot = {
+    sessionId: "cli",
+    projectRoot: resolvedContext.projectRoot,
+    capturedAt: new Date(),
+    results: [pipeline],
+    diagnostics: [],
+    frameworks: pipeline.frameworks,
+  };
+  const artifactResults = await buildArtifacts(snapshot, exporters);
+  const exportErrors = artifactResults.flatMap((result) =>
+    result.diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
+  );
+  if (exportErrors.length > 0) {
+    humanErr("\n✗ No artifacts were written because an exporter failed:");
+    for (const diagnostic of exportErrors) {
+      humanErr(`  · ${diagnostic.message}`);
+    }
+    return { code: 1, report: null };
+  }
+
+  const postmanResult = artifactResults.find(
+    (result) => result.format === DEFAULT_EXPORT_FORMAT,
+  );
+  const exportedCollection = isPostmanCollection(postmanResult?.artifact)
+    ? postmanResult.artifact
+    : collection;
+  const json = JSON.stringify(exportedCollection, null, 2);
   await writeFileAtomic(OUTPUT_PATH, json + "\n");
   collectionPath = OUTPUT_PATH;
+
   // Extra formats are serialized from the SAME endpoint catalog as the
   // Postman collection: two formats from the same project cannot
   // disagree because each scanned on its own.
-  //
-
-  const extraFormats = formats.filter((f) => f !== DEFAULT_EXPORT_FORMAT);
+  const extraFormats = selectedFormats.filter(
+    (format) => format !== DEFAULT_EXPORT_FORMAT,
+  );
+  let extraFileCount = 0;
   if (extraFormats.length > 0) {
     const dir = resolvedContext.outputDir;
+    for (const result of artifactResults) {
+      if (result.format === DEFAULT_EXPORT_FORMAT) continue;
+      for (const artifact of result.files) {
+        const target = join(dir, artifact.path);
+        await mkdir(dirname(target), { recursive: true });
+        await writeFileAtomic(target, artifact.content);
+        extraPaths.push(target);
+        extraFileCount += 1;
+      }
+    }
+    humanLog(`  · ${extraFileCount} file(s) in ${extraFormats.join(", ")}`);
+    // A format that does not represent everything says so: the file
+    // comes out the same, but incomplete.
     const exportInput = {
       specs: discoveredSpecs,
       config,
@@ -472,16 +550,6 @@ export async function runGenerate(
         keyIn: pipeline.authScheme.keyIn,
       },
     };
-    const artifacts = exportTo(extraFormats, exportInput);
-    for (const artifact of artifacts) {
-      const target = join(dir, artifact.path);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFileAtomic(target, artifact.content);
-      extraPaths.push(target);
-    }
-    humanLog(`  · ${artifacts.length} file(s) in ${extraFormats.join(", ")}`);
-    // A format that does not represent everything says so: the file
-    // comes out the same, but incomplete.
     for (const warning of exportWarnings(extraFormats, exportInput)) {
       console.warn(`\n⚠ ${warning}`);
     }
