@@ -50,7 +50,12 @@ describe("SymbolGraph (r00014 S1)", () => {
   });
 
   test("resolveByImportPath follows the local alias to the imported symbol name", () => {
-    const builder = SymbolGraph.builder();
+    // The import edge names neither the destination file nor the
+    // destination symbol, so this is the legacy global-name lookup.
+    // Since r00020 S1 it only runs when the caller asks for it.
+    const builder = SymbolGraph.builder({
+      experimental: { allowGlobalSymbolLookup: true },
+    });
     const router = node("/proj/src/users.ts", 10, "router");
     builder.addSymbol(router);
     builder.addImport({
@@ -62,5 +67,21 @@ describe("SymbolGraph (r00014 S1)", () => {
 
     const graph = builder.finalize();
     expect(graph.resolveByImportPath("/proj/src/server.ts", "./users", "usersRouter")).toEqual([router]);
+  });
+
+  test("resolveByImportPath does not guess when the edge names nothing", () => {
+    // The default: an import edge that names no destination resolves
+    // to nothing instead of searching the whole project by name.
+    const builder = SymbolGraph.builder();
+    builder.addSymbol(node("/proj/src/users.ts", 10, "router"));
+    builder.addImport({
+      sourceFile: "/proj/src/server.ts",
+      specifier: "./users",
+      localName: "usersRouter",
+      importedName: "router",
+    });
+
+    const graph = builder.finalize();
+    expect(graph.resolveByImportPath("/proj/src/server.ts", "./users", "usersRouter")).toEqual([]);
   });
 });

@@ -10,9 +10,9 @@
  *     `.tsx`, `.js`, `/index.ts`, `/index.js`.
  *   - Empty path → devuelve `[]` (no throw).
  *
- * Plus the path-resolution bare-module behaviour
- * (`import "express"` returns `[]` because the resolver does
- * not own `node_modules`).
+ * Plus the path-resolution bare-module behaviour: since `r00020`
+ * S1 the resolver owns `node_modules`, so `import "express"`
+ * returns the chain of paths where the package would live.
  */
 import { describe, expect, test } from "vitest";
 
@@ -65,10 +65,18 @@ describe("resolveImportPath (r00014 S2)", () => {
     expect(result).toEqual([]);
   });
 
-  test("bare module specifier (no leading . or /) returns []", () => {
+  test("bare module specifier (no leading . or /) resolves to node_modules", () => {
+    // r00020 S1: the resolver owns `node_modules` now. The
+    // candidates are the paths where the package would live, in
+    // probe order — the nearest `node_modules` first.
     const result = resolveImportPath("/proj/a/b/c.ts", "express", ROOT);
-    expect(result).toEqual([]);
-    expect(result).toHaveLength(0);
+    expect(result.length).toBeGreaterThan(0);
+    const paths = result.map((candidate) => candidate.path);
+    expect(paths[0]).toBe("/proj/a/b/node_modules/express");
+    expect(paths).toContain("/proj/node_modules/express/index.js");
+    expect(result.some((candidate) => candidate.kind === "node-modules")).toBe(
+      true,
+    );
   });
 
   test("absolute path inside the project is returned verbatim with fallback chain", () => {
