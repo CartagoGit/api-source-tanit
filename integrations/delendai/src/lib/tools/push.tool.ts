@@ -27,6 +27,13 @@
  * without confirmation. Uploading to a foreign workspace is one of
  * the few things in this project that cannot be undone by deleting
  * a file.
+ *
+ * ## Where the writes land
+ *
+ * `writeRoot: "remote"`. The collection is created or updated in the
+ * Postman workspace: nothing lands on this machine. The write goes
+ * to another service, which is what `"remote"` names — and what
+ * `push` does with the `write` effect it declares.
  */
 
 import {
@@ -55,6 +62,7 @@ export function buildPushToolRegistration(ctx: IMcpPluginContext): IToolRegistra
       "pasa como argumento ni se devuelve.",
     tags: ["postman", "api", "push", "publish"],
     effects: ["network", "write"],
+    writeRoot: "remote",
     register: async (server) => {
       server.registerTool(
         `${ctx.namespacePrefix}_${TOOL_ID}`,

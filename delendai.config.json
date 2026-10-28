@@ -1,7 +1,7 @@
 {
   "latest-published": "0.1.0",
   "development": {
-    "profile": "shared-checkout-merge",
+    "profile": "shared-checkout-pr",
     "branches": { "integration": "develop", "release": "main" },
     "integration": {
       "requiredChecks": ["ci-summary"],
