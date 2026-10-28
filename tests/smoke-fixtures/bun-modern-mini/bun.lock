@@ -1,0 +1,16 @@
+# bun.lock (texto)
+# x00035 S3: este fichero existe para verificar que el detector de
+# los 7 frameworks TS/JS añade la señal "bun.lock presente" (weight 0.15)
+# a `evidence` cuando el proyecto usa Bun ≥ 1.2 (que emite texto en vez
+# del binario bun.lockb legacy).
+#
+# El fixture NO se prueba contra `bun.lockb` — para eso ya existe
+# `tests/smoke-fixtures/express-mini/` (sin lockfile, así que ningún
+# detector puede contar bonus). Aquí la presencia de `bun.lock` debe
+# ser compatible con la detección normal: los 5 endpoints de
+# `server.js` tienen que seguir apareciendo en la colección, y la
+# evidencia del detector debe contener `{ artifact: "bun.lock", weight: 0.15 }`.
+
+[[package]]
+name = "express"
+version = "4.19.2"

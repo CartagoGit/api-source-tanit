@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "example-openapi-headers (Postman)",
+    "description": "Colección Postman generada automáticamente para example-openapi-headers.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "d0302066-c2be-5394-90cf-ddc757004fb8"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

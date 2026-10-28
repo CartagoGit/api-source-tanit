@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "rootDir": ".",
+    "outDir": "./dist/app/tsc",
+    "noEmit": false,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "types": ["node"],
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "files": ["packages/app/src/main.ts"],
+  "include": [
+    "packages/app/src/**/*.ts",
+    "packages/contracts/interfaces/ui/host-bridge.interface.ts"
+  ]
+}

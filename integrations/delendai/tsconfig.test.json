@@ -1,0 +1,24 @@
+{
+  // Tipado de los TESTS del plugin, separado del de `src/`.
+  //
+  // Dos motivos para que sea un proyecto aparte y no un `include` más
+  // en el tsconfig principal:
+  //
+  //   1. Los tipos de vitest no deben existir para el código que se
+  //      publica. Si están en el mismo programa, un `import { vi }` en
+  //      `src/` typechequea y se cuela en `dist/`.
+  //   2. Los tests montan dobles a mano (contextos MCP falsos, handlers
+  //      capturados) y necesitan poder ser algo más laxos con
+  //      `noUnusedLocals` sin relajarlo para el código de producción.
+  //
+  // `bun run typecheck` del plugin corre los dos proyectos.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "bun", "vitest/globals"],
+    // En un doble de test es normal declarar más de lo que se usa en
+    // ese caso concreto; que eso no bloquee el gate.
+    "noUnusedLocals": false
+  },
+  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

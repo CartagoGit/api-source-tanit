@@ -1,0 +1,201 @@
+name: protect-develop
+
+# Aplica y mantiene branch protection en `develop` con la política
+# declarada en `delendai.config.json`.
+#
+# Por qué un workflow y no un comando manual
+# ──────────────────────────────────────────
+# La protección de rama en GitHub se configura vía la REST API
+# (`PUT /repos/:owner/:repo/branches/:branch/protection`). El CLI
+# `gh` también puede, pero requiere un token con scope `admin:repo`
+# (PAT o GitHub App) — el `GITHUB_TOKEN` que viene por defecto en
+# los workflows NO tiene ese scope. La forma estándar de la
+# plataforma es mantener un workflow con un secret dedicado
+# (`REPO_ADMIN_TOKEN` o el equivalente desde GitHub Apps).
+#
+# Por qué workflow_dispatch y no automático
+# ────────────────────────────────────────
+# Aplicar protección en cada push crea un loop:
+#   push → workflow → API call → push (??)
+# GitHub lo previene pero el workflow se vuelve ruidoso y la
+# intención se pierde. La forma sensata es:
+#   - manual (workflow_dispatch) cuando el catálogo de checks cambia
+#   - automática (repository_dispatch) cuando se publica un release,
+#     para mantener `enforce_admins` alineado con la política.
+# Aquí dejamos el manual por ahora; el auto-trigger es una segunda
+# iteración si el equipo decide que vale la pena.
+#
+# Por qué falla sin secret
+# ────────────────────────
+# El workflow falla si `REPO_ADMIN_TOKEN` no existe. Una ejecución
+# verde sin permisos no es evidencia de protección aplicada.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to protect"
+        required: false
+        default: "develop"
+        type: string
+permissions:
+  # `contents: read` viene del default; lo que NECESITAMOS es
+  # `administration: write`, pero GITHUB_TOKEN no la tiene. Por eso
+  # este workflow usa un PAT/GitHub App explícito.
+  contents: read
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Verify required secret
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::REPO_ADMIN_TOKEN is required to apply branch protection."
+            exit 1
+          fi
+          echo "→ REPO_ADMIN_TOKEN present; proceeding with the API call."
+
+      - name: Apply branch protection
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          BRANCH: ${{ inputs.branch || 'develop' }}
+          REPO: ${{ github.repository }}
+          API_BASE: ${{ github.api_url }}
+        run: |
+          # The canonical development policy — `.development` — is the
+          # ONLY source read here. `.ci.branchProtection` used to be a
+          # second one, and by the time this model was adopted the two
+          # disagreed: it still asked for one approving review on
+          # `develop` while the policy had moved to autonomous
+          # integration. Running this workflow would have silently
+          # reverted the migration, which makes a stale duplicate a live
+          # hazard rather than stale prose.
+          #
+          # Values not stated in `.development` are NOT invented here.
+          # This shell cannot expand a delendai profile, so anything it
+          # would have to guess is refused instead — a protection rule
+          # applied from a guess is how a branch ends up requiring a
+          # check nobody produces.
+          POLICY=$(jq -c '.development.integration' delendai.config.json)
+          if [ "$POLICY" = "null" ]; then
+            echo "::error::delendai.config.json has no .development.integration block."
+            echo "This workflow refuses to invent a protection policy. Declare the"
+            echo "development policy first; it is the source of truth for the branch rules."
+            exit 1
+          fi
+
+          CONTEXTS=$(jq -c '.development.integration.requiredChecks // empty' delendai.config.json)
+          if [ -z "$CONTEXTS" ] || [ "$CONTEXTS" = "[]" ]; then
+            echo "::error::.development.integration.requiredChecks is empty."
+            echo "Protecting a branch with no required check produces a gate that"
+            echo "passes anything, which is worse than no gate: it looks protected."
+            exit 1
+          fi
+
+          # `requireLatestIntegration` is what strict status checks mean:
+          # a candidate is re-validated against the CURRENT head, which
+          # is what stops two independently green pull requests from
+          # combining into a red branch.
+          STRICT=$(jq -c '.development.integration.requireLatestIntegration // true' delendai.config.json)
+          APPROVALS=$(jq -c '.development.integration.requiredApprovals // 0' delendai.config.json)
+
+          # The remaining switches come from the SAME block the gate
+          # verifies against. Hardcoding them here gave the workflow a
+          # second answer to "what must protect develop": it applied a
+          # linear-history rule the policy did not declare, and a branch
+          # that forbids merge commits rejects every push containing one.
+          # One source, read twice — by this workflow and by the gate.
+          LINEAR=$(jq -c '.development.integration.linearHistory // true' delendai.config.json)
+          FORCE=$(jq -c '.development.integration.allowForcePush // false' delendai.config.json)
+          DELETIONS=$(jq -c '.development.integration.allowDeleteIntegrationBranch // false' delendai.config.json)
+
+          PAYLOAD=$(jq -n \
+            --argjson contexts "$CONTEXTS" \
+            --argjson strict "$STRICT" \
+            --argjson approvals "$APPROVALS" \
+            --argjson linear "$LINEAR" \
+            --argjson force "$FORCE" \
+            --argjson deletions "$DELETIONS" '{
+            required_status_checks: { strict: $strict, contexts: $contexts },
+            enforce_admins: true,
+            required_pull_request_reviews: {
+              dismiss_stale_reviews: false,
+              require_code_owner_reviews: false,
+              required_approving_review_count: $approvals
+            },
+            restrictions: null,
+            required_linear_history: $linear,
+            allow_force_pushes: $force,
+            allow_deletions: $deletions,
+            block_creations: false,
+            required_conversation_resolution: false
+          }')
+
+          echo "→ PATCH ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
+          HTTP_CODE=$(curl -sS -o /tmp/protect-response.json -w "%{http_code}" \
+            -X PUT \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection" \
+            -d "${PAYLOAD}")
+
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "✓ Branch protection applied to '${BRANCH}'."
+            echo "→ Required checks:"
+            echo "${CONTEXTS}" | tr ',' '\n' | sed 's/[]"[]//g' | sed 's/^/  - /'
+            echo ""
+            echo "→ Verify with:"
+            echo "  curl -H \"Authorization: Bearer \${TOKEN}\" \\"
+            echo "    ${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection"
+          else
+            echo "✗ API call failed with HTTP ${HTTP_CODE}."
+            cat /tmp/protect-response.json
+            exit 1
+          fi
+
+      - name: Verify the protection is in place
+        env:
+          TOKEN: ${{ secrets.REPO_ADMIN_TOKEN }}
+          BRANCH: ${{ inputs.branch || 'develop' }}
+          REPO: ${{ github.repository }}
+          API_BASE: ${{ github.api_url }}
+        run: |
+          RESPONSE=$(curl -sS \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${API_BASE}/repos/${REPO}/branches/${BRANCH}/protection")
+
+          PROTECTED=$(echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print('yes' if data.get('enabled') is True or 'required_status_checks' in data else 'no')
+          ")
+          CONTEXTS=$(echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print(len(data.get('required_status_checks', {}).get('contexts', [])))
+          " 2>/dev/null || echo "0")
+
+          echo "→ branch='${{ inputs.branch || 'develop' }}' protected=${PROTECTED} required_checks=${CONTEXTS}"
+          EXPECTED=$(jq '.development.integration.requiredChecks | length' delendai.config.json)
+          if [ "$PROTECTED" != "yes" ] || [ "$CONTEXTS" -ne "$EXPECTED" ]; then
+            echo "✗ Verification failed."
+            exit 1
+          fi
+          echo "✓ Verification OK."
+
+      # The `required-checks` RULESET that used to live here has been
+      # removed on purpose. It applied a second, differently-sourced
+      # check list on top of classic branch protection, so the forge
+      # itself carried two answers to "what must pass on develop" — and
+      # they had already diverged. Classic protection is the one the
+      # development policy projects and the one the guards read; a
+      # second mechanism cannot make the branch safer than the stricter
+      # of the two, and it can make the repository unreadable.

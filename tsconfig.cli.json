@@ -1,0 +1,21 @@
+{
+  // Sección `cli` — comandos, asistente y gates.
+  //
+  // Es la raíz de composición, así que es la única que ve las dos capas
+  // de debajo a la vez.
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/contracts/**/*.d.ts",
+    "packages/core/**/*.ts",
+    "packages/core/**/*.d.ts",
+    "packages/frameworks/**/*.ts",
+    "packages/cli/**/*.ts",
+    "packages/ui/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/cli/**/*.ts",
+    "tests/e2e/**/*.ts",
+    "tests/helpers/**/*.ts",
+    "vitest.config.ts",
+    "examples/example-app/**/*.ts"
+  ]
+}

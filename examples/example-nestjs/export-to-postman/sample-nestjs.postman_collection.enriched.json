@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-nestjs (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-nestjs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "4f7bcd58-cac6-5b0e-83c5-42a3026378d9"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}
