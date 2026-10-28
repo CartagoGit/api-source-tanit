@@ -86,4 +86,51 @@ describe("combineServices", () => {
     expect(result.operations).toEqual([]);
     expect(result.variables).toEqual([{ key: "baseUrl_empty", value: "https://empty.example.com" }]);
   });
+
+  test("rejects a service without an id", () => {
+    const anonymous = service("", "https://anon.example.com", { kind: "none" }, operation("", "anon"));
+
+    expect(() => combineServices([anonymous])).toThrow("Service id must not be empty");
+  });
+
+  test("rejects two services that publish the same variable key", () => {
+    const users = {
+      ...service("users", "https://users.example.com", { kind: "none" }, operation("users", "users-list")),
+      variables: [{ key: "shared", value: "from-users" }],
+    };
+    const billing = {
+      ...service("billing", "https://billing.example.com", { kind: "none" }, operation("billing", "billing-invoices")),
+      variables: [{ key: "shared", value: "from-billing" }],
+    };
+
+    expect(() => combineServices([users, billing])).toThrow("Duplicate variable key: shared");
+  });
+
+  test("rejects a service whose variable collides with another service's baseUrl variable", () => {
+    const users = service("users", "https://users.example.com", { kind: "none" }, operation("users", "users-list"));
+    const billing = {
+      ...service("billing", "https://billing.example.com", { kind: "none" }, operation("billing", "billing-invoices")),
+      variables: [{ key: "baseUrl_users", value: "https://elsewhere.example.com" }],
+    };
+
+    expect(() => combineServices([users, billing])).toThrow("Duplicate variable key: baseUrl_users");
+  });
+
+  test("the first service is not special: the merge does not depend on the order", () => {
+    const users = service("users", "https://users.example.com", { kind: "scheme", scheme: "oauth2" }, operation("users", "users-list"));
+    const billing = service("billing", "https://billing.example.com", { kind: "scheme", scheme: "apiKey" }, operation("billing", "billing-invoices"));
+
+    const forward = combineServices([users, billing]);
+    const backward = combineServices([billing, users]);
+
+    // The variables are published in the order the services came in,
+    // but their CONTENT does not depend on that order: the same two
+    // variables, each pointing at its own service.
+    expect([...backward.variables].sort((left, right) => left.key.localeCompare(right.key))).toEqual(
+      [...forward.variables].sort((left, right) => left.key.localeCompare(right.key)),
+    );
+    expect(backward.operations.map(({ serviceId, serverRef, authRef }) => ({ serviceId, url: serverRef.url, auth: authRef.type }))).toEqual(
+      [...forward.operations].reverse().map(({ serviceId, serverRef, authRef }) => ({ serviceId, url: serverRef.url, auth: authRef.type })),
+    );
+  });
 });
