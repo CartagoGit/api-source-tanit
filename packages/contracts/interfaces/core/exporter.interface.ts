@@ -5,14 +5,14 @@
  * pipeline owns orchestration and error accumulation; an exporter only
  * translates one snapshot into the artifact of its format.
  */
-import type { ExporterId } from "../../constants/core/exporter-ids.constant.js";
+import type { ExportFormat } from "../../constants/core/export-formats.constant.js";
 import type { ExportDiagnosticSeverity } from "./export.interface.js";
 import type { IExportArtifact } from "./export-target.interface.js";
 import type { IProjectSnapshot } from "./session.interface.js";
 import type { Transport } from "./transport/index.js";
 
 /** A format accepted by the universal exporter registry. */
-export type ExportFormatId = ExporterId;
+export type ExportFormatId = ExportFormat;
 
 /**
  * What an exporter can represent without losing information.
@@ -60,7 +60,15 @@ export interface IExportResult<TArtifact = unknown> {
   readonly format: ExportFormatId;
   /** Format-native artifact, absent when the exporter failed. */
   readonly artifact?: TArtifact;
-  /** Files that represent the artifact on disk. */
+  /**
+   * Files that represent the artifact on disk.
+   *
+   * An exporter whose artifact IS the primary output — the Postman
+   * collection — declares no files here: the writer puts that artifact
+   * in the output path the caller chose, and it is not a file of the
+   * export directory. Every other exporter declares the files it
+   * produced, with each path relative to the export directory.
+   */
   readonly files: ReadonlyArray<IExportArtifact>;
   /** Diagnostics raised by this exporter. */
   readonly diagnostics: ReadonlyArray<IExporterDiagnostic>;

@@ -8,9 +8,10 @@
  */
 import type { IGenerationResult } from "../../contracts/interfaces/core/discovery.interface.js";
 import type {
+  ExportCapabilities,
   IExporter,
-  IExportResult,
-} from "../../contracts/interfaces/core/exporter.interface.js";
+} from "./i-exporter.interface.js";
+import type { IExportResult } from "./result.js";
 import type {
   PostmanCollection,
   PostmanItem,
@@ -121,7 +122,10 @@ function appendVariable(
  * Merges the collections of several services into one Postman collection.
  *
  * Each service keeps its own base URL variable. The first service is not
- * special: its URL and auth are not inherited by its siblings.
+ * special: its URL and auth are not inherited by its siblings. The
+ * merged collection therefore declares NO collection-level auth — one
+ * auth cannot describe several services with different credentials —
+ * and each service's own auth travels inside its items.
  */
 function mergeCollections(
   results: ReadonlyArray<IGenerationResult>,
@@ -150,10 +154,28 @@ function mergeCollections(
   }
 
   return {
-    ...first.collection,
+    ...withoutCollectionAuth(first.collection),
     variable: variables,
     item: items,
   };
+}
+
+/**
+ * Drops the collection-level auth from a collection.
+ *
+ * A Postman collection carries ONE auth, and it applies to every request
+ * that does not override it. A merged collection holds several services
+ * whose credentials differ, so keeping the first service's auth would
+ * hand those credentials to every other service — the very inheritance
+ * the per-service model removes. Each service's own auth travels in its
+ * items instead.
+ */
+function withoutCollectionAuth(
+  collection: PostmanCollection,
+): PostmanCollection {
+  const copy: PostmanCollection = { ...collection };
+  delete copy.auth;
+  return copy;
 }
 
 /**
@@ -164,14 +186,14 @@ function mergeCollections(
  */
 class PostmanExporter implements IExporter<PostmanCollection> {
   readonly id = "postman";
-  readonly capabilities = {
+  readonly capabilities: ExportCapabilities = {
     transports: ["http"],
     schemas: "partial",
     responses: "partial",
     auth: "partial",
     examples: true,
     multiService: true,
-  } as const;
+  };
 
   async build(
     snapshot: IProjectSnapshot,
@@ -191,6 +213,9 @@ class PostmanExporter implements IExporter<PostmanCollection> {
     return {
       format: this.id,
       artifact,
+      // The Postman collection IS the primary output: the writer puts
+      // it in the output path the caller chose. It is not a file of the
+      // export directory, so there is nothing to declare here.
       files: [],
       diagnostics,
     };

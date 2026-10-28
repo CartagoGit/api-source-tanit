@@ -152,6 +152,7 @@ COMMON FLAGS
   --framework-search-root <sub>   Workspace dir to scan inside a monorepo.
                                   Auto-detected when omitted (f00011 S3).
   --format <a,b,c>        Output formats. Defaults to postman.
+  --formats <a,b,c>       Same as --format; the two are mutually exclusive.
   --inspect               Report what was detected; write nothing.
   --allow-empty           Exit 0 even when no endpoint was found.
   --open                  Open Postman when done.

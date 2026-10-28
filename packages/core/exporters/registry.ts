@@ -20,8 +20,8 @@ import type {
   ExportFormatId,
   IExporter,
   IExporterCapabilities,
-  IExportResult,
-} from "../../contracts/interfaces/core/exporter.interface.js";
+} from "./i-exporter.interface.js";
+import type { IExportResult } from "./result.js";
 import type {
   IExportArtifact,
   IExportInput,
@@ -31,9 +31,19 @@ import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.i
 import { exporterFor } from "./export-registry.service.js";
 import { PostmanExporter } from "./postman.exporter.js";
 
+/**
+ * Formats served by a legacy serializer.
+ *
+ * Postman is not one of them: it is a universal exporter, and its
+ * capabilities live in the exporter itself. Keeping it out of this
+ * type is what makes the switch below exhaustive without a second,
+ * duplicated source of truth for Postman's capabilities.
+ */
+type LegacyExportFormatId = Exclude<ExportFormatId, "postman">;
+
 /** Capabilities shared by the legacy HTTP-only serializers. */
 function legacyCapabilities(
-  format: ExportFormatId,
+  format: LegacyExportFormatId,
 ): IExporterCapabilities {
   switch (format) {
     case "openapi":
@@ -56,15 +66,6 @@ function legacyCapabilities(
         auth: "partial",
         examples: true,
         multiService: false,
-      };
-    case "postman":
-      return {
-        transports: ["http"],
-        schemas: "partial",
-        responses: "partial",
-        auth: "partial",
-        examples: true,
-        multiService: true,
       };
   }
 }
@@ -105,7 +106,7 @@ class LegacyExporterAdapter
   readonly capabilities: IExporterCapabilities;
 
   constructor(
-    id: ExportFormatId,
+    id: LegacyExportFormatId,
     private readonly target: IExportTarget,
   ) {
     this.id = id;
@@ -181,5 +182,5 @@ function selectExporters(formats: ExportFormatId[]): IExporter[] {
   return selected;
 }
 
-export { EXPORTER_IDS } from "../../contracts/constants/core/exporter-ids.constant.js";
+export { EXPORT_FORMATS as EXPORTER_IDS } from "../../contracts/constants/core/export-formats.constant.js";
 export { selectExporters };

@@ -3,7 +3,7 @@
  */
 import { describe, expect, test } from "vitest";
 
-import { EXPORTER_IDS } from "../../packages/contracts/constants/core/exporter-ids.constant.js";
+import { EXPORT_FORMATS } from "../../packages/contracts/constants/core/export-formats.constant.js";
 import type {
   ExportFormatId,
   IExporter,
@@ -111,7 +111,7 @@ describe("buildArtifacts", () => {
 
 describe("the universal exporter registry", () => {
   test("lists Postman beside every legacy exporter", () => {
-    expect([...EXPORTER_IDS]).toEqual([
+    expect([...EXPORT_FORMATS]).toEqual([
       "postman",
       "openapi",
       "insomnia",
@@ -119,8 +119,8 @@ describe("the universal exporter registry", () => {
       "har",
       "curl",
     ]);
-    expect(selectExporters([...EXPORTER_IDS]).map((exporter) => exporter.id)).toEqual(
-      [...EXPORTER_IDS],
+    expect(selectExporters([...EXPORT_FORMATS]).map((exporter) => exporter.id)).toEqual(
+      [...EXPORT_FORMATS],
     );
   });
 

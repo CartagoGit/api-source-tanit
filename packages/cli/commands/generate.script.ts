@@ -231,6 +231,12 @@ export async function runGenerate(
   // discovered at the end, after walking the project and having not
   // written the file that was asked for, says nothing about what
   // happened.
+  if (flags.formats !== undefined && flags.format !== undefined) {
+    humanErr(
+      "\n✗ --format and --formats are mutually exclusive: pass only one.",
+    );
+    return { code: 1, report: null };
+  }
   const parsedFormats = parseFormats(flags.formats ?? flags.format ?? null);
   if (!parsedFormats.ok) {
     humanErr(
@@ -488,7 +494,9 @@ export async function runGenerate(
   // Every selected exporter consumes the SAME snapshot. The pipeline
   // builds all results before the writer touches the filesystem, so a
   // broken exporter is reported as a diagnostic instead of leaving a
-  // half-written export behind.
+  // half-written export behind. The write itself is atomic per file,
+  // not transactional across the whole set: a failure while writing the
+  // third file leaves the first two on disk.
   const snapshot: IProjectSnapshot = {
     sessionId: "cli",
     projectRoot: resolvedContext.projectRoot,
@@ -512,9 +520,26 @@ export async function runGenerate(
   const postmanResult = artifactResults.find(
     (result) => result.format === DEFAULT_EXPORT_FORMAT,
   );
-  const exportedCollection = isPostmanCollection(postmanResult?.artifact)
-    ? postmanResult.artifact
-    : collection;
+  if (postmanResult === undefined) {
+    humanErr(
+      "\n✗ The Postman exporter did not run, so no collection was written.",
+    );
+    return { code: 1, report: null };
+  }
+  const postmanArtifact = postmanResult.artifact;
+  if (!isPostmanCollection(postmanArtifact)) {
+    // Falling back to the legacy collection here would write a file
+    // that nobody asked for and hide the failure: the exporter said it
+    // could not build a collection, so nothing is written.
+    humanErr(
+      "\n✗ The Postman exporter did not produce a collection, so nothing was written:",
+    );
+    for (const diagnostic of postmanResult.diagnostics) {
+      humanErr(`  · ${diagnostic.message}`);
+    }
+    return { code: 1, report: null };
+  }
+  const exportedCollection: PostmanCollection = postmanArtifact;
   const json = JSON.stringify(exportedCollection, null, 2);
   await writeFileAtomic(OUTPUT_PATH, json + "\n");
   collectionPath = OUTPUT_PATH;

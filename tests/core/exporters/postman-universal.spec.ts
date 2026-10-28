@@ -221,6 +221,10 @@ describe("PostmanExporter", () => {
       ]),
     );
     expect(urls.some((url) => url.includes("{{baseUrl}}"))).toBe(false);
+    // The merged collection declares NO collection-level auth: a single
+    // auth cannot describe two services whose credentials differ, and
+    // the first service's auth must not reach its siblings.
+    expect(collection.auth).toBeUndefined();
   });
 
   test("does not collapse divergent per-operation server and auth refs", async () => {

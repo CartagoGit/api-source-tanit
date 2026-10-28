@@ -35,3 +35,10 @@ export type {
   IServiceGraphNode,
   IToServiceGraphInput,
 } from "./interfaces/core/service-graph.interface.js";
+export type {
+  ExportFormatId,
+  IExporter,
+  IExporterCapabilities,
+  IExporterDiagnostic,
+  IExportResult,
+} from "./interfaces/core/exporter.interface.js";
