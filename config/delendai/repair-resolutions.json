@@ -1,0 +1,13 @@
+{
+	"version": 1,
+	"resolutions": [
+		{
+			"taskId": "065f92a96a3b3930b70bfe32965385a1",
+			"evidenceDigest": "d802c41740192aa7377fa96b58eb950e",
+			"decision": "resolved-elsewhere",
+			"reason": "The vanished ref refs/heads/wip/minimax-m3.1-flash-preview/implement/d00001-S3-g1 carried one change: delendai.config.json development.profile from shared-checkout-merge to shared-checkout-pr. That change IS in develop — `git diff 77ce214d develop -- delendai.config.json` shows no difference on the profile line — so it landed by another route (commit aab8e2b) and the ref was deleted afterwards. The commit is still in the object store; nothing is lost.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-28T10:45:00.000Z"
+		}
+	]
+}

@@ -5,6 +5,7 @@ icon: $(tools)
 model: MiniMax M3 (minimax)
 description: |
     Bounded subagent for @api-source-tanit/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server.
+tools: [read, search, execute, todo, edit, delendai/*]
 user-invocable: false
 ---
 
