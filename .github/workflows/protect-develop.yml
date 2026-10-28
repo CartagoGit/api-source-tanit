@@ -105,10 +105,23 @@ jobs:
           STRICT=$(jq -c '.development.integration.requireLatestIntegration // true' delendai.config.json)
           APPROVALS=$(jq -c '.development.integration.requiredApprovals // 0' delendai.config.json)
 
+          # The remaining switches come from the SAME block the gate
+          # verifies against. Hardcoding them here gave the workflow a
+          # second answer to "what must protect develop": it applied a
+          # linear-history rule the policy did not declare, and a branch
+          # that forbids merge commits rejects every push containing one.
+          # One source, read twice — by this workflow and by the gate.
+          LINEAR=$(jq -c '.development.integration.linearHistory // true' delendai.config.json)
+          FORCE=$(jq -c '.development.integration.allowForcePush // false' delendai.config.json)
+          DELETIONS=$(jq -c '.development.integration.allowDeleteIntegrationBranch // false' delendai.config.json)
+
           PAYLOAD=$(jq -n \
             --argjson contexts "$CONTEXTS" \
             --argjson strict "$STRICT" \
-            --argjson approvals "$APPROVALS" '{
+            --argjson approvals "$APPROVALS" \
+            --argjson linear "$LINEAR" \
+            --argjson force "$FORCE" \
+            --argjson deletions "$DELETIONS" '{
             required_status_checks: { strict: $strict, contexts: $contexts },
             enforce_admins: true,
             required_pull_request_reviews: {
@@ -117,9 +130,9 @@ jobs:
               required_approving_review_count: $approvals
             },
             restrictions: null,
-            required_linear_history: true,
-            allow_force_pushes: false,
-            allow_deletions: false,
+            required_linear_history: $linear,
+            allow_force_pushes: $force,
+            allow_deletions: $deletions,
             block_creations: false,
             required_conversation_resolution: false
           }')

@@ -52,10 +52,10 @@ describe("branch-protection gate", () => {
             // before it was removed as a second source of truth.
             required_approving_review_count: 0,
           },
-          required_linear_history: true,
-          allow_force_pushes: false,
-          allow_deletions: false,
-          required_conversation_resolution: true,
+          required_linear_history: { enabled: true },
+          allow_force_pushes: { enabled: false },
+          allow_deletions: { enabled: false },
+          required_conversation_resolution: { enabled: true },
         }),
       }),
     });
@@ -96,9 +96,9 @@ describe("branch-protection gate", () => {
           required_pull_request_reviews: {
             required_approving_review_count: 0,
           },
-          required_linear_history: true,
-          allow_force_pushes: false,
-          allow_deletions: false,
+          required_linear_history: { enabled: true },
+          allow_force_pushes: { enabled: false },
+          allow_deletions: { enabled: false },
         }),
       }),
     });

@@ -26,6 +26,9 @@ const CI_CONFIG = JSON.parse(readFileSync(resolve(ROOT, "delendai.config.json"),
       requiredChecks?: ReadonlyArray<string>;
       requireLatestIntegration?: boolean;
       requiredApprovals?: number;
+      linearHistory?: boolean;
+      allowForcePush?: boolean;
+      allowDeleteIntegrationBranch?: boolean;
     };
   };
 };
@@ -73,14 +76,20 @@ export const BRANCH_PROTECTION_POLICY = {
   requiredStatusChecksStrict:
     DEVELOPMENT_INTEGRATION.requireLatestIntegration ?? true,
   requiredApprovingReviewCount: DEVELOPMENT_INTEGRATION.requiredApprovals ?? 0,
-  // Not derivable from the config: these come from the profile, which
-  // only the delendai runtime can expand. They are the invariants this
-  // repository's policy fixes for every profile it uses, stated here once
-  // rather than duplicated into the config as knobs nobody edits.
+  // The switches the policy DOES declare are read from it, so the config
+  // and the live branch cannot disagree. `linearHistory` is the one that
+  // bites: the profile `shared-checkout-pr` allows a merge commit to carry
+  // the lineage, but a branch that forbids merge commits rejects every push
+  // that contains one — and a repository that declares `linearHistory` has
+  // already answered that question for itself.
+  requiredLinearHistory: DEVELOPMENT_INTEGRATION.linearHistory ?? true,
+  allowForcePushes: DEVELOPMENT_INTEGRATION.allowForcePush ?? false,
+  allowDeletions: DEVELOPMENT_INTEGRATION.allowDeleteIntegrationBranch ?? false,
+  // Not derivable from the config: it comes from the profile, which only
+  // the delendai runtime can expand. It is the invariant this repository
+  // fixes for every profile it uses, stated here once rather than
+  // duplicated into the config as a knob nobody edits.
   enforceAdmins: true,
-  requiredLinearHistory: true,
-  allowForcePushes: false,
-  allowDeletions: false,
 } as const;
 
 export type FetchLike = typeof fetch;
@@ -125,6 +134,21 @@ interface IGitHubBranchSummary {
   readonly name?: string;
 }
 
+/**
+ * GitHub returns the branch-protection switches as OBJECTS with an
+ * `enabled` flag, not as bare booleans:
+ *
+ *   "required_linear_history": { "enabled": true }
+ *   "allow_force_pushes":      { "enabled": false }
+ *   "allow_deletions":         { "enabled": false }
+ *
+ * Reading them as booleans compares an object to `true`, which is never
+ * equal, so every comparison below diverged and the gate failed against
+ * a perfectly conformant branch. `enforce_admins` already had the
+ * right shape here; these four did not, and the fixture that "proved"
+ * the gate worked mocked them as bare booleans — which is how a broken
+ * gate stayed green in CI.
+ */
 interface IGitHubBranchDetails {
   readonly name?: string;
   readonly protected?: boolean;
@@ -138,10 +162,10 @@ interface IGitHubBranchDetails {
     readonly dismiss_stale_reviews?: boolean;
     readonly require_code_owner_reviews?: boolean;
   } | null;
-  readonly required_linear_history?: boolean;
-  readonly allow_force_pushes?: boolean;
-  readonly allow_deletions?: boolean;
-  readonly required_conversation_resolution?: boolean;
+  readonly required_linear_history?: { readonly enabled?: boolean } | null;
+  readonly allow_force_pushes?: { readonly enabled?: boolean } | null;
+  readonly allow_deletions?: { readonly enabled?: boolean } | null;
+  readonly required_conversation_resolution?: { readonly enabled?: boolean } | null;
 }
 
 
@@ -350,9 +374,9 @@ async function checkBranchProtection(
     };
   }
 
-  if (payload.required_linear_history !== BRANCH_PROTECTION_POLICY.requiredLinearHistory ||
-      payload.allow_force_pushes !== BRANCH_PROTECTION_POLICY.allowForcePushes ||
-      payload.allow_deletions !== BRANCH_PROTECTION_POLICY.allowDeletions) {
+  if (payload.required_linear_history?.enabled !== BRANCH_PROTECTION_POLICY.requiredLinearHistory ||
+      payload.allow_force_pushes?.enabled !== BRANCH_PROTECTION_POLICY.allowForcePushes ||
+      payload.allow_deletions?.enabled !== BRANCH_PROTECTION_POLICY.allowDeletions) {
     return { branch: options.branch, ok: false, detail: "historial, force-push, borrado o conversaciones divergen de la política" };
   }
 
