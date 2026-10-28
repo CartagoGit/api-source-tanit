@@ -44,9 +44,11 @@ function readPnpmWorkspacePatterns(text: string): string[] {
   const lines = text.split(/\r?\n/);
   let inPackages = false;
   for (const raw of lines) {
-    const line = raw.trimEnd();
+    // The list is indented in a real `pnpm-workspace.yaml`, so the
+    // line is trimmed before it is read.
+    const line = raw.trim();
     if (line.startsWith("#")) continue;
-    if (line.trim().length === 0) continue;
+    if (line.length === 0) continue;
     if (/^packages:\s*$/.test(line)) {
       inPackages = true;
       continue;
@@ -57,6 +59,7 @@ function readPnpmWorkspacePatterns(text: string): string[] {
         out.push(match[1].trim());
         continue;
       }
+      // Any other key closes the `packages:` block.
       inPackages = !/^[^-\s]/.test(line);
       continue;
     }

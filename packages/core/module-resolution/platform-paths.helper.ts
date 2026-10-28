@@ -78,7 +78,7 @@ export function splitDrive(path: string): IDriveSplit {
       const rest = posix.slice(2 + server.length + 1 + share.length);
       return {
         drive,
-        rest: rest.length > 0 ? `\\${rest.replaceAll("/", "\\")}` : "\\",
+        rest: rest.length > 0 ? rest.replaceAll("/", "\\") : "\\",
       };
     }
     return { drive: "", rest: path };
@@ -176,7 +176,13 @@ export function joinPath(base: string, rel: string): string {
     ? `${posixRest}${posixRel}`
     : `${posixRest}/${posixRel}`;
   const absolute = posixRest.startsWith("/");
-  return fromPosixParts(drive, `${absolute ? "/" : ""}${joined.replace(/^\/+/, "")}`, style);
+  return normalizePath(
+    fromPosixParts(
+      drive,
+      `${absolute ? "/" : ""}${joined.replace(/^\/+/, "")}`,
+      style,
+    ),
+  );
 }
 
 /** The directory that contains the path. */

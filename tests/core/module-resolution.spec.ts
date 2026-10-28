@@ -24,22 +24,47 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
 import { moduleDir } from "../../packages/core/helpers/module-path.helper.js";
+import {
+  removeLegacyGlobalNameLookup,
+  SymbolGraph,
+} from "../../packages/core/discovery/symbol-graph.js";
 import { resolveImportPath } from "../../packages/core/discovery/import-resolver.js";
 import { ModuleResolver } from "../../packages/core/module-resolution/resolver.service.js";
 import {
+  applyDriveRoot,
+  basenamePath,
   detectPathStyle,
+  dirnamePath,
+  extnamePath,
   isAbsolutePath,
+  joinPath,
+  normalizePath,
   splitDrive,
+  stripExtension,
+  toNativePath,
+  toPosixPath,
 } from "../../packages/core/module-resolution/platform-paths.helper.js";
 import {
+  readPackageEntryPoints,
   resolvePackageExports,
   splitBareSpecifier,
 } from "../../packages/core/module-resolution/package-exports.helper.js";
 import { resolvePackageImports } from "../../packages/core/module-resolution/package-imports.helper.js";
 import {
+  expandPathTargets,
   matchPathPattern,
+  matchTsconfigPaths,
   parseTsconfigPaths,
+  stripJsonComments,
+  stripTrailingCommas,
 } from "../../packages/core/module-resolution/tsconfig-paths.helper.js";
+import {
+  createResolverError,
+  invalidSpecifierError,
+  isResolverError,
+  notFoundError,
+} from "../../packages/core/module-resolution/resolver-error.helper.js";
+import { detectWorkspacePackages } from "../../packages/core/module-resolution/workspace-resolver.service.js";
 import { withFixture } from "../helpers/fixtures.js";
 
 const FIXTURES = join(moduleDir(import.meta.url), "..", "fixtures");
@@ -572,5 +597,387 @@ describe("import resolver adapter (criterion 4)", () => {
 
   test("an empty specifier resolves to no candidate", () => {
     expect(resolveImportPath(MONOREPO_MAIN, "", MONOREPO)).toEqual([]);
+  });
+});
+
+
+describe("platform paths (criterion 1)", () => {
+  test("the dialect of a path is detected", () => {
+    expect(detectPathStyle("C:/app/src/main.ts")).toBe("win32");
+    expect(detectPathStyle("//server/share/pkg")).toBe("unc");
+    expect(detectPathStyle("/app/src/main.ts")).toBe("posix");
+    expect(detectPathStyle("./app")).toBe("posix");
+  });
+
+  test("a drive without a separator is not absolute", () => {
+    expect(isAbsolutePath("C:app")).toBe(false);
+    expect(isAbsolutePath("C:\\app")).toBe(true);
+  });
+
+  test("the drive is split off a UNC path", () => {
+    const split = splitDrive("\\\\server\\share\\pkg\\index.js");
+    expect(split.drive).toBe("\\\\server\\share");
+    expect(split.rest).toBe("\\pkg\\index.js");
+  });
+
+  test("a path without a drive keeps its whole text", () => {
+    expect(splitDrive("app/src/main.ts")).toEqual({
+      drive: "",
+      rest: "app/src/main.ts",
+    });
+  });
+
+  test("`.` and `..` are collapsed", () => {
+    expect(normalizePath("/a/b/../c")).toBe("/a/c");
+    expect(normalizePath("/a/./b")).toBe("/a/b");
+    expect(normalizePath("/a/../..")).toBe("/");
+    expect(normalizePath("a/../../b")).toBe("../b");
+    expect(normalizePath("")).toBe("");
+  });
+
+  test("a relative path is joined onto its base", () => {
+    expect(joinPath("/a/b", "../c")).toBe("/a/c");
+    expect(joinPath("/a/b", "./c/d")).toBe("/a/b/c/d");
+    expect(joinPath("/a/b", "")).toBe("/a/b");
+  });
+
+  test("an absolute path wins over the base it is joined to", () => {
+    expect(joinPath("/a/b", "/x/y")).toBe("/x/y");
+    expect(joinPath("/a/b", "C:\\x")).toBe("C:\\x");
+  });
+
+  test("the directory, the name and the extension of a path", () => {
+    expect(dirnamePath("/a/b/c.ts")).toBe("/a/b");
+    expect(dirnamePath("/c.ts")).toBe("/");
+    expect(dirnamePath("c.ts")).toBe(".");
+    expect(basenamePath("/a/b/c.ts")).toBe("c.ts");
+    expect(extnamePath("/a/b/c.ts")).toBe(".ts");
+    // A dotfile has no extension: the dot is the name.
+    expect(extnamePath("/a/.eslintrc")).toBe("");
+    expect(stripExtension("/a/b/c.ts")).toBe("/a/b/c");
+  });
+
+  test("a path is rewritten in the other dialect", () => {
+    expect(toPosixPath("C:\\app\\src")).toBe("C:/app/src");
+    expect(toNativePath("/app/src", "win32")).toBe("\\app\\src");
+    expect(toNativePath("/app/src", "posix")).toBe("/app/src");
+  });
+
+  test("a drive is mapped onto a local directory", () => {
+    expect(applyDriveRoot("C:\\app\\src", { "C:": "/root" })).toBe(
+      "/root/app/src",
+    );
+    // An unmapped drive is left alone when there is no fallback.
+    expect(applyDriveRoot("C:\\app\\src", {})).toBe("C:\\app\\src");
+    // With a fallback (the project root), it is interpreted inside it.
+    expect(applyDriveRoot("C:\\app\\src", {}, "/root")).toBe(
+      "/root/app/src",
+    );
+  });
+});
+
+describe("package exports helper (criterion 1)", () => {
+  test("a string exports only serves the root subpath", () => {
+    expect(resolvePackageExports("./index.js", ".", ["import"])).toBe(
+      "./index.js",
+    );
+    expect(resolvePackageExports("./index.js", "./sub", ["import"])).toBeNull();
+  });
+
+  test("a subpath map is matched exactly", () => {
+    const exportsField = { ".": "./index.js", "./feature": "./feature.js" };
+    expect(resolvePackageExports(exportsField, "./feature", ["import"])).toBe(
+      "./feature.js",
+    );
+    expect(resolvePackageExports(exportsField, "./other", ["import"])).toBeNull();
+  });
+
+  test("a wildcard subpath is matched", () => {
+    const exportsField = { "./*": "./src/*.js" };
+    expect(resolvePackageExports(exportsField, "./thing", ["import"])).toBe(
+      "./src/thing.js",
+    );
+  });
+
+  test("the conditions decide, in the order of the map", () => {
+    const exportsField = {
+      ".": { import: "./esm.js", require: "./cjs.js", default: "./def.js" },
+    };
+    expect(resolvePackageExports(exportsField, ".", ["import"])).toBe(
+      "./esm.js",
+    );
+    expect(resolvePackageExports(exportsField, ".", ["require"])).toBe(
+      "./cjs.js",
+    );
+    expect(resolvePackageExports(exportsField, ".", [])).toBe("./def.js");
+  });
+
+  test("a condition that is not active is skipped", () => {
+    const exportsField = {
+      ".": { browser: "./browser.js", default: "./def.js" },
+    };
+    expect(resolvePackageExports(exportsField, ".", ["import"])).toBe(
+      "./def.js",
+    );
+  });
+
+  test("an exports that is not a map resolves to nothing", () => {
+    expect(resolvePackageExports(undefined, ".", ["import"])).toBeNull();
+    expect(resolvePackageExports(null, ".", ["import"])).toBeNull();
+    expect(resolvePackageExports(42, ".", ["import"])).toBeNull();
+  });
+
+  test("the entry points of a manifest are read", () => {
+    expect(
+      readPackageEntryPoints({
+        main: "index.js",
+        module: "esm.mjs",
+        types: "index.d.ts",
+      }),
+    ).toEqual({ main: "index.js", module: "esm.mjs", types: "index.d.ts" });
+    expect(readPackageEntryPoints({ typings: "index.d.ts" }).types).toBe(
+      "index.d.ts",
+    );
+    expect(readPackageEntryPoints({})).toEqual({
+      main: undefined,
+      module: undefined,
+      types: undefined,
+    });
+  });
+});
+
+describe("package imports helper (criterion 1)", () => {
+  test("an exact alias resolves", () => {
+    expect(
+      resolvePackageImports({ "#db": "./src/db.js" }, "#db", ["import"]),
+    ).toBe("./src/db.js");
+  });
+
+  test("a wildcard alias resolves", () => {
+    expect(
+      resolvePackageImports({ "#db/*": "./src/db/*" }, "#db/pool", ["import"]),
+    ).toBe("./src/db/pool");
+  });
+
+  test("the conditions decide", () => {
+    const importsField = {
+      "#db": { import: "./esm.js", default: "./def.js" },
+    };
+    expect(resolvePackageImports(importsField, "#db", ["import"])).toBe(
+      "./esm.js",
+    );
+    expect(resolvePackageImports(importsField, "#db", [])).toBe("./def.js");
+  });
+
+  test("a fallback array is used in order", () => {
+    expect(
+      resolvePackageImports({ "#db": ["./a.js", "./b.js"] }, "#db", ["import"]),
+    ).toBe("./a.js");
+  });
+
+  test("an alias that does not exist resolves to nothing", () => {
+    expect(resolvePackageImports({}, "#db", ["import"])).toBeNull();
+    expect(
+      resolvePackageImports({ "#db": "./db.js" }, "#other", ["import"]),
+    ).toBeNull();
+    expect(resolvePackageImports("not a map", "#db", ["import"])).toBeNull();
+  });
+});
+
+describe("tsconfig paths helper (criterion 1)", () => {
+  test("the comments of a tsconfig are stripped", () => {
+    expect(stripJsonComments('{"url": "https://example.com"}')).toBe(
+      '{"url": "https://example.com"}',
+    );
+    expect(stripJsonComments('{ /* block */ "a": 1 } // trailing')).toBe(
+      '{  "a": 1 } ',
+    );
+  });
+
+  test("the trailing commas of a tsconfig are stripped", () => {
+    expect(stripTrailingCommas('{"a": [1, 2,],}')).toBe('{"a": [1, 2]}');
+  });
+
+  test("a tsconfig that cannot be parsed yields nothing", () => {
+    expect(parseTsconfigPaths("{ broken", "/proj")).toEqual({ paths: {} });
+    expect(parseTsconfigPaths('{"compilerOptions": 3}', "/proj")).toEqual({
+      paths: {},
+    });
+  });
+
+  test("the alias with the longest prefix wins", () => {
+    const paths = { "@/*": ["src/*"], "@app/*": ["app/*"] };
+    const matched = matchTsconfigPaths(paths, "@app/thing");
+    expect(matched?.pattern).toBe("@app/*");
+    expect(matched?.capture).toBe("thing");
+    // A specifier that matches no pattern resolves to nothing.
+    expect(matchTsconfigPaths(paths, "@other/thing")).toBeNull();
+  });
+
+  test("the targets of an alias are expanded against the base", () => {
+    expect(expandPathTargets(["/abs/*"], "x", "/base")).toEqual(["/abs/x"]);
+    expect(expandPathTargets(["rel/*"], "x", "/base")).toEqual(["/base/rel/x"]);
+  });
+});
+
+describe("workspace packages (criterion 1)", () => {
+  /** A filesystem of one project, described by its files. */
+  function fakeFs(files: Readonly<Record<string, string>>): {
+    readonly readTextFile: (absPath: string) => string | null;
+    readonly listDirectories: (absPath: string) => ReadonlyArray<string>;
+  } {
+    return {
+      readTextFile: (absPath) => files[absPath] ?? null,
+      listDirectories: (absPath) => {
+        const prefix = absPath.endsWith("/") ? absPath : `${absPath}/`;
+        const dirs = new Set<string>();
+        for (const path of Object.keys(files)) {
+          if (!path.startsWith(prefix)) continue;
+          const rest = path.slice(prefix.length);
+          const slash = rest.indexOf("/");
+          if (slash === -1) continue;
+          dirs.add(rest.slice(0, slash));
+        }
+        return [...dirs];
+      },
+    };
+  }
+
+  test("the npm workspaces are read", () => {
+    const fs = fakeFs({
+      "/proj/package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+      "/proj/packages/orders/package.json": JSON.stringify({
+        name: "@acme/orders",
+      }),
+    });
+    const packages = detectWorkspacePackages("/proj", fs);
+    expect(packages).toHaveLength(1);
+    expect(packages[0]?.name).toBe("@acme/orders");
+    expect(packages[0]?.dir).toBe("/proj/packages/orders");
+    expect(packages[0]?.relativeDir).toBe("packages/orders");
+  });
+
+  test("the `{ packages: [...] }` shape is read too", () => {
+    const fs = fakeFs({
+      "/proj/package.json": JSON.stringify({
+        workspaces: { packages: ["apps/*"] },
+      }),
+      "/proj/apps/api/package.json": JSON.stringify({ name: "@acme/api" }),
+    });
+    const packages = detectWorkspacePackages("/proj", fs);
+    expect(packages.map((p) => p.name)).toEqual(["@acme/api"]);
+  });
+
+  test("the pnpm workspace file is read", () => {
+    const fs = fakeFs({
+      "/proj/pnpm-workspace.yaml": "packages:\n  - 'libs/*'\n",
+      "/proj/libs/one/package.json": JSON.stringify({ name: "one" }),
+    });
+    const packages = detectWorkspacePackages("/proj", fs);
+    expect(packages.map((p) => p.name)).toEqual(["one"]);
+  });
+
+  test("a literal path is accepted", () => {
+    const fs = fakeFs({
+      "/proj/package.json": JSON.stringify({ workspaces: ["apps/api"] }),
+      "/proj/apps/api/package.json": JSON.stringify({ name: "@acme/api" }),
+    });
+    expect(detectWorkspacePackages("/proj", fs).map((p) => p.name)).toEqual([
+      "@acme/api",
+    ]);
+  });
+
+  test("a workspace without a name is skipped", () => {
+    const fs = fakeFs({
+      "/proj/package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+      "/proj/packages/anon/package.json": JSON.stringify({ version: "1.0.0" }),
+      "/proj/packages/named/package.json": JSON.stringify({ name: "named" }),
+    });
+    expect(detectWorkspacePackages("/proj", fs).map((p) => p.name)).toEqual([
+      "named",
+    ]);
+  });
+
+  test("a pattern that escapes the project is refused", () => {
+    const fs = fakeFs({
+      "/proj/package.json": JSON.stringify({ workspaces: ["../outside/*"] }),
+    });
+    expect(detectWorkspacePackages("/proj", fs)).toEqual([]);
+  });
+});
+
+describe("resolver errors (criterion 2)", () => {
+  test("an error carries the code, the specifier and the paths", () => {
+    const error = createResolverError("NOT_FOUND", "lodash", ["/a"], "nope");
+    expect(error.code).toBe("NOT_FOUND");
+    expect(error.specifier).toBe("lodash");
+    expect(error.searchPaths).toEqual(["/a"]);
+    expect(error.message).toBe("nope");
+  });
+
+  test("the error of a missing module names the specifier", () => {
+    const error = notFoundError("lodash", ["/a", "/b"], "/proj/main.ts");
+    expect(error.code).toBe("NOT_FOUND");
+    expect(error.message).toContain("lodash");
+    expect(error.message).toContain("2 path(s)");
+    expect(error.fromFile).toBe("/proj/main.ts");
+  });
+
+  test("the error of an invalid specifier is a different code", () => {
+    const error = invalidSpecifierError("", "/proj/main.ts");
+    expect(error.code).toBe("INVALID_SPECIFIER");
+    expect(error.searchPaths).toEqual([]);
+  });
+
+  test("a resolver error is recognised", () => {
+    expect(isResolverError({ code: "NOT_FOUND", specifier: "x" })).toBe(true);
+    expect(isResolverError({ code: 1 })).toBe(false);
+    expect(isResolverError(null)).toBe(false);
+    expect(isResolverError("nope")).toBe(false);
+  });
+});
+
+describe("the legacy global symbol lookup (criterion 3)", () => {
+  test("the lookup is off by default", () => {
+    const builder = SymbolGraph.builder();
+    builder.addSymbol({
+      id: { sourceFile: "/proj/users.ts", declarationStart: 0, localName: "router" },
+      kind: "router",
+    });
+    builder.addImport({
+      sourceFile: "/proj/app.ts",
+      specifier: "./users",
+      localName: "router",
+      importedName: "router",
+    });
+    const graph = builder.finalize();
+    expect(
+      graph.resolveByImportPath("/proj/app.ts", "./users", "router"),
+    ).toEqual([]);
+  });
+
+  test("the lookup can be removed from a graph that allows it", () => {
+    const builder = SymbolGraph.builder({
+      experimental: { allowGlobalSymbolLookup: true },
+    });
+    builder.addSymbol({
+      id: { sourceFile: "/proj/users.ts", declarationStart: 0, localName: "router" },
+      kind: "router",
+    });
+    builder.addImport({
+      sourceFile: "/proj/app.ts",
+      specifier: "./users",
+      localName: "router",
+      importedName: "router",
+    });
+    const graph = builder.finalize();
+    expect(
+      graph.resolveByImportPath("/proj/app.ts", "./users", "router"),
+    ).toHaveLength(1);
+
+    const strict = removeLegacyGlobalNameLookup(graph);
+    expect(
+      strict.resolveByImportPath("/proj/app.ts", "./users", "router"),
+    ).toEqual([]);
   });
 });
