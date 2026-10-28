@@ -1,8 +1,21 @@
 [project]
 name = "billing-api"
-version = "0.1.0"
-requires-python = ">=3.10"
-dependencies = ["fastapi>=0.100", "uvicorn>=0.20"]
+version = "1.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "pydantic>=2.5",
+    "uvicorn>=0.20",
+]
+
+# Identity of this service, in the shape the pipeline reads
+# (`serviceOverridesFromWorkspaces` in `packages/core/discovery/`):
+# the FastAPI sibling of the NestJS users-api lives on another host
+# and authenticates with another scheme.
+[tool.tanit]
+service_id = "billing"
+base_url = "https://billing.example.com"
+auth_kind = "apiKey"
 
 [tool.uvicorn]
 factory = false
