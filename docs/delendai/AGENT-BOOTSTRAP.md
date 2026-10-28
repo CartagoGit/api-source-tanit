@@ -135,8 +135,8 @@ interface next to a schema is two sources of truth, and they separate:
 
 ### 3.2.1 Effects and write root — the registration contract
 
-The `IToolRegistration` that each `*.tool.ts` returns carries two
-fields the host reads **before** it registers anything:
+The registration each `*.tool.ts` returns carries two fields the host
+reads **before** it registers anything:
 
 - `effects` — what the tool can do beyond reading: `"write"`,
   `"spawn"`, `"network"`, `"destructive"`. A read-only tool declares
@@ -146,11 +146,11 @@ fields the host reads **before** it registers anything:
   `"repository"`, `"host-state"`, `"server"` and `"remote"`.
 
 A tool that writes and declares no root **does not boot**: the host
-plans the registration sequence (`planRegistrationOrder`) and refuses
-the sequence, the server MCP dies while starting, and the editor
-reports "the server stopped while handling this request" with the
-reason buried in the server's stderr. This is a boot failure, not a
-warning, so `bun run lint:mcp-surface` checks it (check 5) and
+plans the registration sequence and refuses the sequence, the server
+MCP dies while starting, and the editor reports "the server stopped
+while handling this request" with the reason buried in the server's
+stderr. This is a boot failure, not a warning, so
+`bun run lint:mcp-surface` checks it (check 5) and
 `integrations/delendai/tests/integration/plugin-boot.spec.ts` asserts
 it per tool.
 

@@ -1,12 +1,15 @@
 {
-  "latest-published": "0.1.0",
+  "coreVersion": "0.1.0",
   "development": {
     "profile": "shared-checkout-pr",
     "branches": { "integration": "develop", "release": "main" },
     "integration": {
       "requiredChecks": ["ci-summary"],
+      "requireLatestIntegration": true,
       "requiredApprovals": 0,
-      "releaseRequiredApprovals": 1
+      "releaseRequiredApprovals": 1,
+      "mergeMethod": "squash",
+      "linearHistory": true
     }
   },
   "cacheDir": ".cache/delendai",
@@ -18,32 +21,6 @@
     "maxWarmPlugins": 8
   },
   "agentWorktree": false,
-  "ci": {
-    "requiredChecks": [
-      "typecheck",
-      "lint",
-      "test-coverage",
-      "validate-examples",
-      "bench-check",
-      "security-audit",
-      "validate-package",
-      "integration-verifier",
-      "ci-summary"
-    ],
-    "branchProtection": {
-      "branches": ["develop", "release/*"],
-      "rulesetName": "develop-required-checks",
-      "requiredStatusChecksStrict": true,
-      "enforceAdmins": true,
-      "requiredApprovingReviewCount": 1,
-      "dismissStaleReviews": true,
-      "requireCodeOwnerReviews": false,
-      "requiredLinearHistory": true,
-      "allowForcePushes": false,
-      "allowDeletions": false,
-      "requiredConversationResolution": true
-    }
-  },
   "filesystem": {
     "authorizedRoots": [
       "packages",
