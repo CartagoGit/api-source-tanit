@@ -1,10 +1,9 @@
 {
-  "coreVersion": "0.1.0",
+  "latest-published": "0.1.0",
   "development": {
-    "profile": "shared-checkout-pr",
+    "profile": "shared-checkout-merge",  
     "branches": { "integration": "develop", "release": "main" },
     "integration": {
-      "requiredChecks": ["ci-summary"],
       "requiredApprovals": 0,
       "releaseRequiredApprovals": 1
     }
@@ -297,15 +296,13 @@
           "enabled": false
         },
         "push": {
-          "enabled": true,
-          "onCommit": true,
+					"enabled": true,
           "force": "with-lease",
           "protectedBranches": [
             "main",
             "master"
           ],
-          "remote": "origin",
-          "branch": "develop"
+          "remote": "origin"
         },
         "cadence": {
           "triggers": [
