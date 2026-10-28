@@ -133,6 +133,44 @@ interface next to a schema is two sources of truth, and they separate:
 > wrapped `z.object({...})`"). The host's own plugins pass the wrapped
 > object and so does this one. Corrected in the 2026-08-08 audit.
 
+### 3.2.1 Effects and write root — the registration contract
+
+The `IToolRegistration` that each `*.tool.ts` returns carries two
+fields the host reads **before** it registers anything:
+
+- `effects` — what the tool can do beyond reading: `"write"`,
+  `"spawn"`, `"network"`, `"destructive"`. A read-only tool declares
+  none.
+- `writeRoot` — **where the writes land**, when the tool declares
+  `"write"`. The accepted roots are `"caller-checkout"`,
+  `"repository"`, `"host-state"`, `"server"` and `"remote"`.
+
+A tool that writes and declares no root **does not boot**: the host
+plans the registration sequence (`planRegistrationOrder`) and refuses
+the sequence, the server MCP dies while starting, and the editor
+reports "the server stopped while handling this request" with the
+reason buried in the server's stderr. This is a boot failure, not a
+warning, so `bun run lint:mcp-surface` checks it (check 5) and
+`integrations/delendai/tests/integration/plugin-boot.spec.ts` asserts
+it per tool.
+
+Which root each tool declares here:
+
+| Tool | Root | Why |
+|---|---|---|
+| `generate` | `server` | The collection lands in the project tanit documents: the server's own root unless the caller names another one. |
+| `init` | `server` | `config.constant.ts` and `endpoints.constant.ts` land in that same project. |
+| `push` | `remote` | The collection is created or updated in the Postman workspace; nothing lands on this machine. |
+
+**Do not declare `"caller-checkout"` while the writes do not follow
+the caller.** That root is a promise: the tool reads, writes and
+spawns in the working tree the call names. This plugin resolves its
+paths from its options and the call's arguments, and its runner
+spawns in the server's root — so it would be a declaration the
+behaviour does not keep. The host's own rule is that a root which does
+not follow is not declared: such a tool declares the root it writes
+to today, until a change makes it follow.
+
 ### 3.3 Zod version
 
 Both plugins pin `zod: ^4.4.3`, aligned with `@delendai/core`.
