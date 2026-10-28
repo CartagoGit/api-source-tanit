@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Export to Postman</title></head>
+<body style="font:16px system-ui;padding:2rem">
+<!--
+  Marcador de posición, y solo eso.
+
+  La ventana carga la interfaz de verdad desde `http://127.0.0.1:<puerto>`,
+  que sirve el sidecar `expostman ui`. Tauri exige un `frontendDist`
+  aunque se navegue a una URL externa, así que esto existe para
+  satisfacer al empaquetador — y para que, si el sidecar no arrancara, lo
+  que se vea diga algo en vez de quedarse en blanco.
+-->
+<p>Arrancando el servidor local…</p>
+<p style="color:#777">Si esto no cambia en unos segundos, el servidor no
+ha podido arrancar. Prueba desde la terminal con <code>expostman ui</code>
+para ver el motivo.</p>
+</body>
+</html>
