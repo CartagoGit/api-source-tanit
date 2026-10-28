@@ -8,6 +8,14 @@
 			"reason": "The vanished ref refs/heads/wip/minimax-m3.1-flash-preview/implement/d00001-S3-g1 carried one change: delendai.config.json development.profile from shared-checkout-merge to shared-checkout-pr. That change IS in develop — `git diff 77ce214d develop -- delendai.config.json` shows no difference on the profile line — so it landed by another route (commit aab8e2b) and the ref was deleted afterwards. The commit is still in the object store; nothing is lost.",
 			"decidedBy": "copilot",
 			"decidedAt": "2026-10-28T10:45:00.000Z"
+		},
+		{
+			"taskId": "d169ad0dd3741ab61e6bf6c94a903f36",
+			"evidenceDigest": "c147e00dc06fc2b0fb68f1a566be95a8",
+			"decision": "resolved-elsewhere",
+			"reason": "The same ref was recreated on top of the current work (tip c4dd841, whose parent is ad3e907, the commit that carries the same configuration), so the recorded checkpoint 77ce214d is no longer an ancestor of it. Nothing was lost: the ref's content today is a superset of what the old checkpoint held — `git show c4dd841:delendai.config.json` shows the same profile, the same merge settings and the guard block on top. The old checkpoint is still in the object store. The ref was rewritten to sit on the current branch, not to discard work.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-28T17:30:00.000Z"
 		}
 	]
 }
