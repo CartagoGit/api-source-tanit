@@ -25,6 +25,15 @@
  *
  * Hence `effects: ["write"]`: the host uses it to decide whether an
  * agent may invoke it without confirmation.
+ *
+ * ## Where the writes land
+ *
+ * `writeRoot: "server"`. The host refuses to start a tool that
+ * declares a `write` effect and no root — the server does not boot,
+ * so the failure is invisible until it does. The root says which
+ * tree the writes belong to: `config.constant.ts` and
+ * `endpoints.constant.ts` land in the project tanit documents, which
+ * is the server's own root unless the caller names another one.
  */
 
 import {
@@ -53,6 +62,7 @@ export function buildInitToolRegistration(ctx: IMcpPluginContext): IToolRegistra
       "y variables propias: sin config el zero-config ya genera igual.",
     tags: ["postman", "api", "init", "scaffold"],
     effects: ["write"],
+    writeRoot: "server",
     register: async (server) => {
       server.registerTool(
         `${ctx.namespacePrefix}_${TOOL_ID}`,

@@ -14,6 +14,23 @@ import { makeContext, registeredTools, workspaceRoot } from "../helpers/plugin-c
 
 const PACKAGE_ROOT = workspaceRoot(import.meta.url);
 
+/**
+ * The roots the host accepts for a tool that writes.
+ *
+ * Written here instead of imported from the core on purpose: the
+ * core's type is a closed union, and a test that used it would pass
+ * whatever the core accepts today — including a root this plugin
+ * has no business using. The list below is the contract *this*
+ * plugin keeps.
+ */
+const WRITE_ROOTS: readonly string[] = [
+  "caller-checkout",
+  "repository",
+  "host-state",
+  "server",
+  "remote",
+];
+
 const makeCtx = (options: Record<string, unknown> = {}) =>
   makeContext({ workspaceRoot: PACKAGE_ROOT, options });
 
@@ -57,6 +74,47 @@ describe("arranque del plugin", () => {
     expect(byId.get("test")?.effects).toContain("spawn");
     // `summary` only inspects: it must not declare effects.
     expect(byId.get("summary")?.effects ?? []).toEqual([]);
+  });
+
+  /**
+   * A tool that writes and says no root does not boot.
+   *
+   * The host refuses to plan a registration sequence with a `write`
+   * effect and no `writeRoot`, and the server MCP dies while
+   * starting: the editor shows "the server stopped while handling
+   * this request" and every tool disappears, with the reason buried
+   * in the server's stderr. This test is the same rule, one layer
+   * earlier, where it can still be read.
+   */
+  test("todo tool que escribe declara dónde escriben sus escrituras", async () => {
+    const tools = await registeredTools(plugin, makeCtx());
+    for (const tool of tools) {
+      if (!(tool.effects ?? []).includes("write")) continue;
+      expect(
+        tool.writeRoot,
+        `${tool.id} declara el efecto "write" y no declara writeRoot`,
+      ).toBeDefined();
+      expect(WRITE_ROOTS).toContain(tool.writeRoot);
+    }
+  });
+
+  /**
+   * And each one says the root that is true of it, not a root that
+   * merely satisfies the host.
+   *
+   * `generate` and `init` write into the project they document,
+   * which is the server's own root: the plugin resolves its paths
+   * from its options and the call's arguments, and the runner
+   * spawns in the server's root, so the writes do not follow the
+   * caller's checkout. `push` writes nothing here: the collection
+   * lands in the Postman workspace.
+   */
+  test("cada tool que escribe declara la raíz que le corresponde", async () => {
+    const tools = await registeredTools(plugin, makeCtx());
+    const byId = new Map(tools.map((tool) => [tool.id, tool]));
+    expect(byId.get("generate")?.writeRoot).toBe("server");
+    expect(byId.get("init")?.writeRoot).toBe("server");
+    expect(byId.get("push")?.writeRoot).toBe("remote");
   });
 
   test("registrar dos veces no acumula estado", async () => {

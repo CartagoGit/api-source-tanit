@@ -101,6 +101,12 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
 
   // Configuración del host MCP y del repo.
   { path: "delendai.config.json", reason: "Config del host MCP Delendai" },
+  // Decisiones de reconciliación del host, versionadas. El runtime las
+  // busca en `config/delendai/repair-resolutions.json` dentro del
+  // workspace: un path fijo, no configurable, y deliberadamente
+  // versionado — una decisión que solo vive en la máquina de quien la
+  // tomó deja a todo el resto degradado y sin registro de por qué.
+  { path: "config", reason: "Decisiones de reconciliación del host (Delendai)" },
   { path: ".mcp.json", reason: "Servidores MCP locales para desarrollo" },
   { path: ".vscode", reason: "Config local de VS Code (regenerada por lint:mcp)" },
   { path: ".github", reason: "Workflows y agents del repo" },
