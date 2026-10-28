@@ -107,7 +107,7 @@ packages/core/discovery/
 - review-reviewer: delivery-verifier-r00019-s1
 - review-log: approved by delivery-verifier-r00019-s1 — Independent review of r00019/S1-transport-discriminated-unions. Slice scope verified: 6 transport interfaces (http/graphql/grpc/websocket/sse/broker) all declared as discriminated unions with required (non-optional) fields, kind literals, and HttpMethod sourced from SUPPORTED_METHODS. IOperation has the eight required fields (id, serviceId, transport, serverRef, authRef, request, responses, provenance); IServerRef/IAuthRef/IProvenance in dedicated files. operationIdFor is a pure function with exhaustive switch + assertNever + Object.freeze — adding a new transport kind without a case breaks the typecheck. is*Transport guards validate kind + required fields at runtime. Validation: typecheck:contracts (1/1 sections pass), typecheck:core (1/1 pass), contracts tests (3 files / 217 tests pass), core tests (90 files / 1286 tests pass) + sqlite (15 tests) = 1518 total, lint:contracts (461 types/constants, 3 declared exceptions), lint:naming (650 files / 37 folder rules), lint:no-orphan-types (4 type packages, all declared or transitive). Legacy TransportKind (from f00013) is intentionally not touched per non-goals — coexistence is documented in proposal Risks. Note: operation-id.service.ts and transport-narrow.guard.ts live under packages/core/transport/ (not packages/contracts/interfaces/core/transport/ as the original Files layout stated). This is a deliberate refactor in e2135c5 that keeps the contracts package type-only (runtime helpers belong in core); the public surface is unaffected because consumers import runtime helpers from packages/core/transport/ directly and types from the contracts barrel. Approval given — implementation matches the architectural intent.
 ### S2-postman-interface-cleanup — S2 — Postman interface cleanup: drop EndpointSpec, mantener solo tipos Postman-específicos
-- **Status**: pending
+- **Status**: review
 - **DependsOn**: [S1-transport-discriminated-unions]
 - **Files**: `packages/contracts/interfaces/core/postman.interface.ts`
 - **Gate**: type
@@ -116,6 +116,8 @@ packages/core/discovery/
   - "Re-exporta `IOperation` desde `operation.interface.ts` para compat con consumers que aún esperan el tipo en este fichero (deprecation notice en JSDoc); el re-export se elimina en la propuesta que retire el legacy"
   - "`bun run lint:contracts` verde — el grep por `EndpointSpec` desde `postman.interface.ts` no devuelve resultados en `packages/core/` ni `packages/cli/`"
   - "DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer existente queda roto"
+- review-state: in_review
+- review-implementer: minimax-m3.1-flash-preview
 
 ### S3-combineServices-with-per-service-context — S3 — combineServices con contexto per-service y per-operation resolver
 - **Status**: pending
