@@ -70,6 +70,11 @@ const RULES: readonly INamingRule[] = [
     // `IExportTarget` y traduce el catálogo de endpoints a UN formato.
     // Llamarlo `.service` lo escondería entre los quince que ya hay.
     suffixes: [".exporter.ts", ".service.ts"],
+    // La infraestructura compartida del paquete NO es "un formato de
+    // salida": es el contrato que implementan los exporters, el registro
+    // que elige cuál se ejecuta y el sobre que devuelven. Los tres llevan
+    // nombre propio porque no son un formato más.
+    exact: ["i-exporter.interface.ts", "registry.ts", "result.ts"],
   },
   {
     path: "packages/core/application-api/",
