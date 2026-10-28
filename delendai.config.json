@@ -1,9 +1,10 @@
 {
   "latest-published": "0.1.0",
   "development": {
-    "profile": "shared-checkout-merge",  
+    "profile": "shared-checkout-merge",
     "branches": { "integration": "develop", "release": "main" },
     "integration": {
+      "requiredChecks": ["ci-summary"],
       "requiredApprovals": 0,
       "releaseRequiredApprovals": 1
     }
@@ -28,7 +29,20 @@
       "validate-package",
       "integration-verifier",
       "ci-summary"
-    ]
+    ],
+    "branchProtection": {
+      "branches": ["develop", "release/*"],
+      "rulesetName": "develop-required-checks",
+      "requiredStatusChecksStrict": true,
+      "enforceAdmins": true,
+      "requiredApprovingReviewCount": 1,
+      "dismissStaleReviews": true,
+      "requireCodeOwnerReviews": false,
+      "requiredLinearHistory": true,
+      "allowForcePushes": false,
+      "allowDeletions": false,
+      "requiredConversationResolution": true
+    }
   },
   "filesystem": {
     "authorizedRoots": [
@@ -53,30 +67,9 @@
     },
     "search": {
       "options": {
-        "roots": [
-          "packages",
-          "scripts",
-          "tests",
-          "docs",
-          "examples"
-        ],
-        "extensions": [
-          "ts",
-          "tsx",
-          "js",
-          "mjs",
-          "cjs",
-          "md",
-          "mdx",
-          "json"
-        ],
-        "ignoreDirs": [
-          "node_modules",
-          ".cache",
-          "dist",
-          "build",
-          ".git"
-        ]
+        "roots": ["packages", "scripts", "tests", "docs", "examples"],
+        "extensions": ["ts", "tsx", "js", "mjs", "cjs", "md", "mdx", "json"],
+        "ignoreDirs": ["node_modules", ".cache", "dist", "build", ".git"]
       }
     },
     "memory": {
@@ -89,20 +82,9 @@
     },
     "docs": {
       "options": {
-        "roots": [
-          "docs/delendai",
-          "README.md",
-          "integrations/delendai/README.md"
-        ],
-        "extensions": [
-          "md",
-          "mdx"
-        ],
-        "ignoreDirs": [
-          "node_modules",
-          ".cache",
-          "dist"
-        ]
+        "roots": ["docs/delendai", "README.md", "integrations/delendai/README.md"],
+        "extensions": ["md", "mdx"],
+        "ignoreDirs": ["node_modules", ".cache", "dist"]
       }
     },
     "rules": {
@@ -113,25 +95,13 @@
     },
     "conventions": {
       "options": {
-        "roots": [
-          "packages",
-          "scripts",
-          "tests",
-          "docs",
-          "examples"
-        ]
+        "roots": ["packages", "scripts", "tests", "docs", "examples"]
       }
     },
     "proposals": {
       "options": {
         "validationCommand": "bun run validate",
-        "namePool": [
-          "falcon",
-          "owl",
-          "crow",
-          "sparrow",
-          "finch"
-        ],
+        "namePool": ["falcon", "owl", "crow", "sparrow", "finch"],
         "orchestration": {
           "delegateAfterToolCalls": 3
         }
@@ -283,12 +253,9 @@
           "enabled": false
         },
         "push": {
-					"enabled": true,
+          "enabled": true,
           "force": "with-lease",
-          "protectedBranches": [
-            "main",
-            "master"
-          ],
+          "protectedBranches": ["main", "master"],
           "remote": "origin"
         },
         "cadence": {
