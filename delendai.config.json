@@ -1,6 +1,9 @@
 {
   "development": {
     "profile": "shared-checkout-pr",
+    "guard": {
+      "unknownActor": "person"
+    },
     "branches": { "integration": "develop", "release": "main" },
     "integration": {
       "requiredChecks": ["ci-summary"],
