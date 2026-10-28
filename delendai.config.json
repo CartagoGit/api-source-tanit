@@ -234,7 +234,7 @@
         "push": {
           "enabled": true,
           "force": "with-lease",
-          "protectedBranches": ["main", "master"],
+          "protectedBranches": ["main", "master", "develop"],
           "remote": "origin"
         },
         "cadence": {
