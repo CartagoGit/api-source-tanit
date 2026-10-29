@@ -129,6 +129,35 @@ export function contextOfSource(
 }
 
 /**
+ * The context of an inferrer that reads a set of in-memory files.
+ *
+ * The Rails and Laravel inferrers read a controller that is **not**
+ * the file the route was declared in. The edge cases need a project
+ * with two files, and this is it: `files` is the project, and
+ * `relativePath` is the file the route came from.
+ */
+export function contextOfFiles(
+  framework: string,
+  files: Readonly<Record<string, string>>,
+  relativePath: string,
+): IResponseInferContext {
+  const source = files[relativePath] ?? "";
+  return {
+    framework,
+    source: {
+      path: relativePath,
+      content: source,
+      framework,
+    },
+    readSource: (candidate: string): IFrameworkSourceFileLike | null => {
+      const content = files[candidate];
+      if (content === undefined) return null;
+      return { path: candidate, content, framework };
+    },
+  };
+}
+
+/**
  * The line (1-based) of the first line of `content` that contains
  * `needle`.
  *

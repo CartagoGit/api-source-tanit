@@ -117,26 +117,6 @@ export function pickRouteAnchor(
 }
 
 /**
- * The region of the file that belongs to a declaration: from the end
- * of the declaration to the end of its block, or a bounded window when
- * the declaration has no block of its own.
- *
- * The window matters: a file with ten routes would otherwise give
- * every route the same "next 800 characters", and the tenth route
- * would read the first route's `res.json()`.
- */
-export function regionAfter(
-  text: string,
-  anchor: IRouteAnchor,
-  maxChars = 1200,
-): string {
-  const tail = text.slice(anchor.end);
-  const block = extractBalancedBlock(tail);
-  if (block !== null) return block.slice(0, maxChars);
-  return tail.slice(0, maxChars);
-}
-
-/**
  * The text that belongs to a declaration: from the end of the
  * declaration up to the **next** declaration, bounded.
  *
@@ -154,39 +134,6 @@ export function sliceUntilNextAnchor(
   const next = anchors.find((a) => a.index > anchor.index);
   const limit = next === undefined ? anchor.end + maxChars : next.index;
   return text.slice(anchor.end, Math.min(limit, anchor.end + maxChars));
-}
-
-/**
- * Extracts the `{ … }` block that opens the text, respecting nesting
- * and string literals. Returns `null` when the text does not open
- * with a block.
- */
-export function extractBalancedBlock(text: string): string | null {
-  const open = text.indexOf("{");
-  if (open === -1) return null;
-  let depth = 0;
-  let inString: string | null = null;
-  for (let i = open; i < text.length; i++) {
-    const c = text[i];
-    if (inString) {
-      if (c === "\\") {
-        i++;
-        continue;
-      }
-      if (c === inString) inString = null;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      inString = c;
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}") {
-      depth--;
-      if (depth === 0) return text.slice(open, i + 1);
-    }
-  }
-  return null;
 }
 
 /** Number of newlines before `index` — the 0-based line of a match. */

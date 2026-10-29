@@ -211,8 +211,7 @@ function controllerTextOf(
  */
 function controllerPaths(controllerClass: string): ReadonlyArray<string> {
   const parts = controllerClass.split(/[\\\/]/).filter((p) => p.length > 0);
-  const className = parts[parts.length - 1];
-  if (className === undefined) return [];
+  const className = parts[parts.length - 1] ?? "";
   const relative = parts
     .filter((p) => p !== "App")
     .map((p) => (p === className ? `${p}.php` : p))
@@ -319,8 +318,7 @@ function resourceNameFromController(
 ): string | null {
   if (controllerClass === undefined || controllerClass.length === 0) return null;
   const parts = controllerClass.split(/[\\\/]/).filter((p) => p.length > 0);
-  const className = parts[parts.length - 1];
-  if (className === undefined) return null;
+  const className = parts[parts.length - 1] ?? "";
   const model = className.endsWith("Controller")
     ? className.slice(0, -"Controller".length)
     : className;

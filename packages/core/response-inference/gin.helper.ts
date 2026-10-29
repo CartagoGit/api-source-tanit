@@ -223,7 +223,6 @@ function schemaOfPayload(payload: string): IResponseSchema | null {
  */
 function mapLiteralFields(literal: string): ReadonlyArray<IValidationSpec> {
   const open = literal.indexOf("{");
-  if (open === -1) return [];
   const close = matchingBrace(literal, open);
   if (close === -1) return [];
 

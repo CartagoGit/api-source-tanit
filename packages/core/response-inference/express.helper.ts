@@ -152,8 +152,10 @@ function findSendCall(region: string): ISendCall | null {
     // The match ends with the parenthesis that opens the call — and
     // it is the **last** one, because a chained `res.status(201)`
     // carries a parenthesis of its own before it.
+    // The match ends with the parenthesis that opens the call — and
+    // it is the **last** one, because a chained `res.status(201)`
+    // carries a parenthesis of its own before it.
     const open = match.index + match[0].length - 1;
-    if (region[open] !== "(") continue;
     const close = findClosingParen(region, open);
     if (close === -1) continue;
     const kind = match[1] === "send" ? "send" : "json";
