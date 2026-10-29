@@ -20,6 +20,11 @@
 //! esa clave es una clave Ed25519 de verdad y que su identificador
 //! coincide con el del contrato.
 
+// El módulo se compila entero dentro del test, y hay partes que
+// sólo usa la app (el transporte real, el contrato por defecto). No
+// están muertas: lo que no está muerto es el **binario**, que las
+// usa. Aquí no se avisa de eso.
+#[allow(dead_code)]
 #[path = "../../packages/desktop/src/updater.rs"]
 mod updater;
 
@@ -32,9 +37,54 @@ use std::time::Duration;
 use updater::{
     check_for_update, ed25519_public_key_from_pem, fetch_with_retry, parse_manifest, plan_update,
     select_target, sha256_hex, verify_artifact_hash, verify_artifact_signature, verify_signature,
-    FixtureTransport, RetryPolicy, UpdatePlatform, UpdateRejection, UpdateTarget, UpdaterContract,
-    DEFAULT_ENDPOINT, DEFAULT_PUBLIC_KEY_ID, DEFAULT_TIMEOUT_MS, MANIFEST_SCHEMA,
+    HttpsTransport, RetryPolicy, UpdatePlatform, UpdateRejection, UpdateTarget, UpdateTransport,
+    UpdaterContract, DEFAULT_ENDPOINT, DEFAULT_PUBLIC_KEY_ID, DEFAULT_TIMEOUT_MS, MANIFEST_SCHEMA,
 };
+
+/// Un transporte que sirve bytes desde un mapa local.
+///
+/// Vive en el test y no en el módulo: esinstrumento de prueba, no
+/// parte del updater. Implementa el **mismo** contrato que el
+/// transporte real —[`UpdateTransport`]—, así que el núcleo no sabe
+/// cuál de los dos tiene.
+struct FixtureTransport {
+    /// Lo que hay en cada URL.
+    responses: HashMap<String, Vec<u8>>,
+    /// Las URLs que se pidieron, en orden.
+    requested: std::sync::Mutex<Vec<String>>,
+}
+
+impl FixtureTransport {
+    /// Un transporte que sirve lo que se le da.
+    fn new(responses: HashMap<String, Vec<u8>>) -> Self {
+        FixtureTransport {
+            responses,
+            requested: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Cuántas veces se ha pedido cada URL.
+    fn request_count(&self, url: &str) -> usize {
+        self.requested
+            .lock()
+            .map(|requested| requested.iter().filter(|seen| *seen == url).count())
+            .unwrap_or(0)
+    }
+}
+
+impl UpdateTransport for FixtureTransport {
+    fn fetch(&self, url: &str, _timeout: Duration) -> Result<Vec<u8>, UpdateRejection> {
+        if let Ok(mut requested) = self.requested.lock() {
+            requested.push(url.to_string());
+        }
+        match self.responses.get(url) {
+            Some(bytes) => Ok(bytes.clone()),
+            None => Err(UpdateRejection::EndpointUnavailable {
+                detail: format!("no hay nada en {url}"),
+            }),
+        }
+    }
+}
 
 /// La versión que finge tener la app instalada en las pruebas.
 const INSTALLED: &str = "0.1.0";
@@ -569,16 +619,9 @@ fn un_esquema_desconocido_se_rechaza() {
 #[test]
 fn una_clave_distinta_se_rechaza() {
     let fixture = fixture("key-id");
-    let manifest = manifest_json(
-        OFFERED,
-        INSTALLED,
-        "tanit-updater-v2",
-        &select_target(
-            &parse_manifest(fixture.manifest.as_bytes()).expect("the manifest must parse"),
-            &fixture.platform,
-        )
-        .expect("the target must exist"),
-    );
+    let parsed = parse_manifest(fixture.manifest.as_bytes()).expect("the manifest must parse");
+    let target = select_target(&parsed, &fixture.platform).expect("the target must exist");
+    let manifest = manifest_json(OFFERED, INSTALLED, "tanit-updater-v2", target);
     let signature = sign(&fixture.key, &fixture.scratch, manifest.as_bytes());
 
     let rejection = plan_update(
@@ -795,4 +838,43 @@ fn la_firma_se_verifica_con_la_clave_que_la_firmo() {
         &fixture.signature,
     )
     .expect("the signature must verify");
+}
+
+#[test]
+fn el_transporte_real_solo_habla_https() {
+    // El transporte de verdad es el único que sale a la red, así que
+    // es el único que puede equivocarse de protocolo. Una URL que no
+    // sea HTTPS se rechaza **antes** de abrir la conexión.
+    let transport = HttpsTransport::new();
+    let rejection = transport
+        .fetch("http://updates.tanit.dev/latest.json", Duration::from_millis(100))
+        .expect_err("an HTTP URL must be rejected before the connection");
+    assert_eq!(
+        rejection,
+        UpdateRejection::EndpointNotHttps {
+            endpoint: "http://updates.tanit.dev/latest.json".to_string(),
+        }
+    );
+}
+
+#[test]
+fn la_plataforma_actual_se_deduce_del_sistema() {
+    let platform = UpdatePlatform::current();
+    assert!(!platform.os.is_empty());
+    assert!(!platform.arch.is_empty());
+    assert!(!platform.bundle.is_empty());
+    // Y tiene que ser una de las que el manifest sabe nombrar.
+    assert!(
+        ["linux", "macos", "windows"].contains(&platform.os.as_str()),
+        "the current os is not one the manifest can describe"
+    );
+}
+
+#[test]
+fn el_contrato_por_defecto_usa_la_clave_versionada_del_repo() {
+    let contract = UpdaterContract::new("0.1.0");
+    assert_eq!(contract.public_key_id, DEFAULT_PUBLIC_KEY_ID);
+    assert_eq!(contract.endpoint, DEFAULT_ENDPOINT);
+    assert_eq!(contract.timeout_ms, DEFAULT_TIMEOUT_MS);
+    assert!(contract.public_key_pem.contains("BEGIN PUBLIC KEY"));
 }

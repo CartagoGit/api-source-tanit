@@ -31,7 +31,15 @@
 //! alguien intenta instalar algo que no cuadra.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod bridge;
+// Estos dos módulos son **contratos** de la ventana: el picker
+// nativo de carpeta y la normalización del arrastre. Todavía no hay
+// ningún comando que los use, así que el compilador los marca como
+// muertos. Se declaran aquí para que el sitio esté escrito, y se
+// avisa de la verdad: lo que no está vivo es el comando, no el
+// contrato.
+#[allow(dead_code)]
 mod dialogs;
+#[allow(dead_code)]
 mod drag_drop;
 mod sidecar;
 mod secure_storage;
@@ -147,7 +155,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![bridge::send_to_sidecar, secure_storage_save, secure_storage_retrieve, secure_storage_delete, update_status, check_for_updates, download_update])
         .manage(Sidecar(Mutex::new(None)))
-        .manage(SecureStorage::default())
+        .manage(SecureStorage)
         .setup(|app| {
             // 1. Sidecar: `apisrc serve --stdio`, stdin/stdout para
             //    el bridge; stderr va a un hilo logger propio
