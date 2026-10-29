@@ -27,7 +27,7 @@ import type {
   EndpointSpecLike,
   IFrameworkSourceFileLike,
   IResponseInference,
-  IResponseInferrer,
+  ILegacyResponseInferrer,
 } from "../../contracts/interfaces/core/responses.interface";
 
 /**
@@ -43,7 +43,7 @@ const API_RESPONSE_RE =
  */
 const RESPONSE_ENTITY_RE = /ResponseEntity\s*<\s*([A-Za-z_][A-Za-z0-9_.]*)/g;
 
-export class SpringResponseInferrer implements IResponseInferrer {
+export class SpringResponseInferrer implements ILegacyResponseInferrer {
   readonly framework = "springboot";
 
   infer(
