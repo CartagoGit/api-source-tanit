@@ -25,6 +25,7 @@
  * (r00020 S2 — LanguageIR agnostic foundation)
  */
 import { describe, expect, test } from "vitest";
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -64,7 +65,40 @@ const CARPETAS = [
   // El scanner de Laravel vive en su propia carpeta, no en
   // `frameworks/scanners/`: sin esta línea, el gate no lo miraba.
   join(RAIZ, "packages", "frameworks", "laravel"),
+  join(RAIZ, "packages", "core", "language-ir"),
+  join(RAIZ, "packages", "core", "discovery"),
 ];
+
+/**
+ * The only places allowed to name the parser that reads TypeScript.
+ *
+ * The legacy IR (`packages/core/language-ir/`) and the host config
+ * parser are the **TypeScript-shaped implementation** the agnostic
+ * contract is meant to replace — in a later proposal. Migrating them
+ * is an explicit **non-goal** of r00020 S2: the slice adds the
+ * contract and moves the frontend; rewriting the IR that six scanners
+ * consume is a different, and much bigger, piece of work. The
+ * dependency is planned for that proposal.
+ *
+ * Until it lands, the dependency is a **whitelist entry with a
+ * reason** — not a hole nobody looks at. The gate below reads these
+ * files, finds the parser named in them, and lets it pass *because
+ * the list says so*, out loud.
+ */
+const LISTA_BLANCA: readonly string[] = [
+  "packages/core/language-ir/",
+  "packages/core/discovery/host-config-parser.service.ts",
+];
+
+/** Whether a path is inside the whitelist. */
+function enLaListaBlanca(relPath: string): boolean {
+  return LISTA_BLANCA.some(
+    (entrada) =>
+      entrada.endsWith("/")
+        ? relPath.startsWith(entrada)
+        : relPath === entrada,
+  );
+}
 
 /**
  * The vocabulary that would tie a scanner to one concrete parser,
@@ -484,6 +518,7 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
+        const rel = relative(RAIZ, fichero).replaceAll("\\", "/");
         const source = await readFile(fichero, "utf8");
         // La prosa de un scanner puede explicar el parser que hay
         // detrás — eso no ata el scanner al parser. Lo que lo ata es
@@ -491,20 +526,19 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
         sinComentarios(source)
           .split("\n")
           .forEach((linea, indice) => {
-            if (PROHIBIDO_EN_CODIGO.test(linea)) {
-              acana.push(
-                `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
-              );
+            if (PROHIBIDO_EN_CODIGO.test(linea) && !enLaListaBlanca(rel)) {
+              acana.push(`${rel}:${indice + 1} — ${linea.trim()}`);
             }
           });
         // Una supresión de tipos de TypeScript es un comentario por
         // definición, así que para verla hay que mirar la fuente
-        // entera: si no, el criterio se queda sin cobertura.
+        // entera: si no, el criterio se queda sin cobertura. Esta
+        // regla no tiene lista blanca: una supresión de tipos es un
+        // agujero en el typecheck, y el typecheck no migra por
+        // trabajo.
         source.split("\n").forEach((linea, indice) => {
           if (PROHIBIDO_EN_FUENTE.test(linea)) {
-            acana.push(
-              `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
-            );
+            acana.push(`${rel}:${indice + 1} — ${linea.trim()}`);
           }
         });
       }
@@ -516,15 +550,32 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
+        const rel = relative(RAIZ, fichero).replaceAll("\\", "/");
+        if (enLaListaBlanca(rel)) continue;
         const source = sinComentarios(await readFile(fichero, "utf8"));
         for (const match of source.matchAll(/from\s*["']([^"']+)["']/g)) {
           const spec = match[1] ?? "";
           if (/@babel\/|["'](?:typescript|ts-node)["']/.test(spec)) {
-            acana.push(`${relative(RAIZ, fichero)} → ${spec}`);
+            acana.push(`${rel} → ${spec}`);
           }
         }
       }
     }
     expect(acana).toEqual([]);
+  });
+
+  test("la lista blanca es explícita, existe y está justificada", async () => {
+    // Una lista blanca vacía no vigila nada; una lista blanca que
+    // nombra un fichero que ya no existe miente sobre lo que el gate
+    // mira. Las dos cosas se comprueban aquí.
+    expect(LISTA_BLANCA.length).toBeGreaterThan(0);
+    for (const entrada of LISTA_BLANCA) {
+      expect(existsSync(join(RAIZ, entrada)), `${entrada} no existe`).toBe(
+        true,
+      );
+      // Y ninguna entrada puede ser un scanner: la lista blanca es
+      // para la implementación de TypeScript que queda por migrar.
+      expect(entrada.startsWith("packages/core/")).toBe(true);
+    }
   });
 });

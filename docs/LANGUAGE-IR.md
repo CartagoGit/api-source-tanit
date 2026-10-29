@@ -415,3 +415,24 @@ Los dos tests que vigilan el contrato:
   TypeScript cumpla el contrato en runtime, que las seis formas de
   callee sobrevivan estructuradas, que el refactor sea invisible y
   que ningún scanner mencione un parser concreto.
+
+### La lista blanca del IR que todavía es de TypeScript
+
+El gate que vigila "ningún consumidor del IR usa implementaciones
+concretas" mira el **código** de `packages/frameworks/scanners/`,
+`packages/frameworks/laravel/`, `packages/core/language-ir/` y
+`packages/core/discovery/` — la prosa puede nombrar el parser que hay
+detrás; el código no.
+
+Dos rutas quedan **fuera** de ese criterio, y la lista es explícita:
+
+| Ruta | Por qué |
+|---|---|
+| `packages/core/language-ir/` | El IR de TypeScript que ya existía, que consumen los seis scanners de JavaScript. |
+| `packages/core/discovery/host-config-parser.service.ts` | El parser de la configuración del host, que lee TypeScript. |
+
+Migrarlos al contrato agnóstico es un **no-goal explícito** de la
+slice que introdujo el contrato: el trabajo está planificado para una
+propuesta posterior. Hasta entonces, la dependencia es una **entrada
+de lista blanca con su motivo**, no un agujero que nadie mira — y un
+test comprueba que las entradas existen y que sólo hay una.
