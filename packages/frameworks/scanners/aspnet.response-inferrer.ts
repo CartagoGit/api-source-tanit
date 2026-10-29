@@ -23,7 +23,7 @@ import type {
   EndpointSpecLike,
   IFrameworkSourceFileLike,
   IResponseInference,
-  IResponseInferrer,
+  ILegacyResponseInferrer,
 } from "../../contracts/interfaces/core/responses.interface";
 
 /**
@@ -43,7 +43,7 @@ const PRODUCES_NO_TYPE_RE =
 const SWAGGER_RESPONSE_RE =
   /SwaggerResponse\s*\(\s*(\d+)\s*,\s*typeof\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)/g;
 
-export class AspNetResponseInferrer implements IResponseInferrer {
+export class AspNetResponseInferrer implements ILegacyResponseInferrer {
   readonly framework = "aspnet";
 
   infer(

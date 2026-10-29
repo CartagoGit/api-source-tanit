@@ -28,7 +28,7 @@ import type {
   EndpointSpecLike,
   IFrameworkSourceFileLike,
   IResponseInference,
-  IResponseInferrer,
+  ILegacyResponseInferrer,
 } from "../../contracts/interfaces/core/responses.interface";
 
 /**
@@ -54,7 +54,7 @@ const STATUS_CODE_RE = /\bstatus_code\s*=\s*(\d+)\b/g;
 const RETURN_TYPE_RE =
   /^\s*(?:async\s+)?def\s+[A-Za-z_][\w]*\s*\([^)]*\)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)/gm;
 
-export class FastApiResponseInferrer implements IResponseInferrer {
+export class FastApiResponseInferrer implements ILegacyResponseInferrer {
   readonly framework = "fastapi";
 
   infer(
