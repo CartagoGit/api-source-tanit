@@ -13,9 +13,15 @@
  * coupling the contracts to a specific framework: every scanner
  * plugin that has a strong signal (NestJS decorators, FastAPI
  * `-> UserResponse` return annotation, Spring `@ApiResponse`, etc.)
- * will register an `IResponseInferrer` that produces zero or more
+ * will register an `ILegacyResponseInferrer` that produces zero or more
  * `IResponseInference` entries; the dispatcher (`inferResponses`)
  * composes them and the exporters render the result.
+ *
+ * The inferrer **contract** itself moved to
+ * [`response-inferrer.interface.ts`](./response-inferrer.interface.ts)
+ * in proposal `r00020` S3 — `IResponseInferrer` is now the agnostic
+ * one, and the interface declared here is the legacy shape the four
+ * original inferrers still implement.
  *
  * The shape is the common denominator across the framework
  * inferrers: a **single response** carries
@@ -114,13 +120,28 @@ export interface IResponseInference {
 }
 
 /**
- * A single framework inferrer. Implementations live in
- * `packages/frameworks/scanners/<framework>/<framework>.response-inferrer.ts`
+ * A single framework inferrer — **the legacy shape**.
+ *
+ * Implementations live in
+ * `packages/frameworks/scanners/<framework>.response-inferrer.ts`
  * (one per framework, like the scanners). The dispatcher
  * `inferResponses()` loops through every registered inferrer
  * whose `framework` matches the spec's source framework.
+ *
+ * ## Why it is called "legacy"
+ *
+ * Proposal `r00020` S3 replaced this contract with the agnostic one
+ * in [`response-inferrer.interface.ts`](./response-inferrer.interface.ts):
+ * `IResponseInferrer` now speaks **routes** (`detect` + `infer`) and
+ * says `null` when it has nothing to say, instead of "an endpoint
+ * projection plus a file" and "an array that may be empty".
+ *
+ * The four inferrers that already existed were **not** rewritten:
+ * their bodies are untouched, and the registry adapts them to the new
+ * contract with `adaptLegacyResponseInferrer()`. This interface stays
+ * because the adapter needs a name for what it adapts.
  */
-export interface IResponseInferrer {
+export interface ILegacyResponseInferrer {
   /** Framework slug the inferrer registers against (matches `IProjectMatch.framework`). */
   readonly framework: string;
   /**

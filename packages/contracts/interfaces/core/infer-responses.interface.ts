@@ -7,6 +7,9 @@
  * here so exporters (Postman, OpenAPI, …) and MCP tools can name
  * the inputs without importing the dispatcher module.
  */
+import type { IResponseRoute } from "./response-inferrer.interface.js";
+import type { IFrameworkSourceFileLike } from "./responses.interface.js";
+import type { IResponseFrameworkCoverage } from "./response-coverage.interface.js";
 
 /**
  * Optional overrides for `inferResponses()`.
@@ -20,6 +23,28 @@
  */
 export interface InferResponsesOptions {
   readonly frameworkHint?: string;
+  /**
+   * The route as the scanner saw it.
+   *
+   * When the caller has it, the inferrers get the **raw** URI (the
+   * one written in the code, without the prefixes the scanner
+   * applied) and the line of the declaration — which is what lets
+   * them find their route in the file. When it is absent the
+   * dispatcher falls back to the endpoint projection, which still
+   * carries the method and the full URI.
+   */
+  readonly route?: IResponseRoute;
+  /**
+   * Reads another file of the same project, relative to its root.
+   *
+   * Rails and Laravel declare their routes in one file and their
+   * responses in another, so their inferrers need to read the
+   * controller. The dispatcher owns the I/O and passes the resolver
+   * down; an inferrer stays a pure function of the text it reads.
+   */
+  readonly readSource?: (
+    relativePath: string,
+  ) => IFrameworkSourceFileLike | null;
 }
 
 /**
@@ -31,8 +56,12 @@ export interface InferResponsesOptions {
 export interface IRouteForInference {
   readonly method: string;
   readonly uri: string;
+  readonly rawUri?: string | null;
   readonly sourceFile?: string | null;
+  readonly lineNumber?: number | null;
   readonly framework?: string | null;
+  readonly controllerClass?: string | null;
+  readonly actionName?: string | null;
 }
 
 /**
@@ -49,4 +78,14 @@ export interface IInferResponsesIntoSpecsResult {
    * empty registry intentionally.
    */
   readonly registryEmpty: boolean;
+  /**
+   * How many operations each framework declared, and how many of them
+   * ended up with a response.
+   *
+   * The coverage reporter turns this into percentages. It is part of
+   * the result because the dispatcher is the only place that sees
+   * every operation — the reporter would have to walk the specs
+   * again to know the denominator.
+   */
+  readonly coverage: ReadonlyArray<IResponseFrameworkCoverage>;
 }

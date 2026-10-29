@@ -36,7 +36,7 @@ import type {
   EndpointSpecLike,
   IFrameworkSourceFileLike,
   IResponseInference,
-  IResponseInferrer,
+  ILegacyResponseInferrer,
 } from "../../contracts/interfaces/core/responses.interface";
 
 /**
@@ -107,7 +107,7 @@ function extractRefs(
   return out;
 }
 
-export class NestJsResponseInferrer implements IResponseInferrer {
+export class NestJsResponseInferrer implements ILegacyResponseInferrer {
   readonly framework = "nestjs";
 
   infer(

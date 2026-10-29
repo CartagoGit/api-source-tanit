@@ -38,6 +38,7 @@ import { hasLoginEndpoint, applyAuthFlow, authEnvironmentVariables, detectLarave
 import { buildCollection } from "../domain/collection-builder.service.js";
 import { applyAgnosticInference, inferCollectionVariables } from "../domain/param-inferrer.service.js";
 import { inferResponsesIntoSpecs } from "../responses/infer-responses.js";
+import { reportResponseCoverage } from "../responses/coverage-reporter.js";
 import { loadProject } from "./project-loader.service.js";
 
 import { resolveProjectContext } from "./project-context.service.js";
@@ -548,6 +549,14 @@ async function buildForService(
     service.endpoints,
     { globalFramework: service.match.framework },
   );
+
+  // r00020 S3: the coverage of the inference is a **diagnostic**. It
+  // is measured and printed at the end of the pipeline, and it never
+  // blocks: a framework may legitimately have endpoints with no
+  // inferrable response, and a percentage that gates a generation
+  // would stop the tool the first time a framework shipped one route
+  // nobody modelled.
+  reportResponseCoverage(responseResult.coverage);
 
   const collection = buildCollection(specs, localConfig, authScheme);
 

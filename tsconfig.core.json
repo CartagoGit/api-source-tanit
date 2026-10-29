@@ -11,6 +11,7 @@
     "packages/core/**/*.ts",
     "packages/core/**/*.d.ts",
     "tests/core/**/*.ts",
+    "tests/response-inference/**/*.ts",
     "tests/helpers/**/*.ts"
   ]
 }
