@@ -188,6 +188,45 @@ comprueba que el comando que instala es el que verifica, y
 comprueba que el verificador de consola rechaza un instalador cuya
 firma no verifica.
 
+### La superficie de seguridad del cliente
+
+Las comprobaciones de arriba se pueden **borrar**: si la llamada que
+las dispara desaparece del comando, la suite sigue verde y el cliente
+deja de comprobar algo sin que nadie se entere. Por eso cada
+comprobación tiene un ancla, y el ancla tiene un test.
+
+La enumeración completa vive en
+[tests/desktop/updater-contract.rs](../tests/desktop/updater-contract.rs)
+—la constante `SUPERFICIE_DE_SEGURIDAD`— y el test
+`la_superficie_de_seguridad_del_cliente_esta_toda_ata` exige que
+**cada** ancla siga ahí. Este documento enumera la misma superficie,
+con el test que ata cada entrada, y el test
+`el_documento_enumera_la_superficie_y_sus_tests_existen` exige que
+los dos digan lo mismo.
+
+| Comprobación | Dónde vive | Qué la ata |
+| --- | --- | --- |
+| El endpoint del contrato es HTTPS | `updater.rs::plan_update` | `plan_update_rechaza_un_endpoint_que_no_es_https` |
+| El endpoint es HTTPS antes de pedir nada | `updater.rs::check_for_update` | `un_endpoint_en_http_se_rechaza_sin_preguntar_nada` |
+| El manifest declara la clave esperada | `updater.rs::plan_update` | `una_clave_distinta_se_rechaza` |
+| La firma del manifest verifica | `updater.rs::plan_update` | `una_firma_corrupta_se_rechaza` |
+| La versión es posterior y la app está soportada | `updater.rs::plan_update` | `una_version_anterior_se_rechaza` |
+| Hay instalador para esta plataforma | `updater.rs::plan_update` | `un_target_incorrecto_se_rechaza` |
+| La URL del instalador es HTTPS | `updater.rs::plan_update` | `un_target_en_http_se_rechaza` |
+| El tamaño del instalador cuadra | `updater.rs::verify_artifact_hash` | `un_tamano_distinto_es_un_evento_de_seguridad` |
+| El digest del instalador cuadra | `updater.rs::verify_artifact_hash` | `un_hash_corrupto_se_rechaza` |
+| La firma del instalador verifica | `updater.rs::verify_artifact_signature` | `una_firma_de_instalador_corrupta_se_rechaza` |
+| El transporte real sólo habla HTTPS | `updater.rs::HttpsTransport` | `el_transporte_real_solo_habla_https` |
+| La comprobación verifica el manifest firmado | `main.rs::run_update_check` | `la_comprobacion_de_actualizaciones_verifica_el_manifest_firmado` |
+| La descarga decide con el manifest firmado | `main.rs::download_update` | `la_descarga_verifica_el_manifest_firmado_antes_de_descargar` |
+| Sólo se descarga la versión que se aprobó | `main.rs::download_update` | `la_descarga_solo_descarga_la_version_que_se_aprobo` |
+| El digest y el tamaño se verifican antes de escribir | `main.rs::download_update` | `el_instalador_se_verifica_antes_de_escribirlo_en_disco` |
+| La firma se verifica antes de escribir | `main.rs::download_update` | `el_instalador_se_verifica_antes_de_escribirlo_en_disco` |
+
+Las cuatro últimas son **cableado**: no se pueden ejercitar sin una
+ventana de Tauri, así que su test lee el fuente del comando. Las
+resto son funciones puras y su test las llama con bytes de mentira.
+
 ### Los códigos de aborto
 
 | Código | Qué pasó | ¿Evento de seguridad? |
