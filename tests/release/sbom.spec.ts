@@ -58,6 +58,7 @@ import {
   SBOM_ATTESTATION_PUBLIC_KEY_PATH,
   SBOM_BUILD_TOOL_PROPERTY,
   SBOM_DEFAULT_KEY_ID,
+  SBOM_PROVENANCE_PREDICATE_TYPE,
   SBOM_REQUIRED_COMPONENTS,
   SBOM_RUNS_URL,
   SBOM_SPEC_VERSION,
@@ -742,6 +743,89 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     ]);
     expect(digestResult.status).toBe(1);
     expect(digestResult.output).toContain("does not correspond to any attestation of this release");
+  });
+
+  test.skipIf(!HAS_OPENSSL)("la provenance publicada que dice otro commit no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const statement = JSON.parse(await readFile(platform.provenance, "utf8")) as {
+      predicate: {
+        buildDefinition: {
+          externalParameters: { source: { digest: { sha1: string } } };
+          resolvedDependencies: { digest: { sha1: string } }[];
+        };
+      };
+    };
+    // Sólo el commit: ni el builder ni los sujetos. El statement en
+    // claro dice que la build salió de otro commit, y la firma sigue
+    // diciendo el suyo. Publicar los dos es publicar dos versiones de
+    // la verdad, y sólo una está firmada.
+    statement.predicate.buildDefinition.externalParameters.source.digest.sha1 = OTHER_COMMIT;
+    const resolved = statement.predicate.buildDefinition.resolvedDependencies[0];
+    expect(resolved, "the provenance has no resolved dependency").toBeDefined();
+    if (resolved === undefined) throw new Error("the provenance has no resolved dependency");
+    resolved.digest.sha1 = OTHER_COMMIT;
+    const otherCommit = join(scratch, "other-commit.provenance.json");
+    await writeFile(otherCommit, `${JSON.stringify(statement, null, 2)}\n`, "utf8");
+
+    const result = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      platform.sbom,
+      "--attestation",
+      platform.attestation,
+      "--provenance",
+      otherCommit,
+      "--require-provenance",
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("says it was built from");
+    expect(result.output).toContain(OTHER_COMMIT);
+    expect(result.output).toContain(COMMIT);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("la provenance publicada con otro predicateType no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const statement = JSON.parse(await readFile(platform.provenance, "utf8")) as {
+      predicateType: string;
+    };
+    // Sólo el `predicateType`: el statement en claro deja de ser SLSA
+    // y la firma sigue diciendo SLSA. Un verificador que no lo
+    // comprueba acepta una provenance que ningún auditor puede leer.
+    statement.predicateType = "https://example.invalid/provenance/v1";
+    const otherType = join(scratch, "other-predicate-type.provenance.json");
+    await writeFile(otherType, `${JSON.stringify(statement, null, 2)}\n`, "utf8");
+
+    const result = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      platform.sbom,
+      "--attestation",
+      platform.attestation,
+      "--provenance",
+      otherType,
+      "--require-provenance",
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("predicate type");
+    expect(result.output).toContain(SBOM_PROVENANCE_PREDICATE_TYPE);
   });
 
   test.skipIf(!HAS_OPENSSL)("la provenance dice de qué run vino", async () => {
