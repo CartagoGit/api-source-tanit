@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 337 símbolos en 133 módulos.
+> 366 símbolos en 140 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -763,7 +763,7 @@ literal source string without touching the filesystem.
 
 ### `packages/core/discovery/import-resolver.ts`
 
-Import-path resolver (audit 2026-09-06 §12, proposal `r00014` S2).
+Import-path resolver — the adapter over `ModuleResolver` (proposal `r00020` S1).
 
 #### `resolveImportPath`
 
@@ -773,23 +773,14 @@ export function resolveImportPath( fromFile: string, specifier: string, projectR
 
 Resolve an import specifier against a source file.
 
-@param fromFile    Absolute path of the file containing the
+@param fromFile    Absolute path of the file that contains the
                    `import … from "…"` statement.
 @param specifier   The raw specifier (between the quotes).
-                   Bare specifiers like `"lodash"` are
-                   rejected — they reference `node_modules`
-                   which the resolver does not own.
-@param projectRoot Absolute path of the project root. Today
-                   the resolver works off `fromFile`'s
-                   dirname only — `projectRoot` is part of
-                   the signature so a future version can
-                   canonicalise the result back to a
-                   project-relative path without breaking
-                   call sites.
-@returns           Zero or more `IImportCandidate`s. Always
-                   `[]` when the input is empty or the
-                   specifier is a bare module name (no
-                   leading `.` or `/`).
+@param projectRoot Absolute path of the project root. It decides
+                   which `tsconfig`, which workspace layout and
+                   which `node_modules` chain apply.
+@returns           The ordered candidates. The first one that
+                   exists on disk is the file the import means.
 
 ### `packages/core/discovery/monorepo-detector.helper.ts`
 
@@ -1093,8 +1084,14 @@ catalog, use `summarizeWithAllFrameworks()` in `packages/frameworks/`.
 #### `empty`
 
 ```ts
-export function empty(): ISymbolGraph
+export function empty(options?: ISymbolGraphOptions): ISymbolGraph
 ```
+
+Empty graph (the default every scanner starts with before it starts
+visiting).
+
+The options are the ones of the graph: by default the legacy
+global-name lookup is **off**.
 
 #### `SymbolGraph`
 
@@ -1112,6 +1109,23 @@ shape of every other helper in `core/discovery/`.
 ```ts
 export class SymbolGraphBuilder
 ```
+
+#### `removeLegacyGlobalNameLookup`
+
+```ts
+export function removeLegacyGlobalNameLookup(graph: ISymbolGraph): ISymbolGraph
+```
+
+Rebuild a graph without the legacy global-name lookup.
+
+The lookup is **removed by default**; this function is the
+explicit way to switch it off on a graph that was built with
+`experimental.allowGlobalSymbolLookup: true`.
+
+@param graph The graph to rebuild.
+@returns      A graph with the same nodes and imports, whose
+              `resolveByImportPath` no longer searches the whole
+              project by name.
 
 ### `packages/core/discovery/symbol-id.ts`
 
@@ -3457,6 +3471,368 @@ never need to.
 ```ts
 export function toServiceDescriptor( node: IServiceGraphNode, endpoints: ReadonlyArray<IOperation>, ): IServiceDescriptor
 ```
+
+### `packages/core/module-resolution/package-exports.helper.ts`
+
+`package.json#exports` resolution (proposal `r00020` S1).
+
+#### `splitBareSpecifier`
+
+```ts
+export function splitBareSpecifier(specifier: string):
+```
+
+Split a bare specifier into package name and subpath.
+
+`lodash` → `{ packageName: "lodash", subpath: "." }`
+`lodash/fp` → `{ packageName: "lodash", subpath: "./fp" }`
+`@nestjs/core` → `{ packageName: "@nestjs/core", subpath: "." }`
+`@nestjs/core/testing` → `{ packageName: "@nestjs/core", subpath: "./testing" }`
+
+#### `resolvePackageExports`
+
+```ts
+export function resolvePackageExports( exportsField: unknown, subpath: string, conditions: ReadonlyArray<string>, ): string | null
+```
+
+Resolve a subpath against the `exports` field of a package.
+
+A `null` target under a condition that is active **blocks** the
+resolution, exactly as Node does: the package is saying "this
+path is not available under these conditions", and the next
+condition is not consulted.
+
+@param exportsField The raw `exports` value of the `package.json`.
+@param subpath      `"."` for the package root, `"./feature"` for a
+                    subpath.
+@param conditions   The active conditions.
+@returns            The raw target, or `null` when the subpath is
+                    not exported.
+
+#### `readPackageEntryPoints`
+
+```ts
+export function readPackageEntryPoints( manifest: unknown, ):
+```
+
+The entry points a package declares besides `exports`.
+
+`main` is the CommonJS entry, `module` the ESM one, `types` (or
+`typings`) the declaration file. A `.d.ts` is what a TypeScript
+consumer actually binds to, so it is looked up separately.
+
+### `packages/core/module-resolution/package-imports.helper.ts`
+
+`package.json#imports` resolution (proposal `r00020` S1).
+
+#### `resolvePackageImports`
+
+```ts
+export function resolvePackageImports( importsField: unknown, specifier: string, conditions: ReadonlyArray<string>, ): string | null
+```
+
+Resolve a `#`-prefixed specifier against the `imports` field.
+
+@param importsField The raw `imports` value of the `package.json`.
+@param specifier    The specifier, `#` included.
+@param conditions   The active conditions.
+@returns            The raw target, or `null` when the specifier is
+                    not mapped.
+
+### `packages/core/module-resolution/platform-paths.helper.ts`
+
+Platform path helpers (proposal `r00020` S1).
+
+#### `detectPathStyle`
+
+```ts
+export function detectPathStyle(path: string): PathStyle
+```
+
+Which dialect a path is written in.
+
+The UNC check comes first: `\\server\share` starts with two
+separators and would otherwise look like a plain POSIX absolute
+path.
+
+#### `isAbsolutePath`
+
+```ts
+export function isAbsolutePath(path: string): boolean
+```
+
+Whether the path is absolute in any dialect.
+
+`C:foo` (drive without a separator) is **not** absolute: on Windows
+it is relative to the current directory of the drive.
+
+#### `splitDrive`
+
+```ts
+export function splitDrive(path: string): IDriveSplit
+```
+
+Split the root off a path.
+
+The drive keeps its native spelling (`C:`, `\\\\server\\share`) and
+never carries a trailing separator.
+
+#### `toPosixPath`
+
+```ts
+export function toPosixPath(path: string): string
+```
+
+Rewrite a path in POSIX spelling (always `/`).
+
+The UNC root keeps its double slash, so `\\\\server\\share\\x`
+becomes `//server/share/x`.
+
+#### `toNativePath`
+
+```ts
+export function toNativePath(path: string, style: PathStyle): string
+```
+
+Rewrite a path in the given dialect.
+
+`posix` keeps the `/` separators; `win32` and `unc` use `\`.
+
+#### `normalizePath`
+
+```ts
+export function normalizePath(path: string): string
+```
+
+Collapse `.` and `..` segments, keeping the root intact.
+
+`..` never escapes the root: `/a/../..` is `/`, and
+`C:\a\..\..` is `C:\`.
+
+#### `joinPath`
+
+```ts
+export function joinPath(base: string, rel: string): string
+```
+
+Join a relative path onto a base path.
+
+An absolute `rel` wins outright — that is how a specifier like
+`C:\app\x.ts` behaves when it is joined against a POSIX base.
+
+#### `dirnamePath`
+
+```ts
+export function dirnamePath(path: string): string
+```
+
+#### `basenamePath`
+
+```ts
+export function basenamePath(path: string): string
+```
+
+#### `extnamePath`
+
+```ts
+export function extnamePath(path: string): string
+```
+
+The extension of the path, including the dot — `""` when there is
+none.
+
+A dotfile (`.eslintrc`) has no extension: the dot is the name.
+
+#### `stripExtension`
+
+```ts
+export function stripExtension(path: string): string
+```
+
+#### `applyDriveRoot`
+
+```ts
+export function applyDriveRoot( path: string, driveRoots: Readonly<Record<string, string>>, fallbackRoot?: string, ): string
+```
+
+Replace the drive of a path with a local directory.
+
+`C:\app\src\main.ts` with `{"C:": "/home/dev/app"}` becomes
+`/home/dev/app/src/main.ts`.
+
+A drive that is not mapped falls back to `fallbackRoot` — the
+project root, for the resolver. A scanner that meets an absolute
+path written in another dialect is looking at a path **inside** the
+project it is scanning, and the project root is the only root it
+can probe. A caller that knows the real drive root says so, and
+the mapping wins.
+
+@param path        The path to remap.
+@param driveRoots  The explicit mappings, by drive or by share.
+@param fallbackRoot The root used when the drive is not mapped.
+
+### `packages/core/module-resolution/resolver-error.helper.ts`
+
+Structured resolution failures (proposal `r00020` S1).
+
+#### `createResolverError`
+
+```ts
+export function createResolverError( code: ModuleResolutionErrorCode, specifier: string, searchPaths: ReadonlyArray<string>, message: string, fromFile?: string, ): IResolverError
+```
+
+Build a resolution failure.
+
+@param code       Machine-readable reason.
+@param specifier  The specifier that failed, verbatim.
+@param searchPaths Every path that was probed.
+@param message    Human-readable explanation, in English.
+@param fromFile   The importing file, when there was one.
+
+#### `notFoundError`
+
+```ts
+export function notFoundError( specifier: string, searchPaths: ReadonlyArray<string>, fromFile?: string, ): IResolverError
+```
+
+The failure of a specifier that matched nothing.
+
+The message names the specifier and the number of probed paths:
+"searched 4 paths" is what a reader needs to trust that the
+resolver did its job.
+
+#### `invalidSpecifierError`
+
+```ts
+export function invalidSpecifierError( specifier: string, fromFile?: string, ): IResolverError
+```
+
+The failure of a specifier that cannot be interpreted.
+
+An empty specifier, or one made only of separators, is not a
+module: there is nothing to look for.
+
+#### `isResolverError`
+
+```ts
+export function isResolverError(value: unknown): value is IResolverError
+```
+
+Whether a value is a structured resolution failure.
+
+The guard exists because the outcome is a union: a caller that
+only wants the failures needs a way to tell them apart without
+casting.
+
+### `packages/core/module-resolution/resolver.service.ts`
+
+`ModuleResolver` — the real module resolver (proposal `r00020` S1).
+
+#### `ModuleResolver`
+
+```ts
+export class ModuleResolver implements IModuleResolver
+```
+
+Resolves module specifiers the way Node and TypeScript do.
+
+The class is cheap to build once and then reused: it reads the
+manifests of the project when it is constructed, and caches every
+resolution it has already computed.
+
+### `packages/core/module-resolution/tsconfig-paths.helper.ts`
+
+`tsconfig` path aliases (proposal `r00020` S1).
+
+#### `stripJsonComments`
+
+```ts
+export function stripJsonComments(raw: string): string
+```
+
+Strip the comments and the trailing commas a tsconfig may carry.
+
+The strings are preserved: a `"https://example.com"` inside a value
+is not a comment.
+
+#### `stripTrailingCommas`
+
+```ts
+export function stripTrailingCommas(raw: string): string
+```
+
+#### `parseTsconfigPaths`
+
+```ts
+export function parseTsconfigPaths( raw: string, tsconfigDir: string, ): ITsconfigPaths
+```
+
+Parse a tsconfig into the two knobs the resolver needs.
+
+A tsconfig that cannot be parsed yields an empty result — a broken
+tsconfig must not take the whole scan down.
+
+@param raw        The text of the tsconfig.
+@param tsconfigDir Absolute directory of the tsconfig; `baseUrl`
+                   is relative to it.
+
+#### `matchPathPattern`
+
+```ts
+export function matchPathPattern( pattern: string, specifier: string, ): string | null
+```
+
+Match a specifier against a `paths` pattern.
+
+Returns the text the `*` captured — `""` for a pattern without a
+wildcard — or `null` when the pattern does not apply.
+
+A pattern may hold at most one `*`, exactly like TypeScript's.
+
+#### `matchTsconfigPaths`
+
+```ts
+export function matchTsconfigPaths( paths: Readonly<Record<string, ReadonlyArray<string>>>, specifier: string, ):
+```
+
+The `paths` entry that wins for a specifier.
+
+TypeScript picks the pattern with the longest prefix; when two
+share it, the longest suffix wins. The result is deterministic, and
+it is the same rule the compiler applies — a resolver that picked a
+different alias would resolve to a different file than `tsc` does.
+
+#### `expandPathTargets`
+
+```ts
+export function expandPathTargets( targets: ReadonlyArray<string>, capture: string, baseDir: string, ): string[]
+```
+
+Expand the targets of a matched `paths` entry.
+
+The `*` of the pattern is replaced by the captured text, and a
+target that starts with `/` is absolute while the rest are
+relative to the `baseUrl` (or to the tsconfig directory when there
+is no `baseUrl`).
+
+### `packages/core/module-resolution/workspace-resolver.service.ts`
+
+Workspace packages (proposal `r00020` S1).
+
+#### `detectWorkspacePackages`
+
+```ts
+export function detectWorkspacePackages( projectRoot: string, fs:
+```
+
+The workspace packages of a project.
+
+The root project itself is **not** included: it is not a workspace
+member, it is the project. A package that imports itself by name
+is a mistake, not a resolution.
+
+@param projectRoot Absolute path of the project root.
+@param fs          The filesystem facts to read with.
 
 ### `packages/core/responses/infer-responses.ts`
 
