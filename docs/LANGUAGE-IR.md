@@ -145,7 +145,8 @@ El contrato pide posición; el LanguageIR la guarda como rango de
 caracteres y el frontend la convierte a línea y columna. Las
 **declaraciones** no vienen con rango: el AST normalizado solo trae la
 línea, y la columna se lee del árbol de sintaxis — el mismo del que
-sale todo lo demás (ver [la posición](#la-posición-el-ancla-no-el-nodo)).
+sale todo lo demás (ver «La posición: el ancla, no el nodo», más
+arriba).
 
 Lo que **no** ha cambiado: `parse()`, `parseModule()`,
 `parseModuleWithProgram()` y `extractRoutes()` devuelven exactamente lo
