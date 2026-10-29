@@ -52,6 +52,11 @@ const METODOS = [
  * the scanners are in `packages/frameworks/scanners/` — and Laravel has
  * its own. Every folder is listed on purpose — if a `core/scanners/`
  * ever appears, it is watched from the day it appears.
+ *
+ * Two more are watched now, because they are **consumers of the IR**:
+ * the LanguageIR that already existed (the TypeScript-shaped one the
+ * six JavaScript scanners read) and the discovery folder, where the
+ * host config parser lives.
  */
 const CARPETAS = [
   join(RAIZ, "packages", "core", "scanners"),
@@ -262,6 +267,115 @@ describe("los símbolos y los decoradores se proyectan sin perder información",
     expect(funcion?.kind).toBe("function");
     expect(funcion?.location.line).toBe(5);
     expect(funcion?.location.file).toBe("src/lib.ts");
+  });
+});
+
+describe("la columna de un símbolo es la de su nombre", () => {
+  // La sangría de 4 espacios es deliberada: fija la columna 4 del
+  // método y la 6 del nombre de la clase. Con la sangría de 2 del
+  // repo los números serían otros, y el número es lo que se vigila.
+  const FUENTE = [
+    "class A {",
+    "    method() { return 1; }",
+    "}",
+  ].join("\n");
+
+  test("la clase apunta al nombre que introduce", () => {
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const clase = document.symbols.find((s) => s.name === "A");
+    expect(clase?.kind).toBe("class");
+    expect(clase?.location.line).toBe(1);
+    // El `A` de `class A {` está en la columna 6 — no en la 0, que es
+    // donde empieza la sentencia.
+    expect(clase?.location.column).toBe(6);
+  });
+
+  test("el método apunta al nombre que introduce", () => {
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const metodo = document.symbols.find((s) => s.name === "method");
+    expect(metodo?.kind).toBe("method");
+    expect(metodo?.location.line).toBe(2);
+    // El `method` está en la columna 4 — no en la 0, que es donde
+    // empieza la línea.
+    expect(metodo?.location.column).toBe(4);
+  });
+
+  test("la columna es donde el nombre está escrito en su línea", () => {
+    // La regla, y no el número: la columna de un símbolo es la
+    // posición de su nombre dentro de la línea que lo contiene. Un
+    // `column: 0` —o un `column: 42`— rompe esta aserción.
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const lineas = FUENTE.split("\n");
+    expect(document.symbols.length).toBeGreaterThan(0);
+    for (const symbol of document.symbols) {
+      const linea = lineas[symbol.location.line - 1] ?? "";
+      expect(symbol.location.column, symbol.name).toBe(
+        linea.indexOf(symbol.name),
+      );
+    }
+  });
+
+  test("un símbolo de nivel de módulo apunta a su nombre", () => {
+    const document = typescriptFrontend.parse(
+      ["const app = 1;", "function helper() { return 1; }"].join("\n"),
+      "src/lib.ts",
+    );
+    const constante = document.symbols.find((s) => s.name === "app");
+    expect(constante?.location.line).toBe(1);
+    expect(constante?.location.column).toBe(6);
+
+    const funcion = document.symbols.find((s) => s.name === "helper");
+    expect(funcion?.location.line).toBe(2);
+    expect(funcion?.location.column).toBe(9);
+  });
+
+  test("una declaración decorada apunta a su nombre, y el marcador al suyo", () => {
+    const document = typescriptFrontend.parse(
+      [
+        "@Controller('/users')",
+        "export class UsersController {",
+        "  @Get(':id')",
+        "  getUser() { return {}; }",
+        "}",
+      ].join("\n"),
+      "src/users.controller.ts",
+    );
+    // La clase está decorada: su *nodo* empieza en el decorador
+    // (línea 1), pero su *nombre* está en la línea 2 — y la línea y
+    // la columna tienen que hablar de lo mismo.
+    const clase = document.symbols.find((s) => s.name === "UsersController");
+    expect(clase?.location.line).toBe(2);
+    expect(clase?.location.column).toBe(13);
+
+    const decorador = document.decorators.find((d) => d.name === "Controller");
+    expect(decorador?.location.line).toBe(1);
+    // El `Controller` de `@Controller('/users')` está en la columna 1:
+    // la columna 0 es el `@`.
+    expect(decorador?.location.column).toBe(1);
+  });
+});
+
+describe("la visibilidad de un método viene de su clase", () => {
+  test("el método de una clase exportada es visible fuera del módulo", () => {
+    const document = typescriptFrontend.parse(
+      ["export class A {", "  m() { return 1; }", "}"].join("\n"),
+      "src/a.ts",
+    );
+    const metodo = document.symbols.find((s) => s.name === "m");
+    expect(metodo?.kind).toBe("method");
+    // El frontend no modela la visibilidad de los miembros: un método
+    // público de una clase exportada *es* visible desde fuera del
+    // módulo, así que hereda la visibilidad de su clase.
+    expect(metodo?.exported).toBe(true);
+  });
+
+  test("el método de una clase que no se exporta, no lo es", () => {
+    const document = typescriptFrontend.parse(
+      ["class A {", "  m() { return 1; }", "}"].join("\n"),
+      "src/a.ts",
+    );
+    const metodo = document.symbols.find((s) => s.name === "m");
+    expect(metodo?.exported).toBe(false);
   });
 });
 

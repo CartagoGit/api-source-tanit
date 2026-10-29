@@ -57,7 +57,15 @@ export interface ISymbol {
   readonly name: string;
   /** What kind of declaration this is. */
   readonly kind: SymbolKind;
-  /** Whether the declaration is visible outside its module. */
+  /**
+   * Whether the declaration is visible outside its module.
+   *
+   * A **method** inherits the visibility of the class that holds it:
+   * a frontend that does not model the visibility of the members (the
+   * TypeScript one does not) reports a method of an exported class
+   * as exported — a public method of an exported class *is* reachable
+   * from outside the module.
+   */
   readonly exported: boolean;
   /** Where the declaration starts. */
   readonly location: ILocation;
