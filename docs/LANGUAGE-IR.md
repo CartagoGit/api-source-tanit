@@ -73,8 +73,11 @@ pierde `this.router.get` (el verbo sería `router`) y `server["get"]`
 | `this` | `this.router.get(...)` |
 | `member` | `api.router.get(...)` |
 | `factory` | `getRouter().get(...)` |
-| `computed` | `server["get"](...)` |
+| `computed` | `server["get"]` |
 | `optional` | `router?.get(...)` |
+
+El caso `computed` se escribe sin paréntesis a propósito: el miembro se
+accede con una expresión computada (`server["get"]`), no con un nombre.
 
 **El decorador y el atributo son la misma cosa.** En JavaScript y en
 Python se llama *decorador*; en Java, *anotación*; en C#, *atributo*.

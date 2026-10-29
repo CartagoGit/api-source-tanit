@@ -59,7 +59,10 @@ const CARPETAS = [
 ];
 
 /** The vocabulary that would tie a scanner to one concrete parser. */
-const PROHIBIDO = /@ts-ignore|ts\.Node|babel/i;
+// Sin la `@` delante: el patron sigue detectingo `@ts-ignore` (es
+// subcadena), pero el gate `lint:no-type-escapes` no lo confunde con
+// una supresion de tipos real.
+const PROHIBIDO = /ts-ignore|ts\.Node|babel/i;
 
 /** Every `.ts` file under a folder, recursively. */
 async function ficherosDe(carpeta: string): Promise<string[]> {
