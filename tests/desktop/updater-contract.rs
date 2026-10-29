@@ -1248,6 +1248,43 @@ fn el_evento_de_seguridad_se_persiste_en_cada_rama_de_aborto() {
 }
 
 #[test]
+fn el_instalador_se_verifica_antes_de_escribirlo_en_disco() {
+    // `download_update` es el **único** camino que escribe el
+    // instalador en disco y lo ofrece a la persona. Los tests que ya
+    // hay prueban que las *funciones* de verificación verifican, pero
+    // no que este comando las *llame*: si las llamadas desaparecieran,
+    // el instalador sin verificar llegaría a la carpeta de descargas y
+    // la suite seguiría verde.
+    //
+    // Por eso aquí se lee el cuerpo del comando y se exige que
+    // verifique **antes** de escribir. El orden no es un detalle: un
+    // artefacto que no cuadra no llega al disco.
+    let source = main_source();
+    let cuerpo = cuerpo_de_funcion(&source, "download_update")
+        .unwrap_or_else(|| panic!("the desktop app does not have a `download_update`"));
+
+    for verificacion in ["verify_artifact_hash", "verify_artifact_signature"] {
+        assert!(
+            cuerpo.contains(verificacion),
+            "the `download_update` command does not call `{verificacion}`: the installer would reach the disk without being verified"
+        );
+    }
+
+    let escritura = cuerpo.find("std::fs::write").unwrap_or_else(|| {
+        panic!("the `download_update` command does not write the installer to disk")
+    });
+    for verificacion in ["verify_artifact_hash", "verify_artifact_signature"] {
+        let llamada = cuerpo.find(verificacion).unwrap_or_else(|| {
+            panic!("the `download_update` command does not call `{verificacion}`")
+        });
+        assert!(
+            llamada < escritura,
+            "the `download_update` command writes the installer before it calls `{verificacion}`"
+        );
+    }
+}
+
+#[test]
 fn persistir_el_evento_de_seguridad_llega_al_log() {
     // Y persistir no es llamar a la nada: tiene que terminar en el
     // log. La búsqueda sigue las llamadas del propio fuente, así que
