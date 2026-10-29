@@ -68,14 +68,19 @@ export type ModuleResolutionKind =
   /** A package that belongs to the workspace. */
   | "workspace";
 
-/** Why a resolution failed. */
+/**
+ * Why a resolution failed.
+ *
+ * There are only two reasons: the specifier was not a module, or
+ * nothing matched it. A code that nothing produces is a code that
+ * lies — a caller that switches on it never reaches the branch it
+ * wrote, and nobody notices until the bug is reported.
+ */
 export type ModuleResolutionErrorCode =
   /** Nothing matched. The error carries the probed paths. */
   | "NOT_FOUND"
   /** The specifier is empty or cannot be interpreted at all. */
-  | "INVALID_SPECIFIER"
-  /** The specifier points at something the resolver does not read. */
-  | "UNSUPPORTED";
+  | "INVALID_SPECIFIER";
 
 /**
  * A structured resolution failure.
@@ -107,7 +112,13 @@ export interface IModuleResolutionResult {
   readonly kind: ModuleResolutionKind;
   /** The package the specifier belongs to, when it belongs to one. */
   readonly packageName?: string;
-  /** The subpath inside the package, when the specifier had one. */
+  /**
+   * The subpath that was requested inside the package.
+   *
+   * `"."` is the root of the package. It is only set when the
+   * resolution came from a package: a relative import or a
+   * `tsconfig` alias belongs to no package.
+   */
   readonly subpath?: string;
 }
 
@@ -236,4 +247,12 @@ export interface IModuleCandidate {
   readonly form: ModuleCandidateForm;
   /** The package the candidate belongs to, when it belongs to one. */
   readonly packageName?: string;
+  /**
+   * The subpath requested inside the package.
+   *
+   * `"."` is the root of the package. It travels with the
+   * candidate so that the resolution can report which subpath of
+   * the package answered.
+   */
+  readonly subpath?: string;
 }

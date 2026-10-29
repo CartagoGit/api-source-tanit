@@ -127,6 +127,12 @@ jobs:
       # baselines de bench siguen vigentes.
       - name: Bench check
         run: bun run bench:check
+      # El resolver de módulos tiene su propio presupuesto: 1000
+      # imports resueltos en menos de 100 ms. Sin este paso, una
+      # regresión de rendimiento del `ModuleResolver` pasaría
+      # desapercibida.
+      - name: Module resolution bench
+        run: bun run bench:module-resolution
 
   # ─────────────────── gates always-on ───────────────────
 

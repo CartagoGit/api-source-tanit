@@ -36,8 +36,7 @@ export function resolvePackageImports(
 
   const direct = importsField[specifier];
   if (direct !== undefined) {
-    const target = resolveImportTarget(direct, conditions);
-    return target;
+    return importedTarget(resolveImportTarget(direct, conditions));
   }
 
   let best: { key: string; capture: string } | null = null;
@@ -63,11 +62,32 @@ export function resolvePackageImports(
   }
   if (best === null) return null;
 
-  const target = resolveImportTarget(importsField[best.key], conditions);
+  const target = importedTarget(
+    resolveImportTarget(importsField[best.key], conditions),
+  );
   if (target === null) return null;
   return best.capture.length > 0
     ? target.replaceAll("*", best.capture)
     : target;
+}
+
+/**
+ * The marker of a **blocked** resolution.
+ *
+ * A `null` target under a condition that matches is not "this
+ * condition did not match": Node stops the resolution right there.
+ * The `imports` field is resolved with the same algorithm as the
+ * `exports` one, so the same rule applies.
+ */
+const BLOCKED = Symbol("blocked-target");
+
+/**
+ * The target of a resolution, or `null` when nothing is mapped.
+ */
+function importedTarget(
+  resolved: string | null | typeof BLOCKED,
+): string | null {
+  return typeof resolved === "string" ? resolved : null;
 }
 
 /**
@@ -79,10 +99,14 @@ export function resolvePackageImports(
 function resolveImportTarget(
   value: unknown,
   conditions: ReadonlyArray<string>,
-): string | null {
+): string | null | typeof BLOCKED {
+  if (value === null) return BLOCKED;
   if (typeof value === "string") return value;
   if (Array.isArray(value)) {
     for (const entry of value) {
+      // Node skips a `null` entry of a fallback array: the array is
+      // a list of alternatives and `null` is not one of them.
+      if (entry === null) continue;
       const resolved = resolveImportTarget(entry, conditions);
       if (resolved !== null) return resolved;
     }
@@ -91,6 +115,8 @@ function resolveImportTarget(
   if (isRecord(value)) {
     for (const [key, entry] of Object.entries(value)) {
       if (key !== "default" && !conditions.includes(key)) continue;
+      // The condition matched. A `null` target blocks the
+      // resolution: Node does not carry on with the next condition.
       const resolved = resolveImportTarget(entry, conditions);
       if (resolved !== null) return resolved;
     }

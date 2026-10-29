@@ -61,9 +61,39 @@ const resolver = new ModuleResolver({
 });
 ```
 
+A `null` target under a condition that **is** active **blocks** the
+resolution, exactly as Node does:
+
+```json
+{ "exports": { ".": { "import": null, "default": "./index.js" } } }
+```
+
+With the `import` condition active, the package does not export
+its root — the `default` condition is not consulted, because the
+`import` condition already answered. A `null` **entry** of a
+fallback array is a different thing: an array is a list of
+alternatives, and a `null` entry is not one of them, so it is
+skipped.
+
 A declaration file (`.d.ts`) is a valid target, and it is preferred
 over the runtime entry: the scanner reads TypeScript, and a `.js`
 entry would carry no symbols.
+
+## What a resolution reports
+
+A successful resolution says which package answered and which
+subpath of it was asked for:
+
+```ts
+const outcome = resolver.resolve("@acme/orders/main", fromFile);
+if (outcome.ok) {
+  outcome.packageName; // "@acme/orders"
+  outcome.subpath; // "./main" — "." is the root of the package
+}
+```
+
+`subpath` is only set when the resolution came from a package: a
+relative import or a `tsconfig` alias belongs to no package.
 
 ## Path dialects
 
@@ -96,11 +126,15 @@ path it probed:
 ```ts
 const outcome = resolver.resolve("lodash", fromFile);
 if (!outcome.ok) {
-  outcome.error.code; // "NOT_FOUND" | "INVALID_SPECIFIER" | "UNSUPPORTED"
+  outcome.error.code; // "NOT_FOUND" | "INVALID_SPECIFIER"
   outcome.error.specifier; // "lodash"
   outcome.error.searchPaths; // every path that was probed
 }
 ```
+
+There are only two reasons. A code that nothing produces is a code
+that lies: a caller that switches on it never reaches the branch it
+wrote.
 
 `searchPaths` is the part that matters: it is what tells a reader
 whether the problem is a missing dependency, a wrong alias or a file
@@ -153,3 +187,13 @@ The budget is **100 ms** for the cold pass (the manifests and the
 `tsconfig` are read when the resolver is built; the pass itself does
 the real resolution). The `--check` flag turns the budget into a
 gate that exits with 1 when it is exceeded.
+
+The gate is wired, so a regression of the resolver does not pass
+unnoticed:
+
+```
+bun run bench:module-resolution
+```
+
+It runs as the last step of `bun run validate`, and as its own step
+of the `bench-check` job of the CI.

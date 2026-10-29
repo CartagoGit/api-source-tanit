@@ -45,11 +45,11 @@ const resolvers = new Map<string, ModuleResolver>();
  * one that takes a minute.
  */
 function resolverFor(projectRoot: string): ModuleResolver {
-	const existing = resolvers.get(projectRoot);
-	if (existing !== undefined) return existing;
-	const created = new ModuleResolver({ projectRoot });
-	resolvers.set(projectRoot, created);
-	return created;
+  const existing = resolvers.get(projectRoot);
+  if (existing !== undefined) return existing;
+  const created = new ModuleResolver({ projectRoot });
+  resolvers.set(projectRoot, created);
+  return created;
 }
 
 /**

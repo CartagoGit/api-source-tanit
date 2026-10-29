@@ -3497,6 +3497,11 @@ export function resolvePackageExports( exportsField: unknown, subpath: string, c
 
 Resolve a subpath against the `exports` field of a package.
 
+A `null` target under a condition that is active **blocks** the
+resolution, exactly as Node does: the package is saying "this
+path is not available under these conditions", and the next
+condition is not consulted.
+
 @param exportsField The raw `exports` value of the `package.json`.
 @param subpath      `"."` for the package root, `"./feature"` for a
                     subpath.

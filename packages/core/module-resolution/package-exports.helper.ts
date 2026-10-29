@@ -51,18 +51,46 @@ export function splitBareSpecifier(specifier: string): {
 }
 
 /**
+ * The marker of a **blocked** resolution.
+ *
+ * A `null` target under a condition that matches is not "this
+ * condition did not match": Node stops the resolution right there.
+ * The two answers are different, so they are different values:
+ * `null` means "nothing matched", the marker means "matched, and
+ * the package does not export this path".
+ */
+const BLOCKED = Symbol("blocked-target");
+
+/**
+ * The target of a resolution, or `null` when nothing is exported.
+ *
+ * A blocked target and a target that never matched mean the same
+ * thing to a caller: the package does not export that path.
+ */
+function exportedTarget(
+  resolved: string | null | typeof BLOCKED,
+): string | null {
+  return typeof resolved === "string" ? resolved : null;
+}
+
+/**
  * Resolve a target value against the active conditions.
  *
- * Returns the raw target (it may still contain a `*`), or `null`
- * when nothing matched.
+ * Returns the raw target (it may still contain a `*`), `null` when
+ * nothing matched, and the blocked marker when a **matched**
+ * condition declared a `null` target.
  */
 function resolveTarget(
   value: unknown,
   conditions: ReadonlyArray<string>,
-): string | null {
+): string | null | typeof BLOCKED {
+  if (value === null) return BLOCKED;
   if (typeof value === "string") return value;
   if (Array.isArray(value)) {
     for (const entry of value) {
+      // Node skips a `null` entry of a fallback array: the array is
+      // a list of alternatives and `null` is not one of them.
+      if (entry === null) continue;
       const resolved = resolveTarget(entry, conditions);
       if (resolved !== null) return resolved;
     }
@@ -71,6 +99,8 @@ function resolveTarget(
   if (isRecord(value)) {
     for (const [key, entry] of Object.entries(value)) {
       if (key !== "default" && !conditions.includes(key)) continue;
+      // The condition matched. A `null` target blocks the
+      // resolution: Node does not carry on with the next condition.
       const resolved = resolveTarget(entry, conditions);
       if (resolved !== null) return resolved;
     }
@@ -122,6 +152,11 @@ function matchSubpath(
 /**
  * Resolve a subpath against the `exports` field of a package.
  *
+ * A `null` target under a condition that is active **blocks** the
+ * resolution, exactly as Node does: the package is saying "this
+ * path is not available under these conditions", and the next
+ * condition is not consulted.
+ *
  * @param exportsField The raw `exports` value of the `package.json`.
  * @param subpath      `"."` for the package root, `"./feature"` for a
  *                     subpath.
@@ -139,14 +174,17 @@ export function resolvePackageExports(
     return subpath === "." ? exportsField : null;
   }
   if (Array.isArray(exportsField)) {
-    return subpath === "." ? resolveTarget(exportsField, conditions) : null;
+    if (subpath !== ".") return null;
+    return exportedTarget(resolveTarget(exportsField, conditions));
   }
   if (!isRecord(exportsField)) return null;
 
   if (isSubpathMap(exportsField)) {
     const matched = matchSubpath(exportsField, subpath);
     if (matched === null) return null;
-    const target = resolveTarget(exportsField[matched.key], conditions);
+    const target = exportedTarget(
+      resolveTarget(exportsField[matched.key], conditions),
+    );
     if (target === null) return null;
     return matched.capture.length > 0
       ? target.replaceAll("*", matched.capture)
@@ -154,7 +192,7 @@ export function resolvePackageExports(
   }
 
   if (subpath !== ".") return null;
-  return resolveTarget(exportsField, conditions);
+  return exportedTarget(resolveTarget(exportsField, conditions));
 }
 
 /**

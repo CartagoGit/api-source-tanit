@@ -225,6 +225,7 @@ export class ModuleResolver implements IModuleResolver {
         ...(candidate.packageName === undefined
           ? {}
           : { packageName: candidate.packageName }),
+        ...(candidate.subpath === undefined ? {} : { subpath: candidate.subpath }),
       };
       this.outcomes.set(key, outcome);
       return outcome;
@@ -251,14 +252,25 @@ export class ModuleResolver implements IModuleResolver {
   /**
    * The candidates of a path: the path itself, the same path with
    * every extension, and the `index.*` of the directory.
+   *
+   * The `subpath` travels with the candidate: it is the subpath of
+   * the package that was asked for, and a resolution that reports
+   * it says which subpath of the package answered.
    */
   private fileCandidates(
     base: string,
     kind: ModuleResolutionKind,
     packageName?: string,
+    subpath?: string,
   ): ReadonlyArray<IModuleCandidate> {
     const out: IModuleCandidate[] = [];
-    const owner = packageName === undefined ? {} : { packageName };
+    const owner =
+      packageName === undefined
+        ? {}
+        : {
+            packageName,
+            ...(subpath === undefined ? {} : { subpath }),
+          };
     const normalized = normalizePath(base);
     out.push({ path: normalized, kind, form: "literal", ...owner });
     const { bare, extension } = splitDeclaredExtension(
@@ -406,7 +418,7 @@ export class ModuleResolver implements IModuleResolver {
       // missing has no `exports` to honour.
       const base =
         subpath === "." ? packageDir : joinPath(packageDir, subpath);
-      return this.fileCandidates(base, kind, packageName);
+      return this.fileCandidates(base, kind, packageName, subpath);
     }
 
     const exportsField = isRecord(manifest) ? manifest["exports"] : undefined;
@@ -422,6 +434,7 @@ export class ModuleResolver implements IModuleResolver {
           joinPath(packageDir, target),
           "package-exports",
           packageName,
+          subpath,
         );
       }
       return this.bareCandidates(target, `${packageDir}/package.json`);
@@ -432,6 +445,7 @@ export class ModuleResolver implements IModuleResolver {
         joinPath(packageDir, subpath),
         kind === "workspace" ? "workspace" : "node-modules",
         packageName,
+        subpath,
       );
     }
 
@@ -442,6 +456,7 @@ export class ModuleResolver implements IModuleResolver {
           joinPath(packageDir, entries.types),
           "package-main",
           packageName,
+          subpath,
         ),
       );
     }
@@ -451,6 +466,7 @@ export class ModuleResolver implements IModuleResolver {
           joinPath(packageDir, entries.module),
           "package-main",
           packageName,
+          subpath,
         ),
       );
     }
@@ -460,6 +476,7 @@ export class ModuleResolver implements IModuleResolver {
           joinPath(packageDir, entries.main),
           "package-main",
           packageName,
+          subpath,
         ),
       );
     }
@@ -468,6 +485,7 @@ export class ModuleResolver implements IModuleResolver {
         joinPath(packageDir, "index"),
         "package-index",
         packageName,
+        subpath,
       ),
     );
     return out;

@@ -182,25 +182,71 @@ describe("ModuleResolver — package exports and conditions (criterion 1)", () =
     "feature.js": "export const feature = true;\n",
   };
 
+  /**
+   * A package that exports its root and nothing else, with a file
+   * that is right there on disk.
+   *
+   * The file exists **on purpose**: a resolver that falls back to
+   * the file when the subpath is not in the map would resolve it,
+   * and the test below has to be able to fail on that.
+   */
+  const strictExportsProject = {
+    "package.json": JSON.stringify({
+      name: "strict-exports-demo",
+      version: "1.0.0",
+      exports: { ".": "./index.js" },
+    }),
+    "index.js": "export const index = true;\n",
+    "private.js": "export const secret = true;\n",
+  };
+
+  /**
+   * A package whose root is blocked under the `import` condition.
+   *
+   * The `default` condition would answer, and Node does not let
+   * it: a `null` target under an active condition stops the
+   * resolution there.
+   */
+  const blockedExportsProject = {
+    "package.json": JSON.stringify({
+      name: "blocked-demo",
+      version: "1.0.0",
+    }),
+    "src/main.ts": "export const main = true;\n",
+    "node_modules/blocked/package.json": JSON.stringify({
+      name: "blocked",
+      version: "1.0.0",
+      exports: { ".": { import: null, default: "./index.js" } },
+    }),
+    "node_modules/blocked/index.js": "export const blocked = true;\n",
+  };
+
   interface IResolution {
     readonly ok: boolean;
     readonly path: string;
     readonly code: string;
+    readonly subpath: string;
   }
 
   function resolveWith(
     conditions: ReadonlyArray<string>,
     specifier: string,
+    project: Record<string, string> = exportsProject,
   ): IResolution {
-    return withFixture(exportsProject, (root) => {
+    return withFixture(project, (root) => {
       const resolver = new ModuleResolver({
         projectRoot: root,
         conditions: [...conditions],
       });
       const outcome = resolver.resolve(specifier, join(root, "src", "main.ts"));
       return outcome.ok
-        ? { ok: true, path: outcome.path, code: "" }
-        : { ok: false, path: "", code: outcome.error.code };
+        ? {
+            ok: true,
+            path: outcome.path,
+            code: "",
+            subpath: outcome.subpath ?? "",
+          }
+        : { ok: false, path: "", code: outcome.error.code, subpath: "" };
     });
   }
 
@@ -247,6 +293,61 @@ describe("ModuleResolver — package exports and conditions (criterion 1)", () =
     const result = resolveWith(["import"], "exports-demo/private");
     expect(result.ok).toBe(false);
     expect(result.code).toBe("NOT_FOUND");
+  });
+
+  test("a subpath that exists on disk but is not exported does not resolve", () => {
+    const result = resolveWith(
+      ["import"],
+      "strict-exports-demo/private",
+      strictExportsProject,
+    );
+    expect(result.ok).toBe(false);
+    expect(result.code).toBe("NOT_FOUND");
+  });
+
+  test("the exported root of that package does resolve", () => {
+    const result = resolveWith(
+      ["import"],
+      "strict-exports-demo",
+      strictExportsProject,
+    );
+    expect(result.ok).toBe(true);
+    expect(result.path).toContain("index.js");
+  });
+
+  test("the resolution reports the subpath that was requested", () => {
+    const subpath = resolveWith(["import"], "exports-demo/feature");
+    expect(subpath.ok).toBe(true);
+    expect(subpath.subpath).toBe("./feature");
+
+    const root = resolveWith(["import"], "exports-demo");
+    expect(root.ok).toBe(true);
+    expect(root.subpath).toBe(".");
+  });
+
+  test("a `null` target under an active condition blocks the export", () => {
+    withFixture(blockedExportsProject, (root) => {
+      const resolver = new ModuleResolver({ projectRoot: root });
+      const outcome = resolver.resolve("blocked", join(root, "src", "main.ts"));
+
+      expect(outcome.ok).toBe(false);
+      if (outcome.ok) return;
+      expect(outcome.error.code).toBe("NOT_FOUND");
+    });
+  });
+
+  test("the blocked package resolves when that condition is not active", () => {
+    withFixture(blockedExportsProject, (root) => {
+      const resolver = new ModuleResolver({
+        projectRoot: root,
+        conditions: ["require", "default"],
+      });
+      const outcome = resolver.resolve("blocked", join(root, "src", "main.ts"));
+
+      expect(outcome.ok).toBe(true);
+      if (!outcome.ok) return;
+      expect(outcome.path).toContain("index.js");
+    });
   });
 
   test("the helper resolves the same map without a filesystem", () => {
@@ -721,6 +822,29 @@ describe("package exports helper (criterion 1)", () => {
     );
   });
 
+  test("a `null` target under a matched condition blocks the resolution", () => {
+    const exportsField = {
+      ".": { import: null, default: "./def.js" },
+    };
+    // The `import` condition is active and its target is `null`:
+    // the resolution stops there, exactly as Node does. It does NOT
+    // carry on with the `default` condition.
+    expect(
+      resolvePackageExports(exportsField, ".", ["import", "default"]),
+    ).toBeNull();
+    // Without `import` active, the `default` condition answers.
+    expect(resolvePackageExports(exportsField, ".", ["default"])).toBe(
+      "./def.js",
+    );
+  });
+
+  test("a `null` entry of a fallback array is skipped", () => {
+    const exportsField = { ".": [null, "./y.js"] };
+    expect(resolvePackageExports(exportsField, ".", ["import"])).toBe(
+      "./y.js",
+    );
+  });
+
   test("an exports that is not a map resolves to nothing", () => {
     expect(resolvePackageExports(undefined, ".", ["import"])).toBeNull();
     expect(resolvePackageExports(null, ".", ["import"])).toBeNull();
@@ -773,6 +897,16 @@ describe("package imports helper (criterion 1)", () => {
     expect(
       resolvePackageImports({ "#db": ["./a.js", "./b.js"] }, "#db", ["import"]),
     ).toBe("./a.js");
+  });
+
+  test("a `null` target under a matched condition blocks the alias", () => {
+    const importsField = { "#db": { import: null, default: "./db.js" } };
+    expect(
+      resolvePackageImports(importsField, "#db", ["import", "default"]),
+    ).toBeNull();
+    expect(resolvePackageImports(importsField, "#db", ["default"])).toBe(
+      "./db.js",
+    );
   });
 
   test("an alias that does not exist resolves to nothing", () => {
