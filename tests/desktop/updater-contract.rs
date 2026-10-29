@@ -645,6 +645,40 @@ fn un_endpoint_en_http_se_rechaza_sin_preguntar_nada() {
 }
 
 #[test]
+fn plan_update_rechaza_un_endpoint_que_no_es_https() {
+    // `plan_update` valida el contrato **aunque** `check_for_update` ya
+    // lo haya validado: es una función pública, y quien la llame
+    // directamente tiene que obtener el mismo contrato. Sin esta
+    // validación, un plan se puede construir con un endpoint en
+    // claro, y quien construye ese plan decide también qué URL se
+    // descarga.
+    //
+    // La validación vive en los dos sitios a propósito —es defensa en
+    // profundidad, no duplicación accidental— y cada uno tiene su
+    // test: el de `check_for_update` es
+    // `un_endpoint_en_http_se_rechaza_sin_preguntar_nada`, y este es el
+    // de `plan_update`.
+    let fixture = fixture("plan-http");
+    let mut contract = fixture.contract.clone();
+    contract.endpoint = "http://updates.tanit.dev/latest.json".to_string();
+
+    let rejection = plan_update(
+        &contract,
+        fixture.manifest.as_bytes(),
+        &fixture.signature,
+        &fixture.platform,
+    )
+    .expect_err("a plan cannot be built from an HTTP endpoint");
+
+    assert_eq!(
+        rejection,
+        UpdateRejection::EndpointNotHttps {
+            endpoint: "http://updates.tanit.dev/latest.json".to_string(),
+        }
+    );
+}
+
+#[test]
 fn un_manifest_ausente_se_rechaza() {
     let fixture = fixture("missing");
     let rejection = plan_update(
@@ -1295,4 +1329,326 @@ fn persistir_el_evento_de_seguridad_llega_al_log() {
         alcanza(&source, "record_security_event", "update_log::record"),
         "persisting the security event does not reach the security log"
     );
+}
+
+// ---------------------------------------------------------------------------
+// La superficie de seguridad del cliente: el índice y sus anclas
+// ---------------------------------------------------------------------------
+//
+// ## Qué es la «superficie de seguridad»
+//
+// El cliente Rust decide si lo que se descarga se puede instalar. Las
+// comprobaciones que lo hacen son, casi todas, **cableado**: no hay
+// forma de llegar a `run_update_check` o a `download_update` sin una
+// ventana de Tauri. Y las que sí viven en funciones puras se pueden
+// probar por su **comportamiento** —un hash que no cuadra aborta—,
+// pero no por su **llamada**: una función puede estar perfecta y
+// aun así no la llame nadie. Eso es exactamente lo que encontró la
+// cuarta revisión con `download_update`.
+//
+// Por eso hay dos niveles de atado, y los dos importan:
+//
+//   · El **comportamiento**: la función pura hace lo que tiene que
+//     hacer. Lo atan los tests que la llaman.
+//   · El **cableado**: el comando la llama. Sólo lo ata un test que
+//     lee el fuente, como los de esta sección.
+//
+// La lista de abajo es el **índice** de esa superficie: cada entrada
+// dice dónde vive la comprobación, qué texto la ancla y qué protege.
+// El test que la acompaña exige que cada ancla siga ahí; cada
+// comprobación tiene además un test que falla si deja de
+// **comportarse** como debe.
+//
+// ## Por qué el índice y no sólo los tests sueltos
+//
+// La enumeración es lo que permite decir «la superficie está
+// cubierta» sin que sea una afirmación: cada entrada de la lista es
+// una comprobación real del cliente, con su ancla, y el test exige
+// que la ancla exista. Una comprobación que se añada al cliente y se
+// olvide de la lista no rompe nada —eso no es detectable sin un
+// analizador—, pero una comprobación que se **quite** sí, y ése es el
+// defecto que esta ronda cierra.
+
+/// La superficie de seguridad del cliente Rust.
+///
+/// Cada entrada es `(ámbito, ancla, qué protege)`. El ámbito es
+/// `fichero::bloque`, y el único bloque que no es una función es
+/// `updater.rs::HttpsTransport`, que es el `impl` del transporte real.
+const SUPERFICIE_DE_SEGURIDAD: &[(&str, &str, &str)] = &[
+    (
+        "updater.rs::plan_update",
+        "contract.validate()?",
+        "el endpoint del contrato es HTTPS antes de verificar nada",
+    ),
+    (
+        "updater.rs::check_for_update",
+        "contract.validate()?",
+        "el endpoint es HTTPS antes de pedir nada",
+    ),
+    (
+        "updater.rs::plan_update",
+        "manifest.public_key_id != contract.public_key_id",
+        "el manifest declara la clave que el contrato espera",
+    ),
+    (
+        "updater.rs::plan_update",
+        "verify_signature(&contract.public_key_pem, manifest_bytes, manifest_signature)?",
+        "la firma del manifest verifica contra la clave pública",
+    ),
+    (
+        "updater.rs::plan_update",
+        "check_versions(&manifest, &contract.current_version)?",
+        "la versión ofrecida es posterior y la app instalada está soportada",
+    ),
+    (
+        "updater.rs::plan_update",
+        "select_target(&manifest, platform)?",
+        "hay un instalador para esta plataforma",
+    ),
+    (
+        "updater.rs::plan_update",
+        "is_https(&target.url)",
+        "la URL del instalador es HTTPS",
+    ),
+    (
+        "updater.rs::verify_artifact_hash",
+        "bytes.len() as u64 != target.size",
+        "el tamaño del instalador cuadra con el manifest firmado",
+    ),
+    (
+        "updater.rs::verify_artifact_hash",
+        "found.eq_ignore_ascii_case(&target.sha256)",
+        "el digest del instalador cuadra con el manifest firmado",
+    ),
+    (
+        "updater.rs::verify_artifact_signature",
+        "verify_signature(&contract.public_key_pem, bytes, &target.signature)",
+        "la firma del instalador verifica",
+    ),
+    (
+        "updater.rs::HttpsTransport",
+        "if !is_https(url)",
+        "el transporte real solo habla HTTPS",
+    ),
+    (
+        "main.rs::run_update_check",
+        "updater::check_for_update",
+        "la comprobación verifica el manifest firmado",
+    ),
+    (
+        "main.rs::download_update",
+        "updater::check_for_update",
+        "la descarga decide con el manifest firmado",
+    ),
+    (
+        "main.rs::download_update",
+        "plan.version != version",
+        "solo se descarga la versión que se aprobó",
+    ),
+    (
+        "main.rs::download_update",
+        "updater::verify_artifact_hash",
+        "el instalador se verifica antes de escribirse en disco",
+    ),
+    (
+        "main.rs::download_update",
+        "updater::verify_artifact_signature",
+        "el instalador se verifica antes de escribirse en disco",
+    ),
+];
+
+/// El cuerpo de un bloque de la superficie.
+///
+/// Los bloques son funciones, salvo el transporte real, que es un
+/// `impl`: su `fn fetch` está dentro de un `impl` de un rasgo, y la
+/// búsqueda por definición lo confundiría con la declaración del
+/// propio rasgo.
+fn bloque_de_ambito(source: &str, ambito: &str) -> String {
+    match ambito {
+        "HttpsTransport" => bloque(source, "impl UpdateTransport for HttpsTransport {"),
+        _ => cuerpo_de_funcion(source, ambito)
+            .unwrap_or_else(|| panic!("the source does not have a `{ambito}`")),
+    }
+}
+
+/// El cuerpo de una función de `main.rs`.
+fn cuerpo_de_main(source: &str, nombre: &str) -> String {
+    cuerpo_de_funcion(source, nombre)
+        .unwrap_or_else(|| panic!("the desktop app does not have a `{nombre}`"))
+}
+
+#[test]
+fn la_superficie_de_seguridad_del_cliente_esta_toda_ata() {
+    // El índice de la superficie: cada comprobación tiene que seguir
+    // **ahí**. Si una desaparece, el cliente deja de comprobar algo y
+    // la suite sigue verde —que es exactamente el defecto que esta
+    // ronda cierra.
+    let main = main_source();
+    let updater = fs::read_to_string(repo_root().join("packages/desktop/src/updater.rs"))
+        .expect("the updater module could not be read");
+
+    for (ambito, ancla, protege) in SUPERFICIE_DE_SEGURIDAD {
+        let (fichero, bloque) = ambito
+            .split_once("::")
+            .unwrap_or_else(|| panic!("the scope `{ambito}` is not `file::block`"));
+        let source = match fichero {
+            "main.rs" => &main,
+            "updater.rs" => &updater,
+            otro => panic!("the scope `{ambito}` names an unknown file `{otro}`"),
+        };
+        let cuerpo = bloque_de_ambito(source, bloque);
+        assert!(
+            cuerpo.contains(*ancla),
+            "the security surface lost `{ancla}` in `{ambito}`: {protege}"
+        );
+    }
+}
+
+#[test]
+fn la_comprobacion_de_actualizaciones_verifica_el_manifest_firmado() {
+    // La comprobación de actualizaciones —la del comando y la del
+    // arranque— es la **única** vez que se verifica la firma del
+    // manifest, su versión, su plataforma y que el endpoint sea
+    // HTTPS. Si esta llamada se sustituye por un plan fabricado, la
+    // app seguiría anunciando actualizaciones: las anunciaría **sin
+    // comprobar nada**.
+    let source = main_source();
+    let cuerpo = cuerpo_de_main(&source, "run_update_check");
+
+    assert!(
+        cuerpo.contains("updater::check_for_update"),
+        "the update check does not verify the signed manifest: the signature, the version, \
+         the platform and the HTTPS endpoint would not be checked at all"
+    );
+
+    // Y el comando del webview tiene que pasar por **la misma**
+    // comprobación: si `check_for_updates` dejara de delegar en
+    // `run_update_check`, la verificación se quedaría en el arranque y
+    // el comando volvería a ser una puerta sin candado.
+    let comando = cuerpo_de_main(&source, "check_for_updates");
+    assert!(
+        comando.contains("run_update_check"),
+        "the `check_for_updates` command does not go through `run_update_check`: it would \
+         answer without verifying the signed manifest"
+    );
+}
+
+#[test]
+fn la_descarga_verifica_el_manifest_firmado_antes_de_descargar() {
+    // La descarga es la que decide **qué** manifest, **qué** versión,
+    // **qué** URL y **qué** target se descargan. Sin esta llamada, un
+    // plan fabricado basta para descargar cualquier cosa: las
+    // comprobaciones que quedan —hash y firma— se verificarían contra
+    // un target inventado.
+    let source = main_source();
+    let cuerpo = cuerpo_de_main(&source, "download_update");
+
+    assert!(
+        cuerpo.contains("updater::check_for_update"),
+        "the `download_update` command does not verify the signed manifest: the manifest, the \
+         version, the URL and the target of the download would not be decided by the signature"
+    );
+}
+
+#[test]
+fn la_descarga_solo_descarga_la_version_que_se_aprobo() {
+    // El pin de versión es lo que ata **lo que se descarga** a **lo
+    // que la persona aprobó**: el `version` que llega del webview. Sin
+    // él, el manifest manda y la aprobación no significa nada.
+    let source = main_source();
+    let cuerpo = cuerpo_de_main(&source, "download_update");
+
+    assert!(
+        cuerpo.contains("plan.version != version"),
+        "the `download_update` command does not pin the download to the approved version"
+    );
+    assert!(
+        cuerpo.contains("VersionNotNewer"),
+        "the `download_update` command does not reject a version that is not the approved one"
+    );
+
+    // Y el pin va **entre** la verificación y la descarga: antes de
+    // verificar no hay plan que comparar, y después de descargar el
+    // pin ya no protege de nada.
+    let verificacion = cuerpo
+        .find("updater::check_for_update")
+        .expect("the `download_update` command does not verify the signed manifest");
+    let pin = cuerpo
+        .find("plan.version != version")
+        .expect("the `download_update` command does not pin the download to the approved version");
+    let descarga = cuerpo
+        .find("updater::fetch_with_retry")
+        .expect("the `download_update` command does not download anything");
+
+    assert!(
+        verificacion < pin,
+        "the `download_update` command pins the version before verifying the manifest"
+    );
+    assert!(
+        pin < descarga,
+        "the `download_update` command downloads before pinning the approved version"
+    );
+}
+
+/// La sección del documento que enumera la superficie.
+fn seccion_del_documento(documento: &str, titulo: &str) -> String {
+    let lineas: Vec<&str> = documento.lines().collect();
+    let inicio = lineas
+        .iter()
+        .position(|linea| linea.trim() == titulo)
+        .unwrap_or_else(|| panic!("`docs/UPDATER.md` does not have the section `{titulo}`"));
+    let mut seccion = String::new();
+    for linea in &lineas[inicio + 1..] {
+        if linea.starts_with("### ") {
+            break;
+        }
+        seccion.push_str(linea);
+        seccion.push('\n');
+    }
+    seccion
+}
+
+/// Los tests que el documento dice que atan la superficie.
+///
+/// La última columna de la tabla es la que dice qué test ata cada
+/// comprobación, y el nombre va entre acentos graves.
+fn tests_que_atan(documento: &str) -> Vec<String> {
+    seccion_del_documento(documento, "### La superficie de seguridad del cliente")
+        .lines()
+        .filter(|linea| linea.trim_start().starts_with('|'))
+        .skip(2)
+        .filter_map(|linea| {
+            let celdas: Vec<&str> = linea.split('|').map(str::trim).collect();
+            celdas
+                .get(3)
+                .map(|celda| celda.trim_matches('`').to_string())
+        })
+        .filter(|nombre| !nombre.is_empty())
+        .collect()
+}
+
+#[test]
+fn el_documento_enumera_la_superficie_y_sus_tests_existen() {
+    // El documento enumera la superficie con el test que ata cada
+    // comprobación. Si el documento nombra un test que no existe, o
+    // deja de enumerar una comprobación, el documento miente: y un
+    // documento que miente sobre la seguridad es peor que no
+    // tenerlo.
+    let documento = fs::read_to_string(repo_root().join("docs/UPDATER.md"))
+        .expect("the updater document could not be read");
+    let fuente = fs::read_to_string(repo_root().join("tests/desktop/updater-contract.rs"))
+        .expect("the updater contract test could not be read");
+
+    let tests = tests_que_atan(&documento);
+    assert_eq!(
+        tests.len(),
+        SUPERFICIE_DE_SEGURIDAD.len(),
+        "the document does not enumerate the whole security surface"
+    );
+    for nombre in &tests {
+        assert!(
+            fuente.contains(&format!("fn {nombre}(")),
+            "the document names a test that does not exist: `{nombre}`"
+        );
+    }
 }
