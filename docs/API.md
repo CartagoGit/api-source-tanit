@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 366 símbolos en 140 módulos.
+> 368 símbolos en 141 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -3049,6 +3049,25 @@ cache their own AST and pass it here, so we never re-walk the
 tree just to extract routes. When `program` is omitted the
 helper parses internally.
 
+### `packages/core/language-frontends/typescript/typescript-frontend.helper.ts`
+
+`typescriptFrontend` — the TypeScript implementation of the language-agnostic frontend contract.
+
+#### `typescriptFrontend`
+
+```ts
+export const typescriptFrontend: ILanguageFrontend =
+```
+
+Reads a TypeScript source file and answers the four questions of
+the agnostic contract.
+
+The parse is the one the TypeScript frontend already performs; the
+document it returns is the agnostic projection of that parse. A
+consumer that needs the TypeScript-shaped view keeps using
+`parse()`; a consumer that only speaks the agnostic vocabulary
+uses this one.
+
 ### `packages/core/language-frontends/typescript/typescript.parser.ts`
 
 `parse(source, filename): TSFile` — the TypeScript frontend.
@@ -3264,6 +3283,23 @@ Returns a NEW array — does not mutate the input.
 ### `packages/core/language-ir/scanner-bridge.helper.ts`
 
 `scanner-bridge` — adapts the LanguageIR (S2+S3+S4) to the `TSMethodCall` shape consumed by the 6 TS-flavored scanners.
+
+#### `offsetToPosition`
+
+```ts
+export function offsetToPosition(source: string, offset: number):
+```
+
+Converts a 0-based byte offset in `source` to `(line, column)`
+1-based (line) / 0-based (column) — the same shape as
+`TSMethodCall.line` / `column`.
+
+If the offset falls outside the range, returns
+`{ line: 1, column: 0 }` (the TS frontend's default position).
+
+Exported because the agnostic frontend needs it too: the
+LanguageIR carries the position of a call as a character range, and
+the agnostic `ILocation` asks for a line and a column.
 
 #### `toTSMethodCalls`
 

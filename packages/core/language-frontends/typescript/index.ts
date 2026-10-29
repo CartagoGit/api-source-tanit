@@ -20,6 +20,13 @@ export {
   parseWithProgram,
 } from "./typescript.parser.js";
 
+// The agnostic face of the same frontend: the same parse, read through
+// the language-agnostic contract (`packages/contracts/interfaces/
+// language-ir/`). Adding it to the barrel keeps the existing exports
+// untouched, so every consumer of the TypeScript frontend keeps
+// working exactly as before. (r00020 S2)
+export { typescriptFrontend } from "./typescript-frontend.helper.js";
+
 import { buildLanguageIRFromProgram } from "../../language-ir/build-language-ir.helper.js";
 import { propagateConstants } from "../../language-ir/constant-propagation.helper.js";
 import type { IImportBinding } from "../../../contracts/interfaces/core/language-ir.interface.js";
