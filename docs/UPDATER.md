@@ -270,7 +270,7 @@ con qué clave lo firmaron.
 > `update.public_key.mismatch` en cuanto el manifest declara otro
 > identificador. Lo que sigue es el procedimiento real, con el orden
 > exacto; §5.1 explica por qué el corte es inevitable y cómo se
-> minimize.
+> minimiza.
 
 1. Generar el par nuevo **fuera del repositorio**:
    ```bash
@@ -290,7 +290,7 @@ con qué clave lo firmaron.
    la clave vieja, y esta build nueva sólo acepta la nueva.
 5. Esperar a que la flota esté en esa release (el canal automático
    sigue sirviendo el manifest de la clave vieja, y es el que la
-   brings hasta allí).
+   lleva hasta allí).
 6. Publicar un manifest nuevo firmado con la clave **nueva** a partir
    de ese momento. Los clientes que aún no se han actualizado dejan de
    poder actualizarse solos y reciben `update.public_key.mismatch`.
