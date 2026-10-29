@@ -361,13 +361,18 @@ main() {
 
       # `|| true` y un `die` propio: una medición que falla tiene que
       # decir qué pasó, no dejar al verificador con un exit 1 mudo.
-      actual_sha="$(sha256sum "${resolved_artifact}" | cut -d' ' -f1 || true)"
-      if [[ -z "${actual_sha}" ]]; then
-        die "update.hash.mismatch: the artifact could not be measured: ${resolved_artifact}"
-      fi
-      if [[ "${actual_sha}" != "${target_sha}" ]]; then
-        die "update.hash.mismatch: the artifact digest is ${actual_sha} and the manifest says ${target_sha}"
-      fi
+      #
+      # El **tamaño va antes que el digest**, igual que en el cliente
+      # (`verify_artifact_hash` en `packages/desktop/src/updater.rs`).
+      # El motivo no es aesthetic: es que la clasificación de un
+      # aborto no puede depender de lo que hizo el atacante. Si el
+      # digest se comprobara primero, un instalador truncado —que es
+      # justo el ataque más barato— produciría `update.hash.mismatch`
+      # y el código `update.size.mismatch` no existiría: el verificador
+      # de consola no podría emitir uno de los códigos que su propio
+      # vocabulario declara. Con el tamaño primero, las dos
+      # implementaciones se comportan igual y las dos pueden emitir
+      # los dos códigos.
       actual_size="$(wc -c <"${resolved_artifact}" | tr -d ' ' || true)"
       if [[ -z "${actual_size}" ]]; then
         die "update.size.mismatch: the artifact could not be measured: ${resolved_artifact}"
@@ -375,7 +380,14 @@ main() {
       if [[ "${actual_size}" != "${target_size}" ]]; then
         die "update.size.mismatch: the artifact is ${actual_size} bytes and the manifest says ${target_size}"
       fi
-      ok "the artifact digest and size match the manifest"
+      actual_sha="$(sha256sum "${resolved_artifact}" | cut -d' ' -f1 || true)"
+      if [[ -z "${actual_sha}" ]]; then
+        die "update.hash.mismatch: the artifact could not be measured: ${resolved_artifact}"
+      fi
+      if [[ "${actual_sha}" != "${target_sha}" ]]; then
+        die "update.hash.mismatch: the artifact digest is ${actual_sha} and the manifest says ${target_sha}"
+      fi
+      ok "the artifact size and digest match the manifest"
 
       printf '%s' "${target_signature}" | base64 -d >"${SCRATCH}/artifact.sig" 2>/dev/null \
         || printf '%s' "${target_signature}" | base64 -D >"${SCRATCH}/artifact.sig"

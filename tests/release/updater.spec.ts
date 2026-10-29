@@ -384,7 +384,12 @@ describe("el updater firmado", () => {
     const built = await buildEverything();
     try {
       const artifact = join(built.stage, "linux", "x64", "deb", `Tanit_${OFFERED}_amd64.deb`);
-      await writeFile(artifact, "this is not the artifact that was signed\n");
+      // Mismo número de bytes, **otro** contenido. El tamaño sigue
+      // cuadrando, así que el desajuste que se ve es el del digest y
+      // no el del tamaño: son dos comprobaciones distintas y cada una
+      // tiene su propio código de aborto.
+      const original = await readFile(artifact, "utf8");
+      await writeFile(artifact, original.replace("Tanit", "TUNIT"), "utf8");
 
       const result = verify({
         manifest: built.manifest,
@@ -396,6 +401,37 @@ describe("el updater firmado", () => {
       });
       expect(result.status).not.toBe(0);
       expect(result.output).toContain("update.hash.mismatch");
+    } finally {
+      await rm(built.root, { recursive: true, force: true });
+    }
+  });
+
+  test("un instalador truncado hace fallar al verificador con update.size.mismatch", async () => {
+    // El verificador de consola comprueba el **tamaño antes** que el
+    // digest, igual que el cliente nativo (`verify_artifact_hash`).
+    // Por eso puede emitir `update.size.mismatch`: sin ese orden, el
+    // código sería inalcanzable —cualquier cambio de tamaño cambia
+    // también el digest— y las dos implementaciones no serían
+    // equivalentes.
+    const built = await buildEverything();
+    try {
+      const artifact = join(built.stage, "linux", "x64", "deb", `Tanit_${OFFERED}_amd64.deb`);
+      const original = await readFile(artifact, "utf8");
+      await writeFile(artifact, original.slice(0, original.length - 10), "utf8");
+
+      const result = verify({
+        manifest: built.manifest,
+        signature: built.signature,
+        publicKey: built.key.public,
+        platform: PLATFORM,
+        currentVersion: INSTALLED,
+        stage: built.stage,
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.output).toContain("update.size.mismatch");
+      // Y no es el desajuste del digest: el digest tampoco cuadra,
+      // pero el tamaño es lo que se comprueba primero.
+      expect(result.output).not.toContain("update.hash.mismatch");
     } finally {
       await rm(built.root, { recursive: true, force: true });
     }

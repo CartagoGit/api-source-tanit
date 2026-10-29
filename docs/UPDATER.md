@@ -204,6 +204,11 @@ atacante controla**:
 
 - `verify_artifact_hash` comprueba el tamaño **antes** que el hash. Si
   el tamaño no cuadra, el hash no llega a comprobarse.
+- El verificador de consola (`scripts/release/verify-update.sh`) hace
+  **lo mismo, en el mismo orden**: primero el tamaño, después el
+  digest. Por eso puede emitir `update.size.mismatch` y no es un
+  código muerto: las dos implementaciones son equivalentes y un
+  instalador truncado produce el mismo código en las dos.
 - Si el desajuste de tamaño fuera "problema de operación", un atacante
   que **truncara** el instalador provocaría un aborto clasificado
   como operativo: la app seguiría funcionando, no habría evento de
