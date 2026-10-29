@@ -70,6 +70,7 @@ import {
   SBOM_FORMAT,
   SBOM_PAYLOAD_TYPE,
   SBOM_PROVENANCE_PREDICATE_TYPE,
+  SBOM_PUBLIC_FILE_PATTERNS,
   SBOM_REQUIRED_COMPONENTS,
   SBOM_SIDECAR_COMPONENT,
   SBOM_SPEC_VERSION,
@@ -379,7 +380,8 @@ function validateSchema(document) {
     if (typeof ref !== "string" || !ref.startsWith("file:")) continue;
     const path = ref.slice("file:".length);
     requireThat(
-      !matchesAnyGlob(path, SBOM_EXCLUDED_FILE_PATTERNS),
+      !matchesAnyGlob(path, SBOM_EXCLUDED_FILE_PATTERNS) ||
+        matchesAnyGlob(path, SBOM_PUBLIC_FILE_PATTERNS),
       `the component "${path}" describes a file that must never be published`,
     );
   }

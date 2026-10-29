@@ -84,6 +84,7 @@ import {
   SBOM_PAYLOAD_TYPE,
   SBOM_PROVENANCE_FILE_SUFFIX,
   SBOM_PROVENANCE_PREDICATE_TYPE,
+  SBOM_PUBLIC_FILE_PATTERNS,
   SBOM_SIDECAR_COMPONENT,
   SBOM_SPEC_VERSION,
   SBOM_STATEMENT_TYPE,
@@ -448,7 +449,11 @@ async function main() {
   // Antes de medir nada: un staging con una clave privada dentro se
   // publica entero, y un SBOM que no la menciona no lo evita.
   const stagedFiles = await collectFiles(stage);
-  const forbidden = stagedFiles.filter((file) => matchesAnyGlob(file, SBOM_EXCLUDED_FILE_PATTERNS));
+  const forbidden = stagedFiles.filter(
+    (file) =>
+      matchesAnyGlob(file, SBOM_EXCLUDED_FILE_PATTERNS) &&
+      !matchesAnyGlob(file, SBOM_PUBLIC_FILE_PATTERNS),
+  );
   if (forbidden.length > 0) {
     throw new ReleaseError(
       `The staging holds ${forbidden.length} file(s) that must never be published:\n` +

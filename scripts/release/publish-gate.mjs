@@ -33,11 +33,14 @@
  *   · Un SBOM, una provenance o una attestation que falten: una
  *     release que se publica y no se puede auditar no se publica.
  *     (`--allow-missing-transparency` lo salta, y sólo para inspección.)
+ *   · La clave pública de la attestation que no está versionada: sin
+ *     ella, la attestation que se adjunta no la puede verificar nadie.
  *
  * Uso:
  *   bun run scripts/release/publish-gate.mjs --stage <dir> [--manifest <file>]
  *   bun run scripts/release/publish-gate.mjs --stage <dir> --list
  */
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
@@ -49,6 +52,7 @@ import {
   RELEASE_REQUIRED_ASSET_KINDS,
   RELEASE_TARGET_MATRIX,
 } from "../../packages/contracts/constants/release/signing.constant.js";
+import { SBOM_ATTESTATION_PUBLIC_KEY_PATH } from "../../packages/contracts/constants/release/sbom.constant.js";
 
 /** Error con mensaje para la persona que lee, no para el log. */
 class ReleaseError extends Error {}
@@ -186,6 +190,35 @@ async function main() {
   const published = selectPublished(files, RELEASE_PUBLISH_PATTERNS);
   const problems = [];
 
+  // --- la clave pública de la attestation ----------------------------------
+  //
+  // La attestation se firma con una clave Ed25519 cuya **pública** está
+  // versionada en el repositorio: sin ella, una tercera parte no puede
+  // verificar la attestation que la release adjunta, y la attestation
+  // pasa a ser una afirmación sin prueba.
+  //
+  // No vive en el staging: la versiona el repositorio, en el tag de la
+  // release, así que se adjunta desde el repo y lo que la describe es el
+  // propio repositorio. Si el fichero no está, la release no sale: una
+  // attestation sin clave pública publicada no se puede auditar.
+  const publicKeyPath = SBOM_ATTESTATION_PUBLIC_KEY_PATH;
+  const publicKeyAbsolute = join(REPO_ROOT, publicKeyPath);
+  const publicKeyExists = existsSync(publicKeyAbsolute);
+  if (!publicKeyExists) {
+    problems.push(
+      `the versioned public key of the attestation is missing: ${publicKeyPath}`,
+    );
+  }
+  // Si el staging ya trae la clave —porque alguien la copió—, se
+  // publica esa: dos ficheros con el mismo nombre se pisan al subirlos.
+  const publicKeyInStaging = published.some(
+    (file) => baseName(file) === baseName(publicKeyPath),
+  );
+  const attached = [
+    ...published,
+    ...(publicKeyExists && !publicKeyInStaging ? [publicKeyPath] : []),
+  ];
+
   if (published.length === 0) {
     problems.push("the staging holds nothing that the release would attach");
   }
@@ -265,6 +298,9 @@ async function main() {
       problems.push(`${file}: the release attaches it, but the manifest does not describe it`);
     }
   }
+  // La clave pública la describe el repositorio, no el manifest: es un
+  // fichero versionado, y lo que lo ata a la release es el tag.
+  described.add(publicKeyPath);
 
   // --- la transparencia de la cadena de suministro --------------------------
   //
@@ -301,7 +337,7 @@ async function main() {
   // ya estaba: dos assets con el mismo nombre son un asset y un
   // archivo perdido.
   const byName = new Map();
-  for (const file of published) {
+  for (const file of attached) {
     const name = baseName(file);
     const group = byName.get(name) ?? [];
     group.push(file);
@@ -326,11 +362,13 @@ async function main() {
   // lista, y nada más. El workflow la guarda en un output de GitHub y
   // se la pasa a la acción que sube los assets: una línea de más en
   // esa lista es un asset que no existe.
-  console.error(`→ The release attaches ${published.length} file(s).`);
+  console.error(`→ The release attaches ${attached.length} file(s).`);
 
   if (args.list) {
-    for (const file of published) {
-      console.log(join(args.stage, file));
+    for (const file of attached) {
+      // La clave pública vive en el repositorio, no en el staging: su
+      // ruta es la del repo. Todo lo demás cuelga del staging.
+      console.log(file === publicKeyPath ? publicKeyAbsolute : join(args.stage, file));
     }
   }
 

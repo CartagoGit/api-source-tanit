@@ -101,6 +101,11 @@ export const RELEASE_PUBLISH_PATTERNS: readonly string[] = [
   "**/*.cdx.json",
   "**/*.provenance.json",
   "**/*.intoto.jsonl",
+  // Las claves **públicas** sí se publican: son lo que permite a un
+  // tercero verificar la attestation sin credenciales. Las privadas
+  // nunca llegan al staging, y `build-sbom.mjs` para la release si las
+  // encuentra.
+  "**/*.pub.pem",
 ];
 
 /**

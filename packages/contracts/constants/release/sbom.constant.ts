@@ -209,6 +209,35 @@ export const SBOM_EXCLUDED_FILE_PATTERNS: readonly string[] = [
 export const SBOM_DEFAULT_KEY_ID = "tanit-release-attestation-v1";
 
 /**
+ * El nombre del fichero de la clave pública de attestation.
+ *
+ * La clave **privada** vive en el secreto `TANIT_ATTESTATION_KEY` y no
+ * sale de él. La **pública** está versionada en el repo, porque sin
+ * ella la attestation que se publica no la puede verificar ni un
+ * tercero: el secreto es del CI, y el secreto no se publica.
+ */
+export const SBOM_ATTESTATION_PUBLIC_KEY_FILE = "tanit-release-attestation-v1.pub.pem";
+
+/** Dónde vive la clave pública versionada, dentro del repo. */
+export const SBOM_ATTESTATION_PUBLIC_KEY_PATH =
+  `packages/desktop/keys/${SBOM_ATTESTATION_PUBLIC_KEY_FILE}`;
+
+/**
+ * Los ficheros del staging que **sí** pueden publicarse aunque su
+ * nombre case con la lista de excluidos.
+ *
+ * Hoy es una cosa: la clave pública de attestation. Una clave pública no
+ * es un secreto —es justo lo que hace verificable la attestation—, pero
+ * su extensión (`.pem`) es la misma que la de una clave privada.
+ *
+ * La lista es **explícita**: un fichero que no esté aquí y case con los
+ * excluidos sigue parando la release.
+ */
+export const SBOM_PUBLIC_FILE_PATTERNS: readonly string[] = [
+  `**/${SBOM_ATTESTATION_PUBLIC_KEY_FILE}`,
+];
+
+/**
  * El builder por defecto de la provenance.
  *
  * La URL del workflow: es lo que dice de dónde salió la build, y lo

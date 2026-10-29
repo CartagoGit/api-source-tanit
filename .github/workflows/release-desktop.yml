@@ -419,8 +419,28 @@ jobs:
           printf '%s' "${TANIT_ATTESTATION_KEY}" > "${RUNNER_TEMP}/attestation-key.pem"
           chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
           openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
+
+          # La clave pública **versionada** es la que permite verificar la
+          # attestation que se publica: sin ella, quien la descarga no
+          # tiene con qué comprobarla. Si la clave del secreto no es la
+          # versionada, la attestation que saldría no la podría verificar
+          # nadie, así que el job para aquí.
+          published="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${published}" ]; then
+            echo "✗ The versioned public key ${published} is missing: the attestation would not be verifiable." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${published}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${published}." >&2
+            echo "  The attestation would be signed with a key that nobody can verify." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
           echo "key=${RUNNER_TEMP}/attestation-key.pem" >> "$GITHUB_OUTPUT"
-          echo "public=${RUNNER_TEMP}/attestation-pub.pem" >> "$GITHUB_OUTPUT"
+          echo "public=${published}" >> "$GITHUB_OUTPUT"
 
       - name: Construir el SBOM y la attestation
         shell: bash
@@ -431,6 +451,10 @@ jobs:
           bun run scripts/release/build-sbom.mjs \
             --stage "${STAGE}" \
             --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}" \
+            --key-env ATTESTATION_KEY_PATH \
+            --key-id "tanit-release-attestation-v1" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
             --key-env ATTESTATION_KEY_PATH \
             --key-id "tanit-release-attestation-v1" \
             --source "release-desktop" \
@@ -571,6 +595,23 @@ jobs:
           chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
           openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
 
+          # Se verifica contra la clave pública **versionada**, no contra
+          # la que sale del secreto: la que se publica es la versionada, y
+          # lo que tiene que verificar es lo que se publica. Las dos
+          # tienen que ser la misma, y si no lo son la release para.
+          public_key="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${public_key}" ]; then
+            echo "✗ The versioned public key ${public_key} is missing: the attestation cannot be verified." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${public_key}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${public_key}." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
           args=()
           while IFS= read -r sbom; do
             args+=(--sbom "${sbom}")
@@ -590,7 +631,7 @@ jobs:
             --manifest "${STAGE}/${MANIFEST_NAME}" \
             --update-manifest "${RUNNER_TEMP}/updater/latest.json" \
             --require-update-manifest \
-            --public-key "${RUNNER_TEMP}/attestation-pub.pem" \
+            --public-key "${public_key}" \
             --key-id "tanit-release-attestation-v1" \
             --source "release-desktop" \
             --commit "${GITHUB_SHA}"

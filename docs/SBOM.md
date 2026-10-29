@@ -211,6 +211,53 @@ SBOM, con otro digest, y el verificador lo dice.
 
 ---
 
+## La clave de attestation
+
+La attestation se firma con **Ed25519**. Hay dos mitades de esa clave,
+y sólo una se publica:
+
+| Mitad | Dónde | Qué es |
+| --- | --- | --- |
+| **La privada** | El secreto `TANIT_ATTESTATION_KEY` de GitHub | Firma la attestation en el runner. No sale de él: el script la pide **por ruta**, la escribe en un fichero temporal con permisos cerrados y la borra al terminar. |
+| **La pública** | [`packages/desktop/keys/tanit-release-attestation-v1.pub.pem`](../packages/desktop/keys/tanit-release-attestation-v1.pub.pem), versionada **y adjunta a cada release** | Lo que verifica la attestation. Sin ella, quien descarga la release no tiene con qué comprobarla. |
+
+El identificador de la clave es `tanit-release-attestation-v1`, y es el
+`keyid` que lleva cada envelope DSSE. No es la clave GPG de la release
+—esa firma los `SHA256SUMS` de Linux— ni la del updater —esa firma el
+manifest que instala el updater—. Las tres están separadas en
+[`SECURITY.md`](../SECURITY.md), §4.5.
+
+### La CI falla cerrada si el secreto no es la clave publicada
+
+El pipeline comprueba que la clave pública que sale del secreto es
+**la misma** que la versionada en el repo, comparando el DER de las dos.
+Si no lo son, el job muere con un mensaje que dice qué hacer.
+
+No es un detalle: si el secreto fuera una clave distinta, la attestation
+que se publicaría estaría firmada con una clave que no está en ningún
+sitio público, y nadie —ni la CI, ni un auditor— la podría verificar.
+
+### La rotación de la clave de attestation
+
+La rotación es un acto **visible**, no un cambio silencioso de fichero:
+
+1. Se genera el par nuevo:
+   `openssl genpkey -algorithm ed25519 -out v2.key`.
+2. Se publica la **pública** nueva, versionada, con su identificador
+   nuevo: `packages/desktop/keys/tanit-release-attestation-v2.pub.pem`,
+   y `SBOM_DEFAULT_KEY_ID` pasa a `tanit-release-attestation-v2`.
+3. La **privada** se guarda en el secreto `TANIT_ATTESTATION_KEY` (el
+   fichero del secreto **no** se versiona, nunca).
+4. La CI verifica que el secreto nuevo corresponde a la pública nueva
+   y falla cerrada mientras no sea así.
+5. Las dos públicas conviven: la v1 sigue publicada y verificando las
+   attestations de las releases viejas, y la v2 firma las nuevas.
+
+El identificador va en el `keyid` de cada envelope, así que una
+attestation vieja se sigue atribuible a la clave con la que se firmó.
+
+---
+
 ## Retención
 
 | Documento | Retención | Por qué |
@@ -235,11 +282,15 @@ Este es el camino que sigue quien recibe un `Tanit_1.0.0-linux-x64.deb`
 y quiere saber qué es y de dónde viene. Todo es local: sin red y sin
 cuentas.
 
-### 1. Reúne los cuatro documentos
+### 1. Reúne los cinco documentos
 
 De la release: el instalador, el `release-manifest.json`, el
-`Tanit_1.0.0-linux-x64.cdx.json` y el
-`Tanit_1.0.0-linux-x64.intoto.jsonl`.
+`Tanit_1.0.0-linux-x64.cdx.json`, el
+`Tanit_1.0.0-linux-x64.provenance.json` y el
+`Tanit_1.0.0-linux-x64.intoto.jsonl`. Y la clave pública de la
+attestation: `tanit-release-attestation-v1.pub.pem`, que la release
+adjunta y que también está versionada en el repositorio, en el tag de
+la release.
 
 ### 2. Comprueba el hash del instalador
 
@@ -257,17 +308,44 @@ tienes no es el que se publicó: para.
 bun scripts/release/verify-sbom.mjs \
   --sbom Tanit_1.0.0-linux-x64.cdx.json \
   --attestation Tanit_1.0.0-linux-x64.intoto.jsonl \
+  --provenance Tanit_1.0.0-linux-x64.provenance.json \
   --stage <el staging con los ficheros de la release> \
   --manifest release-manifest.json \
   --public-key tanit-release-attestation-v1.pub.pem \
-  --key-id tanit-release-attestation-v1
+  --key-id tanit-release-attestation-v1 \
+  --require-provenance
 ````
 
 El verificador **recalcula** los hashes desde el staging, comprueba el
 schema, que estén los componentes obligatorios, que el grafo esté
 completo, que la firma de la attestation verifique, que el `keyid` sea el
-esperado y que la provenance sea de esta build. Sale con código 0 si
-todo cuadra y con código 1, explicando qué no, si no.
+esperado, que la provenance sea de esta build y que la provenance
+**publicada** sea la misma que la **firmada**. Sale con código 0 si todo
+cuadra y con código 1, explicando qué no, si no.
+
+### 3 bis. Verifica la firma sin el verificador
+
+Si sólo quieres comprobar que la attestation está firmada por la clave
+publicada, el PAE de DSSE se rehace a mano:
+
+````bash
+# El payload del envelope, y el PAE que se firmó.
+jq -r '.payload' Tanit_1.0.0-linux-x64.intoto.jsonl | base64 -d > statement.json
+jq -r '.signatures[0].sig' Tanit_1.0.0-linux-x64.intoto.jsonl | base64 -d > sig.bin
+
+printf 'DSSEv1 %s %s %s ' \
+  "$(printf '%s' 'application/vnd.in-toto+json' | wc -c)" \
+  'application/vnd.in-toto+json' \
+  "$(wc -c < statement.json)" > pae.bin
+cat statement.json >> pae.bin
+
+openssl pkeyutl -verify -rawin -pubin \
+  -inkey tanit-release-attestation-v1.pub.pem \
+  -in pae.bin -sigfile sig.bin
+````
+
+La salida `Signature Verified Successfully` es la prueba de que la
+attestation la firmó la clave publicada.
 
 ### 4. Comprueba la firma de la plataforma
 
