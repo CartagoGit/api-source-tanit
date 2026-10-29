@@ -3,6 +3,16 @@
 
 use keyring::Entry;
 
+/// El almacén seguro del sistema operativo.
+///
+/// No guarda nada en memoria: cada operación va directamente al
+/// keyring del sistema. Por eso el tipo está **vacío** a propósito:
+/// es el punto de entrada que `main.rs` tiene en el estado de Tauri,
+/// no un contenedor. El `Default` existe por lo mismo —se puede
+/// tener en el estado sin construir nada—.
+#[derive(Default)]
+pub struct SecureStorage;
+
 impl SecureStorage {
     pub fn save(&self, service: String, value: String) -> Result<(), String> {
         Entry::new("tanit", &service).map_err(|error| error.to_string())?.set_password(&value).map_err(|error| error.to_string())

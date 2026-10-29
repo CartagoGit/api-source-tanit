@@ -8,10 +8,13 @@ pub struct DroppedFolder {
 pub fn first_contained_path(paths: &[String], workspace_root: Option<&str>) -> Option<DroppedFolder> {
     paths.iter().map(|path| path.replace('\\', "/")).find(|path| {
         let clean = path.trim_end_matches('/');
-        workspace_root.map_or(true, |root| {
-            let normalized_root = root.replace('\\', "/").trim_end_matches('/').to_string();
-            clean == normalized_root || clean.starts_with(&(normalized_root + "/"))
-        })
+        match workspace_root {
+            None => true,
+            Some(root) => {
+                let normalized_root = root.replace('\\', "/").trim_end_matches('/').to_string();
+                clean == normalized_root || clean.starts_with(&(normalized_root + "/"))
+            }
+        }
     }).map(|path| DroppedFolder { path })
 }
 

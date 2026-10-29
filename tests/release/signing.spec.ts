@@ -456,12 +456,16 @@ describe("the release manifest", () => {
   test("the per-platform manifests merge into one release manifest", async () => {
     const stage = await dryRunStaging("tanit-release-merge");
     const platformManifests = join(stage, "linux", "x64", "release-manifest.json");
+    // The version is the one the app declares, not a literal: the
+    // merge refuses a manifest whose version is not the one that is
+    // being released, and that version moves.
+    const version = await releaseVersion();
     await writeFile(
       platformManifests,
       `${JSON.stringify(
         {
           schema: "tanit.release.manifest/v1",
-          version: "0.1.0",
+          version,
           generatedAt: new Date().toISOString(),
           artifacts: [],
           assets: [],
@@ -1284,7 +1288,7 @@ describe("the publish gate", () => {
         `${JSON.stringify(
           {
             schema: "tanit.release.manifest/v1",
-            version: "0.1.0",
+            version: await releaseVersion(),
             artifacts: [],
             assets: [],
           },
