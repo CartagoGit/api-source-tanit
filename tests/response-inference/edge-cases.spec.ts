@@ -964,3 +964,131 @@ describe("Rails — a route that does not add up (r00020 S3)", () => {
     expect(spec).toBeNull();
   });
 });
+
+describe("Rails — a route whose action was not resolved (r00020 S3)", () => {
+  const ROUTES = "config/routes.rb";
+  const CONTROLLER = "app/controllers/health_controller.rb";
+
+  /**
+   * The Rails scanner resolves the action only for `resources` routes.
+   * A plain `get "/health", to: "health#check"` arrives **without**
+   * one — and the controller may well declare several methods.
+   */
+  function inferWithoutAction(controller: string) {
+    return rails.infer(
+      routeOf({ method: "GET", uri: "/health", rawUri: "health" }),
+      contextOfFiles("rails", { [CONTROLLER]: controller }, ROUTES),
+    );
+  }
+
+  test("a controller with several methods answers nothing", () => {
+    const controller = [
+      "class HealthController",
+      "  def index",
+      '    render json: { wrong: "index" }',
+      "  end",
+      "  def check",
+      "    render json: { ok: true }",
+      "  end",
+      "end",
+    ].join("\n");
+    // The first method is NOT the answer: the route points at
+    // `health#check`, and reading `index` would attribute its
+    // response to a route that does not have it.
+    expect(inferWithoutAction(controller)).toBeNull();
+  });
+
+  test("a controller with a single method answers with it", () => {
+    const controller = [
+      "class HealthController",
+      "  def check",
+      "    render json: { ok: true }",
+      "  end",
+      "end",
+    ].join("\n");
+    const spec = inferWithoutAction(controller);
+    expect(spec?.responses[0]?.status).toBe(200);
+    expect(spec?.responses[0]?.reason).toContain("ok");
+  });
+
+  test("a controller with several methods never answers with the first one", () => {
+    const controller = [
+      "class HealthController",
+      "  def index",
+      '    render json: { wrong: "index" }',
+      "  end",
+      "  def check",
+      '    render json: { also_wrong: "check" }',
+      "  end",
+      "end",
+    ].join("\n");
+    const spec = inferWithoutAction(controller);
+    const reasons = (spec?.responses ?? []).map((r) => r.reason);
+    expect(reasons).not.toContain('Rails render json: { wrong: "index" }');
+    expect(reasons).not.toContain('Rails render json: { also_wrong: "check" }');
+  });
+});
+
+describe("Laravel — a route whose action was not resolved (r00020 S3)", () => {
+  const ROUTES = "routes/api.php";
+  const CONTROLLER = "app/Http/Controllers/UserController.php";
+
+  function inferWithoutAction(controller: string) {
+    return laravel.infer(
+      routeOf({
+        method: "GET",
+        uri: "/users",
+        rawUri: "/users",
+        controllerClass: "App\\Http\\Controllers\\UserController",
+      }),
+      contextOfFiles("laravel", { [CONTROLLER]: controller }, ROUTES),
+    );
+  }
+
+  test("a controller with several methods answers nothing", () => {
+    const controller = [
+      "<?php class UserController {",
+      "  public function index() { return new UserResource($u); }",
+      "  public function show($u) { return new UserResource($u); }",
+      "}",
+    ].join("\n");
+    expect(inferWithoutAction(controller)).toBeNull();
+  });
+
+  test("a controller with a single method answers with it", () => {
+    const controller =
+      "<?php class UserController { public function index() { return new UserResource($u); } }";
+    const spec = inferWithoutAction(controller);
+    expect(spec?.responses[0]?.schema.kind).toBe("ref");
+    expect(spec?.responses[0]?.reason).toContain("UserResource");
+  });
+});
+
+describe("Gin — a route declared on a group (r00020 S3)", () => {
+  test("a group with a name of its own is read", () => {
+    // The dominant Gin idiom: the group is called whatever the
+    // project calls it, and the routes are declared on the group.
+    const source = [
+      'users := r.Group("/api/v1")',
+      'users.GET("/users", func(c *gin.Context) { c.JSON(200, gin.H{"id": 1}) })',
+    ].join("\n");
+    const spec = gin.infer(
+      routeOf({ method: "GET", uri: "/api/v1/users", rawUri: "/users" }),
+      contextOfSource("gin", source),
+    );
+    expect(spec?.responses[0]?.status).toBe(200);
+  });
+
+  test("a group nested in another group is read", () => {
+    const source = [
+      'v1 := r.Group("/api/v1")',
+      'admin := v1.Group("/admin")',
+      'admin.GET("/users", func(c *gin.Context) { c.JSON(200, gin.H{"id": 1}) })',
+    ].join("\n");
+    const spec = gin.infer(
+      routeOf({ method: "GET", uri: "/api/v1/admin/users", rawUri: "/users" }),
+      contextOfSource("gin", source),
+    );
+    expect(spec?.responses[0]?.status).toBe(200);
+  });
+});

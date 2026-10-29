@@ -45,24 +45,28 @@ import type {
 } from "../../contracts/interfaces/core/responses.interface.js";
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { buildSchemaGraph } from "../schema/build-schema-graph.helper.js";
-import {
-  findRouteAnchors,
-  pickRouteAnchor,
-  sliceUntilNextAnchor,
-} from "../helpers/route-anchor.helper.js";
+import { routeRegionOf } from "../helpers/route-anchor.helper.js";
 import {
   splitTopLevel,
   unwrapObjectLiteralItem,
 } from "../helpers/source-scan.helper.js";
 
 /**
- * `r.GET("/users", …)`, `router.POST("/users", …)`.
+ * `r.GET("/users", …)`, `users.POST("/users", …)`.
+ *
+ * The receiver is **any** identifier, and not a fixed list of names.
+ * The dominant Gin idiom is a group — `users := r.Group("/api/v1")` —
+ * whose routes are declared on the group, and the group is called
+ * whatever the project calls it. A fixed list of receivers (`r`,
+ * `router`, `group`, `engine`, `api`, `gin`) read every one of those
+ * routes as if it were not declared at all: nine out of ten routes of
+ * a real Gin project answered nothing.
  *
  * Go spells the methods in upper case, and `findRouteAnchors`
  * uppercases what it captures anyway.
  */
 const ROUTE_PATTERN =
-  /\b(?:r|router|group|engine|api|gin)\s*\.\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|Any)\s*\(\s*"([^"]+)"/g;
+  /\b(?:[A-Za-z_][\w.]*)\s*\.\s*(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|Any)\s*\(\s*"([^"]+)"/g;
 
 /** `c.JSON(200, …)` — the JSON renderer of Gin. */
 const JSON_CALL_PATTERN = /\bc\s*\.\s*JSON\s*\(/g;
@@ -115,17 +119,29 @@ const HTTP_STATUS: Readonly<Record<string, number>> = {
 export class GinResponseInferrer implements IResponseInferrer {
   readonly framework = "gin";
 
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  /**
+   * Does this route use the construct this inferrer models — a
+   * handler that renders JSON (`c.JSON(…)`)?
+   *
+   * Gin declares nothing else, so the answer is: the route is
+   * declared in the file and its handler renders JSON. A handler that
+   * renders a string (`c.String`) is not this slice.
+   */
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return false;
+    return new RegExp(JSON_CALL_PATTERN.source).test(region);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
-    const text = ctx.source.content;
-    const anchors = findRouteAnchors(text, ROUTE_PATTERN);
-    const anchor = pickRouteAnchor(anchors, route);
-    if (anchor === null) return null;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return null;
 
-    const region = sliceUntilNextAnchor(text, anchor, anchors);
     const call = findJsonCall(region);
     if (call === null) return null;
 

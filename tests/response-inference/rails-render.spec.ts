@@ -26,9 +26,15 @@ const inferrer = new RailsRenderResponseInferrer();
 
 describe("Rails response inferrer — render json (r00020 S3)", () => {
   test("detects only Rails", () => {
-    const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("rails", route)).toBe(true);
-    expect(inferrer.detect("laravel", route)).toBe(false);
+    const route = routeOf({
+      method: "GET",
+      uri: "/users",
+      rawUri: "users",
+      actionName: "index",
+    });
+    const ctx = contextOf(FIXTURE, "rails", ROUTES);
+    expect(inferrer.detect("rails", route, ctx)).toBe(true);
+    expect(inferrer.detect("laravel", route, ctx)).toBe(false);
   });
 
   test("reads the controller of the project and the hash it renders", () => {

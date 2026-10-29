@@ -30,8 +30,9 @@ const inferrer = new FastifyResponseInferrer();
 describe("Fastify response inferrer — schema.response (r00020 S3)", () => {
   test("detects only Fastify", () => {
     const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("fastify", route)).toBe(true);
-    expect(inferrer.detect("express", route)).toBe(false);
+    const ctx = contextOf(FIXTURE, "fastify", SERVER);
+    expect(inferrer.detect("fastify", route, ctx)).toBe(true);
+    expect(inferrer.detect("express", route, ctx)).toBe(false);
   });
 
   test("reads the declared status, shape and required fields of GET /users", () => {

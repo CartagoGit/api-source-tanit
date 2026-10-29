@@ -132,6 +132,14 @@ export const RESPONSE_INFERENCE_REFERENCE_FIXTURES: Readonly<
  * predate this slice and have no response fixture of their own. The
  * reporter prints their number and stays quiet about it.
  *
+ * A baseline **below 100** is not a defect: it is a fixture that
+ * carries a route the inferrer cannot prove. `express` answers 3 of
+ * the 4 routes of its fixture (the fourth sends a plain string) and
+ * `fastify` 2 of 3 (the third declares no schema). `gin` answers 6
+ * of 7: the last one renders an empty collection, which carries no
+ * field to prove. The number is what the fixture measures, not a
+ * target anybody has to hit.
+ *
  * See `docs/RESPONSE-INFERENCE.md` for the full table and the method.
  */
 export const RESPONSE_INFERENCE_COVERAGE_BASELINE: Readonly<
@@ -144,7 +152,7 @@ export const RESPONSE_INFERENCE_COVERAGE_BASELINE: Readonly<
   fastify: 66.7,
   express: 75,
   "laravel-resources": 100,
-  gin: 100,
+  gin: 85.7,
   "rails-render": 100,
   "ktor-respond": 100,
 };

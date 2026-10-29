@@ -41,9 +41,10 @@ function usersRoute(action: string): ReturnType<typeof routeOf> {
 
 describe("Laravel Resources response inferrer — JsonResource (r00020 S3)", () => {
   test("detects only Laravel", () => {
-    const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("laravel", route)).toBe(true);
-    expect(inferrer.detect("rails", route)).toBe(false);
+    const route = usersRoute("index");
+    const ctx = contextOf(FIXTURE, "laravel", ROUTES);
+    expect(inferrer.detect("laravel", route, ctx)).toBe(true);
+    expect(inferrer.detect("rails", route, ctx)).toBe(false);
   });
 
   test("reads the controller of the project and the Resource it returns", () => {

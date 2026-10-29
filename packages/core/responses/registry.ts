@@ -253,6 +253,14 @@ export function __resetResponseInferrersForTest(): void {
  * - a list becomes a spec, and an empty list becomes `null` — which is
  *   what the new contract means by "no signal".
  *
+ * The **detect** of the adapter answers the framework question only,
+ * and that is not a shortcut: the legacy shape is file-level. It
+ * receives an endpoint projection and a file, never a route, so it
+ * cannot know whether *this* route uses the construct it reads — the
+ * annotations of the whole file are what it sees. The construct
+ * question is therefore answered by `infer()`, which returns nothing
+ * when the file carries no signal.
+ *
  * Nothing about the legacy behaviour changes: the same code runs, over
  * the same input, with the same result.
  */

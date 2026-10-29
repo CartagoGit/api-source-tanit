@@ -39,74 +39,11 @@ import {
   RESPONSE_INFERRER_IDS,
 } from "../../packages/contracts/constants/core/response-inference.constant.js";
 import type { IResponseFrameworkCoverage } from "../../packages/contracts/interfaces/core/response-coverage.interface.js";
-import type { IResponseInferrer } from "../../packages/contracts/interfaces/core/response-inferrer.interface.js";
-import { ExpressResponseInferrer } from "../../packages/core/response-inference/express.helper.js";
-import { FastifyResponseInferrer } from "../../packages/core/response-inference/fastify.helper.js";
-import { GinResponseInferrer } from "../../packages/core/response-inference/gin.helper.js";
-import { KtorRespondResponseInferrer } from "../../packages/core/response-inference/ktor-respond.helper.js";
-import { LaravelResourcesResponseInferrer } from "../../packages/core/response-inference/laravel-resources.helper.js";
-import { RailsRenderResponseInferrer } from "../../packages/core/response-inference/rails-render.helper.js";
-import { REFERENCE_ROUTES } from "../helpers/response-inference-routes.helper.js";
-import { nestjsResponseInferrer } from "../helpers/response-inference-legacy.helper.js";
+import {
+  MEASURED_INFERRERS,
+  REFERENCE_ROUTES,
+} from "../helpers/response-inference-routes.helper.js";
 import { contextOf, routeOf } from "./response-inference.helper.js";
-
-/**
- * Every inferrer whose baseline is measured here, with the file it
- * reads.
- *
- * Six from this slice, plus the legacy NestJS one: a baseline nobody
- * measures is a baseline nobody can trust, and `nestjs: 100` was
- * declared and documented without a single test behind it.
- */
-const MEASURED_INFERRERS: ReadonlyArray<{
-  readonly id: (typeof RESPONSE_INFERRER_IDS)[number];
-  readonly fixture: string;
-  readonly source: string;
-  readonly inferrer: IResponseInferrer;
-}> = [
-  {
-    id: "express",
-    fixture: "express-responses",
-    source: "src/app.ts",
-    inferrer: new ExpressResponseInferrer(),
-  },
-  {
-    id: "fastify",
-    fixture: "fastify-responses",
-    source: "src/server.ts",
-    inferrer: new FastifyResponseInferrer(),
-  },
-  {
-    id: "gin",
-    fixture: "gin-responses",
-    source: "main.go",
-    inferrer: new GinResponseInferrer(),
-  },
-  {
-    id: "ktor-respond",
-    fixture: "ktor-responses",
-    source: "src/main.kt",
-    inferrer: new KtorRespondResponseInferrer(),
-  },
-  {
-    id: "laravel-resources",
-    fixture: "laravel-resources",
-    source: "routes/api.php",
-    inferrer: new LaravelResourcesResponseInferrer(),
-  },
-  {
-    id: "rails-render",
-    fixture: "rails-render",
-    source: "config/routes.rb",
-    inferrer: new RailsRenderResponseInferrer(),
-  },
-  {
-    id: "nestjs",
-    fixture: "nestjs-response-inference",
-    source: "src/users.controller.ts",
-    inferrer: nestjsResponseInferrer,
-  },
-];
 
 describe("coverage reporter — arithmetic (r00020 S3)", () => {
   test("a framework that inferred everything is at 100%", () => {

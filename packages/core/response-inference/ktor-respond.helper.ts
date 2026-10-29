@@ -50,11 +50,7 @@ import type {
   IResponseInference,
   IResponseSchema,
 } from "../../contracts/interfaces/core/responses.interface.js";
-import {
-  findRouteAnchors,
-  pickRouteAnchor,
-  sliceUntilNextAnchor,
-} from "../helpers/route-anchor.helper.js";
+import { routeRegionOf } from "../helpers/route-anchor.helper.js";
 
 /**
  * The routing DSL: `get("/users") { … }`.
@@ -124,17 +120,28 @@ const STATUS_CODES: Readonly<Record<string, number>> = {
 export class KtorRespondResponseInferrer implements IResponseInferrer {
   readonly framework = "ktor";
 
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  /**
+   * Does this route use the construct this inferrer models — a
+   * handler that answers (`call.respond(…)`)?
+   *
+   * Ktor declares nothing else, so the answer is: the route is
+   * declared in the file and its handler answers.
+   */
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return false;
+    return new RegExp(RESPOND_PATTERN.source).test(region);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
-    const text = ctx.source.content;
-    const anchors = findRouteAnchors(text, ROUTE_PATTERN);
-    const anchor = pickRouteAnchor(anchors, route);
-    if (anchor === null) return null;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return null;
 
-    const region = sliceUntilNextAnchor(text, anchor, anchors);
     const calls = findRespondCalls(region);
     if (calls.length === 0) return null;
 

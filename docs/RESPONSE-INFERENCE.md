@@ -12,17 +12,33 @@ Every inferrer answers the same two questions:
 ```ts
 interface IResponseInferrer {
   readonly framework: string;
-  detect(framework: string, route: IResponseRoute): boolean;
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean;
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null;
 }
 ```
 
 - `detect` is the cheap question: *is this my framework, and does this
-  route look like one I can infer?* It runs before any parsing.
+  route use the construct I understand?* It runs before any parsing.
+  The context is in the signature because the construct lives in the
+  source: an inferrer that cannot see the source cannot know whether
+  the route uses it. A Laravel route whose controller returns a plain
+  array is not the Laravel-Resources slice; a Rails action that
+  renders HTML is not the Rails-render slice.
 - `infer` is the expensive one: *what does this route return?* It
   returns the responses it can **prove** from the source, or `null`
   when it cannot prove any. `null` and an empty list are different
   statements, and the contract says so.
+
+The answer of `detect` is a **superset** of what `infer` can prove: a
+`detect` that says `true` does not promise a response, only that the
+route uses a construct the inferrer models. A `detect` that says
+`false` promises there is nothing to read — and
+`tests/response-inference/detect.spec.ts` checks that no inferrer
+answers a route it does not detect.
 
 The contract lives in
 `packages/contracts/interfaces/core/response-inferrer.interface.ts`.
@@ -54,7 +70,7 @@ inferred".
 | `fastify` | `fastify` | `schema.response.<status>` (JSON Schema) | high | `tests/fixtures/fastify-responses/` | 66.7% |
 | `express` | `express` | `res.json(…)`, `res.status(n).json(…)` | medium | `tests/fixtures/express-responses/` | 75% |
 | `laravel-resources` | `laravel` | `new XResource(…)`, `XResource::collection(…)`, `toArray()` | high | `tests/fixtures/laravel-resources/` | 100% |
-| `gin` | `gin` | `c.JSON(status, gin.H{…})` | medium | `tests/fixtures/gin-responses/` | 100% |
+| `gin` | `gin` | `c.JSON(status, gin.H{…})` | medium | `tests/fixtures/gin-responses/` | 85.7% |
 | `rails-render` | `rails` | `render json: …` | medium | `tests/fixtures/rails-render/` | 100% |
 | `ktor-respond` | `ktor` | `call.respond(HttpStatusCode.X, …)` | medium | `tests/fixtures/ktor-responses/` | 100% |
 
@@ -131,6 +147,14 @@ A baseline of `null` means nobody measured that inferrer yet: the four
 that predate this slice and have no response fixture of their own.
 The reporter prints their number and stays quiet about it.
 
+A baseline **below 100** is not a defect: it is a fixture that
+carries a route the inferrer cannot prove. `express` answers 3 of
+the 4 routes of its fixture (the fourth sends a plain string),
+`fastify` 2 of 3 (the third declares no schema) and `gin` 6 of 7
+(the last renders an empty collection, which carries no field to
+prove). The number is what the fixture measures — not a target
+anybody has to hit.
+
 ### What the baseline is, and what it is not
 
 The baseline is a **reference measurement**: the percentage the
@@ -161,6 +185,8 @@ is not a regression, and the message says so.
 - `tests/response-inference/ktor-respond.spec.ts`
 - `tests/response-inference/registry.spec.ts`
 - `tests/response-inference/coverage.spec.ts`
+- `tests/response-inference/detect.spec.ts` — the two questions of the
+  contract, and the invariant that ties them together
 - `tests/response-inference/edge-cases.spec.ts` — malformed input every
   inferrer has to survive
 

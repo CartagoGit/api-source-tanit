@@ -136,6 +136,27 @@ export function sliceUntilNextAnchor(
   return text.slice(anchor.end, Math.min(limit, anchor.end + maxChars));
 }
 
+/**
+ * The region of the file that belongs to `route`, or `null` when the
+ * file declares no such route.
+ *
+ * The three steps every inferrer needs — find the declarations,
+ * recognise which one is *this* route, hand back its region — in one
+ * call. An inferrer that needs the region twice (once to answer
+ * `detect()`, once to answer `infer()`) reads the same bytes twice;
+ * one that needs it once does not care.
+ */
+export function routeRegionOf(
+  text: string,
+  pattern: RegExp,
+  route: IResponseRoute,
+): string | null {
+  const anchors = findRouteAnchors(text, pattern);
+  const anchor = pickRouteAnchor(anchors, route);
+  if (anchor === null) return null;
+  return sliceUntilNextAnchor(text, anchor, anchors);
+}
+
 /** Number of newlines before `index` — the 0-based line of a match. */
 function countLines(text: string, index: number): number {
   let lines = 0;

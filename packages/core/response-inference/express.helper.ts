@@ -46,11 +46,7 @@ import type {
 } from "../../contracts/interfaces/core/responses.interface.js";
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { buildSchemaGraph } from "../schema/build-schema-graph.helper.js";
-import {
-  findRouteAnchors,
-  pickRouteAnchor,
-  sliceUntilNextAnchor,
-} from "../helpers/route-anchor.helper.js";
+import { routeRegionOf } from "../helpers/route-anchor.helper.js";
 import {
   findClosingParen,
   splitTopLevel,
@@ -94,21 +90,29 @@ export class ExpressResponseInferrer implements IResponseInferrer {
   readonly framework = "express";
 
   /**
-   * Express routes are declared with `app.<method>(path, handler)`.
-   * There is no sub-slice of Express this inferrer ignores, so the
-   * only question is whether the caller is talking about Express.
+   * Does this route use the construct this inferrer models — a
+   * handler that sends a response (`res.json(…)`, `res.send(…)`)?
+   *
+   * Express declares nothing else, so the answer is: the route is
+   * declared in the file and its handler sends something. A route of
+   * another framework, or a route this file does not declare, is not
+   * mine.
    */
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return false;
+    return new RegExp(SEND_PATTERN.source).test(region);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
-    const text = ctx.source.content;
-    const anchors = findRouteAnchors(text, ROUTE_PATTERN);
-    const anchor = pickRouteAnchor(anchors, route);
-    if (anchor === null) return null;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return null;
 
-    const region = sliceUntilNextAnchor(text, anchor, anchors);
     const call = findSendCall(region);
     if (call === null) return null;
 

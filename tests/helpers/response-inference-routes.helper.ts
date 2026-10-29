@@ -21,6 +21,14 @@
  * again. That is the whole point of writing the list down.
  */
 import type { ResponseInferrerId } from "../../packages/contracts/constants/core/response-inference.constant.js";
+import type { IResponseInferrer } from "../../packages/contracts/interfaces/core/response-inferrer.interface.js";
+import { ExpressResponseInferrer } from "../../packages/core/response-inference/express.helper.js";
+import { FastifyResponseInferrer } from "../../packages/core/response-inference/fastify.helper.js";
+import { GinResponseInferrer } from "../../packages/core/response-inference/gin.helper.js";
+import { KtorRespondResponseInferrer } from "../../packages/core/response-inference/ktor-respond.helper.js";
+import { LaravelResourcesResponseInferrer } from "../../packages/core/response-inference/laravel-resources.helper.js";
+import { RailsRenderResponseInferrer } from "../../packages/core/response-inference/rails-render.helper.js";
+import { nestjsResponseInferrer } from "./response-inference-legacy.helper.js";
 
 /**
  * One route, as the scanner reports it.
@@ -98,6 +106,9 @@ export const REFERENCE_ROUTES: Readonly<
     { method: "POST", uri: "/users", rawUri: "/users", sourceFile: "main.go", lineNumber: 0 },
     { method: "GET", uri: "/users/:id", rawUri: "/users/:id", sourceFile: "main.go", lineNumber: 0 },
     { method: "GET", uri: "/health", rawUri: "/health", sourceFile: "main.go", lineNumber: 0 },
+    { method: "GET", uri: "/api/v1/accounts", rawUri: "/accounts", sourceFile: "main.go", lineNumber: 0 },
+    { method: "POST", uri: "/api/v1/accounts", rawUri: "/accounts", sourceFile: "main.go", lineNumber: 0 },
+    { method: "GET", uri: "/api/v1/orders", rawUri: "/orders", sourceFile: "main.go", lineNumber: 0 },
   ],
   "rails-render": [
     { method: "GET", uri: "/api/users", rawUri: "users", sourceFile: "config/routes.rb", lineNumber: 3, actionName: "index" },
@@ -120,3 +131,65 @@ export const REFERENCE_ROUTES: Readonly<
     { method: "DELETE", uri: "/users/{id}", rawUri: "/users/{id}", sourceFile: "src/main.kt", lineNumber: 31 },
   ],
 };
+
+/**
+ * Every inferrer whose baseline is measured, with the fixture it is
+ * measured on and the file it reads.
+ *
+ * Six from this slice, plus the legacy NestJS one: a baseline nobody
+ * measures is a baseline nobody can trust, and `nestjs: 100` was
+ * declared and documented without a single test behind it.
+ *
+ * The table lives here — and not in the coverage spec — because the
+ * **detect** spec needs the same seven pairs: the two questions of
+ * the contract are asked about the same routes.
+ */
+export const MEASURED_INFERRERS: ReadonlyArray<{
+  readonly id: ResponseInferrerId;
+  readonly fixture: string;
+  readonly source: string;
+  readonly inferrer: IResponseInferrer;
+}> = [
+  {
+    id: "express",
+    fixture: "express-responses",
+    source: "src/app.ts",
+    inferrer: new ExpressResponseInferrer(),
+  },
+  {
+    id: "fastify",
+    fixture: "fastify-responses",
+    source: "src/server.ts",
+    inferrer: new FastifyResponseInferrer(),
+  },
+  {
+    id: "gin",
+    fixture: "gin-responses",
+    source: "main.go",
+    inferrer: new GinResponseInferrer(),
+  },
+  {
+    id: "ktor-respond",
+    fixture: "ktor-responses",
+    source: "src/main.kt",
+    inferrer: new KtorRespondResponseInferrer(),
+  },
+  {
+    id: "laravel-resources",
+    fixture: "laravel-resources",
+    source: "routes/api.php",
+    inferrer: new LaravelResourcesResponseInferrer(),
+  },
+  {
+    id: "rails-render",
+    fixture: "rails-render",
+    source: "config/routes.rb",
+    inferrer: new RailsRenderResponseInferrer(),
+  },
+  {
+    id: "nestjs",
+    fixture: "nestjs-response-inference",
+    source: "src/users.controller.ts",
+    inferrer: nestjsResponseInferrer,
+  },
+];

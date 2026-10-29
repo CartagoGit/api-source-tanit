@@ -109,11 +109,31 @@ export class RailsRenderResponseInferrer implements IResponseInferrer {
   readonly framework = "rails";
 
   /**
-   * Every Rails route is a candidate — whether it renders JSON is what
-   * `infer()` decides, not `detect()`.
+   * Does this route use the constructs this inferrer models — an
+   * action that renders JSON (`render json: …`), or a REST route of
+   * a routes file (the convention)?
+   *
+   * An action that renders HTML is not this slice, and saying so is
+   * the whole point of the question: a Rails route that answers with
+   * a page says nothing about a JSON response.
    */
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    // The action renders JSON → this is my slice.
+    if (rendersJson(route, ctx)) return true;
+    // The controller could be read and its action does not render
+    // JSON → this is not my slice. The convention must not answer
+    // here: it would answer with a model the action never returns.
+    const controller = controllerTextOf(route, ctx);
+    if (controller !== null && actionBody(controller, actionOf(route)) !== null) {
+      return false;
+    }
+    // Nothing could be read: the convention may still answer.
+    return conventionApplies(route, ctx);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
@@ -136,6 +156,42 @@ export class RailsRenderResponseInferrer implements IResponseInferrer {
     // Mode 3 — the convention, read from the routes file.
     return inferFromRoutes(route, ctx.source.content);
   }
+}
+
+/**
+ * Whether the action that answers the route renders JSON.
+ *
+ * The action is read from the controller: the file we were given when
+ * it is the controller, and the file on disk when it is not.
+ */
+function rendersJson(route: IResponseRoute, ctx: IResponseInferContext): boolean {
+  const direct = actionBody(ctx.source.content, actionOf(route));
+  if (direct !== null && rendersJsonIn(direct)) return true;
+  const controller = controllerTextOf(route, ctx);
+  if (controller === null) return false;
+  const onDisk = actionBody(controller, actionOf(route));
+  return onDisk !== null && rendersJsonIn(onDisk);
+}
+
+/** Whether the body of an action renders JSON. */
+function rendersJsonIn(body: string): boolean {
+  return new RegExp(RENDER_JSON_PATTERN.source).test(body);
+}
+
+/**
+ * Whether the REST convention answers this route.
+ *
+ * The convention is the second construct this inferrer models, and it
+ * only applies to a route declared in a routes file whose action is
+ * one of the seven of the convention.
+ */
+function conventionApplies(
+  route: IResponseRoute,
+  ctx: IResponseInferContext,
+): boolean {
+  if (!looksLikeRoutesFile(ctx.source.content)) return false;
+  if (ACTION_STATUS[actionOf(route)] === undefined) return false;
+  return modelNameOf(route) !== null;
 }
 
 /**
@@ -274,7 +330,7 @@ function snakeCase(name: string): string {
 function actionBody(text: string, actionName: string): string | null {
   const re = new RegExp(METHOD_PATTERN.source, "gm");
   let match: RegExpExecArray | null;
-  const candidates: Array<{ indent: string; name: string; start: number }> = [];
+  const candidates: IRailsMethod[] = [];
   while ((match = re.exec(text)) !== null) {
     candidates.push({
       indent: match[1] ?? "",
@@ -284,20 +340,54 @@ function actionBody(text: string, actionName: string): string | null {
   }
   if (candidates.length === 0) return null;
 
-  // An action that the controller does not define has no body. The
-  // fallback to the first method is only for the case where nobody
-  // named an action — reading another method's body would answer
-  // with a response the route does not have.
-  const wanted =
-    actionName.length === 0
-      ? candidates[0]
-      : candidates.find((c) => c.name === actionName);
-  if (wanted === undefined) return null;
+  const wanted = resolveAction(candidates, actionName);
+  if (wanted === null) return null;
 
   // The method ends where the next method of the same class starts.
   const next = candidates.find((c) => c.start > wanted.start && c.indent === wanted.indent);
   const end = next === undefined ? text.length : next.start;
   return text.slice(wanted.start, end);
+}
+
+/** A method declared by a Ruby controller. */
+interface IRailsMethod {
+  /** The indentation of the `def` — the methods of a class share it. */
+  readonly indent: string;
+  /** The name of the method. */
+  readonly name: string;
+  /** Offset of the first character of the method's body. */
+  readonly start: number;
+}
+
+/**
+ * The method that answers the route.
+ *
+ * A **named** action is that method — or nothing. An action the
+ * controller does not define has no body.
+ *
+ * An **unnamed** action is a different question, and the answer is
+ * narrower. The Rails scanner resolves the action only for `resources`
+ * routes: `get "/health", to: "health#check"` arrives without one, and
+ * the controller may well declare `index`, `check` and `create`. Which
+ * of them answers the route is a question about the routes file, and
+ * the inferrer cannot answer it.
+ *
+ * So the only controller that answers an unnamed action is one that
+ * declares a **single** method: then there is nothing to choose
+ * between. With more than one, reading the first method would
+ * attribute *its* response to a route that points at another — the
+ * confidently wrong answer this slice exists to avoid. The honest
+ * answer is `null`: no response, and no reason that names a method
+ * the route may not use.
+ */
+function resolveAction(
+  candidates: ReadonlyArray<IRailsMethod>,
+  actionName: string,
+): IRailsMethod | null {
+  if (actionName.length > 0) {
+    return candidates.find((c) => c.name === actionName) ?? null;
+  }
+  return candidates.length === 1 ? candidates[0] ?? null : null;
 }
 
 /**

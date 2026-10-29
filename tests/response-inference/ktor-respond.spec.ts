@@ -28,8 +28,9 @@ const inferrer = new KtorRespondResponseInferrer();
 describe("Ktor response inferrer — call.respond (r00020 S3)", () => {
   test("detects only Ktor", () => {
     const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("ktor", route)).toBe(true);
-    expect(inferrer.detect("gin", route)).toBe(false);
+    const ctx = contextOf(FIXTURE, "ktor", MAIN);
+    expect(inferrer.detect("ktor", route, ctx)).toBe(true);
+    expect(inferrer.detect("gin", route, ctx)).toBe(false);
   });
 
   test("reads the status of the enum and the type of the payload", () => {

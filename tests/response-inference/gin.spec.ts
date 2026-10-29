@@ -28,8 +28,9 @@ const inferrer = new GinResponseInferrer();
 describe("Gin response inferrer — c.JSON (r00020 S3)", () => {
   test("detects only Gin", () => {
     const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("gin", route)).toBe(true);
-    expect(inferrer.detect("express", route)).toBe(false);
+    const ctx = contextOf(FIXTURE, "gin", MAIN);
+    expect(inferrer.detect("gin", route, ctx)).toBe(true);
+    expect(inferrer.detect("express", route, ctx)).toBe(false);
   });
 
   test("reads the status from the net/http constant and the shape of the map", () => {
@@ -108,6 +109,51 @@ describe("Gin response inferrer — c.JSON (r00020 S3)", () => {
     ].join("\n");
     const route = routeOf({ method: "GET", uri: "/x", rawUri: "/x" });
     const spec = inferrer.infer(route, contextOfSource("gin", source));
+
+    expect(spec).toBeNull();
+  });
+
+  test("reads a route declared on a group", () => {
+    // The group is called `v1` — nothing forces it to be called `r`.
+    // The route is declared as `/accounts` and mounted under
+    // `/api/v1`, so the URI the scanner reports is the full one.
+    const route = routeOf({
+      method: "GET",
+      uri: "/api/v1/accounts",
+      rawUri: "/accounts",
+      sourceFile: MAIN,
+      lineNumber: lineOf(SOURCE, 'v1.GET("/accounts"'),
+    });
+    const spec = inferrer.infer(route, contextOf(FIXTURE, "gin", MAIN));
+
+    const entry = spec?.responses[0];
+    expect(entry?.status).toBe(200);
+    expect(fieldsOf(entry?.schema).map((f) => f.name)).toEqual(["id", "name"]);
+  });
+
+  test("reads the status of a route declared on a group", () => {
+    const route = routeOf({
+      method: "POST",
+      uri: "/api/v1/accounts",
+      rawUri: "/accounts",
+      sourceFile: MAIN,
+      lineNumber: lineOf(SOURCE, 'v1.POST("/accounts"'),
+    });
+    const spec = inferrer.infer(route, contextOf(FIXTURE, "gin", MAIN));
+
+    expect(spec?.responses[0]?.status).toBe(201);
+  });
+
+  test("a collection with no items answers nothing", () => {
+    // There is no field to prove, so there is nothing to say.
+    const route = routeOf({
+      method: "GET",
+      uri: "/api/v1/orders",
+      rawUri: "/orders",
+      sourceFile: MAIN,
+      lineNumber: lineOf(SOURCE, 'v1.GET("/orders"'),
+    });
+    const spec = inferrer.infer(route, contextOf(FIXTURE, "gin", MAIN));
 
     expect(spec).toBeNull();
   });

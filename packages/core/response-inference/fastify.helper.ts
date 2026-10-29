@@ -49,11 +49,7 @@ import type {
 } from "../../contracts/interfaces/core/responses.interface.js";
 import type { IValidationSpec } from "../../contracts/interfaces/core/scanner.interface.js";
 import { buildSchemaGraph } from "../schema/build-schema-graph.helper.js";
-import {
-  findRouteAnchors,
-  pickRouteAnchor,
-  sliceUntilNextAnchor,
-} from "../helpers/route-anchor.helper.js";
+import { routeRegionOf } from "../helpers/route-anchor.helper.js";
 import { splitTopLevel } from "../helpers/source-scan.helper.js";
 
 /**
@@ -82,17 +78,31 @@ const RESPONSE_KEY_PATTERN = /\bresponse\s*:/g;
 export class FastifyResponseInferrer implements IResponseInferrer {
   readonly framework = "fastify";
 
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  /**
+   * Does this route use the constructs this inferrer models — a
+   * declared `schema.response`, or a handler that overrides the
+   * status (`reply.code(…)`)?
+   *
+   * A route that declares neither says nothing about its response:
+   * Fastify's default is a JSON body whose shape the code does not
+   * state, and inventing one would be inventing.
+   */
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return false;
+    if (new RegExp(RESPONSE_KEY_PATTERN.source).test(region)) return true;
+    return new RegExp(REPLY_STATUS_PATTERN.source).test(region);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
-    const text = ctx.source.content;
-    const anchors = findRouteAnchors(text, ROUTE_PATTERN);
-    const anchor = pickRouteAnchor(anchors, route);
-    if (anchor === null) return null;
+    const region = routeRegionOf(ctx.source.content, ROUTE_PATTERN, route);
+    if (region === null) return null;
 
-    const region = sliceUntilNextAnchor(text, anchor, anchors);
     const declared = readDeclaredResponses(region);
     if (declared.length > 0) {
       return { responses: declared };

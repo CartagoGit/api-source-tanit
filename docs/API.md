@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 389 símbolos en 150 módulos.
+> 390 símbolos en 150 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2399,6 +2399,21 @@ options object, the handler, and nothing else — stopping at the
 next route is what keeps one route from reading the next route's
 response call.
 
+#### `routeRegionOf`
+
+```ts
+export function routeRegionOf( text: string, pattern: RegExp, route: IResponseRoute, ): string | null
+```
+
+The region of the file that belongs to `route`, or `null` when the
+file declares no such route.
+
+The three steps every inferrer needs — find the declarations,
+recognise which one is *this* route, hand back its region — in one
+call. An inferrer that needs the region twice (once to answer
+`detect()`, once to answer `infer()`) reads the same bytes twice;
+one that needs it once does not care.
+
 ### `packages/core/helpers/route-identity.helper.ts`
 
 What makes two endpoints the same endpoint.
@@ -4260,6 +4275,14 @@ The adapter is the whole translation:
 - the context's source **is** the source file;
 - a list becomes a spec, and an empty list becomes `null` — which is
   what the new contract means by "no signal".
+
+The **detect** of the adapter answers the framework question only,
+and that is not a shortcut: the legacy shape is file-level. It
+receives an endpoint projection and a file, never a route, so it
+cannot know whether *this* route uses the construct it reads — the
+annotations of the whole file are what it sees. The construct
+question is therefore answered by `infer()`, which returns nothing
+when the file carries no signal.
 
 Nothing about the legacy behaviour changes: the same code runs, over
 the same input, with the same result.

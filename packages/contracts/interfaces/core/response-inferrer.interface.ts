@@ -27,11 +27,13 @@
  *
  * ## The two questions
  *
- * - `detect(framework, route)` — *is this my framework, and does this
- *   route look like one I can infer?* It is the cheap check that runs
- *   before any parsing. An inferrer for Laravel Resources answers
- *   `true` for a Laravel route whose controller returns a Resource and
- *   `false` for one that returns a plain array.
+ * - `detect(framework, route, ctx)` — *is this my framework, and does
+ *   this route use the construct I understand?* It is the cheap check
+ *   that runs before any parsing. An inferrer for Laravel Resources
+ *   answers `true` for a Laravel route whose controller returns a
+ *   Resource and `false` for one that returns a plain array. The
+ *   context is in the signature because the construct lives in the
+ *   source: without it the question would be unanswerable.
  * - `infer(route, ctx)` — *what does this route return?* It reads the
  *   source through `ctx.source` and returns the responses it can
  *   prove, or `null` when it cannot prove any.
@@ -186,8 +188,31 @@ export interface IResponseInferrer {
    * "not mine" — either another framework, or a route of my framework
    * that does not use the construct I understand (a Laravel controller
    * that returns a plain array, a Rails action that renders HTML).
+   *
+   * The **context** is part of the question, and that is why it is in
+   * the signature: the construct lives in the source, so an inferrer
+   * that cannot see the source cannot know whether the route uses
+   * it. The context is the one `infer()` receives — `detect()` is the
+   * cheap half of the same reading, not a second and different one.
+   *
+   * The answer is a **superset** of what `infer()` can prove: a
+   * `detect()` that says `true` does not promise a response, only
+   * that the route uses a construct this inferrer models. A `detect()`
+   * that says `false` promises there is nothing to read.
+   *
+   * The four inferrers that predate this slice are **adapted**
+   * (`adaptLegacyResponseInferrer`), and their adapter answers the
+   * framework question only: the legacy shape is file-level — it
+   * receives an endpoint projection and a file, never a route — so it
+   * cannot know whether *this* route uses the construct it reads.
+   * Their `infer()` answers the construct question the only way it
+   * can, by returning nothing when there is no signal.
    */
-  detect(framework: string, route: IResponseRoute): boolean;
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean;
   /**
    * What does this route return?
    *

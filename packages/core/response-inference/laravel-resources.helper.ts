@@ -87,11 +87,33 @@ export class LaravelResourcesResponseInferrer implements IResponseInferrer {
   readonly framework = "laravel";
 
   /**
-   * Every Laravel route is a candidate — whether it answers with a
-   * Resource is what `infer()` decides, not `detect()`.
+   * Does this route use the constructs this inferrer models — an
+   * action that returns a `JsonResource`, or a REST route of a routes
+   * file (the convention)?
+   *
+   * A controller that returns a plain model is not this slice: the
+   * fields of a model are a database question, not a code question.
    */
-  detect(framework: string, _route: IResponseRoute): boolean {
-    return framework === this.framework;
+  detect(
+    framework: string,
+    route: IResponseRoute,
+    ctx: IResponseInferContext,
+  ): boolean {
+    if (framework !== this.framework) return false;
+    // The action returns a Resource → this is my slice.
+    if (returnsResource(route, ctx)) return true;
+    // The controller could be read and its action does not return a
+    // Resource → this is not my slice. The convention must not answer
+    // here: it would answer with a Resource nobody returns.
+    const controller = controllerTextOf(route, ctx);
+    if (
+      controller !== null &&
+      actionBody(controller, route.actionName ?? "") !== null
+    ) {
+      return false;
+    }
+    // Nothing could be read: the convention may still answer.
+    return conventionApplies(route, ctx);
   }
 
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null {
@@ -114,6 +136,47 @@ export class LaravelResourcesResponseInferrer implements IResponseInferrer {
     // Mode 3 — the convention, read from the routes file.
     return inferFromRoutes(route, ctx.source.content);
   }
+}
+
+/**
+ * Whether the action that answers the route returns a Resource.
+ *
+ * The action is read from the controller: the file we were given when
+ * it is the controller, and the file on disk when it is not.
+ */
+function returnsResource(
+  route: IResponseRoute,
+  ctx: IResponseInferContext,
+): boolean {
+  const action = route.actionName ?? "";
+  const direct = actionBody(ctx.source.content, action);
+  if (direct !== null && returnsResourceIn(direct)) return true;
+  const controller = controllerTextOf(route, ctx);
+  if (controller === null) return false;
+  const onDisk = actionBody(controller, action);
+  return onDisk !== null && returnsResourceIn(onDisk);
+}
+
+/** Whether the body of an action returns a Resource. */
+function returnsResourceIn(body: string): boolean {
+  if (new RegExp(COLLECTION_PATTERN.source).test(body)) return true;
+  return new RegExp(NEW_RESOURCE_PATTERN.source).test(body);
+}
+
+/**
+ * Whether the convention answers this route.
+ *
+ * The convention is the second construct this inferrer models, and it
+ * only applies to a route declared in a routes file whose controller
+ * names a Resource.
+ */
+function conventionApplies(
+  route: IResponseRoute,
+  ctx: IResponseInferContext,
+): boolean {
+  if (!looksLikeRoutesFile(ctx.source.content)) return false;
+  if (ACTION_STATUS[route.actionName ?? ""] === undefined) return false;
+  return resourceNameFromController(route.controllerClass) !== null;
 }
 
 /**
@@ -289,16 +352,43 @@ function toArrayBody(text: string): string | null {
 function actionBody(text: string, actionName: string): string | null {
   const re = new RegExp(ACTION_PATTERN.source, "g");
   let match: RegExpExecArray | null;
+  const candidates: Array<{ name: string; index: number }> = [];
   while ((match = re.exec(text)) !== null) {
-    const name = match[1] ?? "";
-    if (actionName.length > 0 && name !== actionName) continue;
-    const open = text.indexOf("{", match.index);
-    if (open === -1) return null;
-    const close = matchingBrace(text, open);
-    if (close === -1) return null;
-    return text.slice(open, close + 1);
+    candidates.push({ name: match[1] ?? "", index: match.index });
   }
-  return null;
+  if (candidates.length === 0) return null;
+
+  const wanted = resolveAction(candidates, actionName);
+  if (wanted === null) return null;
+
+  const open = text.indexOf("{", wanted.index);
+  if (open === -1) return null;
+  const close = matchingBrace(text, open);
+  if (close === -1) return null;
+  return text.slice(open, close + 1);
+}
+
+/**
+ * The method that answers the route.
+ *
+ * A **named** action is that method — or nothing.
+ *
+ * An **unnamed** action is answered only by a controller that declares
+ * a **single** method: with several of them there is no way to know
+ * which one the route dispatches to, and reading the first would
+ * attribute *its* response to the route. The Laravel scanner emits
+ * the controller and the action together, so this branch is not
+ * reachable from the scanner today — but the helper answers what it
+ * is asked, and "I do not know" is the answer it owes.
+ */
+function resolveAction(
+  candidates: ReadonlyArray<{ readonly name: string; readonly index: number }>,
+  actionName: string,
+): { readonly name: string; readonly index: number } | null {
+  if (actionName.length > 0) {
+    return candidates.find((c) => c.name === actionName) ?? null;
+  }
+  return candidates.length === 1 ? candidates[0] ?? null : null;
 }
 
 /** The first capture of the first match of a pattern. */

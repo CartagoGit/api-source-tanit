@@ -27,6 +27,7 @@ import type {
   IResponseInferenceConfidence,
 } from "../../contracts/interfaces/core/responses.interface.js";
 import type {
+  IResponseInferContext,
   IResponseInferrer,
   IResponseRoute,
   IResponseSpec,
@@ -170,19 +171,23 @@ export function inferResponses(
   const framework = options.frameworkHint ?? source.framework;
   const route: IResponseRoute = options.route ?? spec;
   const out: IResponseInference[] = [];
+  // The context is built **once** and handed to both questions: the
+  // cheap one (`detect`) and the expensive one (`infer`) read the same
+  // source, and a context that each of them rebuilt could differ.
+  const ctx: IResponseInferContext = {
+    framework,
+    source,
+    spec,
+    ...(options.readSource === undefined
+      ? {}
+      : { readSource: options.readSource }),
+  };
   for (const inf of listResponseInferrers()) {
     if (inf.framework !== framework) continue;
     let produced: IResponseSpec | null;
     try {
-      if (!inf.detect(framework, route)) continue;
-      produced = inf.infer(route, {
-        framework,
-        source,
-        spec,
-        ...(options.readSource === undefined
-          ? {}
-          : { readSource: options.readSource }),
-      });
+      if (!inf.detect(framework, route, ctx)) continue;
+      produced = inf.infer(route, ctx);
     } catch (err) {
       console.warn(
         `[responses] inferrer for framework "${inf.framework}" threw:`,

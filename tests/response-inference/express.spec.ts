@@ -29,8 +29,9 @@ const inferrer = new ExpressResponseInferrer();
 describe("Express response inferrer — res.json (r00020 S3)", () => {
   test("detects only Express", () => {
     const route = routeOf({ method: "GET", uri: "/users" });
-    expect(inferrer.detect("express", route)).toBe(true);
-    expect(inferrer.detect("fastify", route)).toBe(false);
+    const ctx = contextOf(FIXTURE, "express", APP);
+    expect(inferrer.detect("express", route, ctx)).toBe(true);
+    expect(inferrer.detect("fastify", route, ctx)).toBe(false);
   });
 
   test("reads the payload of GET /users as the shape of the response", () => {
