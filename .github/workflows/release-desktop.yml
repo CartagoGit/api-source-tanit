@@ -66,21 +66,29 @@ jobs:
         include:
           # macos-13 es el último corredor x64; macos-14 es arm64. Cada
           # uno construye su propia arquitectura: no hay cross-build.
+          # En macOS, Tauri construye **sólo** el `.app`: el `.dmg`
+          # lo hace `scripts/release/package-dmg.sh`, y lo hace
+          # **después** de grapar el bundle. El `.dmg` de Tauri lleva
+          # dentro un `.app` sin firmar, y Apple rechaza esa imagen.
           - os: macos-13
             platform: macos
             arch: x64
+            tauri_bundles: app
             bundles: app,dmg
           - os: macos-14
             platform: macos
             arch: arm64
+            tauri_bundles: app
             bundles: app,dmg
           - os: windows-latest
             platform: windows
             arch: x64
+            tauri_bundles: msi,nsis
             bundles: msi,nsis
           - os: ubuntu-22.04
             platform: linux
             arch: x64
+            tauri_bundles: deb,appimage
             bundles: deb,appimage
 
     runs-on: ${{ matrix.os }}
@@ -144,36 +152,50 @@ jobs:
       - name: Empaquetar
         run: bun run desktop:build
         env:
-          TANIT_BUNDLES: ${{ matrix.bundles }}
+          # `EXPOSTMAN_BUNDLES` es la variable que lee
+          # `scripts/build/desktop-build.script.ts` para acotar los
+          # formatos. La matriz dice lo mismo, pero escribirlo aquí
+          # deja el recorte explícito en el workflow.
+          EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}
 
       # El staging tiene una forma fija: <os>/<arch>/<bundle>/. El
       # manifest dice qué debería haber; la ruta dice qué hay.
       - name: Preparar el staging
         shell: bash
+        env:
+          BUNDLES: ${{ matrix.bundles }}
         run: |
           set -euo pipefail
           BUNDLE_DIR="packages/desktop/target/release/bundle"
           PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
           mkdir -p "${PLATFORM_DIR}"
-          for bundle in ${{ matrix.bundles }}; do
-            source_dir="${BUNDLE_DIR}/${bundle}"
-            if [ ! -d "${source_dir}" ]; then
-              echo "✗ The bundle directory does not exist: ${source_dir}" >&2
-              exit 1
-            fi
-            mkdir -p "${PLATFORM_DIR}/${bundle}"
-            # El `.app` es un directorio: lo que se publica es el bundle
-            # comprimido, y se comprime aquí para que el staging sólo
-            # contenga ficheros que se pueden medir.
-            if [ "${bundle}" = "app" ]; then
-              ditto -c -k --keepParent "${source_dir}"/*.app "${PLATFORM_DIR}/${bundle}/"
-            else
+          if [ "${{ matrix.platform }}" = "macos" ]; then
+            # El `.app` es un **directorio**, y hay que firmarlo y
+            # notarizarlo **antes** de comprimirlo: un zip no se puede
+            # firmar ni grapar. Por eso vive en un directorio de
+            # trabajo, fuera del staging, y el `.zip` publicado lo
+            # produce `notarize-macos.sh` después de grapar el ticket.
+            rm -rf "${RUNNER_TEMP}/macos-app"
+            mkdir -p "${RUNNER_TEMP}/macos-app"
+            cp -R "${BUNDLE_DIR}/app"/*.app "${RUNNER_TEMP}/macos-app/"
+          else
+            for bundle in ${BUNDLES}; do
+              source_dir="${BUNDLE_DIR}/${bundle}"
+              if [ ! -d "${source_dir}" ]; then
+                echo "✗ The bundle directory does not exist: ${source_dir}" >&2
+                exit 1
+              fi
+              mkdir -p "${PLATFORM_DIR}/${bundle}"
               find "${source_dir}" -maxdepth 1 -type f -exec cp {} "${PLATFORM_DIR}/${bundle}/" \;
-            fi
-          done
+            done
+          fi
           find "${PLATFORM_DIR}" -type f | sort
 
       # --- la firma, una por plataforma --------------------------------
+      #
+      # En macOS el orden no es libre: el bundle se firma, se notariza
+      # y se grapa **antes** de existir el `.dmg`, porque la imagen se
+      # construye con el bundle ya grapado dentro.
       - name: Firmar (macOS)
         if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
         shell: bash
@@ -183,9 +205,74 @@ jobs:
           TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
         run: |
           set -euo pipefail
+          bash scripts/release/sign-macos.sh "${RUNNER_TEMP}/macos-app"/*.app
+
+      - name: Notarizar (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
           PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
-          bash scripts/release/sign-macos.sh "${PLATFORM_DIR}/app"/*.app "${PLATFORM_DIR}/dmg"/*.dmg
-          bash scripts/release/notarize-macos.sh "${PLATFORM_DIR}/app"/*.app "${PLATFORM_DIR}/dmg"/*.dmg
+          bash scripts/release/notarize-macos.sh "${RUNNER_TEMP}/macos-app"/*.app
+          # Lo que se publica es el bundle **comprimido y grapado**, y
+          # el recibo que ata la firma a esos bytes exactos.
+          mkdir -p "${PLATFORM_DIR}/app"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip "${PLATFORM_DIR}/app/"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip.signature.json "${PLATFORM_DIR}/app/"
+
+      # El `.dmg` se construye **después** de grapar: es el paso 4 del
+      # orden de Apple (firmar → notarizar → grapar → imagen).
+      - name: Empaquetar el .dmg (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          mkdir -p "${PLATFORM_DIR}/dmg"
+          rm -f "${PLATFORM_DIR}/dmg"/*.dmg
+          bash scripts/release/package-dmg.sh \
+            --app "${RUNNER_TEMP}/macos-app"/*.app \
+            --output "${PLATFORM_DIR}/dmg/Tanit_${VERSION}_${{ matrix.arch }}.dmg"
+
+      - name: Firmar el .dmg (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/sign-macos.sh "${PLATFORM_DIR}/dmg"/*.dmg
+
+      - name: Notarizar el .dmg (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/notarize-macos.sh "${PLATFORM_DIR}/dmg"/*.dmg
+
+      # Sin firma, el bundle se comprime igual —para que el staging
+      # tenga la misma forma— pero sin recibo: el verificador lo
+      # rechaza y la release no sale.
+      - name: Publicar el bundle de macOS sin firma
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          mkdir -p "${PLATFORM_DIR}/app"
+          ditto -c -k --keepParent "${RUNNER_TEMP}/macos-app"/*.app "${PLATFORM_DIR}/app/"
 
       - name: Firmar (Windows)
         if: matrix.platform == 'windows' && steps.policy.outputs.sign == 'true'

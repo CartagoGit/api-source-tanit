@@ -97,6 +97,7 @@ while [[ $# -gt 0 ]]; do
     --keyring) KEYRING="${2:-}"; shift 2 ;;
     --mode) MODE="${2:-}"; shift 2 ;;
     --allow-unsigned) ALLOW_UNSIGNED="true"; shift ;;
+    --allow-unsigned=*) ALLOW_UNSIGNED="${1#*=}"; shift ;;
     -h|--help)
       sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
@@ -110,6 +111,14 @@ done
 [[ -f "${MANIFEST}" ]] || die "The manifest does not exist: ${MANIFEST}"
 [[ -d "${STAGE}" ]] || die "The staging directory does not exist: ${STAGE}"
 [[ "${MODE}" == "full" || "${MODE}" == "portable" ]] || die "--mode must be 'full' or 'portable'"
+
+# `--allow-unsigned` acepta las dos formas: el flag a secas y el par
+# `--allow-unsigned=<bool>`. El workflow usa la segunda, porque decide
+# el valor con una expresión; si sólo se aceptara el flag, el valor
+# `false` —que es el de una release firmada— llegaría como argumento
+# desconocido y el job moriría antes de verificar nada.
+[[ "${ALLOW_UNSIGNED}" == "true" || "${ALLOW_UNSIGNED}" == "false" ]] \
+  || die "--allow-unsigned must be 'true' or 'false', got '${ALLOW_UNSIGNED}'"
 
 need_cmd jq
 need_cmd sha256sum

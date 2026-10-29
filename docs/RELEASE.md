@@ -55,7 +55,7 @@ un sitio público.
 
 | Plataforma | Arquitectura | Formato | Cómo se firma |
 |---|---|---|---|
-| macOS | x64 | `.app` (comprimido) y `.dmg` | `codesign` con hardened runtime + `notarytool` + `stapler` |
+| macOS | x64 | `.app` (comprimido) y `.dmg` | `codesign` con hardened runtime + `notarytool` + `stapler`; el `.dmg` se construye **después** de grapar |
 | macOS | arm64 | `.app` (comprimido) y `.dmg` | ídem |
 | Windows | x64 | `.msi` y `.exe` (NSIS) | Authenticode SHA-256 con timestamp RFC 3161 |
 | Linux | x64 | `.deb` y `.AppImage` | `SHA256SUMS` + firmas detached GPG |
@@ -141,6 +141,42 @@ pwsh scripts/release/sign-windows.ps1 <artefacto>...
 # Linux: checksums, firmas detached y keyring publicado
 bash scripts/release/sign-linux.sh --stage <staging> --os linux --arch x64
 ```
+
+### El orden de macOS no es libre
+
+El `.dmg` de macOS se construye **después** de grapar el bundle, y no
+es un detalle de estilo:
+
+1. `sign-macos.sh` firma el `.app` —hardened runtime, entitlements
+   mínimos, timestamp seguro—.
+2. `notarize-macos.sh` lo envía a `notarytool` con `--wait`, comprueba
+   que Apple lo acepta, lo grapa y **comprime** el bundle ya grapado.
+   Lo que se publica es ese `.app.zip`.
+3. `package-dmg.sh` construye la imagen `.dmg` **con el bundle ya
+   grapado dentro**.
+4. `sign-macos.sh` firma la imagen.
+5. `notarize-macos.sh` notariza y grapa la imagen.
+
+El orden inverso no funciona: Tauri construye el `.app` y el `.dmg` en
+el mismo paso, así que su `.dmg` lleva dentro un bundle **sin firmar**,
+y Apple rechaza esa imagen —la notarización mira dentro del `.dmg`, y un
+bundle sin firma dentro es código sin firma.
+
+```bash
+# 3. el `.dmg`, con el bundle grapado dentro
+bash scripts/release/package-dmg.sh \
+  --app <bundle.app> \
+  --output <imagen.dmg>
+```
+
+> **Lo que este script no reproduce:** el `.dmg` que produce Tauri
+> lleva un fondo y un icono propios. `package-dmg.sh` usa `hdiutil` y
+> monta una imagen UDZO con el bundle y un enlace a `/Applications`, que
+> es lo que el usuario hace al arrastrar, pero sin el fondo. Es una
+> diferencia **estética**, no de confianza: el contenido y la firma son
+> los mismos. Si el `.dmg` de Tauri hace falta, hay que construirlo
+> con el bundle grapado dentro, no con el que sale de `cargo tauri
+> build`.
 
 ### Verificar
 
@@ -235,6 +271,12 @@ La firma no verifica contra el keyring publicado. O el keyring no
 contiene la clave que firmó —se publicó el keyring equivocado—, o el
 artefacto cambió después de firmarse. En los dos casos, **no** se
 publica: se vuelve a firmar y se vuelve a medir.
+
+**«hdiutil could not build the image»**
+La imagen de macOS no se pudo construir. Suele ser un `.app` a medio
+copiar: `package-dmg.sh` necesita el bundle **completo** y con los
+permisos de ejecución intactos, porque `hdiutil -srcfolder` copia los
+ficheros tal cual.
 
 **«the staging holds a file the manifest does not describe»**
 Sobró un fichero. Casi siempre es un artefacto de una corrida

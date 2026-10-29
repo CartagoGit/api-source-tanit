@@ -737,6 +737,94 @@ describe("the release policy", () => {
     expect(auditAt, "the credential audit must run before the build").toBeLessThan(buildAt);
   });
 
+  test("the verifier understands the explicit form of --allow-unsigned", async () => {
+    // El workflow decide el valor con una expresión y lo pasa como
+    // `--allow-unsigned=true|false`. Si el verificador sólo entendiera
+    // el flag a secas, el `false` —que es el caso de una release
+    // firmada— llegaría como argumento desconocido y el job moriría
+    // antes de verificar nada.
+    const stage = await dryRunStaging("tanit-release-allow-unsigned");
+
+    const explicit = run("bash", [
+      VERIFY,
+      "--manifest",
+      join(stage, "release-manifest.json"),
+      "--stage",
+      stage,
+      "--mode",
+      "full",
+      "--allow-unsigned=false",
+    ]);
+    expect(explicit.output).not.toContain("Unknown argument");
+    expect(explicit.status).not.toBe(0);
+    expect(explicit.output).toContain("not signed");
+
+    const allowed = run("bash", [
+      VERIFY,
+      "--manifest",
+      join(stage, "release-manifest.json"),
+      "--stage",
+      stage,
+      "--mode",
+      "full",
+      "--allow-unsigned=true",
+    ]);
+    expect(allowed.output).not.toContain("Unknown argument");
+    expect(allowed.status, allowed.output).toBe(0);
+
+    await rm(stage, { recursive: true, force: true });
+  });
+
+  test("the macOS image is built after the bundle is notarized and stapled", async () => {
+    const workflow = await readFile(
+      join(REPO_ROOT, ".github", "workflows", "release-desktop.yml"),
+      "utf8",
+    );
+
+    // El orden de Apple: firmar → notarizar → grapar → imagen. Si el
+    // `.dmg` se construyera antes, llevaría dentro un bundle sin
+    // firmar y Apple rechazaría la imagen.
+    const notarize = workflow.indexOf("- name: Notarizar (macOS)");
+    const packageDmg = workflow.indexOf("- name: Empaquetar el .dmg (macOS)");
+    const signDmg = workflow.indexOf("- name: Firmar el .dmg (macOS)");
+
+    expect(notarize).toBeGreaterThan(-1);
+    expect(packageDmg).toBeGreaterThan(-1);
+    expect(signDmg).toBeGreaterThan(-1);
+    expect(notarize, "the bundle must be notarized before the image is built").toBeLessThan(
+      packageDmg,
+    );
+    expect(packageDmg, "the image must exist before it is signed").toBeLessThan(signDmg);
+
+    // Y el script que la construye vive en el repo.
+    expect(workflow).toContain("scripts/release/package-dmg.sh");
+    const packager = await readFile(
+      join(REPO_ROOT, "scripts", "release", "package-dmg.sh"),
+      "utf8",
+    );
+    expect(packager).toContain("set -euo pipefail");
+    expect(packager).toContain("hdiutil create");
+  });
+
+  test("the workflow asks the build script for the bundles the matrix declares", async () => {
+    const workflow = await readFile(
+      join(REPO_ROOT, ".github", "workflows", "release-desktop.yml"),
+      "utf8",
+    );
+
+    // `scripts/build/desktop-build.script.ts` lee `EXPOSTMAN_BUNDLES`.
+    // Con otro nombre, el recorte de formatos se ignora en silencio y
+    // el runner construye bundles que la matriz no pidió.
+    const build = await readFile(
+      join(REPO_ROOT, "scripts", "build", "desktop-build.script.ts"),
+      "utf8",
+    );
+    expect(build).toContain("EXPOSTMAN_BUNDLES");
+
+    expect(workflow).toContain("EXPOSTMAN_BUNDLES: ${{ matrix.tauri_bundles }}");
+    expect(workflow).not.toContain("TANIT_BUNDLES");
+  });
+
   test("the release documentation covers secrets, rotation, troubleshooting and verification", async () => {
     const docs = await readFile(join(REPO_ROOT, "docs", "RELEASE.md"), "utf8");
 
