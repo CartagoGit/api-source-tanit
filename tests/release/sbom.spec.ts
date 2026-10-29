@@ -58,6 +58,7 @@ import {
   SBOM_ATTESTATION_PUBLIC_KEY_PATH,
   SBOM_BUILD_TOOL_PROPERTY,
   SBOM_DEFAULT_KEY_ID,
+  SBOM_FORMAT,
   SBOM_PROVENANCE_PREDICATE_TYPE,
   SBOM_REQUIRED_COMPONENTS,
   SBOM_RUNS_URL,
@@ -347,7 +348,7 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
   test.skipIf(!HAS_OPENSSL)("el SBOM describe el producto y su grafo de dependencias", async () => {
     if (platform === null) throw new Error("the fixture could not be built");
     const document = await readSbom(platform.sbom);
-    expect(document.bomFormat).toBe("CycloneDX");
+    expect(document.bomFormat).toBe(SBOM_FORMAT);
     expect(document.specVersion).toBe(SBOM_SPEC_VERSION);
     expect(document.serialNumber).toMatch(/^urn:uuid:[0-9a-f-]{36}$/);
 
@@ -844,6 +845,27 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     }
   });
 
+  test.skipIf(!HAS_OPENSSL)("sin run no se inventa el invocationId", async () => {
+    if (keys === null) throw new Error("the fixture could not be built");
+    const otherStage = await dryRunStaging("tanit-sbom-no-run-stage");
+    try {
+      // Sin `--run-id` no hay run que citar, y un `invocationId`
+      // inventado —un UUID que no abre nada— parece un enlace y no lo
+      // es: el enlace tiene que existir o no estar.
+      const other = await platformRelease(otherStage, "linux", "x64", keys);
+      const statement = JSON.parse(await readFile(other.provenance, "utf8")) as {
+        predicate: { runDetails: { metadata: Record<string, unknown> } };
+      };
+      const metadata = statement.predicate.runDetails.metadata;
+      expect(metadata).not.toHaveProperty("invocationId");
+      expect(metadata.invocationId).toBeUndefined();
+      // Lo que sí se dice es cuándo se construyó: eso no se inventa.
+      expect(typeof metadata.startedOn).toBe("string");
+    } finally {
+      await rm(otherStage, { recursive: true, force: true });
+    }
+  });
+
   test.skipIf(!HAS_OPENSSL)("el staging no puede llevar secretos", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     // Una clave privada en el staging es una clave privada publicada:
@@ -1120,6 +1142,17 @@ function stepNamed(job: IWorkflowJob | undefined, needle: string): IWorkflowStep
   return (job?.steps ?? []).find((step) => (step.name ?? "").includes(needle));
 }
 
+/**
+ * La comparación de los dos digests, tal y como la escribe el shell.
+ *
+ * Es lo que dice que la clave del secreto **es** la clave versionada.
+ * Se busca con una expresión regular y no con una cadena literal
+ * porque el quoting del shell cambia —`"${secret_digest}"` o
+ * `"$secret_digest"`— y lo que no puede cambiar es que los dos
+ * digests se comparen.
+ */
+const DIGEST_COMPARISON = /secret_digest[\}"]*\s*!=\s*["$\{]*published_digest/;
+
 describe("el workflow de la release", () => {
   test("el SBOM y la attestation se construyen solo cuando se firma", async () => {
     const workflow = await workflowDocument();
@@ -1140,6 +1173,77 @@ describe("el workflow de la release", () => {
         );
       }
     }
+
+    // Y tampoco el que **vuelve a medir**: es el paso que hace que el
+    // manifest describa el SBOM, la provenance y la attestation. Sin
+    // firmar, ese paso no tiene por qué correr —no hay nada que
+    // medir—; con firmar, sin él, el manifest no los menciona y el
+    // gate de publicación los echa.
+    const remeasure = stepNamed(build, "Volver a medir los artefactos");
+    expect(remeasure, "the workflow does not measure the artifacts again").toBeDefined();
+    expect(remeasure?.if ?? "", remeasure?.name ?? "the step").toContain(
+      "steps.policy.outputs.sign == 'true'",
+    );
+
+    // La regla, sin depender del nombre del paso: **todo** lo que
+    // vuelve a medir después de construir el SBOM depende de la firma.
+    const steps = build?.steps ?? [];
+    const sbomIndex = steps.findIndex((candidate) =>
+      (candidate.run ?? "").includes("build-sbom.mjs"),
+    );
+    expect(sbomIndex, "the workflow does not build the SBOM").toBeGreaterThanOrEqual(0);
+    for (const candidate of steps.slice(sbomIndex + 1)) {
+      if (!(candidate.run ?? "").includes("prepare-artifacts.mjs")) continue;
+      expect(candidate.if ?? "", candidate.name ?? "the step").toContain(
+        "steps.policy.outputs.sign == 'true'",
+      );
+    }
+
+    // Y la clave que firma la attestation es la del contrato: su
+    // `keyid` y el nombre del fichero versionado son la misma
+    // rotación, y una rotación que se queda a medias rompe en silencio.
+    const keyId = /--key-id\s+"([^"]+)"/.exec(step?.run ?? "")?.[1];
+    expect(keyId, "the build step does not pass a key id").toBeDefined();
+    expect(keyId).toBe(SBOM_DEFAULT_KEY_ID);
+  });
+
+  test("el workflow compara el DER de la clave del secreto con el de la versionada", async () => {
+    const workflow = await workflowDocument();
+    const build = workflow.jobs.build;
+    const publish = workflow.jobs.publish;
+    expect(build, "the workflow has no build job").toBeDefined();
+    expect(publish, "the workflow has no publish job").toBeDefined();
+
+    // Los dos sitios donde la clave del secreto y la versionada se
+    // comparan: al preparar la clave y al verificar la attestation.
+    const keyStep = stepNamed(build, "Preparar la clave de attestation");
+    const verifyStep = stepNamed(publish, "Verificar el SBOM y la attestation");
+    expect(keyStep, "the workflow does not prepare the attestation key").toBeDefined();
+    expect(verifyStep, "the workflow does not verify the attestation").toBeDefined();
+
+    for (const step of [keyStep, verifyStep]) {
+      const command = step?.run ?? "";
+      const name = step?.name ?? "the step";
+      // El digest va sobre el DER: el PEM tiene dos formatos y el DER
+      // no, así que el digest del DER es el de la clave y no el de una
+      // manera de escribirla.
+      expect(command, name).toContain("-outform DER");
+      expect(command, name).toContain("sha256sum");
+      // Y la comparación de los dos digests: ése es el control. Si
+      // desaparece, el secreto puede ser otra clave y la attestation
+      // que sale firmada con ella no la verifica nadie.
+      expect(command, name).toMatch(DIGEST_COMPARISON);
+    }
+
+    // Y ningún otro paso puede saltársela: donde se deriva el digest
+    // del secreto, se compara con el de la clave versionada.
+    const comparing = [...(build?.steps ?? []), ...(publish?.steps ?? [])].filter(
+      (step) => (step.run ?? "").includes("secret_digest"),
+    );
+    expect(comparing.length).toBeGreaterThanOrEqual(2);
+    for (const step of comparing) {
+      expect(step.run ?? "", step.name ?? "the step").toMatch(DIGEST_COMPARISON);
+    }
   });
 
   test("la publicación exige el SBOM verificado y el gate que decide los assets", async () => {
@@ -1157,7 +1261,13 @@ describe("el workflow de la release", () => {
     expect(command).toContain("--public-key");
     expect(command).toContain("--commit");
     expect(command).toContain("--require-provenance");
-    expect(command).toContain("tanit-release-attestation-v1.pub.pem");
+    // La clave pública es la **del contrato**, no un literal escrito
+    // aquí: una rotación cambia el fichero y el identificador, y el
+    // test avisa si el workflow se queda atrás.
+    expect(command).toContain(SBOM_ATTESTATION_PUBLIC_KEY_PATH);
+    const keyId = /--key-id\s+"([^"]+)"/.exec(command)?.[1];
+    expect(keyId, "the publish step does not pass a key id").toBeDefined();
+    expect(keyId).toBe(SBOM_DEFAULT_KEY_ID);
 
     // Y lo que se adjunta lo decide el gate, no una lista escrita en el
     // workflow: si los dos se separan, el gate deja de gatear.
