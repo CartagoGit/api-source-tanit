@@ -10,6 +10,30 @@
 			"decidedAt": "2026-10-28T10:45:00.000Z"
 		},
 		{
+			"taskId": "159af751a3028fed0c859d9e314c4199",
+			"evidenceDigest": "e656e88e27b2a2712c1c0cd120df50b3",
+			"decision": "resolved-elsewhere",
+			"reason": "La ref de review r00020/S1 se creo con generacion g1, la misma que ocupa la ref de implementacion, y el runtime no puede decidir cual es la unidad. El modelo correcto es: implementacion g1, review g2. Ambas slices estan mergeadas en develop (PR #29 la implementacion con d30b85e, PR #31 el veredicto con b53a3f2) y ninguna de las dos refs tiene un fichero exclusivo frente a develop (git diff --name-status -M origin/develop <ref> no devuelve ninguna entrada A). develop va 2043 lineas por delante. Nada se pierde: las dos refs se retiran.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-29T14:12:11.668Z"
+		},
+		{
+			"taskId": "7c642837eb4ec86f5f026d844839a408",
+			"evidenceDigest": "4c8f0271b6cc9dcaf7f698e3f60f0219",
+			"decision": "resolved-elsewhere",
+			"reason": "La ref de review i00003/S2 se creo con generacion g1, la misma que ocupa la ref de implementacion. El modelo correcto es implementacion g1 y review g2. Ambas slices estan mergeadas en develop (PR #30 la implementacion con 11038ea, PR #32 el veredicto con 8c8b499) y ninguna de las dos refs tiene un fichero exclusivo frente a develop. develop va 2038 lineas por delante. Nada se pierde: las dos refs se retiran.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-29T14:12:45.838Z"
+		},
+		{
+			"taskId": "97b52474051436d064e624a75724a054",
+			"evidenceDigest": "f091f9ca7ebc07721a741478a945f00a",
+			"decision": "resolved-elsewhere",
+			"reason": "La ref de review r00019/S4 se creo con generacion g1, la misma que ocupa la ref de implementacion. El modelo correcto es implementacion g1 y review g2. Ambas slices estan mergeadas en develop (PR #27 la implementacion con 73ec169, PR #28 el veredicto con 6034961) y ninguna de las dos refs tiene un fichero exclusivo frente a develop. develop va 11877 lineas por delante. Nada se pierde: las dos refs se retiran.",
+			"decidedBy": "copilot",
+			"decidedAt": "2026-10-29T14:12:53.742Z"
+		},
+		{
 			"taskId": "d169ad0dd3741ab61e6bf6c94a903f36",
 			"evidenceDigest": "c147e00dc06fc2b0fb68f1a566be95a8",
 			"decision": "resolved-elsewhere",
