@@ -179,8 +179,15 @@ smoke_candidate() {
   fi
   ok "the candidate payload contains the sidecar"
 
+  # `|| true`: con `set -e` y `pipefail`, un sidecar que no responde
+  # mataba el verificador con un exit 1 **sin mensaje**. Un rechazo
+  # que no se puede leer no es un rechazo: es un fallo que parece un
+  # fallo del verificador. Aquí se falla cerrado y se dice por qué.
   local sidecar_version
-  sidecar_version="$("${sidecar}" --version 2>/dev/null | tr -d '[:space:]' | head -1)"
+  sidecar_version="$("${sidecar}" --version 2>/dev/null | tr -d '[:space:]' | head -1 || true)"
+  if [[ -z "${sidecar_version}" ]]; then
+    die "the sidecar could not report its version: '${sidecar} --version' failed"
+  fi
   if [[ "${sidecar_version}" != "${expected_version}" ]]; then
     die "the sidecar reports version '${sidecar_version}' and the update offers '${expected_version}'"
   fi
@@ -191,7 +198,9 @@ smoke_candidate() {
   # that leaves files behind in the repo is a smoke that dirties the
   # tree of whoever lo ejecuta.
   local project="${SCRATCH}/fixture"
-  cp -r "${fixture}" "${project}"
+  if ! cp -r "${fixture}" "${project}"; then
+    die "the smoke could not copy the fixture: ${fixture}"
+  fi
   fixture="${project}"
 
   local requests="${SCRATCH}/requests.jsonl" responses="${SCRATCH}/responses.jsonl"
@@ -350,11 +359,19 @@ main() {
       resolved_artifact="$(resolve_inside "${stage_root}" "${artifact#"${stage_root}"/}")" \
         || die "update.hash.mismatch: the artifact is outside the staging directory"
 
-      actual_sha="$(sha256sum "${resolved_artifact}" | cut -d' ' -f1)"
+      # `|| true` y un `die` propio: una medición que falla tiene que
+      # decir qué pasó, no dejar al verificador con un exit 1 mudo.
+      actual_sha="$(sha256sum "${resolved_artifact}" | cut -d' ' -f1 || true)"
+      if [[ -z "${actual_sha}" ]]; then
+        die "update.hash.mismatch: the artifact could not be measured: ${resolved_artifact}"
+      fi
       if [[ "${actual_sha}" != "${target_sha}" ]]; then
         die "update.hash.mismatch: the artifact digest is ${actual_sha} and the manifest says ${target_sha}"
       fi
-      actual_size="$(wc -c <"${resolved_artifact}" | tr -d ' ')"
+      actual_size="$(wc -c <"${resolved_artifact}" | tr -d ' ' || true)"
+      if [[ -z "${actual_size}" ]]; then
+        die "update.size.mismatch: the artifact could not be measured: ${resolved_artifact}"
+      fi
       if [[ "${actual_size}" != "${target_size}" ]]; then
         die "update.size.mismatch: the artifact is ${actual_size} bytes and the manifest says ${target_size}"
       fi

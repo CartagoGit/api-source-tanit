@@ -32,7 +32,7 @@
  */
 import { describe, expect, test } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -194,6 +194,8 @@ function verify(options: {
   readonly platform?: string;
   readonly currentVersion?: string;
   readonly stage?: string;
+  readonly smoke?: string;
+  readonly smokeVersion?: string;
 }): IResult {
   const args = [
     VERIFY,
@@ -212,6 +214,12 @@ function verify(options: {
   }
   if (options.stage !== undefined) {
     args.push("--stage", options.stage);
+  }
+  if (options.smoke !== undefined) {
+    args.push("--smoke", options.smoke);
+  }
+  if (options.smokeVersion !== undefined) {
+    args.push("--smoke-version", options.smokeVersion);
   }
   return run("bash", args);
 }
@@ -489,6 +497,40 @@ describe("el updater firmado", () => {
       expect(built.output).not.toContain("PRIVATE KEY");
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test("un sidecar que no responde dice por qué y no muere en silencio", async () => {
+    // Un rechazo que no se puede leer no es un rechazo: parece un
+    // fallo del verificador. Con `set -e`, un sidecar que no sabe
+    // decir su versión se llevaba el verificador por delante con un
+    // exit 1 sin una sola línea de explicación.
+    const built = await buildEverything();
+    try {
+      const payload = join(built.root, "payload");
+      await mkdir(join(payload, "binaries"), { recursive: true });
+      await writeFile(
+        join(payload, "binaries", "apisrc"),
+        "#!/bin/sh\nexit 3\n",
+        "utf8",
+      );
+      await chmod(join(payload, "binaries", "apisrc"), 0o755);
+
+      const result = verify({
+        manifest: built.manifest,
+        signature: built.signature,
+        publicKey: built.key.public,
+        platform: PLATFORM,
+        currentVersion: INSTALLED,
+        stage: built.stage,
+        smoke: payload,
+        smokeVersion: OFFERED,
+      });
+
+      expect(result.status).not.toBe(0);
+      expect(result.output).toContain("the sidecar could not report its version");
+    } finally {
+      await rm(built.root, { recursive: true, force: true });
     }
   });
 });
