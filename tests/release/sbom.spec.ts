@@ -51,7 +51,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawnSync } from "node:child_process";
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
 import {
@@ -64,6 +64,7 @@ import {
   SBOM_RUNS_URL,
   SBOM_SPEC_VERSION,
 } from "../../packages/contracts/constants/release/sbom.constant.js";
+import { UPDATE_PUBLIC_KEY_PATH } from "../../packages/contracts/constants/release/updater.constant.js";
 
 /** El script que mide el staging y escribe el manifest. */
 const PREPARE = join(REPO_ROOT, "scripts", "release", "prepare-artifacts.mjs");
@@ -1064,6 +1065,42 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
     // Y la clave pública de la attestation: sin ella, la attestation
     // adjunta no la puede verificar un tercero.
     expect(attached.some((file) => file.endsWith(".pub.pem"))).toBe(true);
+    // Y es **la versionada del repositorio**, por su ruta: la lista que
+    // imprime el gate es la que sube la acción de la release, así que
+    // la clave que se adjunta tiene que ser la del repo y sólo esa.
+    expect(attached).toContain(join(REPO_ROOT, SBOM_ATTESTATION_PUBLIC_KEY_PATH));
+    expect(attached.filter((file) => file.endsWith(".pub.pem"))).toHaveLength(1);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate adjunta la clave versionada aunque el staging traiga una copia", async () => {
+    // El staging **puede** llevar una copia de la clave pública —el
+    // constructor del SBOM la permite—. Si el gate la publicara, la
+    // release llevaría dos ficheros con el mismo nombre y el último que
+    // sube pisaría al otro; y la copia no la describe el manifest, así
+    // que sería un asset que nadie ha auditado. La clave que se
+    // adjunta es la versionada, y sólo la versionada.
+    const copyDir = join(stage, "linux", "x64", "keys");
+    const copy = join(copyDir, basename(SBOM_ATTESTATION_PUBLIC_KEY_PATH));
+    await mkdir(copyDir, { recursive: true });
+    await copyFile(join(REPO_ROOT, SBOM_ATTESTATION_PUBLIC_KEY_PATH), copy);
+    try {
+      const gate = run("bun", [
+        "run",
+        PUBLISH_GATE,
+        "--stage",
+        stage,
+        "--manifest",
+        merged,
+        "--allow-unsigned",
+        "--list",
+      ]);
+      expect(gate.status, gate.output).toBe(0);
+      const attached = gate.stdout.split("\n").map((line) => line.trim());
+      expect(attached.filter((file) => file.endsWith(".pub.pem"))).toHaveLength(1);
+      expect(attached).toContain(join(REPO_ROOT, SBOM_ATTESTATION_PUBLIC_KEY_PATH));
+    } finally {
+      await rm(copyDir, { recursive: true, force: true });
+    }
   });
 
   test.skipIf(!HAS_OPENSSL)("sin los assets de transparencia el gate cierra la release", async () => {
@@ -1288,5 +1325,79 @@ describe("la clave pública de la attestation", () => {
     const info = run("openssl", ["pkey", "-pubin", "-in", path, "-noout", "-text"]);
     expect(info.status, info.output).toBe(0);
     expect(info.output).toContain("ED25519");
+  });
+});
+
+// --- la política de seguridad, leída como tabla ---------------------------
+
+/** El documento de seguridad. */
+const SECURITY_DOC = join(REPO_ROOT, "SECURITY.md");
+
+/** Una fila de la tabla de las claves de la release. */
+interface IReleaseKeyRow {
+  /** El nombre de la clave, sin las marcas de negrita. */
+  readonly key: string;
+  /** El identificador de la clave, sin las marcas de código. */
+  readonly identifier: string;
+}
+
+/**
+ * Las filas de §4.5 de `SECURITY.md`.
+ *
+ * La tabla es la que dice qué clave firma qué, así que se lee **como
+ * tabla** y no como texto: lo que importa no es que el documento
+ * mencione tres claves, sino que las tres filas tengan **tres**
+ * identificadores distintos. Una fila que copie el identificador de
+ * otra es exactamente el error que la propia tabla dice evitar.
+ */
+async function releaseKeyRows(): Promise<IReleaseKeyRow[]> {
+  const text = await readFile(SECURITY_DOC, "utf8");
+  const start = text.indexOf("### 4.5.");
+  expect(start, "SECURITY.md has no §4.5").toBeGreaterThanOrEqual(0);
+  const rest = text.slice(start + 1);
+  const end = rest.indexOf("\n## ");
+  const section = end === -1 ? rest : rest.slice(0, end);
+  const rows: IReleaseKeyRow[] = [];
+  for (const line of section.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith("|")) continue;
+    const cells = trimmed
+      .split("|")
+      .slice(1, -1)
+      .map((cell) => cell.trim());
+    if (cells.length < 2) continue;
+    rows.push({
+      key: cells[0].replaceAll("*", "").replaceAll("`", "").trim(),
+      identifier: cells[1].replaceAll("`", "").trim(),
+    });
+  }
+  return rows;
+}
+
+describe("la política de seguridad", () => {
+  test("las tres claves de la release tienen tres identificadores distintos", async () => {
+    const rows = await releaseKeyRows();
+    const gpg = rows.find((row) => row.key.includes("GPG de la release"));
+    const updater = rows.find((row) => row.key.includes("Ed25519 del updater"));
+    const attestation = rows.find((row) => row.key.includes("Ed25519 de la attestation"));
+    expect(gpg, "SECURITY.md §4.5 does not name the GPG key").toBeDefined();
+    expect(updater, "SECURITY.md §4.5 does not name the updater key").toBeDefined();
+    expect(attestation, "SECURITY.md §4.5 does not name the attestation key").toBeDefined();
+
+    // La de attestation, con el identificador del contrato: el que va
+    // en el `keyid` de cada envelope DSSE.
+    expect(attestation?.identifier).toBe(SBOM_DEFAULT_KEY_ID);
+    // La del updater, con el nombre de su clave versionada.
+    expect(updater?.identifier).toBe(basename(UPDATE_PUBLIC_KEY_PATH, ".pem"));
+    // Y la de GPG, con el identificador que dice su secreto.
+    expect(gpg?.identifier).toContain("TANIT_SIGN_GPG_KEY_ID");
+
+    // Los tres son **tres**: confundir la de attestation con la de GPG
+    // es justo lo que la tabla dice que no pasa, y es lo que hace que
+    // una attestation se verifique con la clave equivocada.
+    const identifiers = [gpg?.identifier, updater?.identifier, attestation?.identifier];
+    expect(new Set(identifiers).size).toBe(3);
+    expect(attestation?.identifier).not.toContain("TANIT_SIGN_GPG_KEY_ID");
+    expect(attestation?.identifier).not.toBe(gpg?.identifier);
   });
 });
