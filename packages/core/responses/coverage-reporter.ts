@@ -24,8 +24,25 @@
  * everybody on that framework.
  *
  * So the reporter **measures and says**. The frozen baseline lives in
- * `constants/core/response-inference.constant.ts` and the comparison
- * is a warning.
+ * `constants/core/response-inference.constant.ts`.
+ *
+ * ## What the baseline means
+ *
+ * The baseline is a **reference measurement**: the percentage the
+ * inferrer reaches on **its own fixture**
+ * (`RESPONSE_INFERENCE_REFERENCE_FIXTURES`). It is the number
+ * `tests/response-inference/coverage.spec.ts` pins, and it is what
+ * detects an inferrer that starts resolving fewer of the routes it
+ * used to.
+ *
+ * It is **not** a threshold to apply to an arbitrary project. A real
+ * project has other code: a controller that answers with a plain
+ * array, a route the scanner never reported, a framework construct
+ * the inferrer does not model. Comparing such a project with the
+ * reference baseline would print a warning that is not true — it
+ * would say "the inferrer regressed" about a project that simply
+ * does not use the construct. So the reporter names the framework,
+ * prints the number, and says what the comparison means.
  */
 import type {
   IResponseCoverageEntry,
@@ -86,7 +103,7 @@ export function logCoverageReport(report: IResponseCoverageReport): void {
   const lines = report.entries.map(
     (row) =>
       `  ${row.framework}: ${row.inferred}/${row.total} operations with an inferred ` +
-      `response (${row.percentage}%, baseline ${
+      `response (${row.percentage}%, reference baseline ${
         row.baseline === null ? "not measured" : `${row.baseline}%`
       })`,
   );
@@ -95,11 +112,18 @@ export function logCoverageReport(report: IResponseCoverageReport): void {
     `operations (${report.percentage}%)`;
 
   if (report.regressions.length > 0) {
+    // The baseline is a **reference measurement**: the percentage the
+    // inferrer reaches on its own fixture. Another project has other
+    // code, so a lower number there says what that project could
+    // infer — not that the inferrer lost ground. The reporter says so
+    // instead of crying wolf.
     console.warn(
       `${header}\n${lines.join("\n")}\n` +
-        `  ⚠ below baseline: ${report.regressions
+        `  ↳ below the reference baseline: ${report.regressions
           .map((row) => row.framework)
-          .join(", ")}`,
+          .join(", ")}. The baseline is the percentage measured on the ` +
+          `framework's reference fixture; on a different project the number ` +
+          `says what that project can infer, not that the inferrer lost ground.`,
     );
     return;
   }

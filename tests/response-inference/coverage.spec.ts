@@ -16,7 +16,7 @@
  * `tests/frameworks/response-inference-routes.spec.ts` checks that
  * the scanners still report them.
  */
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   buildCoverageReport,
@@ -125,6 +125,25 @@ describe("coverage reporter — arithmetic (r00020 S3)", () => {
       "fastify",
       "gin",
     ]);
+  });
+
+  test("a project below the reference baseline is described, not accused", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const report = buildCoverageReport([
+        { framework: "express", id: "express", total: 4, inferred: 1 },
+      ]);
+      logCoverageReport(report);
+      const message = warn.mock.calls.map((call) => String(call[0])).join("\n");
+      // The baseline belongs to the reference fixture, not to every
+      // project the tool runs on: the message has to say that, and it
+      // must not accuse the inferrer of something it did not do.
+      expect(message).toContain("reference fixture");
+      expect(message).not.toContain("regressed");
+      expect(message).not.toContain("below baseline:");
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   test("the reporter says its numbers and never throws", () => {

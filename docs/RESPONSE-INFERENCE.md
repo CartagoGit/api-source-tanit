@@ -131,6 +131,26 @@ A baseline of `null` means nobody measured that inferrer yet: the four
 that predate this slice and have no response fixture of their own.
 The reporter prints their number and stays quiet about it.
 
+### What the baseline is, and what it is not
+
+The baseline is a **reference measurement**: the percentage the
+inferrer reaches on **its own fixture**. It is what
+`tests/response-inference/coverage.spec.ts` pins, and it is what
+detects an inferrer that starts resolving fewer of the routes it used
+to.
+
+It is **not** a threshold to apply to any project. A real project has
+other code — a controller that answers with a plain array, a route the
+scanner never reported, a construct the inferrer does not model — so
+the tool will print a lower number there. The reporter names the
+framework, prints the number and says what the comparison means; it
+does not accuse the inferrer of something the project did.
+
+That is why the run over `examples/` reads `express: 1/14 (7.1%)`
+next to a `75%` reference baseline: the example project answers most
+of its routes with constructs the Express inferrer does not model. It
+is not a regression, and the message says so.
+
 ## The tests
 
 - `tests/response-inference/fastify.spec.ts`
@@ -141,6 +161,8 @@ The reporter prints their number and stays quiet about it.
 - `tests/response-inference/ktor-respond.spec.ts`
 - `tests/response-inference/registry.spec.ts`
 - `tests/response-inference/coverage.spec.ts`
+- `tests/response-inference/edge-cases.spec.ts` — malformed input every
+  inferrer has to survive
 
 Run them with:
 
