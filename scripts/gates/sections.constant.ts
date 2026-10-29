@@ -91,10 +91,14 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "cli",
     description: "Comandos, asistente interactivo y binario compilado",
-    paths: ["packages/cli/", "packages/ui/", "scripts/"],
+    // `tests/release/` vive aquí porque lo que prueba es el tooling de
+    // `scripts/`, que ya es de esta sección: el signing de la release
+    // es un script del repo, no código de producto.
+    paths: ["packages/cli/", "packages/ui/", "scripts/", "tests/release/"],
     tests: [
       "tests/cli/**/*.{spec,test}.ts",
       "tests/scripts-gates/**/*.{spec,test}.ts",
+      "tests/release/**/*.{spec,test}.ts",
     ],
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks"],

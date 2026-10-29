@@ -23,6 +23,9 @@
     "maxWarmPlugins": 8
   },
   "agentWorktree": false,
+  "release": {
+    "sign": false
+  },
   "filesystem": {
     "authorizedRoots": [
       "packages",
