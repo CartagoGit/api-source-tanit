@@ -230,17 +230,36 @@ respuesta es un riesgo que sigue abierto.
 4. Actualización de [`docs/SBOM.md`](docs/SBOM.md) y de este documento si
    el fallo era del modelo y no del código.
 
-### 4.5. La clave GPG
+### 4.5. Las claves criptográficas de la release
 
-Para cifrar el reporte o para verificar la firma de un comunicado:
+Hay **tres** claves distintas, y confundirlas es como se acaba
+verificando una cosa con la clave de otra. Cada una tiene su
+identificador, y el identificador dice qué firma:
 
-- **Identificador**: `tanit-release-attestation-v1` (la misma clave que
-  firma las attestations de provenance).
-- **Huella**: la que publica el keyring `tanit-release-keyring.gpg` de
-  cada release, y el `keyid` que declara cada attestation.
-- **Uso**: firmar los comunicados de seguridad y verificar las
-  attestations. La clave **no** firma el reporte del usuario: el
-  intercambio va cifrado o por el canal privado del advisory.
+| Clave | Identificador | La privada | La pública | Qué firma |
+| --- | --- | --- | --- | --- |
+| **GPG de la release** | El `keyid` de la clave GPG (`TANIT_SIGN_GPG_KEY_ID`) y su huella | Secreto `TANIT_SIGN_GPG_KEYRING` | `tanit-release-keyring.gpg`, adjunto a cada release | Los `SHA256SUMS` de Linux y los artefactos de Linux |
+| **Ed25519 del updater** | `tanit-updater-public-key-v1` | Secreto `TANIT_UPDATER_KEY` | `packages/desktop/keys/tanit-updater-public-key-v1.pem`, dentro de la app | El manifest que el updater instala |
+| **Ed25519 de la attestation** | `tanit-release-attestation-v1` | Secreto `TANIT_ATTESTATION_KEY` | `packages/desktop/keys/tanit-release-attestation-v1.pub.pem`, versionada y adjunta a cada release | La provenance: el statement SLSA que dice de dónde vino la build |
+
+- La clave GPG **no** firma las attestations, y la clave de attestation
+  **no** firma los checksums. Cada una verifica lo suyo, y el
+  `keyid` de cada attestation es el de la de attestation —no el de la
+  GPG—.
+- La clave de attestation es la única cuya **pública está versionada en
+  el repositorio**: sin ella, la attestation que la release adjunta no
+  la puede verificar un tercero, porque el secreto del CI no se publica.
+  La CI falla cerrada si el secreto no corresponde a la pública
+  versionada.
+- Para cifrar el reporte o para verificar la firma de un comunicado se
+  usa la **clave GPG de la release**: su huella está en el keyring
+  público que acompaña a cada release. La clave **no** firma el reporte
+  del usuario: el intercambio va cifrado o por el canal privado del
+  advisory.
+- La rotación de cada una es explícita: clave nueva, identificador
+  nuevo y las dos públicas conviviendo hasta que la vieja caduca. El
+  procedimiento está en [`docs/SBOM.md`](docs/SBOM.md), §La rotación de
+  la clave de attestation.
 
 ---
 
