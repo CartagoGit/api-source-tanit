@@ -54,6 +54,32 @@ pub const MANIFEST_SCHEMA: &str = "tanit.update.manifest/v1";
 /// El único algoritmo de firma que el updater entiende.
 pub const SIGNATURE_ALGORITHM: &str = "ed25519";
 
+/// Los abortos que son un **evento de seguridad**.
+///
+/// Es la **misma lista** que declara el contrato compartido
+/// (`UPDATE_SECURITY_EVENT_CODES` en
+/// `packages/contracts/constants/release/updater.constant.ts`): el
+/// test de contrato compara las dos, así que no pueden separarse sin
+/// que el test lo diga.
+///
+/// La lista es corta a propósito. Un endpoint caído es un problema de
+/// operación y se puede reintentar; una firma que no cuadra, un hash
+/// que no cuadra o una clave que no es la esperada son intentos de
+/// sustituir lo que se instala, y se registran como tales.
+///
+/// El desajuste de **tamaño** está, y no por simetría con el hash:
+/// porque la comprobación del tamaño va **antes** que la del hash, un
+/// atacante que trunca el instalador provocaría un aborto "de
+/// operación" y se llevaría por delante la alerta. La clasificación
+/// de un aborto no puede depender de lo que hizo el atacante.
+pub const SECURITY_EVENT_CODES: [&str; 5] = [
+    "update.public_key.invalid",
+    "update.public_key.mismatch",
+    "update.signature.invalid",
+    "update.hash.mismatch",
+    "update.size.mismatch",
+];
+
 /// El identificador de la clave pública versionada que hay en el repo.
 pub const DEFAULT_PUBLIC_KEY_ID: &str = "tanit-updater-v1";
 
@@ -437,15 +463,11 @@ impl UpdateRejection {
     /// reintentar. Una firma que no verifica, un hash que no cuadra o
     /// una clave que no es la esperada son intentos de sustituir lo
     /// que se instala, y se registran como tales.
+    ///
+    /// La lista es [`SECURITY_EVENT_CODES`], la misma que declara el
+    /// contrato compartido.
     pub fn is_security_event(&self) -> bool {
-        matches!(
-            self,
-            UpdateRejection::PublicKeyInvalid { .. }
-                | UpdateRejection::PublicKeyMismatch { .. }
-                | UpdateRejection::SignatureInvalid
-                | UpdateRejection::HashMismatch { .. }
-                | UpdateRejection::SizeMismatch { .. }
-        )
+        SECURITY_EVENT_CODES.contains(&self.code())
     }
 }
 

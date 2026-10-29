@@ -49,6 +49,7 @@ import { RELEASE_MANIFEST_FILE } from "../../packages/contracts/constants/releas
 import {
   UPDATE_MANIFEST_FILE,
   UPDATE_MANIFEST_SCHEMA,
+  UPDATE_MINIMUM_SUPPORTED_VERSION,
   UPDATE_PUBLIC_KEY_ID,
   UPDATE_SIGNATURE_ALGORITHM,
   UPDATE_SIGNATURE_FILE,
@@ -223,15 +224,21 @@ function assetUrl(baseUrl, relativePath) {
   return `${baseUrl.replace(/\/+$/, "")}/${segments.join("/")}`;
 }
 
-/** La versión de la app instalada, para el mínimo soportado por defecto. */
-async function readCurrentVersion() {
-  const raw = await readFile(join(REPO_ROOT, "packages", "desktop", "tauri.conf.json"), "utf8");
-  const parsed = JSON.parse(raw);
-  const version = parsed?.version;
-  if (typeof version !== "string" || version.length === 0) {
-    throw new ReleaseError("Could not read the app version from tauri.conf.json");
+/**
+ * La versión mínima que el manifest declara soportar.
+ *
+ * Por defecto es la **política** del canal
+ * (`UPDATE_MINIMUM_SUPPORTED_VERSION`), y no la versión de la release:
+ * un manifest que ofrece la versión nueva como mínima deja fuera a
+ * todos los clientes anteriores, que son justo los que hay que
+ * actualizar.
+ */
+function minimumSupportedVersion(args) {
+  if (args.minimumVersion !== undefined) return args.minimumVersion;
+  if (!UPDATE_MINIMUM_SUPPORTED_VERSION) {
+    throw new ReleaseError("The shared contract does not declare a minimum supported version");
   }
-  return version;
+  return UPDATE_MINIMUM_SUPPORTED_VERSION;
 }
 
 async function main() {
@@ -271,7 +278,7 @@ async function main() {
   if (typeof version !== "string" || version.length === 0) {
     throw new ReleaseError("Could not determine the version to offer");
   }
-  const minimumVersion = args.minimumVersion ?? (await readCurrentVersion());
+  const minimumVersion = minimumSupportedVersion(args);
   const baseUrl = args.baseUrl ?? `https://updates.tanit.dev/releases/${version}`;
 
   const artifacts = Array.isArray(releaseManifest.artifacts) ? releaseManifest.artifacts : [];

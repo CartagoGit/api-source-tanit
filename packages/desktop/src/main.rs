@@ -43,7 +43,9 @@ mod dialogs;
 mod drag_drop;
 mod sidecar;
 mod secure_storage;
+mod update_log;
 mod updater;
+use std::path::PathBuf;
 use std::process::Child;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -149,6 +151,94 @@ fn to_failure(rejection: &updater::UpdateRejection) -> UpdateFailure {
     }
 }
 
+/// Dónde se escribe el log de seguridad del updater.
+///
+/// El directorio de logs de la app es el único sitio donde un evento
+/// de seguridad puede vivir sin que nadie tenga que ir a buscarlo. Si
+/// la plataforma no lo deja obtener, no hay log: el evento se sigue
+/// emitiendo al webview, pero no se persiste.
+fn update_log_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    let directory = app.path().app_log_dir().ok()?;
+    Some(directory.join(update_log::UPDATE_SECURITY_LOG))
+}
+
+/// Persiste un evento de seguridad del updater.
+///
+/// Esto es el **consumidor** del evento: sin esta línea, el evento se
+/// emitía a un webview que todavía no lo escuchaba y se perdía. Un
+/// fallo al escribir **no** interrumpe la app: lo que está en juego
+/// es la actualización, no el disco.
+fn record_security_event(
+    app: &tauri::AppHandle,
+    failure: &UpdateFailure,
+    contract: &UpdaterContract,
+) {
+    let Some(path) = update_log_path(app) else {
+        return;
+    };
+    let event = update_log::SecurityEvent {
+        code: failure.code.clone(),
+        message: failure.message.clone(),
+        version: contract.current_version.clone(),
+        endpoint: contract.endpoint.clone(),
+    };
+    if let Err(error) = update_log::record(&path, &event) {
+        eprintln!("updater: the security event could not be written: {error}");
+    }
+}
+
+/// Comprueba si hay una actualización y deja rastro si aborta.
+///
+/// Es el cuerpo de los dos caminos que hay para comprobar
+/// actualizaciones: el comando que el webview invoca y la
+/// comprobación que la app hace al arrancar. Comparten código a
+/// propósito: si cada uno tuviera su copia, el evento de seguridad se
+/// emitiría en uno y no en el otro.
+async fn run_update_check(
+    app: tauri::AppHandle,
+    contract: UpdaterContract,
+) -> Result<UpdateAvailable, UpdateFailure> {
+    let platform = UpdatePlatform::current();
+    // El hilo se lleva una **copia** del contrato; el original se
+    // queda aquí para poder dejar rastro del aborto.
+    let working = contract.clone();
+    let checked = tauri::async_runtime::spawn_blocking(move || {
+        updater::check_for_update(&working, &HttpsTransport::new(), &platform)
+    })
+    .await;
+
+    let outcome = match checked {
+        Ok(result) => result,
+        Err(error) => Err(updater::UpdateRejection::EndpointUnavailable {
+            detail: error.to_string(),
+        }),
+    };
+
+    match outcome {
+        Ok(plan) => Ok(UpdateAvailable {
+            version: plan.version,
+            url: plan.target.url,
+            sha256: plan.target.sha256,
+            size: plan.target.size,
+            minimum_supported_version: plan.minimum_supported_version,
+            provenance_source: plan.provenance.source,
+        }),
+        Err(rejection) => {
+            let failure = to_failure(&rejection);
+            // El evento de seguridad se emite **además** del estado:
+            // el estado es para la interfaz y el evento es para el
+            // log. Un intento de sustitución tiene que dejar rastro
+            // aunque nadie esté mirando la ventana.
+            if failure.security_event {
+                let _ = app.emit(EVENT_UPDATE_SECURITY, &failure);
+                record_security_event(&app, &failure, &contract);
+            }
+            let _ = app.emit(EVENT_UPDATE_STATUS, &failure);
+            Err(failure)
+        }
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -181,8 +271,20 @@ fn main() {
             //    `tauri.conf.json` y en el manifest de la release—,
             //    y la clave es la versionada del repo.
             let version = app.package_info().version.to_string();
+            let contract = UpdaterContract::from_environment(&version);
             app.manage(UpdaterState {
-                contract: UpdaterContract::from_environment(&version),
+                contract: contract.clone(),
+            });
+            // 6. La app **comprueba** si hay actualización al arrancar.
+            //    Es lo que hace que el updater tenga un consumidor: sin
+            //    esta comprobación, los comandos existen pero nadie los
+            //    llama y el evento de seguridad no lo ve nadie. Va en
+            //    segundo plano y no bloquea la ventana: un aborta deja
+            //    la app con la versión instalada y su motivo en el
+            //    log de seguridad.
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = run_update_check(app_handle, contract).await;
             });
             Ok(())
         })
@@ -231,42 +333,7 @@ async fn check_for_updates(
     app: tauri::AppHandle,
     state: tauri::State<'_, UpdaterState>,
 ) -> Result<UpdateAvailable, UpdateFailure> {
-    let contract = state.contract.clone();
-    let platform = UpdatePlatform::current();
-    let checked = tauri::async_runtime::spawn_blocking(move || {
-        updater::check_for_update(&contract, &HttpsTransport::new(), &platform)
-    })
-    .await;
-
-    let outcome = match checked {
-        Ok(result) => result,
-        Err(error) => Err(updater::UpdateRejection::EndpointUnavailable {
-            detail: error.to_string(),
-        }),
-    };
-
-    match outcome {
-        Ok(plan) => Ok(UpdateAvailable {
-            version: plan.version,
-            url: plan.target.url,
-            sha256: plan.target.sha256,
-            size: plan.target.size,
-            minimum_supported_version: plan.minimum_supported_version,
-            provenance_source: plan.provenance.source,
-        }),
-        Err(rejection) => {
-            let failure = to_failure(&rejection);
-            // El evento de seguridad se emite **además** del estado:
-            // el estado es para la interfaz y el evento es para el
-            // log. Un intento de sustitución tiene que dejar rastro
-            // aunque nadie esté mirando la ventana.
-            if failure.security_event {
-                let _ = app.emit(EVENT_UPDATE_SECURITY, &failure);
-            }
-            let _ = app.emit(EVENT_UPDATE_STATUS, &failure);
-            Err(failure)
-        }
-    }
+    run_update_check(app, state.contract.clone()).await
 }
 
 /// Descarga la actualización y la verifica **antes** de instalar.
@@ -286,6 +353,9 @@ async fn download_update(
     version: String,
 ) -> Result<UpdateDownloaded, UpdateFailure> {
     let contract = state.contract.clone();
+    // El hilo de descarga se lleva una **copia** del contrato; el
+    // original se queda aquí para poder dejar rastro del aborto.
+    let working = contract.clone();
     let platform = UpdatePlatform::current();
     let destination = match app.path().download_dir() {
         Ok(directory) => directory.join(format!("Tanit_{version}_installer")),
@@ -300,21 +370,21 @@ async fn download_update(
 
     let downloaded = tauri::async_runtime::spawn_blocking(move || {
         let transport = HttpsTransport::new();
-        let plan = updater::check_for_update(&contract, &transport, &platform)?;
+        let plan = updater::check_for_update(&working, &transport, &platform)?;
         if plan.version != version {
             return Err(updater::UpdateRejection::VersionNotNewer {
-                current: contract.current_version.clone(),
+                current: working.current_version.clone(),
                 offered: plan.version.clone(),
             });
         }
         let bytes = updater::fetch_with_retry(
             &transport,
             &plan.target.url,
-            contract.timeout(),
-            &contract.retry,
+            working.timeout(),
+            &working.retry,
         )?;
         updater::verify_artifact_hash(&plan.target, &bytes)?;
-        updater::verify_artifact_signature(&contract, &plan.target, &bytes)?;
+        updater::verify_artifact_signature(&working, &plan.target, &bytes)?;
         Ok((plan, bytes))
     })
     .await;
@@ -325,6 +395,7 @@ async fn download_update(
             let failure = to_failure(&rejection);
             if failure.security_event {
                 let _ = app.emit(EVENT_UPDATE_SECURITY, &failure);
+                record_security_event(&app, &failure, &contract);
             }
             let _ = app.emit(EVENT_UPDATE_STATUS, &failure);
             return Err(failure);

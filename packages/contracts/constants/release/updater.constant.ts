@@ -50,6 +50,27 @@ export const UPDATE_SIGNATURE_FILE = "latest.json.sig";
 /** El identificador de la clave pública versionada que hay en el repo. */
 export const UPDATE_PUBLIC_KEY_ID = "tanit-updater-v1";
 
+/**
+ * La versión más antigua que el canal de actualización todavía
+ * soporta.
+ *
+ * Es la **política** del canal, no un dato del cliente: dice desde qué
+ * versión una app instalada todavía puede actualizarse sola. Si la app
+ * es más vieja que esto, el updater aborta con
+ * `update.version.below_minimum` y la actualización se hace a mano.
+ *
+ * Vive aquí, y no en el script que construye el manifest, por una
+ * razón concreta: el manifest lleva este valor **dentro y firmado**,
+ * y el script lo toma de aquí. Si el valor viviera en el script, el
+ * manifest y el pipeline podrían decir cosas distintas —y el error
+ * sería invisible hasta que un cliente dejara de poder actualizarse.
+ *
+ * El valor por defecto del script **no** puede ser la versión de la
+ * release: el manifest ofrecería la versión nueva como mínima, y
+ * cualquier cliente anterior quedaría fuera del canal.
+ */
+export const UPDATE_MINIMUM_SUPPORTED_VERSION = "1.0.0";
+
 /** Dónde vive la clave pública versionada, relativo a la raíz del repo. */
 export const UPDATE_PUBLIC_KEY_PATH =
   "packages/desktop/keys/tanit-updater-public-key-v1.pem";

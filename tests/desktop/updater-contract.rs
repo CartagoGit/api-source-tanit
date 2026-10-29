@@ -28,6 +28,11 @@
 #[path = "../../packages/desktop/src/updater.rs"]
 mod updater;
 
+/// El log de seguridad: el consumidor del evento de seguridad.
+#[allow(dead_code)]
+#[path = "../../packages/desktop/src/update_log.rs"]
+mod update_log;
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -369,6 +374,51 @@ fn el_instalador_se_verifica_antes_de_instalar() {
 // ---------------------------------------------------------------------------
 
 #[test]
+fn un_target_en_http_se_rechaza() {
+    // La URL del destino tiene que ser HTTPS, y esta es la regla que
+    // lo fija: sin ella, un manifest firmado podría ofrecer un
+    // instalador que se descarga en claro. El transporte real también
+    // rechaza el `http://`, pero el núcleo **no** se apoya en eso: la
+    // comprobación vive en `plan_update`, antes de descargar nada.
+    let fixture = fixture("target-http");
+    let artifact = b"payload served over plain http".to_vec();
+    let url = "http://updates.tanit.dev/releases/0.2.0/linux/x64/deb/Tanit_0.2.0_amd64.deb";
+    let target = UpdateTarget {
+        os: "linux".to_string(),
+        arch: "x64".to_string(),
+        bundle: "deb".to_string(),
+        url: url.to_string(),
+        sha256: sha256_hex(&artifact),
+        signature: sign(&fixture.key, &fixture.scratch, &artifact),
+        size: artifact.len() as u64,
+    };
+    let manifest = manifest_json(OFFERED, INSTALLED, DEFAULT_PUBLIC_KEY_ID, &target);
+    let signature = sign(&fixture.key, &fixture.scratch, manifest.as_bytes());
+
+    // Todo lo demás cuadra: la firma es buena, la versión es posterior
+    // y la plataforma es la de las pruebas. Lo único que no cuadra es
+    // el protocolo de la URL.
+    let rejection = plan_update(
+        &fixture.contract,
+        manifest.as_bytes(),
+        &signature,
+        &fixture.platform,
+    )
+    .expect_err("a target served over HTTP must be rejected");
+
+    assert_eq!(
+        rejection,
+        UpdateRejection::EndpointNotHttps {
+            endpoint: url.to_string(),
+        }
+    );
+    assert!(
+        !rejection.is_security_event(),
+        "a plain-HTTP URL is a broken release, not an attempt to substitute it"
+    );
+}
+
+#[test]
 fn una_version_anterior_se_rechaza() {
     let fixture = fixture("older");
     let artifact = b"older payload".to_vec();
@@ -519,6 +569,35 @@ fn una_firma_de_instalador_corrupta_se_rechaza() {
         .expect_err("a corrupted artifact must be rejected");
     assert_eq!(rejection, UpdateRejection::SignatureInvalid);
     assert!(rejection.is_security_event());
+}
+
+#[test]
+fn un_tamano_distinto_es_un_evento_de_seguridad() {
+    // El tamaño va **dentro** del manifest firmado, así que un tamaño
+    // que no cuadra significa que los bytes no son los que se
+    // firmaron. Y es un evento de seguridad por una razón concreta:
+    // la clasificación del aborto no puede depender de lo que el
+    // atacante haga. Si el desajuste de tamaño fuera "problema de
+    // operación", un atacante podría truncar el instalador para que el
+    // cliente lo clasificara como Operational y **no** dejara
+    // rastro: bajarse la alerta un byte. Con los dos desajustes
+    // (tamaño y hash) como evento de seguridad, el mismo truncamiento
+    // dispara la alerta igual.
+    let fixture = fixture("size");
+    let manifest = parse_manifest(fixture.manifest.as_bytes()).expect("the manifest must parse");
+    let target = select_target(&manifest, &fixture.platform).expect("the target must exist");
+
+    let mut truncated = fixture.artifact.clone();
+    truncated.truncate(truncated.len() - 1);
+
+    let rejection = verify_artifact_hash(target, &truncated)
+        .expect_err("an artifact with a different size must be rejected");
+    assert!(matches!(rejection, UpdateRejection::SizeMismatch { .. }));
+    assert_eq!(rejection.code(), "update.size.mismatch");
+    assert!(
+        rejection.is_security_event(),
+        "a size mismatch must leave a trace: the attacker controls the bytes, not the alarm"
+    );
 }
 
 #[test]
@@ -777,6 +856,51 @@ fn las_constantes_del_cliente_cuadran_con_el_contrato_compartido() {
 }
 
 #[test]
+fn el_conjunto_de_eventos_de_seguridad_es_el_del_contrato_compartido() {
+    // La lista del cliente y la del contrato compartido tienen que ser
+    // la misma. Si una grows y la otra no, la app y el log cuentan
+    // cosas distintas y nadie sabe cuál manda.
+    let constants = fs::read_to_string(
+        repo_root().join("packages/contracts/constants/release/updater.constant.ts"),
+    )
+    .expect("the shared constants could not be read");
+
+    let start = constants
+        .find("UPDATE_SECURITY_EVENT_CODES")
+        .expect("the shared constants do not declare the security event codes");
+    let block = &constants[start..];
+    let end = block.find("];").expect("the security event codes are not a list");
+    let declared: Vec<String> = block[..end]
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if !trimmed.starts_with('"') {
+                return None;
+            }
+            Some(
+                trimmed
+                    .trim_matches(|character| character == '"' || character == ',')
+                    .to_string(),
+            )
+        })
+        .collect();
+
+    let client: Vec<String> = updater::SECURITY_EVENT_CODES
+        .iter()
+        .map(|code| code.to_string())
+        .collect();
+
+    assert_eq!(
+        declared, client,
+        "the client and the shared contract disagree about what is a security event"
+    );
+    assert!(
+        declared.iter().any(|code| code == "update.size.mismatch"),
+        "a size mismatch has to be a security event: the attacker controls the bytes, not the alarm"
+    );
+}
+
+#[test]
 fn los_nombres_del_manifest_son_los_del_contrato_compartido() {
     let contract = fs::read_to_string(
         repo_root().join("packages/contracts/interfaces/release/updater.interface.ts"),
@@ -877,4 +1001,83 @@ fn el_contrato_por_defecto_usa_la_clave_versionada_del_repo() {
     assert_eq!(contract.endpoint, DEFAULT_ENDPOINT);
     assert_eq!(contract.timeout_ms, DEFAULT_TIMEOUT_MS);
     assert!(contract.public_key_pem.contains("BEGIN PUBLIC KEY"));
+}
+
+// ---------------------------------------------------------------------------
+// El log de seguridad: el consumidor del evento
+// ---------------------------------------------------------------------------
+
+/// El evento de seguridad de las pruebas.
+fn security_event() -> update_log::SecurityEvent {
+    update_log::SecurityEvent {
+        code: "update.signature.invalid".to_string(),
+        message: "La firma del manifest de actualización no verifica.".to_string(),
+        version: INSTALLED.to_string(),
+        endpoint: DEFAULT_ENDPOINT.to_string(),
+    }
+}
+
+#[test]
+fn el_evento_de_seguridad_se_escribe_en_el_log() {
+    let scratch = TempDir::new("update-log");
+    let path = scratch.join("logs").join(update_log::UPDATE_SECURITY_LOG);
+
+    let line = update_log::record(&path, &security_event()).expect("the event must be written");
+    let content = fs::read_to_string(&path).expect("the log could not be read");
+
+    assert_eq!(
+        content.trim_end(),
+        line,
+        "the line that was written is not the line that is in the log"
+    );
+
+    // Y lo que hay en el log se puede parsear: el formato es para las
+    // máquinas, no para los ojos.
+    let parsed: serde_json::Value =
+        serde_json::from_str(content.trim_end()).expect("the log line must be valid JSON");
+    assert_eq!(parsed["event"], "update.security");
+    assert_eq!(parsed["code"], "update.signature.invalid");
+    assert_eq!(parsed["version"], INSTALLED);
+    assert_eq!(parsed["endpoint"], DEFAULT_ENDPOINT);
+    assert!(parsed["message"].as_str().is_some_and(|text| !text.is_empty()));
+}
+
+#[test]
+fn el_log_acepta_varios_eventos_y_no_uno_se_pisa_con_el_otro() {
+    let scratch = TempDir::new("update-log-append");
+    let path = scratch.join(update_log::UPDATE_SECURITY_LOG);
+
+    update_log::record(&path, &security_event()).expect("the first event must be written");
+    let mut second = security_event();
+    second.code = "update.hash.mismatch".to_string();
+    update_log::record(&path, &second).expect("the second event must be written");
+
+    let content = fs::read_to_string(&path).expect("the log could not be read");
+    let lines: Vec<&str> = content.lines().filter(|line| !line.is_empty()).collect();
+    assert_eq!(lines.len(), 2, "both events must be in the log");
+    assert!(lines[0].contains("update.signature.invalid"));
+    assert!(lines[1].contains("update.hash.mismatch"));
+}
+
+#[test]
+fn el_log_no_guarda_nada_que_sea_secreto() {
+    let scratch = TempDir::new("update-log-secrets");
+    let path = scratch.join(update_log::UPDATE_SECURITY_LOG);
+    update_log::record(&path, &security_event()).expect("the event must be written");
+
+    let content = fs::read_to_string(&path).expect("the log could not be read");
+    assert!(!content.contains("PRIVATE KEY"));
+    assert!(!content.contains("BEGIN PUBLIC KEY"));
+    assert!(!content.contains(updater::DEFAULT_PUBLIC_KEY_PEM.trim()));
+}
+
+#[test]
+fn la_fecha_del_log_esta_en_iso8601() {
+    assert_eq!(update_log::iso8601(0), "1970-01-01T00:00:00Z");
+    assert_eq!(update_log::iso8601(1_700_000_000), "2023-11-14T22:13:20Z");
+    // Un salto de día: el algoritmo civil no se equivoca al cambiar de
+    // mes ni de año.
+    assert_eq!(update_log::iso8601(86_399), "1970-01-01T23:59:59Z");
+    assert_eq!(update_log::iso8601(86_400), "1970-01-02T00:00:00Z");
+    assert_eq!(update_log::iso8601(951_782_400), "2000-02-29T00:00:00Z");
 }

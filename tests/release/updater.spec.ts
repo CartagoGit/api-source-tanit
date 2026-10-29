@@ -40,7 +40,9 @@ import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
 import {
   UPDATE_MANIFEST_FILE,
   UPDATE_MANIFEST_SCHEMA,
+  UPDATE_MINIMUM_SUPPORTED_VERSION,
   UPDATE_PUBLIC_KEY_ID,
+  UPDATE_SECURITY_EVENT_CODES,
   UPDATE_SIGNATURE_FILE,
 } from "../../packages/contracts/constants/release/updater.constant.js";
 
@@ -50,6 +52,50 @@ const PREPARE = join(REPO_ROOT, "scripts", "release", "prepare-artifacts.mjs");
 const BUILD = join(REPO_ROOT, "scripts", "release", "build-update-manifest.mjs");
 /** El verificador independiente. */
 const VERIFY = join(REPO_ROOT, "scripts", "release", "verify-update.sh");
+/** El workflow que publica la release de escritorio. */
+const RELEASE_WORKFLOW = join(REPO_ROOT, ".github", "workflows", "release-desktop.yml");
+/** El workflow de validación de la CI. */
+const VALIDATE_WORKFLOW = join(REPO_ROOT, ".github", "workflows", "validate.yml");
+
+// --- el workflow, leído como YAML -------------------------------------------
+
+/** Un paso de un job del workflow. */
+interface IWorkflowStep {
+  readonly id?: string;
+  readonly name?: string;
+  readonly uses?: string;
+  readonly run?: string;
+  readonly if?: string;
+  readonly env?: Record<string, string>;
+  readonly working_directory?: string;
+}
+
+/** Un job del workflow. */
+interface IWorkflowJob {
+  readonly needs?: unknown;
+  readonly if?: unknown;
+  readonly runs_on?: unknown;
+  readonly steps: readonly IWorkflowStep[];
+}
+
+/** El workflow completo. */
+interface IWorkflow {
+  readonly jobs: Readonly<Record<string, IWorkflowJob>>;
+}
+
+/**
+ * El workflow, parseado como YAML.
+ *
+ * Con `bun`, que trae un parser de YAML de serie: el test **no**
+ * comprueba que el fichero contenga una cadena, comprueba que el
+ * workflow haga una cosa.
+ */
+async function workflowDocument(path = RELEASE_WORKFLOW): Promise<IWorkflow> {
+  const script = `const text = await Bun.file(${JSON.stringify(path)}).text(); console.log(JSON.stringify(Bun.YAML.parse(text)));`;
+  const result = run("bun", ["-e", script]);
+  expect(result.status, result.output).toBe(0);
+  return JSON.parse(result.stdout) as IWorkflow;
+}
 
 /** La versión que se ofrece. */
 const OFFERED = "0.2.0";
@@ -500,8 +546,7 @@ describe("el updater firmado", () => {
     }
   });
 
-  test("un sidecar que no responde dice por qué y no muere en silencio", async () => {
-    // Un rechazo que no se puede leer no es un rechazo: parece un
+  test("un sidecar que no responde dice por qué y no muere en silencio", async () => {    // Un rechazo que no se puede leer no es un rechazo: parece un
     // fallo del verificador. Con `set -e`, un sidecar que no sabe
     // decir su versión se llevaba el verificador por delante con un
     // exit 1 sin una sola línea de explicación.
@@ -532,5 +577,175 @@ describe("el updater firmado", () => {
     } finally {
       await rm(built.root, { recursive: true, force: true });
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // El camino feliz, de punta a punta
+  // -------------------------------------------------------------------------
+
+  test("el smoke positivo del candidato pasa", async () => {
+    // El camino que se había ejecutado a mano: manifest firmado, verificado
+    // y **candidato** que arranca, escanea y exporta. Todo en local, sin red
+    // y sin cuenta.
+    const built = await buildEverything();
+    try {
+      const payload = join(built.root, "payload");
+      await mkdir(join(payload, "binaries"), { recursive: true });
+      // El sidecar que viaja dentro del instalador: dice la versión que se
+      // está instalando y, para lo demás, es el del repo (así el smoke
+      // exercise el binario de verdad y no una imitación).
+      const sidecar = join(payload, "binaries", "apisrc");
+      await writeFile(
+        sidecar,
+        [
+          "#!/bin/sh",
+          "# El sidecar del candidato: la versión que se está instalando,",
+          "# y el sidecar del repo para todo lo demás.",
+          'if [ "$1" = "--version" ]; then',
+          `  echo "${OFFERED}"`,
+          "  exit 0",
+          "fi",
+          `exec "${join(REPO_ROOT, "bin", "apisrc")}" "$@"`,
+          "",
+        ].join("\n"),
+        "utf8",
+      );
+      await chmod(sidecar, 0o755);
+
+      const result = verify({
+        manifest: built.manifest,
+        signature: built.signature,
+        publicKey: built.key.public,
+        platform: PLATFORM,
+        currentVersion: INSTALLED,
+        stage: built.stage,
+        smoke: payload,
+        smokeVersion: OFFERED,
+      });
+
+      expect(result.status, result.output).toBe(0);
+      expect(result.output).toContain("the update manifest is verified");
+      expect(result.output).toContain("the sidecar answered the handshake");
+      expect(result.output).toContain("the sidecar scanned the project");
+      expect(result.output).toContain("the sidecar exported the collection");
+    } finally {
+      await rm(built.root, { recursive: true, force: true });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // El doc y el código no pueden separarse
+  // -------------------------------------------------------------------------
+
+  test("el doc y el cliente dicen lo mismo sobre la rotación de claves", async () => {
+    const doc = await readFile(join(REPO_ROOT, "docs", "UPDATER.md"), "utf8");
+    const client = await readFile(
+      join(REPO_ROOT, "packages", "desktop", "src", "updater.rs"),
+      "utf8",
+    );
+
+    // Cuántas claves embebe el cliente. Hoy es una: el contrato tiene un
+    // `publicKeyId` y un `publicKeyPem`, no una lista.
+    const embedded = [...client.matchAll(/include_str!\("([^"]+\.pem)"\)/g)].map(
+      (match) => match[1] ?? "",
+    );
+    expect(embedded).toEqual(["../keys/tanit-updater-public-key-v1.pem"]);
+
+    // Con una sola clave, el doc **no puede** prometer una rotación
+    // compatible: el cliente aborta con `update.public_key.mismatch` en
+    // cuanto el manifest declara otro identificador. El doc tiene que
+    // decir la verdad sobre lo que el código hace.
+    const plain = doc.replace(/\*/g, "");
+    expect(plain.toLowerCase()).not.toContain("rotación compatible");
+    expect(plain.toLowerCase()).toContain("rotación cortante");
+    expect(doc).toContain("update.public_key.mismatch");
+  });
+
+  test("el desajuste de tamaño es un evento de seguridad en el contrato compartido", async () => {
+    // La clasificación de un aborto no puede depender de lo que hizo el
+    // atacante: si el desajuste de tamaño fuera "operativo", truncar el
+    // instalador bajaría la alerta. Está decidido, está escrito y está
+    // fijado por un test.
+    expect(UPDATE_SECURITY_EVENT_CODES).toContain("update.size.mismatch");
+    expect(UPDATE_SECURITY_EVENT_CODES).toContain("update.hash.mismatch");
+    expect(UPDATE_SECURITY_EVENT_CODES).not.toContain("update.endpoint.unavailable");
+    expect(UPDATE_SECURITY_EVENT_CODES).not.toContain("update.version.not_newer");
+  });
+
+  test("el manifest declara la versión mínima que dice el contrato", async () => {
+    // Sin `--minimum-version`, el manifest toma la política del canal.
+    // Si tomara la versión de la release, el canal dejaría fuera a
+    // todos los clientes anteriores: nadie podría actualizarse.
+    const root = await tempDir("tanit-updater-minimum-");
+    try {
+      const stage = await makeStaging(root);
+      const key = makeKey(root);
+      const measured = prepare(stage, OFFERED);
+      expect(measured.status, measured.output).toBe(0);
+
+      const built = run("bun", [
+        "run",
+        BUILD,
+        "--stage",
+        stage,
+        "--out",
+        join(root, "out"),
+        "--key",
+        key.private,
+        "--version",
+        OFFERED,
+      ]);
+      expect(built.status, built.output).toBe(0);
+
+      const manifest = JSON.parse(
+        await readFile(join(root, "out", UPDATE_MANIFEST_FILE), "utf8"),
+      ) as IUpdateManifestJson;
+      expect(manifest.minimumSupportedVersion).toBe(UPDATE_MINIMUM_SUPPORTED_VERSION);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // El pipeline: lo que la CI hace con el manifest
+  // -------------------------------------------------------------------------
+
+  test("el workflow de la release construye, verifica y adjunta el manifest firmado", async () => {
+    const workflow = await workflowDocument();
+    const publish = workflow.jobs.publish;
+    expect(publish, "the workflow has no publish job").toBeDefined();
+
+    const steps = publish?.steps ?? [];
+    const runOf = (fragment: string): string => {
+      const step = steps.find((candidate) => candidate.run?.includes(fragment));
+      expect(step, `the workflow does not run \`${fragment}\``).toBeDefined();
+      return step?.run ?? "";
+    };
+
+    // 1. La clave privada sale del secreto del CI y se materializa con
+    //    permisos restringidos.
+    expect(runOf("TANIT_UPDATER_KEY")).toContain("chmod 600");
+    // 2. El manifest se construye y se firma.
+    expect(runOf("build-update-manifest.mjs")).toContain("--key");
+    // 3. Se verifica con el verificador independiente, con la clave
+    //    pública que hay en el repo: si el secreto no es su
+    //    contraparte, esto falla y no se publica nada.
+    expect(runOf("verify-update.sh")).toContain("tanit-updater-public-key-v1.pem");
+    // 4. Y el manifest y su firma se adjuntan a la release.
+    expect(runOf("latest.json")).toContain("latest.json.sig");
+  });
+
+  test("el pipeline de la CI ejecuta los tests del crate de escritorio", async () => {
+    const workflow = await workflowDocument(VALIDATE_WORKFLOW);
+    const job = workflow.jobs["desktop-tests"];
+    expect(job, "the CI has no desktop-tests job").toBeDefined();
+
+    const runs = (job?.steps ?? []).map((step) => step.run ?? "").join("\n");
+    expect(runs).toContain("cargo test");
+    // Y el crate se puede compilar: hacen falta el frontend y el
+    // sidecar, y si no están el build falla con un mensaje que no
+    // habla de la causa real.
+    expect(runs).toContain("build:app");
+    expect(runs).toContain("packages/desktop/binaries/apisrc-");
   });
 });

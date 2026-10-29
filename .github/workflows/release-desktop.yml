@@ -51,6 +51,16 @@ permissions:
 env:
   STAGE: packages/desktop/target/release/staging
   MANIFEST_NAME: release-manifest.json
+  # Dónde se escribe el manifest de actualización. **Fuera** del
+  # staging: el gate de publicación comprueba que todo lo que se
+  # adjunta esté descrito por el manifest de la release, y el manifest
+  # de actualización no es un artefacto de la release: es el canal.
+  UPDATE_DIR: packages/desktop/target/release/update
+  # El identificador de la clave pública versionada con la que se
+  # firma el manifest de actualización. Es el mismo que declara
+  # `packages/contracts/constants/release/updater.constant.ts` y el
+  # que embebe el cliente.
+  UPDATE_KEY_ID: tanit-updater-v1
 
 jobs:
   # ---------------------------------------------------------------------
@@ -456,6 +466,93 @@ jobs:
             --stage "${STAGE}" \
             --mode portable
 
+      # ────────────────────────────────────────────────────────────
+      # El manifest de actualización, firmado.
+      #
+      # Sin esto, el cliente no tiene de dónde leer: los instaladores
+      # se publicaban, pero no existía ningún `latest.json` que
+      # dijera cuál era la versión, de dónde se bajaba cada
+      # instalador y cuál era su hash. Sin manifest no hay
+      # actualización: el canal no se puede usar.
+      #
+      # La clave **privada** sale del secreto del CI y se materializa
+      # en un fichero temporal con permisos `600`. Si el secreto no
+      # está, el job **falla cerrado**: una release sin manifest
+      # firmado es una release que no se puede actualizar, y eso se
+      # dice en el log del pipeline en vez de descubrirse en la app.
+      - name: Preparar la clave del updater
+        id: updaterkey
+        shell: bash
+        env:
+          TANIT_UPDATER_KEY: ${{ secrets.TANIT_UPDATER_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_UPDATER_KEY}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not set: the update manifest cannot be signed." >&2
+            echo "  The release is not published without a signed update manifest." >&2
+            exit 1
+          fi
+          key="${RUNNER_TEMP}/tanit-updater-key.pem"
+          # El secreto puede venir en base64 o en claro: lo que vale
+          # es lo que `openssl` sepa leer.
+          if ! printf '%s' "${TANIT_UPDATER_KEY}" | base64 --decode > "${key}" 2>/dev/null; then
+            printf '%s' "${TANIT_UPDATER_KEY}" > "${key}"
+          fi
+          if [ ! -s "${key}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is empty." >&2
+            exit 1
+          fi
+          if ! grep -q "PRIVATE KEY" "${key}"; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not a PEM private key." >&2
+            rm -f "${key}"
+            exit 1
+          fi
+          chmod 600 "${key}"
+          echo "key=${key}" >> "$GITHUB_OUTPUT"
+
+      - name: Construir y firmar el manifest de actualización
+        id: updatemanifest
+        shell: bash
+        env:
+          KEY: ${{ steps.updaterkey.outputs.key }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          out="${UPDATE_DIR}"
+          bun run scripts/release/build-update-manifest.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --out "${out}" \
+            --key "${KEY}" \
+            --key-id "${UPDATE_KEY_ID}" \
+            --version "${version}" \
+            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}"
+          # La clave se borra aquí: a partir de este punto sólo hace
+          # falta el manifest, que ya está firmado.
+          rm -f "${KEY}"
+          echo "out=${out}" >> "$GITHUB_OUTPUT"
+
+      # El verificador **independiente**: con `jq` y `openssl`, sin el
+      # cliente. Si el secreto no es la contraparte de la clave pública
+      # del repo, o si un instalador no cuadra con lo que dice el
+      # manifest, esto falla y **no** se publica nada.
+      - name: Verificar el manifest de actualización
+        shell: bash
+        env:
+          OUT: ${{ steps.updatemanifest.outputs.out }}
+        run: |
+          set -euo pipefail
+          bash scripts/release/verify-update.sh \
+            --manifest "${OUT}/latest.json" \
+            --signature "${OUT}/latest.json.sig" \
+            --public-key packages/desktop/keys/tanit-updater-public-key-v1.pem \
+            --key-id "${UPDATE_KEY_ID}" \
+            --platform linux/x64/deb \
+            --stage "${STAGE}"
+
       # Lo que se adjunta lo decide **el gate**, no una lista de globs
       # escrita aquí: los dos tienen que decir lo mismo, y cuando los
       # dos tienen su propia lista la release se publica con el
@@ -467,9 +564,16 @@ jobs:
       # matriz y que ninguno va sin firmar: un glob que encuentra un
       # `.dmg` sigue encontrando un `.dmg` aunque falte el del otro
       # brazo.
+      #
+      # El manifest de actualización y su firma se adjuntan **por su
+      # ruta exacta**: el gate lista lo que se publica y el manifest va
+      # con ellos, para que el endpoint tenga las tres cosas —el
+      # manifest, su firma y los instaladores— en el mismo sitio.
       - name: Calcular y comprobar los assets a publicar
         id: assets
         shell: bash
+        env:
+          UPDATE_OUT: ${{ steps.updatemanifest.outputs.out }}
         run: |
           set -euo pipefail
           {
@@ -478,6 +582,8 @@ jobs:
               --stage "${STAGE}" \
               --manifest "${STAGE}/${MANIFEST_NAME}" \
               --list
+            echo "${UPDATE_OUT}/latest.json"
+            echo "${UPDATE_OUT}/latest.json.sig"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 

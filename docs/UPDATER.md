@@ -121,6 +121,33 @@ manifest.
 - La **provenance** va dentro del manifest firmado, así que no es una
   nota: es parte de lo que la firma cubre.
 
+### Quién produce el manifest
+
+El manifest no lo escribe nadie a mano: lo escribe el pipeline de la
+release, en el job `publish` de
+[.github/workflows/release-desktop.yml](../.github/workflows/release-desktop.yml),
+después de que los instaladores de las cuatro plataformas están
+construidos, firmados y verificados:
+
+1. La clave **privada** sale del secreto del CI (`TANIT_UPDATER_KEY`),
+   se materializa en un fichero temporal con permisos `600` y se
+   borra al terminar. Nunca está en el repo ni en los logs.
+2. `scripts/release/build-update-manifest.mjs` recorre los artefactos
+   que el manifest de la release ya describe, **recalcula** su SHA-256
+   y su tamaño, firma cada instalador y firma el manifest. La base de
+   las URLs es la de los assets de la release.
+3. `scripts/release/verify-update.sh` verifica el manifest con la
+   clave pública del repo, **sin** el cliente: si la clave del secreto
+   no es la del repo, o si un artefacto no cuadra, el job **falla
+   cerrado** y no se publica nada.
+4. `latest.json` y `latest.json.sig` se adjuntan a la release, al
+   lado de los instaladores.
+
+El endpoint que el cliente lee (`https://updates.tanit.dev/latest.json`)
+es un nombre de infraestructura que **todavía no existe**: publicarlo
+es trabajo de quien monte el CDN que sirva esos adjuntos. Lo que sí
+existe y está probado es el ciclo completo de firma y verificación.
+
 ---
 
 ## 4. Qué se comprueba y en qué orden
@@ -166,13 +193,65 @@ intento de sustitución.
 | `update.hash.mismatch` | El hash no cuadra | **sí** |
 | `update.size.mismatch` | El tamaño no cuadra | **sí** |
 
+#### Por qué `update.size.mismatch` es un evento de seguridad
+
+El tamaño va **dentro** del manifest firmado, así que un tamaño que no
+cuadra significa que los bytes descargados no son los que se
+firmaron. Podría parecer que ensancha el conjunto de "intentos de
+sustitución" —el mismo bytes alterado produce las dos cosas—, pero
+sacarlo de ese conjunto sería un **descuento de la alarma que el
+atacante controla**:
+
+- `verify_artifact_hash` comprueba el tamaño **antes** que el hash. Si
+  el tamaño no cuadra, el hash no llega a comprobarse.
+- Si el desajuste de tamaño fuera "problema de operación", un atacante
+  que **truncara** el instalador provocaría un aborted clasificado
+  como operativo: la app seguiría funcionando, no habría evento de
+  seguridad y el log de seguridad no tendría nada.
+- Con los dos desajustes como evento de seguridad, el mismo truncamiento
+  deja la misma huella que un instalador de otro tamaño.
+
+La regla que se sigue: **la clasificación de un aborted no puede
+depender de lo que hizo el atacante**. Por eso el tamaño y el hash son
+los dos eventos de seguridad del instalador. La lista vive en
+[updater.constant.ts](../packages/contracts/constants/release/updater.constant.ts)
+(`UPDATE_SECURITY_EVENT_CODES`) y en
+[`UpdateRejection::is_security_event`](../packages/desktop/src/updater.rs),
+y
+[tests/desktop/updater-contract.rs](../tests/desktop/updater-contract.rs)
+fija que los dos lados dicen lo mismo.
+
+### Quién llama al updater y quién ve el evento
+
+Tres piezas, y las tres existen:
+
+| Pieza | Qué hace | Dónde |
+|---|---|---|
+| La comprobación de arranque | Al arrancar, la app pregunta si hay actualización, en segundo plano y sin bloquear la ventana | [main.rs](../packages/desktop/src/main.rs) (`setup`) |
+| El comando | El webview puede pedirla otra vez | `check_for_updates`, `download_update`, `update_status` |
+| El consumidor del evento de seguridad | Escribe el evento en el log de la app | [update_log.rs](../packages/desktop/src/update_log.rs) |
+
 La app emite dos eventos de Tauri:
 
 - `tanit://update-status` — el resultado de la comprobación, lo que ve
   la interfaz.
 - `tanit://update-security-event` — **solo** cuando el motivo es un
-  intento de sustitución. Es lo que deja rastro en el log aunque nadie
-  esté mirando la ventana.
+  intento de sustitución.
+
+El evento de seguridad **no se queda en el evento**: se escribe en un
+fichero, una línea por evento, en JSON, en el directorio de logs de la
+app (`update-security.log`). El formato es JSON porque lo que se lee
+después lo lee una máquina:
+
+```json
+{"timestamp":"2026-10-29T10:15:00Z","event":"update.security","code":"update.signature.invalid","message":"La firma del manifest de actualización no verifica. No se descarga ni se instala nada.","version":"0.1.0","endpoint":"https://updates.tanit.dev/latest.json"}
+```
+
+Lo que **no** hay todavía: una superficie en la interfaz Angular que
+muestre el mensaje a la persona. El evento y el mensaje llegan al
+webview, y el evento queda persistido en el log; pintarlo en la
+ventana es trabajo de la app, no de esta pieza. Está anotado como
+tal en la propuesta de la slice.
 
 ---
 
@@ -184,38 +263,77 @@ con qué clave lo firmaron.
 
 ### Rotar
 
+> **Lo que el código soporta hoy es una rotación *cortante*.** No hay
+> modo compatible: el cliente tiene **una** clave y **un**
+> identificador (`UpdaterContract.public_key_id` y
+> `UpdaterContract.public_key_pem`), y aborta con
+> `update.public_key.mismatch` en cuanto el manifest declara otro
+> identificador. Lo que sigue es el procedimiento real, con el orden
+> exacto; §5.1 explica por qué el corte es inevitable y cómo se
+> minimize.
+
 1. Generar el par nuevo **fuera del repositorio**:
    ```bash
    openssl genpkey -algorithm ed25519 -out updater-v2.pem
    openssl pkey -in updater-v2.pem -pubout -out tanit-updater-public-key-v2.pem
    ```
 2. Publicar la clave nueva en el repo como
-   `packages/desktop/keys/tanit-updater-public-key-v2.pem`.
-3. Cambiar el `publicKeyId` por defecto y el `publicKeyPath` en
-   [updater.constant.ts](../packages/contracts/constants/release/updater.constant.ts)
-   y en `packages/desktop/src/updater.rs`.
-4. Meter la clave **privada** en el almacén de secretos del CI
+   `packages/desktop/keys/tanit-updater-public-key-v2.pem`. Publicar
+   la clave **no** cambia nada del cliente: sólo añade un fichero.
+3. Meter la clave **privada** en el almacén de secretos del CI
    (`TANIT_UPDATER_KEY`). Nunca en el repositorio.
-5. Publicar un manifest nuevo firmado con la clave nueva.
-
-### Qué pasa con los clientes viejos
-
-Un cliente que sólo conoce la clave `v1` **rechaza** un manifest
-firmado con la `v2`: es el `update.public_key.mismatch`, y es a
-propósito. Eso significa que hay dos formas de rotar:
-
-- **Rotación compatible**: se publican **las dos** claves y el
-  manifest se firma con la nueva; los clientes antiguos siguen
-  verificando con la vieja mientras siga publicada.
-- **Rotación cortante**: se cambia la clave del cliente y se publica
-  un manifest con la nueva. Los clientes que no se actualizan antes
-  dejan de poder actualizarse solos, y hay que avisar (o publicar una
-  versión mínima que fuerce la actualización manual).
+4. Cambiar el `publicKeyId` por defecto y el `publicKeyPath` en
+   [updater.constant.ts](../packages/contracts/constants/release/updater.constant.ts)
+   y en `packages/desktop/src/updater.rs`, y publicar una release de
+   la app con ese cambio. **Esta release se descarga a mano**: el
+   updater de la versión anterior sólo acepta manifests firmados con
+   la clave vieja, y esta build nueva sólo acepta la nueva.
+5. Esperar a que la flota esté en esa release (el canal automático
+   sigue sirviendo el manifest de la clave vieja, y es el que la
+   brings hasta allí).
+6. Publicar un manifest nuevo firmado con la clave **nueva** a partir
+   de ese momento. Los clientes que aún no se han actualizado dejan de
+   poder actualizarse solos y reciben `update.public_key.mismatch`.
 
 La regla que no se puede saltar: **la clave activa no se sobrescribe
 en silencio**. Cambiar el fichero de la clave sin cambiar el
 identificador rompe las actualizaciones en curso sin que nadie lo
 note.
+
+### 5.1 Por qué el corte es inevitable
+
+El manifest se firma con **una** clave y el cliente verifica con
+**una** clave. En todo momento las dos tienen que ser la misma, o el
+cliente aborta. De ahí sale la aritmética:
+
+| Momento | Manifest firmado con | Cliente v1 | Cliente v2 |
+|---|---|---|---|
+| Antes de rotar | v1 | funciona | no existe |
+| Release con la clave v2, manifest aún en v1 | v1 | funciona | **aborta** (`mismatch`) |
+| Manifest en v2 | v2 | **aborta** (`mismatch`) | funciona |
+
+La fila del medio es la que hace el corte inevitable: en algún
+momento hay clientes con la clave vieja y clientes con la nueva, y
+sólo uno de los dos grupos puede hablar con el canal. Aceptar
+las dos claves a la vez —una lista de claves en el contrato, y que el
+cliente pruebe con cada una— es lo que haría el cambio transparente,
+y **no está implementado**: el contrato tiene un `publicKeyId` y un
+`publicKeyPem`, no una lista.
+
+El orden del §5 (publicar la clave, sacar la release con la clave
+nueva, **esperar** a la migración, y sólo entonces cambiar el
+manifest) es el que minimiza el corte: mientras el manifest siga en
+la clave vieja, el grupo viejo sigue actualizándose; cuando cambia,
+sólo se quedan sin canal los que no llegaron a la release nueva, y
+esos se avisan o se atienden a mano.
+
+> **Aviso de operación:** la clave pública `tanit-updater-v1` que hay
+> hoy en el repositorio **no tiene mitad privada en ningún sitio**: la
+> que se usó para generarla se destruyó. Con el estado actual del
+> repositorio, el primer manifest publicable es el que se firme con
+> una clave **nueva** — es decir, la primera rotación de la historia
+> — o con la mitad privada de `v1`, que hay que provisionar en el
+> almacén de secretos del CI. Ver §3 ("Quién produce el manifest").
 
 ### Si la clave se compromete
 
@@ -362,3 +480,15 @@ La clave que usan las pruebas se genera en el propio test con
   Authenticode, GPG) es de [i00003 S2](RELEASE.md) y es
   distinta de la firma del updater. Son dos capas: la del sistema
   operativo y la del canal de actualización.
+- **La superficie de la interfaz**: el mensaje del aborted llega al
+  webview y el evento de seguridad queda en el log, pero **no hay**
+  todavía una pantalla en la app Angular que lo muestre a la persona.
+  Ese consumidor es trabajo de la app, no de esta pieza.
+- **La publicación del endpoint**: el nombre
+  `https://updates.tanit.dev/latest.json` es el destino acordado;
+  servirlo (el CDN, el `latest.json` y su `.sig` en la raíz) es
+  infraestructura que todavía no está montada.
+- **La clave privada de `tanit-updater-v1`**: no existe en ninguna
+  parte (ver el aviso de §5). El pipeline está cableado y probado, pero
+  el primer manifest real exige provisionar la clave en el almacén de
+  secretos del CI o rotar la clave.
