@@ -157,6 +157,22 @@ jobs:
             exit 1
           fi
           chmod 600 "${keyring}"
+
+          # La clave se **importa** aquí, en un keyring propio que se
+          # borra después: si el secreto no es un keyring importable,
+          # el job muere aquí, antes de construir nada. Quien firma
+          # (`sign-linux.sh`) la importa otra vez en su propio
+          # keyring: nunca depende del keyring por defecto del runner,
+          # que está vacío.
+          probe="$(mktemp -d)"
+          chmod 700 "${probe}"
+          if ! GNUPGHOME="${probe}" gpg --batch --yes --no-tty --import "${keyring}" >/dev/null 2>&1; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is not an importable GPG keyring." >&2
+            rm -rf "${probe}"
+            exit 1
+          fi
+          rm -rf "${probe}"
+
           echo "keyring=${keyring}" >> "$GITHUB_OUTPUT"
 
       # La política dice que se firma: se auditan las credenciales

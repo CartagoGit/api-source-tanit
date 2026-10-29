@@ -1364,9 +1364,12 @@ describe("the release policy", () => {
     if (publish === undefined) return;
 
     // El gate es lo que decide: el job de publicación lo ejecuta y
-    // adjunta **su** lista.
+    // adjunta **su** lista. Se busca por la invocación, no por su
+    // nombre, para que un comentario no pueda hacer que el test
+    // confunda un paso con otro.
     const gate = publish.steps.find(
-      (step) => typeof step.run === "string" && step.run.includes("publish-gate.mjs"),
+      (step) =>
+        typeof step.run === "string" && step.run.includes("bun run scripts/release/publish-gate.mjs"),
     );
     expect(gate, "the publish job runs the gate").toBeDefined();
 
@@ -1402,9 +1405,18 @@ describe("the release policy", () => {
       "secrets.TANIT_SIGN_GPG_KEYRING",
     );
 
+    // Y el workflow **importa** la clave explícitamente: si el secreto
+    // no es un keyring importable, el job muere antes de construir
+    // nada, en vez de firmar menos `.deb` de los que debería.
+    expect(prepare?.run ?? "").toContain("gpg --batch");
+    expect(prepare?.run ?? "").toContain("--import");
+
     // Y el firmante recibe **el fichero**, no el secreto en claro.
+    // El paso se busca por la invocación, no por su nombre: un
+    // comentario que mencione el script no puede hacer que el test
+    // confunda un paso con otro.
     const sign = build.steps.find(
-      (step) => typeof step.run === "string" && step.run.includes("sign-linux.sh"),
+      (step) => typeof step.run === "string" && step.run.includes("bash scripts/release/sign-linux.sh"),
     );
     expect(sign, "the workflow signs on Linux").toBeDefined();
     expect(sign?.env?.TANIT_SIGN_GPG_KEYRING ?? "").toContain("steps.gpgkey.outputs.keyring");
