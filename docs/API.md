@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 391 símbolos en 150 módulos.
+> 389 símbolos en 150 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2385,20 +2385,6 @@ scanner saw.
 Returns `null` when the file declares nothing that could be this
 route — the inferrer then has nothing to read, and says so.
 
-#### `regionAfter`
-
-```ts
-export function regionAfter( text: string, anchor: IRouteAnchor, maxChars = 1200, ): string
-```
-
-The region of the file that belongs to a declaration: from the end
-of the declaration to the end of its block, or a bounded window when
-the declaration has no block of its own.
-
-The window matters: a file with ten routes would otherwise give
-every route the same "next 800 characters", and the tenth route
-would read the first route's `res.json()`.
-
 #### `sliceUntilNextAnchor`
 
 ```ts
@@ -2412,16 +2398,6 @@ This is the window every inferrer actually wants. It holds the
 options object, the handler, and nothing else — stopping at the
 next route is what keeps one route from reading the next route's
 response call.
-
-#### `extractBalancedBlock`
-
-```ts
-export function extractBalancedBlock(text: string): string | null
-```
-
-Extracts the `{ … }` block that opens the text, respecting nesting
-and string literals. Returns `null` when the text does not open
-with a block.
 
 ### `packages/core/helpers/route-identity.helper.ts`
 
