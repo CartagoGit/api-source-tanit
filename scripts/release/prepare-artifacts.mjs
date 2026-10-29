@@ -24,6 +24,7 @@
  *
  *   · Un fichero del staging que el manifest no describe → error.
  *   · Un artefacto sin firma, en modo producción → error.
+ *   · Un target de la matriz que no está, en modo producción → error.
  *   · Una credencial que falta, con `release.sign=true` → error.
  *   · Dos artefactos con la misma ruta → error (hash duplicado).
  *
@@ -32,7 +33,7 @@
  *     <stage>/<os>/<arch>/<bundle>/<instalador>
  *     <stage>/<os>/<arch>/<bundle>/<instalador>.sig
  *     <stage>/<os>/<arch>/<bundle>/<instalador>.signature.json
- *     <stage>/<os>/<arch>/checksums/SHA256SUMS[.sig]
+ *     <stage>/<os>/<arch>/checksums/SHA256SUMS[.sig][.signature.json]
  *     <stage>/<os>/<arch>/keyring/<keyring>.gpg
  *     <stage>/<os>/<arch>/sbom/<sbom>.cdx.json
  *     <stage>/<os>/<arch>/provenance/<attestation>.intoto.jsonl
@@ -49,16 +50,20 @@
  *   bun run scripts/release/prepare-artifacts.mjs --merge <dir> --manifest <file>
  */
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 
 import { REPO_ROOT } from "../helpers/root.helper.js";
 import {
   RELEASE_BUNDLE_FILE_SUFFIX,
   RELEASE_CHECKSUMS_FILE,
+  RELEASE_DETACHED_SIGNATURE_SUFFIX,
   RELEASE_MANIFEST_FILE,
   RELEASE_MANIFEST_SCHEMA,
+  RELEASE_RECEIPT_SUFFIX,
   RELEASE_SIGN_DEFAULT,
   RELEASE_TARGET_MATRIX,
   SIGNING_PROVIDERS,
@@ -72,8 +77,6 @@ const KNOWN_ARCH = ["x64", "arm64"];
 const KNOWN_BUNDLES = Object.keys(RELEASE_BUNDLE_FILE_SUFFIX);
 /** Las carpetas del staging que llevan assets y no instaladores. */
 const KNOWN_ASSET_DIRS = ["checksums", "keyring", "sbom", "provenance", "attestation"];
-/** Sufijo del recibo que escribe el script que firmó. */
-const RECEIPT_SUFFIX = ".signature.json";
 
 /** Error con mensaje para la persona que lee, no para el log. */
 class ReleaseError extends Error {}
@@ -81,7 +84,7 @@ class ReleaseError extends Error {}
 /**
  * Lee los argumentos de la línea de órdenes.
  *
- * Se declara a mano y no con un parser: son nueve opciones y un
+ * Se declara a mano y no con un parser: son diez opciones y un
  * parser añade un fichero que nadie va a leer.
  */
 function parseArgs(argv) {
@@ -291,14 +294,23 @@ function classify(relPath) {
   const owner = inner.length > 0 ? `${third}/${inner.join("/")}` : third;
 
   if (KNOWN_ASSET_DIRS.includes(third)) {
+    // En `checksums/` conviven el fichero de checksums, su firma
+    // detached y el recibo de esa firma. Los tres son del mismo
+    // asset —el que va firmado—, y el recibo no es un asset: es la
+    // prueba de la firma, como el de un instalador.
+    if (third === "checksums") {
+      if (fileName.endsWith(RELEASE_RECEIPT_SUFFIX)) {
+        return { kind: "receipt", os, arch, owner, relPath };
+      }
+      const assetKind = fileName.endsWith(RELEASE_DETACHED_SIGNATURE_SUFFIX)
+        ? "checksums-signature"
+        : "checksums";
+      return { kind: "asset", assetKind, os, arch, owner, relPath };
+    }
     // `kind` dice **qué es** (un asset) y `assetKind` **cuál** (el
     // keyring, los checksums, el SBOM…). Son dos cosas distintas y
     // confundirlas hacía que los assets no aparecieran en el manifest.
-    let assetKind = third;
-    if (third === "checksums") {
-      assetKind = fileName.endsWith(".sig") ? "checksums-signature" : "checksums";
-    }
-    return { kind: "asset", assetKind, os, arch, owner, relPath };
+    return { kind: "asset", assetKind: third, os, arch, owner, relPath };
   }
 
   // Un recibo o una firma detached cuelgan del artefacto que firman:
@@ -306,11 +318,11 @@ function classify(relPath) {
   // `Tanit.deb.signature.json` no acaba en `.deb`.
   let base = fileName;
   let kind = "artifact";
-  if (fileName.endsWith(RECEIPT_SUFFIX)) {
-    base = fileName.slice(0, -RECEIPT_SUFFIX.length);
+  if (fileName.endsWith(RELEASE_RECEIPT_SUFFIX)) {
+    base = fileName.slice(0, -RELEASE_RECEIPT_SUFFIX.length);
     kind = "receipt";
-  } else if (fileName.endsWith(".sig")) {
-    base = fileName.slice(0, -".sig".length);
+  } else if (fileName.endsWith(RELEASE_DETACHED_SIGNATURE_SUFFIX)) {
+    base = fileName.slice(0, -RELEASE_DETACHED_SIGNATURE_SUFFIX.length);
     kind = "signature";
   }
 
@@ -324,18 +336,18 @@ function classify(relPath) {
 function ownerPath(entry) {
   const fileName = entry.relPath.split("/").pop();
   const prefix = `${entry.os}/${entry.arch}/${entry.owner}`;
-  if (fileName.endsWith(RECEIPT_SUFFIX)) {
-    return `${prefix}/${fileName.slice(0, -RECEIPT_SUFFIX.length)}`;
+  if (fileName.endsWith(RELEASE_RECEIPT_SUFFIX)) {
+    return `${prefix}/${fileName.slice(0, -RELEASE_RECEIPT_SUFFIX.length)}`;
   }
-  if (fileName.endsWith(".sig")) {
-    return `${prefix}/${fileName.slice(0, -".sig".length)}`;
+  if (fileName.endsWith(RELEASE_DETACHED_SIGNATURE_SUFFIX)) {
+    return `${prefix}/${fileName.slice(0, -RELEASE_DETACHED_SIGNATURE_SUFFIX.length)}`;
   }
   return entry.relPath;
 }
 
 /** El recibo de firma de un artefacto, si existe. */
 async function readReceipt(stage, relPath) {
-  const receiptPath = join(stage, `${relPath}${RECEIPT_SUFFIX}`);
+  const receiptPath = join(stage, `${relPath}${RELEASE_RECEIPT_SUFFIX}`);
   try {
     const raw = await readFile(receiptPath, "utf8");
     return JSON.parse(raw);
@@ -363,6 +375,7 @@ function assetForTriple(assets, kind, os, arch) {
 async function buildManifest(stage, version, filters) {
   const files = await collectFiles(stage);
   const entries = files.map(classify);
+  const present = new Set(files);
 
   const unknown = entries.filter((entry) => entry.kind === "unknown");
   if (unknown.length > 0) {
@@ -423,21 +436,28 @@ async function buildManifest(stage, version, filters) {
     if (filters.os !== undefined && entry.os !== filters.os) continue;
     if (filters.arch !== undefined && entry.arch !== filters.arch) continue;
     const sha256 = await sha256File(join(stage, entry.relPath));
+
+    // `SHA256SUMS` va firmado: su firma detached y su recibo cuelgan de
+    // él. Sin esto, la firma se produce y se publica, pero el manifest
+    // no dice quién la hizo — y el verificador no tiene nada que
+    // comprobar.
     let signature = null;
-    if (entry.assetKind === "checksums-signature") {
-      const checksums = `${entry.os}/${entry.arch}/${entry.owner}/${RELEASE_CHECKSUMS_FILE}`;
-      const receipt = await readReceipt(stage, checksums);
-      if (receipt !== null) {
+    if (entry.assetKind === "checksums") {
+      const signaturePath = `${entry.relPath}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`;
+      const receiptPath = `${entry.relPath}${RELEASE_RECEIPT_SUFFIX}`;
+      const receipt = await readReceipt(stage, entry.relPath);
+      if (receipt !== null && present.has(signaturePath)) {
         signature = {
           kind: receipt.kind,
-          path: entry.relPath,
+          path: signaturePath,
           signer: receipt.signer,
           keyId: receipt.keyId,
           timestamped: receipt.timestamped === true,
-          receipt: `${checksums}${RECEIPT_SUFFIX}`,
+          receipt: receiptPath,
         };
       }
     }
+
     assets.push({ kind: entry.assetKind, path: entry.relPath, sha256, signature });
   }
 
@@ -476,10 +496,18 @@ async function buildManifest(stage, version, filters) {
  * Es el dry-run del DoD: produce **todos** los instaladores que la
  * matriz declara, con contenido de fixture, para poder medir el
  * manifest y pasar los verificadores sin un certificado de Apple ni de
- * Microsoft. Los de Linux se firman de verdad con una clave temporal
- * generada aquí; los de macOS y Windows no se pueden firmar en una
- * máquina Linux, y el manifiesto lo dice con `signature: null` en vez
- * de fingir una firma.
+ * Microsoft.
+ *
+ * Los de Linux **se firman de verdad**: con una clave GPG temporal
+ * generada aquí mismo, en un directorio temporal, sin red y sin tocar
+ * el keyring de quien lo ejecuta. Así el staging del dry-run es
+ * verificable de verdad —`verify-signature.sh` acepta los artefactos
+ * de Linux contra el keyring publicado— en vez de describir ocho
+ * artefactos sin firmar.
+ *
+ * Los de macOS y Windows no se pueden firmar en una máquina Linux, y
+ * el manifest lo dice con `signature: null` en vez de fingir una
+ * firma: sus verificadores fallan cerrados, que es lo correcto.
  */
 async function materializeDryRun(stage, version) {
   const created = [];
@@ -487,10 +515,11 @@ async function materializeDryRun(stage, version) {
     const bundleDir = join(stage, target.os, target.arch, target.bundle);
     await mkdir(bundleDir, { recursive: true });
     const suffix = RELEASE_BUNDLE_FILE_SUFFIX[target.bundle];
-    const fileName =
-      target.bundle === "app"
-        ? "Tanit.app.zip"
-        : `Tanit_${version}_${target.arch}${suffix}`;
+    // El nombre lleva la versión y la arquitectura porque la release
+    // adjunta los assets por su `basename`: dos assets con el mismo
+    // nombre se pisan al subirlos, y el bundle de macOS se llama
+    // igual en las dos arquitecturas si no se le pone el nombre.
+    const fileName = `Tanit_${version}_${target.arch}${suffix}`;
     const full = join(bundleDir, fileName);
     const body =
       `tanit release fixture\nversion=${version}\nos=${target.os}\narch=${target.arch}\n` +
@@ -499,7 +528,117 @@ async function materializeDryRun(stage, version) {
     created.push(full);
   }
   console.log(`→ Dry run: ${created.length} artifact(s) materialized under ${stage}`);
+  await signDryRunLinux(stage);
   return created;
+}
+
+/**
+ * Firma de verdad los artefactos de Linux del dry-run.
+ *
+ * La clave es efímera y local: se genera en un directorio temporal, no
+ * toca el keyring de quien lo ejecuta y no sale a la red. Si `gpg` no
+ * está, el dry-run sigue: lo dice, y los artefactos quedan sin firmar.
+ */
+async function signDryRunLinux(stage) {
+  const probe = spawnSync("gpg", ["--version"], { encoding: "utf8" });
+  if (probe.status !== 0) {
+    console.log("→ Dry run: gpg is not available, the Linux artifacts stay unsigned");
+    return false;
+  }
+
+  const home = await mkdtemp(join(tmpdir(), "tanit-dryrun-gnupg-"));
+  const keyFile = join(home, "release-keyring.gpg");
+  const env = { ...process.env, GNUPGHOME: home };
+
+  try {
+    const generated = spawnSync(
+      "gpg",
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        "--quick-generate-key",
+        "Tanit Release Dry Run <dry-run@example.invalid>",
+        "default",
+        "default",
+        "never",
+      ],
+      { encoding: "utf8", input: "\n", env },
+    );
+    if (generated.status !== 0) {
+      console.log("→ Dry run: the throwaway GPG key could not be generated, the Linux artifacts stay unsigned");
+      return false;
+    }
+
+    const listed = spawnSync("gpg", ["--list-keys", "--with-colons"], { encoding: "utf8", env });
+    let keyId = "";
+    for (const line of (listed.stdout ?? "").split("\n")) {
+      if (line.startsWith("fpr:")) {
+        keyId = line.split(":")[9] ?? "";
+        break;
+      }
+    }
+    if (keyId === "") {
+      console.log("→ Dry run: the throwaway GPG key has no fingerprint, the Linux artifacts stay unsigned");
+      return false;
+    }
+
+    const exported = spawnSync(
+      "gpg",
+      [
+        "--batch",
+        "--yes",
+        "--no-tty",
+        "--pinentry-mode",
+        "loopback",
+        "--passphrase-fd",
+        "0",
+        "--export-secret-keys",
+        keyId,
+      ],
+      { input: "\n", env },
+    );
+    if (exported.status !== 0 || exported.stdout === undefined) {
+      console.log("→ Dry run: the throwaway GPG key could not be exported, the Linux artifacts stay unsigned");
+      return false;
+    }
+    await writeFile(keyFile, exported.stdout);
+
+    const signed = spawnSync(
+      "bash",
+      [
+        join(REPO_ROOT, "scripts", "release", "sign-linux.sh"),
+        "--stage",
+        stage,
+        "--os",
+        "linux",
+        "--arch",
+        "x64",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          TANIT_SIGN_GPG_KEY_ID: keyId,
+          TANIT_SIGN_GPG_KEYRING: keyFile,
+          TANIT_SIGN_GPG_PASSPHRASE: "",
+        },
+      },
+    );
+    if (signed.status !== 0) {
+      throw new ReleaseError(
+        `The dry run could not sign the Linux artifacts:\n${signed.stdout ?? ""}${signed.stderr ?? ""}`,
+      );
+    }
+    console.log(`→ Dry run: the Linux artifacts are signed with a throwaway key (${keyId})`);
+    return true;
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
 }
 
 /** Mergea los manifest por plataforma que hay bajo un directorio. */
@@ -540,6 +679,60 @@ async function mergeManifests(dir, version) {
     artifacts,
     assets,
   };
+}
+
+/**
+ * Los targets de la matriz que el manifest no cubre.
+ *
+ * La matriz es lo que la release promete. Un manifest que no la cubre
+ * describe otra release. Y el `fail_on_unmatched_files` del workflow no
+ * lo detecta: un glob recursivo de `.dmg` sigue encontrando un `.dmg`
+ * aunque falte el del otro brazo, así que la comprobación tiene que
+ * ser explícita.
+ */
+function missingTargets(artifacts) {
+  const covered = new Set(artifacts.map((artifact) => `${artifact.os}/${artifact.arch}/${artifact.bundle}`));
+  return RELEASE_TARGET_MATRIX.filter(
+    (target) => !covered.has(`${target.os}/${target.arch}/${target.bundle}`),
+  );
+}
+
+/**
+ * Las aserciones de producción.
+ *
+ * Falla cerrado: si falta un target de la matriz, o si un artefacto no
+ * está firmado, la release no sale. Publicar menos de lo prometido es
+ * peor que no publicar: quien descarga cree que tiene un binario para
+ * su plataforma y no lo tiene.
+ */
+function assertProduction(manifest, policy, configPath) {
+  if (!policy.sign) {
+    console.error(
+      "\n✗ Production publishing requires `release.sign=true` in " +
+        `${configPath.replace(`${REPO_ROOT}/`, "")}. The release stops here.`,
+    );
+    return 1;
+  }
+
+  const missing = missingTargets(manifest.artifacts);
+  if (missing.length > 0) {
+    console.error(
+      "\n✗ Production publishing requires every target of the matrix. Missing:\n" +
+        missing.map((target) => `  · ${target.os}/${target.arch}/${target.bundle}`).join("\n"),
+    );
+    return 1;
+  }
+
+  const unsigned = manifest.artifacts.filter((artifact) => artifact.signature === null);
+  if (unsigned.length > 0) {
+    console.error(
+      "\n✗ Production publishing requires every artifact to be signed. Unsigned:\n" +
+        unsigned.map((artifact) => `  · ${artifact.path}`).join("\n"),
+    );
+    return 1;
+  }
+
+  return 0;
 }
 
 /** El punto de entrada. */
@@ -606,6 +799,9 @@ async function main() {
       : resolve(REPO_ROOT, args.manifest);
     await writeFile(outPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
     console.log(`→ Manifest written: ${outPath}`);
+    if (args.production) {
+      return assertProduction(merged, policy, configPath);
+    }
     return 0;
   }
 
@@ -629,20 +825,7 @@ async function main() {
   }
 
   if (args.production) {
-    if (!policy.sign) {
-      console.error(
-        "\n✗ Production publishing requires `release.sign=true` in " +
-          `${configPath.replace(`${REPO_ROOT}/`, "")}. The release stops here.`,
-      );
-      return 1;
-    }
-    if (unsigned.length > 0) {
-      console.error(
-        "\n✗ Production publishing requires every artifact to be signed. Unsigned:\n" +
-          unsigned.map((artifact) => `  · ${artifact.path}`).join("\n"),
-      );
-      return 1;
-    }
+    return assertProduction(manifest, policy, configPath);
   }
 
   return 0;

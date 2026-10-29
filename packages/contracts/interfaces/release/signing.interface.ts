@@ -136,7 +136,14 @@ export interface IReleaseAsset {
   readonly path: string;
   /** SHA-256 en hexadecimal minúsculas, recalculado sobre el fichero. */
   readonly sha256: string;
-  /** Firma del asset, si la tiene. `SHA256SUMS` va firmado. */
+  /**
+   * Firma del asset, si la tiene.
+   *
+   * `SHA256SUMS` **va firmado**: su firma detached es lo que ata la
+   * lista de checksums a la clave de la release, y el verificador la
+   * comprueba contra el keyring publicado. Un asset sin firma (`null`)
+   * es un asset que se publica sin probar de dónde viene.
+   */
   readonly signature: IReleaseSignature | null;
 }
 

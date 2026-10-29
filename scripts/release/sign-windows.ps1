@@ -25,11 +25,20 @@
 
     ## El recibo
 
-    Tras verificar, el script escribe `<artefacto>.signature.json` con
-    el signer, el thumbprint y el digest **del artefacto firmado**. Es
-    lo que ata la firma a los bytes que se publican: si el fichero
+    Tras **firmar**, el script escribe `<artefacto>.signature.json` con
+    el signer, el thumbprint y el digest **del artefacto ya firmado**.
+    Es lo que ata la firma a los bytes que se publican: si el fichero
     cambia después, el digest deja de cuadrar y el verificador lo nota
     sin necesitar el certificado.
+
+    ## Verificar no escribe nada
+
+    `-Verify` **sólo lee**. Un verificador que reescribe el recibo que
+    está verificando deja de estar verificando: después de pasar, el
+    recibo describe los bytes de ahora, no los que se firmaron, y la
+    comprobación que el recibo existe se vuelve tautológica. Por eso
+    la escritura del recibo es cosa de quien firma, y el verificador
+    no deja ni un fichero detrás.
 
     ## Los valores no se imprimen
 
@@ -41,7 +50,8 @@
 
 .PARAMETER Verify
     Verify instead of sign. The verification reads the signer, the
-    timestamp and the status from the artifact itself.
+    timestamp and the status from the artifact itself, and writes
+    nothing.
 
 .EXAMPLE
     scripts/release/sign-windows.ps1 Tanit_0.2.0_x64_en-US.msi
@@ -143,21 +153,31 @@ function Invoke-Verify([string] $Path) {
     }
 
     $signer = Get-SignerName $signature
-    $keyId = Get-KeyId $signature
     if ([string]::IsNullOrWhiteSpace($signer)) { Fail "The signature of $Path does not name a signer" }
 
     Write-Note "Verified: $Path (signer: $signer, timestamped: $($signature.TimeStamperCertificate.Subject))"
+}
+
+# --- el recibo --------------------------------------------------------------
+#
+# Escribir el recibo es cosa de quien **firma**, no de quien verifica.
+# Un verificador que reescribe el recibo que está verificando deja de
+# estar verificando: después de pasar, el recibo describe los bytes de
+# ahora, no los que se firmaron, y la comprobación de que el recibo
+# existe se vuelve tautológica.
+
+function Write-Receipt([string] $Path, [string] $ReceiptPath) {
+    $signature = Get-AuthenticodeSignature -FilePath $Path
 
     $receipt = @{
         kind         = "authenticode"
-        signer       = $signer
-        keyId        = $keyId
+        signer       = (Get-SignerName $signature)
+        keyId        = (Get-KeyId $signature)
         timestamped  = $true
         sha256       = (Get-Sha256 $Path)
     }
-    $receiptPath = "$Path.signature.json"
-    $receipt | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $receiptPath -Encoding utf8
-    Write-Note "Receipt: $receiptPath"
+    $receipt | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $ReceiptPath -Encoding utf8
+    Write-Note "Receipt: $ReceiptPath"
 }
 
 # --- entry point ------------------------------------------------------------
@@ -166,11 +186,16 @@ foreach ($path in $Artifact) {
     if (-not (Test-Path -LiteralPath $path)) { Fail "The artifact does not exist: $path" }
 
     if ($Verify) {
+        # Verificar no escribe nada: ni en el staging ni en ningún
+        # sitio. Lo único que hace es leer.
         Invoke-Verify $path
     }
     else {
         Invoke-Sign $path
         Invoke-Verify $path
+        # El recibo se escribe **después** de firmar, con el digest de
+        # los bytes ya firmados: es esos bytes los que se publican.
+        Write-Receipt $path "$path.signature.json"
     }
 }
 

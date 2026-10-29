@@ -51,8 +51,49 @@ export const RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
 /** Sufijo de las firmas detached de GPG. */
 export const RELEASE_DETACHED_SIGNATURE_SUFFIX = ".sig";
 
+/**
+ * Sufijo del recibo que escribe el script que firmó.
+ *
+ * El recibo es lo que ata la firma a los bytes exactos que se
+ * publicaron: lleva el digest del artefacto **en el momento de
+ * firmarlo**. Sin él, la firma sólo dice "algo está firmado", y no
+ * sobre qué.
+ */
+export const RELEASE_RECEIPT_SUFFIX = ".signature.json";
+
 /** Nombre del keyring público de la release. */
 export const RELEASE_KEYRING_FILE = "tanit-release-keyring.gpg";
+
+/**
+ * Los patrones de lo que se adjunta a la release.
+ *
+ * Vive aquí —y no en el workflow— porque **dos** sitios tienen que
+ * decir lo mismo: el gate que decide si la release se publica y el
+ * paso que sube los ficheros. Cuando uno de los dos lleva su propia
+ * lista, la release se publica con el manifest equivocado: un glob
+ * recursivo de `release-manifest.json` encuentra el manifest por
+ * plataforma y el mergeado, y la acción que sube los assets nombra
+ * cada uno por su `basename`, así que el último que sube pisa al
+ * primero y en la release queda un manifest parcial de una plataforma.
+ *
+ * Por eso el manifest se lista **por su ruta exacta** y no con un
+ * glob: sólo el mergeado se publica, y los manifest por plataforma
+ * son estado intermedio del runner.
+ *
+ * Los patrones son relativos a la raíz del staging.
+ */
+export const RELEASE_PUBLISH_PATTERNS: readonly string[] = [
+  RELEASE_MANIFEST_FILE,
+  "**/*.dmg",
+  "**/*.app.zip",
+  "**/*.msi",
+  "**/*-setup.exe",
+  "**/*.deb",
+  "**/*.AppImage",
+  `**/*${RELEASE_DETACHED_SIGNATURE_SUFFIX}`,
+  `**/${RELEASE_CHECKSUMS_FILE}`,
+  "**/*.gpg",
+];
 
 /** La matriz de destinos de la release de escritorio. */
 export const RELEASE_TARGET_MATRIX: readonly IReleaseTarget[] = [

@@ -103,13 +103,27 @@ xcrun notarytool store-credentials "tanit-notary" \
 | Variable | Para qué |
 |---|---|
 | `TANIT_SIGN_GPG_KEY_ID` | El identificador (o la huella) de la clave que firma. |
-| `TANIT_SIGN_GPG_KEYRING` | La ruta del **keyring público** que se publica con la release. |
+| `TANIT_SIGN_GPG_KEYRING` | La **ruta del fichero del keyring que se importa** para firmar: el keyring exportado de la release (la clave con su parte secreta). |
 | `TANIT_SIGN_GPG_PASSPHRASE` | Opcional: la contraseña de la clave, si la tiene. |
 
-El keyring publicado contiene **sólo claves públicas**, y es lo que
-verifica el que descarga. Sin él, una firma no se puede distinguir de
-la de un atacante: por eso la verificación nunca usa el keyring de
-quien verifica.
+`TANIT_SIGN_GPG_KEYRING` **es una ruta, no un nombre**: el script
+importa ese fichero en un keyring propio y efímero, y **nunca** usa el
+keyring por defecto del runner. Depender del keyring por defecto es
+depender de que el runner venga preparado, y un runner hospedado no
+viene preparado: la clave no está, el script muere y no se firma
+ningún `.deb` — sin que nada falle de forma visible.
+
+En el CI, el secreto `TANIT_SIGN_GPG_KEYRING` lleva el keyring
+exportado en base64 (o en claro, si es una clave blindada en ASCII).
+El workflow lo escribe en un fichero de `${RUNNER_TEMP}` y pasa **la
+ruta** en la variable; el secreto nunca llega a la línea de órdenes, y
+la passphrase viaja por un descriptor (`--passphrase-fd`), no como
+argumento: en `ps` la vería cualquiera.
+
+El keyring **publicado** con la release contiene **sólo claves
+públicas**, y es lo que verifica el que descarga. Sin él, una firma no
+se puede distinguir de la de un atacante: por eso la verificación nunca
+usa el keyring de quien verifica.
 
 ---
 
@@ -127,6 +141,23 @@ El manifest dice, por artefacto: versión semver, `os`, `arch`, bundle,
 ruta relativa, SHA-256, firma, signer, key id y las referencias de SBOM
 y provenance. Es efímero a propósito: se regenera en cada release y lo
 verifica un script que **recalcula todo** desde los ficheros.
+
+El dry-run materializa los ocho artefactos de la matriz con contenido de
+fixture, y **firma de verdad** los de Linux con una clave GPG efímera
+generada en el momento, en un directorio temporal y sin red:
+
+```bash
+bun scripts/release/prepare-artifacts.mjs --dry-run --stage <staging>
+```
+
+Los de macOS y Windows no se pueden firmar en una máquina Linux: el
+manifest lo dice con `signature: null` en vez de fingir una firma, y sus
+verificadores fallan cerrados —que es lo correcto—. El de Linux
+verifica de verdad, contra el keyring publicado.
+
+`--production` es lo que usa el job de publicación: falla cerrado si
+`release.sign` no está activada, si falta algún target de la matriz o
+si algún artefacto va sin firmar.
 
 ### Firmar
 
@@ -196,6 +227,26 @@ por no tener la herramienta no es una verificación.
 `--mode portable` recalcula digests, recibos y cobertura, y dice que la
 comprobación nativa se ha saltado. Sirve para inspeccionar un staging
 desde otra máquina; **no** para publicar.
+
+El verificador **no escribe nada** en el staging que verifica: el
+recibo de la firma lo escribe quien firma, con el digest de los bytes
+ya firmados. Un verificador que reescribe el recibo que está
+verificando deja de estar verificando.
+
+### Qué se adjunta a la release
+
+La lista de lo que se publica **no** está en el workflow: está en un
+script, y el workflow pide la lista en vez de tener la suya:
+
+```bash
+bun scripts/release/publish-gate.mjs --stage <staging> --list
+```
+
+El gate falla cerrado si falta un target de la matriz, si un artefacto
+va sin firmar, si un artefacto que el manifest describe no se adjunta,
+si se adjunta algo que el manifest no describe, si dos assets tienen
+el mismo nombre —la acción que los sube los nombra por su `basename`
+y pisa el que ya estaba— o si el manifest adjunto no es el mergeado.
 
 Quién quiera comprobar un artefacto ya publicado, en su máquina:
 

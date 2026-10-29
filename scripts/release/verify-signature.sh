@@ -34,6 +34,14 @@
 #   · Un fichero del staging que el manifest no describe: un leftover
 #     sin firmar es exactamente lo que no debe subirse.
 #   · Una firma que no verifica contra el keyring publicado.
+#   · Una ruta —de artefacto, de asset, de firma o de recibo— que se
+#     sale del staging.
+#
+# ## Lo que este script no hace
+#
+# No **modifica** el staging. Un verificador que reescribe lo que
+# verifica no está verificando: después de pasar, el recibo que
+# describe los bytes firmados ya no es el de los bytes firmados.
 #
 # Uso:
 #   scripts/release/verify-signature.sh --manifest <file> --stage <dir> \
@@ -87,6 +95,38 @@ sha256_of() {
   sha256sum "$1" | cut -d' ' -f1
 }
 
+# --- rutas -----------------------------------------------------------------
+#
+# Un manifest es un fichero que puede venir de otro sitio, y
+# `../../etc/passwd` en una ruta no es una ruta. **Toda** ruta que el
+# manifest declara —artefacto, asset, firma o recibo— se comprueba
+# antes de usarla: si se sale del staging, no se abre.
+
+path_escapes() {
+  local path="$1"
+  [[ "${path}" == /* || "${path}" == *".."* ]]
+}
+
+# Resuelve una ruta relativa contra un directorio, sin dejar el
+# staging. Devuelve 1 si la ruta no existe o si se sale.
+resolve_inside() {
+  local base="$1" relative="$2" resolved
+  local directory file
+
+  [[ "${relative}" != /* ]] || return 1
+
+  directory="$(dirname -- "${relative}")"
+  file="$(basename -- "${relative}")"
+
+  resolved="$(cd -- "${base}/${directory}" 2>/dev/null && pwd -P)" || return 1
+  case "${resolved}" in
+    "${STAGE_ABS}"/*) ;;
+    *) return 1 ;;
+  esac
+
+  printf '%s/%s' "${resolved}" "${file}"
+}
+
 # --- argumentos ------------------------------------------------------------
 
 while [[ $# -gt 0 ]]; do
@@ -99,7 +139,7 @@ while [[ $# -gt 0 ]]; do
     --allow-unsigned) ALLOW_UNSIGNED="true"; shift ;;
     --allow-unsigned=*) ALLOW_UNSIGNED="${1#*=}"; shift ;;
     -h|--help)
-      sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) die "Unknown argument: $1" ;;
@@ -141,15 +181,67 @@ VERSION="$(jq -r '.version // ""' "${MANIFEST_ABS}")"
 
 note "Release version: ${VERSION}"
 
-# Las rutas del manifest nunca salen del staging: un manifest es un
-# fichero que puede venir de otro sitio, y `../../etc/passwd` en una
-# ruta no es una ruta.
 mapfile -t ARTIFACT_PATHS < <(jq -r '.artifacts[]?.path' "${MANIFEST_ABS}")
 mapfile -t ASSET_PATHS < <(jq -r '.assets[]?.path' "${MANIFEST_ABS}")
 
 if [[ ${#ARTIFACT_PATHS[@]} -eq 0 ]]; then
   die "The manifest describes no artifact"
 fi
+
+# --- el keyring publicado ---------------------------------------------------
+#
+# El keyring publicado es el que dice qué clave es la de la release.
+# Sin él no se puede distinguir la clave buena de la del atacante, así
+# que su ausencia es un fallo, no una excusa.
+
+published_keyring() {
+  local path
+  path="$(jq -r '.assets[]? | select(.kind == "keyring") | .path' "${MANIFEST_ABS}" | head -1)"
+  [[ -n "${path}" ]] || return 1
+  printf '%s' "${STAGE_ABS}/${path}"
+}
+
+# Verifica una firma detached de GPG contra el keyring publicado.
+verify_gpg_detached() {
+  local label="$1" signature="$2" target="$3" expected_key_id="${4:-}"
+  local keyring valid_signature key_id
+
+  keyring="${KEYRING}"
+  if [[ -z "${keyring}" ]]; then
+    keyring="$(published_keyring)" || {
+      fail "${label}: no published keyring to verify against"
+      return 1
+    }
+  fi
+
+  if [[ ! -f "${keyring}" ]]; then
+    fail "${label}: the published keyring does not exist (${keyring})"
+    return 1
+  fi
+
+  if [[ "${MODE}" == "portable" ]]; then
+    skip "${label}: the GPG verification needs the 'full' mode"
+    return 0
+  fi
+
+  need_cmd gpg
+
+  valid_signature="$(gpg --no-default-keyring --keyring "${keyring}" --status-fd 1 \
+    --verify "${signature}" "${target}" 2>/dev/null | grep -m1 '^\[GNUPG:\] VALIDSIG' || true)"
+  if [[ -z "${valid_signature}" ]]; then
+    fail "${label}: the detached signature does not verify against the published keyring"
+    return 1
+  fi
+
+  key_id="$(printf '%s' "${valid_signature}" | awk '{print $3}')"
+  if [[ -n "${expected_key_id}" && "${key_id}" != "${expected_key_id}" ]]; then
+    fail "${label}: signed by ${key_id}, but the manifest says ${expected_key_id}"
+    return 1
+  fi
+
+  ok "${label}: signature verified against the published keyring (key ${key_id})"
+  return 0
+}
 
 # --- comprobación de cada artefacto ----------------------------------------
 
@@ -158,7 +250,7 @@ check_artifact() {
   local full="${STAGE_ABS}/${path}"
   local expected actual signature_path signature_kind receipt_path receipt_digest
 
-  if [[ "${path}" == /* || "${path}" == *".."* ]]; then
+  if path_escapes "${path}"; then
     fail "${path}: the path escapes the staging directory"
     return
   fi
@@ -185,6 +277,19 @@ check_artifact() {
     else
       fail "${path}: not signed, and an unsigned artifact is never published"
     fi
+    return
+  fi
+
+  # La firma y el recibo son rutas del manifest como cualquier otra:
+  # una que apunte fuera del staging lee un fichero que nadie ha
+  # medido, y una firma válida de fuera no dice nada del artefacto.
+  if [[ -n "${signature_path}" ]] && path_escapes "${signature_path}"; then
+    fail "${path}: the signature path escapes the staging directory (${signature_path})"
+    return
+  fi
+
+  if [[ -n "${receipt_path}" ]] && path_escapes "${receipt_path}"; then
+    fail "${path}: the signature receipt escapes the staging directory (${receipt_path})"
     return
   fi
 
@@ -223,54 +328,15 @@ check_artifact() {
 
 verify_linux() {
   local path="$1" full="$2" signature_path="$3" signature_kind="$4"
-  local keyring="${KEYRING}"
-  local valid_signature key_id expected_key_id
+  local expected_key_id
 
   if [[ "${signature_kind}" != "gpg-detached" ]]; then
     fail "${path}: expected a gpg-detached signature, found '${signature_kind}'"
     return
   fi
 
-  if [[ -z "${keyring}" ]]; then
-    # El keyring publicado es el que dice qué clave es la de la
-    # release. Sin él no se puede distinguir la clave buena de la del
-    # atacante.
-    keyring="$(jq -r '.assets[]? | select(.kind == "keyring") | .path' "${MANIFEST_ABS}" | head -1)"
-    if [[ -n "${keyring}" ]]; then
-      keyring="${STAGE_ABS}/${keyring}"
-    else
-      fail "${path}: no published keyring to verify against"
-      return
-    fi
-  fi
-
-  if [[ ! -f "${keyring}" ]]; then
-    fail "${path}: the published keyring does not exist (${keyring})"
-    return
-  fi
-
-  if [[ "${MODE}" == "portable" ]]; then
-    skip "${path}: the GPG verification needs the 'full' mode"
-    return
-  fi
-
-  need_cmd gpg
-
-  valid_signature="$(gpg --no-default-keyring --keyring "${keyring}" --status-fd 1 \
-    --verify "${STAGE_ABS}/${signature_path}" "${full}" 2>/dev/null | grep -m1 '^\[GNUPG:\] VALIDSIG' || true)"
-  if [[ -z "${valid_signature}" ]]; then
-    fail "${path}: the detached signature does not verify against the published keyring"
-    return
-  fi
-
-  key_id="$(printf '%s' "${valid_signature}" | awk '{print $3}')"
   expected_key_id="$(jq -r --arg p "${path}" '.artifacts[] | select(.path == $p) | .signature.keyId // ""' "${MANIFEST_ABS}")"
-  if [[ -n "${expected_key_id}" && "${key_id}" != "${expected_key_id}" ]]; then
-    fail "${path}: signed by ${key_id}, but the manifest says ${expected_key_id}"
-    return
-  fi
-
-  ok "${path}: signature verified against the published keyring (key ${key_id})"
+  verify_gpg_detached "${path}" "${STAGE_ABS}/${signature_path}" "${full}" "${expected_key_id}"
 }
 
 # --- macOS: Gatekeeper, codesign y stapler ----------------------------------
@@ -359,6 +425,9 @@ verify_windows() {
     return
   fi
 
+  # El verificador **no** escribe en el staging: `Invoke-Verify` sólo
+  # lee. Un verificador que reescribe el recibo que está verificando
+  # deja de estar verificando.
   if ! powershell -NoProfile -ExecutionPolicy Bypass -File "${SCRIPT_DIR}/sign-windows.ps1" -Verify "${full}" >/dev/null; then
     fail "${path}: the Authenticode signature does not verify"
     return
@@ -382,14 +451,65 @@ while IFS=$'\t' read -r path os arch bundle; do
   if [[ -n "${PLATFORM}" && "${os}" != "${PLATFORM}" ]]; then
     continue
   fi
-  check_artifact "${path}" "${os}" "${arch}" "${bundle}"
+  # `|| true`: un artefacto que falla no puede impedir que se
+  # comprueben los demás. El verificador dice **todos** los problemas,
+  # no sólo el primero.
+  check_artifact "${path}" "${os}" "${arch}" "${bundle}" || true
 done < <(jq -r '.artifacts[] | [.path, .os, .arch, .bundle] | @tsv' "${MANIFEST_ABS}")
+
+# --- la firma de un asset ---------------------------------------------------
+#
+# `SHA256SUMS` va firmado: la firma detached es lo que ata la lista de
+# checksums a la clave de la release. Publicarla sin comprobarla es
+# publicar una afirmación sin prueba.
+
+check_asset_signature() {
+  local path="$1"
+  local signature_path signature_kind receipt_path expected_key_id
+
+  signature_path="$(jq -r --arg p "${path}" '.assets[] | select(.path == $p) | .signature.path // ""' "${MANIFEST_ABS}")"
+  signature_kind="$(jq -r --arg p "${path}" '.assets[] | select(.path == $p) | .signature.kind // ""' "${MANIFEST_ABS}")"
+  receipt_path="$(jq -r --arg p "${path}" '.assets[] | select(.path == $p) | .signature.receipt // ""' "${MANIFEST_ABS}")"
+
+  [[ -n "${signature_kind}" ]] || return 0
+
+  if [[ -n "${signature_path}" ]] && path_escapes "${signature_path}"; then
+    fail "${path}: the signature path escapes the staging directory (${signature_path})"
+    return 1
+  fi
+
+  if [[ -n "${receipt_path}" ]] && path_escapes "${receipt_path}"; then
+    fail "${path}: the signature receipt escapes the staging directory (${receipt_path})"
+    return 1
+  fi
+
+  if [[ ! -f "${STAGE_ABS}/${signature_path}" ]]; then
+    fail "${path}: the signature file is missing (${signature_path})"
+    return 1
+  fi
+
+  if [[ -n "${receipt_path}" && ! -f "${STAGE_ABS}/${receipt_path}" ]]; then
+    fail "${path}: the signature receipt is missing (${receipt_path})"
+    return 1
+  fi
+
+  case "${signature_kind}" in
+    gpg-detached)
+      expected_key_id="$(jq -r --arg p "${path}" '.assets[] | select(.path == $p) | .signature.keyId // ""' "${MANIFEST_ABS}")"
+      verify_gpg_detached "${path}" "${STAGE_ABS}/${signature_path}" "${STAGE_ABS}/${path}" "${expected_key_id}"
+      ;;
+    *)
+      fail "${path}: unknown asset signature kind '${signature_kind}'"
+      return 1
+      ;;
+  esac
+}
 
 # --- los assets -------------------------------------------------------------
 
 while IFS=$'\t' read -r path expected; do
   [[ -n "${path}" ]] || continue
-  if [[ "${path}" == /* || "${path}" == *".."* ]]; then
+  if path_escapes "${path}"; then
     fail "${path}: the asset path escapes the staging directory"
     continue
   fi
@@ -402,6 +522,7 @@ while IFS=$'\t' read -r path expected; do
     fail "${path}: the asset digest does not match the manifest"
     continue
   fi
+  check_asset_signature "${path}" || true
 done < <(jq -r '.assets[]? | [.path, .sha256] | @tsv' "${MANIFEST_ABS}")
 
 # --- nada sin describir -----------------------------------------------------
@@ -409,7 +530,7 @@ done < <(jq -r '.assets[]? | [.path, .sha256] | @tsv' "${MANIFEST_ABS}")
 # Un fichero del staging que el manifest no describe es un artefacto
 # sin firmar esperando a que alguien lo suba. Se falla.
 
-DESCRIBED="$(jq -r '[.artifacts[]?.path, .artifacts[]?.signature.path, .assets[]?.path] | .[] // empty' "${MANIFEST_ABS}")"
+DESCRIBED="$(jq -r '[.artifacts[]?.path, .artifacts[]?.signature.path, .artifacts[]?.signature.receipt, .assets[]?.path, .assets[]?.signature.path, .assets[]?.signature.receipt] | .[] // empty' "${MANIFEST_ABS}")"
 while IFS= read -r file; do
   relative="${file#"${STAGE_ABS}/"}"
   case "$(basename -- "${relative}")" in
@@ -422,15 +543,45 @@ while IFS= read -r file; do
 done < <(find "${STAGE_ABS}" -type f -not -path '*.app/*' | LC_ALL=C sort)
 
 # --- los checksums de Linux -------------------------------------------------
+#
+# `sha256sum -c` se salta la comprobación de dónde vienen las rutas: un
+# `SHA256SUMS` con `../../etc/passwd` hace que se lea fuera del staging.
+# Aquí cada ruta se resuelve contra el staging, se rechaza si se sale y
+# el digest se recalcula aquí mismo.
+
+verify_checksum_file() {
+  local file="$1" directory="$2"
+  local line digest relative resolved actual
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ -n "${line}" ]] || continue
+
+    digest="${line:0:64}"
+    relative="${line:66}"
+    relative="${relative#\*}"
+
+    [[ "${#digest}" -eq 64 ]] || return 1
+    [[ -z "${digest//[0-9a-f]/}" ]] || return 1
+    [[ -n "${relative}" ]] || return 1
+
+    resolved="$(resolve_inside "${directory}" "${relative}")" || return 1
+    [[ -f "${resolved}" ]] || return 1
+
+    actual="$(sha256_of "${resolved}")"
+    [[ "${actual}" == "${digest}" ]] || return 1
+  done < "${file}"
+
+  return 0
+}
 
 if [[ -z "${PLATFORM}" || "${PLATFORM}" == "linux" ]]; then
   while IFS= read -r checksum_file; do
     [[ -n "${checksum_file}" ]] || continue
     directory="$(dirname "${checksum_file}")"
-    if ( cd "${directory}" && sha256sum -c --quiet "$(basename "${checksum_file}")" ) >/dev/null 2>&1; then
+    if verify_checksum_file "${checksum_file}" "${directory}"; then
       ok "$(basename "${checksum_file}"): every checksum matches"
     else
-      fail "$(basename "${checksum_file}"): sha256sum -c does not accept it"
+      fail "$(basename "${checksum_file}"): the checksums do not match the artifacts inside the staging"
     fi
   done < <(find "${STAGE_ABS}" -name 'SHA256SUMS' -type f | LC_ALL=C sort)
 fi

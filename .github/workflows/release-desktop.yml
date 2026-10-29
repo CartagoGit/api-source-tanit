@@ -129,6 +129,36 @@ jobs:
           echo "sign=${SIGN}" >> "$GITHUB_OUTPUT"
           echo "Signing: ${SIGN}"
 
+      # La clave GPG de la release viaja como secreto y se escribe en
+      # un fichero. `sign-linux.sh` importa **ese** fichero, nunca el
+      # keyring por defecto del runner: en un runner hospedado ese
+      # keyring está vacío, el script moría y no se firmaba ningún
+      # `.deb` — sin que nada fallara de forma visible.
+      - name: Preparar la clave GPG de la release
+        id: gpgkey
+        if: matrix.platform == 'linux' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_GPG_KEYRING_SECRET: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_SIGN_GPG_KEYRING_SECRET}" ]; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is not set: Linux cannot be signed." >&2
+            exit 1
+          fi
+          keyring="${RUNNER_TEMP}/tanit-release-keyring.gpg"
+          if ! printf '%s' "${TANIT_SIGN_GPG_KEYRING_SECRET}" | base64 --decode > "${keyring}" 2>/dev/null; then
+            # El secreto también puede ser el keyring en claro (una
+            # clave blindada en ASCII): es lo que `gpg --import` acepta.
+            printf '%s' "${TANIT_SIGN_GPG_KEYRING_SECRET}" > "${keyring}"
+          fi
+          if [ ! -s "${keyring}" ]; then
+            echo "✗ The secret TANIT_SIGN_GPG_KEYRING is empty." >&2
+            exit 1
+          fi
+          chmod 600 "${keyring}"
+          echo "keyring=${keyring}" >> "$GITHUB_OUTPUT"
+
       # La política dice que se firma: se auditan las credenciales
       # **antes** de construir nada. Si falta una, el job muere aquí, y
       # no se llega a producir un artefacto sin firmar que alguien
@@ -144,7 +174,7 @@ jobs:
           TANIT_SIGN_WINDOWS_TIMESTAMP_URL: ${{ secrets.TANIT_SIGN_WINDOWS_TIMESTAMP_URL }}
           TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT }}
           TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
-          TANIT_SIGN_GPG_KEYRING: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+          TANIT_SIGN_GPG_KEYRING: ${{ steps.gpgkey.outputs.keyring }}
         run: |
           bun run scripts/release/prepare-artifacts.mjs \
             --check-credentials --os "${{ matrix.platform }}"
@@ -220,9 +250,16 @@ jobs:
           bash scripts/release/notarize-macos.sh "${RUNNER_TEMP}/macos-app"/*.app
           # Lo que se publica es el bundle **comprimido y grapado**, y
           # el recibo que ata la firma a esos bytes exactos.
+          #
+          # El nombre lleva la versión y la arquitectura porque la
+          # release adjunta los assets por su `basename`: los dos
+          # bundles de macOS se llaman igual si no, y el segundo pisa
+          # al primero.
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
           mkdir -p "${PLATFORM_DIR}/app"
-          mv "${RUNNER_TEMP}/macos-app"/*.app.zip "${PLATFORM_DIR}/app/"
-          mv "${RUNNER_TEMP}/macos-app"/*.app.zip.signature.json "${PLATFORM_DIR}/app/"
+          published="${PLATFORM_DIR}/app/Tanit_${VERSION}_${{ matrix.arch }}.app.zip"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip "${published}"
+          mv "${RUNNER_TEMP}/macos-app"/*.app.zip.signature.json "${published}.signature.json"
 
       # El `.dmg` se construye **después** de grapar: es el paso 4 del
       # orden de Apple (firmar → notarizar → grapar → imagen).
@@ -271,8 +308,13 @@ jobs:
         run: |
           set -euo pipefail
           PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
           mkdir -p "${PLATFORM_DIR}/app"
-          ditto -c -k --keepParent "${RUNNER_TEMP}/macos-app"/*.app "${PLATFORM_DIR}/app/"
+          # El nombre lleva la versión y la arquitectura: los assets se
+          # adjuntan por su `basename`, y dos bundles de macOS con el
+          # mismo nombre se pisan al subirlos.
+          ditto -c -k --keepParent "${RUNNER_TEMP}/macos-app"/*.app \
+            "${PLATFORM_DIR}/app/Tanit_${VERSION}_${{ matrix.arch }}.app.zip"
 
       - name: Firmar (Windows)
         if: matrix.platform == 'windows' && steps.policy.outputs.sign == 'true'
@@ -296,7 +338,7 @@ jobs:
         shell: bash
         env:
           TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
-          TANIT_SIGN_GPG_KEYRING: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+          TANIT_SIGN_GPG_KEYRING: ${{ steps.gpgkey.outputs.keyring }}
           TANIT_SIGN_GPG_PASSPHRASE: ${{ secrets.TANIT_SIGN_GPG_PASSPHRASE }}
         run: |
           bash scripts/release/sign-linux.sh \
@@ -382,7 +424,8 @@ jobs:
         run: |
           bun run scripts/release/prepare-artifacts.mjs \
             --merge "${STAGE}" \
-            --manifest "${STAGE}/${MANIFEST_NAME}"
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --production
 
       # La comprobación nativa ya la hizo cada corredor, en su
       # plataforma. Aquí se recalculan los digests y se comprueba que
@@ -397,18 +440,33 @@ jobs:
             --stage "${STAGE}" \
             --mode portable
 
+      # Lo que se adjunta lo decide **el gate**, no una lista de globs
+      # escrita aquí: los dos tienen que decir lo mismo, y cuando los
+      # dos tienen su propia lista la release se publica con el
+      # manifest equivocado (el glob recursivo de `release-manifest.json`
+      # encuentra cinco ficheros y la acción que los sube nombra cada
+      # uno por su `basename`, así que sólo queda el último).
+      #
+      # El gate también es lo que comprueba que están los targets de la
+      # matriz y que ninguno va sin firmar: un glob que encuentra un
+      # `.dmg` sigue encontrando un `.dmg` aunque falte el del otro
+      # brazo.
+      - name: Calcular y comprobar los assets a publicar
+        id: assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "files<<EOF"
+            bun run scripts/release/publish-gate.mjs \
+              --stage "${STAGE}" \
+              --manifest "${STAGE}/${MANIFEST_NAME}" \
+              --list
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Adjuntar a la release
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            ${{ env.STAGE }}/**/*.dmg
-            ${{ env.STAGE }}/**/*.app.zip
-            ${{ env.STAGE }}/**/*.msi
-            ${{ env.STAGE }}/**/*-setup.exe
-            ${{ env.STAGE }}/**/*.deb
-            ${{ env.STAGE }}/**/*.AppImage
-            ${{ env.STAGE }}/**/SHA256SUMS
-            ${{ env.STAGE }}/**/SHA256SUMS.sig
-            ${{ env.STAGE }}/**/*.gpg
-            ${{ env.STAGE }}/**/${MANIFEST_NAME}
+          files: ${{ steps.assets.outputs.files }}
           fail_on_unmatched_files: true
