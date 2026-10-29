@@ -198,14 +198,14 @@ intento de sustitución.
 El tamaño va **dentro** del manifest firmado, así que un tamaño que no
 cuadra significa que los bytes descargados no son los que se
 firmaron. Podría parecer que ensancha el conjunto de "intentos de
-sustitución" —el mismo bytes alterado produce las dos cosas—, pero
+sustitución" —los mismos bytes alterados producen las dos cosas—, pero
 sacarlo de ese conjunto sería un **descuento de la alarma que el
 atacante controla**:
 
 - `verify_artifact_hash` comprueba el tamaño **antes** que el hash. Si
   el tamaño no cuadra, el hash no llega a comprobarse.
 - Si el desajuste de tamaño fuera "problema de operación", un atacante
-  que **truncara** el instalador provocaría un aborted clasificado
+  que **truncara** el instalador provocaría un aborto clasificado
   como operativo: la app seguiría funcionando, no habría evento de
   seguridad y el log de seguridad no tendría nada.
 - Con los dos desajustes como evento de seguridad, el mismo truncamiento
