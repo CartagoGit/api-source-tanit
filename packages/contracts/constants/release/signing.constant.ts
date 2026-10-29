@@ -26,6 +26,7 @@
 import type {
   IReleaseTarget,
   ISigningProviderSpec,
+  ReleaseAssetKind,
   ReleaseBundle,
 } from "../../interfaces/release/signing.interface.js";
 
@@ -93,6 +94,35 @@ export const RELEASE_PUBLISH_PATTERNS: readonly string[] = [
   `**/*${RELEASE_DETACHED_SIGNATURE_SUFFIX}`,
   `**/${RELEASE_CHECKSUMS_FILE}`,
   "**/*.gpg",
+  // La transparencia de la cadena de suministro: el SBOM, el statement
+  // de provenance y la attestation firmada. Sin estos tres no se puede
+  // auditar lo que se descarga, así que el gate exige que estén —y que
+  // se adjunten— antes de publicar.
+  "**/*.cdx.json",
+  "**/*.provenance.json",
+  "**/*.intoto.jsonl",
+  // La clave pública de la attestation **no** viene de aquí: la
+  // versiona el repositorio y la adjunta el gate **por su ruta**
+  // (`SBOM_ATTESTATION_PUBLIC_KEY_PATH`). Un glob que la buscara en el
+  // staging tendría dos problemas: cuatro copias por plataforma
+  // subirían con el mismo `basename` y la última pisaría a las demás, y
+  // una copia del staging que el manifest no describe sería un asset
+  // que nadie ha auditado. Con una sola clave —la versionada— el gate
+  // no puede adjuntar la equivocada.
+];
+
+/**
+ * Los assets que una release tiene que llevar para poder publicarse.
+ *
+ * Son los que hacen auditable la descarga: sin SBOM nadie sabe qué
+ * lleva el binario, sin provenance nadie sabe de dónde vino y sin
+ * attestation firmada nadie sabe quién dice que vino de ahí. Los tres
+ * van juntos, y `publish-gate.mjs` falla cerrado si falta alguno.
+ */
+export const RELEASE_REQUIRED_ASSET_KINDS: readonly ReleaseAssetKind[] = [
+  "sbom",
+  "provenance",
+  "attestation",
 ];
 
 /** La matriz de destinos de la release de escritorio. */
