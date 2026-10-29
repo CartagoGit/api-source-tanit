@@ -265,8 +265,8 @@ function parseModuleSafe(
   raw: string,
   diagnostics: Array<IParseDiagnostic>,
 ): ParsedModule {
-  // x00048 S3: single-parse. `parseModuleWithProgram` hace UN parse
-  // Babel y devuelve tanto el `TSFile` del frontend (assignments,
+  // x00048 S3: single-parse. `parseModuleWithProgram` hace UN solo
+  // parse y devuelve tanto el `TSFile` del frontend (assignments,
   // decorators…) como el `Program` crudo, que alimenta
   // `buildLanguageIRFromProgram` (calls, bindings, aliases,
   // reexports). Antes: `parseModule` + `collectMethodCallsFromSource`
@@ -402,7 +402,7 @@ function parseModuleSafe(
   }
 
   // (4) Hapi: `server.route({ method: 'GET', path: '/users', ... })`.
-  // Babel emits this shape as a `CallExpression` to
+  // The frontend emits this shape as a `CallExpression` to
   // `<ident>.route(...)` with an ObjectExpression as argument. We
   // look directly in `methodCalls` for the callee.
   for (const call of methodCalls) {
@@ -527,8 +527,8 @@ function routerSymbolKey(entry: ISymbolTableEntry): string {
 
 /**
  * Calls the frontend with `errorRecovery: true` to not break the
- * scan when a file has weird syntax. If Babel can't do anything with
- * the file, the frontend returns `null` and logs the reason in
+ * scan when a file has weird syntax. If the frontend can't do
+ * anything with the file, it returns `null` and logs the reason in
  * `diagnostics` (a00011 C-7 / B-rev-13): the scan continues, but the
  * file doesn't disappear without a trace.
  */

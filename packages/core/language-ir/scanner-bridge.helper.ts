@@ -49,8 +49,12 @@ import type { IRouteCallExpression } from "../../contracts/interfaces/core/langu
  *
  * If the offset falls outside the range, returns
  * `{ line: 1, column: 0 }` (the TS frontend's default position).
+ *
+ * Exported because the agnostic frontend needs it too: the
+ * LanguageIR carries the position of a call as a character range, and
+ * the agnostic `ILocation` asks for a line and a column.
  */
-function offsetToPosition(source: string, offset: number): { line: number; column: number } {
+export function offsetToPosition(source: string, offset: number): { line: number; column: number } {
   if (offset < 0 || offset > source.length) return { line: 1, column: 0 };
   let line = 1;
   let column = 0;
