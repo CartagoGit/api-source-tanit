@@ -101,7 +101,7 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
 ### S3-secure-updater — S3 — Updater firmado con manifest versionado y verificación antes de instalar
 
 - **Status**: review
-- **Files**: `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/src/updater.rs`, `packages/desktop/src/update_log.rs`, `packages/desktop/src/secure_storage.rs`, `packages/desktop/capabilities/updater.json`, `packages/desktop/keys/tanit-updater-public-key-v1.pem`, `packages/desktop/tauri.conf.json`, `packages/contracts/interfaces/release/updater.interface.ts`, `packages/contracts/constants/release/updater.constant.ts`, `packages/contracts/constants/cli/cli-version.constant.ts`, `packages/cli/cli.script.ts`, `scripts/release/build-update-manifest.mjs`, `scripts/release/verify-update.sh`, `scripts/gates/ci-summary.script.ts`, `.github/workflows/validate.yml`, `.github/workflows/release-desktop.yml`, `tests/desktop/updater-contract.rs`, `tests/release/updater.spec.ts`, `tests/cli/cli-version.spec.ts`, `docs/UPDATER.md`
+- **Files**: `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/src/updater.rs`, `packages/desktop/src/update_log.rs`, `packages/desktop/src/secure_storage.rs`, `packages/desktop/capabilities/updater.json`, `packages/desktop/keys/tanit-updater-public-key-v1.pem`, `packages/desktop/tauri.conf.json`, `packages/contracts/interfaces/release/updater.interface.ts`, `packages/contracts/constants/release/updater.constant.ts`, `packages/contracts/constants/cli/cli-version.constant.ts`, `packages/cli/cli.script.ts`, `scripts/release/build-update-manifest.mjs`, `scripts/release/verify-update.sh`, `scripts/build/desktop-build.script.ts`, `scripts/gates/ci-summary.script.ts`, `.github/workflows/validate.yml`, `.github/workflows/release-desktop.yml`, `tests/desktop/updater-contract.rs`, `tests/release/updater.spec.ts`, `tests/cli/cli-version.spec.ts`, `docs/UPDATER.md`
 - **DependsOn**: [S2-signing-notarization]
 - **review-implementer**: minimax-m3
 - **Gate**: e2e
@@ -145,6 +145,7 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
     el script lo toma de ahí. Con el valor por defecto anterior —la versión de `tauri.conf.json`— el
     manifest ofrecía la versión nueva como mínima, y eso dejaba fuera del canal a **todos** los
     clientes anteriores.
+  - **Defecto preexistente encontrado al cablear H4, y arreglado aquí:** `scripts/build/desktop-build.script.ts` colocaba el sidecar como `binaries/expostman-<triple>`, pero `packages/desktop/tauri.conf.json#bundle.externalBin` pide `binaries/apisrc`, así que Tauri buscaba `binaries/apisrc-<triple>` y el build del instalador moría con «resource path ... doesn't exist». Con el nombre correcto, el instalador se puede empaquetar y el pipeline de H4 puede llegar al job `publish`. Es un fichero de la release (S2), no del updater: se toca aquí porque bloquea el camino que H4 deja cableado, y queda declarado.
   - **`packages/desktop/src/sidecar.rs` y el CLI no tienen ningún defecto.** El sidecar pasa
     `--workspace` y `packages/cli/commands/serve.script.ts` prefiere `--workspace` y además acepta
     `--project-root` por `resolveProjectContext`. La versión anterior de este `review-log` decía lo
