@@ -2,7 +2,7 @@
 id: r00019
 title: "Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
@@ -11,10 +11,13 @@ dependencies:
 last-transition-id: 05bef354-44f9-4fa2-b45d-59d80b6eb09d
 last-correlation-id: 05bef354-44f9-4fa2-b45d-59d80b6eb09d
 last-transition-from: review
-shipped-in:
-  - "51b95717de9a1cee10e78db5d0d9265150777173"
-  - "b27ffebaf3e754cd4651a062f13e70e186039e8c"
-  - "5e235912e578b980db34c713ccaecbc2394a7624"
+evidence:
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40822759484
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40833476398
+shippedIn:
+  - 51b95717de9a1cee10e78db5d0d9265150777173
+  - b27ffebaf3e754cd4651a062f13e70e186039e8c
+  - 73ec169e4a7c0c969511ef913b144d2c967fd731
 ---
 
 # r00019 — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más
