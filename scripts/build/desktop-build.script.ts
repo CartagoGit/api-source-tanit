@@ -22,10 +22,17 @@
  *
  * ## Por qué el sufijo del triple
  *
- * Tauri busca `binaries/expostman-<target-triple>`, no
- * `binaries/expostman`. Sin el sufijo el empaquetado falla con un «no
+ * Tauri busca `binaries/apisrc-<target-triple>`, no
+ * `binaries/apisrc`. Sin el sufijo el empaquetado falla con un «no
  * such file» que apunta a una ruta que sí existe, que es de los errores
  * que más tiempo comen.
+ *
+ * Y el nombre no es libre: tiene que ser el que dice
+ * `packages/desktop/tauri.conf.json#bundle.externalBin` (`apisrc`),
+ * porque ese mismo nombre es el que Tauri busca al enlazar y el que el
+ * updater firma y publica como payload. Con otro nombre, el build
+ * falla con «resource path ... doesn't exist» y nadie sabe por qué: el
+ * fichero está, pero donde Tauri no lo busca.
  */
 import { mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
@@ -126,7 +133,7 @@ async function main(): Promise<number> {
     // 1. El binario del CLI, que es el sidecar.
     const binarios = join(DESKTOP, "binaries");
     await mkdir(binarios, { recursive: true });
-    const sidecar = join(binarios, `expostman-${triple}`);
+    const sidecar = join(binarios, `apisrc-${triple}`);
 
     console.log("→ Compiling the sidecar…");
     await ejecutar(

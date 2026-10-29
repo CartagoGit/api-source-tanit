@@ -134,8 +134,78 @@ jobs:
       - name: Module resolution bench
         run: bun run bench:module-resolution
 
-  # ─────────────────── gates always-on ───────────────────
+  # ─────────────────── el crate de escritorio ───────────────────
 
+  # El crate de escritorio tiene sus propios tests de contrato (Ed25519,
+  # SHA-256, semver, HTTPS, y el log de seguridad del updater) y
+  # **nadie los ejecutaba**: no había ni un `cargo` en `.github/`, así
+  # que el gate `e2e` de la slice i00003/S3 dependía de que alguien
+  # se acordara de ejecutarlo a mano. Este job es ese gate.
+  #
+  # Compilar el crate exige dos cosas que **no están en el repo**:
+  #
+  #   · El frontend compilado: `tauri-build` embebe
+  #     `packages/app/dist` y el build falla si el directorio no existe.
+  #   · El sidecar: Tauri quiere `packages/desktop/binaries/apisrc-<triple>`
+  #     y el build falla si no está.
+  #
+  # Los dos se construyen aquí y los dos son productos de la build, no
+  # fuente: no se commitea ninguno.
+  desktop-tests:
+    name: desktop-tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Lo que pide Tauri en Linux. Es la misma lista que usa
+      # `release-desktop.yml`: el crate enlaza contra estas librerías.
+      - name: Dependencias de Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libfuse2
+
+      - name: Compilar el frontend
+        run: bun run build:app
+
+      # El triple se le pregunta a `rustc`, no se deduce: la lista de
+      # triples es larga y adivinarla es como se acaba un instalador
+      # que no arranca en la mitad de las máquinas.
+      - name: Compilar el sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          triple="$(rustc -vV | sed -n 's/^host: //p')"
+          if [ -z "${triple}" ]; then
+            echo "✗ Could not read the target triple from \`rustc -vV\`." >&2
+            exit 1
+          fi
+          mkdir -p packages/desktop/binaries
+          bun build --compile packages/cli/cli.script.ts \
+            --outfile "packages/desktop/binaries/apisrc-${triple}"
+
+      - name: Tests del crate de escritorio
+        working-directory: packages/desktop
+        run: cargo test --all-targets
+
+      - name: Clippy del crate de escritorio
+        working-directory: packages/desktop
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  # ─────────────────── gates always-on ───────────────────
   # `if: always()` (x00068): corre también si `typecheck`, `lint` o
   # cualquier otro job falló. Un fallo de tipos o de tests no debe
   # ocultar un HIGH en una dependencia — la superficie de seguridad
@@ -244,7 +314,7 @@ jobs:
   # El汇总 lee `${{ needs.<job>.result }}` de cada job upstream.
   # Esos atributos están siempre disponibles, incluso si el job
   # upstream falló o se saltó, siempre que ESTE job corra con
-  # `if: always()`. La tabla del resumen lista los 8 jobs con su
+  # `if: always()`. La tabla del resumen lista los jobs con su
   # estado: `success`, `failure`, `cancelled`, `skipped`.
   ci-summary:
     if: always()
@@ -254,6 +324,7 @@ jobs:
       - test-coverage
       - validate-examples
       - bench-check
+      - desktop-tests
       - security-audit
       - validate-package
       - integration-verifier
@@ -263,7 +334,7 @@ jobs:
       # verdict, but not the toolchain it needs to render it: the step
       # runs `bun run …` on a runner where nothing installed bun, so the
       # job died with `bun: command not found` (exit 127) on every run —
-      # including runs where all eight dependencies reported `success`.
+      # including runs where all the dependencies reported `success`.
       #
       # `ci-summary` is the required status check on `develop` AND on
       # `main`. A required check that cannot succeed does not protect a
@@ -280,6 +351,7 @@ jobs:
           TEST_COVERAGE_RESULT: ${{ needs.test-coverage.result }}
           VALIDATE_EXAMPLES_RESULT: ${{ needs.validate-examples.result }}
           BENCH_CHECK_RESULT: ${{ needs.bench-check.result }}
+          DESKTOP_TESTS_RESULT: ${{ needs.desktop-tests.result }}
           SECURITY_AUDIT_RESULT: ${{ needs.security-audit.result }}
           VALIDATE_PACKAGE_RESULT: ${{ needs.validate-package.result }}
           INTEGRATION_VERIFIER_RESULT: ${{ needs.integration-verifier.result }}
