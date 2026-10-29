@@ -769,7 +769,7 @@ async function validateAttestations(documents, attestationPaths, publicKeyPath, 
           );
         }
         if (source !== undefined) {
-          const declared = statement?.predicate?.buildDefinition?.externalParameters?.source;
+          const declared = statement?.predicate?.buildDefinition?.externalParameters?.release;
           requireThat(
             declared === source,
             `the provenance says it comes from "${declared ?? "?"}" and the expected source is "${source}"`,

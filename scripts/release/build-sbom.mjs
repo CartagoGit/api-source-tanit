@@ -217,14 +217,6 @@ async function collectFiles(dir, base = dir, out = []) {
   return out;
 }
 
-/**
- * Quita las comas finales de un JSON con comas trailing.
- *
- * `bun.lock` las lleva, y `JSON.parse` no las acepta. La conversión
- * tiene que ser consciente de las cadenas: quitar comas a lo bruto
- * rompe un valor que contiene `,}`. Por eso lleva estado.
- */
-
 /** El digest sha512 de npm, de base64 a hexadecimal. */
 function base64ToHex(base64) {
   return Buffer.from(base64, "base64").toString("hex");
@@ -649,7 +641,10 @@ async function main() {
             ...(args.commit === undefined ? {} : { digest: { sha1: args.commit } }),
           },
           ...(args.workflow === undefined ? {} : { workflow: args.workflow }),
-          ...(args.source === undefined ? {} : { source: args.source }),
+          // El nombre de la release va en `release` y no en `source`:
+          // `source` es el repositorio, y un objeto con la URI del repo
+          // y el digest del commit no se puede sustituir por un texto.
+          ...(args.source === undefined ? {} : { release: args.source }),
         },
         internalParameters: { platform: os, architecture: arch, version },
         resolvedDependencies: args.commit === undefined

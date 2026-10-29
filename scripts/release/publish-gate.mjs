@@ -32,6 +32,7 @@
  *   · Un manifest que no es el mergeado.
  *   · Un SBOM, una provenance o una attestation que falten: una
  *     release que se publica y no se puede auditar no se publica.
+ *     (`--allow-missing-transparency` lo salta, y sólo para inspección.)
  *
  * Uso:
  *   bun run scripts/release/publish-gate.mjs --stage <dir> [--manifest <file>]
@@ -104,7 +105,7 @@ function baseName(relPath) {
 
 /** Lee los argumentos de la línea de órdenes. */
 function parseArgs(argv) {
-  const args = { stage: undefined, manifest: undefined, list: false, allowUnsigned: false };
+  const args = { stage: undefined, manifest: undefined, list: false, allowUnsigned: false, allowMissingTransparency: false };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -120,6 +121,8 @@ function parseArgs(argv) {
       case "--list": args.list = true; break;
       case "--allow-unsigned": args.allowUnsigned = true; break;
       case "--allow-unsigned=*": args.allowUnsigned = arg.endsWith("=true"); break;
+      case "--allow-missing-transparency": args.allowMissingTransparency = true; break;
+      case "--allow-missing-transparency=*": args.allowMissingTransparency = arg.endsWith("=true"); break;
       case "--help":
       case "-h": args.help = true; break;
       default:
@@ -139,6 +142,7 @@ function usage() {
       "  --manifest <file>    merged manifest (default: <stage>/release-manifest.json)",
       "  --list               print the files to attach, one per line",
       "  --allow-unsigned     accept unsigned artifacts (inspection only)",
+      "  --allow-missing-transparency   accept a staging with no SBOM, provenance or attestation (inspection only)",
     ].join("\n"),
   );
 }
@@ -274,6 +278,7 @@ async function main() {
   // describe pero el fichero no está en el staging, es que se perdió.
   // Las dos cosas son un fallo de publicación.
   for (const kind of RELEASE_REQUIRED_ASSET_KINDS) {
+    if (args.allowMissingTransparency) break;
     const assets = (manifest.assets ?? []).filter((asset) => asset.kind === kind);
     if (assets.length === 0) {
       problems.push(
