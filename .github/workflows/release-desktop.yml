@@ -442,7 +442,13 @@ jobs:
           echo "key=${RUNNER_TEMP}/attestation-key.pem" >> "$GITHUB_OUTPUT"
           echo "public=${published}" >> "$GITHUB_OUTPUT"
 
+      # El SBOM y la attestation se construyen **solo** cuando se firma.
+      # En `release.sign=false` —el modo de desarrollo— no hay clave de
+      # attestation, y un paso que la exige mataría el job de un
+      # `workflow_dispatch` sin firma. La publicación sigue exigiendo
+      # los tres: el gate de publicación falla cerrado si no están.
       - name: Construir el SBOM y la attestation
+        if: steps.policy.outputs.sign == 'true'
         shell: bash
         env:
           ATTESTATION_KEY_PATH: ${{ steps.attestationkey.outputs.key }}
@@ -465,6 +471,7 @@ jobs:
       # el SBOM, la provenance y la attestation. Sin esto, el gate de
       # publicación vería assets adjuntos que el manifest no describe.
       - name: Volver a medir los artefactos
+        if: steps.policy.outputs.sign == 'true'
         shell: bash
         run: |
           bun run scripts/release/prepare-artifacts.mjs \
