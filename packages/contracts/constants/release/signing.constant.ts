@@ -1,0 +1,146 @@
+/**
+ * La matriz de la release y las credenciales que cada plataforma exige.
+ *
+ * Vive en contratos porque **cuatro** sitios tienen que coincidir: el
+ * script que prepara el manifest, el que audita credenciales, el que
+ * verifica y el workflow que publica. Cuando uno de ellos Lista los
+ * targets de memoria, la release se publica con un `.msi` que nadie ha
+ * firmado o con un `.dmg` sin el `.app` que el otro runner promises.
+ *
+ * ## Los targets, y por qué no hay más
+ *
+ * La primera release cubre macOS x64 y arm64, Windows x64 y Linux x64.
+ * Windows ARM64 y Linux ARM64 no están: no es que se hayan olvidado,
+ * es que cada target multiplica el número de firmantes y de
+ * credenciales que hay que mantener, y un target sin firmar es peor que
+ * un target que no existe.
+ *
+ * ## Las credenciales, por nombre
+ *
+ * Cada proveedor declara los **nombres** de las variables que necesita,
+ * nunca sus valores. El valor vive en el almacén de secretos del CI;
+ * el nombre vive aquí, porque es lo que hay que auditar y lo que hay
+ * que documentar en `docs/RELEASE.md`.
+ */
+
+import type {
+  IReleaseTarget,
+  ISigningProviderSpec,
+  ReleaseBundle,
+} from "../../interfaces/release/signing.interface.js";
+
+/**
+ * Si se firma o no, por defecto.
+ *
+ * `false`: el desarrollo local no tiene certificados de Apple, ni de
+ * Microsoft, ni una clave GPG, y no debería exigirlos para poder
+ * compilar. Con `true` la publicación pasa a exigir credenciales **y**
+ * firmas verificadas — y a fallar cerrado si falta cualquiera de las dos.
+ */
+export const RELEASE_SIGN_DEFAULT = false;
+
+/** Discriminante del manifest. Si cambia la forma, cambia esto. */
+export const RELEASE_MANIFEST_SCHEMA = "tanit.release.manifest/v1";
+
+/** Nombre del manifest dentro del staging. */
+export const RELEASE_MANIFEST_FILE = "release-manifest.json";
+
+/** Nombre del fichero de checksums de Linux. */
+export const RELEASE_CHECKSUMS_FILE = "SHA256SUMS";
+
+/** Sufijo de las firmas detached de GPG. */
+export const RELEASE_DETACHED_SIGNATURE_SUFFIX = ".sig";
+
+/** Nombre del keyring público de la release. */
+export const RELEASE_KEYRING_FILE = "tanit-release-keyring.gpg";
+
+/** La matriz de destinos de la release de escritorio. */
+export const RELEASE_TARGET_MATRIX: readonly IReleaseTarget[] = [
+  { os: "macos", arch: "x64", bundle: "app" },
+  { os: "macos", arch: "x64", bundle: "dmg" },
+  { os: "macos", arch: "arm64", bundle: "app" },
+  { os: "macos", arch: "arm64", bundle: "dmg" },
+  { os: "windows", arch: "x64", bundle: "msi" },
+  { os: "windows", arch: "x64", bundle: "nsis" },
+  { os: "linux", arch: "x64", bundle: "deb" },
+  { os: "linux", arch: "x64", bundle: "appimage" },
+];
+
+/**
+ * Cómo se reconoce cada formato de instalador dentro del staging.
+ *
+ * Son sufijos de fichero, no extensiones: el instalador de Windows es
+ * un `Tanit_0.2.0_x64-setup.exe`, y el `.exe` de su final no dice que
+ * sea un NSIS —lo dice el `-setup` de delante. Por eso los dos
+ * formatos de Windows se distinguen por sufijo y no por extensión.
+ */
+export const RELEASE_BUNDLE_FILE_SUFFIX: Readonly<Record<ReleaseBundle, string>> = {
+  // El `.app` es un directorio: un directorio no tiene un digest, así
+  // que lo que se publica es el `.app` comprimido. El bundle sigue
+  // llamándose `app` porque lo que se firma y notariza es el bundle.
+  app: ".app.zip",
+  dmg: ".dmg",
+  msi: ".msi",
+  nsis: "-setup.exe",
+  deb: ".deb",
+  appimage: ".AppImage",
+};
+
+/**
+ * Los proveedores de credenciales, uno por plataforma.
+ *
+ * `requiredEnv` es lo que sin lo cual **no** se puede firmar. La
+ * diferencia con `optionalEnv` no es de convenience: lo obligatorio es
+ * lo que la pipeline audita antes de empezar, y lo opcional ajusta el
+ * comportamiento sin decidir si la release puede salir firmada.
+ */
+export const SIGNING_PROVIDERS: readonly ISigningProviderSpec[] = [
+  {
+    id: "apple",
+    os: "macos",
+    requiredEnv: [
+      "TANIT_SIGN_APPLE_IDENTITY",
+      "TANIT_SIGN_APPLE_TEAM_ID",
+      "TANIT_SIGN_NOTARY_PROFILE",
+    ],
+    optionalEnv: ["TANIT_SIGN_ENTITLEMENTS", "TANIT_SIGN_KEYCHAIN"],
+  },
+  {
+    id: "windows",
+    os: "windows",
+    requiredEnv: [
+      "TANIT_SIGN_WINDOWS_THUMBPRINT",
+      "TANIT_SIGN_WINDOWS_TIMESTAMP_URL",
+    ],
+    optionalEnv: [
+      "TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT",
+      "TANIT_SIGN_WINDOWS_CERTIFICATE",
+    ],
+  },
+  {
+    id: "gnupg",
+    os: "linux",
+    requiredEnv: ["TANIT_SIGN_GPG_KEY_ID", "TANIT_SIGN_GPG_KEYRING"],
+    optionalEnv: ["TANIT_SIGN_GPG_PASSPHRASE"],
+  },
+];
+
+/**
+ * Los entitlements mínimos de macOS.
+ *
+ * Tauri usa un WebView del sistema, y sin `allow-jit` el proceso no
+ * arranca en una app firmada. `allow-unsigned-executable-memory` es el
+ * otro que Tauri documenta para WebKit. No hay nada más: un
+ * entitlement de más es una capacidad de más para un atacante que
+ * consiga ejecutar código dentro del proceso.
+ */
+export const MACOS_MINIMAL_ENTITLEMENTS: readonly string[] = [
+  "com.apple.security.cs.allow-jit",
+  "com.apple.security.cs.allow-unsigned-executable-memory",
+];
+
+/** Dónde vive el fichero de entitlements que se aplica al firmar. */
+export const MACOS_ENTITLEMENTS_PATH = "packages/desktop/entitlements/Tanit.entitlements.plist";
+
+/** Timestamp por defecto para Authenticode (RFC 3161). */
+export const WINDOWS_DEFAULT_TIMESTAMP_URL = "http://timestamp.digicert.com";

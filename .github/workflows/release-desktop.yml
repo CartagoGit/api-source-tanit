@@ -1,37 +1,87 @@
 name: release-desktop
 
-# Los instaladores nativos de la interfaz gráfica.
+# Los instaladores nativos de la interfaz gráfica, con firma.
 #
 # Va aparte de `release-binaries.yml` a propósito: aquel produce
 # ejecutables de línea de comandos desde un solo corredor, y esto
 # necesita **uno por sistema**. Cada instalador exige el SDK de su
-# plataforma —y su firma—, así que no hay forma de sacar los tres desde
-# Linux por mucho contenedor que se le ponga.
+# plataforma —y su firma—, así que no hay forma de sacar los cuatro
+# desde Linux por mucho contenedor que se le ponga.
 #
-# El `.deb` sí se puede construir en local con
-# `bun run docker:installers`, y así se verificó antes de escribir esto.
-# El `.AppImage` no: `linuxdeploy` lo monta con FUSE y dentro de un
-# contenedor no arranca ni dándole `/dev/fuse`. Aquí, en un corredor de
-# verdad, sale.
+# ## La política de firma
+#
+# `delendai.config.json#release.sign` decide:
+#
+#   · `false` (por defecto) → los instaladores se construyen, **no se
+#     firman**, y el workflow sube los artefactos como artefactos de CI.
+#     No se publica nada. Es el modo de desarrollo, y no necesita un
+#     certificado de Apple ni de Microsoft.
+#   · `true` → los instaladores se firman, se notarizan, se verifican
+#     con la herramienta nativa de su plataforma, y **la publicación
+#     falla cerrada** si falta una credencial, si un target no está
+#     firmado o si un verificador no acepta el artefacto.
+#
+# ## La secuencia
+#
+#   build ─┬─ macOS x64   → codesign + notarytool + staple + Gatekeeper
+#          ├─ macOS arm64 → ídem
+#          ├─ Windows x64 → Authenticode SHA-256 + timestamp RFC 3161
+#          └─ Linux x64   → SHA256SUMS + firmas detached GPG
+#                     │
+#                     ▼
+#              merge + verify  → un manifest, un verificador, y de paso
+#                                  se comprueba que no queda nada sin
+#                                  describir
+#                     │
+#                     ▼
+#                  publish      → sólo si todo lo anterior pasó
 on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      sign:
+        description: "Sign the installers (needs the provider secrets)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  STAGE: packages/desktop/target/release/staging
+  MANIFEST_NAME: release-manifest.json
 
 jobs:
+  # ---------------------------------------------------------------------
+  # 1. Construir, firmar y verificar. Un corredor por plataforma.
+  # ---------------------------------------------------------------------
   build:
+    name: build ${{ matrix.platform }}-${{ matrix.arch }}
     strategy:
       # `fail-fast: false` para que un fallo de macOS no deje sin
-      # instalador a Windows y a Linux. Son tres productos, no uno.
+      # instalador a Windows y a Linux. Son cuatro productos, no uno.
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            bundles: deb,appimage
-          - os: macos-latest
-            bundles: dmg
+          # macos-13 es el último corredor x64; macos-14 es arm64. Cada
+          # uno construye su propia arquitectura: no hay cross-build.
+          - os: macos-13
+            platform: macos
+            arch: x64
+            bundles: app,dmg
+          - os: macos-14
+            platform: macos
+            arch: arm64
+            bundles: app,dmg
           - os: windows-latest
+            platform: windows
+            arch: x64
             bundles: msi,nsis
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            bundles: deb,appimage
 
     runs-on: ${{ matrix.os }}
     permissions:
@@ -48,7 +98,7 @@ jobs:
 
       # Lo que pide Tauri en Linux. En macOS y Windows viene con el SDK.
       - name: Dependencias de Linux
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -60,26 +110,218 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      # ¿Se firma? La config del repo manda; el dispatch puede pedirlo
+      # explícitamente para probar el camino de firma sin publicar.
+      - name: Decidir si se firma
+        id: policy
+        shell: bash
+        run: |
+          SIGN="$(jq -r '.release.sign // false' delendai.config.json)"
+          if [ "${{ inputs.sign }}" = "true" ]; then SIGN="true"; fi
+          echo "sign=${SIGN}" >> "$GITHUB_OUTPUT"
+          echo "Signing: ${SIGN}"
+
+      # La política dice que se firma: se auditan las credenciales
+      # **antes** de construir nada. Si falta una, el job muere aquí, y
+      # no se llega a producir un artefacto sin firmar que alguien
+      # pueda subir por error.
+      - name: Auditar las credenciales de firma
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+          TANIT_SIGN_WINDOWS_THUMBPRINT: ${{ secrets.TANIT_SIGN_WINDOWS_THUMBPRINT }}
+          TANIT_SIGN_WINDOWS_TIMESTAMP_URL: ${{ secrets.TANIT_SIGN_WINDOWS_TIMESTAMP_URL }}
+          TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT }}
+          TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
+          TANIT_SIGN_GPG_KEYRING: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --check-credentials --os "${{ matrix.platform }}"
+
       - name: Empaquetar
         run: bun run desktop:build
         env:
           TANIT_BUNDLES: ${{ matrix.bundles }}
 
+      # El staging tiene una forma fija: <os>/<arch>/<bundle>/. El
+      # manifest dice qué debería haber; la ruta dice qué hay.
+      - name: Preparar el staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_DIR="packages/desktop/target/release/bundle"
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          mkdir -p "${PLATFORM_DIR}"
+          for bundle in ${{ matrix.bundles }}; do
+            source_dir="${BUNDLE_DIR}/${bundle}"
+            if [ ! -d "${source_dir}" ]; then
+              echo "✗ The bundle directory does not exist: ${source_dir}" >&2
+              exit 1
+            fi
+            mkdir -p "${PLATFORM_DIR}/${bundle}"
+            # El `.app` es un directorio: lo que se publica es el bundle
+            # comprimido, y se comprime aquí para que el staging sólo
+            # contenga ficheros que se pueden medir.
+            if [ "${bundle}" = "app" ]; then
+              ditto -c -k --keepParent "${source_dir}"/*.app "${PLATFORM_DIR}/${bundle}/"
+            else
+              find "${source_dir}" -maxdepth 1 -type f -exec cp {} "${PLATFORM_DIR}/${bundle}/" \;
+            fi
+          done
+          find "${PLATFORM_DIR}" -type f | sort
+
+      # --- la firma, una por plataforma --------------------------------
+      - name: Firmar (macOS)
+        if: matrix.platform == 'macos' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_APPLE_IDENTITY: ${{ secrets.TANIT_SIGN_APPLE_IDENTITY }}
+          TANIT_SIGN_APPLE_TEAM_ID: ${{ secrets.TANIT_SIGN_APPLE_TEAM_ID }}
+          TANIT_SIGN_NOTARY_PROFILE: ${{ secrets.TANIT_SIGN_NOTARY_PROFILE }}
+        run: |
+          set -euo pipefail
+          PLATFORM_DIR="${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          bash scripts/release/sign-macos.sh "${PLATFORM_DIR}/app"/*.app "${PLATFORM_DIR}/dmg"/*.dmg
+          bash scripts/release/notarize-macos.sh "${PLATFORM_DIR}/app"/*.app "${PLATFORM_DIR}/dmg"/*.dmg
+
+      - name: Firmar (Windows)
+        if: matrix.platform == 'windows' && steps.policy.outputs.sign == 'true'
+        shell: pwsh
+        env:
+          TANIT_SIGN_WINDOWS_THUMBPRINT: ${{ secrets.TANIT_SIGN_WINDOWS_THUMBPRINT }}
+          TANIT_SIGN_WINDOWS_TIMESTAMP_URL: ${{ secrets.TANIT_SIGN_WINDOWS_TIMESTAMP_URL }}
+          TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.TANIT_SIGN_WINDOWS_TRUSTED_SIGNING_ACCOUNT }}
+          TANIT_SIGN_WINDOWS_CERTIFICATE: ${{ secrets.TANIT_SIGN_WINDOWS_CERTIFICATE }}
+          TANIT_SIGN_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.TANIT_SIGN_WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $platformDir = "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}"
+          $artifacts = Get-ChildItem -Path $platformDir -Recurse -File -Include *.msi,*-setup.exe |
+            Select-Object -ExpandProperty FullName
+          if (-not $artifacts) { throw "No Windows artifacts to sign under $platformDir" }
+          & scripts/release/sign-windows.ps1 @artifacts
+
+      - name: Firmar (Linux)
+        if: matrix.platform == 'linux' && steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_SIGN_GPG_KEY_ID: ${{ secrets.TANIT_SIGN_GPG_KEY_ID }}
+          TANIT_SIGN_GPG_KEYRING: ${{ secrets.TANIT_SIGN_GPG_KEYRING }}
+          TANIT_SIGN_GPG_PASSPHRASE: ${{ secrets.TANIT_SIGN_GPG_PASSPHRASE }}
+        run: |
+          bash scripts/release/sign-linux.sh \
+            --stage "${STAGE}" --os linux --arch "${{ matrix.arch }}"
+
+      # --- el manifest y la verificación -------------------------------
+      - name: Medir los artefactos
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --stage "${STAGE}" \
+            --os "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}"
+
+      # La verificación nativa, en el corredor de la plataforma:
+      # Gatekeeper en macOS, Authenticode en Windows, GPG contra el
+      # keyring publicado en Linux. En `full` mode, si la herramienta no
+      # está, falla.
+      - name: Verificar las firmas
+        shell: bash
+        run: |
+          bash scripts/release/verify-signature.sh \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}" \
+            --stage "${STAGE}" \
+            --platform "${{ matrix.platform }}" \
+            --mode full \
+            --allow-unsigned="${{ steps.policy.outputs.sign != 'true' }}"
+
+      - name: Subir los artefactos
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ env.STAGE }}
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------
+  # 2. Fusionar, volver a verificar y publicar.
+  # ---------------------------------------------------------------------
+  publish:
+    name: publish
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      # Se baja lo que firmó cada corredor. El layout del staging se
+      # conserva, así que los manifest siguen apuntando a rutas que
+      # existen.
+      - name: Recoger los artefactos
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-*
+          path: ${{ env.STAGE }}
+          merge-multiple: true
+
+      # Una release publicada **tiene** que estar firmada. Sin
+      # `release.sign=true` el job para aquí, con el motivo escrito.
+      - name: Exigir la firma
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGN="$(jq -r '.release.sign // false' delendai.config.json)"
+          if [ "${SIGN}" != "true" ]; then
+            echo "✗ Publishing a release requires delendai.config.json#release.sign=true." >&2
+            echo "  An unsigned release is not published. Set it, tag, and try again." >&2
+            exit 1
+          fi
+          echo "Signing is enabled: the release is published only if every artifact verifies."
+
+      - name: Fusionar los manifest
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --merge "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}"
+
+      # La comprobación nativa ya la hizo cada corredor, en su
+      # plataforma. Aquí se recalculan los digests y se comprueba que
+      # **todo** lo que hay en el staging está descrito y firmado: lo
+      # que sube el job de merge es lo que se publica, y no vale que
+      # sobre un artefacto sin firmar.
+      - name: Verificar el conjunto
+        shell: bash
+        run: |
+          bash scripts/release/verify-signature.sh \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --stage "${STAGE}" \
+            --mode portable
+
       - name: Adjuntar a la release
-        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            packages/desktop/target/release/bundle/**/*.deb
-            packages/desktop/target/release/bundle/**/*.AppImage
-            packages/desktop/target/release/bundle/**/*.dmg
-            packages/desktop/target/release/bundle/**/*.msi
-            packages/desktop/target/release/bundle/**/*-setup.exe
-
-      - name: Subir como artefacto (ejecución manual)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
-        with:
-          name: instaladores-${{ matrix.os }}
-          path: packages/desktop/target/release/bundle/**/*
-          if-no-files-found: error
+            ${{ env.STAGE }}/**/*.dmg
+            ${{ env.STAGE }}/**/*.app.zip
+            ${{ env.STAGE }}/**/*.msi
+            ${{ env.STAGE }}/**/*-setup.exe
+            ${{ env.STAGE }}/**/*.deb
+            ${{ env.STAGE }}/**/*.AppImage
+            ${{ env.STAGE }}/**/SHA256SUMS
+            ${{ env.STAGE }}/**/SHA256SUMS.sig
+            ${{ env.STAGE }}/**/*.gpg
+            ${{ env.STAGE }}/**/${MANIFEST_NAME}
+          fail_on_unmatched_files: true
