@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 368 símbolos en 141 módulos.
+> 390 símbolos en 150 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -2344,6 +2344,76 @@ Returned instead of printed so the caller decides where it goes —
 `console.log`, a JSON report, the GUI — and so it can be tested
 without capturing output.
 
+### `packages/core/helpers/route-anchor.helper.ts`
+
+Route anchoring — finding the declaration of a route inside a file.
+
+#### `findRouteAnchors`
+
+```ts
+export function findRouteAnchors( text: string, pattern: RegExp, ): ReadonlyArray<IRouteAnchor>
+```
+
+Collects the route declarations of a file.
+
+`pattern` must expose **two** capture groups: the method and the
+path. It is re-created with the `g` flag so the caller never has to
+think about `lastIndex` state — a module-level regex with the `g`
+flag is the classic source of "the second call finds nothing".
+
+#### `pickRouteAnchor`
+
+```ts
+export function pickRouteAnchor( anchors: ReadonlyArray<IRouteAnchor>, route: IResponseRoute, ): IRouteAnchor | null
+```
+
+Picks the declaration that corresponds to `route`.
+
+The search is ordered by how strong the evidence is:
+
+1. The path is **exactly** the raw URI (what the code declares).
+2. The path is exactly the full URI (no prefixes involved).
+3. The full URI **ends with** the declared path — the prefix case,
+   `/api/users` vs `/users`.
+4. The last segment of the URI is the declared path.
+
+Among the candidates that survive, the one **closest to the route's
+line** wins: when a file declares the same path twice (two routers,
+a re-mount), the declaration near the route's line is the one the
+scanner saw.
+
+Returns `null` when the file declares nothing that could be this
+route — the inferrer then has nothing to read, and says so.
+
+#### `sliceUntilNextAnchor`
+
+```ts
+export function sliceUntilNextAnchor( text: string, anchor: IRouteAnchor, anchors: ReadonlyArray<IRouteAnchor>, maxChars = 2000, ): string
+```
+
+The text that belongs to a declaration: from the end of the
+declaration up to the **next** declaration, bounded.
+
+This is the window every inferrer actually wants. It holds the
+options object, the handler, and nothing else — stopping at the
+next route is what keeps one route from reading the next route's
+response call.
+
+#### `routeRegionOf`
+
+```ts
+export function routeRegionOf( text: string, pattern: RegExp, route: IResponseRoute, ): string | null
+```
+
+The region of the file that belongs to `route`, or `null` when the
+file declares no such route.
+
+The three steps every inferrer needs — find the declarations,
+recognise which one is *this* route, hand back its region — in one
+call. An inferrer that needs the region twice (once to answer
+`detect()`, once to answer `infer()`) reads the same bytes twice;
+one that needs it once does not care.
+
 ### `packages/core/helpers/route-identity.helper.ts`
 
 What makes two endpoints the same endpoint.
@@ -3870,6 +3940,144 @@ is a mistake, not a resolution.
 @param projectRoot Absolute path of the project root.
 @param fs          The filesystem facts to read with.
 
+### `packages/core/response-inference/express.helper.ts`
+
+Express response inferrer (proposal `r00020` S3).
+
+#### `ExpressResponseInferrer`
+
+```ts
+export class ExpressResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of an Express route.
+
+Express declares nothing: the only signal is what the handler
+sends — `res.json(body)`, `res.send(body)`,
+`res.status(code).json(body)`. The shape of the response is
+therefore whatever the handler puts in the call, and the entry says
+so.
+
+### `packages/core/response-inference/fastify.helper.ts`
+
+Fastify response inferrer (proposal `r00020` S3).
+
+#### `FastifyResponseInferrer`
+
+```ts
+export class FastifyResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Fastify route.
+
+Fastify is the only one of the six that **declares** its response
+schema, in the route's options: `schema.response` maps a status to
+a JSON Schema. That is an explicit declaration, so the entries it
+produces carry `confidence: "high"`.
+
+### `packages/core/response-inference/gin.helper.ts`
+
+Gin response inferrer (proposal `r00020` S3).
+
+#### `GinResponseInferrer`
+
+```ts
+export class GinResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Gin route.
+
+Gin declares nothing: the signal is the `c.JSON(status, payload)`
+call the handler makes. `c.String`, `c.Data` and `c.File` are not
+JSON and are ignored on purpose — inferring a JSON schema for a
+plain string would be inventing one.
+
+### `packages/core/response-inference/ktor-respond.helper.ts`
+
+Ktor response inferrer (proposal `r00020` S3).
+
+#### `KtorRespondResponseInferrer`
+
+```ts
+export class KtorRespondResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Ktor route.
+
+The signal is the `call.respond(status, payload)` call the handler
+makes. A handler may call it **more than once** — a `404` and then
+a `200` — and each call is a real response of the endpoint, which
+is why the spec carries a collection.
+
+### `packages/core/response-inference/laravel-resources.helper.ts`
+
+Laravel Resources response inferrer (proposal `r00020` S3).
+
+#### `LaravelResourcesResponseInferrer`
+
+```ts
+export class LaravelResourcesResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Laravel route that answers with a
+`JsonResource`.
+
+The slice it serves is the Resources one: a Laravel controller that
+returns a plain model says nothing about the shape of its response
+that the code does not already say.
+
+### `packages/core/response-inference/rails-render.helper.ts`
+
+Rails response inferrer (proposal `r00020` S3).
+
+#### `RailsRenderResponseInferrer`
+
+```ts
+export class RailsRenderResponseInferrer implements IResponseInferrer
+```
+
+Infers the response of a Rails route that renders JSON.
+
+The slice it serves is the `render json:` one: an action that
+renders HTML says nothing about a JSON response.
+
+### `packages/core/responses/coverage-reporter.ts`
+
+Response-inference coverage reporter (proposal `r00020` S3).
+
+#### `buildCoverageReport`
+
+```ts
+export function buildCoverageReport( counters: ReadonlyArray<IResponseFrameworkCoverage>, ): IResponseCoverageReport
+```
+
+Turns the counters the dispatcher collected into the report.
+
+The rows come out sorted by framework slug, so two runs of the same
+project print the same lines in the same order.
+
+#### `logCoverageReport`
+
+```ts
+export function logCoverageReport(report: IResponseCoverageReport): void
+```
+
+Prints the report as a diagnostic.
+
+It never throws and never blocks: the caller decides what to do
+with the return value, and this function only says what it found.
+
+#### `reportResponseCoverage`
+
+```ts
+export function reportResponseCoverage( counters: ReadonlyArray<IResponseFrameworkCoverage>, ): IResponseCoverageReport
+```
+
+Measures and says — the call the pipeline makes at the end.
+
+It returns the report so a caller that wants to do something else
+with it (a test, an MCP tool) can.
+
 ### `packages/core/responses/infer-responses.ts`
 
 Response inference dispatcher (audit 2026-09-06 §10, proposal `f00012` S1).
@@ -3883,18 +4091,22 @@ export function listRegisteredInferrers(): ReadonlyArray<IResponseInferrer>
 #### `registerResponseInferrer`
 
 ```ts
-export function registerResponseInferrer( inferrer: IResponseInferrer, ): void
+export function registerResponseInferrer( inferrer: ILegacyResponseInferrer, ): void
 ```
 
-Register an inferrer. No-op if an inferrer for the same
-framework is already registered (last-write-wins would be a
-recipe for accidental overwrites — explicit replace is what
-tests want).
+Register a **legacy** inferrer — the shape the four original
+inferrers implement.
+
+The inferrer is adapted to the agnostic contract on the way in
+(`adaptLegacyResponseInferrer`), so from the registry's point of
+view there is only one kind of inferrer. Registering the same
+framework twice replaces the previous one: stacking two inferrers
+for Spring would make the result depend on import order.
 
 #### `__setInferrersForTest`
 
 ```ts
-export function __setInferrersForTest( list: ReadonlyArray<IResponseInferrer>, ): void
+export function __setInferrersForTest( list: ReadonlyArray<ILegacyResponseInferrer>, ): void
 ```
 
 Replace the entire registry — test-only escape hatch.
@@ -3946,6 +4158,134 @@ script. Before it landed, the CLI ran the inference loop after
 collection, which meant the inferred `response[]` block never
 made it into the JSON the user saw. See the `f00014` follow-up
 for the full bug history.
+
+### `packages/core/responses/registry.ts`
+
+Response-inference registry (proposal `r00020` S3).
+
+#### `registerResponseInferrer`
+
+```ts
+export function registerResponseInferrer( id: ResponseInferrerId, inferrer: IResponseInferrer, ): void
+```
+
+Registers an inferrer under its id.
+
+Replaces any entry with the same id **or** the same framework: one
+framework, one inferrer. The framework of the inferrer must match
+the one the catalog declares for that id — a mismatch means the
+catalog and the implementation drifted, and it fails loudly here
+instead of silently never being selected.
+
+#### `listResponseInferrerEntries`
+
+```ts
+export function listResponseInferrerEntries(): ReadonlyArray<IResponseInferrerEntry>
+```
+
+The entries currently registered, in registration order.
+
+Frozen copy: a caller cannot mutate the registry by holding on to
+the array.
+
+#### `listResponseInferrers`
+
+```ts
+export function listResponseInferrers(): ReadonlyArray<IResponseInferrer>
+```
+
+The inferrers currently registered, in registration order.
+
+#### `selectInferrer`
+
+```ts
+export function selectInferrer(framework: string): IResponseInferrer | null
+```
+
+The inferrer that serves `framework`, or `null` when none does.
+
+This is the entry point of the whole feature: the dispatcher asks
+it, and the answer is either an inferrer or "nobody knows how this
+framework answers" — which is a normal state, not an error.
+
+#### `selectInferrerEntry`
+
+```ts
+export function selectInferrerEntry( framework: string, ): IResponseInferrerEntry | null
+```
+
+The entry that serves `framework`, or `null`.
+
+Same lookup as `selectInferrer`, but it also answers *which*
+inferrer it is — what the coverage reporter needs to attribute a
+percentage to an id.
+
+#### `inferrerIdForFramework`
+
+```ts
+export function inferrerIdForFramework(framework: string): ResponseInferrerId | null
+```
+
+The id of the inferrer that serves `framework`, or `null`.
+
+#### `__setResponseInferrersForTest`
+
+```ts
+export function __setResponseInferrersForTest( list: ReadonlyArray<IResponseInferrerEntry>, ): void
+```
+
+Replaces the whole registry — test-only escape hatch.
+
+Tests that need a specific inferrer (or none at all) seed the
+registry here instead of reaching into the module's internals. The
+list may contain two inferrers for the same framework on purpose:
+that is how the dispatcher is tested against a registry that was
+assembled by hand.
+
+#### `__resetResponseInferrersForTest`
+
+```ts
+export function __resetResponseInferrersForTest(): void
+```
+
+Restores the registry to the state production has — the six core
+inferrers and nothing else. Test-only counterpart of
+`__setResponseInferrersForTest`.
+
+They are registered again, through the same door, so the reset
+cannot hand back a registry the production code would refuse.
+
+#### `adaptLegacyResponseInferrer`
+
+```ts
+export function adaptLegacyResponseInferrer( legacy: ILegacyResponseInferrer, ): IResponseInferrer
+```
+
+Wraps a legacy inferrer in the agnostic contract.
+
+The four inferrers that predate this slice implement
+`ILegacyResponseInferrer`: they take an endpoint projection plus a
+source file and return a list of entries. The agnostic contract
+takes a route plus a context and returns a spec or `null`.
+
+The adapter is the whole translation:
+
+- the route **is** the endpoint projection (both carry method, uri,
+  source file and line);
+- the context's source **is** the source file;
+- a list becomes a spec, and an empty list becomes `null` — which is
+  what the new contract means by "no signal".
+
+The **detect** of the adapter answers the framework question only,
+and that is not a shortcut: the legacy shape is file-level. It
+receives an endpoint projection and a file, never a route, so it
+cannot know whether *this* route uses the construct it reads — the
+annotations of the whole file are what it sees. The construct
+question is therefore answered by `infer()`, which returns nothing
+when the file carries no signal.
+
+Nothing about the legacy behaviour changes: the same code runs, over
+the same input, with the same result.
 
 ### `packages/core/schema/build-schema-graph.helper.ts`
 

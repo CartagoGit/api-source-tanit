@@ -73,8 +73,16 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
-    paths: ["packages/core/"],
-    tests: ["tests/core/**/*.{spec,test}.ts"],
+    // r00020 S3: `tests/response-inference/` lives beside the other
+    // core tests instead of inside `tests/core/` because it is a
+    // **feature**, not a module: one spec per inferrer and one for
+    // the coverage reporter. It is still core — it only imports
+    // `packages/core/` and `packages/contracts/`.
+    paths: ["packages/core/", "tests/response-inference/"],
+    tests: [
+      "tests/core/**/*.{spec,test}.ts",
+      "tests/response-inference/**/*.{spec,test}.ts",
+    ],
     tsconfig: "tsconfig.core.json",
     dependsOn: ["contracts"],
   },

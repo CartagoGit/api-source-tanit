@@ -20,8 +20,8 @@ import {
 import type {
   EndpointSpecLike,
   IFrameworkSourceFileLike,
+  ILegacyResponseInferrer,
   IResponseInference,
-  IResponseInferrer,
 } from "../../../packages/contracts/interfaces/core/responses.interface";
 
 const SPEC: EndpointSpecLike = {
@@ -42,7 +42,7 @@ function stubInferrer(
   framework: string,
   entries: ReadonlyArray<IResponseInference> | (() => ReadonlyArray<IResponseInference>),
   throwInstead = false,
-): IResponseInferrer {
+): ILegacyResponseInferrer {
   return {
     framework,
     infer: () => {
