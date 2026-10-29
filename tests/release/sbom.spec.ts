@@ -32,6 +32,20 @@
  * una clave efímera. Los fixtures que rompen algo se rompen **a
  * partir** de esa salida: se edita el JSON y se vuelve a verificar. Un
  * fixture escrito a mano probaría un SBOM que el producto nunca genera.
+ *
+ * ## Cómo se ejecuta esta spec
+ *
+ * El comando **canónico** es:
+ *
+ * ```bash
+ * bunx vitest run tests/release/sbom.spec.ts
+ * ```
+ *
+ * Con `bun test` la spec también corre —los tests usan `test.skipIf`, que
+ * ambas entdradas entienden—, pero el runner de referencia del repo es
+ * vitest: `bun test` aborta con «0 pass, 0 fail, 2 errors» cuando la
+ * spec usa API que `bun:test` no tiene, y ese «0 tests» se lee como un
+ * «todo verde» que no es cierto.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawnSync } from "node:child_process";
@@ -40,6 +54,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
+import {
+  SBOM_ATTESTATION_PUBLIC_KEY_PATH,
+  SBOM_BUILD_TOOL_PROPERTY,
+  SBOM_DEFAULT_KEY_ID,
+  SBOM_REQUIRED_COMPONENTS,
+  SBOM_RUNS_URL,
+  SBOM_SPEC_VERSION,
+} from "../../packages/contracts/constants/release/sbom.constant.js";
 
 /** El script que mide el staging y escribe el manifest. */
 const PREPARE = join(REPO_ROOT, "scripts", "release", "prepare-artifacts.mjs");
@@ -55,7 +77,7 @@ const BUILD_UPDATE = join(REPO_ROOT, "scripts", "release", "build-update-manifes
 /** La versión que dice la configuración de Tauri. */
 const VERSION = "1.0.0";
 /** El identificador de la clave de attestation, el que dice el contrato. */
-const KEY_ID = "tanit-release-attestation-v1";
+const KEY_ID = SBOM_DEFAULT_KEY_ID;
 /** El commit del fixture: no es un commit de verdad, es una etiqueta. */
 const COMMIT = "fixture0000000000000000000000000000000000";
 /** Otro commit, para el fixture de la provenance que no es de esta build. */
@@ -96,6 +118,7 @@ interface ISbomComponentJson {
   "bom-ref": string;
   purl?: string;
   hashes?: { alg: string; content: string }[];
+  properties?: { name: string; value: string }[];
 }
 
 /** El documento completo. */
@@ -189,7 +212,7 @@ async function platformRelease(
   os: string,
   arch: string,
   keys: IAttestationKeys,
-  options: { readonly commit?: string } = {},
+  options: { readonly commit?: string; readonly runId?: string } = {},
 ): Promise<IPlatformRelease> {
   const platformDir = join(stage, os, arch);
   const manifest = join(platformDir, "release-manifest.json");
@@ -227,6 +250,7 @@ async function platformRelease(
     "release-desktop",
     "--commit",
     commit,
+    ...(options.runId === undefined ? [] : ["--run-id", options.runId]),
   ]);
   expect(built.status, built.output).toBe(0);
 
@@ -290,7 +314,7 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     if (stage !== "") await rm(stage, { recursive: true, force: true });
   });
 
-  test.runIf(HAS_OPENSSL)("un SBOM válido verifica", async () => {
+  test.skipIf(!HAS_OPENSSL)("un SBOM válido verifica", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     const result = run("bun", [
       "run",
@@ -299,6 +323,9 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
       platform.sbom,
       "--attestation",
       platform.attestation,
+      "--provenance",
+      platform.provenance,
+      "--require-provenance",
       "--stage",
       stage,
       "--manifest",
@@ -316,25 +343,30 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(result.output).toContain("The SBOM verifies");
   });
 
-  test.runIf(HAS_OPENSSL)("el SBOM describe el producto y su grafo de dependencias", async () => {
+  test.skipIf(!HAS_OPENSSL)("el SBOM describe el producto y su grafo de dependencias", async () => {
     if (platform === null) throw new Error("the fixture could not be built");
     const document = await readSbom(platform.sbom);
     expect(document.bomFormat).toBe("CycloneDX");
-    expect(document.specVersion).toBe("1.6");
+    expect(document.specVersion).toBe(SBOM_SPEC_VERSION);
     expect(document.serialNumber).toMatch(/^urn:uuid:[0-9a-f-]{36}$/);
 
     const names = document.components.map((component) => component.name);
     // El producto: la ventana y el sidecar.
-    expect(names).toContain("tanit-desktop");
-    expect(names).toContain("tanit-apisrc");
+    for (const required of SBOM_REQUIRED_COMPONENTS) {
+      expect(names).toContain(required);
+    }
     // El grafo: las crates que entran en el binario y los paquetes que
     // entran en el sidecar.
     expect(names).toContain("tauri");
     expect(names).toContain("zod");
 
     // Y el grafo dice de quién cuelgan.
-    const desktop = document.components.find((component) => component.name === "tanit-desktop");
-    const sidecar = document.components.find((component) => component.name === "tanit-apisrc");
+    const desktop = document.components.find(
+      (component) => component.name === SBOM_REQUIRED_COMPONENTS[0],
+    );
+    const sidecar = document.components.find(
+      (component) => component.name === SBOM_REQUIRED_COMPONENTS[1],
+    );
     const zod = document.components.find((component) => component.name === "zod");
     const desktopEdges = document.dependencies.find((entry) => entry.ref === desktop?.["bom-ref"]);
     const sidecarEdges = document.dependencies.find((entry) => entry.ref === sidecar?.["bom-ref"]);
@@ -344,7 +376,32 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(sidecarEdges?.dependsOn).toContain(zod?.["bom-ref"]);
   });
 
-  test.runIf(HAS_OPENSSL)("un SBOM sin dependencia verificable no verifica", async () => {
+  test.skipIf(!HAS_OPENSSL)("el SBOM describe lo que va empaquetado, no lo que se construyó", async () => {
+    if (platform === null) throw new Error("the fixture could not be built");
+    const document = await readSbom(platform.sbom);
+    const names = document.components.map((component) => component.name);
+    // `tauri-build` la usa el `build.rs`: no viaja dentro del binario,
+    // y declararla sería decir que el producto lleva un compilador.
+    expect(names).not.toContain("tauri-build");
+
+    // Y una herramienta de build se declara **como lo que es**: con la
+    // propiedad que dice que no va empaquetada, y sin colgar del
+    // producto en el grafo.
+    const tool = document.components.find((component) => component.name === "patchelf");
+    expect(tool, "the build tool is not declared").toBeDefined();
+    const property = tool?.properties?.find(
+      (candidate) => candidate.name === SBOM_BUILD_TOOL_PROPERTY,
+    );
+    expect(property?.value).toBe("not packaged");
+
+    const desktop = document.components.find(
+      (component) => component.name === SBOM_REQUIRED_COMPONENTS[0],
+    );
+    const desktopEdges = document.dependencies.find((entry) => entry.ref === desktop?.["bom-ref"]);
+    expect(desktopEdges?.dependsOn).not.toContain(tool?.["bom-ref"]);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("un SBOM sin dependencia verificable no verifica", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     const document = await readSbom(platform.sbom);
     // Se cae una dependencia que el sidecar **usa**: el SBOM ya no
@@ -377,7 +434,7 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(result.output).toContain("zod");
   });
 
-  test.runIf(HAS_OPENSSL)("un SBOM con el hash alterado no verifica", async () => {
+  test.skipIf(!HAS_OPENSSL)("un SBOM con el hash alterado no verifica", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     const document = await readSbom(platform.sbom);
     const artifact = document.components.find((component) => component["bom-ref"].startsWith("file:"));
@@ -409,7 +466,7 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(result.output).toContain("does not match the staging");
   });
 
-  test.runIf(HAS_OPENSSL)("una provenance que no es de esta build no verifica", async () => {
+  test.skipIf(!HAS_OPENSSL)("una provenance que no es de esta build no verifica", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     // Una attestation **bien firmada** de otra build: la firma verifica,
     // pero no describe este SBOM. Es el caso peligroso: una attestation
@@ -465,7 +522,7 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(mismatched.output).toContain("the expected commit is");
   });
 
-  test.runIf(HAS_OPENSSL)("sin attestation no se publica", async () => {
+  test.skipIf(!HAS_OPENSSL)("sin attestation no se publica", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     const result = run("bun", [
       "run",
@@ -504,7 +561,206 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
     expect(gate.output).toContain("attestation");
   });
 
-  test.runIf(HAS_OPENSSL)("el staging no puede llevar secretos", async () => {
+  test.skipIf(!HAS_OPENSSL)("un SBOM sin la cobertura de una dependencia no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const document = await readSbom(platform.sbom);
+    const removed = document.components.find((component) => component.name === "tauri");
+    expect(removed, "the fixture has no tauri crate").toBeDefined();
+    const ref = removed?.["bom-ref"];
+    // Se cae el componente **y** su entrada en `dependencies[]`, y se
+    // limpian las aristas que lo nombraban: el documento queda
+    // estructuralmente coherente, así que lo que tiene que fallar es la
+    // **cobertura**, no el schema.
+    document.components = document.components.filter(
+      (component) => component["bom-ref"] !== ref,
+    );
+    document.dependencies = document.dependencies
+      .filter((entry) => entry.ref !== ref)
+      .map((entry) => ({
+        ...entry,
+        dependsOn: entry.dependsOn.filter((target) => target !== ref),
+      }));
+    const broken = await writeSbom(join(scratch, "missing-coverage.cdx.json"), document);
+
+    const result = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      broken,
+      "--attestation",
+      platform.attestation,
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain('does not describe the dependency "tauri" of the desktop');
+    // Y el fallo **no** es de schema: el grafo sigue siendo coherente.
+    expect(result.output).not.toContain("points at the unknown component");
+  });
+
+  test.skipIf(!HAS_OPENSSL)("un SBOM sin el componente requerido no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const document = await readSbom(platform.sbom);
+    const required = SBOM_REQUIRED_COMPONENTS[0];
+    const removed = document.components.find((component) => component.name === required);
+    expect(removed, `the fixture has no ${required}`).toBeDefined();
+    const ref = removed?.["bom-ref"];
+    document.components = document.components.filter(
+      (component) => component["bom-ref"] !== ref,
+    );
+    document.dependencies = document.dependencies
+      .filter((entry) => entry.ref !== ref)
+      .map((entry) => ({
+        ...entry,
+        dependsOn: entry.dependsOn.filter((target) => target !== ref),
+      }));
+    const broken = await writeSbom(join(scratch, "missing-required.cdx.json"), document);
+
+    const result = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      broken,
+      "--attestation",
+      platform.attestation,
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain(`does not describe the required component "${required}"`);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("un digest malformado no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const document = await readSbom(platform.sbom);
+    const crate = document.components.find((component) => component.name === "tauri");
+    const hash = crate?.hashes?.[0];
+    expect(hash?.alg).toBe("SHA-256");
+    if (hash === undefined) throw new Error("the crate has no digest");
+    // Diez hexadecimales no son un SHA-256: el documento declara un
+    // digest que no puede ser el de nada.
+    hash.content = "0".repeat(10);
+    const broken = await writeSbom(join(scratch, "malformed-digest.cdx.json"), document);
+
+    const result = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      broken,
+      "--attestation",
+      platform.attestation,
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("malformed SHA-256 digest");
+  });
+
+  test.skipIf(!HAS_OPENSSL)("una provenance publicada que no es la firmada no verifica", async () => {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    const statement = JSON.parse(await readFile(platform.provenance, "utf8")) as {
+      predicate: { runDetails: { builder: { id: string } } };
+      subject: { name: string; digest: { sha256: string } }[];
+    };
+
+    // El builder cambia: el statement en claro dice que lo construyó
+    // otro, y la firma sigue diciendo lo que dijo.
+    const builder = statement.predicate.runDetails.builder.id;
+    statement.predicate.runDetails.builder.id = "https://example.invalid/other-builder";
+    const otherBuilder = join(scratch, "other-builder.provenance.json");
+    await writeFile(otherBuilder, `${JSON.stringify(statement, null, 2)}\n`, "utf8");
+
+    const builderResult = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      platform.sbom,
+      "--attestation",
+      platform.attestation,
+      "--provenance",
+      otherBuilder,
+      "--require-provenance",
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(builderResult.status).toBe(1);
+    expect(builderResult.output).toContain("and the attestation says");
+    expect(builderResult.output).toContain(builder);
+
+    // Y un digest de un sujeto: la provenance ya no describe lo que se
+    // firmó, así que no corresponde a ninguna attestation.
+    statement.predicate.runDetails.builder.id = builder;
+    const subject = statement.subject[0];
+    expect(subject).toBeDefined();
+    if (subject === undefined) throw new Error("the statement has no subject");
+    subject.digest.sha256 = "0".repeat(64);
+    const otherDigest = join(scratch, "other-digest.provenance.json");
+    await writeFile(otherDigest, `${JSON.stringify(statement, null, 2)}\n`, "utf8");
+
+    const digestResult = run("bun", [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      platform.sbom,
+      "--attestation",
+      platform.attestation,
+      "--provenance",
+      otherDigest,
+      "--require-provenance",
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    ]);
+    expect(digestResult.status).toBe(1);
+    expect(digestResult.output).toContain("does not correspond to any attestation of this release");
+  });
+
+  test.skipIf(!HAS_OPENSSL)("la provenance dice de qué run vino", async () => {
+    if (keys === null) throw new Error("the fixture could not be built");
+    const otherStage = await dryRunStaging("tanit-sbom-run-stage");
+    try {
+      const other = await platformRelease(otherStage, "linux", "x64", keys, { runId: "4242" });
+      const statement = JSON.parse(await readFile(other.provenance, "utf8")) as {
+        predicate: { runDetails: { metadata: { invocationId?: string } } };
+      };
+      // El `invocationId` es la URL del run: sin ella, la provenance no
+      // dice de dónde salió, y un identificador inventado no dice nada.
+      expect(statement.predicate.runDetails.metadata.invocationId).toBe(`${SBOM_RUNS_URL}/4242`);
+    } finally {
+      await rm(otherStage, { recursive: true, force: true });
+    }
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el staging no puede llevar secretos", async () => {
     if (keys === null || platform === null) throw new Error("the fixture could not be built");
     // Una clave privada en el staging es una clave privada publicada:
     // el script tiene que parar antes de medir nada.
@@ -537,6 +793,7 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
   let updateManifest = "";
   const sboms: string[] = [];
   const attestations: string[] = [];
+  const provenances: string[] = [];
 
   beforeAll(async () => {
     scratch = await tempDir("tanit-sbom-release");
@@ -555,6 +812,7 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
       const platform = await platformRelease(stage, os, arch, attestationKeys);
       sboms.push(platform.sbom);
       attestations.push(platform.attestation);
+      provenances.push(platform.provenance);
     }
 
     merged = join(stage, "release-manifest.json");
@@ -593,11 +851,12 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
     if (stage !== "") await rm(stage, { recursive: true, force: true });
   });
 
-  test.runIf(HAS_OPENSSL)("el manifest del updater y el SBOM se validan mutuamente", async () => {
+  test.skipIf(!HAS_OPENSSL)("el manifest del updater y el SBOM se validan mutuamente", async () => {
     if (keys === null) throw new Error("the fixture could not be built");
     const args = ["run", VERIFY_SBOM];
     for (const sbom of sboms) args.push("--sbom", sbom);
     for (const attestation of attestations) args.push("--attestation", attestation);
+    for (const provenance of provenances) args.push("--provenance", provenance);
     args.push(
       "--stage",
       stage,
@@ -606,6 +865,7 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
       "--update-manifest",
       updateManifest,
       "--require-update-manifest",
+      "--require-provenance",
       "--public-key",
       keys.publicKey,
       "--key-id",
@@ -618,7 +878,33 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
     expect(result.output).toContain("The SBOM verifies");
   });
 
-  test.runIf(HAS_OPENSSL)("un hash del updater que no cuadra no verifica", async () => {
+  test.skipIf(!HAS_OPENSSL)("un SBOM sin attestation no verifica", async () => {
+    if (keys === null) throw new Error("the fixture could not be built");
+    // Los cuatro SBOM de la release y **una** attestation: los otros
+    // tres no tienen quién los firmara, y una release sin attestation
+    // por SBOM no se puede auditar.
+    const args = ["run", VERIFY_SBOM];
+    for (const sbom of sboms) args.push("--sbom", sbom);
+    const only = attestations[0];
+    expect(only).toBeDefined();
+    if (only === undefined) throw new Error("there is no attestation");
+    args.push("--attestation", only);
+    args.push(
+      "--stage",
+      stage,
+      "--manifest",
+      merged,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+    );
+    const result = run("bun", args);
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("has no attestation");
+  });
+
+  test.skipIf(!HAS_OPENSSL)("un hash del updater que no cuadra no verifica", async () => {
     if (keys === null) throw new Error("the fixture could not be built");
     const document = JSON.parse(await readFile(updateManifest, "utf8")) as {
       targets: { sha256: string }[];
@@ -650,7 +936,7 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
     expect(result.output).toContain("disagree about");
   });
 
-  test.runIf(HAS_OPENSSL)("el gate adjunta el SBOM, la provenance y la attestation", async () => {
+  test.skipIf(!HAS_OPENSSL)("el gate adjunta el SBOM, la provenance y la attestation", async () => {
     const gate = run("bun", [
       "run",
       PUBLISH_GATE,
@@ -669,9 +955,12 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
     expect(attached.some((file) => file.endsWith(".cdx.json"))).toBe(true);
     expect(attached.some((file) => file.endsWith(".provenance.json"))).toBe(true);
     expect(attached.some((file) => file.endsWith(".intoto.jsonl"))).toBe(true);
+    // Y la clave pública de la attestation: sin ella, la attestation
+    // adjunta no la puede verificar un tercero.
+    expect(attached.some((file) => file.endsWith(".pub.pem"))).toBe(true);
   });
 
-  test.runIf(HAS_OPENSSL)("sin los assets de transparencia el gate cierra la release", async () => {
+  test.skipIf(!HAS_OPENSSL)("sin los assets de transparencia el gate cierra la release", async () => {
     // Se quita el SBOM del staging: el manifest sigue describiéndolo, y
     // el gate tiene que decir que el fichero no está.
     const sbom = sboms[0];
@@ -696,5 +985,114 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
       await copyFile(hidden, sbom);
       await rm(hidden, { force: true });
     }
+  });
+});
+
+// --- el workflow, leído como YAML -------------------------------------------
+
+/** El workflow de la release de escritorio. */
+const WORKFLOW = join(REPO_ROOT, ".github", "workflows", "release-desktop.yml");
+
+/** Un paso de un job del workflow. */
+interface IWorkflowStep {
+  readonly id?: string;
+  readonly name?: string;
+  readonly uses?: string;
+  readonly run?: string;
+  readonly if?: string;
+  readonly env?: Record<string, string>;
+  readonly with?: Record<string, unknown>;
+}
+
+/** Un job del workflow. */
+interface IWorkflowJob {
+  readonly needs?: unknown;
+  readonly if?: unknown;
+  readonly runs_on?: unknown;
+  readonly steps: readonly IWorkflowStep[];
+}
+
+/** El workflow completo. */
+interface IWorkflow {
+  readonly jobs: Readonly<Record<string, IWorkflowJob>>;
+}
+
+/**
+ * El workflow, parseado como YAML.
+ *
+ * El test no comprueba que el fichero contenga una cadena: comprueba que
+ * el workflow **haga** una cosa. Un `grep` sobre el YAML pasa igual con
+ * un paso commented-out.
+ */
+async function workflowDocument(): Promise<IWorkflow> {
+  const script = `const text = await Bun.file(${JSON.stringify(WORKFLOW)}).text(); console.log(JSON.stringify(Bun.YAML.parse(text)));`;
+  const result = run("bun", ["-e", script]);
+  expect(result.status, result.output).toBe(0);
+  return JSON.parse(result.stdout) as IWorkflow;
+}
+
+/** El paso del job cuyo nombre contiene el texto buscado. */
+function stepNamed(job: IWorkflowJob | undefined, needle: string): IWorkflowStep | undefined {
+  return (job?.steps ?? []).find((step) => (step.name ?? "").includes(needle));
+}
+
+describe("el workflow de la release", () => {
+  test("el SBOM y la attestation se construyen solo cuando se firma", async () => {
+    const workflow = await workflowDocument();
+    const build = workflow.jobs.build;
+    expect(build, "the workflow has no build job").toBeDefined();
+
+    // Sin firmar no hay clave de attestation, y un paso que la exige
+    // mataba el job de un `workflow_dispatch` de desarrollo.
+    const step = stepNamed(build, "Construir el SBOM");
+    expect(step, "the workflow does not build the SBOM").toBeDefined();
+    expect(step?.if ?? "").toContain("steps.policy.outputs.sign == 'true'");
+
+    // Y ningún paso que construya el SBOM puede correr sin firmar.
+    for (const candidate of build?.steps ?? []) {
+      if ((candidate.run ?? "").includes("build-sbom.mjs")) {
+        expect(candidate.if ?? "", candidate.name ?? "the step").toContain(
+          "steps.policy.outputs.sign == 'true'",
+        );
+      }
+    }
+  });
+
+  test("la publicación exige el SBOM verificado y el gate que decide los assets", async () => {
+    const workflow = await workflowDocument();
+    const publish = workflow.jobs.publish;
+    expect(publish, "the workflow has no publish job").toBeDefined();
+
+    // El verificador del SBOM: con la clave pública **versionada**, con
+    // el manifest del updater y con el commit de la build.
+    const verify = stepNamed(publish, "Verificar el SBOM");
+    expect(verify, "the workflow does not verify the SBOM").toBeDefined();
+    const command = verify?.run ?? "";
+    expect(command).toContain("verify-sbom.mjs");
+    expect(command).toContain("--require-update-manifest");
+    expect(command).toContain("--public-key");
+    expect(command).toContain("--commit");
+    expect(command).toContain("--require-provenance");
+    expect(command).toContain("tanit-release-attestation-v1.pub.pem");
+
+    // Y lo que se adjunta lo decide el gate, no una lista escrita en el
+    // workflow: si los dos se separan, el gate deja de gatear.
+    const gate = stepNamed(publish, "Calcular y comprobar los assets");
+    expect(gate?.run ?? "").toContain("publish-gate.mjs");
+    expect(gate?.run ?? "").toContain("--list");
+    const attach = stepNamed(publish, "Adjuntar a la release");
+    expect(String(attach?.with?.files ?? "")).toContain("steps.assets.outputs.files");
+  });
+});
+
+describe("la clave pública de la attestation", () => {
+  test("está versionada y es una clave Ed25519", async () => {
+    const path = join(REPO_ROOT, SBOM_ATTESTATION_PUBLIC_KEY_PATH);
+    const pem = await readFile(path, "utf8");
+    expect(pem).toContain("-----BEGIN PUBLIC KEY-----");
+
+    const info = run("openssl", ["pkey", "-pubin", "-in", path, "-noout", "-text"]);
+    expect(info.status, info.output).toBe(0);
+    expect(info.output).toContain("ED25519");
   });
 });
