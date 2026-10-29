@@ -364,7 +364,7 @@ main() {
       #
       # El **tamaño va antes que el digest**, igual que en el cliente
       # (`verify_artifact_hash` en `packages/desktop/src/updater.rs`).
-      # El motivo no es aesthetic: es que la clasificación de un
+      # El motivo no es estético: es que la clasificación de un
       # aborto no puede depender de lo que hizo el atacante. Si el
       # digest se comprobara primero, un instalador truncado —que es
       # justo el ataque más barato— produciría `update.hash.mismatch`
