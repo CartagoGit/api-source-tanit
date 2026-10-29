@@ -44,6 +44,10 @@ import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
 import {
   MACOS_MINIMAL_ENTITLEMENTS,
   RELEASE_BUNDLE_FILE_SUFFIX,
+  RELEASE_CHECKSUMS_FILE,
+  RELEASE_DETACHED_SIGNATURE_SUFFIX,
+  RELEASE_KEYRING_FILE,
+  RELEASE_RECEIPT_SUFFIX,
   RELEASE_TARGET_MATRIX,
   SIGNING_PROVIDERS,
 } from "../../packages/contracts/constants/release/signing.constant.js";
@@ -259,6 +263,22 @@ async function writeManifest(stage: string, manifest: IManifestJson): Promise<vo
 async function sha256(path: string): Promise<string> {
   const result = run("sha256sum", [path]);
   return result.stdout.trim().split(" ")[0] ?? "";
+}
+
+/**
+ * Los ficheros que el script de firma dice que ha firmado.
+ *
+ * El script lo anuncia en el log: una firma que no se anuncia es una
+ * firma que nadie puede auditar. Y el anuncio es lo que permite
+ * comprobar **qué** entra en el conjunto firmado sin tener que
+ * adivinarlo por los ficheros que aparecen al lado.
+ */
+function signedFiles(output: string): string[] {
+  const marker = "Signed: ";
+  return output
+    .split("\n")
+    .filter((line) => line.includes(marker))
+    .map((line) => line.slice(line.indexOf(marker) + marker.length).trim());
 }
 
 /** La versión de la release, leída de la fuente real. */
@@ -615,6 +635,96 @@ describe.skipIf(!HAS_GPG)("the linux signing path", () => {
     await rm(stage, { recursive: true, force: true });
     await rm(home, { recursive: true, force: true });
     await rm(empty, { recursive: true, force: true });
+  });
+
+  test("it signs the installers and nothing else, and the published keyring keeps its digest", async () => {
+    const stage = await tempDir("tanit-release-signing-scope");
+    const version = await releaseVersion();
+    const home = await tempDir("tanit-release-gnupg-scope");
+    const key = await createThrowawayKeyring(home);
+    expect(key, "the throwaway GPG key could not be generated").not.toBeNull();
+    if (key === null) return;
+
+    // El staging mínimo: los instaladores de Linux x64, colocados
+    // donde los coloca la release.
+    const installers: string[] = [];
+    for (const target of RELEASE_TARGET_MATRIX.filter(
+      (candidate) => candidate.os === "linux" && candidate.arch === "x64",
+    )) {
+      const name = `Tanit_${version}_x64${RELEASE_BUNDLE_FILE_SUFFIX[target.bundle]}`;
+      await mkdir(join(stage, "linux", "x64", target.bundle), { recursive: true });
+      await writeFile(
+        join(stage, "linux", "x64", target.bundle, name),
+        `contenido de prueba de ${name}\n`,
+        "utf8",
+      );
+      installers.push(name);
+    }
+    expect(installers.length, "the release signs more than one installer").toBeGreaterThan(1);
+
+    const platform = join(stage, "linux", "x64");
+    const publishedKeyring = join(platform, "keyring", RELEASE_KEYRING_FILE);
+    const publishedChecksums = join(platform, "checksums", RELEASE_CHECKSUMS_FILE);
+
+    const sign = (): IResult =>
+      run("bash", [SIGN_LINUX, "--stage", stage, "--os", "linux", "--arch", "x64"], {
+        GNUPGHOME: home,
+        TANIT_SIGN_GPG_KEY_ID: key.fingerprint,
+        TANIT_SIGN_GPG_KEYRING: key.keyFile,
+      });
+
+    // Se firma **dos veces**: la segunda firma un staging ya firmado,
+    // que es lo que pasa cuando el runner vuelve a pasar por aquí.
+    // Es en esa segunda vuelta donde el keyring y los checksums ya
+    // existen, y por lo tanto donde se puede comprobar que no entran
+    // en el conjunto firmado.
+    const first = sign();
+    expect(first.status, first.output).toBe(0);
+    const keyringAfterFirst = await sha256(publishedKeyring);
+    const checksumsAfterFirst = await sha256(publishedChecksums);
+
+    const second = sign();
+    expect(second.status, second.output).toBe(0);
+
+    // (a) La firma cubre **exactamente** los instaladores de la
+    // plataforma, más los checksums —que se firman con su propio
+    // bloque—. Ni el fichero de checksums ni el keyring publicado
+    // entran en el conjunto firmado: son consecuencia de firmar, no
+    // instaladores. Si se firmaran a sí mismos, cada firma cambiaría
+    // el fichero que describe y la firma anterior dejaría de cuadrar.
+    expect(signedFiles(second.output).sort()).toEqual(
+      [`${RELEASE_CHECKSUMS_FILE}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`, ...installers].sort(),
+    );
+
+    // Y el keyring publicado no tiene ni firma ni recibo propios.
+    expect(existsSync(`${publishedKeyring}${RELEASE_DETACHED_SIGNATURE_SUFFIX}`)).toBe(false);
+    expect(existsSync(`${publishedKeyring}${RELEASE_RECEIPT_SUFFIX}`)).toBe(false);
+
+    // Los checksums publicados describen a los instaladores y a nada
+    // más: ni al keyring ni a sí mismos.
+    const checksums = await readFile(publishedChecksums, "utf8");
+    const listed = checksums
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .map((line) => line.trim().split(/\s+/)[1] ?? "");
+    expect(listed.length).toBe(installers.length);
+    expect(listed.some((entry) => entry.includes("keyring"))).toBe(false);
+    expect(listed.some((entry) => entry.includes("checksums"))).toBe(false);
+
+    // (b) El keyring publicado conserva su digest entre las dos
+    // ejecuciones: la release publica **una** clave, y una clave que
+    // cambia de digest entre dos firmas invalida lo ya firmado.
+    expect(await sha256(publishedKeyring)).toBe(keyringAfterFirst);
+
+    // Y el fichero que describe lo publicado —los checksums, que van
+    // firmados— también es estable. Si el keyring entrara en el
+    // conjunto firmado, los checksums se describirían a sí mismos y
+    // su digest cambiaría en cada ejecución: la firma publicada de
+    // los checksums dejaría de cuadrar con lo que se publica.
+    expect(await sha256(publishedChecksums)).toBe(checksumsAfterFirst);
+
+    await rm(stage, { recursive: true, force: true });
+    await rm(home, { recursive: true, force: true });
   });
 
   test("it refuses to sign when the keyring it is told to import does not exist", async () => {
@@ -1019,6 +1129,73 @@ describe("the signature verifier", () => {
     expect(result.output).toContain("the checksums do not match the artifacts inside the staging");
 
     await rm(root, { recursive: true, force: true });
+  });
+
+  test("it reports every problem instead of dying at the first one", async () => {
+    const stage = await dryRunStaging("tanit-release-every-problem");
+    const manifest = await readManifest(stage);
+
+    // Se rompen **todas** las firmas que el manifest describe: las de
+    // los instaladores de Linux y la de los checksums. El verificador
+    // tiene que contarlas todas, no quedarse con la primera.
+    const brokenArtifacts: string[] = [];
+    const brokenAssets: string[] = [];
+    for (const artifact of manifest.artifacts) {
+      if (artifact.signature === null) continue;
+      brokenArtifacts.push(artifact.path);
+      await writeFile(
+        join(stage, artifact.signature.path),
+        "esto no es una firma\n",
+        "utf8",
+      );
+    }
+    for (const asset of manifest.assets) {
+      if (asset.signature === null) continue;
+      brokenAssets.push(asset.path);
+      await writeFile(join(stage, asset.signature.path), "esto no es una firma\n", "utf8");
+    }
+    expect(brokenArtifacts.length, "there is more than one signature to break").toBeGreaterThan(1);
+    expect(brokenAssets.length, "there is more than one asset signature to break").toBeGreaterThan(0);
+
+    const result = run("bash", [
+      VERIFY,
+      "--manifest",
+      join(stage, "release-manifest.json"),
+      "--stage",
+      stage,
+      "--platform",
+      "linux",
+      "--mode",
+      "full",
+    ]);
+
+    // El verificador dice **todos** los problemas. Sin el `|| true`
+    // del bucle, `set -e` lo mata en el primer fallo: el log dice
+    // una cosa y el release dice otra.
+    const verdict = result.output.match(/Verification failed: (\d+) problem\(s\)/);
+    expect(
+      verdict,
+      "the verifier must reach a verdict instead of dying on the first failure",
+    ).not.toBeNull();
+    expect(Number(verdict?.[1] ?? "0")).toBeGreaterThanOrEqual(2);
+
+    // Y cada firma rota sale en el log.
+    const gpgFailures = result.output.match(/does not verify against the published keyring/g) ?? [];
+    expect(
+      gpgFailures.length,
+      "every broken signature has to be reported",
+    ).toBeGreaterThanOrEqual(brokenArtifacts.length + brokenAssets.length);
+    for (const path of [...brokenArtifacts, ...brokenAssets]) {
+      expect(result.output, `${path} was not reported`).toContain(path);
+    }
+
+    // El código de salida es el de "hay problemas" —1—. Una caída
+    // abrupta del script también sale con 1, así que lo que
+    // distingue un caso del otro es el veredicto de arriba: un
+    // script que muere en el primer fallo nunca llega a darlo.
+    expect(result.status).toBe(1);
+
+    await rm(stage, { recursive: true, force: true });
   });
 
   test("it does not write into the staging it verifies", async () => {
