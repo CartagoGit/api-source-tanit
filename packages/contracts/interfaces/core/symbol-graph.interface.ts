@@ -81,3 +81,25 @@ export interface ISymbolGraph {
     localName: string,
   ): ReadonlyArray<ISymbolNode>;
 }
+
+/**
+ * The options a graph is built with.
+ *
+ * `experimental.allowGlobalSymbolLookup` decides whether the legacy
+ * "look the symbol up by name in **every** file" fallback is
+ * allowed. It is `false` by default, and that is the point: the
+ * fallback answers a question the caller did not ask ("which of the
+ * two routers named `router` did you mean?") and answers it by
+ * returning both.
+ *
+ * The flag exists for the callers that genuinely cannot name the
+ * destination file — a project that imports a symbol from a
+ * package the resolver does not know how to follow, for instance.
+ * See `docs/MODULE-RESOLUTION.md` for the case and the cost.
+ */
+export interface ISymbolGraphOptions {
+  readonly experimental?: {
+    /** Allow the legacy global-name lookup. Defaults to `false`. */
+    readonly allowGlobalSymbolLookup?: boolean;
+  };
+}

@@ -98,7 +98,12 @@ describe("SymbolGraph — build + resolve", () => {
   });
 
   test("resolveByImportPath follows an import edge to the target file", () => {
-    const b = new SymbolGraphBuilder();
+    // The edge names neither the destination file nor the symbol, so
+    // this is the legacy global-name lookup. Since r00020 S1 it only
+    // runs when the caller asks for it.
+    const b = new SymbolGraphBuilder({
+      experimental: { allowGlobalSymbolLookup: true },
+    });
     b.addSymbol({
       id: makeSymbolId("/users/routes.ts", 0, "router"),
       kind: "router",
@@ -118,6 +123,30 @@ describe("SymbolGraph — build + resolve", () => {
     );
     expect(nodes).toHaveLength(1);
     expect(nodes[0]?.payload).toBe("/users");
+  });
+
+  test("resolveByImportPath does not guess when the edge names nothing", () => {
+    // The default: an import edge that names no destination resolves
+    // to nothing instead of searching the whole project by name.
+    const b = new SymbolGraphBuilder();
+    b.addSymbol({
+      id: makeSymbolId("/users/routes.ts", 0, "router"),
+      kind: "router",
+      payload: "/users",
+    });
+    b.addImport({
+      sourceFile: "/server.ts",
+      specifier: "./users/routes",
+      localName: "usersRouter",
+      importedName: "router",
+    });
+    const g = b.finalize();
+    const nodes = g.resolveByImportPath(
+      "/server.ts",
+      "./users/routes",
+      "usersRouter",
+    );
+    expect(nodes).toEqual([]);
   });
 
   test("empty() returns a frozen graph with no nodes", () => {

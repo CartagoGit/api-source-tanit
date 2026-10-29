@@ -77,14 +77,15 @@ describe("x00063 — SymbolGraph resolved import edges", () => {
     expect(found[0]?.id.sourceFile).toBe("/proj/users.ts");
   });
 
-  test("(3) neither targetFile nor targetSymbol: legacy global-name search", () => {
-    // Legacy callers (without resolver integration) keep the
-    // previous behaviour: search every other file by importedName.
-    // The audit explicitly flags this as the "footgun"; new callers
-    // should populate targetFile/targetSymbol.
+  test("(3) neither targetFile nor targetSymbol: no global-name search", () => {
+    // r00020 S1: the legacy global-name search is REMOVED by
+    // default. The audit flags it as the footgun: two routers named
+    // "router" in two files both match, and the caller picks one
+    // arbitrarily. The caller that wants it has to ask for it
+    // (`experimental.allowGlobalSymbolLookup`).
     const g = SymbolGraph.builder();
-    const usersNode = node("/proj/users.ts", 100, "router");
-    const adminNode = node("/proj/admin.ts", 100, "router");
+    const usersNode = node("/proj/users.ts", 10, "router");
+    const adminNode = node("/proj/admin.ts", 10, "router");
     g.addSymbol(usersNode);
     g.addSymbol(adminNode);
     g.addImport({
@@ -98,7 +99,30 @@ describe("x00063 — SymbolGraph resolved import edges", () => {
       "./users",
       "router",
     );
-    // Both match — that's the documented footgun.
+    // Nothing is guessed.
+    expect(found).toHaveLength(0);
+  });
+
+  test("(3b) the global-name search is available behind the flag", () => {
+    // The callers that genuinely cannot name the destination file
+    // opt in explicitly. See `docs/MODULE-RESOLUTION.md`.
+    const g = SymbolGraph.builder({
+      experimental: { allowGlobalSymbolLookup: true },
+    });
+    g.addSymbol(node("/proj/users.ts", 10, "router"));
+    g.addSymbol(node("/proj/admin.ts", 10, "router"));
+    g.addImport({
+      sourceFile: "/proj/app.ts",
+      specifier: "./users",
+      localName: "router",
+      importedName: "router",
+    });
+    const found = g.finalize().resolveByImportPath(
+      "/proj/app.ts",
+      "./users",
+      "router",
+    );
+    // Both match: the documented footgun the caller asked for.
     expect(found).toHaveLength(2);
   });
 

@@ -33,6 +33,7 @@ import {
 } from "./symbol-id.js";
 import type {
   ISymbolGraph,
+  ISymbolGraphOptions,
   IImportRecord,
   ISymbolNode,
 } from "../../contracts/interfaces/core/symbol-graph.interface.js";
@@ -56,9 +57,15 @@ function newMutable(): IMutableSymbolGraph {
   };
 }
 
-/** Empty graph (the default every scanner starts with before it starts visiting). */
-export function empty(): ISymbolGraph {
-  return finalize(newMutable());
+/**
+ * Empty graph (the default every scanner starts with before it starts
+ * visiting).
+ *
+ * The options are the ones of the graph: by default the legacy
+ * global-name lookup is **off**.
+ */
+export function empty(options?: ISymbolGraphOptions): ISymbolGraph {
+  return finalize(newMutable(), options);
 }
 
 /**
@@ -69,12 +76,22 @@ export function empty(): ISymbolGraph {
  */
 export const SymbolGraph = {
   empty,
-  builder: () => new SymbolGraphBuilder(),
+  builder: (options?: ISymbolGraphOptions) =>
+    new SymbolGraphBuilder(options),
 };
 
 /** Mutable builder passed to scanners during the parse pass. */
 export class SymbolGraphBuilder {
   private readonly state: IMutableSymbolGraph = newMutable();
+  private readonly options: ISymbolGraphOptions;
+
+  /**
+   * @param options The options of the graph. The legacy global-name
+   *                 lookup is off unless the caller asks for it.
+   */
+  constructor(options?: ISymbolGraphOptions) {
+    this.options = options ?? {};
+  }
 
   /**
    * Add a node. **Idempotent**: if a node with the same
@@ -113,7 +130,7 @@ export class SymbolGraphBuilder {
    * Call exactly once per scanner pass.
    */
   finalize(): ISymbolGraph {
-    return finalize(this.state);
+    return finalize(this.state, this.options);
   }
 
   /** Read-only inspection (test escape hatch). */
@@ -128,14 +145,58 @@ export class SymbolGraphBuilder {
   }
 }
 
-function finalize(state: IMutableSymbolGraph): ISymbolGraph {
+/**
+ * The state behind a finished graph.
+ *
+ * It is what lets `removeLegacyGlobalNameLookup()` rebuild a graph
+ * with the legacy fallback switched off, without the caller having
+ * to rebuild the nodes.
+ */
+const STATES = new WeakMap<ISymbolGraph, IMutableSymbolGraph>();
+
+/**
+ * Whether the legacy global-name lookup may run for a graph.
+ *
+ * The lookup searches **every** file for a symbol with the imported
+ * name. It was the behaviour of the graph before the import records
+ * learned to name their destination, and it is a footgun: two
+ * routers named `router` in two files both match, and the caller
+ * picks one arbitrarily. It is off by default.
+ */
+function allowsGlobalSymbolLookup(options: ISymbolGraphOptions): boolean {
+  return options.experimental?.allowGlobalSymbolLookup === true;
+}
+
+/**
+ * Rebuild a graph without the legacy global-name lookup.
+ *
+ * The lookup is **removed by default**; this function is the
+ * explicit way to switch it off on a graph that was built with
+ * `experimental.allowGlobalSymbolLookup: true`.
+ *
+ * @param graph The graph to rebuild.
+ * @returns      A graph with the same nodes and imports, whose
+ *               `resolveByImportPath` no longer searches the whole
+ *               project by name.
+ */
+export function removeLegacyGlobalNameLookup(graph: ISymbolGraph): ISymbolGraph {
+  const state = STATES.get(graph);
+  if (state === undefined) return graph;
+  return finalize(state, { experimental: { allowGlobalSymbolLookup: false } });
+}
+
+function finalize(
+  state: IMutableSymbolGraph,
+  options?: ISymbolGraphOptions,
+): ISymbolGraph {
   const nodes = Object.freeze(
     [...state.byFile.values()].flat().map((n) => Object.freeze(n)),
   );
   const imports = Object.freeze(
     [...state.importsByFile.values()].flat().map((i) => Object.freeze(i)),
   );
-  return Object.freeze({
+  const allowGlobalLookup = allowsGlobalSymbolLookup(options ?? {});
+  const graph: ISymbolGraph = Object.freeze({
     nodes,
     imports,
     resolveByName(sourceFile: string, localName: string) {
@@ -174,12 +235,14 @@ function finalize(state: IMutableSymbolGraph): ISymbolGraph {
         return Object.freeze(out);
       }
       // Legacy fallback: search every other file for a node
-      // with the right importedName. Used when the resolver
-      // returned no concrete file (e.g. node_modules, a
-      // misspelling). Two routers named "router" in two files
-      // would still produce multiple candidates here — exactly
-      // the audit's "search globally" footgun. New callers
-      // should populate `targetFile` / `targetSymbol`.
+      // with the right importedName. It only runs when the caller
+      // asked for it (`experimental.allowGlobalSymbolLookup`), and
+      // the answer it gives is a guess: two routers named
+      // "router" in two files both match, and the caller picks
+      // one arbitrarily — exactly the audit's "search globally"
+      // footgun. Callers that know the destination should
+      // populate `targetFile` / `targetSymbol` instead.
+      if (!allowGlobalLookup) return Object.freeze([]);
       const targetBucket = [...state.byFile.entries()];
       const out: ISymbolNode[] = [];
       for (const [targetFile, bucket] of targetBucket) {
@@ -191,4 +254,6 @@ function finalize(state: IMutableSymbolGraph): ISymbolGraph {
       return Object.freeze(out);
     },
   });
+  STATES.set(graph, state);
+  return graph;
 }

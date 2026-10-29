@@ -26,7 +26,14 @@ describe("resolveImportPath (r00014 S2)", () => {
     expect(resolveImportPath("/a/b/c.ts", "", "/a")).toEqual([]);
   });
 
-  test("bare module specifiers are outside the resolver scope", () => {
-    expect(resolveImportPath("/a/b/c.ts", "express", "/a")).toEqual([]);
+  test("bare module specifiers resolve to the node_modules chain", () => {
+    // r00020 S1: the resolver understands bare specifiers. The
+    // candidates are the paths where the package would live.
+    const candidates = resolveImportPath("/a/b/c.ts", "express", "/a");
+    const paths = candidates.map((candidate) => candidate.path);
+    expect(paths.some((path) => path.includes("node_modules/express"))).toBe(
+      true,
+    );
+    expect(candidates.some((c) => c.kind === "node-modules")).toBe(true);
   });
 });

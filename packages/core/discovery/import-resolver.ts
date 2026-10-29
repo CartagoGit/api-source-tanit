@@ -1,44 +1,30 @@
 /**
- * Import-path resolver (audit 2026-09-06 §12, proposal
- * `r00014` S2).
+ * Import-path resolver — the adapter over `ModuleResolver`
+ * (proposal `r00020` S1).
  *
- * Pure path resolution. No filesystem `existsSync`, no
- * `realpath`, no `Bun.file()` — that comes from the caller
- * (the scanner pass that walks the imports). We do the
- * JavaScript-style normalisation:
+ * This module used to be the resolver: it joined a relative path
+ * with the directory of the importing file and produced a chain of
+ * fallback candidates. It was **posix-shaped** — it only knew about
+ * `/` — and it knew nothing about `tsconfig` aliases, package
+ * exports, workspace packages or Windows drive letters.
  *
- *   - `./foo`        → `./foo` (joined with `fromFile`)
- *   - `../bar/baz`   → joined against `fromFile`'s parent
- *   - absolute path  → returned verbatim (canonicalised
- *                      against `projectRoot` so the result is
- *                      always project-relative when the input
- *                      was)
- *   - extension fallback: `./utils` (no `.ts`) → `./utils.ts`,
- *     `./utils.tsx`, `./utils.js`, `./utils/index.ts`,
- *     `./utils/index.js`. **All candidates are returned**;
- *     the caller decides which one (or none) wins.
+ * The resolution itself now lives in
+ * `packages/core/module-resolution/resolver.service.ts`. This file is
+ * the thin adapter that keeps the old surface:
  *
- * We do not import `node:path` because the resolver is
- * intentionally posix-shaped (always joins with `/`, never
- * produces `\` on Windows). The handful of operations we need
- * are inlined below.
+ *   - `resolveImportPath(fromFile, specifier, projectRoot)` returns
+ *     the ordered list of paths the specifier could resolve to.
+ *
+ * The list is what a scanner wants: the scanner walks the file tree
+ * and needs to know whether the import lands on a file that is part
+ * of the project, and the first candidate that exists is the one
+ * that does.
+ *
+ * A resolver per project root is kept in memory: building one reads
+ * the `tsconfig.json` and the manifests of the project, and that
+ * must not happen once per import.
  */
-
-/** Possible extension fallback chain. Ordered by likelihood. */
-const EXTENSIONS = [".ts", ".tsx", ".js", ".mjs", ".cjs"] as const;
-const INDEX_SUFFIXES = [".ts", ".tsx", ".js", ".mjs", ".cjs"] as const;
-const SUBDIR_INDEX = "/index";
-
-/**
- * One candidate the resolver can return.
- *
- * - `path`: posix-shaped path. Always starts with `/` when
- *   the input `fromFile` was absolute.
- * - `kind`: why this candidate was generated (extension
- *   fallback, `/index/{ext}` fallback, or literal). The caller
- *   can decide to log a warning for, say, a `/index.js`
- *   fallback in a TS project.
- */
+import { ModuleResolver } from "../module-resolution/resolver.service.js";
 import type { IImportCandidate } from "../../contracts/interfaces/core/import-resolver.interface.js";
 
 /**
@@ -47,149 +33,65 @@ import type { IImportCandidate } from "../../contracts/interfaces/core/import-re
  */
 export type { IImportCandidate };
 
+/** One resolver per project root, built on first use. */
+const resolvers = new Map<string, ModuleResolver>();
+
+/**
+ * The resolver of a project root.
+ *
+ * The root is the key: two files of the same project share the
+ * `tsconfig`, the manifests and the workspace layout, and reading
+ * them once is the difference between a scan that takes a second and
+ * one that takes a minute.
+ */
+function resolverFor(projectRoot: string): ModuleResolver {
+  const existing = resolvers.get(projectRoot);
+  if (existing !== undefined) return existing;
+  const created = new ModuleResolver({ projectRoot });
+  resolvers.set(projectRoot, created);
+  return created;
+}
+
+/**
+ * The kind a candidate carries.
+ *
+ * A relative or absolute candidate keeps the old vocabulary — the
+ * caller can tell the literal path from a fallback guess. A
+ * candidate that came from a rule (`tsconfig` alias, package
+ * exports, `node_modules`) carries the name of the rule, because
+ * that is what the caller needs to know about it.
+ */
+function kindOf(candidate: {
+  readonly kind: string;
+  readonly form: string;
+}): IImportCandidate["kind"] {
+  if (candidate.kind === "relative" || candidate.kind === "absolute") {
+    return candidate.form as IImportCandidate["kind"];
+  }
+  return candidate.kind as IImportCandidate["kind"];
+}
+
 /**
  * Resolve an import specifier against a source file.
  *
- * @param fromFile    Absolute path of the file containing the
+ * @param fromFile    Absolute path of the file that contains the
  *                    `import … from "…"` statement.
  * @param specifier   The raw specifier (between the quotes).
- *                    Bare specifiers like `"lodash"` are
- *                    rejected — they reference `node_modules`
- *                    which the resolver does not own.
- * @param projectRoot Absolute path of the project root. Today
- *                    the resolver works off `fromFile`'s
- *                    dirname only — `projectRoot` is part of
- *                    the signature so a future version can
- *                    canonicalise the result back to a
- *                    project-relative path without breaking
- *                    call sites.
- * @returns           Zero or more `IImportCandidate`s. Always
- *                    `[]` when the input is empty or the
- *                    specifier is a bare module name (no
- *                    leading `.` or `/`).
+ * @param projectRoot Absolute path of the project root. It decides
+ *                    which `tsconfig`, which workspace layout and
+ *                    which `node_modules` chain apply.
+ * @returns           The ordered candidates. The first one that
+ *                    exists on disk is the file the import means.
  */
 export function resolveImportPath(
   fromFile: string,
   specifier: string,
   projectRoot: string,
 ): ReadonlyArray<IImportCandidate> {
-  // Touch `projectRoot` so TS doesn't complain about an
-  // unused parameter; the value is kept in the signature
-  // for forward-compat.
-  void projectRoot;
-
   if (specifier.length === 0) return [];
-
-  // Bare module specifier (e.g. `import x from "express"`).
-  // The resolver does not own node_modules resolution.
-  if (!specifier.startsWith(".") && !specifier.startsWith("/")) {
-    return [];
-  }
-
-  // Absolute path inside the project: keep the literal,
-  // run the extension fallback against it.
-  if (isAbsolute(specifier)) {
-    return expandFallback(specifier);
-  }
-
-  // Relative: anchor at `fromFile`'s directory.
-  const base = posixDirname(fromFile);
-  return expandFallback(posixJoin(base, specifier));
-}
-
-/** Whether the path is absolute (leading `/`). */
-function isAbsolute(p: string): boolean {
-  return p.length > 0 && p.charCodeAt(0) === 47; // "/"
-}
-
-/**
- * Posix-shaped dirname. Strips the trailing segment; if the
- * path has no `/`, returns `"."`. We do not use `node:path`
- * so the behaviour is identical on Windows and Unix.
- */
-function posixDirname(p: string): string {
-  const i = p.lastIndexOf("/");
-  if (i === -1) return ".";
-  if (i === 0) return "/";
-  return p.slice(0, i);
-}
-
-/**
- * Posix-shaped join: inserts a single `/` between segments
- * and collapses double slashes. Unlike `path.join` this
- * never normalises away the leading `/` of `fromFile`.
- */
-function posixJoin(base: string, rel: string): string {
-  if (rel.length === 0) return base;
-  const left = base.endsWith("/") ? base.slice(0, -1) : base;
-  const right = rel.startsWith("/") ? rel : "/" + rel;
-  return collapseDoubleSlashes(left + right);
-}
-
-function collapseDoubleSlashes(p: string): string {
-  while (p.includes("//")) {
-    const replaced = p.replace("//", "/");
-    if (replaced === p) break;
-    p = replaced;
-  }
-  return p;
-}
-
-/** Strip trailing redundant `/.` / `/..` segments. */
-function normalize(p: string): string {
-  const out: string[] = [];
-  for (const seg of p.split("/")) {
-    if (seg === "" || seg === ".") continue;
-    if (seg === "..") {
-      if (out.length > 0 && out[out.length - 1] !== "..") out.pop();
-      continue;
-    }
-    out.push(seg);
-  }
-  const prefix = p.startsWith("/") ? "/" : "";
-  return prefix + out.join("/");
-}
-
-/**
- * Walk the extension / `/index.{ext}` fallback chain for a
- * base path. The base may already include an extension —
- * in which case the chain still applies (the base is the
- * first candidate, then the alternates follow).
- */
-function expandFallback(base: string): ReadonlyArray<IImportCandidate> {
-  const out: IImportCandidate[] = [];
-  const literal: IImportCandidate = {
-    path: normalize(base),
-    kind: "literal",
-  };
-  out.push(literal);
-
-  // Strip an existing extension to walk the bare form.
-  const ext = extensionOf(base);
-  const bare = ext ? base.slice(0, -ext.length) : base;
-
-  for (const e of EXTENSIONS) {
-    if (e === ext) continue;
-    out.push({
-      path: normalize(bare + e),
-      kind: "extension-fallback",
-    });
-  }
-
-  for (const e of INDEX_SUFFIXES) {
-    out.push({
-      path: normalize(bare + SUBDIR_INDEX + e),
-      kind: "index-fallback",
-    });
-  }
-  return Object.freeze(out);
-}
-
-/** Returns the trailing extension including the dot, or `""`. */
-function extensionOf(p: string): string {
-  const slash = p.lastIndexOf("/");
-  const start = slash === -1 ? 0 : slash + 1;
-  const dot = p.lastIndexOf(".");
-  if (dot <= start) return "";
-  return p.slice(dot);
+  const resolver = resolverFor(projectRoot);
+  return resolver.candidates(specifier, fromFile).map((candidate) => ({
+    path: candidate.path,
+    kind: kindOf(candidate),
+  }));
 }
