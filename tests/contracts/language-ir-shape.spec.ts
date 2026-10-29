@@ -334,6 +334,10 @@ describe("el IR de TypeScript cumple el contrato agnóstico", () => {
       ]).toContain(call.receiverKind);
       expect(Array.isArray(call.args)).toBe(true);
       expect(locationValida(call.location)).toBe(true);
+      // El fichero exacto, como se afirma para los símbolos y los
+      // decoradores: `locationValida` sólo exige un string no vacío,
+      // así que un `file` equivocado pasaba el test.
+      expect(call.location.file).toBe("src/server.ts");
       for (const argument of call.args) {
         expect([
           "string",

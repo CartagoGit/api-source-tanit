@@ -49,20 +49,51 @@ const METODOS = [
 /**
  * The folders the scanners live in. The proposal named
  * `packages/core/scanners/`, which does not exist in this repository:
- * the scanners are in `packages/frameworks/scanners/`. The folder is
- * listed twice on purpose — if a `core/scanners/` ever appears, it is
- * watched from the day it appears.
+ * the scanners are in `packages/frameworks/scanners/` — and Laravel has
+ * its own. Every folder is listed on purpose — if a `core/scanners/`
+ * ever appears, it is watched from the day it appears.
  */
 const CARPETAS = [
   join(RAIZ, "packages", "core", "scanners"),
   join(RAIZ, "packages", "frameworks", "scanners"),
+  // El scanner de Laravel vive en su propia carpeta, no en
+  // `frameworks/scanners/`: sin esta línea, el gate no lo miraba.
+  join(RAIZ, "packages", "frameworks", "laravel"),
 ];
 
-/** The vocabulary that would tie a scanner to one concrete parser. */
+/**
+ * The vocabulary that would tie a scanner to one concrete parser,
+ * split into the two criteria that mean different things.
+ *
+ * - **Parser vocabulary** (`ts.Node`, `babel`) is checked on the
+ *   **code** of a scanner. The prose may name the parser that used to
+ *   be behind it — a scanner that explains what a
+ *   `TaggedTemplateExpression` is does not depend on the parser that
+ *   produces one. Only the code does.
+ * - **TypeScript suppressions** (`@ts-ignore`) are checked on the raw
+ *   source, because a suppression directive *is* a comment: a
+ *   code-only check could never see it.
+ */
+const PROHIBIDO_EN_CODIGO = /ts\.Node|babel/i;
 // Sin la `@` delante: el patron sigue detectingo `@ts-ignore` (es
 // subcadena), pero el gate `lint:no-type-escapes` no lo confunde con
 // una supresion de tipos real.
-const PROHIBIDO = /ts-ignore|ts\.Node|babel/i;
+const PROHIBIDO_EN_FUENTE = /ts-ignore/i;
+
+/**
+ * Removes the comments, so only the *code* of a file is checked.
+ *
+ * Same criterion the contracts spec uses
+ * (`tests/contracts/language-ir-shape.spec.ts`), with one difference
+ * that only affects the diagnostics: the newlines inside a block
+ * comment are preserved, so the line number reported for a violation
+ * is the real one.
+ */
+function sinComentarios(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (bloque) => bloque.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
 
 /** Every `.ts` file under a folder, recursively. */
 async function ficherosDe(carpeta: string): Promise<string[]> {
@@ -77,6 +108,23 @@ async function ficherosDe(carpeta: string): Promise<string[]> {
     const full = join(carpeta, entry.name);
     if (entry.isDirectory()) out.push(...(await ficherosDe(full)));
     else if (entry.name.endsWith(".ts")) out.push(full);
+  }
+  return out;
+}
+
+/** Every `*.scanner.ts` file under a folder, recursively. */
+async function ficherosScanner(carpeta: string): Promise<string[]> {
+  const out: string[] = [];
+  let entries;
+  try {
+    entries = await readdir(carpeta, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    const full = join(carpeta, entry.name);
+    if (entry.isDirectory()) out.push(...(await ficherosScanner(full)));
+    else if (entry.name.endsWith(".scanner.ts")) out.push(full);
   }
   return out;
 }
@@ -110,14 +158,27 @@ describe("el frontend TypeScript implementa ILanguageFrontend", () => {
   });
 
   test("los extractores devuelven la colección del documento", () => {
+    // El fixture lleva llamadas a propósito. Sin ellas la
+    // aserción de `extractCalls` es vacua: `document.calls` valía
+    // `[]`, así que un `extractCalls` que devolviera `[]` también
+    // habría pasado. Un test que no puede fallar no vigila nada.
     const document = typescriptFrontend.parse(
-      ["@Controller('/x')", "class A { @Get() m() {} }"].join("\n"),
+      [
+        "@Controller('/x')",
+        "class A { @Get() m() {} }",
+        'app.get("/x", handler);',
+      ].join("\n"),
       "src/a.ts",
     );
+    expect(document.calls.length).toBeGreaterThan(0);
+
     expect(typescriptFrontend.extractSymbols(document)).toEqual(
       document.symbols,
     );
     expect(typescriptFrontend.extractCalls(document)).toEqual(document.calls);
+    const llamadas = typescriptFrontend.extractCalls(document);
+    expect(llamadas.length).toBeGreaterThan(0);
+    expect(llamadas.map((call) => call.method)).toContain("get");
     expect(typescriptFrontend.extractDecorators(document)).toEqual(
       document.decorators,
     );
@@ -175,6 +236,32 @@ describe("los símbolos y los decoradores se proyectan sin perder información",
 
     const metodo = document.symbols.find((s) => s.name === "getUser");
     expect(metodo?.location.line).toBe(2);
+  });
+
+  test("la posición de un símbolo libre es la de su declaración", () => {
+    // Ni una clase ni un método: una constante y una función sueltas
+    // a nivel de módulo. Su línea es la de la fuente, y se afirma
+    // exacta — `locationValida` (que sólo exige `line >= 1`) deja
+    // pasar un `line + 1000`.
+    const document = typescriptFrontend.parse(
+      [
+        'import express from "express";',
+        "",
+        "const app = express();",
+        "",
+        "function helper() { return 1; }",
+      ].join("\n"),
+      "src/lib.ts",
+    );
+    const constante = document.symbols.find((s) => s.name === "app");
+    expect(constante?.kind).toBe("variable");
+    expect(constante?.location.line).toBe(3);
+    expect(constante?.location.file).toBe("src/lib.ts");
+
+    const funcion = document.symbols.find((s) => s.name === "helper");
+    expect(funcion?.kind).toBe("function");
+    expect(funcion?.location.line).toBe(5);
+    expect(funcion?.location.file).toBe("src/lib.ts");
   });
 });
 
@@ -250,14 +337,57 @@ describe("el refactor es invisible para los consumidores actuales", () => {
   });
 });
 
+describe("el doc del LanguageIR no dice cosas que ya no son verdad", () => {
+  test("la cifra de scanners que dice el doc es la que hay", async () => {
+    const doc = await readFile(join(RAIZ, "docs", "LANGUAGE-IR.md"), "utf8");
+    const declarados = [...doc.matchAll(/(\d+)\s+scanners/g)].map((match) =>
+      Number(match[1]),
+    );
+    const reales = await ficherosScanner(
+      join(RAIZ, "packages", "frameworks"),
+    );
+    expect(reales.length).toBeGreaterThan(0);
+    // Una sola cifra, y la buena: si el doc dice otra, o dice dos, el
+    // test falla y obliga a corregirlo. La cifra no está escrita a
+    // mano en el doc — está verificada contra el repositorio.
+    expect(declarados).toEqual([reales.length]);
+  });
+
+  test("el doc explica que un frontend de producción degrada", async () => {
+    const doc = await readFile(join(RAIZ, "docs", "LANGUAGE-IR.md"), "utf8");
+    // El camino que degrada (devuelve `null` y registra el
+    // diagnóstico) tiene que estar documentado, y el que lanza
+    // (`parseWithProgram`) tiene que quedar marcado como de uso
+    // directo.
+    expect(doc).toContain("parseModuleWithProgram");
+    expect(doc).toContain("diagnostics");
+    expect(doc).toMatch(/degrad/i);
+  });
+});
+
 describe("ningún consumidor del IR usa implementaciones concretas", () => {
   test("ningún scanner menciona un parser concreto", async () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
         const source = await readFile(fichero, "utf8");
+        // La prosa de un scanner puede explicar el parser que hay
+        // detrás — eso no ata el scanner al parser. Lo que lo ata es
+        // el código, y el código es lo que se mira aquí.
+        sinComentarios(source)
+          .split("\n")
+          .forEach((linea, indice) => {
+            if (PROHIBIDO_EN_CODIGO.test(linea)) {
+              acana.push(
+                `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
+              );
+            }
+          });
+        // Una supresión de tipos de TypeScript es un comentario por
+        // definición, así que para verla hay que mirar la fuente
+        // entera: si no, el criterio se queda sin cobertura.
         source.split("\n").forEach((linea, indice) => {
-          if (PROHIBIDO.test(linea)) {
+          if (PROHIBIDO_EN_FUENTE.test(linea)) {
             acana.push(
               `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
             );
@@ -272,7 +402,7 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
-        const source = await readFile(fichero, "utf8");
+        const source = sinComentarios(await readFile(fichero, "utf8"));
         for (const match of source.matchAll(/from\s*["']([^"']+)["']/g)) {
           const spec = match[1] ?? "";
           if (/@babel\/|["'](?:typescript|ts-node)["']/.test(spec)) {

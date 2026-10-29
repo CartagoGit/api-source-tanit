@@ -360,7 +360,7 @@ export class GraphQlRouteScanner implements IRouteScanner {
     // (`extractEmbeddedSdl(text)`) matched false positives in
     // comments (`// gql\`...\``) and strings (`"gql\`...\``) — see
     // proposal a00015. The AST doesn't get it wrong: a
-    // TaggedTemplateExpression only appears as such when the parser
+    // TaggedTemplateExpression only appears as such when Babel
     // recognises the real syntax.
     //
     // The extracted SDLs are returned as string[] in the top-down

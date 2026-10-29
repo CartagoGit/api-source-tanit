@@ -17,7 +17,7 @@
  * `// gql\`` is inside a `CommentLine` and a `"gql\`` is inside a
  * `StringLiteral`. Reusing the TS frontend's AST is the project's
  * invariant (a00010 S7 — `core` doesn't import from `frameworks`, but
- * both share the same parser).
+ * both share `@babel/parser`).
  *
  * ## Shape
  *

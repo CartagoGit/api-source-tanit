@@ -1,7 +1,7 @@
 # El LanguageIR agnóstico — cómo se monta un lenguaje encima
 
 Tanit analiza código fuente y encuentra APIs. Hoy lo hace con
-veintiún scanners, y cada scanner sabe cómo está escrito el lenguaje
+**26 scanners**, y cada scanner sabe cómo está escrito el lenguaje
 que lee. Este documento explica el contrato que se ha puesto
 **debajo** de esa capa para que el próximo lenguaje no obligue a
 reescribir el pipeline.
@@ -121,6 +121,38 @@ que hace que el refactor sea invisible para los consumidores actuales,
 y hay un test que lo comprueba
 ([`tests/core/typescript-frontend-shape.spec.ts`](../tests/core/typescript-frontend-shape.spec.ts)).
 
+### 3.1 Cuando el parse falla: degradar, no lanzar
+
+El frontend de referencia llama a `parseWithProgram`, que **lanza** un
+`SyntaxError` cuando el fichero no compila. Para uso directo —un test,
+un script— está bien: quien llama puede coger el error. Para un
+frontend de producción, no: un scanner no puede abortar el escaneo
+entero porque un fichero tenga una sintaxis rara.
+
+El camino que usan los scanners de hoy es `parseModuleWithProgram`
+([`packages/core/language-frontends/typescript/typescript.parser.ts`](../packages/core/language-frontends/typescript/typescript.parser.ts)),
+que **degrada**: devuelve `null` y registra el motivo en `diagnostics`.
+
+```ts
+const diagnostics: Array<IParseDiagnostic> = [];
+const parsed = parseModuleWithProgram(raw, filename, diagnostics);
+if (!parsed) {
+  // El fichero no se pudo leer. Se sigue con el siguiente y el
+  // motivo queda visible para quien lo quiera reportar.
+  return { routes: [], diagnostics };
+}
+const { tsFile, program } = parsed;
+```
+
+La regla es una sola: **un frontend de producción nunca lanza por un
+fichero que no puede parsear**. Degrada —documento vacío y
+diagnóstico— y deja que el escaneo continúe.
+
+`parseWithProgram` y `parse` son la puerta de atrás: sirven para uso
+directo, cuando el que llama sabe manejar el error. La variante que
+degrada es la que se usa en producción, y es la que debe usar el
+frontend del próximo lenguaje.
+
 ---
 
 ## 4. Un frontend mínimo, de referencia
@@ -147,6 +179,9 @@ export const exampleFrontend: ILanguageFrontend = {
 
   parse(source: string, filename: string): ILanguageDocument {
     // 1. Read the file with whatever parser this language has.
+    //    If the read FAILS, degrade: do not throw. Record the reason
+    //    in a diagnostic and return an empty document, so that the
+    //    scan which called us continues with the next file.
     // 2. Project what was read onto the agnostic shapes.
     const symbols: ISymbol[] = [];
     const calls: ICallExpression[] = [];
@@ -168,6 +203,11 @@ export const exampleFrontend: ILanguageFrontend = {
   },
 };
 ```
+
+> **Un frontend de producción degrada, no lanza.** Si el parse falla,
+> devuelve un documento vacío y deja el motivo en el diagnóstico; el
+> escaneo sigue. La sección 3.1 lo explica con el camino que usan los
+> scanners de hoy.
 
 Y el barrel de la carpeta:
 

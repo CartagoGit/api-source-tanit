@@ -237,7 +237,7 @@ export class NestJsRouteScanner implements IRouteScanner {
     const diagnostics: Array<IParseDiagnostic> = [];
     const ast = parseModule(raw, absPath, diagnostics);
     // x00048 S4: AST real (decorators del frontend TS). Si el parse
-    // falla (sintaxis que el parser no digiere), degradamos al fallback
+    // falla (sintaxis que Babel no digiere), degradamos al fallback
     // regex legacy de más abajo — el scan no aborta nunca.
     if (ast) return routesFromDecorators(ast.decorators, relPath);
 
