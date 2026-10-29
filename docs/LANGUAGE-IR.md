@@ -400,7 +400,13 @@ Los dos tests que vigilan el contrato:
   nombren ningún lenguaje concreto, que las cinco interfaces estén,
   que el IR de TypeScript las cumpla y que un frontend de un lenguaje
   que todavía no existe (escrito dentro del propio test) quepa en el
-  mismo contrato.
+  mismo contrato. Además:
+  - el contrato **no puede importar fuera de su carpeta** (una regla
+    que no depende del vocabulario: un
+    `import … from "../core/language-ir.interface.js"` se colaba sin
+    que ninguna de las otras reglas lo viera), y ninguna **cadena de
+    tipos** alcanzable —siguiendo los imports de dentro— nombra un
+    lenguaje (`TS*`, `Babel*`);
 - `tests/core/typescript-frontend-shape.spec.ts` — que el frontend de
   TypeScript cumpla el contrato en runtime, que las seis formas de
   callee sobrevivan estructuradas, que el refactor sea invisible y

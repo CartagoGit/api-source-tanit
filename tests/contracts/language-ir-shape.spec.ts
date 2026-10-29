@@ -24,8 +24,8 @@
  */
 import { describe, expect, test } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { typescriptFrontend } from "../../packages/core/language-frontends/typescript/typescript-frontend.helper.js";
 import type {
@@ -102,6 +102,11 @@ const IMPORTES_PROHIBIDOS: readonly string[] = [
   "estree",
   "ts.",
   "/ts/",
+  // El IR de TypeScript que ya existía (`core/language-ir.interface.js`)
+  // se colaba por aquí: el specifier no dice "typescript" ni "babel",
+  // así que las dos reglas de arriba lo dejaban pasar.
+  "core/",
+  "language-ir.interface",
 ];
 
 /**
@@ -138,12 +143,78 @@ function importes(source: string): string[] {
   return encontrados;
 }
 
+/**
+ * The names a contract imports, with the specifier they come from.
+ *
+ * The named imports (`import { ISymbol } from "..."`) and the default
+ * ones (`import type X from "..."`) are both read: a contract that
+ * drags an implementation in through a default import is as coupled
+ * as one that does it through a named one.
+ */
+function importesConNombre(
+  source: string,
+): Array<{ readonly nombre: string; readonly spec: string }> {
+  const limpio = sinComentarios(source);
+  const encontrados: Array<{ nombre: string; spec: string }> = [];
+  for (const match of limpio.matchAll(
+    /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g,
+  )) {
+    const spec = match[2] ?? "";
+    for (const bruto of (match[1] ?? "").split(",")) {
+      const nombre = bruto
+        .replace(/\btype\b/g, "")
+        .split(/\s+as\s+/)[0]
+        ?.trim();
+      if (nombre) encontrados.push({ nombre, spec });
+    }
+  }
+  for (const match of limpio.matchAll(
+    /import\s+(?:type\s+)?([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']/g,
+  )) {
+    const nombre = match[1] ?? "";
+    const spec = match[2] ?? "";
+    if (nombre) encontrados.push({ nombre, spec });
+  }
+  return encontrados;
+}
+
 /** Every `.ts` file of the language-ir folder. */
 async function ficherosDelContrato(): Promise<string[]> {
   const entries = await readdir(LANGUAGE_IR, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
     .map((entry) => join(LANGUAGE_IR, entry.name));
+}
+
+/**
+ * The names of the types the contract reaches, transitively.
+ *
+ * It follows the imports of the folder from its own files and
+ * collects every name they bring. A name that smells like a concrete
+ * language (`TSFile`, `BabelNode`) is the smell of a contract that
+ * depends on an implementation — and the smell can arrive de dos
+ * saltos, no solo en el import que se ve.
+ */
+async function cadenaDeTipos(): Promise<Set<string>> {
+  const nombres = new Set<string>();
+  const vistos = new Set<string>();
+  const pendientes = await ficherosDelContrato();
+  while (pendientes.length > 0) {
+    const fichero = pendientes.pop();
+    if (!fichero || vistos.has(fichero)) continue;
+    vistos.add(fichero);
+    const source = await readFile(fichero, "utf8");
+    for (const entrada of importesConNombre(source)) {
+      nombres.add(entrada.nombre);
+      if (!entrada.spec.startsWith("./")) continue;
+      const destino = join(
+        dirname(fichero),
+        entrada.spec.replace(/\.js$/, ".ts"),
+      );
+      if (!vistos.has(destino)) pendientes.push(destino);
+    }
+  }
+  return nombres;
 }
 
 /**
@@ -234,6 +305,38 @@ describe("packages/contracts/interfaces/language-ir/ — el contrato agnóstico"
         `${fichero} importa algo específico de un lenguaje: ${sospechosos.join(", ")}`,
       ).toEqual([]);
     }
+  });
+
+  test("el contrato agnóstico no importa nada de fuera de su carpeta", async () => {
+    // La regla que no se puede esquivar: un contrato sólo puede
+    // importar de su propia carpeta. Un import como
+    // `../core/language-ir.interface.js` —el IR de TypeScript que ya
+    // existía— pasa las dos reglas de arriba (el nombre no está en la
+    // lista negra y el specifier no dice "typescript"), así que hacía
+    // falta una regla que no dependa del vocabulario.
+    for (const fichero of await ficherosDelContrato()) {
+      for (const spec of importes(await readFile(fichero, "utf8"))) {
+        expect(spec.startsWith("./"), `${fichero} importa ${spec}`).toBe(
+          true,
+        );
+        const destino = resolve(dirname(fichero), spec);
+        expect(
+          destino.startsWith(LANGUAGE_IR),
+          `${fichero} importa ${spec}, que está fuera de la carpeta`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  test("ninguna cadena de tipos alcanzable nombra un lenguaje", async () => {
+    const alcanzables = await cadenaDeTipos();
+    const sospechosos = [...alcanzables].filter((nombre) =>
+      /^(TS|Babel|Estree)/i.test(nombre),
+    );
+    expect(
+      sospechosos,
+      `el contrato alcanza tipos de un lenguaje concreto: ${sospechosos.join(", ")}`,
+    ).toEqual([]);
   });
 
   test("las uniones cerradas del contrato no se ensanchan por accidente", async () => {
