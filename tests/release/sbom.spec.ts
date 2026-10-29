@@ -41,15 +41,18 @@
  * bunx vitest run tests/release/sbom.spec.ts
  * ```
  *
- * Con `bun test` la spec también corre —los tests usan `test.skipIf`, que
- * ambas entdradas entienden—, pero el runner de referencia del repo es
- * vitest: `bun test` aborta con «0 pass, 0 fail, 2 errors» cuando la
- * spec usa API que `bun:test` no tiene, y ese «0 tests» se lee como un
- * «todo verde» que no es cierto.
+ * Con `bun test` la spec también corre —las dos entradas entienden
+ * `test.skipIf`—, pero el runner de referencia del repo es vitest: es
+ * el que sabe qué sección es cada fichero y el que ejecuta la CI. Los
+ * dos tienen que dar verde, y el que da verde el primero es el que
+ * cuenta.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { atob, btoa, Buffer } from "node:buffer";
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream, readFileSync, writeFileSync } from "node:fs";
+import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -59,6 +62,7 @@ import {
   SBOM_BUILD_TOOL_PROPERTY,
   SBOM_DEFAULT_KEY_ID,
   SBOM_FORMAT,
+  SBOM_PAYLOAD_TYPE,
   SBOM_PROVENANCE_PREDICATE_TYPE,
   SBOM_REQUIRED_COMPONENTS,
   SBOM_RUNS_URL,
@@ -97,9 +101,23 @@ interface IResult {
   readonly output: string;
 }
 
-/** Corre un comando y devuelve su salida. */
-function run(command: string, args: readonly string[]): IResult {
-  const result = spawnSync(command, [...args], { cwd: REPO_ROOT, encoding: "utf8" });
+/**
+ * Corre un comando y devuelve su salida.
+ *
+ * El `env` es para los comandos que necesitan un entorno **distinto**:
+ * sin `openssl` en el `PATH`, por ejemplo, para comprobar qué hace el
+ * verificador cuando la firma no se puede ni comprobar.
+ */
+function run(
+  command: string,
+  args: readonly string[],
+  env?: Record<string, string | undefined>,
+): IResult {
+  const result = spawnSync(command, [...args], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    ...(env === undefined ? {} : { env }),
+  });
   const stdout = result.stdout ?? "";
   const stderr = result.stderr ?? "";
   return { status: result.status ?? -1, stdout, stderr, output: `${stdout}${stderr}` };
@@ -112,6 +130,19 @@ async function tempDir(prefix: string): Promise<string> {
 
 /** ¿Hay `openssl` en esta máquina? */
 const HAS_OPENSSL = spawnSync("openssl", ["version"], { encoding: "utf8" }).status === 0;
+
+/**
+ * La ruta absoluta de bun.
+ *
+ * Hace falta cuando el `PATH` se cambia: sin `openssl` en el `PATH`,
+ * el comando tiene que ser el binario, no su nombre.
+ */
+const BUN = (() => {
+  const probe = spawnSync("bun", ["-e", "process.stdout.write(process.execPath)"], {
+    encoding: "utf8",
+  });
+  return probe.status === 0 ? (probe.stdout ?? "").trim() : "bun";
+})();
 
 /** Un componente del SBOM, tal y como lo devuelve el script. */
 interface ISbomComponentJson {
@@ -133,7 +164,8 @@ interface ISbomJson {
   metadata: {
     timestamp: string;
     component: ISbomComponentJson;
-    supplier?: { name: string; url?: string[] };
+    lifecycles?: { phase: string }[];
+    supplier?: { name?: string; url?: string[] };
   };
   components: ISbomComponentJson[];
   dependencies: { ref: string; dependsOn: string[] }[];
@@ -150,8 +182,21 @@ interface IAssetJson {
 interface IManifestJson {
   schema: string;
   version: string;
-  artifacts: { path: string; sha256: string; version: string }[];
+  artifacts: {
+    path: string;
+    sha256: string;
+    version: string;
+    os?: string;
+    arch?: string;
+    bundle?: string;
+  }[];
   assets: IAssetJson[];
+}
+
+/** El manifest del updater. */
+interface IUpdateManifestJson {
+  version: string;
+  targets: { os: string; arch: string; bundle: string; sha256: string }[];
 }
 
 /** Lo que hay en una plataforma: el manifest, el SBOM y la attestation. */
@@ -282,9 +327,24 @@ async function platformRelease(
 }
 
 /** Escribe un SBOM editado, en un sitio que no pisa el original. */
-async function writeSbom(path: string, document: ISbomJson): Promise<string> {
+async function writeSbom(path: string, document: unknown): Promise<string> {
   await writeFile(path, `${JSON.stringify(document, null, 2)}\n`, "utf8");
   return path;
+}
+
+/**
+ * El documento del SBOM con los huecos donde puede haber cualquier cosa.
+ *
+ * Las tres formas que el verificador tiene que rechazar —un proveedor
+ * que no es un objeto, un componente que no es un objeto, una entrada
+ * del grafo que no es un objeto— no se pueden escribir con los tipos
+ * del SBOM bueno: el documento que llega al verificador es JSON, y el
+ * JSON puede no ser un objeto donde se espera uno.
+ */
+interface IRawSbomJson {
+  metadata: Record<string, unknown>;
+  components: unknown[];
+  dependencies: unknown[];
 }
 
 /** Lee un SBOM. */
@@ -295,6 +355,281 @@ async function readSbom(path: string): Promise<ISbomJson> {
 /** Lee el manifest de la release. */
 async function readManifest(path: string): Promise<IManifestJson> {
   return JSON.parse(await readFile(path, "utf8")) as IManifestJson;
+}
+
+// --- el andamiaje de las mutaciones ----------------------------------------
+//
+// ## Qué es esto
+//
+// Un control de seguridad vale lo que vale su prueba. Si el verificador
+// deja de comprobar la firma y la suite sigue verde, el control no
+// existe: lo único que dice es que nadie lo ha mirado.
+//
+// Estas piezas sirven para **romper el fixture por un solo camino**:
+// editar el SBOM, volver a firmar la attestation con la clave del
+// test, y dejar que el verificador diga **lo que la mutación provoca**
+// y nada más.
+//
+// ## Por qué hay que volver a firmar
+//
+// Un SBOM editado cambia su digest, y entonces la attestation deja de
+// describirlo: el único fallo sería «la attestation es de otra build»
+// y el control que se quiere probar no se vería nunca. Por eso las
+// mutaciones **vuelven a firmar** la attestation con la clave del
+// fixture —que nace y muere con el test, en un directorio temporal—
+// para que el enlace siga en pie y el problema sea el de la mutación.
+//
+// ## El PAE
+//
+// El PAE de DSSE es lo que se firma de verdad, y el constructor lo
+// construye así. La prueba lo reconstruye igual: si el PAE no fuera el
+// mismo, la firma no verificaría y la prueba del control de la firma
+// probaría otra cosa.
+
+/** Un envelope DSSE, tal y como lo escribe el constructor. */
+interface IEnvelopeJson {
+  payloadType: string;
+  payload: string;
+  signatures: { keyid: string; sig: string }[];
+}
+
+/** El statement in-toto que va dentro del envelope. */
+interface IStatementJson {
+  _type: string;
+  predicateType: string;
+  subject: { name: string; digest: Record<string, string> }[];
+  predicate: {
+    buildDefinition: {
+      externalParameters: {
+        source: { uri: string; digest?: { sha1: string } };
+        release?: string;
+      };
+      resolvedDependencies: { name: string; digest: { sha1: string } }[];
+    };
+    runDetails: { builder: { id: string } };
+  };
+}
+
+// --- los bytes ------------------------------------------------------------
+//
+// La prueba construye el PAE de DSSE, lo firma y lo vuelve a firmar:
+// hace falta trabajar con bytes. Los tipos que ve la prueba no
+// declaran los estáticos de `Buffer` —los declara el entorno, no node—
+// ni aceptan un `Uint8Array` donde el `node:fs` quiere bytes, así que
+// la prueba habla el idioma que sí está tipado: texto latin1 de un
+// lado, base64 del otro, y `Uint8Array` para lo demás. El runtime es
+// el de node: los bytes que se escriben son los mismos.
+
+/** Los bytes, como texto latin1: un carácter por byte. */
+function toLatin1(bytes: Uint8Array): string {
+  let text = "";
+  for (const byte of bytes) text += String.fromCharCode(byte);
+  return text;
+}
+
+/** El texto latin1, como bytes: un byte por carácter. */
+function fromLatin1(text: string): Uint8Array {
+  const bytes = new Uint8Array(text.length);
+  for (let index = 0; index < text.length; index += 1) {
+    bytes[index] = text.charCodeAt(index);
+  }
+  return bytes;
+}
+
+/** Los bytes, en base64. */
+function toBase64(bytes: Uint8Array): string {
+  return btoa(toLatin1(bytes));
+}
+
+/** El base64, en bytes. */
+function fromBase64(text: string): Uint8Array {
+  return fromLatin1(atob(text));
+}
+
+/** El texto, en UTF-8. */
+function encodeUtf8(text: string): Uint8Array {
+  return Buffer.from(text, "utf8");
+}
+
+/** El UTF-8, en texto. */
+function decodeUtf8(text: string): string {
+  return decodeURIComponent(
+    Array.from(text, (char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`).join(""),
+  );
+}
+
+/** Los bytes, uno detrás de otro. */
+function concatBytes(parts: readonly Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    joined.set(part, offset);
+    offset += part.length;
+  }
+  return joined;
+}
+
+/** El PAE de DSSE: lo que se firma de verdad. */
+function dssePae(payloadType: string, payload: Uint8Array): Uint8Array {
+  const type = encodeUtf8(payloadType);
+  return concatBytes([
+    encodeUtf8(`DSSEv1 ${type.length} ${payloadType} `),
+    encodeUtf8(`${payload.length} `),
+    payload,
+  ]);
+}
+
+/** Firma unos bytes con la clave de la attestation. */
+function signBytes(keyPath: string, bytes: Uint8Array, scratch: string): string {
+  const input = join(scratch, "pae.bin");
+  const signature = join(scratch, "signature.bin");
+  writeFileSync(input, toLatin1(bytes), "latin1");
+  const result = run("openssl", [
+    "pkeyutl",
+    "-sign",
+    "-rawin",
+    "-inkey",
+    keyPath,
+    "-in",
+    input,
+    "-out",
+    signature,
+  ]);
+  expect(result.status, result.output).toBe(0);
+  return toBase64(fromLatin1(readFileSync(signature, "latin1")));
+}
+
+/** El SHA-256 de un fichero, en hexadecimal minúsculas. */
+async function sha256Of(path: string): Promise<string> {
+  const hash = createHash("sha256");
+  await new Promise<void>((resolve, reject) => {
+    createReadStream(path)
+      .on("data", (chunk) => hash.update(chunk))
+      .on("end", () => resolve())
+      .on("error", (error) => reject(error));
+  });
+  return hash.digest("hex");
+}
+
+/** Lee el envelope de una attestation. */
+async function readEnvelope(path: string): Promise<IEnvelopeJson> {
+  const raw = await readFile(path, "utf8");
+  const line = raw
+    .split("\n")
+    .map((candidate) => candidate.trim())
+    .find((candidate) => candidate.length > 0);
+  expect(line, "the attestation is empty").toBeDefined();
+  return JSON.parse(line ?? "") as IEnvelopeJson;
+}
+
+/** Escribe un envelope como una attestation. */
+async function writeEnvelope(path: string, envelope: IEnvelopeJson): Promise<string> {
+  await writeFile(path, `${JSON.stringify(envelope)}\n`, "utf8");
+  return path;
+}
+
+/** El statement que va dentro del envelope. */
+function statementOf(envelope: IEnvelopeJson): IStatementJson {
+  return JSON.parse(decodeUtf8(atob(envelope.payload))) as IStatementJson;
+}
+
+/** Vuelve a firmar un envelope con el payload que ya tiene. */
+function reseal(envelope: IEnvelopeJson, keyPath: string, scratch: string): IEnvelopeJson {
+  const payload = fromBase64(envelope.payload);
+  const sig = signBytes(keyPath, dssePae(envelope.payloadType, payload), scratch);
+  return { ...envelope, signatures: envelope.signatures.map((entry) => ({ ...entry, sig })) };
+}
+
+/** Muta el statement de un envelope y vuelve a firmarlo. */
+function resealStatement(
+  envelope: IEnvelopeJson,
+  mutate: (statement: IStatementJson) => void,
+  keyPath: string,
+  scratch: string,
+): IEnvelopeJson {
+  const statement = statementOf(envelope);
+  mutate(statement);
+  const payload = encodeUtf8(JSON.stringify(statement));
+  const sig = signBytes(keyPath, dssePae(envelope.payloadType, payload), scratch);
+  return {
+    ...envelope,
+    payload: toBase64(payload),
+    signatures: envelope.signatures.map((entry) => ({ ...entry, sig })),
+  };
+}
+
+/** Una firma Ed25519 que tiene la forma correcta y no verifica. */
+function corruptedSignature(): string {
+  // Sesenta y cuatro bytes —lo que mide una firma de Ed25519— que no
+  // son los de la firma de verdad: el base64 es válido, la firma no.
+  return toBase64(new Uint8Array(64).fill(7));
+}
+
+/**
+ * Una raíz de repo falsa: las mismas fuentes, en otro sitio.
+ *
+ * El ayudante de raíz busca `package.json` y `delendai.config.json`
+ * subiendo desde el propio script, así que una copia de las fuentes en
+ * un directorio con esos dos marcadores **es** un repo: el `REPO_ROOT`
+ * de los scripts copiados es la copia, y lo que no está en la copia no
+ * se puede leer.
+ *
+ * Es lo que permite provocar los controles que dependen de que el
+ * repo esté roto —un `Cargo.toml` ilegible, un `bun.lock` sin las
+ * dependencias de runtime, una clave pública que no está versionada—
+ * sin tocar el repo de verdad.
+ */
+async function fakeRepo(
+  scratch: string,
+  name: string,
+  scripts: readonly string[],
+): Promise<string> {
+  const root = join(scratch, name);
+  await mkdir(join(root, "scripts", "helpers"), { recursive: true });
+  await mkdir(join(root, "scripts", "release"), { recursive: true });
+  await mkdir(join(root, "packages", "contracts", "constants", "release"), { recursive: true });
+  await mkdir(join(root, "packages", "contracts", "constants", "cli"), { recursive: true });
+  // Los dos marcadores que el ayudante de raíz busca.
+  await writeFile(join(root, "package.json"), "{}\n", "utf8");
+  await writeFile(join(root, "delendai.config.json"), "{}\n", "utf8");
+  for (const helper of ["root.helper.ts", "glob.helper.ts", "release-dependencies.helper.ts"]) {
+    await copyFile(
+      join(REPO_ROOT, "scripts", "helpers", helper),
+      join(root, "scripts", "helpers", helper),
+    );
+  }
+  for (const script of scripts) {
+    await copyFile(
+      join(REPO_ROOT, "scripts", "release", script),
+      join(root, "scripts", "release", script),
+    );
+  }
+  await copyFile(
+    join(REPO_ROOT, "packages", "contracts", "constants", "release", "signing.constant.ts"),
+    join(root, "packages", "contracts", "constants", "release", "signing.constant.ts"),
+  );
+  await copyFile(
+    join(REPO_ROOT, "packages", "contracts", "constants", "release", "sbom.constant.ts"),
+    join(root, "packages", "contracts", "constants", "release", "sbom.constant.ts"),
+  );
+  await copyFile(
+    join(REPO_ROOT, "packages", "contracts", "constants", "cli", "cli-version.constant.ts"),
+    join(root, "packages", "contracts", "constants", "cli", "cli-version.constant.ts"),
+  );
+  return root;
+}
+
+/**
+ * Una raíz de repo falsa, sin la clave pública versionada.
+ *
+ * El gate adjunta la clave pública **por su ruta en el repositorio**,
+ * así que la única forma de que falte es que el fichero no esté. La
+ * raíz falsa reproduce esa situación sin tocar el repo: son las mismas
+ * fuentes, en otro sitio, con los mismos marcadores de raíz.
+ */
+async function fakeRootWithoutPublicKey(scratch: string): Promise<string> {
+  return fakeRepo(scratch, "fake-root", ["publish-gate.mjs"]);
 }
 
 describe("el SBOM CycloneDX y la attestation de provenance", () => {
@@ -561,7 +896,10 @@ describe("el SBOM CycloneDX y la attestation de provenance", () => {
       "--allow-unsigned",
     ]);
     expect(gate.status).toBe(1);
-    expect(gate.output).toContain("attestation");
+    // El mensaje **exacto**, no la palabra: con un aserto laxo el
+    // control podría desaparecer sin que nada se rompiera, porque
+    // otras rutas del gate también hablan de la attestation.
+    expect(gate.output).toContain('the release does not attach a "attestation" asset');
   });
 
   test.skipIf(!HAS_OPENSSL)("un SBOM sin la cobertura de una dependencia no verifica", async () => {
@@ -1129,7 +1467,211 @@ describe("la release entera: los cuatro SBOM y el manifest del updater", () => {
       await rm(hidden, { force: true });
     }
   });
+
+  // --- la cobertura de la provenance por attestation ------------------------
+  //
+  // Cuatro SBOM, cuatro attestations y **una** provenance: tres
+  // attestations que nadie puede leer en claro. La release publicaría
+  // tres verdades que no se pueden contrastar con la firmada.
+
+  test.skipIf(!HAS_OPENSSL)("una attestation sin provenance no verifica", () => {
+    if (keys === null) throw new Error("the fixture could not be built");
+    const args = ["run", VERIFY_SBOM];
+    for (const sbom of sboms) args.push("--sbom", sbom);
+    for (const attestation of attestations) args.push("--attestation", attestation);
+    const only = provenances[0];
+    expect(only).toBeDefined();
+    if (only === undefined) throw new Error("there is no provenance");
+    args.push("--provenance", only);
+    args.push(
+      "--stage",
+      stage,
+      "--manifest",
+      merged,
+      "--public-key",
+      keys.publicKey,
+      "--key-id",
+      KEY_ID,
+      "--require-provenance",
+    );
+    const result = run("bun", args);
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("has no provenance");
+  });
+
+  // --- el gate de publicación -----------------------------------------------
+
+  /** Una copia del staging, para romperlo sin romper el fixture. */
+  async function copyReleaseStage(name: string): Promise<string> {
+    const copy = join(scratch, name);
+    await cp(stage, copy, { recursive: true });
+    return copy;
+  }
+
+  /** Corre el gate y exige que falle con el mensaje dado. */
+  function gateRefuses(args: readonly string[], expected: string | readonly string[]): IResult {
+    const result = run("bun", args);
+    expect(result.status, result.output).toBe(1);
+    for (const message of typeof expected === "string" ? [expected] : expected) {
+      expect(result.output, `the gate does not say "${message}"`).toContain(message);
+    }
+    return result;
+  }
+
+  test.skipIf(!HAS_OPENSSL)("el gate no publica un artefacto sin firmar", () => {
+    // Los artefactos de macOS y Windows no se pueden firmar en Linux: sin
+    // `--allow-unsigned`, la release no sale.
+    gateRefuses(["run", PUBLISH_GATE, "--stage", stage, "--manifest", merged], [
+      "the release does not attach an unsigned artifact",
+    ]);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no publica un staging vacío", async () => {
+    const empty = await tempDir("tanit-empty-stage");
+    gateRefuses(["run", PUBLISH_GATE, "--stage", empty, "--manifest", merged], [
+      "the staging holds nothing that the release would attach",
+    ]);
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta un manifest que no está", async () => {
+    const copy = await copyReleaseStage("stage-without-manifest");
+    await rm(join(copy, "release-manifest.json"), { force: true });
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
+      ["the release does not attach the merged manifest"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no publica una release que no cubre la matriz", async () => {
+    // Se cae el artefacto que cubre un target de la matriz: el glob
+    // sigue encontrando ficheros, pero la release ya no cubre el
+    // target, y el recuento de ficheros no lo ve.
+    const manifest = JSON.parse(await readFile(merged, "utf8")) as IManifestJson;
+    const artifact = manifest.artifacts.find((candidate) => candidate.bundle === "appimage");
+    expect(artifact, "the release has no appimage").toBeDefined();
+    manifest.artifacts = manifest.artifacts.filter((candidate) => candidate !== artifact);
+    const path = join(scratch, "uncovered-target.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", stage, "--manifest", path, "--allow-unsigned"],
+      ["the release does not cover the target"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta dos ficheros con el mismo nombre", async () => {
+    const copy = await copyReleaseStage("stage-with-duplicates");
+    const deb = join(copy, "linux", "x64", "deb", "Tanit_1.0.0_x64.deb");
+    const twin = join(copy, "windows", "x64", "deb");
+    await mkdir(twin, { recursive: true });
+    await writeFile(join(twin, "Tanit_1.0.0_x64.deb"), "otro\n", "utf8");
+    expect(deb).toBeDefined();
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
+      ["they would overwrite each other"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta un fichero que el manifest no describe", async () => {
+    const copy = await copyReleaseStage("stage-with-extra");
+    await writeFile(join(copy, "linux", "x64", "deb", "extra.deb"), "extra\n", "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
+      ["the release attaches it, but the manifest does not describe it"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta un artefacto que no está en el staging", async () => {
+    const copy = await copyReleaseStage("stage-without-artifact");
+    await rm(join(copy, "linux", "x64", "deb", "Tanit_1.0.0_x64.deb"), { force: true });
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", merged, "--allow-unsigned"],
+      ["the manifest describes it, but it is not in the staging"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta un artefacto fuera de la lista", async () => {
+    const copy = await copyReleaseStage("stage-with-unlisted");
+    const notes = join(copy, "linux", "x64", "notes.txt");
+    await writeFile(notes, "notas\n", "utf8");
+    const manifest = JSON.parse(await readFile(merged, "utf8")) as IManifestJson;
+    const artifact = manifest.artifacts[0];
+    if (artifact === undefined) throw new Error("the manifest describes nothing");
+    artifact.path = "linux/x64/notes.txt";
+    const path = join(scratch, "unlisted-manifest.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", path, "--allow-unsigned"],
+      ["the release does not attach it"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta un asset de transparencia fuera de la lista", async () => {
+    const copy = await copyReleaseStage("stage-with-unlisted-asset");
+    const notes = join(copy, "linux", "x64", "sbom", "notes.txt");
+    await writeFile(notes, "notas\n", "utf8");
+    const manifest = JSON.parse(await readFile(merged, "utf8")) as IManifestJson;
+    const asset = manifest.assets.find((candidate) => candidate.kind === "sbom");
+    if (asset === undefined) throw new Error("the manifest describes no SBOM");
+    asset.path = "linux/x64/sbom/notes.txt";
+    const path = join(scratch, "unlisted-asset-manifest.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", copy, "--manifest", path, "--allow-unsigned"],
+      ['the release does not attach the "sbom" asset'],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no adjunta una clave pública que no está versionada", async () => {
+    // La clave se adjunta por su ruta en el repositorio: si el
+    // repositorio no la tiene, la release sale sin la clave que hace
+    // verificable la attestation.
+    const root = await fakeRootWithoutPublicKey(scratch);
+    gateRefuses(
+      [
+        "run",
+        join(root, "scripts", "release", "publish-gate.mjs"),
+        "--stage",
+        stage,
+        "--manifest",
+        merged,
+        "--allow-unsigned",
+      ],
+      ["the versioned public key of the attestation is missing"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no lee un manifest que no existe", () => {
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", stage, "--manifest", join(scratch, "ghost.json")],
+      ["The merged manifest does not exist"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no lee un manifest que no se puede parsear", async () => {
+    const path = join(scratch, "unparseable-manifest.json");
+    await writeFile(path, "esto no es json\n", "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", stage, "--manifest", path, "--allow-unsigned"],
+      ["The manifest could not be parsed"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate no acepta un schema que no conoce", async () => {
+    const manifest = JSON.parse(await readFile(merged, "utf8")) as IManifestJson;
+    manifest.schema = "tanit.release.manifest/v99";
+    const path = join(scratch, "wrong-schema.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    gateRefuses(
+      ["run", PUBLISH_GATE, "--stage", stage, "--manifest", path, "--allow-unsigned"],
+      ["Unexpected manifest schema"],
+    );
+  });
+
+  test.skipIf(!HAS_OPENSSL)("el gate exige el staging", () => {
+    gateRefuses(["run", PUBLISH_GATE, "--manifest", merged], "`--stage` is required");
+  });
 });
+
 
 // --- el workflow, leído como YAML -------------------------------------------
 
@@ -1314,6 +1856,41 @@ describe("el workflow de la release", () => {
     const attach = stepNamed(publish, "Adjuntar a la release");
     expect(String(attach?.with?.files ?? "")).toContain("steps.assets.outputs.files");
   });
+
+  test("la publicación exige la firma y verifica antes de adjuntar nada", async () => {
+    const workflow = await workflowDocument();
+    const publish = workflow.jobs.publish;
+    expect(publish, "the workflow has no publish job").toBeDefined();
+    const steps = publish?.steps ?? [];
+
+    // El paso que exige la firma. Sin él, una release sin firmar se
+    // publicaría igual, y con ella la attestation no habría nada que
+    // verificar.
+    const demand = stepNamed(publish, "Exigir la firma");
+    expect(demand, "the workflow does not demand the signature").toBeDefined();
+    // Y no puede saltársele: el paso no lleva condición.
+    expect(demand?.if, "the step that demands the signature can be skipped").toBeUndefined();
+    const command = demand?.run ?? "";
+    expect(command).toContain("release.sign");
+    expect(command).toContain("exit 1");
+    // Y la comparación de verdad: sin ella el paso no falla cuando no
+    // se firma. Un `if false` deja el paso con su `exit 1` y su
+    // `release.sign`, y la release sale sin firmar: el control es la
+    // comparación, no la palabra.
+    expect(command).toMatch(/if \[ "\$\{SIGN\}" != "true" \]; then/);
+
+    // Y el orden es el del job: exigir la firma, verificar el SBOM y
+    // sólo entonces adjuntar. Un paso de adjuntar antes de verificar
+    // publicaría lo que no se ha comprobado.
+    const indexOf = (needle: string): number =>
+      steps.findIndex((step) => (step.name ?? "").includes(needle));
+    const demandIndex = indexOf("Exigir la firma");
+    const verifyIndex = indexOf("Verificar el SBOM");
+    const attachIndex = indexOf("Adjuntar a la release");
+    expect(demandIndex).toBeGreaterThanOrEqual(0);
+    expect(verifyIndex).toBeGreaterThan(demandIndex);
+    expect(attachIndex).toBeGreaterThan(verifyIndex);
+  });
 });
 
 describe("la clave pública de la attestation", () => {
@@ -1404,3 +1981,1234 @@ describe("la política de seguridad", () => {
     expect(attestation?.identifier).not.toBe(gpg?.identifier);
   });
 });
+
+// --- cada control del verificador, atado a una prueba ----------------------
+//
+// ## Qué es esta sección
+//
+// Un control de seguridad vale lo que vale su prueba. Si el verificador
+// deja de comprobar la firma y la suite sigue verde, el control no
+// existe: lo único que dice es que nadie lo ha mirado.
+//
+// Aquí **cada** control del verificador tiene una prueba que falla si el
+// control desaparece, y cada prueba parte de la salida real del
+// constructor —el staging, el SBOM, la provenance y la attestation de
+// verdad— y lo rompe por un solo camino.
+//
+// ## Lo que las pruebas hacen y lo que no
+//
+// No comprueban que el verificador acepte un SBOM bueno: eso ya está
+// arriba. Comprueban que **cada** control tiene una prueba que lo
+// ata, y que la mutación que lo rompe es la que dice el mensaje del
+// control. Un control sin prueba es un control que no existe.
+//
+// ## Los controles que no tienen prueba
+//
+// Los hay, y son cuatro, y están aquí abajo con su motivo: los que
+// dependen de que el repo esté roto (el `Cargo.toml` del escritorio
+// ilegible), los que dependen de que `openssl` no esté (la firma no se
+// puede ni comprobar), los que son defensivos y no se pueden alcanzar
+// (`there is no SBOM to verify` — para llegar a él el SBOM tiene que
+// haber fallado antes, y entonces ya hay un problema) y los que la
+// **semántica de los patrones** hace imposibles (el gate no puede
+// adjuntar dos ficheros con el mismo nombre: los patrones de
+// publicación no lo permiten).
+describe("cada control del verificador del SBOM está atado a una prueba", () => {
+  let scratch = "";
+  let stage = "";
+  let keys: IAttestationKeys | null = null;
+  let platform: IPlatformRelease | null = null;
+  let updateManifest = "";
+
+  beforeAll(async () => {
+    scratch = await tempDir("tanit-sbom-guards");
+    stage = await dryRunStaging("tanit-sbom-guards-stage");
+    const attestationKeys = createAttestationKeys(scratch);
+    keys = attestationKeys;
+    if (attestationKeys === null) return;
+    platform = await platformRelease(stage, "linux", "x64", attestationKeys);
+    const updaterDir = join(scratch, "updater");
+    await mkdir(updaterDir, { recursive: true });
+    updateManifest = join(updaterDir, "latest.json");
+    const update = run("bun", [
+      "run",
+      BUILD_UPDATE,
+      "--stage",
+      stage,
+      "--manifest",
+      platform.manifest,
+      "--out",
+      updaterDir,
+      "--key",
+      attestationKeys.key,
+      "--version",
+      VERSION,
+      "--commit",
+      COMMIT,
+    ]);
+    expect(update.status, update.output).toBe(0);
+  });
+
+  afterAll(async () => {
+    if (scratch !== "") await rm(scratch, { recursive: true, force: true });
+    if (stage !== "") await rm(stage, { recursive: true, force: true });
+  });
+
+  /** Los fixtures, o un error si no se pudieron construir. */
+  function fx(): { stage: string; keys: IAttestationKeys; platform: IPlatformRelease } {
+    if (keys === null || platform === null) throw new Error("the fixture could not be built");
+    return { stage, keys, platform };
+  }
+
+  /** Los argumentos de una verificación que tiene que salir bien. */
+  function baseArgs(): string[] {
+    const { keys: k, platform: p } = fx();
+    return [
+      "run",
+      VERIFY_SBOM,
+      "--sbom",
+      p.sbom,
+      "--attestation",
+      p.attestation,
+      "--provenance",
+      p.provenance,
+      "--stage",
+      stage,
+      "--manifest",
+      p.manifest,
+      "--public-key",
+      k.publicKey,
+      "--key-id",
+      KEY_ID,
+    ];
+  }
+
+  /** Quita una bandera (y su valor) de los argumentos. */
+  function without(args: readonly string[], flag: string): string[] {
+    const copy = [...args];
+    const index = copy.indexOf(flag);
+    if (index >= 0) copy.splice(index, 2);
+    return copy;
+  }
+
+  /** Los argumentos de base con otro SBOM y otra attestation. */
+  function argsWith(sbom: string, attestation: string, extra: readonly string[] = []): string[] {
+    const args = without(without(baseArgs(), "--sbom"), "--attestation");
+    return [...args, "--sbom", sbom, "--attestation", attestation, ...extra];
+  }
+
+  /** Corre el verificador y exige que falle con los mensajes dados. */
+  function rejects(args: readonly string[], expected: readonly string[]): IResult {
+    const result = run("bun", args);
+    expect(result.status, result.output).toBe(1);
+    for (const message of expected) {
+      expect(result.output, `the verifier does not say "${message}"`).toContain(message);
+    }
+    return result;
+  }
+
+  /**
+   * Escribe un SBOM y la attestation que vuelve a describirlo.
+   *
+   * Sin el reselado, cualquier cambio en el SBOM rompería el enlace con
+   * la attestation y el único fallo sería «la attestation es de otra
+   * build»: el control que se quiere probar no se vería nunca.
+   */
+  async function sealSbom(
+    name: string,
+    document: unknown,
+  ): Promise<{ sbom: string; attestation: string }> {
+    const { keys: k, platform: p } = fx();
+    const sbom = await writeSbom(join(scratch, `${name}.cdx.json`), document);
+    const digest = await sha256Of(sbom);
+    const envelope = resealStatement(
+      await readEnvelope(p.attestation),
+      (statement) => {
+        const subject = statement.subject.find((candidate) => candidate.name.endsWith(".cdx.json"));
+        if (subject !== undefined) subject.digest.sha256 = digest;
+      },
+      k.key,
+      scratch,
+    );
+    const attestation = await writeEnvelope(
+      join(scratch, `${name}.intoto.jsonl`),
+      envelope,
+    );
+    return { sbom, attestation };
+  }
+
+  /**
+   * Escribe un SBOM editado y la attestation que vuelve a describirlo.
+   *
+   * La edición es con los tipos del SBOM bueno: lo que se rompe es un
+   * **valor**, no la forma del documento.
+   */
+  async function mutateSbom(
+    name: string,
+    mutate: (document: ISbomJson) => void,
+  ): Promise<{ sbom: string; attestation: string }> {
+    const { platform: p } = fx();
+    const document = await readSbom(p.sbom);
+    mutate(document);
+    return sealSbom(name, document);
+  }
+
+  /**
+   * Lo mismo, pero editando la **forma**: lo que llega al verificador es
+   * JSON, y el JSON puede no ser un objeto donde se espera uno.
+   */
+  async function mutateRawSbom(
+    name: string,
+    mutate: (document: IRawSbomJson) => void,
+  ): Promise<{ sbom: string; attestation: string }> {
+    const { platform: p } = fx();
+    const document = JSON.parse(await readFile(p.sbom, "utf8")) as IRawSbomJson;
+    mutate(document);
+    return sealSbom(name, document);
+  }
+
+  /** Escribe un manifest editado y devuelve su ruta. */
+  async function mutateManifest(
+    name: string,
+    mutate: (manifest: IManifestJson) => void,
+  ): Promise<string> {
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    mutate(manifest);
+    const path = join(scratch, `${name}.json`);
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    return path;
+  }
+
+  /** Escribe un manifest del updater editado y devuelve su ruta. */
+  async function mutateUpdateManifest(
+    name: string,
+    mutate: (manifest: IUpdateManifestJson) => void,
+  ): Promise<string> {
+    const manifest = JSON.parse(await readFile(updateManifest, "utf8")) as IUpdateManifestJson;
+    mutate(manifest);
+    const path = join(scratch, `${name}.json`);
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    return path;
+  }
+
+  /** Quita del grafo las entradas que ya no tienen componente. */
+  function pruneGraph(document: ISbomJson): void {
+    const refs = new Set(document.components.map((component) => component["bom-ref"]));
+    document.dependencies = document.dependencies.filter((entry) => refs.has(entry.ref));
+  }
+
+  test("la línea de base verifica: sin ella los controles no prueban nada", () => {
+    const result = run("bun", baseArgs());
+    expect(result.status, result.output).toBe(0);
+  });
+
+  // --- el schema del documento ---------------------------------------------
+
+  test("un SBOM que no es un objeto no verifica", async () => {
+    const { platform: p } = fx();
+    const sbom = join(scratch, "not-an-object.cdx.json");
+    await writeFile(sbom, "[]\n", "utf8");
+    const { attestation } = await mutateSbom("not-an-object-link", () => {});
+    rejects(argsWith(sbom, attestation), ["the SBOM is not a JSON object"]);
+    expect(p.sbom).toBeDefined();
+  });
+
+  test("un bomFormat que no es CycloneDX no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("bad-bomformat", (document) => {
+      document.bomFormat = "SPDX";
+    });
+    rejects(argsWith(sbom, attestation), [`bomFormat must be "${SBOM_FORMAT}"`]);
+  });
+
+  test("un specVersion que no es 1.6 no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("bad-specversion", (document) => {
+      document.specVersion = "1.5";
+    });
+    rejects(argsWith(sbom, attestation), [`specVersion must be "${SBOM_SPEC_VERSION}"`]);
+  });
+
+  test("un serialNumber que no es un urn:uuid no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("bad-serialnumber", (document) => {
+      document.serialNumber = "not-a-urn";
+    });
+    rejects(argsWith(sbom, attestation), ["serialNumber must be a urn:uuid"]);
+  });
+
+  test("una versión del documento que no es un entero no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("bad-document-version", (document) => {
+      document.version = 0;
+    });
+    rejects(argsWith(sbom, attestation), [
+      "version must be an integer greater than or equal to 1",
+    ]);
+  });
+
+  test("un documento sin metadatos no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-metadata", (document) => {
+      delete (document as { metadata?: ISbomJson["metadata"] }).metadata;
+    });
+    rejects(argsWith(sbom, attestation), ["metadata is missing"]);
+  });
+
+  test("una marca de tiempo que no es un instante no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("bad-timestamp", (document) => {
+      document.metadata.timestamp = "ayer";
+    });
+    rejects(argsWith(sbom, attestation), ["metadata.timestamp must be an ISO-8601 instant"]);
+  });
+
+  test("un documento sin componente raíz no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-root-component", (document) => {
+      delete (document.metadata as { component?: ISbomComponentJson }).component;
+    });
+    rejects(argsWith(sbom, attestation), ["metadata.component is missing"]);
+  });
+
+  test("un documento sin ciclo de vida no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-lifecycles", (document) => {
+      document.metadata.lifecycles = [];
+    });
+    rejects(argsWith(sbom, attestation), ["metadata.lifecycles is missing"]);
+  });
+
+  test("un proveedor que no es un objeto no verifica", async () => {
+    const { sbom, attestation } = await mutateRawSbom("bad-supplier", (document) => {
+      document.metadata.supplier = "Cartago";
+    });
+    rejects(argsWith(sbom, attestation), [
+      "metadata.supplier must be an object",
+      "metadata.supplier.name is missing",
+    ]);
+  });
+
+  test("un proveedor sin nombre no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("nameless-supplier", (document) => {
+      document.metadata.supplier = { url: ["https://example.invalid"] };
+    });
+    rejects(argsWith(sbom, attestation), ["metadata.supplier.name is missing"]);
+  });
+
+  // --- los componentes ------------------------------------------------------
+
+  test("un documento sin componentes no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-components", (document) => {
+      document.components = [];
+    });
+    rejects(argsWith(sbom, attestation), ["components is missing or empty"]);
+  });
+
+  test("un componente que no es un objeto no verifica", async () => {
+    const { sbom, attestation } = await mutateRawSbom("bad-component", (document) => {
+      document.components.push("zod");
+    });
+    rejects(argsWith(sbom, attestation), ["a component is not an object"]);
+  });
+
+  test("un componente sin bom-ref no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-bom-ref", (document) => {
+      const component = document.components[0];
+      if (component === undefined) throw new Error("the fixture has no components");
+      delete (component as { "bom-ref"?: string })["bom-ref"];
+      pruneGraph(document);
+    });
+    rejects(argsWith(sbom, attestation), ["a component has no bom-ref"]);
+  });
+
+  test("un componente sin nombre no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-name", (document) => {
+      const component = document.components[0];
+      if (component === undefined) throw new Error("the fixture has no components");
+      delete (component as { name?: string }).name;
+    });
+    rejects(argsWith(sbom, attestation), ["a component has no name"]);
+  });
+
+  test("un componente sin tipo no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-type", (document) => {
+      const component = document.components[0];
+      if (component === undefined) throw new Error("the fixture has no components");
+      delete (component as { type?: string }).type;
+    });
+    rejects(argsWith(sbom, attestation), ["has no type"]);
+  });
+
+  test("un componente sin versión no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-version", (document) => {
+      const component = document.components[0];
+      if (component === undefined) throw new Error("the fixture has no components");
+      delete (component as { version?: string }).version;
+    });
+    rejects(argsWith(sbom, attestation), ["has no version"]);
+  });
+
+  test("un bom-ref repetido no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("duplicate-ref", (document) => {
+      const component = document.components[0];
+      if (component === undefined) throw new Error("the fixture has no components");
+      document.components.push({ ...component });
+    });
+    rejects(argsWith(sbom, attestation), ["is used twice"]);
+  });
+
+  test("un algoritmo de hash desconocido no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("unknown-alg", (document) => {
+      const component = document.components.find((candidate) => candidate.hashes !== undefined);
+      const hash = component?.hashes?.[0];
+      if (hash === undefined) throw new Error("the fixture has no hashes");
+      hash.alg = "MD5";
+    });
+    rejects(argsWith(sbom, attestation), [
+      "declares an unknown hash algorithm",
+      "has a malformed MD5 digest",
+    ]);
+  });
+
+  test("un digest malformado no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("malformed-digest", (document) => {
+      const component = document.components.find((candidate) => candidate.hashes !== undefined);
+      const hash = component?.hashes?.[0];
+      if (hash === undefined) throw new Error("the fixture has no hashes");
+      hash.content = "0".repeat(10);
+    });
+    rejects(argsWith(sbom, attestation), ["has a malformed SHA-256 digest"]);
+  });
+
+  // --- el grafo de dependencias --------------------------------------------
+
+  test("un documento sin grafo no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-graph", (document) => {
+      delete (document as { dependencies?: ISbomJson["dependencies"] }).dependencies;
+    });
+    rejects(argsWith(sbom, attestation), [
+      "dependencies is missing",
+      "the attestation does not describe any of the SBOMs",
+    ]);
+  });
+
+  test("una entrada del grafo que no es un objeto no verifica", async () => {
+    const { sbom, attestation } = await mutateRawSbom("bad-entry", (document) => {
+      document.dependencies.push("zod");
+    });
+    rejects(argsWith(sbom, attestation), ["a dependency entry is not an object"]);
+  });
+
+  test("una entrada del grafo sin ref no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-ref", (document) => {
+      const entry = document.dependencies[0];
+      if (entry === undefined) throw new Error("the fixture has no graph");
+      delete (entry as { ref?: string }).ref;
+    });
+    rejects(argsWith(sbom, attestation), ["a dependency entry has no ref"]);
+  });
+
+  test("una entrada del grafo sin dependsOn no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-dependson", (document) => {
+      const entry = document.dependencies[0];
+      if (entry === undefined) throw new Error("the fixture has no graph");
+      delete (entry as { dependsOn?: string[] }).dependsOn;
+    });
+    rejects(argsWith(sbom, attestation), ["has no dependsOn"]);
+  });
+
+  test("una entrada del grafo que no corresponde a ningún componente no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("orphan-entry", (document) => {
+      const entry = document.dependencies[0];
+      if (entry === undefined) throw new Error("the fixture has no graph");
+      entry.ref = "pkg:npm/ghost@1.0.0";
+      entry.dependsOn = [];
+    });
+    rejects(argsWith(sbom, attestation), [
+      'the dependency "pkg:npm/ghost@1.0.0" does not correspond to any component',
+    ]);
+  });
+
+  test("una arista hacia un componente que no existe no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("ghost-edge", (document) => {
+      const entry = document.dependencies[0];
+      if (entry === undefined) throw new Error("the fixture has no graph");
+      entry.dependsOn = ["pkg:npm/ghost@1.0.0"];
+    });
+    rejects(argsWith(sbom, attestation), [
+      'points at the unknown component "pkg:npm/ghost@1.0.0"',
+    ]);
+  });
+
+  // --- los secretos ---------------------------------------------------------
+
+  test("un componente que describe un secreto no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("secret-component", (document) => {
+      document.components.push({
+        type: "application",
+        name: "server.key",
+        version: "1.0.0",
+        "bom-ref": "file:linux/x64/server.key",
+        hashes: [{ alg: "SHA-256", content: "0".repeat(64) }],
+      });
+    });
+    rejects(argsWith(sbom, attestation), [
+      'the component "linux/x64/server.key" describes a file that must never be published',
+    ]);
+  });
+
+  // --- la cobertura de dependencias ----------------------------------------
+
+  test("un SBOM sin la dependencia del sidecar no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("no-sidecar-dependency", (document) => {
+      const removed = document.components.find((component) => component.name === "zod");
+      document.components = document.components.filter((component) => component.name !== "zod");
+      document.dependencies = document.dependencies.map((entry) => ({
+        ...entry,
+        dependsOn: entry.dependsOn.filter((ref) => ref !== removed?.["bom-ref"]),
+      }));
+    });
+    rejects(argsWith(sbom, attestation), [
+      'does not describe the dependency "zod" of the sidecar',
+    ]);
+  });
+
+  test("un sidecar que no cuelga de su dependencia no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("sidecar-without-edge", (document) => {
+      const sidecar = document.components.find(
+        (component) => component.name === SBOM_REQUIRED_COMPONENTS[1],
+      );
+      const zod = document.components.find((component) => component.name === "zod");
+      document.dependencies = document.dependencies.map((entry) =>
+        entry.ref === sidecar?.["bom-ref"]
+          ? { ...entry, dependsOn: entry.dependsOn.filter((ref) => ref !== zod?.["bom-ref"]) }
+          : entry,
+      );
+    });
+    rejects(argsWith(sbom, attestation), [
+      'the sidecar does not depend on "zod" in the dependency graph',
+    ]);
+  });
+
+  test("un escritorio que no cuelga de su dependencia no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("desktop-without-edge", (document) => {
+      const desktop = document.components.find(
+        (component) => component.name === SBOM_REQUIRED_COMPONENTS[0],
+      );
+      const tauri = document.components.find((component) => component.name === "tauri");
+      document.dependencies = document.dependencies.map((entry) =>
+        entry.ref === desktop?.["bom-ref"]
+          ? { ...entry, dependsOn: entry.dependsOn.filter((ref) => ref !== tauri?.["bom-ref"]) }
+          : entry,
+      );
+    });
+    rejects(argsWith(sbom, attestation), [
+      'the desktop does not depend on "tauri" in the dependency graph',
+    ]);
+  });
+
+  // --- los hashes -----------------------------------------------------------
+
+  test("un componente que no está en el staging no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("missing-from-stage", (document) => {
+      document.components.push({
+        type: "application",
+        name: "ghost.deb",
+        version: "1.0.0",
+        "bom-ref": "file:linux/x64/deb/ghost.deb",
+        hashes: [{ alg: "SHA-256", content: "0".repeat(64) }],
+      });
+    });
+    rejects(argsWith(sbom, attestation), [
+      'the component "linux/x64/deb/ghost.deb" is not in the staging',
+    ]);
+  });
+
+  // --- el manifest de la release --------------------------------------------
+
+  test("un manifest que no se puede leer no verifica", () => {
+    rejects(
+      [...without(baseArgs(), "--manifest"), "--manifest", join(scratch, "ghost-manifest.json")],
+      ["the release manifest could not be read"],
+    );
+  });
+
+  test("un SBOM que no cubre un artefacto del manifest no verifica", async () => {
+    const { sbom, attestation } = await mutateSbom("uncovered-artifact", (document) => {
+      const artifact = document.components.find((component) =>
+        component["bom-ref"].startsWith("file:"),
+      );
+      document.components = document.components.filter(
+        (component) => component !== artifact,
+      );
+      pruneGraph(document);
+    });
+    rejects(argsWith(sbom, attestation), ["the SBOM does not cover the artifact"]);
+  });
+
+  test("un digest que el manifest y el SBOM no comparten no verifica", async () => {
+    const manifest = await mutateManifest("wrong-digest", (draft) => {
+      const artifact = draft.artifacts[0];
+      if (artifact === undefined) throw new Error("the manifest describes nothing");
+      artifact.sha256 = "0".repeat(64);
+    });
+    rejects(
+      [...without(baseArgs(), "--manifest"), "--manifest", manifest],
+      [
+        "the SBOM and the release manifest disagree about",
+        "does not match the release manifest",
+      ],
+    );
+  });
+
+  test("una versión que el manifest y el SBOM no comparten no verifica", async () => {
+    const manifest = await mutateManifest("wrong-artifact-version", (draft) => {
+      const artifact = draft.artifacts[0];
+      if (artifact === undefined) throw new Error("the manifest describes nothing");
+      artifact.version = "9.9.9";
+    });
+    rejects(
+      [...without(baseArgs(), "--manifest"), "--manifest", manifest],
+      ["the SBOM and the release manifest disagree about the version of"],
+    );
+  });
+
+  test("una versión de release que el manifest y el SBOM no comparten no verifica", async () => {
+    const manifest = await mutateManifest("wrong-release-version", (draft) => {
+      draft.version = "9.9.9";
+    });
+    rejects(
+      [...without(baseArgs(), "--manifest"), "--manifest", manifest],
+      ["the SBOM describes the version 1.0.0 and the release manifest the version 9.9.9"],
+    );
+  });
+
+  test("un artefacto del manifest que no está en el staging no verifica", async () => {
+    const manifest = await mutateManifest("ghost-artifact", (draft) => {
+      draft.artifacts.push({
+        path: "linux/x64/deb/ghost.deb",
+        sha256: "0".repeat(64),
+        version: "1.0.0",
+        os: "linux",
+        arch: "x64",
+        bundle: "deb",
+      });
+    });
+    rejects(
+      [...without(baseArgs(), "--manifest"), "--manifest", manifest],
+      [
+        "the release manifest describes linux/x64/deb/ghost.deb, which is not in the staging",
+        "the SBOM does not cover the artifact linux/x64/deb/ghost.deb",
+      ],
+    );
+  });
+
+  test("un artefacto que ha cambiado después de medirse no verifica", async () => {
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    const artifact = manifest.artifacts[0];
+    if (artifact === undefined) throw new Error("the manifest describes nothing");
+    const absolute = join(stage, artifact.path);
+    const original = fromLatin1(readFileSync(absolute, "latin1"));
+    try {
+      writeFileSync(
+        absolute,
+        toLatin1(concatBytes([original, encodeUtf8("changed\n")])),
+        "latin1",
+      );
+      rejects(baseArgs(), [
+        "does not match the staging",
+        "does not match the release manifest",
+      ]);
+    } finally {
+      writeFileSync(absolute, toLatin1(original), "latin1");
+    }
+  });
+
+  // --- el manifest del updater ---------------------------------------------
+
+  test("un manifest del updater que no se puede leer no verifica", () => {
+    rejects(
+      [
+        ...without(baseArgs(), "--update-manifest"),
+        "--update-manifest",
+        join(scratch, "ghost-latest.json"),
+      ],
+      ["the update manifest could not be read"],
+    );
+  });
+
+  test("una versión que el updater y el manifest no comparten no verifica", async () => {
+    const broken = await mutateUpdateManifest("wrong-updater-version", (draft) => {
+      draft.version = "9.9.9";
+    });
+    rejects(
+      [...without(baseArgs(), "--update-manifest"), "--update-manifest", broken],
+      ["the update manifest offers the version 9.9.9 and the release manifest the version 1.0.0"],
+    );
+  });
+
+  test("un target del updater que la release no describe no verifica", async () => {
+    const broken = await mutateUpdateManifest("unknown-target", (draft) => {
+      const target = draft.targets[0];
+      if (target === undefined) throw new Error("the updater offers nothing");
+      target.arch = "riscv";
+    });
+    rejects(
+      [...without(baseArgs(), "--update-manifest"), "--update-manifest", broken],
+      ["which the release manifest does not describe"],
+    );
+  });
+
+  test("un hash que el updater y el manifest no comparten no verifica", async () => {
+    const broken = await mutateUpdateManifest("wrong-updater-hash", (draft) => {
+      const target = draft.targets[0];
+      if (target === undefined) throw new Error("the updater offers nothing");
+      target.sha256 = "0".repeat(64);
+    });
+    rejects(
+      [...without(baseArgs(), "--update-manifest"), "--update-manifest", broken],
+      [
+        "the update manifest and the release manifest disagree about",
+        "the SBOM and the update manifest disagree about",
+      ],
+    );
+  });
+
+  test("un artefacto que ofrece el updater y que el SBOM no cubre no verifica", async () => {
+    const manifest = await mutateManifest("updater-uncovered", (draft) => {
+      const artifact = draft.artifacts[0];
+      if (artifact === undefined) throw new Error("the manifest describes nothing");
+      artifact.path = "linux/x64/deb/ghost.deb";
+    });
+    rejects(
+      [
+        ...without(baseArgs(), "--manifest"),
+        "--manifest",
+        manifest,
+        "--update-manifest",
+        updateManifest,
+      ],
+      [
+        "the SBOM does not cover the artifact the updater offers: linux/x64/deb/ghost.deb",
+        "the SBOM does not cover the artifact linux/x64/deb/ghost.deb",
+      ],
+    );
+  });
+
+  // --- la attestation -------------------------------------------------------
+
+  test("una attestation que no existe no verifica", () => {
+    rejects(
+      [
+        ...without(baseArgs(), "--attestation"),
+        "--attestation",
+        join(scratch, "ghost.intoto.jsonl"),
+      ],
+      ["the attestation does not exist"],
+    );
+  });
+
+  test("una attestation vacía no verifica", async () => {
+    const { platform: p } = fx();
+    const attestation = join(scratch, "empty.intoto.jsonl");
+    await writeFile(attestation, "\n", "utf8");
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation is empty"],
+    );
+    expect(p.attestation).toBeDefined();
+  });
+
+  test("una attestation con dos envelopes no verifica", async () => {
+    const { platform: p } = fx();
+    const raw = await readFile(p.attestation, "utf8");
+    const attestation = join(scratch, "two-envelopes.intoto.jsonl");
+    await writeFile(attestation, `${raw}${raw}`, "utf8");
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["it must be one per build"],
+    );
+  });
+
+  test("una attestation que no se puede parsear no verifica", async () => {
+    const attestation = join(scratch, "unparseable.intoto.jsonl");
+    await writeFile(attestation, "esto no es json\n", "utf8");
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation could not be parsed"],
+    );
+  });
+
+  test("una attestation cuyo envelope no es un objeto no verifica", async () => {
+    const attestation = join(scratch, "envelope-array.intoto.jsonl");
+    await writeFile(attestation, "[]\n", "utf8");
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation envelope is not an object"],
+    );
+  });
+
+  test("una attestation con otro payloadType no verifica", async () => {
+    const { keys: k, platform: p } = fx();
+    const envelope = reseal(
+      { ...(await readEnvelope(p.attestation)), payloadType: "application/json" },
+      k.key,
+      scratch,
+    );
+    const attestation = await writeEnvelope(join(scratch, "other-payload-type.intoto.jsonl"), envelope);
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      [`the attestation payload type must be "${SBOM_PAYLOAD_TYPE}"`],
+    );
+  });
+
+  test("una attestation sin firma no verifica", async () => {
+    const { platform: p } = fx();
+    const envelope = { ...(await readEnvelope(p.attestation)), signatures: [] };
+    const attestation = await writeEnvelope(join(scratch, "unsigned.intoto.jsonl"), envelope);
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation has no signature"],
+    );
+  });
+
+  test("una attestation firmada por otra clave no verifica", () => {
+    // La clave que se espera es la del contrato; la del envelope es
+    // otra. Una attestation firmada por la clave equivocada no la
+    // verifica nadie.
+    rejects(
+      [...without(baseArgs(), "--key-id"), "--key-id", "tanit-release-attestation-v2"],
+      ["the attestation is signed by"],
+    );
+  });
+
+  test("una attestation sin clave pública no verifica", () => {
+    rejects(
+      without(baseArgs(), "--public-key"),
+      ["there is no public key"],
+    );
+  });
+
+  test("una attestation con la firma corrupta no verifica", async () => {
+    const { platform: p } = fx();
+    const envelope = await readEnvelope(p.attestation);
+    const attestation = await writeEnvelope(join(scratch, "corrupted.intoto.jsonl"), {
+      ...envelope,
+      signatures: envelope.signatures.map((entry) => ({ ...entry, sig: corruptedSignature() })),
+    });
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation signature does not verify against the public key"],
+    );
+  });
+
+  test("una attestation con el payload corrupto no verifica", async () => {
+    const { keys: k, platform: p } = fx();
+    const envelope = await readEnvelope(p.attestation);
+    const payload = encodeUtf8("esto no es un statement");
+    const sig = signBytes(k.key, dssePae(envelope.payloadType, payload), scratch);
+    const attestation = await writeEnvelope(join(scratch, "corrupted-payload.intoto.jsonl"), {
+      ...envelope,
+      payload: toBase64(payload),
+      signatures: envelope.signatures.map((entry) => ({ ...entry, sig })),
+    });
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation payload could not be parsed"],
+    );
+  });
+
+  test("una attestation con otro tipo de statement no verifica", async () => {
+    const { keys: k, platform: p } = fx();
+    const envelope = resealStatement(
+      await readEnvelope(p.attestation),
+      (statement) => {
+        statement._type = "https://example.invalid/Statement/v1";
+      },
+      k.key,
+      scratch,
+    );
+    const attestation = await writeEnvelope(join(scratch, "other-statement-type.intoto.jsonl"), envelope);
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the statement type must be"],
+    );
+  });
+
+  test("una attestation con otro predicateType no verifica", async () => {
+    const { keys: k, platform: p } = fx();
+    const envelope = resealStatement(
+      await readEnvelope(p.attestation),
+      (statement) => {
+        statement.predicateType = "https://example.invalid/provenance/v1";
+      },
+      k.key,
+      scratch,
+    );
+    const attestation = await writeEnvelope(join(scratch, "other-predicate-type.intoto.jsonl"), envelope);
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the predicate type must be"],
+    );
+  });
+
+  test("una attestation que no describe el artefacto no verifica", async () => {
+    // La attestation firma el SBOM pero deja fuera el `.deb`: firma el
+    // inventario, no lo que el inventario describe.
+    const { keys: k, platform: p } = fx();
+    const envelope = resealStatement(
+      await readEnvelope(p.attestation),
+      (statement) => {
+        statement.subject = statement.subject.filter(
+          (subject) => !subject.name.endsWith(".deb"),
+        );
+      },
+      k.key,
+      scratch,
+    );
+    const attestation = await writeEnvelope(join(scratch, "uncovered-artifact.intoto.jsonl"), envelope);
+    rejects(
+      [...without(baseArgs(), "--attestation"), "--attestation", attestation],
+      ["the attestation does not describe the artifact"],
+    );
+  });
+
+  test("una attestation construida por otro builder no verifica", () => {
+    rejects(
+      [...without(baseArgs(), "--builder-id"), "--builder-id", "https://example.invalid/builder"],
+      ["and the expected builder is"],
+    );
+  });
+
+  test("una attestation que viene de otro sitio no verifica", () => {
+    rejects(
+      [...without(baseArgs(), "--source"), "--source", "otra-release"],
+      ["and the expected source is"],
+    );
+  });
+
+  // --- la provenance --------------------------------------------------------
+
+  test("una release sin provenance en claro no verifica", () => {
+    // Las attestations están y son válidas, pero la provenance que se
+    // publica no existe: la release publicaría una verdad firmada y
+    // ninguna en claro.
+    rejects([...without(baseArgs(), "--provenance"), "--require-provenance"], [
+      "there is no provenance",
+    ]);
+  });
+
+  test("una provenance que no se puede leer no verifica", () => {
+    rejects(
+      [
+        ...without(baseArgs(), "--provenance"),
+        "--provenance",
+        join(scratch, "ghost.provenance.json"),
+        "--require-provenance",
+      ],
+      ["the provenance could not be read"],
+    );
+  });
+
+  test("una provenance que no es un objeto no verifica", async () => {
+    const provenance = join(scratch, "provenance-array.json");
+    await writeFile(provenance, "[]\n", "utf8");
+    rejects(
+      [...without(baseArgs(), "--provenance"), "--provenance", provenance, "--require-provenance"],
+      ["is not a JSON object"],
+    );
+  });
+
+  test("una provenance con otro tipo de statement no verifica", async () => {
+    const { platform: p } = fx();
+    const statement = JSON.parse(await readFile(p.provenance, "utf8")) as IStatementJson;
+    statement._type = "https://example.invalid/Statement/v1";
+    const provenance = join(scratch, "other-statement.provenance.json");
+    await writeFile(provenance, `${JSON.stringify(statement, null, 2)}\n`, "utf8");
+    rejects(
+      [...without(baseArgs(), "--provenance"), "--provenance", provenance, "--require-provenance"],
+      ["and the statement type must be"],
+    );
+  });
+
+  // --- el arranque ---------------------------------------------------------
+
+  test("una release que exige el manifest del updater y no lo tiene no verifica", () => {
+    rejects([...baseArgs(), "--require-update-manifest"], [
+      "there is no update manifest",
+    ]);
+  });
+
+  test("un SBOM que no se puede leer no verifica", () => {
+    rejects(
+      [...without(baseArgs(), "--sbom"), "--sbom", join(scratch, "ghost.cdx.json")],
+      ["the SBOM could not be read", "the attestation does not describe any of the SBOMs"],
+    );
+  });
+
+  // --- el constructor del SBOM ----------------------------------------------
+  //
+  // El constructor es la otra mitad de la cadena: si él acepta un
+  // staging con secretos, o un artefacto que ha cambiado, el
+  // verificador recibe un documento que ya no describe lo que se
+  // publica. Por eso sus controles también están atados.
+
+  /** Una copia del staging, para romperlo sin romper el fixture. */
+  async function copyStage(name: string): Promise<string> {
+    const copy = join(scratch, name);
+    await cp(stage, copy, { recursive: true });
+    return copy;
+  }
+
+  /** Los argumentos de una construcción que tiene que salir bien. */
+  function buildArgs(
+    buildStage: string,
+    manifest: string,
+    extra: readonly string[] = [],
+  ): string[] {
+    const { keys: k } = fx();
+    return [
+      "run",
+      BUILD_SBOM,
+      "--stage",
+      buildStage,
+      "--manifest",
+      manifest,
+      "--key",
+      k.key,
+      "--sbom",
+      join(scratch, "built.cdx.json"),
+      "--provenance",
+      join(scratch, "built.provenance.json"),
+      "--attestation",
+      join(scratch, "built.intoto.jsonl"),
+      ...extra,
+    ];
+  }
+
+  /** Corre el constructor y exige que falle con el mensaje dado. */
+  function refuses(args: readonly string[], expected: string | readonly string[]): IResult {
+    const result = run("bun", args);
+    expect(result.status, result.output).toBe(1);
+    for (const message of typeof expected === "string" ? [expected] : expected) {
+      expect(result.output, `the builder does not say "${message}"`).toContain(message);
+    }
+    return result;
+  }
+
+  test("el constructor no acepta un staging con un secreto", async () => {
+    const buildStage = await copyStage("stage-with-secret");
+    await writeFile(join(buildStage, "linux", "x64", "server.key"), "un secreto\n", "utf8");
+    const { platform: p } = fx();
+    refuses(buildArgs(buildStage, p.manifest), ["must never be published"]);
+  });
+
+  test("el constructor no acepta un artefacto que ha cambiado", async () => {
+    const buildStage = await copyStage("stage-changed");
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    const artifact = manifest.artifacts[0];
+    if (artifact === undefined) throw new Error("the manifest describes nothing");
+    await writeFile(join(buildStage, artifact.path), "otro contenido\n", "utf8");
+    refuses(
+      buildArgs(buildStage, p.manifest),
+      "does not match the release manifest digest",
+    );
+  });
+
+  test("el constructor no acepta un manifest que no describe artefactos", async () => {
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    manifest.artifacts = [];
+    const path = join(scratch, "no-artifacts.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    refuses(buildArgs(stage, path), "The release manifest describes no artifact");
+  });
+
+  test("el constructor no acepta un manifest sin versión", async () => {
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    delete (manifest as { version?: string }).version;
+    const path = join(scratch, "no-version.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    refuses(buildArgs(stage, path), "Could not determine the version of the release");
+  });
+
+  test("el constructor no acepta un manifest de varias plataformas", async () => {
+    const { platform: p } = fx();
+    const manifest = await readManifest(p.manifest);
+    const artifact = manifest.artifacts[0];
+    if (artifact === undefined) throw new Error("the manifest describes nothing");
+    manifest.artifacts.push({ ...artifact, os: "windows", path: "windows/x64/msi/other.msi" });
+    const path = join(scratch, "many-platforms.json");
+    await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+    refuses(buildArgs(stage, path), "an SBOM describes one platform");
+  });
+
+  test("el constructor no acepta un sistema que no conoce", () => {
+    const { platform: p } = fx();
+    refuses(buildArgs(stage, p.manifest, ["--os", "plan9"]), 'Unknown os "plan9"');
+  });
+
+  test("el constructor no construye sin clave", () => {
+    const { platform: p } = fx();
+    const args = buildArgs(stage, p.manifest);
+    const index = args.indexOf("--key");
+    args.splice(index, 2);
+    refuses(args, "No attestation key");
+  });
+
+  test("el constructor no firma con algo que no es una clave", async () => {
+    const { platform: p } = fx();
+    const notAKey = join(scratch, "not-a-key.pem");
+    await writeFile(notAKey, "esto no es una clave\n", "utf8");
+    const args = buildArgs(stage, p.manifest);
+    const index = args.indexOf("--key");
+    args.splice(index, 2, "--key", notAKey);
+    refuses(args, "openssl could not sign the attestation");
+  });
+
+  test("el constructor no lee un manifest que no existe", () => {
+    refuses(
+      buildArgs(stage, join(scratch, "ghost-manifest.json")),
+      "Could not read the release manifest",
+    );
+  });
+
+  test("el constructor no construye sin el manifest de la release", () => {
+    // Sin manifest no hay artefactos que medir: el constructor no
+    // tiene nada que describir, y un SBOM sin artefactos no describe
+    // el producto.
+    const { keys: k } = fx();
+    const result = run("bun", [
+      "run",
+      BUILD_SBOM,
+      "--stage",
+      stage,
+      "--key",
+      k.key,
+      "--sbom",
+      join(scratch, "no-manifest.cdx.json"),
+      "--provenance",
+      join(scratch, "no-manifest.provenance.json"),
+      "--attestation",
+      join(scratch, "no-manifest.intoto.jsonl"),
+    ]);
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("`--manifest` is required");
+  });
+
+  test("el constructor exige el staging", () => {
+    // Sin staging no hay nada que medir: el constructor no puede
+    // describir un producto que no ha visto.
+    const { keys: k, platform: p } = fx();
+    const result = run("bun", [
+      "run",
+      BUILD_SBOM,
+      "--manifest",
+      p.manifest,
+      "--key",
+      k.key,
+      "--sbom",
+      join(scratch, "no-stage.cdx.json"),
+      "--provenance",
+      join(scratch, "no-stage.provenance.json"),
+      "--attestation",
+      join(scratch, "no-stage.intoto.jsonl"),
+    ]);
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("`--stage` is required");
+  });
+
+  // --- los controles que dependen del entorno y del repo ------------------
+  //
+  // Estos no se pueden provocar con el fixture: hace falta que
+  // `openssl` no esté, o que el repo esté roto. Los dos se hacen sin
+  // tocar el repo de verdad: sin `openssl` en el `PATH`, y con una raíz
+  // de repo falsa —las mismas fuentes, en otro sitio—.
+
+  test("el verificador no puede comprobar la firma sin openssl", () => {
+    // Sin `openssl` la firma no se puede ni comprobar. Una attestation
+    // cuya firma nadie ha comprobado es una afirmación sin prueba: el
+    // verificador tiene que decirlo y parar.
+    const empty = join(scratch, "empty-bin");
+    const result = run(BUN, baseArgs(), { ...process.env, PATH: empty });
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("the attestation signature could not be checked");
+  });
+
+  test("el verificador no puede cubrir las dependencias del escritorio si no las puede leer", async () => {
+    // Las dependencias del escritorio salen del `Cargo.toml` del repo.
+    // Si no se puede leer, el verificador no puede decir qué lleva el
+    // binario: un SBOM sin la cobertura de las crates describe un
+    // producto que no existe.
+    const root = await fakeRepo(scratch, "fake-root-no-desktop", ["verify-sbom.mjs"]);
+    // Un `Cargo.toml` que es un directorio: leerlo falla con EISDIR.
+    await mkdir(join(root, "packages", "desktop", "Cargo.toml"), { recursive: true });
+    const args = baseArgs();
+    args[1] = join(root, "scripts", "release", "verify-sbom.mjs");
+    const result = run("bun", args);
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("the desktop dependencies could not be read");
+  });
+
+  test("el constructor no construye sin las dependencias de runtime", async () => {
+    // El grafo de Bun sale del `bun.lock`. Si no tiene las raíces de
+    // runtime, el sidecar saldría vacío: el SBOM describiría un
+    // producto sin nada dentro.
+    const root = await fakeRepo(scratch, "fake-root-no-bun", ["build-sbom.mjs"]);
+    await mkdir(join(root, "packages", "desktop"), { recursive: true });
+    await copyFile(
+      join(REPO_ROOT, "packages", "desktop", "Cargo.lock"),
+      join(root, "packages", "desktop", "Cargo.lock"),
+    );
+    await copyFile(
+      join(REPO_ROOT, "packages", "desktop", "Cargo.toml"),
+      join(root, "packages", "desktop", "Cargo.toml"),
+    );
+    // Un `bun.lock` que no declara ninguna dependencia.
+    await writeFile(join(root, "bun.lock"), '{"packages":{}}\n', "utf8");
+    const { keys: k, platform: p } = fx();
+    const result = run("bun", [
+      "run",
+      join(root, "scripts", "release", "build-sbom.mjs"),
+      "--stage",
+      stage,
+      "--manifest",
+      p.manifest,
+      "--key",
+      k.key,
+      "--sbom",
+      join(scratch, "fake-bun.cdx.json"),
+      "--provenance",
+      join(scratch, "fake-bun.provenance.json"),
+      "--attestation",
+      join(scratch, "fake-bun.intoto.jsonl"),
+    ]);
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("None of the runtime dependencies are in bun.lock");
+  });
+
+  test("el constructor no firma sin openssl", () => {
+    const { keys: k, platform: p } = fx();
+    const empty = join(scratch, "empty-bin");
+    const result = run(
+      BUN,
+      [
+        "run",
+        BUILD_SBOM,
+        "--stage",
+        stage,
+        "--manifest",
+        p.manifest,
+        "--key",
+        k.key,
+        "--sbom",
+        join(scratch, "no-openssl.cdx.json"),
+        "--provenance",
+        join(scratch, "no-openssl.provenance.json"),
+        "--attestation",
+        join(scratch, "no-openssl.intoto.jsonl"),
+      ],
+      { ...process.env, PATH: empty },
+    );
+    expect(result.status, result.output).toBe(1);
+    expect(result.output).toContain("openssl is not available");
+  });
+});
+
