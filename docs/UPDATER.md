@@ -216,7 +216,7 @@ atacante controla**:
 - Con los dos desajustes como evento de seguridad, el mismo truncamiento
   deja la misma huella que un instalador de otro tamaño.
 
-La regla que se sigue: **la clasificación de un aborted no puede
+La regla que se sigue: **la clasificación de un aborto no puede
 depender de lo que hizo el atacante**. Por eso el tamaño y el hash son
 los dos eventos de seguridad del instalador. La lista vive en
 [updater.constant.ts](../packages/contracts/constants/release/updater.constant.ts)
