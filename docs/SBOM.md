@@ -222,6 +222,74 @@ digests**, en el `builder.id` y en el **commit**. Si alguien edita el
 `.provenance.json` en claro —para cambiar el commit, el builder o un
 digest— la release no sale.
 
+### Los controles de la cadena y las pruebas que los atan
+
+Un control de seguridad vale lo que vale su prueba. Si el verificador
+deja de comprobar la firma y la suite sigue verde, el control no
+existe: lo único que dice es que nadie lo ha mirado.
+
+Por eso **cada** control de `verify-sbom.mjs`, de `build-sbom.mjs` y
+de `publish-gate.mjs` tiene una prueba que parte de la salida real del
+constructor —el staging, el SBOM, la provenance y la attestation de
+verdad— y lo rompe por un solo camino. Las pruebas viven en
+`tests/release/sbom.spec.ts`: la sección «cada control del verificador
+del SBOM está atado a una prueba» las recorre una a una, y la sección
+«la release entera» ata los que sólo se pueden comprobar con los
+cuatro SBOM de la release.
+
+La regla que se aplica es sencilla: **la guarda tiene que caer cuando
+se borra el control**. Para comprobarlo, el control se neutraliza —y se
+mira si la prueba que lo ata se pone roja— de una de estas tres formas,
+según cómo esté escrito:
+
+| Cómo está escrito el control | Cómo se neutraliza |
+| --- | --- |
+| `requireThat(condición, mensaje)` | La condición pasa a `true`: el control ya no comprueba nada. |
+| `problems.push(mensaje)` | La sentencia desaparece: el problema deja de existir. |
+| `throw new ReleaseError(mensaje)` | La sentencia se vuelve `void 0`: el script ya no se niega a seguir. |
+
+Un control que se puede borrar sin que nada se rompa no está atado: la
+prueba que lo ata tiene que ponerse roja.
+
+#### Cómo se rompe el fixture por un solo camino
+
+Un SBOM editado cambia su digest, y entonces la attestation deja de
+describirlo: el único fallo sería «la attestation es de otra build» y
+el control que se quiere probar no se vería nunca. Por eso las
+mutaciones **vuelven a firmar** la attestation con la clave del
+fixture —que nace y muere con el test, en un directorio temporal— para
+que el enlace siga en pie y el único problema sea el de la mutación.
+
+#### Los controles que dependen del entorno
+
+Dos controles no se pueden provocar con el fixture: hacen falta el repo
+roto o `openssl` ausente. Los dos se provocan sin tocar el repo:
+
+- **Una raíz de repo falsa**: el ayudante de raíz busca
+  `package.json` y `delendai.config.json` subiendo desde el propio
+  script, así que una copia de las fuentes con esos dos marcadores
+  **es** un repo. En la copia, el `Cargo.toml` del escritorio puede ser
+  un directorio —que no se puede leer—, o el `bun.lock` puede no
+  declarar ninguna dependencia de runtime.
+- **Un `PATH` sin `openssl`**: la firma no se puede ni comprobar. El
+  verificador tiene que decirlo y parar, no seguir como si la
+  attestation estuviese firmada.
+
+#### Los controles que no tienen prueba
+
+| Control | Por qué no |
+| --- | --- |
+| `the SBOM could not be read` (la segunda lectura) | El SBOM ya se ha leído y parseado; que la segunda lectura falle exige una carrera. |
+| `there is no SBOM to verify` | Es defensivo: para llegar a él el SBOM tiene que haber fallado antes, y entonces ya hay un problema que se reporta. |
+
+Y dos más que la **semántica de los patrones de publicación** hace
+inalcanzables: que el gate adjunte dos `release-manifest.json` —el
+mergeado y uno por plataforma—, y que adjunte un manifest que no sea
+el mergeado. Los patrones de publicación sólo hacen que un
+`release-manifest.json` —el mergeado— llegue a la lista, así que los
+dos casos no se pueden construir. El control existe; lo que no se puede
+es provocarlo.
+
 ---
 
 ## La clave de attestation

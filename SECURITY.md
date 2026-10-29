@@ -113,6 +113,11 @@ no existe.
   acompaña a la release: sin él, la firma no se puede verificar.
 - **La attestation**: Ed25519 sobre el PAE de DSSE, con la clave
   versionada. Es lo que ata la provenance al SBOM y a los artefactos.
+- **Cada control de la cadena tiene una prueba que lo ata**: si el
+  verificador deja de comprobar la firma, el `keyid` o la cobertura de
+  los artefactos, la suite se pone roja. `docs/SBOM.md` explica cómo se
+  rompe el fixture por un solo camino, y qué controles no tienen prueba
+  y por qué.
 
 ### 2.4. El updater
 
