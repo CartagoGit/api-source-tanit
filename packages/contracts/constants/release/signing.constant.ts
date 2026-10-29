@@ -101,11 +101,14 @@ export const RELEASE_PUBLISH_PATTERNS: readonly string[] = [
   "**/*.cdx.json",
   "**/*.provenance.json",
   "**/*.intoto.jsonl",
-  // Las claves **públicas** sí se publican: son lo que permite a un
-  // tercero verificar la attestation sin credenciales. Las privadas
-  // nunca llegan al staging, y `build-sbom.mjs` para la release si las
-  // encuentra.
-  "**/*.pub.pem",
+  // La clave pública de la attestation **no** viene de aquí: la
+  // versiona el repositorio y la adjunta el gate **por su ruta**
+  // (`SBOM_ATTESTATION_PUBLIC_KEY_PATH`). Un glob que la buscara en el
+  // staging tendría dos problemas: cuatro copias por plataforma
+  // subirían con el mismo `basename` y la última pisaría a las demás, y
+  // una copia del staging que el manifest no describe sería un asset
+  // que nadie ha auditado. Con una sola clave —la versionada— el gate
+  // no puede adjuntar la equivocada.
 ];
 
 /**

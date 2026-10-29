@@ -198,26 +198,21 @@ async function main() {
   // pasa a ser una afirmación sin prueba.
   //
   // No vive en el staging: la versiona el repositorio, en el tag de la
-  // release, así que se adjunta desde el repo y lo que la describe es el
-  // propio repositorio. Si el fichero no está, la release no sale: una
+  // release, así que se adjunta **por su ruta** y lo que la describe es
+  // el propio repositorio. Por eso no hay un glob que la busque en el
+  // staging: una copia —o cuatro, una por plataforma— subiría con el
+  // mismo `basename` y la última pisaría a las demás, y además el
+  // manifest no la describe, así que sería un asset que nadie ha
+  // auditado. Si el fichero no está, la release no sale: una
   // attestation sin clave pública publicada no se puede auditar.
   const publicKeyPath = SBOM_ATTESTATION_PUBLIC_KEY_PATH;
   const publicKeyAbsolute = join(REPO_ROOT, publicKeyPath);
-  const publicKeyExists = existsSync(publicKeyAbsolute);
-  if (!publicKeyExists) {
+  if (!existsSync(publicKeyAbsolute)) {
     problems.push(
       `the versioned public key of the attestation is missing: ${publicKeyPath}`,
     );
   }
-  // Si el staging ya trae la clave —porque alguien la copió—, se
-  // publica esa: dos ficheros con el mismo nombre se pisan al subirlos.
-  const publicKeyInStaging = published.some(
-    (file) => baseName(file) === baseName(publicKeyPath),
-  );
-  const attached = [
-    ...published,
-    ...(publicKeyExists && !publicKeyInStaging ? [publicKeyPath] : []),
-  ];
+  const attached = [...published, publicKeyPath];
 
   if (published.length === 0) {
     problems.push("the staging holds nothing that the release would attach");
@@ -298,9 +293,6 @@ async function main() {
       problems.push(`${file}: the release attaches it, but the manifest does not describe it`);
     }
   }
-  // La clave pública la describe el repositorio, no el manifest: es un
-  // fichero versionado, y lo que lo ata a la release es el tag.
-  described.add(publicKeyPath);
 
   // --- la transparencia de la cadena de suministro --------------------------
   //

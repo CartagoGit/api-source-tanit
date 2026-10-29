@@ -234,6 +234,16 @@ y sólo una se publica:
 | **La privada** | El secreto `TANIT_ATTESTATION_KEY` de GitHub | Firma la attestation en el runner. No sale de él: el script la pide **por ruta**, la escribe en un fichero temporal con permisos cerrados y la borra al terminar. |
 | **La pública** | [`packages/desktop/keys/tanit-release-attestation-v1.pub.pem`](../packages/desktop/keys/tanit-release-attestation-v1.pub.pem), versionada **y adjunta a cada release** | Lo que verifica la attestation. Sin ella, quien descarga la release no tiene con qué comprobarla. |
 
+La clave pública se adjunta **por su ruta**, no por un patrón: el gate
+de publicación (`scripts/release/publish-gate.mjs`) la toma del
+repositorio —de donde la versiona el tag de la release— y la añade a la
+lista de assets que sube la acción de la release. No se busca en el
+staging con un glob, y a propósito: una copia en el staging subiría con
+el mismo nombre que la versionada y la pisaría al adjuntarse —cuatro
+copias por plataforma, cuatro veces el mismo `basename`—, y además el
+manifest no la describe, así que sería un asset que nadie ha auditado.
+La clave que se publica es la versionada, y sólo esa.
+
 El identificador de la clave es `tanit-release-attestation-v1`, y es el
 `keyid` que lleva cada envelope DSSE. No es la clave GPG de la release
 —esa firma los `SHA256SUMS` de Linux— ni la del updater —esa firma el

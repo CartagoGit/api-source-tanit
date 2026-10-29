@@ -251,6 +251,11 @@ identificador, y el identificador dice qué firma:
   la puede verificar un tercero, porque el secreto del CI no se publica.
   La CI falla cerrada si el secreto no corresponde a la pública
   versionada.
+- La pública de la attestation se adjunta a la release **por su ruta**,
+  desde el repositorio, y no por un patrón que la buscase en el
+  staging: una copia del staging subiría con el mismo nombre y la
+  pisaría, y el manifest no la describe. La que se publica es la
+  versionada, y sólo esa.
 - Para cifrar el reporte o para verificar la firma de un comunicado se
   usa la **clave GPG de la release**: su huella está en el keyring
   público que acompaña a cada release. La clave **no** firma el reporte
