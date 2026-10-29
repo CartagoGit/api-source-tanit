@@ -30,6 +30,20 @@
  * contract; the registry is what fulfills it — and a test compares
  * the two so neither can drift.
  *
+ * ## Every entry passes through the same door
+ *
+ * Registration is the only way into the registry, and registration
+ * checks that the inferrer's `framework` is the one the catalog
+ * declares for its id. That check used to cover the four legacy
+ * inferrers only: the six core ones were written as a literal array
+ * of entries and never met it.
+ *
+ * Now the core six are registered the same way — through factories,
+ * at module load — so the catalog and the implementations are checked
+ * for all **ten**. An inferrer that declares the wrong framework
+ * fails at load time instead of sitting in the registry where nobody
+ * would ever select it.
+ *
  * ## One inferrer per framework
  *
  * The registry is keyed by framework slug. A second inferrer for the
@@ -59,43 +73,28 @@ import { LaravelResourcesResponseInferrer } from "../response-inference/laravel-
 import { RailsRenderResponseInferrer } from "../response-inference/rails-render.helper.js";
 
 /**
- * The inferrers the core ships.
+ * The inferrers the core ships — as **factories**, not as entries.
  *
- * Declared as a list (not a map) so the order is the order they were
- * added, and so a test can assert the exact set without depending on
- * a hash order.
+ * A factory, not an instance, because an instance has to be
+ * *registered* to be part of the registry, and registration is what
+ * validates it: `registerResponseInferrer` refuses an inferrer whose
+ * `framework` disagrees with the catalog. A literal array of entries
+ * bypassed that door — the six core inferrers were checked by
+ * nobody, and a helper that declared the wrong framework compiled,
+ * loaded and sat in the registry undetected.
+ *
+ * The order is the order they were added, and a test can assert the
+ * exact set without depending on a hash order.
  */
-const CORE_INFERRERS: ReadonlyArray<IResponseInferrerEntry> = [
-  {
-    id: "fastify",
-    framework: RESPONSE_INFERRER_FRAMEWORKS.fastify,
-    inferrer: new FastifyResponseInferrer(),
-  },
-  {
-    id: "express",
-    framework: RESPONSE_INFERRER_FRAMEWORKS.express,
-    inferrer: new ExpressResponseInferrer(),
-  },
-  {
-    id: "laravel-resources",
-    framework: RESPONSE_INFERRER_FRAMEWORKS["laravel-resources"],
-    inferrer: new LaravelResourcesResponseInferrer(),
-  },
-  {
-    id: "gin",
-    framework: RESPONSE_INFERRER_FRAMEWORKS.gin,
-    inferrer: new GinResponseInferrer(),
-  },
-  {
-    id: "rails-render",
-    framework: RESPONSE_INFERRER_FRAMEWORKS["rails-render"],
-    inferrer: new RailsRenderResponseInferrer(),
-  },
-  {
-    id: "ktor-respond",
-    framework: RESPONSE_INFERRER_FRAMEWORKS["ktor-respond"],
-    inferrer: new KtorRespondResponseInferrer(),
-  },
+const CORE_INFERRER_FACTORIES: ReadonlyArray<
+  readonly [ResponseInferrerId, () => IResponseInferrer]
+> = [
+  ["fastify", () => new FastifyResponseInferrer()],
+  ["express", () => new ExpressResponseInferrer()],
+  ["laravel-resources", () => new LaravelResourcesResponseInferrer()],
+  ["gin", () => new GinResponseInferrer()],
+  ["rails-render", () => new RailsRenderResponseInferrer()],
+  ["ktor-respond", () => new KtorRespondResponseInferrer()],
 ];
 
 /** Framework slug → inferrer id. Derived from the catalog, never hand-written. */
@@ -108,8 +107,13 @@ const ID_BY_FRAMEWORK: ReadonlyMap<string, ResponseInferrerId> = new Map(
  *
  * Mutable on purpose — it is the composition point of the feature —
  * but every read goes through a function that returns a frozen copy.
+ *
+ * It starts **empty**: the core inferrers are registered below, through
+ * the same door the frameworks side uses, so the catalog and the
+ * implementations are checked for all ten entries and not only for
+ * the four legacy ones.
  */
-let entries: IResponseInferrerEntry[] = [...CORE_INFERRERS];
+let entries: IResponseInferrerEntry[] = [];
 
 /**
  * Registers an inferrer under its id.
@@ -136,6 +140,25 @@ export function registerResponseInferrer(
   );
   entries.push({ id, framework: inferrer.framework, inferrer });
 }
+
+/**
+ * Registers the inferrers the core ships.
+ *
+ * They go through `registerResponseInferrer` — the same door the
+ * frameworks side uses — so the agreement between the catalog and the
+ * implementations is checked for the core six too. A helper that
+ * declares the wrong framework now fails **at load time**, loudly,
+ * instead of sitting in the registry where nobody would ever select
+ * it.
+ */
+function registerCoreInferrers(): void {
+  for (const [id, factory] of CORE_INFERRER_FACTORIES) {
+    registerResponseInferrer(id, factory());
+  }
+}
+
+/* The bootstrap: the core six are part of the registry from the start. */
+registerCoreInferrers();
 
 /**
  * The entries currently registered, in registration order.
@@ -205,9 +228,13 @@ export function __setResponseInferrersForTest(
  * Restores the registry to the state production has — the six core
  * inferrers and nothing else. Test-only counterpart of
  * `__setResponseInferrersForTest`.
+ *
+ * They are registered again, through the same door, so the reset
+ * cannot hand back a registry the production code would refuse.
  */
 export function __resetResponseInferrersForTest(): void {
-  entries = [...CORE_INFERRERS];
+  entries = [];
+  registerCoreInferrers();
 }
 
 /**

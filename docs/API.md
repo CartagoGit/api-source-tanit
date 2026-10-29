@@ -4237,6 +4237,9 @@ Restores the registry to the state production has — the six core
 inferrers and nothing else. Test-only counterpart of
 `__setResponseInferrersForTest`.
 
+They are registered again, through the same door, so the reset
+cannot hand back a registry the production code would refuse.
+
 #### `adaptLegacyResponseInferrer`
 
 ```ts

@@ -5,11 +5,21 @@
  *
  * 1. **The arithmetic** — what the reporter says when a framework
  *    inferred some of its operations, all of them, or none.
- * 2. **The baseline** — the percentage each of the six new inferrers
- *    reaches on its reference fixture. The numbers are frozen in
+ * 2. **The baseline** — the percentage each measured inferrer reaches
+ *    on its reference fixture. The numbers are frozen in
  *    `RESPONSE_INFERENCE_COVERAGE_BASELINE`, and this spec measures
  *    them again: if an inferrer starts resolving fewer of its own
  *    fixture's routes, the test fails.
+ *
+ * ## Who is measured
+ *
+ * The **six** inferrers this slice delivers, plus the legacy NestJS
+ * one — the only inferrer that predates the slice and still has a
+ * reference fixture and a baseline (`nestjs: 100`). It is measured
+ * through the product's own adapter
+ * (`adaptLegacyResponseInferrer`), so what the spec pins is what the
+ * dispatcher runs; the double that carries it across the section
+ * boundary lives in `tests/helpers/response-inference-legacy.helper.ts`.
  *
  * The routes of each fixture are written down in
  * `tests/helpers/response-inference-routes.helper.ts`, and
@@ -37,10 +47,18 @@ import { KtorRespondResponseInferrer } from "../../packages/core/response-infere
 import { LaravelResourcesResponseInferrer } from "../../packages/core/response-inference/laravel-resources.helper.js";
 import { RailsRenderResponseInferrer } from "../../packages/core/response-inference/rails-render.helper.js";
 import { REFERENCE_ROUTES } from "../helpers/response-inference-routes.helper.js";
+import { nestjsResponseInferrer } from "../helpers/response-inference-legacy.helper.js";
 import { contextOf, routeOf } from "./response-inference.helper.js";
 
-/** The inferrers this slice delivers, with the file they read. */
-const NEW_INFERRERS: ReadonlyArray<{
+/**
+ * Every inferrer whose baseline is measured here, with the file it
+ * reads.
+ *
+ * Six from this slice, plus the legacy NestJS one: a baseline nobody
+ * measures is a baseline nobody can trust, and `nestjs: 100` was
+ * declared and documented without a single test behind it.
+ */
+const MEASURED_INFERRERS: ReadonlyArray<{
   readonly id: (typeof RESPONSE_INFERRER_IDS)[number];
   readonly fixture: string;
   readonly source: string;
@@ -81,6 +99,12 @@ const NEW_INFERRERS: ReadonlyArray<{
     fixture: "rails-render",
     source: "config/routes.rb",
     inferrer: new RailsRenderResponseInferrer(),
+  },
+  {
+    id: "nestjs",
+    fixture: "nestjs-response-inference",
+    source: "src/users.controller.ts",
+    inferrer: nestjsResponseInferrer,
   },
 ];
 
@@ -171,7 +195,7 @@ describe("coverage reporter — the frozen baseline (r00020 S3)", () => {
     }
   });
 
-  test.each(NEW_INFERRERS.map((c) => [c.id, c] as const))(
+  test.each(MEASURED_INFERRERS.map((c) => [c.id, c] as const))(
     "%s reaches its documented baseline on its reference fixture",
     (_id, entry) => {
       const routes = REFERENCE_ROUTES[entry.id] ?? [];
@@ -201,17 +225,27 @@ describe("coverage reporter — the frozen baseline (r00020 S3)", () => {
     },
   );
 
+  test("every inferrer with a baseline is measured here", () => {
+    const measured = new Set(MEASURED_INFERRERS.map((entry) => entry.id));
+    for (const id of RESPONSE_INFERRER_IDS) {
+      if (RESPONSE_INFERENCE_COVERAGE_BASELINE[id] === null) continue;
+      expect(
+        measured.has(id),
+        `${id} has a baseline but nobody measures it`,
+      ).toBe(true);
+    }
+  });
+
   test("the measured counters describe the same frameworks the reporter knows", () => {
-    const counters: ReadonlyArray<IResponseFrameworkCoverage> = NEW_INFERRERS.map(
-      (entry) => ({
+    const counters: ReadonlyArray<IResponseFrameworkCoverage> =
+      MEASURED_INFERRERS.map((entry) => ({
         framework: entry.inferrer.framework,
         id: entry.id,
         total: (REFERENCE_ROUTES[entry.id] ?? []).length,
         inferred: (REFERENCE_ROUTES[entry.id] ?? []).length,
-      }),
-    );
+      }));
     const report = buildCoverageReport(counters);
-    expect(report.entries).toHaveLength(NEW_INFERRERS.length);
+    expect(report.entries).toHaveLength(MEASURED_INFERRERS.length);
     for (const row of report.entries) {
       expect(row.belowBaseline).toBe(false);
     }

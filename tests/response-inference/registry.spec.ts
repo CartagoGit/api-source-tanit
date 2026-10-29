@@ -58,6 +58,48 @@ describe("response-inference registry (r00020 S3)", () => {
     ]);
   });
 
+  test("every entry agrees with the inferrer it holds", () => {
+    __resetResponseInferrersForTest();
+    for (const entry of listResponseInferrerEntries()) {
+      // The framework the registry selects with and the framework the
+      // inferrer declares are two statements about the same thing: if
+      // they drift, the inferrer is registered under a slug nobody
+      // will ever ask it about.
+      expect(
+        entry.framework,
+        `${entry.id} is registered under a framework its inferrer does not declare`,
+      ).toBe(entry.inferrer.framework);
+      expect(
+        entry.framework,
+        `${entry.id} does not serve the framework the catalog declares`,
+      ).toBe(RESPONSE_INFERRER_FRAMEWORKS[entry.id]);
+    }
+  });
+
+  test("the catalog gives every inferrer a framework of its own", () => {
+    const frameworks = RESPONSE_INFERRER_IDS.map(
+      (id) => RESPONSE_INFERRER_FRAMEWORKS[id],
+    );
+    expect(
+      new Set(frameworks).size,
+      "two inferrers share a framework: one of them would never be selected",
+    ).toBe(RESPONSE_INFERRER_IDS.length);
+  });
+
+  test("the ten registered inferrers serve ten different frameworks", () => {
+    __resetResponseInferrersForTest();
+    for (const framework of ["springboot", "nestjs", "fastapi", "aspnet"]) {
+      registerLegacyResponseInferrer(legacyStub(framework));
+    }
+    const entries = listResponseInferrerEntries();
+    expect(entries).toHaveLength(10);
+    const frameworks = entries.map((e) => e.framework);
+    expect(new Set(frameworks).size, "two entries share a framework").toBe(10);
+    for (const entry of entries) {
+      expect(entry.framework).toBe(entry.inferrer.framework);
+    }
+  });
+
   test("selectInferrer finds the inferrer of a framework", () => {
     __resetResponseInferrersForTest();
     const inferrer = selectInferrer("fastify");
