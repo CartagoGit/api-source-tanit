@@ -31,6 +31,11 @@
  *   7. **Provenance**. Que el statement sea SLSA y que diga el origen
  *      que se espera: una attestation de otra build no es una
  *      attestation.
+ *   8. **Provenance publicada**. Que el statement **en claro** que se
+ *      publica sea el mismo que el **firmado**: el `predicateType`, los
+ *      sujetos con sus digests, el builder y el commit. Sin esto, la
+ *      release publica dos versiones de la verdad, y sólo una está
+ *      firmada.
  *
  * ## Por qué acepta varios SBOM
  *
@@ -104,6 +109,7 @@ function parseArgs(argv) {
   const args = {
     sbom: [],
     attestation: [],
+    provenance: [],
     stage: undefined,
     manifest: undefined,
     updateManifest: undefined,
@@ -113,6 +119,7 @@ function parseArgs(argv) {
     source: undefined,
     commit: undefined,
     requireUpdateManifest: false,
+    requireProvenance: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -126,6 +133,7 @@ function parseArgs(argv) {
     switch (arg) {
       case "--sbom": args.sbom.push(next()); break;
       case "--attestation": args.attestation.push(next()); break;
+      case "--provenance": args.provenance.push(next()); break;
       case "--stage": args.stage = next(); break;
       case "--manifest": args.manifest = next(); break;
       case "--update-manifest": args.updateManifest = next(); break;
@@ -135,6 +143,7 @@ function parseArgs(argv) {
       case "--source": args.source = next(); break;
       case "--commit": args.commit = next(); break;
       case "--require-update-manifest": args.requireUpdateManifest = true; break;
+      case "--require-provenance": args.requireProvenance = true; break;
       case "--help":
       case "-h": args.help = true; break;
       default:
@@ -152,6 +161,7 @@ function usage() {
       "",
       "  --sbom <file>                SBOM to verify (repeatable)",
       "  --attestation <file>         attestation to verify (repeatable)",
+      "  --provenance <file>          published provenance to match against the attestation (repeatable)",
       "  --stage <dir>                staging directory, to recompute the hashes",
       "  --manifest <file>            release manifest (mutual validation with S2)",
       "  --update-manifest <file>     update manifest (mutual validation with S3)",
@@ -161,6 +171,7 @@ function usage() {
       "  --source <text>              provenance source expected",
       "  --commit <sha>               provenance commit expected",
       "  --require-update-manifest    fail when there is no update manifest to validate against",
+      "  --require-provenance         fail when an attestation has no published provenance",
     ].join("\n"),
   );
 }
@@ -633,7 +644,7 @@ async function validateAgainstUpdateManifest(union, updateManifestPath, releaseM
 async function validateAttestations(documents, attestationPaths, publicKeyPath, keyId, builderId, source, commit, stage) {
   if (attestationPaths.length === 0) {
     problems.push("there is no attestation: an unsigned release cannot be published");
-    return;
+    return [];
   }
 
   // El digest de cada SBOM **como fichero**: es lo que la attestation
@@ -651,6 +662,9 @@ async function validateAttestations(documents, attestationPaths, publicKeyPath, 
   }
 
   const covered = new Set();
+  // Los statements firmados, para poder contrastar la provenance
+  // publicada con lo que la firma really dice.
+  const statements = [];
 
   const scratch = await mkdtemp(join(tmpdir(), "tanit-verify-sbom-"));
   try {
@@ -734,6 +748,7 @@ async function validateAttestations(documents, attestationPaths, publicKeyPath, 
           statement?.predicateType === SBOM_PROVENANCE_PREDICATE_TYPE,
           `the predicate type must be "${SBOM_PROVENANCE_PREDICATE_TYPE}"`,
         );
+        statements.push({ path: attestationPath, statement });
 
         const subjects = Array.isArray(statement?.subject) ? statement.subject : [];
         const subjectDigests = new Set(
@@ -793,6 +808,130 @@ async function validateAttestations(documents, attestationPaths, publicKeyPath, 
   for (const entry of sbomDigests) {
     requireThat(covered.has(entry.path), `the SBOM ${entry.path} has no attestation`);
   }
+
+  return statements;
+}
+
+/**
+ * La provenance publicada, contrastada con el payload firmado.
+ *
+ * La provenance es el statement SLSA **en claro**: es lo que se lee, lo
+ * que se indexa y lo que un auditor compara sin herramientas. La
+ * attestation es el mismo statement dentro de un envelope firmado.
+ *
+ * Publicar los dos sin comprobar que dicen lo mismo es publicar dos
+ * versiones de la verdad: una firmada y otra en claro que un atacante
+ * puede editar sin que la firma se entere. Por eso el verificador
+ * exige que el statement en claro y el firmado coincidan en lo que
+ * importa —el `predicateType`, los sujetos con sus digests, el builder
+ * y el commit— y que cada attestation tenga su provenance.
+ */
+async function validateProvenance(provenancePaths, statements, requireProvenance) {
+  if (provenancePaths.length === 0) {
+    if (requireProvenance) {
+      problems.push(
+        "there is no provenance: the published statement in clear does not exist",
+      );
+    }
+    return;
+  }
+
+  const matched = new Set();
+
+  for (const provenancePath of provenancePaths) {
+    let statement;
+    try {
+      statement = JSON.parse(await readFile(provenancePath, "utf8"));
+    } catch (error) {
+      problems.push(`the provenance could not be read: ${error.message}`);
+      continue;
+    }
+    if (!isObject(statement)) {
+      problems.push(`the provenance ${provenancePath} is not a JSON object`);
+      continue;
+    }
+
+    requireThat(
+      statement._type === SBOM_STATEMENT_TYPE,
+      `the provenance ${provenancePath} says "${statement._type ?? "?"}" and the statement type must be ` +
+        `"${SBOM_STATEMENT_TYPE}"`,
+    );
+    requireThat(
+      statement.predicateType === SBOM_PROVENANCE_PREDICATE_TYPE,
+      `the provenance ${provenancePath} has the predicate type "${statement.predicateType ?? "?"}" and it must be ` +
+        `"${SBOM_PROVENANCE_PREDICATE_TYPE}"`,
+    );
+
+    // Los sujetos: los mismos nombres con los mismos digests.
+    const declared = subjectMap(statement);
+    const candidates = statements.filter(
+      (entry) => sameSubjects(subjectMap(entry.statement), declared),
+    );
+    if (candidates.length === 0) {
+      problems.push(
+        `the provenance ${provenancePath} does not correspond to any attestation of this release: ` +
+          "its subjects are not the ones that were signed",
+      );
+      continue;
+    }
+
+    for (const candidate of candidates) {
+      matched.add(candidate.path);
+      const signed = candidate.statement;
+      requireThat(
+        signed?.predicate?.runDetails?.builder?.id ===
+          statement?.predicate?.runDetails?.builder?.id,
+        `the provenance ${provenancePath} says it was built by ` +
+          `"${statement?.predicate?.runDetails?.builder?.id ?? "?"}" and the attestation says ` +
+          `"${signed?.predicate?.runDetails?.builder?.id ?? "?"}"`,
+      );
+      requireThat(
+        commitOf(signed) === commitOf(statement),
+        `the provenance ${provenancePath} says it was built from "${commitOf(statement) ?? "?"}" and the ` +
+          `attestation says "${commitOf(signed) ?? "?"}"`,
+      );
+    }
+  }
+
+  if (requireProvenance) {
+    for (const entry of statements) {
+      requireThat(
+        matched.has(entry.path),
+        `the attestation ${entry.path} has no provenance: the published statement in clear does not exist`,
+      );
+    }
+  }
+}
+
+/** Los sujetos de un statement, como nombre → digest. */
+function subjectMap(statement) {
+  const subjects = Array.isArray(statement?.subject) ? statement.subject : [];
+  const map = new Map();
+  for (const subject of subjects) {
+    const name = typeof subject?.name === "string" ? subject.name : "";
+    const digests = Object.entries(subject?.digest ?? {}).map(
+      ([algorithm, digest]) => `${algorithm}:${digest}`,
+    );
+    map.set(name, digests.sort().join(","));
+  }
+  return map;
+}
+
+/** ¿Los dos mapas de sujetos son el mismo? */
+function sameSubjects(left, right) {
+  if (left.size !== right.size) return false;
+  for (const [name, digests] of left) {
+    if (right.get(name) !== digests) return false;
+  }
+  return true;
+}
+
+/** El commit que dice el statement. */
+function commitOf(statement) {
+  return (
+    statement?.predicate?.buildDefinition?.externalParameters?.source?.digest?.sha1 ??
+    statement?.predicate?.buildDefinition?.resolvedDependencies?.[0]?.digest?.sha1
+  );
 }
 
 /** El punto de entrada. */
@@ -850,7 +989,7 @@ async function main() {
 
   const releaseManifest = await validateAgainstManifest(documents, union, manifestPath, stage);
   await validateAgainstUpdateManifest(union, updateManifestPath, releaseManifest);
-  await validateAttestations(
+  const statements = await validateAttestations(
     documents,
     attestationPaths,
     publicKeyPath,
@@ -859,6 +998,11 @@ async function main() {
     args.source,
     args.commit,
     stage,
+  );
+  await validateProvenance(
+    args.provenance.map((path) => resolve(REPO_ROOT, path)),
+    statements,
+    args.requireProvenance,
   );
 
   if (problems.length > 0) {

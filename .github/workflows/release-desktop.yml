@@ -619,6 +619,13 @@ jobs:
           while IFS= read -r attestation; do
             args+=(--attestation "${attestation}")
           done < <(find "${STAGE}" -type f -name '*.intoto.jsonl' | sort)
+          # La provenance **publicada** va con los otros: es el statement
+          # en claro, y tiene que ser el mismo que el firmado. Sin esta
+          # comprobación, publicar los dos es publicar dos versiones de
+          # la verdad, y sólo una está firmada.
+          while IFS= read -r provenance; do
+            args+=(--provenance "${provenance}")
+          done < <(find "${STAGE}" -type f -name '*.provenance.json' | sort)
 
           if [ "${#args[@]}" -eq 0 ]; then
             echo "✗ The staging holds no SBOM: the release cannot be published without one." >&2
@@ -631,6 +638,7 @@ jobs:
             --manifest "${STAGE}/${MANIFEST_NAME}" \
             --update-manifest "${RUNNER_TEMP}/updater/latest.json" \
             --require-update-manifest \
+            --require-provenance \
             --public-key "${public_key}" \
             --key-id "tanit-release-attestation-v1" \
             --source "release-desktop" \

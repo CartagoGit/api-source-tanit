@@ -209,6 +209,19 @@ Los *subjects* del statement son el **SBOM** y los **artefactos**. Por
 eso una attestation de otra build no sirve aquí: su subject es otro
 SBOM, con otro digest, y el verificador lo dice.
 
+### La provenance publicada se contrasta con la firmada
+
+La release publica **los dos**: el statement en claro
+(`.provenance.json`) y el mismo statement dentro del envelope firmado
+(`.intoto.jsonl`). Publicar los dos sin comprobar que dicen lo mismo
+es publicar dos versiones de la verdad, y sólo una está firmada.
+
+El verificador lo exige: la provenance publicada tiene que coincidir con
+el payload firmado en el `predicateType`, en los **sujetos con sus
+digests**, en el `builder.id` y en el **commit**. Si alguien edita el
+`.provenance.json` en claro —para cambiar el commit, el builder o un
+digest— la release no sale.
+
 ---
 
 ## La clave de attestation
