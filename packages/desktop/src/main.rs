@@ -45,7 +45,7 @@ mod sidecar;
 mod secure_storage;
 mod update_log;
 mod updater;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Child;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -162,6 +162,39 @@ fn update_log_path(app: &tauri::AppHandle) -> Option<PathBuf> {
     Some(directory.join(update_log::UPDATE_SECURITY_LOG))
 }
 
+/// Si este aborto tiene que quedar escrito en el log de seguridad.
+///
+/// La decisión está **separada** del efecto a propósito: es la regla
+/// que dice qué es un intento de sustitución y qué no lo es. Una
+/// regla que sólo se puede comprobar leyendo el código de la rama
+/// que la aplica no es una regla: es una intención.
+fn debe_persistir(failure: &UpdateFailure) -> bool {
+    failure.security_event
+}
+
+/// Escribe el evento de seguridad en la ruta que se le da.
+///
+/// La ruta se **inyecta** para que la función se pueda probar sin
+/// ventana, sin red y sin el directorio de logs de la app: lo que se
+/// prueba es que el evento **se escribe**, no que la plataforma tenga
+/// un directorio donde escribir.
+///
+/// Devuelve la línea que se escribió, para que el test pueda
+/// compararla con lo que hay en el fichero.
+fn persistir_evento(
+    path: &Path,
+    failure: &UpdateFailure,
+    contract: &UpdaterContract,
+) -> Result<String, String> {
+    let event = update_log::SecurityEvent {
+        code: failure.code.clone(),
+        message: failure.message.clone(),
+        version: contract.current_version.clone(),
+        endpoint: contract.endpoint.clone(),
+    };
+    update_log::record(path, &event)
+}
+
 /// Persiste un evento de seguridad del updater.
 ///
 /// Esto es el **consumidor** del evento: sin esta línea, el evento se
@@ -176,13 +209,7 @@ fn record_security_event(
     let Some(path) = update_log_path(app) else {
         return;
     };
-    let event = update_log::SecurityEvent {
-        code: failure.code.clone(),
-        message: failure.message.clone(),
-        version: contract.current_version.clone(),
-        endpoint: contract.endpoint.clone(),
-    };
-    if let Err(error) = update_log::record(&path, &event) {
+    if let Err(error) = persistir_evento(&path, failure, contract) {
         eprintln!("updater: the security event could not be written: {error}");
     }
 }
@@ -229,7 +256,7 @@ async fn run_update_check(
             // el estado es para la interfaz y el evento es para el
             // log. Un intento de sustitución tiene que dejar rastro
             // aunque nadie esté mirando la ventana.
-            if failure.security_event {
+            if debe_persistir(&failure) {
                 let _ = app.emit(EVENT_UPDATE_SECURITY, &failure);
                 record_security_event(&app, &failure, &contract);
             }
@@ -393,7 +420,7 @@ async fn download_update(
         Ok(Ok(result)) => result,
         Ok(Err(rejection)) => {
             let failure = to_failure(&rejection);
-            if failure.security_event {
+            if debe_persistir(&failure) {
                 let _ = app.emit(EVENT_UPDATE_SECURITY, &failure);
                 record_security_event(&app, &failure, &contract);
             }
@@ -465,5 +492,72 @@ mod tests {
     #[test]
     fn los_eventos_del_updater_son_distintos() {
         assert_ne!(super::EVENT_UPDATE_STATUS, super::EVENT_UPDATE_SECURITY);
+    }
+
+    /// Un fallo de las pruebas.
+    fn fallo(codigo: &str, security_event: bool) -> super::UpdateFailure {
+        super::UpdateFailure {
+            code: codigo.to_string(),
+            message: "La firma del manifest de actualización no verifica.".to_string(),
+            security_event,
+        }
+    }
+
+    /// Un directorio temporal que se borra al terminar el test.
+    fn directorio(nombre: &str) -> std::path::PathBuf {
+        let path = std::env::temp_dir().join(format!("tanit-update-log-{}-{}", std::process::id(), nombre));
+        let _ = std::fs::remove_dir_all(&path);
+        path
+    }
+
+    /// El evento de seguridad se **escribe**, y se escribe entero.
+    ///
+    /// La ruta se inyecta, así que este test no necesita ventana ni
+    /// el directorio de logs de la app: lo que se comprueba es que el
+    /// evento acaba en el fichero, no que la plataforma tenga un
+    /// directorio donde escribir.
+    #[test]
+    fn el_evento_de_seguridad_se_persiste_una_linea_json() {
+        let directorio = directorio("persiste");
+        let ruta = directorio.join(super::update_log::UPDATE_SECURITY_LOG);
+
+        let escrito = super::persistir_evento(
+            &ruta,
+            &fallo("update.signature.invalid", true),
+            &super::UpdaterContract::new("0.1.0"),
+        )
+        .expect("the security event must be written");
+
+        let contenido = std::fs::read_to_string(&ruta).expect("the log could not be read");
+        assert_eq!(
+            contenido.trim_end(),
+            escrito,
+            "the line that was written is not the line that is in the log"
+        );
+
+        let parsed: serde_json::Value =
+            serde_json::from_str(contenido.trim_end()).expect("the log line must be valid JSON");
+        assert_eq!(parsed["event"], "update.security");
+        assert_eq!(parsed["code"], "update.signature.invalid");
+        assert_eq!(parsed["version"], "0.1.0");
+
+        let _ = std::fs::remove_dir_all(&directorio);
+    }
+
+    /// Un aborto que no es un intento de sustitución no se escribe.
+    ///
+    /// Un endpoint caído no es un ataque: si se escribiera, el log
+    /// de seguridad se llenaría de ruido y el incidente real se
+    /// escondería entre los abortos de operación.
+    #[test]
+    fn un_aborto_que_no_es_de_seguridad_no_se_persiste() {
+        assert!(!super::debe_persistir(&fallo(
+            "update.endpoint.unavailable",
+            false
+        )));
+        assert!(super::debe_persistir(&fallo(
+            "update.signature.invalid",
+            true
+        )));
     }
 }

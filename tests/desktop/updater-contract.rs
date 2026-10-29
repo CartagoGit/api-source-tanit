@@ -1081,3 +1081,181 @@ fn la_fecha_del_log_esta_en_iso8601() {
     assert_eq!(update_log::iso8601(86_400), "1970-01-02T00:00:00Z");
     assert_eq!(update_log::iso8601(951_782_400), "2000-02-29T00:00:00Z");
 }
+
+// ---------------------------------------------------------------------------
+// El cableado de la ventana: el arranque y la persistencia del evento
+// ---------------------------------------------------------------------------
+//
+// ## Por qué hay un test que lee el fuente
+//
+// Las dos llamadas de seguridad de la app —comprobar actualizaciones al
+// arrancar y persistir el evento cuando el aborto es un intento de
+// sustitución— son **cableado**, no lógica: no hay forma de llegar a
+// ellas sin una ventana de Tauri, y un test que las ejercite
+// necesitaría una ventana. Sin un ancla, las dos llamadas pueden
+// desaparecer sin que la suite se entere: los comandos siguen ahí, el
+// evento sigue emitiéndose al webview, y el log de seguridad deja de
+// llenarse.
+//
+// Así que aquí se comprueba el **cableado**, leyendo el fuente. Es lo
+// mismo que hace el test que compara las constantes del cliente con el
+// contrato compartido: la fuente **es** el contrato de esta parte.
+
+/// El fuente de la ventana nativa.
+fn main_source() -> String {
+    fs::read_to_string(repo_root().join("packages/desktop/src/main.rs"))
+        .expect("the main.rs of the desktop crate could not be read")
+}
+
+/// La sangría de una línea.
+fn sangria(linea: &str) -> usize {
+    linea.len() - linea.trim_start().len()
+}
+
+/// El bloque que empieza en la línea que contiene `ancla`.
+///
+/// El bloque termina en la primera línea con la **misma sangría** que
+/// la de la ancla y que empieza por `}`. `cargo fmt` deja la llave de
+/// cierre al nivel de la de apertura, así que la sangría es un ancla
+/// fiable y no hace falta un analizador de Rust para saber dónde
+/// acaba un bloque.
+fn bloque(source: &str, ancla: &str) -> String {
+    let lineas: Vec<&str> = source.lines().collect();
+    let inicio = lineas
+        .iter()
+        .position(|linea| linea.contains(ancla))
+        .unwrap_or_else(|| panic!("the source does not contain `{ancla}`"));
+    let nivel = sangria(lineas[inicio]);
+    let mut bloque = String::new();
+    for linea in &lineas[inicio..] {
+        let recortada = linea.trim_start();
+        if !bloque.is_empty() && recortada.starts_with('}') && sangria(linea) == nivel {
+            break;
+        }
+        bloque.push_str(linea);
+        bloque.push('\n');
+    }
+    bloque
+}
+
+/// El cuerpo de una función del fuente.
+///
+/// Busca la **definición** —una línea que empieza por `fn`, `async
+/// fn` o `pub fn`— y no una llamada: una llamada no empieza por esas
+/// palabras.
+fn cuerpo_de_funcion(source: &str, nombre: &str) -> Option<String> {
+    let definicion = format!("fn {nombre}(");
+    for linea in source.lines() {
+        let recortada = linea.trim_start();
+        let es_definicion = recortada.starts_with("fn ")
+            || recortada.starts_with("async fn ")
+            || recortada.starts_with("pub fn ")
+            || recortada.starts_with("pub async fn ");
+        if es_definicion && recortada.contains(&definicion) {
+            return Some(bloque(source, &definicion));
+        }
+    }
+    None
+}
+
+/// Los nombres que el bloque llama como si fueran funciones.
+fn llamadas(bloque: &str) -> Vec<String> {
+    let mut nombres: Vec<String> = Vec::new();
+    let caracteres: Vec<char> = bloque.chars().collect();
+    let mut indice = 0;
+    while indice < caracteres.len() {
+        if caracteres[indice].is_alphabetic() || caracteres[indice] == '_' {
+            let inicio = indice;
+            while indice < caracteres.len()
+                && (caracteres[indice].is_alphanumeric() || caracteres[indice] == '_')
+            {
+                indice += 1;
+            }
+            let palabra: String = caracteres[inicio..indice].iter().collect();
+            let mut mirar = indice;
+            while mirar < caracteres.len() && caracteres[mirar].is_whitespace() {
+                mirar += 1;
+            }
+            if mirar < caracteres.len() && caracteres[mirar] == '(' && !nombres.contains(&palabra) {
+                nombres.push(palabra);
+            }
+        } else {
+            indice += 1;
+        }
+    }
+    nombres
+}
+
+/// Si desde `origen` se puede llegar a `destino` llamando a otras
+/// funciones del mismo fichero.
+fn alcanza(source: &str, origen: &str, destino: &str) -> bool {
+    let mut pendientes = vec![origen.to_string()];
+    let mut vistas: Vec<String> = Vec::new();
+    while let Some(nombre) = pendientes.pop() {
+        if vistas.iter().any(|vista| vista == &nombre) {
+            continue;
+        }
+        vistas.push(nombre.clone());
+        let Some(cuerpo) = cuerpo_de_funcion(source, &nombre) else {
+            continue;
+        };
+        if cuerpo.contains(destino) {
+            return true;
+        }
+        for llamada in llamadas(&cuerpo) {
+            if !vistas.iter().any(|vista| vista == &llamada) {
+                pendientes.push(llamada);
+            }
+        }
+    }
+    false
+}
+
+#[test]
+fn la_app_comprueba_actualizaciones_al_arrancar() {
+    // El updater no puede ser código muerto: la app lo llama al
+    // arrancar. Si esta comprobación desaparece, los comandos siguen
+    // existiendo y nadie se entera de que ya no hay nadie que los
+    // llame —que es exactamente lo que pasaba antes de esta revisión.
+    let source = main_source();
+    let arranque = bloque(&source, ".setup(|app| {");
+
+    assert!(
+        arranque.contains("run_update_check"),
+        "the app does not check for updates when it starts"
+    );
+    assert!(
+        arranque.contains("tauri::async_runtime::spawn"),
+        "the startup check does not run in the background: it would block the window"
+    );
+}
+
+#[test]
+fn el_evento_de_seguridad_se_persiste_en_cada_rama_de_aborto() {
+    // El evento de seguridad tiene que **quedar escrito**. Si la
+    // llamada desaparece, el evento se sigue emitiendo al webview y
+    // se sigue perdiendo en cuanto la app se cierra.
+    let source = main_source();
+
+    for rama in ["run_update_check", "download_update"] {
+        let cuerpo = cuerpo_de_funcion(&source, rama)
+            .unwrap_or_else(|| panic!("the desktop app does not have a `{rama}`"));
+        assert!(
+            cuerpo.contains("record_security_event"),
+            "the `{rama}` branch does not persist the security event"
+        );
+    }
+}
+
+#[test]
+fn persistir_el_evento_de_seguridad_llega_al_log() {
+    // Y persistir no es llamar a la nada: tiene que terminar en el
+    // log. La búsqueda sigue las llamadas del propio fuente, así que
+    // da igual que el evento se escriba en un paso o en tres.
+    let source = main_source();
+
+    assert!(
+        alcanza(&source, "record_security_event", "update_log::record"),
+        "persisting the security event does not reach the security log"
+    );
+}
