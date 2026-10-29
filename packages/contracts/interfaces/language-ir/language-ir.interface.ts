@@ -21,5 +21,5 @@ export type {
   IArgumentValue,
   ArgumentKind,
 } from "./call.interface.js";
-export type { IDecorator, IAttribute } from "./decorator.interface.js";
+export type { IAttribute } from "./decorator.interface.js";
 export type { ILocation } from "./location.interface.js";
