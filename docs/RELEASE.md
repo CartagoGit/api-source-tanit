@@ -248,6 +248,14 @@ si se adjunta algo que el manifest no describe, si dos assets tienen
 el mismo nombre —la acción que los sube los nombra por su `basename`
 y pisa el que ya estaba— o si el manifest adjunto no es el mergeado.
 
+Y también si falta la **transparencia**: el SBOM, la provenance y la
+attestation firmada. Una release que se publica y no se puede auditar
+no se publica. Los tres los construye
+`scripts/release/build-sbom.mjs` y los comprueba
+`scripts/release/verify-sbom.mjs` antes de que el workflow adjunte
+nada; [`docs/SBOM.md`](SBOM.md) explica qué son y cómo los revalida un
+auditor.
+
 Quién quiera comprobar un artefacto ya publicado, en su máquina:
 
 ```bash
