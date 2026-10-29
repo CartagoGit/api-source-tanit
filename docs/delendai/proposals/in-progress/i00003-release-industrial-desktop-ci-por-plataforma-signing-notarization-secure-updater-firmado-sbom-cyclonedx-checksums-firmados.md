@@ -100,9 +100,10 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
 
 ### S3-secure-updater — S3 — Updater firmado con manifest versionado y verificación antes de instalar
 
-- **Status**: pending
-- **Files**: `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/src/updater.rs`, `packages/desktop/capabilities/updater.json`, `packages/desktop/keys/tanit-updater-public-key-v1.pem`, `scripts/release/build-update-manifest.mjs`, `scripts/release/verify-update.sh`, `tests/desktop/updater-contract.rs`, `docs/UPDATER.md`
+- **Status**: in-progress
+- **Files**: `packages/desktop/Cargo.toml`, `packages/desktop/src/main.rs`, `packages/desktop/src/updater.rs`, `packages/desktop/src/secure_storage.rs`, `packages/desktop/capabilities/updater.json`, `packages/desktop/keys/tanit-updater-public-key-v1.pem`, `packages/desktop/tauri.conf.json`, `packages/contracts/interfaces/release/updater.interface.ts`, `packages/contracts/constants/release/updater.constant.ts`, `packages/contracts/constants/cli/cli-version.constant.ts`, `packages/cli/cli.script.ts`, `scripts/release/build-update-manifest.mjs`, `scripts/release/verify-update.sh`, `tests/desktop/updater-contract.rs`, `tests/release/updater.spec.ts`, `tests/cli/cli-version.spec.ts`, `docs/UPDATER.md`
 - **DependsOn**: [S2-signing-notarization]
+- **review-implementer**: minimax-m3
 - **Gate**: e2e
 - acceptanceCriteria:
   - Tauri updater queda inicializado desde un contrato explícito de endpoint, public key versionada, versión actual, timeout y política de reintento; la clave privada nunca entra en la app, el repositorio ni los build logs.

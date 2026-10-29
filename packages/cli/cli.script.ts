@@ -18,6 +18,7 @@
  */
 import { isAbsolute, resolve } from "node:path";
 import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
+import { CLI_VERSION } from "../contracts/constants/cli/cli-version.constant.js";
 
 /** Un comando del CLI: su descripción y cómo cargarlo. */
 interface ICommand {
@@ -221,6 +222,14 @@ export async function run(argv: string[]): Promise<number> {
 
   if (commandName === "-h" || commandName === "--help") {
     console.log(await buildHelp());
+    return 0;
+  }
+
+  // La versión se imprime y se sale. Es lo que comprueba el smoke del
+  // updater: el sidecar que va dentro del instalador tiene que ser
+  // de la misma versión que la app que se instala.
+  if (commandName === "--version" || commandName === "-v") {
+    console.log(CLI_VERSION);
     return 0;
   }
 
