@@ -40,6 +40,21 @@ import type {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const CONTRACTS = join(AQUI, "..", "..", "packages", "contracts");
 const LANGUAGE_IR = join(CONTRACTS, "interfaces", "language-ir");
+const FRONTENDS = join(AQUI, "..", "..", "packages", "core", "language-frontends");
+
+/**
+ * The four methods the contract asks a frontend for.
+ *
+ * The contract is an interface, and an interface disappears at
+ * runtime: a frontend could declare the method and never fill it.
+ * These four names are what the check below looks for.
+ */
+const METODOS_DEL_CONTRATO = [
+  "parse",
+  "extractSymbols",
+  "extractCalls",
+  "extractDecorators",
+] as const;
 
 /**
  * The five interfaces the slice promises, and the file each one lives
@@ -215,6 +230,21 @@ async function cadenaDeTipos(): Promise<Set<string>> {
     }
   }
   return nombres;
+}
+
+/** The folders of the frontends — one per language. */
+async function carpetasDeFrontend(): Promise<string[]> {
+  const entries = await readdir(FRONTENDS, { withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(FRONTENDS, entry.name));
+}
+
+/** Whether an exported value claims to be a frontend. */
+function pareceFrontend(valor: unknown): boolean {
+  return (
+    typeof valor === "object" && valor !== null && "languageId" in valor
+  );
 }
 
 /**
@@ -481,6 +511,55 @@ describe("el IR de TypeScript cumple el contrato agnóstico", () => {
     const nombres = document.decorators.map((decorator) => decorator.name);
     expect(nombres).toContain("Controller");
     expect(nombres).toContain("Get");
+  });
+});
+
+describe("los lenguajes futuros no rompen el shape", () => {
+  test("todo frontend registrado implementa el contrato entero", async () => {
+    // El criterio de aceptación pide que los lenguajes futuros no
+    // rompan el shape "cuando se añadan". Antes de este test nada lo
+    // comprobaba: una carpeta `language-frontends/python/` con un
+    // frontend que no cumpliera el contrato pasaba todo.
+    const carpetas = await carpetasDeFrontend();
+    expect(carpetas.length).toBeGreaterThan(0);
+    for (const carpeta of carpetas) {
+      const barrel = join(carpeta, "index.ts");
+      const modulo = (await import(
+        /* @vite-ignore */ pathToFileURL(barrel).href
+      )) as Record<string, unknown>;
+      const frontends = Object.entries(modulo).filter(([, valor]) =>
+        pareceFrontend(valor),
+      );
+      expect(
+        frontends.length,
+        `${carpeta} no exporta ningún frontend`,
+      ).toBeGreaterThan(0);
+      for (const [nombre, valor] of frontends) {
+        const frontend = valor as Record<string, unknown>;
+        expect(
+          typeof frontend.languageId,
+          `${carpeta} → ${nombre}.languageId`,
+        ).toBe("string");
+        expect(String(frontend.languageId).length).toBeGreaterThan(0);
+        for (const metodo of METODOS_DEL_CONTRATO) {
+          expect(
+            typeof frontend[metodo],
+            `${carpeta} → ${nombre}.${metodo}`,
+          ).toBe("function");
+        }
+      }
+    }
+  });
+
+  test("el frontend de TypeScript cabe en una lista de ILanguageFrontend", () => {
+    // La comprobación de tipos es la que manda aquí: si el frontend
+    // dejara de cumplir el contrato, el typecheck falla — y el
+    // typecheck es una puerta que no se puede esquivar con un
+    // `as`.
+    const frontends: ReadonlyArray<ILanguageFrontend> = [typescriptFrontend];
+    expect(frontends.map((frontend) => frontend.languageId)).toEqual([
+      "typescript",
+    ]);
   });
 });
 

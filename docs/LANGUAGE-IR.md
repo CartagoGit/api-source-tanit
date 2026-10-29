@@ -407,6 +407,10 @@ Los dos tests que vigilan el contrato:
     que ninguna de las otras reglas lo viera), y ninguna **cadena de
     tipos** alcanzable —siguiendo los imports de dentro— nombra un
     lenguaje (`TS*`, `Babel*`);
+  - **todo frontend registrado** —cada carpeta de
+    `packages/core/language-frontends/*/`— implementa el contrato
+    entero, así que el lenguaje que llegue mañana no puede romper el
+    shape sin que un test lo diga.
 - `tests/core/typescript-frontend-shape.spec.ts` — que el frontend de
   TypeScript cumpla el contrato en runtime, que las seis formas de
   callee sobrevivan estructuradas, que el refactor sea invisible y
