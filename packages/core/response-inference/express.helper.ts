@@ -52,8 +52,9 @@ import {
   sliceUntilNextAnchor,
 } from "../helpers/route-anchor.helper.js";
 import {
-  findAllBalanced,
+  findClosingParen,
   splitTopLevel,
+  unwrapObjectLiteralItem,
 } from "../helpers/source-scan.helper.js";
 
 /**
@@ -68,12 +69,27 @@ const ROUTE_PATTERN =
 /** `res.status(201)` — the explicit status of the response. */
 const STATUS_PATTERN = /\bres\s*\.\s*status\s*\(\s*(\d{3})\s*\)/g;
 
-/** `res.json(` / `res.send(` — the call that carries the body. */
-const SEND_PATTERN = /\bres\s*\.\s*(?:json|send)\s*\(/g;
+/**
+ * `res.json(` / `res.send(` — the call that carries the body.
+ *
+ * The chain matters: Express answers `res.status(201).json(body)`, and
+ * the `json` of that call is **not** preceded by `res` — it is
+ * preceded by `)`. A pattern that requires `res.` right before it
+ * finds nothing in the chained form, which is the form every Express
+ * codebase uses when the status is not 200.
+ */
+const SEND_PATTERN =
+  /\bres(?:\s*\.\s*status\s*\(\s*\d{3}\s*\))*\s*\.\s*(json|send)\s*\(/g;
 
-/** The `res.` prefix, captured so the reason can name the call. */
-const SEND_KIND_PATTERN = /\bres\s*\.\s*(json|send)\s*\(/g;
-
+/**
+ * Infers the response of an Express route.
+ *
+ * Express declares nothing: the only signal is what the handler
+ * sends — `res.json(body)`, `res.send(body)`,
+ * `res.status(code).json(body)`. The shape of the response is
+ * therefore whatever the handler puts in the call, and the entry says
+ * so.
+ */
 export class ExpressResponseInferrer implements IResponseInferrer {
   readonly framework = "express";
 
@@ -130,25 +146,21 @@ interface ISendCall {
  * is the one attached to this call, not the previous handler's.
  */
 function findSendCall(region: string): ISendCall | null {
-  const calls = findAllBalanced(region, SEND_PATTERN);
-  if (calls.length === 0) return null;
-  const first = calls[0];
-  if (first === undefined) return null;
-
-  const payload = region.slice(first.callStart + 1, first.callEnd).trim();
-  const kind = sendKindAt(region, first.callStart);
-  return { status: statusBefore(region, first.callStart), kind, payload };
-}
-
-/** `json` or `send` — whichever call it was. */
-function sendKindAt(region: string, callStart: number): "json" | "send" {
-  const re = new RegExp(SEND_KIND_PATTERN.source, "g");
+  const re = new RegExp(SEND_PATTERN.source, "g");
   let match: RegExpExecArray | null;
   while ((match = re.exec(region)) !== null) {
-    if (match.index === callStart) return match[1] === "send" ? "send" : "json";
-    if (match.index > callStart) break;
+    // The match ends with the parenthesis that opens the call — and
+    // it is the **last** one, because a chained `res.status(201)`
+    // carries a parenthesis of its own before it.
+    const open = match.index + match[0].length - 1;
+    if (region[open] !== "(") continue;
+    const close = findClosingParen(region, open);
+    if (close === -1) continue;
+    const kind = match[1] === "send" ? "send" : "json";
+    const payload = region.slice(open + 1, close).trim();
+    return { status: statusBefore(region, match.index), kind, payload };
   }
-  return "json";
+  return null;
 }
 
 /**
@@ -160,7 +172,10 @@ function statusBefore(region: string, callStart: number): number {
   let match: RegExpExecArray | null;
   let status = 200;
   while ((match = re.exec(region)) !== null) {
-    if (match.index >= callStart) break;
+    // The chained form puts the `res.status(n)` at the very same
+    // offset the send call starts at, so the comparison is `>` and
+    // not `>=`: the status that opens the chain belongs to it.
+    if (match.index > callStart) break;
     const parsed = Number.parseInt(match[1] ?? "", 10);
     if (Number.isFinite(parsed)) status = parsed;
   }
@@ -200,7 +215,10 @@ function schemaOfPayload(payload: string): IResponseSchema | null {
  */
 function objectLiteralFields(literal: string): ReadonlyArray<IValidationSpec> {
   const fields: IValidationSpec[] = [];
-  for (const item of splitTopLevel(literal)) {
+  for (const raw of splitTopLevel(literal)) {
+    // The items keep the braces of the literal when there is only one
+    // of them; the unwrap is what turns `{ id: 1 }` into `id: 1`.
+    const item = unwrapObjectLiteralItem(raw);
     const colon = item.indexOf(":");
     if (colon === -1) continue;
     const name = item.slice(0, colon).trim().replace(/^["'`]|["'`]$/g, "");

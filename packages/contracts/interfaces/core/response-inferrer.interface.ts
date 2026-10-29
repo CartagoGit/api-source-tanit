@@ -121,6 +121,28 @@ export interface IResponseInferContext {
   readonly source: IFrameworkSourceFileLike;
   /** The endpoint being enriched, when the caller has one. */
   readonly spec?: EndpointSpecLike;
+  /**
+   * Reads another file of the same project, by its path relative to
+   * the project root.
+   *
+   * Two of the six frameworks declare their routes in one file and
+   * their responses in **another**: Rails declares the routes in
+   * `config/routes.rb` and renders the response in
+   * `app/controllers/users_controller.rb`; Laravel declares the routes
+   * in `routes/api.php` and returns the Resource from
+   * `app/Http/Controllers/UserController.php`. An inferrer that needs
+   * the second file asks for it here.
+   *
+   * The resolver is **optional** and the dispatcher owns the I/O: an
+   * inferrer stays a pure function of the text it reads, and a caller
+   * that has no project on disk (a unit test, a cached snapshot) can
+   * leave it out. When it is absent — or when the file does not
+   * exist — the answer is `null`, and the inferrer says what it can
+   * prove from the route's own file.
+   */
+  readonly readSource?: (
+    relativePath: string,
+  ) => IFrameworkSourceFileLike | null;
 }
 
 /**
@@ -175,6 +197,28 @@ export interface IResponseInferrer {
    * becomes a warning instead of a broken generation.
    */
   infer(route: IResponseRoute, ctx: IResponseInferContext): IResponseSpec | null;
+}
+
+/**
+ * A route declaration found in a file.
+ *
+ * The shape every inferrer reads when it has to answer "which part of
+ * this file belongs to the route I was given?". It is a **contract**
+ * and not an implementation detail because the six inferrers share
+ * the arithmetic of finding the declaration — only the *pattern* that
+ * recognises it is framework-specific.
+ */
+export interface IRouteAnchor {
+  /** Offset of the match in the source. */
+  readonly index: number;
+  /** Offset just after the match. */
+  readonly end: number;
+  /** 0-based line the declaration starts on. */
+  readonly line: number;
+  /** The HTTP method, uppercased. */
+  readonly method: string;
+  /** The path as declared, without any prefix. */
+  readonly path: string;
 }
 
 /**

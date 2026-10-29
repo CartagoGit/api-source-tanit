@@ -28,21 +28,12 @@
  * declaration is framework-specific, the *arithmetic* of finding it
  * is not.
  */
-import type { IResponseRoute } from "../../contracts/interfaces/core/response-inferrer.interface.js";
+import type {
+  IResponseRoute,
+  IRouteAnchor,
+} from "../../contracts/interfaces/core/response-inferrer.interface.js";
 
-/** A route declaration found in a file. */
-export interface IRouteAnchor {
-  /** Offset of the match in the source. */
-  readonly index: number;
-  /** Offset just after the match. */
-  readonly end: number;
-  /** 0-based line the declaration starts on. */
-  readonly line: number;
-  /** The HTTP method, uppercased. */
-  readonly method: string;
-  /** The path as declared, without any prefix. */
-  readonly path: string;
-}
+export type { IRouteAnchor };
 
 /**
  * Collects the route declarations of a file.
@@ -104,13 +95,23 @@ export function pickRouteAnchor(
   if (anchors.length === 0) return null;
 
   const wanted = route.rawUri ?? route.uri;
-  const candidates =
+  const byPath =
     pickBy(anchors, (a) => a.path === wanted) ??
     pickBy(anchors, (a) => a.path === route.uri) ??
     pickBy(anchors, (a) => route.uri.endsWith(a.path)) ??
-    pickBy(anchors, (a) => lastSegment(route.uri) === lastSegment(a.path));
+    pickBy(anchors, (a) => lastSegment(route.uri) === lastSegment(a.path)) ??
+    [];
 
-  if (candidates.length === 0) return null;
+  if (byPath.length === 0) return null;
+
+  // The method breaks the tie. A file may declare `GET /users` and
+  // `POST /users` — two routes, one path — and reading the wrong one
+  // produces a confidently wrong answer. The path alone is the
+  // fallback for the frameworks that spell the verb in a way the
+  // pattern does not capture (`app.all(…)`).
+  const method = route.method.toUpperCase();
+  const byMethod = byPath.filter((a) => a.method === method);
+  const candidates = byMethod.length > 0 ? byMethod : byPath;
   if (candidates.length === 1) return candidates[0] ?? null;
   return closestToLine(candidates, route.lineNumber);
 }

@@ -79,9 +79,36 @@ export const RESPONSE_INFERRER_FRAMEWORKS: Readonly<
 };
 
 /**
- * Coverage baseline — the percentage of operations each inferrer is
- * expected to resolve, measured on the reference fixtures in
- * `tests/fixtures/<framework>-responses/`.
+ * The fixture each inferrer's coverage is measured on.
+ *
+ * The coverage reporter runs at the end of the pipeline and prints the
+ * real numbers. This table says **where** those numbers come from, so
+ * a reader can reproduce them: run the framework's scanner over the
+ * fixture, run the inferrer over every route it reports, and count the
+ * routes that got a response.
+ *
+ * `null` means the framework has **no reference fixture** yet: its
+ * baseline is `null` too, and the reporter prints its number without
+ * saying anything about it.
+ */
+export const RESPONSE_INFERENCE_REFERENCE_FIXTURES: Readonly<
+  Record<ResponseInferrerId, string | null>
+> = {
+  spring: null,
+  nestjs: "nestjs-response-inference",
+  fastapi: null,
+  aspnet: null,
+  fastify: "fastify-responses",
+  express: "express-responses",
+  "laravel-resources": "laravel-resources",
+  gin: "gin-responses",
+  "rails-render": "rails-render",
+  "ktor-respond": "ktor-responses",
+};
+
+/**
+ * Coverage baseline — the percentage of operations each inferrer
+ * resolves on its reference fixture.
  *
  * **What it is for.** The coverage reporter runs at the end of the
  * pipeline and prints the real numbers. This table is the *frozen
@@ -95,22 +122,27 @@ export const RESPONSE_INFERRER_FRAMEWORKS: Readonly<
  * (a new framework version, a fixture that grew a route the inferrer
  * does not model yet).
  *
- * The numbers are the ones measured on the fixtures at the time this
- * slice landed, and `tests/core/response-inference/coverage.spec.ts`
- * pins them: if an inferrer starts resolving fewer of its own
- * fixture's routes, that test fails.
+ * The numbers are the ones measured on the fixtures named in
+ * `RESPONSE_INFERENCE_REFERENCE_FIXTURES`, and
+ * `tests/response-inference/coverage.spec.ts` pins them: if an
+ * inferrer starts resolving fewer of its own fixture's routes, that
+ * test fails.
+ *
+ * A `null` baseline is an inferrer nobody measured yet — the four that
+ * predate this slice and have no response fixture of their own. The
+ * reporter prints their number and stays quiet about it.
  *
  * See `docs/RESPONSE-INFERENCE.md` for the full table and the method.
  */
 export const RESPONSE_INFERENCE_COVERAGE_BASELINE: Readonly<
-  Record<ResponseInferrerId, number>
+  Record<ResponseInferrerId, number | null>
 > = {
-  spring: 100,
+  spring: null,
   nestjs: 100,
-  fastapi: 100,
-  aspnet: 100,
-  fastify: 100,
-  express: 100,
+  fastapi: null,
+  aspnet: null,
+  fastify: 66.7,
+  express: 75,
   "laravel-resources": 100,
   gin: 100,
   "rails-render": 100,

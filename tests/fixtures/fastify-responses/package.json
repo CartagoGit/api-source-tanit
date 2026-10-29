@@ -1,0 +1,9 @@
+{
+  "name": "fastify-responses-fixture",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Fastify app whose routes declare their response schema.",
+  "dependencies": {
+    "fastify": "^4.26.0"
+  }
+}
