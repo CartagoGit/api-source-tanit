@@ -61,6 +61,12 @@ const ALLOW: ReadonlyArray<{ readonly path: string; readonly reason: string }> =
   { path: "LICENSE", reason: "MIT" },
   { path: "CHANGELOG.md", reason: "Cambios por release (visible en npm)" },
   { path: "CONTRIBUTING.md", reason: "Cómo contribuir" },
+  {
+    path: "SECURITY.md",
+    reason:
+      "Modelo de amenazas y canal de reporte. GitHub lo busca en la raíz " +
+      "por convención: un `SECURITY.md` en `docs/` no lo encuentra nadie.",
+  },
 
   // Manifiestos del proyecto.
   { path: "package.json", reason: "Manifiesto del producto (publicado)" },
