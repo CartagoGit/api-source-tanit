@@ -173,6 +173,21 @@ aborto tiene tres cosas: un **código** estable, un **mensaje** que ve
 la persona, y un evento de **seguridad** cuando el motivo es un
 intento de sustitución.
 
+Las dos comprobaciones del instalador van **antes** de escribir nada
+en disco: el comando `download_update` verifica el hash y la firma y
+sólo después deja el instalador en la carpeta de descargas. Un
+instalador que no cuadra no deja fichero detrás. El orden es el mismo
+en las dos implementaciones —el cliente
+([`packages/desktop/src/updater.rs`](../packages/desktop/src/updater.rs))
+comprueba el tamaño, el digest y la firma, y el verificador de consola
+([`scripts/release/verify-update.sh`](../scripts/release/verify-update.sh))
+hace lo mismo—, y las dos están fijadas por tests:
+[tests/desktop/updater-contract.rs](../tests/desktop/updater-contract.rs)
+comprueba que el comando que instala es el que verifica, y
+[tests/release/updater.spec.ts](../tests/release/updater.spec.ts)
+comprueba que el verificador de consola rechaza un instalador cuya
+firma no verifica.
+
 ### Los códigos de aborto
 
 | Código | Qué pasó | ¿Evento de seguridad? |
