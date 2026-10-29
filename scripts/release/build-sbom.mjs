@@ -63,12 +63,15 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
 import { matchesAnyGlob } from "../helpers/glob.helper.js";
 import {
   parseBunLock,
+  parseCargoBuildDependencies,
   parseCargoDirectDependencies,
   parseCargoLock,
 } from "../helpers/release-dependencies.helper.js";
 import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
 import {
   SBOM_ATTESTATION_FILE_SUFFIX,
+  SBOM_BUILD_TOOL_COMPONENTS,
+  SBOM_BUILD_TOOL_PROPERTY,
   SBOM_BUN_RUNTIME_ROOTS,
   SBOM_DEFAULT_BUILDER_ID,
   SBOM_DEFAULT_KEY_ID,
@@ -227,15 +230,24 @@ function base64ToHex(base64) {
  *
  * Sólo las crates que vienen del registro: las del propio repo no son
  * dependencias, son el producto, y las cuenta el componente raíz.
+ *
+ * Y sólo las que **van dentro** del binario: las de `[build-dependencies]`
+ * y las de `[dev-dependencies]` se resuelven en el lockfile igual que
+ * las demás, pero no viajan en el producto. `tauri-build` es el caso
+ * claro: la usa el `build.rs` para generar el código de Tauri, y
+ * declararla como parte del binario es una mentira que además el
+ * verificador exigaría mantener.
  */
-function rustComponents(packages) {
+function rustComponents(packages, excluded) {
   const components = [];
   const byName = new Map();
   for (const entry of packages) {
+    if (excluded.has(entry.name)) continue;
     byName.set(entry.name, entry);
   }
   for (const entry of packages) {
     if (entry.source === undefined || !entry.source.startsWith("registry+")) continue;
+    if (excluded.has(entry.name)) continue;
     const ref = `pkg:cargo/${entry.name}@${entry.version}`;
     components.push({
       type: "library",
@@ -475,10 +487,13 @@ async function main() {
   const cargoLock = parseCargoLock(
     await readFile(join(REPO_ROOT, "packages", "desktop", "Cargo.lock"), "utf8"),
   );
-  const cargoDirect = parseCargoDirectDependencies(
-    await readFile(join(REPO_ROOT, "packages", "desktop", "Cargo.toml"), "utf8"),
+  const cargoToml = await readFile(
+    join(REPO_ROOT, "packages", "desktop", "Cargo.toml"),
+    "utf8",
   );
-  const rust = rustComponents(cargoLock);
+  const cargoDirect = parseCargoDirectDependencies(cargoToml);
+  const cargoBuild = parseCargoBuildDependencies(cargoToml);
+  const rust = rustComponents(cargoLock, new Set(cargoBuild));
   const bun = bunComponents(parseBunLock(await readFile(join(REPO_ROOT, "bun.lock"), "utf8")));
 
   const desktopRef = `pkg:generic/${SBOM_DESKTOP_COMPONENT}@${version}`;
@@ -492,6 +507,24 @@ async function main() {
       "bom-ref": ref,
       purl: ref,
       properties: [{ name: "tanit:native:platform", value: os }],
+    };
+  });
+
+  // Las herramientas de build: están en la cadena de construcción y
+  // **no** en el binario. Se declaran con una propiedad que lo dice, y
+  // no cuelgan del producto en el grafo: el binario no las usa.
+  const buildToolComponents = (SBOM_BUILD_TOOL_COMPONENTS[os] ?? []).map((name) => {
+    const ref = `pkg:generic/${name}`;
+    return {
+      type: "application",
+      name,
+      version: "system",
+      "bom-ref": ref,
+      purl: ref,
+      properties: [
+        { name: "tanit:native:platform", value: os },
+        { name: SBOM_BUILD_TOOL_PROPERTY, value: "not packaged" },
+      ],
     };
   });
 
@@ -525,6 +558,7 @@ async function main() {
     ...rust.components,
     ...bun.components,
     ...nativeComponents,
+    ...buildToolComponents,
   ];
 
   // --- el grafo de dependencias --------------------------------------------

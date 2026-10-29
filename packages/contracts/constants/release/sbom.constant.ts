@@ -133,11 +133,34 @@ export const SBOM_NATIVE_COMPONENTS: Readonly<Record<ReleaseOs, readonly string[
     "libpango-1.0",
     "libcairo-2",
     "libgdk-pixbuf-2.0",
-    "patchelf",
   ],
   macos: ["webkit-system-framework", "appkit-system-framework"],
   windows: ["webview2-runtime", "ucrt-base-runtime"],
 };
+
+/**
+ * Las herramientas de build que **no** van empaquetadas.
+ *
+ * `patchelf` la instala el workflow en el runner de Linux para reescribir
+ * el ELF del binario; no está dentro del producto. Declararla como
+ * componente con la propiedad `tanit:build-tool` dice la verdad sobre
+ * cómo se construyó el binario sin fingir que el binario la lleva: un
+ * SBOM que la omitiera no contaría la cadena de construcción, y uno que
+ * la listara sin más parecería decir que va empaquetada.
+ */
+export const SBOM_BUILD_TOOL_COMPONENTS: Readonly<Record<ReleaseOs, readonly string[]>> = {
+  linux: ["patchelf"],
+  macos: [],
+  windows: [],
+};
+
+/**
+ * La propiedad que marca un componente como herramienta de build.
+ *
+ * El valor dice que la herramienta no va empaquetada: quien lee el
+ * SBOM tiene que poder distinguirla de lo que sí viaja en el binario.
+ */
+export const SBOM_BUILD_TOOL_PROPERTY = "tanit:build-tool";
 
 /**
  * Los ficheros que **nunca** entran en el SBOM ni en la release.

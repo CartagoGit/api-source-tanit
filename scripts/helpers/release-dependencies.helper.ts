@@ -79,23 +79,53 @@ export function stripTrailingCommas(text: string): string {
 }
 
 /**
- * Las dependencias directas del crate del escritorio.
+ * Las dependencias **directas** del crate del escritorio.
  *
  * Se leen del `Cargo.toml` porque el lock no dice cuál es directa: dice
  * el grafo entero. El grafo entero sirve para las aristas; la
  * dependencia directa sirve para saber de dónde cuelga el árbol.
+ *
+ * Sólo cuenta `[dependencies]`: lo que va en `[build-dependencies]` o
+ * en `[dev-dependencies]` no viaja dentro del binario. `tauri-build` es
+ * el caso claro —la usa el `build.rs` para generar el código de Tauri y
+ * no está en el binario—, y declararlo como dependencia directa del
+ * producto es decir una mentira que el verificador acaba exigiendo.
  */
 export function parseCargoDirectDependencies(text: string): string[] {
+  return parseCargoSections(text, ["dependencies"]);
+}
+
+/**
+ * Las dependencias que **no** van dentro del binario.
+ *
+ * Las de `[build-dependencies]` y las de `[dev-dependencies]` se
+ * resuelven en el lockfile como cualquier otra, así que un SBOM que
+ * solo mira el lock las declara: el SBOM acaba diciendo que el producto
+ * lleva dentro un compilador de crates. Esta lista es la que las deja
+ * fuera.
+ */
+export function parseCargoBuildDependencies(text: string): string[] {
+  return parseCargoSections(text, ["build-dependencies", "dev-dependencies"]);
+}
+
+/**
+ * Los nombres declarados en las secciones de dependencia pedidas.
+ *
+ * El parser es a mano —son cuatro líneas de formato— y sólo acepta
+ * las secciones que se le piden: cada sitio decide si cuenta una
+ * dependencia de runtime o una de build.
+ */
+function parseCargoSections(text: string, sections: readonly string[]): string[] {
   const names: string[] = [];
   let inSection = false;
+  const wanted = new Set(sections);
   for (const line of text.split("\n")) {
-    const section = /^\[(dependencies|build-dependencies)\]$/.exec(line.trim());
+    // Cualquier sección cierra la anterior: `[profile.release]` no es una
+    // sección de dependencias, y sus claves (`opt-level`, `lto`,
+    // `strip`) no son crates.
+    const section = /^\[([^\]]+)\]$/.exec(line.trim());
     if (section !== null) {
-      inSection = true;
-      continue;
-    }
-    if (line.trim().startsWith("[")) {
-      inSection = false;
+      inSection = wanted.has(section[1] ?? "");
       continue;
     }
     if (!inSection) continue;

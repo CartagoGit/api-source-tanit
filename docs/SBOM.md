@@ -66,7 +66,15 @@ del documento, y un `purl` cuando tiene uno. Los `bom-ref` son:
   habla con el proyecto del usuario. Es la mitad del producto.
 - **El grafo de Rust**: las crates que entran de verdad en el binario de
   la ventana, sacadas de `packages/desktop/Cargo.lock`, con su versión
-  resuelta y el checksum del `.crate`.
+  resuelta y el checksum del `.crate`. Las de `[build-dependencies]` y
+  `[dev-dependencies]` —`tauri-build` y compañía— **no** se declaran:
+  se resuelven en el lockfile como cualquier otra, pero no viajan
+  dentro del producto, y declararlas sería decir que el binario lleva
+  dentro un compilador de crates.
+- **Las herramientas de build**, declaradas como lo que son: `patchelf`
+  la usa el runner de Linux para reescribir el ELF del binario, no va
+  dentro del producto, y el SBOM lo dice con la propiedad
+  `tanit:build-tool: not packaged`.
 - **El grafo de Bun**: los paquetes que entran de verdad en el sidecar.
   `bun build --compile` mete dentro el cierre transitivo de las
   dependencias de runtime del CLI —`zod`, `@babel/parser` y
