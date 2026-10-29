@@ -166,6 +166,20 @@ function sign(privateKey: string, file: string): string {
   return result.stdout.trim();
 }
 
+/**
+ * Rompe una firma en base64 sin dejar de ser una firma.
+ *
+ * Se cambia **un** carácter del medio: el base64 sigue siendo base64
+ * y sigue mapeando a los 64 bytes de una firma Ed25519, así que el
+ * verificador falla al **verificar** y no al decodificar. Si el
+ * base64 dejara de ser decodificable, el fallo sería del decodificador
+ * y no se probaría nada.
+ */
+function corruptSignature(signature: string): string {
+  const index = 10;
+  return `${signature.slice(0, index)}${signature[index] === "A" ? "B" : "A"}${signature.slice(index + 1)}`;
+}
+
 /** El manifest de actualización, tal y como lo escribe el script. */
 interface IUpdateManifestJson {
   schema: string;
@@ -363,8 +377,7 @@ describe("el updater firmado", () => {
     const built = await buildEverything();
     try {
       const signature = await readFile(built.signature, "utf8");
-      const corrupted = `${signature.slice(0, 10)}${signature[10] === "A" ? "B" : "A"}${signature.slice(11)}`;
-      await writeFile(built.signature, corrupted, "utf8");
+      await writeFile(built.signature, corruptSignature(signature), "utf8");
 
       const result = verify({
         manifest: built.manifest,
@@ -375,6 +388,54 @@ describe("el updater firmado", () => {
       });
       expect(result.status).not.toBe(0);
       expect(result.output).toContain("update.signature.invalid");
+    } finally {
+      await rm(built.root, { recursive: true, force: true });
+    }
+  });
+
+  test("una firma corrupta del instalador hace fallar al verificador", async () => {
+    // La firma del manifest y la del instalador son **dos** firmas, y
+    // el verificador las comprueba en **dos** ramas distintas: una
+    // antes de mirar el artefacto y otra después. El test de la firma
+    // corrupta del manifest no cubre la segunda, que es la que decide
+    // si lo que se instala es exactamente lo que se firmó.
+    //
+    // Por eso el manifest se vuelve a firmar **después** de corromper
+    // la firma del instalador: si no, el verificador abortaría antes,
+    // en la firma del manifest, y la rama del instalador no se
+    // probaría. Lo que se rompe es la firma que va **dentro** del
+    // target, que es la que acredita los bytes del instalador.
+    const built = await buildEverything();
+    try {
+      const manifest = JSON.parse(await readFile(built.manifest, "utf8")) as IUpdateManifestJson;
+      const target = manifest.targets[0];
+      if (target === undefined) {
+        throw new Error("the manifest has no target");
+      }
+      target.signature = corruptSignature(target.signature);
+
+      await writeFile(built.manifest, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+      await writeFile(built.signature, `${sign(built.key.private, built.manifest)}\n`, "utf8");
+
+      const result = verify({
+        manifest: built.manifest,
+        signature: built.signature,
+        publicKey: built.key.public,
+        platform: PLATFORM,
+        currentVersion: INSTALLED,
+        stage: built.stage,
+      });
+
+      expect(result.status).not.toBe(0);
+      expect(result.output).toContain("update.signature.invalid");
+      expect(result.output).toContain(
+        "the artifact signature does not verify against the public key",
+      );
+      // Y es la rama del **instalador**: la firma del manifest
+      // verifica y el digest del artefacto sigue cuadrando. Lo que no
+      // verifica es la firma de los bytes que se van a instalar.
+      expect(result.output).not.toContain("the manifest signature does not verify");
+      expect(result.output).not.toContain("update.hash.mismatch");
     } finally {
       await rm(built.root, { recursive: true, force: true });
     }
