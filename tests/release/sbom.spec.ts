@@ -1366,9 +1366,12 @@ async function releaseKeyRows(): Promise<IReleaseKeyRow[]> {
       .slice(1, -1)
       .map((cell) => cell.trim());
     if (cells.length < 2) continue;
+    const name = cells[0];
+    const identifier = cells[1];
+    if (name === undefined || identifier === undefined) continue;
     rows.push({
-      key: cells[0].replaceAll("*", "").replaceAll("`", "").trim(),
-      identifier: cells[1].replaceAll("`", "").trim(),
+      key: name.replaceAll("*", "").replaceAll("`", "").trim(),
+      identifier: identifier.replaceAll("`", "").trim(),
     });
   }
   return rows;
