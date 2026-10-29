@@ -118,9 +118,10 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
 
 ### S4-sbom-security — S4 — SBOM CycloneDX, provenance attestation y threat model en cada release
 
-- **Status**: pending
-- **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/build-sbom.mjs`, `scripts/release/verify-sbom.mjs`, `tests/release/sbom.spec.ts`, `docs/SBOM.md`, `SECURITY.md`
+- **Status**: review
+- **Files**: `.github/workflows/release-desktop.yml`, `scripts/release/build-sbom.mjs`, `scripts/release/verify-sbom.mjs`, `scripts/release/publish-gate.mjs`, `scripts/helpers/glob.helper.ts`, `scripts/helpers/release-dependencies.helper.ts`, `packages/contracts/interfaces/release/sbom.interface.ts`, `packages/contracts/constants/release/sbom.constant.ts`, `packages/contracts/constants/release/signing.constant.ts`, `tests/release/sbom.spec.ts`, `docs/SBOM.md`, `SECURITY.md`
 - **DependsOn**: [S2-signing-notarization, S3-secure-updater]
+- **review-implementer**: minimax-m3
 - **Gate**: e2e
 - acceptanceCriteria:
   - Cada release genera, a partir de los artefactos finales verificados por S2/S3, un SBOM CycloneDX JSON 1.6 válido con `bomFormat`, `specVersion`, `serialNumber`, version, components, dependencias, hashes y supplier cuando esté disponible.
@@ -130,6 +131,8 @@ Cada instalador publicado se describe por versión semver, nombre, plataforma, a
   - `SECURITY.md` incluye threat model con activos, adversaries, trust boundaries, controles por capa (CI, release credentials, signing, updater, endpoint, sidecar y usuario), riesgos aceptados, proceso privado de reporte, GPG/contacto de seguridad, supported versions y ventana de respuesta high/critical.
   - `docs/SBOM.md` explica consumidores, CycloneDX 1.6, consultas comunes, correlación con manifest/checksums, retención y pasos de revalidación para auditores.
   - DoD: un dry-run staging adjunta SBOM, provenance y attestation verificables, y la release real no se puede crear sin esos assets; `bun run lint:proposals:gen-index` y `bun run typecheck` permanecen verdes.
+- review-state: pending
+- review-log: Implementación real de i00003/S4. La rama `wip/minimax-m3/implement/i00003-S4-g1/sbom-security` parte de `origin/develop` (8174bf3) y **fusiona** la rama de S3 (`wip/minimax-m3/implement/i00003-S3-g1/updater-firmado`, commit 2120aa5) porque S4 depende de ella (`DependsOn: S3`): el merge es un `--no-ff`, sin rebase y sin reescritura de historia. Herramientas: `scripts/release/build-sbom.mjs` (genera el CycloneDX 1.6, el statement SLSA y su envelope DSSE firmado con Ed25519 vía `openssl pkeyutl -rawin`) y `scripts/release/verify-sbom.mjs` (verificador independiente: schema, componentes requeridos, cobertura del grafo contra las fuentes, hashes **recalculados** desde el staging, firma, `keyid`, provenance, y la validación mutua con el manifest de S2 y con el manifest firmado del updater de S3). Contratos compartidos en `packages/contracts/interfaces/release/sbom.interface.ts` y `packages/contracts/constants/release/sbom.constant.ts`; los lockfiles se leen en un solo sitio (`scripts/helpers/release-dependencies.helper.ts`). El grafo es **real**: crates del `Cargo.lock` con su checksum, y el cierre transitivo de `zod`, `@babel/parser` y `@babel/types` desde `bun.lock` — lo que `bun build --compile` mete en el sidecar, no las 1070 entradas del lockfile. La attestation es SLSA-compatible (statement in-toto con el predicado `https://slsa.dev/provenance/v1` en un envelope DSSE, el mismo formato de `actions/attest-build-provenance`) pero se genera **localmente** para que la clave pública la pueda verificar el runner, sin red y sin cuenta. Integración: `RELEASE_PUBLISH_PATTERNS` y `RELEASE_REQUIRED_ASSET_KINDS` en el contrato de S2, `publish-gate.mjs` falla cerrado sin SBOM/provenance/attestation, y el workflow firma, atesta, vuelve a medir el manifest y verifica **antes** de adjuntar. Pruebas: `tests/release/sbom.spec.ts`, 11 tests que cubren los cuatro fixtures del criterio (SBOM válido, dependencia faltante, hash alterado, provenance no relacionada) más la attestation ausente → no se publica, la validación mutua con el updater, el secreto en el staging y el gate. Lo que **no** se pudo verificar aquí: la firma de Apple y la de Microsoft (hace falta una cuenta de verdad) y la publicación real en GitHub (hace falta una release).
 
 ## acceptance
 

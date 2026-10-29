@@ -30,6 +30,8 @@
  *   · Un asset adjunto que el manifest no describe.
  *   · Dos assets con el mismo `basename`: se pisarían al subirlos.
  *   · Un manifest que no es el mergeado.
+ *   · Un SBOM, una provenance o una attestation que falten: una
+ *     release que se publica y no se puede auditar no se publica.
  *
  * Uso:
  *   bun run scripts/release/publish-gate.mjs --stage <dir> [--manifest <file>]
@@ -43,6 +45,7 @@ import {
   RELEASE_MANIFEST_FILE,
   RELEASE_MANIFEST_SCHEMA,
   RELEASE_PUBLISH_PATTERNS,
+  RELEASE_REQUIRED_ASSET_KINDS,
   RELEASE_TARGET_MATRIX,
 } from "../../packages/contracts/constants/release/signing.constant.js";
 
@@ -256,6 +259,34 @@ async function main() {
   for (const file of published) {
     if (!described.has(file)) {
       problems.push(`${file}: the release attaches it, but the manifest does not describe it`);
+    }
+  }
+
+  // --- la transparencia de la cadena de suministro --------------------------
+  //
+  // El SBOM, el statement de provenance y la attestation firmada son lo
+  // que permite auditar lo que se descarga. Una release sin ellos es
+  // una release que se publica y no se puede explicar: por eso el gate
+  // falla cerrado y no avisa.
+  //
+  // El gate mira **el manifest**, no los ficheros: si el manifest no
+  // describe un SBOM, es que el SBOM no se generó, y si el manifest lo
+  // describe pero el fichero no está en el staging, es que se perdió.
+  // Las dos cosas son un fallo de publicación.
+  for (const kind of RELEASE_REQUIRED_ASSET_KINDS) {
+    const assets = (manifest.assets ?? []).filter((asset) => asset.kind === kind);
+    if (assets.length === 0) {
+      problems.push(
+        `the release does not attach a "${kind}" asset: the release cannot be audited`,
+      );
+      continue;
+    }
+    for (const asset of assets) {
+      if (!files.includes(asset.path)) {
+        problems.push(`${asset.path}: the manifest describes the "${kind}" asset, but it is not in the staging`);
+      } else if (!publishedSet.has(asset.path)) {
+        problems.push(`${asset.path}: the release does not attach the "${kind}" asset`);
+      }
     }
   }
 
