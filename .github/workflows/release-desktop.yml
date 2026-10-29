@@ -461,11 +461,8 @@ jobs:
             --key-id "tanit-release-attestation-v1" \
             --source "release-desktop" \
             --workflow "release-desktop.yml" \
-            --key-env ATTESTATION_KEY_PATH \
-            --key-id "tanit-release-attestation-v1" \
-            --source "release-desktop" \
-            --workflow "release-desktop.yml" \
-            --commit "${GITHUB_SHA}"
+            --commit "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}"
 
       # El manifest se vuelve a medir: ahora tiene que describir también
       # el SBOM, la provenance y la attestation. Sin esto, el gate de

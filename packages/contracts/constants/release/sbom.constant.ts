@@ -238,6 +238,15 @@ export const SBOM_PUBLIC_FILE_PATTERNS: readonly string[] = [
 ];
 
 /**
+ * La URL del workflow que construye la release.
+ *
+ * Es la raíz de la URL de un run de Actions: con el `run_id` forma el
+ * `invocationId` de la provenance, que es el enlace entre el documento
+ * y la build que lo produjo.
+ */
+export const SBOM_RUNS_URL = "https://github.com/CartagoGit/api-source-tanit/actions/runs";
+
+/**
  * El builder por defecto de la provenance.
  *
  * La URL del workflow: es lo que dice de dónde salió la build, y lo

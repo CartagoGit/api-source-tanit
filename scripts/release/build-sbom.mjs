@@ -85,6 +85,7 @@ import {
   SBOM_PROVENANCE_FILE_SUFFIX,
   SBOM_PROVENANCE_PREDICATE_TYPE,
   SBOM_PUBLIC_FILE_PATTERNS,
+  SBOM_RUNS_URL,
   SBOM_SIDECAR_COMPONENT,
   SBOM_SPEC_VERSION,
   SBOM_STATEMENT_TYPE,
@@ -123,6 +124,7 @@ function parseArgs(argv) {
     source: undefined,
     workflow: undefined,
     commit: undefined,
+    runId: undefined,
     builderId: SBOM_DEFAULT_BUILDER_ID,
     buildType: undefined,
     supplierName: undefined,
@@ -152,6 +154,7 @@ function parseArgs(argv) {
       case "--source": args.source = next(); break;
       case "--workflow": args.workflow = next(); break;
       case "--commit": args.commit = next(); break;
+      case "--run-id": args.runId = next(); break;
       case "--builder-id": args.builderId = next(); break;
       case "--build-type": args.buildType = next(); break;
       case "--supplier-name": args.supplierName = next(); break;
@@ -185,6 +188,7 @@ function usage() {
       "  --source <text>          provenance source (default: release-desktop)",
       "  --workflow <text>        provenance workflow",
       "  --commit <sha>           provenance commit",
+      "  --run-id <id>            id of the CI run that built the release",
       "  --builder-id <url>       identity of the builder",
       "  --build-type <url>       identity of the build type",
       "  --supplier-name <name>   supplier of the SBOM",
@@ -698,7 +702,13 @@ async function main() {
       runDetails: {
         builder: { id: args.builderId },
         metadata: {
-          invocationId: `https://github.com/CartagoGit/api-source-tanit/actions/runs/${randomUUID()}`,
+          // El `invocationId` es el enlace entre el documento y la build
+          // que lo produjo: la URL del run de Actions. Si no se conoce,
+          // **no se inventa** —un identificador que no apunta a nada es
+          // peor que ningún enlace, porque parece que sí.
+          ...(args.runId === undefined
+            ? {}
+            : { invocationId: `${SBOM_RUNS_URL}/${args.runId}` }),
           startedOn: new Date().toISOString(),
         },
       },
