@@ -28,6 +28,22 @@ function createFetchStub(
   }) as FetchLike;
 }
 
+/**
+ * The repository's own merge switches.
+ *
+ * They live on the repository, not on the branch: `allow_merge_commit`
+ * decides whether a merge commit may be created at all. A branch can
+ * accept merge commits while the repository refuses to produce them,
+ * and that gap is what flattens the history.
+ */
+function repoResponse(allowMergeCommit = true) {
+  return jsonResponse({
+    allow_merge_commit: allowMergeCommit,
+    allow_squash_merge: true,
+    allow_rebase_merge: false,
+  });
+}
+
 describe("branch-protection gate", () => {
   test("passes when develop is protected and all required checks exist", async () => {
     const baseUrl = "https://mock.github.local";
@@ -37,6 +53,7 @@ describe("branch-protection gate", () => {
       baseUrl,
       branches: ["develop"],
       fetchImpl: createFetchStub({
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: repoResponse(),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: true,
@@ -63,8 +80,11 @@ describe("branch-protection gate", () => {
 
     expect(result.ok).toBe(true);
     expect(result.results).toEqual([
-      {
-        branch: "develop",
+      {        branch: "(repository)",
+        ok: true,
+        detail: `allow_merge_commit=true coincide con mergeMethod=merge`,
+      },
+      {        branch: "develop",
         ok: true,
         detail: `protected=true, ${REQUIRED_CHECKS.length} checks requeridos, revisiones y reglas de rama conformes con la política`,
       },
@@ -78,6 +98,7 @@ describe("branch-protection gate", () => {
       baseUrl,
       branches: ["develop"],
       fetchImpl: createFetchStub({
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: repoResponse(),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: true,
@@ -105,7 +126,7 @@ describe("branch-protection gate", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[0]).toMatchObject({
+    expect(result.results[1]).toMatchObject({
       branch: "develop",
       ok: false,
       detail: `faltan required checks: ${REQUIRED_CHECKS[0]}`,
@@ -119,6 +140,7 @@ describe("branch-protection gate", () => {
       baseUrl,
       branches: ["develop"],
       fetchImpl: createFetchStub({
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: repoResponse(),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
           name: "develop",
           protected: false,
@@ -127,7 +149,7 @@ describe("branch-protection gate", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[0]).toMatchObject({
+    expect(result.results[1]).toMatchObject({
       branch: "develop",
       ok: false,
       detail: "protected=true ausente",
@@ -141,6 +163,7 @@ describe("branch-protection gate", () => {
       baseUrl,
       branches: ["develop"],
       fetchImpl: createFetchStub({
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: repoResponse(),
         [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse(
           { message: "Branch not found" },
           { status: 404 },
@@ -149,11 +172,49 @@ describe("branch-protection gate", () => {
     });
 
     expect(result.ok).toBe(false);
-    expect(result.results[0]).toMatchObject({
+    expect(result.results[1]).toMatchObject({
       branch: "develop",
       ok: false,
       detail: "rama inexistente o API no expone develop (404)",
     });
+  });
+
+  test("fails when the repository does not allow the merge method the policy declares", async () => {
+    const baseUrl = "https://mock.github.local";
+    const result = await validateBranchProtection({
+      repository: "CartagoGit/api-source-tanit",
+      baseUrl,
+      branches: ["develop"],
+      fetchImpl: createFetchStub({
+        // The branch is perfectly protected — and the repository still
+        // refuses to produce a merge commit, so the policy's `merge`
+        // lands as a squash and the graph stops counting.
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: repoResponse(false),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
+          name: "develop",
+          protected: true,
+        }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
+          required_status_checks: {
+            strict: true,
+            contexts: [...REQUIRED_CHECKS],
+          },
+          enforce_admins: { enabled: true },
+          required_pull_request_reviews: { required_approving_review_count: 0 },
+          required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
+          allow_force_pushes: { enabled: false },
+          allow_deletions: { enabled: false },
+        }),
+      }),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.results[0]).toMatchObject({
+      branch: "(repository)",
+      ok: false,
+    });
+    expect(result.results[0].detail).toContain("mergeMethod=merge");
+    expect(result.results[0].detail).toContain("allow_merge_commit=false");
   });
 
   test("the live policy does not demand linear history, so a merge commit can land", () => {

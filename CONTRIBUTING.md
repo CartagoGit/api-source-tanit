@@ -368,6 +368,7 @@ con squash.
 | `delendai.config.json` → `development.integration.linearHistory` | `false` |
 | `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `false` |
 | GitHub → `develop` → *Require linear history* | **desactivado** |
+| GitHub → repositorio → *Allow merge commits* | **activado** |
 
 **Por qué merge commit y no squash.** Un squash **destruye** los
 commits de la rama: entran cuatro commits y aterrizan como uno, y
@@ -378,6 +379,32 @@ sobrevive a la rama. `git log --first-parent develop` sigue dando **una
 línea por cambio**, que es justo la lectura que se buscaba con el
 squash — el merge commit es estrictamente más información por el mismo
 precio.
+
+**El interruptor que faltaba: el del repositorio, no el de la rama.**
+*Require linear history* es la mitad de la rama; la otra mitad es el
+propio repositorio: **`allow_merge_commit`**. Son cosas distintas, y
+por eso una rama puede aceptar merge commits perfectamente mientras el
+repositorio se niega a producirlos. En ese estado el trabajo
+**aterriza aplastado**: `gh pr merge --merge` falla con *"Merge
+commits are not allowed on this repository"*, y el squash —el único
+método que quedaba— aplana la historia igual que siempre.
+
+Eso fue exactamente lo que pasó: la política decía `merge` y el
+repositorio decía `squash`. Dos respuestas a la misma pregunta, y
+ganaba la que borra las ramas del grafo. Por eso los dos lados se
+aplican y se verifican desde la **misma** política:
+
+| Quién | Qué hace |
+|---|---|
+| `.github/workflows/protect-develop.yml` → *Apply the repository merge strategy* | `PATCH /repos/<repo>` con los tres interruptores derivados de `mergeMethod` |
+| `.github/workflows/protect-develop.yml` → *Verify the merge strategy is in place* | Comprueba que lo aplicado coincide con lo declarado |
+| `scripts/gates/branch-protection.script.ts` | En cada CI: si `mergeMethod` es `merge` y el repositorio no permite merge commits, el gate **falla** |
+
+**Por qué GitHub exige dos métodos.** GitHub no admite dejar un solo
+método de merge habilitado (*"you need to allow either squash or rebase
+merge strategies, or both"*). Con `mergeMethod: "merge"` quedan
+habilitados **merge y squash**; la política sigue decidiendo cuál usa
+la integración.
 
 **Por qué GitHub no debe volver a activar *Require linear history*.**
 Un historial lineal **prohíbe** el propio merge commit que lleva la
