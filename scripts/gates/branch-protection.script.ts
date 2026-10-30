@@ -29,6 +29,7 @@ const CI_CONFIG = JSON.parse(readFileSync(resolve(ROOT, "delendai.config.json"),
       linearHistory?: boolean;
       allowForcePush?: boolean;
       allowDeleteIntegrationBranch?: boolean;
+      mergeMethod?: string;
     };
   };
 };
@@ -85,6 +86,15 @@ export const BRANCH_PROTECTION_POLICY = {
   requiredLinearHistory: DEVELOPMENT_INTEGRATION.linearHistory ?? true,
   allowForcePushes: DEVELOPMENT_INTEGRATION.allowForcePush ?? false,
   allowDeletions: DEVELOPMENT_INTEGRATION.allowDeleteIntegrationBranch ?? false,
+  // The method the policy says a change lands with. The REPOSITORY keeps
+  // its own switch for it (`allow_merge_commit`), and the two are not
+  // the same thing: with that switch off, the policy's `merge` is a
+  // sentence nobody can execute, the integration falls back to squash,
+  // and the history gets flattened — the graph stops saying which line
+  // each change came from. The policy said `merge` while the repository
+  // still only allowed `squash`, and that gap is exactly what this
+  // compares.
+  mergeMethod: DEVELOPMENT_INTEGRATION.mergeMethod ?? "squash",
   // Not derivable from the config: it comes from the profile, which only
   // the delendai runtime can expand. It is the invariant this repository
   // fixes for every profile it uses, stated here once rather than
@@ -168,6 +178,20 @@ interface IGitHubBranchDetails {
   readonly required_conversation_resolution?: { readonly enabled?: boolean } | null;
 }
 
+/**
+ * The repository's own merge switches.
+ *
+ * These are NOT the branch's protection: `allow_merge_commit` decides
+ * whether a merge commit may be created at all, and it lives on the
+ * repository, not on `develop`. A branch can perfectly accept merge
+ * commits while the repository refuses to produce them — which is the
+ * state this gate exists to catch.
+ */
+interface IGitHubRepositoryDetails {
+  readonly allow_merge_commit?: boolean;
+  readonly allow_squash_merge?: boolean;
+  readonly allow_rebase_merge?: boolean;
+}
 
 interface IGitHubErrorPayload {
   readonly message?: string;
@@ -188,6 +212,14 @@ export async function validateBranchProtection(
   });
 
   const results: IBranchCheckResult[] = [];
+  results.push(
+    await checkMergeStrategy({
+      repository,
+      token: options.token,
+      baseUrl,
+      fetchImpl,
+    }),
+  );
   for (const branch of branches) {
     results.push(
       await checkBranchProtection({
@@ -259,6 +291,83 @@ interface ICheckBranchProtectionOptions {
   readonly token?: string;
   readonly baseUrl: string;
   readonly fetchImpl: FetchLike;
+}
+
+interface ICheckMergeStrategyOptions {
+  readonly repository: string;
+  readonly token?: string;
+  readonly baseUrl: string;
+  readonly fetchImpl: FetchLike;
+}
+
+/**
+ * Does the REPOSITORY allow the method the policy declares?
+ *
+ * `required_linear_history` is the branch's half of this; this is the
+ * repository's half. They can disagree with each other AND with the
+ * policy, and each disagreement hides the branches in a different way:
+ * a branch that forbids merge commits rejects the push that carries
+ * one, and a repository that does not allow them squashes it instead —
+ * the work lands, and nothing says which line it came from.
+ *
+ * The comparison is against the policy, not against a constant: the
+ * policy is the only place that says how a change lands.
+ */
+async function checkMergeStrategy(
+  options: ICheckMergeStrategyOptions,
+): Promise<IBranchCheckResult> {
+  const repositoryUrl = new URL(`/repos/${options.repository}`, `${options.baseUrl}/`);
+  const response = await fetchImplWithAuth(
+    options.fetchImpl,
+    repositoryUrl,
+    options.token,
+  );
+
+  if (!response.ok) {
+    return {
+      branch: "(repository)",
+      ok: false,
+      detail: await formatGitHubError(
+        response,
+        `No se pudo leer el repositorio ${options.repository}`,
+      ),
+    };
+  }
+
+  const payload = (await response.json()) as IGitHubRepositoryDetails;
+  const declared = BRANCH_PROTECTION_POLICY.mergeMethod;
+  const expected = declared === "merge";
+
+  // `allow_merge_commit` is absent when the response does not carry the
+  // repository's merge settings — a token with less than metadata read
+  // on this repository. Nothing is concluded from that: a check that
+  // invents its own expectation passes whatever it finds, and a check
+  // that fails on what it could not read is just a broken build. The
+  // token the CI uses CAN read it, and the divergence is caught there.
+  if (payload.allow_merge_commit === undefined) {
+    return {
+      branch: "(repository)",
+      ok: true,
+      detail: `allow_merge_commit ausente en la respuesta; no se concluye nada de la estrategia de merge`,
+    };
+  }
+
+  if (payload.allow_merge_commit !== expected) {
+    return {
+      branch: "(repository)",
+      ok: false,
+      detail:
+        `la politica declara mergeMethod=${declared} y el repositorio ` +
+        `allow_merge_commit=${String(payload.allow_merge_commit)}; ` +
+        `el trabajo aterrizaria aplastado y el grafo dejaria de contar de donde sale`,
+    };
+  }
+
+  return {
+    branch: "(repository)",
+    ok: true,
+    detail: `allow_merge_commit=${String(payload.allow_merge_commit)} coincide con mergeMethod=${declared}`,
+  };
 }
 
 async function checkBranchProtection(
