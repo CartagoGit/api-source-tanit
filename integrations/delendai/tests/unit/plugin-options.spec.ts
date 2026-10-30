@@ -6,6 +6,9 @@
  *
  *  - `frameworkSearchRoot` is optional (the config may omit it).
  *  - When provided, it is a non-empty string.
+ *  - `release.sign` is optional and, when present, a boolean: it is
+ *    the policy the release workflow reads to decide whether the
+ *    installers are signed and whether a release may be published.
  *  - The fields that already existed (`defaultProjectRoot`, `cliScript`,
  *    `delendaiBunBin`) keep working as before: adding the field did
  *    not break anything.
@@ -51,6 +54,57 @@ describe("TanitOptionsSchema — frameworkSearchRoot", () => {
       frameworkSearchRoot: 42,
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe("TanitOptionsSchema — release.sign", () => {
+  test("se acepta omitirlo (es opcional)", () => {
+    const parsed = TanitOptionsSchema.safeParse({});
+    expect(parsed.success).toBe(true);
+  });
+
+  test("se acepta con un valor booleano", () => {
+    const parsed = TanitOptionsSchema.safeParse({
+      release: { sign: false },
+    });
+    expect(parsed.success).toBe(true);
+    expect((parsed.data as ITanitOptions).release?.sign).toBe(false);
+  });
+
+  test("se acepta con `release` vacío (la ausencia equivale a no firmar)", () => {
+    const parsed = TanitOptionsSchema.safeParse({ release: {} });
+    expect(parsed.success).toBe(true);
+  });
+
+  test("rechaza un `sign` que no es booleano", () => {
+    const parsed = TanitOptionsSchema.safeParse({
+      release: { sign: "sí" },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("rechaza un `release` que no es un objeto", () => {
+    const parsed = TanitOptionsSchema.safeParse({ release: true });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("rechaza un campo desconocido dentro de `release`", () => {
+    const parsed = TanitOptionsSchema.safeParse({
+      release: { sign: false, notarize: true },
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  test("no rompe las demás opciones", () => {
+    const parsed = TanitOptionsSchema.safeParse({
+      defaultProjectRoot: "/srv/api",
+      cliScript: "/otro/cli.ts",
+      delendaiBunBin: "/usr/local/bin/bun",
+      frameworkSearchRoot: "apps/api",
+      release: { sign: true },
+    });
+    expect(parsed.success).toBe(true);
+    expect((parsed.data as ITanitOptions).release?.sign).toBe(true);
   });
 });
 

@@ -23,9 +23,6 @@
     "maxWarmPlugins": 8
   },
   "agentWorktree": false,
-  "release": {
-    "sign": false
-  },
   "filesystem": {
     "authorizedRoots": [
       "packages",
@@ -273,7 +270,10 @@
       "path": "integrations/delendai/src/index.ts",
       "options": {
         "defaultProjectRoot": "${workspaceFolder}",
-        "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts"
+        "cliScript": "${workspaceFolder}/packages/cli/cli.script.ts",
+        "release": {
+          "sign": false
+        }
       }
     }
   }

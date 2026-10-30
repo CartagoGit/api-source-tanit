@@ -1871,7 +1871,7 @@ describe("el workflow de la release", () => {
     // Y no puede saltársele: el paso no lleva condición.
     expect(demand?.if, "the step that demands the signature can be skipped").toBeUndefined();
     const command = demand?.run ?? "";
-    expect(command).toContain("release.sign");
+    expect(command).toContain(".plugins.tanit.options.release.sign");
     expect(command).toContain("exit 1");
     // Y la comparación de verdad: sin ella el paso no falla cuando no
     // se firma. Un `if false` deja el paso con su `exit 1` y su

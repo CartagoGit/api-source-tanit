@@ -30,7 +30,25 @@ hacen falta.
 ## `release.sign`: la palanca que decide
 
 La política vive en [delendai.config.json](../delendai.config.json), en
-`release.sign`:
+`plugins.tanit.options.release.sign`:
+
+```json
+{
+  "plugins": {
+    "tanit": {
+      "options": {
+        "release": { "sign": false }
+      }
+    }
+  }
+}
+```
+
+No está en la raíz del fichero porque la raíz la valida el host delendai
+con su propio esquema: una clave que el host no conoce se reporta como
+una incidencia en **cada** arranque. Las opciones del plugin `tanit` —que
+es de este repositorio— son su sitio natural, y el host las valida contra
+el esquema del propio plugin.
 
 | `release.sign` | Qué pasa |
 |---|---|
