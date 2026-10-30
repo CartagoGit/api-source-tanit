@@ -10,8 +10,9 @@
       "requireLatestIntegration": true,
       "requiredApprovals": 0,
       "releaseRequiredApprovals": 1,
-      "mergeMethod": "squash",
-      "linearHistory": true
+      "mergeMethod": "merge",
+      "deleteMergedWorkRef": false,
+      "linearHistory": false
     }
   },
   "cacheDir": ".cache/delendai",

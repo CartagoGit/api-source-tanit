@@ -355,6 +355,49 @@ list** — do **not** widen to `delendai/*`.
 
 ---
 
+## Cómo aterriza el trabajo — el grafo tiene que contar la historia
+
+El trabajo **nunca** se commitea directamente en `develop`: sale de una
+rama `wip/<agente>/<kind>/<propuesta>-<slice>-g<generación>/<tema>`,
+se publica como pull request y se integra con **merge commit**, no
+con squash.
+
+| | |
+|---|---|
+| `delendai.config.json` → `development.integration.mergeMethod` | `merge` |
+| `delendai.config.json` → `development.integration.linearHistory` | `false` |
+| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `false` |
+| GitHub → `develop` → *Require linear history* | **desactivado** |
+
+**Por qué merge commit y no squash.** Un squash **destruye** los
+commits de la rama: entran cuatro commits y aterrizan como uno, y
+cuando la rama se borra ya no queda registro de qué entró ni cuándo.
+El merge commit conserva el trabajo en su **propia línea de
+desarrollo** y nombra la rama que lo produjo, así que la ascendencia
+sobrevive a la rama. `git log --first-parent develop` sigue dando **una
+línea por cambio**, que es justo la lectura que se buscaba con el
+squash — el merge commit es estrictamente más información por el mismo
+precio.
+
+**Por qué GitHub no debe volver a activar *Require linear history*.**
+Un historial lineal **prohíbe** el propio merge commit que lleva la
+ascendencia: sin él, `git log --graph` vuelve a mostrar una sola línea
+y las ramas desaparecen de la historia. Es el interruptor que
+contradice a `mergeMethod: "merge"`.
+
+**Por qué la rama no la borra GitHub.** Una propuesta aterriza **un
+pull request por slice**, y un slice puede tener más de una revisión:
+si el forge borrase la rama al primer merge, se perderían las slices
+siguientes. El borrado es decisión de delendai, que lo hace cuando la
+propuesta se cierra y ya no quedan slices.
+
+Cómo leerlo:
+
+```bash
+git log --graph --oneline develop      # las ramas se ven
+git log --first-parent --oneline develop   # una línea por cambio
+```
+
 ## Proposal workflow
 
 Every non-trivial change starts as a proposal under
