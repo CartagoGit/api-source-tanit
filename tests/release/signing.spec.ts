@@ -456,12 +456,16 @@ describe("the release manifest", () => {
   test("the per-platform manifests merge into one release manifest", async () => {
     const stage = await dryRunStaging("tanit-release-merge");
     const platformManifests = join(stage, "linux", "x64", "release-manifest.json");
+    // The version is the one the app declares, not a literal: the
+    // merge refuses a manifest whose version is not the one that is
+    // being released, and that version moves.
+    const version = await releaseVersion();
     await writeFile(
       platformManifests,
       `${JSON.stringify(
         {
           schema: "tanit.release.manifest/v1",
-          version: "0.1.0",
+          version,
           generatedAt: new Date().toISOString(),
           artifacts: [],
           assets: [],
@@ -1284,7 +1288,7 @@ describe("the publish gate", () => {
         `${JSON.stringify(
           {
             schema: "tanit.release.manifest/v1",
-            version: "0.1.0",
+            version: await releaseVersion(),
             artifacts: [],
             assets: [],
           },
@@ -1295,7 +1299,10 @@ describe("the publish gate", () => {
       );
     }
 
-    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--allow-unsigned", "--list"]);
+    // El staging de este test no tiene SBOM ni attestation: los
+    // produce S4, y el gate los exige para publicar. Aquí se inspecciona
+    // el gate, no se publica.
+    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--allow-unsigned", "--allow-missing-transparency", "--list"]);
     expect(result.status, result.output).toBe(0);
 
     const attached = result.stdout.split("\n").filter((line) => line.trim() !== "");
@@ -1314,7 +1321,7 @@ describe("the publish gate", () => {
   test("it attaches the per-artifact signatures", async () => {
     const stage = await dryRunStaging("tanit-release-gate-signatures");
 
-    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--allow-unsigned", "--list"]);
+    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--allow-unsigned", "--allow-missing-transparency", "--list"]);
     expect(result.status, result.output).toBe(0);
 
     const attached = result.stdout.split("\n").filter((line) => line.trim() !== "");
@@ -1355,7 +1362,7 @@ describe("the publish gate", () => {
     const stage = await dryRunStaging("tanit-release-gate-signed");
     await attachFixtureReceipts(stage, "notarization");
 
-    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--list"]);
+    const result = run("bun", ["run", PUBLISH_GATE, "--stage", stage, "--allow-missing-transparency", "--list"]);
     expect(result.status, result.output).toBe(0);
 
     const attached = result.stdout.split("\n").filter((line) => line.trim() !== "");

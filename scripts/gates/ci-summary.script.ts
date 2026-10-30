@@ -6,6 +6,7 @@ export const CI_JOBS = [
   "test-coverage",
   "validate-examples",
   "bench-check",
+  "desktop-tests",
   "security-audit",
   "validate-package",
   "integration-verifier",
