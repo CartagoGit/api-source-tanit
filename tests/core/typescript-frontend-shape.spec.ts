@@ -25,6 +25,7 @@
  * (r00020 S2 — LanguageIR agnostic foundation)
  */
 import { describe, expect, test } from "vitest";
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
@@ -52,6 +53,11 @@ const METODOS = [
  * the scanners are in `packages/frameworks/scanners/` — and Laravel has
  * its own. Every folder is listed on purpose — if a `core/scanners/`
  * ever appears, it is watched from the day it appears.
+ *
+ * Two more are watched now, because they are **consumers of the IR**:
+ * the LanguageIR that already existed (the TypeScript-shaped one the
+ * six JavaScript scanners read) and the discovery folder, where the
+ * host config parser lives.
  */
 const CARPETAS = [
   join(RAIZ, "packages", "core", "scanners"),
@@ -59,7 +65,40 @@ const CARPETAS = [
   // El scanner de Laravel vive en su propia carpeta, no en
   // `frameworks/scanners/`: sin esta línea, el gate no lo miraba.
   join(RAIZ, "packages", "frameworks", "laravel"),
+  join(RAIZ, "packages", "core", "language-ir"),
+  join(RAIZ, "packages", "core", "discovery"),
 ];
+
+/**
+ * The only places allowed to name the parser that reads TypeScript.
+ *
+ * The legacy IR (`packages/core/language-ir/`) and the host config
+ * parser are the **TypeScript-shaped implementation** the agnostic
+ * contract is meant to replace — in a later proposal. Migrating them
+ * is an explicit **non-goal** of r00020 S2: the slice adds the
+ * contract and moves the frontend; rewriting the IR that six scanners
+ * consume is a different, and much bigger, piece of work. The
+ * dependency is planned for that proposal.
+ *
+ * Until it lands, the dependency is a **whitelist entry with a
+ * reason** — not a hole nobody looks at. The gate below reads these
+ * files, finds the parser named in them, and lets it pass *because
+ * the list says so*, out loud.
+ */
+const LISTA_BLANCA: readonly string[] = [
+  "packages/core/language-ir/",
+  "packages/core/discovery/host-config-parser.service.ts",
+];
+
+/** Whether a path is inside the whitelist. */
+function enLaListaBlanca(relPath: string): boolean {
+  return LISTA_BLANCA.some(
+    (entrada) =>
+      entrada.endsWith("/")
+        ? relPath.startsWith(entrada)
+        : relPath === entrada,
+  );
+}
 
 /**
  * The vocabulary that would tie a scanner to one concrete parser,
@@ -265,6 +304,115 @@ describe("los símbolos y los decoradores se proyectan sin perder información",
   });
 });
 
+describe("la columna de un símbolo es la de su nombre", () => {
+  // La sangría de 4 espacios es deliberada: fija la columna 4 del
+  // método y la 6 del nombre de la clase. Con la sangría de 2 del
+  // repo los números serían otros, y el número es lo que se vigila.
+  const FUENTE = [
+    "class A {",
+    "    method() { return 1; }",
+    "}",
+  ].join("\n");
+
+  test("la clase apunta al nombre que introduce", () => {
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const clase = document.symbols.find((s) => s.name === "A");
+    expect(clase?.kind).toBe("class");
+    expect(clase?.location.line).toBe(1);
+    // El `A` de `class A {` está en la columna 6 — no en la 0, que es
+    // donde empieza la sentencia.
+    expect(clase?.location.column).toBe(6);
+  });
+
+  test("el método apunta al nombre que introduce", () => {
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const metodo = document.symbols.find((s) => s.name === "method");
+    expect(metodo?.kind).toBe("method");
+    expect(metodo?.location.line).toBe(2);
+    // El `method` está en la columna 4 — no en la 0, que es donde
+    // empieza la línea.
+    expect(metodo?.location.column).toBe(4);
+  });
+
+  test("la columna es donde el nombre está escrito en su línea", () => {
+    // La regla, y no el número: la columna de un símbolo es la
+    // posición de su nombre dentro de la línea que lo contiene. Un
+    // `column: 0` —o un `column: 42`— rompe esta aserción.
+    const document = typescriptFrontend.parse(FUENTE, "src/a.ts");
+    const lineas = FUENTE.split("\n");
+    expect(document.symbols.length).toBeGreaterThan(0);
+    for (const symbol of document.symbols) {
+      const linea = lineas[symbol.location.line - 1] ?? "";
+      expect(symbol.location.column, symbol.name).toBe(
+        linea.indexOf(symbol.name),
+      );
+    }
+  });
+
+  test("un símbolo de nivel de módulo apunta a su nombre", () => {
+    const document = typescriptFrontend.parse(
+      ["const app = 1;", "function helper() { return 1; }"].join("\n"),
+      "src/lib.ts",
+    );
+    const constante = document.symbols.find((s) => s.name === "app");
+    expect(constante?.location.line).toBe(1);
+    expect(constante?.location.column).toBe(6);
+
+    const funcion = document.symbols.find((s) => s.name === "helper");
+    expect(funcion?.location.line).toBe(2);
+    expect(funcion?.location.column).toBe(9);
+  });
+
+  test("una declaración decorada apunta a su nombre, y el marcador al suyo", () => {
+    const document = typescriptFrontend.parse(
+      [
+        "@Controller('/users')",
+        "export class UsersController {",
+        "  @Get(':id')",
+        "  getUser() { return {}; }",
+        "}",
+      ].join("\n"),
+      "src/users.controller.ts",
+    );
+    // La clase está decorada: su *nodo* empieza en el decorador
+    // (línea 1), pero su *nombre* está en la línea 2 — y la línea y
+    // la columna tienen que hablar de lo mismo.
+    const clase = document.symbols.find((s) => s.name === "UsersController");
+    expect(clase?.location.line).toBe(2);
+    expect(clase?.location.column).toBe(13);
+
+    const decorador = document.decorators.find((d) => d.name === "Controller");
+    expect(decorador?.location.line).toBe(1);
+    // El `Controller` de `@Controller('/users')` está en la columna 1:
+    // la columna 0 es el `@`.
+    expect(decorador?.location.column).toBe(1);
+  });
+});
+
+describe("la visibilidad de un método viene de su clase", () => {
+  test("el método de una clase exportada es visible fuera del módulo", () => {
+    const document = typescriptFrontend.parse(
+      ["export class A {", "  m() { return 1; }", "}"].join("\n"),
+      "src/a.ts",
+    );
+    const metodo = document.symbols.find((s) => s.name === "m");
+    expect(metodo?.kind).toBe("method");
+    // El frontend no modela la visibilidad de los miembros: un método
+    // público de una clase exportada *es* visible desde fuera del
+    // módulo, así que hereda la visibilidad de su clase.
+    expect(metodo?.exported).toBe(true);
+  });
+
+  test("el método de una clase que no se exporta, no lo es", () => {
+    const document = typescriptFrontend.parse(
+      ["class A {", "  m() { return 1; }", "}"].join("\n"),
+      "src/a.ts",
+    );
+    const metodo = document.symbols.find((s) => s.name === "m");
+    expect(metodo?.exported).toBe(false);
+  });
+});
+
 describe("las seis formas de callee sobreviven estructuradas", () => {
   const FUENTE = [
     "app.get('/a', h);",
@@ -370,6 +518,7 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
+        const rel = relative(RAIZ, fichero).replaceAll("\\", "/");
         const source = await readFile(fichero, "utf8");
         // La prosa de un scanner puede explicar el parser que hay
         // detrás — eso no ata el scanner al parser. Lo que lo ata es
@@ -377,20 +526,19 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
         sinComentarios(source)
           .split("\n")
           .forEach((linea, indice) => {
-            if (PROHIBIDO_EN_CODIGO.test(linea)) {
-              acana.push(
-                `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
-              );
+            if (PROHIBIDO_EN_CODIGO.test(linea) && !enLaListaBlanca(rel)) {
+              acana.push(`${rel}:${indice + 1} — ${linea.trim()}`);
             }
           });
         // Una supresión de tipos de TypeScript es un comentario por
         // definición, así que para verla hay que mirar la fuente
-        // entera: si no, el criterio se queda sin cobertura.
+        // entera: si no, el criterio se queda sin cobertura. Esta
+        // regla no tiene lista blanca: una supresión de tipos es un
+        // agujero en el typecheck, y el typecheck no migra por
+        // trabajo.
         source.split("\n").forEach((linea, indice) => {
           if (PROHIBIDO_EN_FUENTE.test(linea)) {
-            acana.push(
-              `${relative(RAIZ, fichero)}:${indice + 1} — ${linea.trim()}`,
-            );
+            acana.push(`${rel}:${indice + 1} — ${linea.trim()}`);
           }
         });
       }
@@ -402,15 +550,32 @@ describe("ningún consumidor del IR usa implementaciones concretas", () => {
     const acana: string[] = [];
     for (const carpeta of CARPETAS) {
       for (const fichero of await ficherosDe(carpeta)) {
+        const rel = relative(RAIZ, fichero).replaceAll("\\", "/");
+        if (enLaListaBlanca(rel)) continue;
         const source = sinComentarios(await readFile(fichero, "utf8"));
         for (const match of source.matchAll(/from\s*["']([^"']+)["']/g)) {
           const spec = match[1] ?? "";
           if (/@babel\/|["'](?:typescript|ts-node)["']/.test(spec)) {
-            acana.push(`${relative(RAIZ, fichero)} → ${spec}`);
+            acana.push(`${rel} → ${spec}`);
           }
         }
       }
     }
     expect(acana).toEqual([]);
+  });
+
+  test("la lista blanca es explícita, existe y está justificada", async () => {
+    // Una lista blanca vacía no vigila nada; una lista blanca que
+    // nombra un fichero que ya no existe miente sobre lo que el gate
+    // mira. Las dos cosas se comprueban aquí.
+    expect(LISTA_BLANCA.length).toBeGreaterThan(0);
+    for (const entrada of LISTA_BLANCA) {
+      expect(existsSync(join(RAIZ, entrada)), `${entrada} no existe`).toBe(
+        true,
+      );
+      // Y ninguna entrada puede ser un scanner: la lista blanca es
+      // para la implementación de TypeScript que queda por migrar.
+      expect(entrada.startsWith("packages/core/")).toBe(true);
+    }
   });
 });

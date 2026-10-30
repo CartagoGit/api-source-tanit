@@ -17,6 +17,7 @@ shippedIn:
   - d30b85ef49c592f9201924462e4cef39f2153189
   - 0e932f0308afea2ab64efc3957e24d54def17d57
   - 3d7496f9fe51fa98f47c0b1f3cd71eb72a466715
+  - d61a0b9d95560bfb53b5a70a92cba2bc40a273c8
 ---
 
 # r00020 — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)
@@ -44,7 +45,7 @@ Cuatro principios guían esta propuesta — todos encaminados a que Tanit pueda 
 - **ModuleResolver completo > resolver POSIX-shaped**. Hoy `import-resolver.ts` rechaza todo lo que no sea relative + fallback `.ts/.tsx/.js/index.*`. Cubrir tsconfig `baseUrl`/`paths`, `package.json` `"exports"`/`"imports"`, workspaces monorepo y Windows drive letters/UNC no es un nice-to-have: es la diferencia entre "analizamos tu repo" y "tu repo no se puede analizar". El flag experimental `experimental.allowGlobalSymbolLookup` separa lo correcto del fallback histórico sin obligar a romper consumers en esta propuesta.
 - **Contrato agnóstico > reescritura por lenguaje**. Crear `ILanguageFrontend`/`ISymbol`/`ICallExpression`/`IDecorator`/`ILocation` en `packages/contracts/interfaces/language-ir/` y migrar el frontend TS para implementarlo es la forma barata de preparar el terreno para tree-sitter-{python,php,go,java,csharp,ruby,elixir,rust} sin tocar `core/scanners/` ni `frameworks/`. Los lenguajes futuros se montan encima del IR sin reescribir el pipeline.
 - **Discriminated union por inferrer > inferrer genérico**. El barrel actual (4 inferrers: Spring, NestJS, FastAPI, ASP.NET) se queda; añadir 6 más (Fastify, Express, Laravel Resources, Gin, Rails render, Ktor call.respond) cubre ~80% de las APIs modernas. Cada inferrer implementa `IResponseInferrer` con su propio handler shape-aware; el registry los compone declarativamente, sin un motor de reglas genérico que cubra el 60% y deje el resto ambiguo.
-- **Refactor invisible para consumers del IR**. Los scanners actuales (`packages/core/scanners/`) y frameworks (`packages/frameworks/scanners/`) siguen emitiendo `ParsedRoute[]` neutro; el cambio ocurre entre la detection y el modelo universal. El grep por `@ts-ignore`/`ts.Node`/`babel` fuera del frontend TS debe devolver cero resultados al cerrar S2.
+- **Refactor invisible para consumers del IR**. Los scanners actuales (`packages/core/scanners/`) y frameworks (`packages/frameworks/scanners/`) siguen emitiendo `ParsedRoute[]` neutro; el cambio ocurre entre la detection y el modelo universal. El grep por `@ts-ignore`/`ts.Node`/`babel` en el **código** de los consumidores del IR debe devolver cero resultados al cerrar S2, salvo en la **lista blanca** explícita del IR legacy de TypeScript (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts`), cuya migración es un no-goal de esta slice.
 
 ## Architecture
 
@@ -81,17 +82,23 @@ packages/frameworks/scanners/
 
 ```text
 packages/contracts/interfaces/language-ir/
-  frontend.interface.ts                          # ILanguageFrontend
-  symbol.interface.ts                            # ISymbol
-  call.interface.ts                              # ICallExpression
+  frontend.interface.ts                          # ILanguageFrontend / ILanguageDocument
+  symbol.interface.ts                            # ISymbol / SymbolKind
+  call.interface.ts                              # ICallExpression / IArgumentValue / CallReceiverKind / ArgumentKind
   decorator.interface.ts                         # IDecorator / IAttribute
   location.interface.ts                          # ILocation
-  index.ts                                       # barrel
+  language-ir.interface.ts                       # barrel — el gate de nombres no admite `index.ts` en `interfaces/`
 
 packages/core/language-frontends/typescript/
-  typescript-frontend.service.ts                 # implements ILanguageFrontend (TS existing logic)
-  extract-routes-express.helper.ts               # moved here from core/scanners
+  typescript.parser.ts                           # el parser de siempre (sin cambios)
+  typescript-frontend.helper.ts                 # implementa ILanguageFrontend (la vista agnóstica)
+  extract-routes-express.helper.ts               # extractores de rutas sobre el IR (preexistentes)
+  extract-routes-fastify.helper.ts
+  extract-routes-hono.helper.ts
   index.ts                                       # barrel
+
+packages/core/language-ir/
+  scanner-bridge.helper.ts                       # puente IR legacy → IR agnóstico (modificado por la slice)
 ```
 
 ### Files layout (resultado de S3)
@@ -134,19 +141,15 @@ packages/core/response-inference/
 ### S2-LanguageIR-agnostic-frontend — S2 — LanguageIR agnóstico del lenguaje: contrato conceptual + migración TS
 - **Status**: done
 - **DependsOn**: [S1-module-resolver-complete]
-- **Files**: `packages/contracts/interfaces/language-ir/frontend.interface.ts`, `packages/contracts/interfaces/language-ir/symbol.interface.ts`, `packages/contracts/interfaces/language-ir/call.interface.ts`, `packages/contracts/interfaces/language-ir/decorator.interface.ts`, `packages/contracts/interfaces/language-ir/location.interface.ts`, `packages/contracts/interfaces/language-ir/index.ts`, `packages/core/language-frontends/typescript/typescript-frontend.service.ts`, `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`, `packages/core/language-frontends/typescript/index.ts`, `docs/LANGUAGE-IR.md`, `tests/contracts/language-ir-shape.spec.ts`, `tests/core/typescript-frontend-shape.spec.ts`
+- **Files**: `packages/contracts/interfaces/language-ir/frontend.interface.ts`, `packages/contracts/interfaces/language-ir/symbol.interface.ts`, `packages/contracts/interfaces/language-ir/call.interface.ts`, `packages/contracts/interfaces/language-ir/decorator.interface.ts`, `packages/contracts/interfaces/language-ir/location.interface.ts`, `packages/contracts/interfaces/language-ir/language-ir.interface.ts`, `packages/core/language-frontends/typescript/typescript-frontend.helper.ts`, `packages/core/language-frontends/typescript/index.ts`, `packages/core/language-ir/scanner-bridge.helper.ts`, `docs/LANGUAGE-IR.md`, `docs/API.md`, `tests/contracts/language-ir-shape.spec.ts`, `tests/core/typescript-frontend-shape.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`packages/contracts/interfaces/language-ir/` expone 5 interfaces agnósticas: `ILanguageFrontend { languageId, parse, extractSymbols, extractCalls, extractDecorators }`, `ISymbol`, `ICallExpression`, `IDecorator`/`IAttribute`, `ILocation` — ninguna contiene vocablos TS-specific (no `ts.Node`, no `Babel.types`, etc.)"
   - "El frontend TS existente (`packages/core/language-frontends/typescript/`) implementa `ILanguageFrontend` — refactor invisible para los consumidores del IR actual"
-  - "Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en `packages/core/scanners/` y `packages/frameworks/scanners/` no devuelve resultados fuera del frontend TS"
+  - "Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en el **código** de `packages/frameworks/scanners/`, `packages/frameworks/laravel/`, `packages/core/language-ir/` y `packages/core/discovery/` no devuelve resultados **fuera de la lista blanca** (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts` — el IR legacy de TypeScript, cuya migración al contrato agnóstico es un **no-goal explícito** de esta slice y está planificada para una propuesta posterior). La *prosa* de un scanner puede nombrar el parser que hay detrás; el código no"
   - "`docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia"
   - "Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato"
   - "DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto"
-- review-state: done
-- review-implementer: minimax-m3
-- review-reviewer: minimax-m3.1-flash-preview
-- review-log: approved by minimax-m3.1-flash-preview — Implementación real de r00020/S2 (merge original 0e932f0 en PR #33; correcciones de la revisión en PR #40). La revisión detectó 6 defectos: la columna del ILocation era un 0 inventado, el gate que prohíbe vocabulario TS en el contrato era derrotable por el IR legacy (../core/language-ir.interface.js), el criterio "los lenguajes futuros no rompen el shape" no estaba instrumentado, el criterio del grep era falso tal como estaba redactado, ISymbol.exported de los métodos era un false fabricado y la propuesta no reflejaba lo entregado. Los 6 están cerrados con mutación detectada: la columna es ahora la del ancla (el nombre que la declaración introduce) con 5 tests que la fijan, el contrato no puede importar fuera de su carpeta, todo frontend registrado bajo packages/core/language-frontends/*/ tiene que cumplir ILanguageFrontend, el IR legacy de TypeScript tiene lista blanca explícita y el criterio del grep está reformulado, exported se deriva de la clase que contiene el método, y el bloque S2 de la propuesta refleja ficheros, layout, revisores y verificaciones. Verificación: bunx vitest run tests/contracts/language-ir-shape.spec.ts 15/15, bunx vitest run tests/core/typescript-frontend-shape.spec.ts 26/26, bun run typecheck 0, bun run lint:contracts 0, bun run lint:proposals 0.
 
 ### S3-response-inference-expansion — S3 — Response inference expandida: Fastify, Express, Laravel Resources, Gin, Rails, Ktor (4→10 inferrers)
 - **Status**: done
@@ -182,7 +185,7 @@ packages/core/response-inference/
 - DoD slice: `bun run typecheck && bun run test:core && bun run validate:examples` verdes
 - `packages/contracts/interfaces/language-ir/` expone 5 interfaces agnósticas: `ILanguageFrontend { languageId, parse, extractSymbols, extractCalls, extractDecorators }`, `ISymbol`, `ICallExpression`, `IDecorator`/`IAttribute`, `ILocation` — ninguna contiene vocablos TS-specific (no `ts.Node`, no `Babel.types`, etc.)
 - El frontend TS existente (`packages/core/language-frontends/typescript/`) implementa `ILanguageFrontend` — refactor invisible para los consumidores del IR actual
-- Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en `packages/core/scanners/` y `packages/frameworks/scanners/` no devuelve resultados fuera del frontend TS
+- Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en el **código** de `packages/frameworks/scanners/`, `packages/frameworks/laravel/`, `packages/core/language-ir/` y `packages/core/discovery/` no devuelve resultados **fuera de la lista blanca** (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts` — el IR legacy de TypeScript, cuya migración al contrato agnóstico es un **no-goal explícito** de esta slice y está planificada para una propuesta posterior). La *prosa* de un scanner puede nombrar el parser que hay detrás; el código no
 - `docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia
 - Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato
 - DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto

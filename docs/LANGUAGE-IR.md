@@ -79,6 +79,36 @@ pierde `this.router.get` (el verbo sería `router`) y `server["get"]`
 El caso `computed` se escribe sin paréntesis a propósito: el miembro se
 accede con una expresión computada (`server["get"]`), no con un nombre.
 
+### La posición: el ancla, no el nodo
+
+`ILocation` pide fichero, línea y columna. La columna no es "donde
+empieza el nodo": es donde está el **ancla** — la cosa que identifica
+lo que se está buscando.
+
+| Qué | Dónde está el ancla | Ejemplo |
+|---|---|---|
+| Una declaración | el **nombre** que introduce | `class A {` → el `A`, columna 6 |
+| Un marcador | el **nombre** que lleva | `@Get()` → el `Get`, columna 1 |
+| Una llamada | la **expresión** que se llama | `app.get(...)` → el `app` |
+
+La diferencia importa. Una clase decorada **empieza** en su decorador
+(`@Controller`), así que el nodo está en la línea 1; pero su nombre
+está en la línea 2. Un consumidor que posiciona por columna tiene que
+recibir un par *coherente* — la línea y la columna tienen que hablar de
+lo mismo — y ese par es el del nombre.
+
+El frontend de TypeScript cumple esto: el AST normalizado solo traía
+la **línea** de cada declaración (los scanners nunca necesitaron la
+columna), así que las columnas se leen del **mismo árbol de sintaxis**
+que produjo el AST. Un parse, dos vistas.
+
+**La visibilidad de un método viene de su clase.** El frontend de
+TypeScript no modela la visibilidad de los miembros, así que un método
+hereda la de la clase que lo contiene: el método público de una clase
+exportada **es** visible desde fuera del módulo, y el de una clase que
+no se exporta, no. Es una aproximación declarada, no un accidente —
+y hay un test que la fija.
+
 **El decorador y el atributo son la misma cosa.** En JavaScript y en
 Python se llama *decorador*; en Java, *anotación*; en C#, *atributo*.
 El mecanismo es idéntico —un nombre, unos argumentos y la
@@ -112,7 +142,11 @@ El fichero nuevo hace **un solo parse** y proyecta el resultado:
   es quien reconoce las seis formas de callee.
 
 El contrato pide posición; el LanguageIR la guarda como rango de
-caracteres y el frontend la convierte a línea y columna.
+caracteres y el frontend la convierte a línea y columna. Las
+**declaraciones** no vienen con rango: el AST normalizado solo trae la
+línea, y la columna se lee del árbol de sintaxis — el mismo del que
+sale todo lo demás (ver «La posición: el ancla, no el nodo», más
+arriba).
 
 Lo que **no** ha cambiado: `parse()`, `parseModule()`,
 `parseModuleWithProgram()` y `extractRoutes()` devuelven exactamente lo
@@ -218,9 +252,13 @@ export { exampleFrontend } from "./<lenguaje>-frontend.helper.js";
 
 > **El sufijo del fichero.** La regla de nombres (`lint:naming`) admite
 > `.parser.ts` y `.helper.ts` dentro de
-> `packages/core/language-frontends/<lenguaje>/`. Un `.service.ts`
-> —que es lo que proponía la propuesta original para el frontend de
-> TypeScript— no pasa el gate, y esta slice no toca el gate.
+> `packages/core/language-frontends/typescript/` (la carpeta del
+> frontend de referencia tiene su propia regla). Para un lenguaje
+> **nuevo**, la regla de la carpeta padre admite `.parser.ts` — así que
+> el fichero del frontend se llama `<lenguaje>-frontend.parser.ts`. Un
+> `.service.ts` —que es lo que proponía la propuesta original para el
+> frontend de TypeScript— no pasa el gate, y esta slice no toca el
+> gate.
 
 ---
 
@@ -363,8 +401,39 @@ Los dos tests que vigilan el contrato:
   nombren ningún lenguaje concreto, que las cinco interfaces estén,
   que el IR de TypeScript las cumpla y que un frontend de un lenguaje
   que todavía no existe (escrito dentro del propio test) quepa en el
-  mismo contrato.
+  mismo contrato. Además:
+  - el contrato **no puede importar fuera de su carpeta** (una regla
+    que no depende del vocabulario: un
+    `import … from "../core/language-ir.interface.js"` se colaba sin
+    que ninguna de las otras reglas lo viera), y ninguna **cadena de
+    tipos** alcanzable —siguiendo los imports de dentro— nombra un
+    lenguaje (`TS*`, `Babel*`);
+  - **todo frontend registrado** —cada carpeta de
+    `packages/core/language-frontends/*/`— implementa el contrato
+    entero, así que el lenguaje que llegue mañana no puede romper el
+    shape sin que un test lo diga.
 - `tests/core/typescript-frontend-shape.spec.ts` — que el frontend de
   TypeScript cumpla el contrato en runtime, que las seis formas de
   callee sobrevivan estructuradas, que el refactor sea invisible y
-  que ningún scanner mentione un parser concreto.
+  que ningún scanner mencione un parser concreto.
+
+### La lista blanca del IR que todavía es de TypeScript
+
+El gate que vigila "ningún consumidor del IR usa implementaciones
+concretas" mira el **código** de `packages/frameworks/scanners/`,
+`packages/frameworks/laravel/`, `packages/core/language-ir/` y
+`packages/core/discovery/` — la prosa puede nombrar el parser que hay
+detrás; el código no.
+
+Dos rutas quedan **fuera** de ese criterio, y la lista es explícita:
+
+| Ruta | Por qué |
+|---|---|
+| `packages/core/language-ir/` | El IR de TypeScript que ya existía, que consumen los seis scanners de JavaScript. |
+| `packages/core/discovery/host-config-parser.service.ts` | El parser de la configuración del host, que lee TypeScript. |
+
+Migrarlos al contrato agnóstico es un **no-goal explícito** de la
+slice que introdujo el contrato: el trabajo está planificado para una
+propuesta posterior. Hasta entonces, la dependencia es una **entrada
+de lista blanca con su motivo**, no un agujero que nadie mira — y un
+test comprueba que las entradas existen y que sólo hay una.

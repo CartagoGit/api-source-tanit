@@ -394,6 +394,99 @@ jobs:
             --mode full \
             --allow-unsigned="${{ steps.policy.outputs.sign != 'true' }}"
 
+      # --- la transparencia de la cadena de suministro --------------------
+      #
+      # El SBOM, el statement de provenance y la attestation firmada se
+      # construyen **después** de verificar las firmas: describen los
+      # artefactos ya firmados, y una attestation de artefactos sin
+      # firmar no acredita nada.
+      #
+      # La attestation es SLSA-compatible —statement in-toto con el
+      # predicado `https://slsa.dev/provenance/v1`, dentro de un envelope
+      # DSSE— que es el mismo formato que produce
+      # `actions/attest-build-provenance`. Se genera **localmente** y no
+      # con la action de GitHub por una razón concreta: la clave de
+      # attestation se puede verificar contra la clave pública, sin
+      # red y sin cuenta. Una attestation que sólo GitHub sabe
+      # verificar no se puede comprobar en el runner, y este pipeline
+      # exige comprobar lo que publica.
+      - name: Preparar la clave de attestation
+        id: attestationkey
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          TANIT_ATTESTATION_KEY: ${{ secrets.TANIT_ATTESTATION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_ATTESTATION_KEY}" ]; then
+            echo "✗ The secret TANIT_ATTESTATION_KEY is not set: the release cannot be attested." >&2
+            echo "  A release without a verifiable attestation is not published." >&2
+            exit 1
+          fi
+          # La clave privada vive en un fichero temporal del runner y no
+          # sale de él: nunca está en el staging, ni en el repo, ni en el
+          # log. El fichero va con permisos cerrados porque es una clave.
+          printf '%s' "${TANIT_ATTESTATION_KEY}" > "${RUNNER_TEMP}/attestation-key.pem"
+          chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
+          openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
+
+          # La clave pública **versionada** es la que permite verificar la
+          # attestation que se publica: sin ella, quien la descarga no
+          # tiene con qué comprobarla. Si la clave del secreto no es la
+          # versionada, la attestation que saldría no la podría verificar
+          # nadie, así que el job para aquí.
+          published="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${published}" ]; then
+            echo "✗ The versioned public key ${published} is missing: the attestation would not be verifiable." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${published}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${published}." >&2
+            echo "  The attestation would be signed with a key that nobody can verify." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
+          echo "key=${RUNNER_TEMP}/attestation-key.pem" >> "$GITHUB_OUTPUT"
+          echo "public=${published}" >> "$GITHUB_OUTPUT"
+
+      # El SBOM y la attestation se construyen **solo** cuando se firma.
+      # En `release.sign=false` —el modo de desarrollo— no hay clave de
+      # attestation, y un paso que la exige mataría el job de un
+      # `workflow_dispatch` sin firma. La publicación sigue exigiendo
+      # los tres: el gate de publicación falla cerrado si no están.
+      - name: Construir el SBOM y la attestation
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        env:
+          ATTESTATION_KEY_PATH: ${{ steps.attestationkey.outputs.key }}
+        run: |
+          set -euo pipefail
+          bun run scripts/release/build-sbom.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}" \
+            --key-env ATTESTATION_KEY_PATH \
+            --key-id "tanit-release-attestation-v1" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}" \
+            --run-id "${GITHUB_RUN_ID}"
+
+      # El manifest se vuelve a medir: ahora tiene que describir también
+      # el SBOM, la provenance y la attestation. Sin esto, el gate de
+      # publicación vería assets adjuntos que el manifest no describe.
+      - name: Volver a medir los artefactos
+        if: steps.policy.outputs.sign == 'true'
+        shell: bash
+        run: |
+          bun run scripts/release/prepare-artifacts.mjs \
+            --stage "${STAGE}" \
+            --os "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --manifest "${STAGE}/${{ matrix.platform }}/${{ matrix.arch }}/${MANIFEST_NAME}"
+
       - name: Subir los artefactos
         uses: actions/upload-artifact@v7
         with:
@@ -465,6 +558,105 @@ jobs:
             --manifest "${STAGE}/${MANIFEST_NAME}" \
             --stage "${STAGE}" \
             --mode portable
+      # El manifest del updater se firma con la clave del updater y el
+      # verificador del SBOM lo contrasta contra el SBOM y contra el
+      # manifest de la release. Los tres tienen que hablar del mismo
+      # hash: si el updater ofrece algo que el SBOM no describe, el
+      # cliente está instalando algo que nadie ha auditado.
+      - name: Construir el manifest del updater
+        shell: bash
+        env:
+          TANIT_UPDATER_KEY: ${{ secrets.TANIT_UPDATER_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_UPDATER_KEY}" ]; then
+            echo "✗ The secret TANIT_UPDATER_KEY is not set: the release cannot offer a signed update." >&2
+            exit 1
+          fi
+          printf '%s' "${TANIT_UPDATER_KEY}" > "${RUNNER_TEMP}/updater-key.pem"
+          chmod 600 "${RUNNER_TEMP}/updater-key.pem"
+          VERSION="$(jq -r '.version' packages/desktop/tauri.conf.json)"
+          bun run scripts/release/build-update-manifest.mjs \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --out "${RUNNER_TEMP}/updater" \
+            --key "${RUNNER_TEMP}/updater-key.pem" \
+            --version "${VERSION}" \
+            --base-url "https://updates.tanit.dev/releases/${VERSION}" \
+            --source "release-desktop" \
+            --workflow "release-desktop.yml" \
+            --commit "${GITHUB_SHA}"
+      # La attestation se verifica **antes** de publicar. Si falta, si no
+      # verifica o si habla de otra build, el job muere aquí y la release
+      # se queda sin assets: una release sin attestation no es una
+      # release, es un binario en un sitio público.
+      #
+      # Los SBOM y las attestations seaben del staging por convención de
+      # nombre, así que la lista se recoge del disco en vez de escribirse
+      # a mano: un camino escrito a mano es un camino que se queda viejo
+      # en cuanto cambia la matriz.
+      - name: Verificar el SBOM y la attestation
+        shell: bash
+        env:
+          TANIT_ATTESTATION_KEY: ${{ secrets.TANIT_ATTESTATION_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TANIT_ATTESTATION_KEY}" ]; then
+            echo "✗ The secret TANIT_ATTESTATION_KEY is not set: the attestation cannot be verified." >&2
+            exit 1
+          fi
+          printf '%s' "${TANIT_ATTESTATION_KEY}" > "${RUNNER_TEMP}/attestation-key.pem"
+          chmod 600 "${RUNNER_TEMP}/attestation-key.pem"
+          openssl pkey -in "${RUNNER_TEMP}/attestation-key.pem" -pubout -out "${RUNNER_TEMP}/attestation-pub.pem"
+
+          # Se verifica contra la clave pública **versionada**, no contra
+          # la que sale del secreto: la que se publica es la versionada, y
+          # lo que tiene que verificar es lo que se publica. Las dos
+          # tienen que ser la misma, y si no lo son la release para.
+          public_key="${GITHUB_WORKSPACE}/packages/desktop/keys/tanit-release-attestation-v1.pub.pem"
+          if [ ! -f "${public_key}" ]; then
+            echo "✗ The versioned public key ${public_key} is missing: the attestation cannot be verified." >&2
+            exit 1
+          fi
+          secret_digest="$(openssl pkey -pubin -in "${RUNNER_TEMP}/attestation-pub.pem" -outform DER | sha256sum | cut -d' ' -f1)"
+          published_digest="$(openssl pkey -pubin -in "${public_key}" -outform DER | sha256sum | cut -d' ' -f1)"
+          if [ "${secret_digest}" != "${published_digest}" ]; then
+            echo "✗ The attestation key of the secret is not the published key ${public_key}." >&2
+            echo "  Rotate the key: docs/SBOM.md, §La rotación de la clave de attestation." >&2
+            exit 1
+          fi
+
+          args=()
+          while IFS= read -r sbom; do
+            args+=(--sbom "${sbom}")
+          done < <(find "${STAGE}" -type f -name '*.cdx.json' | sort)
+          while IFS= read -r attestation; do
+            args+=(--attestation "${attestation}")
+          done < <(find "${STAGE}" -type f -name '*.intoto.jsonl' | sort)
+          # La provenance **publicada** va con los otros: es el statement
+          # en claro, y tiene que ser el mismo que el firmado. Sin esta
+          # comprobación, publicar los dos es publicar dos versiones de
+          # la verdad, y sólo una está firmada.
+          while IFS= read -r provenance; do
+            args+=(--provenance "${provenance}")
+          done < <(find "${STAGE}" -type f -name '*.provenance.json' | sort)
+
+          if [ "${#args[@]}" -eq 0 ]; then
+            echo "✗ The staging holds no SBOM: the release cannot be published without one." >&2
+            exit 1
+          fi
+
+          bun run scripts/release/verify-sbom.mjs \
+            "${args[@]}" \
+            --stage "${STAGE}" \
+            --manifest "${STAGE}/${MANIFEST_NAME}" \
+            --update-manifest "${RUNNER_TEMP}/updater/latest.json" \
+            --require-update-manifest \
+            --require-provenance \
+            --public-key "${public_key}" \
+            --key-id "tanit-release-attestation-v1" \
+            --source "release-desktop" \
+            --commit "${GITHUB_SHA}"
 
       # ────────────────────────────────────────────────────────────
       # El manifest de actualización, firmado.
@@ -569,6 +761,10 @@ jobs:
       # ruta exacta**: el gate lista lo que se publica y el manifest va
       # con ellos, para que el endpoint tenga las tres cosas —el
       # manifest, su firma y los instaladores— en el mismo sitio.
+      #
+      # El gate también comprueba que están el SBOM, la provenance y la
+      # attestation: sin ellos la release no se puede auditar.
+
       - name: Calcular y comprobar los assets a publicar
         id: assets
         shell: bash

@@ -16,6 +16,7 @@ evidence:
 shippedIn:
   - 11038eaee9adc85b01408c2e587ee4dc16c172c7
   - 27e27258742e4ee9f54fe78e3dda1e0b35534a09
+  - 03aaef88ea4e7230b008ec17405bae3cc743d6ad
 ---
 
 # i00003 — Release industrial — desktop CI por plataforma, signing + notarization, secure updater firmado, SBOM CycloneDX, checksums firmados
