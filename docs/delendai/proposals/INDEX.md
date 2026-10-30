@@ -189,7 +189,7 @@ propuesta con sus SHAs (`shippedIn`).
 - `r00015` — Confidence scoring end-to-end — cada endpoint y cada campo lleva confianza + razón — `171f6ad, c3f92d7`
 - `r00016` — SchemaGraph view derivation — EndpointSpec.fields becomes a view of SchemaGraph, not another source of truth — `cd191dd`
 - `r00018` — Fastify + Hono scanner rewiring to LanguageIR — closes r00013 S3 + S4 — `e00a395`
-- `r00019` — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más — `—`
+- `r00019` — Universal API Model v2 — OperationId universal, per-operation serverRef/authRef, Postman como exporter más — `51b95717de9a1cee10e78db5d0d9265150777173, b27ffebaf3e754cd4651a062f13e70e186039e8c, 73ec169e4a7c0c969511ef913b144d2c967fd731`
 - `x00041` — x00041: el plugin MCP de Delendai es una integración externa, no parte del producto Tanit — `dbe8702, 6df4517, 292caac`
 - `x00045` — x00045: terminar x00041 — quitar Delendai de la CI principal y de los scripts del producto — `4776c2d`
 - `x00062` — Fix core → frameworks architectural regression — LanguageIR primitives belong in core — `506ed06`

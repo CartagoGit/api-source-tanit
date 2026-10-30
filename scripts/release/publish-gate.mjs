@@ -30,11 +30,17 @@
  *   · Un asset adjunto que el manifest no describe.
  *   · Dos assets con el mismo `basename`: se pisarían al subirlos.
  *   · Un manifest que no es el mergeado.
+ *   · Un SBOM, una provenance o una attestation que falten: una
+ *     release que se publica y no se puede auditar no se publica.
+ *     (`--allow-missing-transparency` lo salta, y sólo para inspección.)
+ *   · La clave pública de la attestation que no está versionada: sin
+ *     ella, la attestation que se adjunta no la puede verificar nadie.
  *
  * Uso:
  *   bun run scripts/release/publish-gate.mjs --stage <dir> [--manifest <file>]
  *   bun run scripts/release/publish-gate.mjs --stage <dir> --list
  */
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
@@ -43,8 +49,10 @@ import {
   RELEASE_MANIFEST_FILE,
   RELEASE_MANIFEST_SCHEMA,
   RELEASE_PUBLISH_PATTERNS,
+  RELEASE_REQUIRED_ASSET_KINDS,
   RELEASE_TARGET_MATRIX,
 } from "../../packages/contracts/constants/release/signing.constant.js";
+import { SBOM_ATTESTATION_PUBLIC_KEY_PATH } from "../../packages/contracts/constants/release/sbom.constant.js";
 
 /** Error con mensaje para la persona que lee, no para el log. */
 class ReleaseError extends Error {}
@@ -101,7 +109,7 @@ function baseName(relPath) {
 
 /** Lee los argumentos de la línea de órdenes. */
 function parseArgs(argv) {
-  const args = { stage: undefined, manifest: undefined, list: false, allowUnsigned: false };
+  const args = { stage: undefined, manifest: undefined, list: false, allowUnsigned: false, allowMissingTransparency: false };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -117,6 +125,8 @@ function parseArgs(argv) {
       case "--list": args.list = true; break;
       case "--allow-unsigned": args.allowUnsigned = true; break;
       case "--allow-unsigned=*": args.allowUnsigned = arg.endsWith("=true"); break;
+      case "--allow-missing-transparency": args.allowMissingTransparency = true; break;
+      case "--allow-missing-transparency=*": args.allowMissingTransparency = arg.endsWith("=true"); break;
       case "--help":
       case "-h": args.help = true; break;
       default:
@@ -136,6 +146,7 @@ function usage() {
       "  --manifest <file>    merged manifest (default: <stage>/release-manifest.json)",
       "  --list               print the files to attach, one per line",
       "  --allow-unsigned     accept unsigned artifacts (inspection only)",
+      "  --allow-missing-transparency   accept a staging with no SBOM, provenance or attestation (inspection only)",
     ].join("\n"),
   );
 }
@@ -178,6 +189,30 @@ async function main() {
   const files = await collectFiles(stage);
   const published = selectPublished(files, RELEASE_PUBLISH_PATTERNS);
   const problems = [];
+
+  // --- la clave pública de la attestation ----------------------------------
+  //
+  // La attestation se firma con una clave Ed25519 cuya **pública** está
+  // versionada en el repositorio: sin ella, una tercera parte no puede
+  // verificar la attestation que la release adjunta, y la attestation
+  // pasa a ser una afirmación sin prueba.
+  //
+  // No vive en el staging: la versiona el repositorio, en el tag de la
+  // release, así que se adjunta **por su ruta** y lo que la describe es
+  // el propio repositorio. Por eso no hay un glob que la busque en el
+  // staging: una copia —o cuatro, una por plataforma— subiría con el
+  // mismo `basename` y la última pisaría a las demás, y además el
+  // manifest no la describe, así que sería un asset que nadie ha
+  // auditado. Si el fichero no está, la release no sale: una
+  // attestation sin clave pública publicada no se puede auditar.
+  const publicKeyPath = SBOM_ATTESTATION_PUBLIC_KEY_PATH;
+  const publicKeyAbsolute = join(REPO_ROOT, publicKeyPath);
+  if (!existsSync(publicKeyAbsolute)) {
+    problems.push(
+      `the versioned public key of the attestation is missing: ${publicKeyPath}`,
+    );
+  }
+  const attached = [...published, publicKeyPath];
 
   if (published.length === 0) {
     problems.push("the staging holds nothing that the release would attach");
@@ -259,13 +294,42 @@ async function main() {
     }
   }
 
+  // --- la transparencia de la cadena de suministro --------------------------
+  //
+  // El SBOM, el statement de provenance y la attestation firmada son lo
+  // que permite auditar lo que se descarga. Una release sin ellos es
+  // una release que se publica y no se puede explicar: por eso el gate
+  // falla cerrado y no avisa.
+  //
+  // El gate mira **el manifest**, no los ficheros: si el manifest no
+  // describe un SBOM, es que el SBOM no se generó, y si el manifest lo
+  // describe pero el fichero no está en el staging, es que se perdió.
+  // Las dos cosas son un fallo de publicación.
+  for (const kind of RELEASE_REQUIRED_ASSET_KINDS) {
+    if (args.allowMissingTransparency) break;
+    const assets = (manifest.assets ?? []).filter((asset) => asset.kind === kind);
+    if (assets.length === 0) {
+      problems.push(
+        `the release does not attach a "${kind}" asset: the release cannot be audited`,
+      );
+      continue;
+    }
+    for (const asset of assets) {
+      if (!files.includes(asset.path)) {
+        problems.push(`${asset.path}: the manifest describes the "${kind}" asset, but it is not in the staging`);
+      } else if (!publishedSet.has(asset.path)) {
+        problems.push(`${asset.path}: the release does not attach the "${kind}" asset`);
+      }
+    }
+  }
+
   // --- dos assets con el mismo nombre ---------------------------------------
   //
   // La acción que los sube los nombra por su `basename` y pisa el que
   // ya estaba: dos assets con el mismo nombre son un asset y un
   // archivo perdido.
   const byName = new Map();
-  for (const file of published) {
+  for (const file of attached) {
     const name = baseName(file);
     const group = byName.get(name) ?? [];
     group.push(file);
@@ -290,11 +354,13 @@ async function main() {
   // lista, y nada más. El workflow la guarda en un output de GitHub y
   // se la pasa a la acción que sube los assets: una línea de más en
   // esa lista es un asset que no existe.
-  console.error(`→ The release attaches ${published.length} file(s).`);
+  console.error(`→ The release attaches ${attached.length} file(s).`);
 
   if (args.list) {
-    for (const file of published) {
-      console.log(join(args.stage, file));
+    for (const file of attached) {
+      // La clave pública vive en el repositorio, no en el staging: su
+      // ruta es la del repo. Todo lo demás cuelga del staging.
+      console.log(file === publicKeyPath ? publicKeyAbsolute : join(args.stage, file));
     }
   }
 

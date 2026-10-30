@@ -768,7 +768,13 @@ describe("el updater firmado", () => {
     //    contraparte, esto falla y no se publica nada.
     expect(runOf("verify-update.sh")).toContain("tanit-updater-public-key-v1.pem");
     // 4. Y el manifest y su firma se adjuntan a la release.
-    expect(runOf("latest.json")).toContain("latest.json.sig");
+    //    El paso se localiza por el gate —que es quien decide lo que
+    //    se publica— y no por el texto "latest.json": con la cadena de
+    //    transparencia (SBOM + provenance + attestation) hay más de un
+    //    paso que nombra el manifest del updater, y el que adjunta es
+    //    el del gate.
+    expect(runOf("publish-gate.mjs")).toContain("latest.json.sig");
+    expect(runOf("publish-gate.mjs")).toContain("latest.json");
   });
 
   test("el pipeline de la CI ejecuta los tests del crate de escritorio", async () => {
