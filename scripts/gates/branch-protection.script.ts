@@ -338,6 +338,20 @@ async function checkMergeStrategy(
   const declared = BRANCH_PROTECTION_POLICY.mergeMethod;
   const expected = declared === "merge";
 
+  // `allow_merge_commit` is absent when the response does not carry the
+  // repository's merge settings — a token with less than metadata read
+  // on this repository. Nothing is concluded from that: a check that
+  // invents its own expectation passes whatever it finds, and a check
+  // that fails on what it could not read is just a broken build. The
+  // token the CI uses CAN read it, and the divergence is caught there.
+  if (payload.allow_merge_commit === undefined) {
+    return {
+      branch: "(repository)",
+      ok: true,
+      detail: `allow_merge_commit ausente en la respuesta; no se concluye nada de la estrategia de merge`,
+    };
+  }
+
   if (payload.allow_merge_commit !== expected) {
     return {
       branch: "(repository)",

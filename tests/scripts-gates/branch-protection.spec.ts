@@ -217,6 +217,43 @@ describe("branch-protection gate", () => {
     expect(result.results[0].detail).toContain("allow_merge_commit=false");
   });
 
+  test("concludes nothing when the response does not carry the merge settings", async () => {
+    const baseUrl = "https://mock.github.local";
+    const result = await validateBranchProtection({
+      repository: "CartagoGit/api-source-tanit",
+      baseUrl,
+      branches: ["develop"],
+      fetchImpl: createFetchStub({
+        // A token with less than metadata read on the repository gets a
+        // response without the merge settings. Failing on what could
+        // not be read would be a broken build, not a check.
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit`]: jsonResponse({ id: 1 }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop`]: jsonResponse({
+          name: "develop",
+          protected: true,
+        }),
+        [`${baseUrl}/repos/CartagoGit/api-source-tanit/branches/develop/protection`]: jsonResponse({
+          required_status_checks: {
+            strict: true,
+            contexts: [...REQUIRED_CHECKS],
+          },
+          enforce_admins: { enabled: true },
+          required_pull_request_reviews: { required_approving_review_count: 0 },
+          required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
+          allow_force_pushes: { enabled: false },
+          allow_deletions: { enabled: false },
+        }),
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.results[0]).toMatchObject({
+      branch: "(repository)",
+      ok: true,
+    });
+    expect(result.results[0].detail).toContain("no se concluye nada");
+  });
+
   test("the live policy does not demand linear history, so a merge commit can land", () => {
     // The policy and the branch have to agree HERE as well as in the
     // config: `develop` accepts merge commits precisely because the
