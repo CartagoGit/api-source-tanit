@@ -10,7 +10,7 @@ name: release-desktop
 #
 # ## La política de firma
 #
-# `delendai.config.json#release.sign` decide:
+# `delendai.config.json#plugins.tanit.options.release.sign` decide:
 #
 #   · `false` (por defecto) → los instaladores se construyen, **no se
 #     firman**, y el workflow sube los artefactos como artefactos de CI.
@@ -134,7 +134,7 @@ jobs:
         id: policy
         shell: bash
         run: |
-          SIGN="$(jq -r '.release.sign // false' delendai.config.json)"
+          SIGN="$(jq -r '.plugins.tanit.options.release.sign // false' delendai.config.json)"
           if [ "${{ inputs.sign }}" = "true" ]; then SIGN="true"; fi
           echo "sign=${SIGN}" >> "$GITHUB_OUTPUT"
           echo "Signing: ${SIGN}"
@@ -453,10 +453,11 @@ jobs:
           echo "public=${published}" >> "$GITHUB_OUTPUT"
 
       # El SBOM y la attestation se construyen **solo** cuando se firma.
-      # En `release.sign=false` —el modo de desarrollo— no hay clave de
-      # attestation, y un paso que la exige mataría el job de un
-      # `workflow_dispatch` sin firma. La publicación sigue exigiendo
-      # los tres: el gate de publicación falla cerrado si no están.
+      # En `plugins.tanit.options.release.sign=false` —el modo de
+      # desarrollo— no hay clave de attestation, y un paso que la exige
+      # mataría el job de un `workflow_dispatch` sin firma. La
+      # publicación sigue exigiendo los tres: el gate de publicación
+      # falla cerrado si no están.
       - name: Construir el SBOM y la attestation
         if: steps.policy.outputs.sign == 'true'
         shell: bash
@@ -525,14 +526,15 @@ jobs:
           merge-multiple: true
 
       # Una release publicada **tiene** que estar firmada. Sin
-      # `release.sign=true` el job para aquí, con el motivo escrito.
+      # `plugins.tanit.options.release.sign=true` el job para aquí, con
+      # el motivo escrito.
       - name: Exigir la firma
         shell: bash
         run: |
           set -euo pipefail
-          SIGN="$(jq -r '.release.sign // false' delendai.config.json)"
+          SIGN="$(jq -r '.plugins.tanit.options.release.sign // false' delendai.config.json)"
           if [ "${SIGN}" != "true" ]; then
-            echo "✗ Publishing a release requires delendai.config.json#release.sign=true." >&2
+            echo "✗ Publishing a release requires delendai.config.json#plugins.tanit.options.release.sign=true." >&2
             echo "  An unsigned release is not published. Set it, tag, and try again." >&2
             exit 1
           fi
