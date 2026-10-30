@@ -64,6 +64,7 @@ import {
   RELEASE_MANIFEST_FILE,
   RELEASE_MANIFEST_SCHEMA,
   RELEASE_RECEIPT_SUFFIX,
+  RELEASE_SIGN_CONFIG_PATH,
   RELEASE_SIGN_DEFAULT,
   RELEASE_TARGET_MATRIX,
   SIGNING_PROVIDERS,
@@ -169,7 +170,15 @@ async function readTauriVersion() {
   return version;
 }
 
-/** Si la release firma o no, según `delendai.config.json#release.sign`. */
+/**
+ * Si la release firma o no, según
+ * `delendai.config.json#plugins.tanit.options.release.sign`.
+ *
+ * La política vive en las **opciones del plugin `tanit`** y no en la
+ * raíz del fichero de configuración del host: la raíz la valida el
+ * host, y una clave que el host no conoce sale como incidencia en
+ * cada arranque.
+ */
 async function readSignPolicy(configPath) {
   let raw;
   try {
@@ -183,13 +192,20 @@ async function readSignPolicy(configPath) {
   } catch (error) {
     throw new ReleaseError(`Could not parse ${configPath}: ${error.message}`);
   }
-  const release = parsed?.release;
+  const options = parsed?.plugins?.tanit?.options;
+  if (options === undefined || options === null) {
+    return { sign: RELEASE_SIGN_DEFAULT, present: false };
+  }
+  if (typeof options !== "object" || Array.isArray(options)) {
+    throw new ReleaseError(`${configPath}#plugins.tanit.options must be an object`);
+  }
+  const release = options.release;
   if (release === undefined) return { sign: RELEASE_SIGN_DEFAULT, present: false };
-  if (release === null || typeof release !== "object") {
-    throw new ReleaseError(`${configPath}#release must be an object`);
+  if (release === null || typeof release !== "object" || Array.isArray(release)) {
+    throw new ReleaseError(`${configPath}#${RELEASE_SIGN_CONFIG_PATH} must be an object`);
   }
   if (release.sign !== undefined && typeof release.sign !== "boolean") {
-    throw new ReleaseError(`${configPath}#release.sign must be a boolean`);
+    throw new ReleaseError(`${configPath}#${RELEASE_SIGN_CONFIG_PATH}.sign must be a boolean`);
   }
   return { sign: release.sign ?? RELEASE_SIGN_DEFAULT, present: true };
 }
@@ -709,7 +725,8 @@ function assertProduction(manifest, policy, configPath) {
   if (!policy.sign) {
     console.error(
       "\n✗ Production publishing requires `release.sign=true` in " +
-        `${configPath.replace(`${REPO_ROOT}/`, "")}. The release stops here.`,
+        `${configPath.replace(`${REPO_ROOT}/`, "")}#${RELEASE_SIGN_CONFIG_PATH}.sign. ` +
+        "The release stops here.",
     );
     return 1;
   }
@@ -769,7 +786,7 @@ async function main() {
   console.log(`→ Release version: ${version}`);
   console.log(
     `→ Signing policy: ${policy.sign ? "enabled" : "disabled"} ` +
-      `(${configPath.replace(`${REPO_ROOT}/`, "")}#release.sign)`,
+      `(${configPath.replace(`${REPO_ROOT}/`, "")}#${RELEASE_SIGN_CONFIG_PATH}.sign)`,
   );
 
   if (args.checkCredentials) {

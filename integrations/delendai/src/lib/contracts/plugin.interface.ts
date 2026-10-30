@@ -73,6 +73,35 @@ export const TanitOptionsSchema = z
      * pipeline, so the plugin does not have to repeat the check.
      */
     frameworkSearchRoot: z.string().min(1).optional(),
+    /**
+     * Release policy of this project — whether the release is signed.
+     *
+     * It lives in the **plugin's** options and not at the root of
+     * `delendai.config.json` because the root belongs to the host:
+     * the root is validated against the host's own schema, and a key
+     * the host does not know is reported as a config issue on every
+     * boot ("Unrecognized key"). The options of a plugin are the
+     * plugin's own business, and the host validates them against this
+     * schema instead.
+     *
+     * `sign` is read by the release workflow
+     * (`.github/workflows/release-desktop.yml`) and by
+     * `scripts/release/prepare-artifacts.mjs`. It decides two things:
+     * whether the installers are signed and notarized, and whether a
+     * release may be published at all. It defaults to `false`: the
+     * development mode, which needs neither an Apple certificate nor
+     * a Microsoft one.
+     */
+    release: z
+      .object({
+        /**
+         * Whether the release signs its installers. `false` — the
+         * default — builds them unsigned and publishes nothing.
+         */
+        sign: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

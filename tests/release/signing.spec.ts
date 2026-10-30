@@ -62,7 +62,7 @@ const SIGN_LINUX = join(REPO_ROOT, "scripts", "release", "sign-linux.sh");
 const PUBLISH_GATE = join(REPO_ROOT, "scripts", "release", "publish-gate.mjs");
 /** El script que firma en Windows. */
 const SIGN_WINDOWS = join(REPO_ROOT, "scripts", "release", "sign-windows.ps1");
-/** La configuración del host, donde vive `release.sign`. */
+/** La configuración del host, donde vive `plugins.tanit.options.release.sign`. */
 const CONFIG = join(REPO_ROOT, "delendai.config.json");
 /** El workflow que publica la release. */
 const WORKFLOW = join(REPO_ROOT, ".github", "workflows", "release-desktop.yml");
@@ -503,7 +503,11 @@ describe("the release manifest", () => {
     // producción pararía antes, en la política.
     const config = await tempDir("tanit-release-production-config");
     const configPath = join(config, "delendai.config.json");
-    await writeFile(configPath, `${JSON.stringify({ release: { sign: true } }, null, 2)}\n`, "utf8");
+    await writeFile(
+      configPath,
+      `${JSON.stringify({ plugins: { tanit: { options: { release: { sign: true } } } } }, null, 2)}\n`,
+      "utf8",
+    );
 
     // Con la matriz completa, la aserción dice que faltan firmas —no
     // targets—: la cobertura de la matriz se comprueba antes.
@@ -1399,7 +1403,7 @@ describe("the missing credentials matrix", () => {
       const configPath = join(config, "delendai.config.json");
       await writeFile(
         configPath,
-        `${JSON.stringify({ release: { sign: true } }, null, 2)}\n`,
+        `${JSON.stringify({ plugins: { tanit: { options: { release: { sign: true } } } } }, null, 2)}\n`,
         "utf8",
       );
 
@@ -1465,7 +1469,11 @@ describe("the missing credentials matrix", () => {
   test("with signing enabled a missing credential stops the release", async () => {
     const config = await tempDir("tanit-release-config");
     const configPath = join(config, "delendai.config.json");
-    await writeFile(configPath, `${JSON.stringify({ release: { sign: true } }, null, 2)}\n`, "utf8");
+    await writeFile(
+      configPath,
+      `${JSON.stringify({ plugins: { tanit: { options: { release: { sign: true } } } } }, null, 2)}\n`,
+      "utf8",
+    );
 
     const complete: Record<string, string> = {};
     for (const provider of SIGNING_PROVIDERS) {
@@ -1505,9 +1513,9 @@ describe("the missing credentials matrix", () => {
 
   test("the repository ships with signing disabled", async () => {
     const raw = JSON.parse(await readFile(CONFIG, "utf8")) as {
-      release?: { sign?: unknown };
+      plugins?: { tanit?: { options?: { release?: { sign?: unknown } } } };
     };
-    expect(raw.release?.sign).toBe(false);
+    expect(raw.plugins?.tanit?.options?.release?.sign).toBe(false);
   });
 });
 
@@ -1537,7 +1545,7 @@ describe("the release policy", () => {
 
     // La publicación exige `release.sign=true`.
     const workflowText = await readFile(WORKFLOW, "utf8");
-    expect(workflowText).toContain("release.sign=true");
+    expect(workflowText).toContain("plugins.tanit.options.release.sign=true");
     expect(workflow.jobs.publish?.needs).toBe("build");
   });
 

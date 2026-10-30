@@ -40,6 +40,20 @@ import type {
  */
 export const RELEASE_SIGN_DEFAULT = false;
 
+/**
+ * Dónde vive la política de firma dentro de `delendai.config.json`.
+ *
+ * **No** está en la raíz del fichero: la raíz la valida el host con su
+ * propio esquema, y una clave que el host no conoce sale como
+ * incidencia en cada arranque. Vive en las opciones del plugin
+ * `tanit` —que es de este repositorio—, y de ahí la leen el script de
+ * la release y el workflow que la publica.
+ *
+ * El bloque es `plugins.tanit.options.release`; la palanca que lo
+ * decide es su campo `sign`.
+ */
+export const RELEASE_SIGN_CONFIG_PATH = "plugins.tanit.options.release";
+
 /** Discriminante del manifest. Si cambia la forma, cambia esto. */
 export const RELEASE_MANIFEST_SCHEMA = "tanit.release.manifest/v1";
 
