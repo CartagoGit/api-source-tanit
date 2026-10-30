@@ -35,7 +35,7 @@ Cuatro principios guían esta propuesta — todos encaminados a que Tanit pueda 
 - **ModuleResolver completo > resolver POSIX-shaped**. Hoy `import-resolver.ts` rechaza todo lo que no sea relative + fallback `.ts/.tsx/.js/index.*`. Cubrir tsconfig `baseUrl`/`paths`, `package.json` `"exports"`/`"imports"`, workspaces monorepo y Windows drive letters/UNC no es un nice-to-have: es la diferencia entre "analizamos tu repo" y "tu repo no se puede analizar". El flag experimental `experimental.allowGlobalSymbolLookup` separa lo correcto del fallback histórico sin obligar a romper consumers en esta propuesta.
 - **Contrato agnóstico > reescritura por lenguaje**. Crear `ILanguageFrontend`/`ISymbol`/`ICallExpression`/`IDecorator`/`ILocation` en `packages/contracts/interfaces/language-ir/` y migrar el frontend TS para implementarlo es la forma barata de preparar el terreno para tree-sitter-{python,php,go,java,csharp,ruby,elixir,rust} sin tocar `core/scanners/` ni `frameworks/`. Los lenguajes futuros se montan encima del IR sin reescribir el pipeline.
 - **Discriminated union por inferrer > inferrer genérico**. El barrel actual (4 inferrers: Spring, NestJS, FastAPI, ASP.NET) se queda; añadir 6 más (Fastify, Express, Laravel Resources, Gin, Rails render, Ktor call.respond) cubre ~80% de las APIs modernas. Cada inferrer implementa `IResponseInferrer` con su propio handler shape-aware; el registry los compone declarativamente, sin un motor de reglas genérico que cubra el 60% y deje el resto ambiguo.
-- **Refactor invisible para consumers del IR**. Los scanners actuales (`packages/core/scanners/`) y frameworks (`packages/frameworks/scanners/`) siguen emitiendo `ParsedRoute[]` neutro; el cambio ocurre entre la detection y el modelo universal. El grep por `@ts-ignore`/`ts.Node`/`babel` fuera del frontend TS debe devolver cero resultados al cerrar S2.
+- **Refactor invisible para consumers del IR**. Los scanners actuales (`packages/core/scanners/`) y frameworks (`packages/frameworks/scanners/`) siguen emitiendo `ParsedRoute[]` neutro; el cambio ocurre entre la detection y el modelo universal. El grep por `@ts-ignore`/`ts.Node`/`babel` en el **código** de los consumidores del IR debe devolver cero resultados al cerrar S2, salvo en la **lista blanca** explícita del IR legacy de TypeScript (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts`), cuya migración es un no-goal de esta slice.
 
 ## Architecture
 
@@ -72,17 +72,23 @@ packages/frameworks/scanners/
 
 ```text
 packages/contracts/interfaces/language-ir/
-  frontend.interface.ts                          # ILanguageFrontend
-  symbol.interface.ts                            # ISymbol
-  call.interface.ts                              # ICallExpression
+  frontend.interface.ts                          # ILanguageFrontend / ILanguageDocument
+  symbol.interface.ts                            # ISymbol / SymbolKind
+  call.interface.ts                              # ICallExpression / IArgumentValue / CallReceiverKind / ArgumentKind
   decorator.interface.ts                         # IDecorator / IAttribute
   location.interface.ts                          # ILocation
-  index.ts                                       # barrel
+  language-ir.interface.ts                       # barrel — el gate de nombres no admite `index.ts` en `interfaces/`
 
 packages/core/language-frontends/typescript/
-  typescript-frontend.service.ts                 # implements ILanguageFrontend (TS existing logic)
-  extract-routes-express.helper.ts               # moved here from core/scanners
+  typescript.parser.ts                           # el parser de siempre (sin cambios)
+  typescript-frontend.helper.ts                 # implementa ILanguageFrontend (la vista agnóstica)
+  extract-routes-express.helper.ts               # extractores de rutas sobre el IR (preexistentes)
+  extract-routes-fastify.helper.ts
+  extract-routes-hono.helper.ts
   index.ts                                       # barrel
+
+packages/core/language-ir/
+  scanner-bridge.helper.ts                       # puente IR legacy → IR agnóstico (modificado por la slice)
 ```
 
 ### Files layout (resultado de S3)
@@ -123,17 +129,21 @@ packages/core/response-inference/
 - review-reviewer: minimax-m3.1-flash-preview
 - review-log: approved by minimax-m3.1-flash-preview — Implementación real de r00019/S1 (commits c892f76, ffbb5f0, e967ea2; PR #29, merge d30b85e). Segunda revisión (el primer veredicto fue changes-requested) tras corregir los 5 hallazgos: el bench `tests/core/module-resolution.bench.ts` ahora está cableado a `bun run bench:module-resolution` y encadenado en `validate` y en el job `bench-check` de CI (H1); un fixture con `exports: {".":"./index.js"}` **y** un `private.js` real en disco fija que un subpath no exportado da NOT_FOUND, y el test falla si se reintroduce el fallback (H2); `subpath` se rellena en el resultado y se elimina el código de error `UNSUPPORTED` que nadie producia (H3); un target `null` en `exports` **bloquea** la resolución como en Node — verificado contra Node v24.16.0, no de memoria — y la misma regla se aplica al campo `imports` (H4); tabuladores normalizados a 2 espacios (H5). Gates: `bun run validate` exit 0 (267 ficheros / 4058 tests, baseline de cobertura congelado cumplido), typecheck 6/6, lint exit 0, `test:core` 1402, `validate:examples` 25/25. Bench: 1000 imports → cold 43.62 ms, warm 0.51 ms (presupuesto 100 ms), 1000/1000 resueltos, con salida por exit 1 si resuelve menos. Mutaciones de la revisión (10): 9 detectadas; la 10ta (fallback al índice del paquete para un subpath no exportado) NO la detectaba el spec shipped, y por eso se añadió el fixture de H2. Regresión: `resolveImportPath` no tiene consumidor de producción (0 hits fuera de su módulo) y los 5 specs preexistentes modificados endurecen o actualizan la expectativa, no tapan regresiones. Desviaciones: `packages/frameworks/scanners/import-resolver.ts` de la lista no existe (el resolver real estaba en `packages/core/discovery/import-resolver.ts`); `resolver-error.ts` → `resolver-error.helper.ts` por el sufijo que admite el gate; `docs/API.md` regenerado por `bun run docs:api` (lo exige `lint:api`). Veredicto previo (consolidacion documental phase-5): approved by delivery-verifier — ModuleResolver completo, LanguageIR agnóstico, response inference 4→10 inferrers, dependencias declaradas con a00019 phase-4.
 ### S2-LanguageIR-agnostic-frontend — S2 — LanguageIR agnóstico del lenguaje: contrato conceptual + migración TS
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1-module-resolver-complete]
-- **Files**: `packages/contracts/interfaces/language-ir/frontend.interface.ts`, `packages/contracts/interfaces/language-ir/symbol.interface.ts`, `packages/contracts/interfaces/language-ir/call.interface.ts`, `packages/contracts/interfaces/language-ir/decorator.interface.ts`, `packages/contracts/interfaces/language-ir/location.interface.ts`, `packages/contracts/interfaces/language-ir/index.ts`, `packages/core/language-frontends/typescript/typescript-frontend.service.ts`, `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`, `packages/core/language-frontends/typescript/index.ts`, `docs/LANGUAGE-IR.md`, `tests/contracts/language-ir-shape.spec.ts`, `tests/core/typescript-frontend-shape.spec.ts`
+- **Files**: `packages/contracts/interfaces/language-ir/frontend.interface.ts`, `packages/contracts/interfaces/language-ir/symbol.interface.ts`, `packages/contracts/interfaces/language-ir/call.interface.ts`, `packages/contracts/interfaces/language-ir/decorator.interface.ts`, `packages/contracts/interfaces/language-ir/location.interface.ts`, `packages/contracts/interfaces/language-ir/language-ir.interface.ts`, `packages/core/language-frontends/typescript/typescript-frontend.helper.ts`, `packages/core/language-frontends/typescript/index.ts`, `packages/core/language-ir/scanner-bridge.helper.ts`, `docs/LANGUAGE-IR.md`, `docs/API.md`, `tests/contracts/language-ir-shape.spec.ts`, `tests/core/typescript-frontend-shape.spec.ts`
 - **Gate**: type
 - acceptance:
   - "`packages/contracts/interfaces/language-ir/` expone 5 interfaces agnósticas: `ILanguageFrontend { languageId, parse, extractSymbols, extractCalls, extractDecorators }`, `ISymbol`, `ICallExpression`, `IDecorator`/`IAttribute`, `ILocation` — ninguna contiene vocablos TS-specific (no `ts.Node`, no `Babel.types`, etc.)"
   - "El frontend TS existente (`packages/core/language-frontends/typescript/`) implementa `ILanguageFrontend` — refactor invisible para los consumidores del IR actual"
-  - "Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en `packages/core/scanners/` y `packages/frameworks/scanners/` no devuelve resultados fuera del frontend TS"
+  - "Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en el **código** de `packages/frameworks/scanners/`, `packages/frameworks/laravel/`, `packages/core/language-ir/` y `packages/core/discovery/` no devuelve resultados **fuera de la lista blanca** (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts` — el IR legacy de TypeScript, cuya migración al contrato agnóstico es un **no-goal explícito** de esta slice y está planificada para una propuesta posterior). La *prosa* de un scanner puede nombrar el parser que hay detrás; el código no"
   - "`docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia"
   - "Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato"
   - "DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto"
+- review-state: in_review
+- review-implementer: minimax-m3
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: implementado, pendiente de veredicto de revisión — Implementación real de r00020/S2 (commit 0e932f0, PR #33) y las seis correcciones de la revisión (commits 11258af, 21a27dc, 6364074 y 68cd910, más la actualización de la propuesta en bdb5717 y 7e0eb84): (H1) `ILocation.column` pasa a ser la del **ancla** de la declaración —el nombre que introduce— y el frontend TS la lee del árbol de sintaxis en vez de inventar un `0`; (H2) el contrato agnóstico no puede importar fuera de su carpeta y ninguna cadena de tipos alcanzable nombra `TS*`/`Babel*`; (H3) todo frontend registrado bajo `packages/core/language-frontends/*/` se comprueba contra `ILanguageFrontend` (runtime + tipo); (H4) el gate de "ningún consumidor nombra un parser" tiene lista blanca explícita para el IR legacy de TypeScript y el criterio de aceptación se reescribe para que sea cierto y verificable; (H5) la visibilidad de un método se deriva de la de su clase; (H6) esta propuesta refleja lo entregado (estado, lista de ficheros real y layout corregido). Verificaciones: `bunx vitest run tests/contracts/language-ir-shape.spec.ts` (15 tests) y `bunx vitest run tests/core/typescript-frontend-shape.spec.ts` (26 tests) verdes, `bun run typecheck` (6/6 secciones), `bun run lint` completo (38 gates) verde, `bun run lint:contracts`, `bun run lint:naming`, `bun run lint:boundaries`, `bun run lint:paths` y `bun run lint:proposals` verdes, y los projects `core`+`contracts` (1851 tests) y `frameworks`+`e2e` (1685 tests) verdes. Mutaciones de la revisión reproducidas y detectadas por los tests nuevos: `column: 42`, `exported: true` en los métodos, el import del IR de TypeScript en el contrato y el frontend de un lenguaje futuro no conforme. El veredicto lo firma el revisor.
 
 ### S3-response-inference-expansion — S3 — Response inference expandida: Fastify, Express, Laravel Resources, Gin, Rails, Ktor (4→10 inferrers)
 - **Status**: done
@@ -169,7 +179,7 @@ packages/core/response-inference/
 - DoD slice: `bun run typecheck && bun run test:core && bun run validate:examples` verdes
 - `packages/contracts/interfaces/language-ir/` expone 5 interfaces agnósticas: `ILanguageFrontend { languageId, parse, extractSymbols, extractCalls, extractDecorators }`, `ISymbol`, `ICallExpression`, `IDecorator`/`IAttribute`, `ILocation` — ninguna contiene vocablos TS-specific (no `ts.Node`, no `Babel.types`, etc.)
 - El frontend TS existente (`packages/core/language-frontends/typescript/`) implementa `ILanguageFrontend` — refactor invisible para los consumidores del IR actual
-- Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en `packages/core/scanners/` y `packages/frameworks/scanners/` no devuelve resultados fuera del frontend TS
+- Verificación: ningún consumer del IR usa implementaciones TS-specific directamente; el grep por `@ts-ignore`, `ts.Node`, `babel` en el **código** de `packages/frameworks/scanners/`, `packages/frameworks/laravel/`, `packages/core/language-ir/` y `packages/core/discovery/` no devuelve resultados **fuera de la lista blanca** (`packages/core/language-ir/` y `packages/core/discovery/host-config-parser.service.ts` — el IR legacy de TypeScript, cuya migración al contrato agnóstico es un **no-goal explícito** de esta slice y está planificada para una propuesta posterior). La *prosa* de un scanner puede nombrar el parser que hay detrás; el código no
 - `docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia
 - Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato
 - DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto

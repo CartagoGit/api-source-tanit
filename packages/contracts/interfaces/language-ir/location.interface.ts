@@ -24,6 +24,19 @@
  *   bugs are born, so the pair is fixed here: 1-based line, 0-based
  *   column, exactly like the ESTree convention every mainstream
  *   parser uses.
+ *
+ *   The column points at the **anchor** of the node: the thing that
+ *   identifies it. For a declaration that is the name it introduces —
+ *   the `A` of `class A` is at column 6, the `getUser` of
+ *   `  getUser() {}` is at column 2. For a marker it is the name it
+ *   carries — the `Get` of `@Get()`. For a call it is the expression
+ *   being called.
+ *
+ *   Not the node that carries it: a decorated declaration *starts* at
+ *   its decorator, and a consumer that positions by column would be
+ *   sent to the `@` instead of to the name it is looking for. The
+ *   anchor is the answer to "where is the thing I am looking for?",
+ *   and that is the question a column is asked.
  * - `start` / `end` are **character offsets into the source**, `start`
  *   inclusive and `end` exclusive, so `source.slice(start, end)` is
  *   the text of the node. They are optional: a frontend that only
@@ -36,9 +49,9 @@
 export interface ILocation {
   /** Path of the file the node was read from. */
   readonly file: string;
-  /** 1-based line where the node starts. */
+  /** 1-based line of the node's anchor. */
   readonly line: number;
-  /** 0-based column where the node starts. */
+  /** 0-based column of the node's anchor. */
   readonly column: number;
   /**
    * Character offset of the first character of the node (inclusive).

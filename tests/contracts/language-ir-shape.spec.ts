@@ -24,8 +24,8 @@
  */
 import { describe, expect, test } from "vitest";
 import { readdir, readFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { typescriptFrontend } from "../../packages/core/language-frontends/typescript/typescript-frontend.helper.js";
 import type {
@@ -40,6 +40,21 @@ import type {
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const CONTRACTS = join(AQUI, "..", "..", "packages", "contracts");
 const LANGUAGE_IR = join(CONTRACTS, "interfaces", "language-ir");
+const FRONTENDS = join(AQUI, "..", "..", "packages", "core", "language-frontends");
+
+/**
+ * The four methods the contract asks a frontend for.
+ *
+ * The contract is an interface, and an interface disappears at
+ * runtime: a frontend could declare the method and never fill it.
+ * These four names are what the check below looks for.
+ */
+const METODOS_DEL_CONTRATO = [
+  "parse",
+  "extractSymbols",
+  "extractCalls",
+  "extractDecorators",
+] as const;
 
 /**
  * The five interfaces the slice promises, and the file each one lives
@@ -102,6 +117,11 @@ const IMPORTES_PROHIBIDOS: readonly string[] = [
   "estree",
   "ts.",
   "/ts/",
+  // El IR de TypeScript que ya existía (`core/language-ir.interface.js`)
+  // se colaba por aquí: el specifier no dice "typescript" ni "babel",
+  // así que las dos reglas de arriba lo dejaban pasar.
+  "core/",
+  "language-ir.interface",
 ];
 
 /**
@@ -138,12 +158,93 @@ function importes(source: string): string[] {
   return encontrados;
 }
 
+/**
+ * The names a contract imports, with the specifier they come from.
+ *
+ * The named imports (`import { ISymbol } from "..."`) and the default
+ * ones (`import type X from "..."`) are both read: a contract that
+ * drags an implementation in through a default import is as coupled
+ * as one that does it through a named one.
+ */
+function importesConNombre(
+  source: string,
+): Array<{ readonly nombre: string; readonly spec: string }> {
+  const limpio = sinComentarios(source);
+  const encontrados: Array<{ nombre: string; spec: string }> = [];
+  for (const match of limpio.matchAll(
+    /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g,
+  )) {
+    const spec = match[2] ?? "";
+    for (const bruto of (match[1] ?? "").split(",")) {
+      const nombre = bruto
+        .replace(/\btype\b/g, "")
+        .split(/\s+as\s+/)[0]
+        ?.trim();
+      if (nombre) encontrados.push({ nombre, spec });
+    }
+  }
+  for (const match of limpio.matchAll(
+    /import\s+(?:type\s+)?([A-Za-z_$][\w$]*)\s+from\s*["']([^"']+)["']/g,
+  )) {
+    const nombre = match[1] ?? "";
+    const spec = match[2] ?? "";
+    if (nombre) encontrados.push({ nombre, spec });
+  }
+  return encontrados;
+}
+
 /** Every `.ts` file of the language-ir folder. */
 async function ficherosDelContrato(): Promise<string[]> {
   const entries = await readdir(LANGUAGE_IR, { withFileTypes: true });
   return entries
     .filter((entry) => entry.isFile() && entry.name.endsWith(".ts"))
     .map((entry) => join(LANGUAGE_IR, entry.name));
+}
+
+/**
+ * The names of the types the contract reaches, transitively.
+ *
+ * It follows the imports of the folder from its own files and
+ * collects every name they bring. A name that smells like a concrete
+ * language (`TSFile`, `BabelNode`) is the smell of a contract that
+ * depends on an implementation — and the smell can arrive de dos
+ * saltos, no solo en el import que se ve.
+ */
+async function cadenaDeTipos(): Promise<Set<string>> {
+  const nombres = new Set<string>();
+  const vistos = new Set<string>();
+  const pendientes = await ficherosDelContrato();
+  while (pendientes.length > 0) {
+    const fichero = pendientes.pop();
+    if (!fichero || vistos.has(fichero)) continue;
+    vistos.add(fichero);
+    const source = await readFile(fichero, "utf8");
+    for (const entrada of importesConNombre(source)) {
+      nombres.add(entrada.nombre);
+      if (!entrada.spec.startsWith("./")) continue;
+      const destino = join(
+        dirname(fichero),
+        entrada.spec.replace(/\.js$/, ".ts"),
+      );
+      if (!vistos.has(destino)) pendientes.push(destino);
+    }
+  }
+  return nombres;
+}
+
+/** The folders of the frontends — one per language. */
+async function carpetasDeFrontend(): Promise<string[]> {
+  const entries = await readdir(FRONTENDS, { withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(FRONTENDS, entry.name));
+}
+
+/** Whether an exported value claims to be a frontend. */
+function pareceFrontend(valor: unknown): boolean {
+  return (
+    typeof valor === "object" && valor !== null && "languageId" in valor
+  );
 }
 
 /**
@@ -234,6 +335,38 @@ describe("packages/contracts/interfaces/language-ir/ — el contrato agnóstico"
         `${fichero} importa algo específico de un lenguaje: ${sospechosos.join(", ")}`,
       ).toEqual([]);
     }
+  });
+
+  test("el contrato agnóstico no importa nada de fuera de su carpeta", async () => {
+    // La regla que no se puede esquivar: un contrato sólo puede
+    // importar de su propia carpeta. Un import como
+    // `../core/language-ir.interface.js` —el IR de TypeScript que ya
+    // existía— pasa las dos reglas de arriba (el nombre no está en la
+    // lista negra y el specifier no dice "typescript"), así que hacía
+    // falta una regla que no dependa del vocabulario.
+    for (const fichero of await ficherosDelContrato()) {
+      for (const spec of importes(await readFile(fichero, "utf8"))) {
+        expect(spec.startsWith("./"), `${fichero} importa ${spec}`).toBe(
+          true,
+        );
+        const destino = resolve(dirname(fichero), spec);
+        expect(
+          destino.startsWith(LANGUAGE_IR),
+          `${fichero} importa ${spec}, que está fuera de la carpeta`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  test("ninguna cadena de tipos alcanzable nombra un lenguaje", async () => {
+    const alcanzables = await cadenaDeTipos();
+    const sospechosos = [...alcanzables].filter((nombre) =>
+      /^(TS|Babel|Estree)/i.test(nombre),
+    );
+    expect(
+      sospechosos,
+      `el contrato alcanza tipos de un lenguaje concreto: ${sospechosos.join(", ")}`,
+    ).toEqual([]);
   });
 
   test("las uniones cerradas del contrato no se ensanchan por accidente", async () => {
@@ -378,6 +511,55 @@ describe("el IR de TypeScript cumple el contrato agnóstico", () => {
     const nombres = document.decorators.map((decorator) => decorator.name);
     expect(nombres).toContain("Controller");
     expect(nombres).toContain("Get");
+  });
+});
+
+describe("los lenguajes futuros no rompen el shape", () => {
+  test("todo frontend registrado implementa el contrato entero", async () => {
+    // El criterio de aceptación pide que los lenguajes futuros no
+    // rompan el shape "cuando se añadan". Antes de este test nada lo
+    // comprobaba: una carpeta `language-frontends/python/` con un
+    // frontend que no cumpliera el contrato pasaba todo.
+    const carpetas = await carpetasDeFrontend();
+    expect(carpetas.length).toBeGreaterThan(0);
+    for (const carpeta of carpetas) {
+      const barrel = join(carpeta, "index.ts");
+      const modulo = (await import(
+        /* @vite-ignore */ pathToFileURL(barrel).href
+      )) as Record<string, unknown>;
+      const frontends = Object.entries(modulo).filter(([, valor]) =>
+        pareceFrontend(valor),
+      );
+      expect(
+        frontends.length,
+        `${carpeta} no exporta ningún frontend`,
+      ).toBeGreaterThan(0);
+      for (const [nombre, valor] of frontends) {
+        const frontend = valor as Record<string, unknown>;
+        expect(
+          typeof frontend.languageId,
+          `${carpeta} → ${nombre}.languageId`,
+        ).toBe("string");
+        expect(String(frontend.languageId).length).toBeGreaterThan(0);
+        for (const metodo of METODOS_DEL_CONTRATO) {
+          expect(
+            typeof frontend[metodo],
+            `${carpeta} → ${nombre}.${metodo}`,
+          ).toBe("function");
+        }
+      }
+    }
+  });
+
+  test("el frontend de TypeScript cabe en una lista de ILanguageFrontend", () => {
+    // La comprobación de tipos es la que manda aquí: si el frontend
+    // dejara de cumplir el contrato, el typecheck falla — y el
+    // typecheck es una puerta que no se puede esquivar con un
+    // `as`.
+    const frontends: ReadonlyArray<ILanguageFrontend> = [typescriptFrontend];
+    expect(frontends.map((frontend) => frontend.languageId)).toEqual([
+      "typescript",
+    ]);
   });
 });
 
