@@ -351,7 +351,7 @@ firmado no es el que se va a publicar. Se vuelve a firmar y a medir.
 
 ## Lo que este documento **no** cubre
 
-- El **updater** firmado: es otra slice ([i00003 S3](delendai/proposals/in-progress/i00003-release-industrial-desktop-ci-por-plataforma-signing-notarization-secure-updater-firmado-sbom-cyclonedx-checksums-firmados.md)), y aquí no se toca.
+- El **updater** firmado: es otra slice ([i00003 S3](delendai/proposals/done/infras/i00003-release-industrial-desktop-ci-por-plataforma-signing-notarization-secure-updater-firmado-sbom-cyclonedx-checksums-firmados.md)), y aquí no se toca.
 - El **SBOM** CycloneDX y el *attestation* de provenance: otra slice también.
 - Los **canales** (alpha, beta, estable), el *staged rollout* y el
   *downgrade*: el primer contrato es estable semver.

@@ -2,12 +2,22 @@
 id: r00020
 title: "Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependencies:
   - a00019#phase-4-desktop-app
+evidence:
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40799979480
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40833297931
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40976107732
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40911287492
+shippedIn:
+  - d30b85ef49c592f9201924462e4cef39f2153189
+  - 0e932f0308afea2ab64efc3957e24d54def17d57
+  - 3d7496f9fe51fa98f47c0b1f3cd71eb72a466715
+  - d61a0b9d95560bfb53b5a70a92cba2bc40a273c8
 ---
 
 # r00020 — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)
@@ -140,10 +150,6 @@ packages/core/response-inference/
   - "`docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia"
   - "Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato"
   - "DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto"
-- review-state: in_review
-- review-implementer: minimax-m3
-- review-reviewer: minimax-m3.1-flash-preview
-- review-log: implementado, pendiente de veredicto de revisión — Implementación real de r00020/S2 (commit 0e932f0, PR #33) y las seis correcciones de la revisión (commits 11258af, 21a27dc, 6364074 y 68cd910, más la actualización de la propuesta en bdb5717 y 7e0eb84): (H1) `ILocation.column` pasa a ser la del **ancla** de la declaración —el nombre que introduce— y el frontend TS la lee del árbol de sintaxis en vez de inventar un `0`; (H2) el contrato agnóstico no puede importar fuera de su carpeta y ninguna cadena de tipos alcanzable nombra `TS*`/`Babel*`; (H3) todo frontend registrado bajo `packages/core/language-frontends/*/` se comprueba contra `ILanguageFrontend` (runtime + tipo); (H4) el gate de "ningún consumidor nombra un parser" tiene lista blanca explícita para el IR legacy de TypeScript y el criterio de aceptación se reescribe para que sea cierto y verificable; (H5) la visibilidad de un método se deriva de la de su clase; (H6) esta propuesta refleja lo entregado (estado, lista de ficheros real y layout corregido). Verificaciones: `bunx vitest run tests/contracts/language-ir-shape.spec.ts` (15 tests) y `bunx vitest run tests/core/typescript-frontend-shape.spec.ts` (26 tests) verdes, `bun run typecheck` (6/6 secciones), `bun run lint` completo (38 gates) verde, `bun run lint:contracts`, `bun run lint:naming`, `bun run lint:boundaries`, `bun run lint:paths` y `bun run lint:proposals` verdes, y los projects `core`+`contracts` (1851 tests) y `frameworks`+`e2e` (1685 tests) verdes. Mutaciones de la revisión reproducidas y detectadas por los tests nuevos: `column: 42`, `exported: true` en los métodos, el import del IR de TypeScript en el contrato y el frontend de un lenguaje futuro no conforme. El veredicto lo firma el revisor.
 
 ### S3-response-inference-expansion — S3 — Response inference expandida: Fastify, Express, Laravel Resources, Gin, Rails, Ktor (4→10 inferrers)
 - **Status**: done
