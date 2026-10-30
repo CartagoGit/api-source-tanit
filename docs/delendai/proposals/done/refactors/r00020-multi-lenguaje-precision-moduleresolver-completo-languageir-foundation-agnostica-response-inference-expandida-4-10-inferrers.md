@@ -2,12 +2,21 @@
 id: r00020
 title: "Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)"
 kind: refactor
-status: in-progress
+status: done
 type: proposal
 track: api-source-tanit
 date: 2026-09-07
 dependencies:
   - a00019#phase-4-desktop-app
+evidence:
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40799979480
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40833297931
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40976107732
+  - https://github.com/CartagoGit/api-source-tanit/actions/runs/40911287492
+shippedIn:
+  - d30b85ef49c592f9201924462e4cef39f2153189
+  - 0e932f0308afea2ab64efc3957e24d54def17d57
+  - 3d7496f9fe51fa98f47c0b1f3cd71eb72a466715
 ---
 
 # r00020 — Multi-lenguaje precision — ModuleResolver completo, LanguageIR foundation agnóstica, response inference expandida (4→10 inferrers)
@@ -123,7 +132,7 @@ packages/core/response-inference/
 - review-reviewer: minimax-m3.1-flash-preview
 - review-log: approved by minimax-m3.1-flash-preview — Implementación real de r00019/S1 (commits c892f76, ffbb5f0, e967ea2; PR #29, merge d30b85e). Segunda revisión (el primer veredicto fue changes-requested) tras corregir los 5 hallazgos: el bench `tests/core/module-resolution.bench.ts` ahora está cableado a `bun run bench:module-resolution` y encadenado en `validate` y en el job `bench-check` de CI (H1); un fixture con `exports: {".":"./index.js"}` **y** un `private.js` real en disco fija que un subpath no exportado da NOT_FOUND, y el test falla si se reintroduce el fallback (H2); `subpath` se rellena en el resultado y se elimina el código de error `UNSUPPORTED` que nadie producia (H3); un target `null` en `exports` **bloquea** la resolución como en Node — verificado contra Node v24.16.0, no de memoria — y la misma regla se aplica al campo `imports` (H4); tabuladores normalizados a 2 espacios (H5). Gates: `bun run validate` exit 0 (267 ficheros / 4058 tests, baseline de cobertura congelado cumplido), typecheck 6/6, lint exit 0, `test:core` 1402, `validate:examples` 25/25. Bench: 1000 imports → cold 43.62 ms, warm 0.51 ms (presupuesto 100 ms), 1000/1000 resueltos, con salida por exit 1 si resuelve menos. Mutaciones de la revisión (10): 9 detectadas; la 10ta (fallback al índice del paquete para un subpath no exportado) NO la detectaba el spec shipped, y por eso se añadió el fixture de H2. Regresión: `resolveImportPath` no tiene consumidor de producción (0 hits fuera de su módulo) y los 5 specs preexistentes modificados endurecen o actualizan la expectativa, no tapan regresiones. Desviaciones: `packages/frameworks/scanners/import-resolver.ts` de la lista no existe (el resolver real estaba en `packages/core/discovery/import-resolver.ts`); `resolver-error.ts` → `resolver-error.helper.ts` por el sufijo que admite el gate; `docs/API.md` regenerado por `bun run docs:api` (lo exige `lint:api`). Veredicto previo (consolidacion documental phase-5): approved by delivery-verifier — ModuleResolver completo, LanguageIR agnóstico, response inference 4→10 inferrers, dependencias declaradas con a00019 phase-4.
 ### S2-LanguageIR-agnostic-frontend — S2 — LanguageIR agnóstico del lenguaje: contrato conceptual + migración TS
-- **Status**: pending
+- **Status**: done
 - **DependsOn**: [S1-module-resolver-complete]
 - **Files**: `packages/contracts/interfaces/language-ir/frontend.interface.ts`, `packages/contracts/interfaces/language-ir/symbol.interface.ts`, `packages/contracts/interfaces/language-ir/call.interface.ts`, `packages/contracts/interfaces/language-ir/decorator.interface.ts`, `packages/contracts/interfaces/language-ir/location.interface.ts`, `packages/contracts/interfaces/language-ir/index.ts`, `packages/core/language-frontends/typescript/typescript-frontend.service.ts`, `packages/core/language-frontends/typescript/extract-routes-express.helper.ts`, `packages/core/language-frontends/typescript/index.ts`, `docs/LANGUAGE-IR.md`, `tests/contracts/language-ir-shape.spec.ts`, `tests/core/typescript-frontend-shape.spec.ts`
 - **Gate**: type
@@ -134,6 +143,10 @@ packages/core/response-inference/
   - "`docs/LANGUAGE-IR.md` explica cómo un frontend Python (tree-sitter-python), PHP (tree-sitter-php), Go (tree-sitter-go) o Java (tree-sitter-java) se monta encima sin tocar `core/scanners/` ni `frameworks/` — incluye un `ILanguageFrontend` mínimo de referencia"
   - "Tests: `tests/contracts/language-ir-shape.spec.ts` valida que el IR TS cumple las 5 interfaces; los lenguajes futuros no rompen el shape cuando se añadan; `tests/core/typescript-frontend-shape.spec.ts` valida que el frontend TS implementado cumple el contrato"
   - "DoD slice: `bun run typecheck && bun run lint:contracts && bun run test:core` verdes; ningún consumer del IR queda roto"
+- review-state: done
+- review-implementer: minimax-m3
+- review-reviewer: minimax-m3.1-flash-preview
+- review-log: approved by minimax-m3.1-flash-preview — Implementación real de r00020/S2 (merge original 0e932f0 en PR #33; correcciones de la revisión en PR #40). La revisión detectó 6 defectos: la columna del ILocation era un 0 inventado, el gate que prohíbe vocabulario TS en el contrato era derrotable por el IR legacy (../core/language-ir.interface.js), el criterio "los lenguajes futuros no rompen el shape" no estaba instrumentado, el criterio del grep era falso tal como estaba redactado, ISymbol.exported de los métodos era un false fabricado y la propuesta no reflejaba lo entregado. Los 6 están cerrados con mutación detectada: la columna es ahora la del ancla (el nombre que la declaración introduce) con 5 tests que la fijan, el contrato no puede importar fuera de su carpeta, todo frontend registrado bajo packages/core/language-frontends/*/ tiene que cumplir ILanguageFrontend, el IR legacy de TypeScript tiene lista blanca explícita y el criterio del grep está reformulado, exported se deriva de la clase que contiene el método, y el bloque S2 de la propuesta refleja ficheros, layout, revisores y verificaciones. Verificación: bunx vitest run tests/contracts/language-ir-shape.spec.ts 15/15, bunx vitest run tests/core/typescript-frontend-shape.spec.ts 26/26, bun run typecheck 0, bun run lint:contracts 0, bun run lint:proposals 0.
 
 ### S3-response-inference-expansion — S3 — Response inference expandida: Fastify, Express, Laravel Resources, Gin, Rails, Ktor (4→10 inferrers)
 - **Status**: done
