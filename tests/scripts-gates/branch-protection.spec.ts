@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  BRANCH_PROTECTION_POLICY,
   REQUIRED_CHECKS,
   validateBranchProtection,
   type FetchLike,
@@ -52,7 +53,7 @@ describe("branch-protection gate", () => {
             // before it was removed as a second source of truth.
             required_approving_review_count: 0,
           },
-          required_linear_history: { enabled: true },
+          required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
           allow_force_pushes: { enabled: false },
           allow_deletions: { enabled: false },
           required_conversation_resolution: { enabled: true },
@@ -96,7 +97,7 @@ describe("branch-protection gate", () => {
           required_pull_request_reviews: {
             required_approving_review_count: 0,
           },
-          required_linear_history: { enabled: true },
+          required_linear_history: { enabled: BRANCH_PROTECTION_POLICY.requiredLinearHistory },
           allow_force_pushes: { enabled: false },
           allow_deletions: { enabled: false },
         }),
@@ -153,5 +154,17 @@ describe("branch-protection gate", () => {
       ok: false,
       detail: "rama inexistente o API no expone develop (404)",
     });
+  });
+
+  test("the live policy does not demand linear history, so a merge commit can land", () => {
+    // The policy and the branch have to agree HERE as well as in the
+    // config: `develop` accepts merge commits precisely because the
+    // branch no longer forbids them. If someone turns `linearHistory`
+    // back on in `delendai.config.json`, the forge has to be changed in
+    // the same breath — otherwise the first merge commit is rejected by
+    // the branch, and the graph stops telling the story.
+    expect(BRANCH_PROTECTION_POLICY.requiredLinearHistory).toBe(false);
+    expect(BRANCH_PROTECTION_POLICY.requiredStatusChecksStrict).toBe(true);
+    expect(BRANCH_PROTECTION_POLICY.requiredApprovingReviewCount).toBe(0);
   });
 });
