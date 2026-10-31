@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, inject } from "@angular/core";
 
 import { HistoryStore } from "../../core/state/history.store";
 import { ProjectStore } from "../../core/state/project.store";
@@ -45,6 +45,15 @@ import { ProjectStore } from "../../core/state/project.store";
 export class HistoryListComponent {
   readonly history = inject(HistoryStore);
   private readonly project = inject(ProjectStore);
+
+  constructor() {
+    // The session's events are asked for when the project opens. The
+    // section had a `load()` that nobody called, so it said "nothing
+    // has happened yet" about a session that had just happened.
+    effect(() => {
+      if (this.project.projectRoot() !== null) void this.load();
+    });
+  }
 
   load(): Promise<void> {
     const root = this.project.projectRoot();

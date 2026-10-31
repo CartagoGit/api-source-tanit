@@ -1,10 +1,36 @@
-import { Injectable, signal } from "@angular/core";
-import type { HostBridgeClient } from "../api/host-bridge.client";
+import { Injectable, inject, signal } from "@angular/core";
 
+import { HostBridgeClient } from "../api/host-bridge.client";
 import type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
 
 export type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
 
+/**
+ * The live mode: the backend watches the sources and pushes what
+ * changed.
+ *
+ * ## What was broken
+ *
+ * Two faults, and together they made the section dead:
+ *
+ *   · The connector was a **constructor parameter typed as an
+ *     interface**, imported with `import type`. Angular cannot
+ *     inject a type that has no value at runtime, so `this.bridge`
+ *     was `undefined` and every `if (this.bridge)` was false. The
+ *     toggle moved a signal and nothing else: no watch was
+ *     subscribed, and the "cancel" that ends it was never sent.
+ *   · `connect()` was **never called** by anybody. The store
+ *     subscribed to nothing, so even a working connector would have
+ *     delivered its events into an empty set of listeners. The
+ *     screen said "watching 0 files" and would have said it forever.
+ *
+ * ## What it does now
+ *
+ * The connector is injected the way the other stores inject theirs,
+ * and the store subscribes when it is built. Turning the toggle on
+ * asks the backend for a `watch` subscription; turning it off sends
+ * the `cancel` that ends it. Both are real handlers.
+ */
 @Injectable({ providedIn: "root" })
 export class LiveStore {
   readonly enabled = signal(false);
@@ -12,15 +38,26 @@ export class LiveStore {
   readonly sourceFileCount = signal(0);
   readonly changes = signal<ReadonlyArray<LiveChange>>([]);
   readonly error = signal<string | null>(null);
+  /** The subscription the backend keeps, while there is one. */
+  readonly subscriptionId = signal<string | null>(null);
 
+  private readonly bridge = inject(HostBridgeClient);
   private unsubscribe: (() => void) | null = null;
-  private subscriptionId: string | null = null;
 
-  constructor(private readonly bridge?: HostBridgeClient) {}
+  constructor() {
+    this.connect();
+  }
 
+  /**
+   * Subscribes to the connector's events.
+   *
+   * The events arrive on the same channel as the answers, so one
+   * listener serves both. Without this call the store would never
+   * hear a change, however well the subscription worked.
+   */
   connect(): void {
     this.unsubscribe?.();
-    this.unsubscribe = this.bridge?.subscribe((event) => this.update(event)) ?? null;
+    this.unsubscribe = this.bridge.subscribe((event) => this.update(event));
   }
 
   disconnect(): void {
@@ -28,21 +65,26 @@ export class LiveStore {
     this.unsubscribe = null;
   }
 
+  /**
+   * Turns the watch on or off.
+   *
+   * `watch` subscribes and `cancel` ends it: they are two separate
+   * operations in the Application API, so turning the toggle off is
+   * not "watch with enabled: false".
+   *
+   * A failure leaves the toggle **off** and says why: a checkbox that
+   * says it is watching when nothing is watching is worse than a
+   * checkbox that stays off.
+   */
   async setEnabled(value: boolean, projectRoot: string): Promise<void> {
     this.error.set(null);
     try {
-      if (this.bridge) {
-        if (value) {
-          // `watch` subscribes; the answer carries the subscription the
-          // backend keeps, and `cancel` is what ends it. The two are
-          // separate operations in the Application API — turning the
-          // toggle off is not "watch with enabled: false".
-          const result = await this.bridge.request("watch", { projectRoot });
-          this.subscriptionId = result.subscription.subscriptionId;
-        } else if (this.subscriptionId !== null) {
-          await this.bridge.request("cancel", { subscriptionId: this.subscriptionId });
-          this.subscriptionId = null;
-        }
+      if (value) {
+        const result = await this.bridge.request("watch", { projectRoot });
+        this.subscriptionId.set(result.subscription.subscriptionId);
+      } else if (this.subscriptionId() !== null) {
+        await this.bridge.request("cancel", { subscriptionId: this.subscriptionId() ?? "" });
+        this.subscriptionId.set(null);
       }
       this.enabled.set(value);
     } catch (error) {

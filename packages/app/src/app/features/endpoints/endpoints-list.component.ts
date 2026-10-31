@@ -6,6 +6,7 @@ import {
   EndpointQuery,
 } from "../../core/api/endpoints.client";
 import { EndpointsStore } from "../../core/state/endpoints.store";
+import { ProjectStore } from "../../core/state/project.store";
 import { VirtualScrollerComponent } from "../../shared/virtual-scroll/virtual-scroller.component";
 import { EndpointDetailComponent } from "./endpoint-detail.component";
 import { FiltersComponent } from "./filters.component";
@@ -71,10 +72,17 @@ import { FiltersComponent } from "./filters.component";
 })
 export class EndpointsListComponent {
   readonly store = inject(EndpointsStore);
+  private readonly project = inject(ProjectStore);
   @ViewChild("endpointTemplate", { static: true }) readonly endpointTemplate!: TemplateRef<unknown>;
   readonly trackBy = (item: { id: string }): string => item.id;
 
   constructor() {
+    // The project: when it opens, the list has to be asked for. The
+    // explorer used to stay empty until the user touched a filter,
+    // because nothing ever asked.
+    effect(() => {
+      if (this.project.projectRoot() !== null) void this.store.refresh();
+    });
     effect(() => {
       const params = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
       const query = this.queryFromUrl(params);
