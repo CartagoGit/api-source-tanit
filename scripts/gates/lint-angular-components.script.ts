@@ -57,13 +57,6 @@ function urlsOf(arraySource: string): readonly string[] {
   return [...arraySource.matchAll(/"([^"]+)"/g)].map((m) => m[1] ?? "");
 }
 
-/** Una línea del fichero donde aparece algo, para poder señalar. */
-function lineOf(source: string, needle: string): number {
-  const index = source.indexOf(needle);
-  if (index < 0) return 1;
-  return source.slice(0, index).split("\n").length;
-}
-
 async function main(): Promise<number> {
   const problems: IProblem[] = [];
 
