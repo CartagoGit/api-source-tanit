@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 392 símbolos en 151 módulos.
+> 393 símbolos en 151 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -4994,6 +4994,20 @@ export function operationIdFor( transport: Transport, context: IOperationIdConte
 ```
 
 ### `packages/core/transport/static-asset.server.ts`
+
+#### `isInsideRoot`
+
+```ts
+export function isInsideRoot(directory: string, pathname: string): boolean
+```
+
+Whether `pathname` stays inside `directory`.
+
+A path that climbs out of the served folder is not "a file that
+happens to be missing": it is an attempt. The two deserve different
+answers — a missing file may be a route of a single-page app, and
+the server answers those with its page — while an attempt gets a
+flat **404**, never the page and never the file it was aiming at.
 
 #### `readAsset`
 

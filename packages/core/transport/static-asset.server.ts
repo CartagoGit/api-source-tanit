@@ -65,6 +65,23 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 };
 
 /**
+ * Whether `pathname` stays inside `directory`.
+ *
+ * A path that climbs out of the served folder is not "a file that
+ * happens to be missing": it is an attempt. The two deserve different
+ * answers — a missing file may be a route of a single-page app, and
+ * the server answers those with its page — while an attempt gets a
+ * flat **404**, never the page and never the file it was aiming at.
+ */
+export function isInsideRoot(directory: string, pathname: string): boolean {
+  const root = resolve(directory);
+  const relative =
+    pathname === "/" || pathname === "/index.html" ? "index.html" : pathname.slice(1);
+  const file = resolve(root, relative);
+  return file === root || file.startsWith(`${root}${sep}`);
+}
+
+/**
  * Reads one file from `directory`.
  *
  * Returns `null` when the file does not exist, so the caller can fall
@@ -80,10 +97,10 @@ export async function readAsset(
   directory: string,
   pathname: string,
 ): Promise<IAsset | null> {
+  if (!isInsideRoot(directory, pathname)) return null;
   const root = resolve(directory);
   const relative = pathname === "/" || pathname === "/index.html" ? "index.html" : pathname.slice(1);
   const file = resolve(root, relative);
-  if (file !== root && !file.startsWith(`${root}${sep}`)) return null;
   try {
     if (!(await stat(file)).isFile()) return null;
     const contents = await readFile(file, "utf8");

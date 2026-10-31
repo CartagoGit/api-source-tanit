@@ -18,7 +18,7 @@
  *      release the port forces you to track down the process and
  *      kill it by hand.
  */
-import { readAsset, plantToken } from "../../core/transport/static-asset.server.js";
+import { isInsideRoot, readAsset, plantToken } from "../../core/transport/static-asset.server.js";
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
@@ -59,7 +59,15 @@ export async function staticAsset(
   testigo: string,
 ) {
   const asset = await readAsset(directory, pathname);
-  if (asset === null) return null;
+  if (asset === null) {
+    // A path that climbs out of the served folder is not a file that
+    // happens to be missing: it is an attempt, and it gets a flat 404
+    // instead of the page the server would serve for a route.
+    if (!isInsideRoot(directory, pathname)) {
+      return new Response("not found", { status: 404 });
+    }
+    return null;
+  }
   const contents = asset.isPage ? plantToken(asset.contents, testigo, "script") : asset.contents;
   return new Response(contents, {
     status: 200,
