@@ -22,7 +22,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -57,9 +57,28 @@ beforeAll(async () => {
   proyecto = join(work, "api");
   await copyExampleClean(exampleDir("express"), proyecto);
 
+  // The interface this file exercises is the **built-in** one, and
+  // the command is told so explicitly.
+  //
+  // Without the flag, `apisrc ui` serves the compiled app when it
+  // happens to be in `packages/app/dist` — and whether it is there
+  // depends on whether somebody ran the build on this machine. A
+  // test whose subject changes because a colleague compiled the app
+  // is not a test: it failed like this, nine times, the first time
+  // the app was built in the tree.
+  const sinApp = join(work, "sin-app");
+  await mkdir(sinApp, { recursive: true });
+
   proceso = spawn(
     "bun",
-    [join(CLI_COMMANDS_DIR, "ui.script.ts"), "--no-open", "--port", String(PORT)],
+    [
+      join(CLI_COMMANDS_DIR, "ui.script.ts"),
+      "--no-open",
+      "--port",
+      String(PORT),
+      "--static-dir",
+      sinApp,
+    ],
     { stdio: ["ignore", "pipe", "pipe"] },
   );
   await esperarAlServidor();
