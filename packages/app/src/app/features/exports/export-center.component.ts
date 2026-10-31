@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, Component, Injectable, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, Injectable, effect, inject } from "@angular/core";
 
 import type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
 export type { ExportSuccessActionsPort } from "../../../../../contracts/interfaces/core/export-success-actions.interface";
 import { DialogService } from "../../core/host/dialog.service";
 import { ExportDiagnostic, ExportFormat } from "../../core/api/exports.client";
 import { ExportsStore } from "../../core/state/exports.store";
+import { ProjectStore } from "../../core/state/project.store";
 import { ExportPreviewComponent } from "./export-preview.component";
 import { ExportSummaryComponent } from "./export-summary.component";
 import { FormatCapabilitiesComponent } from "./format-capabilities.component";
@@ -29,6 +30,17 @@ export class ExportCenterComponent {
   readonly store = inject(ExportsStore);
   readonly dialog = inject(DialogService);
   readonly actions = inject(ExportSuccessActions);
+  private readonly project = inject(ProjectStore);
+
+  constructor() {
+    // The dry run is asked for when the project opens. Without this
+    // the Export Center showed an empty preview — "nothing would be
+    // written" — until the user happened to toggle a format, which
+    // is the one thing the preview is supposed to decide.
+    effect(() => {
+      if (this.project.projectRoot() !== null) void this.store.refresh();
+    });
+  }
 
   toggleFormat(format: ExportFormat): void { this.store.toggleFormat(format); }
   defaultDirectory(): string { return `${this.store.workspaceRoot()}/tanit`; }

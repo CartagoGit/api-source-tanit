@@ -45,6 +45,13 @@ Abrir un proyecto **abre una sesión** en el backend: se escanea y
 devuelve el resumen del que se dibuja la pantalla. Si la apertura
 falla, la app queda **cerrada**, no medio abierta.
 
+Y abrir un proyecto es lo que **pide los datos**: la lista de
+endpoints, los servicios, el historial de la sesión y la vista previa
+de la exportación se piden al backend en ese momento. Ninguna sección
+se queda esperando a que alguien pulse un botón: una pantalla que
+muestra "cero resultados" cuando el proyecto tiene endpoints es una
+pantalla que miente.
+
 ---
 
 ## Arrancar
