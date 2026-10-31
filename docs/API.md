@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 393 símbolos en 151 módulos.
+> 395 símbolos en 152 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -97,7 +97,7 @@ shape; the CLI prints it; the Web UI surfaces it.
 
 ### `packages/core/application-api/dry-run.handler.ts`
 
-`dry-run.handler.ts` — re-run the pipeline without writing.
+`dry-run.handler.ts` — what would be written, without writing it.
 
 #### `createDryRunHandler`
 
@@ -155,9 +155,35 @@ Standard `unknown` catcher: turns thrown errors into typed
 envelopes. `ApiError` already-shaped values pass through with
 their envelope; everything else becomes `EXECUTION_FAILED`.
 
+### `packages/core/application-api/export-artifacts.helper.ts`
+
+Turning a snapshot into files on disk.
+
+#### `planExport`
+
+```ts
+export async function planExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<IExportPlan>
+```
+
+Builds the artifacts of one format and says where they would go.
+
+Nothing is written. The paths are absolute, so the caller can show
+them and the user can see where the tool is about to write.
+
+#### `writeExport`
+
+```ts
+export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+```
+
+Builds the artifacts and **writes** them.
+
+The write is atomic: a file that is half-written is worse than no
+file, because the user cannot tell which half is the truth.
+
 ### `packages/core/application-api/export.handler.ts`
 
-`export.handler.ts` — render the collection to a target on disk.
+`export.handler.ts` — write the artifacts, for real.
 
 #### `createExportHandler`
 

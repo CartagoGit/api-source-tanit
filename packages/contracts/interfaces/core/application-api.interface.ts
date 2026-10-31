@@ -67,7 +67,7 @@ export type IProjectEntry = z.infer<typeof ProjectEntrySchema>;
 
 export interface OpenProjectOutput { readonly sessionId: string; readonly summary: ISnapshotSummary; }
 export interface SnapshotOutput { readonly summary: ISnapshotSummary; }
-export interface ListEndpointsOutput { readonly endpoints: ReadonlyArray<IEndpointSummary>; readonly nextCursor: string | null; readonly total: number; }
+export interface ListEndpointsOutput { readonly endpoints: ReadonlyArray<IEndpointSummary>; readonly nextCursor: string | null; readonly total: number; readonly indexedTotal: number; }
 export interface GetEndpointOutput { readonly endpoint: EndpointSpec; readonly serviceId: string; }
 export type IRequestSchema =
   | { readonly kind: "fields"; readonly fields: ReadonlyArray<unknown> }
@@ -75,8 +75,26 @@ export type IRequestSchema =
   | { readonly kind: "none" };
 export interface GetSchemaOutput { readonly schema: IRequestSchema; }
 export interface ListServicesOutput { readonly services: ReadonlyArray<IServiceSummary>; }
-export interface DryRunOutput { readonly endpointCount: number; readonly frameworks: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string>; readonly durationMs: number; }
-export interface ExportOutput { readonly outputPath: string; readonly bytes: number; }
+/** What would happen to one file. */
+export type ExportChange = "NEW" | "UPDATE" | "UNCHANGED";
+/** One file, before it is written. */
+export interface IExportFilePreview {
+  readonly path: string;
+  readonly change: ExportChange;
+  readonly bytes: number;
+}
+/** The files a snapshot would produce, and what would happen to them. */
+export interface IExportPlan {
+  readonly files: ReadonlyArray<IExportFilePreview>;
+  /** The path of the primary artifact. */
+  readonly outputPath: string;
+  /** What the exporters had to say. */
+  readonly diagnostics: ReadonlyArray<string>;
+}
+export interface DryRunOutput { readonly endpointCount: number; readonly frameworks: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string>; readonly durationMs: number; readonly files: ReadonlyArray<IExportFilePreview>; readonly formats: ReadonlyArray<IExportFormatSummary>; }
+/** What a format can and cannot represent, in the core's own words. */
+export interface IExportFormatSummary { readonly id: string; readonly summary: string; }
+export interface ExportOutput { readonly outputPath: string; readonly bytes: number; readonly files: ReadonlyArray<string>; }
 export type IHistoryEntry =
   | { readonly kind: "snapshot-ready"; readonly capturedAt: string; readonly sessionId: string }
   | { readonly kind: "snapshot-stale"; readonly capturedAt: string; readonly changedPaths: ReadonlyArray<string> };

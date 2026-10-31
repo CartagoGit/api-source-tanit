@@ -20,7 +20,10 @@
  *   apisrc ui
  *   apisrc ui --port 5000
  *   apisrc ui --no-open      # does not open the browser, only prints the URL
+ *   apisrc ui --static-dir <path>   # serves the compiled app from <path>
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { stat } from "node:fs/promises";
 
 import {
@@ -60,6 +63,27 @@ function abrirNavegador(url: string): void {
   } catch {
     // No browser, or no graphical environment. The URL is already printed above.
   }
+}
+
+/**
+ * Where the compiled app is, if it is there at all.
+ *
+ * The desktop app is Angular and lands in `packages/app/dist`. When
+ * it is there, `apisrc ui` serves **it**: the same interface the
+ * desktop app shows, in a browser, over the same connector.
+ *
+ * When it is not —a released binary, a checkout where nobody ran
+ * the build— the interface travels embedded in the binary and is
+ * served from memory.
+ *
+ * The point of asking is that **the command says which one it is
+ * serving**. A command that quietly serves a different interface
+ * depending on what happens to be on disk is two products wearing
+ * one name, and the tests cannot tell which one they are talking to.
+ */
+function staticDirDeLaApp(): string | undefined {
+  const dist = fromRoot("packages", "app", "dist");
+  return existsSync(join(dist, "index.html")) ? dist : undefined;
 }
 
 /**
@@ -197,11 +221,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   let server;
+  // `--static-dir` says where the compiled app is. Without it, the
+  // app is looked for where the build puts it — and when it is not
+  // there, the embedded interface is served instead.
+  const staticDir = readFlag(argv, "--static-dir") ?? staticDirDeLaApp();
   try {
     server = startUiServer({
       deps: dependencias(catalogo),
       html: UI_HTML,
-      staticDir: fromRoot("packages", "app", "dist"),
+      staticDir,
       ...(puerto !== undefined ? { port: puerto } : {}),
     });
   } catch (error) {
@@ -210,6 +238,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   }
 
   console.log(`\n✔ Interface at ${server.url}`);
+  console.log(
+    staticDir === undefined
+      ? "  · Serving the built-in interface."
+      : `  · Serving the compiled app from ${staticDir}.`,
+  );
   console.log("  · Listening on this machine only: not reachable from the network.");
   console.log("  · Ctrl-C to stop.\n");
 

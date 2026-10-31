@@ -8,11 +8,7 @@ import { ProjectStore } from "../../core/state/project.store";
   template: `
     @if (service(); as value) {
       <article><header><h2>{{ value.serviceId }}</h2><span>{{ value.framework }}</span></header>
-        <p>{{ value.baseUrl || "No base URL" }} · {{ value.transports.join(", ") }} · {{ value.operationCount }} operations</p>
-        <p>Auth: {{ value.auth ? "configured" : "none" }} · server {{ value.serverRef || "none" }} · auth {{ value.authRef || "none" }}</p>
-        @for (operation of value.operations; track operation.operationId) {
-          <div><strong>{{ operation.method }}</strong> {{ operation.path }} <small>{{ operation.operationId }} · server {{ operation.serverRef || value.serverRef || "none" }} · auth {{ operation.authRef || value.authRef || "none" }}</small></div>
-        }
+        <p>{{ value.operationCount }} operations @if (value.transports?.length) { · {{ value.transports.join(", ") }} }</p>
       </article>
     }
   `,

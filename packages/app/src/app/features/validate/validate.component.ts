@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { HostBridgeClient } from "../../core/api/host-bridge.client";
+import { describePending } from "../../core/api/pending-operation.helper";
 
 @Component({
   selector: "tanit-validate",
@@ -22,6 +23,9 @@ export class ValidateComponent {
       const result = await this.bridge.requestPending("validate", { projectRoot: this.projectRoot() }) as { valid?: boolean; issues?: ReadonlyArray<string> };
       this.issues.set(result.issues ?? []);
       this.message.set(result.valid ? "Project is valid." : "Validation found diagnostics.");
+    } catch (error) {
+      this.issues.set([]);
+      this.message.set(describePending("validate", error));
     } finally {
       this.running.set(false);
     }

@@ -1,11 +1,18 @@
 /**
- * `dry-run.handler.ts` — re-run the pipeline without writing.
+ * `dry-run.handler.ts` — what would be written, without writing it.
  *
- * Calls `generateCollections()` with the session's stored options
- * (or the caller-supplied override) and returns the result. This
- * is the cheapest way to validate that a scan still works after a
- * config change, before committing to a real export.
+ * It used to re-run the whole generation pipeline just to count the
+ * endpoints and collect the warnings, and it said nothing about the
+ * files. That was enough for a smoke test and not enough for a
+ * preview: the Export Center needs to know **which files**, **where**,
+ * and **whether anything would be overwritten** before the user
+ * agrees to write.
+ *
+ * Now it builds the artifacts — the same ones the export would
+ * write — and reports what would happen to each file. Nothing is
+ * written.
  */
+import { join } from "node:path";
 
 import type { IHandler } from "./dispatcher.js";
 import {
@@ -13,9 +20,9 @@ import {
   type DryRunInput,
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
-import { generateCollections } from "../discovery/generation.pipeline.js";
+import { planExport } from "./export-artifacts.helper.js";
+import { describeFormats } from "../exporters/export-registry.service.js";
 import { apiError } from "./error.js";
-import type { IGenerationOptions } from "../../contracts/interfaces/core/discovery.interface.js";
 
 /** Resultado de ejecutar la generación sin escribir una colección. */
 import type { DryRunOutput } from "../../contracts/interfaces/core/application-api.interface.js";
@@ -26,7 +33,7 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
   return {
     name: "dry-run",
     input: DryRunInputSchema,
-    async handle(input, ctx) {
+    async handle(input) {
       const session = getSession(input.projectRoot);
       if (!session) {
         throw apiError(
@@ -34,52 +41,38 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
           `No open session for projectRoot "${input.projectRoot}"`,
         );
       }
-      if (!ctx.orchestrator) {
-        throw apiError(
-          "EXECUTION_FAILED",
-          "dry-run requires ctx.orchestrator",
-        );
-      }
-
-      // The session stores the options it was opened with; the
-      // handler reads them off the most-recent snapshot to honour
-      // any settings.patch the caller applied between open and
-      // dry-run. That keeps a single source of truth.
       const snap = session.current();
-      const firstResult = snap.results[0];
-      if (!firstResult) {
+      if (snap.results.length === 0) {
         throw apiError(
           "EXECUTION_FAILED",
           "Snapshot has no results — re-open the session",
         );
       }
-      const generationOptions: IGenerationOptions = {
-        orchestrator: ctx.orchestrator as IGenerationOptions["orchestrator"],
-        ...(input.collectionName !== undefined
-          ? { collectionName: input.collectionName }
-          : {}),
-      };
 
       const started = Date.now();
-      let results;
-      try {
-        results = await generateCollections(input.projectRoot, generationOptions);
-      } catch (err) {
-        throw apiError("EXECUTION_FAILED", (err as Error).message);
-      }
-      const allFrameworks = new Set<string>();
-      const allWarnings: string[] = [];
+      const target = input.target ?? "postman";
+      const directory = input.outputDirectory ?? join(snap.projectRoot, "tanit");
+      const plan = await planExport(snap, target, directory);
+
+      const frameworks = new Set<string>();
+      const warnings = new Set<string>();
       let endpointCount = 0;
-      for (const r of results) {
-        for (const fw of r.frameworks) allFrameworks.add(fw);
-        for (const w of r.warnings) allWarnings.push(w);
-        endpointCount += r.specs.length;
+      for (const result of snap.results) {
+        for (const framework of result.frameworks) frameworks.add(framework);
+        for (const warning of result.warnings) warnings.add(warning);
+        endpointCount += result.specs.length;
       }
+
       return {
         endpointCount,
-        frameworks: [...allFrameworks],
-        warnings: allWarnings,
+        frameworks: [...frameworks],
+        warnings: [...warnings, ...plan.diagnostics],
         durationMs: Date.now() - started,
+        files: plan.files,
+        formats: describeFormats().map((format) => ({
+          id: format.format,
+          summary: format.summary,
+        })),
       };
     },
   };

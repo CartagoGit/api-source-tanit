@@ -1,81 +1,62 @@
+/**
+ * The export, as the Export Center shows it.
+ *
+ * ## What it used to be
+ *
+ * A whole model of an export that never happened: the client rendered
+ * the artifacts **itself** from a list of operations it made up, kept
+ * them in a `Map` in memory, and answered "here is your file" for
+ * files that were never written. The preview showed paths, sizes and
+ * overwrite risks computed from strings the app had made up itself.
+ *
+ * The API writes for real now, and this is the view of what it
+ * said. Every path, every size and every "this would overwrite"
+ * comes from the backend's own dry run.
+ */
 import type { ExportFormat } from "../../constants/core/export-formats.constant.js";
 
 export type { ExportFormat } from "../../constants/core/export-formats.constant.js";
 export type ExportChange = "NEW" | "UPDATE" | "UNCHANGED";
 export type ExportDiagnosticSeverity = "info" | "warning" | "error";
 
+/** What a format can and cannot represent, in the core's own words. */
 export interface ExportCapabilities {
   readonly format: ExportFormat;
   readonly label: string;
-  readonly supported: boolean;
-  readonly lossy: boolean;
-  readonly counts: Readonly<Record<string, number>>;
-  readonly note: string;
+  readonly summary: string;
 }
 
 export interface ExportDiagnostic {
   readonly code: string;
   readonly severity: ExportDiagnosticSeverity;
-  readonly operationIds: readonly string[];
   readonly message: string;
   readonly suggestion: string;
 }
 
+/** One file the backend would write. */
 export interface ExportFilePreview {
+  /** Absolute path. */
   readonly path: string;
   readonly change: ExportChange;
+  /** The size the file would have. */
+  readonly bytes: number;
+  /** Whether writing it would replace something that is already there. */
   readonly overwriteRisk: boolean;
+  /** Whether it would land outside the project. */
   readonly outsideWorkspace: boolean;
-  readonly content: string;
 }
 
-export interface CombinedExportStatus {
-  readonly partial: boolean;
-  readonly explanation: string;
-  readonly services: ReadonlyArray<{ readonly serviceId: string; readonly reason: string }>;
-  readonly operationRefs: Readonly<Record<string, { readonly serverRef?: string; readonly authRef?: string }>>;
-}
-
+/** What the backend would do, without doing it. */
 export interface ExportDryRun {
   readonly files: readonly ExportFilePreview[];
   readonly diagnostics: readonly ExportDiagnostic[];
   readonly canGenerate: boolean;
   readonly requiresOverwriteConfirmation: boolean;
   readonly requiresOutsideWorkspaceConfirmation: boolean;
-  readonly combinedExport?: CombinedExportStatus;
 }
 
-export interface ExportOperation {
-  readonly id: string;
-  readonly method: string;
-  readonly path: string;
-  readonly description?: string;
-  readonly diagnostics?: readonly ExportDiagnostic[];
-}
-
-export interface ExportExistingFile {
-  readonly path: string;
-  readonly content: string;
-}
-
-export interface ExportRequest {
-  readonly formats: readonly ExportFormat[];
-  readonly outputDirectory: string;
-  readonly workspaceRoot: string;
-  readonly endpointCount: number;
-  readonly operations?: readonly ExportOperation[];
-  readonly existingFiles?: readonly ExportExistingFile[];
-  readonly overwriteConfirmed?: boolean;
-  readonly outsideWorkspaceConfirmed?: boolean;
-  readonly combinedExport?: CombinedExportStatus;
-}
-
+/** What was written. */
 export interface ExportResult {
-  readonly files: readonly ExportFilePreview[];
+  readonly files: ReadonlyArray<{ readonly path: string }>;
   readonly outputDirectory: string;
-  readonly postmanInstalled: boolean;
-}
-
-export interface ExportArtifactWriter {
-  write(path: string, content: string): Promise<void>;
 }

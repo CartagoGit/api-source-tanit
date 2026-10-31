@@ -1,41 +1,161 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
 
-import { EXPORT_FORMATS, CombinedExportStatus, ExportCapabilities, ExportDiagnostic, ExportDryRun, ExportExistingFile, ExportFormat, ExportOperation, ExportResult, ExportRequest, ExportsClient } from "../api/exports.client";
+import {
+  EXPORT_FORMATS,
+  ExportCapabilities,
+  ExportDiagnostic,
+  ExportDryRun,
+  ExportFormat,
+  ExportResult,
+  ExportsClient,
+} from "../api/exports.client";
+import { ProjectStore } from "./project.store";
 
+/**
+ * The Export Center's state.
+ *
+ * The preview is a **signal**, not a computed value: it comes from
+ * the backend, and the backend has to be asked. It used to be a
+ * `computed()` over a `request` the app built itself — a request
+ * whose answer was invented, so the preview was invented too, and it
+ * changed the moment the user picked a format, with no round trip
+ * and no truth behind it.
+ */
 @Injectable({ providedIn: "root" })
 export class ExportsStore {
   private readonly client = inject(ExportsClient);
-  readonly formats = signal<readonly ExportFormat[]>(["postman"]);
-  readonly outputDirectory = signal("/workspace/exports");
-  readonly workspaceRoot = signal("/workspace");
-  readonly endpointCount = signal(12);
-  readonly operations = signal<readonly ExportOperation[]>([]);
-  readonly existingFiles = signal<readonly ExportExistingFile[]>([]);
-  readonly combinedExport = signal<CombinedExportStatus | undefined>(undefined);
+  private readonly project = inject(ProjectStore);
+
+  /** The formats the user picked. */
+  readonly formats = signal<readonly ExportFormat[]>([EXPORT_FORMATS[0]]);
+  /** Where the files will go. */
+  readonly outputDirectory = signal("");
+  /** The project's root — the workspace the files should stay in. */
+  readonly workspaceRoot = computed(() => this.project.projectRoot() ?? "");
+  /** What the backend would do. */
+  readonly preview = signal<ExportDryRun>(emptyPreview());
+  /** What the backend can do with each format. */
+  readonly capabilities = signal<readonly ExportCapabilities[]>([]);
+  /** What was written. */
+  readonly result = signal<ExportResult | null>(null);
   readonly overwriteConfirmed = signal(false);
   readonly outsideWorkspaceConfirmed = signal(false);
-  readonly capabilities = computed<readonly ExportCapabilities[]>(() => this.client.capabilities(this.endpointCount()));
-  readonly preview = computed<ExportDryRun>(() => this.client.dryRun(this.request()));
-  readonly diagnostics = computed<readonly ExportDiagnostic[]>(() => this.preview().diagnostics);
-  readonly result = signal<ExportResult | null>(null);
+  readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+
+  readonly diagnostics = computed<readonly ExportDiagnostic[]>(() => this.preview().diagnostics);
 
   toggleFormat(format: ExportFormat): void {
     const selected = new Set(this.formats());
-    if (selected.has(format)) selected.delete(format); else selected.add(format);
+    if (selected.has(format)) selected.delete(format);
+    else selected.add(format);
     this.formats.set(EXPORT_FORMATS.filter((item) => selected.has(item)));
     this.result.set(null);
+    void this.refresh();
   }
-  setOutputDirectory(path: string): void { this.outputDirectory.set(path); this.outsideWorkspaceConfirmed.set(false); this.result.set(null); }
-  confirmOverwrite(value: boolean): void { this.overwriteConfirmed.set(value); }
-  confirmOutsideWorkspace(value: boolean): void { this.outsideWorkspaceConfirmed.set(value); }
-  setEndpointCount(count: number): void { this.endpointCount.set(count); }
-  setOperations(operations: readonly ExportOperation[]): void { this.operations.set(operations); this.endpointCount.set(operations.length); this.result.set(null); }
-  setExistingFiles(files: readonly ExportExistingFile[]): void { this.existingFiles.set(files); this.overwriteConfirmed.set(false); this.result.set(null); }
-  setCombinedExport(status: CombinedExportStatus | undefined): void { this.combinedExport.set(status); this.result.set(null); }
-  async generate(): Promise<void> {
+
+  setOutputDirectory(path: string): void {
+    this.outputDirectory.set(path);
+    this.outsideWorkspaceConfirmed.set(false);
+    this.result.set(null);
+    void this.refresh();
+  }
+
+  confirmOverwrite(value: boolean): void {
+    this.overwriteConfirmed.set(value);
+  }
+
+  confirmOutsideWorkspace(value: boolean): void {
+    this.outsideWorkspaceConfirmed.set(value);
+  }
+
+  /**
+   * Asks the backend what it would write.
+   *
+   * Nothing happens without a project: the API needs a session, and
+   * a session needs a root.
+   */
+  async refresh(): Promise<void> {
+    const projectRoot = this.project.projectRoot();
+    if (projectRoot === null) return;
+    if (this.formats().length === 0) {
+      this.preview.set(emptyPreview());
+      return;
+    }
+    this.loading.set(true);
     this.error.set(null);
-    try { this.result.set(await this.client.generate(this.request())); } catch (error) { this.error.set((error as Error).message); }
+    try {
+      const directory = this.outputDirectory() || `${this.workspaceRoot()}/tanit`;
+      const previews = await Promise.all(
+        this.formats().map((format) =>
+          this.client.preview(projectRoot, format, directory, this.workspaceRoot()),
+        ),
+      );
+      this.preview.set(merge(previews));
+      this.capabilities.set(await this.client.capabilities(projectRoot));
+    } catch (error) {
+      this.error.set(describe(error));
+    } finally {
+      this.loading.set(false);
+    }
   }
-  private request(): ExportRequest { return { formats: this.formats(), outputDirectory: this.outputDirectory(), workspaceRoot: this.workspaceRoot(), endpointCount: this.endpointCount(), operations: this.operations(), existingFiles: this.existingFiles(), combinedExport: this.combinedExport(), overwriteConfirmed: this.overwriteConfirmed(), outsideWorkspaceConfirmed: this.outsideWorkspaceConfirmed() }; }
+
+  /**
+   * Writes the files.
+   *
+   * The overwrite is confirmed **here**, not in the backend: the
+   * backend is asked to write what the preview showed, and the app
+   * is the one that asked the user.
+   */
+  async generate(): Promise<void> {
+    const projectRoot = this.project.projectRoot();
+    if (projectRoot === null) return;
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const directory = this.outputDirectory() || `${this.workspaceRoot()}/tanit`;
+      const written: Array<{ path: string }> = [];
+      for (const format of this.formats()) {
+        const result = await this.client.generate(projectRoot, format, directory);
+        written.push(...result.files);
+      }
+      this.result.set({ files: written, outputDirectory: directory });
+    } catch (error) {
+      this.error.set(describe(error));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+}
+
+/** A preview with nothing in it. */
+function emptyPreview(): ExportDryRun {
+  return {
+    files: [],
+    diagnostics: [],
+    canGenerate: false,
+    requiresOverwriteConfirmation: false,
+    requiresOutsideWorkspaceConfirmation: false,
+  };
+}
+
+/** The previews of several formats, as one. */
+function merge(previews: readonly ExportDryRun[]): ExportDryRun {
+  return {
+    files: previews.flatMap((preview) => preview.files),
+    diagnostics: previews.flatMap((preview) => preview.diagnostics),
+    canGenerate: previews.some((preview) => preview.canGenerate),
+    requiresOverwriteConfirmation: previews.some(
+      (preview) => preview.requiresOverwriteConfirmation,
+    ),
+    requiresOutsideWorkspaceConfirmation: previews.some(
+      (preview) => preview.requiresOutsideWorkspaceConfirmation,
+    ),
+  };
+}
+
+/** The message of a failure, in words a person can read. */
+function describe(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }
