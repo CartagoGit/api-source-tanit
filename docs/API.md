@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 416 símbolos en 164 módulos.
+> 417 símbolos en 165 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -422,6 +422,22 @@ export function createPushHandler(): IHandler<PushInput, PushOutput>
 ```ts
 export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput>
 ```
+
+### `packages/core/application-api/snapshot-summary.helper.ts`
+
+The summary of a snapshot.
+
+#### `summarizeSnapshot`
+
+```ts
+export function summarizeSnapshot(snapshot: IProjectSnapshot): ISnapshotSummary
+```
+
+Summarizes a snapshot.
+
+@param snapshot The snapshot to summarize.
+@returns What the app draws: the frameworks, the counts, and what
+  the scan noticed.
 
 ### `packages/core/application-api/snapshot.handlers.ts`
 

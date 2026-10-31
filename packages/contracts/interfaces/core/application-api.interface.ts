@@ -85,6 +85,21 @@ export type IProjectEntry = z.infer<typeof ProjectEntrySchema>;
 
 export interface OpenProjectOutput { readonly sessionId: string; readonly summary: ISnapshotSummary; }
 export interface SnapshotOutput { readonly summary: ISnapshotSummary; }
+/**
+ * One thing the backend noticed about the project.
+ *
+ * The app's Diagnostics section draws these. It used to draw
+ * nothing: the section was in the sidebar, the shell had no case for
+ * it, and it fell through to the empty state — a navigation entry
+ * that led to a blank page.
+ */
+export interface IProjectDiagnostic {
+  readonly severity: "error" | "warning";
+  /** What happened, in words a person can read. */
+  readonly message: string;
+  /** Which scanner produced it, when it knows. */
+  readonly source?: string;
+}
 export interface ListEndpointsOutput { readonly endpoints: ReadonlyArray<IEndpointSummary>; readonly nextCursor: string | null; readonly total: number; readonly indexedTotal: number; }
 export interface GetEndpointOutput { readonly endpoint: EndpointSpec; readonly serviceId: string; }
 export type IRequestSchema =

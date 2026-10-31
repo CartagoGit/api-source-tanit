@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from "@angular/core";
 
 import {
   ENDPOINT_CONFIDENCES,
@@ -6,6 +6,15 @@ import {
   EndpointConfidence,
   EndpointQuery,
 } from "../../core/api/endpoints.client";
+import { debounce } from "../../core/api/debounce.helper";
+
+/**
+ * How long the app waits before asking again.
+ *
+ * A quarter of a second. Long enough to finish a word, short enough
+ * that the list does not feel like it is lagging.
+ */
+const FILTER_DEBOUNCE_MS = 250;
 
 /**
  * The filter bar of the endpoint explorer.
@@ -18,35 +27,25 @@ import {
  *
  * The vocabularies are the core's: `ws` is a WebSocket, `high` is a
  * confidence level, `none` is the absence of a validation.
+ *
+ * ## Why typing does not ask the backend on every keystroke
+ *
+ * It used to. Typing "orders" sent four requests — "o", "or",
+ * "ord", "orders" — and each answer threw away the last one. On a
+ * project with thousands of endpoints that is four scans of the list
+ * for one word.
+ *
+ * Now the **draft** is local: the letter appears in the field
+ * immediately, because waiting for a round trip to show a letter is
+ * how an app feels broken. The **request** waits a quarter of a
+ * second, and only the last one goes.
  */
 @Component({
   selector: "tanit-endpoint-filters",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <form class="filters" (submit)="$event.preventDefault()" aria-label="Endpoint filters">
-      <label class="search">Search <input [value]="value().search ?? ''" (input)="patch({ search: inputValue($event) })" placeholder="Path, method, name" /></label>
-      <label>Service <input [value]="value().service ?? ''" (input)="patch({ service: inputValue($event) || undefined })" /></label>
-      <label>Framework <input [value]="value().framework ?? ''" (input)="patch({ framework: inputValue($event) || undefined })" /></label>
-      <label>Source file <input [value]="value().sourceFile ?? ''" (input)="patch({ sourceFile: inputValue($event) || undefined })" /></label>
-      <label>Transport <select [value]="value().transport ?? ''" (change)="patch({ transport: transportValue($event) })"><option value="">All</option>@for (transport of transports; track transport) { <option [value]="transport">{{ transport }}</option> }</select></label>
-      <label>Method <input [value]="value().method ?? ''" (input)="patch({ method: inputValue($event) || undefined })" /></label>
-      <label>Auth <input [value]="value().auth ?? ''" (input)="patch({ auth: inputValue($event) || undefined })" placeholder="bearer" /></label>
-      <label>Validation <input [value]="value().validation ?? ''" (input)="patch({ validation: inputValue($event) || undefined })" placeholder="zod" /></label>
-      <label>Responses <input [value]="value().responses ?? ''" (input)="patch({ responses: inputValue($event) || undefined })" placeholder="200" /></label>
-      <label>Confidence <select [value]="value().confidence ?? ''" (change)="patch({ confidence: confidenceValue($event) })"><option value="">All</option>@for (level of confidences; track level) { <option [value]="level">{{ level }}</option> }</select></label>
-      <button type="button" (click)="changed.emit({})">Clear</button>
-    </form>
-  `,
-  styles: `
-    :host { display: block; }
-    .filters { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; padding: 14px; border: 1px solid var(--color-border); background: var(--color-panel); }
-    label { display: grid; gap: 4px; color: var(--color-muted); font-size: 11px; }
-    .search { grid-column: span 2; }
-    input, select, button { min-height: 34px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); padding: 6px 8px; font: inherit; }
-    button { align-self: end; cursor: pointer; }
-    @media (max-width: 900px) { .filters { grid-template-columns: repeat(2, 1fr); } .search { grid-column: span 2; } }
-  `,
+  templateUrl: "./filters.component.html",
+  styleUrls: ["./filters.component.scss"],
 })
 export class FiltersComponent {
   readonly value = input<EndpointQuery>({});
@@ -54,9 +53,64 @@ export class FiltersComponent {
   readonly transports = ENDPOINT_TRANSPORTS;
   readonly confidences = ENDPOINT_CONFIDENCES;
 
-  constructor() { effect(() => void this.value()); }
+  /**
+   * What the fields show right now.
+   *
+   * It is local on purpose: a letter typed in a field appears there
+   * without waiting for the backend, and the backend is asked once
+   * the word is finished.
+   */
+  readonly draft = signal<EndpointQuery>({});
 
-  patch(partial: EndpointQuery): void { this.changed.emit({ ...this.value(), ...partial }); }
+  /**
+   * The delayed request.
+   *
+   * It is created once: a debounce that was rebuilt on every change
+   * would never fire, because each new one would clear the previous
+   * one's timer.
+   */
+  private readonly ask = debounce((query: EndpointQuery) => {
+    this.changed.emit(query);
+  }, FILTER_DEBOUNCE_MS);
+
+  constructor() {
+    // When the parent sets a new query — from the URL, or after
+    // clearing — the draft follows it.
+    effect(() => {
+      const query = this.value();
+      this.draft.set(query);
+    });
+  }
+
+  /**
+   * A field the user typed in.
+   *
+   * The draft changes at once; the request waits.
+   */
+  type(partial: EndpointQuery): void {
+    this.draft.set({ ...this.draft(), ...partial });
+    this.ask(this.draft());
+  }
+
+  /**
+   * A field the user picked.
+   *
+   * A selection is a decision, not a word being typed: it goes
+   * straight out.
+   */
+  choose(partial: EndpointQuery): void {
+    this.draft.set({ ...this.draft(), ...partial });
+    this.ask.cancel();
+    this.changed.emit(this.draft());
+  }
+
+  /** Empties every field. */
+  clear(): void {
+    this.ask.cancel();
+    this.draft.set({});
+    this.changed.emit({});
+  }
+
   inputValue(event: Event): string { return (event.target as HTMLInputElement).value; }
   transportValue(event: Event): EndpointQuery["transport"] { const value = this.inputValue(event); return ENDPOINT_TRANSPORTS.includes(value as typeof ENDPOINT_TRANSPORTS[number]) ? value as EndpointQuery["transport"] : undefined; }
   confidenceValue(event: Event): EndpointConfidence | undefined { const value = this.inputValue(event); return ENDPOINT_CONFIDENCES.includes(value as EndpointConfidence) ? value as EndpointConfidence : undefined; }

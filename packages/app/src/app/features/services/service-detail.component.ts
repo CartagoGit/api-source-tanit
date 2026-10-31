@@ -20,14 +20,7 @@ import { ProjectStore } from "../../core/state/project.store";
   selector: "tanit-service-detail",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    @if (error(); as message) { <p role="alert">{{ message }}</p> }
-    @if (service(); as value) {
-      <article><header><h2>{{ value.serviceId }}</h2><span>{{ value.framework }}</span></header>
-        <p>{{ value.operationCount }} operations @if (value.transports?.length) { · {{ value.transports.join(", ") }} }</p>
-      </article>
-    }
-  `,
+  templateUrl: "./service-detail.component.html",
 })
 export class ServiceDetailComponent {
   /**

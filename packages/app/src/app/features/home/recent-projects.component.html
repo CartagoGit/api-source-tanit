@@ -1,0 +1,4 @@
+<section class="recents" aria-labelledby="recent-projects-title">
+  <div class="heading"><h2 id="recent-projects-title">Recent projects</h2><button type="button" [disabled]="!store.projects().length" (click)="store.clear()">Forget all</button></div>
+  @if (!store.projects().length) { <p>No recent projects yet.</p> } @else { @for (project of store.projects(); track project.path) { <div class="recent"><button type="button" class="open" (click)="selected.emit(project.path)"><strong>{{ projectName(project.path) }}</strong><small>{{ project.path }}</small></button><button type="button" class="forget" [attr.aria-label]="'Forget ' + project.path" (click)="store.remove(project.path)">Forget</button></div> } }
+</section>

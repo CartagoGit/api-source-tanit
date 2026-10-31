@@ -8,21 +8,7 @@ import { ProjectStore } from "../../core/state/project.store";
   standalone: true,
   imports: [JsonPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <section><header><h2>Snapshot diff</h2><label>Output <input [value]="outputDirectory" (input)="outputDirectory = inputValue($event)" /></label><button type="button" (click)="loadConfiguration()">Load config</button><button type="button" (click)="compare()">Compare</button></header>
-      @if (error; as message) { <p role="alert">{{ message }}</p> }
-      @if (result; as diff) {
-        <p>{{ diff.added.length }} added · {{ diff.removed.length }} removed · {{ diff.changed.length }} changed</p>
-        <p>Schemas: {{ diff.schemaChanges.length }} · Auth: {{ diff.authChanges.length }}</p>
-        <p>Services: {{ diff.services.length }} · Operations: {{ diff.operations.length }}</p>
-        @for (change of diff.serviceChanges; track change.key) { <div>{{ change.key }}: {{ change.before | json }} → {{ change.after | json }}</div> }
-        @for (change of diff.operationChanges; track change.key) { <div>{{ change.key }}: {{ change.before | json }} → {{ change.after | json }}</div> }
-        @for (change of diff.schemaChanges; track change.key) { <div>{{ change.key }} schema: {{ change.before | json }} → {{ change.after | json }}</div> }
-        @for (change of diff.authChanges; track change.key) { <div>{{ change.key }} auth: {{ change.before | json }} → {{ change.after | json }}</div> }
-        @if (diff.configuration; as configuration) { <p>Config: {{ configuration.before | json }} → {{ configuration.after | json }}</p> }
-      }
-    </section>
-  `,
+  templateUrl: "./history-diff.component.html",
 })
 export class HistoryDiffComponent {
   readonly leftId = input.required<string>();

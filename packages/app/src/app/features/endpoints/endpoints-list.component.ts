@@ -32,43 +32,8 @@ import { FiltersComponent } from "./filters.component";
   standalone: true,
   imports: [VirtualScrollerComponent, FiltersComponent, EndpointDetailComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <section class="explorer">
-      <header class="heading">
-        <div>
-          <span class="eyebrow">Endpoints Explorer</span>
-          <h1>Operations</h1>
-          <p>{{ store.total() }} visible · {{ store.indexedTotal() }} indexed</p>
-        </div>
-        <div class="actions">
-          <button type="button" (click)="refresh()" [disabled]="store.loading()">{{ store.loading() ? "Loading…" : "Refresh" }}</button>
-          <button type="button" (click)="clearSelection()" [disabled]="store.selectedId() === null">Reset selection</button>
-        </div>
-      </header>
-      @if (store.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
-      <tanit-endpoint-filters [value]="store.query()" (changed)="apply($event)" />
-      <div class="workspace">
-        <div class="list-pane">
-          <tanit-virtual-scroller [items]="store.filtered()" [itemHeight]="72" [height]="560" [itemTemplate]="endpointTemplate" [trackBy]="trackBy" />
-          <ng-template #endpointTemplate let-item let-index="index">
-            <button class="endpoint-row" type="button" [class.selected]="item.id === store.selectedId()" (click)="select(item)" [attr.aria-label]="item.method + ' ' + item.path">
-              <span class="index">{{ index + 1 }}</span>
-              <span class="verb">{{ item.method }}</span>
-              <span class="path"><strong>{{ item.path }}</strong><small>{{ item.service ?? "no service" }} · {{ item.transport ?? "no transport" }} · {{ item.description || item.operationId }}</small></span>
-              <span class="confidence">{{ item.confidence ?? "" }}</span>
-            </button>
-          </ng-template>
-        </div>
-        <tanit-endpoint-detail [endpoint]="store.selected()" (closed)="clearSelection()" (transportFilter)="filterTransport($event)" (open)="openLocation($event)" />
-      </div>
-    </section>
-  `,
-  styles: `
-    :host { display: block; min-height: 100%; } .explorer { display: grid; gap: 18px; } .heading { display: flex; justify-content: space-between; gap: 16px; } h1 { margin: 5px 0; font-size: 32px; } .eyebrow, .heading p { color: var(--color-muted); } .heading p { margin: 0; } .actions { display: flex; gap: 8px; align-self: start; } .actions button { border: 1px solid var(--color-border); background: var(--color-panel); color: var(--color-ink); padding: 8px 10px; cursor: pointer; } .actions button:disabled { opacity: 0.5; cursor: default; } .error { margin: 0; padding: 10px 12px; border: 1px solid var(--color-copper); background: color-mix(in srgb, var(--color-copper) 10%, transparent); color: var(--color-ink); }
-    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 460px); min-height: 560px; border: 1px solid var(--color-border); background: var(--color-panel); } .list-pane { min-width: 0; padding: 8px; }
-    .endpoint-row { display: grid; grid-template-columns: 36px 64px minmax(0, 1fr) 52px; align-items: center; gap: 8px; width: 100%; min-height: 64px; border: 0; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--color-ink); text-align: left; cursor: pointer; } .endpoint-row:hover, .endpoint-row.selected { background: color-mix(in srgb, var(--color-copper) 10%, transparent); } .index, .confidence, small { color: var(--color-muted); font-size: 11px; } .verb { color: var(--color-copper-strong); font: 11px var(--font-code); } .path { min-width: 0; overflow: hidden; } .path strong, .path small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .confidence { text-align: right; }
-    @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; } .workspace tanit-endpoint-detail { min-height: 420px; } }
-  `,
+  templateUrl: "./endpoints-list.component.html",
+  styleUrls: ["./endpoints-list.component.scss"],
 })
 export class EndpointsListComponent {
   readonly store = inject(EndpointsStore);

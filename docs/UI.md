@@ -28,21 +28,41 @@ bun run build:app   # compila la app
 bun run ui:web      # sirve la app y la API en el mismo origen
 ```
 
-Lo que hay en el menú lateral:
+Lo que hay en el menú lateral, en **cuatro grupos**. Los grupos dicen
+qué es la app para lo que estás haciendo; las secciones son lo que hay
+dentro.
+
+### Inspeccionar — qué hay en el proyecto
 
 | Sección | Qué hace |
 |---|---|
 | **Resumen** | Los frameworks reconocidos, los endpoints y los servicios del proyecto abierto. |
 | **Endpoints** | La lista real, con los filtros en el backend: servicio, transporte, autenticación, validación, framework, respuestas, confianza y fichero de origen. Al elegir uno se pide su detalle: transporte, auth detectada, reglas de validación, estados de respuesta y fichero y línea. |
-| **Exportar** | El centro de exportación: Vista previa con los ficheros que se escribirían, su tamaño y si alguno pisaría lo que ya está ahí; y **Generar**, que los escribe de verdad, en la misma carpeta que miró la vista previa. |
 | **Servicios** | Los servicios detectados y sus transportes. |
-| **Historial** | Los eventos de la sesión: la instantánea tomada y los ficheros que cambiaron debajo. |
-| **En vivo** | La suscripción a cambios de las fuentes. |
-| **Comprobar** | Compara la colección con el código: dice qué rutas le faltan y qué peticiones no están en el código. |
-| **Sincronizar** | Genera y escribe, o solo enseña lo que escribiría. |
-| **Validar** | Los invariantes de una colección Postman v2.1.0, con los errores separados de los avisos. |
+
+### Producir — lo que sale del proyecto
+
+| Sección | Qué hace |
+|---|---|
+| **Exportar** | El centro de exportación: Vista previa con los ficheros que se escribirían, su tamaño y si alguno pisaría lo que ya está ahí; y **Generar**, que los escribe de verdad, en la misma carpeta que miró la vista previa. |
 | **Estadísticas** | Cuántas peticiones hay, por método y por zona. |
+| **Comprobar** | Compara la colección con el código: dice qué rutas le faltan y qué peticiones no están en el código. |
+| **Validar** | Los invariantes de una colección Postman v2.1.0, con los errores separados de los avisos. |
+| **Sincronizar** | Genera y escribe, o solo enseña lo que escribiría. |
 | **Subir** | Sube la colección a Postman. La clave sale del almacén de la app y **no vuelve**: la respuesta dice qué pasó, no qué se usó. |
+
+### Observar — lo que está pasando
+
+| Sección | Qué hace |
+|---|---|
+| **En vivo** | La suscripción a cambios de las fuentes. |
+| **Historial** | Los eventos de la sesión: la instantánea tomada y los ficheros que cambiaron debajo. |
+| **Diagnóstico** | Lo que el escaneo notó del proyecto: los avisos de la generación y los detectores que no pudieron leer un fichero. |
+
+### Preferencias
+
+| Sección | Qué hace |
+|---|---|
 | **Ajustes** | Idioma, tema y preferencias. |
 
 Abrir un proyecto **abre una sesión** en el backend: se escanea y
@@ -55,6 +75,20 @@ de la exportación se piden al backend en ese momento. Ninguna sección
 se queda esperando a que alguien pulse un botón: una pantalla que
 muestra "cero resultados" cuando el proyecto tiene endpoints es una
 pantalla que miente.
+
+### Cómo está escrita la app
+
+Cada componente vive en **tres ficheros**: `<nombre>.component.ts` (la
+lógica), `<nombre>.component.html` (la plantilla) y
+`<nombre>.component.scss` (los estilos). El HTML dentro de un literal de
+TypeScript no lo revisa nadie —ni el resaltador, ni el formateador— y
+el CSS tampoco; por eso van en su fichero. El gate
+`bun run lint:angular-components` lo comprueba.
+
+Los tests de la app (`bun run test:app`) **compilan los componentes con
+el compilador de Angular**, igual que el build. Sin eso los tests
+montarían clases a pelo, sin plantillas: es la diferencia entre
+comprobar la app y comprobar que los ficheros se importan.
 
 ---
 

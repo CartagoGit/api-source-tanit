@@ -15,7 +15,7 @@ import { ProjectStore } from "../../core/state/project.store";
   selector: "tanit-live-toggle",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="live-title"><h2 id="live-title">Live mode</h2><label><input type="checkbox" [checked]="store.enabled()" (change)="toggle($event)" /> Watch source files</label><label><input type="checkbox" [checked]="store.autoExport()" (change)="store.setAutoExport(checked($event))" /> Auto-export</label><p>Watching {{ store.sourceFileCount() }} source files</p>@if (store.error(); as message) { <p role="alert">{{ message }}</p> }@for (change of store.changes(); track change.path + change.kind) { <p>{{ change.kind }}: {{ change.path }}</p> }</section>`,
+  templateUrl: "./live-toggle.component.html",
 })
 export class LiveToggleComponent {
   readonly store = inject(LiveStore);

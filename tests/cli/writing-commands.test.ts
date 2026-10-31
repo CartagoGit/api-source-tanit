@@ -152,8 +152,15 @@ describe("generate --open", () => {
    * to launch the desktop app (which would block the test in CI
    * without a display) and exits through the deterministic web
    * branch.
+   *
+   * The timeout is wide on purpose: this test spawns a whole `bun`
+   * process that loads the CLI, scans a project and writes a
+   * collection. How long that takes is a property of the machine, and
+   * under the load of the whole suite it can go past two minutes.
+   * The assertion is about what the command printed, not about how
+   * fast it was.
    */
-  test("invokes open-postman in-process (web branch)", { timeout: 120_000 }, async () => {
+  test("invokes open-postman in-process (web branch)", { timeout: 240_000 }, async () => {
     const root = await proyecto("generate-open");
     const { code, output } = await runProcess(
       "bun",
@@ -168,8 +175,12 @@ describe("generate --open", () => {
    * `generate` must generate **first** and open **after**. If the
    * order is inverted, `--open` opens a file that does not exist
    * yet and confuses the user.
+   *
+   * The timeout is wide for the same reason as the test above: this
+   * spawns the whole CLI, and the machine decides how long that
+   * takes.
    */
-  test("generates before opening", { timeout: 120_000 }, async () => {
+  test("generates before opening", { timeout: 240_000 }, async () => {
     const root = await proyecto("generate-open-orden");
     const { output } = await runProcess(
       "bun",

@@ -15,6 +15,35 @@ import { TestBed } from "@angular/core/testing";
 import { ServicesClient } from "../../packages/app/src/app/core/api/services.client";
 import { HistoryClient } from "../../packages/app/src/app/core/api/history.client";
 import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
+import type { EndpointRecord } from "../../packages/app/src/app/core/api/endpoints.client";
+import type { EndpointTransport } from "../../packages/contracts/interfaces/core/endpoint.interface";
+
+/**
+ * An endpoint with every field the contract declares.
+ *
+ * The contract says `method`, `path` and `description` are required:
+ * an endpoint without them is not an endpoint the backend could ever
+ * have sent, so a fixture that leaves them out is a fixture that
+ * proves nothing.
+ */
+function endpoint(
+  id: string,
+  service: string,
+  transport: EndpointTransport,
+): EndpointRecord {
+  return {
+    id,
+    operationId: id,
+    service,
+    transport,
+    method: id.split(" ")[0] ?? "GET",
+    path: id.split(" ")[1] ?? "/",
+    description: "",
+    responseSummary: "",
+    responses: [],
+    parameters: [],
+  };
+}
 
 describe("ServicesClient", () => {
   it("reads the services the backend lists", async () => {
@@ -58,8 +87,8 @@ describe("ServicesClient", () => {
     const client = TestBed.inject(ServicesClient);
 
     const services = await client.listWithEndpoints("/workspace", [
-      { id: "GET /a", service: "api", transport: "http" },
-      { id: "GET /b", service: "api", transport: "grpc" },
+      endpoint("GET /a", "api", "http"),
+      endpoint("GET /b", "api", "grpc"),
     ]);
 
     expect(services[0]?.transports).toEqual(["grpc", "http"]);
@@ -116,7 +145,7 @@ describe("HistoryClient", () => {
   });
 
   it("asks for the persisted history as pending", async () => {
-    const requestPending = vi.fn(async () => ({}));
+    const requestPending = vi.fn(async (_operation: string) => ({}));
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [

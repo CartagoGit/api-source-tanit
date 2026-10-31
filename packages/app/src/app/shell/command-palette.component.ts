@@ -20,33 +20,8 @@ export function fuzzyMatch(query: string, candidate: string): boolean {
   selector: "tanit-command-palette",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    @if (open()) {
-      <div class="scrim" (click)="close.emit()"></div>
-      <section #palette class="palette" role="dialog" aria-modal="true" [attr.aria-label]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)">
-        <input #search autofocus [value]="query()" (input)="updateQuery(search.value)" [placeholder]="i18n.translate('palette.placeholder')" (keydown)="onKeydown($event)" />
-        <div role="listbox">
-          @for (command of filteredCommands(); track command.id; let index = $index) {
-            <button type="button" role="option" [attr.aria-selected]="index === selectedIndex()" [class.selected]="index === selectedIndex()" (click)="choose(command)">
-              <span>{{ i18n.translate(command.labelKey) }}</span><kbd>{{ command.shortcut }}</kbd>
-            </button>
-          } @empty { <p>No matching commands</p> }
-        </div>
-        <button class="close" type="button" (click)="close.emit()">{{ i18n.translate("palette.close") }}</button>
-      </section>
-    }
-  `,
-  styles: `
-    .scrim { position: fixed; inset: 0; z-index: 10; background: rgb(0 0 0 / 35%); }
-    .palette { position: fixed; z-index: 11; top: 18%; left: 50%; width: min(560px, calc(100vw - 32px)); transform: translateX(-50%); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-panel); box-shadow: 0 18px 60px rgb(0 0 0 / 20%); padding: var(--space-3); }
-    input { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-ink); padding: var(--space-3); }
-    input:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; }
-    [role="listbox"] { display: grid; gap: var(--space-1); margin-top: var(--space-3); }
-    [role="option"] { display: flex; justify-content: space-between; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-ink); padding: var(--space-3); text-align: left; }
-    [role="option"].selected, [role="option"]:hover { background: color-mix(in srgb, var(--color-copper) 14%, transparent); }
-    kbd { color: var(--color-muted); font-family: var(--font-code); }
-    .close { margin-top: var(--space-2); border: 0; background: transparent; color: var(--color-muted); font-size: 12px; }
-  `,
+  templateUrl: "./command-palette.component.html",
+  styleUrls: ["./command-palette.component.scss"],
 })
 export class CommandPaletteComponent {
   private readonly commands = inject(CommandStore);
@@ -59,10 +34,38 @@ export class CommandPaletteComponent {
   @ViewChild("palette") palette?: ElementRef<HTMLElement>;
   @ViewChild("search") search?: ElementRef<HTMLInputElement>;
 
+  /**
+   * Who had the focus before the palette opened.
+   *
+   * Without this, closing the palette **threw the focus away**: it
+   * went to the document body, and a keyboard user had to start
+   * again from the top of the page. A dialog that takes the focus
+   * has to give it back.
+   */
+  private restoreFocusTo: HTMLElement | null = null;
+
   constructor() {
     effect(() => {
-      if (this.open()) queueMicrotask(() => this.search?.nativeElement.focus());
+      if (this.open()) {
+        this.restoreFocusTo =
+          typeof document === "undefined"
+            ? null
+            : ((document.activeElement as HTMLElement | null) ?? null);
+        // The input does not exist until the `@if` has rendered, so
+        // the focus is taken **after** the DOM is there. A microtask
+        // is too early: it runs before the view is refreshed.
+        setTimeout(() => this.search?.nativeElement.focus(), 0);
+        return;
+      }
+      const target = this.restoreFocusTo;
+      this.restoreFocusTo = null;
+      if (target !== null && typeof target.focus === "function") target.focus();
     });
+  }
+
+  /** The id of one option, so the input can point at it. */
+  optionId(index: number): string {
+    return `palette-option-${index}`;
   }
 
   filteredCommands(): ReadonlyArray<IPaletteCommand> {

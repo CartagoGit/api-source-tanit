@@ -1,0 +1,18 @@
+<section class="history">
+  <header><h2>Session history</h2><span>{{ history.entries().length }}</span></header>
+  @if (history.error(); as message) { <p role="alert">{{ message }}</p> }
+  @if (history.loading() && !history.entries().length) {
+    <p role="status">Reading the session's history…</p>
+  } @else {
+    @for (entry of history.entries(); track entry.capturedAt + entry.kind) {
+      <article>
+        <strong>{{ entry.kind === "snapshot-ready" ? "Snapshot ready" : "Snapshot stale" }}</strong>
+        <span>{{ entry.capturedAt }}</span>
+        @if (entry.changedPaths?.length) {
+          <small>{{ entry.changedPaths.length }} file(s) changed</small>
+        }
+      </article>
+    } @empty { <p>Nothing has happened in this session yet.</p> }
+  }
+  <p class="note">The persisted history — past generations with their hashes, comparable and restorable — is not exposed by the API yet.</p>
+</section>

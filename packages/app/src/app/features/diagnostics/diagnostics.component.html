@@ -1,0 +1,16 @@
+<section class="diagnostics" aria-labelledby="diagnostics-title">
+  <header><h2 id="diagnostics-title">Diagnostics</h2><span>{{ diagnostics().length }}</span></header>
+  @if (diagnostics().length === 0) {
+    <p class="empty">Nothing to report: the scan found no problems.</p>
+  } @else {
+    <ul>
+      @for (diagnostic of diagnostics(); track diagnostic.message) {
+        <li [class.error]="diagnostic.severity === 'error'">
+          <strong>{{ diagnostic.severity === 'error' ? 'Error' : 'Warning' }}</strong>
+          <span>{{ diagnostic.message }}</span>
+          @if (diagnostic.source) { <small>{{ diagnostic.source }}</small> }
+        </li>
+      }
+    </ul>
+  }
+</section>
