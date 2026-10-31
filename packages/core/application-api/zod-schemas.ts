@@ -1,6 +1,6 @@
 /**
- * `zod-schemas.ts` — input/output schemas for the 14 Application API
- * handlers (f00016 S3).
+ * `zod-schemas.ts` — input/output schemas for the Application API
+ * handlers.
  *
  * One input schema per handler, plus the success-output schema. The
  * dispatcher validates `input` against the input schema, dispatches,
@@ -25,6 +25,7 @@ export {
   BrowseInputSchema,
   CallerSchema,
   CancelInputSchema,
+  CheckInputSchema,
   CloseInputSchema,
   DryRunInputSchema,
   EndpointSummarySchema,
@@ -38,16 +39,21 @@ export {
   OpenProjectInputSchema,
   ProjectEntrySchema,
   ProjectRootSchema,
-  SessionIdSchema,
+  PushInputSchema,
   ServiceSummarySchema,
+  SessionIdSchema,
   SettingsInputSchema,
   SnapshotInputSchema,
   SnapshotSummarySchema,
+  StatsInputSchema,
+  SyncInputSchema,
+  ValidateInputSchema,
   WatchInputSchema,
 } from "../../contracts/constants/core/application-api.constant.js";
 export type {
   BrowseInput,
   CancelInput,
+  CheckInput,
   CloseInput,
   DryRunInput,
   ExportInput,
@@ -62,7 +68,11 @@ export type {
   ListProjectsInput,
   ListServicesInput,
   OpenProjectInput,
+  PushInput,
   SettingsInput,
   SnapshotInput,
+  StatsInput,
+  SyncInput,
+  ValidateInput,
   WatchInput,
 } from "../../contracts/interfaces/core/application-api.interface.js";

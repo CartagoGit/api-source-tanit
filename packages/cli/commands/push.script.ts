@@ -12,13 +12,12 @@
  */
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
-import { buildEnvironments, defaultEnvironments } from "../../core/domain/environment-builder.service.js";
-import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../core/domain/postman-api.service.js";
+import { PostmanApiError, verifyApiKey } from "../../core/domain/postman-api.service.js";
+import { describePushFailure, pushProjectArtifacts } from "../../core/domain/push-artifacts.service.js";
 import { readFlag } from "../../core/helpers/argv.helper.js";
 import type {
   IPushFailure,
   IPushOutcome,
-  IPushedArtifact,
 } from "../../contracts/interfaces/cli/push-outcome.interface.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 
@@ -72,13 +71,26 @@ export async function runPush(
   // so passing the flag did nothing. It now resolves like the rest.
   const root = (context ?? resolveProjectContext({ argv })).projectRoot;
 
+  /**
+   * The key is checked **before** the project is read.
+   *
+   * A key that does not work should fail while nothing has been
+   * scanned and no file has been written: the answer "your key is
+   * wrong" is worth more than "here are nine routes, now go get a
+   * key". The upload itself happens further down, in the core.
+   */
   let usuario: string;
   try {
-    const user = await verifyApiKey(options);
-    usuario = user.username;
+    const account = await verifyApiKey(options);
+    usuario = account.username;
     console.log(`→ Signed in to Postman as ${usuario}`);
   } catch (err) {
-    return sinSubir(reportApiError(err), falloDeApi(err));
+    const failure = describePushFailure(err);
+    console.error(`✗ ${failure.reason}`);
+    // The detail goes to the person who ran the command, and only to
+    // them: it can carry the request, and with it the key.
+    if (err instanceof PostmanApiError && err.detail) console.error(`  ${err.detail}`);
+    return { ...sinSubir(1, failure), user: null, framework: null };
   }
 
   console.log("→ Scanning the project…");
@@ -109,7 +121,7 @@ export async function runPush(
           "Run `scan` on the same project to see what discovery finds, " +
           "or force the framework with `--framework <id>`.",
       }),
-      user: usuario,
+      user: null,
       framework: result.match?.framework ?? null,
     };
   }
@@ -117,52 +129,53 @@ export async function runPush(
     `  · ${result.match?.framework ?? "unknown"} · ${requestCount} requests`,
   );
 
-  const subidos: IPushedArtifact[] = [];
-  let coleccionSubida: IPushedArtifact | null = null;
-  try {
-    const pushed = await pushCollection(result.collection, options);
-    coleccionSubida = { action: pushed.action, uid: pushed.uid, name: pushed.name };
-    console.log(
-      `✔ Collection ${pushed.action}: "${pushed.name}"` +
-        (pushed.uid ? ` (${pushed.uid})` : ""),
-    );
+  /**
+   * The upload itself lives in the core
+   * (`push-artifacts.service.ts`), so the CLI and the Application API
+   * upload the same way, with the same redaction of the API error.
+   */
+  const pushed = await pushProjectArtifacts({
+    collection: result.collection,
+    specs: result.specs,
+    config: result.config,
+    options,
+    withEnvironments,
+    verifiedUser: usuario,
+    onApiError: (err) => {
+      if (err instanceof PostmanApiError && err.detail) console.error(`  ${err.detail}`);
+    },
+  });
 
-    if (withEnvironments) {
-      const environments = buildEnvironments(
-        [...result.specs],
-        result.config.variables,
-        [...(result.config.environments ?? defaultEnvironments(result.config.baseUrl))],
-        result.collection.info._postman_id ?? "",
-      );
-      for (const environment of environments) {
-        const pushedEnv = await pushEnvironment(environment, options);
-        subidos.push({
-          action: pushedEnv.action,
-          uid: pushedEnv.uid,
-          name: pushedEnv.name,
-        });
-        console.log(`  · Environment ${pushedEnv.action}: "${pushedEnv.name}"`);
-      }
-    }
-  } catch (err) {
+  if (pushed.error) {
+    console.error(`✗ ${pushed.error.reason}`);
     return {
-      ...sinSubir(reportApiError(err), falloDeApi(err)),
-      user: usuario,
+      code: 1,
+      user: pushed.user,
       framework: result.match?.framework ?? null,
       requests: requestCount,
-      collection: coleccionSubida,
-      environments: subidos,
+      collection: pushed.collection,
+      environments: pushed.environments,
+      error: pushed.error,
     };
+  }
+
+  const uploaded = pushed.collection;
+  console.log(
+    `✔ Collection ${uploaded?.action ?? "uploaded"}: "${uploaded?.name ?? ""}"` +
+      (uploaded?.uid ? ` (${uploaded.uid})` : ""),
+  );
+  for (const environment of pushed.environments) {
+    console.log(`  · Environment ${environment.action}: "${environment.name}"`);
   }
 
   console.log("\nOpen Postman — the collection is already there.");
   return {
     code: 0,
-    user: usuario,
+    user: pushed.user,
     framework: result.match?.framework ?? null,
     requests: requestCount,
-    collection: coleccionSubida,
-    environments: subidos,
+    collection: pushed.collection,
+    environments: pushed.environments,
     error: null,
   };
 }
@@ -198,33 +211,11 @@ function countRequests(items: ReadonlyArray<IItem>): number {
  * human sees, and the agent receives a reason redacted to fit its
  * output. A secret leaked through an error message cannot be
  * retrieved.
+ *
+ * The redaction itself lives in the core
+ * (`push-artifacts.service.ts`), so the Application API redacts the
+ * same way the CLI does.
  */
-function falloDeApi(err: unknown): IPushFailure {
-  if (err instanceof PostmanApiError) {
-    return {
-      reason: err.message,
-      nextAction:
-        "Check that the key is still valid and has access to the workspace. " +
-        "The full detail goes to the CLI trace; it is not returned here " +
-        "because it can include the request, and with it the key." +
-        "",
-    };
-  }
-  return {
-    reason: err instanceof Error ? err.message : String(err),
-    nextAction: "Retry; if it persists, run `push` by hand to see the trace.",
-  };
-}
-
-function reportApiError(err: unknown): number {
-  if (err instanceof PostmanApiError) {
-    console.error(`✗ ${err.message}`);
-    if (err.detail) console.error(`  ${err.detail}`);
-    return 1;
-  }
-  console.error(`✗ ${err instanceof Error ? err.message : String(err)}`);
-  return 1;
-}
 
 if (import.meta.main) {
   process.exit(await main());

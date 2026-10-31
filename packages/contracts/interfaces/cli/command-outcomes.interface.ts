@@ -16,6 +16,7 @@
  */
 
 import type { IGenerateReport } from "../core/generate-report.interface.js";
+import type { ICheckReport } from "../core/application-api.interface.js";
 
 /** A collection endpoint, as data. */
 export interface IListedEndpoint {
@@ -32,29 +33,16 @@ export interface IListOutcome {
   readonly endpoints: ReadonlyArray<IListedEndpoint>;
 }
 
-/** An endpoint that exists on one side and not the other. */
-export interface IDriftedEndpoint {
-  readonly method: string;
-  readonly uri: string;
-  readonly name?: string | undefined;
-}
-
 /**
  * Drift between source and collection, as data.
  *
- * Returned in addition to being printed because the CLI is not
- * the only consumer: the plugin's `check` tool needs **the
- * endpoints**, not the table. Parsing the screen output with
- * regex is what another plugin tool used to do, and it broke
- * the day a column changed.
+ * The report is declared in the core's contract, because the
+ * comparison is not a CLI thing any more: the Application API answers
+ * it, and the MCP plugin reads it. It is re-exported here so the
+ * plugin's import keeps working — a declaration that lives in two
+ * places is a declaration that answers two questions.
  */
-export interface ICheckReport {
-  readonly inSync: boolean;
-  readonly routesInSource: number;
-  readonly requestsInCollection: number;
-  readonly missingInCollection: ReadonlyArray<IDriftedEndpoint>;
-  readonly missingInSource: ReadonlyArray<IDriftedEndpoint>;
-}
+export type { ICheckReport, IDriftedEndpoint } from "../core/application-api.interface.js";
 
 /** What `check` returns: exit code and report. */
 export interface ICheckOutcome {

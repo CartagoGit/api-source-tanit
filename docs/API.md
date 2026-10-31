@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 399 símbolos en 154 módulos.
+> 416 símbolos en 164 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -111,6 +111,16 @@ export function breadcrumbs(path: string): ReadonlyArray<IBrowseEntry>
 
 ```ts
 export function createCancelHandler(): IHandler<CancelInput, CancelOutput>
+```
+
+### `packages/core/application-api/check.handler.ts`
+
+`check.handler.ts` — has the collection drifted from the code?
+
+#### `createCheckHandler`
+
+```ts
+export function createCheckHandler(): IHandler<CheckInput, CheckOutput>
 ```
 
 ### `packages/core/application-api/close.handler.ts`
@@ -221,10 +231,25 @@ them and the user can see where the tool is about to write.
 export async function writeExport( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
 ```
 
-Builds the artifacts and **writes** them.
+Builds the artifacts once, says what each file would change, and
+**writes** them.
 
 The write is atomic: a file that is half-written is worse than no
 file, because the user cannot tell which half is the truth.
+
+#### `writeExportWithPlan`
+
+```ts
+export async function writeExportWithPlan( snapshot: IProjectSnapshot, target: string, outputDirectory: string, ): Promise<
+```
+
+Writes the artifacts and tells what was written, **and** what would
+have been written.
+
+The build happens **once**: a preview that built the artifacts
+again could promise a file the write would not produce, and a
+`sync` that builds them twice spends twice the time on the most
+expensive step of the pipeline.
 
 ### `packages/core/application-api/export.handler.ts`
 
@@ -326,6 +351,68 @@ Factory that captures the dependencies. The default export
 returns the bare handler; tests can override the orchestrator by
 passing their own factory.
 
+### `packages/core/application-api/project-verbs.helper.ts`
+
+The pieces the project verbs share.
+
+#### `requireSession`
+
+```ts
+export function requireSession(projectRoot: string): IProjectSession
+```
+
+The open session of a project.
+
+@param projectRoot The project to look for.
+@returns The session.
+@throws When there is no session: the verb cannot work without one.
+
+#### `requireResults`
+
+```ts
+export function requireResults(snapshot: IProjectSnapshot): IProjectSnapshot
+```
+
+The snapshot of a project, with something in it.
+
+@param snapshot The snapshot.
+@returns The same snapshot.
+@throws When the snapshot is empty: there is nothing to work with.
+
+#### `collectionPathOf`
+
+```ts
+export function collectionPathOf( snapshot: IProjectSnapshot, explicit?: string, ): string
+```
+
+The collection the project would write, and where it is.
+
+@param snapshot The open snapshot.
+@param explicit A path the caller named, if any.
+@returns The path of the collection.
+
+#### `readProjectCollection`
+
+```ts
+export async function readProjectCollection(path: string): Promise<PostmanCollection>
+```
+
+Reads a collection, or says why it could not be read.
+
+@param path The collection to read.
+@returns The collection.
+@throws When the file is missing or is not JSON.
+
+### `packages/core/application-api/push.handler.ts`
+
+`push.handler.ts` — upload the collection to Postman.
+
+#### `createPushHandler`
+
+```ts
+export function createPushHandler(): IHandler<PushInput, PushOutput>
+```
+
 ### `packages/core/application-api/settings.handlers.ts`
 
 `settings.handlers.ts` — get / patch per-session options.
@@ -344,6 +431,36 @@ export function createSettingsHandler(): IHandler<SettingsInput, SettingsOutput>
 
 ```ts
 export function createSnapshotHandlers():
+```
+
+### `packages/core/application-api/stats.handler.ts`
+
+`stats.handler.ts` — how many requests, and where.
+
+#### `createStatsHandler`
+
+```ts
+export function createStatsHandler(): IHandler<StatsInput, StatsOutput>
+```
+
+### `packages/core/application-api/sync.handler.ts`
+
+`sync.handler.ts` — generate and write, in one verb.
+
+#### `createSyncHandler`
+
+```ts
+export function createSyncHandler(): IHandler<SyncInput, SyncOutput>
+```
+
+### `packages/core/application-api/validate.handler.ts`
+
+`validate.handler.ts` — is this a well-formed Postman collection?
+
+#### `createValidateHandler`
+
+```ts
+export function createValidateHandler(): IHandler<ValidateInput, ValidateOutput>
 ```
 
 ### `packages/core/application-api/watch.handlers.ts`
@@ -895,6 +1012,28 @@ Keeping this entry point preserves historical behavior without introducing
 a singleton: the helper remains pure with respect to its arguments and only
 reads globals when no context is supplied.
 
+#### `collectionBasename`
+
+```ts
+export function collectionBasename( context: IProjectContext | undefined, projectName?: string, basenameOverride?: string, ): string
+```
+
+The file name of the collection, extension included.
+
+Priority: `override` argument (passed by CLI when `--basename` is
+present) → `TANIT_OUTPUT_BASENAME` / `POSTMAN_OUTPUT_BASENAME` env var
+→ `projectName` → `context.projectBasename` → `"postman"`.
+
+The `override` parameter replaces the historical
+`process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag` monkey-patch in
+`generate.script.ts` (c00010 S1). Callers that need finer-grained
+control inject the value here instead of mutating `process.env`.
+
+It is exported because the Application API's export writes the
+collection **too**, and it has to write it under the same name the
+CLI writes: two faces that produce two files for the same thing
+are two files that drift apart.
+
 #### `outputCollectionPath`
 
 ```ts
@@ -908,6 +1047,24 @@ vida larga puedan inyectar el contexto sin mutar el proceso. Por defecto
 es `process.argv`. El parámetro `basenameOverride` (c00010 S1) sustituye
 la variable de entorno `POSTMAN_OUTPUT_BASENAME` — los callers que antes
 monkey-patcheaban `process.env` pasan el valor directamente aquí.
+
+#### `collectionPathFor`
+
+```ts
+export function collectionPathFor( context: IProjectContext | undefined, projectName?: string, basenameOverride?: string, ): string
+```
+
+The same path, **without creating anything**.
+
+`outputCollectionPath` makes the folder so the write cannot fail
+half-way. The readers — `check`, `validate`, `stats` — do not
+write, and a read that creates a folder as a side effect is a
+surprise: asking whether a collection is in sync would leave a
+`tanit/` behind in a project that never generated one.
+
+@param context The project context.
+@param projectName The project's name, for the file's name.
+@returns The absolute path of the collection.
 
 #### `outputEnvironmentPath`
 
@@ -1416,6 +1573,56 @@ project configuration.
 @param specs Endpoint catalog of the project.
 @param config Project configuration (name, variables, zones...).
 
+### `packages/core/domain/collection-stats.service.ts`
+
+How many requests a collection carries, and where they live.
+
+#### `computeCollectionStats`
+
+```ts
+export function computeCollectionStats( collection: PostmanCollection, config: ProjectConfig, collectionPath: string, ): IStatsResult
+```
+
+Counts the requests of a collection, per method and per zone.
+
+@param collection The collection to measure.
+@param config The project's configuration: its zones and their order.
+@param collectionPath Where the collection came from, for the report.
+@returns The totals, the per-method counts and the per-zone breakdown.
+
+### `packages/core/domain/collection-validator.service.ts`
+
+The invariants of a well-formed Postman v2.1.0 collection.
+
+#### `validatePostmanCollection`
+
+```ts
+export function validatePostmanCollection( collection: PostmanCollection, collectionPath: string, ): IValidationResult
+```
+
+Checks a collection against the invariants.
+
+@param collection The collection to check.
+@param collectionPath Where it came from, for the report.
+@returns The errors, the warnings, and the counts.
+
+### `packages/core/domain/drift-check.service.ts`
+
+Drift between the routes in the code and the collection on disk.
+
+#### `compareRoutesWithCollection`
+
+```ts
+export function compareRoutesWithCollection( sourceRoutes: ReadonlyArray<IDriftedEndpoint>, collection: PostmanCollection, collectionPath: string, ): ICheckReport
+```
+
+Compares the routes in the code with the requests in a collection.
+
+@param sourceRoutes The routes the scanner found in the code.
+@param collection The collection to compare against.
+@param collectionPath Where the collection came from, for the report.
+@returns The drift, in both directions.
+
 ### `packages/core/domain/endpoint-merge.service.ts`
 
 Merge of discovered endpoints with the host's manual overrides.
@@ -1648,6 +1855,36 @@ The body counts if the spec carries one—from resolved rules or from
 agnostic inference, which has already run before this point. Examples
 count when the body has a value or params have a value; these are the two
 ways the collection teaches the user **one** valid value.
+
+### `packages/core/domain/push-artifacts.service.ts`
+
+Uploading a project's collection to Postman.
+
+#### `describePushFailure`
+
+```ts
+export function describePushFailure(error: unknown): IPushFailure
+```
+
+Translates an API failure into something a caller can act on.
+
+`PostmanApiError.detail` is the body Postman returned: third-party
+text that can carry the request that caused it, and with it the
+`X-Api-Key` header. The detail stays in the trace the human sees.
+A secret that leaks through an error message cannot be taken back.
+
+#### `pushProjectArtifacts`
+
+```ts
+export async function pushProjectArtifacts( request: IPushArtifactsRequest, ): Promise<IPushArtifactsResult>
+```
+
+Uploads the collection and, optionally, its environments.
+
+@param request The collection, the specs, the configuration, the key
+  and the workspace — plus, when the caller already signed in, who
+  that was.
+@returns What reached Postman, and what did not.
 
 ### `packages/core/domain/request-doc.service.ts`
 

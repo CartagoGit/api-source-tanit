@@ -65,21 +65,21 @@ The table below is the map, as `bun run lint:cli-app-parity` reads it.
 The gate prints the same counts on every build:
 
 ```text
-lint:cli-app-parity — 12 comando(s) del CLI, 14 handler(s) en la API, 21 operación(es) pedidas por la app.
-  Paridad: 6 completa(s), 2 parcial(es), 4 con hueco(s).
+lint:cli-app-parity — 12 comando(s) del CLI, 20 handler(s) en la API, 23 operación(es) pedidas por la app.
+  Paridad: 10 completa(s), 2 parcial(es), 0 con hueco(s).
 ```
 
 | Capability | CLI | Application API | Status |
 | --- | --- | --- | --- |
-| generate | `generate`, `sync` | `export`, `dry-run` | covered |
+| generate | `generate`, `sync` | `export`, `dry-run`, `sync` | covered |
 | detect | `scan`, `list` | `snapshot`, `list-endpoints`, `list-services`, `get-endpoint`, `get-schema` | covered |
+| drift | `check` | `check` | covered |
+| validate | `validate` | `validate` | covered |
+| push | `push` | `push` | covered |
+| stats | `stats` | `stats` | covered |
 | watch | `watch` | `watch`, `cancel` | covered |
 | history | `history` | `history` | partial |
-| drift | `check` | — | **gap** |
-| validate | `validate` | — | **gap** |
-| push | `push` | — | **gap** |
-| stats | `stats` | — | **gap** |
-| projects | — | `open-project`, `list-projects`, `close` | covered |
+| projects | — | `open-project`, `list-projects`, `close`, `browse` | covered |
 | settings | — | `settings` | partial |
 | interface | `ui` | — | covered (carrier) |
 | service | `serve` | — | covered (carrier) |
@@ -116,44 +116,47 @@ is a fixture.
   would be written, their size, and whether each would replace
   something that is already there; `export` writes them, atomically,
   into the chosen directory — the same directory the dry run looked at.
+- **The five verbs that were CLI-only now answer.** `check` compares
+  the collection with the routes in the code and says what is missing
+  on either side; `validate` separates the errors from the warnings;
+  `stats` counts the requests per method and per zone; `sync`
+  generates and writes, or only says what it would write; `push`
+  uploads the collection, with the key the app has saved — and the key
+  does not come back.
 - **The shell mounts every feature.** Overview, endpoints, exports,
-  services, history, live, check, sync, validate, push and settings
-  are all reachable from the sidebar, and the ones that need a project
-  say so instead of showing an empty screen.
+  services, history, live, check, sync, validate, stats, push and
+  settings are all reachable from the sidebar, and the ones that need
+  a project say so instead of showing an empty screen.
 
 ## What the app cannot do yet
 
-Four CLI capabilities have no Application API handler, so the app
-cannot reach them at all: **drift** (`check`), **validate**, **push**
-and **stats**. Their logic exists — `check` compares a generated
-collection against the routes in the code, `push` uploads through
-`packages/core/domain/postman-api.service.ts` — but it is not behind a
-handler.
-
-Nine more operations are asked for as **pending**: `check`,
+Five operations are asked for as **pending**:
 `history-compare-config`, `history-diff`, `history-re-export`,
-`history-restore`, `push`, `service-detail`, `sync` and `validate`.
-They are in
+`history-restore` and `service-detail`. They are in
 [`PENDING_APP_OPERATIONS`](../packages/contracts/constants/core/cli-app-parity.constant.ts),
 not in the registry, and the app asks for them explicitly so the call
 answers "not yet" instead of `UNKNOWN_HANDLER`.
 
-The persisted history — the past generations, with their hashes, that
-can be compared, re-exported or restored — is the other half of the
-`history` partial: the session's own events are reachable from both
-faces; the persisted ones are not, because no handler exposes them.
+They are all about the **persisted** history — the past generations,
+with their hashes, that can be compared, re-exported or restored — and
+about the detail of one service. The session's own events are
+reachable from both faces; the persisted ones are not, because no
+handler exposes them.
 
 ## What the CLI offers, action by action
 
-The app covers most of this already; the rows that say **CLI only** are
-the gaps the map above names.
+Every row here is reachable from the app too. The verbs that used to
+be CLI-only — `check`, `validate`, `push`, `stats` and `sync` — moved
+their logic to the core, so both faces run **the same code** and not
+two implementations that agree by accident.
 
 | GUI action | CLI command | Output and diagnostics |
 | --- | --- | --- |
-| Check | `apisrc check --project-root <path>` | Drift report with exit code 0/1 and actionable diagnostics. **CLI only.** |
-| Sync | `apisrc sync --project-root <path>` | Uses the existing generation pipeline; `--dry-run` inspects without writing. The app reaches the same pipeline through `export` and `dry-run`. |
-| Validate | `apisrc validate --project-root <path>` | Schema/collection diagnostics and non-zero exit on errors. **CLI only.** |
-| Push | `apisrc push --project-root <path> --workspace <id>` | Collection/environment actions; keys are never written to disk or diagnostics. **CLI only.** |
+| Check | `apisrc check --project-root <path>` | Drift report with exit code 0/1 and actionable diagnostics. The app shows the routes the collection is missing and the requests the code does not declare. |
+| Sync | `apisrc sync --project-root <path>` | Uses the existing generation pipeline; `--dry-run` inspects without writing. The app reaches the same pipeline through `sync`, `export` and `dry-run`. |
+| Validate | `apisrc validate --project-root <path>` | Schema/collection diagnostics and non-zero exit on errors. The app separates the errors from the warnings. |
+| Push | `apisrc push --project-root <path> --workspace <id>` | Collection/environment actions; keys are never written to disk or diagnostics. The app sends the key it has saved, and the key does not come back. |
+| Stats | `apisrc stats --project-root <path>` | Counts per method and per zone. The app shows the same numbers, because there is only one function that counts. |
 | Live | `apisrc watch --project-root <path>` | Watches source changes; auto-export is opt-in and off by default. |
 
 ## Durable state diagnostics

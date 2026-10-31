@@ -97,6 +97,68 @@ export const CloseInputSchema = z.object({
   message: "close requires a projectRoot (use close-all for the global close)",
 });
 
+/**
+ * The verbs the CLI had and the Application API did not.
+ *
+ * `check`, `validate`, `stats`, `push` and `sync` were **CLI-only**:
+ * the logic existed, the commands ran, and the app could not reach
+ * any of them. The app's screens for them existed too — they asked
+ * for an operation that had no handler and were told so, every time,
+ * in the only way that could be said: "not available yet".
+ *
+ * Now they are handlers. The logic moved to the core, so the CLI and
+ * the app run **the same code** and not two implementations that
+ * agree by accident.
+ */
+export const CheckInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The collection to compare against. The project's own when nobody says. */
+  collectionPath: z.string().min(1).optional(),
+});
+export const ValidateInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The collection to validate. The project's own when nobody says. */
+  collectionPath: z.string().min(1).optional(),
+});
+export const StatsInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The collection to measure. The project's own when nobody says. */
+  collectionPath: z.string().min(1).optional(),
+});
+export const PushInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /**
+   * The Postman workspace to upload to.
+   *
+   * The key is **not** part of the request by default: it is a
+   * secret, and a secret that travels through a bridge ends up in a
+   * log. The handler reads it from the environment, the same place
+   * the CLI reads it from.
+   *
+   * The app is the exception, and it is a deliberate one: its key
+   * lives in the app's own secure storage, and the environment of the
+   * sidecar is not something the user can set from a window. The key
+   * still never comes **back**: the answer says what happened, not
+   * what was used.
+   */
+  apiKey: z.string().min(1).optional(),
+  /** The workspace to upload to. */
+  workspaceId: z.string().min(1).optional(),
+  /** Upload the environments too. `true` unless somebody says otherwise. */
+  withEnvironments: z.boolean().optional(),
+  /** Say what would happen without doing it. */
+  dryRun: z.boolean().optional(),
+});
+export const SyncInputSchema = z.object({
+  projectRoot: ProjectRootSchema,
+  /** The format to write. `postman` when nobody says. */
+  target: z.string().min(1).optional(),
+  /** Where the files go. */
+  outputDirectory: z.string().min(1).optional(),
+  /** Say what would happen without writing anything. */
+  dryRun: z.boolean().optional(),
+});
+
 export const EndpointSummarySchema = z.object({
   method: z.string(),
   uri: z.string(),
@@ -151,4 +213,5 @@ export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
   "get-schema", "list-services", "dry-run", "export", "history",
   "watch", "cancel", "settings", "list-projects", "close", "browse",
+  "check", "validate", "stats", "push", "sync",
 ] as const;

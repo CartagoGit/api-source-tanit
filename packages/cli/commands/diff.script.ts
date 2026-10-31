@@ -16,19 +16,15 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { parseAllRoutes } from "../../frameworks/laravel/route-parser.service.js";
 import { stripApiPrefix } from "../../core/helpers/uri.helper.js";
-import {
-  endpointKey,
-  needsNameToDisambiguate,
-} from "../../core/helpers/route-identity.helper.js";
-import { walkCollection } from "../../core/helpers/postman.helper.js";
 import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { postmanMethodFor } from "../../core/domain/postman-method.helper.js";
+import { compareRoutesWithCollection } from "../../core/domain/drift-check.service.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
 import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
 import type { PostmanCollection } from "../../contracts/interfaces/core/postman.interface.js";
 import { defaultOrchestrator } from "../../frameworks/framework.registry.js";
-import type { ICheckOutcome, ICheckReport } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
+import type { ICheckOutcome } from "../../contracts/interfaces/cli/command-outcomes.interface.js";
 
 /** Checks for drift and returns the report. `main` is the one that prints it. */
 export async function runCheck(
@@ -57,11 +53,8 @@ export async function runCheck(
   const withLeadingSlash = (uri: string): string =>
     uri.startsWith("/") ? uri : `/${uri}`;
 
-  const sourceKeys = new Set<string>();
-  const sourceMap = new Map<string, { method: string; uri: string; name?: string }>();
-
   /**
-   * The key used to compare a route.
+   * The routes the code declares, in the shape the comparison wants.
    *
    * Method and URI **are not always enough**. In REST the URL
    * identifies the operation, but in RPC over POST it does not:
@@ -85,7 +78,8 @@ export async function runCheck(
    * that arrive. `needsNameToDisambiguate` checks whether any two
    * share method and URI; if none do, the name is noise and is left
    * out of both sides. It is the same question the pipeline already
-   * asked, made once here instead of being assumed.
+   * asked, made once — now, inside the core's comparison, so the CLI
+   * and the Application API ask it the same way.
    */
   const sourceRoutes: Array<{ method: string; uri: string; name?: string }> = [];
 
@@ -139,81 +133,35 @@ export async function runCheck(
 
   const raw = await readFile(COLLECTION_PATH, "utf8");
   const collection = JSON.parse(raw) as PostmanCollection;
-  const collRequests = [...walkCollection(collection)].map((r) => ({
-    method: postmanMethodFor(r.method),
-    uri: r.uri,
-    name: r.name,
-  }));
 
   /**
-   * Is the name needed to disambiguate?
-   *
-   * It is asked **only of the source**, and that asymmetry is
-   * deliberate. The source is the code: if two routes share method
-   * and URI there, the protocol is RPC over POST and the name is the
-   * only thing separating them — GraphQL, tRPC.
-   *
-   * The collection cannot decide this because it has **variants**:
-   * the enricher emits the same endpoint twice with different bodies
-   * ("base" and "Minimum (required only)"), and that is not two
-   * operations, it is one operation with two examples. Asking it
-   * returned `true` for Laravel and put the name into the key on both
-   * sides; since the REST source does not emit a name, the 17
-   * endpoints came out as "missing" and the 18 as "extra".
+   * The comparison itself lives in the core
+   * (`drift-check.service.ts`), so the CLI and the Application API
+   * answer the same question with the same code. What is left here
+   * is what only the CLI does: scan the project, read the file, and
+   * print the answer.
    */
-  const conNombre = needsNameToDisambiguate(sourceRoutes);
+  const informe = compareRoutesWithCollection(sourceRoutes, collection, COLLECTION_PATH);
 
-  const clave = (r: { method: string; uri: string; name?: string }): string =>
-    endpointKey(conNombre ? r : { method: r.method, uri: r.uri });
-
-  for (const r of sourceRoutes) {
-    const key = clave(r);
-    sourceKeys.add(key);
-    sourceMap.set(key, r);
-  }
-
-  const collKeys = new Set<string>();
-  const collMap = new Map<string, { method: string; uri: string; name?: string }>();
-  for (const r of collRequests) {
-    const key = clave(r);
-    collKeys.add(key);
-    collMap.set(key, r);
-  }
-
-  const onlyInSource = [...sourceKeys]
-    .filter((k) => !collKeys.has(k) && !k.endsWith("GET auth-test"))
-    .sort();
-  const onlyInColl = [...collKeys].filter((k) => !sourceKeys.has(k)).sort();
-
-  console.log(`Routes en source:        ${sourceKeys.size}`);
-  console.log(`Requests in collection:  ${collKeys.size}`);
+  console.log(`Routes en source:        ${informe.routesInSource}`);
+  console.log(`Requests in collection:  ${informe.requestsInCollection}`);
   console.log();
-
-  const informe: ICheckReport = {
-    inSync: onlyInSource.length === 0 && onlyInColl.length === 0,
-    routesInSource: sourceKeys.size,
-    requestsInCollection: collKeys.size,
-    missingInCollection: onlyInSource.map((k) => sourceMap.get(k)!),
-    missingInSource: onlyInColl.map((k) => collMap.get(k)!),
-  };
 
   if (informe.inSync) {
     console.log("✔ Collection is in sync with the source code.");
     return { code: 0, report: informe };
   }
 
-  if (onlyInSource.length > 0) {
-    console.log(`✘ Missing from the collection (${onlyInSource.length}):`);
-    for (const k of onlyInSource) {
-      const ep = sourceMap.get(k)!;
+  if (informe.missingInCollection.length > 0) {
+    console.log(`✘ Missing from the collection (${informe.missingInCollection.length}):`);
+    for (const ep of informe.missingInCollection) {
       console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
     }
     console.log();
   }
-  if (onlyInColl.length > 0) {
-    console.log(`✘ Not in the source code (${onlyInColl.length}):`);
-    for (const k of onlyInColl) {
-      const ep = collMap.get(k)!;
+  if (informe.missingInSource.length > 0) {
+    console.log(`✘ Not in the source code (${informe.missingInSource.length}):`);
+    for (const ep of informe.missingInSource) {
       console.log(`    ${ep.method.padEnd(6)} ${withLeadingSlash(ep.uri)}${ep.name ? `  (${ep.name})` : ""}`);
     }
   }
