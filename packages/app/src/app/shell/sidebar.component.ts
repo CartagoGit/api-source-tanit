@@ -54,6 +54,12 @@ export class SidebarComponent {
     { id: "schemas", labelKey: "nav.schemas" },
     { id: "services", labelKey: "nav.services" },
     { id: "exports", labelKey: "nav.exports" },
+    { id: "stats", labelKey: "nav.stats" },
+    { id: "check", labelKey: "nav.check" },
+    { id: "validate", labelKey: "nav.validate" },
+    { id: "sync", labelKey: "nav.sync" },
+    { id: "push", labelKey: "nav.push" },
+    { id: "live", labelKey: "nav.live" },
     { id: "history", labelKey: "nav.history" },
     { id: "diagnostics", labelKey: "nav.diagnostics" },
     { id: "settings", labelKey: "nav.settings" },
@@ -62,6 +68,6 @@ export class SidebarComponent {
   themeLabel = this.i18n.translate("theme.toggle");
 
   iconFor(id: string): string {
-    return ({ overview: "O", endpoints: "E", schemas: "S", services: "V", exports: "X", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
+    return ({ overview: "O", endpoints: "E", schemas: "S", services: "V", exports: "X", stats: "N", check: "C", validate: "A", sync: "Y", push: "P", live: "L", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
   }
 }

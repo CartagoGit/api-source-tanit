@@ -17,6 +17,7 @@ import { CheckComponent } from "../features/check/check.component";
 import { SyncComponent } from "../features/sync/sync.component";
 import { ValidateComponent } from "../features/validate/validate.component";
 import { PushToPostmanComponent } from "../features/push/push-to-postman.component";
+import { StatsComponent } from "../features/stats/stats.component";
 
 /**
  * The shell: the frame the app lives in.
@@ -59,6 +60,7 @@ import { PushToPostmanComponent } from "../features/push/push-to-postman.compone
     SyncComponent,
     ValidateComponent,
     PushToPostmanComponent,
+    StatsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -84,6 +86,7 @@ import { PushToPostmanComponent } from "../features/push/push-to-postman.compone
           @case ('sync') { <tanit-sync /> }
           @case ('validate') { <tanit-validate /> }
           @case ('push') { <tanit-push-to-postman /> }
+          @case ('stats') { <tanit-stats /> }
           @case ('settings') { <tanit-settings /> }
           @default { <tanit-empty-state><h2>{{ sectionLabel() }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> }
         }

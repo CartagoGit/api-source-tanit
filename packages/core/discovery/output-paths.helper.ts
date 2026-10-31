@@ -101,7 +101,7 @@ export function resolveOutputDir(
 }
 
 /**
- * Base name of the output JSON (without the extension).
+ * The file name of the collection, extension included.
  *
  * Priority: `override` argument (passed by CLI when `--basename` is
  * present) → `TANIT_OUTPUT_BASENAME` / `POSTMAN_OUTPUT_BASENAME` env var
@@ -111,8 +111,13 @@ export function resolveOutputDir(
  * `process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag` monkey-patch in
  * `generate.script.ts` (c00010 S1). Callers that need finer-grained
  * control inject the value here instead of mutating `process.env`.
+ *
+ * It is exported because the Application API's export writes the
+ * collection **too**, and it has to write it under the same name the
+ * CLI writes: two faces that produce two files for the same thing
+ * are two files that drift apart.
  */
-function outputBasename(
+export function collectionBasename(
   context: IProjectContext | undefined,
   projectName?: string,
   basenameOverride?: string,
@@ -189,7 +194,31 @@ export async function outputCollectionPath(
   basenameOverride?: string,
 ): Promise<string> {
   const dir = await ensureOutputDir(context, argv);
-  return join(dir, `${outputBasename(context, projectName, basenameOverride)}.json`);
+  return join(dir, `${collectionBasename(context, projectName, basenameOverride)}.json`);
+}
+
+/**
+ * The same path, **without creating anything**.
+ *
+ * `outputCollectionPath` makes the folder so the write cannot fail
+ * half-way. The readers — `check`, `validate`, `stats` — do not
+ * write, and a read that creates a folder as a side effect is a
+ * surprise: asking whether a collection is in sync would leave a
+ * `tanit/` behind in a project that never generated one.
+ *
+ * @param context The project context.
+ * @param projectName The project's name, for the file's name.
+ * @returns The absolute path of the collection.
+ */
+export function collectionPathFor(
+  context: IProjectContext | undefined,
+  projectName?: string,
+  basenameOverride?: string,
+): string {
+  return join(
+    resolveOutputDir(context),
+    `${collectionBasename(context, projectName, basenameOverride)}.json`,
+  );
 }
 
 /**
@@ -238,7 +267,7 @@ export function describeDiscoveredPaths(
   const dirs = projectDirs(context);
   const outputDir = resolveOutputDir(context, argv);
   const coleccion = projectName
-    ? join(outputDir, `${outputBasename(context, projectName, basenameOverride)}.json`)
+    ? join(outputDir, `${collectionBasename(context, projectName, basenameOverride)}.json`)
     : `${outputDir}/<nombre-del-proyecto>.postman_collection.json`;
   return [
     `  · Package root:   ${context.packageRoot}`,

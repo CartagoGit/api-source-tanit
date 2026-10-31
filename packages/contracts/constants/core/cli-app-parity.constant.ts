@@ -98,8 +98,8 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "generate",
     cli: ["generate", "sync"],
-    api: ["export", "dry-run"],
-    app: ["export", "dry-run"],
+    api: ["export", "dry-run", "sync"],
+    app: ["export", "dry-run", "sync"],
     status: "covered",
     note:
       "The same pipeline the CLI generates with, and the same " +
@@ -107,7 +107,8 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
       "written and whether each would overwrite something; the export " +
       "writes them, atomically. The `export` handler used to answer " +
       "`bytes: 0` without writing anything, and the Export Center " +
-      "drew a preview of a file that was never created.",
+      "drew a preview of a file that was never created. `sync` is " +
+      "the two of them in one verb, from one build of the artifacts.",
   },
   {
     capability: "detect",
@@ -125,34 +126,43 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "drift",
     cli: ["check"],
-    api: [],
-    app: [],
-    status: "gap",
+    api: ["check"],
+    app: ["check"],
+    status: "covered",
     note:
       "`check` compares a generated collection against the routes in the " +
-      "code. The comparison lives in the CLI; no Application API handler " +
-      "exposes it, so the app cannot reach it.",
+      "code. The comparison moved to the core " +
+      "(`packages/core/domain/drift-check.service.ts`), so the CLI and " +
+      "the app answer the question with the same code: the routes come " +
+      "from the open session and the collection comes from disk, " +
+      "because that is what drifts.",
   },
   {
     capability: "validate",
     cli: ["validate"],
-    api: [],
-    app: [],
-    status: "gap",
+    api: ["validate"],
+    app: ["validate"],
+    status: "covered",
     note:
-      "Validating a collection against the Postman v2.1.0 schema is " +
-      "CLI-only. No handler exposes it.",
+      "The invariants of a Postman v2.1.0 collection live in the core " +
+      "(`packages/core/domain/collection-validator.service.ts`), and " +
+      "both faces ask them. Errors and warnings are separated: a " +
+      "missing `_postman_id` is a warning, and it does not make the " +
+      "collection invalid.",
   },
   {
     capability: "push",
     cli: ["push"],
-    api: [],
-    app: [],
-    status: "gap",
+    api: ["push"],
+    app: ["push"],
+    status: "covered",
     note:
-      "The upload logic exists in the core " +
-      "(`packages/core/domain/postman-api.service.ts`) and the CLI uses " +
-      "it, but it is not behind a handler, so the app cannot call it.",
+      "The upload lives in the core " +
+      "(`packages/core/domain/push-artifacts.service.ts`), and the " +
+      "Application API exposes it. The key comes from the environment " +
+      "in both faces: a secret that travels through a bridge ends up " +
+      "in a log, and the Postman response body — which can carry the " +
+      "request, and with it the key — never comes back.",
   },
   {
     capability: "watch",
@@ -181,12 +191,14 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "stats",
     cli: ["stats"],
-    api: [],
-    app: [],
-    status: "gap",
+    api: ["stats"],
+    app: ["stats"],
+    status: "covered",
     note:
-      "Counts per method and folder. `snapshot` carries the totals, but " +
-      "not the breakdown the CLI prints.",
+      "Counts per method and per zone. The counting lives in the core " +
+      "(`packages/core/domain/collection-stats.service.ts`), so the " +
+      "numbers the app shows are the numbers the CLI prints: there is " +
+      "only one function that counts.",
   },
   {
     capability: "projects",
@@ -259,15 +271,11 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
  * impossible to ask for one that is not on the list.
  */
 export const PENDING_APP_OPERATIONS = [
-  "check",
   "history-compare-config",
   "history-diff",
   "history-re-export",
   "history-restore",
-  "push",
   "service-detail",
-  "sync",
-  "validate",
 ] as const;
 
 /** An operation the app asks for that has no handler yet. */

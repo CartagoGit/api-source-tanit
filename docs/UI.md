@@ -38,7 +38,11 @@ Lo que hay en el menú lateral:
 | **Servicios** | Los servicios detectados y sus transportes. |
 | **Historial** | Los eventos de la sesión: la instantánea tomada y los ficheros que cambiaron debajo. |
 | **En vivo** | La suscripción a cambios de las fuentes. |
-| **Comprobar**, **Sincronizar**, **Validar**, **Subir** | Hoy son **solo CLI**: no hay handler detrás. La app lo dice en vez de fingir. |
+| **Comprobar** | Compara la colección con el código: dice qué rutas le faltan y qué peticiones no están en el código. |
+| **Sincronizar** | Genera y escribe, o solo enseña lo que escribiría. |
+| **Validar** | Los invariantes de una colección Postman v2.1.0, con los errores separados de los avisos. |
+| **Estadísticas** | Cuántas peticiones hay, por método y por zona. |
+| **Subir** | Sube la colección a Postman. La clave sale del almacén de la app y **no vuelve**: la respuesta dice qué pasó, no qué se usó. |
 | **Ajustes** | Idioma, tema y preferencias. |
 
 Abrir un proyecto **abre una sesión** en el backend: se escanea y

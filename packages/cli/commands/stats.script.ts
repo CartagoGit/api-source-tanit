@@ -11,8 +11,7 @@
  * to parse.
  */
 import { explainReadFailure, readCollection } from "../../core/helpers/collection-file.helper.js";
-import { zoneForUri, zonesToDisplay } from "../../core/helpers/zone.helper.js";
-import { walkCollection } from "../../core/helpers/postman.helper.js";
+import { computeCollectionStats } from "../../core/domain/collection-stats.service.js";
 import { outputCollectionPath } from "../../core/discovery/output-paths.helper.js";
 import { resolveProjectContext } from "../../core/discovery/project-context.service.js";
 import { loadProject } from "../../core/discovery/project-loader.service.js";
@@ -22,10 +21,12 @@ import type {
   IZoneStats,
 } from "../../contracts/interfaces/cli/stats-outcome.interface.js";
 
-interface ZoneStats {
-  byMethod: Map<string, number>;
-  byFolder: Map<string, number>;
-}
+/**
+ * The counting lives in the core (`collection-stats.service.ts`), so
+ * the CLI and the Application API measure the same collection the
+ * same way. What is left here is what only the CLI does: find the
+ * file and print the answer.
+ */
 
 /** Calculates the statistics and returns them, printing them along the way. */
 export async function runStats(
@@ -42,70 +43,38 @@ export async function runStats(
   }
   const collection = read.collection;
 
-  const zones = new Map<string, ZoneStats>();
-  for (const z of config.zoneOrder) {
-    zones.set(z, { byMethod: new Map(), byFolder: new Map() });
-  }
-  if (!zones.has(config.defaultZone)) {
-    zones.set(config.defaultZone, { byMethod: new Map(), byFolder: new Map() });
-  }
-
-  for (const r of walkCollection(collection)) {
-    const topFolder = r.folder.split(" > ")[0] ?? r.folder;
-    const z = zoneForUri(r.uri, config);
-    const stats = zones.get(z) ?? zones.get(config.defaultZone)!;
-    stats.byMethod.set(r.method, (stats.byMethod.get(r.method) ?? 0) + 1);
-    stats.byFolder.set(topFolder, (stats.byFolder.get(topFolder) ?? 0) + 1);
-  }
-
-  const totalRequests = [...zones.values()]
-    .flatMap((s) => [...s.byMethod.values()])
-    .reduce((a, b) => a + b, 0);
-
-  const totalByMethod = new Map<string, number>();
-  for (const s of zones.values()) {
-    for (const [m, n] of s.byMethod)
-      totalByMethod.set(m, (totalByMethod.get(m) ?? 0) + n);
-  }
+  const stats = computeCollectionStats(collection, config, COLLECTION_PATH);
 
   console.log("→ Postman collection stats");
-  console.log(`Total requests: ${totalRequests}\n`);
+  console.log(`Total requests: ${stats.total}\n`);
 
   console.log("By HTTP method (global):");
-  const methodsSorted = [...totalByMethod.entries()].sort(
-    (a, b) => b[1] - a[1],
-  );
-  for (const [m, n] of methodsSorted) {
-    console.log(`  ${m.padEnd(8)} ${String(n).padStart(4)}`);
+  for (const entry of stats.byMethod) {
+    console.log(`  ${entry.method.padEnd(8)} ${String(entry.count).padStart(4)}`);
   }
   console.log();
 
   const porZona: IZoneStats[] = [];
 
   console.log("By zone:");
-  for (const zone of zonesToDisplay(zones.keys(), config)) {
-    const s = zones.get(zone);
-    if (!s) continue;
-    const zoneTotal = [...s.byMethod.values()].reduce((a, b) => a + b, 0);
-    if (zoneTotal === 0) continue;
-    console.log(`\n─── ${zone} (${zoneTotal}) ───`);
-    const sorted = [...s.byFolder.entries()].sort((a, b) => b[1] - a[1]);
-    const maxFolder = Math.max(...sorted.map(([f]) => f.length), 10);
-    for (const [f, n] of sorted) {
-      console.log(`  ${f.padEnd(maxFolder + 2)}${String(n).padStart(4)}`);
+  for (const zone of stats.zones) {
+    console.log(`\n─── ${zone.zone} (${zone.total}) ───`);
+    const maxFolder = Math.max(...zone.byFolder.map((entry) => entry.folder.length), 10);
+    for (const entry of zone.byFolder) {
+      console.log(`  ${entry.folder.padEnd(maxFolder + 2)}${String(entry.count).padStart(4)}`);
     }
     porZona.push({
-      zone,
-      total: zoneTotal,
-      byFolder: sorted.map(([folder, count]) => ({ folder, count })),
+      zone: zone.zone,
+      total: zone.total,
+      byFolder: zone.byFolder.map((entry) => ({ folder: entry.folder, count: entry.count })),
     });
   }
   console.log();
 
   return {
     code: 0,
-    total: totalRequests,
-    byMethod: methodsSorted.map(([method, count]) => ({ method, count })),
+    total: stats.total,
+    byMethod: stats.byMethod.map((entry) => ({ method: entry.method, count: entry.count })),
     zones: porZona,
   };
 }

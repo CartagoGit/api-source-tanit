@@ -32,6 +32,11 @@ import { createSettingsHandler } from "./settings.handlers.js";
 import { createListProjectsHandler } from "./list-projects.handler.js";
 import { createCloseHandler } from "./close.handler.js";
 import { createBrowseHandler } from "./browse.handler.js";
+import { createCheckHandler } from "./check.handler.js";
+import { createValidateHandler } from "./validate.handler.js";
+import { createStatsHandler } from "./stats.handler.js";
+import { createPushHandler } from "./push.handler.js";
+import { createSyncHandler } from "./sync.handler.js";
 
 /**
  * The handler names — the canonical enumeration the dispatcher
@@ -73,6 +78,14 @@ export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unkno
     "list-projects": widenHandler(createListProjectsHandler()),
     "close": widenHandler(createCloseHandler()),
     "browse": widenHandler(createBrowseHandler()),
+    // The verbs the CLI had and the API did not. Their logic moved to
+    // the core (so the CLI and the app run the same code), and the
+    // app's screens stopped saying "not available yet".
+    "check": widenHandler(createCheckHandler()),
+    "validate": widenHandler(createValidateHandler()),
+    "stats": widenHandler(createStatsHandler()),
+    "push": widenHandler(createPushHandler()),
+    "sync": widenHandler(createSyncHandler()),
   };
   // Note: `snapshot`, `history` and `watch` each ship two
   // sub-handlers in their respective files (`.current` /

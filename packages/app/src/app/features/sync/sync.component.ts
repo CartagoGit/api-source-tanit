@@ -1,15 +1,23 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
-import { HostBridgeClient } from "../../core/api/host-bridge.client";
-import { describePending } from "../../core/api/pending-operation.helper";
+import { SyncClient } from "../../core/api/sync.client";
 import { ProjectStore } from "../../core/state/project.store";
+import type { SyncOutput } from "../../../../../contracts/interfaces/core/application-api.interface";
 
 /**
  * The sync.
  *
- * The composed verb has no handler yet: the pipeline is `dry-run`
- * plus `export`, both of which exist, and the app reaches them from
- * the Export Center. This section asks for it anyway, as a pending
- * operation, so the gap is written down.
+ * ## What it used to be
+ *
+ * A button that called an operation with no handler and told the
+ * user, every time, that the action was CLI-only. The composed verb
+ * — `dry-run` plus `export` — lived in the CLI and the app could
+ * not reach it.
+ *
+ * ## What it is
+ *
+ * The composition moved to the core and the Application API exposes
+ * it. The screen asks, and draws **the answer**: the files that were
+ * written, or the files that would be written.
  *
  * It used to carry its own `projectRoot` input, defaulting to `"."`
  * — and the shell never passed one, so the sync would have been
@@ -19,13 +27,14 @@ import { ProjectStore } from "../../core/state/project.store";
   selector: "tanit-sync",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="sync-title"><h2 id="sync-title">Sync</h2><button type="button" [disabled]="running()" (click)="run(false)">{{ running() ? "Syncing…" : "Sync project" }}</button><button type="button" [disabled]="running()" (click)="run(true)">Dry run</button>@if (message(); as value) { <p role="status">{{ value }}</p> }</section>`,
+  template: `<section aria-labelledby="sync-title"><h2 id="sync-title">Sync</h2><button type="button" [disabled]="running()" (click)="run(false)">{{ running() ? "Syncing…" : "Sync project" }}</button><button type="button" [disabled]="running()" (click)="run(true)">Dry run</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (result(); as answer) { @if (answer.dryRun) { <ul aria-label="Files that would be written">@for (file of answer.plannedFiles; track file.path) { <li>{{ file.path }} <em>({{ file.change }})</em></li> }</ul> } @else { <ul aria-label="Files written">@for (file of answer.files; track file) { <li>{{ file }}</li> }</ul> } }</section>`,
 })
 export class SyncComponent {
   readonly running = signal(false);
   readonly message = signal<string | null>(null);
+  readonly result = signal<SyncOutput | null>(null);
   private readonly project = inject(ProjectStore);
-  private readonly bridge = inject(HostBridgeClient);
+  private readonly client = inject(SyncClient);
 
   async run(dryRun: boolean): Promise<void> {
     const root = this.project.projectRoot();
@@ -35,13 +44,17 @@ export class SyncComponent {
     }
     this.running.set(true);
     this.message.set(null);
+    this.result.set(null);
     try {
-      // `sync` has no handler yet: the pipeline is `dry-run` + `export`,
-      // both of which exist, but the composed verb does not.
-      const result = await this.bridge.requestPending("sync", { projectRoot: root }) as { synced?: boolean };
-      this.message.set(dryRun ? "Sync preview ready." : result.synced ? "Project synced." : "Sync did not complete.");
+      const result = await this.client.sync(root, { dryRun });
+      this.result.set(result);
+      this.message.set(
+        dryRun
+          ? `${result.plannedFiles.length} file(s) would be written, ${result.endpointCount} endpoint(s).`
+          : `${result.files.length} file(s) written, ${result.endpointCount} endpoint(s).`,
+      );
     } catch (error) {
-      this.message.set(describePending("sync", error));
+      this.message.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.running.set(false);
     }

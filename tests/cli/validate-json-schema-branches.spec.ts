@@ -36,7 +36,10 @@ describe("validate-json schema mismatch branch", () => {
       expect(await validateJsonMain([])).toBe(1);
       const printed = [...log.mock.calls, ...error.mock.calls].map((c) => c.join(" ")).join("\n");
       expect(printed).toContain(POSTMAN_SCHEMA_URL);
-      expect(printed).toContain("info.schema esperado");
+      // The message is in English: the output of the tool is product
+      // surface, and it speaks one language. The invariants moved to
+      // the core, and the core says it in the language of the tool.
+      expect(printed).toContain("info.schema should be");
     } finally {
       log.mockRestore();
       error.mockRestore();

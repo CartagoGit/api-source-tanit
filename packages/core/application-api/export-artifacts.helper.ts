@@ -31,6 +31,8 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { buildArtifacts } from "../discovery/generation.pipeline.js";
+import { collectionBasename } from "../discovery/output-paths.helper.js";
+import { resolveProjectContext } from "../discovery/project-context.service.js";
 import { selectExporters } from "../exporters/registry.js";
 import { writeFileAtomic } from "../helpers/atomic-write.helper.js";
 import { apiError } from "./error.js";
@@ -68,6 +70,29 @@ function extensionOf(format: ExportFormatId): string {
     case "har": return "har";
     default: return "json";
   }
+}
+
+/**
+ * The name of the file the format's primary artifact is written to.
+ *
+ * For Postman it is the **same name the CLI writes**: the CLI's
+ * `generate` produces `<name>.postman_collection.json`, and the
+ * export used to produce `<name>.json` — two files for the same
+ * collection, one per face. Then the CLI's `check` could not see what
+ * the app wrote, and the app's `check` could not see what the CLI
+ * wrote.
+ *
+ * One name, both faces: the app's export writes the file the CLI
+ * would write, and the readers (`check`, `validate`, `stats`) look
+ * for the file that is actually there.
+ */
+function primaryFileName(snapshot: IProjectSnapshot, format: ExportFormatId): string {
+  if (format !== "postman") {
+    return `${baseName(snapshot)}.${extensionOf(format)}`;
+  }
+  const context = resolveProjectContext({ projectRoot: snapshot.projectRoot });
+  const name = snapshot.results[0]?.config.name;
+  return `${collectionBasename(context, name)}.json`;
 }
 
 /**
@@ -110,7 +135,8 @@ export async function planExport(
 }
 
 /**
- * Builds the artifacts and **writes** them.
+ * Builds the artifacts once, says what each file would change, and
+ * **writes** them.
  *
  * The write is atomic: a file that is half-written is worse than no
  * file, because the user cannot tell which half is the truth.
@@ -124,6 +150,33 @@ export async function writeExport(
   readonly bytes: number;
   readonly files: ReadonlyArray<string>;
 }> {
+  const written = await writeExportWithPlan(snapshot, target, outputDirectory);
+  return {
+    outputPath: written.outputPath,
+    bytes: written.bytes,
+    files: written.files,
+  };
+}
+
+/**
+ * Writes the artifacts and tells what was written, **and** what would
+ * have been written.
+ *
+ * The build happens **once**: a preview that built the artifacts
+ * again could promise a file the write would not produce, and a
+ * `sync` that builds them twice spends twice the time on the most
+ * expensive step of the pipeline.
+ */
+export async function writeExportWithPlan(
+  snapshot: IProjectSnapshot,
+  target: string,
+  outputDirectory: string,
+): Promise<{
+  readonly outputPath: string;
+  readonly bytes: number;
+  readonly files: ReadonlyArray<string>;
+  readonly plan: IExportPlan;
+}> {
   const planned = await buildPlan(snapshot, target, outputDirectory);
   let bytes = 0;
   const written: string[] = [];
@@ -136,6 +189,13 @@ export async function writeExport(
     outputPath: planned.outputPath,
     bytes,
     files: written,
+    plan: {
+      files: planned.files.map(
+        ({ path, change, bytes: size }): IExportFilePreview => ({ path, change, bytes: size }),
+      ),
+      outputPath: planned.outputPath,
+      diagnostics: planned.diagnostics,
+    },
   };
 }
 
@@ -181,7 +241,7 @@ async function buildPlan(
     // files: the writer puts that artifact in the output path the
     // caller chose.
     if (result.files.length === 0) {
-      const path = join(directory, `${baseName(snapshot)}.${extensionOf(result.format)}`);
+      const path = join(directory, primaryFileName(snapshot, result.format));
       const content = JSON.stringify(result.artifact ?? {}, null, 2) + "\n";
       files.push(await describeFile(path, content));
       continue;
@@ -219,8 +279,12 @@ async function describeFile(path: string, content: string): Promise<IPlannedFile
 
 /** The name of the project's primary artifact. */
 function baseName(snapshot: IProjectSnapshot): string {
-  const root = snapshot.projectRoot.split(/[\\/]/).filter(Boolean).at(-1) ?? "postman";
-  return root.replace(/[^\w.-]+/g, "-");
+  const configured = snapshot.results[0]?.config.name;
+  const source =
+    configured !== undefined && configured.trim() !== ""
+      ? configured
+      : (snapshot.projectRoot.split(/[\\/]/).filter(Boolean).at(-1) ?? "postman");
+  return source.replace(/[^\w.-]+/g, "-");
 }
 
 /**

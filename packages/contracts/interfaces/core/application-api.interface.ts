@@ -2,6 +2,7 @@ import type { z, ZodType } from "zod";
 import type {
   BrowseInputSchema,
   CancelInputSchema,
+  CheckInputSchema,
   CloseInputSchema,
   DryRunInputSchema,
   EndpointSummarySchema,
@@ -14,15 +15,23 @@ import type {
   ListServicesInputSchema,
   OpenProjectInputSchema,
   ProjectEntrySchema,
+  PushInputSchema,
   SettingsInputSchema,
   SnapshotInputSchema,
   SnapshotSummarySchema,
   ServiceSummarySchema,
+  StatsInputSchema,
+  SyncInputSchema,
+  ValidateInputSchema,
   WatchInputSchema,
 } from "../../constants/core/application-api.constant.js";
 import type { EndpointSpec } from "./endpoint-legacy.interface.js";
 import type { IBrowseListing } from "./browse.interface.js";
 import type { IExporterDiagnostic } from "./exporter.interface.js";
+import type {
+  IPushedArtifact,
+  IPushFailure,
+} from "../cli/push-outcome.interface.js";
 
 export interface IAbortSignalLike { readonly aborted: boolean; }
 export interface IRequestContext {
@@ -64,6 +73,11 @@ export type SettingsInput = z.infer<typeof SettingsInputSchema>;
 export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>;
 export type BrowseInput = z.infer<typeof BrowseInputSchema>;
 export type CloseInput = z.infer<typeof CloseInputSchema>;
+export type CheckInput = z.infer<typeof CheckInputSchema>;
+export type ValidateInput = z.infer<typeof ValidateInputSchema>;
+export type StatsInput = z.infer<typeof StatsInputSchema>;
+export type PushInput = z.infer<typeof PushInputSchema>;
+export type SyncInput = z.infer<typeof SyncInputSchema>;
 export type IEndpointSummary = z.infer<typeof EndpointSummarySchema>;
 export type IServiceSummary = z.infer<typeof ServiceSummarySchema>;
 export type ISnapshotSummary = z.infer<typeof SnapshotSummarySchema>;
@@ -110,3 +124,109 @@ export interface SettingsOutput { readonly applied: Readonly<Record<string, unkn
 export interface ListProjectsOutput { readonly projects: ReadonlyArray<IProjectEntry>; }
 export interface BrowseOutput { readonly listing: IBrowseListing; }
 export interface CloseOutput { readonly closed: number; }
+
+/* ------------------------------------------------------------------ *
+ * The verbs that used to be CLI-only.
+ * ------------------------------------------------------------------ */
+
+/** One route, as the two sides of a drift comparison see it. */
+export interface IDriftedEndpoint {
+  readonly method: string;
+  readonly uri: string;
+  readonly name?: string | undefined;
+}
+
+/**
+ * The drift between the routes in the code and the collection on disk.
+ *
+ * It lives here, and not only in the CLI's contract, because the
+ * comparison stopped being a CLI thing: the Application API answers
+ * it too, and the MCP plugin reads the same report. Three consumers
+ * and one declaration — a report that is declared twice is a report
+ * that answers two questions.
+ */
+export interface ICheckReport {
+  /** `true` when both sides carry the same routes. */
+  readonly inSync: boolean;
+  /** How many routes the code declares. */
+  readonly routesInSource: number;
+  /** How many requests the collection carries. */
+  readonly requestsInCollection: number;
+  /** Routes the code declares and the collection does not have. */
+  readonly missingInCollection: ReadonlyArray<IDriftedEndpoint>;
+  /** Requests the collection carries and the code does not declare. */
+  readonly missingInSource: ReadonlyArray<IDriftedEndpoint>;
+  /** The collection that was compared. */
+  readonly collectionPath: string;
+}
+export interface CheckOutput { readonly report: ICheckReport; }
+
+/** How bad a validation issue is. */
+export type ValidationSeverity = "error" | "warning";
+/** One thing that is wrong with a collection. */
+export interface IValidationIssue {
+  readonly severity: ValidationSeverity;
+  readonly message: string;
+}
+export interface IValidationResult {
+  /** `true` when there is no error. Warnings do not make it false. */
+  readonly ok: boolean;
+  readonly errors: ReadonlyArray<IValidationIssue>;
+  readonly warnings: ReadonlyArray<IValidationIssue>;
+  readonly requests: number;
+  readonly folders: number;
+  readonly variables: number;
+  readonly collectionPath: string;
+}
+export interface ValidateOutput { readonly result: IValidationResult; }
+
+/** The count of one HTTP method. */
+export interface IMethodCount {
+  readonly method: string;
+  readonly count: number;
+}
+/** The count of one folder. */
+export interface IFolderCount {
+  readonly folder: string;
+  readonly count: number;
+}
+/** The counts of one zone. */
+export interface IZoneStats {
+  readonly zone: string;
+  readonly total: number;
+  readonly byFolder: ReadonlyArray<IFolderCount>;
+}
+export interface IStatsResult {
+  readonly total: number;
+  readonly byMethod: ReadonlyArray<IMethodCount>;
+  readonly zones: ReadonlyArray<IZoneStats>;
+  /** The collection that was measured. */
+  readonly collectionPath: string;
+}
+export interface StatsOutput { readonly stats: IStatsResult; }
+
+export interface PushOutput {
+  /** The Postman account the key belongs to. */
+  readonly user: string | null;
+  /** The framework that recognized the project. */
+  readonly framework: string | null;
+  readonly requests: number;
+  readonly collection: IPushedArtifact | null;
+  readonly environments: ReadonlyArray<IPushedArtifact>;
+  /** `null` when everything went well. */
+  readonly error: IPushFailure | null;
+  /** `true` when nothing was uploaded: it was a dry run. */
+  readonly dryRun: boolean;
+}
+export interface SyncOutput {
+  /** The files that were written — empty on a dry run. */
+  readonly files: ReadonlyArray<string>;
+  readonly bytes: number;
+  /** The files that **would** be written. Always filled. */
+  readonly plannedFiles: ReadonlyArray<IExportFilePreview>;
+  readonly endpointCount: number;
+  readonly frameworks: ReadonlyArray<string>;
+  readonly dryRun: boolean;
+  /** What the exporters had to say. */
+  readonly diagnostics: ReadonlyArray<IExporterDiagnostic>;
+}

@@ -26,22 +26,28 @@
  *
  * ## The operations that have no handler yet
  *
- * Some capabilities the CLI has (`check`, `push`, `validate`, `sync`)
- * are not behind a handler, so the app cannot reach them. They are
- * declared in `IPendingHostRequestMap` and asked for through
- * `requestPending()`, which says out loud that the call does not work
- * yet.
+ * Some capabilities the CLI has are not behind a handler, so the app
+ * cannot reach them. They are declared in `IPendingHostRequestMap`
+ * and asked for through `requestPending()`, which says out loud that
+ * the call does not work yet.
  *
  * That is not decoration. `scripts/gates/lint-cli-app-parity.script.ts`
  * reads the two: an operation asked for as pending that **already**
  * has a handler fails the build, so the backlog empties itself the
  * moment the handler lands.
+ *
+ * `check`, `validate`, `stats`, `push` and `sync` were on that list
+ * and are not any more: their logic moved to the core and the
+ * Application API exposes them, so the app asks for them like any
+ * other operation.
  */
 import type {
   BrowseInput,
   BrowseOutput,
   CancelInput,
   CancelOutput,
+  CheckInput,
+  CheckOutput,
   CloseInput,
   CloseOutput,
   DryRunInput,
@@ -62,10 +68,18 @@ import type {
   ListServicesOutput,
   OpenProjectInput,
   OpenProjectOutput,
+  PushInput,
+  PushOutput,
   SettingsInput,
   SettingsOutput,
   SnapshotInput,
   SnapshotOutput,
+  StatsInput,
+  StatsOutput,
+  SyncInput,
+  SyncOutput,
+  ValidateInput,
+  ValidateOutput,
   WatchInput,
   WatchOutput,
 } from "../core/application-api.interface.js";
@@ -101,6 +115,16 @@ export interface IHostRequestMap {
    * about the machine, not about a project.
    */
   "browse": BrowseInput;
+  /** Has the collection drifted from the code? */
+  "check": CheckInput;
+  /** Is this a well-formed Postman collection? */
+  "validate": ValidateInput;
+  /** How many requests, and where. */
+  "stats": StatsInput;
+  /** Upload the collection to Postman. */
+  "push": PushInput;
+  /** Generate and write, in one verb. */
+  "sync": SyncInput;
 }
 
 /** What each operation answers. */
@@ -120,6 +144,11 @@ export interface IHostResponseMap {
   "list-projects": ListProjectsOutput;
   "close": CloseOutput;
   "browse": BrowseOutput;
+  "check": CheckOutput;
+  "validate": ValidateOutput;
+  "stats": StatsOutput;
+  "push": PushOutput;
+  "sync": SyncOutput;
 }
 
 /**
@@ -134,14 +163,6 @@ export interface IHostResponseMap {
  * it, and the cast is the marker of what is still missing.
  */
 export interface IPendingHostRequestMap {
-  check: { readonly projectRoot: string };
-  sync: { readonly projectRoot: string };
-  validate: { readonly projectRoot: string };
-  push: {
-    readonly projectRoot: string;
-    readonly workspace?: string;
-    readonly dryRun?: boolean;
-  };
   "service-detail": { readonly projectRoot: string; readonly serviceId: string };
   "history-diff": {
     readonly projectRoot: string;
