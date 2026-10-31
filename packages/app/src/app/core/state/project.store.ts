@@ -62,10 +62,18 @@ export class ProjectStore {
   async open(path: string): Promise<boolean> {
     this.loading.set(true);
     this.error.set(null);
+    const previous = this.projectRoot();
     try {
       const answer: OpenProjectOutput = await this.bridge.request("open-project", {
         projectRoot: path,
       });
+      // The previous session is closed **after** the new one opens:
+      // if the new one fails, the old project is still open and
+      // usable, and closing it first would leave the user with
+      // nothing.
+      if (previous !== null && previous !== answer.summary.projectRoot) {
+        await this.closeSession(previous);
+      }
       this.projectRoot.set(answer.summary.projectRoot);
       this.sessionId.set(answer.sessionId);
       this.summary.set(answer.summary);
@@ -91,13 +99,26 @@ export class ProjectStore {
   async close(): Promise<void> {
     const projectRoot = this.projectRoot();
     if (projectRoot !== null) {
-      try {
-        await this.bridge.request("close", { projectRoot });
-      } catch (error) {
-        this.error.set(describe(error));
-      }
+      await this.closeSession(projectRoot);
     }
     this.closeLocally();
+  }
+
+  /**
+   * Tells the backend the session is over.
+   *
+   * A session that nobody closes is a session the host keeps: the
+   * files stay open, the watchers stay subscribed, and the memory
+   * stays taken. The app had a `close()` that **nobody called**, so
+   * every project the user opened stayed open on the host for the
+   * rest of the session.
+   */
+  private async closeSession(projectRoot: string): Promise<void> {
+    try {
+      await this.bridge.request("close", { projectRoot });
+    } catch (error) {
+      this.error.set(describe(error));
+    }
   }
 
   /**
@@ -110,6 +131,9 @@ export class ProjectStore {
     const projectRoot = this.projectRoot();
     if (projectRoot === null) return;
     this.loading.set(true);
+    // An old error must not survive a scan that worked: the user
+    // would read a failure that has already been fixed.
+    this.error.set(null);
     try {
       const answer: SnapshotOutput = await this.bridge.request("snapshot", { projectRoot });
       this.summary.set(answer.summary);

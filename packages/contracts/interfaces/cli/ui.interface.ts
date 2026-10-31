@@ -15,7 +15,7 @@
 import type { IProjectSummary } from "../core/domain.interface.js";
 import type { II18nCatalog } from "./i18n.interface.js";
 import type { ISettings, ISettingsRead } from "./settings.interface.js";
-import type { IBrowseListing } from "./browse.interface.js";
+import type { IBrowseListing } from "../core/browse.interface.js";
 import type { IDryRunPlan } from "./dry-run.interface.js";
 import type { IHistoryReadResult } from "./history.interface.js";
 import type { ANSI_CODES } from "../../constants/cli/terminal.constant.js";

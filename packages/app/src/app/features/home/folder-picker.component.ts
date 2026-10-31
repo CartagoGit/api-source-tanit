@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, output, signal } from "@angular/core";
 
-import type { IBrowseListing } from "../../../../../contracts/interfaces/cli/browse.interface";
+import type { IBrowseListing } from "../../../../../contracts/interfaces/core/browse.interface";
 import { RecentProjectsClient } from "../../core/api/recent-projects.client";
 import { DialogService } from "../../core/host/dialog.service";
 import { ButtonComponent } from "../../shared/button/button.component";

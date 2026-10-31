@@ -38,6 +38,8 @@
  * moment the handler lands.
  */
 import type {
+  BrowseInput,
+  BrowseOutput,
   CancelInput,
   CancelOutput,
   CloseInput,
@@ -92,6 +94,13 @@ export interface IHostRequestMap {
   "settings": SettingsInput;
   "list-projects": ListProjectsInput;
   "close": CloseInput;
+  /**
+   * Listing folders.
+   *
+   * The one operation that answers before anything is open: it is
+   * about the machine, not about a project.
+   */
+  "browse": BrowseInput;
 }
 
 /** What each operation answers. */
@@ -110,6 +119,7 @@ export interface IHostResponseMap {
   "settings": SettingsOutput;
   "list-projects": ListProjectsOutput;
   "close": CloseOutput;
+  "browse": BrowseOutput;
 }
 
 /**

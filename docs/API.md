@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 395 símbolos en 152 módulos.
+> 399 símbolos en 154 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -56,6 +56,51 @@ shape as the legacy `discoverEndpoints`.
 
 ```ts
 export async function _peekSpec(projectRoot: string): Promise<string | null>
+```
+
+### `packages/core/application-api/browse.handler.ts`
+
+`browse.handler.ts` — listing the folders of the machine.
+
+#### `createBrowseHandler`
+
+```ts
+export function createBrowseHandler(): IHandler<BrowseInput, BrowseOutput>
+```
+
+### `packages/core/application-api/browse.service.ts`
+
+Browsing folders.
+
+#### `defaultBrowseRoot`
+
+```ts
+export function defaultBrowseRoot(): string
+```
+
+Where to start when nothing is given.
+
+The home folder, not the system root: that is where what someone
+wants to scan lives, and starting at `/` forces them to navigate
+five levels down every time.
+
+#### `browseDirectory`
+
+```ts
+export async function browseDirectory(path?: string): Promise<IBrowseListing>
+```
+
+Lists the subdirectories of a folder.
+
+An empty or non-existent `path` falls back to the home folder
+instead of failing: whoever opens the explorer for the first time
+has not picked anything yet, and an error there would be an error
+for not having done anything.
+
+#### `breadcrumbs`
+
+```ts
+export function breadcrumbs(path: string): ReadonlyArray<IBrowseEntry>
 ```
 
 ### `packages/core/application-api/cancel.handler.ts`
@@ -213,7 +258,7 @@ export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutp
 
 ### `packages/core/application-api/handlers.ts`
 
-`handlers.ts` — barrel for the 14 Application API handlers.
+`handlers.ts` — barrel for the Application API handlers.
 
 #### `buildRegistry`
 

@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from "@angular/core";
+import { Injectable, effect, inject, signal } from "@angular/core";
 
 import { HistoryClient } from "../api/history.client";
+import { ProjectStore } from "./project.store";
 import type { ISessionEvent } from "../../../../../contracts/interfaces/core/history.interface";
 
 /**
@@ -19,10 +20,24 @@ import type { ISessionEvent } from "../../../../../contracts/interfaces/core/his
 @Injectable({ providedIn: "root" })
 export class HistoryStore {
   private readonly client = inject(HistoryClient);
+  private readonly project = inject(ProjectStore);
 
   readonly entries = signal<ReadonlyArray<ISessionEvent>>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+
+  constructor() {
+    // The events belong to **a** session. When the project changes,
+    // the previous session's events are not this project's history.
+    let previous: string | null | undefined;
+    effect(() => {
+      const root = this.project.projectRoot();
+      if (root === previous) return;
+      previous = root;
+      this.entries.set([]);
+      this.error.set(null);
+    });
+  }
 
   async load(projectRoot: string): Promise<void> {
     this.loading.set(true);

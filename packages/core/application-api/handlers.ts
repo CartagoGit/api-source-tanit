@@ -1,5 +1,5 @@
 /**
- * `handlers.ts` — barrel for the 14 Application API handlers.
+ * `handlers.ts` — barrel for the Application API handlers.
  *
  * Re-exports each handler factory under its canonical name so
  * `buildRegistry()` can wire them up by `name`. The barrel is the
@@ -31,9 +31,10 @@ import { createCancelHandler } from "./cancel.handler.js";
 import { createSettingsHandler } from "./settings.handlers.js";
 import { createListProjectsHandler } from "./list-projects.handler.js";
 import { createCloseHandler } from "./close.handler.js";
+import { createBrowseHandler } from "./browse.handler.js";
 
 /**
- * The 14 handler names — the canonical enumeration the dispatcher
+ * The handler names — the canonical enumeration the dispatcher
  * and the bridges share.
  *
  * Order is informational; the dispatcher looks up by name. The
@@ -71,6 +72,7 @@ export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unkno
     "settings": widenHandler(createSettingsHandler()),
     "list-projects": widenHandler(createListProjectsHandler()),
     "close": widenHandler(createCloseHandler()),
+    "browse": widenHandler(createBrowseHandler()),
   };
   // Note: `snapshot`, `history` and `watch` each ship two
   // sub-handlers in their respective files (`.current` /

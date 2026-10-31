@@ -191,14 +191,17 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "projects",
     cli: [],
-    api: ["open-project", "list-projects", "close"],
-    app: ["open-project", "close"],
+    api: ["open-project", "list-projects", "close", "browse"],
+    app: ["open-project", "close", "browse"],
     status: "covered",
     note:
       "Opening a project opens a **session**: the backend scans it and " +
       "answers with the summary the app draws from. The app used to set " +
       "the project's *name* and stop there, so every operation behind " +
-      "it answered `SESSION_NOT_FOUND`.",
+      "it answered `SESSION_NOT_FOUND`. Picking the folder is the same " +
+      "story: the app used to fetch a route only the CLI's interface " +
+      "served, so the folder list was dead in both carriers. Now the " +
+      "backend lists the folders, and the list works everywhere.",
   },
   {
     capability: "settings",

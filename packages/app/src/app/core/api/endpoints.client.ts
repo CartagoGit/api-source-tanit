@@ -8,6 +8,7 @@ import {
   type EndpointQuery,
   type EndpointRecord,
   type EndpointResponse,
+  type EndpointTransport,
 } from "../../../../../contracts/interfaces/core/endpoint.interface";
 import type {
   GetEndpointOutput,
@@ -68,6 +69,7 @@ export class EndpointsClient {
     query: EndpointQuery = {},
   ): Promise<EndpointListResponse> {
     const endpoints: EndpointRecord[] = [];
+    const seen = new Set<string>();
     let cursor: string | null = null;
     let total = 0;
     let indexedTotal = 0;
@@ -82,7 +84,15 @@ export class EndpointsClient {
       for (const summary of page.endpoints) endpoints.push(toRecord(summary));
       total = page.total;
       indexedTotal = page.indexedTotal ?? page.total;
-      cursor = page.nextCursor;
+      const next = page.nextCursor;
+      // A cursor that repeats would spin here for ever. The backend
+      // is not supposed to send one; if it does, the walk stops and
+      // says so, instead of hanging the app.
+      if (next !== null && seen.has(next)) {
+        throw new Error(`The host repeated the pagination cursor "${next}". The list was stopped there.`);
+      }
+      if (next !== null) seen.add(next);
+      cursor = next;
     } while (cursor !== null);
 
     return { endpoints, total, indexedTotal };
@@ -120,8 +130,11 @@ export class EndpointsClient {
       requestSchema = schema.schema;
     } catch {
       // An endpoint without a request schema is not an error: the
-      // scanner did not find one, and the panel says so.
-      requestSchema = { kind: "none" };
+      // scanner did not find one, and the panel says so. The app
+      // used to answer with `{ kind: "none" }` — a schema-shaped
+      // object nobody produced, which the panel could not tell from
+      // a real empty schema.
+      requestSchema = undefined;
     }
 
     const spec = endpoint.endpoint;
@@ -178,18 +191,23 @@ function toRecord(summary: {
   return {
     id: `${summary.method} ${summary.uri}`,
     operationId: summary.name,
-    service: summary.serviceId ?? "default",
-    framework: summary.framework ?? "unknown",
-    transport: summary.transport ?? "http",
     method: summary.method,
     path: summary.uri,
     description: summary.description ?? "",
-    auth: summary.auth ?? "none",
-    validation: summary.validation ?? "none",
     responseSummary: responses.join(", "),
     responses: [],
     parameters: [],
     requestSchema: undefined,
+    // What the backend did not say stays unsaid. The app used to
+    // fill the gaps with `"default"`, `"unknown"`, `"http"` and
+    // `"none"` — a service nobody saw, a framework named *unknown*,
+    // a transport nobody looked at, and an auth scheme that says
+    // the route is open when nobody checked.
+    ...(summary.serviceId !== undefined ? { service: summary.serviceId } : {}),
+    ...(summary.framework !== undefined ? { framework: summary.framework } : {}),
+    ...(summary.transport !== undefined ? { transport: summary.transport as EndpointTransport } : {}),
+    ...(summary.auth !== undefined ? { auth: summary.auth } : {}),
+    ...(summary.validation !== undefined ? { validation: summary.validation } : {}),
     ...(summary.sourceFile !== undefined ? { sourceFile: summary.sourceFile } : {}),
     ...(summary.line !== undefined ? { line: summary.line } : {}),
     ...(summary.confidence !== undefined && isConfidence(summary.confidence)

@@ -42,6 +42,7 @@ import type {
   IExportFilePreview,
   IExportPlan,
 } from "../../contracts/interfaces/core/application-api.interface.js";
+import type { IExporterDiagnostic } from "../../contracts/interfaces/core/exporter.interface.js";
 import { EXPORT_FORMATS } from "../../contracts/constants/core/export-formats.constant.js";
 
 /** One file, with what would be written in it. */
@@ -142,7 +143,7 @@ export async function writeExport(
 interface IBuiltPlan {
   readonly files: ReadonlyArray<IPlannedFile>;
   readonly outputPath: string;
-  readonly diagnostics: ReadonlyArray<string>;
+  readonly diagnostics: ReadonlyArray<IExporterDiagnostic>;
 }
 
 /** Builds once, and says what each file would change. */
@@ -154,10 +155,10 @@ async function buildPlan(
   const exporters = selectExporters([asFormat(target)]);
   const results: IExportResult[] = await buildArtifacts(snapshot, exporters);
 
-  const diagnostics: string[] = [];
+  const diagnostics: IExporterDiagnostic[] = [];
   for (const result of results) {
     for (const diagnostic of result.diagnostics) {
-      diagnostics.push(`${diagnostic.code}: ${diagnostic.message}`);
+      diagnostics.push(diagnostic);
     }
   }
   const errors = results.flatMap((result) =>

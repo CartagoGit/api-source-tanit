@@ -5,7 +5,7 @@ import type {
   IServiceDetail,
   IServiceSummary,
 } from "../../../../../contracts/interfaces/core/services.interface";
-import type { EndpointRecord } from "./endpoints.client";
+import type { EndpointRecord, EndpointTransport } from "./endpoints.client";
 
 export type { IServiceDetail, IServiceSummary } from "../../../../../contracts/interfaces/core/services.interface";
 
@@ -53,9 +53,12 @@ export class ServicesClient {
     const services = await this.list(projectRoot);
     return services.map((service) => {
       const own = endpoints.filter((endpoint) => endpoint.service === service.serviceId);
+      const transports = own
+        .map((endpoint) => endpoint.transport)
+        .filter((transport): transport is EndpointTransport => transport !== undefined);
       return {
         ...service,
-        transports: [...new Set(own.map((endpoint) => endpoint.transport))].sort(),
+        transports: [...new Set(transports)].sort(),
         operationCount: own.length > 0 ? own.length : service.endpointCount,
       };
     });

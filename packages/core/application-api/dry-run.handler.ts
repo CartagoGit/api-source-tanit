@@ -66,13 +66,17 @@ export function createDryRunHandler(): IHandler<DryRunInput, DryRunOutput> {
       return {
         endpointCount,
         frameworks: [...frameworks],
-        warnings: [...warnings, ...plan.diagnostics],
+        warnings: [...warnings],
         durationMs: Date.now() - started,
         files: plan.files,
         formats: describeFormats().map((format) => ({
           id: format.format,
           summary: format.summary,
         })),
+        // The exporters' own diagnostics, with their real codes. The
+        // app used to turn a warning string into a diagnostic with a
+        // code it made up and a suggestion nobody wrote.
+        diagnostics: plan.diagnostics,
       };
     },
   };

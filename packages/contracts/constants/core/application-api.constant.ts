@@ -87,6 +87,10 @@ export const SettingsInputSchema = z.object({
   }).optional(),
 });
 export const ListProjectsInputSchema = z.object({});
+export const BrowseInputSchema = z.object({
+  /** The folder to list. The home folder when nobody says. */
+  path: z.string().min(1).optional(),
+});
 export const CloseInputSchema = z.object({
   projectRoot: ProjectRootSchema.optional(),
 }).refine((value) => value.projectRoot !== undefined, {
@@ -146,5 +150,5 @@ export const ProjectEntrySchema = z.object({
 export const HANDLER_NAMES = [
   "open-project", "snapshot", "list-endpoints", "get-endpoint",
   "get-schema", "list-services", "dry-run", "export", "history",
-  "watch", "cancel", "settings", "list-projects", "close",
+  "watch", "cancel", "settings", "list-projects", "close", "browse",
 ] as const;

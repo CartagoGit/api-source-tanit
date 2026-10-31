@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { startUiServer } from "../../packages/ui/server/ui-server.service.js";
 import { seedLocales, loadLocales } from "../../packages/ui/i18n/i18n.service.js";
-import { browseDirectory } from "../../packages/ui/server/browse.service.js";
+import { browseDirectory } from "../../packages/core/application-api/browse.service.js";
 import { planDryRun } from "../../packages/ui/server/dry-run.service.js";
 import { readSettings, patchSettings } from "../../packages/ui/settings/settings.service.js";
 import { readHistory } from "../../packages/ui/server/history.service.js";
@@ -15,7 +15,7 @@ import type { IGenerateOutcome } from "../../packages/contracts/interfaces/cli/c
 
 vi.mock("../../packages/ui/server/ui-server.service.js", () => ({ startUiServer: vi.fn() }));
 vi.mock("../../packages/ui/i18n/i18n.service.js", () => ({ seedLocales: vi.fn(), loadLocales: vi.fn() }));
-vi.mock("../../packages/ui/server/browse.service.js", () => ({ browseDirectory: vi.fn() }));
+vi.mock("../../packages/core/application-api/browse.service.js", () => ({ browseDirectory: vi.fn() }));
 vi.mock("../../packages/ui/server/dry-run.service.js", () => ({ planDryRun: vi.fn() }));
 vi.mock("../../packages/ui/settings/settings.service.js", () => ({ readSettings: vi.fn(), patchSettings: vi.fn() }));
 vi.mock("../../packages/ui/server/history.service.js", () => ({ readHistory: vi.fn() }));

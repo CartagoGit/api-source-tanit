@@ -27,10 +27,17 @@ export interface ExportCapabilities {
 }
 
 export interface ExportDiagnostic {
+  /** The exporter's own code, not one the UI made up. */
   readonly code: string;
   readonly severity: ExportDiagnosticSeverity;
   readonly message: string;
-  readonly suggestion: string;
+  /**
+   * What to do about it, when the exporter said.
+   *
+   * Absent when nobody said: the app used to write the same
+   * sentence on every warning, which is advice nobody gave.
+   */
+  readonly suggestion?: string;
 }
 
 /** One file the backend would write. */
