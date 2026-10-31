@@ -40,11 +40,11 @@ import { TransportInspectorDirective } from "./transport-inspector.directive";
         <header><div><span class="method">{{ item.method }}</span><h2>{{ item.path }}</h2><p>{{ item.description || item.operationId }}</p></div><button type="button" (click)="closed.emit()" aria-label="Close detail">×</button></header>
         <nav class="tabs" aria-label="Endpoint detail tabs">@for (tab of tabs; track tab) { <button type="button" [class.active]="tab === activeTab()" (click)="activeTab.set(tab)">{{ tab }}</button> }</nav>
         @switch (activeTab()) {
-          @case ('Overview') { <dl><dt>Operation</dt><dd>{{ item.operationId }}</dd><dt>Service</dt><dd>{{ item.service }} · {{ item.framework }}</dd><dt>Transport</dt><dd>{{ item.transport }}</dd><dt>Confidence</dt><dd>{{ item.confidence ?? "not reported" }}</dd></dl><div class="transport" tanitTransportInspector [diagnostic]="item.transport" (filter)="transportFilter.emit($event)"><strong>{{ transportTitle(item.transport) }}</strong><p>{{ transportDescription(item) }}</p></div> }
+          @case ('Overview') { <dl><dt>Operation</dt><dd>{{ item.operationId }}</dd><dt>Service</dt><dd>{{ reported(item.service) }} · {{ reported(item.framework) }}</dd><dt>Transport</dt><dd>{{ reported(item.transport) }}</dd><dt>Confidence</dt><dd>{{ item.confidence ?? "not reported" }}</dd></dl><div class="transport" tanitTransportInspector [diagnostic]="item.transport" (filter)="transportFilter.emit($event)"><strong>{{ transportTitle(item.transport) }}</strong><p>{{ transportDescription(item) }}</p></div> }
           @case ('Request') { @if (item.parameters.length) { <dl><dt>Parameters</dt><dd>@for (parameter of item.parameters; track parameter.name + parameter.location) { <span class="chip">{{ parameter.name }} · {{ parameter.location }}</span> }</dd></dl> } @if (item.requestSchema !== undefined) { <tanit-schema-viewer [schema]="item.requestSchema" /> } @else { <p class="empty">No request schema was found for this endpoint.</p> } }
           @case ('Responses') { @if (item.responses.length) { @for (response of item.responses; track response.status) { <article class="response"><strong>{{ response.status }}</strong><span>{{ response.description }}</span></article> } } @else { <p class="empty">No response was inferred for this endpoint.</p> } }
-          @case ('Validation') { <p>Validation: <strong>{{ item.validation }}</strong></p> }
-          @case ('Auth') { <p>Authentication: <strong>{{ item.auth }}</strong></p> }
+          @case ('Validation') { <p>Validation: <strong>{{ reported(item.validation) }}</strong></p> }
+          @case ('Auth') { <p>Authentication: <strong>{{ reported(item.auth) }}</strong></p> }
           @case ('Location') { @if (item.sourceFile) { <p><button class="evidence" type="button" (click)="openLocation(item.sourceFile, item.line ?? 0)">{{ item.sourceFile }}{{ item.line ? ":" + item.line : "" }}</button></p> } @else { <p class="empty">The scanner did not report where this route was declared.</p> } }
         }
       </aside>
@@ -81,6 +81,17 @@ export class EndpointDetailComponent {
   openLocation(file: string, line: number): void { this.open.emit({ file, line }); }
 
   /**
+   * What to draw when the backend did not say.
+   *
+   * The app used to fill the gaps with `"unknown"` and `"none"`,
+   * which read like answers. Not knowing is not knowing, and saying
+   * so is the difference between a report and a guess.
+   */
+  reported(value: string | undefined): string {
+    return value ?? "not reported";
+  }
+
+  /**
    * The transport, in words.
    *
    * The vocabulary is the core's — `ws`, not `websocket`; `kafka`,
@@ -88,7 +99,8 @@ export class EndpointDetailComponent {
    * model is open, a scanner may add one) still gets a title instead
    * of an empty space.
    */
-  transportTitle(transport: string): string {
+  transportTitle(transport: string | undefined): string {
+    if (transport === undefined) return "Transport not reported";
     const titles: Record<string, string> = {
       http: "HTTP request",
       grpc: "gRPC call",
@@ -108,6 +120,7 @@ export class EndpointDetailComponent {
       case "grpc": return "Unary or streaming RPC with protobuf metadata";
       case "ws": return "Bidirectional channel message";
       case "sse": return "One-way event stream";
+      case undefined: return "The scanner did not report a transport for this route.";
       default: return "Message exchanged over a broker";
     }
   }

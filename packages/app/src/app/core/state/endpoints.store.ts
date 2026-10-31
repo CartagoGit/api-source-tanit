@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from "@angular/core";
+import { Injectable, computed, effect, inject, signal } from "@angular/core";
 
 import { EndpointsClient, EndpointQuery, EndpointRecord } from "../api/endpoints.client";
 import { ProjectStore } from "./project.store";
@@ -48,6 +48,24 @@ export class EndpointsStore {
   readonly filtered = computed(() => this.all());
   /** The selected endpoint, with its detail if it has been fetched. */
   readonly selected = computed(() => this.all().find((endpoint) => endpoint.id === this.selectedId()) ?? null);
+
+  constructor() {
+    // The list belongs to **a** project. When the open project
+    // changes, the endpoints of the previous one must not stay on
+    // screen — with their selection, which pointed at an endpoint
+    // that does not exist in the new project.
+    let previous: string | null | undefined;
+    effect(() => {
+      const root = this.project.projectRoot();
+      if (root === previous) return;
+      previous = root;
+      this.all.set([]);
+      this.total.set(0);
+      this.indexedTotal.set(0);
+      this.selectedId.set(null);
+      this.error.set(null);
+    });
+  }
 
   setQuery(query: EndpointQuery): void {
     this.query.set(query);

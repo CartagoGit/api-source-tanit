@@ -1,6 +1,7 @@
-import { Injectable, inject, signal } from "@angular/core";
+import { Injectable, effect, inject, signal } from "@angular/core";
 
 import { HostBridgeClient } from "../api/host-bridge.client";
+import { ProjectStore } from "./project.store";
 import type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
 
 export type { LiveChange } from "../../../../../contracts/interfaces/core/live.interface";
@@ -42,10 +43,22 @@ export class LiveStore {
   readonly subscriptionId = signal<string | null>(null);
 
   private readonly bridge = inject(HostBridgeClient);
+  private readonly project = inject(ProjectStore);
   private unsubscribe: (() => void) | null = null;
 
   constructor() {
     this.connect();
+    // The subscription belongs to **a** project. When the open
+    // project changes, the backend would keep watching the previous
+    // one — the events would arrive, and they would be about a
+    // project that is no longer open.
+    let previous: string | null | undefined;
+    effect(() => {
+      const root = this.project.projectRoot();
+      if (root === previous) return;
+      previous = root;
+      void this.releaseSubscription();
+    });
   }
 
   /**
@@ -63,6 +76,27 @@ export class LiveStore {
   disconnect(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+  }
+
+  /**
+   * Ends the subscription the backend keeps, if there is one.
+   *
+   * A watch that nobody cancelled is a watch that never stops: the
+   * backend keeps the files open and keeps pushing changes about a
+   * project the user already left.
+   */
+  private async releaseSubscription(): Promise<void> {
+    const subscriptionId = this.subscriptionId();
+    this.subscriptionId.set(null);
+    this.enabled.set(false);
+    this.changes.set([]);
+    this.sourceFileCount.set(0);
+    if (subscriptionId === null) return;
+    try {
+      await this.bridge.request("cancel", { subscriptionId });
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
+    }
   }
 
   /**

@@ -54,7 +54,7 @@ import { FiltersComponent } from "./filters.component";
             <button class="endpoint-row" type="button" [class.selected]="item.id === store.selectedId()" (click)="select(item)" [attr.aria-label]="item.method + ' ' + item.path">
               <span class="index">{{ index + 1 }}</span>
               <span class="verb">{{ item.method }}</span>
-              <span class="path"><strong>{{ item.path }}</strong><small>{{ item.service }} · {{ item.transport }} · {{ item.description || item.operationId }}</small></span>
+              <span class="path"><strong>{{ item.path }}</strong><small>{{ item.service ?? "no service" }} · {{ item.transport ?? "no transport" }} · {{ item.description || item.operationId }}</small></span>
               <span class="confidence">{{ item.confidence ?? "" }}</span>
             </button>
           </ng-template>

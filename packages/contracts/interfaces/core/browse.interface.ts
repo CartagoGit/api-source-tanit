@@ -1,11 +1,16 @@
 /**
- * Browse folders from the UI.
+ * Browsing folders.
  *
  * What travels are **directory names**, never file contents. It is
  * not a simplification: an endpoint that returned content would be
  * an arbitrary file reader running on someone's machine, and it
  * does not matter that it only listens on `127.0.0.1` — this same
  * UI already had a CSRF because that reasoning felt safe.
+ *
+ * It used to be a CLI-only contract (`interfaces/cli/`), because the
+ * CLI's web interface was the only thing that browsed folders. The
+ * desktop app needs the same thing, through the Application API, so
+ * the contract moved to the core: one shape, two faces.
  */
 
 /** A folder in the listing. */

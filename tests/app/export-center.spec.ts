@@ -45,6 +45,9 @@ function fakeBridge(): {
             { path: `${directory}/api.postman_collection.json`, change: "UPDATE", bytes: 4096 },
           ],
           formats: [{ id: "postman", summary: "Collection and environments for Postman" }],
+          diagnostics: [
+            { code: "AUTH_LOSSY", severity: "warning", message: "Bearer tokens become headers." },
+          ],
         };
       }
       if (operation === "export") {

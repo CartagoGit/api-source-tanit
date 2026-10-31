@@ -27,6 +27,17 @@ interface IWireFrame {
 }
 
 /**
+ * How long a request may wait for its answer.
+ *
+ * Without a deadline, a request whose answer never arrives — the
+ * sidecar died, the bridge lost the line — stays pending for ever:
+ * the screen spins, and nothing says why. Half a minute is longer
+ * than any local operation should take and short enough that the
+ * user is not left staring.
+ */
+const REQUEST_TIMEOUT_MS = 30_000;
+
+/**
  * The connector.
  *
  * One object, two carriers, **one** contract. Whether the app runs
@@ -126,8 +137,20 @@ export class HostBridgeClient implements IHostBridge {
     const response = new Promise<unknown>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
     });
-    await invoke("send_to_sidecar", { frame });
-    return response;
+    try {
+      await invoke("send_to_sidecar", { frame });
+    } catch (error) {
+      // The sidecar could not be reached. Without this, the entry
+      // stayed in `pending` for ever: a leak per failed call, and a
+      // promise that never settled.
+      const waiting = this.pending.get(id);
+      this.pending.delete(id);
+      waiting?.reject(error instanceof Error ? error : new Error(String(error)));
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+    return withTimeout(response, REQUEST_TIMEOUT_MS, id, () => {
+      this.pending.delete(id);
+    });
   }
 
   private async requestBrowser(frame: string): Promise<unknown> {
@@ -142,9 +165,13 @@ export class HostBridgeClient implements IHostBridge {
       },
       body: frame,
     });
-    const payload = (await response.json()) as IWireFrame;
+    // The body may not be JSON at all: a proxy in the middle, or a
+    // server that answered with an HTML error page. Saying "the
+    // answer was not JSON" beats a `SyntaxError` about a character
+    // the user never wrote.
+    const payload = await readFrame(response);
     if (!response.ok || payload.error) {
-      throw new Error(payload.error?.message ?? "Host request failed");
+      throw new Error(payload.error?.message ?? `Host request failed (${response.status})`);
     }
     return unwrap(payload.result);
   }
@@ -170,7 +197,6 @@ export class HostBridgeClient implements IHostBridge {
         return;
       }
     }
-
     // Not an answer to anything we asked: the backend is pushing.
     for (const listener of this.listeners) listener(frame);
   }
@@ -200,6 +226,50 @@ function parseFrame(raw: unknown): IWireFrame | null {
   const frame = raw as IWireFrame;
   if (frame.jsonrpc !== "2.0") return null;
   return frame;
+}
+
+/**
+ * Reads the answer of the browser carrier.
+ *
+ * The body may not be JSON at all: a proxy in the middle, or a
+ * server that answered with an HTML error page. Saying "the answer
+ * was not JSON" beats a `SyntaxError` about a character the user
+ * never wrote.
+ */
+async function readFrame(response: Response): Promise<IWireFrame> {
+  const text = await response.text();
+  try {
+    return parseFrame(JSON.parse(text) as unknown) ?? { jsonrpc: "2.0" };
+  } catch {
+    return { jsonrpc: "2.0" };
+  }
+}
+
+/**
+ * Gives a request a deadline.
+ *
+ * A promise that never settles is the worst kind of failure: the
+ * caller waits, the spinner spins, and nobody learns anything. When
+ * the deadline passes, the request fails with a sentence that says
+ * what happened, and the pending entry is forgotten — otherwise the
+ * map would keep the answer nobody will ever read.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  id: string,
+  onTimeout: () => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      onTimeout();
+      reject(new Error(`The host did not answer request ${id} within ${ms / 1000} seconds.`));
+    }, ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error: unknown) => { clearTimeout(timer); reject(error); },
+    );
+  });
 }
 
 /**

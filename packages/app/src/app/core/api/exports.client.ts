@@ -80,11 +80,10 @@ export class ExportsClient {
       outsideWorkspace: !isInside(workspaceRoot, file.path),
     }));
 
-    const diagnostics: ExportDiagnostic[] = answer.warnings.map((warning) => ({
-      code: "EXPORT_WARNING",
-      severity: "warning" as const,
-      message: warning,
-      suggestion: "Review the format's limitations before sharing the artifact.",
+    const diagnostics: ExportDiagnostic[] = answer.diagnostics.map((diagnostic) => ({
+      code: diagnostic.code,
+      severity: diagnostic.severity,
+      message: diagnostic.message,
     }));
 
     return {
@@ -95,7 +94,6 @@ export class ExportsClient {
       requiresOutsideWorkspaceConfirmation: files.some((file) => file.outsideWorkspace),
     };
   }
-
   /** Writes the files, for real. */
   async generate(
     projectRoot: string,

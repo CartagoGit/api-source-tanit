@@ -1,5 +1,6 @@
 import type { z, ZodType } from "zod";
 import type {
+  BrowseInputSchema,
   CancelInputSchema,
   CloseInputSchema,
   DryRunInputSchema,
@@ -20,6 +21,8 @@ import type {
   WatchInputSchema,
 } from "../../constants/core/application-api.constant.js";
 import type { EndpointSpec } from "./endpoint-legacy.interface.js";
+import type { IBrowseListing } from "./browse.interface.js";
+import type { IExporterDiagnostic } from "./exporter.interface.js";
 
 export interface IAbortSignalLike { readonly aborted: boolean; }
 export interface IRequestContext {
@@ -59,6 +62,7 @@ export type WatchInput = z.infer<typeof WatchInputSchema>;
 export type CancelInput = z.infer<typeof CancelInputSchema>;
 export type SettingsInput = z.infer<typeof SettingsInputSchema>;
 export type ListProjectsInput = z.infer<typeof ListProjectsInputSchema>;
+export type BrowseInput = z.infer<typeof BrowseInputSchema>;
 export type CloseInput = z.infer<typeof CloseInputSchema>;
 export type IEndpointSummary = z.infer<typeof EndpointSummarySchema>;
 export type IServiceSummary = z.infer<typeof ServiceSummarySchema>;
@@ -89,9 +93,9 @@ export interface IExportPlan {
   /** The path of the primary artifact. */
   readonly outputPath: string;
   /** What the exporters had to say. */
-  readonly diagnostics: ReadonlyArray<string>;
+  readonly diagnostics: ReadonlyArray<IExporterDiagnostic>;
 }
-export interface DryRunOutput { readonly endpointCount: number; readonly frameworks: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string>; readonly durationMs: number; readonly files: ReadonlyArray<IExportFilePreview>; readonly formats: ReadonlyArray<IExportFormatSummary>; }
+export interface DryRunOutput { readonly endpointCount: number; readonly frameworks: ReadonlyArray<string>; readonly warnings: ReadonlyArray<string>; readonly durationMs: number; readonly files: ReadonlyArray<IExportFilePreview>; readonly formats: ReadonlyArray<IExportFormatSummary>; readonly diagnostics: ReadonlyArray<IExporterDiagnostic>; }
 /** What a format can and cannot represent, in the core's own words. */
 export interface IExportFormatSummary { readonly id: string; readonly summary: string; }
 export interface ExportOutput { readonly outputPath: string; readonly bytes: number; readonly files: ReadonlyArray<string>; }
@@ -104,4 +108,5 @@ export interface WatchOutput { readonly subscription: WatchSubscription; }
 export interface CancelOutput { readonly cancelled: number; }
 export interface SettingsOutput { readonly applied: Readonly<Record<string, unknown>>; }
 export interface ListProjectsOutput { readonly projects: ReadonlyArray<IProjectEntry>; }
+export interface BrowseOutput { readonly listing: IBrowseListing; }
 export interface CloseOutput { readonly closed: number; }

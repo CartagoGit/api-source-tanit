@@ -1,9 +1,24 @@
 /**
- * Browsing folders from the UI.
+ * Browsing folders.
  *
  * Typing the path by hand is where the most mistakes happen: a typo
  * returns "does not exist" and leaves no clue where you were. Being
  * able to move up and down the tree turns that into looking.
+ *
+ * ## Why it lives in the core
+ *
+ * It used to live in the CLI's web interface (`packages/ui/server/`),
+ * which is where it was written: the interface needed a folder
+ * picker, and the picker listed directories.
+ *
+ * Then the desktop app needed one too — and reached for it over
+ * HTTP, to a route that only the CLI's interface served. In the
+ * browser carrier that route does not exist; in the desktop carrier
+ * there is no HTTP at all. The folder list was **dead in both**.
+ *
+ * So the implementation moved here, next to the handler that exposes
+ * it, and the CLI's interface now imports it from the core: one
+ * implementation, reachable from every carrier.
  *
  * ## Folders only, never content
  *
@@ -31,7 +46,7 @@ import { homedir } from "node:os";
 import type {
   IBrowseEntry,
   IBrowseListing,
-} from "../../contracts/interfaces/cli/browse.interface.js";
+} from "../../contracts/interfaces/core/browse.interface.js";
 
 /**
  * Maximum number of entries returned.

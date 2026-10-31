@@ -22,6 +22,7 @@
  */
 
 export {
+  BrowseInputSchema,
   CallerSchema,
   CancelInputSchema,
   CloseInputSchema,
@@ -45,6 +46,7 @@ export {
   WatchInputSchema,
 } from "../../contracts/constants/core/application-api.constant.js";
 export type {
+  BrowseInput,
   CancelInput,
   CloseInput,
   DryRunInput,

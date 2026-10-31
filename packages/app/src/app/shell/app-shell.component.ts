@@ -122,8 +122,27 @@ export class AppComponent {
     if (command === "settings") this.go("settings");
     if (command === "search") this.go("endpoints");
     if (command === "export") this.go("exports");
-    if (command === "rescan") this.go("overview");
+    // "Rescan" used to just go back to the overview. It now asks
+    // the backend what the project looks like **now** — the session
+    // watches the files, and its snapshot may be older than the
+    // project on disk. The command had a name and no behaviour.
+    if (command === "rescan") { void this.rescan(); return; }
     if (command === "help") this.go("diagnostics");
+  }
+
+  /**
+   * Re-reads the project and refreshes what depends on it.
+   *
+   * The scan happens in the backend; the app asks for the summary
+   * and then asks again for what the screens draw.
+   */
+  async rescan(): Promise<void> {
+    if (!this.project.isOpen()) {
+      this.go("overview");
+      return;
+    }
+    await this.project.refresh();
+    this.go("overview");
   }
 
   sectionLabel(): string { return this.i18n.translate(`nav.${this.activeSection()}`); }

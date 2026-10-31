@@ -80,26 +80,59 @@ export interface EndpointRecord {
   readonly id: string;
   /** The name the scanner gave the operation. */
   readonly operationId: string;
-  /** The service (workspace) it belongs to. */
-  readonly service: string;
-  /** The framework that recognized it. */
-  readonly framework: string;
-  readonly transport: EndpointTransport;
+  /**
+   * The service (workspace) it belongs to.
+   *
+   * Absent when the scanner did not name one. The app used to write
+   * `"default"`, which is a service nobody ever saw.
+   */
+  readonly service?: string;
+  /**
+   * The framework that recognized it.
+   *
+   * Absent when no framework claimed it. The app used to write
+   * `"unknown"`, which reads like a framework named *unknown*.
+   */
+  readonly framework?: string;
+  /**
+   * The transport it speaks.
+   *
+   * Absent when it was not reported. The app used to write `"http"`,
+   * which is a claim about a route nobody looked at.
+   */
+  readonly transport?: EndpointTransport;
   readonly method: string;
   readonly path: string;
   readonly description: string;
-  /** `"none"`, `"bearer"`, `"apiKey"`, `"oauth2"` — whatever the spec says. */
-  readonly auth: string;
-  /** The validation provider, or `"none"`. */
-  readonly validation: string;
+  /**
+   * The authentication the spec declares — `"bearer"`, `"apiKey"`,
+   * `"oauth2"` — whatever the spec says.
+   *
+   * Absent when the spec declares none. The app used to write
+   * `"none"`, which says the route is open; not knowing is not the
+   * same as knowing there is no auth.
+   */
+  readonly auth?: string;
+  /**
+   * The validation provider, when one was detected.
+   *
+   * Absent when none was. Same reasoning as `auth`.
+   */
+  readonly validation?: string;
   /** The response statuses, comma separated. */
   readonly responseSummary: string;
   /** Filled in when the endpoint is selected. */
   readonly responses: readonly EndpointResponse[];
   /** Filled in when the endpoint is selected. */
   readonly parameters: readonly EndpointParameter[];
-  /** Filled in when the endpoint is selected. */
-  readonly requestSchema: unknown;
+  /**
+   * The request schema, once the endpoint is selected.
+   *
+   * `undefined` when there is none: the app used to answer with a
+   * made-up `{ kind: "none" }`, a schema-shaped object nobody
+   * produced.
+   */
+  readonly requestSchema?: unknown;
   /** Where it was declared, when the scanner knew. */
   readonly sourceFile?: string;
   /** The line of the declaration, when the scanner knew. */
