@@ -9,7 +9,10 @@
  * handler logic.
  */
 
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+// The bridge runs against the real runtime, so this suite needs the
+// one that has it: `bun:test`, the same reason
+// `tests/core/state/sqlite/` runs outside vitest.
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import { serveStdio } from "../../packages/core/transport/stdio-bridge.server.js";
@@ -419,4 +422,4 @@ describe("stdio bridge — real handler registry", () => {
 });
 
 // Avoid `vi` being unused if a future test stubs things.
-void vi;
+void describe;

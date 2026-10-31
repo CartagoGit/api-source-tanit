@@ -465,10 +465,10 @@ async function main(): Promise<number> {
   };
   const scripts = new Set(Object.keys(packageJson.scripts ?? {}));
 
-  // Los comandos del CLI salen de su propio dispatcher, no de una lista
+  // Los comandos del CLI salen de su propio registro, no de una lista
   // a mano: una lista paralela se queda vieja igual que la doc.
   const cliSource = await readFile(
-    join(REPO_ROOT, "packages", "cli", "cli.script.ts"),
+    join(REPO_ROOT, "packages", "cli", "commands.constant.ts"),
     "utf8",
   );
   const commands = new Set(

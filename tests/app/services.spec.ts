@@ -9,10 +9,16 @@ describe("ServicesClient", () => {
   });
 
   it("resolves a service detail by id", async () => {
-    const bridge = { request: vi.fn().mockResolvedValue({ service: { serviceId: "api", framework: "express", transports: ["http"], auth: null, serverRef: "server-api", authRef: "auth-api", operationCount: 0, operations: [{ operationId: "get", method: "GET", path: "/", serverRef: "server-op", authRef: "auth-op" }] } }) };
+    const bridge = {
+      request: vi.fn(),
+      requestPending: vi.fn().mockResolvedValue({ service: { serviceId: "api", framework: "express", transports: ["http"], auth: null, serverRef: "server-api", authRef: "auth-api", operationCount: 0, operations: [{ operationId: "get", method: "GET", path: "/", serverRef: "server-op", authRef: "auth-op" }] } }),
+    };
       const result = await new ServicesClient(bridge).detail("/workspace", "api");
     expect(result.serviceId).toBe("api");
-    expect(bridge.request).toHaveBeenCalledWith("service-detail", { projectRoot: "/workspace", serviceId: "api" });
+    // `service-detail` has no handler yet, so the client asks for it
+    // as pending — and says so out loud instead of answering
+    // UNKNOWN_HANDLER at runtime.
+    expect(bridge.requestPending).toHaveBeenCalledWith("service-detail", { projectRoot: "/workspace", serviceId: "api" });
     expect(result.operations[0]).toMatchObject({ serverRef: "server-op", authRef: "auth-op" });
   });
 });

@@ -79,7 +79,7 @@ describe("canonical history", () => {
   });
 
   it("passes compare config, export config, and restore provenance through the bridge", async () => {
-    const bridge = { request: vi.fn()
+    const bridge = { request: vi.fn(), requestPending: vi.fn()
       .mockResolvedValueOnce({ before: { formats: ["postman"] }, after: { formats: ["openapi"] } })
       .mockResolvedValueOnce({ output: "/workspace/out", configuration: { formats: ["postman"], outputDirectory: "/workspace/out" } })
       .mockResolvedValueOnce({ restored: true, historyId: "h1", provenance: { source: "restore", restoredFrom: "h1" }, settings: { formats: ["postman"] } }) };
@@ -88,8 +88,9 @@ describe("canonical history", () => {
     await expect(client.compareConfig("/workspace", "h0", "h1")).resolves.toEqual({ before: { formats: ["postman"] }, after: { formats: ["openapi"] } });
     await expect(client.reExport("/workspace", "h1", { formats: ["postman"], outputDirectory: "/workspace/out" })).resolves.toMatchObject({ output: "/workspace/out" });
     await expect(client.restore("/workspace", "h1")).resolves.toMatchObject({ restored: true, provenance: { source: "restore", restoredFrom: "h1" } });
-    expect(bridge.request).toHaveBeenNthCalledWith(1, "history-compare-config", { projectRoot: "/workspace", leftId: "h0", rightId: "h1" });
-    expect(bridge.request).toHaveBeenNthCalledWith(2, "history-re-export", { projectRoot: "/workspace", historyId: "h1", configuration: { formats: ["postman"], outputDirectory: "/workspace/out" } });
-    expect(bridge.request).toHaveBeenNthCalledWith(3, "history-restore", { projectRoot: "/workspace", historyId: "h1" });
+    // Those three have no handler yet: they are asked for as pending.
+    expect(bridge.requestPending).toHaveBeenNthCalledWith(1, "history-compare-config", { projectRoot: "/workspace", leftId: "h0", rightId: "h1" });
+    expect(bridge.requestPending).toHaveBeenNthCalledWith(2, "history-re-export", { projectRoot: "/workspace", historyId: "h1", configuration: { formats: ["postman"], outputDirectory: "/workspace/out" } });
+    expect(bridge.requestPending).toHaveBeenNthCalledWith(3, "history-restore", { projectRoot: "/workspace", historyId: "h1" });
   });
 });

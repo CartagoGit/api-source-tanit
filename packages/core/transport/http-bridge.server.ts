@@ -57,6 +57,7 @@ import {
   bridgeFailure,
   httpStatusFromApi,
 } from "./bridge-error.js";
+import { readAsset, plantToken } from "./static-asset.server.js";
 // `IServerRequest` and `IFetchResponse` are declared ambiently by
 // the project's `runtime.d.ts` (no `@types/node` / `bun-types`).
 // We use them as global types — no `import` here.
@@ -169,8 +170,41 @@ async function handleFetch(
   // `Origin` rejection messages.
   const port = new URL(request.url).port;
 
-  if (request.method === "GET" && (pathname === "/" || pathname === "/health")) {
+  // The liveness answer.
+  //
+  // `/` only when there is **no** folder of static files: when the
+  // bridge also serves the app, `/` is the app, and answering it with
+  // a JSON payload would leave the browser looking at a JSON file
+  // instead of the page. `/health` always answers, because that is
+  // what a health check asks for.
+  if (request.method === "GET" && (pathname === "/health" || (pathname === "/" && options.staticDir === undefined))) {
     return Response.json({ ok: true, bridge: "application-api" });
+  }
+
+  // The static files, when the caller asked for a folder to serve.
+  //
+  // The page and the API share an origin on purpose: the page asks
+  // for `POST /api` with a **relative** path, and a relative path
+  // means "the origin that served me". Splitting them across two
+  // ports would make every call cross-origin.
+  if (options.staticDir !== undefined && request.method === "GET") {
+    const asset = await readAsset(options.staticDir, pathname);
+    if (asset !== null) {
+      const body = asset.isPage ? plantToken(asset.contents, token, "html") : asset.contents;
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "content-type": asset.type,
+          ...(asset.isPage
+            ? {
+                "content-security-policy":
+                  "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+                  "connect-src 'self'; img-src 'self' data:; font-src 'self' data:",
+              }
+            : {}),
+        },
+      });
+    }
   }
 
   if (request.method !== "POST" || !pathname.startsWith("/api")) {

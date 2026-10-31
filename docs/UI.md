@@ -8,6 +8,15 @@ Si aún no has instalado la herramienta: [INSTALL.md](INSTALL.md).
 
 ---
 
+> **Ojo: hay dos interfaces.** Esta es la que trae el binario: HTML y
+> CSS escritos a mano, sin dependencias, para que un `.exe` instalado
+> funcione sin red. La **app de escritorio** (`packages/app`, Angular)
+> es la otra, y es la que se distribuye. Su camino para probarla en el
+> navegador está en [CLI.md](CLI.md#how-the-app-talks-to-the-backend):
+> `bun run build:app && bun run ui:web`.
+
+---
+
 ## Arrancar
 
 ```bash

@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 390 símbolos en 150 módulos.
+> 393 símbolos en 151 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -4992,6 +4992,52 @@ reaching the dispatcher — wrong path, malformed input, ...).
 ```ts
 export function operationIdFor( transport: Transport, context: IOperationIdContext =
 ```
+
+### `packages/core/transport/static-asset.server.ts`
+
+#### `isInsideRoot`
+
+```ts
+export function isInsideRoot(directory: string, pathname: string): boolean
+```
+
+Whether `pathname` stays inside `directory`.
+
+A path that climbs out of the served folder is not "a file that
+happens to be missing": it is an attempt. The two deserve different
+answers — a missing file may be a route of a single-page app, and
+the server answers those with its page — while an attempt gets a
+flat **404**, never the page and never the file it was aiming at.
+
+#### `readAsset`
+
+```ts
+export async function readAsset( directory: string, pathname: string, ): Promise<IAsset | null>
+```
+
+Reads one file from `directory`.
+
+Returns `null` when the file does not exist, so the caller can fall
+back to its own routing — a single-page app asks for paths that are
+not files.
+
+A path that tries to escape the directory is refused. The server
+binds to loopback, but the browser is the one asking, and a path
+that climbs out of the served folder would turn the interface into
+an arbitrary file reader.
+
+#### `plantToken`
+
+```ts
+export function plantToken(html: string, token: string, target: TokenTarget = "html"): string
+```
+
+Plants the token in the HTML.
+
+The `<html>` element is the target for the Angular app: its
+`document.documentElement.dataset` is the first thing that exists
+and the last thing to go, so the token is there before the app boots
+and while it runs.
 
 ### `packages/core/transport/stdio-bridge.server.ts`
 

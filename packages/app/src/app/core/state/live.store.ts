@@ -14,6 +14,7 @@ export class LiveStore {
   readonly error = signal<string | null>(null);
 
   private unsubscribe: (() => void) | null = null;
+  private subscriptionId: string | null = null;
 
   constructor(private readonly bridge?: HostBridgeClient) {}
 
@@ -30,7 +31,19 @@ export class LiveStore {
   async setEnabled(value: boolean, projectRoot: string): Promise<void> {
     this.error.set(null);
     try {
-      if (this.bridge) await this.bridge.request("watch", { projectRoot, enabled: value });
+      if (this.bridge) {
+        if (value) {
+          // `watch` subscribes; the answer carries the subscription the
+          // backend keeps, and `cancel` is what ends it. The two are
+          // separate operations in the Application API — turning the
+          // toggle off is not "watch with enabled: false".
+          const result = await this.bridge.request("watch", { projectRoot });
+          this.subscriptionId = result.subscription.subscriptionId;
+        } else if (this.subscriptionId !== null) {
+          await this.bridge.request("cancel", { subscriptionId: this.subscriptionId });
+          this.subscriptionId = null;
+        }
+      }
       this.enabled.set(value);
     } catch (error) {
       this.error.set(error instanceof Error ? error.message : String(error));

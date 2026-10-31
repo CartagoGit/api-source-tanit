@@ -20,7 +20,7 @@ export class PushToPostmanComponent {
     this.controller = new AbortController();
     this.running.set(true);
     try {
-      const result = await this.client.push({ projectRoot: this.projectRoot(), workspace: this.workspace(), dryRun: this.dryRun() }, this.controller.signal);
+      const result = await this.client.push({ projectRoot: this.projectRoot(), workspace: this.workspace(), dryRun: this.dryRun() }, this.controller.signal) as { pushed?: boolean };
       this.message.set(result.pushed ? "Push completed." : "Push did not complete.");
     } catch (error) {
       this.message.set(error instanceof DOMException && error.name === "AbortError" ? "Push cancelled." : "Push failed without exposing credentials.");

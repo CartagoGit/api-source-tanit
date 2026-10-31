@@ -16,7 +16,9 @@ export class SyncComponent {
   async run(dryRun: boolean): Promise<void> {
     this.running.set(true);
     try {
-      const result = await this.bridge.request("sync", { projectRoot: this.projectRoot() });
+      // `sync` has no handler yet: the pipeline is `dry-run` + `export`,
+      // both of which exist, but the composed verb does not.
+      const result = await this.bridge.requestPending("sync", { projectRoot: this.projectRoot() }) as { synced?: boolean };
       this.message.set(dryRun ? "Sync preview ready." : result.synced ? "Project synced." : "Sync did not complete.");
     } finally {
       this.running.set(false);
