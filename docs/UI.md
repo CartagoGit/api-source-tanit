@@ -17,6 +17,36 @@ Si aún no has instalado la herramienta: [INSTALL.md](INSTALL.md).
 
 ---
 
+## La app de escritorio
+
+La app es un cliente **real** de la Application API: lo que ves en
+pantalla es lo que el backend responde, no un maqueta. Para verla en el
+navegador, contra el backend de verdad:
+
+```bash
+bun run build:app   # compila la app
+bun run ui:web      # sirve la app y la API en el mismo origen
+```
+
+Lo que hay en el menú lateral:
+
+| Sección | Qué hace |
+|---|---|
+| **Resumen** | Los frameworks reconocidos, los endpoints y los servicios del proyecto abierto. |
+| **Endpoints** | La lista real, con los filtros en el backend: servicio, transporte, autenticación, validación, framework, respuestas, confianza y fichero de origen. Al elegir uno se pide su detalle: transporte, auth detectada, reglas de validación, estados de respuesta y fichero y línea. |
+| **Exportar** | El centro de exportación: Vista previa con los ficheros que se escribirían, su tamaño y si alguno pisaría lo que ya está ahí; y **Generar**, que los escribe de verdad, en la misma carpeta que miró la vista previa. |
+| **Servicios** | Los servicios detectados y sus transportes. |
+| **Historial** | Los eventos de la sesión: la instantánea tomada y los ficheros que cambiaron debajo. |
+| **En vivo** | La suscripción a cambios de las fuentes. |
+| **Comprobar**, **Sincronizar**, **Validar**, **Subir** | Hoy son **solo CLI**: no hay handler detrás. La app lo dice en vez de fingir. |
+| **Ajustes** | Idioma, tema y preferencias. |
+
+Abrir un proyecto **abre una sesión** en el backend: se escanea y
+devuelve el resumen del que se dibuja la pantalla. Si la apertura
+falla, la app queda **cerrada**, no medio abierta.
+
+---
+
 ## Arrancar
 
 ```bash
