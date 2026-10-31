@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { HostBridgeClient } from "../../core/api/host-bridge.client";
+import { describePending } from "../../core/api/pending-operation.helper";
 
 @Component({
   selector: "tanit-sync",
@@ -20,6 +21,8 @@ export class SyncComponent {
       // both of which exist, but the composed verb does not.
       const result = await this.bridge.requestPending("sync", { projectRoot: this.projectRoot() }) as { synced?: boolean };
       this.message.set(dryRun ? "Sync preview ready." : result.synced ? "Project synced." : "Sync did not complete.");
+    } catch (error) {
+      this.message.set(describePending("sync", error));
     } finally {
       this.running.set(false);
     }

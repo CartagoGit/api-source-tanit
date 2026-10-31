@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { CheckClient } from "../../core/api/check.client";
+import { describePending } from "../../core/api/pending-operation.helper";
 
 @Component({
   selector: "tanit-check",
@@ -18,6 +19,8 @@ export class CheckComponent {
     try {
       const result = await this.client.check(this.projectRoot()) as { passed?: boolean; issues?: ReadonlyArray<string> };
       this.message.set(result.passed ? "Project is in sync." : (result.issues ?? []).join("; "));
+    } catch (error) {
+      this.message.set(describePending("check", error));
     } finally {
       this.running.set(false);
     }

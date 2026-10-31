@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
 import { PushClient } from "../../core/api/push.client";
+import { describePending } from "../../core/api/pending-operation.helper";
 
 @Component({
   selector: "tanit-push-to-postman",
@@ -23,7 +24,11 @@ export class PushToPostmanComponent {
       const result = await this.client.push({ projectRoot: this.projectRoot(), workspace: this.workspace(), dryRun: this.dryRun() }, this.controller.signal) as { pushed?: boolean };
       this.message.set(result.pushed ? "Push completed." : "Push did not complete.");
     } catch (error) {
-      this.message.set(error instanceof DOMException && error.name === "AbortError" ? "Push cancelled." : "Push failed without exposing credentials.");
+      this.message.set(
+        error instanceof DOMException && error.name === "AbortError"
+          ? "Push cancelled."
+          : describePending("push", error),
+      );
     } finally {
       this.running.set(false);
       this.controller = null;
