@@ -27,8 +27,8 @@ import type { ICheckReport } from "../../../../../contracts/interfaces/core/appl
   selector: "tanit-check",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="check-title"><h2 id="check-title">Check</h2><button type="button" [disabled]="running()" (click)="run()">{{ running() ? "Checking…" : "Check project" }}</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (report(); as answer) { <dl class="counts"><dt>Routes in code</dt><dd>{{ answer.routesInSource }}</dd><dt>Requests in collection</dt><dd>{{ answer.requestsInCollection }}</dd></dl>@if (answer.missingInCollection.length) { <h3>Missing from the collection</h3><ul>@for (route of answer.missingInCollection; track route.method + route.uri + (route.name ?? "")) { <li><code>{{ route.method }}</code> {{ route.uri }}@if (route.name) { <em>({{ route.name }})</em> }</li> }</ul> }@if (answer.missingInSource.length) { <h3>Not in the code</h3><ul>@for (route of answer.missingInSource; track route.method + route.uri + (route.name ?? "")) { <li><code>{{ route.method }}</code> {{ route.uri }}@if (route.name) { <em>({{ route.name }})</em> }</li> }</ul> } }</section>`,
-  styles: `.counts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin-top: var(--space-4); } dt { color: var(--color-muted); } dd { margin: 0; font-variant-numeric: tabular-nums; } h3 { margin-top: var(--space-4); font-size: 14px; } code { font-family: var(--font-code); }`,
+  templateUrl: "./check.component.html",
+  styleUrls: ["./check.component.scss"],
 })
 export class CheckComponent {
   readonly running = signal(false);

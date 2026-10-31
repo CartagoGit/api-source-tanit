@@ -28,8 +28,8 @@ import type { IValidationResult } from "../../../../../contracts/interfaces/core
   selector: "tanit-validate",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="validate-title"><h2 id="validate-title">Validate</h2><button type="button" [disabled]="running()" (click)="run()">{{ running() ? "Validating…" : "Validate project" }}</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (result(); as answer) { <dl class="counts"><dt>Requests</dt><dd>{{ answer.requests }}</dd><dt>Folders</dt><dd>{{ answer.folders }}</dd><dt>Variables</dt><dd>{{ answer.variables }}</dd></dl>@if (answer.errors.length) { <h3>Errors</h3><ul role="list">@for (issue of answer.errors; track issue.message) { <li>{{ issue.message }}</li> }</ul> }@if (answer.warnings.length) { <h3>Warnings</h3><ul role="list">@for (issue of answer.warnings; track issue.message) { <li>{{ issue.message }}</li> }</ul> } }</section>`,
-  styles: `.counts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin-top: var(--space-4); } dt { color: var(--color-muted); } dd { margin: 0; font-variant-numeric: tabular-nums; } h3 { margin-top: var(--space-4); font-size: 14px; }`,
+  templateUrl: "./validate.component.html",
+  styleUrls: ["./validate.component.scss"],
 })
 export class ValidateComponent {
   readonly running = signal(false);

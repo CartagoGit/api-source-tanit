@@ -193,6 +193,12 @@ export const ServiceSummarySchema = z.object({
   framework: z.string(),
   endpointCount: z.number().int().nonnegative(),
 });
+export const ProjectDiagnosticSchema = z.object({
+  severity: z.enum(["error", "warning"]),
+  message: z.string(),
+  /** Which scanner produced it, when it knows. */
+  source: z.string().optional(),
+});
 export const SnapshotSummarySchema = z.object({
   sessionId: z.string(),
   projectRoot: z.string(),
@@ -200,6 +206,14 @@ export const SnapshotSummarySchema = z.object({
   frameworks: z.array(z.string()),
   endpointCount: z.number().int().nonnegative(),
   serviceCount: z.number().int().nonnegative(),
+  /**
+   * What the backend noticed about the project.
+   *
+   * The scan's own warnings and the detectors that crashed. The
+   * app's Diagnostics section draws them; before, the section was a
+   * navigation entry with nothing behind it.
+   */
+  diagnostics: z.array(ProjectDiagnosticSchema),
 });
 export const ProjectEntrySchema = z.object({
   projectRoot: z.string(),

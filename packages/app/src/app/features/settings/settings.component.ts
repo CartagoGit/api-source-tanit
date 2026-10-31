@@ -17,8 +17,8 @@ import { SecureStorageService } from "../../core/host/secure-storage.service";
   selector: "tanit-settings",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="settings-title"><h2 id="settings-title">Settings</h2><label>Postman API key <input type="password" [value]="key()" (input)="key.set(inputValue($event))" autocomplete="off" /></label><label><input type="checkbox" [checked]="sessionOnly()" (change)="sessionOnly.set(checked($event))" /> Use for this session only</label><p class="where">{{ storage.describeWhere() }}</p><button type="button" [disabled]="running()" (click)="save()">{{ running() ? "Saving…" : "Save key" }}</button><button type="button" [disabled]="running()" (click)="forget()">Forget key</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (failure(); as value) { <p role="alert">{{ value }}</p> }</section>`,
-  styles: `.where { color: var(--color-muted); font-size: 12px; }`,
+  templateUrl: "./settings.component.html",
+  styleUrls: ["./settings.component.scss"],
 })
 export class SettingsComponent {
   readonly key = signal("");

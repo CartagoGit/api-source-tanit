@@ -2,72 +2,107 @@ import { ChangeDetectionStrategy, Component, inject, input, output } from "@angu
 
 import { I18nService } from "../core/i18n/i18n.service";
 
+/** One destination in the sidebar. */
 interface NavigationItem {
   readonly id: string;
   readonly labelKey: string;
+}
+
+/**
+ * A group of destinations.
+ *
+ * ## Why the sidebar is grouped
+ *
+ * It used to be a flat list of fourteen entries, and the list grew
+ * every time the app learned to do something new — which is the
+ * wrong way round. A navigation should tell the user **what the app
+ * is for**, not enumerate its features; a flat list of fourteen does
+ * neither, and it grew to fourteen because the app learned to
+ * generate, check, validate, count, push and watch.
+ *
+ * The groups answer that:
+ *
+ *   · **inspect** — what is in the project;
+ *   · **produce** — what to do with it;
+ *   · **observe** — what is happening to it.
+ *
+ * And `schemas` is gone. It was an entry that led nowhere: the shell
+ * had no case for it, so it fell through to the empty state — a
+ * navigation entry that opened a blank page. The schema of an
+ * endpoint is not a section; it is part of the endpoint's detail,
+ * and that is where it lives.
+ */
+interface NavigationGroup {
+  readonly id: string;
+  readonly labelKey: string;
+  readonly items: ReadonlyArray<NavigationItem>;
 }
 
 @Component({
   selector: "tanit-sidebar",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <aside class="sidebar" aria-label="Primary navigation">
-      <div class="brand">
-        <span class="brand-mark">T</span>
-        <div><strong>{{ i18n.translate("app.name") }}</strong><small>{{ i18n.translate("app.subtitle") }}</small></div>
-      </div>
-      <nav>
-        @for (item of items; track item.id) {
-          <button type="button" [class.active]="activeId() === item.id" (click)="select.emit(item.id)">
-            <span aria-hidden="true">{{ iconFor(item.id) }}</span>
-            {{ i18n.translate(item.labelKey) }}
-          </button>
-        }
-      </nav>
-      <button class="theme" type="button" (click)="theme.emit()" [attr.aria-label]="i18n.translate('theme.toggle')">
-        <span aria-hidden="true">◐</span>{{ themeLabel }}
-      </button>
-    </aside>
-  `,
-  styles: `
-    .sidebar { display: flex; flex-direction: column; gap: var(--space-5); width: 236px; min-height: 100vh; padding: var(--space-5); border-right: 1px solid var(--color-border); background: var(--color-panel); }
-    .brand { display: flex; align-items: center; gap: var(--space-3); }
-    .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-md); background: var(--color-copper); color: #fff; font-weight: 700; }
-    strong, small { display: block; }
-    small { color: var(--color-muted); font-size: 11px; }
-    nav { display: grid; gap: var(--space-1); }
-    nav button, .theme { display: flex; align-items: center; gap: var(--space-2); width: 100%; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-muted); padding: var(--space-2) var(--space-3); text-align: left; }
-    nav button:hover, nav button.active, .theme:hover { background: color-mix(in srgb, var(--color-copper) 12%, transparent); color: var(--color-ink); }
-    nav button:focus-visible, .theme:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-    .theme { margin-top: auto; }
-    @media (max-width: 720px) { .sidebar { width: 100%; min-height: auto; border-right: 0; border-bottom: 1px solid var(--color-border); } nav { grid-template-columns: repeat(2, 1fr); } }
-  `,
+  templateUrl: "./sidebar.component.html",
+  styleUrls: ["./sidebar.component.scss"],
 })
 export class SidebarComponent {
   readonly select = output<string>();
   readonly theme = output<void>();
   readonly i18n = inject(I18nService);
-  readonly items: ReadonlyArray<NavigationItem> = [
-    { id: "overview", labelKey: "nav.overview" },
-    { id: "endpoints", labelKey: "nav.endpoints" },
-    { id: "schemas", labelKey: "nav.schemas" },
-    { id: "services", labelKey: "nav.services" },
-    { id: "exports", labelKey: "nav.exports" },
-    { id: "stats", labelKey: "nav.stats" },
-    { id: "check", labelKey: "nav.check" },
-    { id: "validate", labelKey: "nav.validate" },
-    { id: "sync", labelKey: "nav.sync" },
-    { id: "push", labelKey: "nav.push" },
-    { id: "live", labelKey: "nav.live" },
-    { id: "history", labelKey: "nav.history" },
-    { id: "diagnostics", labelKey: "nav.diagnostics" },
-    { id: "settings", labelKey: "nav.settings" },
+
+  /**
+   * The groups, in the order they are read.
+   *
+   * The order is the order of a working session: look at what the
+   * project has, do something with it, then watch what happens.
+   */
+  readonly groups: ReadonlyArray<NavigationGroup> = [
+    {
+      id: "inspect",
+      labelKey: "nav.group.inspect",
+      items: [
+        { id: "overview", labelKey: "nav.overview" },
+        { id: "endpoints", labelKey: "nav.endpoints" },
+        { id: "services", labelKey: "nav.services" },
+      ],
+    },
+    {
+      id: "produce",
+      labelKey: "nav.group.produce",
+      items: [
+        { id: "exports", labelKey: "nav.exports" },
+        { id: "stats", labelKey: "nav.stats" },
+        { id: "check", labelKey: "nav.check" },
+        { id: "validate", labelKey: "nav.validate" },
+        { id: "sync", labelKey: "nav.sync" },
+        { id: "push", labelKey: "nav.push" },
+      ],
+    },
+    {
+      id: "observe",
+      labelKey: "nav.group.observe",
+      items: [
+        { id: "live", labelKey: "nav.live" },
+        { id: "history", labelKey: "nav.history" },
+        { id: "diagnostics", labelKey: "nav.diagnostics" },
+      ],
+    },
+    {
+      id: "preferences",
+      labelKey: "nav.group.preferences",
+      items: [{ id: "settings", labelKey: "nav.settings" }],
+    },
   ];
+
   readonly activeId = input("overview");
   themeLabel = this.i18n.translate("theme.toggle");
 
+  /** The id of the heading that labels a group. */
+  groupId(group: NavigationGroup): string {
+    return `nav-group-${group.id}`;
+  }
+
   iconFor(id: string): string {
-    return ({ overview: "O", endpoints: "E", schemas: "S", services: "V", exports: "X", stats: "N", check: "C", validate: "A", sync: "Y", push: "P", live: "L", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
+    return ({ overview: "O", endpoints: "E", services: "V", exports: "X", stats: "N", check: "C", validate: "A", sync: "Y", push: "P", live: "L", history: "H", diagnostics: "D", settings: "G" } as Record<string, string>)[id] ?? "-";
   }
 }

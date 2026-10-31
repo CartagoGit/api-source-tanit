@@ -28,8 +28,8 @@ import type { PushOutput } from "../../../../../contracts/interfaces/core/applic
   selector: "tanit-push-to-postman",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="push-title"><h2 id="push-title">Push to Postman</h2><label>Workspace <input [value]="workspace()" (input)="workspace.set(inputValue($event))" /></label><label><input type="checkbox" [checked]="dryRun()" (change)="dryRun.set(checked($event))" /> Dry run</label><button type="button" [disabled]="running()" (click)="run()">{{ running() ? "Pushing…" : "Push" }}</button><button type="button" [disabled]="!running()" (click)="cancel()">Cancel</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (result(); as answer) { <dl class="counts"><dt>Account</dt><dd>{{ answer.user ?? "—" }}</dd><dt>Requests</dt><dd>{{ answer.requests }}</dd><dt>Collection</dt><dd>{{ answer.collection ? answer.collection.name + " (" + answer.collection.action + ")" : "—" }}</dd></dl>@if (answer.environments.length) { <h3>Environments</h3><ul>@for (environment of answer.environments; track environment.name) { <li>{{ environment.name }} <em>({{ environment.action }})</em></li> }</ul> }@if (answer.error; as failure) { <p class="error">{{ failure.reason }}</p><p>{{ failure.nextAction }}</p> } }</section>`,
-  styles: `.counts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin-top: var(--space-4); } dt { color: var(--color-muted); } dd { margin: 0; } h3 { margin-top: var(--space-4); font-size: 14px; } .error { color: var(--color-copper); }`,
+  templateUrl: "./push-to-postman.component.html",
+  styleUrls: ["./push-to-postman.component.scss"],
 })
 export class PushToPostmanComponent {
   readonly workspace = signal("");

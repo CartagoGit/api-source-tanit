@@ -14,6 +14,7 @@
   "files": ["packages/app/src/main.ts"],
   "include": [
     "packages/app/src/**/*.ts",
-    "packages/contracts/interfaces/ui/host-bridge.interface.ts"
+    "packages/contracts/interfaces/ui/host-bridge.interface.ts",
+    "tests/app/**/*.ts"
   ]
 }

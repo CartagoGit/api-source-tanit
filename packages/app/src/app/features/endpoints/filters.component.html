@@ -1,0 +1,13 @@
+<form class="filters" (submit)="$event.preventDefault()" aria-label="Endpoint filters">
+  <label class="search">Search <input [value]="draft().search ?? ''" (input)="type({ search: inputValue($event) })" placeholder="Path, method, name" /></label>
+  <label>Service <input [value]="draft().service ?? ''" (input)="type({ service: inputValue($event) || undefined })" /></label>
+  <label>Framework <input [value]="draft().framework ?? ''" (input)="type({ framework: inputValue($event) || undefined })" /></label>
+  <label>Source file <input [value]="draft().sourceFile ?? ''" (input)="type({ sourceFile: inputValue($event) || undefined })" /></label>
+  <label>Transport <select [value]="draft().transport ?? ''" (change)="choose({ transport: transportValue($event) })"><option value="">All</option>@for (transport of transports; track transport) { <option [value]="transport">{{ transport }}</option> }</select></label>
+  <label>Method <input [value]="draft().method ?? ''" (input)="type({ method: inputValue($event) || undefined })" /></label>
+  <label>Auth <input [value]="draft().auth ?? ''" (input)="type({ auth: inputValue($event) || undefined })" placeholder="bearer" /></label>
+  <label>Validation <input [value]="draft().validation ?? ''" (input)="type({ validation: inputValue($event) || undefined })" placeholder="zod" /></label>
+  <label>Responses <input [value]="draft().responses ?? ''" (input)="type({ responses: inputValue($event) || undefined })" placeholder="200" /></label>
+  <label>Confidence <select [value]="draft().confidence ?? ''" (change)="choose({ confidence: confidenceValue($event) })"><option value="">All</option>@for (level of confidences; track level) { <option [value]="level">{{ level }}</option> }</select></label>
+  <button type="button" (click)="clear()">Clear</button>
+</form>

@@ -18,9 +18,9 @@ import type { IHandler } from "./dispatcher.js";
 import {
   SnapshotInputSchema,
   type SnapshotInput,
-  type ISnapshotSummary,
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
+import { summarizeSnapshot } from "./snapshot-summary.helper.js";
 import { apiError } from "./error.js";
 
 /** Resultado de resumir el snapshot actual de una sesión. */
@@ -49,19 +49,7 @@ export function createSnapshotHandlers(): {
         } catch (err) {
           throw apiError("SESSION_NOT_FOUND", (err as Error).message);
         }
-        const summary: ISnapshotSummary = {
-          sessionId: snap.sessionId,
-          projectRoot: snap.projectRoot,
-          capturedAt: snap.capturedAt.toISOString(),
-          frameworks: [...snap.frameworks],
-          endpointCount: snap.results.reduce(
-            (n, r) => n + r.specs.length,
-            0,
-          ),
-          serviceCount: new Set(
-            snap.results.map((r) => r.serviceId ?? "default"),
-          ).size,
-        };
+        const summary = summarizeSnapshot(snap);
         return { summary };
       },
     },

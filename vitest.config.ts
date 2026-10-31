@@ -16,6 +16,7 @@
  * tests se corren en `.github/workflows/integration-delendai.yml`
  * (opt-in + semanal). x00041.
  */
+import angular from "@analogjs/vite-plugin-angular";
 import { defineConfig } from "vitest/config";
 
 import { COVERAGE_THRESHOLDS } from "./scripts/gates/coverage-policy.constant.js";
@@ -25,6 +26,35 @@ export default defineConfig({
   test: {
     projects: SECTIONS.map(
       (section) => ({
+        /**
+         * La app Angular se compila con el **compilador de Angular**,
+         * no con esbuild pelado.
+         *
+         * Sin esto, vitest deja los componentes en JIT puro y el JIT
+         * de Angular **no puede ver los `input()` de señal**: el
+         * propio compilador de Angular lo documenta ("For JIT,
+         * decorators are used to declare signal inputs. That is
+         * because of a technical limitation where it's not possible to
+         * statically reflect class members of a directive/component
+         * at runtime before instantiating the class"), y el resultado
+         * es `NG0303: Can't bind to 'x' since it isn't a known
+         * property`. El `ng build` (AOT) sí lo resolvía, así que el
+         * fallo solo aparecía en los tests: la app funcionaba y su
+         * suite no ejercitaba plantillas.
+         *
+         * El plugin compila los componentes con el mismo compilador
+         * que usa el build, así que los tests y la app comparten
+         * semántica: `input()` se enlaza, `templateUrl`/`styleUrls`
+         * se resuelven y el tipado de plantillas es real.
+         */
+        ...(section.name === "app"
+          ? {
+              plugins: angular({
+                tsconfig: "./tsconfig.app.json",
+                inlineStylesExtension: "scss",
+              }),
+            }
+          : {}),
         test: {
           name: section.name,
           include: [...section.tests],

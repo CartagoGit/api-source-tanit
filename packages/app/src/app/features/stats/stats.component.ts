@@ -23,8 +23,8 @@ import type { IStatsResult } from "../../../../../contracts/interfaces/core/appl
   selector: "tanit-stats",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<section aria-labelledby="stats-title"><h2 id="stats-title">Statistics</h2><button type="button" [disabled]="running()" (click)="run()">{{ running() ? "Measuring…" : "Measure collection" }}</button>@if (message(); as value) { <p role="status">{{ value }}</p> }@if (stats(); as answer) { <p class="total">{{ answer.total }} requests</p><h3>By method</h3><ul>@for (entry of answer.byMethod; track entry.method) { <li><span>{{ entry.method }}</span><span>{{ entry.count }}</span></li> }</ul>@for (zone of answer.zones; track zone.zone) { <h3>{{ zone.zone }} ({{ zone.total }})</h3><ul>@for (entry of zone.byFolder; track entry.folder) { <li><span>{{ entry.folder }}</span><span>{{ entry.count }}</span></li> }</ul> } }</section>`,
-  styles: `.total { font-size: 28px; font-variant-numeric: tabular-nums; } h3 { margin-top: var(--space-4); font-size: 14px; } ul { list-style: none; padding: 0; display: grid; gap: var(--space-1); max-width: 420px; } li { display: flex; justify-content: space-between; gap: var(--space-4); border-bottom: 1px solid var(--color-border); padding: var(--space-1) 0; }`,
+  templateUrl: "./stats.component.html",
+  styleUrls: ["./stats.component.scss"],
 })
 export class StatsComponent {
   readonly running = signal(false);
