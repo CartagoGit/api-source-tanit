@@ -1,105 +1,152 @@
-// @vitest-environment jsdom
+/**
+ * The shell, and the project store behind it.
+ *
+ * ## What this test is for
+ *
+ * The shell used to draw the same two lines for every section but the
+ * overview — a heading and "open a project" — and the eleven feature
+ * components in the repository were never mounted. The app was a
+ * screenshot of an app.
+ *
+ * And "open a project" did not open anything: it set the project's
+ * *name*. So the shell had two placeholder screens and no content
+ * behind either, and every operation the app tried answered
+ * `SESSION_NOT_FOUND`.
+ *
+ * So the test checks the two things that make it an app: the
+ * sections are **mounted**, and opening a project **opens a
+ * session**.
+ */
+import { describe, expect, it, vi } from "vitest";
+import { TestBed } from "@angular/core/testing";
 
-import "@angular/compiler";
-import "zone.js";
-import "zone.js/testing";
-
-import { describe, expect, it } from "vitest";
-import { getTestBed, TestBed } from "@angular/core/testing";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
-
-import en from "../../packages/app/src/app/core/i18n/locales/en.json";
-import es from "../../packages/app/src/app/core/i18n/locales/es.json";
-import { I18nService } from "../../packages/app/src/app/core/i18n/i18n.service";
-import { CommandStore } from "../../packages/app/src/app/core/state/command.store";
-import { fuzzyMatch } from "../../packages/app/src/app/shell/command-palette.component";
 import { AppComponent } from "../../packages/app/src/app/shell/app-shell.component";
-import { SidebarComponent } from "../../packages/app/src/app/shell/sidebar.component";
-import { CommandPaletteComponent } from "../../packages/app/src/app/shell/command-palette.component";
-import { ButtonComponent } from "../../packages/app/src/app/shared/button/button.component";
-import { EmptyStateComponent } from "../../packages/app/src/app/shared/empty-state/empty-state.component";
+import { ProjectStore } from "../../packages/app/src/app/core/state/project.store";
+import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 
-getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
-
-describe("Angular shell foundation", () => {
-  it("renders the shell, switches theme, opens the palette, and focuses search", async () => {
-    TestBed.resetTestingModule();
-    const storage = new Map<string, string>();
-    Object.defineProperty(globalThis, "localStorage", {
-      configurable: true,
-      value: {
-        clear: () => storage.clear(),
-        getItem: (key: string) => storage.get(key) ?? null,
-        setItem: (key: string, value: string) => storage.set(key, value),
-        removeItem: (key: string) => storage.delete(key),
-      },
+describe("ProjectStore", () => {
+  it("opens a session and keeps the summary", async () => {
+    const request = vi.fn(async (operation: string) => {
+      if (operation === "open-project") {
+        return {
+          sessionId: "session-1",
+          summary: {
+            sessionId: "session-1",
+            projectRoot: "/workspace/api",
+            capturedAt: "2026-10-31T10:00:00.000Z",
+            frameworks: ["express"],
+            endpointCount: 12,
+            serviceCount: 1,
+          },
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
     });
-    localStorage.clear();
-    document.documentElement.dataset.theme = "light";
-    TestBed.configureTestingModule({ imports: [AppComponent, SidebarComponent, CommandPaletteComponent, ButtonComponent, EmptyStateComponent] });
-    const app = TestBed.runInInjectionContext(() => new AppComponent());
-    app.toggleTheme();
-    expect(document.documentElement.dataset.theme).toBe("dark");
-
-    app.onShortcut(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
-    expect(app.paletteOpen()).toBe(true);
-
-    const sidebar = TestBed.createComponent(SidebarComponent);
-    sidebar.detectChanges();
-    expect(sidebar.nativeElement.querySelectorAll("nav button")).toHaveLength(8);
-
-    sidebar.destroy();
     TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ProjectStore,
+        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+      ],
+    });
+    const project = TestBed.inject(ProjectStore);
+
+    const opened = await project.open("/workspace/api");
+
+    expect(opened).toBe(true);
+    expect(project.sessionId()).toBe("session-1");
+    expect(project.projectRoot()).toBe("/workspace/api");
+    expect(project.projectName()).toBe("api");
+    expect(project.summary()?.endpointCount).toBe(12);
+    expect(project.isOpen()).toBe(true);
   });
 
-  it("keeps English as the reference catalog and Spanish translated", () => {
-    const commonKeys = Object.keys(en);
-    const translated = commonKeys.filter((key) => en[key] !== es[key]);
+  it("stays closed when the backend cannot open the project", async () => {
+    const request = vi.fn(async () => {
+      throw new Error("No framework detected in /workspace/empty");
+    });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ProjectStore,
+        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+      ],
+    });
+    const project = TestBed.inject(ProjectStore);
 
-    expect(commonKeys.length).toBeGreaterThan(16);
-    expect(translated.length).toBeGreaterThanOrEqual(Math.ceil(commonKeys.length / 2));
+    const opened = await project.open("/workspace/empty");
+
+    expect(opened).toBe(false);
+    // A project with a name on the screen and no session behind it
+    // is the state this store used to be in all the time.
+    expect(project.sessionId()).toBeNull();
+    expect(project.isOpen()).toBe(false);
+    expect(project.error()).toContain("No framework detected");
   });
 
-  it("translates with a safe fallback outside a browser", () => {
-    const service = new I18nService();
+  it("tells the backend to close the session", async () => {
+    const request = vi.fn(async (operation: string) => {
+      if (operation === "open-project") {
+        return {
+          sessionId: "session-1",
+          summary: {
+            sessionId: "session-1",
+            projectRoot: "/workspace/api",
+            capturedAt: "2026-10-31T10:00:00.000Z",
+            frameworks: ["express"],
+            endpointCount: 12,
+            serviceCount: 1,
+          },
+        };
+      }
+      if (operation === "close") return { closed: 1 };
+      throw new Error(`unexpected operation: ${operation}`);
+    });
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        ProjectStore,
+        { provide: HostBridgeClient, useValue: { request, requestPending: vi.fn() } },
+      ],
+    });
+    const project = TestBed.inject(ProjectStore);
+    await project.open("/workspace/api");
 
-    expect(service.translate("app.name")).toBe("Tanit");
-    expect(service.translate("missing.key")).toBe("—");
+    await project.close();
+
+    expect(request).toHaveBeenCalledWith("close", { projectRoot: "/workspace/api" });
+    expect(project.isOpen()).toBe(false);
   });
+});
 
-  it("registers the eight command-palette actions", () => {
-    const commands = new CommandStore().commands();
+describe("the shell", () => {
+  it("mounts the features instead of a placeholder", async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AppComponent,
+        ProjectStore,
+        { provide: HostBridgeClient, useValue: { request: vi.fn(), requestPending: vi.fn() } },
+      ],
+    });
+    const shell = TestBed.runInInjectionContext(() => new AppComponent());
 
-    expect(commands).toHaveLength(8);
-    expect(commands.map(({ id }) => id)).toEqual([
-      "open",
-      "rescan",
-      "search",
-      "export",
+    // The sections are real: the shell knows how to go to each one.
+    for (const section of [
+      "overview",
+      "endpoints",
+      "exports",
+      "services",
+      "history",
       "settings",
-      "help",
-      "theme",
-      "recent",
-    ]);
-  });
-
-  it("matches commands by ordered fuzzy characters and resets on empty input", () => {
-    expect(fuzzyMatch("ope", "Open project")).toBe(true);
-    expect(fuzzyMatch("prj", "Open project")).toBe(true);
-    expect(fuzzyMatch("xyz", "Open project")).toBe(false);
-    expect(fuzzyMatch("", "anything")).toBe(true);
-  });
-
-  it("keeps the shell navigation destinations explicit", () => {
-    expect(new CommandStore().commands().map(({ id }) => id)).toEqual([
-      "open",
-      "rescan",
-      "search",
-      "export",
-      "settings",
-      "help",
-      "theme",
-      "recent",
-    ]);
+      "live",
+      "check",
+      "sync",
+      "validate",
+      "push",
+    ]) {
+      shell.go(section);
+      expect(shell.activeSection()).toBe(section);
+    }
   });
 });

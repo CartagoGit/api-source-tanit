@@ -1,144 +1,133 @@
-// @vitest-environment jsdom
-
-import "@angular/compiler";
-import "zone.js";
-import "zone.js/testing";
-
+/**
+ * The Export Center, against the real backend.
+ *
+ * ## What these tests are for
+ *
+ * The export client used to **render the artifacts in the browser**:
+ * it built a Postman collection, an OpenAPI document and four other
+ * formats from a list of operations it had made up, and kept them in
+ * a `Map`. The Export Center showed a preview with paths and sizes
+ * that had nothing to do with the files the exporter produces, and
+ * the "Generate" button stored the files in memory and said they had
+ * been written.
+ *
+ * These tests check the opposite: the client asks the backend, the
+ * preview is the backend's answer, and the export is the backend's
+ * write.
+ */
 import { describe, expect, it, vi } from "vitest";
-import { getTestBed, TestBed } from "@angular/core/testing";
-import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from "@angular/platform-browser-dynamic/testing";
+import { TestBed } from "@angular/core/testing";
 
-import { EXPORT_FORMATS, ExportsClient, MemoryExportArtifactWriter } from "../../packages/app/src/app/core/api/exports.client";
-import { ExportsStore } from "../../packages/app/src/app/core/state/exports.store";
-import { DialogService } from "../../packages/app/src/app/core/host/dialog.service";
-import { ExportCenterComponent } from "../../packages/app/src/app/features/exports/export-center.component";
-import { ExportPreviewComponent } from "../../packages/app/src/app/features/exports/export-preview.component";
-import { ExportSummaryComponent } from "../../packages/app/src/app/features/exports/export-summary.component";
-import { FormatCapabilitiesComponent } from "../../packages/app/src/app/features/exports/format-capabilities.component";
+import { ExportsClient } from "../../packages/app/src/app/core/api/exports.client";
+import { HostBridgeClient } from "../../packages/app/src/app/core/api/host-bridge.client";
 
-getTestBed().initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());
+/** A bridge that answers with a dry run and an export. */
+function fakeBridge(): {
+  bridge: { request: (operation: string, input: unknown) => Promise<unknown> };
+  calls: Array<{ operation: string; input: unknown }>;
+} {
+  const calls: Array<{ operation: string; input: unknown }> = [];
+  const bridge = {
+    request: vi.fn(async (operation: string, input: unknown) => {
+      calls.push({ operation, input });
+      if (operation === "dry-run") {
+        const directory =
+          typeof input === "object" && input !== null && "outputDirectory" in input
+            ? String((input as { outputDirectory?: string }).outputDirectory ?? "/workspace/tanit")
+            : "/workspace/tanit";
+        return {
+          endpointCount: 12,
+          frameworks: ["express"],
+          warnings: [],
+          durationMs: 4,
+          files: [
+            { path: `${directory}/api.json`, change: "NEW", bytes: 2048 },
+            { path: `${directory}/api.postman_collection.json`, change: "UPDATE", bytes: 4096 },
+          ],
+          formats: [{ id: "postman", summary: "Collection and environments for Postman" }],
+        };
+      }
+      if (operation === "export") {
+        return {
+          outputPath: "/workspace/tanit/api.json",
+          bytes: 6144,
+          files: ["/workspace/tanit/api.json", "/workspace/tanit/api.postman_collection.json"],
+        };
+      }
+      throw new Error(`unexpected operation: ${operation}`);
+    }),
+  };
+  return { bridge, calls };
+}
 
-describe("Export Center", () => {
-  it("lists every format with real counts and marks lossy exports", () => {
-    const client = new ExportsClient();
-    const capabilities = client.capabilities(42);
-    expect(capabilities.map((item) => item.format)).toEqual([...EXPORT_FORMATS]);
-    expect(capabilities.every((item) => item.counts.operations === 42)).toBe(true);
-    expect(capabilities.find((item) => item.format === "postman")?.lossy).toBe(false);
-    expect(capabilities.find((item) => item.format === "curl")?.lossy).toBe(true);
-  });
-
-  it("reports NEW, UPDATE, outside-workspace and structured diagnostics in dry-run", () => {
-    const client = new ExportsClient();
-    const fresh = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace/out", workspaceRoot: "/workspace", endpointCount: 1 });
-    expect(fresh.files[0]?.change).toBe("NEW");
-    const content = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace/existing", workspaceRoot: "/workspace", endpointCount: 1 }).files[0]!.content;
-    const unchanged = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace/existing", workspaceRoot: "/workspace", endpointCount: 1, existingFiles: [{ path: "/workspace/existing/tanit-postman.json", content }] });
-    expect(unchanged.files[0]?.change).toBe("UNCHANGED");
-    const existing = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace/existing", workspaceRoot: "/workspace", endpointCount: 1, existingFiles: [{ path: "/workspace/existing/tanit-postman.json", content: "stale" }] });
-    expect(existing.files[0]?.change).toBe("UPDATE");
-    expect(existing.canGenerate).toBe(false);
-    const outside = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace-evil/out", workspaceRoot: "/workspace", endpointCount: 0 });
-    expect(outside.requiresOutsideWorkspaceConfirmation).toBe(true);
-    expect(outside.diagnostics[0]).toMatchObject({ code: "NO_ENDPOINTS", severity: "error", operationIds: [] });
-  });
-
-  it("enforces overwrite and outside-workspace confirmations", async () => {
-    const client = new ExportsClient();
-    await expect(client.generate({ formats: ["postman"], outputDirectory: "/workspace/existing", workspaceRoot: "/workspace", endpointCount: 1, existingFiles: [{ path: "/workspace/existing/tanit-postman.json", content: "stale" }] })).rejects.toThrow();
-    const result = await client.generate({ formats: ["postman"], outputDirectory: "/tmp/out", workspaceRoot: "/workspace", endpointCount: 1, overwriteConfirmed: true, outsideWorkspaceConfirmed: true });
-    expect(result.outputDirectory).toBe("/tmp/out");
-  });
-
-  it("feeds operations and existing files into the UI dry-run", () => {
+describe("ExportsClient", () => {
+  it("asks the backend for the dry run and draws its answer", async () => {
+    const { bridge, calls } = fakeBridge();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ providers: [ExportsClient, ExportsStore] });
-    const store = TestBed.inject(ExportsStore);
-    store.setOutputDirectory("/workspace/out");
-    store.setOperations([{ id: "operation-1", method: "GET", path: "/users" }]);
-    const content = store.preview().files[0]!.content;
-    store.setExistingFiles([{ path: "/workspace/out/tanit-postman.json", content }]);
-    expect(store.preview().files[0]?.change).toBe("UNCHANGED");
-    store.setExistingFiles([{ path: "/workspace/out/tanit-postman.json", content: "stale" }]);
-    expect(store.preview().files[0]?.change).toBe("UPDATE");
-  });
-
-  it("generates verifiable content for every supported format", async () => {
-    const writer = new MemoryExportArtifactWriter();
-    const client = new ExportsClient(writer);
-    const result = await client.generate({ formats: [...EXPORT_FORMATS], outputDirectory: "/workspace/out", workspaceRoot: "/workspace", endpointCount: 1 });
-    expect(result.files).toHaveLength(EXPORT_FORMATS.length);
-    expect(writer.written.get("/workspace/out/tanit-openapi.json")).toContain('"openapi": "3.1.0"');
-    expect(writer.written.get("/workspace/out/tanit-postman.json")).toContain("operation-1");
-    expect(writer.written.get("/workspace/out/tanit-curl.sh")).toContain("curl -X GET");
-    expect(writer.written.get("/workspace/out/tanit-har.json")).toContain('"version": "1.2"');
-    expect(writer.written.get("/workspace/out/tanit-insomnia.json")).toContain('"__export_format": 4');
-    expect(writer.written.get("/workspace/out/tanit-bruno.bru")).toContain("meta {");
-  });
-
-  it("preserves operation diagnostics and supports several diagnostics", () => {
-    const client = new ExportsClient();
-    const dryRun = client.dryRun({ formats: ["postman"], outputDirectory: "/workspace/out", workspaceRoot: "/workspace", endpointCount: 2, operations: [{ id: "one", method: "GET", path: "/one", diagnostics: [{ code: "AUTH_MISSING", severity: "warning", operationIds: ["one"], message: "Auth is incomplete.", suggestion: "Configure authentication." }] }, { id: "two", method: "POST", path: "/two", diagnostics: [{ code: "SCHEMA_PARTIAL", severity: "info", operationIds: ["two"], message: "Schema is partial.", suggestion: "Review the response schema." }] }] });
-    expect(dryRun.diagnostics.map((item) => item.code)).toEqual(["AUTH_MISSING", "SCHEMA_PARTIAL"]);
-  });
-
-  it("renders the components and exposes success actions", async () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ imports: [ExportCenterComponent, ExportPreviewComponent, ExportSummaryComponent, FormatCapabilitiesComponent], providers: [ExportsClient, ExportsStore, { provide: DialogService, useValue: { pickFolder: vi.fn().mockResolvedValue("/tmp/export") } }] });
-    const capabilities = TestBed.createComponent(FormatCapabilitiesComponent);
-    capabilities.componentRef.setInput("capabilities", new ExportsClient().capabilities(12));
-    capabilities.detectChanges();
-    expect(capabilities.nativeElement.textContent).toContain("Postman");
-    const center = TestBed.runInInjectionContext(() => new ExportCenterComponent());
-    center.toggleFormat("openapi");
-    expect(center.store.formats()).toContain("openapi");
-    await center.chooseOutput();
-    expect(center.store.outputDirectory()).toBe("/tmp/export");
-    capabilities.destroy();
-  });
-
-  it("allows diagnostic filtering and copies generated paths", async () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({ imports: [ExportCenterComponent, ExportPreviewComponent, ExportSummaryComponent, FormatCapabilitiesComponent], providers: [ExportsClient, ExportsStore, DialogService] });
-    const center = TestBed.runInInjectionContext(() => new ExportCenterComponent());
-    center.store.setEndpointCount(0);
-    center.selectDiagnostic(center.store.diagnostics()[0]!);
-    expect(window.location.search).toContain("diagnosticCode=NO_ENDPOINTS");
-    const writeText = vi.fn(); Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
-    await center.copyPaths(["/workspace/out/postman.json"]);
-    expect(writeText).toHaveBeenCalledWith("/workspace/out/postman.json");
-  });
-
-  it("uses native success actions before the browser fallback", async () => {
-    const invoke = vi.fn().mockResolvedValue(undefined);
-    Object.assign(globalThis, { __TAURI__: { invoke } });
-    const center = TestBed.runInInjectionContext(() => new ExportCenterComponent());
-    await center.openFolder("/workspace/out");
-    await center.openPostman();
-    expect(invoke).toHaveBeenNthCalledWith(1, "open_folder", { path: "/workspace/out" });
-    expect(invoke).toHaveBeenNthCalledWith(2, "open_postman");
-    delete (globalThis as { __TAURI__?: unknown }).__TAURI__;
-  });
-
-  it("surfaces partial combined export status and operation references", () => {
-    const client = new ExportsClient();
-    const preview = client.dryRun({
-      formats: ["postman"], outputDirectory: "/workspace/out", workspaceRoot: "/workspace", endpointCount: 1,
-      combinedExport: { partial: true, explanation: "GraphQL auth cannot be represented per operation.", services: [{ serviceId: "catalog", reason: "Mixed auth references." }], operationRefs: { "catalog.list": { serverRef: "server-catalog", authRef: "auth-catalog" } } },
+    TestBed.configureTestingModule({
+      providers: [ExportsClient, { provide: HostBridgeClient, useValue: bridge }],
     });
-    expect(preview.combinedExport?.partial).toBe(true);
-    expect(preview.diagnostics.at(-1)?.code).toBe("COMBINED_EXPORT_PARTIAL");
-    expect(preview.diagnostics.at(-1)?.operationIds).toContain("catalog.list");
+    const client = TestBed.inject(ExportsClient);
+
+    const preview = await client.preview("/workspace", "postman", "/workspace/tanit", "/workspace");
+
+    expect(calls[0]?.operation).toBe("dry-run");
+    expect(calls[0]?.input).toMatchObject({
+      projectRoot: "/workspace",
+      target: "postman",
+      outputDirectory: "/workspace/tanit",
+    });
+    expect(preview.files).toHaveLength(2);
+    // The overwrite risk is the backend's own verdict, not a guess.
+    expect(preview.files[0]?.overwriteRisk).toBe(false);
+    expect(preview.files[1]?.overwriteRisk).toBe(true);
+    expect(preview.requiresOverwriteConfirmation).toBe(true);
+    expect(preview.canGenerate).toBe(true);
   });
 
-  it("renders operation references in the preview", () => {
+  it("marks a file that would land outside the project", async () => {
+    const { bridge } = fakeBridge();
     TestBed.resetTestingModule();
-    const fixture = TestBed.configureTestingModule({ imports: [ExportPreviewComponent] }).createComponent(ExportPreviewComponent);
-    fixture.componentRef.setInput("preview", {
-      files: [], diagnostics: [], canGenerate: true, requiresOverwriteConfirmation: false, requiresOutsideWorkspaceConfirmation: false,
-      combinedExport: { partial: true, explanation: "Partial", services: [], operationRefs: { "catalog.list": { serverRef: "server-catalog", authRef: "auth-catalog" } } },
+    TestBed.configureTestingModule({
+      providers: [ExportsClient, { provide: HostBridgeClient, useValue: bridge }],
     });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain("catalog.list: server server-catalog · auth auth-catalog");
+    const client = TestBed.inject(ExportsClient);
+
+    const preview = await client.preview("/workspace", "postman", "/elsewhere", "/workspace");
+
+    expect(preview.files.every((file) => file.outsideWorkspace)).toBe(true);
+    expect(preview.requiresOutsideWorkspaceConfirmation).toBe(true);
+  });
+
+  it("writes through the backend", async () => {
+    const { bridge, calls } = fakeBridge();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [ExportsClient, { provide: HostBridgeClient, useValue: bridge }],
+    });
+    const client = TestBed.inject(ExportsClient);
+
+    const result = await client.generate("/workspace", "postman", "/workspace/tanit");
+
+    expect(calls[0]?.operation).toBe("export");
+    expect(result.files).toHaveLength(2);
+    expect(result.outputDirectory).toBe("/workspace/tanit");
+  });
+
+  it("takes the format descriptions from the core", async () => {
+    const { bridge } = fakeBridge();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [ExportsClient, { provide: HostBridgeClient, useValue: bridge }],
+    });
+    const client = TestBed.inject(ExportsClient);
+
+    const capabilities = await client.capabilities("/workspace");
+
+    expect(capabilities[0]).toEqual({
+      format: "postman",
+      label: "postman",
+      summary: "Collection and environments for Postman",
+    });
   });
 });

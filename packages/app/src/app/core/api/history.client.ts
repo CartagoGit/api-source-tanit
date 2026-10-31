@@ -1,55 +1,80 @@
-import { Injectable } from "@angular/core";
-import type { HostBridgeClient } from "./host-bridge.client";
-import type {
-  IHistoryConfiguration,
-  IHistoryDiff,
-  IHistoryEntry,
-  IHistoryRestoreResult,
-} from "../../../../../contracts/interfaces/core/history.interface";
+import { Injectable, inject } from "@angular/core";
 
-/** What the history client needs from the connector. */
-interface IHistoryBridge {
-  request(operation: string, input: unknown): Promise<unknown>;
-  requestPending(operation: string, input: unknown): Promise<unknown>;
+import { HostBridgeClient } from "./host-bridge.client";
+import type { ISessionEvent } from "../../../../../contracts/interfaces/core/history.interface";
+
+/** What the API answered with, before it was read. */
+interface IHistoryAnswer {
+  readonly entries?: ReadonlyArray<
+    | { readonly kind: "snapshot-ready"; readonly capturedAt: string; readonly sessionId: string }
+    | { readonly kind: "snapshot-stale"; readonly capturedAt: string; readonly changedPaths: ReadonlyArray<string> }
+  >;
 }
-
-export type { IHistoryChange, IHistoryConfiguration, IHistoryDiff, IHistoryEntry, IHistoryRestoreResult } from "../../../../../contracts/interfaces/core/history.interface";
 
 @Injectable({ providedIn: "root" })
 export class HistoryClient {
-  private readonly historyBridge: IHistoryBridge;
+  private readonly bridge = inject(HostBridgeClient);
 
-  constructor(bridge: Pick<HostBridgeClient, "request" | "requestPending"> | IHistoryBridge) {
-    this.historyBridge = bridge;
-  }
-
-  list(projectRoot: string): Promise<ReadonlyArray<IHistoryEntry>> {
-    return this.historyBridge
-      .request("history", { projectRoot })
-      .then((result) => (result as { entries?: ReadonlyArray<IHistoryEntry> }).entries ?? []);
+  /** What happened to the open session. */
+  async list(projectRoot: string): Promise<ReadonlyArray<ISessionEvent>> {
+    const answer = (await this.bridge.request("history", { projectRoot })) as IHistoryAnswer;
+    return (answer.entries ?? []).map((entry) =>
+      entry.kind === "snapshot-stale"
+        ? {
+            kind: entry.kind,
+            capturedAt: entry.capturedAt,
+            changedPaths: entry.changedPaths,
+          }
+        : {
+            kind: entry.kind,
+            capturedAt: entry.capturedAt,
+            sessionId: entry.sessionId,
+          },
+    );
   }
 
   /**
-   * Comparing two revisions, comparing their configuration, exporting
-   * a past one again and restoring one are capabilities the core has
-   * (`packages/core/session/history-recorder.service.ts`) but that no
-   * handler exposes yet. They are asked for as pending, so the gap is
-   * written down instead of turning into an `UNKNOWN_HANDLER` at
-   * runtime.
+   * Comparing two snapshots of the **persisted** history.
+   *
+   * The core can do it (`history-recorder.service.ts`), but no
+   * handler exposes it yet, so the call is declared pending: it says
+   * out loud that this does not work, instead of failing at runtime
+   * with a name nobody recognizes.
    */
-  compare(projectRoot: string, leftId: string, rightId: string, configuration?: IHistoryConfiguration): Promise<IHistoryDiff> {
-    return this.historyBridge.requestPending("history-diff", { projectRoot, leftId, rightId, configuration }) as Promise<IHistoryDiff>;
+  compare(
+    projectRoot: string,
+    leftId: string,
+    rightId: string,
+    configuration?: Record<string, unknown>,
+  ): Promise<unknown> {
+    return this.bridge.requestPending("history-diff", {
+      projectRoot,
+      leftId,
+      rightId,
+      configuration,
+    });
   }
 
-  compareConfig(projectRoot: string, leftId: string, rightId: string): Promise<IHistoryDiff["configuration"]> {
-    return this.historyBridge.requestPending("history-compare-config", { projectRoot, leftId, rightId }) as Promise<IHistoryDiff["configuration"]>;
+  /** The configuration two snapshots were made with. Pending, like the diff. */
+  compareConfig(projectRoot: string, leftId: string, rightId: string): Promise<unknown> {
+    return this.bridge.requestPending("history-compare-config", {
+      projectRoot,
+      leftId,
+      rightId,
+    });
   }
 
-  reExport(projectRoot: string, historyId: string, configuration: IHistoryConfiguration = {}): Promise<unknown> {
-    return this.historyBridge.requestPending("history-re-export", { projectRoot, historyId, configuration });
+  /** Exporting a past snapshot again. Pending: no handler yet. */
+  reExport(projectRoot: string, historyId: string, configuration?: Record<string, unknown>): Promise<unknown> {
+    return this.bridge.requestPending("history-re-export", {
+      projectRoot,
+      historyId,
+      configuration,
+    });
   }
 
-  restore(projectRoot: string, historyId: string): Promise<IHistoryRestoreResult> {
-    return this.historyBridge.requestPending("history-restore", { projectRoot, historyId }) as Promise<IHistoryRestoreResult>;
+  /** Restoring a past snapshot. Pending: no handler yet. */
+  restore(projectRoot: string, historyId: string): Promise<unknown> {
+    return this.bridge.requestPending("history-restore", { projectRoot, historyId });
   }
 }

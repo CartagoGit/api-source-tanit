@@ -36,6 +36,13 @@ export default defineConfig({
           ],
           environment: section.name === "app" ? ("jsdom" as const) : ("node" as const),
           ...(section.name === "app" ? { environmentOptions: { jsdom: { url: "http://tanit.test" } } } : {}),
+          // The app's clients take their connector through
+          // `inject()`, so the tests that build them need Angular's
+          // testing environment. Without it the app's suite could
+          // only test the pieces that need no injection — and the
+          // pieces that need it are the ones that talk to the
+          // backend.
+          ...(section.name === "app" ? { setupFiles: ["tests/app/setup.ts"] } : {}),
           globals: false,
           // Los e2e generan colecciones enteras desde fixtures en
           // disco; 30 s cubre el peor caso medido (~4 s) con margen

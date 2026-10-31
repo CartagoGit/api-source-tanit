@@ -28,5 +28,16 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void { this.unsubscribeDrop?.(); this.dragDrop.disconnect(); }
 
-  open(path: string): void { this.project.open(path); this.recents.add(path); }
+  /**
+   * Opens a project.
+   *
+   * Opening is a **round trip** now: the backend scans the project
+   * and answers with the session and the summary. The screen used to
+   * say the project was open the moment it had its name, and every
+   * operation behind it failed with `SESSION_NOT_FOUND`.
+   */
+  async open(path: string): Promise<void> {
+    const opened = await this.project.open(path);
+    if (opened) this.recents.add(path);
+  }
 }

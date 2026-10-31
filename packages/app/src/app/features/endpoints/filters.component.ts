@@ -1,23 +1,40 @@
 import { ChangeDetectionStrategy, Component, effect, input, output } from "@angular/core";
 
-import { ENDPOINT_TRANSPORTS, EndpointQuery } from "../../core/api/endpoints.client";
+import {
+  ENDPOINT_CONFIDENCES,
+  ENDPOINT_TRANSPORTS,
+  EndpointConfidence,
+  EndpointQuery,
+} from "../../core/api/endpoints.client";
 
+/**
+ * The filter bar of the endpoint explorer.
+ *
+ * Every filter here is answered by the **backend**. They used to be
+ * applied in the client, over a list the app had invented — a filter
+ * over invented data is decoration. Now the same filters narrow the
+ * real project, and the count that comes back is the count of the
+ * project, not of a page.
+ *
+ * The vocabularies are the core's: `ws` is a WebSocket, `high` is a
+ * confidence level, `none` is the absence of a validation.
+ */
 @Component({
   selector: "tanit-endpoint-filters",
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form class="filters" (submit)="$event.preventDefault()" aria-label="Endpoint filters">
-      <label class="search">Search <input [value]="value().search ?? ''" (input)="patch({ search: inputValue($event) })" placeholder="Path, method, description" /></label>
+      <label class="search">Search <input [value]="value().search ?? ''" (input)="patch({ search: inputValue($event) })" placeholder="Path, method, name" /></label>
       <label>Service <input [value]="value().service ?? ''" (input)="patch({ service: inputValue($event) || undefined })" /></label>
       <label>Framework <input [value]="value().framework ?? ''" (input)="patch({ framework: inputValue($event) || undefined })" /></label>
       <label>Source file <input [value]="value().sourceFile ?? ''" (input)="patch({ sourceFile: inputValue($event) || undefined })" /></label>
       <label>Transport <select [value]="value().transport ?? ''" (change)="patch({ transport: transportValue($event) })"><option value="">All</option>@for (transport of transports; track transport) { <option [value]="transport">{{ transport }}</option> }</select></label>
       <label>Method <input [value]="value().method ?? ''" (input)="patch({ method: inputValue($event) || undefined })" /></label>
-      <label>Auth <select [value]="value().auth ?? ''" (change)="patch({ auth: inputValue($event) || undefined })"><option value="">All</option><option value="none">None</option><option value="bearer">Bearer</option><option value="api-key">API key</option></select></label>
-      <label>Validation <select [value]="value().validation ?? ''" (change)="patch({ validation: inputValue($event) || undefined })"><option value="">All</option><option value="validated">Validated</option><option value="unvalidated">Unvalidated</option></select></label>
+      <label>Auth <input [value]="value().auth ?? ''" (input)="patch({ auth: inputValue($event) || undefined })" placeholder="bearer" /></label>
+      <label>Validation <input [value]="value().validation ?? ''" (input)="patch({ validation: inputValue($event) || undefined })" placeholder="zod" /></label>
       <label>Responses <input [value]="value().responses ?? ''" (input)="patch({ responses: inputValue($event) || undefined })" placeholder="200" /></label>
-      <label>Confidence <input type="number" min="0" max="1" step="0.01" [value]="value().confidence ?? ''" (input)="patch({ confidence: numberValue($event) })" /></label>
+      <label>Confidence <select [value]="value().confidence ?? ''" (change)="patch({ confidence: confidenceValue($event) })"><option value="">All</option>@for (level of confidences; track level) { <option [value]="level">{{ level }}</option> }</select></label>
       <button type="button" (click)="changed.emit({})">Clear</button>
     </form>
   `,
@@ -35,11 +52,12 @@ export class FiltersComponent {
   readonly value = input<EndpointQuery>({});
   readonly changed = output<EndpointQuery>();
   readonly transports = ENDPOINT_TRANSPORTS;
+  readonly confidences = ENDPOINT_CONFIDENCES;
 
   constructor() { effect(() => void this.value()); }
 
   patch(partial: EndpointQuery): void { this.changed.emit({ ...this.value(), ...partial }); }
   inputValue(event: Event): string { return (event.target as HTMLInputElement).value; }
-  numberValue(event: Event): number | undefined { const value = Number((event.target as HTMLInputElement).value); return Number.isFinite(value) ? value : undefined; }
   transportValue(event: Event): EndpointQuery["transport"] { const value = this.inputValue(event); return ENDPOINT_TRANSPORTS.includes(value as typeof ENDPOINT_TRANSPORTS[number]) ? value as EndpointQuery["transport"] : undefined; }
+  confidenceValue(event: Event): EndpointConfidence | undefined { const value = this.inputValue(event); return ENDPOINT_CONFIDENCES.includes(value as EndpointConfidence) ? value as EndpointConfidence : undefined; }
 }

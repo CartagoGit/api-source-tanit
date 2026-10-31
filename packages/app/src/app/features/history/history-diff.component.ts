@@ -44,7 +44,9 @@ export class HistoryDiffComponent {
     const root = this.project.projectRoot();
     if (!root) return;
     try {
-      const configuration = await this.client.compareConfig(root, this.leftId(), this.rightId());
+      const configuration = (await this.client.compareConfig(root, this.leftId(), this.rightId())) as {
+        after?: unknown;
+      } | null;
       const after = configuration?.after;
       this.outputDirectory = after && typeof after === "object" && "outputDirectory" in after ? String(after.outputDirectory ?? "") : "";
     } catch (error) { this.error = error instanceof Error ? error.message : String(error); }
