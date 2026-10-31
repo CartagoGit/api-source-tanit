@@ -1,0 +1,4 @@
+<section class="schema" aria-label="Schema viewer">
+  <header><strong>Schema</strong><button type="button" (click)="copyPath('$.')">Copy JSON path</button></header>
+  <div class="tree" role="tree">@for (node of nodes(); track node.path) { <button type="button" class="node" [style.padding-left.px]="12 + node.level * 18" (click)="copyPath(node.path)" role="treeitem"><span>{{ node.branch ? "▾" : "•" }}</span><strong>{{ node.label }}</strong><small>{{ node.branch ? "" : valueText(node.value) }}</small></button> }</div>
+</section>

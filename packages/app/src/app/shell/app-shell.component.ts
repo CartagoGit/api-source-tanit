@@ -18,6 +18,7 @@ import { SyncComponent } from "../features/sync/sync.component";
 import { ValidateComponent } from "../features/validate/validate.component";
 import { PushToPostmanComponent } from "../features/push/push-to-postman.component";
 import { StatsComponent } from "../features/stats/stats.component";
+import { DiagnosticsComponent } from "../features/diagnostics/diagnostics.component";
 
 /**
  * The shell: the frame the app lives in.
@@ -61,49 +62,11 @@ import { StatsComponent } from "../features/stats/stats.component";
     ValidateComponent,
     PushToPostmanComponent,
     StatsComponent,
+    DiagnosticsComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="shell" [class.dark]="theme() === 'dark'">
-      <tanit-sidebar [activeId]="activeSection()" (theme)="toggleTheme()" (select)="go($event)" />
-      <main class="content reveal">
-        <header>
-          <div>
-            <span class="eyebrow">{{ project.projectName() }}</span>
-            <h1>{{ i18n.translate('home.title') }}</h1>
-          </div>
-          <tanit-button primary (click)="paletteOpen.set(true)">⌘K <span class="sr-only">{{ i18n.translate('palette.placeholder') }}</span></tanit-button>
-        </header>
-        @if (project.error(); as message) { <p class="error" role="alert">{{ message }}</p> }
-        @switch (activeSection()) {
-          @case ('overview') { <tanit-home /> }
-          @case ('endpoints') { @if (project.isOpen()) { <tanit-endpoints-list /> } @else { <tanit-empty-state><h2>{{ i18n.translate('home.title') }}</h2><p>{{ i18n.translate('home.empty') }}</p><tanit-button primary (click)="go('overview')">{{ i18n.translate('home.open') }}</tanit-button></tanit-empty-state> } }
-          @case ('exports') { @if (project.isOpen()) { <tanit-export-center /> } @else { <tanit-empty-state><h2>Export Center</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
-          @case ('services') { @if (project.isOpen()) { <tanit-services-list /> } @else { <tanit-empty-state><h2>Services</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
-          @case ('history') { @if (project.isOpen()) { <tanit-history-list /> } @else { <tanit-empty-state><h2>History</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> } }
-          @case ('live') { <tanit-live-toggle /> }
-          @case ('check') { <tanit-check /> }
-          @case ('sync') { <tanit-sync /> }
-          @case ('validate') { <tanit-validate /> }
-          @case ('push') { <tanit-push-to-postman /> }
-          @case ('stats') { <tanit-stats /> }
-          @case ('settings') { <tanit-settings /> }
-          @default { <tanit-empty-state><h2>{{ sectionLabel() }}</h2><p>{{ i18n.translate('home.empty') }}</p></tanit-empty-state> }
-        }
-      </main>
-      <tanit-command-palette [open]="paletteOpen()" (close)="paletteOpen.set(false)" (chosen)="runCommand($event)" />
-    </div>
-  `,
-  styles: `
-    .shell { display: flex; min-height: 100vh; background: var(--color-surface); color: var(--color-ink); }
-    .content { flex: 1; min-width: 0; padding: clamp(24px, 5vw, 64px); }
-    header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
-    .eyebrow { color: var(--color-muted); font-size: 12px; }
-    h1 { margin-top: var(--space-2); font-size: clamp(28px, 4vw, 48px); line-height: 1.05; }
-    .error { margin: var(--space-4) 0 0; padding: 10px 12px; border: 1px solid var(--color-copper); background: color-mix(in srgb, var(--color-copper) 10%, transparent); }
-    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-    @media (max-width: 720px) { .shell { display: block; } .content { padding: var(--space-5); } }
-  `,
+  templateUrl: "./app-shell.component.html",
+  styleUrls: ["./app-shell.component.scss"],
 })
 export class AppComponent {
   readonly i18n = inject(I18nService);

@@ -11,8 +11,8 @@ import type { IHandler } from "./dispatcher.js";
 import {
   OpenProjectInputSchema,
   type OpenProjectInput,
-  type ISnapshotSummary,
 } from "./zod-schemas.js";
+import { summarizeSnapshot } from "./snapshot-summary.helper.js";
 import {
   openSession,
   type IProjectSessionOptions,
@@ -75,17 +75,7 @@ export function createOpenProjectHandler(): IHandler<OpenProjectInput, OpenProje
       }
 
       const snap = session.current();
-      const summary: ISnapshotSummary = {
-        sessionId: snap.sessionId,
-        projectRoot: snap.projectRoot,
-        capturedAt: snap.capturedAt.toISOString(),
-        frameworks: [...snap.frameworks],
-        endpointCount: snap.results.reduce(
-          (n, r) => n + r.specs.length,
-          0,
-        ),
-        serviceCount: new Set(snap.results.map((r) => r.serviceId ?? "default")).size,
-      };
+      const summary = summarizeSnapshot(snap);
 
       // Surface a typed closed-state cleanup hook so the test
       // suite can call it. The full close-all lives in
