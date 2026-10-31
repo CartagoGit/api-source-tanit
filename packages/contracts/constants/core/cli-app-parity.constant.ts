@@ -102,20 +102,25 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     app: ["export", "dry-run"],
     status: "covered",
     note:
-      "The same pipeline the CLI generates with. `dry-run` answers what " +
-      "would be written and what would be overwritten, before anything " +
-      "is written.",
+      "The same pipeline the CLI generates with, and the same " +
+      "exporters. The dry run answers with the files that would be " +
+      "written and whether each would overwrite something; the export " +
+      "writes them, atomically. The `export` handler used to answer " +
+      "`bytes: 0` without writing anything, and the Export Center " +
+      "drew a preview of a file that was never created.",
   },
   {
     capability: "detect",
     cli: ["scan", "list"],
     api: ["snapshot", "list-endpoints", "list-services", "get-endpoint", "get-schema"],
-    app: ["snapshot", "list-endpoints", "list-services"],
-    status: "partial",
+    app: ["snapshot", "list-endpoints", "list-services", "get-endpoint", "get-schema"],
+    status: "covered",
     note:
-      "The API can read everything the CLI scans and lists, but the " +
-      "app's endpoint list is still a fixture of five thousand invented " +
-      "endpoints instead of a call to `list-endpoints`.",
+      "The explorer asks the backend and draws what comes back. It used " +
+      "to draw a fixture of five thousand invented endpoints, with an " +
+      "auth scheme nobody detected and a source file that did not " +
+      "exist; the filters were applied to that fiction, in the client, " +
+      "over a list the client had made up.",
   },
   {
     capability: "drift",
@@ -166,9 +171,12 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     app: ["history"],
     status: "partial",
     note:
-      "The list of past generations is reachable from both. Comparing " +
-      "two revisions, re-exporting a past one and restoring it are " +
-      "CLI-and-core capabilities with no handler yet.",
+      "The session's own events — the snapshot taken, the files that " +
+      "changed under it — are reachable from both. The **persisted** " +
+      "history, the past generations with their hashes, is not: " +
+      "comparing two revisions, re-exporting a past one and restoring " +
+      "it are core capabilities with no handler yet, and the app asks " +
+      "for them as pending so the gap is visible.",
   },
   {
     capability: "stats",
@@ -184,12 +192,13 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     capability: "projects",
     cli: [],
     api: ["open-project", "list-projects", "close"],
-    app: [],
-    status: "partial",
+    app: ["open-project", "close"],
+    status: "covered",
     note:
-      "The API can open, list and close projects. The app never opens " +
-      "one: without a session every handler answers `SESSION_NOT_FOUND`, " +
-      "so nothing real can work until it does.",
+      "Opening a project opens a **session**: the backend scans it and " +
+      "answers with the summary the app draws from. The app used to set " +
+      "the project's *name* and stop there, so every operation behind " +
+      "it answered `SESSION_NOT_FOUND`.",
   },
   {
     capability: "settings",

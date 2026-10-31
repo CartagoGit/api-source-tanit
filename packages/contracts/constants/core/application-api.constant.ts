@@ -15,6 +15,28 @@ export const ListEndpointsInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   method: z.string().optional(),
   uriContains: z.string().optional(),
+  /**
+   * The filters the app's endpoint explorer offers.
+   *
+   * They were on the client before, filtering a list the app had
+   * invented. A filter over invented data is decoration; a filter the
+   * backend answers is a filter. They are here so both faces can ask
+   * the same question of the same place.
+   */
+  service: z.string().optional(),
+  transport: z.string().optional(),
+  auth: z.string().optional(),
+  validation: z.string().optional(),
+  /** The framework that recognized the endpoint. */
+  framework: z.string().optional(),
+  /** A status, matched against the endpoint's responses. */
+  responses: z.string().optional(),
+  /** How sure the scanner is: `high`, `medium` or `low`. */
+  confidence: z.string().optional(),
+  /** A path fragment of the declaring file. */
+  sourceFile: z.string().optional(),
+  /** Free text over the method, the URI and the name. */
+  search: z.string().optional(),
   limit: z.number().int().positive().max(1000).optional(),
   cursor: z.string().optional(),
 });
@@ -28,11 +50,18 @@ export const ListServicesInputSchema = SnapshotInputSchema;
 export const DryRunInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   collectionName: z.string().min(1).optional(),
+  /** The format to preview. `postman` when nobody says. */
+  target: z.string().min(1).optional(),
+  /** Where the files would go. */
+  outputDirectory: z.string().min(1).optional(),
 });
 export const ExportInputSchema = z.object({
   projectRoot: ProjectRootSchema,
   target: z.string().min(1),
+  /** The file to write. Its folder is the output directory. */
   outputPath: z.string().min(1).optional(),
+  /** Where the files go. The project's `tanit` folder when nobody says. */
+  outputDirectory: z.string().min(1).optional(),
 });
 export const HistoryInputSchema = z.object({
   projectRoot: ProjectRootSchema,
@@ -69,6 +98,29 @@ export const EndpointSummarySchema = z.object({
   uri: z.string(),
   name: z.string(),
   serviceId: z.string().optional(),
+  /**
+   * The rest of what the snapshot knows about this endpoint.
+   *
+   * It used to be just method, URI and name — enough to count, not
+   * enough to *show*. The app had to invent the rest (five thousand
+   * invented endpoints, with an auth scheme and a confidence nobody
+   * measured), because the summary could not answer. Now it can, and
+   * every field here is read from the snapshot that really scanned
+   * the project.
+   */
+  description: z.string().optional(),
+  folder: z.string().optional(),
+  transport: z.string().optional(),
+  auth: z.string().optional(),
+  validation: z.string().optional(),
+  framework: z.string().optional(),
+  confidence: z.string().optional(),
+  /** The response statuses the inferrer found, as strings. */
+  responses: z.array(z.string()).optional(),
+  /** Where the route was declared, when the scanner knew. */
+  sourceFile: z.string().optional(),
+  /** 1-based line of the declaration, when the scanner knew. */
+  line: z.number().int().nonnegative().optional(),
 });
 export const ServiceSummarySchema = z.object({
   serviceId: z.string(),

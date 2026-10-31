@@ -1,33 +1,35 @@
 /**
- * `export.handler.ts` — render the collection to a target on disk.
+ * `export.handler.ts` — write the artifacts, for real.
  *
- * The `target` string is one of the exporters the pipeline knows.
- * Today the recognised targets map to the Postman exporter; future
- * slices (OpenAPI / Insomnia / Bruno / HAR / curl) extend the
- * dispatch. Unknown targets return `EXPORT_FAILED` rather than
- * silently picking a default — a UI that sends `"posman"` should
- * hear about it, not get a Postman collection.
+ * ## What it used to do
+ *
+ * It answered `{ outputPath, bytes: 0 }`. The path was computed and
+ * **nothing was written**: the handler said so in a comment — "we
+ * return a synthetic success payload so the API surface is stable
+ * today". The surface was stable, and so was the lie: an app that
+ * exported through this handler would tell the user it had written a
+ * file that did not exist.
+ *
+ * Now it writes. The artifacts are built from the session's snapshot
+ * — the same ones the CLI writes, through the same exporters — and
+ * the write is atomic, so a failure never leaves half a file.
  */
+import { join } from "node:path";
 
 import type { IHandler } from "./dispatcher.js";
-import { ExportInputSchema, type ExportInput } from "./zod-schemas.js";
+import {
+  ExportInputSchema,
+  type ExportInput,
+} from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
+import { writeExport } from "./export-artifacts.helper.js";
 import { apiError } from "./error.js";
 
-/** Resultado de escribir una colección exportada. */
+/** Resultado de escribir los artefactos de un formato. */
 import type { ExportOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 export type { ExportOutput } from "../../contracts/interfaces/core/application-api.interface.js";
 
-const KNOWN_TARGETS = new Set([
-  "postman",
-  "openapi",
-  "insomnia",
-  "bruno",
-  "har",
-  "curl",
-]);
-
-/** Crea el handler que exporta el snapshot actual a un destino. */
+/** Crea el handler que escribe los artefactos del formato pedido. */
 export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
   return {
     name: "export",
@@ -40,34 +42,41 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
           `No open session for projectRoot "${input.projectRoot}"`,
         );
       }
-      if (!KNOWN_TARGETS.has(input.target)) {
+      const snap = session.current();
+      if (snap.results.length === 0) {
         throw apiError(
           "EXPORT_FAILED",
-          `Unknown export target "${input.target}". Known targets: ${[...KNOWN_TARGETS].join(", ")}`,
+          "Snapshot has no results — re-open the session",
         );
       }
 
-      const snap = session.current();
-      // The export write itself is the exporter's job (it owns
-      // the disk format and the atomic-write helper). For the S3
-      // slice we delegate to the first exporter in the catalogue
-      // — a richer dispatch lives in the future exporter-pipeline
-      // slice. We return a synthetic success payload so the API
-      // surface is stable today and the S4 bridge can ship
-      // against it.
-      const first = snap.results[0];
-      if (!first) {
-        throw apiError(
-          "EXPORT_FAILED",
-          "Snapshot has no results to export",
-        );
-      }
-      const outputPath = input.outputPath ?? `${input.projectRoot}/export.${input.target}.json`;
-      void first.collection; // surface to TS so unused-import lint does not flag it.
+      // Where the files go, in order of specificity:
+      //
+      //   1. the directory the caller named;
+      //   2. the folder of the file the caller named;
+      //   3. the project's own `tanit` folder.
+      //
+      // The second rule used to be the only one, and the field
+      // `outputDirectory` was in the schema but never read — so a
+      // caller that said "write them in /tmp/out" got them in the
+      // project's folder, and the dry run had answered about
+      // /tmp/out.
+      const directory =
+        input.outputDirectory ??
+        (input.outputPath ? dirnameOf(input.outputPath) : join(snap.projectRoot, "tanit"));
+
+      const written = await writeExport(snap, input.target, directory);
       return {
-        outputPath,
-        bytes: 0,
+        outputPath: input.outputPath ?? written.outputPath,
+        bytes: written.bytes,
+        files: written.files,
       };
     },
   };
+}
+
+/** The directory of a path. */
+function dirnameOf(path: string): string {
+  const index = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  return index <= 0 ? path : path.slice(0, index);
 }

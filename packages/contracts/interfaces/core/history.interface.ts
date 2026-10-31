@@ -14,6 +14,26 @@ export interface IHistoryRecord {
 
 export type IHistoryEntry = IHistoryRecord;
 
+/**
+ * One thing that happened to the open session.
+ *
+ * The API's `history` handler answers with the session's own events:
+ * the snapshot was taken, or the files it was built from changed.
+ * That is what the app shows, and it is real.
+ *
+ * The **persisted** history — the generations of past runs, with
+ * their hashes, that can be compared, re-exported or restored — is
+ * a different thing: it lives in the user's history file, and no
+ * handler exposes it yet.
+ */
+export interface ISessionEvent {
+  readonly kind: "snapshot-ready" | "snapshot-stale";
+  readonly capturedAt: string;
+  readonly sessionId?: string;
+  /** The files that changed, when the snapshot went stale. */
+  readonly changedPaths?: ReadonlyArray<string>;
+}
+
 export interface IHistoryChange {
   readonly key: string;
   readonly serviceId: string;
