@@ -6,7 +6,15 @@ import {
   EndpointConfidence,
   EndpointQuery,
 } from "../../core/api/endpoints.client";
-import { debounce, FILTER_DEBOUNCE_MS } from "../../core/api/debounce.helper";
+import { debounce } from "../../core/api/debounce.helper";
+
+/**
+ * How long the app waits before asking again.
+ *
+ * A quarter of a second. Long enough to finish a word, short enough
+ * that the list does not feel like it is lagging.
+ */
+const FILTER_DEBOUNCE_MS = 250;
 
 /**
  * The filter bar of the endpoint explorer.

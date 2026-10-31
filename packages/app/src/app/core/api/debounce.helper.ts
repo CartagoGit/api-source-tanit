@@ -15,6 +15,9 @@
  * The **last** call wins, and the pending one is forgotten when the
  * debounced function is told to cancel. A timer that fires after the
  * user left the screen is a request nobody is waiting for.
+ *
+ * How long to wait is the caller's decision: this helper only knows
+ * how to delay.
  */
 
 /**
@@ -45,11 +48,3 @@ export function debounce<T extends unknown[]>(
 
   return delayed;
 }
-
-/**
- * How long the app waits before asking again.
- *
- * A quarter of a second. Long enough to finish a word, short enough
- * that the list does not feel like it is lagging.
- */
-export const FILTER_DEBOUNCE_MS = 250;
