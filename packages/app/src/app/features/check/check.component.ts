@@ -16,8 +16,8 @@ export class CheckComponent {
   async run(): Promise<void> {
     this.running.set(true);
     try {
-      const result = await this.client.check(this.projectRoot());
-      this.message.set(result.passed ? "Project is in sync." : result.issues.join("; "));
+      const result = await this.client.check(this.projectRoot()) as { passed?: boolean; issues?: ReadonlyArray<string> };
+      this.message.set(result.passed ? "Project is in sync." : (result.issues ?? []).join("; "));
     } finally {
       this.running.set(false);
     }

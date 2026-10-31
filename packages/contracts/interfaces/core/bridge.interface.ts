@@ -11,6 +11,20 @@ export interface IHttpBridgeOptions {
   readonly caller?: "browser" | "desktop" | "cli";
   /** Disable Origin / token checks (loopback + token stay). */
   readonly skipSecurity?: boolean;
+  /**
+   * A folder of static files to serve besides the API.
+   *
+   * The desktop app in the browser needs the **same origin** for the
+   * page and for `POST /api` — a page on one port asking another
+   * port is a cross-origin request, and the answer to that is either
+   * CORS or a token that a third party could read. Serving the files
+   * from here avoids both.
+   *
+   * The token is planted in the served HTML (`data-tanit-token` on the
+   * `<html>` element), so the page can authenticate without the server
+   * having to hand it out anywhere else.
+   */
+  readonly staticDir?: string;
 }
 
 /** Observable state of a started HTTP application bridge. */

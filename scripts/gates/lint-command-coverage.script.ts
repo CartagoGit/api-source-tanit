@@ -83,11 +83,14 @@ interface IProblem {
  * primer fallo de este gate: `check` vive en `diff.script.ts` y
  * `validate` en `validate-json.script.ts`, así que dos comandos bien
  * probados salían como sin probar. La correspondencia está escrita en el
- * dispatcher, que es su única fuente de verdad — leerla de ahí evita que
- * este gate y el CLI se separen.
+ * registro de comandos, que es su única fuente de verdad — leerla de ahí
+ * evita que este gate y el CLI se separen.
  */
 async function verbosPorFichero(): Promise<Map<string, string>> {
-  const source = await readFile(fromRoot("packages", "cli", "cli.script.ts"), "utf8");
+  const source = await readFile(
+    fromRoot("packages", "cli", "commands.registry.ts"),
+    "utf8",
+  );
   const mapa = new Map<string, string>();
   const bloque = /^\s{2}([a-z][\w-]*):\s*\{[\s\S]*?import\("\.\/commands\/([\w.-]+)\.js"\)/gm;
   for (const m of source.matchAll(bloque)) {

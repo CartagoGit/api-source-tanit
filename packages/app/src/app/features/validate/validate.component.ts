@@ -17,8 +17,10 @@ export class ValidateComponent {
   async run(): Promise<void> {
     this.running.set(true);
     try {
-      const result = await this.bridge.request("validate", { projectRoot: this.projectRoot() });
-      this.issues.set(result.issues);
+      // `validate` has no handler yet: validating a collection against
+      // the Postman schema is CLI-only.
+      const result = await this.bridge.requestPending("validate", { projectRoot: this.projectRoot() }) as { valid?: boolean; issues?: ReadonlyArray<string> };
+      this.issues.set(result.issues ?? []);
       this.message.set(result.valid ? "Project is valid." : "Validation found diagnostics.");
     } finally {
       this.running.set(false);

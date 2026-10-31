@@ -86,6 +86,18 @@ const EXCEPTIONS: readonly IException[] = [
       "con su CSS y su JS. Meterla en un proyecto que declara «sin " +
       "implementación» sería cumplir la letra rompiendo el motivo.",
   },
+  {
+    path: "packages/cli/commands.registry.ts",
+    why:
+      "`COMMANDS` no es un contrato: es un **grafo de composición**. Cada " +
+      "entrada lleva un `import()` literal del comando que ejecuta, y " +
+      "`bun build --compile` sólo incluye en el binario los módulos que " +
+      "puede ver; mover el registro a `packages/contracts` invertiría la " +
+      "dependencia (contracts → cli) y arrastraría la implementación a la " +
+      "capa que promete no tener ninguna. La **forma** de un comando sí " +
+      "es contrato, y vive en " +
+      "`packages/contracts/interfaces/cli/command.interface.ts`.",
+  },
 ];
 
 /**

@@ -18,9 +18,7 @@
  *      release the port forces you to track down the process and
  *      kill it by hand.
  */
-import { readFile, stat } from "node:fs/promises";
-import { resolve, sep } from "node:path";
-
+import { readAsset, plantToken } from "../../core/transport/static-asset.server.js";
 import { handleUiRequest } from "./ui-routes.service.js";
 import type { IUiServer, IUiServerOptions } from "../../contracts/interfaces/cli/ui.interface.js";
 import { DEFAULT_UI_PORT } from "../../contracts/constants/cli/terminal.constant.js";
@@ -30,14 +28,6 @@ const HOST = "127.0.0.1";
 
 /** How many ports we try before giving up. */
 const INTENTOS = 20;
-const CONTENT_TYPES: Readonly<Record<string, string>> = {
-  ".css": "text/css; charset=utf-8",
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".map": "application/json; charset=utf-8",
-  ".svg": "image/svg+xml",
-};
 
 /**
  * Is this a "port already in use" error?
@@ -68,31 +58,21 @@ export async function staticAsset(
   pathname: string,
   testigo: string,
 ) {
-  const root = resolve(directory);
-  const relative = pathname === "/" || pathname === "/index.html" ? "index.html" : pathname.slice(1);
-  const file = resolve(root, relative);
-  if (file !== root && !file.startsWith(`${root}${sep}`)) return new Response("no encontrado", { status: 404 });
-  try {
-    if (!(await stat(file)).isFile()) return null;
-    const contents = await readFile(file, "utf8");
-    const type = CONTENT_TYPES[file.slice(file.lastIndexOf("."))] ?? "application/octet-stream";
-    if (file.endsWith("index.html")) {
-      const html = contents.replace(/<script(\s[^>]*)?>/, (tag) => {
-        const attributes = tag.slice("<script".length, -1).trim();
-        return `<script${attributes ? ` ${attributes}` : ""} data-token="${testigo}">`;
-      });
-      return new Response(html, {
-        status: 200,
-        headers: {
-          "content-type": type,
-          "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
-        },
-      });
-    }
-    return new Response(contents, { status: 200, headers: { "content-type": type } });
-  } catch {
-    return null;
-  }
+  const asset = await readAsset(directory, pathname);
+  if (asset === null) return null;
+  const contents = asset.isPage ? plantToken(asset.contents, testigo, "script") : asset.contents;
+  return new Response(contents, {
+    status: 200,
+    headers: {
+      "content-type": asset.type,
+      ...(asset.isPage
+        ? {
+            "content-security-policy":
+              "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'",
+          }
+        : {}),
+    },
+  });
 }
 
 /** Starts the interface and returns where it ended up listening. */

@@ -78,7 +78,18 @@ export const SECTIONS: readonly ISection[] = [
     // **feature**, not a module: one spec per inferrer and one for
     // the coverage reporter. It is still core — it only imports
     // `packages/core/` and `packages/contracts/`.
-    paths: ["packages/core/", "tests/response-inference/"],
+    //
+    // `tests/transport/` belongs here for the same reason, and it had
+    // been **orphaned**: no section listed it, so the tests of both
+    // bridges (stdio and HTTP) had never run. A suite that nobody
+    // runs is not a suite — it is a file that says "all good" without
+    // having asked anything.
+    //
+    // They run under **bun** rather than vitest, because the bridge
+    // binds a real socket with `Bun.serve` and vitest runs on Node.
+    // `bun run test:core:transport` is the command; the vitest project
+    // excludes the folder so it is not counted twice.
+    paths: ["packages/core/", "tests/response-inference/", "tests/transport/"],
     tests: [
       "tests/core/**/*.{spec,test}.ts",
       "tests/response-inference/**/*.{spec,test}.ts",

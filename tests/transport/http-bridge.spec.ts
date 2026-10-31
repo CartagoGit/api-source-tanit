@@ -20,7 +20,10 @@
  *   - Path / method routing (`POST /api`, everything else `404`).
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+// The bridge binds a real socket with `Bun.serve`, so this suite
+// needs the runtime that has it. `bun:test` it is — the same reason
+// `tests/core/state/sqlite/` runs outside vitest.
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import {
