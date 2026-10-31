@@ -65,7 +65,7 @@ import {
   CLI_APP_PARITY,
   PENDING_APP_OPERATIONS,
 } from "../../packages/contracts/constants/core/cli-app-parity.constant.js";
-import { COMMANDS } from "../../packages/cli/commands.registry.js";
+import { COMMANDS } from "../../packages/cli/commands.constant.js";
 
 /** Where the app's clients live. */
 const APP_SRC = fromRoot("packages", "app", "src");
@@ -168,7 +168,7 @@ async function main(): Promise<number> {
   for (const command of [...commands].sort()) {
     if (!mappedCommands.has(command)) {
       findings.push({
-        file: "packages/cli/commands.registry.ts",
+        file: "packages/cli/commands.constant.ts",
         line: 0,
         message:
           `el CLI despacha "${command}" y el mapa de paridad no lo nombra: ` +

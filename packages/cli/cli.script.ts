@@ -19,9 +19,9 @@
 import { isAbsolute, resolve } from "node:path";
 import { FRAMEWORK_IDS } from "../contracts/constants/frameworks/framework-ids.constant.js";
 import { CLI_VERSION } from "../contracts/constants/cli/cli-version.constant.js";
-import { COMMANDS } from "./commands.registry.js";
+import { COMMANDS } from "./commands.constant.js";
 
-export { COMMANDS } from "./commands.registry.js";
+export { COMMANDS } from "./commands.constant.js";
 
 /**
  * La ayuda se construye al pedirla, no al cargar el módulo.

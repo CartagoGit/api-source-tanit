@@ -88,7 +88,7 @@ interface IProblem {
  */
 async function verbosPorFichero(): Promise<Map<string, string>> {
   const source = await readFile(
-    fromRoot("packages", "cli", "commands.registry.ts"),
+    fromRoot("packages", "cli", "commands.constant.ts"),
     "utf8",
   );
   const mapa = new Map<string, string>();

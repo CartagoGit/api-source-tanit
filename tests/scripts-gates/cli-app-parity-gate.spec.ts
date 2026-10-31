@@ -19,7 +19,7 @@ import {
   CLI_APP_PARITY,
   PENDING_APP_OPERATIONS,
 } from "../../packages/contracts/constants/core/cli-app-parity.constant";
-import { COMMANDS } from "../../packages/cli/commands.registry";
+import { COMMANDS } from "../../packages/cli/commands.constant";
 
 describe("the parity gate", () => {
   it("sees the operations the app asks for", async () => {

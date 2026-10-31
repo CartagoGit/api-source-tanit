@@ -87,7 +87,7 @@ const EXCEPTIONS: readonly IException[] = [
       "implementación» sería cumplir la letra rompiendo el motivo.",
   },
   {
-    path: "packages/cli/commands.registry.ts",
+    path: "packages/cli/commands.constant.ts",
     why:
       "`COMMANDS` no es un contrato: es un **grafo de composición**. Cada " +
       "entrada lleva un `import()` literal del comando que ejecuta, y " +
