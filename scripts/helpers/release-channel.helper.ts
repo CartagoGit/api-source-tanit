@@ -22,6 +22,7 @@
  */
 
 import {
+  RELEASE_CHANNELS,
   RELEASE_PRERELEASE_TAGS,
   STABLE_RELEASE_CHANNEL,
 } from "../../packages/contracts/constants/release/release-channel.constant.js";
@@ -30,8 +31,17 @@ import type { ReleaseChannel } from "../../packages/contracts/interfaces/release
 /** Semver con prefijo opcional de prerelease y de build. */
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/;
 
-/** Los canales que se declaran con un prefijo de prerelease. */
-const PRERELEASE_CHANNELS = ["alpha", "beta", "rc"] as const;
+/**
+ * Los canales que se declaran con un prefijo de prerelease.
+ *
+ * Se derivan de la lista del contrato en vez de escribirla otra vez:
+ * dos listas de canales en dos ficheros es una forma segura de que
+ * uno se quede viejo sin que nada lo note.
+ */
+const PRERELEASE_CHANNELS = RELEASE_CHANNELS.filter(
+  (channel): channel is Exclude<ReleaseChannel, "stable"> =>
+    channel !== STABLE_RELEASE_CHANNEL,
+);
 
 /** Si la versión tiene forma de semver. */
 export function isSemver(version: string): boolean {
