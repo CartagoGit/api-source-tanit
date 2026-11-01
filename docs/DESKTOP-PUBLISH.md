@@ -60,8 +60,11 @@ gente instala en su equipo.
 ### 3. Mergear `develop` en `main`
 
 La versión sale por `main`: cada PR de `develop` a `main` es una
-versión que se corta. El PR se mergea con **squash**, porque `main`
-tiene `required_linear_history` y un merge commit no pasa.
+versión que se corta. El PR se mergea con **merge commit**, nunca con
+squash: la política del repo dice `mergeMethod: "merge"`, y un squash
+aplana la historia y deja fuera del árbol los commits que
+`lint:proposals` audita — el gate exige que cada `shippedIn` sea
+ancestro de HEAD, y la rama se quedaría en rojo.
 
 ### 4. Etiquetar
 

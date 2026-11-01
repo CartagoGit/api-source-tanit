@@ -40,11 +40,14 @@ name: auto-approve
 # código del PR sería ejecución de código arbitrario con permisos de
 # escritura.
 #
-# ## El método de merge depende de la rama
+# ## El método de merge
 #
-# `main` tiene `required_linear_history`: ahí el merge tiene que ser
-# **squash**. `develop` no, y su historia son merge commits: ahí es
-# **merge**. Un método solo no vale para las dos.
+# **merge**, en las dos ramas. Es lo que declara la política del repo
+# (`delendai.config.json` → `development.integration.mergeMethod`), y
+# no es un detalle: un **squash** aplana la historia y deja fuera del
+# árbol los commits que `lint:proposals` audita — el gate exige que
+# cada `shippedIn` sea ancestro de HEAD, y con squash no lo es. Por eso
+# un squash dejó `main` en rojo después de la primera promoción.
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -133,20 +136,35 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // `main` exige historia lineal, así que ahí el merge es
-            // squash. `develop` no, y su historia son merge commits:
-            // ahí el merge es merge. Un método único no vale para las
-            // dos ramas.
+            // `github.rest.pulls.enableAutoMerge` **no existe** en la
+            // versión de Octokit que trae `github-script@v7`: la
+            // llamada falla con "enableAutoMerge is not a function",
+            // que no es un error de GitHub sino de la librería. El
+            // endpoint REST sí funciona, y es el mismo:
+            // `PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge`.
+            //
+            // Se llama por `github.request` —el cliente HTTP que SÍ
+            // conoce todos los endpoints— y no por un método de
+            // Octokit que puede faltar.
             const base = context.payload.pull_request.base.ref;
-            const method = base === "main" ? "squash" : "merge";
+            // Ni `main` ni `develop` usan squash. La política
+            // declarada en `delendai.config.json` es `mergeMethod:
+            // "merge"`, y `main` ya no exige historia lineal: un
+            // squash aplana la historia y deja fuera del árbol los
+            // commits que `lint:proposals` audita, que es exactamente
+            // lo que dejó a `main` en rojo.
+            const method = "merge";
             try {
-              await github.rest.pulls.enableAutoMerge({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number,
-                merge_method: method,
-              });
-              core.info(`auto-merge activado (${method})`);
+              await github.request(
+                "PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge",
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  merge_method: method,
+                },
+              );
+              core.info(`auto-merge activado (${method}) sobre ${base}`);
             } catch (error) {
               // Que el auto-merge no se pueda activar no invalida la
               // aprobación: el PR queda aprobado y se puede mergear a

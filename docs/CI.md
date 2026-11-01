@@ -129,19 +129,35 @@ autor del PR. La aprobación **no** es ciega; sólo ocurre cuando:
    ha terminado en `success`.
 
 Un PR de otra persona sigue necesitando una aprobación humana de
-verdad. El workflow también activa el auto-merge, con el método que
-corresponde a la rama: **squash** en `main` (que exige historia lineal)
-y **merge** en `develop`.
+verdad. El workflow también activa el auto-merge con **merge commit**,
+en las dos ramas.
+
+> **Por qué merge y nunca squash.** La política declarada en
+> `delendai.config.json` es `mergeMethod: "merge"`. No es un detalle
+> de estilo: el gate `lint:proposals` exige que cada `shippedIn` de una
+> propuesta cerrada sea **ancestro de HEAD** — es la auditoría de que
+> la evidencia del cierre está en la historia. Un squash aplana la
+> historia y esos commits dejan de ser ancestros: el gate falla con
+> 166 `shippedIn` inalcanzables y la rama queda en rojo. Por eso la
+> primera promoción —que se hizo con squash— dejó `main` en rojo, y
+> el alfa se cortó desde una rama que ya no estaba verde.
+>
+> El auto-merge se activa por el **endpoint REST**
+> (`PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge`) y no por
+> `github.rest.pulls.enableAutoMerge`: ese método **no existe** en la
+> versión de Octokit que trae `github-script@v7`, y la llamada moría
+> con "enableAutoMerge is not a function". El PR quedaba aprobado y
+> sin auto-merge, esperando a un humano que no hacía falta.
 
 > El dueño se lee de `vars.OWNER` y no de `env`, porque el contexto
 > `env` **no** existe en `jobs.<job_id>.if`: ahí sólo hay `github`,
 > `needs`, `vars` e `inputs`. Con `env` la comparación nunca casaba y el
 > workflow no hacía nada, en silencio.
 
-`tests/cli/auto-approve.spec.ts` vigila las tres cosas que pueden
+`tests/cli/auto-approve.spec.ts` vigila las cuatro cosas que pueden
 romperse sin que nadie se entere: que deje de mirar el autor, que deje
-de esperar a la validación, y que el método de merge deje de depender
-de la rama.
+de esperar a la validación, que el merge deje de ser un squash, y que
+el auto-merge se pida por el endpoint REST.
 
 ## Ejecución real
 
