@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -7,12 +7,13 @@ import { toCanonicalSnapshot } from "./canonical-snapshot.service.js";
 import { diffSnapshots } from "./history-diff.helper.js";
 import { decodeSnapshot, encodeSnapshot } from "./snapshot-codec.helper.js";
 import { snapshotSha256 } from "./snapshot-hash.service.js";
+import { writeJsonAtomic } from "../helpers/atomic-write.helper.js";
 import {
   HISTORY_STORE_DIRECTORY_NAME,
   HISTORY_STORE_ENVIRONMENT_VARIABLE,
   STATE_DB_DIRECTORY_NAME,
 } from "../../contracts/constants/core/state-store.constant.js";
-import type { IHistoryDiff, IHistoryRecord, IHistorySummary } from "../../contracts/interfaces/core/history.interface.js";
+import type { IHistoryConfigurationPair, IHistoryDiff, IHistoryRecord, IHistoryRecordOptions, IHistorySummary, IProjectHistoryOptions } from "../../contracts/interfaces/core/history.interface.js";
 import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.interface.js";
 
 /**
@@ -55,31 +56,6 @@ import type { IProjectSnapshot } from "../../contracts/interfaces/core/session.i
  * writes into the project it is analysing changes what it analyses,
  * and the project belongs to the person, not to the tool.
  */
-export interface IProjectHistoryOptions {
-  /** Where the history lives. The user's own folder when nobody says. */
-  readonly directory?: string;
-}
-
-/** How a record was made. */
-export interface IHistoryRecordOptions {
-  /** The formats it was written in. */
-  readonly formats?: ReadonlyArray<string>;
-  /** Where it was written. */
-  readonly output?: string;
-  /** What made it. */
-  readonly source?: IHistoryRecord["provenance"]["source"];
-  /** The record it came from. */
-  readonly parentId?: string;
-  /** How it was configured. */
-  readonly configuration?: Readonly<Record<string, unknown>>;
-}
-
-/** The two configurations, side by side. */
-export interface IHistoryConfigurationPair {
-  readonly before: Readonly<Record<string, unknown>>;
-  readonly after: Readonly<Record<string, unknown>>;
-}
-
 /** What is written in each file. */
 interface IPersistedRecord {
   /** The version of the format, so a future reader knows what it has. */
@@ -224,10 +200,12 @@ export class ProjectHistoryService {
     };
     const directory = projectDirectory(projectRoot, this.base);
     await mkdir(directory, { recursive: true });
-    await writeFile(
+    // Atomic: a revision that is half-written is a revision that
+    // cannot be read, and a history that loses entries silently is
+    // worse than one that fails loudly.
+    await writeJsonAtomic(
       join(directory, `${safeId(record.id)}.json`),
-      JSON.stringify(toPersisted(record, snapshot), null, 2),
-      "utf8",
+      toPersisted(record, snapshot),
     );
     return record;
   }

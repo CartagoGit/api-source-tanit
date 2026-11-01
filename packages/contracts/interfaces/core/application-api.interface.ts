@@ -147,7 +147,15 @@ export interface ExportOutput { readonly outputPath: string; readonly bytes: num
    * It is there so the app can say "this is revision X" instead of
    * guessing: the export and the history entry are the same moment.
    */
-readonly historyId?: string; }
+readonly historyId?: string; /**
+   * What went wrong while the export was being remembered.
+   *
+   * The files were written; the revision was not kept. Saying so is
+   * the honest thing: an export that reports a failure when it
+   * succeeded would send the person looking for a problem that is
+   * not there.
+   */
+readonly warning?: string; }
 export type IHistoryEntry =
   | { readonly kind: "snapshot-ready"; readonly capturedAt: string; readonly sessionId: string }
   | { readonly kind: "snapshot-stale"; readonly capturedAt: string; readonly changedPaths: ReadonlyArray<string> };

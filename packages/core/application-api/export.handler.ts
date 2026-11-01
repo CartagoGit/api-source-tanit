@@ -73,18 +73,32 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
       // Without this the persisted history would only have the
       // revisions the CLI made, and the app would see an empty
       // history for a project it exports every day.
-      const record = await history.record(input.projectRoot, snap, {
-        formats: [input.target],
-        output: directory,
-        source: "export",
-        configuration: { formats: [input.target], outputDirectory: directory },
-      });
+      //
+      // A history that could not be written does **not** undo the
+      // export: the files are on disk, and telling the user that the
+      // export failed when it did not would be a worse lie than the
+      // revision that is missing. So the failure is reported, and
+      // the export stands.
+      let historyId: string | undefined;
+      let warning: string | undefined;
+      try {
+        const record = await history.record(input.projectRoot, snap, {
+          formats: [input.target],
+          output: directory,
+          source: "export",
+          configuration: { formats: [input.target], outputDirectory: directory },
+        });
+        historyId = record.id;
+      } catch (error) {
+        warning = `The export was written, but the revision could not be remembered: ${error instanceof Error ? error.message : String(error)}`;
+      }
 
       return {
         outputPath: input.outputPath ?? written.outputPath,
         bytes: written.bytes,
         files: written.files,
-        historyId: record.id,
+        historyId,
+        warning,
       };
     },
   };

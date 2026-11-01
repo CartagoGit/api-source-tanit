@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 426 símbolos en 170 módulos.
+> 423 símbolos en 170 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -4980,63 +4980,6 @@ export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapsh
 ```
 
 ### `packages/core/session/project-history.service.ts`
-
-#### `IProjectHistoryOptions`
-
-```ts
-export interface IProjectHistoryOptions
-```
-
-The persisted history of a project.
-
-## What it is
-
-A folder per project, one file per record. Each record holds:
-
-  · the **canonical snapshot** — what the API surface was, in the
-    shape the diff compares and the hash digests;
-  · the **whole snapshot** — so the record can be exported again,
-    or restored, exactly as it was;
-  · the **configuration** it was made with — the formats, where it
-    was written — so two records can be compared by how they were
-    built, not only by what they contain.
-
-## Why it is on disk and not in memory
-
-Because a history that dies with the process is not a history. The
-whole point of remembering a revision is being able to come back to
-it **later**: tomorrow, next week, from another machine that syncs
-the folder. The in-memory recorder that used to live here was
-written, tested, and wired to nothing — the diff had no history to
-compare and the hash had nothing to digest.
-
-## Why one file per record
-
-Because two processes must not fight over one file. A JSON array
-would be read-modify-written by both, and the loser would drop the
-winner's record. One file per record means one writer per file: a
-record is written once and never rewritten, so the only race left
-is two records with the same id, and the id carries the hash of
-what it holds.
-
-## Where it lives
-
-`~/.tanit/history/<project>/`, next to the state store and the
-user's own settings — **not** inside the project. A tool that
-writes into the project it is analysing changes what it analyses,
-and the project belongs to the person, not to the tool.
-
-#### `IHistoryRecordOptions`
-
-```ts
-export interface IHistoryRecordOptions
-```
-
-#### `IHistoryConfigurationPair`
-
-```ts
-export interface IHistoryConfigurationPair
-```
 
 #### `resolveHistoryDirectory`
 

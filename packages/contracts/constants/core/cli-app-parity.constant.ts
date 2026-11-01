@@ -182,14 +182,16 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
     status: "partial",
     note:
       "The session's own events — the snapshot taken, the files that " +
-      "changed under it — are reachable from both. The **persisted** " +
-      "history, the past revisions with their hashes, is reachable " +
-      "from the app: it lists them, compares two, says how they were " +
-      "configured, exports one again and restores one. The history " +
-      "is on disk, so a revision outlives the session that made it, " +
-      "and the CLI's generation writes to the same store. What the " +
-      "CLI still cannot do is compare or restore: its `history` " +
-      "command lists the generations and stops there.",
+      "changed under it — are reachable from both. The CLI's " +
+      "`history` command reads `~/.tanit/history.jsonl`, the log of " +
+      "the runs: what was run, when, and how it ended. The " +
+      "**persisted revisions** are the app's: every export leaves " +
+      "one behind on disk, with its hash, and the app lists them, " +
+      "compares two, says how they were configured, exports one " +
+      "again and restores one. A revision outlives the session that " +
+      "made it. What the CLI still cannot do is compare or restore a " +
+      "revision, and the CLI's runs do not become revisions: only " +
+      "the app's exports are remembered as such.",
   },
   {
     capability: "stats",
