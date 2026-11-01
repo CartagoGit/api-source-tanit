@@ -98,7 +98,11 @@ export class EndpointDetailComponent {
 
   transportDescription(item: EndpointRecord): string {
     switch (item.transport) {
-      case "http": return `${item.method} request with ${item.parameters.length} parameter(s)`;
+      case "http":
+        return this.i18n.translate(
+          item.parameters.length === 1 ? "endpoint.requestOne" : "endpoint.requestMany",
+          { method: item.method, count: item.parameters.length },
+        );
       case "grpc": return this.i18n.translate("endpoint.transportGrpc");
       case "ws": return this.i18n.translate("endpoint.transportWebsocketDescription");
       case "sse": return this.i18n.translate("endpoint.transportServerSentDescription");

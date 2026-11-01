@@ -26,8 +26,15 @@
  *  4. **Las claves son estáticas.** Una clave construida en runtime
  *     (`nav.${seccion}`) no se puede comprobar, y una clave que no se
  *     puede comprobar es una clave que se puede equivocar sin que
- *     nadie se entere.
- *  5. **Cada idioma es real.** Un locale tiene que estar en los
+ *     nadie se entere. La excepción es un mapa declarado con claves
+ *     literales: el conjunto de claves es conocido aunque la que se
+ *     elija dependa de lo que esté en pantalla.
+ *  5. **Ningún texto fijo en las plantillas.** Una palabra escrita
+ *     entre etiquetas no se traduce: sale en inglés aunque el idioma
+ *     sea el español. Es el fallo que más se cuela, porque la
+ *     plantilla se ve bien en el navegador y nadie lo nota hasta que
+ *     alguien lee la app en otro idioma.
+ *  6. **Cada idioma es real.** Un locale tiene que estar en los
  *     `BUNDLED_LOCALES` del producto: la app y la interfaz del
  *     binario ofrecen los mismos idiomas.
  *
@@ -63,40 +70,115 @@ interface IProblem {
   readonly message: string;
 }
 
-/**
- * Una llamada a `translate`.
- *
- * El punto delante de `translate` es lo que la distingue de la
- * **declaración** del método en el propio servicio: `translate(clave:
- * string)` no es una llamada, es la firma.
- */
-const TRANSLATE_CALL = /\.translate\s*\(\s*([^)]*?)\s*\)/g;
-
 /** Un `labelKey: "..."`: la clave de una etiqueta guardada en una lista. */
-const LABEL_KEY = /\blabelKey\s*:\s*("[^"]+"|'[^']+')/g;
+const LABEL_KEY = /\blabelKey\s*:\s*("[^"]*"|'[^']*')/g;
 
-/** Una clave pedida, con el fichero que la pide. */
-interface IRequest {
-  readonly key: string;
-  readonly file: string;
+/** Un mapa de claves literales: `Record<string, string>`. */
+const MAP_DECLARATION = /(\w+)\s*:\s*(?:Readonly<)?Record<string,\s*string>/g;
+
+/** Una palabra suelta dentro de un texto: `Overwrite`. */
+const WORD = /[A-Za-z]{2,}/;
+
+/**
+ * Los argumentos de cada llamada a `translate`.
+ *
+ * Se cuentan los paréntesis, porque el argumento puede traerlos:
+ * `translate("x", { count: f(1) })` cierra donde cierra de verdad, no
+ * en el primer `)`.
+ */
+function argumentsOf(text: string, method: string): string[] {
+  const out: string[] = [];
+  const pattern = new RegExp(`\\b${method}\\s*\\(`, "g");
+  let match = pattern.exec(text);
+  while (match !== null) {
+    const start = match.index + match[0].length;
+    let depth = 1;
+    let index = start;
+    while (index < text.length && depth > 0) {
+      const char = text[index];
+      if (char === "(") depth += 1;
+      else if (char === ")") depth -= 1;
+      index += 1;
+    }
+    out.push(text.slice(start, Math.max(start, index - 1)));
+    pattern.lastIndex = index;
+    match = pattern.exec(text);
+  }
+  return out;
 }
 
-/** Quita las comillas de un literal. */
-function unquote(literal: string): string {
-  return literal.replace(/^["']/, "").replace(/["']$/, "");
+/** Los literales de cadena de un texto: `"a"` y `'a'`. */
+function literalsOf(text: string): string[] {
+  return [...text.matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => m[1] ?? m[2] ?? "");
 }
 
 /**
- * Si el argumento de `translate` es una clave literal.
+ * Los mapas de claves literales declarados en un fichero.
  *
- * `null` cuando no lo es: o es una lista estática (`algo.labelKey`,
- * que se comprueba en los `labelKey:` de su declaración), o es una
- * clave construida en runtime, que el gate no puede verificar.
+ * Con su nombre y las claves que guardan: el gate necesita las dos
+ * cosas para aceptar una clave que se elige en runtime y para saber
+ * qué claves existen de verdad.
  */
-function literalKey(argument: string): string | null {
-  const trimmed = argument.trim();
-  if (trimmed.startsWith('"') || trimmed.startsWith("'")) return unquote(trimmed);
-  return null;
+function staticMaps(text: string): Map<string, string[]> {
+  const maps = new Map<string, string[]>();
+  const pattern = new RegExp(MAP_DECLARATION.source, "g");
+  let match = pattern.exec(text);
+  while (match !== null) {
+    const name = match[1] ?? "";
+    const open = text.indexOf("{", match.index + match[0].length);
+    if (open !== -1) {
+      let depth = 0;
+      let index = open;
+      while (index < text.length) {
+        if (text[index] === "{") depth += 1;
+        else if (text[index] === "}") {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+        index += 1;
+      }
+      maps.set(name, literalsOf(text.slice(open, index)));
+    }
+    match = pattern.exec(text);
+  }
+  return maps;
+}
+
+/**
+ * El texto de un fichero TypeScript, sin sus comentarios.
+ *
+ * Un comentario que explica una traducción (`translate(...)`) es
+ * documentación, no una llamada: contarlo como llamada sería un
+ * falso positivo, y un gate con falsos positivos se acaba
+ * desactivando.
+ */
+function withoutComments(text: string): string {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .replace(/(^|[^:"'`\\])\/\/[^\n]*/g, "$1 ");
+}
+
+/**
+ * El texto que la plantilla escribe en la pantalla.
+ *
+ * Se quitan los bloques de control de flujo de Angular (`@if`,
+ * `@for`, `@switch`…), las interpolaciones, los scripts y los
+ * comentarios; lo que queda entre etiquetas es lo que la persona
+ * lee.
+ */
+function visibleText(html: string): string[] {
+  let text = html;
+  text = text.replace(/<script[\s\S]*?<\/script>/gi, " ");
+  text = text.replace(/<!--[\s\S]*?-->/g, " ");
+  text = text.replace(/\{\{[\s\S]*?\}\}/g, " ");
+  text = text.replace(
+    /@(?:if|else|for|empty|switch|case|default|let|defer|placeholder|loading|error)\b[^<{]*/g,
+    " ",
+  );
+  text = text.replace(/[{}]/g, " ");
+  return [...text.matchAll(/>([^<>]+)</g)]
+    .map((m) => (m[1] ?? "").trim())
+    .filter((node) => WORD.test(node));
 }
 
 async function main(): Promise<number> {
@@ -135,7 +217,7 @@ async function main(): Promise<number> {
     return 1;
   }
 
-  // ── 5. Cada idioma es uno de los del producto ────────────────────
+  // ── 6. Cada idioma es uno de los del producto ────────────────────
   const known = new Set(BUNDLED_LOCALES.map((locale) => locale.code));
   for (const code of catalogs.keys()) {
     if (!known.has(code)) {
@@ -150,53 +232,87 @@ async function main(): Promise<number> {
   for (const [code, values] of catalogs) {
     if (code === REFERENCE_LOCALE) continue;
     for (const key of reference.keys()) {
-      if (!values.has(key)) problems.push({ file: `locales/${code}.json`, message: `falta la clave \`${key}\`` });
+      if (!values.has(key)) {
+        problems.push({ file: `locales/${code}.json`, message: `falta la clave \`${key}\`` });
+      }
     }
     for (const key of values.keys()) {
-      if (!reference.has(key)) problems.push({ file: `locales/${code}.json`, message: `la clave \`${key}\` no existe en \`${REFERENCE_LOCALE}.json\`` });
+      if (!reference.has(key)) {
+        problems.push({
+          file: `locales/${code}.json`,
+          message: `la clave \`${key}\` no existe en \`${REFERENCE_LOCALE}.json\``,
+        });
+      }
     }
   }
 
   // ── 2, 3 y 4. Lo que el código pide ──────────────────────────────
-  const requests: IRequest[] = [];
-  const sources = [
-    ...(await collectFiles(APP_SRC, [".ts"])),
-    ...(await collectFiles(APP_SRC, [".html"])),
-  ];
+  const asked = new Map<string, Set<string>>();
+  const typescript = await collectFiles(APP_SRC, [".ts"]);
+  const templates = await collectFiles(APP_SRC, [".html"]);
 
-  for (const source of sources) {
+  /** Apunta una clave pedida al fichero que la pide. */
+  const ask = (key: string, file: string): void => {
+    const files = asked.get(key) ?? new Set<string>();
+    files.add(file);
+    asked.set(key, files);
+  };
+
+  for (const source of typescript) {
     const rel = relative(REPO_ROOT, source);
-    const text = await readFile(source, "utf8");
+    const text = withoutComments(await readFile(source, "utf8"));
+    // La maquinaria del idioma se excluye: ahí `translate` es la
+    // declaración de la función, no una petición de una palabra.
+    if (rel.includes("core/i18n/")) continue;
+    const maps = staticMaps(text);
 
-    for (const match of text.matchAll(TRANSLATE_CALL)) {
-      const argument = match[1] ?? "";
-      const literal = literalKey(argument);
-      if (literal !== null) {
-        requests.push({ key: literal, file: rel });
+    for (const argument of argumentsOf(text, "translate")) {
+      const literals = literalsOf(argument);
+      if (literals.length > 0) {
+        for (const literal of literals) ask(literal, rel);
         continue;
       }
       // `algo.labelKey` es una lista estática: sus claves se declaran
       // con `labelKey: "..."` y se comprueban allí.
       if (argument.trim().endsWith(".labelKey")) continue;
+      // Un mapa declarado con claves literales: el conjunto de claves
+      // es conocido, aunque la que se elija dependa de la pantalla.
+      const map = [...maps.entries()].find(([name]) => argument.includes(name));
+      if (map !== undefined) {
+        for (const key of map[1]) ask(key, rel);
+        continue;
+      }
       problems.push({
         file: rel,
         message:
           `una clave construida en runtime no se puede comprobar: \`${argument.trim()}\`. ` +
-          "Declárala en una lista con `labelKey: \"...\"` o pide una clave literal.",
+          'Declárala en un mapa `Record<string, string>` o pide una clave literal.',
       });
     }
 
     for (const match of text.matchAll(LABEL_KEY)) {
-      const literal = match[1] ?? "";
-      requests.push({ key: unquote(literal), file: rel });
+      ask((match[1] ?? "").replace(/^["']/, "").replace(/["']$/, ""), rel);
     }
   }
 
-  const asked = new Map<string, Set<string>>();
-  for (const request of requests) {
-    const files = asked.get(request.key) ?? new Set<string>();
-    files.add(request.file);
-    asked.set(request.key, files);
+  for (const template of templates) {
+    const rel = relative(REPO_ROOT, template);
+    const text = await readFile(template, "utf8");
+
+    for (const argument of argumentsOf(text, "translate")) {
+      for (const literal of literalsOf(argument)) ask(literal, rel);
+    }
+
+    // ── 5. Ningún texto fijo en la plantilla ───────────────────────
+    // Solo las plantillas de los componentes: el `index.html` es el
+    // documento, y el nombre de la marca en `<title>` no se traduce.
+    if (!template.endsWith(".component.html")) continue;
+    for (const node of visibleText(text)) {
+      problems.push({
+        file: rel,
+        message: `texto fijo en la plantilla: \`${node}\` — va en el catálogo`,
+      });
+    }
   }
 
   for (const [key, files] of asked) {
@@ -224,14 +340,15 @@ async function main(): Promise<number> {
     console.error(
       "\n  Los catálogos se quedan viejos en silencio: quien añade una\n" +
         "  palabra a la pantalla no sabe que hay que traducirla. El gate\n" +
-        "  lo dice por él: todas las claves, en todos los idiomas.",
+        "  lo dice por él: todas las claves, en todos los idiomas, y ni\n" +
+        "  una palabra escrita fuera del catálogo.",
     );
     return 1;
   }
 
   console.log(
     `lint:app-i18n — ${catalogs.size} idioma(s), ${reference.size} clave(s) en cada uno, ` +
-      `${asked.size} clave(s) pedidas, ninguna huérfana`,
+      `${asked.size} clave(s) pedidas, ninguna huérfana, ningún texto fijo`,
   );
   return 0;
 }

@@ -6,6 +6,7 @@ import type {
   IPendingHostRequestMap,
 } from "../../../../../contracts/interfaces/ui/host-bridge.interface";
 import type { PendingAppOperation } from "../../../../../contracts/constants/core/cli-app-parity.constant";
+import { translate } from "../i18n/i18n.state";
 
 /** What Tauri puts on the window. */
 interface ITauriEventApi {
@@ -171,9 +172,9 @@ export class HostBridgeClient implements IHostBridge {
     // the user never wrote.
     const payload = await readFrame(response);
     if (!response.ok || payload.error) {
-      throw new Error(payload.error?.message ?? `Host request failed (${response.status})`);
+      throw new Error(payload.error?.message ?? `${translate("common.hostRequestFailed")} (${response.status})`);
     }
-    return unwrap(payload.result);
+    return unwrap(payload.result, translate("common.hostRequestFailed"));
   }
 
   /**
@@ -190,9 +191,9 @@ export class HostBridgeClient implements IHostBridge {
       if (waiting !== undefined) {
         this.pending.delete(id);
         if (frame.error) {
-          waiting.reject(new Error(frame.error.message ?? "Host request failed"));
+          waiting.reject(new Error(frame.error.message ?? translate("common.hostRequestFailed")));
         } else {
-          waiting.resolve(unwrap(frame.result));
+          waiting.resolve(unwrap(frame.result, translate("common.hostRequestFailed")));
         }
         return;
       }
@@ -284,12 +285,12 @@ function withTimeout<T>(
  * a transport that answers something else is not this function's
  * business to reinterpret.
  */
-function unwrap(result: unknown): unknown {
+function unwrap(result: unknown, fallback: string): unknown {
   if (typeof result !== "object" || result === null) return result;
   const envelope = result as { ok?: boolean; value?: unknown; error?: { message?: string } };
   if (envelope.ok === true) return envelope.value;
   if (envelope.ok === false) {
-    throw new Error(envelope.error?.message ?? "Host request failed");
+    throw new Error(envelope.error?.message ?? fallback);
   }
   return result;
 }

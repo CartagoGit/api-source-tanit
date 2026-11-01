@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from
 
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
+import { ThemeStore } from "../core/state/theme.store";
 import { ButtonComponent } from "../shared/button/button.component";
 import { EmptyStateComponent } from "../shared/empty-state/empty-state.component";
 import { SidebarComponent } from "./sidebar.component";
@@ -73,7 +74,9 @@ export class AppComponent {
   readonly project = inject(ProjectStore);
   readonly paletteOpen = signal(false);
   readonly activeSection = signal("overview");
-  readonly theme = signal<"light" | "dark">(this.readTheme());
+  /** The theme, and the switch that changes it. */
+  readonly themes = inject(ThemeStore);
+  readonly theme = this.themes.theme;
 
   /**
    * The label of each section, by section id.
@@ -99,9 +102,7 @@ export class AppComponent {
     settings: "nav.settings",
   };
 
-  constructor() { this.applyTheme(this.theme()); }
-
-  toggleTheme(): void { const next = this.theme() === "light" ? "dark" : "light"; this.theme.set(next); this.storage()?.setItem("tanit.theme", next); this.applyTheme(next); }
+  toggleTheme(): void { this.themes.toggle(); }
 
   /** Goes to a section. */
   go(section: string): void { this.activeSection.set(section); }
@@ -141,8 +142,4 @@ export class AppComponent {
 
   @HostListener("document:keydown", ["$event"])
   onShortcut(event: KeyboardEvent): void { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); this.paletteOpen.set(!this.paletteOpen()); } }
-
-  private readTheme(): "light" | "dark" { return this.storage()?.getItem("tanit.theme") === "dark" ? "dark" : "light"; }
-  private applyTheme(theme: "light" | "dark"): void { if (typeof document !== "undefined") document.documentElement.dataset["theme"] = theme; }
-  private storage(): Storage | undefined { return typeof localStorage === "undefined" ? undefined : localStorage; }
 }

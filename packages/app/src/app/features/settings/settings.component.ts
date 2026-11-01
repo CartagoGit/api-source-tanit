@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
 import { SecureStorageService } from "../../core/host/secure-storage.service";
 import { I18nService } from "../../core/i18n/i18n.service";
+import { ThemeStore } from "../../core/state/theme.store";
 
 /**
  * The settings.
@@ -29,6 +30,7 @@ export class SettingsComponent {
   readonly failure = signal<string | null>(null);
   readonly running = signal(false);
   readonly storage = inject(SecureStorageService);
+  readonly themes = inject(ThemeStore);
   private readonly service = "postman-api-key";
 
   async save(): Promise<void> {
@@ -46,7 +48,7 @@ export class SettingsComponent {
       this.message.set(
         this.sessionOnly()
           ? this.i18n.translate("settings.keySession")
-          : this.describeWhere(),
+          : this.i18n.translate("settings.keySaved"),
       );
     } catch (error) {
       this.failure.set(error instanceof Error ? error.message : String(error));

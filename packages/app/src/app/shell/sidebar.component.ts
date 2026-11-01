@@ -95,7 +95,21 @@ export class SidebarComponent {
   ];
 
   readonly activeId = input("overview");
-  themeLabel = this.i18n.translate("theme.toggle");
+
+  /**
+   * The label of the theme button.
+   *
+   * It used to be a field — `themeLabel = this.i18n.translate(...)` —
+   * which was read **once**, when the component was built. Change the
+   * language and the button kept saying the old word: the label was
+   * frozen in the language the app happened to start in.
+   *
+   * A method is re-read on every change detection, so it follows the
+   * language the way the rest of the screen does.
+   */
+  themeLabel(): string {
+    return this.i18n.translate("theme.toggle");
+  }
 
   /** The id of the heading that labels a group. */
   groupId(group: NavigationGroup): string {

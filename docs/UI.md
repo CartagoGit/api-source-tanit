@@ -90,6 +90,29 @@ el compilador de Angular**, igual que el build. Sin eso los tests
 montarían clases a pelo, sin plantillas: es la diferencia entre
 comprobar la app y comprobar que los ficheros se importan.
 
+### Los idiomas de la app
+
+La app habla **inglés, español y francés**, y lo dice en el selector de
+**Ajustes**. El idioma se cambia **al momento**: todas las pantallas
+siguen al cambio, sin recargar, y el documento declara su `lang` para
+que el navegador y el lector de pantalla sepan en qué está escrito.
+
+Las palabras viven en catálogos (`packages/app/src/app/core/i18n/locales/`),
+no en las plantillas: una palabra escrita entre etiquetas sale en
+inglés aunque el idioma sea el español, y por eso el gate
+`bun run lint:app-i18n` **no lo permite**. El gate comprueba, además,
+que los tres catálogos tengan exactamente las mismas claves, que toda
+clave pedida exista en todos ellos y que ninguna sobra.
+
+Añadir un idioma es **dejar un fichero** en esa carpeta y volver a
+pasar el gate: el catálogo se importa solo y la lista de idiomas sale
+de los `BUNDLED_LOCALES` del producto.
+
+> La app de escritorio (`apisrc ui`) y esta app son dos superficies
+> distintas, con dos conjuntos de idiomas: la primera habla quince, la
+> segunda tres. Un catálogo a medias es peor que ninguno, así que cada
+> una habla los suyos enteros.
+
 ---
 
 ## Arrancar
