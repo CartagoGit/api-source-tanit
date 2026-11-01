@@ -37,7 +37,9 @@ name: release-desktop
 #                  publish      → sólo si todo lo anterior pasó
 on:
   release:
-    types: [published]
+    # `prereleased` además de `published`: un alfa también construye
+    # los instaladores, pero no los publica (ver el job `publish`).
+    types: [published, prereleased]
   workflow_dispatch:
     inputs:
       sign:
@@ -501,7 +503,11 @@ jobs:
   publish:
     name: publish
     needs: build
-    if: github.event_name == 'release'
+    # Un prerelease construye los instaladores pero **no** los
+    # publica: mientras la versión no sea estable, la app de escritorio
+    # se distribuye desde la release del CLI, no como instalador
+    # firmado que la gente se instala en su máquina.
+    if: github.event_name == 'release' && !github.event.release.prerelease
     runs-on: ubuntu-latest
     permissions:
       contents: write

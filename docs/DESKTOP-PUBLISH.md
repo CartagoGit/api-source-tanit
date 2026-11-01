@@ -29,16 +29,23 @@ quedarse sin las otras.
 
 ## Sacar una versión
 
-### 1. Subir el número en los dos sitios
+### 1. Subir el número en los tres sitios
 
 ```bash
 # package.json  →  "version"
 # packages/desktop/tauri.conf.json  →  "version"
+# packages/contracts/constants/cli/cli-version.constant.ts  →  CLI_VERSION
 ```
 
-Tienen que coincidir. El de `package.json` va al paquete npm y al `--help`
-del CLI; el de `tauri.conf.json` va al nombre del instalador y a lo que
-enseña el sistema en «Programas instalados».
+Tienen que coincidir. El de `package.json` va al paquete de npm; el
+de `tauri.conf.json` va al nombre del instalador y a lo que enseña el
+sistema en «Programas instalados»; el de `CLI_VERSION` es lo que
+imprime `apisrc --version`.
+
+`bun run lint:release-channel` lo comprueba, y además dice a qué canal
+pertenece la versión y qué `dist-tag` de npm le toca. La escalera de
+canales —alfa, beta, rc y estable— está en
+[RELEASE.md](RELEASE.md#los-canales-alfa-beta-rc-y-estable).
 
 ### 2. Comprobar que el gate pasa entero
 

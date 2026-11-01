@@ -17,9 +17,18 @@
  * ## Cómo se evita que se quede vieja
  *
  * `tests/cli/cli-version.spec.ts` compara esta constante con la
- * versión del `package.json` raíz. Si alguien sube la versión del
- * paquete y no actualiza esta constante, el test falla.
+ * versión del `package.json` raíz, y `lint:release-channel` compara
+ * las tres copias —esta, el `package.json` y el `tauri.conf.json`— y
+ * además dice a qué canal pertenece la versión. Si alguien sube la
+ * versión del paquete y no actualiza esta constante, el gate falla.
+ *
+ * ## Por qué es un alfa
+ *
+ * El proyecto todavía no ha publicado ninguna release. `1.0.0` afirma
+ * una estabilidad que el producto no tiene, así que la primera
+ * versión es `0.1.0-alpha.1`. La escalera de canales —alfa, beta, rc
+ * y estable— vive en `constants/release/release-channel.constant.ts`.
  */
 
 /** La versión del CLI, la misma que la del paquete publicado. */
-export const CLI_VERSION = "1.0.0";
+export const CLI_VERSION = "0.1.0-alpha.1";

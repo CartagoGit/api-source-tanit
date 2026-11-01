@@ -11,6 +11,52 @@ hacen falta.
 
 ---
 
+## Los canales: alfa, beta, rc y estable
+
+El número de versión dice **qué** hay; el canal dice **cuánto se puede
+esperar**. Son dos cosas distintas, y confundirlas es un problema
+real: un `1.0.0` que en realidad es un alfa promete una estabilidad
+que el producto no tiene, y quien lo instala se lleva esa promesa.
+
+| Canal | Versión | `dist-tag` de npm | Qué se puede esperar |
+|---|---|---|---|
+| Alfa | `0.1.0-alpha.1` | `alpha` | Se rompe. La forma todavía se mueve. |
+| Beta | `0.2.0-beta.1` | `beta` | La forma está; puede haber fallos de comportamiento. |
+| RC | `0.9.0-rc.1` | `rc` | Candidata a la release. Sólo falta decidir el número. |
+| Estable | `1.0.0` | `latest` | La release. A partir de aquí, versionado normal. |
+
+**El prefijo decide el canal.** `0.1.0-alpha.1` es del canal `alpha`
+por su prefijo, no por una decisión que se toma aparte: no hay
+ningún sitio donde se declare "estamos en alfa" que se pueda quedar
+viejo sin que nada lo note.
+
+**Un prerelease nunca sale en `latest`.** `npm install
+api-source-tanit` sin `--tag` se come lo que hay en `latest`; si un
+alfa landinga ahí, cualquiera que instale el paquete recibe un alfa
+sin haberlo pedido. Cada canal va a su propio `dist-tag`, y el
+workflow lo calcula con el gate, no a mano.
+
+**Un prerelease tampoco publica instaladores de escritorio.** Se
+construyen —para comprobar que compilan— pero no se adjuntan a la
+release: mientras la versión no sea estable, la app de escritorio se
+distribuye desde la release del CLI, no como un instalador firmado que
+la gente se instala en su máquina.
+
+### La versión vive en tres ficheros
+
+| Fichero | Para qué |
+|---|---|
+| `package.json` | Lo que se publica en npm. |
+| `packages/contracts/constants/cli/cli-version.constant.ts` | Lo que imprime `apisrc --version`. |
+| `packages/desktop/tauri.conf.json` | Lo que ponen los instaladores. |
+
+`bun run lint:release-channel` dice si las tres coinciden, si la
+versión es semver, a qué canal pertenece y si el `dist-tag` es el que
+le toca. Vive en la cadena de `lint`, así que un PR que suba una y
+olvide otra no pasa.
+
+---
+
 ## La política, en dos frases
 
 1. **Una release es reproducible en identidad, no bit a bit.** Dos

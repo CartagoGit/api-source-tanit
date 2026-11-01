@@ -39,7 +39,15 @@ jobs:
       - name: Validate package tarball
         run: bun run validate:package
 
+      # El `dist-tag` no se escribe a mano: lo dice el gate de canal,
+      # que es el mismo que valida la versión. Si se duplica la lógica
+      # aquí, un día se desincroniza del gate y el gate deja de decir
+      # la verdad.
+      - name: Compute the npm dist-tag
+        id: dist-tag
+        run: echo "tag=$(bun scripts/gates/lint-release-channel.script.ts --print-tag)" >> "$GITHUB_OUTPUT"
+
       - name: Publish package
-        run: npm publish --provenance
+        run: npm publish --provenance --tag "${{ steps.dist-tag.outputs.tag }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
