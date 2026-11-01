@@ -159,13 +159,21 @@ describe("generate --open", () => {
    * under the load of the whole suite it can go past two minutes.
    * The assertion is about what the command printed, not about how
    * fast it was.
+   *
+   * The child gets the **same** deadline as the test, minus a margin:
+   * `runProcess` kills the process it spawned after `timeoutMs`, and
+   * with the default (120 s) the child could die while the test still
+   * believed it had time left — a failure that looked like a timeout
+   * of the test and was really a kill of the child. When the machine
+   * is saturated (another suite running on the same cores) the child
+   * needs minutes, not seconds: in isolation this test takes 0.6 s.
    */
-  test("invokes open-postman in-process (web branch)", { timeout: 240_000 }, async () => {
+  test("invokes open-postman in-process (web branch)", { timeout: 600_000 }, async () => {
     const root = await proyecto("generate-open");
     const { code, output } = await runProcess(
       "bun",
       [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
-      { env: { POSTMAN_FORCE_OPEN: "web" } },
+      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
     );
     expect(code, output).toBe(0);
     expect(output).toContain("--open");
@@ -178,14 +186,14 @@ describe("generate --open", () => {
    *
    * The timeout is wide for the same reason as the test above: this
    * spawns the whole CLI, and the machine decides how long that
-   * takes.
+   * takes. The child dies with the test's deadline, minus a margin.
    */
-  test("generates before opening", { timeout: 240_000 }, async () => {
+  test("generates before opening", { timeout: 600_000 }, async () => {
     const root = await proyecto("generate-open-orden");
     const { output } = await runProcess(
       "bun",
       [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
-      { env: { POSTMAN_FORCE_OPEN: "web" } },
+      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
     );
     const idxGenerate = output.indexOf("✔");
     const idxOpen = output.indexOf("--open");
