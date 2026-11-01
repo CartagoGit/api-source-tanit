@@ -16,7 +16,7 @@ import { buildCollection } from "export-to-postman/core/domain/collection-builde
 Si lo que buscas es la herramienta de línea de comandos y no la
 librería, `expostman --help` lista los comandos y las banderas.
 
-> 417 símbolos en 165 módulos.
+> 426 símbolos en 170 módulos.
 
 ### `packages/core/adapters/parsed-route-to-spec.adapter.ts`
 
@@ -291,6 +291,16 @@ export function createGetSchemaHandler(): IHandler<GetSchemaInput, GetSchemaOutp
 export function buildRegistry(): Readonly<Record<string, IHandler<unknown, unknown>>>
 ```
 
+### `packages/core/application-api/history-persisted.handlers.ts`
+
+`history-persisted.handlers.ts` — the past of a project.
+
+#### `createPersistedHistoryHandlers`
+
+```ts
+export function createPersistedHistoryHandlers():
+```
+
 ### `packages/core/application-api/history.handlers.ts`
 
 `history.handlers.ts` — read the snapshot deltas the session recorded since it opened.
@@ -411,6 +421,16 @@ Reads a collection, or says why it could not be read.
 
 ```ts
 export function createPushHandler(): IHandler<PushInput, PushOutput>
+```
+
+### `packages/core/application-api/service-detail.handler.ts`
+
+`service-detail.handler.ts` — one service, with everything known about it.
+
+#### `createServiceDetailHandler`
+
+```ts
+export function createServiceDetailHandler(): IHandler<ServiceDetailInput, ServiceDetailOutput>
 ```
 
 ### `packages/core/application-api/settings.handlers.ts`
@@ -4933,7 +4953,25 @@ Callers (the CLI scripts) call this once with the parsed flags and
 pass the sink down. There is no global state — two CLI invocations in
 the same process can pick different sinks without interference.
 
-### `packages/core/session/history-recorder.service.ts`
+### `packages/core/session/canonical-snapshot.service.ts`
+
+The canonical projection of a project snapshot.
+
+#### `toCanonicalSnapshot`
+
+```ts
+export function toCanonicalSnapshot(snapshot: IProjectSnapshot): ICanonicalSnapshot
+```
+
+The canonical snapshot of a project snapshot.
+
+The capture time is the snapshot's own, in ISO 8601: it is what
+makes two records of the same project different records instead of
+one.
+
+### `packages/core/session/history-diff.helper.ts`
+
+What changed between two revisions of a project.
 
 #### `diffSnapshots`
 
@@ -4941,10 +4979,80 @@ the same process can pick different sinks without interference.
 export function diffSnapshots( left: ICanonicalSnapshot, right: ICanonicalSnapshot, leftConfiguration?: Readonly<Record<string, unknown>>, rightConfiguration?: Readonly<Record<string, unknown>>, ): IHistoryDiff
 ```
 
-#### `HistoryRecorderService`
+### `packages/core/session/project-history.service.ts`
+
+#### `IProjectHistoryOptions`
 
 ```ts
-export class HistoryRecorderService
+export interface IProjectHistoryOptions
+```
+
+The persisted history of a project.
+
+## What it is
+
+A folder per project, one file per record. Each record holds:
+
+  · the **canonical snapshot** — what the API surface was, in the
+    shape the diff compares and the hash digests;
+  · the **whole snapshot** — so the record can be exported again,
+    or restored, exactly as it was;
+  · the **configuration** it was made with — the formats, where it
+    was written — so two records can be compared by how they were
+    built, not only by what they contain.
+
+## Why it is on disk and not in memory
+
+Because a history that dies with the process is not a history. The
+whole point of remembering a revision is being able to come back to
+it **later**: tomorrow, next week, from another machine that syncs
+the folder. The in-memory recorder that used to live here was
+written, tested, and wired to nothing — the diff had no history to
+compare and the hash had nothing to digest.
+
+## Why one file per record
+
+Because two processes must not fight over one file. A JSON array
+would be read-modify-written by both, and the loser would drop the
+winner's record. One file per record means one writer per file: a
+record is written once and never rewritten, so the only race left
+is two records with the same id, and the id carries the hash of
+what it holds.
+
+## Where it lives
+
+`~/.tanit/history/<project>/`, next to the state store and the
+user's own settings — **not** inside the project. A tool that
+writes into the project it is analysing changes what it analyses,
+and the project belongs to the person, not to the tool.
+
+#### `IHistoryRecordOptions`
+
+```ts
+export interface IHistoryRecordOptions
+```
+
+#### `IHistoryConfigurationPair`
+
+```ts
+export interface IHistoryConfigurationPair
+```
+
+#### `resolveHistoryDirectory`
+
+```ts
+export function resolveHistoryDirectory( environment: Record<string, string | undefined> = process.env, ): string
+```
+
+Where the history of every project lives.
+
+@param environment The environment to read the override from.
+@returns The folder.
+
+#### `ProjectHistoryService`
+
+```ts
+export class ProjectHistoryService
 ```
 
 ### `packages/core/session/project-session.service.ts`
@@ -5028,6 +5136,34 @@ export function newSessionId(projectRoot: string): string
 Returns a new session id for the given `projectRoot`.
 
 The id is stable enough to log but is NOT a cryptographic token.
+
+### `packages/core/session/snapshot-codec.helper.ts`
+
+Writing a project snapshot to disk, and reading it back.
+
+#### `encodeSnapshot`
+
+```ts
+export function encodeSnapshot(snapshot: unknown): string
+```
+
+Encodes a snapshot as JSON.
+
+@param snapshot The snapshot to encode.
+@returns The JSON text.
+
+#### `decodeSnapshot`
+
+```ts
+export function decodeSnapshot(json: string): unknown
+```
+
+Decodes a snapshot from JSON.
+
+@param json The JSON text.
+@returns The value that was encoded.
+@throws When the text is not JSON: a file that cannot be read is
+not a snapshot that is empty.
 
 ### `packages/core/session/snapshot-hash.service.ts`
 

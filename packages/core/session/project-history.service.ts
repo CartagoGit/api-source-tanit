@@ -169,10 +169,23 @@ function fromPersisted(text: string): { record: IHistoryRecord; snapshot: unknow
 
 /** The persisted history of a project. */
 export class ProjectHistoryService {
-  private readonly base: string;
+  private readonly options: IProjectHistoryOptions;
 
   constructor(options: IProjectHistoryOptions = {}) {
-    this.base = options.directory ?? resolveHistoryDirectory();
+    this.options = options;
+  }
+
+  /**
+   * Where the history lives.
+   *
+   * It is read on **every call**, not once in the constructor: the
+   * folder can be pointed somewhere else by the environment, and a
+   * store that decided its folder when it was built would ignore
+   * that — which is exactly what a test needs, and what a person
+   * needs when two projects share a history.
+   */
+  private get base(): string {
+    return this.options.directory ?? resolveHistoryDirectory();
   }
 
   /**

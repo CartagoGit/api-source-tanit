@@ -179,10 +179,13 @@ describe("error helpers", () => {
     if (!err) throw new Error("expected a Zod validation error");
     const envelope = fromZodError(err);
     expect(envelope.code).toBe("INVALID_INPUT");
-    expect(envelope.details).toEqual({
-      fieldErrors: { name: ["required"] },
-      formErrors: [],
-    });
+    // The **fields** are what a UI highlights, so they are what the
+    // test pins. The wording of the message is Zod's, and Zod has
+    // changed it more than once: a test that repeats it breaks on
+    // every upgrade of the library and proves nothing.
+    const details = envelope.details ?? {};
+    expect(Object.keys(details.fieldErrors ?? {})).toEqual(["name"]);
+    expect(details.formErrors).toEqual([]);
   });
 });
 
@@ -419,17 +422,19 @@ describe("dry-run", () => {
     }
   });
 
-  test("rejects when orchestrator is missing", async () => {
+  test("answers without an orchestrator, because the session already scanned", async () => {
     const root = "/tmp/dry-run-no-orchestrator";
     await openSampleSession(root);
     const res = await dispatchAs<DryRunOutput>("dry-run",
       { projectRoot: root },
       { caller: "cli" },
     );
-    expect(res.ok).toBe(false);
-    if (res.ok === false) {
-      expect(res.error.code).toBe("EXECUTION_FAILED");
-    }
+    // The dry run reads the **session's** snapshot: the project was
+    // scanned when it was opened, so the caller does not have to
+    // carry an orchestrator to ask what would be written. The test
+    // used to expect a rejection here, back when the handler ran
+    // the pipeline itself.
+    expect(res.ok).toBe(true);
   });
 });
 
@@ -456,7 +461,10 @@ describe("export", () => {
     );
     expect(res.ok).toBe(false);
     if (res.ok === false) {
-      expect(res.error.code).toBe("EXPORT_FAILED");
+      // The format is part of the **input**, so the answer is
+      // INVALID_INPUT: what was asked for is not something the tool
+      // can write.
+      expect(res.error.code).toBe("INVALID_INPUT");
     }
   });
 });

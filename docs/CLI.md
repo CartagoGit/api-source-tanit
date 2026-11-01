@@ -130,18 +130,28 @@ is a fixture.
 
 ## What the app cannot do yet
 
-Five operations are asked for as **pending**:
-`history-compare-config`, `history-diff`, `history-re-export`,
-`history-restore` and `service-detail`. They are in
-[`PENDING_APP_OPERATIONS`](../packages/contracts/constants/core/cli-app-parity.constant.ts),
-not in the registry, and the app asks for them explicitly so the call
-answers "not yet" instead of `UNKNOWN_HANDLER`.
+**Nothing.** The list of operations the app asks for that the
+Application API does not have
+([`PENDING_APP_OPERATIONS`](../packages/contracts/constants/core/cli-app-parity.constant.ts))
+is empty.
 
-They are all about the **persisted** history — the past generations,
-with their hashes, that can be compared, re-exported or restored — and
-about the detail of one service. The session's own events are
-reachable from both faces; the persisted ones are not, because no
-handler exposes them.
+It was not always. The five operations it held — `history-diff`,
+`history-compare-config`, `history-re-export`, `history-restore` and
+`service-detail` — were about the **persisted** history (the past
+revisions, with their hashes, that can be compared, exported again or
+restored) and about the detail of one service. They asked for them
+explicitly so the call answered "not yet" instead of `UNKNOWN_HANDLER`,
+and the screen said in a note that the history was not exposed.
+
+They are exposed now. The history is on disk — in
+`~/.tanit/history/`, one file per revision — so a revision outlives
+the session that made it, and the CLI's generation writes to the same
+store. The app lists the revisions, compares two, says how they were
+configured, exports one again and restores one.
+
+What the CLI still cannot do is **compare or restore**: its `history`
+command lists the generations and stops there. The parity map says so,
+in the note of the `history` capability.
 
 ## What the CLI offers, action by action
 

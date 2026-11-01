@@ -2,20 +2,22 @@ import { Injectable, effect, inject, signal } from "@angular/core";
 
 import { HistoryClient } from "../api/history.client";
 import { ProjectStore } from "./project.store";
-import type { ISessionEvent } from "../../../../../contracts/interfaces/core/history.interface";
+import type { ISessionEvent, IHistorySummary } from "../../../../../contracts/interfaces/core/history.interface";
 
 /**
- * What happened to the open session.
+ * The history of the open project.
  *
- * The app used to expect the **persisted** history here — the
- * generations of past runs, with their hashes, that could be
- * compared, re-exported or restored. The API's `history` handler
- * answers with something else: the session's own events, the
- * snapshot being taken and the files changing under it.
+ * Two lists, because they are two things:
  *
- * Showing the wrong list is worse than showing a shorter one, so
- * the store shows what the backend has, and the section says plainly
- * that the persisted history is not exposed yet.
+ *   · the **events** — the snapshot was taken, the files under it
+ *     changed. They are what happens while the project is open;
+ *   · the **revisions** — the past generations, with their hashes,
+ *     that can be compared, exported again or restored. They are on
+ *     disk, so a revision outlives the session that made it.
+ *
+ * The store used to show only the events and to say in a note that
+ * the persisted history was not exposed. It is: the handlers landed,
+ * and the history is in `~/.tanit/history/`.
  */
 @Injectable({ providedIn: "root" })
 export class HistoryStore {
@@ -23,6 +25,7 @@ export class HistoryStore {
   private readonly project = inject(ProjectStore);
 
   readonly entries = signal<ReadonlyArray<ISessionEvent>>([]);
+  readonly revisions = signal<ReadonlyArray<IHistorySummary>>([]);
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -35,6 +38,7 @@ export class HistoryStore {
       if (root === previous) return;
       previous = root;
       this.entries.set([]);
+      this.revisions.set([]);
       this.error.set(null);
     });
   }
@@ -48,6 +52,12 @@ export class HistoryStore {
       this.error.set(error instanceof Error ? error.message : String(error));
     } finally {
       this.loading.set(false);
+    }
+    try {
+      const answer = await this.client.revisions(projectRoot);
+      this.revisions.set(answer.entries);
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : String(error));
     }
   }
 }

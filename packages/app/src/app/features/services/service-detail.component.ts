@@ -1,17 +1,14 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
 import { ServicesClient, type IServiceDetail } from "../../core/api/services.client";
-import { describePending } from "../../core/api/pending-operation.helper";
 import { ProjectStore } from "../../core/state/project.store";
 import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The detail of one service.
  *
- * The API lists the services but does not expose the detail of one —
- * its base URL, its auth reference, its operations. The core has the
- * data, so the call is declared **pending**: it fails visibly, and the
- * gap is written down instead of turning into an `UNKNOWN_HANDLER` at
- * runtime.
+ * It comes from **one** snapshot, in one read: the identity, the
+ * framework, how many endpoints it has, which transports its
+ * operations speak and how many operations the explorer shows.
  *
  * The component was not mounted anywhere: the section existed and
  * nothing drew it. It is now in the services list, and the failure
@@ -54,7 +51,7 @@ export class ServiceDetailComponent {
       this.error.set(null);
     } catch (error) {
       this.service.set(null);
-      this.error.set(describePending("service-detail", error));
+      this.error.set(error instanceof Error ? error.message : String(error));
     }
   }
 }
