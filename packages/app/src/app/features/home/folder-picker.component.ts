@@ -4,6 +4,7 @@ import type { IBrowseListing } from "../../../../../contracts/interfaces/core/br
 import { RecentProjectsClient } from "../../core/api/recent-projects.client";
 import { DialogService } from "../../core/host/dialog.service";
 import { ButtonComponent } from "../../shared/button/button.component";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 @Component({
   selector: "tanit-folder-picker",
@@ -14,6 +15,7 @@ import { ButtonComponent } from "../../shared/button/button.component";
   styleUrls: ["./folder-picker.component.scss"],
 })
 export class FolderPickerComponent {
+  readonly i18n = inject(I18nService);
   readonly selected = output<string>();
   readonly dialog = inject(DialogService);
   readonly client = inject(RecentProjectsClient);

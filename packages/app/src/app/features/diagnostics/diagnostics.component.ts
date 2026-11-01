@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
 
 import { ProjectStore } from "../../core/state/project.store";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * What the scan noticed about the project.
@@ -29,6 +30,7 @@ import { ProjectStore } from "../../core/state/project.store";
   styleUrls: ["./diagnostics.component.scss"],
 })
 export class DiagnosticsComponent {
+  readonly i18n = inject(I18nService);
   private readonly project = inject(ProjectStore);
 
   /**

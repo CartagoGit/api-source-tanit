@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, inject, signal } from
 
 import { I18nService } from "../core/i18n/i18n.service";
 import { ProjectStore } from "../core/state/project.store";
+import { ThemeStore } from "../core/state/theme.store";
 import { ButtonComponent } from "../shared/button/button.component";
 import { EmptyStateComponent } from "../shared/empty-state/empty-state.component";
 import { SidebarComponent } from "./sidebar.component";
@@ -73,11 +74,35 @@ export class AppComponent {
   readonly project = inject(ProjectStore);
   readonly paletteOpen = signal(false);
   readonly activeSection = signal("overview");
-  readonly theme = signal<"light" | "dark">(this.readTheme());
+  /** The theme, and the switch that changes it. */
+  readonly themes = inject(ThemeStore);
+  readonly theme = this.themes.theme;
 
-  constructor() { this.applyTheme(this.theme()); }
+  /**
+   * The label of each section, by section id.
+   *
+   * It used to be built in runtime — `nav.${this.activeSection()}` —
+   * which is a key nobody can check: if a section had no key, the
+   * screen said `nav.undefined` and nobody would know why. A key
+   * written here can be compared against the catalog by the gate.
+   */
+  readonly sectionLabels: Readonly<Record<string, string>> = {
+    overview: "nav.overview",
+    endpoints: "nav.endpoints",
+    services: "nav.services",
+    exports: "nav.exports",
+    stats: "nav.stats",
+    check: "nav.check",
+    validate: "nav.validate",
+    sync: "nav.sync",
+    push: "nav.push",
+    live: "nav.live",
+    history: "nav.history",
+    diagnostics: "nav.diagnostics",
+    settings: "nav.settings",
+  };
 
-  toggleTheme(): void { const next = this.theme() === "light" ? "dark" : "light"; this.theme.set(next); this.storage()?.setItem("tanit.theme", next); this.applyTheme(next); }
+  toggleTheme(): void { this.themes.toggle(); }
 
   /** Goes to a section. */
   go(section: string): void { this.activeSection.set(section); }
@@ -111,12 +136,10 @@ export class AppComponent {
     this.go("overview");
   }
 
-  sectionLabel(): string { return this.i18n.translate(`nav.${this.activeSection()}`); }
+  sectionLabel(): string {
+    return this.i18n.translate(this.sectionLabels[this.activeSection()] ?? "nav.overview");
+  }
 
   @HostListener("document:keydown", ["$event"])
   onShortcut(event: KeyboardEvent): void { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); this.paletteOpen.set(!this.paletteOpen()); } }
-
-  private readTheme(): "light" | "dark" { return this.storage()?.getItem("tanit.theme") === "dark" ? "dark" : "light"; }
-  private applyTheme(theme: "light" | "dark"): void { if (typeof document !== "undefined") document.documentElement.dataset["theme"] = theme; }
-  private storage(): Storage | undefined { return typeof localStorage === "undefined" ? undefined : localStorage; }
 }

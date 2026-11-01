@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
 import { LiveStore } from "../../core/state/live.store";
 import { ProjectStore } from "../../core/state/project.store";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The live mode.
@@ -18,13 +19,14 @@ import { ProjectStore } from "../../core/state/project.store";
   templateUrl: "./live-toggle.component.html",
 })
 export class LiveToggleComponent {
+  readonly i18n = inject(I18nService);
   readonly store = inject(LiveStore);
   private readonly project = inject(ProjectStore);
 
   async toggle(event: Event): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.store.error.set("Open a project first: there is nothing to watch yet.");
+      this.store.error.set(this.i18n.translate("common.openProjectFirstLive"));
       return;
     }
     await this.store.setEnabled(this.checked(event), root);

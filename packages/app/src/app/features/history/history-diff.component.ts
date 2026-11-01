@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input } from "@angular/core
 import { JsonPipe } from "@angular/common";
 import { HistoryClient } from "../../core/api/history.client";
 import { ProjectStore } from "../../core/state/project.store";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 @Component({
   selector: "tanit-history-diff",
@@ -11,6 +12,7 @@ import { ProjectStore } from "../../core/state/project.store";
   templateUrl: "./history-diff.component.html",
 })
 export class HistoryDiffComponent {
+  readonly i18n = inject(I18nService);
   readonly leftId = input.required<string>();
   readonly rightId = input.required<string>();
   result: Awaited<ReturnType<HistoryClient["compare"]>> | null = null;

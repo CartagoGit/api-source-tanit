@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from "@angular/core";
 
 import { ExportDiagnostic, ExportDryRun } from "../../core/api/exports.client";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The dry run, as the backend described it.
@@ -19,6 +20,7 @@ import { ExportDiagnostic, ExportDryRun } from "../../core/api/exports.client";
   styleUrls: ["./export-preview.component.scss"],
 })
 export class ExportPreviewComponent {
+  readonly i18n = inject(I18nService);
   @Input() preview: ExportDryRun = {
     files: [],
     diagnostics: [],

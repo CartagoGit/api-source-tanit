@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 import { CheckClient } from "../../core/api/check.client";
 import { ProjectStore } from "../../core/state/project.store";
 import type { ICheckReport } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The drift check.
@@ -31,6 +32,7 @@ import type { ICheckReport } from "../../../../../contracts/interfaces/core/appl
   styleUrls: ["./check.component.scss"],
 })
 export class CheckComponent {
+  readonly i18n = inject(I18nService);
   readonly running = signal(false);
   readonly message = signal<string | null>(null);
   readonly report = signal<ICheckReport | null>(null);
@@ -40,7 +42,7 @@ export class CheckComponent {
   async run(): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.message.set("Open a project first.");
+      this.message.set(this.i18n.translate("common.openProjectFirst"));
       return;
     }
     this.running.set(true);
@@ -51,7 +53,7 @@ export class CheckComponent {
       this.report.set(report);
       this.message.set(
         report.inSync
-          ? "The collection is in sync with the code."
+          ? this.i18n.translate("check.inSync")
           : `Out of sync: ${report.missingInCollection.length} route(s) missing from the collection, ${report.missingInSource.length} request(s) not in the code.`,
       );
     } catch (error) {

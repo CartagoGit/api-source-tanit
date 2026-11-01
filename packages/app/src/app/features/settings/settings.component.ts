@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
 import { SecureStorageService } from "../../core/host/secure-storage.service";
+import { I18nService } from "../../core/i18n/i18n.service";
+import { ThemeStore } from "../../core/state/theme.store";
 
 /**
  * The settings.
@@ -21,17 +23,19 @@ import { SecureStorageService } from "../../core/host/secure-storage.service";
   styleUrls: ["./settings.component.scss"],
 })
 export class SettingsComponent {
+  readonly i18n = inject(I18nService);
   readonly key = signal("");
   readonly sessionOnly = signal(false);
   readonly message = signal<string | null>(null);
   readonly failure = signal<string | null>(null);
   readonly running = signal(false);
   readonly storage = inject(SecureStorageService);
+  readonly themes = inject(ThemeStore);
   private readonly service = "postman-api-key";
 
   async save(): Promise<void> {
     if (this.key().trim() === "") {
-      this.failure.set("Type the key before saving it.");
+      this.failure.set(this.i18n.translate("settings.needKey"));
       return;
     }
     this.running.set(true);
@@ -43,8 +47,8 @@ export class SettingsComponent {
       this.key.set("");
       this.message.set(
         this.sessionOnly()
-          ? "API key kept for this session only."
-          : this.storage.describeWhere(),
+          ? this.i18n.translate("settings.keySession")
+          : this.i18n.translate("settings.keySaved"),
       );
     } catch (error) {
       this.failure.set(error instanceof Error ? error.message : String(error));
@@ -60,7 +64,7 @@ export class SettingsComponent {
     try {
       await this.storage.delete(this.service);
       this.key.set("");
-      this.message.set("API key removed.");
+      this.message.set(this.i18n.translate("settings.keyRemoved"));
     } catch (error) {
       this.failure.set(error instanceof Error ? error.message : String(error));
     } finally {
@@ -70,4 +74,22 @@ export class SettingsComponent {
 
   inputValue(event: Event): string { return (event.target as HTMLInputElement).value; }
   checked(event: Event): boolean { return (event.target as HTMLInputElement).checked; }
+
+  /** Where the key went, in the language the person is reading. */
+  describeWhere(): string {
+    return this.storage.keyLocation() === "keychain"
+      ? this.i18n.translate("settings.keychain")
+      : this.i18n.translate("settings.windowOnly");
+  }
+
+  /**
+   * Changes the language.
+   *
+   * The list comes from the product's own languages, so the app and
+   * the interface inside the binary offer the same ones. The app
+   * only shows the ones it has a catalog for.
+   */
+  changeLocale(event: Event): void {
+    this.i18n.setLocale((event.target as HTMLSelectElement).value);
+  }
 }

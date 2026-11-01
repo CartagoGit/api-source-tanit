@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/cor
 import { StatsClient } from "../../core/api/stats.client";
 import { ProjectStore } from "../../core/state/project.store";
 import type { IStatsResult } from "../../../../../contracts/interfaces/core/application-api.interface";
+import { I18nService } from "../../core/i18n/i18n.service";
 
 /**
  * The collection statistics.
@@ -27,6 +28,7 @@ import type { IStatsResult } from "../../../../../contracts/interfaces/core/appl
   styleUrls: ["./stats.component.scss"],
 })
 export class StatsComponent {
+  readonly i18n = inject(I18nService);
   readonly running = signal(false);
   readonly message = signal<string | null>(null);
   readonly stats = signal<IStatsResult | null>(null);
@@ -36,7 +38,7 @@ export class StatsComponent {
   async run(): Promise<void> {
     const root = this.project.projectRoot();
     if (root === null) {
-      this.message.set("Open a project first.");
+      this.message.set(this.i18n.translate("common.openProjectFirst"));
       return;
     }
     this.running.set(true);

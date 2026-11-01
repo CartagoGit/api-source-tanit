@@ -19,7 +19,7 @@
         <button type="button" role="option" [id]="optionId(index)" [attr.aria-selected]="index === selectedIndex()" [class.selected]="index === selectedIndex()" (click)="choose(command)">
           <span>{{ i18n.translate(command.labelKey) }}</span><kbd>{{ command.shortcut }}</kbd>
         </button>
-      } @empty { <p>No matching commands</p> }
+      } @empty { <p>{{ i18n.translate("palette.empty") }}</p> }
     </div>
     <button class="close" type="button" (click)="close.emit()">{{ i18n.translate("palette.close") }}</button>
   </section>

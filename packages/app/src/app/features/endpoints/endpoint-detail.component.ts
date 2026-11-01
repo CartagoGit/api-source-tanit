@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, HostListener, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, HostListener, inject, input, output, signal } from "@angular/core";
 
 import { EndpointRecord } from "../../core/api/endpoints.client";
+import { I18nService } from "../../core/i18n/i18n.service";
 import { SchemaViewerComponent } from "./schema-viewer.component";
 import { TransportInspectorDirective } from "./transport-inspector.directive";
 
@@ -37,13 +38,21 @@ import { TransportInspectorDirective } from "./transport-inspector.directive";
   styleUrls: ["./endpoint-detail.component.scss"],
 })
 export class EndpointDetailComponent {
+  readonly i18n = inject(I18nService);
   readonly endpoint = input<EndpointRecord | null>(null);
   readonly closed = output<void>();
   readonly transportFilter = output<string>();
   readonly open = output<{ file: string; line: number }>();
   readonly width = signal(460);
-  readonly activeTab = signal("Overview");
-  readonly tabs = ["Overview", "Request", "Responses", "Validation", "Auth", "Location"] as const;
+  readonly activeTab = signal("overview");
+  readonly tabs = [
+    { id: "overview", labelKey: "endpoint.tabOverview" },
+    { id: "request", labelKey: "endpoint.tabRequest" },
+    { id: "responses", labelKey: "endpoint.tabResponses" },
+    { id: "validation", labelKey: "endpoint.tabValidation" },
+    { id: "auth", labelKey: "endpoint.tabAuth" },
+    { id: "location", labelKey: "endpoint.tabLocation" },
+  ] as const;
   private resizing = false;
   private startX = 0;
   private startWidth = 0;
@@ -61,7 +70,7 @@ export class EndpointDetailComponent {
    * so is the difference between a report and a guess.
    */
   reported(value: string | undefined): string {
-    return value ?? "not reported";
+    return value ?? this.i18n.translate("endpoint.notReported");
   }
 
   /**
@@ -73,28 +82,32 @@ export class EndpointDetailComponent {
    * of an empty space.
    */
   transportTitle(transport: string | undefined): string {
-    if (transport === undefined) return "Transport not reported";
+    if (transport === undefined) return this.i18n.translate("endpoint.transportNotReported");
     const titles: Record<string, string> = {
-      http: "HTTP request",
-      grpc: "gRPC call",
-      ws: "WebSocket message",
-      sse: "Server-sent event",
-      kafka: "Kafka message",
-      rabbitmq: "RabbitMQ message",
-      nats: "NATS message",
-      mqtt: "MQTT message",
+      http: this.i18n.translate("endpoint.transportHttp"),
+      grpc: this.i18n.translate("endpoint.transportGrpcCall"),
+      ws: this.i18n.translate("endpoint.transportWebsocket"),
+      sse: this.i18n.translate("endpoint.transportServerSent"),
+      kafka: this.i18n.translate("endpoint.transportKafka"),
+      rabbitmq: this.i18n.translate("endpoint.transportRabbitmq"),
+      nats: this.i18n.translate("endpoint.transportNats"),
+      mqtt: this.i18n.translate("endpoint.transportMqtt"),
     };
-    return titles[transport] ?? `${transport} operation`;
+    return titles[transport] ?? `${transport} ${this.i18n.translate("endpoint.transportOperation")}`;
   }
 
   transportDescription(item: EndpointRecord): string {
     switch (item.transport) {
-      case "http": return `${item.method} request with ${item.parameters.length} parameter(s)`;
-      case "grpc": return "Unary or streaming RPC with protobuf metadata";
-      case "ws": return "Bidirectional channel message";
-      case "sse": return "One-way event stream";
-      case undefined: return "The scanner did not report a transport for this route.";
-      default: return "Message exchanged over a broker";
+      case "http":
+        return this.i18n.translate(
+          item.parameters.length === 1 ? "endpoint.requestOne" : "endpoint.requestMany",
+          { method: item.method, count: item.parameters.length },
+        );
+      case "grpc": return this.i18n.translate("endpoint.transportGrpc");
+      case "ws": return this.i18n.translate("endpoint.transportWebsocketDescription");
+      case "sse": return this.i18n.translate("endpoint.transportServerSentDescription");
+      case undefined: return this.i18n.translate("endpoint.transportUnknown");
+      default: return this.i18n.translate("endpoint.transportBroker");
     }
   }
 }

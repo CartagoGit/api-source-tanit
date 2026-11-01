@@ -10,6 +10,7 @@ import {
   ExportsClient,
 } from "../api/exports.client";
 import { ProjectStore } from "./project.store";
+import { I18nService } from "../i18n/i18n.service";
 
 /**
  * The Export Center's state.
@@ -23,6 +24,7 @@ import { ProjectStore } from "./project.store";
  */
 @Injectable({ providedIn: "root" })
 export class ExportsStore {
+  private readonly i18n = inject(I18nService);
   private readonly client = inject(ExportsClient);
   private readonly project = inject(ProjectStore);
 
@@ -142,11 +144,11 @@ export class ExportsStore {
     if (projectRoot === null) return;
     const preview = this.preview();
     if (preview.requiresOverwriteConfirmation && !this.overwriteConfirmed()) {
-      this.error.set("Confirm the overwrite of the existing files before generating.");
+      this.error.set(this.i18n.translate("common.confirmOverwrite"));
       return;
     }
     if (preview.requiresOutsideWorkspaceConfirmation && !this.outsideWorkspaceConfirmed()) {
-      this.error.set("Confirm that the output goes outside the project before generating.");
+      this.error.set(this.i18n.translate("common.confirmOutside"));
       return;
     }
     this.loading.set(true);

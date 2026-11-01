@@ -79,11 +79,18 @@ export class SecureStorageService implements SecureStoragePort {
     return this.tauri()?.invoke !== undefined;
   }
 
-  /** Where the key actually went, in words a person can read. */
-  describeWhere(): string {
-    return this.isPersistent()
-      ? "Saved in the operating system's keychain."
-      : "Kept in this window only: it is gone when the app is closed.";
+  /**
+   * Where the key actually went.
+   *
+   * A fact, not a sentence: the service has no business knowing
+   * which language the person reads. The screen turns this into
+   * words, in that language.
+   *
+   * `keychain` is the operating system's own store. `window` is the
+   * tab's memory: it dies with the tab, and that is the truth.
+   */
+  keyLocation(): "keychain" | "window" {
+    return this.isPersistent() ? "keychain" : "window";
   }
 
   private tauri(): TauriStorage | undefined {

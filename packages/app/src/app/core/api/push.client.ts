@@ -1,5 +1,6 @@
 import { Injectable, inject } from "@angular/core";
 import { HostBridgeClient } from "./host-bridge.client";
+import { translate } from "../i18n/i18n.state";
 import type { PushRequest } from "../../../../../contracts/interfaces/core/push.interface";
 import type { PushOutput } from "../../../../../contracts/interfaces/core/application-api.interface";
 
@@ -49,7 +50,7 @@ export class PushClient {
         await waitForRetry(attempt, signal);
       }
     }
-    throw new Error("Push failed without exposing credentials.");
+    throw new Error(translate("common.pushFailed"));
   }
 }
 
