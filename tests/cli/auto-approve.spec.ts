@@ -87,7 +87,9 @@ describe("la auto-aprobación", () => {
     expect(raw).toContain('const method = "merge"');
     // Un squash aplana la historia: los commits que `lint:proposals`
     // audita dejan de ser ancestros de HEAD y `main` se queda en rojo.
-    expect(raw).not.toContain('"squash"');
+    // La regex cubre las dos comillas: con `not.toContain('"squash"')`
+    // un `merge_method: 'squash'` se escapaba.
+    expect(raw).not.toMatch(/['"]squash['"]/);
   });
 
   test("activa el auto-merge por el endpoint REST, no por un método de Octokit", async () => {
@@ -102,7 +104,15 @@ describe("la auto-aprobación", () => {
     // "enableAutoMerge is not a function", y el PR se quedaba
     // aprobado pero sin auto-merge, esperando a un humano.
     expect(raw).not.toMatch(/github\.rest\.pulls\.enableAutoMerge\s*\(/);
-    expect(raw).toContain("PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge");
+    // Y la llamada tiene que ser **la del endpoint REST**, no cualquier
+    // cosa que mentione la ruta: un comentario la nombra, así que la
+    // aserción exige el `github.request(` con la ruta y el método.
+    expect(raw).toMatch(
+      /github\.request\(\s*["']PUT \/repos\/\{owner\}\/\{repo\}\/pulls\/\{pull_number\}\/auto-merge["']/,
+    );
+    // Y el cuerpo tiene que llevar el método: la ruta sola no dice con
+    // qué se va a mergear.
+    expect(await workflowWithoutComments()).toMatch(/merge_method:\s*method/);
   });
 
   test("usa pull-requests: write y nada más", async () => {

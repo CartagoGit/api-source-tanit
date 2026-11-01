@@ -154,10 +154,10 @@ en las dos ramas.
 > `needs`, `vars` e `inputs`. Con `env` la comparación nunca casaba y el
 > workflow no hacía nada, en silencio.
 
-`tests/cli/auto-approve.spec.ts` vigila las tres cosas que pueden
+`tests/cli/auto-approve.spec.ts` vigila las cuatro cosas que pueden
 romperse sin que nadie se entere: que deje de mirar el autor, que deje
-de esperar a la validación, y que el método de merge deje de depender
-de la rama.
+de esperar a la validación, que el merge deje de ser un squash, y que
+el auto-merge se pida por el endpoint REST.
 
 ## Ejecución real
 
