@@ -9,14 +9,6 @@ type TauriStorage = {
 };
 
 /**
- * Where the key ended up.
- *
- * `keychain` is the operating system's own store. `window` is the
- * tab's memory: it dies with the tab, and that is the truth.
- */
-export type KeyLocation = "keychain" | "window";
-
-/**
  * Where the Postman API key lives.
  *
  * ## What it really does
@@ -93,8 +85,11 @@ export class SecureStorageService implements SecureStoragePort {
    * A fact, not a sentence: the service has no business knowing
    * which language the person reads. The screen turns this into
    * words, in that language.
+   *
+   * `keychain` is the operating system's own store. `window` is the
+   * tab's memory: it dies with the tab, and that is the truth.
    */
-  keyLocation(): KeyLocation {
+  keyLocation(): "keychain" | "window" {
     return this.isPersistent() ? "keychain" : "window";
   }
 
