@@ -7,7 +7,6 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
-| `x00072` | `fix` | [`ready/fixes/x00072-zod-v4-en-los-ejemplos-y-en-la-fixture-de-trpc.md`](ready/fixes/x00072-zod-v4-en-los-ejemplos-y-en-la-fixture-de-trpc.md) |
 
 ## Bloqueadas
 
