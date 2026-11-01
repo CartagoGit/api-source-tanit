@@ -7,6 +7,7 @@ any change will be detected by `bun run lint:proposals` and rejected.
 
 | id | kind | path |
 | --- | --- | --- |
+| `x00073` | `fix` | [`ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md`](ready/fixes/x00073-la-release-sin-binarios-y-main-en-rojo-el-tag-dispara-los-workflows-y-la-promocion-es-con-merge-commit.md) |
 
 ## Bloqueadas
 
