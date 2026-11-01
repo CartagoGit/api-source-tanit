@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-graphql (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-graphql.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "1a48be38-b2ac-5c4d-80da-e1f9080e3aab"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

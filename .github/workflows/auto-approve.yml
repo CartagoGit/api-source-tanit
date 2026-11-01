@@ -1,0 +1,155 @@
+name: auto-approve
+
+# Aprueba y activa el auto-merge de los PR del dueño, cuando la
+# validación está verde.
+#
+# ## Por qué existe
+#
+# `main` exige **una aprobación** y `enforce_admins` está activo: ni el
+# autor del PR ni un administrador pueden saltársela. Eso está bien
+# puesto —es la puerta que separa una release de un descuido—, pero
+# cuando la única persona del proyecto es la misma que escribe el
+# código, la aprobación se convierte en un formality: hay que
+# pulsar un botón para aprobarse a uno mismo.
+#
+# GitHub **no** permite aprobar el propio PR (`Can not approve your own
+# pull request`). Es una regla de la plataforma, no una configuración,
+# así que no hay forma de pedirle una excepción.
+#
+# La salida es que la aprobación la da **otra identidad**: el bot de
+# GitHub Actions (`github-actions[bot]`), que no es el autor del PR.
+#
+# ## Las dos condiciones
+#
+# La aprobación **no** es ciega. Sólo ocurre cuando:
+#
+#   1. El autor es el dueño del repositorio. Un PR de otra persona
+#      sigue necesitando una aprobación humana de verdad.
+#   2. El check `ci-summary` —el que resume todos los jobs de
+#      validación— ha terminado en `success`. `ci-summary` corre con
+#      `if: always()` después de los demás, así que cuando está verde,
+#      todo lo demás estaba verde.
+#
+# ## Por qué `pull_request_target` y no `pull_request`
+#
+# Porque `pull_request_target` lee el workflow de la rama **base**, que
+# es donde este fichero tiene que estar para poder aprobar PRs contra
+# `main`. Y porque este workflow **no hace checkout del código del PR**:
+# sólo lee el payload del evento y llama a la API. Es la forma segura
+# de usarlo: con `pull_request_target`, un `actions/checkout` del
+# código del PR sería ejecución de código arbitrario con permisos de
+# escritura.
+#
+# ## El método de merge depende de la rama
+#
+# `main` tiene `required_linear_history`: ahí el merge tiene que ser
+# **squash**. `develop` no, y su historia son merge commits: ahí es
+# **merge**. Un método solo no vale para las dos.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+env:
+  # El check que resume la validación entera.
+  SUMMARY_CHECK: ci-summary
+  # Cuánto se espera a que la validación termine.
+  TIMEOUT_SECONDS: 2700
+  POLL_SECONDS: 20
+
+jobs:
+  approve:
+    name: aprobar y activar el auto-merge
+    # Sólo los PR del dueño, y sólo los que no son borradores.
+    #
+    # El dueño se lee de `vars.OWNER` —una variable del repositorio— y
+    # no de `env`, porque el contexto `env` **no** está disponible en
+    # `jobs.<job_id>.if`: ahí sólo hay `github`, `needs`, `vars` e
+    # `inputs`. Con `env` el dueño salía vacío, la comparación nunca
+    # casaba y el workflow no hacía nada, en silencio.
+    if: >-
+      github.event.pull_request.user.login == (vars.OWNER || 'CartagoGit') &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Esperar a que la validación termine
+        id: wait
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          deadline=$(( SECONDS + TIMEOUT_SECONDS ))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            # El check que se mira es el del SHA de la cabeza del PR.
+            # Con `pull_request_target` el contexto `GITHUB_SHA` es el de
+            # la base, así que el SHA hay que tomarlo del evento.
+            conclusion=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" \
+              --jq "[.check_runs[] | select(.name == \"${SUMMARY_CHECK}\")] | first | .conclusion // \"\"")
+            if [ "$conclusion" = "success" ]; then
+              echo "conclusion=success" >> "$GITHUB_OUTPUT"
+              echo "✓ ${SUMMARY_CHECK} está en verde"
+              exit 0
+            fi
+            if [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ] || [ "$conclusion" = "timed_out" ]; then
+              echo "conclusion=${conclusion}" >> "$GITHUB_OUTPUT"
+              echo "✗ ${SUMMARY_CHECK} terminó en ${conclusion}: no se aprueba"
+              exit 0
+            fi
+            echo "… ${SUMMARY_CHECK} sigue en curso"
+            sleep "$POLL_SECONDS"
+          done
+          echo "conclusion=timeout" >> "$GITHUB_OUTPUT"
+          echo "✗ se agotó la espera de ${SUMMARY_CHECK}"
+
+      - name: Aprobar
+        if: steps.wait.outputs.conclusion == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.payload.pull_request.user.login;
+            const summaryCheck = process.env.SUMMARY_CHECK;
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              event: "APPROVE",
+              body: [
+                "Aprobado automáticamente.",
+                "",
+                `El PR es del dueño (\`${owner}\`) y el check \`${summaryCheck}\` está en verde.`,
+                "",
+                "La validación la hizo la CI; esto sólo levanta la puerta de la revisión.",
+              ].join("\n"),
+            });
+
+      - name: Activar el auto-merge
+        if: steps.wait.outputs.conclusion == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // `main` exige historia lineal, así que ahí el merge es
+            // squash. `develop` no, y su historia son merge commits:
+            // ahí el merge es merge. Un método único no vale para las
+            // dos ramas.
+            const base = context.payload.pull_request.base.ref;
+            const method = base === "main" ? "squash" : "merge";
+            try {
+              await github.rest.pulls.enableAutoMerge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                merge_method: method,
+              });
+              core.info(`auto-merge activado (${method})`);
+            } catch (error) {
+              // Que el auto-merge no se pueda activar no invalida la
+              // aprobación: el PR queda aprobado y se puede mergear a
+              // mano. Es un aviso, no un fallo.
+              core.warning(`no se pudo activar el auto-merge: ${error.message}`);
+            }
