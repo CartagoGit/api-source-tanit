@@ -34,6 +34,36 @@ temporal del ruleset, documentar el motivo y retirarlo inmediatamente después d
 
 Si falta la protección, si faltan checks o si la rama o la API responden `404`, el gate falla con un mensaje explícito.
 
+## Dependabot
+
+[`.github/dependabot.yml`](../.github/dependabot.yml) es la configuración
+de las dependencias que **se actualizan solas**. Tres decisiones que no
+son obvias:
+
+**Vigila las dos ramas.** Cada entrada declara
+`target-branch: [main, develop]`. Sin eso, Dependabot abre sus PR
+contra la rama por defecto —`main`— y `develop` se congela: un bump
+que llega a `main` tarda una release entera en volver. Y no es una
+cuestión de estilo: el grafo de dependencias que alimenta las
+**alertas** se construye desde la rama por defecto, así que una
+vulnerabilidad corregida en `develop` sigue parpadeando en la pestaña
+de seguridad hasta que el arreglo llega a `main`.
+
+**No vigila los ejemplos ni las fixtures, y hay un test que lo
+impide.** Sus `package.json` son de muestra: 50+ proyectos que nadie
+instala. El grafo de dependencias **no admite exclusiones** —los
+escanea todos—, así que lo único que se puede hacer es que esos
+manifiestos **declaren la versión que un proyecto real declararía
+hoy**. `tests/cli/dependabot.spec.ts` lo sostiene con su tabla de
+pisos: si un manifiesto de muestra vuelve a una versión con alertas
+abiertas, el test **falla en el commit**, en vez de esperar a que
+GitHub reconstruya el grafo días después y en otra rama. Un PR de
+Dependabot sobre un ejemplo no llega nunca antes.
+
+**Consecuencia:** arreglar una vulnerabilidad en `develop` **no** cierra
+la alerta; la cierra el arreglo en `main`. Por eso promover `develop`
+a `main` es también una operación de seguridad.
+
 ## Ejecución real
 
 Para consultar GitHub de verdad hacen falta estas variables de entorno:

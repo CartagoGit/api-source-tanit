@@ -55,6 +55,12 @@ const VERSION_FLOOR: Readonly<Record<string, string>> = {
   "github.com/gofiber/fiber/v2": "2.52.14",
   "laravel/framework": "12.60.0",
   next: "15.5.21",
+  // x00072: GHSA-mrhx-c7xc-m3w5 —"Zod can exhaust memory while
+  // validating oversized constrained collections"— con la versión
+  // parcheada en la 4.6.6. Los cuatro ejemplos de Node y las cuatro
+  // fixtures que declaran zod bajaron a `^4.6.7`; esta entrada es lo
+  // que impide que vuelvan.
+  zod: "4.6.6",
 };
 
 /** Folders whose manifests are fake. */
@@ -199,6 +205,50 @@ describe("which directories get updated", () => {
     // An old action is third-party code running with the repo's
     // token.
     await expect(readFile(DEPENDABOT_YML, "utf8")).resolves.toContain("github-actions");
+  });
+});
+
+describe("which branches get updated", () => {
+  /**
+   * The `target-branch:` blocks, one list per update entry.
+   *
+   * The configuration is YAML y el repo no carga un parser de YAML
+   * para esto: el formato de estas listas es fijo —dos niveles de
+   * sangría y un guion por rama—, y un regex que lo entienda es
+   * menos dependencias que un parser entero.
+   */
+  async function declaredTargetBranches(): Promise<ReadonlyArray<ReadonlyArray<string>>> {
+    const raw = await readFile(DEPENDABOT_YML, "utf8");
+    const bloques = [
+      ...raw.matchAll(/target-branch:\s*\n((?:\s+-\s+\S+\s*\n)+)/g),
+    ].map((m) => m[1] ?? "");
+    return bloques.map((bloque) => [...bloque.matchAll(/-\s+(\S+)/g)].map((m) => m[1] ?? ""));
+  }
+
+  /**
+   * Sin `target-branch`, Dependabot abre sus PR contra la rama por
+   * defecto —`main`— y `develop` se congela: un bump tarda una
+   * release entera en volver, y el arreglo de una vulnerabilidad
+   * tarda lo mismo en llegar al grafo que alimenta las alertas.
+   */
+  test("every update is proposed on both branches", async () => {
+    const bloques = await declaredTargetBranches();
+    expect(bloques.length, "the configuration declares its branches").toBeGreaterThan(0);
+    for (const ramas of bloques) {
+      expect(ramas, "the release branch is proposed").toContain("main");
+      expect(ramas, "the integration branch is proposed").toContain("develop");
+    }
+  });
+
+  /**
+   * Y ninguna entrada se libra: una entrada sin `target-branch` es
+   * una entrada que vuelve a mirar sólo `main`.
+   */
+  test("no update is left without its branches", async () => {
+    const raw = await readFile(DEPENDABOT_YML, "utf8");
+    const entradas = [...raw.matchAll(/^\s*-\s+package-ecosystem:/gm)].length;
+    const bloques = (await declaredTargetBranches()).length;
+    expect(bloques, "every entry declares target-branch").toBe(entradas);
   });
 });
 
