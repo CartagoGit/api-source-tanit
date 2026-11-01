@@ -93,6 +93,40 @@ el ejecutable autocontenido, que no necesita Bun ni Node en la máquina
 destino. Publicar en npm es irreversible, y no había ninguna decisión
 detrás de hacerlo.
 
+## La auto-aprobación
+
+`main` exige **una aprobación** y `enforce_admins` está activo: ni el
+autor del PR ni un administrador pueden saltársela. Eso está bien
+puesto —es la puerta que separa una release de un descuido—, pero en un
+proyecto de una sola persona se convierte en un formality: hay que
+pulsar un botón para aprobarse a uno mismo. Y GitHub **no** permite
+aprobar el propio PR (`Can not approve your own pull request`): es regla
+de la plataforma, no configuración.
+
+El workflow [auto-approve.yml](../.github/workflows/auto-approve.yml) lo
+resuelve con **otra identidad**: `github-actions[bot]`, que no es el
+autor del PR. La aprobación **no** es ciega; sólo ocurre cuando:
+
+1. el autor es el dueño del repositorio (`vars.OWNER`, por defecto
+   `CartagoGit`), y
+2. el check `ci-summary` —el que resume todos los jobs de validación—
+   ha terminado en `success`.
+
+Un PR de otra persona sigue necesitando una aprobación humana de
+verdad. El workflow también activa el auto-merge, con el método que
+corresponde a la rama: **squash** en `main` (que exige historia lineal)
+y **merge** en `develop`.
+
+> El dueño se lee de `vars.OWNER` y no de `env`, porque el contexto
+> `env` **no** existe en `jobs.<job_id>.if`: ahí sólo hay `github`,
+> `needs`, `vars` e `inputs`. Con `env` la comparación nunca casaba y el
+> workflow no hacía nada, en silencio.
+
+`tests/cli/auto-approve.spec.ts` vigila las tres cosas que pueden
+romperse sin que nadie se entere: que deje de mirar el autor, que deje
+de esperar a la validación, y que el método de merge deje de depender
+de la rama.
+
 ## Ejecución real
 
 Para consultar GitHub de verdad hacen falta estas variables de entorno:
