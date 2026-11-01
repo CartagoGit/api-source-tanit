@@ -37,14 +37,14 @@ quedarse sin las otras.
 # packages/contracts/constants/cli/cli-version.constant.ts  →  CLI_VERSION
 ```
 
-Tienen que coincidir. El de `package.json` va al paquete de npm; el
+Tienen que coincidir. El de `package.json` describe el producto; el
 de `tauri.conf.json` va al nombre del instalador y a lo que enseña el
 sistema en «Programas instalados»; el de `CLI_VERSION` es lo que
 imprime `apisrc --version`.
 
 `bun run lint:release-channel` lo comprueba, y además dice a qué canal
-pertenece la versión y qué `dist-tag` de npm le toca. La escalera de
-canales —alfa, beta, rc y estable— está en
+pertenece la versión. La escalera de canales —alfa, beta, rc y
+estable— está en
 [RELEASE.md](RELEASE.md#los-canales-alfa-beta-rc-y-estable).
 
 ### 2. Comprobar que el gate pasa entero
@@ -57,17 +57,28 @@ No es opcional. El instalador **contiene** el binario del CLI, así que
 publicar con el gate en rojo es meter el fallo dentro de algo que la
 gente instala en su equipo.
 
-### 3. Etiquetar
+### 3. Mergear `develop` en `main`
+
+La versión sale por `main`: cada PR de `develop` a `main` es una
+versión que se corta. El PR se mergea con **squash**, porque `main`
+tiene `required_linear_history` y un merge commit no pasa.
+
+### 4. Etiquetar
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.1.0-alpha.1
+git push origin v0.1.0-alpha.1
 ```
 
-El workflow se dispara con el tag y adjunta los instaladores a la
-release de GitHub.
+El tag tiene que decir lo mismo que la versión del repo: el workflow
+compara el tag con el `package.json` y para si no coinciden.
 
-### 4. Comprobar lo que ha salido
+El workflow `release-cut` se dispara con el tag y **crea la release**,
+con las notas que salen del CHANGELOG y con la marca de prerelease que
+decide el canal. Después, `release-binaries` adjunta los ejecutables y
+`release-desktop` los instaladores.
+
+### 5. Comprobar lo que ha salido
 
 Descarga al menos uno e instálalo de verdad. Un `.deb` de 2 KB es un
 `.deb` vacío, y desde la página de releases se ve exactamente igual que
@@ -99,13 +110,17 @@ parezca que la aplicación está rota.
 
 ---
 
-## Publicar el CLI en npm
+## El CLI se distribuye con la release, no en npm
 
-Aparte de la aplicación, el paquete se publica solo:
+El CLI no se publica en npm. Sale en la **release de GitHub**, como
+ejecutable autocontenido por plataforma, y se descarga sin tener Bun ni
+Node instalados en la máquina destino.
+
+El tarball de npm se sigue **empaquetando y probando** en CI, pero sólo
+para comprobar que el paquete está bien:
 
 ```bash
 bun run validate:package   # npm pack + instalación limpia + smoke
-npm publish --access public
 ```
 
 `validate:package` no es ceremonia: instala el tarball en un directorio
@@ -113,6 +128,11 @@ temporal **sin Bun ni Node en el PATH del destino**, enlaza el binario y
 genera una colección. Es lo que comprueba la promesa del README —«no
 necesitan Bun ni Node instalados»— antes de que la compruebe alguien que
 se lo descarga.
+
+Lo que **no** hay es un `npm publish`. Publicar en npm es irreversible:
+una versión publicada no se puede volver a sacar. Un repositorio que
+ainda no ha salido una vez no tiene nada que ganar con un `dist-tag`
+`latest` que cualquiera que instale sin `--tag` se come.
 
 ---
 

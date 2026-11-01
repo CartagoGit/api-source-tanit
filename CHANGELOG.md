@@ -12,8 +12,8 @@ especificaciones OpenAPI.
 Ésta es la **primera versión que sale de este repositorio**, y es un
 **alfa**: hasta ahora la herramienta sólo existía como un checkout. Un
 alfa dice "esto se rompe y hay que probarlo", así que el número no es
-`1.0.0` sino `0.1.0-alpha.1`, y sale en el canal `alpha` de npm y no en
-`latest`.
+`1.0.0` sino `0.1.0-alpha.1`, y la release sale marcada como
+prerelease. Se distribuye en la release de GitHub, no en npm.
 
 ### La app de escritorio
 
@@ -85,12 +85,15 @@ alfa dice "esto se rompe y hay que probarlo", así que el número no es
 - **Un solo comando dice si el repo está sano**: `bun run validate`
   (tipado, ~40 gates, la suite entera, los 25 ejemplos y los
   benchmarks).
-- **Versionado por canales**: alfa, beta, rc y estable. El número
-  solo se sube de canal cuando el producto lo pide, y un prerelease
-  nunca sale en `latest`. La versión vive en tres ficheros y un gate
-  dice si discrepan.
-- **Publicación desde CI**: el paquete de npm se publica al empujar
-  un tag, y los ejecutables autocontenidos se adjuntan a la release.
+- **Versionado por canales**: alfa, beta, rc y estable. El prefijo de
+  la versión decide el canal, y el canal decide si la release se marca
+  como prerelease. La versión vive en tres ficheros y un gate dice si
+  discrepan.
+- **`develop` es donde se trabaja, `main` es donde sale una
+  versión**: cada PR de `develop` a `main` corta una versión.
+- **Publicación desde CI**: al empujar un tag sobre `main` se crea la
+  release —con las notas que salen del CHANGELOG— y se adjuntan los
+  ejecutables autocontenidos.
 - **Release de escritorio por plataforma** con firma, notarización,
   verificador y SBOM, preparado para cuando haya credenciales de
   Apple, Microsoft y GnuPG.

@@ -10,7 +10,7 @@
  *
  * ## Las tres copias
  *
- *   · `package.json` — lo que se publica en npm.
+ *   · `package.json` — lo que describe el producto que se publica.
  *   · `packages/contracts/constants/cli/cli-version.constant.ts` — lo
  *     que imprime `apisrc --version`.
  *   · `packages/desktop/tauri.conf.json` — lo que ponen los
@@ -18,10 +18,10 @@
  *
  * ## El canal
  *
- * El prefijo de prerelease decide el canal, y el canal decide el
- * `dist-tag` de npm. Un alfa en `latest` se lo traga cualquiera que
- * instale el paquete sin pedir un canal, así que esa parte también se
- * prueba.
+ * El prefijo de prerelease decide el canal, y el canal decide si la
+ * release se marca como prerelease. Un alfa marcado como release
+ * estable se lo traga cualquiera que busque la última versión, así que
+ * esa parte también se prueba.
  */
 import { describe, expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
@@ -30,13 +30,12 @@ import { join } from "node:path";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper.js";
 import {
   channelOf,
-  distTagOf,
+  isPrereleaseVersion,
   isSemver,
 } from "../../scripts/helpers/release-channel.helper.js";
 import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
 import {
   RELEASE_CHANNELS,
-  RELEASE_DIST_TAGS,
   STABLE_RELEASE_CHANNEL,
 } from "../../packages/contracts/constants/release/release-channel.constant.js";
 
@@ -75,29 +74,29 @@ describe("el canal de una versión", () => {
   });
 });
 
-describe("el dist-tag de npm", () => {
-  test("el canal estable publica en latest", () => {
-    expect(distTagOf("1.0.0")).toBe("latest");
-    expect(RELEASE_DIST_TAGS[STABLE_RELEASE_CHANNEL]).toBe("latest");
+describe("la marca de prerelease", () => {
+  test("sólo el canal estable es una release normal", () => {
+    expect(isPrereleaseVersion("1.0.0")).toBe(false);
+    expect(isPrereleaseVersion("0.9.3")).toBe(false);
   });
 
-  test("un prerelease nunca publica en latest", () => {
+  test("cualquier prerelease se marca como tal", () => {
     for (const channel of RELEASE_CHANNELS) {
       if (channel === STABLE_RELEASE_CHANNEL) continue;
-      expect(RELEASE_DIST_TAGS[channel]).not.toBe("latest");
+      expect(isPrereleaseVersion(`0.1.0-${channel}.1`)).toBe(true);
     }
   });
 
-  test("el dist-tag de una versión sale de su canal", () => {
-    expect(distTagOf("0.1.0-alpha.1")).toBe("alpha");
-    expect(distTagOf("0.2.0-beta.3")).toBe("beta");
-    expect(distTagOf("0.9.0-rc.1")).toBe("rc");
-    expect(distTagOf("1.0.0")).toBe("latest");
+  test("la marca sale del canal de la versión", () => {
+    expect(isPrereleaseVersion("0.1.0-alpha.1")).toBe(true);
+    expect(isPrereleaseVersion("0.2.0-beta.3")).toBe(true);
+    expect(isPrereleaseVersion("0.9.0-rc.1")).toBe(true);
+    expect(isPrereleaseVersion("1.0.0")).toBe(false);
   });
 
-  test("una versión sin canal no tiene dist-tag", () => {
-    expect(distTagOf("0.1.0-gamma.1")).toBeNull();
-    expect(distTagOf("no-es-una-version")).toBeNull();
+  test("una versión sin canal no se puede marcar", () => {
+    expect(isPrereleaseVersion("0.1.0-gamma.1")).toBeNull();
+    expect(isPrereleaseVersion("no-es-una-version")).toBeNull();
   });
 });
 
@@ -112,11 +111,5 @@ describe("las tres copias de la versión", () => {
   test("la versión es semver y pertenece a un canal", () => {
     expect(isSemver(CLI_VERSION)).toBe(true);
     expect(channelOf(CLI_VERSION)).not.toBeNull();
-  });
-
-  test("el dist-tag declarado es el del canal de la versión", async () => {
-    const pkg = await readJson("package.json");
-    const publishConfig = (pkg.publishConfig ?? {}) as Record<string, unknown>;
-    expect(publishConfig.tag).toBe(distTagOf(CLI_VERSION));
   });
 });

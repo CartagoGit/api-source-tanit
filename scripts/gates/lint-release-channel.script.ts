@@ -5,16 +5,17 @@
  * ## Por qué hace falta
  *
  * La versión del producto vive en tres sitios que no comparten código:
- * el `package.json` que se publica en npm, la constante que imprime
- * `apisrc --version` y la que lee Tauri para los instaladores. Son tres
- * copias de un mismo hecho, y si una se queda atrás el producto miente
- * en tres formatos distintos: el binario dice una cosa, el paquete
- * otra, y el instalador otra.
+ * el `package.json` que describe el producto, la constante que
+ * imprime `apisrc --version` y la que lee Tauri para los
+ * instaladores. Son tres copias de un mismo hecho, y si una se queda
+ * atrás el producto miente en tres formatos distintos: el binario dice
+ * una cosa, el ejecutable descargado otra, y el instalador otra.
  *
  * A eso se suma el **canal**. El número dice qué hay; el canal dice
  * cuánto se puede esperar. Publicar un alfa como `1.0.0` promete una
- * estabilidad que no existe, y publicar un alfa en el `dist-tag`
- * `latest` se lo traga a cualquiera que instale sin pedirlo.
+ * estabilidad que no existe, y cortarlo como release estable —sin la
+ * marca de prerelease— se lo traga a cualquiera que busque la última
+ * versión.
  *
  * ## Qué comprueba
  *
@@ -22,14 +23,14 @@
  *   2. La versión tiene forma de semver, con o sin prefijo.
  *   3. El prefijo de prerelease es uno de los del canal: `alpha`,
  *      `beta` o `rc`. Sin prefijo, la versión es del canal estable.
- *   4. El `dist-tag` de npm es el que le toca a ese canal.
  *
- * ## El `--print-tag`
+ * ## El `--print-channel`
  *
- * El workflow de publicación necesita el `dist-tag` y no puede
- * duplicar esta lógica: si la duplica, un día se desincroniza del gate
- * y el gate deja de decir la verdad. Con `--print-tag` el gate **es**
- * la fuente y el workflow sólo pregunta.
+ * El workflow que corta la release necesita saber si lo que sale es
+ * prerelease, y no puede duplicar esta lógica: si la duplica, un día
+ * se desincroniza del gate y el gate deja de decir la verdad. Con
+ * `--print-channel` el gate **es** la fuente y el workflow sólo
+ * pregunta.
  */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -37,7 +38,7 @@ import { join } from "node:path";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 import {
   channelOf,
-  distTagOf,
+  isPrereleaseVersion,
   isSemver,
 } from "../helpers/release-channel.helper.js";
 import { CLI_VERSION } from "../../packages/contracts/constants/cli/cli-version.constant.js";
@@ -53,7 +54,7 @@ function readString(source: Record<string, unknown>, key: string): string {
 }
 
 export async function main(): Promise<number> {
-  const printTag = process.argv.includes("--print-tag");
+  const printChannel = process.argv.includes("--print-channel");
   const problems: string[] = [];
 
   const pkg = await readJson("package.json");
@@ -87,35 +88,26 @@ export async function main(): Promise<number> {
     );
   }
 
-  // 4. El dist-tag es el del canal.
-  const publishConfig = (pkg.publishConfig ?? {}) as Record<string, unknown>;
-  const declaredTag = readString(publishConfig, "tag");
-  const expectedTag = distTagOf(version) ?? "";
-  if (declaredTag !== expectedTag) {
-    problems.push(
-      `publishConfig.tag dice "${declaredTag || "(nada)"}" y el canal ` +
-        `"${channel ?? "desconocido"}" necesita "${expectedTag}"`,
-    );
-  }
-
   if (problems.length > 0) {
     console.error(`lint:release-channel — ${problems.length} problema(s):\n`);
     for (const problem of problems) console.error(`  ✗ ${problem}`);
     console.error(
       "\n  La versión del producto vive en tres ficheros. Si discrepan,\n" +
-        "  el binario, el paquete de npm y el instalador dicen cosas\n" +
+        "  el binario, el ejecutable y el instalador dicen cosas\n" +
         "  distintas. Súbenlas a la vez y vuelve a pasar este gate.",
     );
     return 1;
   }
 
-  if (printTag) {
-    console.log(expectedTag);
+  if (printChannel) {
+    console.log(channel);
     return 0;
   }
 
+  const prerelease = isPrereleaseVersion(version);
   console.log(
-    `lint:release-channel — ${version} (canal ${channel}, dist-tag ${expectedTag}): ` +
+    `lint:release-channel — ${version} (canal ${channel}, ` +
+      `${prerelease ? "prerelease" : "release estable"}): ` +
       "las tres copias coinciden.",
   );
   return 0;

@@ -1,14 +1,23 @@
 /**
- * Los canales de publicación, y de dónde sale el `dist-tag` de npm.
+ * Los canales de publicación, y de dónde sale el prefijo que los
+ * declara.
  *
  * ## Por qué vive en contratos
  *
  * Porque lo necesitan **tres** sitios que no comparten código: el
- * gate que valida la versión, el workflow que publica en npm y el
- * verificador que dice si una versión instalada es más nueva que otra.
- * Cuando uno de ellos lleva su propio valor, el canal deja de
- * significar nada: el gate valida una cosa y el workflow publica por
- * otra, y el resultado es un prerelease landado en `latest`.
+ * gate que valida la versión, el workflow que corta la release y el
+ * test que lo fija. Cuando uno de ellos lleva su propio valor, el
+ * canal deja de significar nada: el gate valida una cosa y el workflow
+ * publica por otra, y el resultado es una release estable que en
+ * realidad es un alfa.
+ *
+ * ## Por qué no hay ningún `dist-tag`
+ *
+ * Porque Tanit no se publica en npm. La distribución es la release de
+ * GitHub: el ejecutable autocontenido y el instalador. En GitHub el
+ * equivalente de un `dist-tag` es el **canal de la release** —la
+ * marca de prerelease y su etiqueta—, y las dos salen del canal que
+ * decide el prefijo de la versión.
  */
 
 import type { ReleaseChannel } from "../../interfaces/release/release-channel.interface.js";
@@ -29,24 +38,6 @@ export const RELEASE_CHANNELS: ReadonlyArray<ReleaseChannel> = [
  * estreche al resto de canales cuando se recorre la lista.
  */
 export const STABLE_RELEASE_CHANNEL = "stable";
-
-/**
- * El `dist-tag` de npm de cada canal.
- *
- * ## Por qué `latest` es sólo del canal estable
- *
- * `npm install api-source-tanit` sin `--tag` se come lo que hay en
- * `latest`. Si un alfa landinga ahí, cualquiera que instale el
- * paquete recibe un alfa sin haberlo pedido — y sin ninguna señal de
- * que sea un alfa. Por eso los prereleases viven en su propio tag, y
- * `latest` sólo lo ocupa la release.
- */
-export const RELEASE_DIST_TAGS: Readonly<Record<ReleaseChannel, string>> = {
-  alpha: "alpha",
-  beta: "beta",
-  rc: "rc",
-  stable: "latest",
-};
 
 /**
  * El prefijo de prerelease que declara cada canal.

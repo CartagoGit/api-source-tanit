@@ -160,11 +160,6 @@
     "docs:frameworks": "bun run scripts/build/frameworks-table.script.ts",
     "lint:frameworks-table": "bun run scripts/build/frameworks-table.script.ts --check"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/",
-    "tag": "alpha"
-  },
   "dependencies": {
     "@angular/cdk": "^20.2.0",
     "@babel/parser": "7.29.8",

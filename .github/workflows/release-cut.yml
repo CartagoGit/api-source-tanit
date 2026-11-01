@@ -1,0 +1,99 @@
+name: release-cut
+
+# Corta la release de GitHub a partir de un tag.
+#
+# ## La regla de `main`
+#
+# `develop` es donde se trabaja. `main` es donde se **corta una
+# versión**: cada PR de `develop` a `main` es una versión que sale. Por
+# eso este workflow se dispara con el tag, y el tag sólo puede existir
+# en `main`.
+#
+# ## El canal lo decide el prefijo
+#
+# El prefijo de prerelease de la versión dice si lo que sale es una
+# release normal o una prerelease, y el gate es la fuente: este
+# workflow **pregunta** con `lint:release-channel --print-channel` en
+# lugar de decidir por su cuenta. Si el workflow decidiera por su
+# cuenta, un día se desincronizaría del gate y una release estable
+# acabaría marcando un alfa.
+#
+# ## Las notas salen del CHANGELOG
+#
+# La sección del CHANGELOG de esa versión **es** las notas de la
+# release. No se escriben dos veces: si no hay sección, el workflow
+# para — una release sin notas es una release que dice "no hay nada".
+#
+# ## Lo que este workflow NO hace
+#
+# No publica en npm, y no adjunta binarios. Los binarios los adjunta
+# `release-binaries.yml` cuando la release existe, y los instaladores
+# `release-desktop.yml`. Cada uno en su workflow, porque cada uno
+# necesita algo distinto: credenciales, SDK o nada.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+env:
+  STAGE: packages/desktop/target/release/staging
+
+jobs:
+  cut:
+    name: cortar la release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - run: bun install --frozen-lockfile
+
+      - name: El tag tiene que ser la versión del repo
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          repo_version="$(bun -e 'console.log(require("./package.json").version)')"
+          if [ "$tag_version" != "$repo_version" ]; then
+            echo "✗ el tag dice $tag_version y el repo dice $repo_version"
+            exit 1
+          fi
+          echo "✓ el tag y el repo dicen $tag_version"
+
+      - name: El canal lo dice el gate
+        id: channel
+        run: |
+          channel="$(bun run lint:release-channel --print-channel)"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "✓ el canal es $channel"
+
+      - name: Las notas salen del CHANGELOG
+        id: notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bun run scripts/release/release-notes.mjs --version "$version" > notes.md
+          echo "✓ notas encontradas para $version"
+
+      - name: Crear la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.channel.outputs.channel }}
+        run: |
+          prerelease=false
+          if [ "$VERSION" != "stable" ]; then
+            prerelease=true
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file notes.md \
+            --prerelease="$prerelease" \
+            --verify-tag
+          echo "✓ release $TAG creada (canal $VERSION)"

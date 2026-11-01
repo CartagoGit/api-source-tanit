@@ -1,29 +1,27 @@
 /**
- * De una versión a su canal, y de su canal al `dist-tag` de npm.
+ * De una versión a su canal, y de su canal a cómo se corta la release.
  *
  * ## Por qué vive aquí y no en los contratos
  *
  * Porque es **tooling de release**, no superficie del producto: lo
- * usan el gate que valida la versión, el workflow que publica en npm
+ * usan el gate que valida la versión, el workflow que corta la release
  * y el test que lo fija. Los contratos se quedan con los datos —los
- * nombres de los canales y su `dist-tag`— y esta función los
- * convierte.
+ * nombres de los canales y su prefijo— y esta función los convierte.
  *
  * ## La regla
  *
  * El prefijo de prerelease decide el canal, no al revés:
  *
- *   · `0.1.0-alpha.1` → canal `alpha`, se publica en `alpha`.
- *   · `0.2.0-beta.3`  → canal `beta`, se publica en `beta`.
- *   · `0.9.0-rc.1`    → canal `rc`, se publica en `rc`.
- *   · `1.0.0`         → canal estable, se publica en `latest`.
+ *   · `0.1.0-alpha.1` → canal `alpha`, release marcada como prerelease.
+ *   · `0.2.0-beta.3`  → canal `beta`, release marcada como prerelease.
+ *   · `0.9.0-rc.1`    → canal `rc`, release marcada como prerelease.
+ *   · `1.0.0`         → canal estable, release normal.
  *
  * Una versión sin prefijo es siempre la estable: es la única forma
  * que se puede instalar sin pedir un canal a mano.
  */
 
 import {
-  RELEASE_DIST_TAGS,
   RELEASE_PRERELEASE_TAGS,
   STABLE_RELEASE_CHANNEL,
 } from "../../packages/contracts/constants/release/release-channel.constant.js";
@@ -59,13 +57,14 @@ export function channelOf(version: string): ReleaseChannel | null {
 }
 
 /**
- * El `dist-tag` de npm de una versión, o `null` si no se puede decidir.
+ * Si una versión es un prerelease, y por tanto su release se marca
+ * como tal.
  *
- * `null` cuando el canal no se puede deducir: publicar con un tag
- * inventado es peor que no publicar.
+ * `null` cuando el canal no se puede deducir: marcar una release como
+ * prerelease o como estable sin saberlo es peor que no publicarla.
  */
-export function distTagOf(version: string): string | null {
+export function isPrereleaseVersion(version: string): boolean | null {
   const channel = channelOf(version);
   if (channel === null) return null;
-  return RELEASE_DIST_TAGS[channel];
+  return channel !== STABLE_RELEASE_CHANNEL;
 }
