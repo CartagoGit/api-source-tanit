@@ -87,13 +87,20 @@ jobs:
           TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.channel.outputs.channel }}
         run: |
-          prerelease=false
-          if [ "$VERSION" != "stable" ]; then
-            prerelease=true
+          # Dos comandos y no un booleano: `--prerelease=false` depende
+          # de cómo el CLI interprete el flag, y una release estable
+          # marcada como prerelease (o al revés) es exactamente el
+          # error que este workflow existe para no cometer.
+          if [ "$VERSION" = "stable" ]; then
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file notes.md \
+              --verify-tag
+          else
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes-file notes.md \
+              --prerelease \
+              --verify-tag
           fi
-          gh release create "$TAG" \
-            --title "$TAG" \
-            --notes-file notes.md \
-            --prerelease="$prerelease" \
-            --verify-tag
           echo "✓ release $TAG creada (canal $VERSION)"
