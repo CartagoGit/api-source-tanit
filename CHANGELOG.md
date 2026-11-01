@@ -1,6 +1,95 @@
 # Changelog
 
-## 1.0.0 (2026-09-04) — Renamed to Tanit
+## 1.0.0 (2026-11-01) — La primera release de Tanit
+
+Tanit descubre tu API **en el código** y la exporta: una colección de
+Postman, un documento de OpenAPI, un workspace de Bruno, un HAR, un
+cURL. Lee Express, Fastify, NestJS, Django, FastAPI, Flask, Gin,
+Fiber, Hono, Ktor, Laravel, Rails, Phoenix, Actix, Rocket, Spring Boot,
+Symfony, GraphQL, gRPC, WebSockets, SSE, AsyncAPI, tRPC, ASP.NET y las
+especificaciones OpenAPI.
+
+Ésta es la **primera versión que sale de este repositorio**: hasta
+ahora la herramienta sólo existía como un checkout. El paquete de npm
+y los ejecutables van detrás del mismo tag.
+
+### La app de escritorio
+
+- **La interfaz es una app de verdad** (f00017). Sustituye al monolito
+  de un único fichero por una aplicación Angular *standalone*:
+  componentes con signals, tres ficheros cada uno (`.ts`, `.html` y
+  `.scss`), y un shell con navegación agrupada, paleta de comandos y
+  selector nativo de carpetas.
+- **Habla tres idiomas** —inglés, español y francés— y lo dice en
+  **Ajustes**. El cambio se ve al momento, sin recargar, y el
+  documento declara su `lang` para el lector de pantalla.
+- **Export Center** con vista previa: dice qué ficheros se escribirían,
+  cuánto pesan y si alguno pisaría lo que ya está ahí, antes de
+  escribir nada.
+- **Endpoints Explorer** con filtros combinables y detalle por
+  transporte: HTTP, gRPC, WebSockets, SSE y GraphQL.
+- **El historial persiste** en disco. Cada exportación deja una
+  revisión con su hash; dos revisiones se comparan, una se vuelve a
+  exportar y otra se restaura. Una revisión sobrevive a la sesión que
+  la creó.
+- **La clave de Postman** se guarda en el almacén seguro del sistema
+  (Keychain, Credential Manager o Secret Service) y en el navegador
+  sólo vive en memoria, mientras dure la sesión.
+
+### El CLI y la API
+
+- **Doce comandos**: `generate`, `inspect`, `list`, `check`,
+  `validate`, `sync`, `push`, `watch`, `history`, `summary`, `ui` y
+  `doctor`. Los que se pueden hacer sin terminal, se hacen sin
+  terminal.
+- **Un solo escaneo por proyecto.** Abrir un proyecto abre una
+  sesión con una instantánea inmutable; las vistas —endpoints,
+  servicios, historial, vista previa de la exportación— se derivan de
+  ella en vez de volver a escanear.
+- **`--framework`** para cuando la detección no puede acertar: un
+  monorepo, un alias en el `package.json` o un manifiesto generado.
+- **Autenticación honesta**: OAuth2, API key y lo que el código
+  declara de verdad. Lo que no se ha comprobado se dice que no se ha
+  comprobado.
+
+### Los exportadores y los frameworks
+
+- **Seis formatos desde el mismo catálogo de endpoints**: Postman,
+  OpenAPI 3.1, Insomnia v4, Bruno, HAR y cURL. Salen del mismo
+  escaneo, así que no pueden discrepar entre sí.
+- **Inferencia de esquemas** desde el código: DTOs de TypeScript,
+  Pydantic, FormRequests, Zod, Joi, Marshmallow y JSON Schema.
+- **Inferencia de respuestas** a partir de los handlers, las firmas,
+  los decoradores y las anotaciones explícitas.
+- **Aserciones automáticas** y documentación derivada en la colección.
+
+### El núcleo
+
+- **Motor de escaneo sobre AST**, no sobre regex: el grafo de
+  símbolos resuelve las rutas que se importan en otro fichero, y el
+  LanguageIR entiende `this.router.get`, los alias y los re-exports.
+- **Escaneo concurrente acotado** y diagnósticos que separan *no
+  detectado* de *detector roto*.
+- **Ninguna escritura a medias**: todo se escribe con temporal y
+  `rename`, y `generate` es una transacción —no escribe nada antes de
+  validar que hay endpoints.
+- **TypeScript estricto en todas las secciones**, con
+  `noUncheckedIndexedAccess`.
+
+### La infraestructura
+
+- **CI partida en jobs paralelos** con un `ci-summary` que resume el
+  resultado, y `develop` protegida por ese check.
+- **Un solo comando dice si el repo está sano**: `bun run validate`
+  (tipado, ~40 gates, la suite entera, los 25 ejemplos y los
+  benchmarks).
+- **Publicación desde CI**: el paquete de npm se publica al empujar
+  un tag, y los ejecutables autocontenidos se adjuntan a la release.
+- **Release de escritorio por plataforma** con firma, notarización,
+  verificador y SBOM, preparado para cuando haya credenciales de
+  Apple, Microsoft y GnuPG.
+
+### El renombrado
 
 Brand rename (track: `export-to-postman` → `api-source-tanit`). Full list:
 
@@ -18,8 +107,6 @@ Brand rename (track: `export-to-postman` → `api-source-tanit`). Full list:
 - Postman `creator.name`: `"tanit"`; Insomnia `__export_source`: `"tanit"`.
 
 Proposals historical (`p00001`–`p00043`, `x00001`–`x00025`, `a00001`–`a00016`, etc.) keep `track: export-to-postman` as archaeology — links to the old name in markdown are stable. See [`b00001`](docs/delendai/proposals/done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md).
-
-## Sin publicar — 2026-08-07
 
 ### Novedades
 
