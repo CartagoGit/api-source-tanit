@@ -1,0 +1,9 @@
+.scrim { position: fixed; inset: 0; z-index: 10; background: rgb(0 0 0 / 35%); }
+.palette { position: fixed; z-index: 11; top: 18%; left: 50%; width: min(560px, calc(100vw - 32px)); transform: translateX(-50%); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-panel); box-shadow: 0 18px 60px rgb(0 0 0 / 20%); padding: var(--space-3); }
+input { width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-ink); padding: var(--space-3); }
+input:focus { outline: 2px solid var(--color-focus); outline-offset: 1px; }
+[role="listbox"] { display: grid; gap: var(--space-1); margin-top: var(--space-3); }
+[role="option"] { display: flex; justify-content: space-between; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--color-ink); padding: var(--space-3); text-align: left; }
+[role="option"].selected, [role="option"]:hover { background: color-mix(in srgb, var(--color-copper) 14%, transparent); }
+kbd { color: var(--color-muted); font-family: var(--font-code); }
+.close { margin-top: var(--space-2); border: 0; background: transparent; color: var(--color-muted); font-size: 12px; }

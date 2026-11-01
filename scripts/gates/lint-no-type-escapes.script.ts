@@ -1,0 +1,189 @@
+#!/usr/bin/env bun
+/**
+ * `bun run lint:no-type-escapes` — que el compilador pueda contradecir.
+ *
+ * `as unknown as T` es una aserción que TypeScript **no puede
+ * comprobar**: apaga exactamente la verificación que justifica tener
+ * tipos. `as any` y `@ts-ignore`, lo mismo con menos ceremonia.
+ *
+ * Había veintiuno. Ninguno de los de producción hacía falta: los cuatro
+ * tapaban una **declaración equivocada**, no un problema del código.
+ *
+ *   · `readdir` tenía las sobrecargas al revés → doce `as never`.
+ *   · `IBufferLike` no decía extender `Uint8Array`, que es lo que un
+ *     `Buffer` es → un `as unknown as Uint8Array`.
+ *   · `BunSpawnSync` declaraba `ReadableStream` donde el modo síncrono
+ *     devuelve bytes → dos más.
+ *   · `ParsedRoute` no tenía `framework`, así que el scanner de OpenAPI
+ *     coló `__params` con `as any` → dos más.
+ *
+ * Ese es el patrón y por eso importa el gate: **el casting no arregla
+ * nada, esconde dónde está el fallo**. Los doce de `readdir` escondieron
+ * durante meses un tipo que mentía, en el repo que activó
+ * `noUncheckedIndexedAccess` justo para que eso no pasara.
+ *
+ * De los de tests, tres eran innecesarios —quitarlos tipa limpio— y el
+ * resto construían objetos inválidos a propósito, que es lo que ahora
+ * hace `tests/helpers/postman-builders.ts` diciendo qué le falta a cada
+ * uno.
+ *
+ * Uso:
+ *   bun run lint:no-type-escapes
+ */
+import { readFile } from "node:fs/promises";
+import { relative } from "node:path";
+
+import { REPO_ROOT, fromRoot } from "../helpers/root.helper.js";
+import { collectFiles } from "../helpers/walk.helper.js";
+
+/** Dónde se busca. */
+const ROOTS = ["packages", "scripts", "tests"] as const;
+
+/**
+ * Los sitios donde una aserción es legítima, **con su motivo**.
+ *
+ * Una lista con motivos escritos es la diferencia entre una excepción y
+ * una grieta: la siguiente persona lee por qué y decide si su caso se
+ * parece, en vez de copiar el patrón porque «ya había otro».
+ */
+const PERMITIDOS: Readonly<Record<string, string>> = {
+  "integrations/delendai/tests/helpers/plugin-context.ts":
+    "doble de test contra el McpServer del SDK: un tipo de terceros con decenas " +
+    "de miembros del que solo se usa `registerTool`",
+  "integrations/delendai/src/lib/helpers/smoke-runner.helper.ts":
+    "estrechez de un Record<string,unknown> validado a IExpectedFixture: el predicado " +
+    "asExpectedFixture ya garantiza la forma, pero TS no puede inferir la estrechez " +
+    "sin el cast",
+  "tests/helpers/postman-builders.ts":
+    "construye items inválidos a propósito para los tests de invariantes, y " +
+    "declara qué le falta a cada uno",
+  // f00014 follow-up + x00058 — parser AST del host config. La
+  // metadata de `@babel/types` se cruza con nuestros tipos y la
+  // única forma limpia de saltar es declarar la estrechez a mano.
+  // El helper ya valida cada assertion en su propio guard, así que
+  // el cast es de compatibilidad, no de corrección.
+  "packages/core/discovery/host-config-parser.service.ts":
+    "parser AST de @babel/types: los tipos del paquete son más anchos que los " +
+    "nuestros y la estrechez está validada por guards previos a cada cast",
+  // Stubs de fetch: la firma real exige `headers.get`, `text()`, `json()`,
+  // `ok`, `status` y el `RequestInit`; los tests verifican parte del
+  // contrato y TS no puede estrechar una lambda parcial sin el cast.
+  // La alternativa (declarar un IFetchLike) ya existe en runtime, pero
+  // los tests siguen la firma pública de la API.
+  "tests/core/postman-api.service.spec.ts":
+    "stubs de fetch que implementan sólo los miembros que verifica cada test; " +
+    "la forma completa la declara IPostmanFetchLike en runtime",
+  // Builder de IRouteCallExpression con `args` parcial: los tests sólo
+  // necesitan los campos que el extractor bajo prueba consume. El
+  // helper ya marca con `as` los campos exigidos por IRouteCallExpression.
+  "tests/frameworks/extract-routes.spec.ts":
+    "builder de IRouteCallExpression con args parciales: el helper construye " +
+    "sólo los campos consumidos por el extractor y los marca explícitamente",
+  // Source text de un handler NestJS en string: el inferrer parsea el
+  // contenido, no ejecuta; el `as any` vive dentro del literal.
+  "tests/frameworks/nestjs-response-inferrer.spec.ts":
+    "literal TS dentro de un string que el inferrer parsea; el cast vive " +
+    "en el código de test, no se ejecuta",
+  // El `config` parcial cubre sólo los campos que el exporter de OpenAPI
+  // bajo prueba consume; los demás se rellenan con defaults al pasar por
+  // exportOpenApiCollection.
+  "tests/frameworks/response-inferrers-wiring.spec.ts":
+    "IExportInput.config con los campos que el exporter bajo prueba consume; " +
+    "los demás los rellena exportOpenApiCollection con defaults",
+};
+
+/** Las formas de apagar el compilador. */
+const ESCAPES: ReadonlyArray<{ readonly pattern: RegExp; readonly what: string }> = [
+  { pattern: /\bas\s+unknown\s+as\b/, what: "as unknown as" },
+  { pattern: /\bas\s+any\b/, what: "as any" },
+  { pattern: /\bas\s+never\b/, what: "as never" },
+  { pattern: /@ts-ignore/, what: "@ts-ignore" },
+  { pattern: /@ts-expect-error/, what: "@ts-expect-error" },
+  { pattern: /:\s*any\b/, what: ": any" },
+  { pattern: /\bany\[\]/, what: "any[]" },
+];
+
+/**
+ * La anotación `: any` entró aquí en r00006, después de eliminarla.
+ *
+ * Eran 35 sitios, 9 en scanners de producción, casi todos
+ * `let parsed: any` sobre un `JSON.parse` de un fichero **ajeno**. Se
+ * dejó fuera del gate al principio con la cifra medida, porque pasarlos
+ * a `unknown` obliga a estrechar cada uso aguas abajo y eso es un
+ * refactor con su propio riesgo. Hecho el refactor, la regla entra.
+ *
+ * `parse-json.helper` es lo que lo hizo barato: los predicados que cada
+ * scanner repetía a mano —¿es objeto?, ¿tiene esta clave string?— en un
+ * sitio, así que estrechar dejó de ser escribir el mismo `typeof` doce
+ * veces.
+ */
+
+interface IProblem {
+  readonly file: string;
+  readonly line: number;
+  readonly what: string;
+  readonly source: string;
+}
+
+/** ¿La línea es prosa? Los comentarios explican estos castings, no los usan. */
+function esComentario(line: string): boolean {
+  const t = line.trim();
+  return t.startsWith("*") || t.startsWith("//") || t.startsWith("/*");
+}
+
+async function main(): Promise<number> {
+  const problems: IProblem[] = [];
+  let revisados = 0;
+
+  for (const root of ROOTS) {
+    for (const file of await collectFiles(fromRoot(root), [".ts"])) {
+      const rel = relative(REPO_ROOT, file);
+      if (PERMITIDOS[rel] !== undefined) continue;
+      // Los fixtures son código de OTROS proyectos: la entrada de los
+      // scanners, no código de este repo.
+      if (rel.includes("fixtures/")) continue;
+      // Este fichero contiene los patrones que busca: encontrarse a sí
+      // mismo sería un gate que nunca puede pasar.
+      if (rel.endsWith("lint-no-type-escapes.script.ts")) continue;
+      revisados += 1;
+
+      const lines = (await readFile(file, "utf8")).split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i] ?? "";
+        if (esComentario(line)) continue;
+        for (const { pattern, what } of ESCAPES) {
+          if (pattern.test(line)) {
+            problems.push({ file: rel, line: i + 1, what, source: line.trim() });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    console.error(`lint:no-type-escapes — ${problems.length} aserción(es):\n`);
+    for (const p of problems) {
+      console.error(`  ✗ ${p.file}:${p.line} — ${p.what}`);
+      console.error(`      ${p.source}`);
+    }
+    console.error(
+      "\n  Un casting no arregla nada: esconde dónde está el fallo. Los cuatro\n" +
+        "  de producción que hubo tapaban una **declaración equivocada**, no un\n" +
+        "  problema del código — mira ahí primero.\n" +
+        "\n  Si de verdad hace falta (un tipo de terceros que no controlas),\n" +
+        "  decláralo en `PERMITIDOS` de este mismo fichero, con el motivo.",
+    );
+    return 1;
+  }
+
+  console.log(
+    `lint:no-type-escapes — ${revisados} ficheros, ${Object.keys(PERMITIDOS).length} ` +
+      "aserciones declaradas con motivo, ninguna suelta",
+  );
+  return 0;
+}
+
+if (import.meta.main) {
+  process.exit(await main());
+}

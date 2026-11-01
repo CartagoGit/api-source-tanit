@@ -1,0 +1,152 @@
+# Los trabajos que necesitan herramientas que la máquina puede no tener.
+#
+# Cada servicio es **una tarea**, no un entorno donde meterse a vivir.
+# Se lanzan con `docker compose -f .docker/docker-compose.yml run --rm <servicio>`
+# y salen. Los atajos están en `package.json` (`docker:*`).
+#
+# ## Las dos cachés, y por qué
+#
+# Compilar Tauri desde cero son varios minutos de `cargo`, y reinstalar
+# `node_modules` en cada ejecución convierte un gate de veinte segundos
+# en uno de dos minutos. Con volúmenes con nombre eso se paga **una
+# vez**. No se montan como `bind` del host a propósito: los artefactos de
+# Linux dentro del `node_modules` del host pisarían los de quien
+# desarrolla en Mac.
+#
+# ## Por qué el código va montado y no copiado
+#
+# Porque el ciclo es editar-y-probar. Un `COPY` obligaría a reconstruir
+# la imagen por cada carácter que se toca.
+
+name: tanit
+
+# `bash -c`, nunca `bash -lc`.
+#
+# Una shell de **login** relee `/etc/profile`, que reconstruye el `PATH`
+# desde cero y tira el que la imagen declara con `ENV`. Con `-lc`, `bun`
+# no existe dentro del contenedor aunque esté instalado: se vio al
+# primer intento, con un `bun: command not found` que no tenía nada que
+# ver con la instalación.
+x-toolchain: &toolchain
+  build:
+    context: ..
+    dockerfile: .docker/Dockerfile
+    target: toolchain
+  image: tanit/toolchain:local
+  working_dir: /work
+  volumes:
+    - ..:/work
+    - node_modules:/work/node_modules
+    # El `node_modules` del plugin también, y no es opcional.
+    #
+    # Sin esto llega por el bind mount con los enlaces que creó el
+    # install del **host**, que apuntan a un hash de `.bun/` que el
+    # install del contenedor no genera. `bun` los ve presentes y no los
+    # rehace, así que el enlace queda colgando: `readlink` resuelve pero
+    # el directorio está vacío. El síntoma es un typecheck que falla
+    # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
+    # tiene nada que ver con los tipos.
+    - plugin_node_modules:/work/integrations/delendai/node_modules
+    - cargo_registry:/usr/local/cargo/registry
+    # Fuera del árbol del repo, a propósito.
+    #
+    # Montarlo en `packages/desktop/target` hacía que Docker creara ese
+    # directorio **como root** dentro del working tree, y a partir de ahí
+    # `mkdir` desde la máquina fallaba con «Permission denied» en un
+    # sitio que git ni siquiera rastrea. `CARGO_TARGET_DIR` lo lleva
+    # fuera y el repo se queda limpio.
+    - cargo_target:/cargo-target
+  environment:
+    # Sin colores en la salida: dentro de un contenedor casi siempre se
+    # lee por tubería o en un log de CI, y los códigos ANSI ahí son
+    # basura que además rompe las comparaciones de texto.
+    NO_COLOR: "1"
+    # `true`, no `1`: el CLI de Tauri parsea `--ci` como booleano y
+    # rechaza `1` con un `invalid value '1' for '--ci'`. Los dos valores
+    # son "verdadero" para casi todo lo demás, así que el fallo aparece
+    # en un sitio y no en los otros diez.
+    CI: "true"
+    CARGO_TARGET_DIR: /cargo-target
+
+services:
+  # El gate en un entorno limpio. Es la respuesta a «en mi máquina
+  # pasa»: aquí no hay nada instalado a mano.
+  #
+  # **Sin la sección `plugin`, y no es un descuido.** El plugin declara
+  # `"@delendai/core": "file:../../../../delendai/packages/core"`, un
+  # `file:` que apunta **fuera** del repositorio. Montar el checkout
+  # hermano dentro se probó y no basta —bun no materializa el enlace—,
+  # pero sobre todo **no debería hacer falta**: el bootstrap prohíbe
+  # expresamente que este repo exija un checkout al lado.
+  #
+  # O sea que el contenedor no ha causado nada: ha puesto número a
+  # `p00007`. Lo que esa propuesta describe como «cambiar una línea
+  # cuando se publique» es en realidad **el repositorio no siendo
+  # autocontenido**, y se nota en cuanto se intenta construir en un sitio
+  # limpio. El día que `@delendai/core` esté en npm, esto pasa a ser
+  # `bun run validate` a secas.
+  #
+  # `mcp-surface.spec.ts` se salta **solo**, declarando su precondición:
+  # importa los contratos del plugin y `zod` es dependencia suya, así que
+  # sin el `file:` resuelto revienta con un `z.object` indefinido que no
+  # tiene nada que ver con lo que prueba. Se salta en el spec y no aquí
+  # porque la condición es suya, no de este fichero.
+  validate:
+    <<: *toolchain
+    command: >
+      bash -c "bun install || true &&
+      bun run typecheck:core && bun run typecheck:frameworks && bun run typecheck:cli &&
+      bun run lint &&
+      bunx vitest run --project core --project frameworks --project cli --project e2e &&
+      bun run validate:examples"
+
+  # Los cuatro binarios autocontenidos, uno por plataforma.
+  binaries:
+    <<: *toolchain
+    command: bash -c "bun install || true && bun run build:binary --all"
+
+  # Los instaladores nativos (.deb y .AppImage). Los de Mac y Windows no
+  # se pueden producir desde Linux —cada uno exige su propio SDK y su
+  # firma—, y por eso los hace el workflow en sus propios corredores.
+  # Fingir aquí que salen los tres sería mentir en el sitio donde más
+  # cuesta descubrirlo.
+  installers:
+    <<: *toolchain
+    # Solo `.deb`. El `.AppImage` lo monta `linuxdeploy` con FUSE y aquí
+    # no arranca ni dándole `/dev/fuse`, `SYS_ADMIN` y AppArmor abierto —
+    # se probó, y el error (`failed to run linuxdeploy`) ni menciona
+    # FUSE. Darle privilegios al contenedor para nada era el peor de los
+    # dos mundos, así que se quedó fuera.
+    #
+    # En un corredor de CI el AppImage sí sale, y ahí se produce.
+    environment:
+      TANIT_BUNDLES: deb
+      CARGO_TARGET_DIR: /cargo-target
+      NO_COLOR: "1"
+      CI: "true"
+    command: bash -c "bun install || true && bun run desktop:build"
+
+  # Una shell dentro del taller, para cuando algo falla y hay que mirar.
+  shell:
+    <<: *toolchain
+    command: bash
+
+  # El binario ya compilado, en una imagen **sin Bun ni Node**.
+  #
+  # Es la prueba de la promesa del README: «no necesitan Bun ni Node
+  # instalados en la máquina destino». Si el ejecutable no fuera
+  # autocontenido, este servicio no arrancaría — y eso es justo lo que se
+  # quiere que pase, aquí y no en la máquina de quien lo descargue.
+  smoke:
+    build:
+      context: ..
+      dockerfile: .docker/Dockerfile
+      target: runtime
+    image: tanit/runtime:local
+    command: ["--help"]
+
+volumes:
+  node_modules:
+  plugin_node_modules:
+  cargo_registry:
+  cargo_target:

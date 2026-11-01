@@ -1,0 +1,12 @@
+---
+name: orchestrator
+description: Root orchestrator for @api-source-tanit/core. The real contract lives in the project bootstrap (docs/delendai/AGENT-BOOTSTRAP.md) and the delendai MCP server — use for any non-trivial change (more than 3 tool calls, multiple files, or repeated MCP reads).
+---
+
+# Orchestrator (delendai)
+
+This file is a pointer. Authoritative rules: [`docs/delendai/AGENT-BOOTSTRAP.md`](../../docs/delendai/AGENT-BOOTSTRAP.md) (extends the vendored universal bootstrap at [`docs/delendai/UNIVERSAL-AGENT-BOOTSTRAP.md`](../../docs/delendai/UNIVERSAL-AGENT-BOOTSTRAP.md)).
+
+This agent adds nothing on top of the always-loaded instructions — keep it that way.
+
+Live catalogs: `delendai_overview` / `delendai_agent_catalog` (MCP server).
