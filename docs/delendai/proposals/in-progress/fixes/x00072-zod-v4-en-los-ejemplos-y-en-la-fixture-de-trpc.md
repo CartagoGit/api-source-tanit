@@ -2,7 +2,7 @@
 id: x00072
 title: "Los ejemplos y la fixture de tRPC siguen en zod v3 con una vulnerabilidad alta abierta"
 kind: fix
-status: ready
+status: in-progress
 type: proposal
 track: api-source-tanit
 date: 2026-11-01
@@ -58,7 +58,7 @@ que alguien copia para empezar su API— y una fixture de humo.
 ## Slices
 
 ### S1-zod-v4-en-ejemplos — S1 — zod v4 en los cinco manifiestos
-- **Status**: ready
+- **Status**: in-progress
 - **DependsOn**: []
 - **Files**: `examples/example-express/package.json`, `examples/example-nextjs/package.json`, `examples/example-hono/package.json`, `examples/example-trpc/package.json`, `tests/smoke-fixtures/trpc-mini/package.json`
 - **Gate**: e2e
