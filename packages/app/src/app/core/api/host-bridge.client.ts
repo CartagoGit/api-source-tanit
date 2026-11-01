@@ -3,9 +3,7 @@ import type {
   IHostBridge,
   IHostRequestMap,
   IHostResponseMap,
-  IPendingHostRequestMap,
 } from "../../../../../contracts/interfaces/ui/host-bridge.interface";
-import type { PendingAppOperation } from "../../../../../contracts/constants/core/cli-app-parity.constant";
 import { translate } from "../i18n/i18n.state";
 
 /** What Tauri puts on the window. */
@@ -76,13 +74,6 @@ export class HostBridgeClient implements IHostBridge {
     input: IHostRequestMap[K],
   ): Promise<IHostResponseMap[K]> {
     return this.send(operation as string, input) as Promise<IHostResponseMap[K]>;
-  }
-
-  requestPending<K extends PendingAppOperation>(
-    operation: K,
-    input: IPendingHostRequestMap[K],
-  ): Promise<unknown> {
-    return this.send(operation as string, input);
   }
 
   subscribe(listener: (event: unknown) => void): () => void {

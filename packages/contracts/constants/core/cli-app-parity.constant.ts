@@ -113,8 +113,8 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "detect",
     cli: ["scan", "list"],
-    api: ["snapshot", "list-endpoints", "list-services", "get-endpoint", "get-schema"],
-    app: ["snapshot", "list-endpoints", "list-services", "get-endpoint", "get-schema"],
+    api: ["snapshot", "list-endpoints", "list-services", "service-detail", "get-endpoint", "get-schema"],
+    app: ["snapshot", "list-endpoints", "list-services", "service-detail", "get-endpoint", "get-schema"],
     status: "covered",
     note:
       "The explorer asks the backend and draws what comes back. It used " +
@@ -177,16 +177,19 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
   {
     capability: "history",
     cli: ["history"],
-    api: ["history"],
-    app: ["history"],
+    api: ["history", "history-list", "history-diff", "history-compare-config", "history-re-export", "history-restore"],
+    app: ["history", "history-list", "history-diff", "history-compare-config", "history-re-export", "history-restore"],
     status: "partial",
     note:
       "The session's own events — the snapshot taken, the files that " +
       "changed under it — are reachable from both. The **persisted** " +
-      "history, the past generations with their hashes, is not: " +
-      "comparing two revisions, re-exporting a past one and restoring " +
-      "it are core capabilities with no handler yet, and the app asks " +
-      "for them as pending so the gap is visible.",
+      "history, the past revisions with their hashes, is reachable " +
+      "from the app: it lists them, compares two, says how they were " +
+      "configured, exports one again and restores one. The history " +
+      "is on disk, so a revision outlives the session that made it, " +
+      "and the CLI's generation writes to the same store. What the " +
+      "CLI still cannot do is compare or restore: its `history` " +
+      "command lists the generations and stops there.",
   },
   {
     capability: "stats",
@@ -265,18 +268,17 @@ export const CLI_APP_PARITY: readonly IParityCapability[] = [
  * Every entry here is a call that does not work yet. The list is where
  * the work is, and it is allowed to shrink.
  *
- * The type is derived from the list, not written beside it: the
- * connector's pending-operation type is this union, so adding an entry
- * here is what makes it *possible* to ask for that operation — and
- * impossible to ask for one that is not on the list.
+ * **It is empty.** The five operations it held — the four about the
+ * persisted history and the detail of one service — became handlers:
+ * the history is on disk now (`project-history.service.ts`), and the
+ * detail of a service comes from one snapshot instead of from the
+ * client crossing two lists that were asked for separately.
+ *
+ * The list stays because it is the shape of the backlog: the next
+ * capability that the app wants and the core does not have is written
+ * here first, and the gate holds the app to it.
  */
-export const PENDING_APP_OPERATIONS = [
-  "history-compare-config",
-  "history-diff",
-  "history-re-export",
-  "history-restore",
-  "service-detail",
-] as const;
+export const PENDING_APP_OPERATIONS = [] as const;
 
 /** An operation the app asks for that has no handler yet. */
 export type PendingAppOperation = (typeof PENDING_APP_OPERATIONS)[number];

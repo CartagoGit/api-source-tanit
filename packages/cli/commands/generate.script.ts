@@ -21,6 +21,7 @@ import { readFlags, readBooleanFlags, readFlagList } from "../../core/helpers/ar
 import { dirname, join } from "node:path";
 import { exportWarnings, parseFormats } from "../../core/exporters/export-registry.service.js";
 import { selectExporters } from "../../core/exporters/registry.js";
+import { ProjectHistoryService } from "../../core/session/project-history.service.js";
 import { generateWithAllFrameworks } from "../../frameworks/index.js";
 import { ensureResponseInferrersRegistered } from "../../frameworks/scanners/response-inferrers.js";
 
@@ -543,6 +544,21 @@ export async function runGenerate(
   const json = JSON.stringify(exportedCollection, null, 2);
   await writeFileAtomic(OUTPUT_PATH, json + "\n");
   collectionPath = OUTPUT_PATH;
+
+  // The export is a point in time, and the history remembers it.
+  //
+  // It is the **same** history the app reads: a revision made by the
+  // CLI is a revision the app can compare, export again or restore.
+  // Two histories, one per face, would make the feature a fiction.
+  await new ProjectHistoryService().record(resolvedContext.projectRoot, snapshot, {
+    formats: selectedFormats,
+    output: resolvedContext.outputDir,
+    source: "export",
+    configuration: {
+      formats: selectedFormats,
+      outputDirectory: resolvedContext.outputDir,
+    },
+  });
 
   // Extra formats are serialized from the SAME endpoint catalog as the
   // Postman collection: two formats from the same project cannot

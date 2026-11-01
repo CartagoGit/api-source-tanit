@@ -12,7 +12,7 @@ import {
   snapshotHashFromJson,
   snapshotSha256,
 } from "../../packages/core/session/snapshot-hash.service.js";
-import { HistoryRecorderService } from "../../packages/core/session/history-recorder.service.js";
+import { diffSnapshots } from "../../packages/core/session/history-diff.helper.js";
 import type { ICanonicalSnapshot } from "../../packages/core/session/snapshot-hash.service.js";
 
 const watchState = vi.hoisted(() => ({
@@ -81,28 +81,18 @@ describe("snapshot hashing", () => {
   });
 });
 
-describe("history recorder", () => {
-  test("records sorted formats, counts operations, lists, gets, serializes, and compares", () => {
-    const recorder = new HistoryRecorderService();
-    const left = recorder.record("/project", canonical(), { formats: ["z", "a"], output: "/out/one", source: "scan", configuration: { mode: "one" } });
-    const rightSnapshot = canonical({
+describe("history diff", () => {
+  test("classifies what changed between two revisions", () => {
+    const left = canonical();
+    const right = canonical({
       capturedAt: "2026-09-09T00:01:00.000Z",
       services: [
         { ...canonical().services[0]!, framework: "fastify", operations: [{ ...canonical().services[0]!.operations[0]!, method: "POST", requestSchema: { type: "string" }, auth: { kind: "apikey" } }, { operationId: "create-user", method: "POST", path: "/users", auth: null }] },
         { serviceId: "admin", framework: "express", transports: ["http"], auth: null, operations: [] },
       ],
     });
-    const right = recorder.record("/project", rightSnapshot, { source: "export", parentId: left.id, configuration: { mode: "two" } });
-    expect(left.formats).toEqual(["a", "z"]);
-    expect(left.count).toBe(1);
-    expect(right.provenance.parentId).toBe(left.id);
-    expect(recorder.get("/project", left.id)).toBe(left);
-    expect(recorder.get("/missing", left.id)).toBeUndefined();
-    expect(recorder.list("/project").map((record) => record.id)).toEqual([right.id, left.id]);
-    expect(recorder.list("/missing")).toEqual([]);
-    expect(recorder.serialize(left)).toBe(canonicalSnapshotJson(left.snapshot));
 
-    const diff = recorder.compare("/project", left.id, right.id);
+    const diff = diffSnapshots(left, right, { mode: "one" }, { mode: "two" });
     expect(diff.added).toEqual(["operation:api/create-user", "service:admin"]);
     expect(diff.removed).toEqual([]);
     expect(diff.changed).toContain("service:api");
@@ -114,12 +104,9 @@ describe("history recorder", () => {
     expect(diff.configuration).toEqual({ before: { mode: "one" }, after: { mode: "two" } });
   });
 
-  test("classifies removals and rejects comparisons with missing records", () => {
-    const recorder = new HistoryRecorderService();
-    const left = recorder.record("/project", canonical());
-    const right = recorder.record("/project", canonical({ services: [] }));
-    expect(recorder.compare("/project", left.id, right.id).removed).toEqual(["service:api"]);
-    expect(() => recorder.compare("/project", left.id, "missing")).toThrow("Both history records are required");
+  test("classifies removals", () => {
+    const diff = diffSnapshots(canonical(), canonical({ services: [] }));
+    expect(diff.removed).toEqual(["service:api"]);
   });
 });
 

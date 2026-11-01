@@ -13,6 +13,31 @@ export interface IHistoryRecord {
 }
 
 export type IHistoryEntry = IHistoryRecord;
+/**
+ * A revision, **without** its snapshot.
+ *
+ * A list of revisions needs to say when each one was made, what it
+ * held and how it was configured — not to carry the whole API
+ * surface of every past revision across the bridge. The snapshot
+ * stays on disk, where the operations that need it (diff, re-export,
+ * restore) go and read it.
+ */
+export interface IHistorySummary {
+  /** The revision's id. */
+  readonly id: string;
+  /** When it was made, in ISO 8601. */
+  readonly timestamp: string;
+  /** The formats it was written in. */
+  readonly formats: ReadonlyArray<string>;
+  /** How many operations it held. */
+  readonly count: number;
+  /** Where it was written. */
+  readonly output: string;
+  /** The hash of what it held. */
+  readonly sha256: string;
+  /** What made it. */
+  readonly source: "scan" | "import" | "restore" | "export";
+}
 
 /**
  * One thing that happened to the open session.

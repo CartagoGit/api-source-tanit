@@ -22,6 +22,7 @@ import {
   type ExportInput,
 } from "./zod-schemas.js";
 import { getSession } from "../session/project-session.service.js";
+import { ProjectHistoryService } from "../session/project-history.service.js";
 import { writeExport } from "./export-artifacts.helper.js";
 import { apiError } from "./error.js";
 
@@ -31,6 +32,7 @@ export type { ExportOutput } from "../../contracts/interfaces/core/application-a
 
 /** Crea el handler que escribe los artefactos del formato pedido. */
 export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
+  const history = new ProjectHistoryService();
   return {
     name: "export",
     input: ExportInputSchema,
@@ -66,10 +68,23 @@ export function createExportHandler(): IHandler<ExportInput, ExportOutput> {
         (input.outputPath ? dirnameOf(input.outputPath) : join(snap.projectRoot, "tanit"));
 
       const written = await writeExport(snap, input.target, directory);
+
+      // The export is a point in time, and the history remembers it.
+      // Without this the persisted history would only have the
+      // revisions the CLI made, and the app would see an empty
+      // history for a project it exports every day.
+      const record = await history.record(input.projectRoot, snap, {
+        formats: [input.target],
+        output: directory,
+        source: "export",
+        configuration: { formats: [input.target], outputDirectory: directory },
+      });
+
       return {
         outputPath: input.outputPath ?? written.outputPath,
         bytes: written.bytes,
         files: written.files,
+        historyId: record.id,
       };
     },
   };
