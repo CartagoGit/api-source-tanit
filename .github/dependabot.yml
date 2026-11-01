@@ -1,0 +1,66 @@
+# Dependabot. Mantiene al día las dependencias de los paquetes que
+# **sí se instalan** en el flujo de desarrollo y CI.
+#
+# Solo entran aquí los directorios que contienen dependencias de
+# verdad:
+#
+#   /                              el paquete del producto
+#   /packages/app                  la aplicación Angular que se instala como
+#                                  workspace
+#   /integrations/delendai         la integración opcional con Delendai
+#                                  (NO se publica; ver x00041)
+#
+# El resto (plugins/, fixtures de e2e, examples/) no se instalan y por
+# tanto no producen PRs de Dependabot. `examples/` es especialmente
+# ruidoso: 50+ proyectos de muestra traen cada uno su propio
+# `package.json`, y si Dependabot los siguiera abriría docenas de PRs
+# sobre dependencias que nadie instala.
+
+version: 2
+
+updates:
+  # El paquete del producto (Tanit). Es donde viven las dependencias
+  # que sí se instalan.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Las de desarrollo se agrupan en un solo PR: son ruido si llegan
+      # de una en una, y ninguna acaba en el binario que se distribuye.
+      desarrollo:
+        dependency-type: development
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+
+  # La aplicación Angular es un workspace real con dependencias propias.
+  - package-ecosystem: npm
+    directory: "/packages/app"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+
+  # La integración opcional con Delendai. Es un paquete independiente
+  # con su propio `package.json`, y mantiene `file:` hacia
+  # `@delendai/core` (p00007 sigue `done`). Dependabot lo vigila como
+  # cualquier otro paquete que se instala localmente.
+  - package-ecosystem: npm
+    directory: "/integrations/delendai"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+
+  # Las acciones del workflow también envejecen, y una acción vieja es
+  # código de terceros ejecutándose con el token del repositorio.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "chore(ci)"

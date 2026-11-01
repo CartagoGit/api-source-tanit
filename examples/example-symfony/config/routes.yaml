@@ -1,0 +1,10 @@
+# Top-level routes file (Symfony 5/6).
+api_login:
+  path: /api/login
+  controller: App\Controller\AuthController::login
+  methods: [POST]
+
+api_logout:
+  path: /api/logout
+  controller: App\Controller\AuthController::logout
+  methods: [POST]

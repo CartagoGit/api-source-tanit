@@ -1,0 +1,7 @@
+/* La sincronización: lo que se escribió, o lo que se escribiría. */
+section { display: grid; gap: 10px; justify-items: start; }
+h2 { margin: 0; font-size: 18px; }
+p { margin: 0; color: var(--color-muted); }
+ul { margin: 0; padding-left: 18px; }
+li { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+li em { color: var(--color-muted); font-style: normal; }

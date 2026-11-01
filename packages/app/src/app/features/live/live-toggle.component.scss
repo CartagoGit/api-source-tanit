@@ -1,0 +1,6 @@
+/* El modo en vivo: mirar, exportar solo y los cambios. */
+section { display: grid; gap: 8px; }
+h2 { margin: 0; font-size: 18px; }
+label { display: flex; align-items: center; gap: 8px; }
+p { margin: 0; color: var(--color-muted); }
+p[role="alert"] { color: var(--color-copper-strong); }
