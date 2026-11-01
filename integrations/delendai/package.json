@@ -1,0 +1,39 @@
+{
+  "name": "tanit-delendai-integration",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "Integración de Tanit con Delendai (MCP). Expone Tanit como tools de Delendai. NO es parte del producto Tanit: el CLI, el binario y la UI de Tanit funcionan sin este paquete. Aquí vive por conveniencia del usuario.",
+  "author": "Cartago",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "delendai",
+    "tanit",
+    "integration",
+    "postman",
+    "agent",
+    "ai"
+  ],
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "validate": "bun run typecheck && bun run test"
+  },
+  "dependencies": {
+    "@delendai/core": "file:../../../delendai/packages/core",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}

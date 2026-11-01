@@ -1,0 +1,50 @@
+# Dependencias instaladas localmente por bun/npm (si se llegasen a usar).
+node_modules/
+.bun/
+# Artefactos generados: colecciones y environments. La carpeta se llama
+# como el proyecto a proposito — `build/` es de Gradle, de Go y de medio
+# mundo, y escribir ahi mezclaba nuestra salida con la de quien usa la
+# herramienta.
+tanit/
+/build/
+
+*.log
+
+# El lockfile SI se versiona: es lo que hace que un `bun install` en CI
+# o en otra maquina resuelva exactamente las mismas versiones. Solo el
+# binario legacy se queda fuera.
+bun.lockb
+
+# Cache local de delendai
+.cache/
+# Binarios compilados por `bun run build:binary`.
+dist/
+
+# El sidecar que Tauri empaqueta: se compila en cada build y pesa 90 MB.
+packages/desktop/binaries/
+packages/desktop/target/
+
+# TypeScript emite `.js` al verificar tipos de algunas secciones o al
+# ejecutar build:binary. Sólo los fuentes (.ts) y los assets de tests
+# (server.js en fixtures y examples) están versionados.
+packages/**/*.js
+scripts/**/*.js
+tests/**/*.js
+# ...and the exception the comment above already promised, which the
+# rules never actually implemented: a fixture's `server.js` is the SOURCE
+# the scanner reads, not emitted output. Without these negations the
+# broad rule swallowed them, so four smoke fixtures reached `develop`
+# carrying a manifest and no code — `lint:fixtures` failed in CI while
+# passing locally, because locally the files were sitting on disk.
+!tests/smoke-fixtures/**/server.js
+!tests/fixtures/**/server.js
+!tests/**/examples/**/server.js
+# --- orquestador: mensajes de slice transitorios (c00005) ---
+.s*-msg.txt
+packages/core/domain/test-script.service.js
+
+# tsc --build info files (regenerated on every typecheck).
+tsconfig.tsbuildinfo
+
+# angular cache
+.angular
