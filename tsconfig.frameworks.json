@@ -5,10 +5,10 @@
   // `core`, nunca al revés.
   "extends": "./tsconfig.base.json",
   "include": [
-    "projects/contracts/**/*.d.ts",
-    "projects/core/**/*.ts",
-    "projects/core/**/*.d.ts",
-    "projects/frameworks/**/*.ts",
+    "packages/contracts/**/*.d.ts",
+    "packages/core/**/*.ts",
+    "packages/core/**/*.d.ts",
+    "packages/frameworks/**/*.ts",
     "tests/frameworks/**/*.ts",
     "tests/helpers/**/*.ts"
   ]

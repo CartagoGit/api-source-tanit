@@ -33,7 +33,7 @@ import { join, relative } from "node:path";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 
 /** Dónde se busca: lo que se ejecuta cuando alguien usa la herramienta. */
-const ROOTS = ["projects"] as const;
+const ROOTS = ["packages"] as const;
 
 /** Carpetas que no se recorren. */
 const SKIP = new Set(["node_modules", "dist", "build", ".cache", ".git"]);
@@ -43,7 +43,7 @@ const SKIP = new Set(["node_modules", "dist", "build", ".cache", ".git"]);
  * Rutas relativas a la raíz del repo.
  */
 const PERMITIDOS: Readonly<Record<string, string>> = {
-  "projects/core/helpers/atomic-write.helper.ts":
+  "packages/core/helpers/atomic-write.helper.ts":
     "es quien implementa el temporal y el rename",
 };
 
@@ -83,7 +83,7 @@ async function main(): Promise<number> {
     for (const file of await tsFiles(join(REPO_ROOT, root))) {
       const rel = relative(REPO_ROOT, file);
       if (PERMITIDOS[rel] !== undefined) continue;
-      // Los tests del plugin viven dentro de `projects/`.
+      // Los tests del plugin viven dentro de `packages/`.
       if (rel.includes("/tests/")) continue;
       revisados += 1;
 
@@ -107,7 +107,7 @@ async function main(): Promise<number> {
     }
     console.error(
       "\n  Usa `writeFileAtomic` / `writeJsonAtomic` de\n" +
-        "  `projects/core/helpers/atomic-write.helper.ts`: escriben en un\n" +
+        "  `packages/core/helpers/atomic-write.helper.ts`: escriben en un\n" +
         "  temporal del mismo directorio y renombran, así que un fallo a\n" +
         "  mitad deja el fichero anterior intacto en vez de truncado.",
     );

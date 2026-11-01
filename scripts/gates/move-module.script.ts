@@ -17,7 +17,7 @@
  * la ruta relativa desde donde acabe el fichero que importa.
  *
  * Uso:
- *   bun run scripts/gates/move-module.script.ts services/foo.service.ts projects/core/domain/foo.service.ts
+ *   bun run scripts/gates/move-module.script.ts services/foo.service.ts packages/core/domain/foo.service.ts
  *   bun run scripts/gates/move-module.script.ts --dry-run <origen> <destino>
  */
 import { readdir, readFile, rename, mkdir, writeFile } from "node:fs/promises";

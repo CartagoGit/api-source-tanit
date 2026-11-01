@@ -1,19 +1,20 @@
 /**
- * `check` sobre una API de RPC sobre POST.
+ * `check` on a POST-based RPC API.
  *
- * `check` compara las rutas del código con las de la colección para
- * avisar de que se han desincronizado. Comparaba por **método + URI**, y
- * eso vale en REST porque la URL identifica la operación.
+ * `check` compares the routes in the code with those in the collection
+ * to warn about them going out of sync. It was comparing by **method +
+ * URI**, which works in REST because the URL identifies the operation.
  *
- * En GraphQL no: hay **un** endpoint y lo que distingue una consulta de
- * otra es el nombre. Un proyecto de cinco operaciones se contaba como
- * una, y entonces `check` no podía detectar deriva **ninguna** — si
- * cuatro desaparecían del código seguía diciendo 1 contra 1 y dando el
- * visto bueno. La comprobación existía y no comprobaba nada.
+ * In GraphQL it does not: there is **one** endpoint, and what
+ * distinguishes one query from another is the name. A project with five
+ * operations was being counted as one, so `check` could not detect
+ * **any** drift — if four disappeared from the code it would still say
+ * 1 against 1 and give the green light. The check existed and checked
+ * nothing.
  *
- * Es la tercera vez que la misma suposición muerde: ya pasó en el
- * `dedupeSpecs` del pipeline y en el chequeo de duplicados de los
- * invariantes.
+ * This is the third time the same assumption bites: it already happened
+ * in the pipeline's `dedupeSpecs` and in the duplicate check of the
+ * invariants.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -58,19 +59,20 @@ async function check(): Promise<{ code: number; out: string }> {
   return { code: result.code, out: result.output };
 }
 
-describe("check sobre GraphQL", () => {
-  test("cuenta las 5 operaciones, no 1", { timeout: 120_000 }, async () => {
+describe("check on GraphQL", () => {
+  test("counts the 5 operations, not 1", { timeout: 120_000 }, async () => {
     const { out } = await check();
     expect(out).toMatch(/Routes en source:\s+5/);
     expect(out).toMatch(/Requests in collection:\s+5/);
   });
 
-  test("una colección al día pasa", { timeout: 120_000 }, async () => {
+  test("an up-to-date collection passes", { timeout: 120_000 }, async () => {
     expect((await check()).code).toBe(0);
   });
 
-  // EL test: sin él, `check` daba verde con la colección mutilada.
-  test("detecta que falta una operación", { timeout: 120_000 }, async () => {
+  // THE test: without it, `check` would pass green with the mutilated
+  // collection.
+  test("detects that one operation is missing", { timeout: 120_000 }, async () => {
     const original = await readFile(collection, "utf8");
     try {
       const doc = JSON.parse(original) as {
@@ -88,7 +90,7 @@ describe("check sobre GraphQL", () => {
     }
   });
 
-  test("dice CUÁL falta, no solo cuántas", { timeout: 120_000 }, async () => {
+  test("says WHICH one is missing, not only how many", { timeout: 120_000 }, async () => {
     const original = await readFile(collection, "utf8");
     try {
       const doc = JSON.parse(original) as { item: Array<{ item?: unknown[] }> };
@@ -96,8 +98,8 @@ describe("check sobre GraphQL", () => {
       folder!.item = folder!.item!.slice(1);
       await writeFile(collection, JSON.stringify(doc, null, 2));
 
-      // Tres `POST /graphql` iguales no dicen nada: hace falta el nombre
-      // de la operación para saber qué buscar.
+      // Three identical `POST /graphql` say nothing: the operation name
+      // is required to know which one to look for.
       const { out } = await check();
       expect(out).toMatch(/\((query|mutation) \w+\)/);
     } finally {
@@ -105,7 +107,7 @@ describe("check sobre GraphQL", () => {
     }
   });
 
-  test("la URI no sale con doble barra", { timeout: 120_000 }, async () => {
+  test("the URI does not come out with a double slash", { timeout: 120_000 }, async () => {
     const original = await readFile(collection, "utf8");
     try {
       const doc = JSON.parse(original) as { item: Array<{ item?: unknown[] }> };

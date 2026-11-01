@@ -1,0 +1,284 @@
+/**
+ * Output path resolution from an explicit `IProjectContext`.
+ *
+ * Replaces the functions from the retired `paths.service` singleton
+ * (r00010 S2, 2026-09-03) — `outputDir`, `outputCollectionPath`,
+ * `outputEnvironmentPath`, and `describeDiscoveredPaths`. All of them now
+ * receive the context as an argument: they do not read globals, cache
+ * anything, or overwrite each other when the same process handles different
+ * contexts.
+ *
+ * This helper shares no state with the retired singleton and is the only
+ * output route for the seven migrated CLI commands.
+ *
+ * Output directory precedence (the same rules as the former
+ * `outputDir(context?)`, without the cache):
+ *
+ *   1. CLI `--output-dir <path>` in argv.
+ *   2. CLI `--output <file>` in argv → the file's directory.
+ *   3. Env `POSTMAN_OUTPUT_DIR`.
+ *   4. `context.outputDir` — the value already resolved by
+ *      `resolveProjectContext`.
+ *
+ * The helper is **pure with respect to its arguments**. `process.argv` and
+ * `process.env` are read only as parameter defaults; the caller can inject
+ * different values for tests without mutating globals. Two globals are still
+ * read directly from `process.env` rather than as parameters because moving
+ * them is outside this slice:
+ *
+ *   - `POSTMAN_OUTPUT_BASENAME` → `outputBasename`.
+ *   - `POSTMAN_CONTAIN_ROOT` → the containment guard in `ensureDir`.
+ *
+ * Moving either one to an argument is trivial; see `// TODO r00011+` below.
+ */
+import { existsSync } from "node:fs";
+import { envOrAlias } from "../helpers/env-or-alias.helper.js";
+import { delimiter, dirname, join, resolve } from "node:path";
+import type { IProjectContext } from "../../contracts/interfaces/core/project-context.interface.js";
+import { CONTAINMENT_ROOT_VAR } from "../../contracts/constants/core/runtime-limits.constant.js";
+import { projectDirs } from "./project-context.service.js";
+
+/**
+ * Directory where artifacts are written, using the same precedence as the
+ * former `outputDir(context?)`.
+ *
+ * Accepting `argv` and `env` as parameters instead of reading `process.argv`
+ * and `process.env` makes it possible to test precedence without mutating
+ * the process. Default values remain global so existing call sites do not
+ * change.
+ *
+ * `context` is intentionally optional: when a command runs without a project
+ * context (the `validate-json` `catch` branch, which runs with only the
+ * generated JSON), the helper falls back to `argv` / `env` resolution.
+ * Keeping this entry point preserves historical behavior without introducing
+ * a singleton: the helper remains pure with respect to its arguments and only
+ * reads globals when no context is supplied.
+ */
+export function resolveOutputDir(
+  context: IProjectContext | undefined,
+  argv: ReadonlyArray<string> = process.argv,
+): string {
+  // 1. CLI `--output-dir <path>`.
+  //    Distinguish "missing" from "present with an empty value": if
+  //    `argv[i + 1]` exists but is not a value (it starts with `--`), ignore
+  //    it, as `readFlag` does so it does not consume the next flag.
+  const outputDirIdx = argv.indexOf("--output-dir");
+  if (outputDirIdx !== -1) {
+    const value = argv[outputDirIdx + 1];
+    if (value !== undefined && !value.startsWith("--")) return resolve(value);
+  }
+
+  // 2. CLI `--output <file>` → its parent directory.
+  //    "Write this exact file": the path is what the user wrote, so the
+  //    output directory is its `dirname`.
+  const outputIdx = argv.indexOf("--output");
+  if (outputIdx !== -1) {
+    const value = argv[outputIdx + 1];
+    if (value !== undefined && !value.startsWith("--")) {
+      return resolve(dirname(value));
+    }
+  }
+
+  // 3. Env `POSTMAN_OUTPUT_DIR`.
+  const envDir = envOrAlias("TANIT_OUTPUT_DIR", "POSTMAN_OUTPUT_DIR");
+  if (envDir) return resolve(envDir);
+
+  // 4. If there is a context, use what `resolveProjectContext` already
+  //    resolved when creating it: it also resolves `--output-dir` and
+  //    `POSTMAN_OUTPUT_DIR`, so this branch is reached only when neither was
+  //    present and the context kept its default value.
+  if (context) return context.outputDir;
+
+  // 5. Without a context or flags, we cannot infer the output directory
+  //    —the helper has already checked the CLI, `--output`, and env— so fail
+  //    with an actionable message. This previously fell back to
+  //    `process.cwd()`, which universal rule §6 prohibits in engines.
+  throw new Error(
+    "No se pudo determinar la carpeta de salida. " +
+      "Pasa `--output-dir <ruta>` y/o `--project-root <ruta>`, o define " +
+      "las variables de entorno equivalentes.",
+  );
+}
+
+/**
+ * The file name of the collection, extension included.
+ *
+ * Priority: `override` argument (passed by CLI when `--basename` is
+ * present) → `TANIT_OUTPUT_BASENAME` / `POSTMAN_OUTPUT_BASENAME` env var
+ * → `projectName` → `context.projectBasename` → `"postman"`.
+ *
+ * The `override` parameter replaces the historical
+ * `process.env.POSTMAN_OUTPUT_BASENAME = basenameFlag` monkey-patch in
+ * `generate.script.ts` (c00010 S1). Callers that need finer-grained
+ * control inject the value here instead of mutating `process.env`.
+ *
+ * It is exported because the Application API's export writes the
+ * collection **too**, and it has to write it under the same name the
+ * CLI writes: two faces that produce two files for the same thing
+ * are two files that drift apart.
+ */
+export function collectionBasename(
+  context: IProjectContext | undefined,
+  projectName?: string,
+  basenameOverride?: string,
+): string {
+  const explicit = basenameOverride?.trim();
+  if (explicit) {
+    return explicit.endsWith(".postman_collection")
+      ? explicit
+      : `${explicit}.postman_collection`;
+  }
+  const env = envOrAlias("TANIT_OUTPUT_BASENAME", "POSTMAN_OUTPUT_BASENAME");
+  if (env) {
+    return env.endsWith(".postman_collection")
+      ? env
+      : `${env}.postman_collection`;
+  }
+  const base = projectName?.trim() || context?.projectBasename || "postman";
+  return `${base}.postman_collection`;
+}
+
+/**
+ * Ensures the directory exists with the MCP plugin's containment guard.
+ *
+ * The plugin still sets the containment root at launch
+ * (`POSTMAN_CONTAIN_ROOT`). Moving it to a helper argument is trivial — one
+ * extra parameter that defaults to `process.env[CONTAINMENT_ROOT_VAR]`— but
+ * external behavior does not change, so this also remains for r00011+.
+ */
+async function ensureOutputDir(
+  context: IProjectContext | undefined,
+  argv: ReadonlyArray<string>,
+): Promise<string> {
+  const fs = await import("node:fs/promises");
+  const dir = resolveOutputDir(context, argv);
+
+  const contain = process.env[CONTAINMENT_ROOT_VAR];
+  if (contain) {
+    const { ensureInsideAny } = await import("../helpers/path-containment.helper.js");
+    const roots = contain.split(delimiter).filter((r) => r.length > 0);
+    const check = await ensureInsideAny(roots, dir);
+    if (!check.ok) {
+      // Check immediately before creating the directory, not when reading
+      // the flag: `resolveOutputDir()` applies four precedence rules in
+      // between, and validating only the input would exclude the others.
+      throw new Error(
+        `La carpeta de salida se sale de las raíces permitidas.\n` +
+          `  · ${check.reason}\n` +
+          `  · Lo impone ${CONTAINMENT_ROOT_VAR}, que pone el plugin MCP al\n` +
+          `    lanzar el CLI: ahí la ruta la elige un agente, no una persona.\n` +
+          `  · Lanzado a mano, sin esa variable, cualquier ruta vale.`,
+      );
+    }
+  }
+
+  if (!existsSync(dir)) {
+    await fs.mkdir(dir, { recursive: true });
+  }
+  return dir;
+}
+
+/**
+ * Ruta absoluta al JSON principal. Crea el directorio si no existe.
+ *
+ * Acepta `argv` igual que `resolveOutputDir` para que tests y procesos de
+ * vida larga puedan inyectar el contexto sin mutar el proceso. Por defecto
+ * es `process.argv`. El parámetro `basenameOverride` (c00010 S1) sustituye
+ * la variable de entorno `POSTMAN_OUTPUT_BASENAME` — los callers que antes
+ * monkey-patcheaban `process.env` pasan el valor directamente aquí.
+ */
+export async function outputCollectionPath(
+  context: IProjectContext | undefined,
+  projectName?: string,
+  argv: ReadonlyArray<string> = process.argv,
+  basenameOverride?: string,
+): Promise<string> {
+  const dir = await ensureOutputDir(context, argv);
+  return join(dir, `${collectionBasename(context, projectName, basenameOverride)}.json`);
+}
+
+/**
+ * The same path, **without creating anything**.
+ *
+ * `outputCollectionPath` makes the folder so the write cannot fail
+ * half-way. The readers — `check`, `validate`, `stats` — do not
+ * write, and a read that creates a folder as a side effect is a
+ * surprise: asking whether a collection is in sync would leave a
+ * `tanit/` behind in a project that never generated one.
+ *
+ * @param context The project context.
+ * @param projectName The project's name, for the file's name.
+ * @returns The absolute path of the collection.
+ */
+export function collectionPathFor(
+  context: IProjectContext | undefined,
+  projectName?: string,
+  basenameOverride?: string,
+): string {
+  return join(
+    resolveOutputDir(context),
+    `${collectionBasename(context, projectName, basenameOverride)}.json`,
+  );
+}
+
+/**
+ * Absolute path to the Postman environment for a given environment.
+ *
+ * The environment name is slugified as before: NFD → remove diacritics →
+ * kebab-case → trim hyphens. Callers that need the original behavior should
+ * pass an already-normalized `projectName`.
+ */
+export async function outputEnvironmentPath(
+  context: IProjectContext | undefined,
+  envName: string,
+  projectName?: string,
+  argv: ReadonlyArray<string> = process.argv,
+): Promise<string> {
+  const dir = await ensureOutputDir(context, argv);
+  const base = (projectName?.trim() || context?.projectBasename || "postman");
+  const slug = envName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return join(dir, `${base}.${slug}.postman_environment.json`);
+}
+
+/**
+ * The trace the CLI prints before scanning, as text.
+ *
+ * Without a project name it displays `<nombre-del-proyecto>` instead of
+ * inventing one: the trace is meant to rule out scanning the wrong folder,
+ * and lying there is worse than saying nothing.
+ *
+ * The `routes` and `requests` directories shown belong to the scanned
+ * project and are derived with `projectDirs(context)`. This is a heuristic
+ * inherited from the Laravel path; modern scanners resolve their own paths,
+ * but the CLI trace still displays them because seeing whether they exist is
+ * useful.
+ */
+export function describeDiscoveredPaths(
+  context: IProjectContext,
+  projectName?: string,
+  argv: ReadonlyArray<string> = process.argv,
+  basenameOverride?: string,
+): string {
+  const dirs = projectDirs(context);
+  const outputDir = resolveOutputDir(context, argv);
+  const coleccion = projectName
+    ? join(outputDir, `${collectionBasename(context, projectName, basenameOverride)}.json`)
+    : `${outputDir}/<nombre-del-proyecto>.postman_collection.json`;
+  return [
+    `  · Package root:   ${context.packageRoot}`,
+    `  · Project root:   ${context.projectRoot}`,
+    `  · Routes dir:     ${dirs.routes}`,
+    `  · Requests dir:   ${dirs.requests}`,
+    `  · Output dir:     ${outputDir}`,
+    `  · Collection:     ${coleccion}`,
+  ].join("\n");
+}
+
+// Without the `(not found)` branch: with an explicit context, `projectRoot`
+// always exists, and showing `(not found)` when there was no root was a
+// symptom of the retired singleton that can no longer occur.

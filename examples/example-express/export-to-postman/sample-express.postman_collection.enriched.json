@@ -1,0 +1,21 @@
+{
+  "info": {
+    "name": "sample-express (Postman)",
+    "description": "Colección Postman generada automáticamente para sample-express.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "8843c959-3c50-528b-8a27-afcc54d96baa"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": []
+}

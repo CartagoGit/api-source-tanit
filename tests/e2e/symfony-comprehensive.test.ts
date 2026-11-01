@@ -1,13 +1,13 @@
 /**
- * E2E test exhaustivo para el scanner Symfony.
+ * Comprehensive E2E test for the Symfony scanner.
  *
- * Cubre:
- * - YAML routes en `config/routes.yaml` (top-level).
- * - YAML routes en `config/routes/*.yaml` (sub-app).
- * - PHP attributes `#[Route(...)]` en `src/Controller/`.
- * - Sub-routes con `#[Route('', methods: ['GET'])]` (path vacío).
- * - Multi-constraint `#[Assert\*]` en parámetros de método.
- * - Validation inline en el method signature.
+ * Covers:
+ * - YAML routes in `config/routes.yaml` (top-level).
+ * - YAML routes in `config/routes/*.yaml` (sub-app).
+ * - PHP attributes `#[Route(...)]` in `src/Controller/`.
+ * - Sub-routes with `#[Route('', methods: ['GET'])]` (empty path).
+ * - Multi-constraint `#[Assert\*]` on method parameters.
+ * - Inline validation on the method signature.
  */
 import { describe, expect, test } from "vitest";
 import { runGenerate } from "../helpers/run-scanner";
@@ -27,25 +27,25 @@ describeCollectionContract({
 });
 
 describe("Symfony — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("symfony-comprehensive");
-    // 14 endpoints únicos: los declarados en YAML y los declarados con
-    // #[Route] son los MISMOS, y Symfony los registra una sola vez.
+    // 14 unique endpoints: those declared in YAML and those declared
+    // with #[Route] are the SAME, and Symfony registers them only once.
     expect(metrics.routes).toBe(14);
   });
 
-  test("no exporta endpoints duplicados", async () => {
+  test("does not export duplicate endpoints", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const keys = collectRequestKeys(collection);
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("encuentra las rutas YAML del config/routes.yaml", async () => {
+  test("finds the YAML routes from config/routes.yaml", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/api/auth/login")).not.toBeNull();
@@ -53,7 +53,7 @@ describe("Symfony — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
   });
 
-  test("encuentra las rutas YAML de config/routes/users.yaml", async () => {
+  test("finds the YAML routes from config/routes/users.yaml", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     expect(findEndpoint(collection, "GET", "/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/users")).not.toBeNull();
@@ -62,7 +62,7 @@ describe("Symfony — comprehensive fixture", () => {
     expect(findEndpoint(collection, "DELETE", "/users/{{id}}")).not.toBeNull();
   });
 
-  test("encuentra las rutas de los PHP attributes", async () => {
+  test("finds the routes from the PHP attributes", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     expect(findEndpoint(collection, "GET", "/users")).not.toBeNull();
     expect(findEndpoint(collection, "POST", "/users")).not.toBeNull();
@@ -70,7 +70,7 @@ describe("Symfony — comprehensive fixture", () => {
     expect(findEndpoint(collection, "PATCH", "/orders/{{id}}/status")).not.toBeNull();
   });
 
-  test("POST /users tiene body params (Assert constraints)", async () => {
+  test("POST /users has body params (Assert constraints)", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "POST", "/users");
     expect(eps).toHaveLength(1);
@@ -79,18 +79,18 @@ describe("Symfony — comprehensive fixture", () => {
     expect(body).toHaveProperty("email");
   });
 
-  test("X-Tenant-ID custom headers no son parte de los headers por defecto", async () => {
+  test("X-Tenant-ID custom headers are not part of the default headers", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login");
     expect(ep).not.toBeNull();
     const headers = (ep?.request?.header ?? []) as Array<{ key: string }>;
-    // El default debe ser `Accept` + `Authorization`. No `X-Tenant-ID`.
+    // The default should be `Accept` + `Authorization`. No `X-Tenant-ID`.
     const keys = headers.map((h) => h.key);
     expect(keys).toContain("Accept");
     expect(keys).toContain("Authorization");
   });
 
-  test("PATCH /orders/{id}/status tiene status enum", async () => {
+  test("PATCH /orders/{id}/status has status enum", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "PATCH", "/orders/{{id}}/status");
     expect(eps).toHaveLength(1);
@@ -98,7 +98,7 @@ describe("Symfony — comprehensive fixture", () => {
     expect(body?.status).toBeDefined();
   });
 
-  test("PUT /users/{id}/address tiene street, city, country, postalCode", async () => {
+  test("PUT /users/{id}/address has street, city, country, postalCode", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/users/{{id}}/address");
     expect(ep).not.toBeNull();
@@ -109,7 +109,7 @@ describe("Symfony — comprehensive fixture", () => {
     expect(body).toHaveProperty("postalCode");
   });
 
-  test("Auth login tiene email y password (al menos un endpoint)", async () => {
+  test("Auth login has email and password (at least one endpoint)", async () => {
     const { collection } = await runGenerate("symfony-comprehensive");
     const eps = findAllEndpoints(collection, "POST", "/api/auth/login");
     expect(eps).toHaveLength(1);

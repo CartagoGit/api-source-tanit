@@ -18,7 +18,7 @@
 # Porque el ciclo es editar-y-probar. Un `COPY` obligaría a reconstruir
 # la imagen por cada carácter que se toca.
 
-name: expostman
+name: tanit
 
 # `bash -c`, nunca `bash -lc`.
 #
@@ -32,7 +32,7 @@ x-toolchain: &toolchain
     context: ..
     dockerfile: .docker/Dockerfile
     target: toolchain
-  image: expostman/toolchain:local
+  image: tanit/toolchain:local
   working_dir: /work
   volumes:
     - ..:/work
@@ -46,11 +46,11 @@ x-toolchain: &toolchain
     # el directorio está vacío. El síntoma es un typecheck que falla
     # dentro y pasa fuera, con un `implicitly has an 'any' type` que no
     # tiene nada que ver con los tipos.
-    - plugin_node_modules:/work/projects/plugins/mcp-vertex_expostman/node_modules
+    - plugin_node_modules:/work/integrations/delendai/node_modules
     - cargo_registry:/usr/local/cargo/registry
     # Fuera del árbol del repo, a propósito.
     #
-    # Montarlo en `projects/desktop/target` hacía que Docker creara ese
+    # Montarlo en `packages/desktop/target` hacía que Docker creara ese
     # directorio **como root** dentro del working tree, y a partir de ahí
     # `mkdir` desde la máquina fallaba con «Permission denied» en un
     # sitio que git ni siquiera rastrea. `CARGO_TARGET_DIR` lo lleva
@@ -73,7 +73,7 @@ services:
   # pasa»: aquí no hay nada instalado a mano.
   #
   # **Sin la sección `plugin`, y no es un descuido.** El plugin declara
-  # `"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`, un
+  # `"@delendai/core": "file:../../../../delendai/packages/core"`, un
   # `file:` que apunta **fuera** del repositorio. Montar el checkout
   # hermano dentro se probó y no basta —bun no materializa el enlace—,
   # pero sobre todo **no debería hacer falta**: el bootstrap prohíbe
@@ -83,7 +83,7 @@ services:
   # `p00007`. Lo que esa propuesta describe como «cambiar una línea
   # cuando se publique» es en realidad **el repositorio no siendo
   # autocontenido**, y se nota en cuanto se intenta construir en un sitio
-  # limpio. El día que `@mcp-vertex/core` esté en npm, esto pasa a ser
+  # limpio. El día que `@delendai/core` esté en npm, esto pasa a ser
   # `bun run validate` a secas.
   #
   # `mcp-surface.spec.ts` se salta **solo**, declarando su precondición:
@@ -120,7 +120,7 @@ services:
     #
     # En un corredor de CI el AppImage sí sale, y ahí se produce.
     environment:
-      EXPOSTMAN_BUNDLES: deb
+      TANIT_BUNDLES: deb
       CARGO_TARGET_DIR: /cargo-target
       NO_COLOR: "1"
       CI: "true"
@@ -142,7 +142,7 @@ services:
       context: ..
       dockerfile: .docker/Dockerfile
       target: runtime
-    image: expostman/runtime:local
+    image: tanit/runtime:local
     command: ["--help"]
 
 volumes:

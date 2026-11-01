@@ -1,55 +1,62 @@
-# Dependabot tiene dos mitades y esta configuración solo gobierna una.
+# Dependabot. Mantiene al día las dependencias de los paquetes que
+# **sí se instalan** en el flujo de desarrollo y CI, y vigila los que
+# no se instalan **por si acaso**.
 #
-#   · **Actualizaciones** (los PR "bump X from A to B") — se piden aquí,
-#     directorio a directorio. Lo que no se nombre, no se actualiza.
-#   · **Alertas de seguridad** — salen del *grafo de dependencias*, que
-#     GitHub construye escaneando **todos** los manifiestos del repo.
-#     Esta configuración **no** las filtra. No hay forma de filtrarlas:
-#     el grafo no admite exclusiones por ruta.
+# ## Las dos ramas
 #
-# La distinción no es teórica, se pagó: al declarar aquí solo los dos
-# paquetes reales, las 67 alertas abiertas siguieron exactamente igual
-# de abiertas. Las actualizaciones dejaron de llegar; las alertas no.
+# Dependabot vigila **las dos**: `main` (la release) y `develop` (la
+# integración). Sin `target-branch`, Dependabot abre sus PR contra la
+# rama por defecto —`main`— y `develop` se queda congelada: un bump
+# que llega a `main` tarda una release entera en volver a `develop`.
 #
-# Y eso importa porque el repo contiene **50 manifiestos que no son
-# suyos**: cada proyecto de `examples/` y cada fixture de `tests/` trae
-# su `package.json`, `requirements.txt`, `go.mod`, `Gemfile`, `pom.xml` o
-# `Cargo.toml`, porque es de ahí de donde los scanners deducen el
-# framework. Son proyectos de mentira, recortados a lo justo para
-# ejercitar un scanner, y **nadie los instala nunca**. Las 67 alertas
-# salían de ellos: las trece rutas señaladas estaban todas bajo
-# `examples/` o `tests/`, y ni una sola bajo un paquete real. Mientras
-# tanto `bun audit`, que mira lo que sí se instala, seguía en cero.
+# No es una preferencia de estilo: es un **agujero de seguridad**. El
+# grafo de dependencias que alimenta las alertas de Dependabot se
+# construye desde la rama por defecto, así que una vulnerabilidad
+# arreglada en `develop` sigue **abierta** en la pestaña de seguridad
+# hasta que el arreglo llega a `main` (x00072: cinco alertas *high* de
+# `zod` en los ejemplos, ya corregidos en `develop`, seguían
+# parpadeando porque `main` era la que miraba Dependabot).
 #
-# Eso no es un aviso de seguridad: es ruido que **esconde** los avisos de
-# verdad. Sesenta y siete alertas de dependencias que no existen hacen
-# que nadie mire la lista, y el día que aparezca una real se pierde entre
-# ellas.
+# Con las dos ramas declaradas, cada dependencia se propone en las
+# dos, y quien mergea decide. Lo que llega a `main` sin pasar por
+# `develop` no es una excepción: es una regresión esperando.
 #
-# Como el grafo no se puede filtrar, la única palanca que queda es lo que
-# los manifiestos falsos **declaran**. De ahí la política:
+# ## Los directorios
 #
-#   > Un manifiesto de ejemplo o de fixture declara la versión que
-#   > declararía hoy un proyecto real: la vigente y sin avisos abiertos.
+# Para las actualizaciones **de versión** sólo entran los directorios
+# que contienen dependencias de verdad:
 #
-# Cumplirla no cuesta nada —el código de ejemplo no se ejecuta y las
-# versiones no cambian su sintaxis— y a cambio el grafo no tiene nada que
-# señalar. `tests/cli/dependabot.spec.ts` la vigila: lleva el suelo de
-# versión de cada paquete que llegó a alertar y falla si alguno vuelve a
-# bajar de ahí.
+#   /                              el paquete del producto
+#   /packages/app                  la aplicación Angular que se instala como
+#                                  workspace
+#   /integrations/delendai         la integración opcional con Delendai
+#                                  (NO se publica; ver x00041)
 #
-# Aquí abajo, entonces, solo los directorios que contienen dependencias
-# de verdad:
+# El resto (plugins/, fixtures de e2e, examples/) no se instalan y por
+# tanto no producen PRs de Dependabot. `examples/` es especialmente
+# ruidoso: 50+ proyectos de muestra traen cada uno su propio
+# `package.json`, y si Dependabot los siguiera abriría docenas de PRs
+# sobre dependencias que nadie instala.
 #
-#   /                                      el paquete
-#   /projects/plugins/mcp-vertex_expostman el plugin, que se publica aparte
-#
+# Pero **eso no es lo mismo que no mirarlos**. Una vulnerabilidad en
+# un ejemplo es una vulnerabilidad en la documentación que alguien
+# copia: el ejemplo enseña a usar la dependencia que va a morder.
+# Por eso los directorios que no se instalan **sí** se vigilan — con
+# otra herramienta, más rápida: el grafo de dependencias no admite
+# exclusiones, pero los manifiestos sí pueden declarar la versión
+# segura, y un test lo comprueba en cada commit (ver
+# `tests/cli/dependabot.spec.ts`).
+
 version: 2
 
 updates:
-  # El paquete. Es donde viven las dependencias que sí se instalan.
+  # El paquete del producto (Tanit). Es donde viven las dependencias
+  # que sí se instalan.
   - package-ecosystem: npm
     directory: "/"
+    target-branch:
+      - main
+      - develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -62,20 +69,64 @@ updates:
       prefix: "chore(deps)"
       prefix-development: "chore(deps-dev)"
 
-  # El plugin de mcp-vertex es un paquete independiente con su propio
-  # `package.json`, y ese sí se instala.
+  # La aplicación Angular es un workspace real con dependencias propias.
   - package-ecosystem: npm
-    directory: "/projects/plugins/mcp-vertex_expostman"
+    directory: "/packages/app"
+    target-branch:
+      - main
+      - develop
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(deps)"
 
+  # La integración opcional con Delendai. Es un paquete independiente
+  # con su propio `package.json`, y mantiene `file:` hacia
+  # `@delendai/core` (p00007 sigue `done`). Dependabot lo vigila como
+  # cualquier otro paquete que se instala localmente.
+  - package-ecosystem: npm
+    directory: "/integrations/delendai"
+    target-branch:
+      - main
+      - develop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ─────────────── lo que no se instala, pero se vigila ───────────────
+  #
+  # Los ejemplos y las fixtures NO están aquí, y es deliberado: los
+  # vigila otra cosa, más rápida y más ruidosa.
+  #
+  # El grafo de dependencias **no admite exclusiones**: escanea
+  # todos los manifiestos del repositorio, así que 50 proyectos de
+  # muestra con su propio `package.json` generan alertas que no son
+  # seguridad —son ruido, y el ruido **esconde** los avisos
+  # verdadeiros—. Como el grafo no se puede filtrar, la palanca que
+  # queda es qué declaran esos manifiestos: un manifiesto de muestra
+  # declara la versión que un proyecto real declararía hoy.
+  #
+  # Eso lo sostiene `tests/cli/dependabot.spec.ts`, con su tabla de
+  # pisos: si un manifiesto de muestra vuelve a una versión con
+  # alertas abiertas, **el test falla al momento**, en lugar de
+  # esperar a que GitHub reconstruya el grafo días después y en otra
+  # rama. Un PR de Dependabot sobre un ejemplo no llega nunca antes.
+  #
+  # (x00072: `zod` entró en esa tabla cuando los ejemplos y las
+  # fixtures bajaron a `zod ^4.6.7` —GHSA-mrhx-c7xc-m3w5, parcheada
+  # en la 4.6.6—. Desde entonces, ningún manifiesto de muestra
+  # puede volver a la v3.)
+
   # Las acciones del workflow también envejecen, y una acción vieja es
   # código de terceros ejecutándose con el token del repositorio.
   - package-ecosystem: github-actions
     directory: "/"
+    target-branch:
+      - main
+      - develop
     schedule:
       interval: monthly
     commit-message:

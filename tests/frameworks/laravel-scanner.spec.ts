@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { parseRoutesFile } from "../../projects/frameworks/laravel/laravel.scanner";
-import { LaravelFormRequestValidationProvider } from "../../projects/frameworks/laravel/laravel.scanner";
+import { parseRoutesFile } from "../../packages/frameworks/laravel/laravel.scanner";
+import { LaravelFormRequestValidationProvider } from "../../packages/frameworks/laravel/laravel.scanner";
 
 import { describeScannerContract } from "../helpers/scanner-contract";
 import { comprehensiveFixture } from "../helpers/scanner-fixture";
+import { EMPTY_SCAN_RESULT } from "../helpers/empty-scan-result";
 
 describeScannerContract({
   framework: "laravel",
@@ -26,8 +27,8 @@ describeScannerContract({
 });
 
 /**
- * Helper: escribe un routes/api.php en un tmpdir y lo parsea.
- * Devuelve las rutas + un cleanup function.
+ * Helper: writes a routes/api.php into a tmpdir and parses it.
+ * Returns the routes + a cleanup function.
  */
 async function withRoutesFile(
   content: string,
@@ -50,7 +51,7 @@ async function withRoutesFile(
 }
 
 describe("Laravel scanner — Route::resource + where()", () => {
-  test("Route::resource expande a 7 rutas RESTful", async () => {
+  test("Route::resource expands to 7 RESTful routes (+ PATCH for update)", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 use Illuminate\\Support\\Facades\\Route;
@@ -59,13 +60,17 @@ Route::resource('users', UserController::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
+      // a00010 / B-03, B-04: 7 REST actions + 1 extra PATCH for
+      // `update` (Laravel 5+ accepts both PUT and PATCH). The path
+      // param is `{user}`, not `{id}`.
+      expect(routes).toHaveLength(8);
       const methods = routes.map((r) => r.method);
       expect(methods).toContain("GET");
       expect(methods).toContain("POST");
       expect(methods).toContain("PUT");
+      expect(methods).toContain("PATCH");
       expect(methods).toContain("DELETE");
-      // 4 GET: index, create, show, edit
+      // 4 GETs: index, create, show, edit
       const getRoutes = routes.filter((r) => r.method === "GET");
       expect(getRoutes).toHaveLength(4);
     } finally {
@@ -73,13 +78,15 @@ Route::resource('users', UserController::class);
     }
   });
 
-  test("Route::resource genera las acciones RESTful canónicas", async () => {
+  test("Route::resource generates the canonical RESTful actions", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::resource('users', UserController::class);
 `,
     );
     try {
+      // `update` appears twice (PUT and PATCH); the actions are still
+      // the 7 canonical ones.
       const actions = routes.map((r) => r.actionName).sort();
       expect(actions).toEqual([
         "create",
@@ -89,20 +96,22 @@ Route::resource('users', UserController::class);
         "show",
         "store",
         "update",
+        "update",
       ]);
     } finally {
       cleanup();
     }
   });
 
-  test("Route::apiResource expande a 5 rutas (sin create/edit)", async () => {
+  test("Route::apiResource expands to 5 routes (+ PATCH for update)", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::apiResource('orders', OrderController::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(5);
+      // 5 + 1 PATCH for update.
+      expect(routes).toHaveLength(6);
       const actions = routes.map((r) => r.actionName).sort();
       expect(actions).toEqual([
         "destroy",
@@ -110,8 +119,9 @@ Route::apiResource('orders', OrderController::class);
         "show",
         "store",
         "update",
+        "update",
       ]);
-      // apiResource NO debe sacar /create o /edit
+      // apiResource must NOT bring out /create or /edit
       const createOrEdit = routes.filter(
         (r) => r.uri.endsWith("/create") || r.uri.endsWith("/edit"),
       );
@@ -121,7 +131,7 @@ Route::apiResource('orders', OrderController::class);
     }
   });
 
-  test("->where('field', 'regex') se codifica en la URI", async () => {
+  test("->where('field', 'regex') is encoded into the URI", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::get('/items/{id}', [ItemController::class, 'show'])->where('id', '\\d+');
@@ -135,26 +145,28 @@ Route::get('/items/{id}', [ItemController::class, 'show'])->where('id', '\\d+');
     }
   });
 
-  test("->where('id', '\\d+') aplica al {id} de Route::resource", async () => {
+  test("->where('user', '\\d+') applies to the (singular) {user} of Route::resource", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
-Route::resource('users', UserController::class)->where('id', '\\d+');
+Route::resource('users', UserController::class)->where('user', '\\d+');
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
-      // Las 4 rutas con {id} deben llevar la constraint
-      const withId = routes.filter((r) => r.uri.includes("{id"));
-      expect(withId.length).toBeGreaterThan(0);
-      for (const r of withId) {
-        expect(r.uri).toContain("{id:\\d+}");
+      // 7 + 1 PATCH = 8 routes.
+      expect(routes).toHaveLength(8);
+      // a00010 / B-03: the path param is `{user}`, not `{id}`. The
+      // constraint is applied by name.
+      const withUser = routes.filter((r) => r.uri.includes("{user"));
+      expect(withUser.length).toBeGreaterThan(0);
+      for (const r of withUser) {
+        expect(r.uri).toContain("{user:\\d+}");
       }
     } finally {
       cleanup();
     }
   });
 
-  test("Route::resource con aliases use() resuelve la FQCN", async () => {
+  test("Route::resource with use() aliases resolves the FQCN", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 use App\\Http\\Controllers\\UserController as UC;
@@ -162,7 +174,7 @@ Route::resource('users', UC::class);
 `,
     );
     try {
-      expect(routes).toHaveLength(7);
+      expect(routes).toHaveLength(8);
       for (const r of routes) {
         expect(r.controllerClass).toBe("App\\Http\\Controllers\\UserController");
       }
@@ -171,7 +183,38 @@ Route::resource('users', UC::class);
     }
   });
 
-  test("prefijo externo (api/v1) se aplica a las expandidas", async () => {
+  test("singularizes irregular and -ies names", async () => {
+    const { routes, cleanup } = await withRoutesFile(
+      `<?php
+Route::apiResource('categories', CategoryController::class);
+Route::apiResource('statuses', StatusController::class);
+Route::apiResource('people', PersonController::class);
+`,
+    );
+    try {
+      expect(routes.some((route) => route.uri === "/api/categories/{category}")).toBe(true);
+      expect(routes.some((route) => route.uri === "/api/statuses/{status}")).toBe(true);
+      expect(routes.some((route) => route.uri === "/api/people/{person}")).toBe(true);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("->parameters() overrides the resource's parameter name", async () => {
+    const { routes, cleanup } = await withRoutesFile(
+      `<?php
+Route::apiResource('users', UserController::class)->parameters(['users' => 'user_id']);
+`,
+    );
+    try {
+      expect(routes.some((route) => route.uri === "/api/users/{user_id}")).toBe(true);
+      expect(routes.some((route) => route.uri.includes("{user}"))).toBe(false);
+    } finally {
+      cleanup();
+    }
+  });
+
+  test("external prefix (api/v1) is applied to the expanded routes", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::resource('users', UserController::class);
@@ -179,7 +222,7 @@ Route::resource('users', UserController::class);
       ["api/v1"],
     );
     try {
-      expect(routes).toHaveLength(7);
+      expect(routes).toHaveLength(8);
       for (const r of routes) {
         expect(r.uri.startsWith("/api/v1/")).toBe(true);
       }
@@ -188,7 +231,7 @@ Route::resource('users', UserController::class);
     }
   });
 
-  test("mezcla Route::resource + Route::get produce ambos", async () => {
+  test("mixing Route::resource + Route::get produces both", async () => {
     const { routes, cleanup } = await withRoutesFile(
       `<?php
 Route::resource('users', UserController::class);
@@ -196,8 +239,8 @@ Route::get('/health', fn() => ['ok' => true]);
 `,
     );
     try {
-      // 7 (resource) + 1 (health)
-      expect(routes).toHaveLength(8);
+      // 7 (resource) + 1 (PATCH update) + 1 (health) = 9.
+      expect(routes).toHaveLength(9);
       const health = routes.find((r) => r.uri === "/api/health");
       expect(health).toBeDefined();
     } finally {
@@ -205,7 +248,7 @@ Route::get('/health', fn() => ['ok' => true]);
     }
   });
 
-  test("FormRequest de store() extrae campos reales y formatos", async () => {
+  test("FormRequest from store() extracts real fields and formats", async () => {
     const { mkdtemp, rm, copyFile, mkdir } = await import("node:fs/promises");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
@@ -244,7 +287,7 @@ Route::resource('users', UserController::class);
         framework: "laravel",
         projectRoot: dir,
         artifacts: [],
-      });
+      }, EMPTY_SCAN_RESULT);
 
       expect(result.fields.length).toBeGreaterThan(0);
       const names = result.fields.map((field) => field.fieldName);

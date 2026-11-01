@@ -26,18 +26,31 @@ Un comando merece ser tool cuando cumple **las tres**:
 
 ## Los diez que sí
 
-| Tool | Efectos | Por qué |
-|---|---|---|
-| `generate` | `write` | Es el producto. Devuelve rutas, cifras y avisos. |
-| `init` | `write` | Escribe una configuración **válida** sin que el agente tenga que inventarse la forma de `ProjectConfig`. |
-| `push` | `network`, `write` | Publica en Postman. Devuelve qué se creó o actualizó, con su UID. |
-| `scan` | — | Qué ve el discovery, antes de generar nada. La respuesta a «¿por qué no encuentra mis rutas?». |
-| `summary` | — | El proyecto ya interpretado, sin escribir. |
-| `check` | — | ¿Se ha desincronizado la colección del código? Con las dos listas de deriva. |
-| `list` | — | Los endpoints de la colección, en datos. |
-| `stats` | — | El tamaño y la forma, para dimensionar sin leerse el JSON. |
-| `validate` | — | Si la colección cumple el esquema de Postman. |
-| `test` | `spawn` | Ejecuta la suite y devuelve pasos con su resultado. |
+| Tool | Efectos | Dónde escribe | Por qué |
+|---|---|---|---|
+| `generate` | `write` | `server` | Es el producto. Devuelve rutas, cifras y avisos. |
+| `init` | `write` | `server` | Escribe una configuración **válida** sin que el agente tenga que inventarse la forma de `ProjectConfig`. |
+| `push` | `network`, `write` | `remote` | Publica en Postman. Devuelve qué se creó o actualizó, con su UID. |
+| `scan` | — | — | Qué ve el discovery, antes de generar nada. La respuesta a «¿por qué no encuentra mis rutas?». |
+| `summary` | — | — | El proyecto ya interpretado, sin escribir. |
+| `check` | — | — | ¿Se ha desincronizado la colección del código? Con las dos listas de deriva. |
+| `list` | — | — | Los endpoints de la colección, en datos. |
+| `stats` | — | — | El tamaño y la forma, para dimensionar sin leerse el JSON. |
+| `validate` | — | — | Si la colección cumple el esquema de Postman. |
+| `test` | `spawn` | — | Ejecuta la suite y devuelve pasos con su resultado. |
+
+La columna **Dónde escribe** no es adorno: es el `writeRoot` que el
+host lee al arrancar. Un tool que declara `write` y no dice dónde
+escribe **hace que el servidor MCP no arranque** — el editor muestra
+«the server stopped while handling this request» y el motivo queda
+escondido en el stderr del servidor. Lo comprueba
+`bun run lint:mcp-surface` antes de que llegue ahí.
+
+`generate` e `init` escriben en el proyecto que documentan: la raíz
+del propio servidor, salvo que quien llame nombre otro. `push` no
+escribe nada aquí: la colección aterriza en el workspace de Postman.
+El detalle y el porqué de cada uno viven en
+[`docs/delendai/AGENT-BOOTSTRAP.md`](delendai/AGENT-BOOTSTRAP.md#321-effects-and-write-root--the-registration-contract).
 
 ## Los que no, y por qué
 
@@ -67,7 +80,7 @@ es información; abrir una ventana es una interrupción.
 
 ### El asistente interactivo — pregunta
 
-Vive en `projects/ui/interactive.script.ts` y funciona a base de
+Vive en `packages/ui/interactive.script.ts` y funciona a base de
 preguntas encadenadas. Un tool MCP no tiene con quién dialogar.
 
 **Alternativa:** los tools que ya existen. El asistente es un envoltorio
@@ -89,3 +102,23 @@ Lo que no vale es dejarlo sin decidir: un comando sin tool y sin
 explicación es indistinguible de un olvido, y eso es justo lo que pasaba
 con `check`, que llevaba desde el principio en el CLI sin que nadie
 supiera por qué no estaba expuesto.
+
+## `agent-orchestrator` (c00004)
+
+Este proyecto declara el plugin `agent-orchestrator` con un set mínimo
+de opciones para que `delendai_agent-orchestrator_dispatch` pueda correr
+sobre `FakeDispatchPort` (idempotente para tests/fixtures). La sección
+sirve para que el equipo sepa **qué** se está inyectando y **por qué**
+el fallback está bien mientras no exista un port real.
+
+> **c00004 (chore)**: con `allowFakeDispatchPort: true` en
+> `delendai.config.json#plugins["agent-orchestrator"].options`, el
+> dispatch corre con el `FakeDispatchPort` (idempotente para
+> tests/fixtures). Hasta que `@delendai/core` publique un
+> `BoundedAgentPort` real, este es el fallback soportado.
+
+La forma final del descriptor de port vive en `portFactory.kind` y se
+queda declarada aunque hoy se ignore: cuando el sibling repo
+`delendai` publique `BoundedAgentPort`, el host resolverá el descriptor
+por `kind: "in-process-subagent"` y este cambio en config será
+suficiente — sin tener que volver a tocar `delendai.config.json`.

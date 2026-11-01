@@ -1,7 +1,7 @@
-# agents.md — `export-to-postman`
+# agents.md — `api-source-tanit`
 
 Una página para orientarse antes de tocar nada. Las reglas vinculantes
-viven en [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](../docs/mcp-vertex/AGENT-BOOTSTRAP.md);
+viven en [`docs/delendai/AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md);
 esto es el mapa.
 
 ---
@@ -10,15 +10,15 @@ esto es el mapa.
 
 Genera colecciones de Postman v2.1.0 desde el **código** de una API, sin
 anotaciones ni servidor levantado. La lista de frameworks sale del
-registro (`SUPPORTED_FRAMEWORKS`) y la imprime `expostman --help`: no se
+registro (`SUPPORTED_FRAMEWORKS`) y la imprime `apisrc --help`: no se
 escribe aquí porque una copia se queda vieja en cuanto se añade uno.
 
 Además de REST cubre dos protocolos sin rutas visibles: **GraphQL** (una
 request por operación del esquema, con la consulta escrita) y **tRPC**
 (la traducción a HTTP que nadie se sabe de memoria).
 
-Se distribuye de tres formas: paquete npm (`export-to-postman`),
-binario autocontenido por plataforma, y plugin de mcp-vertex.
+Se distribuye de tres formas: paquete npm (`api-source-tanit`),
+binario autocontenido por plataforma, y plugin de delendai.
 
 ---
 
@@ -31,7 +31,7 @@ bun run validate
 ```
 
 Encadena `typecheck` → `lint:tools` → `bun test` → `validate:examples`
-(genera de verdad los 21 proyectos de `examples/` y valida cada
+(genera de verdad los 25 proyectos de `examples/` y valida cada
 colección). Corre igual en CI.
 
 Aparte, antes de publicar:
@@ -63,7 +63,7 @@ projectRoot
   └─ auth-flow              ── login/refresh/logout + captura del token
 ```
 
-Todo eso lo orquesta **`projects/core/discovery/generation.pipeline.ts`**, que es el
+Todo eso lo orquesta **`packages/core/discovery/generation.pipeline.ts`**, que es el
 único sitio donde se decide el orden de los pasos. El CLI, los tests y el
 gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
@@ -73,13 +73,13 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 | Quiero… | Toco |
 |---|---|
-| Añadir un framework | `projects/frameworks/scanners/<fw>.scanner.ts` + registrarlo en `projects/frameworks/framework.registry.ts` |
-| Cambiar la forma de la colección | `projects/core/domain/collection-builder.service.ts` |
-| Cambiar el flujo de login | `projects/core/domain/auth-flow.service.ts` |
-| Parsear una librería de validación nueva | `projects/frameworks/parsers/<lib>-schema.helper.ts` |
-| Añadir un comando al CLI | `projects/cli/commands/<nombre>.script.ts` + entrada en `projects/cli/cli.script.ts` |
-| Añadir un formato de salida | `projects/core/exporters/<fmt>.exporter.ts` + registrarlo |
-| Añadir un tool MCP | `projects/plugins/mcp-vertex_expostman/src/lib/tools/<nombre>.tool.ts` |
+| Añadir un framework | `packages/frameworks/scanners/<fw>.scanner.ts` + registrarlo en `packages/frameworks/framework.registry.ts` |
+| Cambiar la forma de la colección | `packages/core/domain/collection-builder.service.ts` |
+| Cambiar el flujo de login | `packages/core/domain/auth-flow.service.ts` |
+| Parsear una librería de validación nueva | `packages/frameworks/parsers/<lib>-schema.helper.ts` |
+| Añadir un comando al CLI | `packages/cli/commands/<nombre>.script.ts` + entrada en `packages/cli/cli.script.ts` |
+| Añadir un formato de salida | `packages/core/exporters/<fmt>.exporter.ts` + registrarlo |
+| Añadir un tool MCP | `integrations/delendai/src/lib/tools/<nombre>.tool.ts` |
 
 ---
 
@@ -104,9 +104,9 @@ gate lo llaman a él: si añades un paso, va ahí, no en el script.
 
 ## Tools del plugin MCP
 
-Namespace `expostman` (el host los registra como
-`mcp-vertex_expostman_<tool>`), declarados en
-[`projects/plugins/mcp-vertex_expostman/src/index.ts`](../projects/plugins/mcp-vertex_expostman/src/index.ts):
+Namespace `tanit` (el host los registra como
+`delendai_tanit_<tool>`), declarados en
+[`integrations/delendai/src/index.ts`](../integrations/delendai/src/index.ts):
 
 | Tool | Qué hace |
 |---|---|
@@ -119,10 +119,10 @@ Namespace `expostman` (el host los registra como
 
 ## Estado
 
-- **Auditoría vigente**: [`docs/mcp-vertex/AUDIT-2026-08-06.md`](../docs/mcp-vertex/AUDIT-2026-08-06.md)
+- **Auditoría histórica**: propuesta canónica [`a00003`](../docs/delendai/proposals/done/audits/a00003-auditoria-completa-postman-exporter.md)
   — bugs encontrados, causas raíz y lo que queda abierto.
-- **Propuestas**: [`docs/mcp-vertex/proposals/`](../docs/mcp-vertex/proposals/),
-  con la misma disposición que mcp-vertex: la carpeta **es** el estado
+- **Propuestas**: [`docs/delendai/proposals/`](../docs/delendai/proposals/),
+  con la misma disposición que delendai: la carpeta **es** el estado
   (`ready/`, `in-progress/`, `review/`, `done/`, `paused/`, `blocked/`,
   `retired/`, `legacy/`), y `done/` archiva por kind. Moverla de carpeta
   y cambiar su `status` es la misma operación; `bun run lint:proposals`

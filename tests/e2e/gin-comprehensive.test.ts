@@ -1,10 +1,10 @@
 /**
- * E2E test exhaustivo para el scanner Gin (Go).
+ * Comprehensive E2E test for the Gin (Go) scanner.
  *
- * Cubre:
+ * Covers:
  * - `gin.Default()` + `RouterGroup.GET/POST/PUT/PATCH/DELETE`.
- * - Structs Go con binding tags (`required`, `email`, `oneof`, `min`, `max`, etc.).
- * - json tags para nombres wire.
+ * - Go structs with binding tags (`required`, `email`, `oneof`, `min`, `max`, etc.).
+ * - json tags for wire names.
  * - Path params `:id`.
  * - Multi-file (internal/users.go, internal/orders.go, internal/auth.go).
  */
@@ -25,23 +25,23 @@ describeCollectionContract({
 });
 
 describe("Gin — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("gin-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(13);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("gin-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
     // Users
@@ -62,7 +62,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
   });
 
-  test("POST /api/users tiene body desde struct User", async () => {
+  test("POST /api/users has body from struct User", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users");
     expect(ep).not.toBeNull();
@@ -73,7 +73,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(body).toHaveProperty("role");
   });
 
-  test("PUT /api/users/{id}/address usa struct Address", async () => {
+  test("PUT /api/users/{id}/address uses struct Address", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address");
     expect(ep).not.toBeNull();
@@ -84,7 +84,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(body).toHaveProperty("postal_code");
   });
 
-  test("POST /api/orders tiene body desde struct Order", async () => {
+  test("POST /api/orders has body from struct Order", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/orders");
     expect(ep).not.toBeNull();
@@ -94,7 +94,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(body).toHaveProperty("amount");
   });
 
-  test("POST /api/auth/login tiene email + password (struct Login)", async () => {
+  test("POST /api/auth/login has email + password (struct Login)", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login");
     expect(ep).not.toBeNull();
@@ -103,7 +103,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("POST /api/auth/refresh tiene refresh_token (struct RefreshToken)", async () => {
+  test("POST /api/auth/refresh has refresh_token (struct RefreshToken)", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/refresh");
     expect(ep).not.toBeNull();
@@ -111,7 +111,7 @@ describe("Gin — comprehensive fixture", () => {
     expect(body).toHaveProperty("refresh_token");
   });
 
-  test("role es enum (oneof=admin user guest)", async () => {
+  test("role is enum (oneof=admin user guest)", async () => {
     const { collection } = await runGenerate("gin-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users");
     const body = JSON.parse(ep?.request?.body?.raw ?? "{}");

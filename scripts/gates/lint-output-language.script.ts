@@ -62,7 +62,7 @@ const MARCAS_ES = [
 ];
 
 /** Dónde vive la salida que ve quien usa la herramienta. */
-const AREAS = ["projects/cli", "projects/ui", "projects/core/helpers"] as const;
+const AREAS = ["packages/cli", "packages/ui", "packages/core/helpers"] as const;
 
 /**
  * Dónde vive un mensaje de usuario.

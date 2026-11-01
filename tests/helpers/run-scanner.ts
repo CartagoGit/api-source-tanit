@@ -1,22 +1,24 @@
 /**
- * Helper: ejecuta el flujo completo (scan → generate) sobre un
- * projectRoot y devuelve el `PostmanCollection` resultante + metrics.
+ * Helper: runs the full flow (scan → generate) on a projectRoot and
+ * returns the resulting `PostmanCollection` + metrics.
  *
- * IMPORTANTE: todas las operaciones son **in-process** (sin `spawn`).
- * La versión anterior spawneaba `bun scripts/generate.script.ts` para
- * cada test, lo que disparaba decenas de procesos bun en paralelo y
- * reventaba la memoria del sistema.  Este helper llama directamente a
- * los servicios del paquete.
+ * IMPORTANT: all operations are **in-process** (no `spawn`). The
+ * previous version spawned `bun scripts/generate.script.ts` per
+ * test, which fired dozens of bun processes in parallel and blew
+ * up the system memory. This helper calls the package's services
+ * directly.
  *
- * Dos funciones principales:
+ * Two main functions:
  *
- *   - `runGenerate(fixtureName)` → genera una collection completa y devuelve
- *      el JSON + metrics sin escribir archivos.
- *   - `runGenerateMetrics(fixtureName)` → alias de conveniencia (mismo resultado).
+ *   - `runGenerate(fixtureName)` → generates a full collection and
+ *      returns the JSON + metrics without writing files.
+ *   - `runGenerateMetrics(fixtureName)` → convenience alias (same result).
  */
 import { join } from "node:path";
-import { generateWithAllFrameworks } from "../../projects/frameworks/index";
-import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
+import {
+  generateCollectionsWithAllFrameworks,
+} from "../../packages/frameworks/index";
+import type { PostmanCollection } from "../../packages/contracts/interfaces/core/postman.interface";
 import { REPO_ROOT } from "../../scripts/helpers/root.helper";
 
 const PROJECT_ROOT = REPO_ROOT;
@@ -28,6 +30,8 @@ export interface GenerateMetrics {
   sinFR: number;
   bodiesAuto: number;
   queriesAuto: number;
+  /** f00014 follow-up: number of specs that gained response[] entries. */
+  responsesInferred: number;
 }
 
 export interface GenerateResult {
@@ -38,8 +42,8 @@ export interface GenerateResult {
 }
 
 /**
- * Ejecuta el pipeline completo en-proceso y devuelve la collection + metrics.
- * No escribe ningún archivo en disco.
+ * Runs the full pipeline in-process and returns the collection + metrics.
+ * Does not write any file to disk.
  */
 export async function runGenerate(
   fixtureName: string,
@@ -58,12 +62,21 @@ async function _runPipeline(
   fixturePath: string,
   basename?: string,
 ): Promise<GenerateResult> {
-  // Mismo pipeline que usa el CLI: los tests validan el camino real, no
-  // una reimplementación paralela que puede divergir.
-  const result = await generateWithAllFrameworks(fixturePath, {
+  // Same pipeline the CLI uses: the tests validate the real path,
+  // not a parallel reimplementation that may diverge. The facade
+  // is the plural one now (audit 2026-09-06 §3.3): the legacy
+  // singular facade collapsed multi-service arrays into a single
+  // result, silently dropping every other service.
+  const results = await generateCollectionsWithAllFrameworks(fixturePath, {
     ...(basename ? { collectionName: basename } : {}),
   });
-
+  // The test helper mirrors the legacy single-collection contract
+  // (one collection, summed metrics). If a fixture has multiple
+  // services without combineServices, this helper takes the first
+  // service's collection — exactly the legacy behaviour — and the
+  // audit's regression test `tests/core/combine-services-baseurl.
+  // spec.ts` is the place that pins the gap.
+  const result = results[0]!;
   return {
     collection: result.collection,
     outputPath: "",
@@ -74,12 +87,13 @@ async function _runPipeline(
       sinFR: result.metrics.withoutValidation,
       bodiesAuto: result.metrics.bodiesInferred,
       queriesAuto: result.metrics.queriesInferred,
+      responsesInferred: result.metrics.responsesInferred,
     },
   };
 }
 
 /**
- * Alias: misma semántica que `runGenerate`, existe para compat.
+ * Alias: same semantics as `runGenerate`, exists for compat.
  */
 export async function runGenerateMetrics(
   fixtureName: string,
@@ -90,8 +104,8 @@ export async function runGenerateMetrics(
 }
 
 /**
- * Parsea el bloque "--inspect" del stdout (legacy, mantenemos para
- * compat con cualquier test que lo importe).
+ * Parses the "--inspect" block from stdout (legacy, kept for
+ * compat with any test that imports it).
  */
 export function parseMetrics(stdout: string): GenerateMetrics {
   const grab = (label: string): number => {
@@ -106,6 +120,7 @@ export function parseMetrics(stdout: string): GenerateMetrics {
     sinFR: grab("Sin FR"),
     bodiesAuto: grab("Bodies auto"),
     queriesAuto: grab("Queries auto"),
+    responsesInferred: 0,
   };
 }
 
@@ -123,6 +138,7 @@ export function parseMetricsFromCollection(
     sinFR: counts.requests,
     bodiesAuto: 0,
     queriesAuto: 0,
+    responsesInferred: 0,
   };
 }
 
@@ -143,6 +159,6 @@ function _countItems(items: PostmanCollection["item"]): { requests: number; fold
 }
 
 export async function cleanTestRuns(): Promise<void> {
-  // No-op: ya no escribimos archivos en disco.
+  // No-op: we no longer write files to disk.
 }
 

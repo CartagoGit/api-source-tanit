@@ -4,7 +4,7 @@
  *
  * El repo ya tenía una convención de sufijos (`.service.ts`,
  * `.helper.ts`, `.interface.ts`, `.scanner.ts`…) pero nada la
- * comprobaba, así que había ficheros que no la seguían y no había forma
+    suffixes: [".service.ts", ".serializer.ts", ".adapter.ts", ".helper.ts", ".repository.ts"],
  * de saberlo sin mirar uno a uno: `lint-tool-no-process.ts` era un
  * script sin decirlo, y `sections.ts` no era un script y vivía entre
  * ellos.
@@ -38,64 +38,164 @@ const RULES: readonly INamingRule[] = [
   // dentro de `interfaces/` es justo el desorden que la separación viene
   // a evitar, así que cada una declara solo el suyo.
   {
-    path: "projects/contracts/interfaces/",
+    path: "packages/contracts/interfaces/",
     what: "interfaces y tipos compartidos",
     suffixes: [".interface.ts", ".d.ts"],
   },
   {
-    path: "projects/contracts/constants/",
+    path: "packages/contracts/constants/",
     what: "constantes compartidas",
     suffixes: [".constant.ts"],
   },
   {
-    path: "projects/core/contracts/",
+    path: "packages/contracts/interfaces/core/transport/",
+    what: "contratos y helpers runtime-neutral de transporte",
+    suffixes: [".interface.ts", ".service.ts", ".guard.ts", ".d.ts"],
+    exact: ["index.ts"],
+  },
+  {
+    path: "packages/core/contracts/",
     what: "tipos y constantes compartidas",
     suffixes: [".interface.ts", ".constant.ts", ".d.ts"],
   },
   {
-    path: "projects/core/helpers/",
+    path: "packages/core/helpers/",
     what: "funciones puras sin estado",
     suffixes: [".helper.ts"],
   },
   {
-    path: "projects/core/exporters/",
+    path: "packages/core/exporters/",
     what: "un formato de salida por fichero",
     // `.exporter` es un tipo de módulo con significado propio: implementa
     // `IExportTarget` y traduce el catálogo de endpoints a UN formato.
     // Llamarlo `.service` lo escondería entre los quince que ya hay.
     suffixes: [".exporter.ts", ".service.ts"],
+    // La infraestructura compartida del paquete NO es "un formato de
+    // salida": es el contrato que implementan los exporters, el registro
+    // que elige cuál se ejecuta y el sobre que devuelven. Los tres llevan
+    // nombre propio porque no son un formato más.
+    exact: ["i-exporter.interface.ts", "registry.ts", "result.ts"],
   },
   {
-    path: "projects/core/",
+    path: "packages/core/application-api/",
+    what: "handlers y contratos de la Application API",
+    suffixes: [".handler.ts", ".service.ts", ".schema.ts", ".ts"],
+  },
+  {
+    path: "packages/core/session/",
+    what: "sesión y snapshots del proyecto",
+    suffixes: [".service.ts", ".helper.ts", ".interface.ts", ".ts"],
+  },
+  {
+    path: "packages/core/transport/",
+    what: "transportes de la Application API",
+    suffixes: [".server.ts", ".protocol.ts", ".error.ts", ".service.ts", ".guard.ts", "-protocol.ts", "-error.ts"],
+  },
+  {
+    path: "packages/core/state/sqlite/",
+    what: "adaptadores y repositorios SQLite del estado persistible",
+    suffixes: [".repository.ts", ".adapter.ts", ".service.ts"],
+    exact: ["migrations.ts"],
+  },
+  {
+    path: "packages/core/state/",
+    what: "estado persistible y serialización canónica",
+    suffixes: [".service.ts", ".serializer.ts", ".adapter.ts", ".helper.ts"],
+    exact: ["migrations.ts"],
+  },
+  {
+    path: "packages/core/",
     what: "el núcleo agnóstico",
     // `.pipeline`, `.orchestrator` y `.adapter` son tipos de módulo con
     // significado propio, igual que `.service`: no son un servicio
-    // cualquiera y llamarlos así lo escondería.
-    suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts"],
+    // cualquiera y llamarlos así lo escondería. `.helper.ts` también
+    // entra aquí: una función pura no es un servicio (no tiene estado),
+    // y `packages/core/helpers/` es solo una de las carpetas donde
+    // pueden vivir — `packages/core/discovery/` ya tiene la suya desde
+    // r00010 S1.
+    suffixes: [".service.ts", ".pipeline.ts", ".orchestrator.ts", ".adapter.ts", ".helper.ts"],
+  },
+  // Un parser es su propio tipo de módulo: consume código fuente y
+  // devuelve un AST. El primero del repo vive en
+  // `packages/core/language-frontends/typescript/`, introducido por
+  // a00010 S7 — los 6 scanners JS/TS (Express, NestJS, Fastify, Hono,
+  // Next.js, tRPC) consumen el AST que produce.
+  {
+    path: "packages/core/language-frontends/",
+    what: "frontends de lenguajes (AST compartido por los scanners)",
+    suffixes: [".parser.ts"],
+    exact: ["index.ts"],
   },
   {
-    path: "projects/frameworks/",
+    // r00013: los extractores de rutas por framework consumen el IR
+    // del frontend; no son parsers (no parsean) ni helpers genéricos.
+    path: "packages/core/language-frontends/typescript/",
+    what: "extractores de rutas sobre el IR del frontend TS",
+    suffixes: [".parser.ts", ".helper.ts"],
+    exact: ["index.ts"],
+  },
+  {
+    // r00014: la familia del SymbolGraph (grafo, resolver de imports,
+    // SymbolId) es infraestructura de grafo — ni servicios ni helpers.
+    // El nombre canónico usa guion (`symbol-graph.ts`), así que los
+    // sufijos específicos también se declaran con guion.
+    path: "packages/core/discovery/",
+    what: "servicios y grafos del discovery",
+    suffixes: [
+      ".service.ts",
+      ".pipeline.ts",
+      ".orchestrator.ts",
+      ".adapter.ts",
+      ".helper.ts",
+      "-graph.ts",
+      "-resolver.ts",
+      "-id.ts",
+    ],
+  },
+  {
+    path: "packages/frameworks/",
     what: "lo concreto de cada framework",
-    suffixes: [".scanner.ts", ".service.ts", ".helper.ts", ".registry.ts"],
-    exact: ["index.ts", "legacy-discovery.ts"],
+    // f00012: `.response-inferrer.ts` es vocabulario arquitectónico
+    // legítimo (un inferrer por framework, junto a su scanner) — el
+    // audit 2026-09-06 §18 lo señalaba como ejemplo de gate demasiado
+    // rígido. `response-inferrers.ts` es el barrel de registro.
+    suffixes: [
+      ".scanner.ts",
+      ".service.ts",
+      ".helper.ts",
+      ".registry.ts",
+      ".response-inferrer.ts",
+    ],
+    exact: ["index.ts", "legacy-discovery.ts", "response-inferrers.ts"],
   },
   {
-    path: "projects/cli/",
+    // f00012: el dispatcher de inferencia de respuestas no es un
+    // servicio (sin estado propio más allá del registry) ni un
+    // pipeline; su nombre describe el verbo que hace. Regla más
+    // específica que la de `packages/core/` — ruleFor elige por
+    // prefijo más largo.
+    path: "packages/core/responses/",
+    what: "el dispatcher de inferencia de respuestas (agnóstico)",
+    suffixes: [".ts"],
+    exact: ["infer-responses.ts"],
+  },
+  {
+    path: "packages/cli/",
     what: "el dispatcher y un fichero por comando",
     suffixes: [".script.ts", ".constant.ts"],
   },
   {
-    path: "projects/ui/server/",
+    path: "packages/ui/server/",
     what: "el servidor de `expostman ui`: rutas y transporte, separados",
     suffixes: [".service.ts"],
   },
   {
-    path: "projects/ui/web/",
+    path: "packages/ui/web/",
     what: "la interfaz, embebida como texto para que el binario la lleve dentro",
     suffixes: [".constant.ts"],
   },
   {
-    path: "projects/ui/",
+    path: "packages/ui/",
     what: "el asistente interactivo y lo que dibuja en la terminal",
     // `.helper` entra porque el asistente ya no es un solo fichero: la
     // tabla, las barras y el color son funciones puras con sus tests, y
@@ -115,7 +215,7 @@ const RULES: readonly INamingRule[] = [
   {
     path: "tests/core/",
     what: "tests del núcleo",
-    suffixes: [".spec.ts", ".test.ts"],
+    suffixes: [".spec.ts", ".test.ts", ".bench.ts"],
   },
   {
     path: "tests/frameworks/",
@@ -127,36 +227,53 @@ const RULES: readonly INamingRule[] = [
   // solo en la cabeza de quien los escribió. Se destapó contando las
   // carpetas con `.ts` (65) contra las carpetas con regla (17).
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/tools/",
+    path: "integrations/delendai/src/lib/tools/",
     what: "un tool MCP por fichero",
     suffixes: [".tool.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/helpers/",
+    path: "integrations/delendai/src/lib/helpers/",
     what: "ayudantes internos del plugin",
     suffixes: [".helper.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/interfaces/",
+    path: "integrations/delendai/src/lib/contracts/interfaces/",
     what: "interfaces del plugin",
     suffixes: [".interface.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/src/lib/contracts/constants/",
+    path: "integrations/delendai/src/lib/contracts/constants/",
     what: "constantes del plugin",
     suffixes: [".constant.ts"],
   },
   // Los dobles compartidos van antes que la regla de tests: `bestMatch`
   // se queda con el prefijo más largo, y este es más específico.
   {
-    path: "projects/plugins/mcp-vertex_expostman/tests/helpers/",
+    path: "integrations/delendai/tests/helpers/",
     what: "dobles compartidos entre los tests del plugin",
     suffixes: [".helper.ts", "-context.ts"],
   },
   {
-    path: "projects/plugins/mcp-vertex_expostman/tests/",
+    path: "integrations/delendai/tests/",
     what: "tests del plugin",
     suffixes: [".spec.ts", ".test.ts"],
+  },
+  // Los idiomas de la interfaz: el servicio que los carga y los
+  // catálogos, que son datos y no código.
+  {
+    path: "packages/ui/i18n/locales/",
+    what: "un catálogo de traducciones por idioma",
+    suffixes: [".json"],
+  },
+  {
+    path: "packages/ui/i18n/",
+    what: "la carga de idiomas",
+    suffixes: [".service.ts"],
+  },
+  {
+    path: "packages/ui/settings/",
+    what: "los ajustes que persisten entre aperturas",
+    suffixes: [".service.ts"],
   },
   { path: "tests/contracts/", what: "tests de los contratos", suffixes: [".spec.ts", ".test.ts"] },
   { path: "tests/cli/", what: "tests del CLI", suffixes: [".spec.ts", ".test.ts"] },

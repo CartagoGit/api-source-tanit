@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../projects/core/domain/postman-api.service";
-import { POSTMAN_SCHEMA_URL } from "../../projects/contracts/constants/core/postman.constant";
-import type { PostmanCollection } from "../../projects/contracts/interfaces/core/postman.interface";
+import { PostmanApiError, pushCollection, pushEnvironment, verifyApiKey } from "../../packages/core/domain/postman-api.service";
+import { POSTMAN_SCHEMA_URL } from "../../packages/contracts/constants/core/postman.constant";
+import type { PostmanCollection } from "../../packages/contracts/interfaces/core/postman.interface";
 
 const COLLECTION_ID = "11111111-2222-3333-4444-555555555555";
 
@@ -17,7 +17,7 @@ const collection = (): PostmanCollection =>
     item: [],
   }) as PostmanCollection;
 
-/** Registra las llamadas y devuelve respuestas preparadas. */
+/** Records the calls and returns prepared responses. */
 function fakeFetch(routes: Record<string, unknown>, status = 200) {
   const calls: Array<{ url: string; method: string; body: unknown }> = [];
   const impl = (async (url: string, init?: { method?: string; body?: string }) => {
@@ -30,34 +30,45 @@ function fakeFetch(routes: Record<string, unknown>, status = 200) {
     return {
       ok: status >= 200 && status < 300,
       status,
+      // x00051 S1: `IFetchResponse` exige `headers` desde que la
+      // ambient cubre el caso real (`ui-server.test` lee
+      // `content-security-policy` y eso motivó la declaración). El
+      // stub devuelve un `Headers`-shape mínimo.
+      headers: { get: () => null },
       text: async () => "detalle del error",
       json: async () => (key ? routes[key] : {}),
     };
-  });
+  }) as unknown as typeof fetch;
   return { impl, calls };
 }
 
 const options = (impl: typeof fetch) => ({ apiKey: "pmak-test", fetchImpl: impl });
 
 describe("verifyApiKey", () => {
-  test("devuelve el usuario asociado a la key", async () => {
+  test("returns the user associated with the key", async () => {
     const { impl } = fakeFetch({ "/me": { user: { id: 7, username: "cartago" } } });
     expect(await verifyApiKey(options(impl))).toEqual({ id: 7, username: "cartago" });
   });
 
-  test("manda la key en la cabecera X-Api-Key", async () => {
+  test("sends the key in the X-Api-Key header", async () => {
     const calls: string[] = [];
     const impl = (async (_url: string, init?: { headers?: Record<string, string> }) => {
       calls.push(init?.headers?.["X-Api-Key"] ?? "");
-      return { ok: true, status: 200, text: async () => "", json: async () => ({}) };
-    });
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        text: async () => "",
+        json: async () => ({}),
+      };
+    }) as unknown as typeof fetch;
     await verifyApiKey(options(impl));
     expect(calls[0]).toBe("pmak-test");
   });
 });
 
 describe("pushCollection", () => {
-  test("crea la colección cuando no existe", async () => {
+  test("creates the collection when it does not exist", async () => {
     const { impl, calls } = fakeFetch({
       "/collections": { collections: [], collection: { uid: "7-abc" } },
     });
@@ -68,9 +79,10 @@ describe("pushCollection", () => {
     expect(calls.some((c) => c.method === "POST")).toBe(true);
   });
 
-  // Es lo que hace que regenerar y volver a subir no deje una copia más:
-  // el `_postman_id` determinista identifica la colección existente.
-  test("actualiza la que ya existe con el mismo _postman_id", async () => {
+  // This is what makes regenerating and re-uploading not leave an
+  // extra copy: the deterministic `_postman_id` identifies the
+  // existing collection.
+  test("updates the existing one with the same _postman_id", async () => {
     const { impl, calls } = fakeFetch({
       "/collections": {
         collections: [{ uid: "7-abc", id: COLLECTION_ID, name: "Demo API" }],
@@ -83,7 +95,7 @@ describe("pushCollection", () => {
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });
 
-  test("no confunde una colección de otro proyecto", async () => {
+  test("does not confuse a collection from another project", async () => {
     const { impl } = fakeFetch({
       "/collections": {
         collections: [{ uid: "7-otra", id: "otro-id-distinto", name: "Otra" }],
@@ -93,7 +105,7 @@ describe("pushCollection", () => {
     expect((await pushCollection(collection(), options(impl))).action).toBe("created");
   });
 
-  test("manda la colección en el body", async () => {
+  test("sends the collection in the body", async () => {
     const { impl, calls } = fakeFetch({
       "/collections": { collections: [], collection: { uid: "x" } },
     });
@@ -104,7 +116,7 @@ describe("pushCollection", () => {
     );
   });
 
-  test("añade el workspace a la query cuando se indica", async () => {
+  test("appends the workspace to the query when given", async () => {
     const { impl, calls } = fakeFetch({
       "/collections": { collections: [], collection: { uid: "x" } },
     });
@@ -120,14 +132,14 @@ describe("pushCollection", () => {
 describe("pushEnvironment", () => {
   const environment = { name: "Local", values: [] };
 
-  test("crea el environment cuando no existe", async () => {
+  test("creates the environment when it does not exist", async () => {
     const { impl } = fakeFetch({
       "/environments": { environments: [], environment: { uid: "7-env" } },
     });
     expect((await pushEnvironment(environment, options(impl))).action).toBe("created");
   });
 
-  test("actualiza el que ya existe con el mismo nombre", async () => {
+  test("updates the existing one with the same name", async () => {
     const { impl, calls } = fakeFetch({
       "/environments": { environments: [{ uid: "7-env", id: "e", name: "Local" }] },
     });
@@ -137,29 +149,29 @@ describe("pushEnvironment", () => {
   });
 });
 
-describe("errores", () => {
+describe("errors", () => {
   test.each([
     [401, /Invalid Postman API key/],
     [403, /does not have access/],
     [404, /Not found/],
     [429, /rate limit/],
-  ])("el %i se traduce a un mensaje accionable", async (status, pattern) => {
+  ])("status %i is translated to an actionable message", async (status, pattern) => {
     const { impl } = fakeFetch({}, status);
     await expect(verifyApiKey(options(impl))).rejects.toThrow(pattern);
   });
 
-  test("un fallo de red no se confunde con un error de la API", async () => {
+  test("a network failure is not confused with an API error", async () => {
     const impl = (async () => {
       throw new Error("ECONNREFUSED");
     });
     await expect(verifyApiKey(options(impl))).rejects.toThrow(/Could not reach/);
   });
 
-  test("el error lleva el status y el detalle de Postman", async () => {
+  test("the error carries the status and the Postman detail", async () => {
     const { impl } = fakeFetch({}, 401);
     try {
       await verifyApiKey(options(impl));
-      throw new Error("debería haber lanzado");
+      throw new Error("should have thrown");
     } catch (err) {
       expect(err).toBeInstanceOf(PostmanApiError);
       expect((err as PostmanApiError).status).toBe(401);

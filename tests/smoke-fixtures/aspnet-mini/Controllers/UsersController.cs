@@ -17,4 +17,13 @@ public class UsersController : ControllerBase
 
     [HttpDelete("{id}")]
     public IActionResult Delete(string id) => NoContent();
+
+    // x00036 S3: HEAD (health-checks K8s/LB) y OPTIONS (preflight CORS)
+    // deben llegar a la colección. Antes se descartaban en silencio
+    // porque `HTTP_METHODS` no los contenía.
+    [HttpHead]
+    public IActionResult Ping() => Ok();
+
+    [HttpOptions]
+    public IActionResult Preflight() => Ok();
 }

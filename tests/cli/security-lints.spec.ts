@@ -1,15 +1,16 @@
 /**
- * Los dos gates de seguridad.
+ * The two security gates.
  *
- * Un lint de seguridad que no encuentra nada es indistinguible de uno
- * roto — y los dos dan verde. Por eso lo que se prueba aquí no es que
- * pasen sobre el repo (eso lo hace `bun run lint`), sino que **cazan**
- * lo que dicen cazar y que **no marcan** lo que no lo es.
+ * A security lint that finds nothing is indistinguishable from a
+ * broken one — and both go green. That is why what is tested here is
+ * not that they pass on the repo (that is what `bun run lint` does),
+ * but that they **catch** what they say they catch and that they
+ * **do not flag** what is not.
  *
- * Lo segundo importa tanto como lo primero: los fixtures de este repo
- * son proyectos de API de mentira, llenos de `password` y `token` a
- * propósito. Un lint que los marcara sería ruido, y un lint ruidoso se
- * acaba desactivando.
+ * The second matters as much as the first: the fixtures in this repo
+ * are fake API projects, full of `password` and `token` on purpose.
+ * A lint that flagged them would be noise, and a noisy lint ends up
+ * disabled.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -30,17 +31,17 @@ afterAll(async () => {
 });
 
 /**
- * Las credenciales de prueba se **componen en tiempo de ejecución**.
+ * Test credentials are **assembled at runtime**.
  *
- * Tienen que llevar la forma real para que el lint las reconozca, pero
- * si el literal completo estuviera escrito en este fichero sería una
- * credencial con forma válida dentro del repositorio. La protección de
- * push de GitHub bloqueó el primer intento por exactamente eso — y tenía
- * razón: un escáner no puede distinguir la tuya de una de verdad.
+ * They must carry the real shape so the lint recognises them, but if
+ * the full literal were written in this file it would be a valid-
+ * shaped credential inside the repository. GitHub's push protection
+ * blocked the first attempt for exactly that — and was right: a
+ * scanner cannot tell yours from a real one.
  *
- * Partiéndolas por la mitad, el fichero no contiene ninguna cadena que
- * case, y el fichero temporal que se escribe abajo sí. Que es donde el
- * lint tiene que cazarla.
+ * Splitting them in half, the file contains no matching string, and
+ * the temp file written below does. That is where the lint has to
+ * catch it.
  */
 const SAMPLES = {
   postman: "PMAK-" + "65a1b2c3d4e5f60718293a4b" + "abc123def456789012345678",
@@ -52,108 +53,108 @@ const SAMPLES = {
   realistic: "Xk9$" + "mQ2pLw7#nR4tYb8Zc1Vd",
 } as const;
 
-/** Escribe un fichero temporal y devuelve su ruta. */
+/** Writes a temporary file and returns its path. */
 async function fixture(name: string, content: string): Promise<string> {
   const path = join(dir, name);
   await writeFile(path, content);
   return path;
 }
 
-describe("lint:secrets caza credenciales de verdad", () => {
+describe("lint:secrets catches real credentials", () => {
   test.each([
-    ["clave de Postman", SAMPLES.postman],
-    ["clave de AWS", SAMPLES.aws],
-    ["token de GitHub", SAMPLES.github],
-    ["token de Slack", SAMPLES.slack],
-    ["clave privada", SAMPLES.privateKey],
-    ["URL con credenciales", SAMPLES.urlCreds],
+    ["Postman key", SAMPLES.postman],
+    ["AWS key", SAMPLES.aws],
+    ["GitHub token", SAMPLES.github],
+    ["Slack token", SAMPLES.slack],
+    ["private key", SAMPLES.privateKey],
+    ["URL with credentials", SAMPLES.urlCreds],
   ])("%s", async (name, value) => {
     const path = await fixture(`${name.replace(/\s+/g, "-")}.ts`, `const k = "${value}";`);
     const found = await findSecrets([path]);
-    expect(found.length, `no cazó: ${name}`).toBeGreaterThan(0);
+    expect(found.length, `did not catch: ${name}`).toBeGreaterThan(0);
   });
 
-  test("una asignación con un valor que parece real", async () => {
+  test("an assignment with a value that looks real", async () => {
     const path = await fixture(
-      "asignacion.ts",
+      "assignment.ts",
       `const config = { apiKey: "${SAMPLES.realistic}" };`,
     );
     expect((await findSecrets([path])).length).toBeGreaterThan(0);
   });
 
-  // El valor no se vuelve a filtrar entero en el mensaje de error, que
-  // acabaría en la salida de CI.
-  test("el hallazgo sale censurado, no en claro", async () => {
-    const path = await fixture("censura.ts", `const secret = "${SAMPLES.realistic}";`);
+  // The value is not leaked whole in the error message, which would
+  // end up in the CI output.
+  test("the finding comes out redacted, not in the clear", async () => {
+    const path = await fixture("redaction.ts", `const secret = "${SAMPLES.realistic}";`);
     const found = await findSecrets([path]);
     expect(found[0]?.what).toContain("*");
     expect(found[0]?.what).not.toContain(SAMPLES.realistic);
   });
 });
 
-describe("lint:secrets NO marca lo que no es un secreto", () => {
+describe("lint:secrets does NOT flag what is not a secret", () => {
   test.each([
-    ["un marcador de posición", 'const apiKey = "your-api-key-here";'],
-    ["una variable de entorno", 'const token = process.env["POSTMAN_API_KEY"];'],
-    ["una plantilla de Postman", 'const token = "{{token}}";'],
-    ["un valor de fixture", 'password = "fake"'],
-    ["una frase", 'const secret = "la contraseña va en el entorno";'],
-    ["un campo de ejemplo", '{"password": "changeme"}'],
-    ["un valor corto", 'const token = "abc123";'],
-    ["el nombre de la variable", 'const password = "password";'],
+    ["a placeholder", 'const apiKey = "your-api-key-here";'],
+    ["an environment variable", 'const token = process.env["POSTMAN_API_KEY"];'],
+    ["a Postman template", 'const token = "{{token}}";'],
+    ["a fixture value", 'password = "fake"'],
+    ["a phrase", 'const secret = "la contraseña va en el entorno";'],
+    ["an example field", '{"password": "changeme"}'],
+    ["a short value", 'const token = "abc123";'],
+    ["the variable name", 'const password = "password";'],
   ])("%s", async (name, code) => {
     const path = await fixture(`ok-${name.replace(/\s+/g, "-")}.ts`, code);
     expect(await findSecrets([path]), code).toEqual([]);
   });
 
-  test("`lint:secrets ignore` exime la línea", async () => {
+  test("`lint:secrets ignore` exempts the line", async () => {
     const path = await fixture(
-      "eximido.ts",
-      `const k = "${SAMPLES.aws}"; // lint:secrets ignore — de la doc de AWS`,
+      "exempted.ts",
+      `const k = "${SAMPLES.aws}"; // lint:secrets ignore — from AWS docs`,
     );
     expect(await findSecrets([path])).toEqual([]);
   });
 });
 
-describe("lint:sast caza los patrones peligrosos", () => {
+describe("lint:sast catches dangerous patterns", () => {
   test.each([
     ["eval", "const r = eval(sourceFromScannedProject);"],
     ["new Function", "const f = new Function(userInput);"],
-    ["exec con interpolación", "execSync(`git log ${projectRoot}`);"],
-    ["exec con concatenación", 'execSync("ls " + projectRoot);'],
-    ["volcado del entorno", "log(JSON.stringify(process.env));"],
-    ["clave en el log", "console.log(`key: ${apiKey}`);"],
+    ["exec with interpolation", "execSync(`git log ${projectRoot}`);"],
+    ["exec with concatenation", 'execSync("ls " + projectRoot);'],
+    ["env dump", "log(JSON.stringify(process.env));"],
+    ["key in log", "console.log(`key: ${apiKey}`);"],
   ])("%s", async (name, code) => {
     const path = await fixture(`sast-${name.replace(/\s+/g, "-")}.ts`, code);
     const found = await findSastIssues([path]);
-    expect(found.length, `no cazó: ${code}`).toBeGreaterThan(0);
+    expect(found.length, `did not catch: ${code}`).toBeGreaterThan(0);
   });
 
-  test("cada hallazgo explica el porqué y el arreglo", async () => {
-    const path = await fixture("sast-explica.ts", "const r = eval(x);");
+  test("each finding explains the why and the fix", async () => {
+    const path = await fixture("sast-explains.ts", "const r = eval(x);");
     const found = await findSastIssues([path]);
     expect(found[0]?.rule.why.length).toBeGreaterThan(20);
     expect(found[0]?.rule.fix.length).toBeGreaterThan(10);
   });
 });
 
-describe("lint:sast NO marca lo que es seguro", () => {
+describe("lint:sast does NOT flag what is safe", () => {
   test.each([
-    ["spawnSync con array", 'spawnSync(bunBin, ["run", script], { cwd });'],
-    ["exec sin interpolación", 'execSync("command -v bun");'],
-    ["una variable de entorno concreta", 'const key = process.env["POSTMAN_API_KEY"];'],
-    // Nombrar la variable en un texto de ayuda no es imprimir su valor.
-    ["el nombre de la clave en la ayuda", 'console.error("  POSTMAN_API_KEY=<key> expostman push");'],
-    ["un comentario que menciona eval", "// nunca uses eval( aquí"],
+    ["spawnSync with array", 'spawnSync(bunBin, ["run", script], { cwd });'],
+    ["exec without interpolation", 'execSync("command -v bun");'],
+    ["a concrete environment variable", 'const key = process.env["POSTMAN_API_KEY"];'],
+    // Naming the variable in help text is not printing its value.
+    ["the key name in help", 'console.error("  POSTMAN_API_KEY=<key> expostman push");'],
+    ["a comment that mentions eval", "// never use eval( here"],
   ])("%s", async (name, code) => {
     const path = await fixture(`sast-ok-${name.replace(/\s+/g, "-")}.ts`, code);
     expect(await findSastIssues([path]), code).toEqual([]);
   });
 
-  test("`lint:sast ignore` exime la línea", async () => {
+  test("`lint:sast ignore` exempts the line", async () => {
     const path = await fixture(
-      "sast-eximido.ts",
-      "const r = eval(x); // lint:sast ignore — el valor es una constante del propio repo",
+      "sast-exempted.ts",
+      "const r = eval(x); // lint:sast ignore — value is a constant from the repo itself",
     );
     expect(await findSastIssues([path])).toEqual([]);
   });

@@ -1,10 +1,11 @@
-# Export to Postman
+# Tanit
 
-**Genera una colección de Postman desde el código de tu API.** Sin
-anotaciones, sin decoradores extra, sin levantar el servidor. Apuntas al
-directorio del proyecto y sale un `.json` listo para importar.
+**API Source Discovery** — descubre tu API desde el código fuente, genera
+artefactos y sincroniza con Postman y otros. Sin anotaciones, sin
+decoradores extra, sin levantar el servidor. Apuntas al directorio del
+proyecto y sale un `.json` listo para importar.
 
-Detecta el framework solo. Funciona con **21**:
+Detecta el framework solo. Funciona con **25**:
 
 | Framework | Detecta por | De dónde saca los bodies |
 |---|---|---|
@@ -30,7 +31,7 @@ Detecta el framework solo. Funciona con **21**:
 | Phoenix | `mix.exs` con `phoenix` | `scope` y `resources` del router |
 | OpenAPI / Swagger | `openapi.yaml`, `openapi.json`, `swagger.*` | el propio spec |
 
-La lista de verdad la imprime `expostman --help`, que la lee del registro
+La lista de verdad la imprime `apisrc --help`, que la lee del registro
 de scanners. Esta tabla añade de dónde sale cada cosa.
 
 Cuando la detección no puede acertar —un monorepo con el manifiesto en la
@@ -45,13 +46,13 @@ framework aunque no esté en la lista.
 ## Empezar
 
 ```bash
-# 1. Instalar (aún no publicado en npm — se instala desde el repo)
-bun add -g github:CartagoGit/export-to-postman
+# 1. Instalar (se distribuye en las releases de GitHub, no en npm)
+bun add -g github:CartagoGit/api-source-tanit
 
 # 2. Generar, desde la raíz de tu proyecto
-expostman generate
+apisrc generate
 
-# 3. Importar en Postman el .json de export-to-postman/
+# 3. Importar en Postman el .json de tanit/
 ```
 
 Guías completas: **[instalación](docs/INSTALL.md)** ·
@@ -65,7 +66,7 @@ Guías completas: **[instalación](docs/INSTALL.md)** ·
 Contra `examples/example-express`:
 
 ```
-export-to-postman/
+tanit/
 ├── example-express.postman_collection.json     ← la colección
 ├── example-express.local.postman_environment.json
 ├── example-express.dev.postman_environment.json
@@ -107,14 +108,14 @@ declara con `tokenResponsePath` en el config.
 ## Comandos
 
 ```bash
-expostman generate    # genera la colección + environments
-expostman ui          # abre una interfaz web para usarlo sin terminal
-expostman list        # lista los endpoints detectados
-expostman stats       # cuántos endpoints por método y zona
-expostman check       # ¿la colección sigue sincronizada?
-expostman validate    # valida el JSON contra el schema v2.1.0
-expostman push        # sube la colección a tu workspace de Postman
-expostman watch       # regenera al vuelo mientras editas rutas
+apisrc generate    # genera la colección + environments
+apisrc ui          # abre una interfaz web para usarlo sin terminal
+apisrc list        # lista los endpoints detectados
+apisrc stats       # cuántos endpoints por método y zona
+apisrc check       # ¿la colección sigue sincronizada?
+apisrc validate    # valida el JSON contra el schema v2.1.0
+apisrc push        # sube la colección a tu workspace de Postman
+apisrc watch       # regenera al vuelo mientras editas rutas
 ```
 
 Los ocho, y solo esos ocho, son los que despacha el binario.
@@ -136,12 +137,18 @@ Todas en [docs/INSTALL.md](docs/INSTALL.md#flags-y-variables-de-entorno).
 ## Sin terminal: la interfaz
 
 ```bash
-expostman ui
+apisrc ui
 ```
 
 Levanta una interfaz web en `http://127.0.0.1:4771` —o el siguiente
 puerto libre— y abre el navegador. Escucha **solo en este equipo**: no
 es alcanzable desde la red.
+
+Y solo contesta a su propia página. Escuchar en `127.0.0.1` no basta:
+el servidor no es alcanzable desde fuera, pero sí desde el navegador de
+quien lo ejecuta, así que cualquier web que visites mientras corre
+podría hacerle peticiones. Cada arranque genera un testigo que va dentro
+del HTML servido; una página de otro origen no puede leerlo.
 
 Desde ahí se elige la carpeta del proyecto, se inspecciona antes de
 escribir nada, y se genera en los formatos que se quieran. Llama al
@@ -149,7 +156,7 @@ mismo pipeline que el CLI: no es una segunda implementación que se
 desincronice.
 
 Para tocarla, `bun run ui:dev` la levanta y **la reinicia sola** al
-editar `projects/ui/`, manteniendo el puerto: basta con recargar la
+editar `packages/ui/`, manteniendo el puerto: basta con recargar la
 pestaña.
 
 Y para usarla sin instalar nada de Node hay instaladores nativos que
@@ -192,7 +199,7 @@ bun run validate     # el gate: typecheck + lint + tests + generación real
 | `typecheck` | `tsc --noEmit` |
 | `lint:tools` | los tools del plugin MCP no leen `process.env` |
 | `test` | la suite completa |
-| `validate:examples` | genera de verdad los 21 proyectos de `examples/` y valida cada colección |
+| `validate:examples` | genera de verdad los 25 proyectos de `examples/` y valida cada colección |
 
 Y aparte, antes de publicar:
 
@@ -201,8 +208,8 @@ bun run validate:package   # empaqueta, instala en un proyecto limpio y ejecuta 
 ```
 
 Contribuir: [CONTRIBUTING.md](CONTRIBUTING.md).
-Estado y decisiones: [auditoría](docs/mcp-vertex/AUDIT-2026-08-06.md) y
-[propuestas](docs/mcp-vertex/proposals/).
+Estado y decisiones: [auditorías canónicas](docs/delendai/proposals/INDEX.md) y
+[propuestas](docs/delendai/proposals/).
 
 ---
 

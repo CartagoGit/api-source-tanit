@@ -5,8 +5,8 @@
  * El alcance no es "todo lo exportado": es lo que **otra persona puede
  * importar**, o sea lo que el `exports` del `package.json` deja entrar:
  *
- *     "./core/*"      → projects/core/**
- *     "./frameworks"  → projects/frameworks/index.ts
+ *     "./core/*"      → packages/core/**
+ *     "./frameworks"  → packages/frameworks/index.ts
  *
  * Un `export` dentro de un scanner o de un comando del CLI es exportado
  * para el propio repo —para que lo vea su test, o el módulo de al lado—
@@ -35,8 +35,8 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
  * `lint-tsdoc.spec.ts` lo comprueba comparando las dos.
  */
 export const PUBLIC_ROOTS = [
-  "projects/core",
-  "projects/frameworks/index.ts",
+  "packages/core",
+  "packages/frameworks/index.ts",
 ] as const;
 
 /** Un `export` de nivel superior. Los de dentro de una clase no cuentan. */

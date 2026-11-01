@@ -17,11 +17,31 @@ import { cp, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, } from "node:path";
 import { tmpdir } from "node:os";
-import { OUTPUT_DIR_NAME } from "../../projects/contracts/constants/core/postman.constant.js";
+import { OUTPUT_DIR_NAME } from "../../packages/contracts/constants/core/postman.constant.js";
 import { PACKAGE_JSON, REPO_ROOT, exampleDir } from "../helpers/root.helper.js";
 
 /** Proyecto de ejemplo con el que se comprueba el binario instalado. */
 const EXPECTED_REQUESTS = 9;
+
+/**
+ * Prefijo dentro del tarball que, **si aparece**, indica que el plugin
+ * MCP se está filtrando al producto público. El `file:` del
+ * `@delendai/core` no resuelve fuera del worktree del desarrollador y
+ * el plugin depende de ese path: distribuirlo empaquetado rompe la
+ * instalación del usuario sin que nada falle aquí.
+ *
+ * El prefijo NO incluye `packages/` desde x00041: el plugin vive en
+ * `integrations/delendai/` y `files` en el `package.json` raíz NO
+ * lista `integrations/`, así que dentro del tarball la ruta
+ * prohibida sería `package/integrations/delendai/`. Se mantiene la
+ * búsqueda de la ruta antigua también (`package/packages/plugins/`)
+ * porque el tarball de una versión vieja aún podía llevarla: si
+ * aparece cualquiera de las dos, es fuga.
+ *
+ * Slice S0 de la propuesta `a00012`. Actualizado por x00041/x00049.
+ */
+const MCP_PLUGIN_TARBALL_PATH = "package/integrations/delendai/";
+const MCP_PLUGIN_TARBALL_PATH_LEGACY = "package/packages/plugins/";
 
 interface IStep {
   readonly name: string;
@@ -45,6 +65,12 @@ async function main(): Promise<number> {
   const steps: IStep[] = [];
   const workDir = await mkdtemp(join(tmpdir(), "postman-package-"));
 
+    // La integración con Delendai (`integrations/delendai/`)
+  // NO participa en este gate: es una pieza interna del repo
+  // (`"private": true`), se carga directo desde su TS y no viaja en el
+  // tarball. Empaquetarlo aquí era herencia de cuando se pensó como
+  // paquete publicable — ya no lo es.
+
   try {
     // 1. Empaquetar tal cual lo haría `npm publish`.
     const pack = await run(
@@ -59,6 +85,35 @@ async function main(): Promise<number> {
       detail: tarball ?? pack.output.slice(-300),
     });
     if (!tarball) return report(steps);
+
+    // 1.b Aserción de DoD de packaging (slice S0 de `a00012`,
+    // actualizado por x00041/x00049): la integración con Delendai
+    // (`integrations/delendai/`) NO viaja en el tarball público
+    // porque `files` del `package.json` raíz no la lista. Confiar en
+    // `"private": true` no basta: hay que leer el tarball real y
+    // confirmar que ni la ruta nueva ni la antigua aparecen. Si
+    // aparece cualquiera, fallamos con un mensaje explícito.
+    const listing = await run(["tar", "-tzf", join(workDir, tarball)], workDir);
+    const leaked = listing.ok
+      ? listing.output
+          .split("\n")
+          .filter(
+            (line) =>
+              line.startsWith(MCP_PLUGIN_TARBALL_PATH) ||
+              line.startsWith(MCP_PLUGIN_TARBALL_PATH_LEGACY),
+          )
+      : [];
+    steps.push({
+      name: "el plugin MCP no debe entrar en el tarball público",
+      ok: listing.ok && leaked.length === 0,
+      detail:
+        leaked.length === 0
+          ? `${MCP_PLUGIN_TARBALL_PATH} ausente`
+          : leaked.length === 1
+            ? `${MCP_PLUGIN_TARBALL_PATH} aparece en el tarball`
+            : `${leaked.length} entradas con prefijo ${MCP_PLUGIN_TARBALL_PATH}`,
+    });
+    if (leaked.length > 0) return report(steps);
 
     // 2. Instalarlo en un proyecto limpio.
     const consumer = join(workDir, "consumer");
@@ -135,14 +190,47 @@ async function main(): Promise<number> {
     });
 
     // 5. Verificar que el tarball trae la documentación.
-    const pkgFolder = existsSync(join(consumer, "node_modules", "export-to-postman"))
-      ? join(consumer, "node_modules", "export-to-postman")
-      : join(consumer, "node_modules", "@export-to-postman", "cli");
+    //
+    // El nombre del paquete se lee del `package.json` raíz. Antes se
+    // hardcodeaba `export-to-postman` y `@export-to-postman/cli` (los
+    // nombres anteriores al rebranding a `api-source-tanit`): el gate
+    // empezaba a fallar siempre que se renombraba el proyecto y el
+    // mensaje decía `(sin docs/)` aunque el tarball fuese correcto.
+    // Auditoría 2026-09-06, sección 2.
+    const pkgName = (JSON.parse(await Bun.file(PACKAGE_JSON).text()) as {
+      name?: string;
+    }).name;
+    if (!pkgName) {
+      steps.push({
+        name: "documentación incluida en el paquete",
+        ok: false,
+        detail: "package.json sin `name`",
+      });
+      return report(steps);
+    }
+    // `pkgName` puede ser scoped (`@scope/name`) o plano (`name`).
+    // `node_modules` lo aplana a `@scope/name` tal cual.
+    const pkgFolder = join(consumer, "node_modules", pkgName);
     const installedDocs = join(pkgFolder, "docs");
+    // Inspección directa del tarball, además de la carpeta instalada:
+    // es lo que de verdad se publica, y la estructura que Bun deja en
+    // `node_modules` no es garantía (puede traer symlinks, `.bin`,
+    // carpetas generadas). Si el listado del tarball incluye
+    // `package/docs/POSTMAN.md`, el gate lo confirma sin depender de
+    // cómo se materializó la instalación.
+    const docsInTarball = listing.ok
+      ? listing.output
+          .split("\n")
+          .some((line) => line === "package/docs/POSTMAN.md")
+      : false;
     steps.push({
       name: "documentación incluida en el paquete",
-      ok: existsSync(join(installedDocs, "POSTMAN.md")),
-      detail: existsSync(installedDocs) ? (await readdir(installedDocs)).join(", ") : "(sin docs/)",
+      ok: existsSync(join(installedDocs, "POSTMAN.md")) || docsInTarball,
+      detail: existsSync(installedDocs)
+        ? `${(await readdir(installedDocs)).join(", ")}${docsInTarball ? " (también en el tarball)" : ""}`
+        : docsInTarball
+          ? "en el tarball pero no en node_modules"
+          : "(sin docs/)",
     });
 
     return report(steps);

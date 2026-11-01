@@ -55,8 +55,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # --- Bun ---------------------------------------------------------------------
 # La versión se fija a propósito: un `latest` hace que el contenedor
 # deje de reproducir el entorno del día que se construyó, que es la
-# mitad del motivo de tener un contenedor.
-ARG BUN_VERSION=1.3.14
+# mitad del motivo de tener un contenedor. 1.4.2 porque el
+# `bun.lock` del repo es lockfileVersion 2 y Bun 1.3.x no lo lee
+# (`lint:bun-ci` fija el mismo suelo para los workflows). x00050.
+ARG BUN_VERSION=1.4.2
 ENV BUN_INSTALL=/usr/local/bun
 ENV PATH=$BUN_INSTALL/bin:$PATH
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" \
@@ -112,8 +114,8 @@ COPY . /work
 # `|| true` por el `file:` del plugin que apunta fuera del repo (p00007).
 # El CLI no importa el plugin, así que su compilación no lo necesita.
 RUN bun install || true \
-    && bun build --compile --target=bun-linux-x64 projects/cli/cli.script.ts \
-         --outfile /out/expostman
+    && bun build --compile --target=bun-linux-x64 packages/cli/cli.script.ts \
+         --outfile /out/apisrc
 
 # --- Etapa 3: solo el binario ------------------------------------------------
 # Para probar el ejecutable en una máquina **sin** Bun ni Node, que es
@@ -124,9 +126,9 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /out/expostman /usr/local/bin/expostman
+COPY --from=builder /out/apisrc /usr/local/bin/apisrc
 
 # Nada de Bun ni de Node aquí a propósito: si el binario los necesitara,
 # este contenedor lo diría en el primer intento.
-ENTRYPOINT ["expostman"]
+ENTRYPOINT ["apisrc"]
 CMD ["--help"]

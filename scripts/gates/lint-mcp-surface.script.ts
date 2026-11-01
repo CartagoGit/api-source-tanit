@@ -9,7 +9,7 @@
  * exports del área pública, no la superficie MCP.
  *
  * La diferencia no es formal. Un agente que llama a
- * `mcp-vertex_expostman_generate` y recibe una salida sin esquema no
+ * `delendai_tanit_generate` y recibe una salida sin esquema no
  * puede validar la respuesta ni saber qué campos existen sin ejecutarla
  * y mirar lo que sale. Y esta es la superficie **pública** del proyecto
  * hacia otros agentes, que es donde un contrato importa más, no menos.
@@ -24,8 +24,12 @@
  *   4. El esquema de salida se usa de verdad: el handler devuelve un
  *      valor anotado con su tipo, no un spread de un objeto ajeno.
  *      Esto último se coló: `summary.tool.ts` declaraba seis campos y
- *      devolvía dieciocho con `toolJson({ ok: true, ...summary })`.
- *
+ *      devolvía dieciocho con `toolJson({ ok: true, ...summary })`. *   5. Un tool que declara el efecto `write` dice **dónde** escriben
+ *      sus escrituras (`writeRoot`). El host no arranca un tool que
+ *      escribe sin declararlo: el servidor MCP muere al arrancar y el
+ *      fallo sólo aparece cuando el editor abre el workspace. Es un
+ *      fallo de arranque, no un aviso: por eso lo comprueba una gate
+ *      y no un test de runtime. *
  * Uso:
  *   bun run lint:mcp-surface
  */
@@ -37,7 +41,7 @@ import { REPO_ROOT } from "../helpers/root.helper.js";
 /** Dónde viven los tools del plugin. */
 const TOOLS_DIR = join(
   REPO_ROOT,
-  "projects/plugins/mcp-vertex_expostman/src/lib/tools",
+  "integrations/delendai/src/lib/tools",
 );
 
 interface IProblem {
@@ -53,6 +57,37 @@ const PERMISIVO = /\bz\.(any|unknown)\s*\(/;
  * `outputSchema` pasa a describir algo que nadie comprueba.
  */
 const SPREAD_SIN_TIPAR = /toolJson\(\s*\{[^}]*\.\.\./s;
+
+/**
+ * Las raíces que el host acepta para un tool que escribe.
+ *
+ * `'caller-checkout'` es el árbol del llamante, `'repository'` un
+ * hecho del repositorio entero, `'host-state'` estado fuera de
+ * cualquier árbol de trabajo, `'server'` la raíz del propio servidor
+ * y `'remote'` nada aterriza en esta máquina.
+ */
+const WRITE_ROOTS = [
+  "caller-checkout",
+  "repository",
+  "host-state",
+  "server",
+  "remote",
+] as const;
+
+/**
+ * El código sin los comentarios.
+ *
+ * Los docblocks de los tools explican **por qué** declaran su
+ * `writeRoot`, así que un `writeRoot: "server"` escrito en la prosa
+ * haría pasar la comprobación con la declaración ausente. La gate
+ * lee el código, no la explicación del código.
+ */
+const sinComentarios = (source: string): string =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("//"))
+    .join("\n");
 
 async function toolFiles(): Promise<string[]> {
   try {
@@ -78,6 +113,7 @@ async function main(): Promise<number> {
   for (const file of files) {
     const rel = relative(REPO_ROOT, file);
     const source = await readFile(file, "utf8");
+    const code = sinComentarios(source);
 
     if (!/\binputSchema\s*:/.test(source)) {
       problems.push({ file: rel, detail: "no declara `inputSchema`" });
@@ -103,6 +139,34 @@ async function main(): Promise<number> {
           "para que el compilador exija lo que el esquema promete",
       });
     }
+
+    /**
+     * El efecto `write` obliga a decir dónde escriben las
+     * escrituras. Sin `writeRoot` el host **no arranca**: lo dice
+     * `planRegistrationOrder` y el servidor MCP muere con un error
+     * que sólo se ve al abrir el workspace.
+     */
+    const escribe = [...code.matchAll(/effects:\s*\[([^\]]*)\]/g)].some((m) =>
+      /["']write["']/.test(m[1] ?? ""),
+    );
+    if (escribe) {
+      const raiz = /writeRoot:\s*["']([^"']+)["']/.exec(code)?.[1];
+      if (raiz === undefined) {
+        problems.push({
+          file: rel,
+          detail:
+            "declara el efecto `write` y no dice dónde escriben sus escrituras " +
+            "(`writeRoot`): el host no arranca un tool así",
+        });
+      } else if (!(WRITE_ROOTS as readonly string[]).includes(raiz)) {
+        problems.push({
+          file: rel,
+          detail:
+            `declara writeRoot "${raiz}", que no es una raíz válida ` +
+            `(${WRITE_ROOTS.join(", ")})`,
+        });
+      }
+    }
   }
 
   if (problems.length > 0) {
@@ -110,13 +174,16 @@ async function main(): Promise<number> {
     for (const p of problems) console.error(`  ✗ ${p.file} — ${p.detail}`);
     console.error(
       "\n  El invariante universal §6 pide un `outputSchema` por tool.\n" +
+        "  Un tool que escribe dice además `writeRoot`: dónde escriben sus\n" +
+        "  escrituras. El host no arranca un tool que escribe sin declararlo.\n" +
         "  Los esquemas viven en `src/lib/contracts/plugin.interface.ts`.",
     );
     return 1;
   }
 
   console.log(
-    `lint:mcp-surface — ${files.length} tools, todos con contrato de entrada y de salida`,
+    `lint:mcp-surface — ${files.length} tools, todos con contrato de entrada y de salida ` +
+      `y con la raíz de escritura declarada donde hace falta`,
   );
   return 0;
 }

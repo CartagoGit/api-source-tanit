@@ -1,12 +1,13 @@
 import { describe, expect, test } from "vitest";
 
-import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../projects/core/helpers/postman.helper";
+import { countItems, pathToSegments, uriFromRaw, walkCollection } from "../../packages/core/helpers/postman.helper";
+import { stripBaseUrlVariable } from "../../packages/core/helpers/uri.helper";
 import type {
   PostmanCollection,
   PostmanItem,
-} from "../../projects/contracts/interfaces/core/postman.interface";
+} from "../../packages/contracts/interfaces/core/postman.interface";
 
-/** Construye una mini-colección para tests. */
+/** Builds a mini collection for tests. */
 function fixtureCollection(): PostmanCollection {
   return {
     info: {
@@ -49,25 +50,25 @@ function fixtureCollection(): PostmanCollection {
 
 describe("postman.helper", () => {
   describe("pathToSegments", () => {
-    test("elimina {{baseUrl}} y devuelve segmentos", () => {
+    test("removes {{baseUrl}} and returns segments", () => {
       expect(pathToSegments("{{baseUrl}}/api/users")).toEqual(["api", "users"]);
     });
 
-    test("ignora host cuando es https://", () => {
+    test("ignores host when it is https://", () => {
       expect(pathToSegments("https://example.com/api/users")).toEqual([
         "api",
         "users",
       ]);
     });
 
-    test("ignora host cuando es http://", () => {
+    test("ignores host when it is http://", () => {
       expect(pathToSegments("http://example.com/api/users")).toEqual([
         "api",
         "users",
       ]);
     });
 
-    test("omite segmentos vacíos", () => {
+    test("skips empty segments", () => {
       expect(pathToSegments("{{baseUrl}}//api///users/")).toEqual([
         "api",
         "users",
@@ -76,13 +77,13 @@ describe("postman.helper", () => {
   });
 
   describe("uriFromRaw", () => {
-    test("recompone la URI relativa con /", () => {
+    test("rebuilds the relative URI with /", () => {
       expect(uriFromRaw("{{baseUrl}}/api/users/123")).toBe("api/users/123");
     });
   });
 
   describe("walkCollection", () => {
-    test("aplana una colección con carpetas", () => {
+    test("flattens a collection with folders", () => {
       const flat = walkCollection(fixtureCollection());
       expect(flat).toHaveLength(3);
       expect(flat[0]).toEqual({
@@ -105,7 +106,7 @@ describe("postman.helper", () => {
       });
     });
 
-    test("anida carpetas con ' > '", () => {
+    test("nests folders with ' > '", () => {
       const col: PostmanCollection = {
         info: {
           name: "x",
@@ -140,12 +141,12 @@ describe("postman.helper", () => {
   });
 
   describe("countItems", () => {
-    test("cuenta requests y carpetas", () => {
+    test("counts requests and folders", () => {
       const c = countItems(fixtureCollection());
       expect(c).toEqual({ requests: 3, folders: 1 });
     });
 
-    test("colección vacía devuelve 0/0", () => {
+    test("an empty collection returns 0/0", () => {
       const empty: PostmanCollection = {
         info: {
           name: "x",
@@ -158,5 +159,50 @@ describe("postman.helper", () => {
       };
       expect(countItems(empty)).toEqual({ requests: 0, folders: 0 });
     });
+  });
+});
+
+describe("pathToSegments — per-service base URLs (r00019)", () => {
+  test("strips the per-service {{baseUrl_<serviceId>}}, not just {{baseUrl}}", () => {
+    // The regression this exists for: `validate:package` aborted with
+    // "9 in the routes but NOT in the collection" because the
+    // per-service variable survived as a literal path segment, so no
+    // generated request ever matched a discovered route.
+    expect(uriFromRaw("{{baseUrl_svc_a}}/api/users")).toBe("api/users");
+    expect(uriFromRaw("{{baseUrl}}/api/users")).toBe("api/users");
+  });
+
+  test("strips a service id containing separators and hyphens", () => {
+    // Service ids are derived from the framework search root, so they
+    // carry path-shaped text — including, in CI, the temp directory the
+    // fixture project was generated in.
+    expect(
+      uriFromRaw("{{baseUrl_tmp_postman-package-abc123_consumer_mi-api}}/api/auth/refresh"),
+    ).toBe("api/auth/refresh");
+  });
+
+  test("leaves every OTHER variable in place", () => {
+    // Only the base URL is a prefix to remove; a path parameter is part
+    // of the route and the comparison normaliser handles it later.
+    expect(uriFromRaw("{{baseUrl}}/api/users/{{id}}")).toBe("api/users/{{id}}");
+    expect(pathToSegments("{{baseUrl_a}}/x/{{y}}")).toEqual(["x", "{{y}}"]);
+  });
+
+  test("still strips an absolute origin", () => {
+    expect(uriFromRaw("https://api.example.test/api/users")).toBe("api/users");
+  });
+});
+
+describe("stripBaseUrlVariable — one definition of the base-URL prefix", () => {
+  test("removes both spellings, and only at the start", () => {
+    expect(stripBaseUrlVariable("{{baseUrl}}/api/users")).toBe("/api/users");
+    expect(stripBaseUrlVariable("{{baseUrl_svc}}/api/users")).toBe("/api/users");
+    // Not a prefix → untouched. A variable in the middle of a path is a
+    // path parameter, not a host.
+    expect(stripBaseUrlVariable("/api/{{baseUrl}}/x")).toBe("/api/{{baseUrl}}/x");
+  });
+
+  test("does not eat a variable that merely starts with the same letters", () => {
+    expect(stripBaseUrlVariable("{{baseUrlOther}}/x")).toBe("{{baseUrlOther}}/x");
   });
 });

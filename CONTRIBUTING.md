@@ -1,6 +1,6 @@
-# Contributing to `export-to-postman`
+# Contributing to `api-source-tanit`
 
-> **Source of truth**: this file + [`docs/mcp-vertex/AGENT-BOOTSTRAP.md`](docs/mcp-vertex/AGENT-BOOTSTRAP.md)
+> **Source of truth**: this file + [`docs/delendai/AGENT-BOOTSTRAP.md`](docs/delendai/AGENT-BOOTSTRAP.md)
 > + [`docs/NAMING.md`](docs/NAMING.md). Humans and LLMs committing to
 > this repo are expected to follow this contract without exception.
 >
@@ -45,7 +45,7 @@ lowercase, scoped, with a short imperative subject and a wrapped body.
 - Explain **why**, not what.
 - Reference the proposal id (`p00001` / `p00004`) when the change
   closes a slice.
-- Reference a host commit when the change unblocks a mcp-vertex
+- Reference a host commit when the change unblocks a delendai
   upstream change.
 
 ### Good examples
@@ -63,9 +63,9 @@ memory_save + proposals_close_slice close-out.
 ```
 fix(agents): replace unsupported MCP glob with explicit tool names
 
-VS Code silently ignores 'mcp-project-mcp-vertex/*' in the agents'
+VS Code silently ignores 'mcp-project-delendai/*' in the agents'
 `tools:` permission list — confirmed by the prompt validator warning
-"Unknown tool 'mcp-project-mcp-vertex/*' will be ignored." Each
+"Unknown tool 'mcp-project-delendai/*' will be ignored." Each
 agent was left with only `read, search` (or `read, search, execute`),
 unable to invoke the MCP server at all.
 
@@ -76,7 +76,7 @@ needs …
 ### Bad examples
 
 ```
-[FEAT] Plugin MCP-vertex export-to-postman + config local   ← wrong prefix style
+[FEAT] Plugin delendai export-to-postman + config local   ← wrong prefix style
 Fix bug in parser                                          ← no prefix
 feat: stuff.                                               ← trailing period
 feat: add a new feature that does something useful          ← too vague
@@ -109,25 +109,25 @@ lying around. They are listed in [`.docker/README.md`](.docker/README.md).
 
 ## File conventions
 
-This repo follows the same TypeScript profile as `@mcp-vertex/core`.
+This repo follows the same TypeScript profile as `@delendai/core`.
 Full table in [`docs/NAMING.md`](docs/NAMING.md#sufijos-por-carpeta),
 which is derived from what `lint:naming` actually enforces. The
 executive summary:
 
 | Suffix | Folder | What it is |
 | --- | --- | --- |
-| `*.interface.ts` / `*.constant.ts` | `projects/core/contracts/` | Shared types and frozen constants. |
-| `*.helper.ts` | `projects/core/helpers/` | Pure utilities, no I/O. |
-| `*.service.ts` | `projects/core/` | Stateful business logic. |
-| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `projects/core/` | Module kinds with their own meaning — see NAMING.md. |
-| `*.exporter.ts` | `projects/core/exporters/` | One `IExportTarget` per output format. |
-| `*.scanner.ts` | `projects/frameworks/` | One framework's route discovery. |
-| `*.script.ts` | `projects/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
-| `*.tool.ts` | `projects/plugins/mcp-vertex_expostman/src/lib/tools/` | One MCP tool per file. |
+| `*.interface.ts` / `*.constant.ts` | `packages/contracts/` | Shared types and frozen constants. |
+| `*.helper.ts` | `packages/core/helpers/` | Pure utilities, no I/O. |
+| `*.service.ts` | `packages/core/` | Stateful business logic. |
+| `*.pipeline.ts` / `*.orchestrator.ts` / `*.adapter.ts` | `packages/core/` | Module kinds with their own meaning — see NAMING.md. |
+| `*.exporter.ts` | `packages/core/exporters/` | One `IExportTarget` per output format. |
+| `*.scanner.ts` | `packages/frameworks/` | One framework's route discovery. |
+| `*.script.ts` | `packages/cli/commands/`, `scripts/` | One CLI command, or one repo gate. |
+| `*.tool.ts` | `integrations/delendai/src/lib/tools/` | One MCP tool per file. |
 | `*.agent.md` | `.github/agents/` | One Copilot subagent per file. |
 
 The old table named `contracts/`, `services/` and `helpers/` as
-top-level folders. They have lived under `projects/` for three
+top-level folders. They have lived under `packages/` for three
 reorganisations.
 | `*.script.ts` | `scripts/` | Entrypoints invocables por `bun run`. |
 | `*.scanner.ts` | `frameworks/` | Un framework por fichero. |
@@ -152,7 +152,7 @@ convenciones, solo por historia.
 ### El árbol
 
 ```
-projects/
+packages/
   core/            lo agnóstico — no nombra ni un framework
     contracts/     interfaces y constantes compartidas
     domain/        collection-builder, auth-flow, param-inferrer…
@@ -162,24 +162,24 @@ projects/
   frameworks/      lo concreto — 12 scanners, parsers y el registro
   cli/             dispatcher + un fichero por comando en commands/
   ui/              asistente interactivo
-  plugin/          plugin de mcp-vertex, paquete independiente
+  plugin/          plugin de delendai, paquete independiente
 scripts/
   gates/           typecheck, los 4 lints, validate, changed
   build/           binario compilado
-tests/             espejo de projects/
+tests/             espejo de packages/
 examples/          un proyecto por framework
 ```
 
 ### Las capas y su dirección
 
 ```
-projects/contracts/     interfaces, tipos y constantes. Sin implementación
+packages/contracts/     interfaces, tipos y constantes. Sin implementación
         ↑
-projects/core/          núcleo agnóstico
+packages/core/          núcleo agnóstico
         ↑
-projects/frameworks/    los 21 scanners y sus parsers
+packages/frameworks/    los 21 scanners y sus parsers
         ↑
-projects/cli/ + ui/     raíz de composición: une las dos
+packages/cli/ + ui/     raíz de composición: une las dos
 ```
 
 La flecha va en un solo sentido y `bun run lint:boundaries` lo exige.
@@ -187,7 +187,7 @@ El núcleo importando de `frameworks/` es lo único que separa "somos
 agnósticos" de "decimos que somos agnósticos", y se rompió tres veces
 antes de que hubiera un lint mirándolo.
 
-### Los tipos y las constantes viven en `projects/contracts/`
+### Los tipos y las constantes viven en `packages/contracts/`
 
 Ni una `export interface`, `export type` o constante exportada fuera de
 ahí. `bun run lint:contracts` lo exige.
@@ -210,7 +210,7 @@ ya instanciados (`DEFAULT_REGISTRY`). Están declaradas en las
 `EXCEPTIONS` del gate con su motivo escrito, y el gate también falla
 cuando una excepción deja de hacer falta.
 
-Los detalles, en [`projects/contracts/README.md`](projects/contracts/README.md).
+Los detalles, en [`packages/contracts/README.md`](packages/contracts/README.md).
 
 ### Regex `g`: nunca se mueve el `lastIndex` de uno compartido
 
@@ -245,7 +245,7 @@ como si el repo estuviera vacío.
 | Quién | Qué usa |
 | --- | --- |
 | Gates y tests del repo | `scripts/helpers/root.helper.ts` |
-| Código de producción | `findRepoRoot()` de `projects/core/helpers/` |
+| Código de producción | `findRepoRoot()` de `packages/core/helpers/` |
 | Tests del plugin | `workspaceRoot()` de su `tests/helpers/` |
 
 `root.helper.spec.ts` comprueba que **todo** lo declarado existe en
@@ -265,7 +265,7 @@ viejo hasta que un servidor no arranca y nadie sabe por qué.
 
 ### Dónde escribe la herramienta
 
-En `<proyecto escaneado>/export-to-postman/`. **Nunca** en `build/`: es
+En `<proyecto escaneado>/tanit/`. **Nunca** en `build/`: es
 la carpeta de salida por defecto de Gradle, de muchos proyectos de Go y
 de medio mundo de Makefiles, y su `clean` la borra entera. La constante
 es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
@@ -275,7 +275,7 @@ es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 - **Dot, never hyphen.** `foo.service.ts`, not `foo-service.ts`.
 - **One tool per file.** No multi-tool `tools.ts`.
 - **One agent per file.** No multi-agent `agents.ts`.
-- **El plugin nunca importa `projects/core/` a pelo.** The plugin only invokes
+- **El plugin nunca importa `packages/core/` a pelo.** The plugin only invokes
   `scripts/cli.script.ts` via `bun run` from a workspace context.
 - **Services never import `plugins/`.** Services stay runtime-safe.
 - **`services/` never imports `frameworks/`.** Lo exige
@@ -287,29 +287,29 @@ es `OUTPUT_DIR_NAME` en `contracts/postman.constant.ts`.
 
 VS Code's prompt validator accepts the slash form
 `<server-name>/<tool-or-glob>` in the agent `tools:` permission list.
-The legacy form (`mcp-vertex_overview`) is renamed on save with a
+The legacy form (`delendai_overview`) is renamed on save with a
 yellow squiggle. Use the slash form.
 
-There is **one MCP server** in this workspace (`mcp-vertex`, registered
+There is **one MCP server** in this workspace (`delendai`, registered
 in `.vscode/mcp.json`). The plugin tools (`postman_exporter_generate`,
 …) live **inside** that server under the namespace prefix. So every
-MCP tool reference uses the `mcp-vertex/...` prefix; the plugin tools
-are reachable as `mcp-vertex/postman_exporter_generate`, etc. The
+MCP tool reference uses the `delendai/...` prefix; the plugin tools
+are reachable as `delendai/postman_exporter_generate`, etc. The
 `postman_exporter/*` form is **not** a valid MCP server here.
 
 Pick the narrowest pattern that covers the lane — **least privilege**:
 
 | Pattern | When |
 | --- | --- |
-| `mcp-vertex/<server>_<plugin>_<tool>` (slash-qualified) | **Always preferred.** The `<server>` prefix is the namespace, the second `<server>_<plugin>_<tool>` is the actual tool ID. e.g. `mcp-vertex/mcp-vertex_proposals_proposal_board`, `mcp-vertex/postman_exporter_generate`. |
-| `mcp-vertex/*` | Avoid. Grants ~190 tools. Use only if the agent legitimately needs every one. |
+| `delendai/<server>_<plugin>_<tool>` (slash-qualified) | **Always preferred.** The `<server>` prefix is the namespace, the second `<server>_<plugin>_<tool>` is the actual tool ID. e.g. `delendai/delendai_proposals_proposal_board`, `delendai/postman_exporter_generate`. |
+| `delendai/*` | Avoid. Grants ~190 tools. Use only if the agent legitimately needs every one. |
 
-The double `<server>` prefix (`mcp-vertex/mcp-vertex_*`) is intentional:
-the **slash-form** names the MCP server (the first `mcp-vertex`); the
+The double `<server>` prefix (`delendai/delendai_*`) is intentional:
+the **slash-form** names the MCP server (the first `delendai`); the
 **tool ID** keeps the original `<server>_<plugin>_<tool>` triple that
-the server itself emits (e.g. `mcp-vertex_proposals_proposal_board`).
-The prompt validator renames `mcp-vertex_proposals_proposal_board`
-→ `mcp-vertex/mcp-vertex_proposals_proposal_board` on save; if you
+the server itself emits (e.g. `delendai_proposals_proposal_board`).
+The prompt validator renames `delendai_proposals_proposal_board`
+→ `delendai/delendai_proposals_proposal_board` on save; if you
 forget the slash you'll see the same yellow squiggle.
 
 ---
@@ -322,10 +322,10 @@ en este orden:
 | Paso | Comando | Qué caza |
 | --- | --- | --- |
 | Typecheck | `bun run typecheck` | Tipos, imports que faltan, contrato del plugin mal. |
-| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `projects/plugins/mcp-vertex_expostman/src/lib/tools/`. |
+| Lint de tools | `bun run lint:tools` | `process.cwd()` / `process.env.X` / rutas absolutas en `integrations/delendai/src/lib/tools/`. |
 | Lint de propuestas | `bun run lint:proposals` | Carpeta que no coincide con el `status`, ids repetidos, nombres de fichero que no empiezan por su id. |
 | Tests | `bun test` | La suite completa. |
-| Generación real | `bun run validate:examples` | Genera los 21 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
+| Generación real | `bun run validate:examples` | Genera los 25 proyectos de `examples/` y valida cada colección: schema v2.1.0, sin requests duplicadas, sin `{{variables}}` sin declarar, `_postman_id` presente. |
 
 Se ejecuta en CI (`.github/workflows/validate.yml`) con el mismo comando,
 así que lo que pasa en local pasa en CI.
@@ -344,22 +344,92 @@ agent does **not** pick up additional permissions at runtime.
 
 | Agent | File | Tools |
 | --- | --- | --- |
-| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_agent_catalog, mcp-vertex/mcp-vertex_proposals_proposal_board, mcp-vertex/mcp-vertex_proposals_close_slice, mcp-vertex/mcp-vertex_memory_save` |
-| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_analyze_project, mcp-vertex/mcp-vertex_expostman_summary` |
-| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_generate, mcp-vertex/mcp-vertex_expostman_summary` |
-| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_validate` |
-| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, mcp-vertex/mcp-vertex_overview, mcp-vertex/mcp-vertex_expostman_test` |
+| `export-to-postman-orchestrator` | `.github/agents/export-to-postman-orchestrator.agent.md` | `read, search, todo, delendai/delendai_overview, delendai/delendai_agent_catalog, delendai/delendai_proposals_proposal_board, delendai/delendai_proposals_close_slice, delendai/delendai_memory_save` |
+| `export-to-postman.onboarding` | `.github/agents/export-to-postman.onboarding.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_analyze_project, delendai/delendai_tanit_summary` |
+| `export-to-postman.builder` | `.github/agents/export-to-postman.builder.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_generate, delendai/delendai_tanit_summary` |
+| `export-to-postman.validator` | `.github/agents/export-to-postman.validator.agent.md` | `read, search, delendai/delendai_overview, delendai/delendai_tanit_validate` |
+| `export-to-postman.tester` | `.github/agents/export-to-postman.tester.agent.md` | `read, search, execute, delendai/delendai_overview, delendai/delendai_tanit_test` |
 
 When adding a new tool a lane needs, **add it to that agent's `tools:`
-list** — do **not** widen to `mcp-vertex/*`.
+list** — do **not** widen to `delendai/*`.
 
 ---
+
+## Cómo aterriza el trabajo — el grafo tiene que contar la historia
+
+El trabajo **nunca** se commitea directamente en `develop`: sale de una
+rama `wip/<agente>/<kind>/<propuesta>-<slice>-g<generación>/<tema>`,
+se publica como pull request y se integra con **merge commit**, no
+con squash.
+
+| | |
+|---|---|
+| `delendai.config.json` → `development.integration.mergeMethod` | `merge` |
+| `delendai.config.json` → `development.integration.linearHistory` | `false` |
+| `delendai.config.json` → `development.integration.deleteMergedWorkRef` | `false` |
+| GitHub → `develop` → *Require linear history* | **desactivado** |
+| GitHub → repositorio → *Allow merge commits* | **activado** |
+
+**Por qué merge commit y no squash.** Un squash **destruye** los
+commits de la rama: entran cuatro commits y aterrizan como uno, y
+cuando la rama se borra ya no queda registro de qué entró ni cuándo.
+El merge commit conserva el trabajo en su **propia línea de
+desarrollo** y nombra la rama que lo produjo, así que la ascendencia
+sobrevive a la rama. `git log --first-parent develop` sigue dando **una
+línea por cambio**, que es justo la lectura que se buscaba con el
+squash — el merge commit es estrictamente más información por el mismo
+precio.
+
+**El interruptor que faltaba: el del repositorio, no el de la rama.**
+*Require linear history* es la mitad de la rama; la otra mitad es el
+propio repositorio: **`allow_merge_commit`**. Son cosas distintas, y
+por eso una rama puede aceptar merge commits perfectamente mientras el
+repositorio se niega a producirlos. En ese estado el trabajo
+**aterriza aplastado**: `gh pr merge --merge` falla con *"Merge
+commits are not allowed on this repository"*, y el squash —el único
+método que quedaba— aplana la historia igual que siempre.
+
+Eso fue exactamente lo que pasó: la política decía `merge` y el
+repositorio decía `squash`. Dos respuestas a la misma pregunta, y
+ganaba la que borra las ramas del grafo. Por eso los dos lados se
+aplican y se verifican desde la **misma** política:
+
+| Quién | Qué hace |
+|---|---|
+| `.github/workflows/protect-develop.yml` → *Apply the repository merge strategy* | `PATCH /repos/<repo>` con los tres interruptores derivados de `mergeMethod` |
+| `.github/workflows/protect-develop.yml` → *Verify the merge strategy is in place* | Comprueba que lo aplicado coincide con lo declarado |
+| `scripts/gates/branch-protection.script.ts` | En cada CI: si `mergeMethod` es `merge` y el repositorio no permite merge commits, el gate **falla** |
+
+**Por qué GitHub exige dos métodos.** GitHub no admite dejar un solo
+método de merge habilitado (*"you need to allow either squash or rebase
+merge strategies, or both"*). Con `mergeMethod: "merge"` quedan
+habilitados **merge y squash**; la política sigue decidiendo cuál usa
+la integración.
+
+**Por qué GitHub no debe volver a activar *Require linear history*.**
+Un historial lineal **prohíbe** el propio merge commit que lleva la
+ascendencia: sin él, `git log --graph` vuelve a mostrar una sola línea
+y las ramas desaparecen de la historia. Es el interruptor que
+contradice a `mergeMethod: "merge"`.
+
+**Por qué la rama no la borra GitHub.** Una propuesta aterriza **un
+pull request por slice**, y un slice puede tener más de una revisión:
+si el forge borrase la rama al primer merge, se perderían las slices
+siguientes. El borrado es decisión de delendai, que lo hace cuando la
+propuesta se cierra y ya no quedan slices.
+
+Cómo leerlo:
+
+```bash
+git log --graph --oneline develop      # las ramas se ven
+git log --first-parent --oneline develop   # una línea por cambio
+```
 
 ## Proposal workflow
 
 Every non-trivial change starts as a proposal under
-`docs/mcp-vertex/proposals/`. **The folder IS the state** — same layout
-as the `mcp-vertex` repo:
+`docs/delendai/proposals/`. **The folder IS the state** — same layout
+as the `delendai` repo:
 
 | Folder | `status:` |
 |---|---|
@@ -376,7 +446,7 @@ Moving the file and changing `status:` is a **single** operation;
 `bun run lint:proposals` fails if you only do one of the two. Always
 reference a proposal by its `id`, never by its filename — filenames move,
 ids do not. Full rules in
-[`docs/mcp-vertex/proposals/README.md`](docs/mcp-vertex/proposals/README.md).
+[`docs/delendai/proposals/README.md`](docs/delendai/proposals/README.md).
 
 ```yaml
 ---
@@ -394,8 +464,44 @@ related:
 
 The 12 proposals already in `ready/` are the implementation roadmap.
 Each proposal owns its slices; each slice has its own gate. The
-orchestrator agent (`export-to-postman-orchestrator`) drives the
+orchestrator agent (`orchestrator`) drives the
 state machine.
+
+### `sync_proposals` se invoca después de cualquier transición de propuestas
+
+El orquestador Delendai ofrece una herramienta
+`delendai_proposals_sync_proposals` que reescribe los nombres de
+archivo de las propuestas al arquetipo
+`<kind><NNNNN>-<slug>.md` y las mueve a la carpeta que coincide
+con su `status:`. Tanit la usa de forma rutinaria como parte del
+flujo de cierre de propuestas:
+
+- Tras `proposal_transition { to: "done" | "in-progress" | "review" }`,
+  invoca `sync_proposals` para que el archivo quede en su carpeta
+  semántica (`done/<kind>/`, `in-progress/<kind>/`, etc.) con el
+  nombre canónico.
+- El filename builder arreglado en `@delendai/core` (helper
+  `stripIdPrefixFromTitle`) ya no duplica el id cuando el `title:`
+  empieza por `xNNNNN …`.
+
+La fuente de verdad local de las propuestas es:
+
+1. El filesystem: el `status:` del frontmatter y la carpeta
+   deben coincidir.
+2. [`docs/delendai/proposals/INDEX.md`](docs/delendai/proposals/INDEX.md):
+   regenerado a mano con `bun run lint:proposals:gen-index` (alias
+   `bun run lint:proposals:fix`). Cualquier propuesta que falte
+   del INDEX o apunte a un path que no existe es drift detectable
+   por `bun run lint:proposals` (regla x00032 S1).
+
+Si un agente (humano o IA) crea o renombra una propuesta, el flujo
+esperado es:
+
+1. `create_proposal` (crea con frontmatter canónico) o `edit` del
+   archivo a mano.
+2. `sync_proposals` (reubica y normaliza el filename).
+3. `bun run lint:proposals:gen-index` (regenera INDEX).
+4. `git add docs/delendai/proposals/` + commit.
 
 ---
 

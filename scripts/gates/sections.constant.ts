@@ -65,7 +65,7 @@ export const SECTIONS: readonly ISection[] = [
     // Va la primera en la lista porque el orden es el de ejecución de
     // los gates: lo más nuclear primero, para fallar pronto.
     description: "Interfaces, tipos y constantes compartidos. Sin implementación",
-    paths: ["projects/contracts/"],
+    paths: ["packages/contracts/"],
     tests: ["tests/contracts/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.contracts.json",
     dependsOn: [],
@@ -73,8 +73,35 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "core",
     description: "Núcleo agnóstico: vale igual para cualquier API",
-    paths: ["projects/core/"],
-    tests: ["tests/core/**/*.{spec,test}.ts"],
+    // r00020 S3: `tests/response-inference/` lives beside the other
+    // core tests instead of inside `tests/core/` because it is a
+    // **feature**, not a module: one spec per inferrer and one for
+    // the coverage reporter. It is still core — it only imports
+    // `packages/core/` and `packages/contracts/`.
+    //
+    // `tests/transport/` belongs here for the same reason, and it had
+    // been **orphaned**: no section listed it, so the tests of both
+    // bridges (stdio and HTTP) had never run. A suite that nobody
+    // runs is not a suite — it is a file that says "all good" without
+    // having asked anything.
+    //
+    // They run under **bun** rather than vitest, because the bridge
+    // binds a real socket with `Bun.serve` and vitest runs on Node.
+    // `bun run test:core:transport` is the command; the vitest project
+    // excludes the folder so it is not counted twice.
+    paths: ["packages/core/", "tests/response-inference/", "tests/transport/"],
+    tests: [
+      "tests/core/**/*.{spec,test}.ts",
+      "tests/response-inference/**/*.{spec,test}.ts",
+      // La Application API es código del núcleo: sus handlers viven
+      // en `packages/core/application-api/` y sus tests, aquí.
+      //
+      // La carpeta estaba **fuera** de todas las secciones, así que
+      // el fichero que prueba los handlers —los veinte, uno por
+      // uno— no se ejecutaba nunca. Un test que no corre no prueba
+      // nada, y además pesaba como cobertura sin serlo.
+      "tests/application-api/**/*.{spec,test}.ts",
+    ],
     tsconfig: "tsconfig.core.json",
     dependsOn: ["contracts"],
   },
@@ -83,7 +110,7 @@ export const SECTIONS: readonly ISection[] = [
     // Sin número: una cuenta escrita a mano se queda vieja cada vez que
     // se añade un scanner, y ya lo hizo (decía 12 con 19 en el registro).
     description: "Lo concreto de cada framework: sus scanners y sus parsers",
-    paths: ["projects/frameworks/"],
+    paths: ["packages/frameworks/"],
     tests: ["tests/frameworks/**/*.{spec,test}.ts"],
     tsconfig: "tsconfig.frameworks.json",
     dependsOn: ["contracts", "core"],
@@ -91,10 +118,25 @@ export const SECTIONS: readonly ISection[] = [
   {
     name: "cli",
     description: "Comandos, asistente interactivo y binario compilado",
-    paths: ["projects/cli/", "projects/ui/", "scripts/"],
-    tests: ["tests/cli/**/*.{spec,test}.ts"],
+    // `tests/release/` vive aquí porque lo que prueba es el tooling de
+    // `scripts/`, que ya es de esta sección: el signing de la release
+    // es un script del repo, no código de producto.
+    paths: ["packages/cli/", "packages/ui/", "scripts/", "tests/release/"],
+    tests: [
+      "tests/cli/**/*.{spec,test}.ts",
+      "tests/scripts-gates/**/*.{spec,test}.ts",
+      "tests/release/**/*.{spec,test}.ts",
+    ],
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks"],
+  },
+  {
+    name: "app",
+    description: "Aplicación Angular standalone y shell de escritorio",
+    paths: ["packages/app/", "tests/app/"],
+    tests: ["tests/app/**/*.{spec,test}.ts"],
+    tsconfig: "tsconfig.app.json",
+    dependsOn: ["contracts", "core"],
   },
   {
     name: "e2e",
@@ -104,19 +146,11 @@ export const SECTIONS: readonly ISection[] = [
     tsconfig: "tsconfig.cli.json",
     dependsOn: ["contracts", "core", "frameworks", "cli"],
   },
-  {
-    name: "plugin",
-    description: "Plugin de mcp-vertex — proyecto independiente, gates propios",
-    paths: ["projects/plugins/mcp-vertex_expostman/"],
-    tests: ["projects/plugins/mcp-vertex_expostman/tests/**/*.{spec,test}.ts"],
-    tsconfig: "projects/plugins/mcp-vertex_expostman/tsconfig.json",
-    ownTypecheck: { cwd: "projects/plugins/mcp-vertex_expostman", script: "typecheck" },
-    // El plugin necesita el catálogo de frameworks (lo expone en su
-    // tool `test` y en `summary`), así que la dependencia es real y se
-    // declara. Declararla no es relajar la regla: la regla es que
-    // `core` no dependa de `frameworks`, y eso sigue en pie.
-    dependsOn: ["contracts", "core", "frameworks", "cli"],
-  },
+  // El plugin de Delendai (`integrations/delendai/`) NO es sección
+  // del producto: vive como integración opcional mantenida aquí
+  // por conveniencia del usuario. Su typecheck + tests se corren
+  // en `.github/workflows/integration-delendai.yml` (opt-in +
+  // semanal), no en `validate.yml`. x00041.
 ] as const;
 
 /** Ficheros que no pertenecen a ninguna sección pero afectan a todas. */

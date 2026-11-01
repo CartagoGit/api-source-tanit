@@ -29,16 +29,23 @@ quedarse sin las otras.
 
 ## Sacar una versión
 
-### 1. Subir el número en los dos sitios
+### 1. Subir el número en los tres sitios
 
 ```bash
 # package.json  →  "version"
-# projects/desktop/tauri.conf.json  →  "version"
+# packages/desktop/tauri.conf.json  →  "version"
+# packages/contracts/constants/cli/cli-version.constant.ts  →  CLI_VERSION
 ```
 
-Tienen que coincidir. El de `package.json` va al paquete npm y al `--help`
-del CLI; el de `tauri.conf.json` va al nombre del instalador y a lo que
-enseña el sistema en «Programas instalados».
+Tienen que coincidir. El de `package.json` describe el producto; el
+de `tauri.conf.json` va al nombre del instalador y a lo que enseña el
+sistema en «Programas instalados»; el de `CLI_VERSION` es lo que
+imprime `apisrc --version`.
+
+`bun run lint:release-channel` lo comprueba, y además dice a qué canal
+pertenece la versión. La escalera de canales —alfa, beta, rc y
+estable— está en
+[RELEASE.md](RELEASE.md#los-canales-alfa-beta-rc-y-estable).
 
 ### 2. Comprobar que el gate pasa entero
 
@@ -50,17 +57,28 @@ No es opcional. El instalador **contiene** el binario del CLI, así que
 publicar con el gate en rojo es meter el fallo dentro de algo que la
 gente instala en su equipo.
 
-### 3. Etiquetar
+### 3. Mergear `develop` en `main`
+
+La versión sale por `main`: cada PR de `develop` a `main` es una
+versión que se corta. El PR se mergea con **squash**, porque `main`
+tiene `required_linear_history` y un merge commit no pasa.
+
+### 4. Etiquetar
 
 ```bash
-git tag v0.2.0
-git push origin v0.2.0
+git tag v0.1.0-alpha.1
+git push origin v0.1.0-alpha.1
 ```
 
-El workflow se dispara con el tag y adjunta los instaladores a la
-release de GitHub.
+El tag tiene que decir lo mismo que la versión del repo: el workflow
+compara el tag con el `package.json` y para si no coinciden.
 
-### 4. Comprobar lo que ha salido
+El workflow `release-cut` se dispara con el tag y **crea la release**,
+con las notas que salen del CHANGELOG y con la marca de prerelease que
+decide el canal. Después, `release-binaries` adjunta los ejecutables y
+`release-desktop` los instaladores.
+
+### 5. Comprobar lo que ha salido
 
 Descarga al menos uno e instálalo de verdad. Un `.deb` de 2 KB es un
 `.deb` vacío, y desde la página de releases se ve exactamente igual que
@@ -92,13 +110,17 @@ parezca que la aplicación está rota.
 
 ---
 
-## Publicar el CLI en npm
+## El CLI se distribuye con la release, no en npm
 
-Aparte de la aplicación, el paquete se publica solo:
+El CLI no se publica en npm. Sale en la **release de GitHub**, como
+ejecutable autocontenido por plataforma, y se descarga sin tener Bun ni
+Node instalados en la máquina destino.
+
+El tarball de npm se sigue **empaquetando y probando** en CI, pero sólo
+para comprobar que el paquete está bien:
 
 ```bash
 bun run validate:package   # npm pack + instalación limpia + smoke
-npm publish --access public
 ```
 
 `validate:package` no es ceremonia: instala el tarball en un directorio
@@ -107,12 +129,17 @@ genera una colección. Es lo que comprueba la promesa del README —«no
 necesitan Bun ni Node instalados»— antes de que la compruebe alguien que
 se lo descarga.
 
+Lo que **no** hay es un `npm publish`. Publicar en npm es irreversible:
+una versión publicada no se puede volver a sacar. Un repositorio que
+ainda no ha salido una vez no tiene nada que ganar con un `dist-tag`
+`latest` que cualquiera que instale sin `--tag` se come.
+
 ---
 
 ## Cuando algo falla
 
 **El workflow produce un instalador vacío.** Casi siempre es que el
-sidecar no llegó: Tauri busca `binaries/expostman-<target-triple>` y sin
+sidecar no llegó: Tauri busca `binaries/apisrc-<target-triple>` y sin
 ese sufijo falla con un «no such file» que apunta a una ruta que sí
 existe. `desktop:build` lo compila y lo coloca en el mismo paso
 justamente por eso.
@@ -127,3 +154,17 @@ dependencias de Tauri la sube cada pocos meses y el error aparece como
 un fallo de una dependencia transitiva, sin mencionar a Tauri. La
 versión está fijada en `.docker/Dockerfile` con el historial de por qué
 se subió cada vez.
+
+---
+
+## Sidecar naming
+
+`Tanit` (the desktop app, `productName`) embeds `apisrc-<target-triple>` (the CLI
+binary, renamed from `expostman-<...>`). The naming asymmetry is by design:
+
+- **App brand**: Tanit (user-facing).
+- **Sidecar binary**: `apisrc-<target-triple>` (matches the CLI bin name we publish to npm).
+
+When you build the Tauri bundle, the sidecar must be a renamed copy of the CLI
+binary available at `bin/apisrc` (not `bin/tanit-*`). See `tauri.conf.json`
+under `bundle.externalBin` for the exact pattern.

@@ -1,0 +1,9 @@
+{
+  "name": "express-responses-fixture",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Express app whose handlers send their payload with res.json.",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

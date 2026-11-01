@@ -1,9 +1,9 @@
 /**
- * E2E test exhaustivo para el scanner Express.
+ * Comprehensive E2E test for the Express scanner.
  *
- * Cubre:
- * - app.METHOD(path, handler) en src/server.ts.
- * - router.METHOD con `app.use('/prefix', router)`.
+ * Covers:
+ * - app.METHOD(path, handler) in src/server.ts.
+ * - router.METHOD with `app.use('/prefix', router)`.
  * - zod schemas (inline + referenced).
  * - Joi schemas.
  * - Nested schemas (addressSchema).
@@ -27,23 +27,23 @@ describeCollectionContract({
 });
 
 describe("Express — comprehensive fixture", () => {
-  test("detecta el framework correcto", async () => {
+  test("detects the correct framework", async () => {
     const { metrics } = await runGenerate("express-comprehensive");
     expect(metrics.routes).toBeGreaterThanOrEqual(13);
   });
 
-  test("la collection es Postman v2.1.0 válida", async () => {
+  test("the collection is a valid Postman v2.1.0", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     expect(validatePostmanInvariants(collection)).toEqual([]);
   });
 
-  test("cuenta los endpoints correctos", async () => {
+  test("counts the correct endpoints", async () => {
     const { collection, metrics } = await runGenerate("express-comprehensive");
     const counts = countItems(collection.item);
     expect(counts.requests).toBe(metrics.routes);
   });
 
-  test("encuentra los endpoints por method+uri", async () => {
+  test("finds the endpoints by method+uri", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     // Health
     expect(findEndpoint(collection, "GET", "/health")).not.toBeNull();
@@ -65,7 +65,7 @@ describe("Express — comprehensive fixture", () => {
     expect(findEndpoint(collection, "POST", "/api/auth/logout")).not.toBeNull();
   });
 
-  test("POST /api/users tiene body params (zod createUserSchema)", async () => {
+  test("POST /api/users has body params (zod createUserSchema)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/users");
     expect(ep).not.toBeNull();
@@ -74,7 +74,7 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("email");
   });
 
-  test("PUT /api/users/{id} tiene body params (zod updateUserSchema)", async () => {
+  test("PUT /api/users/{id} has body params (zod updateUserSchema)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}");
     expect(ep).not.toBeNull();
@@ -83,7 +83,7 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("email");
   });
 
-  test("PUT /api/users/{id}/address tiene street, city, country, postalCode", async () => {
+  test("PUT /api/users/{id}/address has street, city, country, postalCode", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "PUT", "/api/users/{{id}}/address");
     expect(ep).not.toBeNull();
@@ -94,7 +94,7 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("postalCode");
   });
 
-  test("POST /api/orders tiene body params (Joi createOrderSchema)", async () => {
+  test("POST /api/orders has body params (Joi createOrderSchema)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/orders");
     expect(ep).not.toBeNull();
@@ -103,7 +103,7 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("customerEmail");
   });
 
-  test("PATCH /api/orders/{id}/status tiene status enum (Joi)", async () => {
+  test("PATCH /api/orders/{id}/status has status enum (Joi)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "PATCH", "/api/orders/{{id}}/status");
     expect(ep).not.toBeNull();
@@ -112,7 +112,7 @@ describe("Express — comprehensive fixture", () => {
     expect(["pending", "paid", "shipped", "cancelled"]).toContain(body.status);
   });
 
-  test("POST /api/auth/login tiene email + password (zod)", async () => {
+  test("POST /api/auth/login has email + password (zod)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/login");
     expect(ep).not.toBeNull();
@@ -121,7 +121,7 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("password");
   });
 
-  test("POST /api/auth/refresh tiene refreshToken (zod)", async () => {
+  test("POST /api/auth/refresh has refreshToken (zod)", async () => {
     const { collection } = await runGenerate("express-comprehensive");
     const ep = findEndpoint(collection, "POST", "/api/auth/refresh");
     expect(ep).not.toBeNull();
@@ -129,9 +129,9 @@ describe("Express — comprehensive fixture", () => {
     expect(body).toHaveProperty("refreshToken");
   });
 
-  test("las rutas de zod y Joi se detectan como specs", async () => {
+  test("zod and Joi routes are detected as specs", async () => {
     const { metrics } = await runGenerate("express-comprehensive");
-    // 13 specs (rutas con zod o Joi). 1 sin FR (logout sin body).
+    // 13 specs (routes with zod or Joi). 1 without FR (logout with no body).
     expect(metrics.conFR).toBeGreaterThanOrEqual(12);
   });
 });

@@ -26,18 +26,18 @@ use App\Http\Controllers\AuthController;
 |   DELETE /api/users/{id}
 |
 | Users — extra endpoints
-|   PUT    /api/users/{id}/address
-|   GET    /api/users/{id}/orders
+|   PUT    /api/users/{user}/address
+|   GET    /api/users/{user}/orders
 |
 | Orders — apiResource
 |   GET    /api/orders
 |   POST   /api/orders
-|   GET    /api/orders/{id}
-|   PUT    /api/orders/{id}
-|   DELETE /api/orders/{id}
+|   GET    /api/orders/{order}
+|   PUT    /api/orders/{order}
+|   DELETE /api/orders/{order}
 |
 | Orders — action
-|   POST   /api/orders/{id}/cancel
+|   POST   /api/orders/{order}/cancel
 |
 | Auth — explicit, bajo un grupo con prefijo propio
 |   POST   /api/auth/login
@@ -50,12 +50,12 @@ Route::get('/health', fn () => response()->json(['ok' => true]));
 
 // Users
 Route::apiResource('users', UserController::class);
-Route::put('/users/{id}/address', [UserController::class, 'updateAddress']);
-Route::get('/users/{id}/orders', [UserController::class, 'userOrders']);
+Route::put('/users/{user}/address', [UserController::class, 'updateAddress']);
+Route::get('/users/{user}/orders', [UserController::class, 'userOrders']);
 
 // Orders
 Route::apiResource('orders', OrderController::class);
-Route::post('/orders/{id}/cancel', [OrderController::class, 'cancel']);
+Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
 
 // Auth
 Route::prefix('auth')->group(function () {

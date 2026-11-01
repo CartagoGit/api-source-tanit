@@ -40,7 +40,7 @@ que un sitio limpio no tiene.
   `/etc/profile` y reconstruye el `PATH` desde cero, así que `bun` no
   existía dentro aunque estuviera instalado.
 - **Dos tests dependían del nombre de la carpeta del checkout.**
-  Exigían que el directorio se llamara `export-to-postman`; el
+  Exigían que el directorio se llamara `api-source-tanit`; el
   contenedor monta en `/work`. Cualquiera que clone en otra carpeta
   tenía el mismo fallo.
 - **El test de permisos pasaba siempre como root.** `chmod 0555` no
@@ -49,7 +49,7 @@ que un sitio limpio no tiene.
   un test que no puede fallar es peor que no tenerlo, porque además
   cuenta como cobertura.
 - **`lint:bootstrap-drift` pasaba por suerte.** El bootstrap citaba una
-  ruta del checkout hermano de `mcp-vertex`, que existe en la máquina de
+  ruta del checkout hermano de `delendai`, que existe en la máquina de
   desarrollo y en ningún otro sitio.
 
 ## La limitación que queda, y de quién es
@@ -57,24 +57,23 @@ que un sitio limpio no tiene.
 `docker:validate` **no corre la sección `plugin`**, y no es un descuido.
 
 El plugin declara
-`"@mcp-vertex/core": "file:../../../../mcp-vertex/packages/core"`: un
+`"@delendai/core": "file:../../../../delendai/packages/core"`: un
 `file:` que apunta **fuera** del repositorio. En un sitio limpio ese
 enlace no resuelve, el install del workspace se queda a medias y todo lo
 que dependa de él falla.
 
 Se intentó montar el checkout hermano dentro y no basta —bun no
-materializa el enlace—, pero sobre todo **no debería hacer falta**: el
-bootstrap prohíbe expresamente que este repositorio exija un checkout al
-lado.
+materializa el enlace—. La postura del proyecto cambió el 2026-09-03:
+mientras `@delendai/core` siga sin publicación oficial, este repo
+**asume el checkout hermano como flujo soportado** (`p00007` cerrado
+en `done` con esa lectura — ver
+[`AGENT-BOOTSTRAP.md`](../docs/delendai/AGENT-BOOTSTRAP.md) §3.7).
 
-O sea que el contenedor no ha causado nada: le ha puesto número a
-[`p00007`](../docs/mcp-vertex/proposals/blocked/p00007-consumir-mcp-vertex-core-publicado.md).
-Lo que esa propuesta describe como «cambiar una línea cuando se
-publique» es, en realidad, **el repositorio no siendo autocontenido** —
-y solo se nota cuando intentas construirlo en un sitio limpio.
-
-El día que `@mcp-vertex/core` esté en npm, `docker:validate` pasa a ser
-`bun run validate` a secas y esta sección se borra.
+Por tanto, este contenedor **sí monta el checkout hermano**: lo añade a
+`/workspace/delendai` y añade su `packages/core` al `path` cuando el
+plugin MCP se ejecuta dentro. Lo que no se hace es fingir que no
+depende de él — sería volver a la postura antigua que el contenedor
+ya probó falsa.
 
 ## El aviso de `glib`, y por qué sigue ahí
 

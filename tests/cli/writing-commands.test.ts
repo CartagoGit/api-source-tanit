@@ -1,19 +1,18 @@
 /**
- * Los comandos que escriben o hablan con fuera: `init`, `push`, `open`.
+ * The commands that write or talk to the outside: `init`, `push`, `open`.
  *
- * Ninguno tenía test, y `init` **empeoraba el proyecto**. Detectaba el
- * nombre mirando solo `composer.json` —herencia de cuando la herramienta
- * era de Laravel— y, al no encontrarlo, se quedaba con el nombre de la
- * carpeta. Como la configuración que genera pisa la detección
- * automática, sobre `example-express` el proyecto pasaba de llamarse
- * `sample-express` a llamarse como el directorio: ejecutar el asistente
- * dejaba peor de lo que estaba.
+ * None had tests, and `init` actually **made the project worse**. It
+ * detected the name by looking only at `composer.json` —a relic from
+ * when the tool was Laravel-only— and, not finding it, kept the
+ * folder name. Since the configuration it generates overrides the
+ * automatic detection, on `example-express` the project went from
+ * being called `sample-express` to being called after the directory:
+ * running the wizard left things worse than they were.
  *
- * Y terminaba diciendo `bun run build`, que es un script **de este
- * repositorio** y no del proyecto de quien usa la herramienta. El
- * asistente existe justo para quien no se sabe los flags, así que
- * cerrarlo con un comando que no puede ejecutar es dejarlo atascado en
- * el último paso.
+ * And it ended by suggesting `bun run build`, which is a script **of
+ * this repository**, not of the user's project. The wizard exists
+ * precisely for whoever does not know the flags, so closing it with
+ * a command they cannot run leaves them stuck on the last step.
  */
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -34,7 +33,7 @@ afterAll(async () => {
   if (work) await rm(work, { recursive: true, force: true });
 });
 
-/** Un proyecto limpio por test, porque estos comandos escriben. */
+/** A clean project per test, because these commands write. */
 async function proyecto(nombre: string, framework = "express"): Promise<string> {
   const root = join(work, nombre);
   await copyExampleClean(exampleDir(framework), root);
@@ -46,22 +45,22 @@ function run(comando: string, args: readonly string[]): Promise<{ code: number; 
 }
 
 describe("init", () => {
-  test("detecta el nombre del manifiesto, no el de la carpeta", { timeout: 120_000 }, async () => {
-    const root = await proyecto("nombre-carpeta-distinto");
+  test("detects the manifest name, not the folder one", { timeout: 120_000 }, async () => {
+    const root = await proyecto("folder-name-different");
     const { code, output } = await run("init", ["--project-root", root]);
     expect(code, output).toBe(0);
-    // La línea de detección, no la salida entera: las rutas que imprime
-    // llevan el nombre del directorio dentro y eso es legítimo.
+    // The detection line, not the whole output: the paths it prints
+    // contain the directory name inside and that is legitimate.
     const detectado = /Project detected:\s+(\S+)/.exec(output)?.[1];
     expect(detectado).toBe("sample-express");
   });
 
   /**
-   * EL test: sin él, el asistente degradaba el proyecto y solo se veía
-   * corriendo otro comando después.
+   * THE test: without it, the wizard degraded the project and it was
+   * only visible by running another command afterwards.
    */
-  test("lo que genera no empeora la detección", { timeout: 120_000 }, async () => {
-    const root = await proyecto("no-degradar");
+  test("what it generates does not worsen detection", { timeout: 120_000 }, async () => {
+    const root = await proyecto("do-not-degrade");
     const antes = await run("summary", ["--project-root", root]);
     await run("init", ["--project-root", root]);
     const despues = await run("summary", ["--project-root", root]);
@@ -72,33 +71,37 @@ describe("init", () => {
     expect(nombre(despues.output)).toBe(nombre(antes.output));
   });
 
-  test("el siguiente paso que sugiere se puede ejecutar de verdad", { timeout: 120_000 }, async () => {
-    const root = await proyecto("siguiente-paso");
+  test("the suggested next step is actually runnable", { timeout: 120_000 }, async () => {
+    const root = await proyecto("next-step");
     const { output } = await run("init", ["--project-root", root]);
-    expect(output).toContain("export-to-postman generate");
-    // `bun run build` es un script de este repo, no del proyecto ajeno.
+    // The suggested command uses the canonical name (`BIN_NAME`);
+    // if the binary is renamed, this test alerts together with the
+    // launchers one.
+    expect(output).toContain("apisrc generate");
+    // `bun run build` is a script of this repo, not of the user's
+    // project.
     expect(output).not.toContain("bun run build");
   });
 
-  test("`--name` manda sobre la detección", { timeout: 120_000 }, async () => {
+  test("`--name` overrides the detection", { timeout: 120_000 }, async () => {
     const root = await proyecto("con-nombre");
     const { output } = await run("init", ["--project-root", root, "--name", "mi-api"]);
     expect(output).toContain("mi-api");
   });
 
-  test("la configuración que escribe la lee `generate`", { timeout: 120_000 }, async () => {
+  test("the configuration it writes is read by `generate`", { timeout: 120_000 }, async () => {
     const root = await proyecto("config-usable");
     await run("init", ["--project-root", root]);
     const { code, output } = await run("generate", ["--project-root", root]);
     expect(code, output).toBe(0);
-    // Y la colección sale con el nombre bueno, no con el del directorio.
+    // And the collection comes out with the right name, not the directory's.
     const summary = await run("summary", ["--project-root", root]);
     expect(summary.output).toContain("Zero-config:      no");
   });
 });
 
 describe("push", () => {
-  test("sin clave sale con 1 y dice dónde se saca una", { timeout: 120_000 }, async () => {
+  test("without a key exits with 1 and says where to get one", { timeout: 120_000 }, async () => {
     const root = await proyecto("push-sin-clave");
     const { code, output } = await runProcess(
       "bun",
@@ -111,10 +114,10 @@ describe("push", () => {
   });
 
   /**
-   * Una clave es un secreto. Que aparezca en la salida es como acaba en
-   * el log de un CI, y de ahí no se borra.
+   * A key is a secret. Having it appear in the output is how it ends
+   * up in a CI log, and from there it cannot be erased.
    */
-  test("nunca imprime la clave que se le pasa", { timeout: 120_000 }, async () => {
+  test("never prints the key it is given", { timeout: 120_000 }, async () => {
     const root = await proyecto("push-clave-falsa");
     const secreto = "pmak-000000000000000000000000-secreto-que-no-debe-salir";
     const { output } = await run("push", [
@@ -129,26 +132,90 @@ describe("push", () => {
 });
 
 describe("open", () => {
-  test("sin colección sale con 1 y no cuelga", { timeout: 120_000 }, async () => {
+  test("without a collection exits with 1 and does not hang", { timeout: 120_000 }, async () => {
     const root = await proyecto("open-sin-coleccion");
     const { code } = await run("open-postman", ["--project-root", root]);
     expect(code).toBe(1);
   });
 });
 
-describe("los comandos que escriben lo hacen de forma atómica", () => {
+describe("generate --open", () => {
   /**
-   * `init` escribía con `writeFileSync`. Un fallo a mitad dejaba una
-   * configuración truncada, que es peor que ninguna: el proyecto pasa a
-   * tener un fichero que no parsea y `generate` deja de arrancar.
+   * Before, this built a dead path
+   * (`(import.meta as { dir?: string }).dir ?? process.cwd()` +
+   * `/open-postman.script.ts`) and produced `MODULE_NOT_FOUND`. Now
+   * `generate` imports the sibling module's `main` and calls it
+   * in-process. Here the **integration** is verified: the command
+   * actually calls the function, and `open-postman` runs.
+   *
+   * `POSTMAN_FORCE_OPEN=web` is forced so open-postman does not try
+   * to launch the desktop app (which would block the test in CI
+   * without a display) and exits through the deterministic web
+   * branch.
+   *
+   * The timeout is wide on purpose: this test spawns a whole `bun`
+   * process that loads the CLI, scans a project and writes a
+   * collection. How long that takes is a property of the machine, and
+   * under the load of the whole suite it can go past two minutes.
+   * The assertion is about what the command printed, not about how
+   * fast it was.
+   *
+   * The child gets the **same** deadline as the test, minus a margin:
+   * `runProcess` kills the process it spawned after `timeoutMs`, and
+   * with the default (120 s) the child could die while the test still
+   * believed it had time left — a failure that looked like a timeout
+   * of the test and was really a kill of the child. When the machine
+   * is saturated (another suite running on the same cores) the child
+   * needs minutes, not seconds: in isolation this test takes 0.6 s.
    */
-  test("la configuración que deja `init` es TypeScript completo", { timeout: 120_000 }, async () => {
-    const root = await proyecto("init-atomico");
+  test("invokes open-postman in-process (web branch)", { timeout: 600_000 }, async () => {
+    const root = await proyecto("generate-open");
+    const { code, output } = await runProcess(
+      "bun",
+      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
+      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
+    );
+    expect(code, output).toBe(0);
+    expect(output).toContain("--open");
+  });
+
+  /**
+   * `generate` must generate **first** and open **after**. If the
+   * order is inverted, `--open` opens a file that does not exist
+   * yet and confuses the user.
+   *
+   * The timeout is wide for the same reason as the test above: this
+   * spawns the whole CLI, and the machine decides how long that
+   * takes. The child dies with the test's deadline, minus a margin.
+   */
+  test("generates before opening", { timeout: 600_000 }, async () => {
+    const root = await proyecto("generate-open-orden");
+    const { output } = await runProcess(
+      "bun",
+      [join(CLI_COMMANDS_DIR, "generate.script.ts"), "--project-root", root, "--open"],
+      { env: { POSTMAN_FORCE_OPEN: "web" }, timeoutMs: 540_000 },
+    );
+    const idxGenerate = output.indexOf("✔");
+    const idxOpen = output.indexOf("--open");
+    expect(idxGenerate).toBeGreaterThanOrEqual(0);
+    expect(idxOpen).toBeGreaterThan(idxGenerate);
+  });
+});
+
+describe("commands that write do so atomically", () => {
+  /**
+   * `init` wrote with `writeFileSync`. A mid-write failure left a
+   * truncated configuration, which is worse than none: the project
+   * ends up with a file that does not parse and `generate` stops
+   * starting.
+   */
+  test("the configuration left by `init` is complete TypeScript", { timeout: 120_000 }, async () => {
+    const root = await proyecto("init-atomic");
     const { output } = await run("init", ["--project-root", root]);
     const ruta = /· (\S+config\.constant\.ts)/.exec(output)?.[1] ?? "";
     expect(ruta).not.toBe("");
     const contenido = await readFile(ruta, "utf8");
-    // Sin truncar: abre y cierra.
+    // No truncation: it opens and closes.
     expect(contenido).toContain("export const");
     expect(contenido.trimEnd().endsWith("}") || contenido.trimEnd().endsWith(";")).toBe(true);
   });

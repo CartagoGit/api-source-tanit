@@ -37,7 +37,7 @@ import { REPO_ROOT, fromRoot } from "../helpers/root.helper.js";
 import { collectFiles } from "../helpers/walk.helper.js";
 
 /** Dónde se busca. */
-const ROOTS = ["projects", "scripts", "tests"] as const;
+const ROOTS = ["packages", "scripts", "tests"] as const;
 
 /**
  * Los sitios donde una aserción es legítima, **con su motivo**.
@@ -47,12 +47,49 @@ const ROOTS = ["projects", "scripts", "tests"] as const;
  * parece, en vez de copiar el patrón porque «ya había otro».
  */
 const PERMITIDOS: Readonly<Record<string, string>> = {
-  "projects/plugins/mcp-vertex_expostman/tests/helpers/plugin-context.ts":
+  "integrations/delendai/tests/helpers/plugin-context.ts":
     "doble de test contra el McpServer del SDK: un tipo de terceros con decenas " +
     "de miembros del que solo se usa `registerTool`",
+  "integrations/delendai/src/lib/helpers/smoke-runner.helper.ts":
+    "estrechez de un Record<string,unknown> validado a IExpectedFixture: el predicado " +
+    "asExpectedFixture ya garantiza la forma, pero TS no puede inferir la estrechez " +
+    "sin el cast",
   "tests/helpers/postman-builders.ts":
     "construye items inválidos a propósito para los tests de invariantes, y " +
     "declara qué le falta a cada uno",
+  // f00014 follow-up + x00058 — parser AST del host config. La
+  // metadata de `@babel/types` se cruza con nuestros tipos y la
+  // única forma limpia de saltar es declarar la estrechez a mano.
+  // El helper ya valida cada assertion en su propio guard, así que
+  // el cast es de compatibilidad, no de corrección.
+  "packages/core/discovery/host-config-parser.service.ts":
+    "parser AST de @babel/types: los tipos del paquete son más anchos que los " +
+    "nuestros y la estrechez está validada por guards previos a cada cast",
+  // Stubs de fetch: la firma real exige `headers.get`, `text()`, `json()`,
+  // `ok`, `status` y el `RequestInit`; los tests verifican parte del
+  // contrato y TS no puede estrechar una lambda parcial sin el cast.
+  // La alternativa (declarar un IFetchLike) ya existe en runtime, pero
+  // los tests siguen la firma pública de la API.
+  "tests/core/postman-api.service.spec.ts":
+    "stubs de fetch que implementan sólo los miembros que verifica cada test; " +
+    "la forma completa la declara IPostmanFetchLike en runtime",
+  // Builder de IRouteCallExpression con `args` parcial: los tests sólo
+  // necesitan los campos que el extractor bajo prueba consume. El
+  // helper ya marca con `as` los campos exigidos por IRouteCallExpression.
+  "tests/frameworks/extract-routes.spec.ts":
+    "builder de IRouteCallExpression con args parciales: el helper construye " +
+    "sólo los campos consumidos por el extractor y los marca explícitamente",
+  // Source text de un handler NestJS en string: el inferrer parsea el
+  // contenido, no ejecuta; el `as any` vive dentro del literal.
+  "tests/frameworks/nestjs-response-inferrer.spec.ts":
+    "literal TS dentro de un string que el inferrer parsea; el cast vive " +
+    "en el código de test, no se ejecuta",
+  // El `config` parcial cubre sólo los campos que el exporter de OpenAPI
+  // bajo prueba consume; los demás se rellenan con defaults al pasar por
+  // exportOpenApiCollection.
+  "tests/frameworks/response-inferrers-wiring.spec.ts":
+    "IExportInput.config con los campos que el exporter bajo prueba consume; " +
+    "los demás los rellena exportOpenApiCollection con defaults",
 };
 
 /** Las formas de apagar el compilador. */

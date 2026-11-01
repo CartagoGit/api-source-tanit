@@ -5,10 +5,21 @@
   // sección, que es lo que obliga a que `core` compile sin
   // `frameworks/` delante. Este existe para que el editor resuelva
   // cualquier fichero del repo sin tener que elegir proyecto.
+  //
+  // `experimentalDecorators` va aquí porque este proyecto **incluye
+  // `tests/`**, y un test de Angular declara componentes anfitrión
+  // con `@Component`. Sin esta opción, TypeScript los trata como
+  // decoradores estándar —una propuesta que Node no implementa— y el
+  // fichero no arranca: "Invalid or unexpected token". Los ficheros
+  // de `packages/app` llevan la suya en su propio tsconfig; esta es
+  // para los tests.
   "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "experimentalDecorators": true
+  },
   "include": [
-    "projects/**/*.ts",
-    "projects/**/*.d.ts",
+    "packages/**/*.ts",
+    "packages/**/*.d.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "vitest.config.ts",

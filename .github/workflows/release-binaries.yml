@@ -4,7 +4,10 @@ name: release-binaries
 # plataforma. No necesitan Bun ni Node instalados en la máquina destino.
 on:
   release:
-    types: [published]
+    # `prereleased` además de `published`: un alfa también es una
+    # release, y son los ejecutables autocontenidos los que se
+    # descargan sin instalar nada.
+    types: [published, prereleased]
   workflow_dispatch:
 
 jobs:
@@ -17,7 +20,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.2
 
       - run: bun install --frozen-lockfile
 
@@ -31,11 +34,11 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v3
         with:
-          files: dist/expostman-*
+          files: dist/apisrc-*
 
       - name: Subir como artefacto (ejecución manual)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: binaries
-          path: dist/expostman-*
+          path: dist/apisrc-*

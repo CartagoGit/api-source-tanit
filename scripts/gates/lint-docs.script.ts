@@ -7,7 +7,7 @@
  *   1. Todo `bun run <script>` cita un script que existe en el
  *      `package.json`.
  *   2. Toda ruta de fichero que se menciona existe en el repo.
- *   3. Todo `expostman <comando>` es un comando que el CLI conoce.
+ *   3. Todo `apisrc <comando>` es un comando que el CLI conoce.
  *   4. Todo enlace relativo apunta a algo que existe.
  *   5. Los números que la prosa afirma coinciden con la realidad.
  *   6. Cada framework del registro tiene su sección en `FRAMEWORKS.md`.
@@ -16,7 +16,7 @@
  * Existe porque la documentación se queda vieja en silencio y de la peor
  * manera: quien la sigue es alguien que acaba de llegar, y lo primero
  * que hace es un comando que no funciona. Ya pasó — al reorganizar en
- * `projects/`, `docs/INSTALL.md` seguía diciendo
+ * `packages/`, `docs/INSTALL.md` seguía diciendo
  * `bun run scripts/generate.script.ts`, que llevaba tres commits sin
  * existir.
  *
@@ -34,7 +34,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
 import { PACKAGE_JSON, REPO_ROOT } from "../helpers/root.helper.js";
-import { FRAMEWORK_IDS } from "../../projects/contracts/constants/frameworks/framework-ids.constant.js";
+import { FRAMEWORK_IDS } from "../../packages/contracts/constants/frameworks/framework-ids.constant.js";
 
 /** Carpetas de documentación que se revisan. */
 const DOC_ROOTS = ["docs", "examples", "."] as const;
@@ -42,7 +42,7 @@ const DOC_ROOTS = ["docs", "examples", "."] as const;
  * Las propuestas quedan fuera enteras.
  *
  * Una propuesta describe lo que **todavía no existe**: `p00040` pide un
- * `bun run docs:build` y `p00035` un `expostman ui`, y que no estén en
+ * `bun run docs:build` y `p00035` un `apisrc ui`, y que no estén en
  * el `package.json` es precisamente su motivo de ser. Exigirles que
  * citen solo cosas existentes obligaría a llenarlas de exenciones y
  * convertiría el lint en ruido. Las cerradas, además, describen el
@@ -278,7 +278,7 @@ function checkAnchors(
  *
  * Esto también se quedaba viejo en silencio: `docs/FRAMEWORKS.md`
  * enlazaba `services/scanner-registry.ts` mucho después de que el
- * registro pasara a `projects/frameworks/framework.registry.ts`, y era
+ * registro pasara a `packages/frameworks/framework.registry.ts`, y era
  * justo el enlace que le decías a alguien que quiere añadir un scanner.
  */
 async function checkLinks(
@@ -330,12 +330,12 @@ async function checkSnippet(
     }
   }
 
-  for (const match of snippet.matchAll(/\bexpostman ([a-z][\w-]*)/g)) {
+  for (const match of snippet.matchAll(/\bapisrc ([a-z][\w-]*)/g)) {
     const command = match[1]!;
     if (!known.commands.has(command)) {
       problems.push({
         ...where,
-        detail: `\`expostman ${command}\` no es un comando del CLI`,
+        detail: `\`apisrc ${command}\` no es un comando del CLI`,
       });
     }
   }
@@ -344,7 +344,7 @@ async function checkSnippet(
 /**
  * Las filas de tabla que documentan un comando: `| \`check\` | … |`.
  *
- * Se mira aparte de `expostman <cmd>` porque una tabla no repite el
+ * Se mira aparte de `apisrc <cmd>` porque una tabla no repite el
  * nombre del binario en cada fila, y ese hueco dejó pasar una entrada
  * muerta: `enrich` siguió documentado en `docs/INSTALL.md` después de
  * retirarse del CLI. Documentar un comando que no existe manda a
@@ -448,12 +448,12 @@ async function checkCommandsDocumented(
   }
   const all = texts.join("\n");
   for (const command of commands) {
-    if (all.includes(`expostman ${command}`)) continue;
+    if (all.includes(`apisrc ${command}`)) continue;
     problems.push({
       file: "docs/INSTALL.md",
       line: 0,
       detail:
-        `\`expostman ${command}\` existe en el CLI y no se menciona en la ` +
+        `\`apisrc ${command}\` existe en el CLI y no se menciona en la ` +
         "documentación de usuario. Un comando que solo está en el código no lo usa nadie.",
     });
   }
@@ -465,10 +465,10 @@ async function main(): Promise<number> {
   };
   const scripts = new Set(Object.keys(packageJson.scripts ?? {}));
 
-  // Los comandos del CLI salen de su propio dispatcher, no de una lista
+  // Los comandos del CLI salen de su propio registro, no de una lista
   // a mano: una lista paralela se queda vieja igual que la doc.
   const cliSource = await readFile(
-    join(REPO_ROOT, "projects", "cli", "cli.script.ts"),
+    join(REPO_ROOT, "packages", "cli", "commands.constant.ts"),
     "utf8",
   );
   const commands = new Set(

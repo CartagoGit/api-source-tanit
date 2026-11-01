@@ -3,10 +3,11 @@
   // relaja: si algo no compila con esto, es que hay que arreglarlo,
   // no que hay que bajar el listón para esa carpeta.
   //
-  // `types: []` es deliberado. El paquete no depende de `@types/node`
-  // ni de `@types/bun`: las declaraciones ambient que necesita están
-  // escritas a mano en `contracts/postman.d.ts`. Así el binario
-  // compilado no arrastra tipos de un runtime que puede no estar.
+  // `types: []` es deliberado. Las declaraciones ambient que necesita
+  // el producto están escritas a mano en `contracts/postman.d.ts`.
+  // `@types/node` y `@types/bun` están como devDependencies (x00053)
+  // pero no entran en `types: []` para que el binario compilado no
+  // arrastre tipos de un runtime que puede no estar.
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

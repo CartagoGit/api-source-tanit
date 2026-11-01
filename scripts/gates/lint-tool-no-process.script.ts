@@ -10,7 +10,7 @@
  *   - no es portable (el cwd de producción no es el de desarrollo),
  *   - y en el caso de `process.env` filtra secretos del host.
  *
- * Alcance: `projects/plugins/mcp-vertex_expostman/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
+ * Alcance: `integrations/delendai/**\/src/lib/tools/**\/*.ts`. Los servicios SÍ pueden
  * leer `process.env` — `POSTMAN_PROJECT_ROOT` es un fallback documentado.
  *
  * Uso:
@@ -18,10 +18,10 @@
  */
 import { readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
-import { collectFiles } from "../../projects/core/helpers/fs-walk.helper.js";
+import { collectFiles } from "../../packages/core/helpers/fs-walk.helper.js";
 import { REPO_ROOT } from "../helpers/root.helper.js";
 
-const TOOLS_GLOB_ROOT = resolve(REPO_ROOT, "projects/plugins/mcp-vertex_expostman");
+const TOOLS_GLOB_ROOT = resolve(REPO_ROOT, "integrations/delendai");
 
 /** Cada regla es un patrón + la explicación de por qué está prohibido. */
 interface IRule {
@@ -57,6 +57,24 @@ interface IViolation {
 }
 
 /**
+ * Ficheros donde la prohibición se levanta — **con motivo**.
+ *
+ * El único caso legítimo en este plugin es el snapshot inmutable del
+ * proceso (`process-snapshot.helper.ts`): su razón de existir es leer
+ * `process.env` / `process.cwd()` **una vez al boot** y exponer el
+ * resultado como constantes congeladas. El universal §6 ("Async I/O
+ * only in hot paths; `*Sync` is boot-time only") lo permite; el gate
+ * lo prohíbe por defecto porque la mayoría de los lectores del proceso
+ * lo hacen en hot path. Aquí se documenta la excepción.
+ */
+const PERMITIDOS: Readonly<Record<string, string>> = {
+  "integrations/delendai/src/lib/contracts/constants/runner-snapshot.constant.ts":
+    "snapshot inmutable del proceso al boot del plugin (universal §6: lectura " +
+    "de proceso es boot-time); el resto del plugin consume las constantes " +
+    "congeladas en vez de leer process.* en hot path",
+};
+
+/**
  * Comprueba un fuente y devuelve sus infracciones.
  *
  * Se ignoran las líneas de comentario: la prohibición se explica en el
@@ -78,22 +96,35 @@ export function lintToolSource(file: string, source: string): IViolation[] {
 }
 
 async function main(): Promise<number> {
+  // Los tools (`*.tool.ts`) son la superficie del plugin. Los helpers
+  // (`*.helper.ts`) viven en el mismo ciclo de vida del servidor MCP
+  // de vida larga, así que la prohibición del universal §6 ("no
+  // process.cwd() / process.env en engines") aplica a los dos. Antes
+  // solo se cubrían los tools y se les colaba `process.cwd()` desde
+  // los helpers: cualquier agente que pidiera cwd vía context lo
+  // recibía vacío y caía al global.
   const files = (
-    await collectFiles(TOOLS_GLOB_ROOT, (name) => name.endsWith(".tool.ts"))
-  ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}tools${"/"}`));
+    await collectFiles(TOOLS_GLOB_ROOT, (name) =>
+      name.endsWith(".tool.ts") || name.endsWith(".helper.ts"),
+    )
+  ).filter((f) => f.includes(`${"/"}src${"/"}lib${"/"}`));
 
   if (files.length === 0) {
-    console.log("lint:tools — no se encontró ningún *.tool.ts bajo projects/plugins/mcp-vertex_expostman/");
+    console.log("lint:tools — no se encontró ningún *.tool.ts / *.helper.ts bajo integrations/delendai/src/lib/");
     return 0;
   }
 
   const violations: IViolation[] = [];
   for (const file of files) {
+    const rel = relative(REPO_ROOT, file);
+    if (PERMITIDOS[rel] !== undefined) continue;
     violations.push(...lintToolSource(file, await readFile(file, "utf8")));
   }
 
   if (violations.length === 0) {
-    console.log(`lint:tools — ${files.length} tools, sin infracciones`);
+    console.log(
+      `lint:tools — ${files.length} tools/helpers (${Object.keys(PERMITIDOS).length} excepción con motivo), sin infracciones`,
+    );
     return 0;
   }
 

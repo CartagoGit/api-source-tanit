@@ -1,6 +1,121 @@
 # Changelog
 
-## Sin publicar — 2026-08-07
+## 0.1.0-alpha.1 (2026-11-01) — El primer alfa de Tanit
+
+Tanit descubre tu API **en el código** y la exporta: una colección de
+Postman, un documento de OpenAPI, un workspace de Bruno, un HAR, un
+cURL. Lee Express, Fastify, NestJS, Django, FastAPI, Flask, Gin,
+Fiber, Hono, Ktor, Laravel, Rails, Phoenix, Actix, Rocket, Spring Boot,
+Symfony, GraphQL, gRPC, WebSockets, SSE, AsyncAPI, tRPC, ASP.NET y las
+especificaciones OpenAPI.
+
+Ésta es la **primera versión que sale de este repositorio**, y es un
+**alfa**: hasta ahora la herramienta sólo existía como un checkout. Un
+alfa dice "esto se rompe y hay que probarlo", así que el número no es
+`1.0.0` sino `0.1.0-alpha.1`, y la release sale marcada como
+prerelease. Se distribuye en la release de GitHub, no en npm.
+
+### La app de escritorio
+
+- **La interfaz es una app de verdad** (f00017). Sustituye al monolito
+  de un único fichero por una aplicación Angular *standalone*:
+  componentes con signals, tres ficheros cada uno (`.ts`, `.html` y
+  `.scss`), y un shell con navegación agrupada, paleta de comandos y
+  selector nativo de carpetas.
+- **Habla tres idiomas** —inglés, español y francés— y lo dice en
+  **Ajustes**. El cambio se ve al momento, sin recargar, y el
+  documento declara su `lang` para el lector de pantalla.
+- **Export Center** con vista previa: dice qué ficheros se escribirían,
+  cuánto pesan y si alguno pisaría lo que ya está ahí, antes de
+  escribir nada.
+- **Endpoints Explorer** con filtros combinables y detalle por
+  transporte: HTTP, gRPC, WebSockets, SSE y GraphQL.
+- **El historial persiste** en disco. Cada exportación deja una
+  revisión con su hash; dos revisiones se comparan, una se vuelve a
+  exportar y otra se restaura. Una revisión sobrevive a la sesión que
+  la creó.
+- **La clave de Postman** se guarda en el almacén seguro del sistema
+  (Keychain, Credential Manager o Secret Service) y en el navegador
+  sólo vive en memoria, mientras dure la sesión.
+
+### El CLI y la API
+
+- **Doce comandos**: `generate`, `inspect`, `list`, `check`,
+  `validate`, `sync`, `push`, `watch`, `history`, `summary`, `ui` y
+  `doctor`. Los que se pueden hacer sin terminal, se hacen sin
+  terminal.
+- **Un solo escaneo por proyecto.** Abrir un proyecto abre una
+  sesión con una instantánea inmutable; las vistas —endpoints,
+  servicios, historial, vista previa de la exportación— se derivan de
+  ella en vez de volver a escanear.
+- **`--framework`** para cuando la detección no puede acertar: un
+  monorepo, un alias en el `package.json` o un manifiesto generado.
+- **Autenticación honesta**: OAuth2, API key y lo que el código
+  declara de verdad. Lo que no se ha comprobado se dice que no se ha
+  comprobado.
+
+### Los exportadores y los frameworks
+
+- **Seis formatos desde el mismo catálogo de endpoints**: Postman,
+  OpenAPI 3.1, Insomnia v4, Bruno, HAR y cURL. Salen del mismo
+  escaneo, así que no pueden discrepar entre sí.
+- **Inferencia de esquemas** desde el código: DTOs de TypeScript,
+  Pydantic, FormRequests, Zod, Joi, Marshmallow y JSON Schema.
+- **Inferencia de respuestas** a partir de los handlers, las firmas,
+  los decoradores y las anotaciones explícitas.
+- **Aserciones automáticas** y documentación derivada en la colección.
+
+### El núcleo
+
+- **Motor de escaneo sobre AST**, no sobre regex: el grafo de
+  símbolos resuelve las rutas que se importan en otro fichero, y el
+  LanguageIR entiende `this.router.get`, los alias y los re-exports.
+- **Escaneo concurrente acotado** y diagnósticos que separan *no
+  detectado* de *detector roto*.
+- **Ninguna escritura a medias**: todo se escribe con temporal y
+  `rename`, y `generate` es una transacción —no escribe nada antes de
+  validar que hay endpoints.
+- **TypeScript estricto en todas las secciones**, con
+  `noUncheckedIndexedAccess`.
+
+### La infraestructura
+
+- **CI partida en jobs paralelos** con un `ci-summary` que resume el
+  resultado, y `develop` protegida por ese check.
+- **Un solo comando dice si el repo está sano**: `bun run validate`
+  (tipado, ~40 gates, la suite entera, los 25 ejemplos y los
+  benchmarks).
+- **Versionado por canales**: alfa, beta, rc y estable. El prefijo de
+  la versión decide el canal, y el canal decide si la release se marca
+  como prerelease. La versión vive en tres ficheros y un gate dice si
+  discrepan.
+- **`develop` es donde se trabaja, `main` es donde sale una
+  versión**: cada PR de `develop` a `main` corta una versión.
+- **Publicación desde CI**: al empujar un tag sobre `main` se crea la
+  release —con las notas que salen del CHANGELOG— y se adjuntan los
+  ejecutables autocontenidos.
+- **Release de escritorio por plataforma** con firma, notarización,
+  verificador y SBOM, preparado para cuando haya credenciales de
+  Apple, Microsoft y GnuPG.
+
+### El renombrado
+
+Brand rename (track: `export-to-postman` → `api-source-tanit`). Full list:
+
+- Brand: "Export to Postman" → **Tanit**, tagline "API Source Discovery".
+- npm package: `api-source-tanit` (no scope).
+- Repository: `github.com/CartagoGit/api-source-tanit`.
+- CLI bin: `apisrc` (was `expostman`).
+- Plugin: `delendai_tanit`; qualified tools: `delendai_tanit_*`.
+- Output dir: `tanit/` (was `export-to-postman/`).
+- Config dirs: `~/.config/tanit/`, `~/.tanit/` (was `…/expostman/`, `~/.expostman/`).
+- Project dotfile: `.tanitrc.json` (was `.expostmanrc.json`).
+- Env vars: `TANIT_*` (was `EXPOSTMAN_*`).
+- Tauri app: **Tanit** (`productName`), identifier `dev.cartago.tanit`.
+- Sidecar binary: `apisrc-<target-triple>` (CLI bin), wrapping the app **Tanit**.
+- Postman `creator.name`: `"tanit"`; Insomnia `__export_source`: `"tanit"`.
+
+Proposals historical (`p00001`–`p00043`, `x00001`–`x00025`, `a00001`–`a00016`, etc.) keep `track: export-to-postman` as archaeology — links to the old name in markdown are stable. See [`b00001`](docs/delendai/proposals/done/breakings/b00001-rebrand-tanit-el-proyecto-pasa-de-export-to-postman-a-tanit-api-source-discovery.md).
 
 ### Novedades
 
@@ -25,13 +140,13 @@
   Fiber copia la API de Express pero en Go. No se reutiliza el scanner de Gin porque las diferencias no son cosmeticas: Fiber agrupa con `app.Group("/api")` devolviendo un router encadenable, y sus tags son `validate:"..."` (go-playground/validator) en vez del `binding:"..."` de Gin.
 - **hono**: scanner propio, y arreglo de un bug del parser de zod compartido (`9fe1c71`)
   Hono es el framework de los runtimes de borde (Workers, Deno, Bun). Se parece a Express, pero dos cosas rompen un scanner escrito para Express:
-- **fastify**: scanner propio que lee su JSON Schema (p00029 S1) y plugin en mcp-vertex_expostman (`ed4a7eb`)
+- **fastify**: scanner propio que lee su JSON Schema (p00029 S1) y plugin en delendai_expostman (`ed4a7eb`)
   Fastify lo recogia el scanner de Express, que lo reconocia por parecido de sintaxis y se perdia los esquemas enteros. Y eso es tirar la mejor fuente que puede tener un scanner: Fastify declara el esquema DENTRO de la propia ruta, y es JSON Schema, o sea tipos exactos en vez de inferidos.
 - **bin**: lanzadores por ecosistema, sin reimplementar nada (p00022) (`b84b0f6`)
   bin/expostman (POSIX), bin/expostman.ps1 (Windows) y bin/wrappers/ con Python y PHP. Go, Gradle y Make se documentan como una linea en su fichero de build, que es todo lo que necesitan.
 - **paths**: registro de rutas del repo y lint que prohibe contar ".." (`5a0148c`)
   Escribir resolve(__dirname, "../../..") ata un fichero a su profundidad en el arbol. En cuanto se mueve, la constante apunta a otro sitio Y NO FALLA: una ruta equivocada no lanza, simplemente no encuentra nada.
-- **naming**: expostman como bin canonico y el plugin bajo plugins/mcp-vertex (p00025) (`28e662e`)
+- **naming**: expostman como bin canonico y el plugin bajo plugins/delendai (p00025) (`28e662e`)
   Habia tres nombres a la vez y ninguno decia cual era el bueno: postman-from-routes, postman-exporter y export-to-postman.
 - **output**: escribir en export-to-postman/ y no en el build/ ajeno (p00041 S1) (`c98a2c5`)
   La salida iba a `${projectRoot}/build/`. build/ no es una carpeta cualquiera: es la salida por defecto de Gradle, de Maven con ciertas configuraciones, de muchos proyectos de Go y de medio mundo de Makefiles. Estabamos mezclando nuestras colecciones con los artefactos de compilacion de quien usa la herramienta, en una carpeta que su `clean` borra entera.
@@ -104,7 +219,7 @@
 - **discovery**: escanear todos los frameworks que reconocen el proyecto (p00024) (`13f8240`)
   Un repo hibrido —un Express heredado sirviendo la API vieja mientras las rutas nuevas se escriben en Next.js— es una forma de API real y frecuente, y el pipeline la trataba fatal: el orchestrator puntuaba los dos detectores, se quedaba con el de mas score y tiraba el otro.
 - **plugin**: el plugin como proyecto independiente y su contrato con el CLI (p00027) (`160365d`)
-  El plugin es un paquete propio que mcp-vertex carga en su proceso, pero estaba tratado como una carpeta mas del CLI. Eso habia dejado cuatro cosas rotas a la vez, todas en silencio.
+  El plugin es un paquete propio que delendai carga en su proceso, pero estaba tratado como una carpeta mas del CLI. Eso habia dejado cuatro cosas rotas a la vez, todas en silencio.
 - **plugin**: errores de tipos que el gate nunca había visto (p00025 S1+S2) (`2f7b465`)
   `bun run typecheck` usa el tsconfig de la raíz, cuyo `include` no lista `plugins/`. El plugin llevaba desde siempre fuera del gate y tenía 5 errores:
 - **scanners**: tres bugs que hacían perder endpoints en proyectos reales (`c5f993f`)
@@ -132,10 +247,10 @@
 - **runner**: tolerate invalid cwd / missing bun binary (`b329829`)
   runBunSpawnSyncArray used to throw on cwd inválido or binario no encontrado, which propagated up to MCP tools as an unhandled exception. Wrap the spawn in try/catch and return a 'failed' result (status:null, error:Error) so the caller can report it as a step with ok=false and an actionable detail instead of crashing.
 - **p00013**: plugin boot, zod v4 alignment, namespace contract (`ce6dc37`)
-  Server boot was failing with `ReferenceError: NAMESPACE is not defined` in 3 tools of the postman-exporter plugin. Beyond that, the plugin did not typecheck (6 ZodObject vs ZodRawShapeCompat errors, 1 readonly-issues.push error, missing @types/node). All four classes of bug share one root cause: the plugin was pinned to zod 3.23.8 while @mcp-vertex/core uses zod 4.4.x, whose ZodRawShapeCompat requires the standard interface (`~standard`, `~validate`).
+  Server boot was failing with `ReferenceError: NAMESPACE is not defined` in 3 tools of the postman-exporter plugin. Beyond that, the plugin did not typecheck (6 ZodObject vs ZodRawShapeCompat errors, 1 readonly-issues.push error, missing @types/node). All four classes of bug share one root cause: the plugin was pinned to zod 3.23.8 while @delendai/core uses zod 4.4.x, whose ZodRawShapeCompat requires the standard interface (`~standard`, `~validate`).
 - **agents**: replace unsupported GPT-5.4 model with MiniMax M3 (`ede6494`)
 - **agents**: replace unsupported MCP glob with explicit tool names (`a8276a6`)
-  VS Code silently ignores 'mcp-project-mcp-vertex/*' in the agents' `tools:` permission list — confirmed by the prompt validator warning "Unknown tool 'mcp-project-mcp-vertex/*' will be ignored." Each agent was left with only `read, search` (or `read, search, execute`), unable to invoke the MCP server at all.
+  VS Code silently ignores 'mcp-project-delendai/*' in the agents' `tools:` permission list — confirmed by the prompt validator warning "Unknown tool 'mcp-project-delendai/*' will be ignored." Each agent was left with only `read, search` (or `read, search, execute`), unable to invoke the MCP server at all.
 
 ### Rendimiento
 
@@ -145,7 +260,7 @@
 ### Refactors
 
 - **naming**: el plugin y su namespace MCP se llaman como el proyecto (`b60433c`)
-  El proyecto se renombro a export-to-postman pero el plugin se quedo en postman-exporter, asi que sus tools se registraban como `mcp-vertex_postman-exporter_generate` mientras el binario ya era `export-to-postman`. Dos nombres para una cosa.
+  El proyecto se renombro a export-to-postman pero el plugin se quedo en postman-exporter, asi que sus tools se registraban como `delendai_postman-exporter_generate` mientras el binario ya era `export-to-postman`. Dos nombres para una cosa.
 - projects/{core,frameworks,cli,ui,plugin} y scripts/{gates,build} (p00020) (`ad962f8`)
   La estructura era la de la primera version, cuando esto solo generaba colecciones de Laravel. No habia un centro: lo que el proyecto HACE estaba repartido en tres carpetas de la raiz, al mismo nivel que docs/ y examples/. Y scripts/ tenia 19 ficheros planos que eran tres familias distintas.
 - carpetas contenedoras en plural (p00041 S2) (`54ddc4e`)
@@ -159,7 +274,7 @@
 
 - add proposals for advanced API protocol support and expanded framework coverage, and update project configuration and scripts. (`01d8d19`)
 - **p00007**: reescribir con el reparto real entre los dos repositorios (`53dc58b`)
-  La propuesta decía "publicar @mcp-vertex/core en npm **y** cambiar los plugins". La primera mitad no es de este repositorio.
+  La propuesta decía "publicar @delendai/core en npm **y** cambiar los plugins". La primera mitad no es de este repositorio.
 - **audit**: segunda tanda de bugs y estado final (0 propuestas abiertas) (`c855934`)
 - **audit**: estado final, 6 bugs nuevos y lo que queda abierto (`54ba809`)
 - reescribir la documentación de uso e import en Postman (p00019) (`391924f`)
@@ -215,16 +330,16 @@
 - rename project and binaries to "export-to-postman" (`7755d31`)
 - **proposals**: anclar el esqueleto de carpetas con .gitkeep (`8217410`)
   git no versiona directorios: en cuanto la ultima propuesta de un estado se movia a otro, la carpeta desaparecia del repo y el siguiente que quisiera usar ese estado se quedaba sin sitio donde dejarla.
-- **proposals**: adoptar la disposición por estado de mcp-vertex (`b638fc4`)
+- **proposals**: adoptar la disposición por estado de delendai (`b638fc4`)
   Las 25 propuestas vivían todas en `ready/`, incluidas las 17 cerradas. `ready/` no servía para saber qué queda por hacer, que es justo para lo que existe.
 - cerrar p00003, p00004, p00005, p00012 y p00013 (`5707dcf`)
   Revisadas contra el estado real del repo, no contra lo que decían.
 - **merge**: unificar main y develop en una sola línea de trabajo (`7d74fa9`)
   main llevaba todo el trabajo de scanners (12 frameworks, fixtures, suites unit/e2e) mientras develop llevaba las propuestas p00004-p00013, CLAUDE.md, CONTRIBUTING.md, los agents de host y el bootstrap de proyecto. Este merge junta ambas.
 - **docs**: project bootstrap + extension-contract superseded (`8f9a28e`)
-  Wire the project-specific agent bootstrap chain so postman-exporter follows the same host-appendix pattern that mcp-vertex itself uses, instead of being a hand-rolled copy of the universal bootstrap.
-- **workspace**: align postman-exporter with mcp-vertex host contract (`88e892a`)
-  Adopt the canonical cross-project setup from mcp-vertex docs/CROSS-PROJECT-SETUP.md and docs/mcp-vertex/CROSS-IDE.md so this workspace follows the same host contract as mcp-vertex itself.
+  Wire the project-specific agent bootstrap chain so postman-exporter follows the same host-appendix pattern that delendai itself uses, instead of being a hand-rolled copy of the universal bootstrap.
+- **workspace**: align postman-exporter with delendai host contract (`88e892a`)
+  Adopt the canonical cross-project setup from delendai docs/CROSS-PROJECT-SETUP.md and docs/delendai/CROSS-IDE.md so this workspace follows the same host contract as delendai itself.
 
 _8 commit(s) fuera del convenio `tipo: asunto`, no listados._
 
